@@ -3,8 +3,8 @@ A KeyframeScope holds no values of its own. It holds *targets*: places to read f
 write to. The simplest is a uniform Structure — and none of this needs a GPU, because
 Structure is constructible bare and bind/bindings are plain maps.
 */
-import afield.four.buffers.Structure
-import afield.stdlib.KeyframeScope
+import afield.graphics.vulkan.buffers.Structure
+import afield.animation.keyframes.KeyframeScope
 
 val glow = Structure()
 val blur = Structure()

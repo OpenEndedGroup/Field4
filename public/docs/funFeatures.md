@@ -44,7 +44,7 @@ For completeness, we'll list them here:
  * `alt/option-double-clicking` in the editor. If you do this to `true` or `false` or `disable { ... }` or `enable { ... }` in the editor flips that word to the opposite and then `alt/option-enter`s the block. Think of this as a toggle, but hanging out in your source code.
  *  `alt/option-double-clicking` the name of a function in scope that has signature `foo()` just runs the function. Buttons everywhere!
  *  `alt/option-1` — relaunches **just the selection**, or the line or enclosing block under the cursor (i.e. the same code `alt/option-enter` would run), without running other parts of the box again. See [Running code in a box](running_code.md#running-code-around-the-cursor). You get a handsome stripe in the margin that shows the launched code that's ongoing.
- *  Writing code that launches other boxes. For example `root.named("progress").begin()` launches a box called "progress". 
+ *  Writing code that launches other boxes. For example `root.named("progress").begin()` launches a box called "progress".
 
 Some of these effects are language dependent. For example, if you are editing a GLSL shader property, alt/option-enter recompiles and reloads the shader instead.
 
@@ -81,7 +81,7 @@ And is quite performant, so you can just use them as output:
 </video>
 
 
-There's a little bit of design here — if they are `print`ing but not changing they turn white, otherwise, the thought is that the text changing is enough for you to direct your attention to the line. 
+There's a little bit of design here — if they are `print`ing but not changing they turn white, otherwise, the thought is that the text changing is enough for you to direct your attention to the line.
 
 So, if you don't know what that variable is, drop in a `print()` and find out.
 
@@ -111,7 +111,7 @@ Puts an annotation underneath the box we're writing code in
 
 ![](assets/screenshot_33.png)
 
-Subsequent calls to `display` overwrites the previous one, giving you a way of 'animating' the output on the canvas. 
+Subsequent calls to `display` overwrites the previous one, giving you a way of 'animating' the output on the canvas.
 
 While the `.h` and `.h2` visualizers try hard to make things pretty, all they are really doing is making some complex HTML in response to what they are trying to visualize. You can make your own as well:
 
@@ -192,7 +192,7 @@ It's important to note that you're not just editing a *copy* of the FLine. This 
 
 See [fline_examples](fline_examples.md) for much more.
 
-## "Printing" chunks of UI 
+## "Printing" chunks of UI
 
 Take a look at [visualizers](visualizers.md) if you want more help either visualizing values inside your code, or printing user interface components to provide input to your code. Field is set up to run a type and current-value driven 'autocomplete' as the cursor moves around the editor. Just to give you an active hint about what you might type (and what those parameters are in the function you are changing), and what value that variable currently has:
 
@@ -273,7 +273,7 @@ In Field you can *talk* code and data structures into existence. Below, a polyto
 
 ![The polytope box with its AI4 chat restored: the last request, a sheet of nine frames of the polytope bursting and healing, and the model's reply that the live cycle now matches what was asked for](assets/stackauto_conversation/saved-chat.png)
 
-Finally this documentation itself is both part of the agent's search context, the Field's test system, and mostly AI generated. Almost every screenshot that sits underneath a piece of code is mechanically produced by that code (and reproduced if the codebase changes). The prose is extended, cleaned, modified nightly as agents play in the [codebase](how_field_is_built.md). 
+Finally this documentation itself is both part of the agent's search context, the Field's test system, and mostly AI generated. Almost every screenshot that sits underneath a piece of code is mechanically produced by that code (and reproduced if the codebase changes). The prose is extended, cleaned, modified nightly as agents play in the [codebase](how_field_is_built.md).
 
 # Multi-language, multi-paradigm
 
@@ -305,7 +305,7 @@ This means, in effect, that you can live code things like OpenCV and Torch with 
 
 ```diffstatic {data-lang=python}
 :::static
-from afield.python import PythonInterface
+from afield.lang.python import PythonInterface
 
 box = PythonInterface.thisBox
 box.setName("property access from boxes")
@@ -355,7 +355,7 @@ The most successful and most important programming paradigm of all time — the 
 	<source src="assets/somesheet.mp4" type="video/mp4">
 </video>
 
-Supported features include integration with other boxes' variables — changing a dependant variable inside a box magically causes an auto-update sweep of the spreadsheet (next animation frame). And a complete and understanding type system: while the expression language for the spreadsheet is Kotlin, there's a very carefully wrapped pseudo-numeric type that auto-promotes gleefully, understanding scalars, scalars with physical units, Field's linear algebra types, and even Field's FLine. If you ever wanted a spreadsheet that could do formulae with drawings, this is it. 
+Supported features include integration with other boxes' variables — changing a dependant variable inside a box magically causes an auto-update sweep of the spreadsheet (next animation frame). And a complete and understanding type system: while the expression language for the spreadsheet is Kotlin, there's a very carefully wrapped pseudo-numeric type that auto-promotes gleefully, understanding scalars, scalars with physical units, Field's linear algebra types, and even Field's FLine. If you ever wanted a spreadsheet that could do formulae with drawings, this is it.
 
 ## Actors / Message-passing
 
@@ -363,14 +363,14 @@ We can think about 'the box' as taking on the role of "an actor". This marries v
 
 ```diffstatic {data-lang=python}
 :::static
-onMessage<Vec2> {  
+onMessage<Vec2> {
     reply(payload.lengthSquared())
 }
 ```
 
 ```diffstatic {data-lang=python}
 :::static
-onMessage<Vec3> {  
+onMessage<Vec3> {
     100.alphas {
         /// animate from payload up to something sle
         frame()
@@ -485,7 +485,7 @@ Drag the little grip in the top-left corner of the canvas to split it into panes
 	<source src="assets/Screen-Recording-2026-03-21-at-14.16.23.mp4" type="video/mp4">
 </video>
 
-### Layers 
+### Layers
 
 Field boxes exist in layers, and boxes' visibilities and positions are _per layer_. Inside a box,
 you assign it to layers with `layers`:
@@ -591,7 +591,7 @@ val k2 = keyframes(channel = "k", name = "bob2", [0.0, 1.0])
 k.onChange = {
     with(Functions) {
         val f = fromKeyframeEditor(it)
-        val f2 = gaussianSmooth(f, sigma = 0.1)       
+        val f2 = gaussianSmooth(f, sigma = 0.1)
         f2
     }
 }
@@ -609,7 +609,7 @@ Once you have a keyframe, you can do a few things with it:
 val k = keyframes(channel = "k", name = "bob", [0.0, 1.0])
 
 k.setTime(0.5) // move the orange playhead
-val v : Double = k.evaluateValueAt(0.5)  
+val v : Double = k.evaluateValueAt(0.5)
 val dv : Double = k.evaluateDerivativeAt(0.5)
 ```
 
@@ -630,17 +630,17 @@ For the extra curious, this slider is just a regular box with some customization
 rootProp<Box>(execution) = thisBox
 
 fun launchFrom(was : Double, now : Double) {
- 
+
     val all = root.children - thisBox // candidates for execution
     val a = all.filter { it.frame.intersects(was) }
     val b = all.filter { it.frame.intersects(was, now) }
     val c = all.filter { it.frame.intersects(now) }
 
-    val incoming = c-a 
-    val outgoing = a-c 
+    val incoming = c-a
+    val outgoing = a-c
     val onlyOnce = b-(a+c) // starting and stopping
 
-    incoming.forEach(Box::begin) 
+    incoming.forEach(Box::begin)
     outgoing.forEach(Box::end)
 
     onlyOnce.forEach {
@@ -653,12 +653,12 @@ fun launchFrom(was : Double, now : Double) {
 }
 
 // whenever the viewport changes run this to keep the line covering the view
-onViewportChange += "lock_x" to { inside, a, b -> 
+onViewportChange += "lock_x" to { inside, a, b ->
     frame = frame.copy(y = -b.y-100, h = b.h*2-50, w = 40.0)
 }
 
 // whenever the frame of the box changes run this
-onFrameChange += "lock_x" to { inside, a, b -> 
+onFrameChange += "lock_x" to { inside, a, b ->
     launchFrom(a.x, b.x)
     b.copy(y = -inside.viewport.y-100, w = 40.0)
 }
@@ -739,7 +739,7 @@ Means that in the children:
 print(foo)
 ```
 
-Prints `10.0`. You can think about this mechanism as 'exporting' particular variables (with types) to child boxes. `prop` here is a _macro_ that expands and runs some set of glue code that makes a real Kotlin property backed by the right kind of storage. This glue code is stored in the `preamble` property. This code accumulates but it's essentially a layer of inherited auto-regeneratable glue code between boxes and their children.  
+Prints `10.0`. You can think about this mechanism as 'exporting' particular variables (with types) to child boxes. `prop` here is a _macro_ that expands and runs some set of glue code that makes a real Kotlin property backed by the right kind of storage. This glue code is stored in the `preamble` property. This code accumulates but it's essentially a layer of inherited auto-regeneratable glue code between boxes and their children.
 
 Anything that has an exportable type in Kotlin can travel — this includes Kotlin lambdas, `Vec3` etc. But, alas, not types defined inside boxes.
 
@@ -750,7 +750,7 @@ prop<Vec2>(myVec)
 
 once.myVec {
     // `myVec` will stay the same for this whole session
-    vec(1,2).noise(10.0) 
+    vec(1,2).noise(10.0)
 }
 ```
 
@@ -819,7 +819,7 @@ check(!nested.contains("block/visible")) { "helper is still on the canvas after 
 ui.pause(750)
 ```
 
-This allows you to encapsulate boxes inside other boxes to work together to achieve a common aim. 
+This allows you to encapsulate boxes inside other boxes to work together to achieve a common aim.
 
 Nested parents can be referenced inside nesting children with `nestedIn` (`Box?`) and nesting parents can get a `Set<Box>` of their nest children with `nested`. If there are non-visible nesting children that are acting as children or parents to boxes that _are_ visible that is notated in the connections:
 
@@ -831,7 +831,7 @@ Finally, `named("foo")` returns a `Box?` called "foo" searching from the current
 
 ## Collaborating
 
-Field's back-end just serves pages to any browser that contacts it; it's just usual that Field is running on the machine that you are using to look at its interface. But if you can conspire to open a webpage up on that server you can do so from anywhere on earth (OpenEndedGroup particularly likes [TailScale](https://tailscale.com/) for this, but there are other options). 
+Field's back-end just serves pages to any browser that contacts it; it's just usual that Field is running on the machine that you are using to look at its interface. But if you can conspire to open a webpage up on that server you can do so from anywhere on earth (OpenEndedGroup particularly likes [TailScale](https://tailscale.com/) for this, but there are other options).
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/collab.mp4" type="video/mp4">

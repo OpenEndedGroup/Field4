@@ -1,12 +1,15 @@
 package afield.examples.four
 
-import afield.four.util.CameraPose
-import afield.stdlib.KeyframeScope
-import afield.stdlib.remAssign
-import afield.stdlib.times
-import afield.stdlib.linalg.DualQuaternionf
-import afield.stdlib.linalg.Quaternionf
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.vulkan.util.CameraPose
+import afield.animation.keyframes.KeyframeScope
+import afield.math.linalg.remAssign
+import afield.data.collections.times
+import afield.math.autodiff.times
+import afield.math.linalg.times
+import afield.math.units.times
+import afield.math.linalg.DualQuaternionf
+import afield.math.linalg.Quaternionf
+import afield.math.linalg.Vector3f
 import java.nio.file.Files
 import kotlin.math.PI
 import kotlin.math.abs

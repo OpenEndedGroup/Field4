@@ -29,7 +29,7 @@ CaptureRenderWindowRequest finished (753 ms)
 Completed
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_afield.four render window 'StackSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
+_Field 4 render window 'StackSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
 
 ![tool image](images/87d54b7df3d14cc112b8.jpg)
 <<ai>>
@@ -39,7 +39,7 @@ _r2-288dde12a884: frames at 0.00, 8.00, 20.0 s; second row r1-4d2baeb1ffda, thir
 ![tool image](images/66a63c3f77a38a46c014.png)
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_afield.four render window 'StackSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
+_Field 4 render window 'StackSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
 
 ![tool image](images/69d1b0d684b715e6f0f4.jpg)
 <<ai>>

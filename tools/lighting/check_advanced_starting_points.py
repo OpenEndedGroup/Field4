@@ -24,21 +24,21 @@ def main():
     for page in a.only or PAGES:
         directory=work/page;directory.mkdir(exist_ok=True)
         if page=='computed_ray_geometry':
-            before='prop<afield.four.modules.ComputeModule>(oldProducer)=lab.producer.current\ncheck(lab.geometry.deviceAddress()>0)\n'
+            before='prop<afield.graphics.render.ComputeModule>(oldProducer)=lab.producer.current\ncheck(lab.geometry.deviceAddress()>0)\n'
             after='check(lab.producer.current!==oldProducer && lab.producer.current.valid)\n'
             shader=ROOT/'src/jvmMain/resources/afield/four/geometry/terrain.comp'
             (directory/'edited.comp').write_text(shader.read_text().replace('.55*sin','.75*sin'))
             edit=[f'set {page} compute --file {directory}/edited.comp',f'action {page} computeModuleHere_reload --property compute']
         elif page=='gpu_shader_learning':
-            before='check(lab.model.steps>0)\nprop<afield.four.neural.GpuShaderTraining>(oldModel)=lab.model\nprop<String>(oldSourceHash)=afield.four.neural.ShaderTraining.sourceDigest(lab.source)\n'
-            after='check(lab.model===oldModel && lab.model.steps>0)\ncheck(afield.four.neural.ShaderTraining.sourceDigest(lab.source)!=oldSourceHash)\n'
+            before='check(lab.model.steps>0)\nprop<afield.graphics.shader.learning.GpuShaderTraining>(oldModel)=lab.model\nprop<String>(oldSourceHash)=afield.graphics.shader.learning.ShaderTraining.sourceDigest(lab.source)\n'
+            after='check(lab.model===oldModel && lab.model.steps>0)\ncheck(afield.graphics.shader.learning.ShaderTraining.sourceDigest(lab.source)!=oldSourceHash)\n'
             shader=ROOT/'src/jvmMain/resources/afield/four/neural/teacher.frag'
             (directory/'edited.frag').write_text(shader.read_text().replace('color=','color = ').replace('.22*cos','.20*cos'))
             # A source change goes through moduleHere and the Starting Point's digest/reset path.
             edit=[f'set {page} fragment --file {directory}/edited.frag',f'action {page} moduleHere_reload --property fragment']
         else:
-            before='lab.reset("test cut");lab.view=afield.four.reconstruction.PathTracedReconstruction.View.RAW\n'
-            after='lab.view=afield.four.reconstruction.PathTracedReconstruction.View.RECONSTRUCTED\n'
+            before='lab.reset("test cut");lab.view=afield.media.reconstruction.PathTracedReconstruction.View.RAW\n'
+            after='lab.view=afield.media.reconstruction.PathTracedReconstruction.View.RECONSTRUCTED\n'
             edit=[]
         (directory/'before.kt').write_text(before+'org.lwjgl.glfw.GLFW.glfwSetWindowSize(window.windowHandle,1280,720)\n')
         (directory/'after.kt').write_text(after+'org.lwjgl.glfw.GLFW.glfwSetWindowSize(window.windowHandle,1920,1080)\nprintln("ADVANCED EDIT CHECK DONE")\n')

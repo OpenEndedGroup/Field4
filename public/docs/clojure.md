@@ -101,7 +101,7 @@ Clojure's Java interop already reaches all of Field, and most of the time that i
 ```diffstatic {data-lang=clojure}
 (.getName (box))                          ; box properties and topology
 (.getChildren (box))
-(doto (afield.graphics.FLine.)             ; Field's own types
+(doto (afield.geometry.path.FLine.)             ; Field's own types
   (.moveTo 0 0 0)
   (.lineTo 100 100 0))
 ```

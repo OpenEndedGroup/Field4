@@ -1,9 +1,9 @@
 # Automatic differentiation in Field
 
 Before 2026-07-31 there was no AD anywhere in this repository. Every gradient was numerical:
-`finiteDifferenceGradient` in `src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt` (used by
+`finiteDifferenceGradient` in `src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt` (used by
 `fitGradient`) and `finiteDifferenceJacobian` in
-`src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt`. That is a real capability gap — "differentiable
+`src/jvmMain/kotlin/afield/math/optimization/LeastSquares.kt`. That is a real capability gap — "differentiable
 programming" is on the standing Themes list — and this is the layer that closes it.
 
 Five files, in dependency order:
@@ -143,7 +143,7 @@ pinned to the code by the `<!--count:…-->` markers beside them
 of those occasions the count and the table were each internally consistent with *different* answers —
 so is the table: every op in `differentiableOps` must be named on this page
 (`ProseNumeralContractTest.kt#fun everyMemberOfANamedPopulationAppearsOnItsPage`). The percentage is
-still hand-kept and is still unchecked; `./gradlew jvmTest --tests afield.stdlib.FnOpCoverageTest
+still hand-kept and is still unchecked; `./gradlew jvmTest --tests afield.math.functions.FnOpCoverageTest
 --rerun` prints the authoritative `OP COVERAGE:` line. See
 `citation_contracts.md` under *Pinning a number written in prose*.)
 
@@ -259,7 +259,7 @@ exactly those two calls at base commit `f7d1601b`, before either file was touche
 and 4 θ entries from `fitGradient`, plus 3 parameters, the cost, the iteration count and the reason
 string from `leastSquares`. See `defaultFitGradientPathIsByteIdenticalToTheHistoricOne` and
 `defaultLeastSquaresPathIsByteIdenticalToTheHistoricOne` in
-`src/jvmTest/kotlin/afield/stdlib/AutoDiffFnBridgeTest.kt`. They are bits, not tolerances: a
+`src/jvmTest/kotlin/afield/math/autodiff/AutoDiffFnBridgeTest.kt`. They are bits, not tolerances: a
 reordered operation turns them red.
 
 Measured on `sin(1.5, amplitude = 0.8, offset = 0.2)` fitted from `sin(1.0)`, 400 Adam steps at

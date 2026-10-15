@@ -85,7 +85,7 @@ rejected; create a new scene for that change. A successful compatible edit reset
 The reusable scene is also a small piece of ordinary Field code:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.reconstruction.*
+import afield.media.reconstruction.*
 
 val experiment = ReconstructionDemo(
     renderer,

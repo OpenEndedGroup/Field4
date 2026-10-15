@@ -19,7 +19,7 @@ installAiChatFenceCatalog().then(rerenderOpenChats)
         .catch(error => console.warn("AI4 fence catalog unavailable:", error));
 
 // The tool families a round's summary line counts ("2 notes · 1 edit"); the chat archive reads the
-// same file (afield.chatlog). Without it a round still shows its calls, time and failures.
+// same file (afield.ai.conversation.chatlog). Without it a round still shows its calls, time and failures.
 fetch(new URL("./ai4-chat-tool-families.json", import.meta.url))
         .then(response => {
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -2152,7 +2152,7 @@ function ensureAiChat(container, uid, property) {
                         "**Commands**",
                         "- `/help` show available commands",
                         "- `/clear` delete this box’s saved conversation and start fresh",
-                        "- `/screenshot [window]` capture an `afield.four` window and attach it as an image",
+                        "- `/screenshot [window]` capture a Field 4 window and attach it as an image",
                         "- `/context` show what the last AI turn was told besides the conversation, and its size",
                         "- `/branches` list this conversation's branches (made by rewinding or editing a message); `/branch <#>` switch to one",
                         "- `/stop-waiting` stop waiting for the builds the agent's last turn awaited (the builds keep running)",

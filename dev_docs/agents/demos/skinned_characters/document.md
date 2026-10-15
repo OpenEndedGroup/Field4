@@ -15,8 +15,8 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 ```
 
 ```text [field-property box="f5e60137-f514-4c01-865c-5af02f1d8eee" name="preamble"]
-import afield.four.util.Window
-import afield.four.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -24,8 +24,8 @@ val Once.renderer by Onceing<Renderer>() /**/
 ```
 
 ```kotlin [field-property box="f5e60137-f514-4c01-865c-5af02f1d8eee" name="code" path="f5e60137-f514-4c01-865c-5af02f1d8eee_code_.kt"]
-import afield.four.util.Options
-import afield.Rect
+import afield.graphics.vulkan.util.Options
+import afield.app.protocol.Rect
 
 // The window and renderer that box 4 needs.
 //
@@ -34,7 +34,7 @@ import afield.Rect
 // and path_tracing_medium each have exactly one box declaring `prop<Renderer>(renderer)`. This
 // demo did not, so box 4 only ran under `field_backdoor.py --graphics-context`, where the agent's
 // own context box supplied a Renderer by type. Opened the ordinary way -- `./field.sh` on this
-// document -- box 4 failed with "must pass in a value for context parameter afield.four.Renderer".
+// document -- box 4 failed with "must pass in a value for context parameter afield.graphics.vulkan.Renderer".
 //
 // `prop<Renderer>(renderer)` publishes it to this box's children, which is why box 4 is connected
 // beneath this one and can now say `renderer` by name.
@@ -59,11 +59,11 @@ start(renderer::run)
 ```
 
 ```kotlin [field-property box="gpu_crowd" name="code" path="gpu_crowd_code_.kt"]
-import afield.four.modules.GltfSupport
-import afield.four.modules.GpuSkinner
-import afield.four.modules.GpuSkinning
-import afield.four.modules.RiggedFixture
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.scene.GltfSupport
+import afield.graphics.scene.GpuSkinner
+import afield.graphics.scene.GpuSkinning
+import afield.graphics.scene.RiggedFixture
+import afield.math.linalg.Matrix4f
 
 // Sixty-four characters, one mesh, one draw call, all of them animating -- and not one vertex is
 // re-uploaded after setup. Box 4 above is the CPU skinner: it rewrites the packed vertex buffer
@@ -75,7 +75,7 @@ val count = 64
 // `renderer` and `window` come from box 0, which publishes them with `prop<Renderer>(renderer)`.
 // This box is connected beneath it, so the bare name resolves -- RUN BOX 0 FIRST. Before box 0
 // has run there is no Renderer anywhere and this box fails with "must pass in a value for
-// context parameter afield.four.Renderer", which is the same footgun box 4 documents.
+// context parameter afield.graphics.vulkan.Renderer", which is the same footgun box 4 documents.
 val model = GltfSupport.loadGltfBasic(
     RiggedFixture.locate(), GltfSupport.GltfLoadConfig(loadTextures = false)
 )
@@ -138,8 +138,8 @@ loop {
 ```
 
 ```text [field-property box="gpu_crowd" name="preamble"]
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -155,13 +155,13 @@ val Once.renderer by Onceing<Renderer>() /**/
 ```
 
 ```text [field-property box="c82c404d-a15d-4f51-a06f-66dfc2a00364" name="preamble"]
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 import java.nio.*
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
+
+
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
@@ -210,14 +210,14 @@ fun BufferParameters.asIndexBuffer(): IndexBuffer =
     buffer.asIndexBuffer()
 /*end*/
 /*graphics-pc-structure:modelView*/ var Structure.modelView by Structure.FromStructure<Any>() // view * model
-/*graphics-pc-binding:modelView*/ var Mesh.modelView by Mesh.BoundFromStructure<afield.stdlib.linalg.Matrix4f>() // view * model
-/*graphics-pc-binding-group:modelView*/ var MeshGroup.modelView by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Matrix4f>() // view * model
+/*graphics-pc-binding:modelView*/ var Mesh.modelView by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>() // view * model
+/*graphics-pc-binding-group:modelView*/ var MeshGroup.modelView by MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>() // view * model
 /*graphics-pc-structure:proj*/ var Structure.proj by Structure.FromStructure<Any>() // projection
-/*graphics-pc-binding:proj*/ var Mesh.proj by Mesh.BoundFromStructure<afield.stdlib.linalg.Matrix4f>() // projection
-/*graphics-pc-binding-group:proj*/ var MeshGroup.proj by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Matrix4f>() // projection
+/*graphics-pc-binding:proj*/ var Mesh.proj by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>() // projection
+/*graphics-pc-binding-group:proj*/ var MeshGroup.proj by MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>() // projection
 /*graphics-pc-structure:materialBaseColor*/ var Structure.materialBaseColor by Structure.FromStructure<Any>()
-/*graphics-pc-binding:materialBaseColor*/ var Mesh.materialBaseColor by Mesh.BoundFromStructure<afield.stdlib.linalg.Vector4f>()
-/*graphics-pc-binding-group:materialBaseColor*/ var MeshGroup.materialBaseColor by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Vector4f>()
+/*graphics-pc-binding:materialBaseColor*/ var Mesh.materialBaseColor by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*graphics-pc-binding-group:materialBaseColor*/ var MeshGroup.materialBaseColor by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
 /*graphics-pc-structure:vertexOffset*/ var Structure.vertexOffset by Structure.FromStructure<Any>() // in floats
 /*graphics-pc-binding:vertexOffset*/ var Mesh.vertexOffset by Mesh.BoundFromStructure<UInt>() // in floats
 /*graphics-pc-binding-group:vertexOffset*/ var MeshGroup.vertexOffset by MeshGroup.BoundFromStructure<UInt>() // in floats
@@ -231,19 +231,19 @@ fun BufferParameters.asIndexBuffer(): IndexBuffer =
 /*graphics-pc-binding:useVertexColor*/ var Mesh.useVertexColor by Mesh.BoundFromStructure<UInt>() // bool as uint
 /*graphics-pc-binding-group:useVertexColor*/ var MeshGroup.useVertexColor by MeshGroup.BoundFromStructure<UInt>() // bool as uint
 /*graphics-pc-structure:vertexBuffer*/ var Structure.vertexBuffer by Structure.FromStructure<Any>()
-/*graphics-pc-binding:vertexBuffer*/ var Mesh.vertexBuffer by Mesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*graphics-pc-binding-group:vertexBuffer*/ var MeshGroup.vertexBuffer by MeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*graphics-pc-binding:vertexBuffer*/ var Mesh.vertexBuffer by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:vertexBuffer*/ var MeshGroup.vertexBuffer by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-structure:indexBuffer*/ var Structure.indexBuffer by Structure.FromStructure<Any>()
-/*graphics-pc-binding:indexBuffer*/ var Mesh.indexBuffer by Mesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*graphics-pc-binding-group:indexBuffer*/ var MeshGroup.indexBuffer by MeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*graphics-pc-binding:indexBuffer*/ var Mesh.indexBuffer by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:indexBuffer*/ var MeshGroup.indexBuffer by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 ```
 
 ```kotlin [field-property box="c82c404d-a15d-4f51-a06f-66dfc2a00364" name="code" path="c82c404d-a15d-4f51-a06f-66dfc2a00364_code_.kt"]
-import afield.four.modules.CpuSkinner
-import afield.four.modules.DualQuaternionSkinning
-import afield.four.modules.GltfSkinning
-import afield.four.modules.RiggedFixture
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.scene.CpuSkinner
+import afield.graphics.scene.DualQuaternionSkinning
+import afield.graphics.scene.GltfSkinning
+import afield.graphics.scene.RiggedFixture
+import afield.math.linalg.Matrix4f
 
 // The candy wrapper: one rig, one pose, two ways of averaging the joints.
 //
@@ -404,13 +404,13 @@ void main()
 ```
 
 ```kotlin [field-property box="rig_facts" name="code" path="rig_facts_code_.kt"]
-import afield.four.modules.GltfSkinning
-import afield.four.modules.GltfSupport
-import afield.four.modules.RiggedFixture
-import afield.four.modules.assimpToTriMesh
-import afield.four.modules.skinnedGltfToTriMesh
-import afield.stdlib.MeshView
-import afield.stdlib.showMeshGrid
+import afield.graphics.scene.GltfSkinning
+import afield.graphics.scene.GltfSupport
+import afield.graphics.scene.RiggedFixture
+import afield.graphics.scene.assimpToTriMesh
+import afield.graphics.scene.skinnedGltfToTriMesh
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.showMeshGrid
 
 // Field could load a glTF and it could sample per-NODE animation. It could not skin.
 //
@@ -475,15 +475,15 @@ showMeshGrid(
 ```
 
 ```kotlin [field-property box="gpu_twist" name="code" path="gpu_twist_code_.kt"]
-import afield.four.modules.DualQuaternionSkinning
-import afield.four.modules.GltfSkinning.SkinningMethod
-import afield.four.modules.GltfSkinning.SkinningOptions
-import afield.four.modules.GltfSkinning
-import afield.four.modules.GltfSupport
-import afield.four.modules.GpuSkinner
-import afield.four.modules.GpuSkinning
-import afield.four.modules.RiggedFixture
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.scene.DualQuaternionSkinning
+import afield.graphics.scene.GltfSkinning.SkinningMethod
+import afield.graphics.scene.GltfSkinning.SkinningOptions
+import afield.graphics.scene.GltfSkinning
+import afield.graphics.scene.GltfSupport
+import afield.graphics.scene.GpuSkinner
+import afield.graphics.scene.GpuSkinning
+import afield.graphics.scene.RiggedFixture
+import afield.math.linalg.Matrix4f
 
 // Box 5 is the candy wrapper on the CPU. This is the same twist on the GPU, both methods in ONE
 // draw call: the left cylinder is linear blend skinning and pinches to a point at 180 degrees, the
@@ -558,8 +558,8 @@ loop {
 ```
 
 ```text [field-property box="gpu_twist" name="preamble"]
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -575,12 +575,12 @@ val Once.renderer by Onceing<Renderer>() /**/
 ```
 
 ```kotlin [field-property box="drag_time" name="code" path="drag_time_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.modules.RiggedFixture
-import afield.four.modules.posedGltfToTriMesh
-import afield.stdlib.MeshView
-import afield.stdlib.showMesh
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.scene.RiggedFixture
+import afield.graphics.scene.posedGltfToTriMesh
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.showMesh
 
 // Drag `time`. The cylinder bends.
 //
@@ -632,9 +632,9 @@ println("At time 0 and 2 the tube is straight; the extreme is at time 1.")
 ```
 
 ```kotlin [field-property box="gpu_skin" name="code" path="gpu_skin_code_.kt"]
-import afield.four.modules.CpuSkinner
-import afield.four.modules.RiggedFixture
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.scene.CpuSkinner
+import afield.graphics.scene.RiggedFixture
+import afield.math.linalg.Matrix4f
 
 // The same deformation, on the GPU, through Field's OWN glTF module and its OWN bundled shaders.
 //
@@ -705,13 +705,13 @@ loop { frame() }
 ```
 
 ```text [field-property box="gpu_skin" name="preamble"]
-import afield.four.util.Window
-import afield.four.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 import java.nio.*
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
+
+
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*start*/
 /*graphics-structure-type:VertexBuffer:VertexBuffer*/
@@ -756,14 +756,14 @@ fun BufferParameters.asIndexBuffer(): IndexBuffer =
     buffer.asIndexBuffer()
 /*end*/
 /*graphics-pc-structure:modelView*/ var Structure.modelView by Structure.FromStructure<Any>() // view * model
-/*graphics-pc-binding:modelView*/ var Mesh.modelView by Mesh.BoundFromStructure<afield.stdlib.linalg.Matrix4f>() // view * model
-/*graphics-pc-binding-group:modelView*/ var MeshGroup.modelView by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Matrix4f>() // view * model
+/*graphics-pc-binding:modelView*/ var Mesh.modelView by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>() // view * model
+/*graphics-pc-binding-group:modelView*/ var MeshGroup.modelView by MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>() // view * model
 /*graphics-pc-structure:proj*/ var Structure.proj by Structure.FromStructure<Any>() // projection
-/*graphics-pc-binding:proj*/ var Mesh.proj by Mesh.BoundFromStructure<afield.stdlib.linalg.Matrix4f>() // projection
-/*graphics-pc-binding-group:proj*/ var MeshGroup.proj by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Matrix4f>() // projection
+/*graphics-pc-binding:proj*/ var Mesh.proj by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>() // projection
+/*graphics-pc-binding-group:proj*/ var MeshGroup.proj by MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>() // projection
 /*graphics-pc-structure:materialBaseColor*/ var Structure.materialBaseColor by Structure.FromStructure<Any>()
-/*graphics-pc-binding:materialBaseColor*/ var Mesh.materialBaseColor by Mesh.BoundFromStructure<afield.stdlib.linalg.Vector4f>()
-/*graphics-pc-binding-group:materialBaseColor*/ var MeshGroup.materialBaseColor by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Vector4f>()
+/*graphics-pc-binding:materialBaseColor*/ var Mesh.materialBaseColor by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*graphics-pc-binding-group:materialBaseColor*/ var MeshGroup.materialBaseColor by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
 /*graphics-pc-structure:vertexOffset*/ var Structure.vertexOffset by Structure.FromStructure<Any>() // in floats
 /*graphics-pc-binding:vertexOffset*/ var Mesh.vertexOffset by Mesh.BoundFromStructure<UInt>() // in floats
 /*graphics-pc-binding-group:vertexOffset*/ var MeshGroup.vertexOffset by MeshGroup.BoundFromStructure<UInt>() // in floats
@@ -777,11 +777,11 @@ fun BufferParameters.asIndexBuffer(): IndexBuffer =
 /*graphics-pc-binding:useVertexColor*/ var Mesh.useVertexColor by Mesh.BoundFromStructure<UInt>() // bool as uint
 /*graphics-pc-binding-group:useVertexColor*/ var MeshGroup.useVertexColor by MeshGroup.BoundFromStructure<UInt>() // bool as uint
 /*graphics-pc-structure:vertexBuffer*/ var Structure.vertexBuffer by Structure.FromStructure<Any>()
-/*graphics-pc-binding:vertexBuffer*/ var Mesh.vertexBuffer by Mesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*graphics-pc-binding-group:vertexBuffer*/ var MeshGroup.vertexBuffer by MeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*graphics-pc-binding:vertexBuffer*/ var Mesh.vertexBuffer by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:vertexBuffer*/ var MeshGroup.vertexBuffer by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-structure:indexBuffer*/ var Structure.indexBuffer by Structure.FromStructure<Any>()
-/*graphics-pc-binding:indexBuffer*/ var Mesh.indexBuffer by Mesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*graphics-pc-binding-group:indexBuffer*/ var MeshGroup.indexBuffer by MeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*graphics-pc-binding:indexBuffer*/ var Mesh.indexBuffer by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:indexBuffer*/ var MeshGroup.indexBuffer by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -890,11 +890,11 @@ void main()
 ```
 
 ```kotlin [field-property box="path_trace" name="code" path="path_trace_code_.kt"]
-import afield.four.fabricated.GltfSkinPose
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.importGltf
-import afield.four.modules.RiggedFixture
-import afield.four.modules.skinnedGltfToTriMesh
+import afield.graphics.scene.fabricated.GltfSkinPose
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.importGltf
+import afield.graphics.scene.RiggedFixture
+import afield.graphics.scene.skinnedGltfToTriMesh
 
 // The line this whole branch was aimed at.
 //

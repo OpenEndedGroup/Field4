@@ -26,9 +26,9 @@ operations:
       frame: { x: 520.0, y: 40.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.AudioVisualizer
-          import afield.stdlib.AudioVisualizerOptions
-          import afield.four.audio.WavFloatArrayLoader
+          import afield.ui.visualization.AudioVisualizer
+          import afield.ui.visualization.AudioVisualizerOptions
+          import afield.audio.engine.WavFloatArrayLoader
           import java.io.File
           import java.nio.file.Path
           val json = FieldAudioClient.json
@@ -43,13 +43,13 @@ operations:
       frame: { x: 40.0, y: 190.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.Box
-          import afield.stdlib.AudioVisualizerOptions
-          import afield.stdlib.SmileMdsDistance
+          import afield.document.graph.Box
+          import afield.ui.visualization.AudioVisualizerOptions
+          import afield.math.statistics.SmileMdsDistance
           import java.nio.file.Files
           import java.nio.file.Path
           import java.util.concurrent.CompletableFuture
-
+          
           val client = FieldAudioClient()
           val localPath = Path.of(System.getProperty("user.home"), "Downloads", "near_drowning.wav")
           val timeSync = "near-drowning-speech-spaces"
@@ -58,7 +58,7 @@ operations:
           val projectionPoolMillis = 500.0
           val projectionHopMillis = 40.0
           display("all jobs", fieldAudioJobMonitor(heightPixels = 340))
-
+          
           fun Box.trackedSpeech(label: String, request: ModelOperation): CompletableFuture<AnalysisResult> =
               client.submit(request).thenCompose { accepted ->
                   display("$label job", fieldAudioJobStatusHtml(accepted))
@@ -74,7 +74,7 @@ operations:
                       result
                   }
               }
-
+          
           client.assetsByFilename("*near_drowning*").thenCompose { matches ->
               when {
                   matches.size == 1 -> CompletableFuture.completedFuture(matches.single())
@@ -101,7 +101,7 @@ operations:
                       syncGroup = timeSync,
                   ),
               ))
-
+          
               val results = listOf(
                   "emotion2vec" to emotion2VecEmbeddingAnalysis(
                       region, requestedBy = "field:speech-embeddings/near-drowning",

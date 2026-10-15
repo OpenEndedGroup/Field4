@@ -1,4 +1,4 @@
-import afield.timecode.*
+import afield.io.timecode.*
 
 // A locate, then two seconds of running MTC at 25 fps, decoded as it would be on the far end of a cable.
 val decoder = MtcDecoder()

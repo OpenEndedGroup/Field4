@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // The assertion that proves the feature rather than the plumbing.
 //
@@ -35,5 +35,5 @@ println("1 voice:    " + faustSpectrumPeaks(one.mono(), at, 32768, one.sampleRat
 println("steals:     4 voices " + poly.steals + ", 1 voice " + one.steals)
 println("concurrency: 4 voices " + poly.peakConcurrency + ", 1 voice " + one.peakConcurrency)
 
-display("chord", afield.four.audio.WavFloatArrayWriter.encodeStereo16(poly.left, poly.right, poly.sampleRate, 0.9f))
-display("one voice", afield.four.audio.WavFloatArrayWriter.encodeStereo16(one.left, one.right, one.sampleRate, 0.9f))
+display("chord", afield.audio.engine.WavFloatArrayWriter.encodeStereo16(poly.left, poly.right, poly.sampleRate, 0.9f))
+display("one voice", afield.audio.engine.WavFloatArrayWriter.encodeStereo16(one.left, one.right, one.sampleRate, 0.9f))

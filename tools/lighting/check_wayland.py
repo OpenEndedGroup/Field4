@@ -59,7 +59,7 @@ def main():
     records=[];token=str(time.time_ns())
     with (WORK/"backdoor.json").open("w") as log:
         process=subprocess.Popen([sys.executable,"tools/field_backdoor.py","--json","--attach-existing","--port",str(args.port),
-            "--timeout","140","--command",f"run-jvm-main afield.four.reconstruction.WaylandReconstructionSmoke --arg {WORK} --timeout 120"],cwd=ROOT,stdout=log)
+            "--timeout","140","--command",f"run-jvm-main afield.media.reconstruction.WaylandReconstructionSmoke --arg {WORK} --timeout 120"],cwd=ROOT,stdout=log)
         try:
             heartbeat(lambda s:s["ready"])
             for cycle in range(3):

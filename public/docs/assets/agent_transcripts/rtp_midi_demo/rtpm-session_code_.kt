@@ -1,4 +1,4 @@
-import afield.rtpmidi.*
+import afield.io.midi.rtp.*
 
 // Open an RTP-MIDI network session called "Field" on UDP 5004/5005 and announce it over Bonjour.
 // In macOS Audio MIDI Setup -> MIDI Studio -> Network, "Field" now appears in the Directory:

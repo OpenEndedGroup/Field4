@@ -1,4 +1,4 @@
-import afield.oscquery.*
+import afield.io.osc.query.*
 
 // The other direction: read an OSCQuery service as a remote. Here it is this Field's own,
 // so run box 1 first; point it at TouchDesigner or Chataigne by changing the host and port.

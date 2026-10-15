@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // Deliberately broken — `os.sawtoothX` does not exist. Run it and Faust's own message lands
 // on the `process` line below rather than on this box's first line.

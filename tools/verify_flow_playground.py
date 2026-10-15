@@ -64,24 +64,24 @@ async def verify(port, server_log=None):
         passed('invalid capture target does not fall back to another window')
         probe=(await c.create_box(name='Verification',x=1500,y=300,w=200,h=80,timeout=120))['box']['uid']
         await c.change_connections(action='connect',parent_uid='flow_resources',child_uids=[probe],timeout=120)
-        common='import afield.four.modules.fromContextWithNameOrNull\n'
+        common='import afield.document.context.fromContextWithNameOrNull\n'
         if server_log is not None:
-            await run('check(afield.four.util.Options.validate) { "Vulkan validation must be enabled" }\n')
+            await run('check(afield.graphics.vulkan.util.Options.validate) { "Vulkan validation must be enabled" }\n')
         await run('System.gc()\n')
         result = await c.native_window_screenshot(
             path=str(folder/'after-gc.png'),uid='flow_renderer',wait_frames=32,timeout=120)
         assert result.get('ok'), result
         passed('live pipelines retain descriptor layouts across garbage collection')
-        sim='val simulation = fromContextWithNameOrNull<afield.four.targets.ComputeTarget>("flowSimulation")!!\n'
+        sim='val simulation = fromContextWithNameOrNull<afield.graphics.vulkan.targets.ComputeTarget>("flowSimulation")!!\n'
         await c.stop_box('flow_advect',timeout=120)
         await run(common+sim+'check("advect" !in simulation.modules)\n')
         data,events,timeout=await c.launch_box('flow_advect',property_name='code',value=None,timeout=120)
         assert not timeout and not c.execution_errors(events),(data,events)
         await run(common+sim+'check(simulation.modules.keys == setOf("advect","divergence","pressure","project","particles"))\n')
         passed('ordinary stop removes a stage; relaunch restores one copy')
-        await run(common+'val p = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("force")!!\np.requested=100.0\ncheck(p.effective==12.0 && p.snapshot().requested==100.0)\np.requested=2.5\n')
+        await run(common+'val p = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("force")!!\np.requested=100.0\ncheck(p.effective==12.0 && p.snapshot().requested==100.0)\np.requested=2.5\n')
         passed('requested and effective values agree with live shader input bounds')
-        look='val look = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowLook")!!\nval travel = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")!!\n'
+        look='val look = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowLook")!!\nval travel = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")!!\n'
         await c.stop_box('flow_strokes',timeout=120)
         await run(common+look+'travel.set(true)\nlook.w=4f\n')
         result=await c.native_window_screenshot(path=str(folder/'displacement.png'),uid='flow_renderer',wait_frames=24,timeout=120)

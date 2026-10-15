@@ -1,14 +1,17 @@
-import afield.four.Renderer
-import afield.four.util.Window
-import afield.stdlib.linalg.Vector2f
-import afield.four.targets.RenderToTexture
-import afield.four.texture.HasImageView
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.math.linalg.Vector2f
+import afield.graphics.vulkan.targets.RenderToTexture
+import afield.graphics.texture.HasImageView
 import java.nio.*
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
-import afield.four.targets.PingPongRenderToTexture
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
+import afield.graphics.vulkan.targets.PingPongRenderToTexture
 var Box.flowSession by Inheritance<AutoCloseable>() /**/
 val Once.flowSession by Onceing<AutoCloseable>() /**/
 val Why.flowSession by Whying() /**/
@@ -25,8 +28,8 @@ val Why.previousImage by Whying() /**/
 var Box.currentImage by Inheritance<HasImageView>() /**/
 val Once.currentImage by Onceing<HasImageView>() /**/
 val Why.currentImage by Whying() /**/
-var Box.flow by Inheritance<afield.four.vision.OpticalFlowOperation>() /**/
-val Once.flow by Onceing<afield.four.vision.OpticalFlowOperation>() /**/
+var Box.flow by Inheritance<afield.media.vision.OpticalFlowOperation>() /**/
+val Once.flow by Onceing<afield.media.vision.OpticalFlowOperation>() /**/
 val Why.flow by Whying() /**/
 var Box.motion by Inheritance<RenderToTexture>() /**/
 val Once.motion by Onceing<RenderToTexture>() /**/

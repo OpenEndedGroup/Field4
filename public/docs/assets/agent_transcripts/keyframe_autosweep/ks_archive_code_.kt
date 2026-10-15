@@ -1,8 +1,8 @@
 // What a night looks like from the other end. Nothing here touches the renderer: an
 // archive describes itself, which is the whole point of the manifests.
-import afield.stdlib.path
-import afield.stdlib.readSweepArchive
-import afield.stdlib.sweepArchiveSummary
+import afield.document.workspace.path
+import afield.animation.keyframes.readSweepArchive
+import afield.animation.keyframes.sweepArchiveSummary
 import java.util.Base64
 import kotlin.io.path.exists
 import kotlin.io.path.readBytes
@@ -40,6 +40,6 @@ markdown("what went in", """
 // One lane's trajectory through the night, read out of the keys themselves.
 val intensities = rows.map { m ->
     val key = archive.resolve("renders/${m.id}/key.json")
-    if (key.exists()) (afield.stdlib.KeyframeScope().loadKey(key)["light.intensity"] as? Number ?: 0).toFloat() else 0f
+    if (key.exists()) (afield.animation.keyframes.KeyframeScope().loadKey(key)["light.intensity"] as? Number ?: 0).toFloat() else 0f
 }
 showSignals("light.intensity" to intensities, title = "one lane across the night", xTitle = "render")

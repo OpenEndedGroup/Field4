@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="np_renderer" index="0" -->
 
 ```edn [field-box id="np_renderer" role="properties"]
-{"id" "np_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["np_field"] "properties" {"children" #{#afield/box "np_field"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_renderer_code_.kt" "lines" 11 "characters" 256 "sha256" "6e2b0ae459c7a165a0f6c40296dc07df3dddc7a428073309c233343a1a13743f"}]}
+{"id" "np_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["np_field"] "properties" {"children" #{#afield/box "np_field"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_renderer_code_.kt" "lines" 11 "characters" 267 "sha256" "c8a2be611574da960d030d6bddcccb00367b68a703c1d369d1fc458d6eccf35d"}]}
 ```
 
 ```kotlin [field-property box="np_renderer" name="code" path="np_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -33,20 +33,20 @@ start(renderer::run)
 <!-- field-box id="np_field" index="1" -->
 
 ```edn [field-box id="np_field" role="properties"]
-{"id" "np_field" "index" 1 "name" "train the field" "parents" ["root" "np_renderer"] "children" ["np_particles"] "properties" {"children" #{#afield/box "np_particles"} "parents" #{#afield/box "root" #afield/box "np_renderer"} "name" "train the field" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_field_code_.kt" "lines" 39 "characters" 1958 "sha256" "a559bafb9581cbb5e751a0f5b78ef92d941205e59d130f44546c71e9389c52a0"}]}
+{"id" "np_field" "index" 1 "name" "train the field" "parents" ["root" "np_renderer"] "children" ["np_particles"] "properties" {"children" #{#afield/box "np_particles"} "parents" #{#afield/box "root" #afield/box "np_renderer"} "name" "train the field" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_field_code_.kt" "lines" 39 "characters" 1997 "sha256" "0191b88ac0b7982f13e5613cb233bb03a6cf556579177ce6a96dd1b073b5a793"}]}
 ```
 
 ```kotlin [field-property box="np_field" name="code" path="np_field_code_.kt"]
-import afield.stdlib.FlowCoupling
-import afield.stdlib.FlowMatchOptions
-import afield.stdlib.flowMatch
-import afield.stdlib.contourComponents
-import afield.stdlib.mixtureSource
+import afield.ai.learning.FlowCoupling
+import afield.ai.learning.FlowMatchOptions
+import afield.ai.learning.flowMatch
+import afield.ai.learning.contourComponents
+import afield.ai.learning.mixtureSource
 
 // Written out in full because `prop<>` rewrites the box's code and the rewrite does not
 // carry the snippet's own imports — the same trap the `four_simulation_chain` bundle box
 // documents.
-prop<afield.stdlib.FlowMatchExport>(neuralExport)
+prop<afield.simulation.particles.FlowMatchExport>(neuralExport)
 
 // A word, not a letter — and only because the source has the word's topology. A
 // standard Gaussian cannot become five disjoint outlines: it measures a chamfer of
@@ -83,13 +83,13 @@ println("trained on ${pairing.size} pairs: loss ${"%.4g".format(field.loss(200))
 <!-- field-box id="np_particles" index="2" -->
 
 ```edn [field-box id="np_particles" role="properties"]
-{"id" "np_particles" "index" 2 "name" "neural particles" "parents" ["root" "np_field"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "np_field"} "name" "neural particles" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_particles_code_.kt" "lines" 32 "characters" 1426 "sha256" "0e0527bf836cafcbb1059153f880a7477c68dc11787b17c55b4bbf2a9d1a159d"}]}
+{"id" "np_particles" "index" 2 "name" "neural particles" "parents" ["root" "np_field"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "np_field"} "name" "neural particles" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "np_particles_code_.kt" "lines" 32 "characters" 1454 "sha256" "59eefb396113763cdfcbf4f165a9f917bb8759714943cc1149cda2607ceaf654"}]}
 ```
 
 ```kotlin [field-property box="np_particles" name="code" path="np_particles_code_.kt"]
-import afield.stdlib.ShaderNeuralParticles
+import afield.simulation.particles.ShaderNeuralParticles
 
-prop<afield.stdlib.ShaderNeuralParticles>(particles)
+prop<afield.simulation.particles.ShaderNeuralParticles>(particles)
 
 // `renderer` and `neuralExport` are the parent boxes' props, visible through the
 // preamble. The `once` is real rather than habit: the shader has the network's shape

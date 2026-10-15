@@ -13,8 +13,8 @@
 //
 // Twice is still once too many -- anything this body does before the rewrite happens twice,
 // which is why the box above is the form to copy. dev_docs/FN_REWRITE_SELF_BOX_REENTRY.md.
-import afield.stdlib.Functions
-import afield.stdlib.rewriteKotlin
+import afield.math.functions.Functions
+import afield.math.functions.rewriteKotlin
 
 val spec = listOf(
     "#fnrewrite",

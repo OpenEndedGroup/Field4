@@ -11,7 +11,7 @@ from unittest.mock import patch as mock_patch
 
 from tools.refactoring.containers import ContainerError, EdnSpans, edn, extract, markdown, patch, qualified_name_properties, yaml_units
 from tools.refactoring.core import (KotlinEngine, RefactorError, apply_plan, canonical, digest,
-    load_plan, load_recipe, make_plan, save_json, undo, verify, affected_pattern, rewrite_qualified_text)
+    load_plan, load_recipe, make_plan, save_json, undo, verify, affected_pattern, rewrite_qualified_text, discover)
 
 RECIPE = {'schema': 1, 'id': 'test-move', 'packages': {'old.pkg': 'new.pkg'},
           'symbols': {}, 'splitPackages': [], 'generated': []}
@@ -37,6 +37,27 @@ def metadata(code=SOURCE, sidecar=None):
 
 
 class ContainerTests(unittest.TestCase):
+    def test_recorded_box_yaml_uses_host_imports_only_for_box_operations(self):
+        source = ('operations:\n'
+                  '  - launch: {box: first, code: "import old.pkg.*"}\n'
+                  '  - create: {box: second, properties: {preamble: "import old.pkg.*"}}\n'
+                  '  - edit: {box: first, property: code, from: "old", to: "new"}\n'
+                  'unrelated: {code: "import old.pkg.*"}\n')
+        units = yaml_units(source, PROPS).units
+        self.assertEqual([True, True, True, True, False], [u.box_context for u in units])
+        self.assertEqual('import old.pkg.*', units[0].code)
+
+    def test_workspace_discovery_preserves_history_and_appledouble(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'versions.edn').write_text('{"history" []}')
+            (root / '._code.kt').write_bytes(b'\x00\x05\x16\x07binary resource fork')
+            (root / '._ordinary.kt').write_text('val valid = 1')
+            (root / 'code.kt').write_text('val code = 1')
+            files, retained = discover(root)
+            self.assertEqual(['._ordinary.kt', 'code.kt'], files)
+            self.assertEqual({'historical-or-excluded', 'appledouble-metadata'}, {f['kind'] for f in retained})
+
     def test_dependency_records_are_distinct_from_box_metadata(self):
         source = ('; keep layout\n{"version" 1 "edges" [\n'
                   '{"name" "old.pkg.Thing" "mechanism" "FROM_CONTEXT" "count" 7 "matchedName" "renderer"}\n'

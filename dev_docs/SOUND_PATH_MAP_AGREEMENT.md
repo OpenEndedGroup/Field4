@@ -4,7 +4,7 @@ Displaced from `public/docs/sound_paths.md`, which is a map a reader uses to pic
 This is the record of how that map is held to the code, and of the tolerances behind the numbers
 the page quotes.
 
-Owners: `SoundPathMap` (`src/jvmMain/kotlin/afield/four/synth/SoundPathMap.kt`), its guard
+Owners: `SoundPathMap` (`src/jvmMain/kotlin/afield/audio/synth/SoundPathMap.kt`), its guard
 `SoundPathMapGuardTest`, the `synth.sound.path.map` smoke, and `DocsAudioProvenance`.
 
 ## The five things the map guard asserts

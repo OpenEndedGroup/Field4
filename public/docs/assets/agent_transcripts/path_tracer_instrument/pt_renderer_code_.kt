@@ -1,6 +1,6 @@
 // The window and the Vulkan renderer every other box in this document inherits.
 // `once.renderer` means re-running this box does not build a second window.
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false

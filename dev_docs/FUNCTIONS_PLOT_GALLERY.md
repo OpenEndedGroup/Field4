@@ -1,7 +1,7 @@
 # Functions plot-capture harness
 
 `afield.examples.functions.FunctionsPlotGallery` is the headless **plot-capture harness**
-for the `afield.stdlib.Functions` library — the honest vehicle to render `Functions.Fn`
+for the `afield.math.functions.Functions` library — the honest vehicle to render `Functions.Fn`
 results (differentiable-fit, waveshaper, composed pipelines) to REAL raster images at
 test/docs time. RectSL and StackSL already had gallery/capture harnesses
 (`RectSLDataVizProof`, `RectSL/StackSLGalleryHarness`); Functions had none, so its worked

@@ -11,18 +11,18 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="manifold_bracket" index="0" -->
 
 ```edn [field-box id="manifold_bracket" role="properties"]
-{"id" "manifold_bracket" "index" 0 "name" "Manifold — a part, and whether it is manufacturable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a part, and whether it is manufacturable" "_tombstone" false "frame" #afield/rect [80.0 80.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_bracket_code_.kt" "lines" 144 "characters" 6652 "sha256" "ea9a2957b64b8e6f50cd37b8ce679d53a1bcb2dbfc12e31ed4bd86fc9a748706"}]}
+{"id" "manifold_bracket" "index" 0 "name" "Manifold — a part, and whether it is manufacturable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a part, and whether it is manufacturable" "_tombstone" false "frame" #afield/rect [80.0 80.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_bracket_code_.kt" "lines" 144 "characters" 6740 "sha256" "95c1ca82ce363430603bfbb4f00da5df4012ea9fb8dcf13ba2d393e49495e60a"}]}
 ```
 
 ```kotlin [field-property box="manifold_bracket" name="code" path="manifold_bracket_code_.kt"]
-import afield.manifold.JoinType
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Section
-import afield.manifold.Solid
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.signedVolume
-import afield.stdlib.MeshView
+import afield.geometry.solid.manifold.JoinType
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Section
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.geometry.mesh.signedVolume
+import afield.geometry.mesh.MeshView
 
 // ---- the two parameters to change ------------------------------------------------
 val bore = 3.0          // bore radius, mm. Push past 6.0 and the bosses break through the
@@ -166,15 +166,15 @@ part.close()
 <!-- field-box id="manifold_levelset_slices" index="1" -->
 
 ```edn [field-box id="manifold_levelset_slices" role="properties"]
-{"id" "manifold_levelset_slices" "index" 1 "name" "Manifold — a Kotlin lambda as a level set, then sliced" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a Kotlin lambda as a level set, then sliced" "_tombstone" false "frame" #afield/rect [80.0 230.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_levelset_slices_code_.kt" "lines" 125 "characters" 5463 "sha256" "bc8efab2468e9a49edff74492094642fb15b3335904fe284299d9409dcce7191"}]}
+{"id" "manifold_levelset_slices" "index" 1 "name" "Manifold — a Kotlin lambda as a level set, then sliced" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a Kotlin lambda as a level set, then sliced" "_tombstone" false "frame" #afield/rect [80.0 230.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_levelset_slices_code_.kt" "lines" 125 "characters" 5520 "sha256" "cff7472fc110f2ae4845405d83998eba516f9385a3f198e5ff048479323597a7"}]}
 ```
 
 ```kotlin [field-property box="manifold_levelset_slices" name="code" path="manifold_levelset_slices_code_.kt"]
-import afield.graphics.FLine
-import afield.manifold.JoinType
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.stdlib.MeshView
+import afield.geometry.path.FLine
+import afield.geometry.solid.manifold.JoinType
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.mesh.MeshView
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin

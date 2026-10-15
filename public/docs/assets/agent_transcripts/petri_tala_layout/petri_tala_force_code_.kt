@@ -1,4 +1,4 @@
-import afield.petri.*
+import afield.simulation.petri.*
 
 // Five philosophers, five forks. Every philosopher needs both neighbouring forks to eat,
 // which is what makes this dense rather than deep: 25 nodes and 40 arcs, all in one

@@ -1,7 +1,7 @@
-import afield.stdlib.AudioVisualizer
-import afield.stdlib.AudioVisualizerOptions
-import afield.four.audio.WavFloatArrayLoader
-import afield.stdlib.path
+import afield.ui.visualization.AudioVisualizer
+import afield.ui.visualization.AudioVisualizerOptions
+import afield.audio.engine.WavFloatArrayLoader
+import afield.document.workspace.path
 
 val path = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
 val sync = "loris-source-study"

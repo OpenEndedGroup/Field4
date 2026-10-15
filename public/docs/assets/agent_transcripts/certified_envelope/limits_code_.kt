@@ -1,7 +1,7 @@
-import afield.stdlib.Functions
-import afield.stdlib.certifiedEquals
-import afield.stdlib.certifiedNeverExceeds
-import afield.stdlib.enclose
+import afield.math.functions.Functions
+import afield.math.functions.certifiedEquals
+import afield.math.functions.certifiedNeverExceeds
+import afield.math.functions.enclose
 
 // What refuses. The function workbench's channels are fn(0.0..3600.0, name) { seconds -> ... }
 // lambdas: one opaque node each, so there is nothing for an interval walk to read. It refuses by

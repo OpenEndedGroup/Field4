@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="ai4_paint_scribbler" index="0" -->
 
 ```edn [field-box id="ai4_paint_scribbler" role="properties"]
-{"id" "ai4_paint_scribbler" "index" 0 "name" "Scribbler" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Scribbler" "_tombstone" false "frame" #afield/rect [820.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_scribbler_code_.kt" "lines" 58 "characters" 2837 "sha256" "f48066be42672914f9d4626a393d4438721dd8e8f5a93d119d10768c38f6c482"}]}
+{"id" "ai4_paint_scribbler" "index" 0 "name" "Scribbler" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Scribbler" "_tombstone" false "frame" #afield/rect [820.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_scribbler_code_.kt" "lines" 58 "characters" 2846 "sha256" "ffc1c0f6288a0abddc35f3635a8cc6ba94e0fe6f7ea4febf03a8132e89634ef0"}]}
 ```
 
 ```kotlin [field-property box="ai4_paint_scribbler" name="code" path="ai4_paint_scribbler_code_.kt"]
-import afield.paint.*
+import afield.graphics.paint.*
 import kotlin.random.Random
 
 // A brush the painter does not have yet: a scribble, painted on the Studio's easel.
@@ -92,7 +92,7 @@ the easel, the tube paints, the kept tools and the hung paintings.
 Needs the paint library: ./gradlew buildPaintNative.
 
 ```edn [field-box id="ai4_paint_studio" role="properties"]
-{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 641 "characters" 44982 "sha256" "d7179a44651515b9f3e15d9ea143dae19c87fc1a2f15570f19e5837d331f315e"}]}
+{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 641 "characters" 44991 "sha256" "315c7530342f3b2591138de5a910961c70b40d0dc4223b83e0c8ae3819a4f905"}]}
 ```
 
 ```kotlin [field-property box="ai4_paint_studio" name="code" path="ai4_paint_studio_code_.kt"]
@@ -103,7 +103,7 @@ Needs the paint library: ./gradlew buildPaintNative.
 // before it; /branches and /branch switch between versions. /canvas, /palette, /tools and /gallery show
 // the easel, the tube paints, the kept tools and the hung paintings.
 // Needs the paint library: ./gradlew buildPaintNative.
-import afield.paint.*
+import afield.graphics.paint.*
 import java.io.File
 import java.util.Base64
 

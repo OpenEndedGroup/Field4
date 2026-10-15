@@ -25,17 +25,17 @@ From `code`
 {{ tone }}
 A tiny chord arpeggio played through a reverb, scheduled on the Transport.
 Tone is installed as the global `Tone` in the RemoteAR head; every name below is
-bound by afield.graphics.ToneKotlinJs and grounded against the vendored Tone.js.
+bound by afield.audio.tone.ToneKotlinJs and grounded against the vendored Tone.js.
 
 ```edn [field-box id="agent_tone_synth_sequence" role="properties"]
-{"id" "agent_tone_synth_sequence" "index" 1 "name" "Tone Synth Sequence" "parents" ["root" "agent_tone_synth_sequence_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_tone_synth_sequence_root"} "name" "Tone Synth Sequence" "_tombstone" false "frame" #afield/rect [120.0 690.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_tone_synth_sequence_code_.kt" "lines" 34 "characters" 1061 "sha256" "b3d344d0debab8784c216a13555cd5255dc2550e643a5b9af284e7adfabf9412"}]}
+{"id" "agent_tone_synth_sequence" "index" 1 "name" "Tone Synth Sequence" "parents" ["root" "agent_tone_synth_sequence_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_tone_synth_sequence_root"} "name" "Tone Synth Sequence" "_tombstone" false "frame" #afield/rect [120.0 690.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_tone_synth_sequence_code_.kt" "lines" 34 "characters" 1063 "sha256" "61b85cbaf2d2d94821f0b48387ae91cb86ea4900d64e2cd73adc01cf1ab93677"}]}
 ```
 
 ```kotlin [field-property box="agent_tone_synth_sequence" name="code" path="agent_tone_synth_sequence_code_.kt"]
 // {{ tone }}
 // A tiny chord arpeggio played through a reverb, scheduled on the Transport.
 // Tone is installed as the global `Tone` in the RemoteAR head; every name below is
-// bound by afield.graphics.ToneKotlinJs and grounded against the vendored Tone.js.
+// bound by afield.audio.tone.ToneKotlinJs and grounded against the vendored Tone.js.
 onStart {
     val synth = Tone.PolySynth()
     val reverb = Tone.Reverb(2.5)

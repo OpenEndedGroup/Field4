@@ -1,4 +1,4 @@
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // ---- a shape that is worth ray-marching ----------------------------------------------
 // A twisted star column standing in a bored plate, blended where they meet. Change the

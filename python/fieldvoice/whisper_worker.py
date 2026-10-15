@@ -1,6 +1,6 @@
 """Persistent Whisper worker behind AI4 push-to-talk.
 
-Field (`afield.ai.core.VoiceTranscriber`) starts this once and keeps it alive, so the model loads a
+Field (`afield.ai.models.VoiceTranscriber`) starts this once and keeps it alive, so the model loads a
 single time. The protocol is one JSON object per line in each direction:
 
     -> {"id": 1, "pcm": "/tmp/clip.f32", "sampleRate": 16000, "prompt": "fromContext, Renderer"}

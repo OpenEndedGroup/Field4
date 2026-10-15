@@ -1,7 +1,7 @@
 # SolidCraft: edit the design, then see the part
 
 [SolidCraft](https://github.com/bherbruck/solidcraft) is a parametric CAD engine. Field's optional
-`afield.solidcraft` binding opens a saved design, changes a named parameter, evaluates its feature
+`afield.geometry.solid.solidcraft` binding opens a saved design, changes a named parameter, evaluates its feature
 tree, and returns B-rep measurements or a triangle mesh for display. It can also export STEP, binary
 STL, and the edited SolidCraft design. This is a small first binding across SolidCraft's geometry,
 kernel, document, and I/O crates (L0–L3), alongside Field's [Manifold](manifold.md) mesh-solid API.
@@ -41,10 +41,10 @@ operating system and architecture you use.
 ## Use it in a box
 
 ```diffstatic {data-lang=kotlin}
-import afield.solidcraft.SolidCraftDesign
-import afield.solidcraft.SolidCraftLibrary
-import afield.stdlib.showMesh
-import afield.stdlib.weld
+import afield.geometry.solid.solidcraft.SolidCraftDesign
+import afield.geometry.solid.solidcraft.SolidCraftLibrary
+import afield.geometry.mesh.showMesh
+import afield.geometry.mesh.weld
 
 if (SolidCraftLibrary.isAvailable) {
     SolidCraftDesign.openBundledExample().use { part ->

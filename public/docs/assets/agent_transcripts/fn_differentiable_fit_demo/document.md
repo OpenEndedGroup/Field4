@@ -11,12 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="fn_fit_demo" index="0" -->
 
 ```edn [field-box id="fn_fit_demo" role="properties"]
-{"id" "fn_fit_demo" "index" 0 "name" "differentiable Fn fit" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "differentiable Fn fit" "_tombstone" false "frame" #afield/rect [80.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fn_fit_demo_code_.kt" "lines" 16 "characters" 672 "sha256" "8c3e34d757dfd6ad1ffbc19d05a7599217c38894383ea808c6fc441505fa2a45"}]}
+{"id" "fn_fit_demo" "index" 0 "name" "differentiable Fn fit" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "differentiable Fn fit" "_tombstone" false "frame" #afield/rect [80.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fn_fit_demo_code_.kt" "lines" 16 "characters" 688 "sha256" "5cc09bd172c9398322f4566549d4f9f132db8a1a38b3d68414aac10a8cc66d52"}]}
 ```
 
 ```kotlin [field-property box="fn_fit_demo" name="code" path="fn_fit_demo_code_.kt"]
-import afield.stdlib.Functions
-import afield.stdlib.fitBest
+import afield.math.functions.Functions
+import afield.math.functions.fitBest
 
 with(Functions) {
     val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)

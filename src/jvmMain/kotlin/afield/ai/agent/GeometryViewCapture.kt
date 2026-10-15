@@ -1,12 +1,12 @@
 package afield.ai.agent
 
-import afield.Runloop
-import afield.ai.core.ToolImage
-import afield.ai.core.aiToolMapper
-import afield.ensureSharedPlaywrightBrowser
-import afield.evaluateWithin
-import afield.globalServerPort
-import afield.playwrightDispatcher
+import afield.runtime.lifecycle.Runloop
+import afield.ai.tools.ToolImage
+import afield.ai.tools.aiToolMapper
+import afield.app.server.ensureSharedPlaywrightBrowser
+import afield.tools.docs.evaluateWithin
+import afield.app.server.globalServerPort
+import afield.app.server.playwrightDispatcher
 import com.microsoft.playwright.Browser
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.options.WaitUntilState

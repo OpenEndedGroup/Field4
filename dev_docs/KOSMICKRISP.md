@@ -113,7 +113,7 @@ What the sweep found and fixed, in order:
 
 Where the device offers `unifiedImageLayouts` (KosmicKrisp does, MoltenVK does not), Field enables
 `VK_KHR_unified_image_layouts` and hands Vulkan `GENERAL` for every layout except `UNDEFINED`,
-`PREINITIALIZED` and `PRESENT_SRC_KHR` (`afield.four.device.ImageLayouts`, `vkLayout()`). Off with
+`PREINITIALIZED` and `PRESENT_SRC_KHR` (`afield.graphics.vulkan.device.ImageLayouts`, `vkLayout()`). Off with
 OpenXR, whose runtimes expect specific layouts on swapchain release, and with
 `AFIELD_FOUR_UNIFIED_LAYOUTS=false`.
 
@@ -143,7 +143,7 @@ imports `MTLTEXTURE`, `MTLHEAP` and `MTLBUFFER`, all dedicated-only.)
 
 What works on both drivers is `VK_EXT_external_memory_host`. On Apple silicon an IOSurface is
 ordinary unified memory, 16 KiB-aligned (= `minImportedHostPointerAlignment`), so its pages import as
-a `VkBuffer` (`afield.four.texture.IOSurfaceHostBuffer`). One GPU copy per frame then moves the
+a `VkBuffer` (`afield.graphics.texture.IOSurfaceHostBuffer`). One GPU copy per frame then moves the
 pixels, at the surface's own row pitch; the CPU never touches them. The streamer copies each finished
 frame into its ring slot (`RenderToTexture.recordColorTransferSource`) before the fence-gated `frame`
 tick. The browser surface copies the IOSurface into a per-slot staging image in `recordPreCopy`, so
@@ -163,7 +163,7 @@ MoltenVK-only and refuses on KosmicKrisp by name; nothing in Field uses the expo
 1. **IOSurface zero-copy on KosmicKrisp.** The streamer and browser paths still make one GPU copy per
    frame. For *sampling*, KosmicKrisp accepts host memory under a LINEAR `VkImage`
    (`VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT`, B8G8R8A8_SRGB, SAMPLED), with a row pitch
-   that matched Syphon's IOSurfaces. `afield.syphon.SyphonTexture` (HOST_LINEAR_IMAGE) samples an IOSurface that way
+   that matched Syphon's IOSurfaces. `afield.io.syphon.SyphonTexture` (HOST_LINEAR_IMAGE) samples an IOSurface that way
    with no copy (2026-10-03). The browser surface could do the same.
 2. **Wireframe.** No `fillModeNonSolid`: `fillMode = LINE` would fail at pipeline creation. Marc
    does not use it (lines are drawn as a line *topology*, which KosmicKrisp supports), so this is

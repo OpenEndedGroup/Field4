@@ -1,4 +1,4 @@
-import afield.dmx.*
+import afield.io.dmx.*
 
 // The page's measurements, on this machine: nine frames sent and received back on a free port the
 // system picks (so this can run beside boxes 1 and 2), and a thin line swept across the rig,

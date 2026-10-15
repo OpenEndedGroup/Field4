@@ -3,7 +3,7 @@ description: >
   Pixel verification for the three.js viewer's *client-side* fill — the `editable = true` path, where
   `tessellateCoplanarGroups` in `threejs_viewer.html` triangulates in the browser rather than reading
   the server's triangles. `ThreeJsViewerTessellationParityTest` executes that JavaScript on GraalJS and
-  compares it to `afield.graphics.PlanarTessellation`, which is a strong statement about the numbers and
+  compares it to `afield.geometry.path.PlanarTessellation`, which is a strong statement about the numbers and
   no statement at all about the pixels; this transcript is the pixels.
 
   Three boxes, each `editable = true` so the client does the work:

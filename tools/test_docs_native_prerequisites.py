@@ -157,7 +157,7 @@ class CeresLibraryPathTests(unittest.TestCase):
 class TetgenLibraryPathTests(unittest.TestCase):
     """The same two properties for TetGen, whose resolver is Ceres' with a second candidate.
 
-    Kept in step with `afield.tetgen.TetgenLibrary.searchedPaths` by hand, so the point of
+    Kept in step with `afield.geometry.mesh.tetgen.TetgenLibrary.searchedPaths` by hand, so the point of
     these is to make a drift between the two a test failure rather than a docs build that
     reports "no artifact" while the JVM happily finds one a directory away.
     """
@@ -196,7 +196,7 @@ class SolidCraftLibraryPathTests(unittest.TestCase):
 
 class PaintLibraryPathTests(unittest.TestCase):
     """TetGen's three properties for the paint wrapper, kept in step with
-    `afield.paint.PaintLibrary.searchedPaths` by hand."""
+    `afield.graphics.paint.PaintLibrary.searchedPaths` by hand."""
 
     def test_the_environment_override_wins(self):
         os.environ["AFIELD_PAINT_LIBRARY"] = "/somewhere/libfield_paint_jvm.dylib"
@@ -216,7 +216,7 @@ class PaintLibraryPathTests(unittest.TestCase):
 
 
 class LibpdLibraryPathTests(unittest.TestCase):
-    """TetGen's two properties for libpd, kept in step with `afield.pd.PdLibrary.searchedPaths`."""
+    """TetGen's two properties for libpd, kept in step with `afield.audio.pd.PdLibrary.searchedPaths`."""
 
     def test_the_environment_override_wins(self):
         os.environ["AFIELD_PD_LIBRARY"] = "/somewhere/libpd-multi.dylib"
@@ -236,7 +236,7 @@ class LibpdLibraryPathTests(unittest.TestCase):
 
 
 class CsoundLibraryPathTests(unittest.TestCase):
-    """libpd's properties for libcsound, kept in step with `afield.csound.CsoundLibrary.searchedPaths`."""
+    """libpd's properties for libcsound, kept in step with `afield.audio.csound.CsoundLibrary.searchedPaths`."""
 
     def test_the_environment_override_wins(self):
         os.environ["AFIELD_CSOUND_LIBRARY"] = "/somewhere/libcsound64.so"

@@ -1,6 +1,6 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.neuralrendering.*
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.render.neural.*
 import java.nio.file.Path
 
 // Run as a child of the standard renderer box. Edit this path to use your own image.

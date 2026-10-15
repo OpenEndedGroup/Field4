@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="dp_pencil" index="0" -->
 
 ```edn [field-box id="dp_pencil" role="properties"]
-{"id" "dp_pencil" "index" 0 "name" "pencil" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pencil" "_tombstone" false "frame" #afield/rect [1750.0 4200.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dp_pencil_code_.kt" "lines" 15 "characters" 584 "sha256" "3c2429c2fe07d1b0895cd785def3eeabf0072279e22966fc7629b250a1129c5a"}]}
+{"id" "dp_pencil" "index" 0 "name" "pencil" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pencil" "_tombstone" false "frame" #afield/rect [1750.0 4200.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dp_pencil_code_.kt" "lines" 15 "characters" 593 "sha256" "3eea62ccabf1901adba2fdb5853975b10cdb9b52600987219cc3b183f95f8c5e"}]}
 ```
 
 ```kotlin [field-property box="dp_pencil" name="code" path="dp_pencil_code_.kt"]
-import afield.paint.*
+import afield.graphics.paint.*
 
 run {
 if (!PaintCanvas.isAvailable) {
@@ -73,11 +73,11 @@ markdown("table", "| stroke | points | lightest | heaviest |\n|---|---|---|---|\
 <!-- field-box id="dp_paint" index="2" -->
 
 ```edn [field-box id="dp_paint" role="properties"]
-{"id" "dp_paint" "index" 2 "name" "paint" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "paint" "_tombstone" false "frame" #afield/rect [1750.0 900.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dp_paint_code_.kt" "lines" 26 "characters" 1338 "sha256" "3a66cb096b7b98ea49280c148f8394a8fda49e61186c79d4a6be9b7fc0cb9e08"}]}
+{"id" "dp_paint" "index" 2 "name" "paint" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "paint" "_tombstone" false "frame" #afield/rect [1750.0 900.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dp_paint_code_.kt" "lines" 26 "characters" 1347 "sha256" "4ec55cd2408c826c8abadcca14e44f30dc55b21ef82191a7acc9116391da62ad"}]}
 ```
 
 ```kotlin [field-property box="dp_paint" name="code" path="dp_paint_code_.kt"]
-import afield.paint.*
+import afield.graphics.paint.*
 
 run {
 if (!PaintCanvas.isAvailable) {
@@ -110,11 +110,11 @@ display("main", canvas.png())
 <!-- field-box id="dp_drying" index="3" -->
 
 ```edn [field-box id="dp_drying" role="properties"]
-{"id" "dp_drying" "index" 3 "name" "drying" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "drying" "_tombstone" false "frame" #afield/rect [1750.0 2700.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dp_drying_code_.kt" "lines" 29 "characters" 1305 "sha256" "1830d5f0c3ff5fcc36406f501986a2b26d687ac76e680f8cf96433a8aedd4e0f"}]}
+{"id" "dp_drying" "index" 3 "name" "drying" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "drying" "_tombstone" false "frame" #afield/rect [1750.0 2700.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dp_drying_code_.kt" "lines" 29 "characters" 1314 "sha256" "259393d8c2959eb27c81e5a09914b4d9504df2744abd3dd396195a7080d4d4dd"}]}
 ```
 
 ```kotlin [field-property box="dp_drying" name="code" path="dp_drying_code_.kt"]
-import afield.paint.*
+import afield.graphics.paint.*
 
 run {
 if (!PaintCanvas.isAvailable) {
@@ -150,11 +150,11 @@ markdown("times", "crossed after " + hours.joinToString(", ") { "${it.toInt()} h
 <!-- field-box id="dp_crossings" index="4" -->
 
 ```edn [field-box id="dp_crossings" role="properties"]
-{"id" "dp_crossings" "index" 4 "name" "crossings" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "crossings" "_tombstone" false "frame" #afield/rect [1750.0 2100.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dp_crossings_code_.kt" "lines" 37 "characters" 1849 "sha256" "3480cedb590d8d7ee6921f464ffdb4f4c2b3656c41fa665e1709f5d99fc838ce"}]}
+{"id" "dp_crossings" "index" 4 "name" "crossings" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "crossings" "_tombstone" false "frame" #afield/rect [1750.0 2100.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dp_crossings_code_.kt" "lines" 37 "characters" 1858 "sha256" "5b8e7c5fd2bfbd44efe650ca15418ff3ae35ddea763de8bf69f32c6368a14af0"}]}
 ```
 
 ```kotlin [field-property box="dp_crossings" name="code" path="dp_crossings_code_.kt"]
-import afield.paint.*
+import afield.graphics.paint.*
 
 run {
 if (!PaintCanvas.isAvailable) {
@@ -198,11 +198,11 @@ display("main", canvas.png())
 <!-- field-box id="dp_meadow" index="5" -->
 
 ```edn [field-box id="dp_meadow" role="properties"]
-{"id" "dp_meadow" "index" 5 "name" "meadow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "meadow" "_tombstone" false "frame" #afield/rect [1750.0 3200.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dp_meadow_code_.kt" "lines" 75 "characters" 5244 "sha256" "b39e8f87dd6ddb00963d1521ce4df9abfe2622618625985ee6fd8826dc2b0b98"}]}
+{"id" "dp_meadow" "index" 5 "name" "meadow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "meadow" "_tombstone" false "frame" #afield/rect [1750.0 3200.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dp_meadow_code_.kt" "lines" 75 "characters" 5253 "sha256" "ff996fafcd0cfc1d55d7b2c8fa961273edd0abddc3cafb553cfa43690ea92488"}]}
 ```
 
 ```kotlin [field-property box="dp_meadow" name="code" path="dp_meadow_code_.kt"]
-import afield.paint.*
+import afield.graphics.paint.*
 import kotlin.random.Random
 
 run {

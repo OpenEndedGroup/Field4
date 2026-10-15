@@ -1,4 +1,4 @@
-import afield.paint.*
+import afield.graphics.paint.*
 import kotlin.random.Random
 
 // A brush the painter does not have yet: a scribble, painted on the Studio's easel.

@@ -6,7 +6,7 @@
 Given a set of points, much of what you might do with them comes down to one question: which part
 of the plane belongs to which point, and where are the boundaries between them?
 
-Field has four ways to answer it, all in `afield.stdlib`, and this page works through each:
+Field has four ways to answer it, all in Field's standard library, and this page works through each:
 
 - **Delaunay triangulation and its Voronoi dual**: the classical answer, exact, built on JTS.
 - **Apollonius (multiplicatively weighted Voronoi)**: the same question with the points given
@@ -1221,7 +1221,7 @@ bridge does its own repair.
 
 ??? aside "How these figures are captured"
     The numbers the figures above carry are asserted in
-    `src/jvmTest/kotlin/afield/stdlib/SpatialGeometryTest.kt`, including the Apollonius circle
+    `src/jvmTest/kotlin/afield/geometry/spatial/SpatialGeometryTest.kt`, including the Apollonius circle
     centres and the marcher's negation invariant, with a control arm confirming that a
     strict-sign-change marcher fails the exact-iso case. The 3D closure-failure counts are pinned
     with `<=` in `VoronoiFaceTopologyTest.kt`, so they can improve but not regress.
@@ -1402,5 +1402,5 @@ Convert graphs, cells or clusters into Field drawings and interactive views.
 
 </div>
 
-Source: `src/jvmMain/kotlin/afield/stdlib/contours.kt`, `dirichlet.kt`, `voronoi.kt`,
+Source: `src/jvmMain/kotlin/afield/geometry/path/contours.kt`, `dirichlet.kt`, `voronoi.kt`,
 `clustering.kt`, `spatial_field.kt`, and the JTS-backed corner of `graph_connectivity.kt`.

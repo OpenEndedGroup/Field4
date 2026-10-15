@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="linalg_mat3" index="0" -->
 
 ```edn [field-box id="linalg_mat3" role="properties"]
-{"id" "linalg_mat3" "index" 0 "name" "mat3 heatmap" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mat3 heatmap" "_tombstone" false "frame" #afield/rect [80.0 240.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "linalg_mat3_code_.kt" "lines" 1 "characters" 86 "sha256" "4c21fcce2a1da9f67e37c8e7db80a8df8ac0485973946b2eb232345b3cb3add1"}]}
+{"id" "linalg_mat3" "index" 0 "name" "mat3 heatmap" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mat3 heatmap" "_tombstone" false "frame" #afield/rect [80.0 240.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "linalg_mat3_code_.kt" "lines" 1 "characters" 84 "sha256" "bf41beeee70029abb49052dc50bf05fa03c300ed8e2fb6698bf0b3d6443c33b9"}]}
 ```
 
 ```kotlin [field-property box="linalg_mat3" name="code" path="linalg_mat3_code_.kt"]
-afield.stdlib.linalg.Matrix3f().set(1f, 0.5f, -0.5f, 0.25f, -1f, 0.75f, 0f, 0.1f, 2f)
+afield.math.linalg.Matrix3f().set(1f, 0.5f, -0.5f, 0.25f, -1f, 0.75f, 0f, 0.1f, 2f)
 ```
 
 ## 2. vec2 arrow
@@ -47,10 +47,10 @@ vec(1, 2, 3)
 <!-- field-box id="linalg_mat4" index="3" -->
 
 ```edn [field-box id="linalg_mat4" role="properties"]
-{"id" "linalg_mat4" "index" 3 "name" "mat4 translation heatmap" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mat4 translation heatmap" "_tombstone" false "frame" #afield/rect [420.0 240.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "linalg_mat4_code_.kt" "lines" 1 "characters" 56 "sha256" "b78ea2f35eba8344d426a66c45402f4b9cda0be1121713f216893f46bda786f3"}]}
+{"id" "linalg_mat4" "index" 3 "name" "mat4 translation heatmap" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mat4 translation heatmap" "_tombstone" false "frame" #afield/rect [420.0 240.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "linalg_mat4_code_.kt" "lines" 1 "characters" 54 "sha256" "9a2620038cf0fecba05bc9a003ced8fe989050e993c66901c428216e3f20af4e"}]}
 ```
 
 ```kotlin [field-property box="linalg_mat4" name="code" path="linalg_mat4_code_.kt"]
-afield.stdlib.linalg.Matrix4f().translation(3f, 4f, 5f)
+afield.math.linalg.Matrix4f().translation(3f, 4f, 5f)
 ```
 

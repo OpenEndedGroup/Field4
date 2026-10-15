@@ -40,7 +40,7 @@ def main():
         source=Image.open(ROOT/'public/docs/assets/opendlssnr'/('charcoal-input.png' if name=='charcoal' else 'ink-input.png')).convert('RGB')
         if source.size!=(w,h):source=source.resize((w,h),Image.Resampling.LANCZOS)
         source.save(output/'input.png')
-        managed(args.port,'afield.four.neuralrendering.OpenDlssNrGpuSmoke',[output/'input.png',output,tone,structure,style],output/'field-log.json')
+        managed(args.port,'afield.graphics.render.neural.OpenDlssNrGpuSmoke',[output/'input.png',output,tone,structure,style],output/'field-log.json')
         proxy=array('f')
         for r,g,b in source.get_flattened_data():proxy.extend((r/255,g/255,b/255,1))
         if sys.byteorder!='little':proxy.byteswap()
@@ -56,10 +56,10 @@ def main():
         metrics.append(dict(case=name,width=w,height=h,tone=tone,structure=structure,style=style,headExact=True,headComparedBytes=len(field),
             maximumOutputCodeDifference=maximum,meanOutputCodeDifference=ImageStat.Stat(difference).mean,measurements=(output/'field.txt').read_text()))
         print('PASS parity:',name,'raw head exact; output max difference',maximum,flush=True)
-    managed(args.port,'afield.four.neuralrendering.OpenDlssNrSmokeTest',['--disabled-renderer'],WORK/'disabled-log.json')
+    managed(args.port,'afield.graphics.render.neural.OpenDlssNrSmokeTest',['--disabled-renderer'],WORK/'disabled-log.json')
     if args.temporal:
         temporal=WORK/'temporal-verified';temporal.mkdir(exist_ok=True)
-        managed(args.port,'afield.four.neuralrendering.OpenDlssNrGpuSmoke',['--temporal',temporal],temporal/'field-log.json')
+        managed(args.port,'afield.graphics.render.neural.OpenDlssNrGpuSmoke',['--temporal',temporal],temporal/'field-log.json')
         subprocess.run(['ffmpeg','-y','-hide_banner','-loglevel','error','-framerate','24','-i',str(temporal/'frame-%03d.png'),'-c:v','libx264','-pix_fmt','yuv420p','-crf','18','-movflags','+faststart',str(temporal/'temporal.mp4')],check=True)
     (WORK/'measurements.json').write_text(json.dumps(metrics,indent=2)+'\n')
     print('NR VERIFICATION DONE:',WORK)

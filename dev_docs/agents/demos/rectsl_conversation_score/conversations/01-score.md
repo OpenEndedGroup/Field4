@@ -31,7 +31,7 @@ CaptureRenderWindowRequest finished (281 ms)
 Completed
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
+_Field 4 render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
 
 ![tool image](images/cabeecbcd5fa30e101ec.jpg)
 <<ai>>
@@ -41,7 +41,7 @@ _r2-dc01649093cf: frames at 0, 0.28, 0.5, 2 s_
 ![tool image](images/63ca36b859532c6b8943.png)
 <<ai>>
 <<model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
-_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
+_Field 4 render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._
 
 ![tool image](images/c87f3891bbacab12619b.jpg)
 <<ai>>

@@ -23,7 +23,7 @@ analysing it" fence). The page has no image of that board.
 
 Every fence on the page is `diffstatic`, so none of them runs. The figure the note wants is the
 output of `RenderedAudioAnalysis.visualizationHtml(...)`
-(`src/jvmMain/kotlin/afield/stdlib/noir/audioai/RenderedAudioAnalysis.kt`, `data class
+(`src/jvmMain/kotlin/afield/audio/ai/RenderedAudioAnalysis.kt`, `data class
 RenderedAudioAnalysis`). Producing it means `FieldAudioClient.analyzeRenderedAudio` has to import
 the WAV into a live Field Audio API and wait for the librosa beat/pYIN and Basic Pitch workers.
 The player half also streams from that service (`serviceBaseUrl = "/field-audio"`). The docs

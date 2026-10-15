@@ -1,6 +1,6 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.modules.*
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+
 
 prop<ClusterGeometryDemo>(lab)
 fromContextWithNameOrNull<ClusterGeometryDemo>("lab")?.close()

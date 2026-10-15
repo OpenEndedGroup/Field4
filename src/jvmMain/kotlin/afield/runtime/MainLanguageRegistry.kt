@@ -1,14 +1,14 @@
 package afield.runtime
 
-import afield.Box
-import afield.BoxExecution
-import afield.RunsAt
-import afield.early
-import afield.newRoot
-import afield.notify
-import afield.stdlib.Action
-import afield.stdlib.Delegation
-import afield.stdlib.actions
+import afield.document.graph.Box
+import afield.runtime.execution.BoxExecution
+import afield.runtime.lifecycle.RunsAt
+import afield.runtime.lifecycle.early
+import afield.runtime.lifecycle.newRoot
+import afield.app.notifications.notify
+import afield.app.commands.Action
+import afield.document.properties.Delegation
+import afield.app.commands.actions
 import kotlin.reflect.KClass
 
 data class MainLanguageRuntime(

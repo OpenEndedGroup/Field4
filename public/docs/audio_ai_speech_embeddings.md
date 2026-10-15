@@ -9,7 +9,7 @@ them you ask changes what the motion is about.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_speech_embeddings/learned_spaces.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-speech" alt="Real emotion2vec and WavLM learned phase portraits with voice activity, energy and novelty"}
 :::static
-import afield.four.audio.WavFloatArrayLoader
+import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path
 val json = FieldAudioClient.json
@@ -54,7 +54,7 @@ streams progress into replaceable cards, awaits the durable results, and gives a
 portraits the source player's time bus.
 
 ```diffstatic {data-lang=kotlin}
-import afield.Box
+import afield.document.graph.Box
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture

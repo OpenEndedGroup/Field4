@@ -1,8 +1,8 @@
-import afield.four.physics.ShaderBoids
-import afield.four.util.GpuNeighbourGrid
-import afield.stdlib.linalg.Vector2f
+import afield.simulation.physics.ShaderBoids
+import afield.graphics.vulkan.util.GpuNeighbourGrid
+import afield.math.linalg.Vector2f
 
-prop<afield.four.physics.ShaderBoids>(written)
+prop<afield.simulation.physics.ShaderBoids>(written)
 
 // Built once: GPU buffers, neighbour grid and draw pass. Everything below is live.
 once.written {

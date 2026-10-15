@@ -1,8 +1,8 @@
 package afield.examples.petri
 
-import afield.petri.PetriCombinators
-import afield.petri.PetriEditorExtension
-import afield.util.NodeTool
+import afield.simulation.petri.PetriCombinators
+import afield.simulation.petri.PetriEditorExtension
+import afield.media.image.util.NodeTool
 import java.nio.file.Files
 import kotlin.io.path.writeText
 
@@ -133,7 +133,7 @@ object PetriEditorExtensionWorkout {
         if (extension.id !== "petri") throw new Error("wrong extension id " + extension.id);
 
         const text = `
-        import afield.petri.*
+        import afield.simulation.petri.*
         val net = petri(${"\"\"\""}
         #petri
         !grid 1/16

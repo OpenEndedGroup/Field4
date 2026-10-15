@@ -19,14 +19,14 @@ operations:
           prop<Window>(window)
           prop<Renderer>(renderer)
           once.renderer {
-              window = Window("FieldML - a live afield.four scene")
+              window = Window("FieldML - a live Field 4 scene")
               Renderer(window)
           }
           println("renderer ready - now run the FieldML box")
           start(renderer::run)
   - create:
       box: "fieldml-four-root"
-      name: "FieldML — a live afield.four scene"
+      name: "FieldML — a live Field 4 scene"
       frame: { x: 40.0, y: 170.0, w: 300.0, h: 100.0 }
       properties:
         "isFieldMLRoot": true
@@ -37,10 +37,10 @@ operations:
       frame: { x: 400.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         "code": |-
-          // A whole afield.four scene, described from FieldML, with no hostAs in it.
+          // A whole Field 4 scene, described from FieldML, with no hostAs in it.
           //
           // This box needs a live Vulkan device, so it does nothing useful unless an
-          // ancestor box owns a running afield.four Window and Renderer. The backdoor's
+          // ancestor box owns a running Field 4 Window and Renderer. The backdoor's
           // --graphics-context flag makes exactly that box and parents new boxes to it;
           // in an ordinary session, connect this box to whichever box owns your renderer.
           //
@@ -68,11 +68,11 @@ operations:
               let _ = p |> hostSet "vertex" vertexSource in
               let _ = p |> hostSet "fragment" fragmentSource in
               p |> hostSet "name" "fieldmlTriangle"
-            ) (hostClass "afield.four.modules.ModuleKt")
+            ) (hostClass "afield.graphics.render.ModuleKt")
 
-          let module = hostNew (params) (hostClass "afield.four.modules.Module")
-          let pointer = module |> hostExt (hostClass "afield.four.modules.ModuleKt") "pointer" Unit
-          let mesh = hostNew (renderer, pointer) (hostClass "afield.four.modules.Mesh")
+          let module = hostNew (params) (hostClass "afield.graphics.render.Module")
+          let pointer = module |> hostExt (hostClass "afield.graphics.render.ModuleKt") "pointer" Unit
+          let mesh = hostNew (renderer, pointer) (hostClass "afield.graphics.render.Mesh")
           let _ = pointer |> hostCall1 "plusAssign" (hostNew ("tri", mesh) (hostClass "kotlin.Pair"))
           let _ = mesh |> hostCall "resize" (3, 0, pointer)
           let target = renderer |> hostCall1 "renderTargetFor" 0

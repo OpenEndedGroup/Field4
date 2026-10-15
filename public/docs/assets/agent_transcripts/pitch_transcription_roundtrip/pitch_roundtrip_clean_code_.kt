@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // The notation, and the ground truth Field already owns because it wrote it.
 val notation = "60 62 64 65 67 69 71 72"

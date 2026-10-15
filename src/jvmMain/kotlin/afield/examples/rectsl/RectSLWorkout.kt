@@ -1,8 +1,8 @@
 package afield.examples.rectsl
 
-import afield.rectsl.*
-import afield.stdlib.Functions
-import afield.stdlib.evolve
+import afield.lang.rectsl.*
+import afield.math.functions.Functions
+import afield.math.functions.evolve
 
 import kotlin.math.PI
 import kotlin.math.abs

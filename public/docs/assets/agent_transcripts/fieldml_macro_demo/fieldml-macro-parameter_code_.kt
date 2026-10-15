@@ -15,7 +15,7 @@ let _ = setProp "turns" 4
 // this box does not change it, because the slot is no longer empty.
 let firstRun =
   once "firstRunAt" (fun ignored ->
-    hostClass "afield.AnimationClock" |> hostGet "INSTANCE" |> hostCall0 "nowSeconds"
+    hostClass "afield.runtime.lifecycle.AnimationClock" |> hostGet "INSTANCE" |> hostCall0 "nowSeconds"
   )
 
 {

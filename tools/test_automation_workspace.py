@@ -143,7 +143,7 @@ class AutomationWorkspaceTests(unittest.TestCase):
                 command[0],
             )
             self.assertEqual(kwargs["env"]["AFIELD_SKIP_WORKSPACE_PERSIST"], "1")
-            self.assertNotIn(str(Path.home() / ".afield"), kwargs["env"]["AFIELD_COMPLETION_INTERACTION_LOG_PATH"])
+            self.assertEqual(str(Path(__file__).resolve().parents[1] / "build/field-automation-logs/completion_interactions"), kwargs["env"]["AFIELD_COMPLETION_INTERACTION_LOG_PATH"])
             kwargs["stdout"].close()
 
 

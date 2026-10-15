@@ -1,0 +1,1241 @@
+package afield.lang.fieldml.type
+
+import afield.lang.fieldml.ast.BinaryOp
+import afield.lang.fieldml.ast.EBinary
+import afield.lang.fieldml.ast.EBool
+import afield.lang.fieldml.ast.ECall
+import afield.lang.fieldml.ast.EField
+import afield.lang.fieldml.ast.EFloat
+import afield.lang.fieldml.ast.EIf
+import afield.lang.fieldml.ast.EInt
+import afield.lang.fieldml.ast.ELambda
+import afield.lang.fieldml.ast.ELet
+import afield.lang.fieldml.ast.EList
+import afield.lang.fieldml.ast.EMatch
+import afield.lang.fieldml.ast.ENegate
+import afield.lang.fieldml.ast.ERecord
+import afield.lang.fieldml.ast.EString
+import afield.lang.fieldml.ast.ETuple
+import afield.lang.fieldml.ast.ETypeDecl
+import afield.lang.fieldml.ast.EVar
+import afield.lang.fieldml.ast.Expr
+import afield.lang.fieldml.ast.PBool
+import afield.lang.fieldml.ast.PCons
+import afield.lang.fieldml.ast.PConstructor
+import afield.lang.fieldml.ast.PInt
+import afield.lang.fieldml.ast.PList
+import afield.lang.fieldml.ast.PString
+import afield.lang.fieldml.ast.PTuple
+import afield.lang.fieldml.ast.PVar
+import afield.lang.fieldml.ast.PWildcard
+import afield.lang.fieldml.ast.Pattern
+import afield.lang.fieldml.ast.TypeDecl
+import afield.lang.fieldml.ast.TypeRef
+import afield.lang.fieldml.ast.TypeRefName
+import afield.lang.fieldml.diag.CompileAbort
+import afield.lang.fieldml.diag.Diagnostic
+import afield.lang.fieldml.diag.Severity
+import afield.lang.fieldml.diag.SourceRange
+
+/**
+ * FieldML's type checker: a Hindley-Milner inference pass over the surface tree, producing the
+ * typed tree the lowerer consumes.
+ *
+ * The core of it is the textbook algorithm. Every unknown is a numbered type variable; unification
+ * makes two types equal by binding variables in one substitution the whole run shares; pruning
+ * follows a bound variable to what it stands for and shortens the chain behind it; an occurs check
+ * refuses a type that would contain itself. A `let` generalizes over the variables its value has
+ * and its environment does not, so each use of a bound name instantiates that scheme with fresh
+ * variables.
+ *
+ * Three things here are not the textbook's:
+ *
+ * - **A host type carries a JVM class.** Two of them unify when either class is assignable from the
+ *   other, because Field's own signatures mix a writable class with its read-only interface. The
+ *   bare `Host` is the dynamic escape, and a bounded one: it stands for a value whose class is
+ *   unknown rather than one whose shape is unknown, so it unifies with a number, a string, a
+ *   boolean or another object, and refuses a function, a list, a tuple or a record.
+ * - **A saturated `host…` call is typed by reflection rather than by a scheme.** What `hostGet`
+ *   returns depends on the text of a string and the class of a receiver, which no one scheme can
+ *   state, so the member is looked up and the call is either typed or refused where it was written
+ *   instead of at the first run. A program that shadows the intrinsic is left alone. Curried
+ *   application is left-nested, so the ordinary walk would reach a lambda argument before the
+ *   receiver that says what its parameters are; a host call's spine is inferred ahead of that walk
+ *   to put the order right, which is how a callback written as a positional argument gets its
+ *   parameter types from the receiver's class.
+ * - **Numeric and vector type variables are constrained**, which is as much of a class system as
+ *   FieldML has. A variable that has been through a numeric or vector requirement is recorded as
+ *   such, the requirement is rechecked at the moment the variable is bound, and one that is still
+ *   a variable when the tree is finalized is defaulted: `Float` for numeric, `Vec2` for vector.
+ *
+ * Every failure leaves through the same abort, which throws rather than returning, so an
+ * [InferResult] either carries a typed tree and no diagnostics at all, or no tree and exactly one
+ * error.
+ */
+
+/** What inference made of a program: a typed tree, or nothing and the error that stopped it. */
+data class InferResult(
+    /** The surface tree with a type on every node and every pattern, or null if inference gave up. */
+    val typed: TExpr?,
+    /** Empty when [typed] is non-null, and otherwise the single error that ended the run. */
+    val diagnostics: List<Diagnostic>,
+)
+
+/**
+ * Infers the types of one FieldML program.
+ *
+ * An instance holds the substitution, the type-variable counter and the diagnostics for a single
+ * program, so [FieldMLCompiler] builds a new one for every compile.
+ */
+class Inferencer {
+    private var nextTypeVar = 1
+    private val substitution = mutableMapOf<Int, Type>()
+    private val diagnostics = mutableListOf<Diagnostic>()
+    private val numericVariables = mutableSetOf<Int>()
+    private val vectorVariables = mutableSetOf<Int>()
+
+    /**
+     * Types [expr], returning the typed tree, or null and the error that stopped inference.
+     *
+     * A type error is reported rather than thrown: the abort the pass raises internally to give up
+     * on a tree it cannot finish is caught here and becomes the result's one diagnostic.
+     */
+    fun infer(expr: Expr): InferResult =
+        try {
+            val inferred = inferExpr(expr, TypeEnv(FieldMLTypePrelude.schemes))
+            InferResult(finalize(inferred), diagnostics)
+        } catch (abort: CompileAbort) {
+            diagnostics += abort.diagnostic
+            InferResult(null, diagnostics)
+        }
+
+    private fun inferExpr(expr: Expr, env: TypeEnv, memo: SpineMemo? = null): TExpr {
+        memo?.take(expr, env)?.let { return it }
+        return inferFresh(expr, env, memo)
+    }
+
+    private fun inferFresh(expr: Expr, env: TypeEnv, memo: SpineMemo? = null): TExpr =
+        when (expr) {
+            is EInt -> TExprInt(expr.value, expr.range, TInt)
+            is EFloat -> TExprFloat(expr.value, expr.range, TFloat)
+            is EBool -> TExprBool(expr.value, expr.range, TBool)
+            is EString -> TExprString(expr.value, expr.range, TString)
+            is EVar -> {
+                val scheme = env[expr.name] ?: abort("Unknown name '${expr.name}'", expr.range)
+                TExprVar(expr.name, expr.range, instantiate(scheme))
+            }
+            // A tuple or list literal is the `host…` family's argument spread, so the memo has to
+            // reach its elements — and neither form touches `env`, which is what makes that safe.
+            is ETuple -> {
+                val elements = expr.elements.map { inferExpr(it, env, memo) }
+                TExprTuple(elements, expr.range, TTuple(elements.map { it.type }))
+            }
+            is EList -> {
+                val elements = expr.elements.map { inferExpr(it, env, memo) }
+                val elementType = elements.firstOrNull()?.type ?: fresh()
+                elements.drop(1).forEach { unify(elementType, it.type, it.range) }
+                TExprList(elements, expr.range, TList(elementType))
+            }
+            is ETypeDecl -> inferTypeDecl(expr, env)
+            is ELambda -> inferLambda(expr.parameters, expr.body, expr.range, env)
+            is ECall -> {
+                // Curried application is left-nested, so the ordinary walk reaches a lambda argument
+                // before it reaches the receiver that says what the lambda's parameters are. This is
+                // where that order is put right, for host calls only. An inherited memo means this
+                // call is an inner link of a spine whose outermost call already did the work.
+                val spine = memo ?: preInferHostSpine(expr, env)
+                val function = inferExpr(expr.function, env, spine)
+                val argument = inferExpr(expr.argument, env, spine)
+                val resultType = fresh()
+                unify(function.type, TFun(argument.type, resultType), expr.range)
+                val call = TExprCall(function, argument, expr.range, resultType)
+                // The refinement *replaces* the result type rather than unifying with it: the prelude
+                // already unified `resultType` with the scheme's `Host`, and `Host` unifies with
+                // everything, so a unification here would quietly discard what reflection found.
+                refineHostIntrinsic(call, env)?.let { call.copy(type = it) } ?: call
+            }
+            is ELet -> inferLet(expr, env)
+            is EIf -> {
+                val condition = inferExpr(expr.condition, env)
+                unify(condition.type, TBool, expr.condition.range)
+                val thenBranch = inferExpr(expr.thenBranch, env)
+                val elseBranch = inferExpr(expr.elseBranch, env)
+                unify(thenBranch.type, elseBranch.type, expr.range)
+                TExprIf(condition, thenBranch, elseBranch, expr.range, thenBranch.type)
+            }
+            is EMatch -> inferMatch(expr, env)
+            is ERecord -> {
+                val fields = expr.fields.map { it.name to inferExpr(it.value, env) }
+                TExprRecord(fields, expr.range, TRecord(fields.associate { it.first to it.second.type }))
+            }
+            is EField -> {
+                val target = inferExpr(expr.target, env)
+                val fieldType = fresh()
+                val resolvedFieldType = when (val targetType = prune(target.type)) {
+                    is TRecord -> targetType.fields[expr.field]
+                        ?: abort("Record is missing field '${expr.field}'", expr.range)
+                    is TVar -> {
+                        unify(targetType, TRecord(mapOf(expr.field to fieldType)), expr.range)
+                        fieldType
+                    }
+                    is THost -> {
+                        val components = FieldMLTypePrelude.vectorComponents(targetType)
+                        when {
+                            expr.field in components -> TFloat
+                            components.isNotEmpty() -> abort(
+                                "${TypePrinter().print(targetType)} has no field '${expr.field}'" +
+                                    " (expected one of ${components.joinToString(", ")})",
+                                expr.range,
+                            )
+                            // Dot access on a typed host value reads a JVM member, so `img.width`
+                            // works and is checked. An opaque `Host` resolves to Unknown and stays
+                            // dynamic, which is the behaviour a program written before this had.
+                            else -> resolved(FieldMLHostTypes.memberType(targetType, expr.field), expr.range)
+                                ?: FieldMLTypePrelude.host
+                        }
+                    }
+                    else -> abort("Field access requires a record, found ${TypePrinter().print(normalize(targetType))}", expr.range)
+                }
+                TExprField(target, expr.field, expr.range, resolvedFieldType)
+            }
+            is EBinary -> inferBinary(expr, env)
+            is ENegate -> {
+                val value = inferExpr(expr.value, env)
+                val pruned = prune(value.type)
+                if (!FieldMLTypePrelude.isVectorType(pruned)) requireNumeric(pruned, expr.range)
+                TExprNegate(value, expr.range, prune(value.type))
+            }
+        }
+
+    /**
+     * The typed half of the JVM bridge: when a call is a *saturated* application of one of the
+     * `host…` intrinsics, ask reflection what it actually returns, and refuse it here if the member
+     * does not exist.
+     *
+     * Doing this in the inferencer rather than in the prelude's type schemes is what makes it
+     * possible at all — a scheme is one fixed type, but `hostCall "moveTo" (x, y) line` has a result
+     * that depends on the *value* of a string and the *type* of a receiver. The rules are:
+     *
+     * - only when the intrinsic's name still resolves to the prelude binding, so a program that
+     *   shadows `hostGet` with its own function is left alone;
+     * - only when the method name is a literal, since a computed name cannot be looked up;
+     * - [FieldMLHostTypes.Resolution.Unknown] means the receiver's class is not known, and then
+     *   nothing is claimed and nothing is refused — the call stays as dynamic as it was before;
+     * - [FieldMLHostTypes.Resolution.Refused] is a genuine type error, and it is reported where the
+     *   name was written rather than as a crash on the first run.
+     *
+     * Returns null when the type should be left as the scheme gave it.
+     */
+    private fun refineHostIntrinsic(call: TExprCall, env: TypeEnv): Type? {
+        val spine = hostSpine(call) ?: return null
+        val (name, arguments) = spine
+        if (env[name] !== FieldMLTypePrelude.schemes[name]) return null
+        return when (name) {
+            "hostClass" -> arguments.singleOrNull()?.let { argument ->
+                val className = literalString(argument) ?: return null
+                if (FieldMLHostTypes.loadClass(className) == null &&
+                    FieldMLHostTypes.loadClass(nestedSpelling(className)) == null
+                ) {
+                    abort("Unknown JVM class '$className'", argument.range)
+                }
+                FieldMLHostTypes.classHandleType(
+                    if (FieldMLHostTypes.loadClass(className) != null) className else nestedSpelling(className),
+                )
+            }
+            // `hostAs "Vec3" p` is both a checked cast and the way FieldML names a class: it is what
+            // gives a type to a value that arrived through an erased signature or as the parameter of
+            // a lambda the JVM called us with, and everything after it is checked normally.
+            "hostAs" -> arguments.takeIf { it.size == 2 }?.let { (className, _) ->
+                val requested = literalString(className) ?: return null
+                if (FieldMLHostTypes.jvmClassOf(THost(requested)) == null) {
+                    abort("hostAs does not know the class '$requested'", className.range)
+                }
+                FieldMLHostTypes.valueType(requested)
+            }
+            "hostNew0" -> arguments.singleOrNull()?.let { klass ->
+                resolved(FieldMLHostTypes.constructorResultType(pruned(klass), emptyList()), call.range)
+            }
+            "hostNew" -> arguments.takeIf { it.size == 2 }?.let { (argumentList, klass) ->
+                namedFields(argumentList)?.let { names ->
+                    return resolved(FieldMLHostTypes.namedConstructorResultType(pruned(klass), names), call.range)
+                }
+                val argumentTypes = spreadTypes(argumentList) ?: return null
+                resolved(FieldMLHostTypes.constructorResultType(pruned(klass), argumentTypes), call.range)
+            }
+            "hostCall" -> arguments.takeIf { it.size == 3 }?.let { (method, argumentList, target) ->
+                val methodName = literalString(method) ?: return null
+                namedFields(argumentList)?.let { names ->
+                    return resolved(
+                        FieldMLHostTypes.namedMethodResultType(pruned(target), methodName, names),
+                        method.range,
+                    )
+                }
+                val argumentTypes = spreadTypes(argumentList) ?: return null
+                resolved(FieldMLHostTypes.methodResultType(pruned(target), methodName, argumentTypes), method.range)
+            }
+            "hostCall0" -> arguments.takeIf { it.size == 2 }?.let { (method, target) ->
+                val methodName = literalString(method) ?: return null
+                resolved(FieldMLHostTypes.methodResultType(pruned(target), methodName, emptyList()), method.range)
+            }
+            "hostCall1" -> arguments.takeIf { it.size == 3 }?.let { (method, argument, target) ->
+                val methodName = literalString(method) ?: return null
+                resolved(
+                    FieldMLHostTypes.methodResultType(pruned(target), methodName, listOf(pruned(argument))),
+                    method.range,
+                )
+            }
+            "hostCall2" -> arguments.takeIf { it.size == 4 }?.let { (method, first, second, target) ->
+                val methodName = literalString(method) ?: return null
+                resolved(
+                    FieldMLHostTypes.methodResultType(pruned(target), methodName, listOf(pruned(first), pruned(second))),
+                    method.range,
+                )
+            }
+            "hostExt" -> arguments.takeIf { it.size == 4 }?.let { (klass, method, argumentList, receiver) ->
+                val methodName = literalString(method) ?: return null
+                namedFields(argumentList)?.let { names ->
+                    return resolved(
+                        FieldMLHostTypes.namedStaticMethodResultType(
+                            pruned(klass),
+                            methodName,
+                            names,
+                            wantsExtensionReceiver = true,
+                        ),
+                        method.range,
+                    )
+                }
+                val argumentTypes = spreadTypes(argumentList) ?: return null
+                resolved(
+                    FieldMLHostTypes.staticMethodResultType(
+                        pruned(klass),
+                        methodName,
+                        listOf(pruned(receiver)) + argumentTypes,
+                    ),
+                    method.range,
+                )
+            }
+            "hostStaticCall" -> arguments.takeIf { it.size == 3 }?.let { (method, argumentList, klass) ->
+                val methodName = literalString(method) ?: return null
+                namedFields(argumentList)?.let { names ->
+                    return resolved(
+                        FieldMLHostTypes.namedStaticMethodResultType(
+                            pruned(klass),
+                            methodName,
+                            names,
+                            wantsExtensionReceiver = false,
+                        ),
+                        method.range,
+                    )
+                }
+                val argumentTypes = spreadTypes(argumentList) ?: return null
+                resolved(
+                    FieldMLHostTypes.staticMethodResultType(pruned(klass), methodName, argumentTypes),
+                    method.range,
+                )
+            }
+            "hostGet" -> arguments.takeIf { it.size == 2 }?.let { (member, target) ->
+                val memberName = literalString(member) ?: return null
+                resolved(FieldMLHostTypes.memberType(pruned(target), memberName), member.range)
+            }
+            // `hostSet` returns its receiver so it chains; the member itself is deliberately not
+            // checked, because a Kotlin `var` with only a setter visible to reflection would
+            // otherwise be reported as missing.
+            "hostSet" -> arguments.takeIf { it.size == 3 }?.let { (_, _, target) -> pruned(target) }
+            else -> null
+        }
+    }
+
+    private fun resolved(resolution: FieldMLHostTypes.Resolution, range: SourceRange): Type? =
+        when (resolution) {
+            is FieldMLHostTypes.Resolution.Found -> resolution.type
+            is FieldMLHostTypes.Resolution.Refused -> abort(resolution.message, range)
+            FieldMLHostTypes.Resolution.Unknown -> null
+        }
+
+    /** `a.b.Img.Companion` as the class loader spells it: `a.b.Img$Companion`. */
+    private fun nestedSpelling(className: String): String {
+        if (!className.contains('.')) return className
+        val owner = className.substringBeforeLast('.')
+        return "$owner$${className.substringAfterLast('.')}"
+    }
+
+    /**
+     * The head name and arguments of a chain of applications, left to right. FieldML is curried and
+     * `|>` desugars to application, so `line |> hostCall "moveTo" args` and
+     * `hostCall "moveTo" args line` reach here as the same spine.
+     */
+    private fun hostSpine(call: TExprCall): Pair<String, List<TExpr>>? {
+        val arguments = mutableListOf<TExpr>()
+        var current: TExpr = call
+        while (current is TExprCall) {
+            arguments += current.argument
+            current = current.function
+        }
+        val head = current as? TExprVar ?: return null
+        if (!head.name.startsWith("host")) return null
+        return head.name to arguments.asReversed()
+    }
+
+    // ---- expected types for lambda arguments -----------------------------------------------------
+
+    /**
+     * A host call as the JVM sees it: who it is called on, which member, and the arguments in JVM
+     * order — with the tuple-or-list spread the `host…` family uses already flattened.
+     */
+    private class HostCallShape(
+        val owner: Expr,
+        /** Null for a constructor. */
+        val method: String?,
+        /** True when [owner] is a `hostClass` handle rather than a receiver value. */
+        val static: Boolean,
+        val arguments: List<Expr>,
+    )
+
+    /**
+     * Infers a host call's sub-expressions in *dependency* order rather than in spine order, so that
+     * a lambda literal in argument position can be checked against the JVM parameter it is going to
+     * satisfy.
+     *
+     * The problem this solves is structural. FieldML is curried, so `hostCall1 "transform" f line`
+     * is `((hostCall1 "transform") f) line` and the ordinary [inferFresh] walk types `f` before it
+     * has ever looked at `line` — but `line` is the only thing that says which JVM method, and
+     * therefore which parameter type, is meant. `refineHostIntrinsic` runs late enough to know, and
+     * by then `f`'s parameters are already anonymous type variables.
+     *
+     * So: flatten the *source* spine at its outermost call, infer the receiver first, then the
+     * non-lambda arguments, then the lambdas with their parameters bound to what reflection says the
+     * JVM will hand them. Everything inferred here is stashed in [preInferred] and picked up by the
+     * ordinary walk, which means each source node is still inferred exactly **once**. A second pass
+     * would be the obvious alternative and is the wrong one: `abort` is a throw, so a body that only
+     * type-checks *with* the expected type — `fun p -> p.x` — would never survive its first pass.
+     *
+     * Nothing here can narrow the language. A slot reflection cannot pin down keeps the fresh
+     * variable it has today (see [inferLambda]), an overload set that ties keeps its silence
+     * (`FieldMLHostTypes.parametersOf`), and the reordering only happens when a lambda is present,
+     * so no existing program even changes the order its diagnostics come out in.
+     */
+    private fun preInferHostSpine(call: ECall, env: TypeEnv): SpineMemo? {
+        val (head, arguments) = sourceSpine(call) ?: return null
+        if (env[head.name] !== FieldMLTypePrelude.schemes[head.name]) return null
+        val shape = hostCallShape(head.name, arguments) ?: return null
+        if (shape.arguments.none { it is ELambda }) return null
+
+        val memo = SpineMemo(env)
+        val owner = preInfer(shape.owner, env, memo)
+        val argumentTypes = shape.arguments.map { argument ->
+            if (argument is ELambda) {
+                placeholderFunction(argument.parameters.size)
+            } else {
+                pruned(preInfer(argument, env, memo))
+            }
+        }
+        val ownerType = prune(owner.type)
+        val parameters = when {
+            shape.method == null -> FieldMLHostTypes.constructorParameters(ownerType, argumentTypes)
+            shape.static -> FieldMLHostTypes.staticParameters(ownerType, shape.method, argumentTypes)
+            else -> FieldMLHostTypes.instanceParameters(ownerType, shape.method, argumentTypes)
+        }
+        shape.arguments.forEachIndexed { index, argument ->
+            if (argument !is ELambda) return@forEachIndexed
+            val slot = parameters.getOrNull(index)
+            val expected = slot?.let { FieldMLHostTypes.samParameterTypes(it) }
+            if (slot != null && expected != null) checkLambdaArity(argument, expected, slot, shape, ownerType)
+            memo[argument] = inferLambda(argument.parameters, argument.body, argument.range, env, expected)
+        }
+        return memo
+    }
+
+    /**
+     * Knowing what the JVM wants is also worth something when the lambda cannot possibly be it.
+     *
+     * *Fewer* parameters than the interface takes is fine — FieldML functions are curried, so
+     * `fun x -> fun y -> …` is a two-argument callback and `fun ignored -> …` is how a `Runnable`
+     * with no arguments is written at all. *More* is fine too when the interface's result is itself
+     * a functional interface, because the proxy converts what comes back in its turn. Anything else
+     * hands the JVM a function where it wants a value, and that used to be a run-time failure inside
+     * a dynamic proxy with nothing in the message about the box that caused it.
+     */
+    private fun checkLambdaArity(
+        lambda: ELambda,
+        expected: List<Type>,
+        slot: FieldMLHostTypes.HostParameter,
+        shape: HostCallShape,
+        ownerType: Type,
+    ) {
+        if (expected.isEmpty() || lambda.parameters.size <= expected.size) return
+        if (FieldMLHostTypes.samResultAcceptsFunction(slot)) return
+        val owner = FieldMLHostTypes.jvmClassOf(ownerType)?.simpleName
+            ?: FieldMLHostTypes.classHandleName(ownerType)?.let { FieldMLHostTypes.display(it) }
+            ?: "this receiver"
+        val target = shape.method?.let { "$owner.$it" } ?: "$owner's constructor"
+        abort(
+            "$target calls this function with ${expected.size} argument(s), but it takes" +
+                " ${lambda.parameters.size} (${lambda.parameters.joinToString(", ")})",
+            lambda.range,
+        )
+    }
+
+    /**
+     * Infers [expr] once and remembers it for the ordinary walk to find. Deliberately *not* handed the
+     * memo it is filling: a spine argument is a fresh sub-tree, and if it is itself a host call with a
+     * lambda in it, it starts a memo of its own rather than sharing this one.
+     */
+    private fun preInfer(expr: Expr, env: TypeEnv, memo: SpineMemo): TExpr =
+        memo[expr] ?: inferFresh(expr, env).also { memo[expr] = it }
+
+    /**
+     * A stand-in for a lambda argument that has not been inferred yet. It has to be a [TFun] of the
+     * right arity rather than a bare variable, because that is what tells overload resolution this
+     * argument is a lambda at all — the same thing a first-pass-inferred lambda used to say.
+     */
+    private fun placeholderFunction(parameterCount: Int): Type {
+        var type: Type = fresh()
+        repeat(maxOf(parameterCount, 1)) { type = TFun(fresh(), type) }
+        return type
+    }
+
+    /** The head name and arguments of a chain of source applications, left to right. */
+    private fun sourceSpine(call: ECall): Pair<EVar, List<Expr>>? {
+        val arguments = mutableListOf<Expr>()
+        var current: Expr = call
+        while (current is ECall) {
+            arguments += current.argument
+            current = current.function
+        }
+        val head = current as? EVar ?: return null
+        if (!head.name.startsWith("host")) return null
+        return head to arguments.asReversed()
+    }
+
+    /**
+     * The JVM shape of a saturated `host…` application, or null when this is not one. `hostCall0`
+     * takes no arguments and `hostTap`/`hostStaticTap` read Field's source index rather than
+     * reflection, so neither appears here.
+     */
+    private fun hostCallShape(name: String, arguments: List<Expr>): HostCallShape? =
+        when (name) {
+            "hostCall" -> arguments.takeIf { it.size == 3 }?.let { (method, spread, target) ->
+                sourceString(method)?.let { HostCallShape(target, it, static = false, spreadExprs(spread)) }
+            }
+            "hostCall1" -> arguments.takeIf { it.size == 3 }?.let { (method, argument, target) ->
+                sourceString(method)?.let { HostCallShape(target, it, static = false, listOf(argument)) }
+            }
+            "hostCall2" -> arguments.takeIf { it.size == 4 }?.let { (method, first, second, target) ->
+                sourceString(method)?.let { HostCallShape(target, it, static = false, listOf(first, second)) }
+            }
+            "hostStaticCall" -> arguments.takeIf { it.size == 3 }?.let { (method, spread, klass) ->
+                sourceString(method)?.let { HostCallShape(klass, it, static = true, spreadExprs(spread)) }
+            }
+            // An extension function is a static whose first parameter is the piped receiver.
+            "hostExt" -> arguments.takeIf { it.size == 4 }?.let { (klass, method, spread, receiver) ->
+                sourceString(method)?.let { HostCallShape(klass, it, static = true, listOf(receiver) + spreadExprs(spread)) }
+            }
+            "hostNew" -> arguments.takeIf { it.size == 2 }?.let { (spread, klass) ->
+                HostCallShape(klass, method = null, static = true, arguments = spreadExprs(spread))
+            }
+            else -> null
+        }
+
+    /**
+     * The spread the `host…` family does at run time, as far as it is visible in the *source*: a
+     * tuple or list literal is its elements, anything else is one argument. An expression that only
+     * turns out to be a tuple when it runs therefore gets the wrong arity here — which costs nothing,
+     * because the wrong arity simply matches no candidate and no claim is made.
+     */
+    private fun spreadExprs(expr: Expr): List<Expr> =
+        when (expr) {
+            is ETuple -> expr.elements
+            is EList -> expr.elements
+            else -> listOf(expr)
+        }
+
+    private fun sourceString(expr: Expr): String? = (expr as? EString)?.value
+
+    /**
+     * The field names of an argument written as a **record**, which is what makes a host call a
+     * *named* one — and therefore the only shape that can leave a Kotlin default unwritten. Null for
+     * every other shape, so the positional path is untouched.
+     *
+     * Read off the inferred type rather than off the syntax, so `let options = {a = 1} in
+     * hostNew options C` behaves the same as writing the record in place.
+     */
+    private fun namedFields(expr: TExpr): Set<String>? =
+        (pruned(expr) as? TRecord)?.fields?.keys
+
+    /**
+     * The argument types behind the tuple-or-list spread the `host…` family uses, or null when the
+     * arity cannot be known statically — a list whose elements were not written out, say, which has
+     * one FieldML type but any number of JVM arguments.
+     */
+    private fun spreadTypes(expr: TExpr): List<Type>? {
+        if (expr is TExprList) return expr.elements.map { pruned(it) }
+        return when (val type = pruned(expr)) {
+            is TTuple -> type.elements.map { prune(it) }
+            TUnit -> emptyList()
+            is TList -> null
+            else -> listOf(type)
+        }
+    }
+
+    private fun pruned(expr: TExpr): Type = prune(expr.type)
+
+    private fun literalString(expr: TExpr): String? = (expr as? TExprString)?.value
+
+    private fun inferTypeDecl(expr: ETypeDecl, env: TypeEnv): TExprTypeDecl {
+        val parameterTypes = expr.declaration.parameters.associateWith { fresh() as Type }
+        val resultType = TAdt(expr.declaration.name, expr.declaration.parameters.map { parameterTypes.getValue(it) })
+        var extended = env.bindType(expr.declaration.name, expr.declaration.parameters.size)
+        val constructors = expr.declaration.constructors.map { constructor ->
+            val argumentTypes = constructor.arguments.map {
+                resolveTypeRef(it, expr.declaration, parameterTypes, resultType, extended)
+            }
+            val constructorType = argumentTypes.asReversed().fold(resultType as Type) { acc, argumentType ->
+                TFun(argumentType, acc)
+            }
+            val quantified = parameterTypes.values.mapNotNullTo(mutableSetOf()) { (it as? TVar)?.id }
+            val scheme = Scheme(quantified, constructorType)
+            val info = ConstructorInfo(constructor.name, constructor.arguments.size, scheme)
+            extended = extended.bindConstructor(info)
+            TypedConstructor(constructor.name, constructor.arguments.size, scheme)
+        }
+        val body = inferExpr(expr.body, extended)
+        return TExprTypeDecl(expr.declaration, constructors, body, expr.range, body.type)
+    }
+
+    private fun resolveTypeRef(
+        ref: TypeRef,
+        declaration: TypeDecl,
+        parameters: Map<String, Type>,
+        currentType: Type,
+        env: TypeEnv,
+    ): Type =
+        when (ref) {
+            is TypeRefName -> when (ref.name) {
+                "Int" -> TInt
+                "Float" -> TFloat
+                "Bool" -> TBool
+                "String" -> TString
+                "Unit" -> TUnit
+                "Host" -> FieldMLTypePrelude.host
+                "Vec2" -> FieldMLTypePrelude.vec2
+                "Vec3" -> FieldMLTypePrelude.vec3
+                "Vec4" -> FieldMLTypePrelude.vec4
+                "FLine" -> FieldMLTypePrelude.fline
+                declaration.name -> currentType
+                in parameters.keys -> parameters.getValue(ref.name)
+                else -> {
+                    if (!env.hasType(ref.name)) abort("Unknown type '${ref.name}'", ref.range)
+                    TAdt(ref.name, emptyList())
+                }
+            }
+        }
+
+    /**
+     * [expected] is what the JVM parameter this lambda satisfies says its arguments will be, when
+     * there is such a parameter and reflection could read it — see [preInferHostSpine].
+     *
+     * A slot is only taken when reflection was *confident*. An erased generic reads back as `Host`,
+     * and putting `Host` where a fresh inference variable used to be would narrow the language
+     * rather than widen it: `Host` deliberately refuses to unify with a function, a list, a tuple or
+     * a record, so `hostStaticCall "max" ([…], fun a b -> b - a) Collections` — whose `Comparator<?
+     * super T>` has no readable argument — would start failing. Unknown must stay unknown.
+     *
+     * The lambda's *result* is deliberately left alone. `samProxy` coerces whatever comes back to the
+     * interface's return type, so a FieldML `Int` body already satisfies a `Function2<…, Float>`
+     * parameter; unifying the result would turn that into a type error for no gain.
+     */
+    private fun inferLambda(
+        parameters: List<String>,
+        body: Expr,
+        range: SourceRange,
+        env: TypeEnv,
+        expected: List<Type>? = null,
+    ): TExprLambda {
+        var localEnv = env
+        val typedParams = parameters.mapIndexed { index, parameter ->
+            val type = expected?.getOrNull(index)?.takeIf { !isDynamicHost(it) } ?: fresh()
+            localEnv = localEnv.bind(parameter, Scheme(emptySet(), type))
+            parameter to type
+        }
+        val typedBody = inferExpr(body, localEnv)
+        val lambdaType = typedParams.asReversed().fold(typedBody.type) { acc, (_, parameterType) ->
+            TFun(parameterType, acc)
+        }
+        return TExprLambda(typedParams, typedBody, range, lambdaType)
+    }
+
+    private fun inferLet(expr: ELet, env: TypeEnv): TExprLet {
+        // `let f x = ...` is recursive: bind f monomorphically while inferring its own body. A plain
+        // `let x = ...` is not, so `let x = x + 1` keeps shadowing an outer binding.
+        val recursive = expr.parameters.isNotEmpty()
+        val valueExpr = if (!recursive) {
+            inferExpr(expr.value, env)
+        } else {
+            val selfType = fresh()
+            val selfEnv = env.bind(expr.name, Scheme(emptySet(), selfType))
+            val lambda = inferLambda(expr.parameters, expr.value, expr.value.range, selfEnv)
+            unify(selfType, lambda.type, expr.value.range)
+            lambda
+        }
+        val scheme = generalize(env, valueExpr.type)
+        val bodyEnv = env.bind(expr.name, scheme)
+        val body = inferExpr(expr.body, bodyEnv)
+        val parameters = when (valueExpr) {
+            is TExprLambda -> valueExpr.parameters
+            else -> emptyList()
+        }
+        return TExprLet(expr.name, parameters, valueExpr, body, expr.range, body.type, recursive)
+    }
+
+    private fun inferMatch(expr: EMatch, env: TypeEnv): TExprMatch {
+        val scrutinee = inferExpr(expr.scrutinee, env)
+        val resultType = fresh()
+        val cases = expr.cases.map { case ->
+            val (pattern, patternEnv) = inferPattern(case.pattern, scrutinee.type, env)
+            val body = inferExpr(case.body, patternEnv)
+            unify(body.type, resultType, case.body.range)
+            TMatchCase(pattern, body)
+        }
+        return TExprMatch(scrutinee, cases, expr.range, resultType)
+    }
+
+    private fun inferPattern(pattern: Pattern, expected: Type, env: TypeEnv): Pair<TPattern, TypeEnv> =
+        when (pattern) {
+            is PWildcard -> TPWildcard(pattern.range, expected) to env
+            is PVar -> TPVar(pattern.name, pattern.range, expected) to env.bind(pattern.name, Scheme(emptySet(), expected))
+            is PInt -> {
+                unify(expected, TInt, pattern.range)
+                TPInt(pattern.value, pattern.range, TInt) to env
+            }
+            is PBool -> {
+                unify(expected, TBool, pattern.range)
+                TPBool(pattern.value, pattern.range, TBool) to env
+            }
+            is PString -> {
+                unify(expected, TString, pattern.range)
+                TPString(pattern.value, pattern.range, TString) to env
+            }
+            is PTuple -> {
+                val elementTypes = pattern.elements.map { fresh() as Type }
+                unify(expected, TTuple(elementTypes), pattern.range)
+                var patternEnv = env
+                val typedElements = pattern.elements.mapIndexed { index, element ->
+                    val (typed, nextEnv) = inferPattern(element, elementTypes[index], patternEnv)
+                    patternEnv = nextEnv
+                    typed
+                }
+                TPTuple(typedElements, pattern.range, TTuple(elementTypes)) to patternEnv
+            }
+            is PList -> {
+                val elementType = fresh()
+                unify(expected, TList(elementType), pattern.range)
+                var patternEnv = env
+                val typedElements = pattern.elements.map { element ->
+                    val (typed, nextEnv) = inferPattern(element, elementType, patternEnv)
+                    patternEnv = nextEnv
+                    typed
+                }
+                TPList(typedElements, pattern.range, TList(elementType)) to patternEnv
+            }
+            is PConstructor -> inferConstructorPattern(pattern, expected, env)
+            is PCons -> {
+                val elementType = fresh()
+                unify(expected, TList(elementType), pattern.range)
+                val (head, headEnv) = inferPattern(pattern.head, elementType, env)
+                val (tail, tailEnv) = inferPattern(pattern.tail, TList(elementType), headEnv)
+                TPCons(head, tail, pattern.range, TList(elementType)) to tailEnv
+            }
+        }
+
+    private fun inferConstructorPattern(pattern: PConstructor, expected: Type, env: TypeEnv): Pair<TPattern, TypeEnv> {
+        val constructor = env.constructor(pattern.name) ?: abort("Unknown constructor '${pattern.name}'", pattern.range)
+        if (constructor.arity != pattern.arguments.size) {
+            abort(
+                "Constructor '${pattern.name}' expects ${constructor.arity} pattern argument(s), found ${pattern.arguments.size}",
+                pattern.range,
+            )
+        }
+        val argumentTypes = mutableListOf<Type>()
+        var cursor = instantiate(constructor.scheme)
+        repeat(constructor.arity) {
+            val function = prune(cursor) as? TFun
+                ?: abort("Constructor '${pattern.name}' is not a function", pattern.range)
+            argumentTypes += function.from
+            cursor = function.to
+        }
+        unify(cursor, expected, pattern.range)
+        var patternEnv = env
+        val typedArguments = pattern.arguments.mapIndexed { index, argument ->
+            val (typed, nextEnv) = inferPattern(argument, argumentTypes[index], patternEnv)
+            patternEnv = nextEnv
+            typed
+        }
+        return TPConstructor(pattern.name, typedArguments, pattern.range, cursor) to patternEnv
+    }
+
+    private fun inferBinary(expr: EBinary, env: TypeEnv): TExprBinary {
+        val left = inferExpr(expr.left, env)
+        val right = inferExpr(expr.right, env)
+        val resultType = when (expr.op) {
+            BinaryOp.ADD, BinaryOp.SUB -> {
+                val vector = vectorOperand(left.type, right.type)
+                if (vector != null) {
+                    // Vectors add and subtract component by component, so both sides must match.
+                    unify(left.type, right.type, expr.range)
+                    vector
+                } else {
+                    unify(left.type, right.type, expr.range)
+                    requireNumeric(left.type, expr.range)
+                    left.type
+                }
+            }
+            BinaryOp.MUL -> {
+                val leftVector = FieldMLTypePrelude.isVectorType(prune(left.type))
+                val rightVector = FieldMLTypePrelude.isVectorType(prune(right.type))
+                when {
+                    // Vector times vector multiplies component by component; vector times a Float scales.
+                    leftVector && rightVector -> {
+                        unify(left.type, right.type, expr.range)
+                        prune(left.type)
+                    }
+                    leftVector -> {
+                        unify(right.type, TFloat, expr.right.range)
+                        prune(left.type)
+                    }
+                    rightVector -> {
+                        unify(left.type, TFloat, expr.left.range)
+                        prune(right.type)
+                    }
+                    else -> {
+                        unify(left.type, right.type, expr.range)
+                        requireNumeric(left.type, expr.range)
+                        left.type
+                    }
+                }
+            }
+            BinaryOp.DIV -> {
+                if (FieldMLTypePrelude.isVectorType(prune(left.type))) {
+                    unify(right.type, TFloat, expr.right.range)
+                    prune(left.type)
+                } else {
+                    unify(left.type, TFloat, expr.left.range)
+                    unify(right.type, TFloat, expr.right.range)
+                    TFloat
+                }
+            }
+            BinaryOp.CONCAT -> {
+                unify(left.type, TString, expr.left.range)
+                unify(right.type, TString, expr.right.range)
+                TString
+            }
+            BinaryOp.CONS -> {
+                val element = fresh()
+                unify(left.type, element, expr.left.range)
+                unify(right.type, TList(element), expr.right.range)
+                TList(element)
+            }
+            BinaryOp.LT, BinaryOp.LTE, BinaryOp.GT, BinaryOp.GTE -> {
+                unify(left.type, right.type, expr.range)
+                requireNumeric(left.type, expr.range)
+                TBool
+            }
+            BinaryOp.EQ, BinaryOp.NEQ -> {
+                unify(left.type, right.type, expr.range)
+                requireEquality(left.type, expr.range)
+                TBool
+            }
+            BinaryOp.AND, BinaryOp.OR -> {
+                unify(left.type, TBool, expr.left.range)
+                unify(right.type, TBool, expr.right.range)
+                TBool
+            }
+        }
+        return TExprBinary(expr.op, left, right, expr.range, resultType)
+    }
+
+    /** The vector type involved in an operand pair, or null when neither side is a vector. */
+    private fun vectorOperand(left: Type, right: Type): Type? {
+        val prunedLeft = prune(left)
+        if (FieldMLTypePrelude.isVectorType(prunedLeft)) return prunedLeft
+        val prunedRight = prune(right)
+        return if (FieldMLTypePrelude.isVectorType(prunedRight)) prunedRight else null
+    }
+
+    private fun instantiate(scheme: Scheme): Type {
+        val replacements = scheme.quantified.associateWith { fresh() as Type }
+        for (numeric in scheme.numeric) {
+            val replacement = replacements[numeric]
+            if (replacement is TVar) numericVariables += replacement.id
+        }
+        for (vector in scheme.vector) {
+            val replacement = replacements[vector]
+            if (replacement is TVar) vectorVariables += replacement.id
+        }
+        fun walk(type: Type): Type =
+            when (val pruned = prune(type)) {
+                is TVar -> replacements[pruned.id] ?: pruned
+                is TFun -> TFun(walk(pruned.from), walk(pruned.to))
+                is TRecord -> TRecord(pruned.fields.mapValues { walk(it.value) })
+                is TTuple -> TTuple(pruned.elements.map(::walk))
+                is TList -> TList(walk(pruned.element))
+                is TAdt -> TAdt(pruned.name, pruned.arguments.map(::walk))
+                is THost -> pruned
+                else -> pruned
+            }
+        return walk(scheme.body)
+    }
+
+    private fun generalize(env: TypeEnv, type: Type): Scheme {
+        val quantified = freeVars(type) - env.freeVars()
+        return Scheme(
+            quantified,
+            prune(type),
+            numeric = quantified intersect numericVariables,
+            vector = quantified intersect vectorVariables,
+        )
+    }
+
+    private fun requireNumeric(type: Type, range: SourceRange) {
+        when (val pruned = prune(type)) {
+            TInt, TFloat -> Unit
+            is TVar -> numericVariables += pruned.id
+            // An opaque `Host` is dynamic in every other position, so it has to be dynamic here too;
+            // refusing it would put a cast in front of every use of an erased host result.
+            else -> if (!isDynamicHost(pruned)) {
+                abort("Expected Int or Float, found ${TypePrinter().print(normalize(pruned))}", range)
+            }
+        }
+    }
+
+    private fun requireVector(type: Type, range: SourceRange) {
+        val pruned = prune(type)
+        when {
+            FieldMLTypePrelude.isVectorType(pruned) -> Unit
+            pruned is TVar -> vectorVariables += pruned.id
+            isDynamicHost(pruned) -> Unit
+            else -> abort("Expected Vec2, Vec3 or Vec4, found ${TypePrinter().print(normalize(pruned))}", range)
+        }
+    }
+
+    private fun requireEquality(type: Type, range: SourceRange) {
+        when (val pruned = prune(type)) {
+            // `Unit` compares because it is a singleton, and because it is how a FieldML function
+            // called back by the JVM tests whether the argument it was handed was null.
+            TInt, TFloat, TBool, TString, TUnit -> Unit
+            is TVar -> Unit
+            else -> if (!isDynamicHost(pruned)) {
+                abort("Equality is not defined for ${TypePrinter().print(normalize(pruned))}", range)
+            }
+        }
+    }
+
+    private fun isDynamicHost(type: Type): Boolean = type is THost && type.name == FieldMLHostTypes.OPAQUE
+
+    /**
+     * Two host types. Equal names are the same class; an opaque `Host` on either side is the dynamic
+     * escape; and a class that is *assignable* from the other unifies too, because Field's linalg types
+     * are declared half against read-only interfaces (`Vector2f` where the signature says `Vector2fc`)
+     * and refusing that would report a sound call as an error. Two unrelated known classes are a type
+     * error — the whole point of a host value carrying its class.
+     */
+    private fun unifyHosts(a: THost, b: THost, range: SourceRange) {
+        if (a.name == b.name) return
+        if (a.name == FieldMLHostTypes.OPAQUE || b.name == FieldMLHostTypes.OPAQUE) return
+        val left = FieldMLHostTypes.jvmClassOf(a)
+        val right = FieldMLHostTypes.jvmClassOf(b)
+        // An unloadable class is unknown, not wrong: the same conservatism as everywhere else here.
+        if (left == null || right == null) return
+        if (left.isAssignableFrom(right) || right.isAssignableFrom(left)) return
+        abort(
+            "Type mismatch: ${TypePrinter().print(a)} is not ${TypePrinter().print(b)}" +
+                " (${left.name} and ${right.name} are unrelated)",
+            range,
+        )
+    }
+
+    /**
+     * The bound on `Host` as a dynamic type: it stands in for a value whose *class* is unknown, not for
+     * a value of unknown *shape*.
+     *
+     * A JVM value that reflection could only see as `Object` may well turn out to be a number, a
+     * string, a boolean, nothing at all, or another object — so `Host` unifies with all of those and an
+     * erased result can be used without a cast, which is the ergonomics this bridge exists for. It does
+     * *not* unify with a function or with a FieldML structure. Those are not things an opaque host value
+     * ever *is*: `hostToFieldMLValue` never produces a FieldML function from a JVM value, so applying a
+     * `Host` fails every time it runs, and reaching a list or a record needs `hostAsList` — which really
+     * converts, and therefore also works on the erased-`Object`-that-was-a-`List` case.
+     *
+     * So the trade is: one honest conversion at the boundary, in exchange for the class of mistake that
+     * used to type-check and then fail on the first run.
+     */
+    private fun requireDynamicallyReachable(other: Type, range: SourceRange) {
+        val advice = when (other) {
+            is TFun -> "call it with hostCall1 \"invoke\" instead"
+            is TList -> "convert it with hostAsList"
+            is TTuple -> "convert it with hostAsList, or read its parts with hostGet"
+            is TRecord -> "read its members with hostGet"
+            else -> return
+        }
+        abort(
+            "A Host cannot be used as ${TypePrinter().print(normalize(other))}:" +
+                " reflection could not type this value, so $advice",
+            range,
+        )
+    }
+
+    private fun unify(left: Type, right: Type, range: SourceRange) {
+        val a = prune(left)
+        val b = prune(right)
+        if (a == b) return
+        when {
+            a is TVar -> bind(a, b, range)
+            b is TVar -> bind(b, a, range)
+            a is TFun && b is TFun -> {
+                unify(a.from, b.from, range)
+                unify(a.to, b.to, range)
+            }
+            a is TRecord && b is TRecord -> unifyRecords(a, b, range)
+            a is TTuple && b is TTuple && a.elements.size == b.elements.size -> {
+                a.elements.zip(b.elements).forEach { (leftElement, rightElement) -> unify(leftElement, rightElement, range) }
+            }
+            a is TTuple && b is TTuple -> abort("Tuple arity mismatch: ${a.elements.size} is not ${b.elements.size}", range)
+            a is TList && b is TList -> unify(a.element, b.element, range)
+            a is TAdt && b is TAdt && a.name == b.name && a.arguments.size == b.arguments.size -> {
+                a.arguments.zip(b.arguments).forEach { (leftArg, rightArg) -> unify(leftArg, rightArg, range) }
+            }
+            a is THost && b is THost -> unifyHosts(a, b, range)
+            // `Host` is FieldML's one dynamic type — but a *bounded* one, see
+            // [requireDynamicallyReachable].
+            a is THost && a.name == FieldMLHostTypes.OPAQUE -> requireDynamicallyReachable(b, range)
+            b is THost && b.name == FieldMLHostTypes.OPAQUE -> requireDynamicallyReachable(a, range)
+            else -> abort(
+                "Type mismatch: ${TypePrinter().print(normalize(a))} is not ${TypePrinter().print(normalize(b))}",
+                range,
+            )
+        }
+    }
+
+    private fun unifyRecords(left: TRecord, right: TRecord, range: SourceRange) {
+        val missingInLeft = right.fields.keys - left.fields.keys
+        val missingInRight = left.fields.keys - right.fields.keys
+        if (missingInLeft.isNotEmpty()) abort("Record is missing field '${missingInLeft.first()}'", range)
+        if (missingInRight.isNotEmpty()) abort("Record has unexpected field '${missingInRight.first()}'", range)
+        for (field in left.fields.keys) unify(left.fields.getValue(field), right.fields.getValue(field), range)
+    }
+
+    private fun bind(variable: TVar, type: Type, range: SourceRange) {
+        val target = prune(type)
+        if (target == variable) return
+        if (occurs(variable.id, target)) abort("Infinite type involving ${TypePrinter().print(variable)}", range)
+        if (variable.id in numericVariables) requireNumeric(target, range)
+        if (variable.id in vectorVariables) requireVector(target, range)
+        substitution[variable.id] = target
+    }
+
+    private fun prune(type: Type): Type {
+        if (type !is TVar) return type
+        val replacement = substitution[type.id] ?: return type
+        val pruned = prune(replacement)
+        substitution[type.id] = pruned
+        return pruned
+    }
+
+    private fun occurs(variableId: Int, type: Type): Boolean =
+        when (val pruned = prune(type)) {
+            is TVar -> pruned.id == variableId
+            is TFun -> occurs(variableId, pruned.from) || occurs(variableId, pruned.to)
+            is TRecord -> pruned.fields.values.any { occurs(variableId, it) }
+            is TTuple -> pruned.elements.any { occurs(variableId, it) }
+            is TList -> occurs(variableId, pruned.element)
+            is TAdt -> pruned.arguments.any { occurs(variableId, it) }
+            is THost -> false
+            else -> false
+        }
+
+    private fun normalize(type: Type): Type =
+        when (val pruned = prune(type)) {
+            is TFun -> TFun(normalize(pruned.from), normalize(pruned.to))
+            is TRecord -> TRecord(pruned.fields.mapValues { normalize(it.value) })
+            is TTuple -> TTuple(pruned.elements.map(::normalize))
+            is TList -> TList(normalize(pruned.element))
+            is TAdt -> TAdt(pruned.name, pruned.arguments.map(::normalize))
+            is THost -> pruned
+            else -> pruned
+        }
+
+    private fun finalize(expr: TExpr): TExpr {
+        fun type(type: Type): Type = defaultedType(type)
+        return when (expr) {
+            is TExprInt -> expr.copy(type = type(expr.type))
+            is TExprFloat -> expr.copy(type = type(expr.type))
+            is TExprBool -> expr.copy(type = type(expr.type))
+            is TExprString -> expr.copy(type = type(expr.type))
+            is TExprVar -> expr.copy(type = type(expr.type))
+            is TExprTuple -> expr.copy(elements = expr.elements.map(::finalize), type = type(expr.type))
+            is TExprList -> expr.copy(elements = expr.elements.map(::finalize), type = type(expr.type))
+            is TExprTypeDecl -> expr.copy(body = finalize(expr.body), type = type(expr.type))
+            is TExprLet -> expr.copy(
+                parameters = expr.parameters.map { it.first to type(it.second) },
+                value = finalize(expr.value),
+                body = finalize(expr.body),
+                type = type(expr.type),
+            )
+            is TExprLambda -> expr.copy(
+                parameters = expr.parameters.map { it.first to type(it.second) },
+                body = finalize(expr.body),
+                type = type(expr.type),
+            )
+            is TExprCall -> expr.copy(finalize(expr.function), finalize(expr.argument), type = type(expr.type))
+            is TExprIf -> expr.copy(finalize(expr.condition), finalize(expr.thenBranch), finalize(expr.elseBranch), type = type(expr.type))
+            is TExprMatch -> expr.copy(
+                scrutinee = finalize(expr.scrutinee),
+                cases = expr.cases.map { TMatchCase(finalizePattern(it.pattern), finalize(it.body)) },
+                type = type(expr.type),
+            )
+            is TExprRecord -> expr.copy(fields = expr.fields.map { it.first to finalize(it.second) }, type = type(expr.type))
+            is TExprField -> expr.copy(target = finalize(expr.target), type = type(expr.type))
+            is TExprBinary -> expr.copy(left = finalize(expr.left), right = finalize(expr.right), type = type(expr.type))
+            is TExprNegate -> expr.copy(value = finalize(expr.value), type = type(expr.type))
+        }
+    }
+
+    private fun finalizePattern(pattern: TPattern): TPattern {
+        fun type(type: Type): Type = defaultedType(type)
+        return when (pattern) {
+            is TPWildcard -> pattern.copy(type = type(pattern.type))
+            is TPVar -> pattern.copy(type = type(pattern.type))
+            is TPInt -> pattern.copy(type = type(pattern.type))
+            is TPBool -> pattern.copy(type = type(pattern.type))
+            is TPString -> pattern.copy(type = type(pattern.type))
+            is TPTuple -> pattern.copy(elements = pattern.elements.map(::finalizePattern), type = type(pattern.type))
+            is TPList -> pattern.copy(elements = pattern.elements.map(::finalizePattern), type = type(pattern.type))
+            is TPConstructor -> pattern.copy(arguments = pattern.arguments.map(::finalizePattern), type = type(pattern.type))
+            is TPCons -> pattern.copy(
+                head = finalizePattern(pattern.head),
+                tail = finalizePattern(pattern.tail),
+                type = type(pattern.type),
+            )
+        }
+    }
+
+    /**
+     * Normalizes a type for reporting, defaulting any still-unresolved constrained variable to the
+     * concrete type its constraint implies: numeric variables become `Float`, vector ones `Vec2`.
+     */
+    private fun defaultedType(type: Type): Type {
+        val normalized = normalize(type)
+        if (normalized !is TVar) return normalized
+        return when (normalized.id) {
+            in numericVariables -> TFloat
+            in vectorVariables -> FieldMLTypePrelude.vec2
+            else -> normalized
+        }
+    }
+
+    private fun fresh(): TVar = TVar(nextTypeVar++)
+
+    private fun freeVars(type: Type): Set<Int> =
+        when (val pruned = prune(type)) {
+            is TVar -> setOf(pruned.id)
+            is TFun -> freeVars(pruned.from) + freeVars(pruned.to)
+            is TRecord -> pruned.fields.values.flatMapTo(mutableSetOf()) { freeVars(it) }
+            is TTuple -> pruned.elements.flatMapTo(mutableSetOf()) { freeVars(it) }
+            is TList -> freeVars(pruned.element)
+            is TAdt -> pruned.arguments.flatMapTo(mutableSetOf()) { freeVars(it) }
+            is THost -> emptySet()
+            else -> emptySet()
+        }
+
+    private fun abort(message: String, range: SourceRange): Nothing {
+        throw CompileAbort(Diagnostic(Severity.Error, message, range))
+    }
+
+    /**
+     * Sub-expressions of one host call, inferred out of order by [preInferHostSpine] and picked up by
+     * the ordinary walk that follows. Keyed by *identity*: two structurally identical arguments of the
+     * same call are different nodes and must not share a result.
+     *
+     * **A cached result is only valid in the environment it was computed in.** That is enforced
+     * structurally, and the enforcement is the whole reason this is a *parameter* rather than a field
+     * on the inferencer: a memo is threaded only along the walk paths that leave `env` untouched — the
+     * two halves of an application, and the elements of a tuple or list literal. It is never passed
+     * into a lambda body, a `let` body or a match case, so there is no route by which an entry can
+     * reach a site where a name has been rebound.
+     *
+     * The invariant a future change must preserve: **an `Expr` form that both occurs inside a curried
+     * application spine and extends the environment must not be given the memo.** [take] is the
+     * tripwire for the day someone does it anyway — the entry is refused rather than trusted, so the
+     * node is re-inferred under the bindings it is actually used with (correct, just without the
+     * expected type), and [environmentMismatches] counts it so a test can see what a comment could
+     * not. `FieldMLSmokeExamplesTest` asserts that counter is zero over every FieldML program in the
+     * repository.
+     */
+    private class SpineMemo(private val env: TypeEnv) {
+        private val entries = java.util.IdentityHashMap<Expr, TExpr>()
+
+        operator fun get(expr: Expr): TExpr? = entries[expr]
+
+        operator fun set(expr: Expr, typed: TExpr) {
+            entries[expr] = typed
+        }
+
+        /** The result for [expr], but only if [at] is the environment it was computed in. */
+        fun take(expr: Expr, at: TypeEnv): TExpr? {
+            val typed = entries[expr] ?: return null
+            if (at !== env) {
+                environmentMismatches.incrementAndGet()
+                return null
+            }
+            entries.remove(expr)
+            return typed
+        }
+    }
+
+    companion object {
+        /**
+         * How many times a [SpineMemo] entry was reached under an environment other than the one it
+         * was computed in — which, as long as the invariant in [SpineMemo] holds, is never. It is a
+         * tripwire rather than a feature: nothing reads it except the test that asserts it is zero.
+         */
+        val environmentMismatches: java.util.concurrent.atomic.AtomicLong =
+            java.util.concurrent.atomic.AtomicLong()
+    }
+
+    private data class ConstructorInfo(
+        val name: String,
+        val arity: Int,
+        val scheme: Scheme,
+    )
+
+    private class TypeEnv(
+        private val values: Map<String, Scheme> = emptyMap(),
+        private val constructors: Map<String, ConstructorInfo> = emptyMap(),
+        private val types: Map<String, Int> = emptyMap(),
+    ) {
+        operator fun get(name: String): Scheme? = values[name]
+        fun bind(name: String, scheme: Scheme): TypeEnv = TypeEnv(values + (name to scheme), constructors, types)
+        fun bindConstructor(info: ConstructorInfo): TypeEnv =
+            TypeEnv(values + (info.name to info.scheme), constructors + (info.name to info), types)
+
+        fun bindType(name: String, arity: Int): TypeEnv = TypeEnv(values, constructors, types + (name to arity))
+        fun hasType(name: String): Boolean = types.containsKey(name)
+        fun constructor(name: String): ConstructorInfo? = constructors[name]
+
+        fun freeVars(): Set<Int> =
+            values.values.flatMapTo(mutableSetOf()) { scheme ->
+                freeVars(scheme.body) - scheme.quantified
+            }
+
+        private fun freeVars(type: Type): Set<Int> =
+            when (type) {
+                is TVar -> setOf(type.id)
+                is TFun -> freeVars(type.from) + freeVars(type.to)
+                is TRecord -> type.fields.values.flatMapTo(mutableSetOf()) { freeVars(it) }
+                is TTuple -> type.elements.flatMapTo(mutableSetOf()) { freeVars(it) }
+                is TList -> freeVars(type.element)
+                is TAdt -> type.arguments.flatMapTo(mutableSetOf()) { freeVars(it) }
+                is THost -> emptySet()
+                else -> emptySet()
+            }
+    }
+}

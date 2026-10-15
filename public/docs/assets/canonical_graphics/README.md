@@ -1,19 +1,19 @@
-# Field4 Workspace — the `afield.four` graphics corpus
+# Field4 Workspace — the Field 4 graphics corpus
 
 This particular workspace is not a blank one. It is a snapshot of `canonicalGraphics`: the
-`afield.four` graphics curriculum, ~33 worked lessons that run against a live Vulkan renderer,
+Field 4 graphics curriculum, ~33 worked lessons that run against a live Vulkan renderer,
 from a first triangle through cameras, compute shaders, texturing, glTF, render-to-texture,
 ping-pong buffers, blur kernels, shader `#include`, printf and texture-probe debugging, a GPU
 radix sort, Slang, and a diffusion-limited-aggregation system.
 
-**If you are writing `afield.four` code, this is the reference corpus to read first.** Two
+**If you are writing Field 4 graphics code, this is the reference corpus to read first.** Two
 entry points:
 
 - **[LESSONS.md](LESSONS.md)** — the index. Every lesson by name, the parent chain it needs in
   order to run, its Kotlin and shader files, and a reverse index from Field API symbol
   (`RenderToTexture`, `LoadedTexture`, `computeModuleHere`, `GpuRadixSort`, …) to the lessons
   that demonstrate it. Generated, so it cannot drift from the boxes.
-- **[afield.four Graphics](../../afield_four_graphics.md)** — the prose walkthrough of the same
+- **[Field 4 Graphics](../../afield_four_graphics.md)** — the prose walkthrough of the same
   lessons, with captured native-window images.
 - **[GPU schemas](../../gpu_schema.md)** — an additional structured-memory path: annotated Kotlin
   data classes become one CPU/GPU ABI, are packed into arbitrary addressable buffers, and generate

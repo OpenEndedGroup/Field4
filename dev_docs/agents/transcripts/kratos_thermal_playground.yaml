@@ -11,14 +11,14 @@ operations:
       frame: { x: 60.0, y: 60.0, w: 380.0, h: 100.0 }
       properties:
         code: |
-          import afield.frames
-          import afield.kratos.*
-          import afield.manifold.ManifoldLibrary
-          import afield.stdlib.MeshView
-          import afield.stdlib.showMeshGrid
+          import afield.runtime.lifecycle.frames
+          import afield.simulation.kratos.*
+          import afield.geometry.solid.manifold.ManifoldLibrary
+          import afield.geometry.mesh.MeshView
+          import afield.geometry.mesh.showMeshGrid
           import java.util.concurrent.atomic.AtomicReference
           import kotlin.math.abs
-
+          
           // Launch (Alt-R). Drag controls in the output or on /controllers.
           // Install once: uv sync --project optional/kratos --frozen
           // SI units: metres, W/(m K), W/m³, kelvin. Stop closes the worker.
@@ -42,7 +42,7 @@ operations:
               displayOpen("status")
           }
           status("Starting optional worker… Drag sliders for automatic previews. Stop and relaunch to restart.")
-
+          
           frames {
               if (!ManifoldLibrary.isAvailable) {
                   status("Manifold unavailable: ${safe(ManifoldLibrary.describe())}")

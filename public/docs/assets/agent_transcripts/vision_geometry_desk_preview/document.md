@@ -11,12 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_vision_geometry_desk_preview" index="0" -->
 
 ```edn [field-box id="agent_vision_geometry_desk_preview" role="properties"]
-{"id" "agent_vision_geometry_desk_preview" "index" 0 "name" "Vision geometry — desk preview" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision geometry — desk preview" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_code_.kt" "lines" 70 "characters" 2988 "sha256" "37bb3186068b290e5035be50a2891c4fbd7832f154dee20a1f948fed1f7a5856"}]}
+{"id" "agent_vision_geometry_desk_preview" "index" 0 "name" "Vision geometry — desk preview" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision geometry — desk preview" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_code_.kt" "lines" 70 "characters" 3006 "sha256" "f94c71a918aae428b3ef8007555e661bb6de381cb684b86f73595e6584f2bfda"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_desk_preview" name="code" path="agent_vision_geometry_desk_preview_code_.kt"]
-import afield.graphics.VisionGeometryPreview
-import afield.graphics.previewVisionGeometry
+import afield.graphics.visionos.VisionGeometryPreview
+import afield.graphics.visionos.previewVisionGeometry
 
 // Exactly what you would paste into a `// {{ visionmetal }}` box — a lantern built from
 // the shape helpers and a hand-written ring of quads on top.
@@ -92,12 +92,12 @@ capture?.mesh()?.let { mesh ->
 <!-- field-box id="agent_vision_geometry_desk_preview_inverted" index="1" -->
 
 ```edn [field-box id="agent_vision_geometry_desk_preview_inverted" role="properties"]
-{"id" "agent_vision_geometry_desk_preview_inverted" "index" 1 "name" "… and the same mesh wound backwards" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "… and the same mesh wound backwards" "_tombstone" false "frame" #afield/rect [60.0 400.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_inverted_code_.kt" "lines" 44 "characters" 1688 "sha256" "fe209273b373c2c0b20007d5e5bf40eb8121d0b9098a9d235e391b167c3fd975"}]}
+{"id" "agent_vision_geometry_desk_preview_inverted" "index" 1 "name" "… and the same mesh wound backwards" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "… and the same mesh wound backwards" "_tombstone" false "frame" #afield/rect [60.0 400.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_inverted_code_.kt" "lines" 44 "characters" 1706 "sha256" "32a689293349f8ed8e966312b376990fe82ab46f588b4785c73747137c140d27"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_desk_preview_inverted" name="code" path="agent_vision_geometry_desk_preview_inverted_code_.kt"]
-import afield.graphics.VisionGeometryPreview
-import afield.graphics.previewVisionGeometry
+import afield.graphics.visionos.VisionGeometryPreview
+import afield.graphics.visionos.previewVisionGeometry
 
 // A ring of quads whose corners are given in the other order. Every normal still points
 // outward; only the winding changed. The head culls back faces, so on the device this is a

@@ -2,8 +2,8 @@
 """Generate the lesson index for the `canonical_graphics` example corpus.
 
 `public/docs/assets/canonical_graphics/` is a snapshot of a real Field document — the
-`afield.four` graphics curriculum, ~30 worked lessons from a first triangle up to a
-GPU DLA system. It is the best corpus of known-good `afield.four` code in the tree, and
+Field 4 graphics curriculum, ~30 worked lessons from a first triangle up to a
+GPU DLA system. It is the best corpus of known-good Field 4 code in the tree, and
 for a long time nothing could find it: every file on disk is named by box uid, and the
 lesson names live only inside a 300 KB `metadata.edn`, so grepping for `RenderToTexture`
 or "texturing" landed on one EDN blob instead of on code.
@@ -228,11 +228,11 @@ def render(boxes: dict[str, Box]) -> str:
     )
     out.append("")
     out.append(
-        "This directory is a snapshot of a real Field document: the `afield.four` graphics "
+        "This directory is a snapshot of a real Field document: the Field 4 graphics "
         "curriculum, worked lesson by lesson against the live renderer. Every file is named by "
         "box uid, so this index exists to make the corpus reachable by name and by API. The "
         "prose walkthrough, with captured native-window images, is "
-        "[afield.four Graphics](../../afield_four_graphics.md)."
+        "[Field 4 Graphics](../../afield_four_graphics.md)."
     )
     out.append("")
     out.append(

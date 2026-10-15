@@ -145,7 +145,7 @@ and `/branches` marking the current position. Two bugs that run found are fixed 
 
 ## A test: a painting world (2026-10-03)
 
-A Studio box over the paint simulator (`afield.paint`): an `agentExtension` with eleven box-authored
+A Studio box over the paint simulator (`afield.graphics.paint`): an `agentExtension` with eleven box-authored
 `paint.*` tools (stroke, dab, work, glaze, draw, hatch, stipple, wait, fresh, hang, and a DEFERRED
 crack), a `canvas` context fragment (size, coordinates, wetness), a stable `craft` fragment (how to
 paint, the tube names), `/canvas`, `/palette` and `/gallery`, and the canvas itself as a

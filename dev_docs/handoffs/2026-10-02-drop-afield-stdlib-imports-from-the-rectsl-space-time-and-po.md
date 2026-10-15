@@ -11,7 +11,7 @@ Rule 7 of `dev_docs/agents/DOCS_WRITING_RULES.md`: box code carries no `afield.s
   "What happens where the volume meets the window"): `import afield.stdlib.*` inside the
   `:::static` fold.
 - `public/docs/chain_ceres_manifold_contours.md`, the profile and kkC fences: explicit
-  `import afield.stdlib.polytope.*` lines (`conway`, `canonicalize`, `triangulate`,
+  `import afield.geometry.polytope.*` lines (`conway`, `canonicalize`, `triangulate`,
   `relaxWithCeres`, ...). If the polytope package is not in the box preamble, decide whether it
   should be; otherwise fold the imports.
 

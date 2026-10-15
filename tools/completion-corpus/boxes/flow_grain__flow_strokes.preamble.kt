@@ -1,10 +1,13 @@
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 import java.nio.*
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*start*/
 /*graphics-structure-type:Field:Field*/
@@ -15,7 +18,7 @@ class Field(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var v by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var v by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun FieldByteSize(): Long = 16L
 fun FieldLayoutMembers(): List<Introspected.Member> =
@@ -55,17 +58,17 @@ fun BufferParameters.asHistory(): History =
     buffer.asHistory()
 /*end*/
 /*graphics-pc-structure:particles*/ var Structure.particles by Structure.FromStructure<Any>() // Pairs of position/generation and smoothed velocity.
-/*graphics-pc-binding:particles*/ var Mesh.particles by Mesh.BoundFromStructure<afield.four.buffers.HasBuffer>() // Pairs of position/generation and smoothed velocity.
-/*graphics-pc-binding-group:particles*/ var MeshGroup.particles by MeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>() // Pairs of position/generation and smoothed velocity.
+/*graphics-pc-binding:particles*/ var Mesh.particles by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // Pairs of position/generation and smoothed velocity.
+/*graphics-pc-binding-group:particles*/ var MeshGroup.particles by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // Pairs of position/generation and smoothed velocity.
 /*graphics-pc-structure:history*/ var Structure.history by Structure.FromStructure<Any>() // Camera matrices and target resolution.
-/*graphics-pc-binding:history*/ var Mesh.history by Mesh.BoundFromStructure<afield.four.buffers.HasBuffer>() // Camera matrices and target resolution.
-/*graphics-pc-binding-group:history*/ var MeshGroup.history by MeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>() // Camera matrices and target resolution.
+/*graphics-pc-binding:history*/ var Mesh.history by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // Camera matrices and target resolution.
+/*graphics-pc-binding-group:history*/ var MeshGroup.history by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // Camera matrices and target resolution.
 /*graphics-pc-structure:viewport*/ var Structure.viewport by Structure.FromStructure<Any>() // xy current window dimensions; zw reserved.
-/*graphics-pc-binding:viewport*/ var Mesh.viewport by Mesh.BoundFromStructure<afield.stdlib.linalg.Vector4f>() // xy current window dimensions; zw reserved.
-/*graphics-pc-binding-group:viewport*/ var MeshGroup.viewport by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Vector4f>() // xy current window dimensions; zw reserved.
+/*graphics-pc-binding:viewport*/ var Mesh.viewport by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // xy current window dimensions; zw reserved.
+/*graphics-pc-binding-group:viewport*/ var MeshGroup.viewport by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // xy current window dimensions; zw reserved.
 /*graphics-pc-structure:look*/ var Structure.look by Structure.FromStructure<Any>() // x seconds of stroke; y half-width pixels; z gain; w reserved.
-/*graphics-pc-binding:look*/ var Mesh.look by Mesh.BoundFromStructure<afield.stdlib.linalg.Vector4f>() // x seconds of stroke; y half-width pixels; z gain; w reserved.
-/*graphics-pc-binding-group:look*/ var MeshGroup.look by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Vector4f>() // x seconds of stroke; y half-width pixels; z gain; w reserved.
+/*graphics-pc-binding:look*/ var Mesh.look by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // x seconds of stroke; y half-width pixels; z gain; w reserved.
+/*graphics-pc-binding-group:look*/ var MeshGroup.look by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // x seconds of stroke; y half-width pixels; z gain; w reserved.
 var Box.window by Inheritance<Window>() /*from:flow_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:flow_renderer*/ /**/
 val Why.window by Whying() /*from:flow_renderer*/ /**/

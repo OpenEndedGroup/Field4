@@ -1,4 +1,4 @@
-import afield.four.util.GpuProbe
+import afield.graphics.vulkan.util.GpuProbe
 
 // A fixture, a shader, a dispatch, a wait, a readback, three claims. What matters is
 // what is NOT here: no `defaultBuffer` whose access pattern you have to remember

@@ -80,7 +80,7 @@ Off switch: `-Dafield.dependencyTelemetry=false` or `AFIELD_DEPENDENCY_TELEMETRY
 
 ## The layer
 
-`src/jsMain/kotlin/afield/dependencyLayer.kt`. Palette: **Toggle Dependency Layer** (remembered
+`src/jsMain/kotlin/afield/app/canvas/dependencyLayer.kt`. Palette: **Toggle Dependency Layer** (remembered
 in `localStorage`) and **Clear Dependency Record**. While it is on, the page polls
 `dependency-graph` every 750 ms and redraws inside `rebuildConnectionGroup`, so the layer follows
 pan, zoom and drags. Encoding:

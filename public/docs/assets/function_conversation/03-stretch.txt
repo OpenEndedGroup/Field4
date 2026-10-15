@@ -19,7 +19,7 @@ Planning tool use
 Next tool: `EditFunctionStudy`
 <<progress>>
 Using EditFunctionStudy
-{"description":"Double selected e3 rise to 200 seconds with start pinned at 1425; keep 30-second hold, 100-second fall and Hz endpoints; no changes to other events or background.","expectedRevision":"r4-f7f9ef4f2f47","expectedSourceHash":"f7f9ef4f2f47f0097bb2a400927fdc601a1d8ea9a0fdd0defafa07c47c8a2abf","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val...
+{"description":"Double selected e3 rise to 200 seconds with start pinned at 1425; keep 30-second hold, 100-second fall and Hz endpoints; no changes to other events or background.","expectedRevision":"r4-f7f9ef4f2f47","expectedSourceHash":"f7f9ef4f2f47f0097bb2a400927fdc601a1d8ea9a0fdd0defafa07c47c8a2abf","source":"import afield.math.functions.Functions\nimport afield.math.functions.StudyComposition\nimport afield.math.functions.StudyEvent\nimport afield.math.functions.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val...
 <<progress>>
 EditFunctionStudy finished
 r5-2aa6023ddfca Compiled, checked and activated images=0

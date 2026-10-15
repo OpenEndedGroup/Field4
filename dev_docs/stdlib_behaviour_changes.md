@@ -197,7 +197,7 @@ turn, from two inputs that compare equal, and no `FnExpr` comparison can tell th
 | `RectSLFnLowering` for `TrackOp2.DIV` / `TrackOp3.SMOOTHSTEP` | refusal -> exact lowering for **non-constant** operands too. The near-zero guard is expressed by guarding the *divisor* (`b*live + (1-live)`, so nothing ever divides by a near-zero and no infinity is created to mask), with the sign of the suppressed zero repaired by adding `-0.0`/`+0.0` — `x + (-0.0)` is the true additive identity on doubles and `x + (+0.0)` is not | `Track.toFn` and `Track.fitParameters` succeed on a `/` or a `smoothstep` whose operands vary in time, where they used to throw. Bit-identical to the sampler across 2001 samples including the sample where the guard fires | any RectSL track dividing by, or smoothstepping between, non-constant tracks |
 | `TrackOp2.MOD`'s refusal text | rewritten, because it was **wrong**. It blamed a missing sign primitive; the sign is expressible (`trunc(z) = s*floor(z) - (1-s)*floor(-z)`, exact at every double). The real obstacle is that Kotlin's `%` on doubles is the *exact* remainder while `a - b*trunc(a/b)` is not once the quotient outgrows 53 bits — measured: `1e17 % 3` is `1.0` and the reconstruction says `0.0` | nobody at runtime; `MOD` refused before and refuses now. It is a planning fact, and the reason it is recorded is that acting on the old text would have shipped a silent wrong answer | reading the backlog |
 | `RectSL` `Track.fitParameters` | a named free parameter occupying several θ slots is now moved as one variable (gradients summed, step applied to all slots) | a fit whose parameter appeared more than once in the *lowered graph* used to move only the last occurrence, so `TrackFitResult.fitted` and `.fittedFn` could disagree. Reachable before today only through a track like `x + x` over one `FreeParamTrack`; a heading makes it the common case (36 slots) | any fit where `freeParameterSlots(fn)` reports a list longer than 1 |
-| `afield.stdlib.hypot(AD, AD)` | the value is `Math.hypot`, not `sqrt(x*x + y*y)`, which is what its own KDoc had always claimed | overflowed for components above ~1.3e154 and underflowed below ~1.5e-162; up to one ulp elsewhere. Anything reading a tracked length moves by at most an ulp | `hypot` on extreme components |
+| `afield.math.autodiff.hypot(AD, AD)` | the value is `Math.hypot`, not `sqrt(x*x + y*y)`, which is what its own KDoc had always claimed | overflowed for components above ~1.3e154 and underflowed below ~1.5e-162; up to one ulp elsewhere. Anything reading a tracked length moves by at most an ulp | `hypot` on extreme components |
 | `fnrewrite.js` `opWords` | gains `atan`, `arctan`, `atan2`, `arctan2`, `hypot`, `length` | the editor highlights and completes them after `op=` | typing `op="atan2"` in a rewrite rule |
 | `RectSLFitFigure.Band` | gains an optional `rotation: ((Double) -> Double)?`, drawing the strobed rect rotated with a nose pip | additive; a band without it draws exactly as before | passing `rotation =` |
 
@@ -346,7 +346,7 @@ Worth measuring rather than asserting, because `RectSL.kt` has six
 `renderer: Renderer = fromContext()` entry points that `docs.rectsl.fit`, `docs.rectsl.gallery` and
 `docs.stacksl.gallery` share — and all three of those pass.
 
-This is a **third** pre-existing red, distinct from the two known `jvmTest` ones in `afield.rectsl`
+This is a **third** pre-existing red, distinct from the two known `jvmTest` ones in `afield.lang.rectsl`
 (`RectSLGlslSdfTest > gallery emission reports no fidelity caveats` and
 `RectSLTrackCharacterizationTest > gallery programs sample identically`).
 
@@ -449,7 +449,7 @@ never demonstrates the default at all.
 
 `fromContext`, `fromContextWithNameOrNull`, `Inheritance` (`prop`, `rootProp`, FieldML's `prop`),
 `InheritanceFromContext` (what `@exported` reads through) and the Monaco hover each walked the graph
-themselves. They now share `afield.ContextResolution` (`src/jvmMain/kotlin/afield/ContextResolution.kt`).
+themselves. They now share `afield.document.context.ContextResolution` (`src/jvmMain/kotlin/afield/document/context/ContextResolution.kt`).
 The port itself was behaviour-preserving and was fenced first (`ContextResolutionCharacterizationTest`,
 `examples.context.resolution-ledger`, both dated 2026-09-28); the rows below are the deliberate
 changes made after it, each of which flipped a named fence.
@@ -497,7 +497,7 @@ declarations, all passing.
 Before this branch nothing took most of a box's registrations back out: a slider callback, a Runloop
 hook or a module added to a render target stayed until the process ended, whatever the box did.
 Phase 4 of the architecture review made every such registration owned by the run that made it
-(`RunScope`, `src/jvmMain/kotlin/afield/RunScope.kt`) and, as first landed, released all of it on
+(`RunScope`, `src/jvmMain/kotlin/afield/runtime/lifecycle/RunScope.kt`) and, as first landed, released all of it on
 stop and on the strand's next run. That was corrected the same day (step 4b) to a per-kind release
 policy, `ReleasePolicy`, because launching things that go on after a stop is an everyday idiom and
 most registration is a `Map<String, …>` whose key is chosen so a re-run replaces:

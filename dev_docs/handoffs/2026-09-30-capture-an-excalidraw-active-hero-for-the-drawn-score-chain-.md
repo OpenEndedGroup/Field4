@@ -21,7 +21,7 @@ and the reader sees that the score is an Excalidraw scene they can draw into.
 The page's only figure of the drawing is `assets/chain_drawn_score/score.png` (the fence at line 19). It is a
 `capture="window"` still with `open-outputs="false"` and `clip="0,0,1080,470"`. In that capture the drawing
 layer is **inactive**: marks are drawn, but Excalidraw is in view mode and its toolbar is hidden
-(`src/jsMain/kotlin/afield/drawingLayer.kt`, the class KDoc, "Modal input"). No runner option turns the layer on.
+(`src/jsMain/kotlin/afield/app/canvas/drawingLayer.kt`, the class KDoc, "Modal input"). No runner option turns the layer on.
 
 The only capture mode that can script the page is `capture="ui"` (a `drive` transcript op). It has two gaps
 for this figure:
@@ -29,7 +29,7 @@ for this figure:
 1. **`clip=` is not applied to `ui` captures.** `clip_screenshot` (`public/docs_hooks.py`, `def clip_screenshot`)
    is called only on the ordinary screenshot path (`public/docs_hooks.py`, the single call site after the
    backdoor run). `ensure_ui_drive` never calls it. The drive op's window still is the full 2200x2800 CSS px
-   viewport (`captureWindowScreenshot` in the `drive` branch of `src/jvmMain/kotlin/afield/operation_transcript.kt`).
+   viewport (`captureWindowScreenshot` in the `drive` branch of `src/jvmMain/kotlin/afield/tools/automation/operation_transcript.kt`).
    The only crop a ui still has is `clip-selector` / `ui.shotClip(out, selector)`, which needs an element.
    The score frame and the Excalidraw toolbar (top centre of the window, about x=1100) do not share one.
 2. **A drive fragment cannot draw the score** (conjecture, 2026-10-01: read from the comment, not measured). It runs on the runloop thread with `thisSessionInfo` unset

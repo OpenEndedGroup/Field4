@@ -11,12 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["open_dlss_nr"] "properties" {"children" #{#afield/box "open_dlss_nr"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 13 "characters" 356 "sha256" "693074b37b3055eaf682e7fb0446bcf4c1d46392ca52403f9d6ad09e17ec467c"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["open_dlss_nr"] "properties" {"children" #{#afield/box "open_dlss_nr"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 13 "characters" 380 "sha256" "b83c0cf580aa02afd9d675494d343094344fc75f3d32f4099f6e58a7db3e0adf"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
-import afield.four.util.Options
-import afield.Rect
+import afield.graphics.vulkan.util.Options
+import afield.app.protocol.Rect
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableVR=false
@@ -35,13 +35,13 @@ start(renderer::run)
 <!-- field-box id="open_dlss_nr" index="1" -->
 
 ```edn [field-box id="open_dlss_nr" role="properties"]
-{"id" "open_dlss_nr" "index" 1 "name" "neural ink" "parents" ["root" "agent_graphics_context"] "children" ["nr_record"] "properties" {"children" #{#afield/box "nr_record"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural ink" "_tombstone" false "frame" #afield/rect [400.0 40.0 350.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "open_dlss_nr_code_.kt" "lines" 55 "characters" 2313 "sha256" "12ecac0eca302562f88c71b317946e6718325cc1cc709792a9610edb451caa5c"} {"name" "vertex" "language" "glsl" "path" "open_dlss_nr_vertex_.glsl" "lines" 7 "characters" 195 "sha256" "0ca9a483205f4c8f54843729e3a6d077be2ab8791b1327f8abdf8932429363af"} {"name" "fragment" "language" "glsl" "path" "open_dlss_nr_fragment_.glsl" "lines" 52 "characters" 2047 "sha256" "60222eb317cdb66daadd30f266a1900c4df9d21fc3ff3694a70af26a073589ce"}]}
+{"id" "open_dlss_nr" "index" 1 "name" "neural ink" "parents" ["root" "agent_graphics_context"] "children" ["nr_record"] "properties" {"children" #{#afield/box "nr_record"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural ink" "_tombstone" false "frame" #afield/rect [400.0 40.0 350.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "open_dlss_nr_code_.kt" "lines" 55 "characters" 2335 "sha256" "a6e968d243cf4cb7c7a5d1eed00c2a87a974883436d42897418193cb55c4405f"} {"name" "vertex" "language" "glsl" "path" "open_dlss_nr_vertex_.glsl" "lines" 7 "characters" 195 "sha256" "0ca9a483205f4c8f54843729e3a6d077be2ab8791b1327f8abdf8932429363af"} {"name" "fragment" "language" "glsl" "path" "open_dlss_nr_fragment_.glsl" "lines" 52 "characters" 2047 "sha256" "60222eb317cdb66daadd30f266a1900c4df9d21fc3ff3694a70af26a073589ce"}]}
 ```
 
 ```kotlin [field-property box="open_dlss_nr" name="code" path="open_dlss_nr_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.neuralrendering.*
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.render.neural.*
 
 val owner = renderer
 prop<OpenDlssNrStudy>(lab)
@@ -166,11 +166,11 @@ void main() {
 <!-- field-box id="nr_record" index="2" -->
 
 ```edn [field-box id="nr_record" role="properties"]
-{"id" "nr_record" "index" 2 "name" "record clip" "parents" ["root" "open_dlss_nr"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "open_dlss_nr"} "name" "record clip" "_tombstone" false "frame" #afield/rect [820.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "nr_record_code_.kt" "lines" 30 "characters" 1149 "sha256" "f4193449d311e29f09adea0e4ef5eb801a737e2dc914194a795b07dc0011214b"}]}
+{"id" "nr_record" "index" 2 "name" "record clip" "parents" ["root" "open_dlss_nr"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "open_dlss_nr"} "name" "record clip" "_tombstone" false "frame" #afield/rect [820.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "nr_record_code_.kt" "lines" 30 "characters" 1151 "sha256" "af4c1279d733a72ab24135e5b9681498bcd9ec50933fd53962c6271e9b9ad4c4"}]}
 ```
 
 ```kotlin [field-property box="nr_record" name="code" path="nr_record_code_.kt"]
-import afield.four.neuralrendering.OpenDlssNrStudy
+import afield.graphics.render.neural.OpenDlssNrStudy
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 

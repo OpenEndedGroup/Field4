@@ -1,12 +1,12 @@
 package afield.examples.ceres
 
-import afield.stdlib.LeastSquaresOptions
-import afield.stdlib.polytope.CeresRelaxationOptions
-import afield.stdlib.polytope.PlaneFormulation
-import afield.stdlib.polytope.RelaxationPlan
-import afield.stdlib.polytope.conway
-import afield.stdlib.polytope.relax
-import afield.stdlib.polytope.relaxWithCeres
+import afield.math.optimization.LeastSquaresOptions
+import afield.geometry.polytope.CeresRelaxationOptions
+import afield.geometry.polytope.PlaneFormulation
+import afield.geometry.polytope.RelaxationPlan
+import afield.geometry.polytope.conway
+import afield.geometry.polytope.relax
+import afield.geometry.polytope.relaxWithCeres
 
 /**
  * How the plane parameterisation and the rotation gauge affect the canonical realization.

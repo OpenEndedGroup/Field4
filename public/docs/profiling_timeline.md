@@ -467,7 +467,7 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/frame_budget/cpuspan-window.png" capture="box" w="900" h="300" wait="2.0" timeout="180" embed=true name="frame-budget-cpuspan-window" alt="A Field box output panel labelled main, holding a five-column table titled 'one deliberate hitch, seen through a 500-sample window', headed when, n, p50 ms, p99 ms and max ms. Two rows. 'Just after the hitch (600 spans in)' reports n of 500 rather than 600, a p50 and a p99 both around a third of a millisecond, and a max of about fifty milliseconds highlighted as a warning. '500 spans later' reports n of 500 again, the same third-of-a-millisecond p50 and p99, and a max that has fallen back under one millisecond, shown as ok. A footnote states how little p99 moved against how far max fell, and that max is back among the short spans."}
 :::static
-import afield.four.CPUSpan
+import afield.graphics.vulkan.CPUSpan
 
 // Drive the real CPUSpan.time 600 times under a label of my own: 599 short spans and one
 // deliberate long one. Nothing here simulates the window — WINDOW and the percentile

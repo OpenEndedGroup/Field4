@@ -1,10 +1,10 @@
 package afield.examples
 
-import afield.OperationTranscript
-import afield.Box
-import afield.SavingContext
-import afield.SessionInformation
-import afield.thisSessionInfo
+import afield.tools.automation.OperationTranscript
+import afield.document.graph.Box
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.app.server.thisSessionInfo
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
@@ -24,7 +24,7 @@ expect:
 */
 /**
  * Regression test for cross-box context inheritance via `fromContextWithNameOrNull`
- * (afield.four.modules, defined in Mesh.kt).
+ * (afield.document.context).
  *
  * Why this exists: on 2026-07-19 (commit 7cf85f08) the property-inheritance path of
  * `fromContextWithNameOrNull` was found to return the `Map.Entry` instead of `.value`, so a
@@ -211,15 +211,15 @@ ${SIBLING_CODE.trimEnd().prependIndent("          ")}
     }
 
     private fun startRunloopDaemon() {
-        val t = Thread({ afield.Runloop.runLoop.start() }, "cross-box-context-harness-runloop")
+        val t = Thread({ afield.runtime.lifecycle.Runloop.runLoop.start() }, "cross-box-context-harness-runloop")
         t.isDaemon = true
         t.start()
         val deadline = System.currentTimeMillis() + 30_000
-        while (afield.Runloop.runLoop.frame < 1L) {
+        while (afield.runtime.lifecycle.Runloop.runLoop.frame < 1L) {
             check(System.currentTimeMillis() < deadline) { "runloop did not start within 30s" }
             Thread.sleep(20)
         }
-        println("CrossBoxContextInheritanceSmokeTest: runloop up (frame=${afield.Runloop.runLoop.frame})")
+        println("CrossBoxContextInheritanceSmokeTest: runloop up (frame=${afield.runtime.lifecycle.Runloop.runLoop.frame})")
     }
 
     private fun stripHtml(html: String): String =

@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="ps_renderer" index="0" -->
 
 ```edn [field-box id="ps_renderer" role="properties"]
-{"id" "ps_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["ps_net"] "properties" {"children" #{#afield/box "ps_net"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_renderer_code_.kt" "lines" 11 "characters" 253 "sha256" "b69f2b250f836cae892866ac6eb3a5018f6076535a32a3f08010c0ff17071e3f"}]}
+{"id" "ps_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["ps_net"] "properties" {"children" #{#afield/box "ps_net"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_renderer_code_.kt" "lines" 11 "characters" 264 "sha256" "b0c63770e4066eec5885410311c83d52aca493288db355130dfd5dea69e6e805"}]}
 ```
 
 ```kotlin [field-property box="ps_renderer" name="code" path="ps_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -33,13 +33,13 @@ start(renderer::run)
 <!-- field-box id="ps_net" index="1" -->
 
 ```edn [field-box id="ps_net" role="properties"]
-{"id" "ps_net" "index" 1 "name" "the net" "parents" ["root" "ps_renderer"] "children" ["ps_sparks"] "properties" {"children" #{#afield/box "ps_sparks"} "parents" #{#afield/box "root" #afield/box "ps_renderer"} "name" "the net" "_tombstone" false "frame" #afield/rect [260.0 40.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_net_code_.kt" "lines" 41 "characters" 1090 "sha256" "64cd8ea0db644df208825d1465cdae1570b029479d0e23419d365d4a7b8022ea"}]}
+{"id" "ps_net" "index" 1 "name" "the net" "parents" ["root" "ps_renderer"] "children" ["ps_sparks"] "properties" {"children" #{#afield/box "ps_sparks"} "parents" #{#afield/box "root" #afield/box "ps_renderer"} "name" "the net" "_tombstone" false "frame" #afield/rect [260.0 40.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_net_code_.kt" "lines" 41 "characters" 1123 "sha256" "045e4225f3efa5e8084a29937fbf2b906750a35959f35531ac3d8366aee6cbf3"}]}
 ```
 
 ```kotlin [field-property box="ps_net" name="code" path="ps_net_code_.kt"]
-import afield.petri.PetriNet
-import afield.petri.PetriRun
-import afield.petri.petri
+import afield.simulation.petri.PetriNet
+import afield.simulation.petri.PetriRun
+import afield.simulation.petri.petri
 
 // Inherited by the box below, which is all it takes for the particles to hear the net.
 prop<PetriNet>(sparkNet)
@@ -85,7 +85,7 @@ println("net ready: ${sparkNet.places.size} places, ${sparkNet.transitions.size}
 <!-- field-box id="ps_sparks" index="2" -->
 
 ```edn [field-box id="ps_sparks" role="properties"]
-{"id" "ps_sparks" "index" 2 "name" "firings into sparks" "parents" ["root" "ps_net"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ps_net"} "name" "firings into sparks" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "ps_sparks_vertex_.glsl" "lines" 107 "characters" 3767 "sha256" "6d70ab79446a0d88f31021762f85dc1641471719bd910965f9a7718593317993"} {"name" "fragment" "language" "glsl" "path" "ps_sparks_fragment_.glsl" "lines" 12 "characters" 343 "sha256" "32533ff454fe2a8e91c1c79fafaf0425966187df654994df6c08e0618b7299ca"} {"name" "code" "language" "kotlin" "path" "ps_sparks_code_.kt" "lines" 94 "characters" 3499 "sha256" "b8c010055bbe40b3e16d5809afd347ce9be13d5b153650d74a25e9c4467ef42b"}]}
+{"id" "ps_sparks" "index" 2 "name" "firings into sparks" "parents" ["root" "ps_net"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ps_net"} "name" "firings into sparks" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "ps_sparks_vertex_.glsl" "lines" 107 "characters" 3767 "sha256" "6d70ab79446a0d88f31021762f85dc1641471719bd910965f9a7718593317993"} {"name" "fragment" "language" "glsl" "path" "ps_sparks_fragment_.glsl" "lines" 12 "characters" 343 "sha256" "32533ff454fe2a8e91c1c79fafaf0425966187df654994df6c08e0618b7299ca"} {"name" "code" "language" "kotlin" "path" "ps_sparks_code_.kt" "lines" 94 "characters" 3501 "sha256" "7a6a8459b19276355492914b0016d4e86d56da18e56c4e9a4e48576cb8814c4c"}]}
 ```
 
 ```glsl [field-property box="ps_sparks" name="vertex" path="ps_sparks_vertex_.glsl"]
@@ -214,8 +214,8 @@ void main() {
 ```
 
 ```kotlin [field-property box="ps_sparks" name="code" path="ps_sparks_code_.kt"]
-import afield.four.synth.PatArc
-import afield.four.synth.PatQ
+import afield.audio.synth.PatArc
+import afield.audio.synth.PatQ
 import org.lwjgl.vulkan.VK10.*
 
 val cps = 0.5     // cycles a second; the net's grid is an eighth of a cycle

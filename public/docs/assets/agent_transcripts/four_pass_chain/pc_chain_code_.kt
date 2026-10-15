@@ -1,7 +1,7 @@
-import afield.four.fabricated.FabricateBuiltChain
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.addPassChain
+import afield.graphics.scene.fabricated.FabricateBuiltChain
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.addPassChain
 
 prop<FabricateBuiltChain>(chain)
 

@@ -1,15 +1,15 @@
 package afield.runtime
 
-import afield.Box
-import afield.KotlinExecution
-import afield.SessionInformation
-import afield.forth.ForthExecution
-import afield.forth.installForth
-import afield.forth.isForthRoot
-import afield.remotejs.code_language
-import afield.stdlib.Delegation
-import afield.stdlib.actions
-import afield.thisSessionInfo
+import afield.document.graph.Box
+import afield.runtime.execution.KotlinExecution
+import afield.app.server.SessionInformation
+import afield.lang.forth.ForthExecution
+import afield.lang.forth.installForth
+import afield.lang.forth.isForthRoot
+import afield.lang.remotejs.code_language
+import afield.document.properties.Delegation
+import afield.app.commands.actions
+import afield.app.server.thisSessionInfo
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

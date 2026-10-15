@@ -12,7 +12,7 @@ here reads the checked-in recording and calls the live server-side classifier in
 
 Box 3 needs the spec the test drops. If it says so, run once:
 
-    ./gradlew jvmTest --tests 'afield.FieldSuggestPresentationTest'
+    ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'
 
 The written-up version, with the full sweep and the falsification behind it, is
 `dev_docs/completion_rank_at_scale.md`.

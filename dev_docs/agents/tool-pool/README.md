@@ -57,4 +57,4 @@ isolated pool under its output directory, leaving the user's curated library alo
 `--port N --attach-existing` uses an explicitly chosen server without stopping it.
 The report is `build/tool-pool-verification/evidence.json`.
 
-The focused JVM suite is `./gradlew jvmTest --tests afield.ai.ToolPoolTest`.
+The focused JVM suite is `./gradlew jvmTest --tests afield.ai.tools.ToolPoolTest`.

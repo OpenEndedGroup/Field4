@@ -1,4 +1,4 @@
-import afield.python.NumpyShared
+import afield.lang.python.NumpyShared
 
 // the webcam frame box 1 publishes, filling the window
 prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()

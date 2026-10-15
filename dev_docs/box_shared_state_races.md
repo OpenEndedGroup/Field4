@@ -82,9 +82,9 @@ Run the focused JVM tests while editing these containers, then run the normal re
 runtime smoke surface:
 
 ```sh
-./gradlew jvmTest --tests 'afield.BoxPropertyBagConcurrencyTest' \
-  --tests 'afield.PropertyBagViewTest' \
-  --tests 'afield.BoxTopologyConcurrencyTest'
+./gradlew jvmTest --tests 'afield.document.properties.BoxPropertyBagConcurrencyTest' \
+  --tests 'afield.document.properties.PropertyBagViewTest' \
+  --tests 'afield.document.graph.BoxTopologyConcurrencyTest'
 ./gradlew check
 uv run --project . --group backdoor python tools/run_field_tests.py --all
 ```

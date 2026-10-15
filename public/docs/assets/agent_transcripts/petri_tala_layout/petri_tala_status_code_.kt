@@ -1,5 +1,5 @@
-import afield.petri.*
-import afield.layout.D2Layout
+import afield.simulation.petri.*
+import afield.ui.layout.D2Layout
 
 fun philosophers(count: Int = 5): PetriNet = petri {
     for (index in 0 until count) place("fork.$index", tokens = 1)

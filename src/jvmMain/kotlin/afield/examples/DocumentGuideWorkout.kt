@@ -3,14 +3,14 @@ package afield.examples
 /** Trusted browser input checks, marshalled onto the same dispatcher as Field's captures. */
 object DocumentGuideWorkout {
     fun prepare() {
-        kotlinx.coroutines.runBlocking(afield.playwrightDispatcher) {
-            checkNotNull(afield.globalPlaywriteContext).setViewportSize(1440, 960)
+        kotlinx.coroutines.runBlocking(afield.app.server.playwrightDispatcher) {
+            checkNotNull(afield.app.server.globalPlaywriteContext).setViewportSize(1440, 960)
         }
     }
 
     fun checkGestures() {
-        kotlinx.coroutines.runBlocking(afield.playwrightDispatcher) {
-            val page = checkNotNull(afield.globalPlaywriteContext)
+        kotlinx.coroutines.runBlocking(afield.app.server.playwrightDispatcher) {
+            val page = checkNotNull(afield.app.server.globalPlaywriteContext)
             for (corner in listOf("nw", "ne", "sw", "se")) {
                 page.evaluate("""() => Object.assign(document.getElementById('document-guide').style,
                     {left:'60px',top:'60px',width:'680px',height:'780px'})""")

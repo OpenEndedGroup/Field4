@@ -1,14 +1,17 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.buffers.bindPushConstant
-import afield.four.modules.*
-import afield.four.targets.RenderToTexture
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.graphics.FLine
-import afield.graphics.slug.*
-import afield.stdlib.linalg.*
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.buffers.bindPushConstant
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import afield.graphics.vulkan.targets.RenderToTexture
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.geometry.path.FLine
+import afield.graphics.text.slug.*
+import afield.math.linalg.*
 import org.lwjgl.vulkan.VK10.*
 import java.io.File
 import java.nio.ByteBuffer

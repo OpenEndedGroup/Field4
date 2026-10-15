@@ -1,0 +1,131 @@
+{
+  "schema": 1,
+  "id": "preview-packages-v1-trial",
+  "fromApi": "main-e58a27430",
+  "toApi": "preview-packages-v1-candidate",
+  "description": "First isolated trial of dev_docs/PACKAGE_REFACTOR_PROPOSAL.md from main. Whole-package moves are concrete candidates; exact symbol moves and splitPackages expose unresolved declaration moves. No claim of compiler binding equivalence or complete taxonomy coverage.",
+  "packages": {
+    "afield.stdlib.linalg": "afield.math.linalg",
+    "afield.four.synth": "afield.audio.synth",
+    "afield.four.physics": "afield.simulation.physics",
+    "afield.stdlib.polytope": "afield.geometry.polytope",
+    "afield.four.vision": "afield.media.vision",
+    "afield.ml": "afield.lang.fieldml",
+    "afield.stacksl": "afield.lang.stacksl",
+    "afield.rectsl": "afield.lang.rectsl",
+    "afield.solidsl": "afield.lang.solidsl",
+    "afield.python": "afield.lang.python",
+    "afield.clojure": "afield.lang.clojure",
+    "afield.remotejs": "afield.lang.remotejs",
+    "afield.graphquery": "afield.data.query.graph",
+    "afield.datalog": "afield.data.query.datalog",
+    "afield.oscquery": "afield.io.osc.query",
+    "afield.rtpmidi": "afield.io.midi.rtp",
+    "afield.stdlib.loris": "afield.audio.analysis.loris",
+    "afield.stdlib.noir.audioai": "afield.audio.ai",
+    "afield.brief": "afield.lang.brief",
+    "afield.forth": "afield.lang.forth",
+    "afield.lua": "afield.lang.lua",
+    "afield.morpho": "afield.lang.morpho",
+    "afield.nano": "afield.lang.nano",
+    "afield.csound": "afield.audio.csound",
+    "afield.pd": "afield.audio.pd",
+    "afield.four.audio.steamaudio": "afield.audio.spatial.steamaudio",
+    "afield.dmx": "afield.io.dmx",
+    "afield.mqtt": "afield.io.mqtt",
+    "afield.syphon": "afield.io.syphon",
+    "afield.timecode": "afield.io.timecode",
+    "afield.kratos": "afield.simulation.kratos",
+    "afield.petri": "afield.simulation.petri",
+    "afield.manifold": "afield.geometry.solid.manifold",
+    "afield.tetgen": "afield.geometry.mesh.tetgen",
+    "afield.stdlib.ceres": "afield.math.optimization.ceres",
+    "afield.paint": "afield.graphics.paint",
+    "afield.onnx": "afield.ai.inference.onnx",
+    "afield.ai.core.completion": "afield.ai.completion",
+    "afield.debug": "afield.app.diagnostics.debug",
+    "afield.logger": "afield.app.diagnostics.logging",
+    "afield.macros": "afield.runtime.macros",
+    "afield.four.device": "afield.graphics.vulkan.device",
+    "afield.four.buffers": "afield.graphics.vulkan.buffers",
+    "afield.four.targets": "afield.graphics.vulkan.targets",
+    "afield.four.util": "afield.graphics.vulkan.util",
+    "afield.four.imgui": "afield.graphics.vulkan.imgui",
+    "afield.four.texture": "afield.graphics.texture",
+    "afield.four.fabricated": "afield.graphics.scene.fabricated",
+    "afield.four.lighting": "afield.graphics.render.lighting",
+    "afield.four.neuralrendering": "afield.graphics.render.neural",
+    "afield.four.neural": "afield.graphics.shader.learning",
+    "afield.four.diffusion": "afield.media.video.diffusion",
+    "afield.four.browser": "afield.media.browser",
+    "afield.four.stream": "afield.media.stream",
+    "afield.four.reconstruction": "afield.media.reconstruction",
+    "afield.four.flow": "afield.simulation.flow",
+    "afield.four.audio": "afield.audio.engine",
+    "afield.four.examples": "afield.examples.four",
+    "afield.server": "afield.app.server",
+    "afield.docs": "afield.tools.docs",
+    "afield.chatlog": "afield.ai.conversation.chatlog",
+    "afield.ai.core.program": "afield.ai.tools.program",
+    "afield.ai.core.tooluse": "afield.ai.tools.tooluse",
+    "afield.stdlib.planning": "afield.geometry.path.planning",
+    "afield.graphics.slug": "afield.graphics.text.slug",
+    "afield.layout": "afield.ui.layout",
+    "afield.util": "afield.media.image.util"
+  },
+  "symbols": {
+    "afield.Box": "afield.document.graph.Box",
+    "afield.graphics.FLine": "afield.geometry.path.FLine",
+    "afield.stdlib.Vec3": "afield.math.linalg.Vec3",
+    "afield.stdlib.vec": "afield.math.linalg.vec",
+    "afield.four.modules.fromContext": "afield.document.context.fromContext"
+  },
+  "splitPackages": [
+    "afield",
+    "afield.stdlib",
+    "afield.graphics",
+    "afield.four",
+    "afield.four.modules",
+    "afield.ai.core"
+  ],
+  "qualifiedNameProperties": {
+    "tools/linalg-generator/src/main/resources/linalg-packages.properties": [
+      "linalg.package",
+      "extensions.package",
+      "halfCodec.package",
+      "completionAnnotation.type"
+    ]
+  },
+  "generated": [
+    {
+      "glob": "src/generatedLinalg/kotlin/*",
+      "regenerate": "./gradlew generateLinalg"
+    },
+    {
+      "glob": "public/docs/linear_algebra_api.md",
+      "regenerate": "./gradlew generateLinalg"
+    },
+    {
+      "glob": "public/docs/assets/agent_transcripts/*",
+      "regenerate": "./gradlew regenerateAgentTranscriptStartingPoints"
+    },
+    {
+      "glob": "public/docs/reference/*",
+      "regenerate": "./gradlew generateCodebaseReference"
+    },
+    {
+      "glob": "tools/completion-corpus/*",
+      "regenerate": "AFIELD_HARVEST_WRITE=1 ./gradlew checkCompletionCorpusFixtures"
+    }
+  ],
+  "rewriteComments": true,
+  "markdownProse": [
+    "public/docs/*.md",
+    "dev_docs/*.md",
+    "native/*.md",
+    "AGENTS.md"
+  ],
+  "workspaceMarkdownProse": [
+    "*.md"
+  ]
+}

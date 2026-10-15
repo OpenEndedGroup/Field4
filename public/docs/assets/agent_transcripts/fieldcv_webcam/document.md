@@ -37,11 +37,11 @@ print(f"{r['width']}x{r['height']} frames, "
 <!-- field-box id="cv_renderer" index="2" -->
 
 ```edn [field-box id="cv_renderer" role="properties"]
-{"id" "cv_renderer" "index" 2 "name" "0 · window" "parents" ["root"] "children" ["cv_camera" "cv_inset" "cv_overlay"] "properties" {"children" #{#afield/box "cv_camera" #afield/box "cv_inset" #afield/box "cv_overlay"} "parents" #{#afield/box "root"} "name" "0 · window" "_tombstone" false "frame" #afield/rect [40.0 40.0 260.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cv_renderer_code_.kt" "lines" 14 "characters" 269 "sha256" "95c45c51a6c7666fecb83660024bae1101ba2a71a7e9f6513b9656570a5a6af0"}]}
+{"id" "cv_renderer" "index" 2 "name" "0 · window" "parents" ["root"] "children" ["cv_camera" "cv_inset" "cv_overlay"] "properties" {"children" #{#afield/box "cv_camera" #afield/box "cv_inset" #afield/box "cv_overlay"} "parents" #{#afield/box "root"} "name" "0 · window" "_tombstone" false "frame" #afield/rect [40.0 40.0 260.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cv_renderer_code_.kt" "lines" 14 "characters" 280 "sha256" "a8748e49030fe553568abb5631049eeed12984c1aa5fc552bf3fb32f949bf99c"}]}
 ```
 
 ```kotlin [field-property box="cv_renderer" name="code" path="cv_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 // 0 · the native window everything below draws into. Run this first.
 prop<Window>(window)
@@ -62,7 +62,7 @@ start(renderer::run)
 <!-- field-box id="cv_overlay" index="3" -->
 
 ```edn [field-box id="cv_overlay" role="properties"]
-{"id" "cv_overlay" "index" 3 "name" "lines (Kotlin)" "parents" ["root" "cv_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cv_renderer"} "name" "lines (Kotlin)" "_tombstone" false "frame" #afield/rect [460.0 360.0 260.0 60.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "cv_overlay_vertex_.glsl" "lines" 5 "characters" 173 "sha256" "80fa3b414c968e2b80a9ea7c059047812096607a7fbfbcdc5e1b66beb479e851"} {"name" "fragment" "language" "glsl" "path" "cv_overlay_fragment_.glsl" "lines" 4 "characters" 125 "sha256" "de401ae26147903e7089ad1203f372e4d717f269ac30588aa855a98ef3b4cc83"} {"name" "code" "language" "kotlin" "path" "cv_overlay_code_.kt" "lines" 47 "characters" 1958 "sha256" "e456bbd817d81a906a2b860d656fb16cd1275d5198f491252bfc40783ceabb70"}]}
+{"id" "cv_overlay" "index" 3 "name" "lines (Kotlin)" "parents" ["root" "cv_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cv_renderer"} "name" "lines (Kotlin)" "_tombstone" false "frame" #afield/rect [460.0 360.0 260.0 60.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "cv_overlay_vertex_.glsl" "lines" 5 "characters" 173 "sha256" "80fa3b414c968e2b80a9ea7c059047812096607a7fbfbcdc5e1b66beb479e851"} {"name" "fragment" "language" "glsl" "path" "cv_overlay_fragment_.glsl" "lines" 4 "characters" 125 "sha256" "de401ae26147903e7089ad1203f372e4d717f269ac30588aa855a98ef3b4cc83"} {"name" "code" "language" "kotlin" "path" "cv_overlay_code_.kt" "lines" 47 "characters" 1963 "sha256" "9b8448ec5dba6c8356b8035aa3a969658aee3dde9c0d4a1f3824cc8284946e90"}]}
 ```
 
 ```glsl [field-property box="cv_overlay" name="vertex" path="cv_overlay_vertex_.glsl"]
@@ -81,7 +81,7 @@ void main() { uFragColor = fcol; }
 ```
 
 ```kotlin [field-property box="cv_overlay" name="code" path="cv_overlay_code_.kt"]
-import afield.python.NumpyShared
+import afield.lang.python.NumpyShared
 
 // every polyline channel box 1 publishes, and the colour it is drawn in
 val channels = listOf(
@@ -261,7 +261,7 @@ p.start()
 <!-- field-box id="cv_camera" index="6" -->
 
 ```edn [field-box id="cv_camera" role="properties"]
-{"id" "cv_camera" "index" 6 "name" "camera (Kotlin)" "parents" ["root" "cv_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cv_renderer"} "name" "camera (Kotlin)" "_tombstone" false "frame" #afield/rect [460.0 160.0 260.0 60.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "cv_camera_vertex_.glsl" "lines" 5 "characters" 169 "sha256" "80f69b3a9a1497ca4ac879a99dace896977ede4f5e829aca28e0619eb925662a"} {"name" "fragment" "language" "glsl" "path" "cv_camera_fragment_.glsl" "lines" 5 "characters" 210 "sha256" "4e3cb07b11d80dd5d9a507eb371c4bd872f041cfad03f189fce941c17fe2bf9c"} {"name" "code" "language" "kotlin" "path" "cv_camera_code_.kt" "lines" 16 "characters" 486 "sha256" "92e43d35e9ab95a21e020cffa5aea50cd63cc81cfa87dd9d301a981e080f66ed"}]}
+{"id" "cv_camera" "index" 6 "name" "camera (Kotlin)" "parents" ["root" "cv_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cv_renderer"} "name" "camera (Kotlin)" "_tombstone" false "frame" #afield/rect [460.0 160.0 260.0 60.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "cv_camera_vertex_.glsl" "lines" 5 "characters" 169 "sha256" "80f69b3a9a1497ca4ac879a99dace896977ede4f5e829aca28e0619eb925662a"} {"name" "fragment" "language" "glsl" "path" "cv_camera_fragment_.glsl" "lines" 5 "characters" 210 "sha256" "4e3cb07b11d80dd5d9a507eb371c4bd872f041cfad03f189fce941c17fe2bf9c"} {"name" "code" "language" "kotlin" "path" "cv_camera_code_.kt" "lines" 16 "characters" 491 "sha256" "f0adc1e541a06ec6f671ab464ddce16c1cd124a2b2abe009ed3b4d409424be95"}]}
 ```
 
 ```glsl [field-property box="cv_camera" name="vertex" path="cv_camera_vertex_.glsl"]
@@ -281,7 +281,7 @@ void main() { uFragColor = vec4(texture(camera, ftc).rgb, 1.0); }
 ```
 
 ```kotlin [field-property box="cv_camera" name="code" path="cv_camera_code_.kt"]
-import afield.python.NumpyShared
+import afield.lang.python.NumpyShared
 
 // the webcam frame box 1 publishes, filling the window
 prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()
@@ -304,7 +304,7 @@ m.set(4, 6) {
 <!-- field-box id="cv_inset" index="7" -->
 
 ```edn [field-box id="cv_inset" role="properties"]
-{"id" "cv_inset" "index" 7 "name" "inset (Kotlin)" "parents" ["root" "cv_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cv_renderer"} "name" "inset (Kotlin)" "_tombstone" false "frame" #afield/rect [460.0 260.0 260.0 60.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "cv_inset_vertex_.glsl" "lines" 5 "characters" 169 "sha256" "80f69b3a9a1497ca4ac879a99dace896977ede4f5e829aca28e0619eb925662a"} {"name" "fragment" "language" "glsl" "path" "cv_inset_fragment_.glsl" "lines" 5 "characters" 208 "sha256" "3821ca6bdadb9767bddfad46f91bddb93f46ed5a73988e4be5877d17c41afd8a"} {"name" "code" "language" "kotlin" "path" "cv_inset_code_.kt" "lines" 16 "characters" 499 "sha256" "17e0820737d04b94ce25dfafc1782de58cacf252c9da0cece21cf44fa12a9ead"}]}
+{"id" "cv_inset" "index" 7 "name" "inset (Kotlin)" "parents" ["root" "cv_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cv_renderer"} "name" "inset (Kotlin)" "_tombstone" false "frame" #afield/rect [460.0 260.0 260.0 60.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "cv_inset_vertex_.glsl" "lines" 5 "characters" 169 "sha256" "80f69b3a9a1497ca4ac879a99dace896977ede4f5e829aca28e0619eb925662a"} {"name" "fragment" "language" "glsl" "path" "cv_inset_fragment_.glsl" "lines" 5 "characters" 208 "sha256" "3821ca6bdadb9767bddfad46f91bddb93f46ed5a73988e4be5877d17c41afd8a"} {"name" "code" "language" "kotlin" "path" "cv_inset_code_.kt" "lines" 16 "characters" 504 "sha256" "faeeb1685eddf9acae4cb02594849d825b6e1edb47603d7ae11a03ea4f38e11f"}]}
 ```
 
 ```glsl [field-property box="cv_inset" name="vertex" path="cv_inset_vertex_.glsl"]
@@ -324,7 +324,7 @@ void main() { uFragColor = vec4(texture(inset, ftc).rgb, 1.0); }
 ```
 
 ```kotlin [field-property box="cv_inset" name="code" path="cv_inset_code_.kt"]
-import afield.python.NumpyShared
+import afield.lang.python.NumpyShared
 
 // box 1's `inset_view`, in the top-right corner
 prop<LoadedTexture>(inset) = NumpyShared.image("inset").texture()

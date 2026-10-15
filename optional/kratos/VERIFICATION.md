@@ -2,7 +2,7 @@
 
 ## Parameter studies: 225 solves, one background grid (2026-09-09)
 
-Every demo before this one solved exactly once. `afield.kratos.KratosStudy` runs the solver many
+Every demo before this one solved exactly once. `afield.simulation.kratos.KratosStudy` runs the solver many
 times over a declared design space and compares the answers; this section is the measured sweep.
 
 **The question.** Which arm length and which conductivity put 294.15 K — one kelvin above the skin
@@ -174,7 +174,7 @@ on `the linear element reaches`, a string that cannot exist until both results a
 
 `structural.bodyFitted` is the third formulation and the first that is not embedded, because
 Kratos has no immersed structural element. It solves a tetrahedral mesh Field produces from the
-Manifold surface with `afield.tetgen.Tetgen`, sent over the new `createBodyMesh` verb.
+Manifold surface with `afield.geometry.mesh.tetgen.Tetgen`, sent over the new `createBodyMesh` verb.
 `dev_docs/TETGEN.md` carries the mesher comparison that chose this route; this section records the
 solve.
 

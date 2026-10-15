@@ -12,9 +12,7 @@ operations:
       w: 260.0
       h: 60.0
     properties:
-      code: "import afield.four.util.Options\n\n// 0 \xB7 the native window everything below draws into. Run this first.\n\
-        prop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableHDR = false\n\nonce.renderer {\n    window = Window(\"\
-        fieldcv\")\n    Renderer(window)\n}\n\nstart(renderer::run)\n"
+      code: "import afield.graphics.vulkan.util.Options\n\n// 0 · the native window everything below draws into. Run this first.\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableHDR = false\n\nonce.renderer {\n    window = Window(\"fieldcv\")\n    Renderer(window)\n}\n\nstart(renderer::run)\n"
 - create:
     box: cv_python
     name: python
@@ -119,16 +117,16 @@ operations:
         layout(set = 0, binding = 0) uniform sampler2D camera;
         void main() { uFragColor = vec4(texture(camera, ftc).rgb, 1.0); }
       code: |
-        import afield.python.NumpyShared
-
+        import afield.lang.python.NumpyShared
+        
         // the webcam frame box 1 publishes, filling the window
         prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()
-
+        
         var module = moduleHere { }
         var m = Mesh()
         module += m named "camera"
         renderer += module
-
+        
         // Field's NDC is y-up and an image's v runs down, so the top edge (y = 1) samples v = 0
         m.set(4, 6) {
             pos.add(-1, -1, 0.9,  1, -1, 0.9,  1, 1, 0.9,  -1, 1, 0.9)
@@ -157,16 +155,16 @@ operations:
         layout(set = 0, binding = 0) uniform sampler2D inset;
         void main() { uFragColor = vec4(texture(inset, ftc).rgb, 1.0); }
       code: |
-        import afield.python.NumpyShared
-
+        import afield.lang.python.NumpyShared
+        
         // box 1's `inset_view`, in the top-right corner
         prop<LoadedTexture>(inset) = NumpyShared.image("inset").texture()
-
+        
         var module = moduleHere { }
         var m = Mesh()
         module += m named "inset"
         renderer += module
-
+        
         // Field's NDC is y-up and an image's v runs down, so the top edge (y = 0.98) samples v = 0
         m.set(4, 6) {
             pos.add(0.45, 0.45, 0.5,  0.98, 0.45, 0.5,  0.98, 0.98, 0.5,  0.45, 0.98, 0.5)
@@ -194,8 +192,8 @@ operations:
         layout(location = 0) out vec4 uFragColor;
         void main() { uFragColor = fcol; }
       code: |
-        import afield.python.NumpyShared
-
+        import afield.lang.python.NumpyShared
+        
         // every polyline channel box 1 publishes, and the colour it is drawn in
         val channels = listOf(
             "tracks" to vec(0.2, 1.0, 0.3, 0.8),
@@ -205,15 +203,15 @@ operations:
             "contours" to vec(1.0, 0.55, 0.1, 1.0),
             "strokes" to vec(1.0, 1.0, 1.0, 1.0),
         ).map { (name, colour) -> NumpyShared.lines(name) to colour }
-
+        
         var module = moduleHere { }
         var m = Mesh()
         module += m named "overlay"
         renderer += module
-
+        
         val width = 0.003   // half the line's width, in NDC
         val strokeWidth = 0.008
-
+        
         frames {
             while (frame()) {
                 // one segment per pair of consecutive nodes, in normalized image coordinates

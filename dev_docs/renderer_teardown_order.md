@@ -1,13 +1,13 @@
 # Renderer teardown order
 
-What happens, in what order, when an `afield.four` Renderer owned by a box goes away, and what a
+What happens, in what order, when a Vulkan `Renderer` owned by a box goes away, and what a
 box that draws or writes buffers can rely on. Written 2026-09-26, after a JVM crash on this path
 was reproduced and fixed.
 
 ## When a box's renderer is torn down
 
 In an ordinary Field (not a standalone `main`), a Renderer's device is destroyed in exactly one
-place, `disposeBoxRenderer(box)` in `src/jvmMain/kotlin/afield/agent_backdoor.kt`. It is reached
+place, `disposeBoxRenderer(box)` in `src/jvmMain/kotlin/afield/app/server/agent_backdoor.kt`. It is reached
 from two places:
 
 | Trigger | Path |
@@ -241,7 +241,7 @@ pipeline to build a `Module`.
 
 ## The TexturePreviewCache crash (`hs_err_pid73905`)
 
-`git log -S "cpuOnly = true" -- src/jvmMain/kotlin/afield/four/FourVisualizers.kt` answers it. On
+`git log -S "cpuOnly = true" -- src/jvmMain/kotlin/afield/graphics/render/FourVisualizers.kt` answers it. On
 2026-05-01 `TexturePreviewCache.capture` created its staging buffer with `cpuOnly = true`. A
 CPU-only `VulkanBuffer` is a `memAlloc`ed host block with `buffer = 0`; it has no VkBuffer. The
 capture recorded `vkCmdCopyImageToBuffer(…, staging.buffer, …)` with that 0, and MoltenVK, which
@@ -283,7 +283,7 @@ command today (the only `cpuOnly = …` left is `magic.kt`'s inlined buffers), a
 
 ## Verification
 
-- `src/jvmTest/kotlin/afield/RendererTeardownOrderTest.kt` exercises the order with a fake device
+- `src/jvmTest/kotlin/afield/graphics/vulkan/RendererTeardownOrderTest.kt` exercises the order with a fake device
   and no GPU. Dependents (one writing on the "render thread", one on a worker with 20 ms writes)
   must have completed before dispose, with zero writes after it. A non-descendant keeps running.
   The wait gives up at its bound when a job ignores cancellation, and an idle child costs nothing.
@@ -312,8 +312,8 @@ crashed; with the fix it prints.
 Renderer box (`renderer_box.kt`):
 
 ```kotlin
-import afield.four.util.Options
-import afield.Rect
+import afield.graphics.vulkan.util.Options
+import afield.app.protocol.Rect
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -329,7 +329,7 @@ start(renderer::run)
 Writer box (`writer_box.kt`), connected beneath it:
 
 ```kotlin
-import afield.four.buffers.VulkanBuffer
+import afield.graphics.vulkan.buffers.VulkanBuffer
 import org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
 import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
 
@@ -370,7 +370,7 @@ renderer box is `renderer_box.kt` above. The child's shaders are lesson 1b's, co
 `realloc_stress_box.kt`, connected beneath the renderer box:
 
 ```kotlin
-import afield.four.modules.Module
+import afield.graphics.render.Module
 
 var m = Mesh()
 var module = moduleHere()

@@ -1,6 +1,6 @@
 package afield.examples.forth
 
-import afield.forth.ForthInterpreter
+import afield.lang.forth.ForthInterpreter
 
 /*
 FIELD_TEST

@@ -4,7 +4,7 @@
 Architecture review 3 (2026-09-28) found four near-identical `install*StudyTools` files: every
 study had copied Inspect, Edit, Patch, SetNumbers, Observe, Compare, Sweep, TryVariants, AdoptVariant
 and Restore — request class *and* hand-written handler — from the one before it. Those verbs are now
-wired once, by `registerStudyTools` in `src/jvmMain/kotlin/afield/stdlib/LiveStudy.kt`, against the
+wired once, by `registerStudyTools` in `src/jvmMain/kotlin/afield/study/source/LiveStudy.kt`, against the
 `StudyRequest.*` interfaces. A study still declares its own request classes, because a class's name
 is the tool's name and its fields are the schema a model has been shown; what it must not do is
 declare one that the registrar cannot see, or register one by hand.

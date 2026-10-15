@@ -1,6 +1,6 @@
 # Pressure membranes
 
-`afield.four.physics.pressure` relaxes a supplied closed triangular membrane with
+`afield.simulation.physics.pressure` relaxes a supplied closed triangular membrane with
 elastic reinforcement, tethers, and supports. It is a mesh mechanics library:
 it does not choose an architectural shape, infer tape connectivity, or generate
 sewing patterns. Those steps belong to the caller.
@@ -17,7 +17,7 @@ remaining force residual. The octahedron is only there to exercise the solver; i
 fabrication pattern.
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.physics.pressure.*
+import afield.simulation.physics.pressure.*
 
 val points = [
     P3(1.0, 0.0, 0.0), P3(-1.0, 0.0, 0.0),

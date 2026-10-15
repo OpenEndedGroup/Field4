@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["neural_reconstruction"] "properties" {"children" #{#afield/box "neural_reconstruction"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 289 "sha256" "48b4c5aeec967fc6ec5dc83b23de5c1e6e911c61acc39c811a8d1eac77f6020a"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["neural_reconstruction"] "properties" {"children" #{#afield/box "neural_reconstruction"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 300 "sha256" "ed9c90e9909e15814bcf04d30e27c778e23b8bdb27e200771a092e766fb4a29b"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -38,14 +38,14 @@ start(renderer::run)
 <!-- field-box id="neural_reconstruction" index="1" -->
 
 ```edn [field-box id="neural_reconstruction" role="properties"]
-{"id" "neural_reconstruction" "index" 1 "name" "neural reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "neural_reconstruction_code_.kt" "lines" 61 "characters" 3009 "sha256" "4e6f2af54ff830ded2ffb901b04acf1d71a25504c93df6103e62f857e81b9960"} {"name" "vertex" "language" "glsl" "path" "neural_reconstruction_vertex_.glsl" "lines" 41 "characters" 2372 "sha256" "6a509b1e0537b8c5c5db23c515e5a0bd7fa0676ed78e2c7b33ce2210efd66a38"} {"name" "fragment" "language" "glsl" "path" "neural_reconstruction_fragment_.glsl" "lines" 31 "characters" 1604 "sha256" "f4c71150e7f5dd16c2bb5e576fd5862c4f5df297eb59e14bba54c58f179b5399"}]}
+{"id" "neural_reconstruction" "index" 1 "name" "neural reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "neural_reconstruction_code_.kt" "lines" 61 "characters" 3034 "sha256" "5be1c88c0d26345a6b8113903a0469243a59470097867771fd1c0434fa81f168"} {"name" "vertex" "language" "glsl" "path" "neural_reconstruction_vertex_.glsl" "lines" 41 "characters" 2372 "sha256" "6a509b1e0537b8c5c5db23c515e5a0bd7fa0676ed78e2c7b33ce2210efd66a38"} {"name" "fragment" "language" "glsl" "path" "neural_reconstruction_fragment_.glsl" "lines" 31 "characters" 1604 "sha256" "f4c71150e7f5dd16c2bb5e576fd5862c4f5df297eb59e14bba54c58f179b5399"}]}
 ```
 
 ```kotlin [field-property box="neural_reconstruction" name="code" path="neural_reconstruction_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.reconstruction.*
-import afield.four.modules.fromContextWithNameOrNull
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.media.reconstruction.*
+import afield.document.context.fromContextWithNameOrNull
 
 prop<ReconstructionDemo>(lab)
 fromContextWithNameOrNull<ReconstructionDemo>("lab")?.close()

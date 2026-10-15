@@ -1,13 +1,13 @@
 package afield.examples
 
-import afield.Box
-import afield.OperationTranscript
-import afield.Rect
-import afield.SavingContext
-import afield.SessionInformation
-import afield.box
-import afield.isTrue
-import afield.thisSessionInfo
+import afield.document.graph.Box
+import afield.tools.automation.OperationTranscript
+import afield.app.protocol.Rect
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.document.graph.box
+import afield.document.graph.isTrue
+import afield.app.server.thisSessionInfo
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap

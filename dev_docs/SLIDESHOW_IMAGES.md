@@ -8,7 +8,7 @@ Slideshow HTML/Markdown can refer to a file beneath the configured workspace as
 ```
 
 The route is implemented beside `route("/project")` in
-`src/jvmMain/kotlin/afield/Server.kt`. It resolves the request relative to `home`, canonicalizes
+`src/jvmMain/kotlin/afield/app/server/Server.kt`. It resolves the request relative to `home`, canonicalizes
 both paths, requires a regular file, and rejects a canonical path outside the workspace. Ktor's
 `respondFile` supplies the response; the route does not maintain an image-format allowlist.
 

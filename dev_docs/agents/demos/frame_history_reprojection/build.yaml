@@ -5,7 +5,7 @@ operations:
       frame: {x: 40.0, y: 40.0, w: 320.0, h: 100.0}
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -15,24 +15,23 @@ operations:
           }
           println("renderer ready")
           start(renderer::run)
-
   - create:
       box: rp_bundle
       name: lit scene
       frame: {x: 400.0, y: 40.0, w: 320.0, h: 100.0}
       properties:
         code: |
-          // `afield.four.fabricated` is not among a box's automatic imports, and the `prop<>` type
+          // `afield.graphics.scene.fabricated` is not among a box's automatic imports, and the `prop<>` type
           // argument is written out in full on purpose: `prop<>` rewrites the box's code and the
           // rewrite does not carry the snippet's own imports, so `prop<StandardRenderer.Bundle>`
           // under an `import ...StandardRenderer` fails against the *import* line.
-          import afield.four.fabricated.StandardRenderer
-          import afield.four.fabricated.applyScenePlan
-          import afield.stdlib.linalg.Matrix4f
-          import afield.stdlib.linalg.Vector3f
-
-          prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
-
+          import afield.graphics.scene.fabricated.StandardRenderer
+          import afield.graphics.scene.fabricated.applyScenePlan
+          import afield.math.linalg.Matrix4f
+          import afield.math.linalg.Vector3f
+          
+          prop<afield.graphics.scene.fabricated.StandardRenderer.Bundle>(bundle)
+          
           // A `once`, unlike the chain box: `StandardRenderer.build` has no replace-in-place path,
           // so re-running it would strand the bundle the chain is appended to.
           once.bundle {
@@ -62,19 +61,18 @@ operations:
               b
           }
           println("bundle ready: " + bundle.postStack.names())
-
   - create:
       box: rp_chain
       name: reprojected accumulation
       frame: {x: 760.0, y: 40.0, w: 320.0, h: 100.0}
       properties:
         code: |
-          import afield.four.fabricated.FabricatePassChain
-          import afield.four.fabricated.FabricatePassLibrary
-          import afield.four.fabricated.addPassChain
-
-          prop<afield.four.fabricated.FabricateBuiltChain>(chain)
-
+          import afield.graphics.scene.fabricated.FabricatePassChain
+          import afield.graphics.scene.fabricated.FabricatePassLibrary
+          import afield.graphics.scene.fabricated.addPassChain
+          
+          prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(chain)
+          
           // `persistent` says WHAT last frame's pixels were. `frameHistory` says WHERE they were.
           // `temporalAccumulate` declares both, and that composition is the whole point: without the
           // second it accumulates correctly while the camera is still and smears the moment it moves.
@@ -101,7 +99,7 @@ operations:
           )
           bundle.attachTo(renderer)
           bundle.present(renderer = renderer)
-
+          
           // The camera turns, so reprojection has something to do. A pure yaw about the camera's own
           // position: `reprojection` is then P*R*inverse(P), which maps a ray to a ray whatever its
           // depth, so the assumed NDC depth costs nothing here.
@@ -111,7 +109,6 @@ operations:
                   frame()
               }
           }
-
   - create:
       box: rp_modes
       name: the four debug modes

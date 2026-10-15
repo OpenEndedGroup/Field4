@@ -60,7 +60,7 @@ FAILURE_PREFIX = "docs build failed: "
 
 
 def ceres_library_path(repo_root: Path) -> Path:
-    """Where `afield.stdlib.ceres.CeresNativeLibrary.defaultPath` will look, from Python.
+    """Where `afield.math.optimization.ceres.CeresNativeLibrary.defaultPath` will look, from Python.
 
     Kept deliberately in step with that object: the override properties, the three
     platform file names, and the `build/ken-ceres-redistributable` default are the
@@ -83,7 +83,7 @@ def ceres_library_path(repo_root: Path) -> Path:
 
 
 def manifold_library_path(repo_root: Path) -> Path:
-    """Where `afield.manifold.ManifoldLibrary` will look, from Python.
+    """Where `afield.geometry.solid.manifold.ManifoldLibrary` will look, from Python.
 
     Deliberately shaped differently from [ceres_library_path], because the two
     optional native dependencies are: the Ceres wrapper is built into `build/` by a
@@ -124,7 +124,7 @@ def solidcraft_library_path(repo_root: Path) -> Path:
 
 
 def tetgen_library_path(repo_root: Path) -> Path:
-    """Where `afield.tetgen.TetgenLibrary.resolvedPath` will look, from Python.
+    """Where `afield.geometry.mesh.tetgen.TetgenLibrary.resolvedPath` will look, from Python.
 
     Shaped like [ceres_library_path] rather than [manifold_library_path], because TetGen
     is the same kind of dependency as Ceres: nothing packages it, so `TetgenLibrary`
@@ -152,7 +152,7 @@ def tetgen_library_path(repo_root: Path) -> Path:
 
 
 def paint_library_path(repo_root: Path) -> Path:
-    """Where `afield.paint.PaintLibrary.resolvedPath` will look, from Python.
+    """Where `afield.graphics.paint.PaintLibrary.resolvedPath` will look, from Python.
 
     One candidate, where `./gradlew buildPaintNative` writes (cargo's `--target-dir`
     `build/field-paint`, release profile). As with TetGen only the environment override
@@ -171,7 +171,7 @@ def paint_library_path(repo_root: Path) -> Path:
 
 
 def libpd_library_path(repo_root: Path) -> Path:
-    """Where `afield.pd.PdLibrary.resolvedPath` will look, from Python.
+    """Where `afield.audio.pd.PdLibrary.resolvedPath` will look, from Python.
 
     TetGen's shape again: `tools/build_libpd_native.py` builds the multi-instance libpd into
     this repo's `build/`, with a `Release/` variant for CMake's multi-config layout on
@@ -195,7 +195,7 @@ def libpd_library_path(repo_root: Path) -> Path:
 
 
 def csound_library_path(repo_root: Path) -> Path:
-    """Where `afield.csound.CsoundLibrary.resolvedPath` will look, from Python.
+    """Where `afield.audio.csound.CsoundLibrary.resolvedPath` will look, from Python.
 
     libpd's shape: `tools/build_csound_native.py` builds libcsound into this repo's `build/`
     (a framework on macOS), and an installed Csound is the fallback. Only the environment override
@@ -219,7 +219,7 @@ def csound_library_path(repo_root: Path) -> Path:
 
 
 def luajit_library_path(repo_root: Path) -> Path:
-    """Where `afield.lua.LuaLibrary.resolvedPath` will look, from Python.
+    """Where `afield.lang.lua.LuaLibrary.resolvedPath` will look, from Python.
 
     Manifold's shape: LuaJIT comes from a package manager (`brew install luajit`), so this walks
     the same directories and file names `LuaLibrary` does and returns the first hit, falling back
@@ -736,7 +736,7 @@ def generate_source_pages(*, repo_root: Path, generated_docs: Path, enabled: boo
     """Render the source pages into the docs tree, and return the anchor index if it worked.
 
     These are the only generated docs pages that are *not* committed, because a source mirror moves
-    whenever any line of its source moves; see `afield.docs.SourcePageGenerator` for the argument.
+    whenever any line of its source moves; see `afield.tools.docs.SourcePageGenerator` for the argument.
     That makes them a build step, and a build step that needs a compiled Kotlin tree — which a
     docs-only contributor may not have. So a failure here is a warning rather than an error: the
     citation linker in `docs_hooks` links a citation only when its page was generated, so the site

@@ -72,7 +72,7 @@ println("3x3 patterns: mean " + "%.2f".format(patternHeights.average()) + ", rou
 
 // The payoff: iso-contours of the synthesised field are FLines, not a picture of them.
 val smooth = floatsToImg(patternHeights, outW, outH).gaussianBlur(1.2)
-val contours = ArrayList<afield.graphics.FLine>()
+val contours = ArrayList<afield.geometry.path.FLine>()
 for (iso in listOf(0.15, 0.35, 0.55, 0.75)) {
     for (line in smooth.isoContourFLines(iso)) {
         line.color = vec(0.30 + iso * 0.65, 0.95 - iso * 0.45, 0.40 + iso * 0.45, 0.95)

@@ -11,18 +11,18 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="ceres_free_variables_planes" index="0" -->
 
 ```edn [field-box id="ceres_free_variables_planes" role="properties"]
-{"id" "ceres_free_variables_planes" "index" 0 "name" "Ceres — a plane per face, solved as a free variable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — a plane per face, solved as a free variable" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_planes_code_.kt" "lines" 203 "characters" 8521 "sha256" "afea77dd5bef8895ebe28e709a7c8e4d5fe360ae6a78375c777bf758dbcdcec1"}]}
+{"id" "ceres_free_variables_planes" "index" 0 "name" "Ceres — a plane per face, solved as a free variable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — a plane per face, solved as a free variable" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_planes_code_.kt" "lines" 203 "characters" 8597 "sha256" "e94cdc83146f2bdd1ce1ad45f2e9b1c0719a5c7bc205ace6e2d88a000b5697ec"}]}
 ```
 
 ````kotlin [field-property box="ceres_free_variables_planes" name="code" path="ceres_free_variables_planes_code_.kt"]
-import afield.graphics.FLine
-import afield.stdlib.Vec3
-import afield.stdlib.ceres.CachedCeresSolvers
-import afield.stdlib.ceres.CeresLinearSolver
-import afield.stdlib.ceres.FfmCeresBackend
-import afield.stdlib.ceres.PointCloud
-import afield.stdlib.ceres.SolveOptions
-import afield.stdlib.ceres.SolveRequest
+import afield.geometry.path.FLine
+import afield.math.linalg.Vec3
+import afield.math.optimization.ceres.CachedCeresSolvers
+import afield.math.optimization.ceres.CeresLinearSolver
+import afield.math.optimization.ceres.FfmCeresBackend
+import afield.math.optimization.ceres.PointCloud
+import afield.math.optimization.ceres.SolveOptions
+import afield.math.optimization.ceres.SolveRequest
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -225,21 +225,21 @@ if (backend == null) {
 <!-- field-box id="ceres_free_variables_sphere" index="1" -->
 
 ```edn [field-box id="ceres_free_variables_sphere" role="properties"]
-{"id" "ceres_free_variables_sphere" "index" 1 "name" "Ceres — unknowns that are not points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — unknowns that are not points" "_tombstone" false "frame" #afield/rect [580.0 80.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_sphere_code_.kt" "lines" 228 "characters" 9198 "sha256" "f0417639d68c48cc791557bf2361361109029a6a171ee8a2a5445cfa15d928a3"}]}
+{"id" "ceres_free_variables_sphere" "index" 1 "name" "Ceres — unknowns that are not points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — unknowns that are not points" "_tombstone" false "frame" #afield/rect [580.0 80.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_sphere_code_.kt" "lines" 228 "characters" 9313 "sha256" "3556b46e2aae5b256d6906a3102e896e1e1096d3495926acfbb21ec68134d864"}]}
 ```
 
 ````kotlin [field-property box="ceres_free_variables_sphere" name="code" path="ceres_free_variables_sphere_code_.kt"]
-import afield.graphics.FLine
-import afield.stdlib.ceres.CachedCeresSolvers
-import afield.stdlib.ceres.CeresExprVec
-import afield.stdlib.ceres.CeresLinearSolver
-import afield.stdlib.ceres.FfmCeresBackend
-import afield.stdlib.ceres.PointCloud
-import afield.stdlib.ceres.SolveOptions
-import afield.stdlib.ceres.SolveRequest
-import afield.stdlib.ceres.Vec3
-import afield.stdlib.ceres.buildCeresProgram
-import afield.stdlib.ceres.RobustLoss
+import afield.geometry.path.FLine
+import afield.math.optimization.ceres.CachedCeresSolvers
+import afield.math.optimization.ceres.CeresExprVec
+import afield.math.optimization.ceres.CeresLinearSolver
+import afield.math.optimization.ceres.FfmCeresBackend
+import afield.math.optimization.ceres.PointCloud
+import afield.math.optimization.ceres.SolveOptions
+import afield.math.optimization.ceres.SolveRequest
+import afield.math.optimization.ceres.Vec3
+import afield.math.optimization.ceres.buildCeresProgram
+import afield.math.optimization.ceres.RobustLoss
 import java.nio.file.Files
 import java.nio.file.Path
 

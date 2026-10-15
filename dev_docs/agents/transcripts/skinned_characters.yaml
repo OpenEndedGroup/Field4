@@ -1,7 +1,7 @@
 name: skinned_characters
 description: |
   **A rigged mesh you can bend, and a crowd of sixty-four of them.** Skeletal animation for
-  `afield.four`: bones and per-vertex weights read out of a glTF, a joint-matrix palette evaluated
+  Field 4: bones and per-vertex weights read out of a glTF, a joint-matrix palette evaluated
   at a time, and linear blend skinning into a deformed surface. Before this landed, the only
   mention of a bone in the whole of `src/jvmMain` + `src/commonMain` was `PathTraceGltf.kt`
   *refusing* to render one — the codebase naming a missing capability in its own error message.
@@ -49,9 +49,9 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 320.0, h: 110.0 }
       properties:
         code: |
-          import afield.four.util.Options
-          import afield.Rect
-
+          import afield.graphics.vulkan.util.Options
+          import afield.app.protocol.Rect
+          
           // The window and renderer that box 4 needs.
           //
           // Box 4 draws, and a drawing box needs a Renderer in scope. Every other GPU demo in this folder
@@ -59,13 +59,13 @@ operations:
           // and path_tracing_medium each have exactly one box declaring `prop<Renderer>(renderer)`. This
           // demo did not, so box 4 only ran under `field_backdoor.py --graphics-context`, where the agent's
           // own context box supplied a Renderer by type. Opened the ordinary way -- `./field.sh` on this
-          // document -- box 4 failed with "must pass in a value for context parameter afield.four.Renderer".
+          // document -- box 4 failed with "must pass in a value for context parameter afield.graphics.vulkan.Renderer".
           //
           // `prop<Renderer>(renderer)` publishes it to this box's children, which is why box 4 is connected
           // beneath this one and can now say `renderer` by name.
           prop<Window>(window)
           prop<Renderer>(renderer)
-
+          
           Options.enableHDR = false
           once.renderer {
               window = Window("Field · skinned characters", initialDimensions = Rect(80.0, 80.0, 1100.0, 700.0))
@@ -79,26 +79,26 @@ operations:
       frame: { x: 400.0, y: 40.0, w: 600.0, h: 136.0 }
       properties:
         code: |
-          import afield.four.modules.GltfSkinning
-          import afield.four.modules.GltfSupport
-          import afield.four.modules.RiggedFixture
-          import afield.four.modules.assimpToTriMesh
-          import afield.four.modules.skinnedGltfToTriMesh
-          import afield.stdlib.MeshView
-          import afield.stdlib.showMeshGrid
-
+          import afield.graphics.scene.GltfSkinning
+          import afield.graphics.scene.GltfSupport
+          import afield.graphics.scene.RiggedFixture
+          import afield.graphics.scene.assimpToTriMesh
+          import afield.graphics.scene.skinnedGltfToTriMesh
+          import afield.geometry.mesh.MeshView
+          import afield.geometry.mesh.showMeshGrid
+          
           // Field could load a glTF and it could sample per-NODE animation. It could not skin.
           //
           // One line in the whole of src/jvmMain + src/commonMain mentioned a bone, and it was
           // PathTraceGltf.kt refusing to render one: "Skinned glTF meshes need skin deformation before path
           // tracing". This box loads a rigged mesh, prints what the loader now reads out of it, and draws
           // four poses of it. Box 2 is the one you drag.
-
+          
           val rig = RiggedFixture.locate()
           val model = GltfSupport.loadGltfBasic(rig, GltfSupport.GltfLoadConfig(loadTextures = false))
           val skin = model.meshes.firstNotNullOf { it.skin }
           val sk = skin.skeleton
-
+          
           println("rig  $rig")
           println("mesh ${model.meshes.first().buffers.vertexCount} vertices, " +
               "${model.meshes.first().buffers.indexCount / 3} triangles")
@@ -113,14 +113,14 @@ operations:
           println("routinely runs through nodes that are NOT bones (here: 'armature'), and the skeleton root")
           println("is not the mesh's node. Indexing nodes makes all three fall out instead of needing cases.")
           println()
-
+          
           // Weights, over a stated population. A skinning bug that shows up as a mesh collapsing toward the
           // origin is almost always weights that do not sum to 1, so it is worth being able to see the number.
           val infl = skin.influences
           println("weights over all ${infl.vertexCount} vertices: worst |sum(w) - 1| = ${infl.worstWeightSumError()}, " +
               "${infl.unweightedVertices()} unweighted, ${infl.discardedInfluences} influences past the " +
               "${GltfSkinning.MAX_INFLUENCES}-wide cap")
-
+          
           // The assertion worth making about a bind pose is EXACTNESS, not closeness: an inverse-bind mistake
           // lands a fraction of a percent off, which any tolerance you would reach for waves through.
           val rest = assimpToTriMesh(rig)
@@ -130,7 +130,7 @@ operations:
               a.x == b.x && a.y == b.y && a.z == b.z
           }
           println("bind pose: $identical of ${rest.vertexCount} vertices bit-identical to the unskinned mesh")
-
+          
           val view = MeshView(yawDegrees = 0.0, pitchDegrees = 8.0, distance = 2.6)
           showMeshGrid(
               "bind, t = 0" to atZero,
@@ -145,26 +145,26 @@ operations:
       frame: { x: 40.0, y: 200.0, w: 600.0, h: 136.0 }
       properties:
         code: |
-          import afield.controlGroup
-          import afield.displayOpen
-          import afield.four.modules.RiggedFixture
-          import afield.four.modules.posedGltfToTriMesh
-          import afield.stdlib.MeshView
-          import afield.stdlib.showMesh
-
+          import afield.ui.output.controlGroup
+          import afield.ui.output.displayOpen
+          import afield.graphics.scene.RiggedFixture
+          import afield.graphics.scene.posedGltfToTriMesh
+          import afield.geometry.mesh.MeshView
+          import afield.geometry.mesh.showMesh
+          
           // Drag `time`. The cylinder bends.
           //
           // `time` runs 0 -> 2 seconds through a clip that rotates the upper bone 0 -> 60 -> 0 degrees about
           // +z. At 0 the tube is straight and the skinned vertices are bit-identical to the unskinned ones;
           // at 1 the tip has swung -sqrt(3) in x, which is -2 sin 60 exactly. Drag `bend to curl` as well and
           // the LOWER bone joins in, which is the parent chain composing.
-
+          
           val rig = RiggedFixture.locate()
           val view = MeshView(yawDegrees = 0.0, pitchDegrees = 8.0, distance = 2.6)
-
+          
           var seconds = 0.6
           var mix = 0.0
-
+          
           fun draw() {
               // blendedPalette mixes the two clips' joint matrices componentwise -- the same linear blend that
               // linear blend skinning itself commits to, so a limb shortens at 90 degrees here exactly as it
@@ -182,7 +182,7 @@ operations:
                   caption = "time %.2f s, bend->curl %.2f — tip reaches x = %.3f".format(seconds, mix, b.min.x),
               )
           }
-
+          
           controlGroup("controls") {
               slider("time", min = 0.0, max = 2.0, step = 0.01, initialValue = seconds) { seconds = it; draw() }
               slider("bend to curl", min = 0.0, max = 1.0, step = 0.01, initialValue = mix) { mix = it; draw() }
@@ -197,26 +197,26 @@ operations:
       frame: { x: 680.0, y: 200.0, w: 600.0, h: 136.0 }
       properties:
         code: |
-          import afield.four.fabricated.GltfSkinPose
-          import afield.four.fabricated.PathTraceScene
-          import afield.four.fabricated.importGltf
-          import afield.four.modules.RiggedFixture
-          import afield.four.modules.skinnedGltfToTriMesh
-
+          import afield.graphics.scene.fabricated.GltfSkinPose
+          import afield.graphics.scene.fabricated.PathTraceScene
+          import afield.graphics.scene.fabricated.importGltf
+          import afield.graphics.scene.RiggedFixture
+          import afield.graphics.scene.skinnedGltfToTriMesh
+          
           // The line this whole branch was aimed at.
           //
           // PathTraceGltf.kt used to contain, verbatim:
           //     require(mesh.mNumBones()==0) { "Skinned glTF meshes need skin deformation before path tracing" }
           // It was the only mention of a bone in the entire JVM source tree -- the codebase naming a missing
           // capability in its own refusal message. It now traces the DEFORMED mesh at a pose you choose.
-
+          
           val rig = RiggedFixture.locate()
-
+          
           val rest = PathTraceScene()
           val restImport = rest.importGltf(rig)
           val bent = PathTraceScene()
           val bentImport = bent.importGltf(rig, pose = GltfSkinPose("bend", 1f))
-
+          
           println("rest pose   ${restImport.triangleCount} triangles, " +
               "x in [%.4f, %.4f]".format(restImport.boundsMin.x, restImport.boundsMax.x))
           println("bend t=1    ${bentImport.triangleCount} triangles, " +
@@ -224,7 +224,7 @@ operations:
           println()
           bentImport.warnings.forEach { println("warning: $it") }
           println()
-
+          
           // The cross-check worth printing: two completely separate readers of the same deformation. The
           // tracer walks Assimp and stages world-space triangles; the CPU bridge packs a 12-float vertex
           // buffer and builds a TriMesh. They are two implementations of one formula, so agreeing is
@@ -248,10 +248,10 @@ operations:
       frame: { x: 40.0, y: 360.0, w: 600.0, h: 136.0 }
       properties:
         code: |
-          import afield.four.modules.CpuSkinner
-          import afield.four.modules.RiggedFixture
-          import afield.stdlib.linalg.Matrix4f
-
+          import afield.graphics.scene.CpuSkinner
+          import afield.graphics.scene.RiggedFixture
+          import afield.math.linalg.Matrix4f
+          
           // The same deformation, on the GPU, through Field's OWN glTF module and its OWN bundled shaders.
           //
           // No shader change and no joint-matrix buffer: CpuSkinner rewrites the position and normal fields
@@ -262,40 +262,40 @@ operations:
           // x = -1.982. The line it prints is the tip's x and the mesh's top y, so the pose is a number as
           // well as a picture.
           val poseTime = 1.0f
-
+          
           // This box needs a renderer in scope. Under `field_backdoor.py --graphics-context` that is the
           // agent's context box, which sets `renderer` as a raw property but does not declare it with the
           // `prop<Renderer>(renderer)` macro a hand-built renderer box uses -- so the bare name does not
           // resolve and fromContext() finds it by type instead. In a document with your own renderer box as
           // the parent, `renderer` resolves directly and this line is redundant but harmless.
-
+          
           var (module, models) = gltfModelHere(RiggedFixture.locate())
-
+          
           var m = Mesh()
           module += "skinned" to m
           renderer += "skinned characters" to module
-
+          
           val camera = Camera()
           camera.p.orthoness = 0.3
           camera.p.matchDepth = 2.0
           camera.target = vec(0, 2, 0)
           camera.at = vec(2, 3, -8)
           camera.p()
-
+          
           val inst = models[0].meshes[0]
           val skinner = CpuSkinner(inst)
           val out = skinner.pose("bend", poseTime)
-
+          
           // model = identity, NOT the default: a skinned mesh is already in scene space, because glTF 2.0
           // 3.7.3.2 says a skinned mesh node's own transform is ignored. The default would apply it twice.
           inst.applyToMesh(m, camera, Matrix4f(), reuseBuffers = true)
-
+          
           val minX = (0 until out.vertexCount).minOf { out.position[it * 3] }
           val maxY = (0 until out.vertexCount).maxOf { out.position[it * 3 + 1] }
           println("gpu skinned at t = %.2f -> tip x %.4f, top y %.4f".format(poseTime, minX, maxY))
-
+          
           loop { frame() }
-
+          
           // ----------------------------------------------------------------------------------------------
           // Why this poses ONCE rather than animating, and what was measured
           //
@@ -413,12 +413,12 @@ operations:
       frame: { x: 680.0, y: 360.0, w: 600.0, h: 136.0 }
       properties:
         code: |
-          import afield.four.modules.CpuSkinner
-          import afield.four.modules.DualQuaternionSkinning
-          import afield.four.modules.GltfSkinning
-          import afield.four.modules.RiggedFixture
-          import afield.stdlib.linalg.Matrix4f
-
+          import afield.graphics.scene.CpuSkinner
+          import afield.graphics.scene.DualQuaternionSkinning
+          import afield.graphics.scene.GltfSkinning
+          import afield.graphics.scene.RiggedFixture
+          import afield.math.linalg.Matrix4f
+          
           // The candy wrapper: one rig, one pose, two ways of averaging the joints.
           //
           // `useDualQuaternions = false` is linear blend skinning -- average the joint MATRICES. `true` is
@@ -432,36 +432,36 @@ operations:
           // rotations is a rotation.
           val useDualQuaternions = false
           val twistTime = 1.0f
-
+          
           // ONE mesh, deliberately. Drawing LBS and DQS side by side
           // as two Mesh objects DOES NOT WORK: both read `inst`'s vertex buffer at draw time rather than at
           // applyToMesh time, so both tubes show whichever pose was written LAST. Measured 2026-09-19 -- with
           // lbs-then-dqs both rendered round, and with lbs-then-lbs both rendered pinched, while the printed
           // numbers stayed correct. A two-mesh comparison here would be a figure that lies.
-
+          
           var (module, models) = gltfModelHere(RiggedFixture.locate())
           var m = Mesh()
           module += "tube" to m
           renderer += "candy wrapper" to module
-
+          
           val camera = Camera()
           camera.p.orthoness = 0.3
           camera.p.matchDepth = 2.0
           camera.target = vec(0, 2, 0)
           camera.at = vec(2, 3, -8)
           camera.p()
-
+          
           val inst = models[0].meshes[0]
           val method =
               if (useDualQuaternions) GltfSkinning.SkinningMethod.DUAL_QUATERNION
               else GltfSkinning.SkinningMethod.LINEAR_BLEND
           val skinner = CpuSkinner(inst, GltfSkinning.SkinningOptions(method = method))
-
+          
           val jointY = RiggedFixture.UPPER_JOINT_Y
           val rest = DualQuaternionSkinning.candyWrapperRadius(skinner.pose("twist", 0f).position, jointY)
           val out = skinner.pose("twist", twistTime)
           inst.applyToMesh(m, camera, Matrix4f(), reuseBuffers = true)
-
+          
           // These four lines were left over from the two-mesh version this box replaced, and still named
           // its `rL` / `rR` / `outR` / `rRest` -- so the box failed to compile with "Unresolved reference
           // 'rRest'" from the moment the rewrite landed. Nothing caught it: box code is compiled by the K2
@@ -472,7 +472,7 @@ operations:
           println("twist t = %.2f, min radius at the y = %.1f ring (rest %.4f)".format(twistTime, jointY, rest))
           println("  %-16s %.6f   (%5.1f%% of rest)".format(label, radius, 100f * radius / rest))
           println("  non-rigid joints ${out.nonRigidJoints}, antipodal flips ${out.antipodalFlips}")
-
+          
           loop { frame() }
         fragment: |-
           #version 450
@@ -569,28 +569,28 @@ operations:
       frame: { x: 40.0, y: 520.0, w: 600.0, h: 136.0 }
       properties:
         code: |
-          import afield.four.modules.GltfSupport
-          import afield.four.modules.GpuSkinner
-          import afield.four.modules.GpuSkinning
-          import afield.four.modules.RiggedFixture
-          import afield.stdlib.linalg.Matrix4f
-
+          import afield.graphics.scene.GltfSupport
+          import afield.graphics.scene.GpuSkinner
+          import afield.graphics.scene.GpuSkinning
+          import afield.graphics.scene.RiggedFixture
+          import afield.math.linalg.Matrix4f
+          
           // Sixty-four characters, one mesh, one draw call, all of them animating -- and not one vertex is
           // re-uploaded after setup. Box 4 above is the CPU skinner: it rewrites the packed vertex buffer
           // every pose, which costs 2.8 ms for a 50,000-vertex character and cannot be done 64 times.
           //
           // EDIT `count` AND RE-RUN. The per-frame CPU cost is `count x bones` matrices, so 2 here.
           val count = 64
-
+          
           // `renderer` and `window` come from box 0, which publishes them with `prop<Renderer>(renderer)`.
           // This box is connected beneath it, so the bare name resolves -- RUN BOX 0 FIRST. Before box 0
           // has run there is no Renderer anywhere and this box fails with "must pass in a value for
-          // context parameter afield.four.Renderer", which is the same footgun box 4 documents.
+          // context parameter afield.graphics.vulkan.Renderer", which is the same footgun box 4 documents.
           val model = GltfSupport.loadGltfBasic(
               RiggedFixture.locate(), GltfSupport.GltfLoadConfig(loadTextures = false)
           )
           val inst = model.meshes.first { it.skin != null }
-
+          
           // The shaders come straight from the library constants, so this box cannot drift from the code
           // `GpuSkinningSmoke` grades. `skinnedFragmentShader` rather than the bundled one because the
           // bundled glTF fragment shader never reads vColor -- it outputs the normal -- so the per-instance
@@ -603,21 +603,21 @@ operations:
                   name = "gpu skinned crowd"
               )
           ).pointer()
-
+          
           val m = Mesh(renderer, module)
           module += "crowd" to m
           renderer += "gpu skinned crowd" to module
-
+          
           val camera = Camera(renderer)
           camera.p.orthoness = 0.25
           camera.p.matchDepth = 2.0
           camera.target = vec(0, 2, 0)
           camera.at = vec(6.5, 8.5, -17)
           camera.p()
-
+          
           val skinner = GpuSkinner(inst, instances = count, renderer = renderer, name = "crowd")
           skinner.bindTo(m, camera, instanceCount = count, tint = true)
-
+          
           // Instance i on an 8x8 grid. The placement is multiplied into that instance's palette, so it
           // costs one mul per bone and nothing at all on the GPU -- there is no instance-matrix buffer.
           fun place(i: Int): Matrix4f {
@@ -625,7 +625,7 @@ operations:
               val z = (i / 8 - 3.5f) * 2.2f
               return Matrix4f().translate(vec(x, 0, z))
           }
-
+          
           var n = 0
           loop {
               val t = n / 60f
@@ -651,16 +651,16 @@ operations:
       frame: { x: 680.0, y: 520.0, w: 600.0, h: 136.0 }
       properties:
         code: |
-          import afield.four.modules.DualQuaternionSkinning
-          import afield.four.modules.GltfSkinning.SkinningMethod
-          import afield.four.modules.GltfSkinning.SkinningOptions
-          import afield.four.modules.GltfSkinning
-          import afield.four.modules.GltfSupport
-          import afield.four.modules.GpuSkinner
-          import afield.four.modules.GpuSkinning
-          import afield.four.modules.RiggedFixture
-          import afield.stdlib.linalg.Matrix4f
-
+          import afield.graphics.scene.DualQuaternionSkinning
+          import afield.graphics.scene.GltfSkinning.SkinningMethod
+          import afield.graphics.scene.GltfSkinning.SkinningOptions
+          import afield.graphics.scene.GltfSkinning
+          import afield.graphics.scene.GltfSupport
+          import afield.graphics.scene.GpuSkinner
+          import afield.graphics.scene.GpuSkinning
+          import afield.graphics.scene.RiggedFixture
+          import afield.math.linalg.Matrix4f
+          
           // Box 5 is the candy wrapper on the CPU. This is the same twist on the GPU, both methods in ONE
           // draw call: the left cylinder is linear blend skinning and pinches to a point at 180 degrees, the
           // right one is dual quaternion skinning and keeps its radius. Same mesh, same palette, same shader;
@@ -671,12 +671,12 @@ operations:
           // EDIT `methods` AND RE-RUN: make both LINEAR_BLEND and both pinch; make both DUAL_QUATERNION and
           // neither does.
           val methods = listOf(SkinningMethod.LINEAR_BLEND, SkinningMethod.DUAL_QUATERNION)
-
+          
           val model = GltfSupport.loadGltfBasic(
               RiggedFixture.locate(), GltfSupport.GltfLoadConfig(loadTextures = false)
           )
           val inst = model.meshes.first { it.skin != null }
-
+          
           val module = Module(
               Parameters(
                   renderer = renderer,
@@ -685,26 +685,26 @@ operations:
                   name = "gpu twist, lbs vs dqs"
               )
           ).pointer()
-
+          
           val m = Mesh(renderer, module)
           module += "twist" to m
           renderer += "gpu twist, lbs vs dqs" to module
-
+          
           val camera = Camera(renderer)
           camera.p.orthoness = 0.3
           camera.p.matchDepth = 2.0
           camera.target = vec(0, 2, 0)
           camera.at = vec(0, 2.4, -5.2)
           camera.p()
-
+          
           val skinner = GpuSkinner(inst, instances = 2, renderer = renderer, name = "twist")
           skinner.bindTo(m, camera, instanceCount = 2, tint = true)
-
+          
           // Seen from this camera +x is on the LEFT, so instance 0 goes to +1.3.
           val places = listOf(Matrix4f().translate(vec(1.3, 0, 0)), Matrix4f().translate(vec(-1.3, 0, 0)))
           val sk = skinner.skin.skeleton
           val twist = sk.clip("twist")!!
-
+          
           // The waist as a number, from the CPU oracles on the same palette: the smallest distance from the
           // bone axis of any vertex on the y = 2 ring. Printed so the picture is not the only evidence.
           val restRadius = RiggedFixture.RADIUS
@@ -713,7 +713,7 @@ operations:
               val out = GltfSkinning.skin(bind, null, inst.skin!!.influences, palette, SkinningOptions(method = method))
               return DualQuaternionSkinning.candyWrapperRadius(out.position, RiggedFixture.UPPER_JOINT_Y)
           }
-
+          
           var n = 0
           loop {
               // 0 -> 180 -> 0 degrees of twist, three seconds a cycle at 60 fps, on a loop.

@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // 3 - What MIDI hardware can this machine see, and can Field drive it?
 //

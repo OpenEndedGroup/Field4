@@ -1,7 +1,7 @@
 # Slideshow implementation map
 
 User-facing behavior and the DSL are documented in `public/docs/interactive_guides.md`. Exact API
-contracts are KDoc in `src/jvmMain/kotlin/afield/SlideShow.kt`.
+contracts are KDoc in `src/jvmMain/kotlin/afield/ui/slides/SlideShow.kt`.
 
 `Box.slideShow { ... }` builds and stores an instance; it does **not** start it. Call `start()` (or
 another navigation method) from a coroutine. Each step may run suspendable exit/enter callbacks,
@@ -11,10 +11,10 @@ property, live Kotlin context variable, `knownValues`, registered `templates`, t
 
 The durable file map is:
 
-- `src/jvmMain/kotlin/afield/SlideShow.kt` — server-side state machine and DSL.
-- `src/jsMain/kotlin/afield/Main.kt` — browser note overlay, navigation links, and chat widgets.
-- `src/jsMain/kotlin/afield/slideshowSupport.kt` — annotations and animated text.
-- `src/commonMain/kotlin/rpc.kt` — wire types.
+- `src/jvmMain/kotlin/afield/ui/slides/SlideShow.kt` — server-side state machine and DSL.
+- `src/jsMain/kotlin/afield/app/client/Main.kt` — browser note overlay, navigation links, and chat widgets.
+- `src/jsMain/kotlin/afield/app/client/slideshowSupport.kt` — annotations and animated text.
+- `src/commonMain/kotlin/afield/app/protocol/rpc.kt` — wire types.
 - `src/jvmMain/kotlin/afield/examples/slideshow_example.kt` — compiled examples.
 
 The browser regression catalog currently has no dedicated slideshow case. Changes should add or run

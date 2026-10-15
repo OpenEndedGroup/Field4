@@ -21,12 +21,12 @@ current headless box captures do not have. Per AGENTS.md §3 it must be a real c
 
 ## Evidence
 
-- `PathTraceScene.importTriMesh` in `src/jvmMain/kotlin/afield/four/fabricated/PathTraceTriMesh.kt`
+- `PathTraceScene.importTriMesh` in `src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceTriMesh.kt`
   accepts a `TriMesh` plus material, so the meshes `PhotoToSolidChain.mount()`
   (`src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt`) produces can be imported as is.
 - Current figures: `capture-box="photo_plaque"` and `photo_boolean` in
   `dev_docs/agents/transcripts/photo_to_solid_chain.yaml`, drawn by `TriMesh.renderPng`
-  (`src/jvmMain/kotlin/afield/stdlib/mesh_field.kt`).
+  (`src/jvmMain/kotlin/afield/geometry/mesh/mesh_field.kt`).
 - Precedent for a path-traced chain ending with a native-window capture: `chain_polytope_render.md`,
   `chain_physics_render.md`, `chain_life3d_render.md` (they build a `PathTraceScene`).
 - Trap: `importTriMesh`'s KDoc example uses `toTriMesh(normals = true)`; that is fine for drawing

@@ -78,9 +78,9 @@ testing and draws 3 + 39 × 36 vertices: one background triangle and 39 boxes (g
 36 thin bars), all generated in the vertex shader.
 
 ```diffstatic {data-lang=kotlin}
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.neuralrendering.*
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.render.neural.*
 
 val owner = renderer
 prop<OpenDlssNrStudy>(lab)
@@ -255,8 +255,8 @@ neural ink and reads the same study. Stop the child boxes before stopping the re
 The renderer box is complete:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.util.Options
-import afield.Rect
+import afield.graphics.vulkan.util.Options
+import afield.app.protocol.Rect
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableVR=false
@@ -275,9 +275,9 @@ source → NR → comparison in that order in the caller's command buffer, befor
 Its [comparison shader](assets/opendlssnr/compare.frag) implements the headings and grade.
 
 ```diffstatic {data-lang=kotlin}
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.neuralrendering.*
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.render.neural.*
 
 val owner = renderer
 prop<OpenDlssNrStudy>(lab)
@@ -428,7 +428,7 @@ That file is the original, unprocessed drawing. The following capture loads it i
 and runs the same comparison at tone 0 / structure 10:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/opendlssnr/image-study.png" capture="native-window" capture-profile="linux-nvidia" macro-file="../../dev_docs/agents/demos/opendlssnr/image-study.yaml" capture-box="open_dlss_nr" wait-output=true wait-output-kind="all" wait-output-contains="NR Vulkan features enabled" wait="1" native-wait-frames="10" timeout="300" name="nr-image-study" embed=true alt="The original ink drawing, the tone-zero structure-ten Field NR result, and the same output graded cyan"}
-import afield.four.neuralrendering.OpenDlssNrStudy
+import afield.graphics.render.neural.OpenDlssNrStudy
 val study=OpenDlssNrStudy(renderer, imagePath="public/docs/assets/opendlssnr/ink-input.png")
 study.animate=false
 frames {
@@ -449,7 +449,7 @@ or readback changes capture time, not the animation's 30 fps clock. Don't change
 records. The record box contains all of this code:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.neuralrendering.OpenDlssNrStudy
+import afield.graphics.render.neural.OpenDlssNrStudy
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 
@@ -501,7 +501,7 @@ Create a pass at your source dimensions. In a `Target`, after the source produce
 render pass, record the network and sample its output in a later shader:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.neuralrendering.*
+import afield.graphics.render.neural.*
 val pass=OpenDlssNrPass(renderer, width, height)
 pass.controls=OpenDlssNrControls(style=1, tone=0f, structure=10f)
 // Inside Target.render(command, index), after rendering color:

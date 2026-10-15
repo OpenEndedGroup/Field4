@@ -1,12 +1,12 @@
-import afield.four.modules.DualQuaternionSkinning
-import afield.four.modules.GltfSkinning.SkinningMethod
-import afield.four.modules.GltfSkinning.SkinningOptions
-import afield.four.modules.GltfSkinning
-import afield.four.modules.GltfSupport
-import afield.four.modules.GpuSkinner
-import afield.four.modules.GpuSkinning
-import afield.four.modules.RiggedFixture
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.scene.DualQuaternionSkinning
+import afield.graphics.scene.GltfSkinning.SkinningMethod
+import afield.graphics.scene.GltfSkinning.SkinningOptions
+import afield.graphics.scene.GltfSkinning
+import afield.graphics.scene.GltfSupport
+import afield.graphics.scene.GpuSkinner
+import afield.graphics.scene.GpuSkinning
+import afield.graphics.scene.RiggedFixture
+import afield.math.linalg.Matrix4f
 
 // Box 5 is the candy wrapper on the CPU. This is the same twist on the GPU, both methods in ONE
 // draw call: the left cylinder is linear blend skinning and pinches to a point at 180 degrees, the

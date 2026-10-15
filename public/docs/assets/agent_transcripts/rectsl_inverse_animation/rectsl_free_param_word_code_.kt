@@ -1,4 +1,4 @@
-import afield.rectsl.*
+import afield.lang.rectsl.*
 
 // `free-param` marks a number to be solved for. Until it is, every backend reads it as the
 // constant it is now, so the scene plays as written.

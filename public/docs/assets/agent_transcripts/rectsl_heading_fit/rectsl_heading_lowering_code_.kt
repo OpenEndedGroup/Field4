@@ -1,6 +1,6 @@
-import afield.rectsl.*
-import afield.stdlib.Functions
-import afield.stdlib.extractParameters
+import afield.lang.rectsl.*
+import afield.math.functions.Functions
+import afield.math.functions.extractParameters
 import java.util.Base64
 import kotlin.math.PI
 import kotlin.math.atan
@@ -39,15 +39,15 @@ val halfTurns = strobe.count {
 val png = RectSLFitFigure.render(
     bands = listOf(
         RectSLFitFigure.Band(
-            "sampler", x, y, afield.Color4(0.86, 0.88, 0.91),
+            "sampler", x, y, afield.graphics.color.Color4(0.86, 0.88, 0.91),
             note = "headingtrack.sample", rotation = heading::sample
         ),
         RectSLFitFigure.Band(
-            "lowered", x, y, afield.Color4(0.29, 0.83, 0.7),
+            "lowered", x, y, afield.graphics.color.Color4(0.29, 0.83, 0.7),
             note = "fn err %.0e".format(worst), rotation = lowered::eval
         ),
         RectSLFitFigure.Band(
-            "atan only", x, y, afield.Color4(1.0, 0.42, 0.28),
+            "atan only", x, y, afield.graphics.color.Color4(1.0, 0.42, 0.28),
             note = "$halfTurns half turns", rotation = quadrantLess
         )
     ),

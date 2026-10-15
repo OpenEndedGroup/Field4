@@ -10,9 +10,9 @@ looked broken or a broken one looked fine, and what fixed it was a sharper instr
 different code. The six sections below each name the instrument that settled the question, in the
 order they came up.
 
-Source: `src/jvmMain/kotlin/afield/stdlib/neuralparticles.kt`, `neuralparticles_system.kt`,
-`deepsets.kt`, `src/jvmMain/kotlin/afield/four/util/GpuNeighbourGrid.kt`,
-`src/jvmMain/kotlin/afield/four/physics/ShaderBoids.kt`. The assertions are the four smokes named at
+Source: `src/jvmMain/kotlin/afield/simulation/particles/neuralparticles.kt`, `neuralparticles_system.kt`,
+`deepsets.kt`, `src/jvmMain/kotlin/afield/graphics/vulkan/util/GpuNeighbourGrid.kt`,
+`src/jvmMain/kotlin/afield/simulation/physics/ShaderBoids.kt`. The assertions are the four smokes named at
 the end of the public page.
 
 ---

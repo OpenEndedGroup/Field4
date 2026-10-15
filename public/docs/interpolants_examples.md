@@ -30,7 +30,7 @@ when the next one arrives.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interpolants_examples/smooth_family.png" wait="1.5" capture="box" open-outputs="true" name="interpolants-family"}
 :::static
-import afield.stdlib.NeedsStartingValue
+import afield.animation.interpolation.NeedsStartingValue
 
 val n = 300
 // A target that jumps to a new set-point every 60 evaluations — the value to chase.
@@ -87,8 +87,8 @@ partway through:
 
 ```diff_runner {data-lang=kotlin screenshot="assets/interpolants_examples/smooth_duration.png" wait="1.0" capture="box" open-outputs="true"}
 :::before
-import afield.graphics.FLine
-import afield.stdlib.NeedsStartingValue
+import afield.geometry.path.FLine
+import afield.animation.interpolation.NeedsStartingValue
 
 val q = smoothTo<Float>(steps = 140) { 1.0f }
 (q as NeedsStartingValue<Float>).startAt(0.0f)
@@ -105,8 +105,8 @@ val f = fline {
 }
 lines(f, channel = "interpolants-diff", w = 1080.0, h = 640.0, fitToSize = true)
 :::after
-import afield.graphics.FLine
-import afield.stdlib.NeedsStartingValue
+import afield.geometry.path.FLine
+import afield.animation.interpolation.NeedsStartingValue
 
 data class Sample(val elapsed: Double, val byStep: Float, val byTime: Float)
 
@@ -187,7 +187,7 @@ around it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interpolants_examples/inertial_family.png" wait="1.5" capture="box" open-outputs="true" name="interpolants-inertial"}
 :::static
-import afield.stdlib.NeedsStartingValue
+import afield.animation.interpolation.NeedsStartingValue
 
 val n = 320
 // The set-point jumps every 45 evaluations, which is less than the 64-evaluation blend,
@@ -370,10 +370,10 @@ the `pos` vector eases linearly, and the `voice` code steps:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interpolants_examples/keyframe_morph.png" wait="1.0" capture="box" open-outputs="true" name="interpolants-keyframe"}
 :::static
-import afield.graphics.FLine
-import afield.stdlib.KeyframeScope
-import afield.stdlib.stackSLString
-import afield.stdlib.linalg.Vector2f
+import afield.geometry.path.FLine
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.stackSLString
+import afield.math.linalg.Vector2f
 
 val scope = KeyframeScope()
 val a = scope.Key(mutableMapOf(
@@ -509,7 +509,7 @@ then the metrics as bars:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/metric_profile.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 

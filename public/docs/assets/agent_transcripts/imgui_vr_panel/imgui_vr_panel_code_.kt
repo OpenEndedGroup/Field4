@@ -8,7 +8,7 @@
 //
 // Move the mouse to aim the ray; left-click to press. To bind the panel to a hand instead
 // of a fixed point, call panel.place(handPos, handRight, handUp) each frame (see ImGuiPanel).
-import afield.four.targets.SideBySideStereoTarget
+import afield.graphics.vulkan.targets.SideBySideStereoTarget
 import afield.examples.four.ImGuiVrPanelDemo
 
 val sbs = SideBySideStereoTarget(renderer)

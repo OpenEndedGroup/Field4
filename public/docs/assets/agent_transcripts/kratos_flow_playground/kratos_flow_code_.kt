@@ -1,11 +1,11 @@
-import afield.frames
-import afield.kratos.*
-import afield.manifold.ManifoldLibrary
-import afield.stdlib.MeshRenderer
-import afield.stdlib.MeshView
-import afield.stdlib.TriMesh
-import afield.stdlib.showMeshGrid
-import afield.stdlib.tubeMesh
+import afield.runtime.lifecycle.frames
+import afield.simulation.kratos.*
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.mesh.MeshRenderer
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.showMeshGrid
+import afield.geometry.mesh.tubeMesh
 import java.util.concurrent.atomic.AtomicReference
 
 // Launch (Alt-R). Drag a slider to reshape the body — that part is instant.

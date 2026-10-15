@@ -1,4 +1,4 @@
-// Not a hand-built fixture: this is what afield.stdlib.arrow returns when you ask for a
+// Not a hand-built fixture: this is what afield.graphics.render.arrow returns when you ask for a
 // head at both ends. Its appendHead ends each arrowhead with close(), so the node list is
 //   MoveTo LineTo | MoveTo LineTo LineTo Close | MoveTo LineTo LineTo Close
 // and the first Close has a whole arrowhead after it.

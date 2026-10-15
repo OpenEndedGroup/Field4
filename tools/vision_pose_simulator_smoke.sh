@@ -195,7 +195,7 @@ operations:
       frame: { x: 600.0, y: 80.0, w: 280.0, h: 120.0 }
       properties:
         code: |
-          import afield.graphics.VisionPoseStream
+          import afield.graphics.visionos.VisionPoseStream
           val first = VisionPoseStream.frameCount
           Thread.sleep(3000)
           val second = VisionPoseStream.frameCount
@@ -205,11 +205,11 @@ operations:
           // Round-trips the clock-sync ping over the real socket. The simulator has no video stream,
           // so the device's own spans stay empty here; what this proves is the ping/pong path and the
           // offset estimator against a live head rather than a synthetic one.
-          val latency = afield.graphics.visionPoseLatencyReport(pings = 6, spacingMillis = 120)
-          println("pose-probe: offsetKnown=" + afield.graphics.VisionPoseLatency.offsetKnown +
+          val latency = afield.graphics.visionos.visionPoseLatencyReport(pings = 6, spacingMillis = 120)
+          println("pose-probe: offsetKnown=" + afield.graphics.visionos.VisionPoseLatency.offsetKnown +
                   " bestRttMs=" + "%.2f".format(
-                      if (afield.graphics.VisionPoseLatency.bestRoundTripNanos == Long.MAX_VALUE) -1.0
-                      else afield.graphics.VisionPoseLatency.bestRoundTripNanos / 1.0e6))
+                      if (afield.graphics.visionos.VisionPoseLatency.bestRoundTripNanos == Long.MAX_VALUE) -1.0
+                      else afield.graphics.visionos.VisionPoseLatency.bestRoundTripNanos / 1.0e6))
           latency.lines().forEach { println("pose-latency: " + it) }
           println("pose-probe: grew=" + (second - first) +
                   " accepted=" + second +

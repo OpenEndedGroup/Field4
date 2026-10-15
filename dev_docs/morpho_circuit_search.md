@@ -1,19 +1,19 @@
 # Searching for MorphoHDL circuits
 
-`afield.morpho` gained a generative / evolutionary search layer on 2026-08-01, twelve hours after
+`afield.lang.morpho` gained a generative / evolutionary search layer on 2026-08-01, twelve hours after
 the MorphoHDL bridge itself landed (`2a698dfc`). This is what it does, what it found, and — the
 longer half — what it did not find.
 
 Regenerate every number below with:
 
 ```
-./gradlew jvmTest --tests "afield.morpho.MorphoSearchMeasurements" --rerun -i
+./gradlew jvmTest --tests "afield.lang.morpho.MorphoSearchMeasurements" --rerun -i
 ```
 
 and the assertions that keep them honest with:
 
 ```
-./gradlew jvmTest --tests "afield.morpho.MorphoSearchTest"
+./gradlew jvmTest --tests "afield.lang.morpho.MorphoSearchTest"
 ```
 
 ---

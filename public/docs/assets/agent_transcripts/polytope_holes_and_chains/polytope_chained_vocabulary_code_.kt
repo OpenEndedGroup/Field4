@@ -1,4 +1,4 @@
-import afield.stdlib.MeshView
+import afield.geometry.mesh.MeshView
 
 // Until 2026-08-05 none of these compiled: the eight composites were declared on
 // PolyhedralObject only, so cube().ambo() had no .bevel(), and needle, zip and ortho had no

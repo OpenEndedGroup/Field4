@@ -1,4 +1,4 @@
-import afield.stdlib.Vec3
+import afield.math.linalg.Vec3
 
 // ---- the one parameter to change -------------------------------------------------
 // Conway prefix notation, read right to left, over the seeds T C O I D and the

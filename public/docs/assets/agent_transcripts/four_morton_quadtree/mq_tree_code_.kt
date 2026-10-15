@@ -1,11 +1,11 @@
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.FabricatePassSize
-import afield.four.fabricated.FabricatePassSpec
-import afield.four.fabricated.addPassChain
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.FabricatePassSize
+import afield.graphics.scene.fabricated.FabricatePassSpec
+import afield.graphics.scene.fabricated.addPassChain
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
 
-prop<afield.four.fabricated.FabricateBuiltChain>(tree)
+prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(tree)
 
 val grid = 16      // 16x16 = 256 points, one per texel of the point texture
 val depth = 4      // 16x16 leaf cells, so 8 bits of Morton code

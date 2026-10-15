@@ -112,7 +112,7 @@ uv run --group docs python tools/docs_capture_audit.py --page functions_examples
 uv run --group docs python tools/docs_capture_audit.py --inventory
 
 # no Field: which source files does each fence reach, and what would touching one invalidate?
-uv run --group docs python tools/docs_capture_audit.py --plan --touched src/jvmMain/kotlin/afield/stdlib/Functions.kt
+uv run --group docs python tools/docs_capture_audit.py --plan --touched src/jvmMain/kotlin/afield/math/functions/Functions.kt
 ```
 
 Captures are not byte-reproducible — only a handful are byte-stable run to run — so

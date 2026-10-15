@@ -6,11 +6,11 @@
 // path computes; only the local partial changes. So the loss printed here is the TRUE loss at every
 // temperature, and it is only the direction that is a surrogate.
 
-import afield.stacksl.cpu.AdSurrogate
-import afield.stacksl.cpu.StackSLCpu
-import afield.stacksl.cpu.StackSLImageLoss
-import afield.stacksl.cpu.StackSLWires
-import afield.util.PngEncoder
+import afield.lang.stacksl.cpu.AdSurrogate
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLImageLoss
+import afield.lang.stacksl.cpu.StackSLWires
+import afield.media.image.util.PngEncoder
 
 run {
 

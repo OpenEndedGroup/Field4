@@ -1,7 +1,7 @@
 # Searching for MorphoHDL Circuits
 
 [MorphoHDL](morpho_examples.md) circuits can be written by hand, or searched for: you say what a
-circuit should compute, and Field generates MorphoHDL programs until one does. `afield.morpho` has
+circuit should compute, and Field generates MorphoHDL programs until one does. `afield.lang.morpho` has
 the pieces:
 `MorphoSpec` / `MorphoEvaluator` (what a circuit should compute, at which widths, and what it
 costs), `MorphoGenome` / `MorphoProgramGenerator` (candidate programs, and small changes to them),
@@ -14,7 +14,7 @@ of it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/search-control.png" wait="40.0" timeout="360" capture="box" open-outputs="true" padding="20" name="morpho-search-control"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // A problem is what the circuit should compute, the widths to test it at, and the cells a
 // candidate may use. The only thing said about addition is `sum, c_out = a + b + c_in`;
@@ -93,7 +93,7 @@ arranged as a balanced tree) and the same source text is then re-compiled and ch
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/search-recursion.png" wait="90.0" timeout="360" capture="box" open-outputs="true" padding="20" name="morpho-search-recursion"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // y = (x != 0). No combination of gates turns eight wires into one bit, so the only way
 // down is SPLIT: every correct answer divides and recurses.
@@ -209,7 +209,7 @@ until all four are right and wired to the outputs. Or-reduce needs two, and half
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/search-adder.png" wait="90.0" timeout="360" capture="box" open-outputs="true" padding="20" name="morpho-search-adder"}
 :::static
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // Four drivers on a recursive 8-bit adder, two of them with both SPLITs given.
 val free = MorphoProblems.recursiveAdder()
@@ -272,7 +272,7 @@ showPlaneGrid(
 
 ??? aside "Where these numbers come from"
     The table is regenerated with
-    `./gradlew jvmMeasurements --tests "afield.morpho.MorphoSearchMeasurements" --rerun -i`.
+    `./gradlew jvmMeasurements --tests "afield.lang.morpho.MorphoSearchMeasurements" --rerun -i`.
     `MorphoSearchTest` asserts the claims above, including that the recursive adder is reachable
     in the grammar and not solved at this budget. The design notes are in
     `dev_docs/morpho_circuit_search.md`.

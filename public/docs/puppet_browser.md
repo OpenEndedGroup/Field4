@@ -59,7 +59,7 @@ Electron handle-transfer bridges and native validation are completed.
 ## The other half: `PuppetBrowser`
 
 The texture comes with a control plane. `FieldUiBrowserTexture` implements
-`PuppetBrowser` (`src/jvmMain/kotlin/afield/four/browser/PuppetBrowser.kt`),
+`PuppetBrowser` (`src/jvmMain/kotlin/afield/media/browser/PuppetBrowser.kt`),
 so a neighbouring Field box can keep the browser as a property and operate it without reaching for
 a desktop or exposing an Electron window.
 
@@ -164,7 +164,7 @@ keyboard and CDP paths remain available for every other site.
 Everything in the table above is about the *tab*, not about its pixels, and none of it needs a
 Vulkan image view, a window or a GPU.
 `PuppetBrowserControl`, in the same file, is the control plane on its own, and
-`HeadlessPuppetBrowser` (`src/jvmMain/kotlin/afield/four/browser/HeadlessPuppetBrowser.kt`)
+`HeadlessPuppetBrowser` (`src/jvmMain/kotlin/afield/media/browser/HeadlessPuppetBrowser.kt`)
 implements it with no renderer, no Vulkan surface, no native handle bridge and no readback socket.
 The Electron producer has a third frame mode in which the paints are dropped at the source.
 
@@ -220,7 +220,7 @@ wants: labels down one and values down another.
 
 ## How desktop events land on the page
 
-`PuppetBrowserWindowInput` (`src/jvmMain/kotlin/afield/four/browser/PuppetBrowserInteraction.kt`)
+`PuppetBrowserWindowInput` (`src/jvmMain/kotlin/afield/media/browser/PuppetBrowserInteraction.kt`)
 turns Field window events into Chromium input:
 
 1. the panel's aspect-correct viewport hit-tests the native cursor;

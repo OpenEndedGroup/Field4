@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // 1 - Kolakoski counts, Euclid places.
 //
@@ -35,7 +35,7 @@ showDirtAudio(struct(euclid(12, 24), pat("bd")), cycles = 3, cps = cps, channel 
 
 val audio = dirt.audio
 val wav = "kolakoski-flat.wav".file
-afield.four.audio.WavFloatArrayWriter.writeStereo16(wav, audio.left, audio.right, PatSoundDocs.SR, 0.9f)
+afield.audio.engine.WavFloatArrayWriter.writeStereo16(wav, audio.left, audio.right, PatSoundDocs.SR, 0.9f)
 println("wrote $wav — ${"%.1f".format(12 * cps)} hits/s, samples: ${dirt.usedSamples}, matched ${dirt.matched}, synth fallback ${dirt.unmatched}")
 
 markdown("main", """

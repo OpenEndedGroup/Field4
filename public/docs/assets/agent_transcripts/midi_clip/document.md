@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="midi_devices" index="0" -->
 
 ```edn [field-box id="midi_devices" role="properties"]
-{"id" "midi_devices" "index" 0 "name" "What can this machine see?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What can this machine see?" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_devices_code_.kt" "lines" 44 "characters" 1863 "sha256" "0e5faeb003999c9af705f8c6224faac55964fccdf0f1de6ad604b58d36a39b22"}]}
+{"id" "midi_devices" "index" 0 "name" "What can this machine see?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What can this machine see?" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_devices_code_.kt" "lines" 44 "characters" 1864 "sha256" "ea3ff8e04f8c732aa66ba14a4c0f3ab314dd54939bf1ce5b47041b99ffcc637c"}]}
 ```
 
 ```kotlin [field-property box="midi_devices" name="code" path="midi_devices_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // 3 - What MIDI hardware can this machine see, and can Field drive it?
 //
@@ -66,11 +66,11 @@ markdown(
 <!-- field-box id="midi_audition" index="1" -->
 
 ```edn [field-box id="midi_audition" role="properties"]
-{"id" "midi_audition" "index" 1 "name" "Hear it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Hear it" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_audition_code_.kt" "lines" 61 "characters" 2023 "sha256" "173085367b49c2fecbe26fc07a54f1b1ec3979d832a631cbb385fb0f6edaecf2"}]}
+{"id" "midi_audition" "index" 1 "name" "Hear it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Hear it" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_audition_code_.kt" "lines" 61 "characters" 2024 "sha256" "588989d4ce1742f8d6d27a2963e9322364fdd9a9fb99decf5b91af3cee18c4aa"}]}
 ```
 
 ````kotlin [field-property box="midi_audition" name="code" path="midi_audition_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 import java.io.File
 
 // 4 - Hear it. Two routes, and this box tells you which one it took.
@@ -138,11 +138,11 @@ markdown("main", report)
 <!-- field-box id="midi_write" index="2" -->
 
 ```edn [field-box id="midi_write" role="properties"]
-{"id" "midi_write" "index" 2 "name" "Write a MIDI file" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Write a MIDI file" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_write_code_.kt" "lines" 56 "characters" 1787 "sha256" "50572d9f087af8245dea82d68bc335f23b25fae277b3445a6434992215a906b8"}]}
+{"id" "midi_write" "index" 2 "name" "Write a MIDI file" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Write a MIDI file" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_write_code_.kt" "lines" 56 "characters" 1788 "sha256" "b71bbab19dce06ee3db939feccac1cb7fcd2e0ac43ff4ceff3b20a1c08bd687a"}]}
 ```
 
 ```kotlin [field-property box="midi_write" name="code" path="midi_write_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 import java.io.File
 
 // 1 - Write a MIDI file a DAW will open.
@@ -205,11 +205,11 @@ markdown(
 <!-- field-box id="midi_read" index="3" -->
 
 ```edn [field-box id="midi_read" role="properties"]
-{"id" "midi_read" "index" 3 "name" "Read it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Read it back" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_read_code_.kt" "lines" 39 "characters" 1508 "sha256" "69b817458920277b632c93b693cf3221231c70b2f804d2afc7217ab17be4fa36"}]}
+{"id" "midi_read" "index" 3 "name" "Read it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Read it back" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_read_code_.kt" "lines" 39 "characters" 1509 "sha256" "af6de133f24b0fc2de1cf67af9ad1c409684b64f0ab5a1c2d58929a7587ffbcf"}]}
 ```
 
 ```kotlin [field-property box="midi_read" name="code" path="midi_read_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 import java.io.File
 
 // 2 - Read it back, and check the round trip actually held.

@@ -1,13 +1,13 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.buffers.GpuStruct
-import afield.four.buffers.gpuSchema
-import afield.four.util.GpuProbe
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.linalg.Vector4f
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.buffers.GpuStruct
+import afield.graphics.vulkan.buffers.gpuSchema
+import afield.graphics.vulkan.util.GpuProbe
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.math.linalg.Vector3f
+import afield.math.linalg.Vector4f
 import kotlin.system.exitProcess
 
 /*

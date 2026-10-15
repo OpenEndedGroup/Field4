@@ -1,12 +1,12 @@
 package afield.examples.rectsl
 
-import afield.stdlib.StudyEvidence
-import afield.rectsl.study.CpuRectSLRasterizer
-import afield.rectsl.study.RectSLRasterizer
-import afield.rectsl.study.RectSLStudy
-import afield.stdlib.renderAll
-import afield.stacksl.cpu.CpuRaster
-import afield.stacksl.study.StackSLStudyShader
+import afield.study.evidence.StudyEvidence
+import afield.lang.rectsl.study.CpuRectSLRasterizer
+import afield.lang.rectsl.study.RectSLRasterizer
+import afield.lang.rectsl.study.RectSLStudy
+import afield.study.source.renderAll
+import afield.lang.stacksl.cpu.CpuRaster
+import afield.lang.stacksl.study.StackSLStudyShader
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
@@ -27,10 +27,10 @@ expect:
     path: /tmp/rectsl-study-gpu-agreement.png
 */
 private val GPU_AGREEMENT_SNIPPET = """
-import afield.four.Renderer
-import afield.four.modules.fromContext
+import afield.graphics.vulkan.Renderer
+import afield.document.context.fromContext
 import afield.examples.rectsl.RectSLStudyGpuSmoke
-import afield.rectsl.study.RectSLGpuRasterizer
+import afield.lang.rectsl.study.RectSLGpuRasterizer
 import java.util.concurrent.CompletableFuture
 
 // The GPU study renderer waits on frames the main thread draws, so it runs off that thread.
@@ -42,7 +42,7 @@ loop { if (work.isDone) println(work.get()) }
 
 /**
  * Proof that a RectSL study's GPU frames are the scene's frames: the same scenes drawn by
- * [afield.rectsl.study.RectSLGpuRasterizer] on a live renderer and by the CPU reference agree, and a
+ * [afield.lang.rectsl.study.RectSLGpuRasterizer] on a live renderer and by the CPU reference agree, and a
  * few pixels are pinned outright — so a flip, a colour written without its sRGB decode, a target that
  * does not blend, or a stale time fails here rather than in a picture a model is shown.
  *

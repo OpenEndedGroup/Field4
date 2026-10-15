@@ -1,6 +1,6 @@
 name: polytope_canonical_gallery
 description: >
-  One editable Field box for canonical realization in afield.stdlib.polytope. Change the single
+  One editable Field box for canonical realization in afield.geometry.polytope. Change the single
   Conway expression string at the top and the box re-evaluates the notation, canonicalizes the
   result, and draws both side by side in the on-canvas Three.js viewer: on the left the raw
   per-operator realization, on the right the canonical form in which every edge is tangent to one
@@ -15,20 +15,20 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 450.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.Vec3
-
+          import afield.math.linalg.Vec3
+          
           // ---- the one parameter to change -------------------------------------------------
           // Conway prefix notation, read right to left, over the seeds T C O I D and the
           // operators d a k t g j n z o e s m b. Try "gD", "ktC", "bD", "sD", "dkD", "tI", "eC".
           val expression = "gD"
           // ----------------------------------------------------------------------------------
-
+          
           val plain = conway(expression)
           val raw = plain.polyhedron
           val run = raw.canonicalize()
           val solid = run.polyhedron
           val orbits = solid.combinatorialOrbits()
-
+          
           println(
               """
               $expression = ${plain.summary().primitiveOperations.joinToString(" ")}
@@ -39,9 +39,9 @@ operations:
               orbits: ${orbits.summary()}
               """.trimIndent(),
           )
-
+          
           val status: (String) -> Unit = { message -> markdown("canonical face", message) }
-
+          
           // Face colour by polygon degree, so the Archimedean/Catalan structure reads at a glance.
           val hues = mapOf(
               3 to vec(1.00, 0.60, 0.30),
@@ -51,12 +51,12 @@ operations:
               8 to vec(1.00, 0.88, 0.40),
               10 to vec(0.72, 0.78, 0.86),
           )
-
+          
           fun PolyhedralObject.shiftedBy(dx: Float): PolyhedralObject {
               val coordinates = realization!!.vertexCoordinates.map { Vec3(it).add(dx, 0f, 0f) }
               return copy(realization = Realization3(coordinates))
           }
-
+          
           fun PolyhedralObject.panel(label: String, dx: Float, alpha: Double) =
               shiftedBy(dx).toFaceFLines { face, line ->
                   val degree = topology.faceCycle(face.id).size
@@ -65,7 +65,7 @@ operations:
                   val normal = faceNormal(face.id)
                   val centre = faceCentroids[topology.elements(2).indexOfFirst { it.id == face.id }]
                   val depth = (centre.x * normal.x + centre.y * normal.y + centre.z * normal.z).toDouble()
-
+          
                   line.filled = true
                   line.stroked = true
                   line.thickness = 1.2
@@ -75,7 +75,7 @@ operations:
                       status(
                           """
                           **$label — face ${face.id.value}**
-
+          
                           - degree: `$degree`
                           - combinatorial orbit: `$orbit of ${orbits.faceClassCount}`
                           - face-plane distance from centre: `${"%.5f".format(depth)}`
@@ -83,13 +83,13 @@ operations:
                       )
                   }
               }
-
+          
           // Left: the per-operator realization the Conway transform produced. Right: its canonical
           // representative. Both are centred and scaled by the same rigid gauge, so the difference
           // on screen is shape and nothing else.
           val before = raw.normalize(RigidGauge.CANONICAL, reference = raw.realization)
           val faceLines = before.panel("realized", -1.4f, 0.34) + solid.panel("canonical", 1.4f, 0.86)
-
+          
           threeLines(
               faceLines,
               channel = "polytope",
@@ -99,7 +99,7 @@ operations:
               editable = false,
           )
           displayOpen("polytope")
-
+          
           viz("diagnostics", listOf(run.initialDiagnostics, run.finalDiagnostics, orbits))
   - execute:
       box: polytope_canonical_gallery

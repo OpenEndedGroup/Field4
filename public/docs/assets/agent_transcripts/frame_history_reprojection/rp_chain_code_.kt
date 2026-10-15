@@ -1,10 +1,10 @@
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.addPassChain
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.addPassChain
+import afield.math.linalg.Matrix4f
 import kotlin.math.sin
 
-prop<afield.four.fabricated.FabricateBuiltChain>(chain)
+prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(chain)
 
 // `persistent` says WHAT last frame's pixels were. `frameHistory` says WHERE they were.
 // `temporalAccumulate` declares both, and that composition is the whole point: without the

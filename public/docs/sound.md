@@ -83,7 +83,7 @@ value when it parses as a MIDI number, and otherwise from a drum map with five e
 `showPatAudio(pattern)` renders through it and drops an audio player into the box's output.
 Here is the beat:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/beat-stand-in.wav" audio-spec="beat-stand-in" audio-renderer="afield.four.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-beat-stand-in"}
+```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/beat-stand-in.wav" audio-spec="beat-stand-in" audio-renderer="afield.audio.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-beat-stand-in"}
 // showPatAudio(pat("bd ~ sd ~, hh*8") with gain(0.9))
 // offline-rendered through patVoice by SoundRenderPathDocs — listen below
 ```
@@ -98,14 +98,14 @@ every machine, every time.
 
 ## The real samples
 
-`DirtRender` (`src/jvmMain/kotlin/afield/four/synth/DirtRender.kt`) is the other half.
+`DirtRender` (`src/jvmMain/kotlin/afield/audio/synth/DirtRender.kt`) is the other half.
 `DirtSamples.kt` plays the genuine Tidal sample set **live** and only live: `playDirt` needs
 `respondAhead`, a clock and an audio device, none of which exist in a docs build or a headless
 box. `patRenderStereoDirt` mixes the same library straight into a buffer instead.
 
 The same beat, the same ten events a cycle, the same `gain` / `pan` / `speed` annotations:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/beat-dirt.wav" audio-spec="beat-dirt" audio-renderer="afield.four.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-beat-dirt"}
+```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/beat-dirt.wav" audio-spec="beat-dirt" audio-renderer="afield.audio.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-beat-dirt"}
 // showDirtAudio(pat("bd ~ sd ~, hh*8") with gain(0.9))
 // offline-rendered from the Dirt-Samples quark by SoundRenderPathDocs — listen below
 ```
@@ -153,7 +153,7 @@ mixed on top of the sampled ones, and `DirtRenderResult.unmatched` names them.
 Dirt install and `zzzznotadrum` is in none. You can hear where the join falls: three sampled
 drums and one square-wave blip, in one bar.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/per-event-fallback.wav" audio-spec="per-event-fallback" audio-renderer="afield.four.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-per-event-fallback"}
+```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/per-event-fallback.wav" audio-spec="per-event-fallback" audio-renderer="afield.audio.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-per-event-fallback"}
 // showDirtAudio(pat("bd zzzznotadrum bd hh") with gain(0.9),
 //               voice = patVoice(wave = PatWave.SQUARE, baseHz = 330.0, ...))
 // offline-rendered by SoundRenderPathDocs — listen below

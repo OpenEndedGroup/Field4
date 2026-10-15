@@ -24,7 +24,7 @@ ordinary brush goes the same way, but its black is a smooth silhouette with a ta
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/amount.png" source-image="/tmp/field-docs-paint-sweep-amount.png" alt="Two rows of 7 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away. The top row is painted with moving hairs, the bottom row with an ordinary brush along the same path. Moving hairs: loaded lightly the stroke is a pale grey drawing of hair tracks; loaded more it darkens to black, and far past full (16, 128) the paint stands in a lumpy crust on the bar and fills the ring. Ordinary brush: the same pale, streaky grey at first, solid black from 4 up, a smooth silhouette whose last stroke tapers to a point instead of breaking into streaks." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-amount" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -106,7 +106,7 @@ silhouette, lumpy where the bar starts. The ordinary brush is solid black from 2
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/lay.png" source-image="/tmp/field-docs-paint-sweep-lay.png" alt="Two rows of 6 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away. The top row is painted with moving hairs, the bottom row with an ordinary brush along the same path. Moving hairs: from a thin film showing every hair track the black thickens, until from 8 the ring, scrub and last stroke are one solid shape, the top of the bar lumpy at 32 and 256. Ordinary brush: streaky brown at 0.5, solid black from 2, its last stroke a tapered black spike rather than a streaked tail." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-lay" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -187,7 +187,7 @@ loop; very long, it never runs out and the gesture is one solid shape. Both brus
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/run.png" source-image="/tmp/field-docs-paint-sweep-run.png" alt="Two rows of 6 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away. The top row is painted with moving hairs, the bottom row with an ordinary brush along the same path. In both rows only the top of the bar is painted at a run of 50 before the brush is dry, and at 300 the loop is already pale. From 30 000 the moving brush paints one solid silhouette with a square, streaked end; the ordinary brush a solid shape whose last stroke tapers to a point." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-run" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -270,7 +270,7 @@ stays. The ordinary brush holds its black a little longer, to about 0.05.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/thinner.png" source-image="/tmp/field-docs-paint-sweep-thinner.png" alt="Two rows of 7 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away. The top row is painted with moving hairs, the bottom row with an ordinary brush along the same path. Moving hairs: black up to 0.01; from 0.02 the bar breaks into streaks with dark outlines; at 0.2 and 0.5 a pale veil of streaks; at 0.9 almost nothing. Ordinary brush: black and smooth up to 0.05, then a pale brown veil with crisp outlines at 0.2 and 0.5, nearly gone at 0.9." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-thinner" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -351,7 +351,7 @@ but at very small values it fades to a ghost. The ordinary brush follows it step
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/hiding.png" source-image="/tmp/field-docs-paint-sweep-hiding.png" alt="Two rows of 6 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away. The top row is painted with moving hairs, the bottom row with an ordinary brush along the same path. In both rows the gesture is a barely visible ghost at the lowest hiding and darkens steadily to black at 1. At each step the ordinary brush is browner and more streaked than the moving one, and its last stroke tapers to a point." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-hiding" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -435,7 +435,7 @@ but past that it changes little.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/stiff.png" source-image="/tmp/field-docs-paint-sweep-stiff.png" alt="Two rows of 6 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away. The top row is painted with moving hairs, the bottom row with an ordinary brush along the same path. Moving hairs: dense black up to tube paint, then paler and more finely striped, the ring fading toward its outer edge, until at 300 the bar and ring are grey. Ordinary brush: black up to 0.5, paler and more streaked at 2, and then hardly changing from 5 to 300." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-stiff" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -521,7 +521,7 @@ brush hardly notices: from 1 up its scrub spreads a little wider and its last st
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/stiffness.png" source-image="/tmp/field-docs-paint-sweep-stiffness.png" alt="Two rows of 7 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away. The top row is painted with moving hairs, the bottom row with an ordinary brush along the same path. Moving hairs: at negative stiffness the hairs barely reach the canvas, leaving a few marks and blots; at 0 a soft fur of hair marks; from 0.4 crisp; and at 1000 the scrub and loop splinter into hard straight marks thrown out to the sides. Ordinary brush: almost the same smooth stroke in every column; from 1 up the scrub spreads a little wider and the last stroke parts at its top." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-stiffness" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -603,7 +603,7 @@ striped, and more hairs change little.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/hairs.png" source-image="/tmp/field-docs-paint-sweep-hairs.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Even with 2 hairs the bar is one whole band. With 2 and 4 hairs the loop drags a dark wedge across the ring where it crosses itself; from 48 up the ring is evenly striped with a toothed outer edge, and the stroke changes little from 48 to 1024." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-hairs" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -687,7 +687,7 @@ smooth dark shape with hardly a hair mark.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/bristles.png" source-image="/tmp/field-docs-paint-sweep-bristles.png" alt="Eight columns of the same black brushstroke painted with an ordinary brush on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away. With 1 bristle the gesture is a single thin, beaded line; 3 and 10 bristles paint separate tracks with gaps between them; from 40 the stroke is whole; past the default of 140 it closes up into denser black, and at 10 000 and 100 000 it is a smooth dark brown shape with hardly a hair mark." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-bristles" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -771,7 +771,7 @@ stroke ends in splinters.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/hair.png" source-image="/tmp/field-docs-paint-sweep-hair.png" alt="Two rows of 6 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away. The top row is painted with moving hairs, the bottom row with an ordinary brush along the same path. Moving hairs: as thick as usual the stroke shows its tracks; with finer hairs it closes up into a solid black silhouette with sharp, fringed edges. Ordinary brush: solid black already at 0.5; from 0.2 the edges of the scrub go ragged and the last stroke ends in a few sharp splinters." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-hair" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -853,7 +853,7 @@ stroke to its end, tapering to a point.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/width.png" source-image="/tmp/field-docs-paint-sweep-width.png" alt="Two rows of 6 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away. The top row is painted with moving hairs, the bottom row with an ordinary brush along the same path. From a brush 10 cm wide down to one 1 mm wide the gesture narrows to a fine drawn line in both rows. At the narrow widths the moving brush stops short on the last stroke and fades; the ordinary brush draws it at full length as a line tapering to a point." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-width" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -936,7 +936,7 @@ hairs keep their black; the ordinary brush pales evenly.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/pickup.png" source-image="/tmp/field-docs-paint-sweep-pickup.png" alt="Two rows of 6 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away. The top row is painted with moving hairs, the bottom row with an ordinary brush along the same path. Moving hairs: with no pickup the last stroke fades out; with more, the stroke goes paler in places and keeps dark patches where some hairs held their black. Ordinary brush: the whole stroke goes evenly paler, from black to a light grey-brown at 10." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-pickup" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -1019,7 +1019,7 @@ sooner, by 2.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/push.png" source-image="/tmp/field-docs-paint-sweep-push.png" alt="Two rows of 6 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away. The top row is painted with moving hairs, the bottom row with an ordinary brush along the same path. Moving hairs: with no push the stroke is soft; with more, every pass is outlined in dark ridges; at 10 and 100 the paint is ploughed to the edges and the stroke is a pale shape in thin black outlines, the top of the bar still dark. Ordinary brush: the same, sooner: from 2 the whole gesture, bar included, is a pale shape drawn in black outlines." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-push" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -1102,7 +1102,7 @@ curls around the path, and at 64 they loop away across the canvas.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/ragged.png" source-image="/tmp/field-docs-paint-sweep-ragged.png" alt="Two rows of 6 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away. The top row is painted with moving hairs, the bottom row with an ordinary brush along the same path. Moving hairs: to 8 the stroke barely changes; at 64 its hairs fly apart; at 512 the longest hairs draw great circles over the canvas; at 4096 almost nothing touches near the path. Ordinary brush: at 8 the hairs already wander into a tangle of curls around the path; at 64 they loop out across the top of the canvas; at 512 a few long straight lines cross it; at 4096 almost nothing is left." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-ragged" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -1185,7 +1185,7 @@ canvas.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/splay.png" source-image="/tmp/field-docs-paint-sweep-splay.png" alt="Two rows of 7 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away. The top row is painted with moving hairs, the bottom row with an ordinary brush along the same path. Moving hairs: with no splay the bar is one band; with more, it parts into two bands with a widening channel between them, and the loop becomes two rings. Ordinary brush: the stroke spreads instead of parting: the bar widens, the ring is a broad disc at 2, the gesture a wide fan of hair marks at 4, and at 10 hair marks cover the whole canvas." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-splay" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -1273,7 +1273,7 @@ unsplayed and at splay 2.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/clumping.png" source-image="/tmp/field-docs-paint-sweep-clumping.png" alt="Two rows of 6 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away, painted with moving hairs at cohesion 4 and clumping from -1 to 2; unsplayed above, at splay 2 below. From -1 to 1 the strokes look much alike, the ring at 1 gathered into firmer concentric bands; at 1.5 and 2 the brush draws into narrower, sharper bands and the ring and last stroke go paler. In the splayed row the two halves of the bar get ragged inner edges as clumping rises, and the loop folds into an off-centre spiral." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-clumping" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -1360,7 +1360,7 @@ gathered brush lays its paint sooner; below 0 the hairs push each other apart. A
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/cohesion.png" source-image="/tmp/field-docs-paint-sweep-cohesion.png" alt="Two rows of 7 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away, painted with moving hairs joined by liquid bridges, cohesion from -8 to 32; unsplayed above, at splay 3 fanned open below. Unsplayed, the stroke changes little up to 4; at 16 and 32 the bar fades early and the ring and last stroke are pale, gathered into fine dark bands. Fanned, the bar parts in two with ragged inner edges that widen with cohesion, the ring splits into concentric bands, and at 16 and 32 the bar's halves fray and the ring breaks into pale and dark rings." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-cohesion" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -1448,7 +1448,7 @@ liquid bridges, the bundles hold together and each leaves its own trail, braidin
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/scatter.png" source-image="/tmp/field-docs-paint-sweep-scatter.png" alt="Six columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away, painted by a flat half the usual width with 64 moving hairs, splay 3 fanned open and liquid bridges, the splay's scatter from 0 to 2. At 0 the bar is two narrow bands; at 0.3 it begins to waver; at 0.6 it tears into several wavy ropes; at 1 and 2 bundles of hairs braid and cross through the loop and the scrub, and the last stroke trails apart into separate strands." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-scatter" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -1536,7 +1536,7 @@ shows: lean paint dries dull, oily paint dark and glossy.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/gloss.png" source-image="/tmp/field-docs-paint-sweep-gloss.png" alt="Six columns of the same black brushstroke painted side by side on off-white, dried and lit from above: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Lean paint, from no oil to 0.8, dries a dull grey; at 1.3 and 4 the oil-rich paint dries darker and glossier." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-gloss" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -1618,7 +1618,7 @@ on it. Very oily paint is drawn in so fast that the stroke runs out sooner.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/absorbent.png" source-image="/tmp/field-docs-paint-sweep-absorbent.png" alt="Six columns of the same black brushstroke painted side by side on off-white on an absorbent ground, dried and lit from above: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Lean and ordinary paint look much alike, a dull grey; at 1.3 the top of the bar is darker; at 4 the oiliest paint is drawn into the ground, the ring breaks into pale rings, and the stroke runs out at the scrub." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-absorbent" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -1701,7 +1701,7 @@ has set and does not move.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/wipe.png" source-image="/tmp/field-docs-paint-sweep-wipe.png" alt="Seven columns of the same black brushstroke painted side by side on off-white, each crossed by three horizontal rag wipes made after longer and longer: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Wiped at once or after 8 hours, the black lifts almost to the ground on the bar, the ring and the last stroke; after a day the wipe still lifts the bar but only lightens the ring and the last stroke; after 2 days it leaves a faint grey patch on the bar; from 4 days the paint is set and the wipes do not show." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-wipe" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -1785,7 +1785,7 @@ sixteen times the wipes do not show.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/drying.png" source-image="/tmp/field-docs-paint-sweep-drying.png" alt="Six columns of the same black brushstroke painted side by side on off-white, each wiped by a rag 8 hours after painting: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. At a quarter of the usual rate and at the usual rate the wipes lift cleanly; at 4 times the rate the bar still lifts but the ring and the last stroke barely do; from 16 times the paint has set and the wipes do not show." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-drying" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -1869,7 +1869,7 @@ way it came.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/tilt.png" source-image="/tmp/field-docs-paint-sweep-tilt.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Upright (0) the brush paints only the top of the bar and a faint ghost of the ring. At 30 the usual stroke; from 60 a dark diagonal band crosses the ring and the scrub; at 85 the ring and the last stroke are paler; at 120, with the handle leaning back, the last stroke is a dark band all the way to its end." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-tilt" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -1951,7 +1951,7 @@ hairs chatter on the last stroke; at 64 times the brush lands late and the loop 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/faster.png" source-image="/tmp/field-docs-paint-sweep-faster.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. Slowed down, the ring and scrub have crisp dark outlines and pale ridges. The versions look much alike up to 4 times as fast; at 16 the end of the last stroke breaks into chattering dashes; at 64 the brush lands late, leaving a few marks above a bar that starts low, the loop is a blurred swirl wider than the rest and the scrub a loose tangle." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-faster" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -2034,7 +2034,7 @@ polygon with beaded corners.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/facets.png" source-image="/tmp/field-docs-paint-sweep-facets.png" alt="Six columns of the same black brushstroke painted side by side on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. With chords of 200 units the loop is a hexagon of straight bands and the scrub a tangle; at 60 the ring has a scalloped edge and a beaded inner rim; at 20 and below it is round again." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-facets" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above
@@ -2117,7 +2117,7 @@ as the pressure falls, where the moving brush stays wide and breaks up.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/moving.png" source-image="/tmp/field-docs-paint-sweep-moving.png" alt="Two columns of the same path on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away into streaks. On the left, moving hairs: a wide bar, a ring with a toothed rim, a crisp zigzag scrub, and a last stroke that stays wide and breaks into streaks. On the right, an ordinary brush: a bar that narrows into the loop, a smooth ring, a softer scrub, and a last stroke that tapers to a point." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-moving" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 :::fold the gesture, and a column of it painted with settings `s`
 // what every column starts from: the black of the Elegy above

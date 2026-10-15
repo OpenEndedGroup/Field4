@@ -10,7 +10,7 @@
 prop<Window>(window)
 prop<Renderer>(renderer)
 once.renderer {
-    window = Window("FieldML - a live afield.four scene")
+    window = Window("FieldML - a live Field 4 scene")
     Renderer(window)
 }
 println("renderer ready - now run the FieldML box")

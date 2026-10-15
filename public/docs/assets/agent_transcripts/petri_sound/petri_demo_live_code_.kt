@@ -1,5 +1,5 @@
-import afield.petri.*
-import afield.four.synth.*
+import afield.simulation.petri.*
+import afield.audio.synth.*
 
 // Boxes 1-6 render *offline* — they mix a wav and hand you a player, which needs no
 // audio device and so works in a docs build and in CI. This is the other path: the real

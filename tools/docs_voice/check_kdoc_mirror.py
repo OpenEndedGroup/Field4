@@ -69,6 +69,8 @@ def file_overview(source: Path) -> list[str] | None:
     i = 0
     while i < len(lines):
         stripped = lines[i].lstrip()
+        if re.match(r"^(?:(?:public|private|internal|protected|inline|suspend|tailrec|operator|infix|external|expect|actual|data|sealed|abstract|open|final|enum|annotation|const|lateinit)\s+)*(?:fun|class|interface|object|typealias|val|var)\b", stripped):
+            return None
         if stripped.startswith("/**"):
             # find the end of this block, tolerating a single-line `/** ... */`
             if stripped.rstrip().endswith("*/") and len(stripped) > 5:

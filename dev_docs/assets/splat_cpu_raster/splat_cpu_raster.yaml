@@ -52,25 +52,25 @@ operations:
         h: 60.0
       properties:
         code: |
-          import afield.four.fabricated.GaussianSplatRenderer
-          import afield.four.fabricated.SplatSequence
-          import afield.four.modules.SplatCloud
-          import afield.four.modules.SplatContactSheet
-          import afield.four.modules.SplatRaster
-          import afield.stdlib.linalg.Vector3f
+          import afield.graphics.scene.fabricated.GaussianSplatRenderer
+          import afield.graphics.scene.fabricated.SplatSequence
+          import afield.graphics.render.SplatCloud
+          import afield.graphics.render.SplatContactSheet
+          import afield.graphics.render.SplatRaster
+          import afield.math.linalg.Vector3f
           import java.io.File
-
+          
           // ---- knobs: edit and re-run this box ------------------------------------
           // A directory of .compressed.ply frames. If it is not there, this box makes its own
           // cloud instead and everything below still works.
           val sequenceDir = File(System.getProperty("user.home"), "Downloads/circle-05-a120p0_00001_")
-
+          
           // >>> MOVE THIS ONE FIRST <<<
           // Depth in metres beyond which splats are thrown away. 1.60 keeps everything in a
           // typical depth-map capture; 1.20 slices the back off; 1.05 leaves almost nothing.
           val cropFar = 1.60f
           val cropNear = 0.00f
-
+          
           val frame = 60              // which frame gets the big preview
           val tiles = 24              // frames in the contact sheet
           val decimate = 1.0f         // 0.25 keeps a quarter of the splats
@@ -80,11 +80,11 @@ operations:
           // Set to a path to save your edited cloud as a real .compressed.ply.
           val writeEditedTo: File? = null
           // -----------------------------------------------------------------------
-
+          
           val config = SplatRaster.RasterConfig(sizeScale = splatSize, alphaScale = alphaBoost)
           val frames = (sequenceDir.listFiles { f: File -> f.name.endsWith(".compressed.ply") }
               ?: arrayOf()).sortedBy { it.name }
-
+          
           // ---- the cloud we are going to edit ------------------------------------
           // An expression-bodied `if`, not a `val cloud: SplatCloud` assigned in each branch: a
           // top-level property in a Field box is a script property, and those must be initialised
@@ -92,7 +92,7 @@ operations:
           val cloud = if (frames.isNotEmpty()) {
               val at = frames[Math.floorMod(frame, frames.size)]
               println("read ${at.name}")
-
+          
               // The contact sheet: the whole shot at once. No crop -- this panel is the overview,
               // the one below is the edit.
               val sequence = SplatSequence.fromDirectory(sequenceDir, cacheFrames = tiles + 2)
@@ -110,7 +110,7 @@ operations:
               println("  -- building a synthetic spiral instead, so this box still runs.")
               println("  To use real ones: PlayCanvas splat-transform writes .compressed.ply,")
               println("  one per frame, and any 3DGS .ply will do as a source.")
-
+          
               // A cloud built from nothing through the public API. Deliberately in the same depth
               // range a depth-map capture occupies (~0.95 to ~1.55 m) so cropFar means the same
               // thing here as it does on real data.
@@ -138,12 +138,12 @@ operations:
               display("whole shot", "<i>synthetic cloud &mdash; no capture found, so no contact sheet</i>")
               SplatCloud(positions, colors, alphas, rotations, scales, n)
           }
-
+          
           // ---- query -------------------------------------------------------------
           val bounds = cloud.stats()
           println()
           println(bounds.toString())
-
+          
           // ---- edit --------------------------------------------------------------
           val edited = cloud
               .cropped(
@@ -155,14 +155,14 @@ operations:
           println("crop z to $cropNear..$cropFar and keep $decimate of what is left:")
           println("  ${cloud.count} splats -> ${edited.count} " +
                   "(%.1f%% survived)".format(edited.count * 100.0 / cloud.count))
-
+          
           if (edited.count == 0) {
               println("  nothing left -- raise cropFar. The cloud spans z " +
                       "%.3f..%.3f.".format(bounds.boundsMin.z, bounds.boundsMax.z))
               display("your crop", "<i>empty crop &mdash; raise cropFar above " +
                       "%.3f</i>".format(bounds.boundsMin.z))
           } else {
-
+          
           // ---- preview, with no GPU ----------------------------------------------
           val raw = edited.toRawSplats()
           val packed = SplatRaster.allocatePacked(raw.count)
@@ -185,7 +185,7 @@ operations:
               println("  cloud.filtered() drops them.")
           }
           display("your crop", result.image.toPng())
-
+          
           // ---- write -------------------------------------------------------------
           writeEditedTo?.let { out ->
               edited.write(out)
@@ -193,7 +193,7 @@ operations:
               println("wrote ${out.absolutePath} (${out.length()} bytes), " +
                       "a valid .compressed.ply that SuperSplat and PlayCanvas will open")
           }
-
+          
           }
   - execute:
       box: splat_cpu_raster

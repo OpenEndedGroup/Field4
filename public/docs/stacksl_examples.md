@@ -885,11 +885,11 @@ vec4 prefix_warp(vec4 prefix_in) { ... }
 vec4 prefix_paletteMist(vec4 prefix_in) { ... }
 ```
 
-The low-level compiler is in `afield.stacksl`:
+The low-level compiler is in `afield.lang.stacksl`:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stacksl.StackSLCompileOptions
-import afield.stacksl.StackSLCompiler
+import afield.lang.stacksl.StackSLCompileOptions
+import afield.lang.stacksl.StackSLCompiler
 
 val result = StackSLCompiler.compile(
     source = stackSL ?: "",

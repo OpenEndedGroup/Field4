@@ -1,13 +1,13 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.buffers.VulkanBuffer
-import afield.four.buffers.allocators
-import afield.four.device.Fence
-import afield.four.targets.RenderToTexture
-import afield.four.util.AutoDisposer
-import afield.four.util.Options
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.buffers.VulkanBuffer
+import afield.graphics.vulkan.buffers.allocators
+import afield.graphics.vulkan.device.Fence
+import afield.graphics.vulkan.targets.RenderToTexture
+import afield.graphics.vulkan.util.AutoDisposer
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
 import org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
 import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
 import kotlin.system.exitProcess

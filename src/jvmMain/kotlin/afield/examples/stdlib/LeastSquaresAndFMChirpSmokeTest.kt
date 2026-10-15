@@ -1,8 +1,8 @@
 package afield.examples.stdlib
 
-import afield.four.util.FMChirpCurves
-import afield.stdlib.LeastSquaresOptions
-import afield.stdlib.leastSquares
+import afield.graphics.vulkan.util.FMChirpCurves
+import afield.math.optimization.LeastSquaresOptions
+import afield.math.optimization.leastSquares
 import kotlin.math.abs
 import kotlin.math.sin
 

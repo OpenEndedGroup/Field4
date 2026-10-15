@@ -1,4 +1,4 @@
-import afield.macros.*
+import afield.runtime.macros.*
 fun wrap(v: Int) = v
 fun f(v: Int) = v + 1
 rewrite { x: Expr ->

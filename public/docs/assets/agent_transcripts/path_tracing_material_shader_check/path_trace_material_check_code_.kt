@@ -1,7 +1,7 @@
-import afield.four.fabricated.*
-import afield.four.util.Camera
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.reloadComputeShader
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
+import afield.math.linalg.Vector3f
+import afield.graphics.shader.reloadComputeShader
 import kotlinx.coroutines.delay
 
 val scene = PathTraceScene().apply {
@@ -14,7 +14,7 @@ tracer = pathTracingHere(scene, PathTraceEnvironment.constant(0f), width=32, hei
 tracer.materialMesh.gain = { 2f }
 tracer.maxBounces = 1
 tracer.blitToScreen()
-fun afield.Box.ownerForTest() = this
+fun afield.document.graph.Box.ownerForTest() = this
 val owner = ownerForTest()
 val verify: suspend () -> Unit = {
     PathTraceGpuSmoke.awaitSamples(tracer, 8)

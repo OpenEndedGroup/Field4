@@ -31,7 +31,7 @@ analysis and shows each job's progress, then the combined view. Swap `renderDirt
 renderer in the table below and the rest stays the same.
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.synth.*
+import afield.audio.synth.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()
@@ -71,7 +71,7 @@ This captured drum pattern uses `pat("{bd ~ sd ~, hh*8}")` with the pinned Dirt 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_render_analysis/pat_analysis.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-pat" alt="Actual Pat Dirt render waveform, beat grid, pYIN and Basic Pitch lanes on a shared cursor"}
 :::static
-import afield.four.audio.WavFloatArrayLoader
+import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path
 val json = FieldAudioClient.json
@@ -161,7 +161,7 @@ This view requests the same render through Field Audio's waveform-summary endpoi
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_render_analysis/service_waveform.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-waveform" alt="Real service waveform envelopes of a Pat Dirt render" capture-profile="linux-nvidia"}
 :::static
-import afield.four.audio.WavFloatArrayLoader
+import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path
 val json = FieldAudioClient.json

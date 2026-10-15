@@ -1,5 +1,5 @@
-import afield.four.neural.LearnedShader
-import afield.four.modules.fromContextWithNameOrNull
+import afield.graphics.shader.learning.LearnedShader
+import afield.document.context.fromContextWithNameOrNull
 
 // A separate scene: stop the original learned-shader box before launching this one.
 // Edit this box's fragment property while it runs; the network stays allocated.

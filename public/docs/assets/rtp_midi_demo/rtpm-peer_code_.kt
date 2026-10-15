@@ -1,4 +1,4 @@
-import afield.rtpmidi.*
+import afield.io.midi.rtp.*
 
 // A second session in the same Field, so the demo works with nothing else on the network.
 // It invites the "Field" session from box 1 the way a Mac or an iPad would.

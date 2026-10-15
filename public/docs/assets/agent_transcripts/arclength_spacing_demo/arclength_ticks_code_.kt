@@ -74,7 +74,7 @@ val report = { name: String, line: FLine ->
     val a = line.nodes[0].to
     val b = n.to
     val ptSeg = { p: Vec3 ->
-        field.graphics.FLinesAndJavaShapes.ptSegDistSq3(a.x, a.y, a.z, b.x, b.y, b.z, p.x, p.y, p.z)
+        afield.geometry.path.java2d.FLinesAndJavaShapes.ptSegDistSq3(a.x, a.y, a.z, b.x, b.y, b.z, p.x, p.y, p.z)
     }
     val flatness = kotlin.math.sqrt(maxOf(ptSeg(n.c1), ptSeg(n.c2)))
     val mid = vec(
@@ -84,7 +84,7 @@ val report = { name: String, line: FLine ->
     )
     val chordMid = vec(0.5 * (a.x + b.x), 0.5 * (a.y + b.y), 0.5 * (a.z + b.z))
     val skew = mid.distance(chordMid)
-    val leaves = afield.graphics.PathFlattener(line, 0.01f).mappings.size
+    val leaves = afield.geometry.path.PathFlattener(line, 0.01f).mappings.size
     "%-22s flatness %8.3f   skew %8.3f   leaves %5d".format(name, flatness, skew, leaves)
 }
 

@@ -1,6 +1,6 @@
 # Pattern-rewrite strategies
 
-The pattern-rewrite layer (`afield.macros.PatternRewrite`, authored via `afield.macros.RewriteDsl`)
+The pattern-rewrite layer (`afield.runtime.macros.PatternRewrite`, authored via `afield.runtime.macros.RewriteDsl`)
 lets a live Field box declare source-to-source rewrite rules that run as a PSI preprocessor in front
 of `kotlinc`. By default it is a **global fixpoint**: every rule fires at every match, everywhere,
 re-parsing and repeating until nothing changes. That is confluent and convenient, but gives the
@@ -94,6 +94,6 @@ they wrap — and a strategy drives it like any other rule, so each `topdown` st
 `g(v) = v + 100`). Covered by `testStrategyNestedPatternUnderRepeat` and the transcript's
 `rw_nested` box.
 
-Coverage lives in `afield.PatternRewriteSmokeTest` (`kotlin.pattern-rewrite.smoke`) — each strategy
+Coverage lives in `afield.math.functions.PatternRewriteSmokeTest` (`kotlin.pattern-rewrite.smoke`) — each strategy
 case asserts a result *different from the default global fixpoint*, which is the proof it does
 something.

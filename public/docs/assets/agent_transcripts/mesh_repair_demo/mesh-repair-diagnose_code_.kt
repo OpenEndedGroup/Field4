@@ -4,12 +4,12 @@
 // point — diagnose() and showMeshDiagnosis exist only where mesh_repair.kt does, so if this
 // box compiles at all, the Field running it has that code.
 
-import afield.manifold.ManifoldLibrary
-import afield.manifold.isValidSolid
-import afield.stdlib.TriMesh
-import afield.stdlib.diagnose
-import afield.stdlib.icosphereMesh
-import afield.stdlib.showMeshDiagnosis
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.isValidSolid
+import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.diagnose
+import afield.geometry.mesh.icosphereMesh
+import afield.geometry.mesh.showMeshDiagnosis
 
 run {
 

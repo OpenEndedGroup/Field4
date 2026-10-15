@@ -110,13 +110,13 @@ In a second terminal:
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py \
   --json --attach-existing --port 9724 --timeout 420 \
-  --command 'run-jvm-main afield.four.lighting.DirectLightingSmoke --timeout 300'
+  --command 'run-jvm-main afield.graphics.render.lighting.DirectLightingSmoke --timeout 300'
 # Same test with the physical GPU retained but AS/query/pipeline disabled:
 uv run --project . --group backdoor python tools/field_backdoor.py \
   --json --attach-existing --port 9724 --timeout 420 \
-  --command 'run-jvm-main afield.four.lighting.DirectLightingSmoke --arg=--fallback --timeout 300'
+  --command 'run-jvm-main afield.graphics.render.lighting.DirectLightingSmoke --arg=--fallback --timeout 300'
 # Contract and GLSL/SPIR-V layout tests, actually rerun:
-./gradlew jvmTest --rerun --tests afield.four.lighting.DirectLightingTest
+./gradlew jvmTest --rerun --tests afield.graphics.render.lighting.DirectLightingTest
 ```
 
 Run verification commands sequentially. `--arg=--clip` adds 120 deterministic rendered frames
@@ -258,7 +258,7 @@ Run after optional shader preparation, using the private-source launch workaroun
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py \
   --json --attach-existing --port 9724 --timeout 600 \
-  --command 'run-jvm-main afield.four.lighting.RtxdiLightingSmoke --arg=--clip --timeout 540'
+  --command 'run-jvm-main afield.graphics.render.lighting.RtxdiLightingSmoke --arg=--clip --timeout 540'
 ```
 
 `RTXDI LIGHTING CHECK DONE` is the completion marker. All optional runtime artifacts are under

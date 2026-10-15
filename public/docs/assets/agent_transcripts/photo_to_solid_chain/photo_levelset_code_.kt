@@ -1,6 +1,6 @@
 import afield.examples.chain.PhotoToSolidChain
-import afield.manifold.Solid
-import afield.manifold.toSolid
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
 
 // Two independent constructions of the same object: the grid triangulation, and a marched
 // level set of the same depth field. Compared against EACH OTHER, not against a constant.

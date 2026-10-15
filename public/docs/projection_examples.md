@@ -7,7 +7,7 @@ Sometimes the data is not a signal and not a table. It is a **set of things** pl
 each pair of them: how far apart those two are. Twenty words and an edit distance. A hundred and
 sixty samples along a curve and the number of hops between them. A thousand mel frames and a
 Wasserstein distance. There is nothing to plot, because the things have no coordinates, which is the
-whole problem, and it is what [`smile_mds.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/smile_mds.kt) is for. Give it the distances and it
+whole problem, and it is what [`smile_mds.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/statistics/smile_mds.kt) is for. Give it the distances and it
 invents coordinates that reproduce them as closely as two dimensions allow.
 
 Two of the functions take vectors and compute the distances for you, which is what the
@@ -58,7 +58,7 @@ anywhere; a word is not a point in any space until this call gives it one.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/projection_examples/edit_distance_words.png" wait="2.0" capture="box" open-outputs="true" w="980" h="720" padding="16"}
 :::static
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 import space.kscience.plotly.models.TextPosition
@@ -71,7 +71,7 @@ val families = [
 ]
 val words = families.flatten()
 
-// Ordinary Levenshtein, in the fence rather than from the stdlib: `afield.brief.editDistance`
+// Ordinary Levenshtein, in the fence rather than from the stdlib: `afield.lang.brief.editDistance`
 // exists but is `internal`, and naming a doc-local helper after a stdlib symbol would put a false
 // "Used in" back-reference in the generated reference.
 val wordEditDistance = { a: String, b: String ->
@@ -204,7 +204,7 @@ and a good projection recovers a coordinate that rises steadily with it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/projection_examples/graph_hops_spiral.png" wait="2.0" capture="box" open-outputs="true" w="1000" h="760" padding="16"}
 :::static
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 
@@ -333,7 +333,7 @@ clusters 0 and 1, and either projection keeps that or it does not.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/projection_examples/mds_versus_tsne.png" wait="10.0" capture="box" open-outputs="true" w="1020" h="900" padding="16"}
 :::static
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 

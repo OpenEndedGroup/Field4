@@ -30,7 +30,7 @@ Rule 30's centre column has no such formula.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/rules.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-ca-rules" embed=true alt="Two black-and-white space-time diagrams, rule 90's nested Sierpinski triangles and rule 30's chaotic fan, above a two-lane piano roll of one cycle each and a table giving both bars' step count, onset count, condensed notation and compression"}
 :::static
-import afield.four.synth.CaSoundDocs
+import afield.audio.synth.CaSoundDocs
 
 // Both derivations run the real stepper. gasketBar additionally checks its row against
 // binomialParity before returning, so a wrong answer here throws rather than plays.
@@ -87,13 +87,13 @@ denominator.
 
 Here is the rule-90 bar, four cycles at one cycle per second:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_ca_sound/gasket-bar.wav" audio-spec="gasket-bar" audio-renderer="afield.four.synth.CaSoundDocs" embed=true hidden=true name="chain-ca-gasket-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_ca_sound/gasket-bar.wav" audio-spec="gasket-bar" audio-renderer="afield.audio.synth.CaSoundDocs" embed=true hidden=true name="chain-ca-gasket-audio"}
 // Offline-rendered by CaSoundDocs.renderWav("gasket-bar").
 ```
 
 And rule 30's column, three cycles, thirty-two steps each:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_ca_sound/rule30-hats.wav" audio-spec="rule30-hats" audio-renderer="afield.four.synth.CaSoundDocs" embed=true hidden=true name="chain-ca-rule30-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_ca_sound/rule30-hats.wav" audio-spec="rule30-hats" audio-renderer="afield.audio.synth.CaSoundDocs" embed=true hidden=true name="chain-ca-rule30-audio"}
 // Offline-rendered by CaSoundDocs.renderWav("rule30-hats").
 ```
 
@@ -116,7 +116,7 @@ back to the root at every power of two and climbs through the carries in between
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/scale.png" wait="8" capture="box" open-outputs="true" w="1180" h="280" padding="18" timeout="120" name="chain-ca-scale" embed=true alt="A sawtooth-shaped trace of rule 90's row populations climbing to 32 at generation 31 and dropping back to 2 at every power of two, above a single-cycle piano roll of 32 notes on six pitches with the same shape"}
 :::static
-import afield.four.synth.CaSoundDocs
+import afield.audio.synth.CaSoundDocs
 
 // gasketPopulations counts the real space-time diagram and throws unless every row's count is
 // 2^popcount(n), so reaching the next line is the check. Plotting the formula as a second trace
@@ -145,7 +145,7 @@ showPatRollOf(
 :::endfold
 ```
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_ca_sound/gasket-scale.wav" audio-spec="gasket-scale" audio-renderer="afield.four.synth.CaSoundDocs" embed=true hidden=true name="chain-ca-scale-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_ca_sound/gasket-scale.wav" audio-spec="gasket-scale" audio-renderer="afield.audio.synth.CaSoundDocs" embed=true hidden=true name="chain-ca-scale-audio"}
 // Offline-rendered by CaSoundDocs.renderWav("gasket-scale").
 ```
 
@@ -156,7 +156,7 @@ above are one row of this.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/survey.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-ca-survey" embed=true alt="A four-column table of six elementary rules sorted by compression: rules 30 and 45 near 0.8 with long notations full of groupings, then rule 250 at 0.13, rule 90 at 0.10, and rules 110 and 150 at 0.06 with one-token spellings"}
 :::static
-import afield.four.synth.CaSoundDocs
+import afield.audio.synth.CaSoundDocs
 
 // The same six rules the harness surveys, so the page and the FIELD_TEST cannot disagree.
 val bars = CaSoundDocs.CONDENSATION_SURVEY.map { CaSoundDocs.centreColumnBar(it) }

@@ -3,7 +3,7 @@ description: >
   Loadable demo of afield.stdlib/keyframeCodeBlend.kt — blending two *code* keyframes by aligning
   them and interpolating the numbers they differ in. Five pure-compute boxes, no Window and no
   Renderer: the StackSL programs are compiled by the same StackSLCompiler the live `stack.auto`
-  setter uses and then run through afield.stacksl.cpu, which interprets the emitted GLSL on the CPU
+  setter uses and then run through afield.lang.stacksl.cpu, which interprets the emitted GLSL on the CPU
   — including its push constants, which is what lets the convention be demonstrated rather than
   described.
     1. kfb_breakdown — the alignment, and what it refuses. Two looks for one patch, same words and
@@ -29,7 +29,7 @@ description: >
                     than `3.0`: a site is atomic, and an untouched number keeps its spelling.
     4. kfb_kotlin   — the other language. Two `sourceBlock { }` expressions differing in two of
                     their three literals; the blend rewrites each moving literal as
-                    `afield.stdlib.kfMix(left, right, afield.stdlib.keyframeBlendAmount(id, 0))`,
+                    `afield.animation.keyframes.kfMix(left, right, afield.animation.keyframes.keyframeBlendAmount(id, 0))`,
                     fully qualified so it resolves in a box that imported nothing. Prints the plan
                     and the one expression a runtime blend evaluates, and stops there — see box 5
                     for why the invocation is not here.
@@ -50,8 +50,8 @@ description: >
   on screen, then change a number in one of the two looks, change a *word* in one of them, or add a
   fourth literal to the Kotlin pair and re-run the box to watch the breakdown change. Each `execute`
   op omits inline code, so it runs the box's stored `code` property. Companion page:
-  public/docs/keyframer_examples.md. Companion tests: afield.stdlib.KeyframeCodeBlendTest,
-  afield.server.KeyframeBrowserProtocolTest.
+  public/docs/keyframer_examples.md. Companion tests: afield.animation.keyframes.KeyframeCodeBlendTest,
+  afield.app.server.KeyframeBrowserProtocolTest.
 operations:
   - create:
       box: kfb_breakdown
@@ -63,32 +63,32 @@ operations:
           // is not a program — so a keyframe blend steps them. Unless they differ only in numbers,
           // which is the case worth finding, because that is the case a person authoring two looks
           // for one patch keeps producing.
-          import afield.stdlib.CodeBlendMode
-          import afield.stdlib.CodeBlendOptions
-          import afield.stdlib.planStackSLCodeBlend
-
+          import afield.animation.keyframes.CodeBlendMode
+          import afield.animation.keyframes.CodeBlendOptions
+          import afield.animation.keyframes.planStackSLCodeBlend
+          
           val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
           val cool = "uv 8.0 * fbm 0.45 + [0.2,0.5,1.0] *"
-
+          
           val plan = planStackSLCodeBlend(warm, cool, CodeBlendOptions(mode = CodeBlendMode.RUNTIME))
           println(plan.describe())
           println("blendable=" + plan.blendable + "  runtimeCapable=" + plan.runtimeCapable)
           println()
-
+          
           // One program, for every t. Each moving literal became a push of both endpoints, a read of
           // the blend push constant, and `mix` — which leaves one value on the stack, exactly as the
           // literal it replaced did, so the surrounding stack arithmetic is untouched.
           println("the one program a runtime blend runs:")
           println(plan.runtimeSource)
           println()
-
+          
           // And the refusal. `elsewhere` swaps one token, `noise` for `fbm`: that is a different op,
           // not a moving literal, and a push constant can only mix values, so the blend steps
           // from one program to the other instead of interpolating.
           val elsewhere = "uv 3.0 * noise 0.15 + [1.0,0.55,0.2] *"
           val stepped = planStackSLCodeBlend(warm, elsewhere, CodeBlendOptions(mode = CodeBlendMode.RUNTIME))
           println(stepped.describe())
-
+          
           display(plan)
   - create:
       box: kfb_runtime
@@ -100,13 +100,13 @@ operations:
           // middle. It is that at 0 it *is* the left keyframe and at 1 it *is* the right one. That
           // is checkable, and this box checks it: one program, five draws, and the two ends
           // compared pixel for pixel against the programs they are supposed to be.
-          import afield.stacksl.cpu.GlslValue
-          import afield.stacksl.cpu.StackSLCpu
-          import afield.stdlib.CodeBlendMode
-          import afield.stdlib.CodeBlendOptions
-          import afield.stdlib.keyframeBlendVector
-          import afield.stdlib.planStackSLCodeBlend
-
+          import afield.lang.stacksl.cpu.GlslValue
+          import afield.lang.stacksl.cpu.StackSLCpu
+          import afield.animation.keyframes.CodeBlendMode
+          import afield.animation.keyframes.CodeBlendOptions
+          import afield.animation.keyframes.keyframeBlendVector
+          import afield.animation.keyframes.planStackSLCodeBlend
+          
           // The convention, in a shader: a vec4 called keyframeBlend in the push-constant block.
           // Nothing declares it for you — a `stack.auto` slot cannot declare a uniform of its own,
           // which is why the parameter arrives by agreement rather than by machinery.
@@ -114,27 +114,27 @@ operations:
               #version 450
               layout(location = 0) in vec2 fragUV;
               layout(location = 0) out vec4 outColor;
-
+          
               layout(push_constant) uniform Controls {
                   vec4 keyframeBlend;
               } pc;
-
+          
               {{ stack.auto.program }}
-
+          
               void main() {
                   vec4 stackInput = vec4(fragUV, 0.0, 0.0);
                   outColor = vec4(clamp(program(stackInput).rgb, 0.0, 1.0), 1.0);
               }
           """.trimIndent()
-
+          
           val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
           val cool = "uv 8.0 * fbm 0.45 + [0.2,0.5,1.0] *"
           val blended = planStackSLCodeBlend(warm, cool, CodeBlendOptions(mode = CodeBlendMode.RUNTIME)).runtimeSource
-
+          
           val dim = 56
           // Expanded once. A runtime program does not depend on t, so this is the only compile.
           val expanded = StackSLCpu.expandStackAuto(template, blended)
-
+          
           val strip = StringBuilder("<div style='display:flex;gap:8px;align-items:flex-start'>")
           val rasters = mutableMapOf<Double, FloatArray>()
           for (t in listOf(0.0, 0.25, 0.5, 0.75, 1.0)) {
@@ -159,7 +159,7 @@ operations:
           }
           strip.append("</div>")
           display("blend-strip", strip.toString())
-
+          
           // The endpoints, drawn from the endpoint programs themselves.
           val ends = listOf(0.0 to warm, 1.0 to cool).map { (t, program) ->
               val v = keyframeBlendVector(t)
@@ -188,19 +188,19 @@ operations:
           // modifier chain (`0.35s3` — an amount modulated by a sine at frequency 3) and a random
           // range (`0.2_0.5`). No mix expression can be written at either position, so a runtime
           // blend cannot reach them and says so rather than pretending.
-          import afield.stdlib.CodeBlendMode
-          import afield.stdlib.CodeBlendOptions
-          import afield.stdlib.planStackSLCodeBlend
-
+          import afield.animation.keyframes.CodeBlendMode
+          import afield.animation.keyframes.CodeBlendOptions
+          import afield.animation.keyframes.planStackSLCodeBlend
+          
           val quiet = "uv 0.35s3 * fbm 0.2_0.5 +"
           val loud = "uv 0.80s3 * fbm 0.6_0.9 +"
-
+          
           val plan = planStackSLCodeBlend(quiet, loud, CodeBlendOptions(mode = CodeBlendMode.RUNTIME))
           println(plan.describe())
           println("asked for RUNTIME, will run " + plan.effectiveMode)
           println("because " + plan.downgradeReason)
           println()
-
+          
           // A different program per t, and therefore a compile per t: fine for a scrub, not for a
           // frame loop. Note the modifier's frequency: unchanged between the two, so it comes back
           // as `3` rather than `3.0`. A site is atomic — one moving component rewrites the whole
@@ -208,7 +208,7 @@ operations:
           listOf(0.0, 0.5, 1.0).forEach { t ->
               println("t=" + t + "   " + plan.bake(t))
           }
-
+          
           display(plan)
   - create:
       box: kfb_kotlin
@@ -221,32 +221,32 @@ operations:
           // that differs only in numbers. The transport differs: a shader reads a push constant,
           // and a generated Kotlin expression reads a registry slot addressed by an integer written
           // into its text, because generated text cannot close over a value.
-          import afield.stdlib.CodeBlendMode
-          import afield.stdlib.CodeBlendOptions
-          import afield.stdlib.KeyframeScope
-          import afield.stdlib.sourceBlock
-
+          import afield.animation.keyframes.CodeBlendMode
+          import afield.animation.keyframes.CodeBlendOptions
+          import afield.animation.keyframes.KeyframeScope
+          import afield.study.source.sourceBlock
+          
           val quiet = sourceBlock { 2.0f * 3.0f + 1.0f }
           val loud = sourceBlock { 8.0f * 3.0f + 5.0f }
           println("left  source: " + quiet.source)
           println("right source: " + loud.source)
           println()
-
+          
           var amount: Any? = quiet
           val scope = KeyframeScope()
           scope.target("amount", get = { amount }, set = { v -> amount = v })
           scope.codeBlend = CodeBlendOptions(mode = CodeBlendMode.RUNTIME)
-
+          
           val a = scope.Key(mutableMapOf<String, Any?>("amount" to quiet))
           val b = scope.Key(mutableMapOf<String, Any?>("amount" to loud))
-
+          
           val plan = scope.codeBlendPlans(a, b).getValue("amount")
           println(plan.describe())
           println("the one expression a runtime blend evaluates:")
           println(plan.runtimeSource)
           println()
           println("the middle literal is unchanged between the two, so it is left alone.")
-
+          
           // The invocation is in kfb_kotlin_run, not here. A SourceBackedBlock hydrates by
           // compiling and evaluating its source in its own box, and asking for that from inside
           // this box's own running code re-enters: the nested evaluation replays this snippet,
@@ -261,11 +261,11 @@ operations:
           // The same plan, rebuilt here — building one is pure, so it costs an alignment and
           // nothing else. Then the blended expression is handed to a SourceBackedBlock whose box is
           // kfb_kotlin, so it compiles and runs *there* while this box is the one evaluating.
-          import afield.stdlib.CodeBlendMode
-          import afield.stdlib.CodeBlendOptions
-          import afield.stdlib.SourceBackedBlock
-          import afield.stdlib.planKotlinCodeBlend
-
+          import afield.animation.keyframes.CodeBlendMode
+          import afield.animation.keyframes.CodeBlendOptions
+          import afield.study.source.SourceBackedBlock
+          import afield.animation.keyframes.planKotlinCodeBlend
+          
           val plan = planKotlinCodeBlend(
               "2.0f * 3.0f + 1.0f",
               "8.0f * 3.0f + 5.0f",
@@ -274,7 +274,7 @@ operations:
           val block = SourceBackedBlock<Any?>("kfb_kotlin", plan.runtimeSource)
           println(plan.runtimeSource)
           println()
-
+          
           // One block, five values of t. The first invocation compiles the generated text through
           // K2; the rest reuse the lambda, and only the registry slot changes.
           listOf(0.0, 0.25, 0.5, 0.75, 1.0).forEach { t ->
@@ -283,7 +283,7 @@ operations:
               val want = (2.0f + 6.0f * t.toFloat()) * 3.0f + (1.0f + 4.0f * t.toFloat())
               println("t=%.2f   block() = %8.4f   independently %8.4f".format(t, got, want))
           }
-
+          
           display(plan)
   - execute:
       box: kfb_breakdown

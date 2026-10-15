@@ -10,12 +10,12 @@ write a backup, a screenshot, history metrics and an operation transcript into i
 and until 2026-09-11 that line produced
 
 ```
-PathTracingRenderer afield.four.fabricated.PathTracingRenderer@19266ca3
+PathTracingRenderer afield.graphics.scene.fabricated.PathTracingRenderer@19266ca3
 ```
 
 and nothing else. 376 bytes, roughly 330 of them the wrapper `<div>`. `PathTracingRenderer` is not a
 data class and had no `registerValuePrinter` entry, so `ValueVisualizer` fell all the way to
-`formatFallbackObject`. All 26 of the `afield.four` types the tracer is *built out of* — `Renderer`,
+`formatFallbackObject`. All 26 of the Field 4 types the tracer is *built out of* — `Renderer`,
 `Camera`, `ComputeModulePointer`, `RenderToTexture`, `VulkanBuffer` — have had printers in
 `FourVisualizers.kt` since they were written.
 

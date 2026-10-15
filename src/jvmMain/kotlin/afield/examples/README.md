@@ -13,7 +13,7 @@ This package contains all example code for Field4, organized by topic area. Thes
   - Shared chat across template instances
 
 - **`BooleanNetworkExplorer.kt`** - Console showcase for the Boolean-network stdlib
-  - Demonstrates the public API from `afield.stdlib.booleannetworks.kt`
+  - Demonstrates the public API from `afield/simulation/automata/booleannetworks.kt`
   - Prints attractor summaries for the bundled example networks
   - Runs a small Kauffman regime sweep to compare random-network behavior
 

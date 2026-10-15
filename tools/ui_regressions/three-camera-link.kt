@@ -1,5 +1,5 @@
-import afield.graphics.*
-import afield.stdlib.*
+
+
 
 val shape = arrayOf(doubleArrayOf(0.0,0.0,0.0),doubleArrayOf(1000.0,0.0,0.0),
     doubleArrayOf(0.0,1000.0,0.0),doubleArrayOf(0.0,0.0,1000.0))

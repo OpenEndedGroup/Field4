@@ -1,8 +1,15 @@
 package afield.examples.graphics
 
-import afield.graphics.*
-import afield.stdlib.Vec3
-import afield.stdlib.vec
+import afield.audio.tone.*
+import afield.geometry.path.*
+import afield.graphics.render.*
+import afield.graphics.shader.*
+import afield.graphics.three.*
+import afield.graphics.visionos.*
+import afield.lang.remotejs.*
+import afield.ui.visualization.*
+import afield.math.linalg.Vec3
+import afield.math.linalg.vec
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin

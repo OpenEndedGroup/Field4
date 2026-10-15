@@ -18,7 +18,7 @@ The document that makes this figure is a starting point:
 
 ## From the cloth to the tracer
 
-`afield.four.physics` runs the simulation, `afield.manifold` welds, and `afield.four.fabricated`
+`afield.simulation.physics` runs the simulation, `afield.geometry.solid.manifold` welds, and `afield.graphics.scene.fabricated`
 traces. Positions come out of the cloth as `cloth.position(col, row)`, and the welded solid goes into
 the scene as a `TriMesh`. Nothing else passes between them.
 

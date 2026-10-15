@@ -202,7 +202,7 @@ The right side is a stack of collapsible panels, one per part of Field:
   extra Java libraries.
 - **Runtime** and **Vulkan**: the JVM Field is running on, and whether graphics windows will open
   on this machine. If Vulkan is missing, the panel gives install steps for your OS; the graphics
-  system itself is described in [afield.four Graphics](afield_four_graphics.md).
+  system itself is described in [Field 4 Graphics](afield_four_graphics.md).
 - **Python**: which interpreter [Python boxes](python.md) will use.
 - **AI**: model settings and the background tasks that improve Field's docs and tools, described
   in [Your History with Field](history_overview.md#the-welcome-dashboard); what the models do

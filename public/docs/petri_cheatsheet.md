@@ -1,6 +1,6 @@
 # Petri notation cheatsheet
 
-*The code is `afield.petri.*`: the model and DSL in `PetriNets.kt`, this notation's parser in
+*The code is `afield.simulation.petri.*`: the model and DSL in `PetriNets.kt`, this notation's parser in
 `PetriNotation.kt`. The worked examples are on [Petri nets](petri_nets.md).*
 
 The `#petri` notation is the short way to write a net: a whole net fits on screen and one arc is one

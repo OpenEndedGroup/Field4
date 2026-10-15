@@ -120,7 +120,7 @@ rule through a candidate, a failing replay, a passing one, a proposed rebaseline
 the replay card and the approval view.
 
 **Status (2026-10-09): done, in one landing** (`qualified-sources`). `QualifiedSource` and `Box.qualifiedSource` are
-in `src/jvmMain/kotlin/afield/stdlib/QualifiedSource.kt`, tests in `QualifiedSourceTest.kt`, and the page is in the
+in `src/jvmMain/kotlin/afield/study/source/QualifiedSource.kt`, tests in `QualifiedSourceTest.kt`, and the page is in the
 nav after the long-builds page. The page's last capture is a real press of Approve by the docs runner (`capture="ui"`
 with `assets/transcripts/qualified_sources_approval.yaml`). Built on 3b: the replay is a `studyBuilds` runner named
 after the source, the candidate goes in as the attempt's `request`, and `StudyBuilds.await` orders the docs steps.

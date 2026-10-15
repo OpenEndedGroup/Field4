@@ -1,18 +1,18 @@
-package afield.stacksl.study
+package afield.lang.stacksl.study
 
-import afield.Box
-import afield.RunsAt
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.ToolExecutionContext
-import afield.plugins
-import afield.stdlib.FileManager
-import afield.stdlib.StudySourceEdit
-import afield.stdlib.LiveStudy
-import afield.stdlib.StudyReport
-import afield.stdlib.StudyRequest
-import afield.stdlib.StudyToolClasses
-import afield.stdlib.registerStudyTools
-import afield.stdlib.numbers
+import afield.document.graph.Box
+import afield.runtime.lifecycle.RunsAt
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.ToolExecutionContext
+import afield.runtime.lifecycle.plugins
+import afield.document.workspace.FileManager
+import afield.math.functions.StudySourceEdit
+import afield.study.source.LiveStudy
+import afield.study.evidence.StudyReport
+import afield.study.source.StudyRequest
+import afield.study.source.StudyToolClasses
+import afield.study.source.registerStudyTools
+import afield.study.ui.numbers
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
@@ -125,7 +125,7 @@ private val onAProgram: (ToolExecutionContext) -> Boolean = { ctx ->
  * The scope the library's tools register under, so a document that registers a tool of the same name
  * from a box adds to them rather than replacing them (see AgentToolExtensions, "Scopes").
  */
-private val LIBRARY = "afield.stacksl.study"
+private val LIBRARY = "afield.lang.stacksl.study"
 
 private fun program(ctx: ToolExecutionContext): Box =
     ctx.focus?.box ?: throw IllegalStateException("StackSL study tools work on the box whose chat is open")
@@ -182,6 +182,6 @@ fun installStackSLStudyTools() {
 }
 
 /** The [StackSLStudyGuide] tool's answer. */
-data class StackSLGuideText(val text: String) : afield.ai.core.SummarisesForToolLog {
+data class StackSLGuideText(val text: String) : afield.ai.tools.SummarisesForToolLog {
     override fun toolLogSummary(): String = "guide ${text.length} chars"
 }

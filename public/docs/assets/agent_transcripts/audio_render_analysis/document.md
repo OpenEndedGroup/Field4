@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="analyse_sonic_pi_recording" index="0" -->
 
 ```edn [field-box id="analyse_sonic_pi_recording" role="properties"]
-{"id" "analyse_sonic_pi_recording" "index" 0 "name" "5 · Sonic Pi recording → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · Sonic Pi recording → analysis" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_sonic_pi_recording_code_.kt" "lines" 38 "characters" 1457 "sha256" "59610dccdce89a5d2391787e32eb6bf8970c48133f0d3ef12e3c0a64db661fd2"}]}
+{"id" "analyse_sonic_pi_recording" "index" 0 "name" "5 · Sonic Pi recording → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · Sonic Pi recording → analysis" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_sonic_pi_recording_code_.kt" "lines" 38 "characters" 1458 "sha256" "4b3e84d9a6e8fa35aaaad79fdb6d732d3d470751e94122b718046521be891f46"}]}
 ```
 
 ```kotlin [field-property box="analyse_sonic_pi_recording" name="code" path="analyse_sonic_pi_recording_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()
@@ -81,11 +81,11 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 390))
 <!-- field-box id="analyse_faust_render" index="2" -->
 
 ```edn [field-box id="analyse_faust_render" role="properties"]
-{"id" "analyse_faust_render" "index" 2 "name" "4 · Faust render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Faust render → analysis" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_faust_render_code_.kt" "lines" 29 "characters" 1312 "sha256" "54c55696221d38bf6bfd9fbe794753df270efc7f46dde7930bd75e1d0f188b8e"}]}
+{"id" "analyse_faust_render" "index" 2 "name" "4 · Faust render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Faust render → analysis" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_faust_render_code_.kt" "lines" 29 "characters" 1313 "sha256" "2bdd098b200ae252f2d46df2f7e5a7fe423589bc7d98dadcfd390ca13e2dea0d"}]}
 ```
 
 ```kotlin [field-property box="analyse_faust_render" name="code" path="analyse_faust_render_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()
@@ -121,11 +121,11 @@ renderFaustWavAsync(
 <!-- field-box id="analyse_dough_render" index="3" -->
 
 ```edn [field-box id="analyse_dough_render" role="properties"]
-{"id" "analyse_dough_render" "index" 3 "name" "3 · Dough render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · Dough render → analysis" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_dough_render_code_.kt" "lines" 27 "characters" 1232 "sha256" "e328a9a0f5c8cf793f0d0023845266f8c29bdbe2fc1f0b03685db4eea3d1e202"}]}
+{"id" "analyse_dough_render" "index" 3 "name" "3 · Dough render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · Dough render → analysis" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_dough_render_code_.kt" "lines" 27 "characters" 1233 "sha256" "50f9016a076ed7e205b0458da03e8c82250e458c7501933be4e8010ae41a7a1b"}]}
 ```
 
 ```kotlin [field-property box="analyse_dough_render" name="code" path="analyse_dough_render_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()
@@ -159,11 +159,11 @@ client.analyzeRenderedAudio(
 <!-- field-box id="analyse_pat_render" index="4" -->
 
 ```edn [field-box id="analyse_pat_render" role="properties"]
-{"id" "analyse_pat_render" "index" 4 "name" "2 · Pat / Dirt render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Pat / Dirt render → analysis" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_pat_render_code_.kt" "lines" 30 "characters" 1314 "sha256" "4cca07e4d20f9cc1a6ac56f46f1006d0be1c00007cef0732ab521d93e58b1905"}]}
+{"id" "analyse_pat_render" "index" 4 "name" "2 · Pat / Dirt render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Pat / Dirt render → analysis" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_pat_render_code_.kt" "lines" 30 "characters" 1315 "sha256" "95b60d7cf4e90fea3f169d7c1cae5e3a21dcdede5c0f11534a4527dca7c68a6b"}]}
 ```
 
 ```kotlin [field-property box="analyse_pat_render" name="code" path="analyse_pat_render_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()

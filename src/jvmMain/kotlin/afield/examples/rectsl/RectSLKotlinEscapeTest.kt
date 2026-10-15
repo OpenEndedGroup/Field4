@@ -1,7 +1,7 @@
 package afield.examples.rectsl
 
-import afield.KotlinInterface2
-import afield.rectsl.compileRectSL
+import afield.runtime.kotlin.KotlinInterface2
+import afield.lang.rectsl.compileRectSL
 
 /*
 FIELD_TEST

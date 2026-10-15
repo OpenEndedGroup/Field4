@@ -1,64 +1,64 @@
 package afield.examples.mesh
 
-import afield.stdlib.Img
-import afield.stdlib.MeshView
-import afield.stdlib.TriMesh
-import afield.stdlib.Vec2
-import afield.stdlib.Vec3
-import afield.stdlib.bounds
-import afield.stdlib.bvh
-import afield.stdlib.boundsAround
-import afield.stdlib.boundsOf
-import afield.stdlib.boxMesh
-import afield.stdlib.capsuleMesh
-import afield.stdlib.coloredByScalar
-import afield.stdlib.coneMesh
-import afield.stdlib.convexHullMesh
-import afield.stdlib.cylinderMesh
-import afield.stdlib.decimate
-import afield.stdlib.deviationFrom
-import afield.stdlib.dodecahedronMesh
-import afield.stdlib.extrudeMesh
-import afield.stdlib.flatShaded
-import afield.stdlib.gaussianCurvature
-import afield.stdlib.heightfieldMesh
-import afield.stdlib.icosahedronMesh
-import afield.stdlib.icosphereMesh
-import afield.stdlib.laplacianSmooth
-import afield.stdlib.loopSubdivide
-import afield.stdlib.marchingCubes
-import afield.stdlib.meanCurvature
-import afield.stdlib.objToTriMesh
-import afield.stdlib.octahedronMesh
-import afield.stdlib.renderPixels
-import afield.stdlib.revolveMesh
-import afield.stdlib.sdfBox
-import afield.stdlib.sdfCylinder
-import afield.stdlib.sdfGyroid
-import afield.stdlib.sdfMetaballs
-import afield.stdlib.sdfSmoothUnion
-import afield.stdlib.sdfSphere
-import afield.stdlib.sdfSubtract
-import afield.stdlib.sdfTorus
-import afield.stdlib.shadedNormals
-import afield.stdlib.shell
-import afield.stdlib.signedVolume
-import afield.stdlib.stlToTriMesh
-import afield.stdlib.summary
-import afield.stdlib.taubinSmooth
-import afield.stdlib.tetrahedronMesh
-import afield.stdlib.toHeightfieldMesh
-import afield.stdlib.toObj
-import afield.stdlib.toStlBinary
-import afield.stdlib.toTriMesh
-import afield.stdlib.topology
-import afield.stdlib.torusMesh
-import afield.stdlib.tubeMesh
-import afield.stdlib.twisted
-import afield.stdlib.uvSphereMesh
-import afield.stdlib.voronoi3d
-import afield.stdlib.weld
-import afield.stdlib.withVertexNormals
+import afield.media.image.Img
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.TriMesh
+import afield.math.linalg.Vec2
+import afield.math.linalg.Vec3
+import afield.geometry.mesh.bounds
+import afield.geometry.mesh.bvh
+import afield.geometry.mesh.boundsAround
+import afield.geometry.mesh.boundsOf
+import afield.geometry.mesh.boxMesh
+import afield.geometry.mesh.capsuleMesh
+import afield.geometry.mesh.coloredByScalar
+import afield.geometry.mesh.coneMesh
+import afield.geometry.mesh.convexHullMesh
+import afield.geometry.mesh.cylinderMesh
+import afield.geometry.mesh.decimate
+import afield.geometry.mesh.deviationFrom
+import afield.geometry.mesh.dodecahedronMesh
+import afield.geometry.mesh.extrudeMesh
+import afield.geometry.mesh.flatShaded
+import afield.geometry.mesh.gaussianCurvature
+import afield.geometry.mesh.heightfieldMesh
+import afield.geometry.mesh.icosahedronMesh
+import afield.geometry.mesh.icosphereMesh
+import afield.geometry.mesh.laplacianSmooth
+import afield.geometry.mesh.loopSubdivide
+import afield.geometry.mesh.marchingCubes
+import afield.geometry.mesh.meanCurvature
+import afield.geometry.mesh.objToTriMesh
+import afield.geometry.mesh.octahedronMesh
+import afield.geometry.mesh.renderPixels
+import afield.geometry.mesh.revolveMesh
+import afield.geometry.mesh.sdfBox
+import afield.geometry.mesh.sdfCylinder
+import afield.geometry.mesh.sdfGyroid
+import afield.geometry.mesh.sdfMetaballs
+import afield.geometry.mesh.sdfSmoothUnion
+import afield.geometry.mesh.sdfSphere
+import afield.geometry.mesh.sdfSubtract
+import afield.geometry.mesh.sdfTorus
+import afield.geometry.mesh.shadedNormals
+import afield.geometry.mesh.shell
+import afield.geometry.mesh.signedVolume
+import afield.geometry.mesh.stlToTriMesh
+import afield.geometry.mesh.summary
+import afield.geometry.mesh.taubinSmooth
+import afield.geometry.mesh.tetrahedronMesh
+import afield.geometry.mesh.toHeightfieldMesh
+import afield.geometry.mesh.toObj
+import afield.geometry.mesh.toStlBinary
+import afield.geometry.mesh.toTriMesh
+import afield.geometry.mesh.topology
+import afield.geometry.mesh.torusMesh
+import afield.geometry.mesh.tubeMesh
+import afield.geometry.mesh.twisted
+import afield.geometry.mesh.uvSphereMesh
+import afield.geometry.spatial.voronoi3d
+import afield.geometry.mesh.weld
+import afield.geometry.mesh.withVertexNormals
 import java.awt.Color
 import java.awt.Font
 import java.awt.RenderingHints
@@ -84,13 +84,13 @@ expect:
 */
 
 /**
- * Headless **capture gallery** for the `afield.stdlib` triangle-mesh family — the honest visual proof
+ * Headless **capture gallery** for the `afield.geometry.mesh` triangle-mesh family — the honest visual proof
  * that the geometry comes out right, in the pattern
  * [afield.examples.imaging.ImagingGallery] and [afield.examples.VisionGeometryPreviewGallery]
  * established.
  *
  * Rendering path: real [TriMesh] pipelines → [TriMesh.renderPixels] (the CPU rasterizer in
- * `afield.graphics.VisionGeometryPreview`: perspective, z-buffer, perspective-correct attributes,
+ * `afield.graphics.visionos.VisionGeometryPreview`: perspective, z-buffer, perspective-correct attributes,
  * near-plane clip, two-light lambert, depth-tested wireframe) → AWT compositing → `ImageIO` PNG,
  * under `java.awt.headless=true`. No browser, no GPU, no Vulkan, no Field window. Every triangle in
  * every panel is the output of a real stdlib call; AWT only draws the frames, captions and the
@@ -185,8 +185,8 @@ object MeshGallery {
     }
 
     /** Concatenate the given Voronoi cells, each shrunk toward its own site. */
-    private fun interiorMesh(cells: List<afield.stdlib.VoronoiCell3>, shrink: Double): TriMesh {
-        val builder = afield.stdlib.TriMeshBuilder()
+    private fun interiorMesh(cells: List<afield.geometry.spatial.VoronoiCell3>, shrink: Double): TriMesh {
+        val builder = afield.geometry.mesh.TriMeshBuilder()
         for (cell in cells) builder.add(cell.toTriMesh(shrink))
         return builder.build()
     }
@@ -313,14 +313,14 @@ object MeshGallery {
         ) {
             val bar = sdfBox(Vec3(1.3f, 0.24f, 0.24f))
             val ball = sdfSphere(0.55)
-            val sharp = marchingCubes(afield.stdlib.sdfUnion(ball, bar), boundsAround(radius = 0.9), 72)
+            val sharp = marchingCubes(afield.geometry.mesh.sdfUnion(ball, bar), boundsAround(radius = 0.9), 72)
             val smooth = marchingCubes(sdfSmoothUnion(ball, bar, 0.22), boundsAround(radius = 0.9), 72)
             // A shell looked at from outside is indistinguishable from the solid, so cut it in half:
             // the point of the panel is the wall, and the wall is inside.
             val hollow = marchingCubes(
-                afield.stdlib.sdfIntersect(
+                afield.geometry.mesh.sdfIntersect(
                     sdfSmoothUnion(ball, bar, 0.22).shell(0.06),
-                    afield.stdlib.sdfPlane(Vec3(0f, 0f, -1f), 0.0),
+                    afield.geometry.mesh.sdfPlane(Vec3(0f, 0f, -1f), 0.0),
                 ),
                 boundsAround(radius = 0.9), 96,
             )
@@ -545,7 +545,7 @@ object MeshGallery {
             // against a box 40 units across — correct, and useless as a picture. A tight box plus the
             // `bounded` cells (the ones surrounded entirely by neighbours) is the readable version.
             val sites = deterministicSites(72, 101)
-            val lattice = afield.stdlib.Voronoi3d.build(sites, clipPadding = 0.12f)
+            val lattice = afield.geometry.spatial.Voronoi3d.build(sites, clipPadding = 0.12f)
             val interior = lattice.cells.filter { it.bounded }
             check(interior.size >= 12) { "expected a good number of interior cells, got ${interior.size}" }
             val packed = lattice.toTriMesh(shrink = 1.0)
@@ -719,7 +719,7 @@ object MeshGallery {
                 "icosphereMesh(3)" to icosphereMesh(3, 0.7),
                 "torusMesh(40, 20)" to torusMesh(40, 20, 0.55, 0.22),
                 "marchingCubes(gyroid)" to marchingCubes(sdfGyroid(2.6, 0.35), boundsAround(radius = 0.95), 44),
-                "planeMesh(6, 6) — open" to afield.stdlib.planeMesh(6, 6),
+                "planeMesh(6, 6) — open" to afield.geometry.mesh.planeMesh(6, 6),
             )
             val cells = subjects.map { (label, mesh) ->
                 val html = mesh.toHTML()

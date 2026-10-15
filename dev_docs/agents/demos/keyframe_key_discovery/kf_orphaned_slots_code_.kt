@@ -8,10 +8,10 @@
 //
 // So a rename half-done looks exactly like a working slot, and Apply quietly drops it.
 
-import afield.stdlib.KeyframeCollection
-import afield.stdlib.KeyframeScope
-import afield.stdlib.everyKeyGlob
-import afield.four.buffers.Structure
+import afield.animation.keyframes.KeyframeCollection
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.everyKeyGlob
+import afield.graphics.vulkan.buffers.Structure
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframe-orphaned-slots")

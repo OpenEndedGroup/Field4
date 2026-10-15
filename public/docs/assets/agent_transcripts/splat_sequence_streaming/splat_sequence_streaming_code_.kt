@@ -1,12 +1,12 @@
-import afield.four.Target
-import afield.four.fabricated.GaussianSplatRenderer
-import afield.four.fabricated.GaussianSplatRenderer.Blend
-import afield.four.fabricated.GaussianSplatRenderer.SortMode
-import afield.four.fabricated.GaussianSplatRenderer.SplatSource
-import afield.four.fabricated.SplatSequence
-import afield.four.fabricated.SplatTransport
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.vulkan.Target
+import afield.graphics.scene.fabricated.GaussianSplatRenderer
+import afield.graphics.scene.fabricated.GaussianSplatRenderer.Blend
+import afield.graphics.scene.fabricated.GaussianSplatRenderer.SortMode
+import afield.graphics.scene.fabricated.GaussianSplatRenderer.SplatSource
+import afield.graphics.scene.fabricated.SplatSequence
+import afield.graphics.scene.fabricated.SplatTransport
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 import java.io.File
 
 // ---- knobs: edit and re-run this box ------------------------------------

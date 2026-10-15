@@ -1,4 +1,4 @@
-import afield.petri.*
+import afield.simulation.petri.*
 
 // Nothing in the model knows what a note is. Here is the same engine as a concurrency
 // checker: five philosophers, five forks, and the shape of the net computed in a loop —

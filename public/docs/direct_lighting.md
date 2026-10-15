@@ -86,7 +86,7 @@ learned denoiser.
 In a box connected below the renderer parent, a small one-light experiment is:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.lighting.*
+import afield.graphics.render.lighting.*
 
 val study = DirectLightingDemo(renderer, 1280, 720)
 study.lighting.samples = 32
@@ -110,7 +110,7 @@ The resolution belongs to the study; resizing the native window scales its prese
 To sample several lights, add this before the frame loop:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.fabricated.rtxdiSettings
+import afield.graphics.scene.fabricated.rtxdiSettings
 
 val settings = study.bundle.rtxdiSettings()
 settings.commitLights([IdentifiedAreaLight(42, study.lighting.emitter)])
@@ -140,7 +140,7 @@ its `OpaqueInstance` values, then attach `bundle.directLighting(visibility)` aft
 bundle's surface passes. Present `lighting.output`. `registerOpaqueTriangles(...)` uses
 the same indexed geometry for rasterization and shadow rays.
 
-For `afield.four` surfaces, `DirectLighting(renderer, surfaces, visibility, width, height)`
+For Field 4 surfaces, `DirectLighting(renderer, surfaces, visibility, width, height)`
 accepts point-sampled world positions, world normals, linear RGB albedo, original source
 color and motion. `RtxdiSettings` additionally takes the same view and Vulkan projection
 matrices used for rasterization. Convert pigment or latent colors to linear RGB at this

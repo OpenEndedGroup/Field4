@@ -301,7 +301,7 @@ configuration anybody has claimed a passing test on.
 Since the A/B above shows Chromium rendering the page perfectly well on its *other* offscreen output
 path, there is a way to get browser content onto a Field texture on Linux today; it just is not
 zero-copy. `FieldUiBrowserTexture(cpuBitmapFallback = true)` takes it: `useSharedTexture: false`,
-pixels over a second loopback socket, and [`BitmapBrowserSurface`](../src/jvmMain/kotlin/afield/four/browser/BitmapBrowserSurface.kt)
+pixels over a second loopback socket, and [`BitmapBrowserSurface`](../src/jvmMain/kotlin/afield/media/browser/BitmapBrowserSurface.kt)
 uploads them through a per-slot staging buffer on the frame's own command buffer, immediately before
 the existing copy into the resident texture. Everything above that seam — conflation, the stable
 texture identity, the fence-delayed release, stream resets — is the shared base, unchanged.
@@ -355,14 +355,14 @@ that rAF, timers and layout behave exactly as they do on the texture paths, and 
 about the producer — the control channel, events, input queue and coalescing, the page bridge, CDP
 — is the same code the other two modes run.
 
-[`HeadlessPuppetBrowser`](../src/jvmMain/kotlin/afield/four/browser/HeadlessPuppetBrowser.kt) is the
+[`HeadlessPuppetBrowser`](../src/jvmMain/kotlin/afield/media/browser/HeadlessPuppetBrowser.kt) is the
 JVM side: a `PuppetBrowserControl` with a null surface and a null transport. `PuppetBrowserControl`
 is the control plane split out of `PuppetBrowser`, which used to extend `ExternalBrowserSurface` and
 therefore `HasImageView` — so before the split, *naming* the control plane obliged the caller to own
 a Vulkan image view. `PuppetBrowser` still extends both, so no existing call site changed.
 
 Why it earns its place here rather than being a convenience: it is what makes this subsystem
-testable. `src/jvmTest/kotlin/afield/four/browser/HeadlessPuppetBrowserTest.kt` spawns a real
+testable. `src/jvmTest/kotlin/afield/media/browser/HeadlessPuppetBrowserTest.kt` spawns a real
 Chromium against `src/jvmTest/resources/puppetBrowser/fixture.html` — no GPU, no display, no network
 — and asserts on values read out of the live DOM. Two things to know about it:
 

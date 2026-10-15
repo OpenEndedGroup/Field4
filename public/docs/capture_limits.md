@@ -123,7 +123,7 @@ A capture can be correctly sized, correctly timed, and still of the wrong thing.
 
 ## Quiet: the native window times out
 
-The `afield.four` graphics window is photographed by a different mechanism: the renderer copies its
+The Field 4 graphics window is photographed by a different mechanism: the renderer copies its
 own swapchain image straight to a file. It needs no screen recording permission, does not raise
 the window, and works headless.
 
@@ -154,7 +154,7 @@ A related limit is not a timeout at all and is easy to mistake for one: **`MeshI
 cannot run from a `main` in the first place.** Its buffers come from `defaultBuffer { … }.buffer`,
 which allocates through a renderer parameter defaulting to `fromContext()`, and `fromContext` reads
 `Box.context`, which is a box. From a `main` there is no box, and it throws
-`Cannot invoke "afield.Box.getProperties()"` before any capture is attempted. A `jvm-main` smoke
+`Cannot invoke "afield.document.graph.Box.getProperties()"` before any capture is attempted. A `jvm-main` smoke
 test runs as a `main`, so it meets this.
 
 ---

@@ -18,7 +18,7 @@ directory = Path(sys.argv[1]).resolve()
 directory.mkdir(parents=True, exist_ok=False)
 env = dict(os.environ, FIELD_DMABUF_PROBE_DIR=str(directory))
 electron = repo / 'electron/node_modules/electron/dist/electron'
-command = shlex.join(['run-jvm-main', 'afield.four.stream.LinuxElectronImportProbe',
+command = shlex.join(['run-jvm-main', 'afield.media.stream.LinuxElectronImportProbe',
                       '--arg', str(directory), '--timeout', '90'])
 with (directory / 'electron.log').open('w') as electron_log, (directory / 'jvm.log').open('w') as jvm_log:
     consumer = subprocess.Popen([str(electron), str(repo / 'tools/electron_dmabuf_probe/main.js'),

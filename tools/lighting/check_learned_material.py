@@ -6,12 +6,12 @@ from PIL import Image,ImageChops,ImageStat
 ROOT=Path(__file__).resolve().parents[2]
 p=argparse.ArgumentParser();p.add_argument('--port',type=int,required=True);p.add_argument('--server-log',type=Path,required=True);a=p.parse_args()
 w=ROOT/'build/neural-tools/material';w.mkdir(parents=True,exist_ok=True)
-read='''val kernel=renderer.renderList.preTargets["editable learned material"] as afield.four.neural.LearnedShader
-val capture=Class.forName("afield.four.reconstruction.ReconstructionCapture")
-val pixels=capture.getMethod("read",afield.four.Renderer::class.java,afield.four.texture.HasImageView::class.java).invoke(capture.getField("INSTANCE").get(null),renderer,learnedImage) as FloatArray
+read='''val kernel=renderer.renderList.preTargets["editable learned material"] as afield.graphics.shader.learning.LearnedShader
+val capture=Class.forName("afield.media.reconstruction.ReconstructionCapture")
+val pixels=capture.getMethod("read",afield.graphics.vulkan.Renderer::class.java,afield.graphics.texture.HasImageView::class.java).invoke(capture.getField("INSTANCE").get(null),renderer,learnedImage) as FloatArray
 check(pixels.all { it.isFinite() })
 '''
-(w/'before.kt').write_text(read+'''prop<afield.four.neural.LearnedShader>(kernelBefore)=kernel
+(w/'before.kt').write_text(read+'''prop<afield.graphics.shader.learning.LearnedShader>(kernelBefore)=kernel
 prop<FloatArray>(pixelsBefore)=pixels
 prop<Long>(imageBefore)=learnedImage.imageView.vkImageView
 prop<Any>(shaderBefore)=renderer.renderList.modules.getValue("editable learned material").current.fi

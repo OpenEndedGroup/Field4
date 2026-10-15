@@ -83,7 +83,7 @@ Attach the browser with `--with-playwright` *before* the run that creates output
 screenshot-window <path> [--uid <box>] [--with-editor] [--open-outputs]
 screenshot-box <box> <path> [--padding 16]
 screenshot-editor <box> <path> [--padding 10]     # inline Monaco visualizers
-native-screenshot <path> [--wait-frames 4]        # native afield.four Vulkan window
+native-screenshot <path> [--wait-frames 4]        # native Field 4 Vulkan window
 wait-native-renderer [<box>] [--frames 3]         # before any native-screenshot
 record-window <path> [--uid <box>] [--duration 5] [--fps 30]
 record-box <box> <path> [--duration 5] [--fps 30]
@@ -102,7 +102,7 @@ Inspect the actual PNG/MP4 — clips are CSS pixels; output files may be device-
 Docs videos use both frame-synchronous flags: one Field frame becomes one encoded
 frame, and `duration × fps` is the exact frame count. Leave them off for live UI capture.
 
-## Native graphics (afield.four)
+## Native graphics (Field 4)
 
 A graphics snippet needs a `Renderer` inherited from a launched renderer parent.
 

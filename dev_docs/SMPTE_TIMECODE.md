@@ -1,8 +1,8 @@
-# SMPTE timecode (`afield.timecode`) — design notes
+# SMPTE timecode (`afield.io.timecode`) — design notes
 
 Added 2026-10-08 (nightly). User page: `public/docs/smpte_timecode.md`. Demo:
 `dev_docs/agents/transcripts/smpte_timecode.yaml` (EXECUTE bucket). Tests:
-`src/jvmTest/kotlin/afield/timecode/TimecodeTest.kt`.
+`src/jvmTest/kotlin/afield/io/timecode/TimecodeTest.kt`.
 
 ## Shape
 - `Timecode` stores a frame count; fields and labels are derived. Drop-frame conversion lives only

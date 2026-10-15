@@ -1,14 +1,14 @@
 package afield.examples.stacksl
 
-import afield.stdlib.StudyEvidence
-import afield.stacksl.cpu.AgreementTier
-import afield.stacksl.cpu.GalleryAgreement
-import afield.stacksl.cpu.StackSLCpu
-import afield.stacksl.cpu.StackSLCpuGallery
-import afield.stacksl.study.CpuStackSLRasterizer
-import afield.stacksl.study.StackSLRasterizer
-import afield.stacksl.study.StackSLStudyShader
-import afield.stacksl.study.renderAll
+import afield.study.evidence.StudyEvidence
+import afield.lang.stacksl.cpu.AgreementTier
+import afield.lang.stacksl.cpu.GalleryAgreement
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLCpuGallery
+import afield.lang.stacksl.study.CpuStackSLRasterizer
+import afield.lang.stacksl.study.StackSLRasterizer
+import afield.lang.stacksl.study.StackSLStudyShader
+import afield.lang.stacksl.study.renderAll
 import java.io.File
 import javax.imageio.ImageIO
 import java.awt.image.BufferedImage
@@ -28,10 +28,10 @@ expect:
     path: /tmp/stacksl-study-gpu-agreement.png
 */
 private val GPU_AGREEMENT_SNIPPET = """
-import afield.four.Renderer
-import afield.four.modules.fromContext
+import afield.graphics.vulkan.Renderer
+import afield.document.context.fromContext
 import afield.examples.stacksl.StackSLStudyGpuSmoke
-import afield.stacksl.study.StackSLGpuRasterizer
+import afield.lang.stacksl.study.StackSLGpuRasterizer
 import java.util.concurrent.CompletableFuture
 
 // The GPU study renderer must wait on frames the main thread draws, so it runs off that thread.
@@ -43,7 +43,7 @@ loop { if (work.isDone) println(work.get()) }
 
 /**
  * Proof that a StackSL study's GPU frames are the program's frames: the same programs rendered by
- * [afield.stacksl.study.StackSLGpuRasterizer] on a live renderer and by the CPU reference. Exact
+ * [afield.lang.stacksl.study.StackSLGpuRasterizer] on a live renderer and by the CPU reference. Exact
  * arithmetic, smooth-transcendental tiers, and the 2D fBm palette have hard bounds; the 4D fbm4
  * hash comparison remains diagnostic because tiny differences in its warped coordinates can
  * cross hash lattice boundaries. `uv saturate` must be bit-identical, which catches a flipped image.

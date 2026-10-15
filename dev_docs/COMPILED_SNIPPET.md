@@ -6,7 +6,7 @@ that compiled code repeatedly in the same engine.
 
 The authoritative contract—including context updates, implicit receivers, and the
 different default exception behavior of suspending and blocking evaluation—is KDoc on
-[`KotlinScriptEngine.compileSnippet` and `PreparedSnippet`](../src/jvmMain/kotlin/afield/KotlinScriptEngine.kt).
+[`KotlinScriptEngine.compileSnippet` and `PreparedSnippet`](../src/jvmMain/kotlin/afield/runtime/kotlin/KotlinScriptEngine.kt).
 The active engine is selected by `KotlinEngineConfig`; K2 is the default and K1 remains
 available through the `afield.kotlin.engine` system property.
 
@@ -42,7 +42,7 @@ to `onEvalException`. The suspending `eval(...)` rethrows by default, while the 
 blocking failure must supply the callback.
 
 Executable coverage is
-[`CompiledSnippetTest`](../src/jvmMain/kotlin/afield/CompiledSnippetTest.kt). A longer
+[`CompiledSnippetTest`](../src/jvmMain/kotlin/afield/runtime/kotlin/CompiledSnippetTest.kt). A longer
 console example is
 [`CompiledSnippetExample`](../src/jvmMain/kotlin/afield/examples/CompiledSnippetExample.kt).
 Both currently instantiate the K1 implementation directly, so they prove the shared K1

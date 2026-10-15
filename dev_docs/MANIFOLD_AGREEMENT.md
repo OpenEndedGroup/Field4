@@ -1,9 +1,9 @@
-# What `afield.manifold` returns, against the closed form
+# What `afield.geometry.solid.manifold` returns, against the closed form
 
 The agreement census that used to be the second section of `public/docs/manifold.md`, where it sat
 between the opening example and the Booleans a reader came for. Moved here 2026-09-15.
 
-Every row is checked by `afield.manifold.ManifoldSmokeTest` (`./gradlew smokeManifold`, which skips
+Every row is checked by `afield.geometry.solid.manifold.ManifoldSmokeTest` (`./gradlew smokeManifold`, which skips
 with exit code 0 when `libmanifoldc` is absent) and by `ManifoldTest` in `jvmTest`. Re-run those
 rather than trusting the table: the smoke prints its own check count, and nothing asserts the count
 itself, so a number quoted from a past run has no guard behind it.

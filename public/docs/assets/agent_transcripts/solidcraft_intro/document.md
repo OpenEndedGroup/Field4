@@ -11,16 +11,16 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="solidcraft_compare" index="0" -->
 
 ```edn [field-box id="solidcraft_compare" role="properties"]
-{"id" "solidcraft_compare" "index" 0 "name" "SolidCraft — a parameter changes the part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidCraft — a parameter changes the part" "_tombstone" false "frame" #afield/rect [80.0 80.0 500.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidcraft_compare_code_.kt" "lines" 43 "characters" 1915 "sha256" "1cf43dc58f9ccee2ed937bbce258d9fb5e25e4ac7a953f5b1b4ec560f6467f31"}]}
+{"id" "solidcraft_compare" "index" 0 "name" "SolidCraft — a parameter changes the part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidCraft — a parameter changes the part" "_tombstone" false "frame" #afield/rect [80.0 80.0 500.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidcraft_compare_code_.kt" "lines" 43 "characters" 1973 "sha256" "8c0d66b42d4e46b131a43635c99c08e85f92b732fee2e7a3eed561ebdca00176"}]}
 ```
 
 ```kotlin [field-property box="solidcraft_compare" name="code" path="solidcraft_compare_code_.kt"]
-import afield.solidcraft.SolidCraftDesign
-import afield.solidcraft.SolidCraftLibrary
-import afield.stdlib.MeshRenderer
-import afield.stdlib.MeshView
-import afield.stdlib.showMeshGrid
-import afield.stdlib.weld
+import afield.geometry.solid.solidcraft.SolidCraftDesign
+import afield.geometry.solid.solidcraft.SolidCraftLibrary
+import afield.geometry.mesh.MeshRenderer
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.showMeshGrid
+import afield.geometry.mesh.weld
 
 run {
     if (!SolidCraftLibrary.isAvailable) {

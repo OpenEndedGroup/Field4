@@ -1,16 +1,16 @@
 package afield.examples
 
-import afield.Handled
-import afield.graphics.VISION_POSE_CHANNEL
-import afield.graphics.VISION_POSE_VERSION
-import afield.graphics.VisionPoseStream
-import afield.graphics.VisionPoseWireFrame
-import afield.graphics.VisionPoseWireView
-import afield.graphics.installVisionPoseHandler
-import afield.graphics.visionPoseRawHandler
-import afield.graphics.visionPoseWireJson
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.app.protocol.Handled
+import afield.graphics.visionos.VISION_POSE_CHANNEL
+import afield.graphics.visionos.VISION_POSE_VERSION
+import afield.graphics.visionos.VisionPoseStream
+import afield.graphics.visionos.VisionPoseWireFrame
+import afield.graphics.visionos.VisionPoseWireView
+import afield.graphics.visionos.installVisionPoseHandler
+import afield.graphics.visionos.visionPoseRawHandler
+import afield.graphics.visionos.visionPoseWireJson
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 import kotlin.math.abs
 
 /*

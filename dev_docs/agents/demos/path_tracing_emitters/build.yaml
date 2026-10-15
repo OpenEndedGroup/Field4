@@ -14,7 +14,7 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 320.0, h: 110.0 }
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -29,16 +29,16 @@ operations:
       frame: { x: 320.0, y: 180.0, w: 380.0, h: 130.0 }
       properties:
         code: |
-          import afield.four.fabricated.PathTraceEnvironment
-          import afield.four.fabricated.PathTraceMaterial
-          import afield.four.fabricated.PathTraceScene
-          import afield.four.fabricated.PathTracingRenderer
-          import afield.four.util.Camera
-          import afield.stdlib.linalg.Vector3f
-          import afield.stdlib.linalg.Vector4f
-
+          import afield.graphics.scene.fabricated.PathTraceEnvironment
+          import afield.graphics.scene.fabricated.PathTraceMaterial
+          import afield.graphics.scene.fabricated.PathTraceScene
+          import afield.graphics.scene.fabricated.PathTracingRenderer
+          import afield.graphics.vulkan.util.Camera
+          
+          
+          
           prop<PathTracingRenderer>(tracer)
-
+          
           // Two lamps in the dark and nothing else: the case BSDF sampling alone cannot find.
           // The wide one radiates from both faces; the small, bright one is single-sided and
           // faces down, so its back is dark to the direct sampler exactly as it is to a hit.
@@ -70,7 +70,7 @@ operations:
           tracer.blitToScreen()
           println("${tracer.emitterCount} emissive triangles of ${tracer.triangleCount}, " +
               "in a black environment: they are the only light in this scene")
-
+          
           // Flip the one flag every 256 samples. Changing it resets accumulation, so the two
           // estimators are always compared at the same budget, over and over. Off is a
           // blizzard; on is the same image, clean. Comment out the loop to hold one of them.

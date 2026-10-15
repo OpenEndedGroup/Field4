@@ -11,12 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="skin_renderer" index="0" -->
 
 ```edn [field-box id="skin_renderer" role="properties"]
-{"id" "skin_renderer" "index" 0 "name" "0 - a window and a renderer, which gpu_skin needs" "parents" ["root"] "children" ["gpu_skin" "twist_compare" "gpu_crowd" "gpu_twist"] "properties" {"children" #{#afield/box "gpu_skin" #afield/box "twist_compare" #afield/box "gpu_crowd" #afield/box "gpu_twist"} "parents" #{#afield/box "root"} "name" "0 - a window and a renderer, which gpu_skin needs" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "skin_renderer_code_.kt" "lines" 24 "characters" 1123 "sha256" "1e06ad6ba8e1133419854e02d9044a74d3b7bfd6d62fddc77a22e0e6de432cb9"}]}
+{"id" "skin_renderer" "index" 0 "name" "0 - a window and a renderer, which gpu_skin needs" "parents" ["root"] "children" ["gpu_skin" "twist_compare" "gpu_crowd" "gpu_twist"] "properties" {"children" #{#afield/box "gpu_skin" #afield/box "twist_compare" #afield/box "gpu_crowd" #afield/box "gpu_twist"} "parents" #{#afield/box "root"} "name" "0 - a window and a renderer, which gpu_skin needs" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "skin_renderer_code_.kt" "lines" 24 "characters" 1158 "sha256" "55cee87c2292bb2c382cf18a4a27614a8075c0b874d69965c652f9c115df903a"}]}
 ```
 
 ```kotlin [field-property box="skin_renderer" name="code" path="skin_renderer_code_.kt"]
-import afield.four.util.Options
-import afield.Rect
+import afield.graphics.vulkan.util.Options
+import afield.app.protocol.Rect
 
 // The window and renderer that box 4 needs.
 //
@@ -25,7 +25,7 @@ import afield.Rect
 // and path_tracing_medium each have exactly one box declaring `prop<Renderer>(renderer)`. This
 // demo did not, so box 4 only ran under `field_backdoor.py --graphics-context`, where the agent's
 // own context box supplied a Renderer by type. Opened the ordinary way -- `./field.sh` on this
-// document -- box 4 failed with "must pass in a value for context parameter afield.four.Renderer".
+// document -- box 4 failed with "must pass in a value for context parameter afield.graphics.vulkan.Renderer".
 //
 // `prop<Renderer>(renderer)` publishes it to this box's children, which is why box 4 is connected
 // beneath this one and can now say `renderer` by name.
@@ -46,15 +46,15 @@ start(renderer::run)
 <!-- field-box id="gpu_crowd" index="1" -->
 
 ```edn [field-box id="gpu_crowd" role="properties"]
-{"id" "gpu_crowd" "index" 1 "name" "6 - skinning in the vertex shader, and a crowd of 64" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "6 - skinning in the vertex shader, and a crowd of 64" "_tombstone" false "frame" #afield/rect [40.0 520.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_crowd_code_.kt" "lines" 76 "characters" 3217 "sha256" "3bc40d743b50628f76f9f7d3d4e5ee62b6dfd4c5b0330e68092da7c203b36ebd"}]}
+{"id" "gpu_crowd" "index" 1 "name" "6 - skinning in the vertex shader, and a crowd of 64" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "6 - skinning in the vertex shader, and a crowd of 64" "_tombstone" false "frame" #afield/rect [40.0 520.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_crowd_code_.kt" "lines" 76 "characters" 3234 "sha256" "e3e6c838f68ff9d22ae09196a4d899c794ef0606146c2cc642994f3a6008e69c"}]}
 ```
 
 ```kotlin [field-property box="gpu_crowd" name="code" path="gpu_crowd_code_.kt"]
-import afield.four.modules.GltfSupport
-import afield.four.modules.GpuSkinner
-import afield.four.modules.GpuSkinning
-import afield.four.modules.RiggedFixture
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.scene.GltfSupport
+import afield.graphics.scene.GpuSkinner
+import afield.graphics.scene.GpuSkinning
+import afield.graphics.scene.RiggedFixture
+import afield.math.linalg.Matrix4f
 
 // Sixty-four characters, one mesh, one draw call, all of them animating -- and not one vertex is
 // re-uploaded after setup. Box 4 above is the CPU skinner: it rewrites the packed vertex buffer
@@ -66,7 +66,7 @@ val count = 64
 // `renderer` and `window` come from box 0, which publishes them with `prop<Renderer>(renderer)`.
 // This box is connected beneath it, so the bare name resolves -- RUN BOX 0 FIRST. Before box 0
 // has run there is no Renderer anywhere and this box fails with "must pass in a value for
-// context parameter afield.four.Renderer", which is the same footgun box 4 documents.
+// context parameter afield.graphics.vulkan.Renderer", which is the same footgun box 4 documents.
 val model = GltfSupport.loadGltfBasic(
     RiggedFixture.locate(), GltfSupport.GltfLoadConfig(loadTextures = false)
 )
@@ -133,17 +133,17 @@ loop {
 <!-- field-box id="rig_facts" index="2" -->
 
 ```edn [field-box id="rig_facts" role="properties"]
-{"id" "rig_facts" "index" 2 "name" "1 - a rigged mesh, and what the loader reads out of it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - a rigged mesh, and what the loader reads out of it" "_tombstone" false "frame" #afield/rect [400.0 40.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_facts_code_.kt" "lines" 60 "characters" 3222 "sha256" "affb52c5c7afe2c5f689ba7aee9e36a64207454874118302d0a817561c805d78"}]}
+{"id" "rig_facts" "index" 2 "name" "1 - a rigged mesh, and what the loader reads out of it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - a rigged mesh, and what the loader reads out of it" "_tombstone" false "frame" #afield/rect [400.0 40.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_facts_code_.kt" "lines" 60 "characters" 3246 "sha256" "031c39b941d820196dcc55e1d26c86b0fdf5d872efad2102284908da22e62a61"}]}
 ```
 
 ```kotlin [field-property box="rig_facts" name="code" path="rig_facts_code_.kt"]
-import afield.four.modules.GltfSkinning
-import afield.four.modules.GltfSupport
-import afield.four.modules.RiggedFixture
-import afield.four.modules.assimpToTriMesh
-import afield.four.modules.skinnedGltfToTriMesh
-import afield.stdlib.MeshView
-import afield.stdlib.showMeshGrid
+import afield.graphics.scene.GltfSkinning
+import afield.graphics.scene.GltfSupport
+import afield.graphics.scene.RiggedFixture
+import afield.graphics.scene.assimpToTriMesh
+import afield.graphics.scene.skinnedGltfToTriMesh
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.showMeshGrid
 
 // Field could load a glTF and it could sample per-NODE animation. It could not skin.
 //
@@ -204,19 +204,19 @@ showMeshGrid(
 <!-- field-box id="gpu_twist" index="3" -->
 
 ```edn [field-box id="gpu_twist" role="properties"]
-{"id" "gpu_twist" "index" 3 "name" "7 - the candy wrapper on the GPU, linear and dual quaternion in one draw" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "7 - the candy wrapper on the GPU, linear and dual quaternion in one draw" "_tombstone" false "frame" #afield/rect [680.0 520.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_twist_code_.kt" "lines" 80 "characters" 3330 "sha256" "d645bb396aa5ff9a503512ccbd8bb668dbf7279af6e4db8763c6c92c1538f2c6"}]}
+{"id" "gpu_twist" "index" 3 "name" "7 - the candy wrapper on the GPU, linear and dual quaternion in one draw" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "7 - the candy wrapper on the GPU, linear and dual quaternion in one draw" "_tombstone" false "frame" #afield/rect [680.0 520.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_twist_code_.kt" "lines" 80 "characters" 3344 "sha256" "590eb4e128e73d145b96ffffa2c291c78273d677cff071f267769acf7e6a03ca"}]}
 ```
 
 ```kotlin [field-property box="gpu_twist" name="code" path="gpu_twist_code_.kt"]
-import afield.four.modules.DualQuaternionSkinning
-import afield.four.modules.GltfSkinning.SkinningMethod
-import afield.four.modules.GltfSkinning.SkinningOptions
-import afield.four.modules.GltfSkinning
-import afield.four.modules.GltfSupport
-import afield.four.modules.GpuSkinner
-import afield.four.modules.GpuSkinning
-import afield.four.modules.RiggedFixture
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.scene.DualQuaternionSkinning
+import afield.graphics.scene.GltfSkinning.SkinningMethod
+import afield.graphics.scene.GltfSkinning.SkinningOptions
+import afield.graphics.scene.GltfSkinning
+import afield.graphics.scene.GltfSupport
+import afield.graphics.scene.GpuSkinner
+import afield.graphics.scene.GpuSkinning
+import afield.graphics.scene.RiggedFixture
+import afield.math.linalg.Matrix4f
 
 // Box 5 is the candy wrapper on the CPU. This is the same twist on the GPU, both methods in ONE
 // draw call: the left cylinder is linear blend skinning and pinches to a point at 180 degrees, the
@@ -295,16 +295,16 @@ loop {
 <!-- field-box id="drag_time" index="4" -->
 
 ```edn [field-box id="drag_time" role="properties"]
-{"id" "drag_time" "index" 4 "name" "2 - drag `time` and watch it bend" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - drag `time` and watch it bend" "_tombstone" false "frame" #afield/rect [40.0 200.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "drag_time_code_.kt" "lines" 46 "characters" 2129 "sha256" "5939fd7fe3408b3abea772c5b2e032b83f17468ddaf1529dd002a1ec339e2cae"}]}
+{"id" "drag_time" "index" 4 "name" "2 - drag `time` and watch it bend" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - drag `time` and watch it bend" "_tombstone" false "frame" #afield/rect [40.0 200.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "drag_time_code_.kt" "lines" 46 "characters" 2167 "sha256" "47fcc81ef8dbe24321729405a665da70267496420c0765629e6fc08de4336759"}]}
 ```
 
 ```kotlin [field-property box="drag_time" name="code" path="drag_time_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.modules.RiggedFixture
-import afield.four.modules.posedGltfToTriMesh
-import afield.stdlib.MeshView
-import afield.stdlib.showMesh
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.scene.RiggedFixture
+import afield.graphics.scene.posedGltfToTriMesh
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.showMesh
 
 // Drag `time`. The cylinder bends.
 //
@@ -352,13 +352,13 @@ println("At time 0 and 2 the tube is straight; the extreme is at time 1.")
 <!-- field-box id="gpu_skin" index="5" -->
 
 ```edn [field-box id="gpu_skin" role="properties"]
-{"id" "gpu_skin" "index" 5 "name" "4 - the same deformation on the GPU, no shader change" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "4 - the same deformation on the GPU, no shader change" "_tombstone" false "frame" #afield/rect [40.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_skin_code_.kt" "lines" 70 "characters" 3423 "sha256" "cc908420d24afff4bd2035be60954f94c0621610d0d1102a9289494c40705939"} {"name" "fragment" "language" "glsl" "path" "gpu_skin_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "gpu_skin_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
+{"id" "gpu_skin" "index" 5 "name" "4 - the same deformation on the GPU, no shader change" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "4 - the same deformation on the GPU, no shader change" "_tombstone" false "frame" #afield/rect [40.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_skin_code_.kt" "lines" 70 "characters" 3425 "sha256" "88fe6fd77e724e86d96b5502328ac6b7dfce89c18e23eb67b5f9525e25f88cfa"} {"name" "fragment" "language" "glsl" "path" "gpu_skin_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "gpu_skin_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
 ```
 
 ```kotlin [field-property box="gpu_skin" name="code" path="gpu_skin_code_.kt"]
-import afield.four.modules.CpuSkinner
-import afield.four.modules.RiggedFixture
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.scene.CpuSkinner
+import afield.graphics.scene.RiggedFixture
+import afield.math.linalg.Matrix4f
 
 // The same deformation, on the GPU, through Field's OWN glTF module and its OWN bundled shaders.
 //
@@ -526,15 +526,15 @@ void main()
 <!-- field-box id="twist_compare" index="6" -->
 
 ```edn [field-box id="twist_compare" role="properties"]
-{"id" "twist_compare" "index" 6 "name" "5 - the candy wrapper, side by side" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "5 - the candy wrapper, side by side" "_tombstone" false "frame" #afield/rect [680.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "twist_compare_code_.kt" "lines" 61 "characters" 3191 "sha256" "09621204b38f4efa40886c55bb597af94a64a524ff81ff3c08674d6538ef452d"} {"name" "fragment" "language" "glsl" "path" "twist_compare_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "twist_compare_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
+{"id" "twist_compare" "index" 6 "name" "5 - the candy wrapper, side by side" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "5 - the candy wrapper, side by side" "_tombstone" false "frame" #afield/rect [680.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "twist_compare_code_.kt" "lines" 61 "characters" 3197 "sha256" "b41fd799f87cb41aca52f999e29906e0068cacd85a9db358a1ba58c7553839b1"} {"name" "fragment" "language" "glsl" "path" "twist_compare_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "twist_compare_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
 ```
 
 ```kotlin [field-property box="twist_compare" name="code" path="twist_compare_code_.kt"]
-import afield.four.modules.CpuSkinner
-import afield.four.modules.DualQuaternionSkinning
-import afield.four.modules.GltfSkinning
-import afield.four.modules.RiggedFixture
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.scene.CpuSkinner
+import afield.graphics.scene.DualQuaternionSkinning
+import afield.graphics.scene.GltfSkinning
+import afield.graphics.scene.RiggedFixture
+import afield.math.linalg.Matrix4f
 
 // The candy wrapper: one rig, one pose, two ways of averaging the joints.
 //
@@ -691,15 +691,15 @@ void main()
 <!-- field-box id="path_trace" index="7" -->
 
 ```edn [field-box id="path_trace" role="properties"]
-{"id" "path_trace" "index" 7 "name" "3 - the refusal PathTraceGltf used to make" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - the refusal PathTraceGltf used to make" "_tombstone" false "frame" #afield/rect [680.0 200.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_code_.kt" "lines" 45 "characters" 2332 "sha256" "e6692a43dbb12aa44bf1f0729580fc719ca5d49b72cd42dd9828eb83ea546358"}]}
+{"id" "path_trace" "index" 7 "name" "3 - the refusal PathTraceGltf used to make" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - the refusal PathTraceGltf used to make" "_tombstone" false "frame" #afield/rect [680.0 200.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_code_.kt" "lines" 45 "characters" 2366 "sha256" "70106590294231361a1221c3c296f30d99b3d30f50743a3c6a4f47eb178e0190"}]}
 ```
 
 ```kotlin [field-property box="path_trace" name="code" path="path_trace_code_.kt"]
-import afield.four.fabricated.GltfSkinPose
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.importGltf
-import afield.four.modules.RiggedFixture
-import afield.four.modules.skinnedGltfToTriMesh
+import afield.graphics.scene.fabricated.GltfSkinPose
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.importGltf
+import afield.graphics.scene.RiggedFixture
+import afield.graphics.scene.skinnedGltfToTriMesh
 
 // The line this whole branch was aimed at.
 //

@@ -1,22 +1,22 @@
 package afield.examples.ai
 
-import afield.Box
-import afield.BoxRunScopes
-import afield.LifecycleLedger
-import afield.ReleasePolicy
-import afield.withCurrent
-import afield.OperationTranscript
-import afield.SavingContext
-import afield.SessionInformation
-import afield.ai.core.BoxTool
-import afield.ai.core.DocumentToolRegistry
-import afield.ai.core.ToolExecutionContext
-import afield.ai.core.ToolFace
-import afield.ai.core.ToolRegistry
-import afield.ai.core.boxToolWireName
-import afield.ai.core.aiTool
-import afield.ai.core.aiToolMapper
-import afield.thisSessionInfo
+import afield.document.graph.Box
+import afield.runtime.lifecycle.BoxRunScopes
+import afield.runtime.lifecycle.LifecycleLedger
+import afield.runtime.lifecycle.ReleasePolicy
+import afield.runtime.lifecycle.withCurrent
+import afield.tools.automation.OperationTranscript
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.ai.tools.BoxTool
+import afield.ai.tools.DocumentToolRegistry
+import afield.ai.tools.ToolExecutionContext
+import afield.ai.tools.ToolFace
+import afield.ai.tools.ToolRegistry
+import afield.ai.tools.boxToolWireName
+import afield.ai.tools.aiTool
+import afield.ai.tools.aiToolMapper
+import afield.app.server.thisSessionInfo
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -235,15 +235,15 @@ ${PROVIDER_CODE.trimEnd().prependIndent("          ")}
     }
 
     private fun startRunloopDaemon() {
-        val t = Thread({ afield.Runloop.runLoop.start() }, "box-ai-tools-harness-runloop")
+        val t = Thread({ afield.runtime.lifecycle.Runloop.runLoop.start() }, "box-ai-tools-harness-runloop")
         t.isDaemon = true
         t.start()
         val deadline = System.currentTimeMillis() + 30_000
-        while (afield.Runloop.runLoop.frame < 1L) {
+        while (afield.runtime.lifecycle.Runloop.runLoop.frame < 1L) {
             check(System.currentTimeMillis() < deadline) { "runloop did not start within 30s" }
             Thread.sleep(20)
         }
-        println("BoxAiToolsSmokeTest: runloop up (frame=${afield.Runloop.runLoop.frame})")
+        println("BoxAiToolsSmokeTest: runloop up (frame=${afield.runtime.lifecycle.Runloop.runLoop.frame})")
     }
 
     private fun stripHtml(html: String): String =

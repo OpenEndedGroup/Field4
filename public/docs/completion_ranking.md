@@ -35,7 +35,7 @@ a bare dot *no row is filtered out at all*.
 ### Each row says where it was declared
 
 Every candidate carries a `declaredIn`: a class's fully-qualified name for a member
-(`afield.graphics.FLine`), or a package for a top-level extension. This is the field that decides the
+(`afield.geometry.path.FLine`), or a package for a top-level extension. This is the field that decides the
 row's **category**, which is the field that decides which **section** it renders under.
 
 It has to be `declaredIn` rather than the member's bare name, because bare names collide: in
@@ -181,41 +181,41 @@ completion backend=K1 … (AA→K1: empty: session building (warming up; using K
 completion backend=AA … 1616ms (44 candidates)
 ```
 
-On a K1-served `f.` the server logs `completion prior-receiver resolved='afield.graphics.FLine'`,
+On a K1-served `f.` the server logs `completion prior-receiver resolved='afield.geometry.path.FLine'`,
 and the popup renders `moveTo`, `lineTo`, `cubicTo`, `close`, `here`, `scale`, `copy` — the declared
 order, out of the fallback backend.
 
 ### Asking Field for the prior in numbers
 
 Behind the popup, one `f.` is a couple of hundred candidates, and eight of them carry a prior. The
-next box asks Field what that prior is, by calling `afield.CommonMemberPrior`, the object the
+next box asks Field what that prior is, by calling `afield.runtime.completion.CommonMemberPrior`, the object the
 completion server calls once per candidate on every keystroke.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/popup-decides-prior-table.png" capture="box" w="700" h="190" wait="1.2" timeout="120" embed=true hidden=true name="popup-decides-prior-table" alt="A Field box output panel labelled main. A heading reads: @CommonMembers on afield.graphics.FLine — 8 members, first scores 40, less 2 per position. Below it a three-column table headed position, member, prior score, with eight rows: 1 moveTo 40, 2 lineTo 38, 3 cubicTo 36, 4 close 34, 5 here 32, 6 rot 30, 7 scale 28, 8 copy 26."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/popup-decides-prior-table.png" capture="box" w="700" h="190" wait="1.2" timeout="120" embed=true hidden=true name="popup-decides-prior-table" alt="A Field box output panel labelled main. A heading reads: @CommonMembers on afield.geometry.path.FLine — 8 members, first scores 40, less 2 per position. Below it a three-column table headed position, member, prior score, with eight rows: 1 moveTo 40, 2 lineTo 38, 3 cubicTo 36, 4 close 34, 5 here 32, 6 rot 30, 7 scale 28, 8 copy 26."}
 :::static
 // Ask Field what prior the completion popup has, instead of trusting a number typed into a
 // page. `CommonMemberPrior` is the object the completion server itself calls, once per
 // candidate, on every keystroke — so this table is the popup's own arithmetic rather than a
 // description of it. Change `receiver` to any qualified type name to ask about your own class.
-val receiver = "afield.graphics.FLine"
-val ranks = afield.CommonMemberPrior.ranksFor(receiver)
+val receiver = "afield.geometry.path.FLine"
+val ranks = afield.runtime.completion.CommonMemberPrior.ranksFor(receiver)
 
 // Sorted by position rather than trusting the map's iteration order, so the figure is the same
 // every time it is captured.
 val prior = Table(["position", "member", "prior score"])
     .rows(ranks.entries.sortedBy { it.value }.map { (member, position) ->
-        [position, member, afield.CommonMemberPrior.scoreOf(position)]
+        [position, member, afield.runtime.completion.CommonMemberPrior.scoreOf(position)]
     })
     .role("member", CellRole.ACCENT)
 
 // The arithmetic the heading claims, checked rather than described.
 check(ranks.all { (_, position) ->
-    afield.CommonMemberPrior.scoreOf(position) ==
-        afield.CommonMemberPrior.BASE - afield.CommonMemberPrior.STEP * (position - 1)
+    afield.runtime.completion.CommonMemberPrior.scoreOf(position) ==
+        afield.runtime.completion.CommonMemberPrior.BASE - afield.runtime.completion.CommonMemberPrior.STEP * (position - 1)
 }) { "the prior is no longer BASE less STEP per position" }
 
 markdown("main", """
-    {muted:@CommonMembers on ${receiver.md} — ${ranks.size} members, first scores ${afield.CommonMemberPrior.BASE}, less ${afield.CommonMemberPrior.STEP} per position}
+    {muted:@CommonMembers on ${receiver.md} — ${ranks.size} members, first scores ${afield.runtime.completion.CommonMemberPrior.BASE}, less ${afield.runtime.completion.CommonMemberPrior.STEP} per position}
 
     ${prior.h}
 """)
@@ -225,8 +225,8 @@ The two calls that table is built from are the whole public surface, and you can
 own class:
 
 ```diffstatic {data-lang=kotlin}
-val ranks = afield.CommonMemberPrior.ranksFor("afield.graphics.FLine")  // name -> 1-based position
-val score = afield.CommonMemberPrior.scoreOf(ranks["moveTo"] ?: 0)      // position -> points
+val ranks = afield.runtime.completion.CommonMemberPrior.ranksFor("afield.geometry.path.FLine")  // name -> 1-based position
+val score = afield.runtime.completion.CommonMemberPrior.scoreOf(ranks["moveTo"] ?: 0)      // position -> points
 ```
 
 The same box ships as a replayable transcript (`popup_prior_inspect` on the
@@ -269,7 +269,7 @@ If you write a class in a Field box, or anywhere on Field's classpath, you can g
 first page yourself.
 
 ```diffstatic {data-lang=kotlin}
-import afield.CommonMembers
+import afield.runtime.completion.CommonMembers
 
 @CommonMembers("advance", "reset", "value")
 class Ramp {
@@ -312,7 +312,7 @@ actually see, with the two inputs that placed them:
 
 ```diffstatic {data-lang=text}
 FIELD_RANK_DUMP=14 FIELD_RANK_DUMP_CASE='FLine bare dot' \
-  ./gradlew jvmTest --tests "afield.FieldSuggestPresentationTest"
+  ./gradlew jvmTest --tests "afield.runtime.completion.FieldSuggestPresentationTest"
 ```
 
 `FIELD_RANK_DUMP=<n>` prints the first *n* visible rows; `FIELD_RANK_DUMP_CASE` narrows it to one
@@ -377,10 +377,10 @@ In rough order of how often each turns out to be the answer:
 
 | what | where |
 |---|---|
-| the annotation | `CommonMembers` in `src/jvmMain/kotlin/afield/util.kt` |
-| resolving it for a receiver | `src/jvmMain/kotlin/afield/CommonMemberPrior.kt` |
+| the annotation | `CommonMembers` in `src/jvmMain/kotlin/afield/app/diagnostics/util.kt` |
+| resolving it for a receiver | `src/jvmMain/kotlin/afield/runtime/completion/CommonMemberPrior.kt` |
 | naming the receiver when the backend did not | `receiverQualifiedNameAtCompletion` in `KotlinCompletionSupport.kt` |
-| putting it on the wire | `Metadata.commonMemberRank` in `src/commonMain/kotlin/rpc.kt` |
+| putting it on the wire | `Metadata.commonMemberRank` in `src/commonMain/kotlin/afield/app/protocol/rpc.kt` |
 | categorising a candidate | `getCompletionCategoryForSymbol` in `KotlinSourceIndex.kt` |
 | scoring, sorting, sectioning, rendering | `src/commonMain/resources/fieldSuggest.js` |
 | the guard on listed names | `CommonMembersAnnotationTest` |
