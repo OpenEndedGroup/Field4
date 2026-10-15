@@ -200,6 +200,26 @@ class ReactivePropsTest {
         assertFalse(ReactiveRuns.isDeclaredDown(a, "gain"))
     }
 
+    /**
+     * Kotlin `propDown` always carries its type: without one the macro refuses to expand, so
+     * the code check in [ReactiveRuns.isDeclaredDown] only needs the `<T>(name...)` form, with
+     * any spacing and an optional default.
+     */
+    @Test
+    fun aDownDeclarationNeedsItsTypeAndToleratesSpacingAndDefaults() {
+        val s = session("forms")
+        val a = boxIn(s, "a", "propDown(gain)")
+        assertFailsWith<afield.macros.MacroRegistry.MacroExpansionProblem> {
+            a.macro_reactive_prop(listOf("(gain)"), Reactive.DOWN, "propDown")
+        }
+        assertFalse(ReactiveRuns.isDeclaredDown(a, "gain"))
+        val b = boxIn(s, "b", "propDown< Map<String, Double> >( gain , mapOf() )")
+        b.macro_reactive_prop(listOf("<Map<String, Double>>", "(gain, mapOf())"), Reactive.DOWN, "propDown")
+        assertTrue(ReactiveRuns.isDeclaredDown(b, "gain"))
+        b.setPropertyRaw("code", "propDown<Double>(gainTrim)")
+        assertFalse(ReactiveRuns.isDeclaredDown(b, "gain"), "a longer name is not the same declaration")
+    }
+
     @Test
     fun aDeletedBoxsDownDeclarationIsForgotten() {
         val s = session("deleted")
