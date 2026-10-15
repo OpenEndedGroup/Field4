@@ -299,7 +299,27 @@ anything is evaluated, so none of the box runs. Other mistakes (an unresolvable 
 throws, a call with the wrong number of arguments) show up only when the form runs, after the forms
 above it have run. A Clojure box therefore has no equivalent of the red underline a Kotlin box gets
 before it runs. The message names the problem first and the place second, for example
-`Unable to resolve symbol: no-such-function in this context — Syntax error compiling at (3:1).`
+`Unable to resolve symbol: no-such-function in this context — Syntax error compiling at (3:1).`:
+
+<!--
+FIELD_TEST
+id: docs.clojure.unresolved
+runner: backdoor-box
+tags: [docs, clojure, inline-output]
+timeoutSec: 120
+waitSec: 1.5
+expect:
+  allowExecutionErrors: true
+  outputContains:
+    - "before"
+    - "Unable to resolve symbol: no-such-function"
+-->
+```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/unresolved.png" capture="editor" outputs="inline" expect-error=true wait="4" padding="10" timeout="240" embed=true name="clojure-unresolved" w="900" h="220" alt="A three-line Clojure box. Line 1 shows the chip before. Line 3 carries the error Unable to resolve symbol: no-such-function in this context, followed by where it was compiled."}
+:::static
+(println "before")
+
+(no-such-function 3)
+```
 
 ## The editor knows the language
 
