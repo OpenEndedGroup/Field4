@@ -116,12 +116,13 @@ methods on a class named after a file, and default arguments, which Clojure has 
 | --- | --- |
 | `(box)` | Returns the `Box` this code is running in. |
 | `(display v)`, `(display channel v)` | Renders a value in an output panel using Field’s value renderer. Supply a channel name to update that output independently. |
-| `(lines ls :w 700 :h 350 :fit true)` | Draws the supplied `FLine` collection in a 700 × 350 output. `:fit true` fits the drawing to the view. |
+| `(lines ls :w 700 :h 350 :fit true)` | Draws the supplied `FLine` collection (or a single `FLine`) in a 700 × 350 output panel named `lines`. `:fit true` fits the drawing to the view; `:channel "name"` draws into a different panel. |
 | `(polyline [[x y] …])` | Builds an `FLine` through the points in sequence. |
-| `(color line r g b a)`, `(thickness line w)` | Sets line colour or stroke thickness and returns the line, so `->` threads. |
+| `(color line r g b a)`, `(color line [r g b a])`, `(thickness line w)` | Sets line colour (RGBA, 0 to 1) or stroke thickness in pixels and returns the line, so `->` threads. |
 | `(animate f)` | Builds a per-frame animation around `f`. Return the animation from the box to launch it. |
 | `(frame)`, `(end)` | Inside an animation body: reads the current frame number, or stops now. |
-| `(prop "name")`, `(prop! "name" v)` | Reads or writes a property of this box. |
+| `(prop "name")`, `(prop! "name" v)` | Reads or writes a property of this box. `prop!` returns the value it wrote. |
+| `(prop b "name")`, `(prop! b "name" v)` | The same, for another box `b`, such as one from `(.getParents (box))`. |
 
 </div>
 
@@ -293,10 +294,12 @@ Anything a box writes to `*err*` appears the same way, as an error against the l
 That is how Clojure's own warnings reach you, such as the one for shadowing a `clojure.core` name
 with a `def`.
 
-A syntax error is reported, with its line and column, before anything is evaluated. Other mistakes
-(an unresolvable symbol, a macro that throws, a call with the wrong number of arguments) show up only
-when the form runs, so a Clojure box has no equivalent of the red underline a Kotlin box gets before
-it runs.
+A syntax error, such as an unclosed parenthesis, is reported with its line and column before
+anything is evaluated, so none of the box runs. Other mistakes (an unresolvable symbol, a macro that
+throws, a call with the wrong number of arguments) show up only when the form runs, after the forms
+above it have run. A Clojure box therefore has no equivalent of the red underline a Kotlin box gets
+before it runs. The message names the problem first and the place second, for example
+`Unable to resolve symbol: no-such-function in this context — Syntax error compiling at (3:1).`
 
 ## The editor knows the language
 
