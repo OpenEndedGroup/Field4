@@ -441,7 +441,7 @@ neighbours together and `MergeClosePointsProcess` merges them.
     [`animateEvolution`](reference/alife.md#alife-animate-kt) with a geometric `ramp` makes the last
     frames' step batches the largest, so the recorder falls furthest behind at the end. The clip
     records for `duration = 13` against `seconds = 10` so that it reaches the settled result; at
-    `duration = 11` takes stopped before the final step.
+    `duration = 11` the take stopped before the final step.
 
 ## Snapshots and the `minWeight` cut
 
