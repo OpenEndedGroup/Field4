@@ -583,7 +583,7 @@
   {"doc": "smpte_timecode", "box": "tc_follow_ltc", "codeSha256": "dc04ecc03113e3dd", "codeLines": 12, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "smpte_timecode", "box": "tc_ltc_roundtrip", "codeSha256": "165d01bfe2b54b3a", "codeLines": 37, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "smpte_timecode", "box": "tc_mtc", "codeSha256": "2ea523bdb1922b20", "codeLines": 15, "receivers": ["afield.document.graph.Box"], "preamble": ""},
-  {"doc": "solidcraft_intro", "box": "solidcraft_compare", "codeSha256": "5a546df6627f93c2", "codeLines": 46, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "solidcraft_intro", "box": "solidcraft_compare", "codeSha256": "56c6adef00a17bba", "codeLines": 43, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "solidsl_gallery", "box": "cross_check", "codeSha256": "602dbe4698076a42", "codeLines": 121, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "solidsl_gallery", "box": "glsl_backend", "codeSha256": "f1aa311e0d067492", "codeLines": 54, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "solidsl_gallery", "box": "refusals", "codeSha256": "02b45d1ecdf01079", "codeLines": 96, "receivers": ["afield.document.graph.Box"], "preamble": ""},

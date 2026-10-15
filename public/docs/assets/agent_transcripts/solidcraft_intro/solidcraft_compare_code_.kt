@@ -3,8 +3,6 @@ import afield.geometry.solid.solidcraft.SolidCraftLibrary
 import afield.geometry.mesh.MeshRenderer
 import afield.geometry.mesh.MeshView
 import afield.geometry.mesh.showMeshGrid
-import afield.math.linalg.quat
-import afield.math.linalg.vec
 import afield.geometry.mesh.weld
 
 run {
@@ -22,12 +20,10 @@ run {
 
     SolidCraftDesign.openBundledExample().use { part ->
         val original = part.summary().getJSONArray("bodies").getJSONObject(0)
-        // The cut starts on the XY plane. Turn both previews to see its opening.
-        val towardCut = quat(Math.PI, vec(0, 1, 0))
-        val before = part.mesh(tolerance = tolerance).toTriMesh().weld().rotated(towardCut)
+        val before = part.mesh(tolerance = tolerance).toTriMesh().weld()
         part.setParameter("width", "$width mm")
         val changed = part.summary().getJSONArray("bodies").getJSONObject(0)
-        val after = part.mesh(tolerance = tolerance).toTriMesh().weld().rotated(towardCut)
+        val after = part.mesh(tolerance = tolerance).toTriMesh().weld()
 
         println("B-rep volume: ${"%.1f".format(original.getDouble("volume"))} → " +
             "${"%.1f".format(changed.getDouble("volume"))} mm³")
@@ -39,7 +35,8 @@ run {
             "$width mm: blind cut" to after,
             columns = 2,
             cellWidth = 380,
-            view = MeshView(wireframe = false),
+            // Look from the cut's side of the XY plane so the blind hole stays visible.
+            view = MeshView(yawDegrees = 165.0, pitchDegrees = 14.0, wireframe = false),
             renderer = MeshRenderer.CPU,
         )
     }

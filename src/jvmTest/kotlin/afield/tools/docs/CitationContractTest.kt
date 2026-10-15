@@ -940,8 +940,12 @@ class CitationContractTest {
         )
 
         // The other half of the bargain: written out far enough, the same citation resolves.
-        val disambiguated = matches.first().relativeToOrSelf(root).path
-            .split('/').takeLast(2).joinToString("/")
+        // A built documentation mirror can repeat both the filename and its parent directory.
+        // Find the shortest unique suffix from the index, independently of locate().
+        val segments = matches.first().relativeToOrSelf(root).path.split('/')
+        val disambiguated = (2..segments.size)
+            .map { segments.takeLast(it).joinToString("/") }
+            .first { suffix -> matches.count { it.path.endsWith("/$suffix") } == 1 }
         assertEquals(
             matches.first(), CitationGuard.locate(root, disambiguated, index),
             "`$disambiguated` names exactly one file and must resolve — this is why 'make every " +
