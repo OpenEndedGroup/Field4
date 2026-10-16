@@ -207,9 +207,8 @@ markdown("fit", """
 """.trimIndent())
 ```
 
-Use `fitParameters` on a track, not `fitGradient`. `fitGradient` moves every number in the graph,
-including key times, clamp bounds and easing constants, and moving those breaks the track.
-`fitParameters` moves only the named `free-param`s.
+`fitParameters` moves only the named `free-param`s. The general `fitGradient`, which moves every
+number in a graph, refuses a track that declares free parameters and points you here.
 
 ## Unknowns inside keys
 

@@ -1216,7 +1216,7 @@ private fun lowerTcbSymbolic(
  * and [freeParameterIndices] can read the mapping back out. Prefixed so a track called "x" cannot
  * collide with a leaf some other part of the library happened to name "x".
  */
-internal const val FREE_PARAM_GRAPH_PREFIX: String = "rectsl.param:"
+internal const val FREE_PARAM_GRAPH_PREFIX: String = afield.math.functions.FN_FREE_PARAMETER_PREFIX
 
 /**
  * Which θ index each named free parameter ended up at, for the graph [fn].
