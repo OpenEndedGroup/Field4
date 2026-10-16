@@ -660,8 +660,8 @@ Three limits bound what it will answer:
   on it.
 - **A colour-dependent net is not reduced.** The closure reasons about arcs, and a guard or an
   `enabledIf` is an arbitrary predicate no arc analysis can see, so `stateSpace(reduction = STUBBORN)`
-  on such a net returns an unreduced (and therefore still `exact`) graph, with no complaint and with
-  `graph.reduction == PetriReduction.NONE` saying so.
+  on such a net returns an unreduced (and therefore still `exact`) graph, and `graph.caveats` and
+  `report()` say so.
 
 ??? aside "How the reduction is checked"
     A differential test runs both searches over generated nets and compares the set of reachable
