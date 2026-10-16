@@ -264,7 +264,9 @@ cents. The bars sit on the outlines, and in the third panel they sit off them by
 Splitting audio into notes is harder. The two ways of finding where a note starts fail on
 opposite material. A flat-envelope Dough render has no energy transients to cut on
 (energy recall 0.13) but clean pitch steps (0.86); a line that strikes each pitch
-twice has the transients but no pitch change at half of them (energy 0.13, pitch 0.81, 0.88 merged):
+twice has transients at every note but no pitch change at half of them. Field's pitch detector
+still finds most of those at the dip where the note is struck again (energy 0.00, pitch 0.88, 0.88
+merged), and merging the two never loses a note start the pitch detector found:
 
 ![Two panels: a legato Dough render where the energy detector finds almost nothing while the pitch steps are clean, and a repeated-pitch line where the reverse holds](assets/pat_transcription/pat-transcription-opposite-failures.svg)
 

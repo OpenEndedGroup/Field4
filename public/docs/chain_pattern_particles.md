@@ -49,8 +49,8 @@ Stopping the box stops the voices and the feeder thread. `PatSynthLaunch` is als
 falls in. Its output is therefore the same, sample for sample, whatever buffer size the audio
 engine runs at.
 
-The offline renderer, `patRenderStereo`, works in seconds rather than frames, so a note it plays can
-start or end one frame away from the same note played by `patSynth`.
+The offline renderer, `patRenderStereo`, runs the same voice bank, so a `.wav` it writes is sample
+for sample what `patSynth` plays.
 
 ## What it sounds like
 
