@@ -1459,13 +1459,8 @@ of room, and `possibilityCountImg` shows you which cells were over-constrained f
 Magenta in a wave frame is a cell whose possibility set has been emptied.
 
 **Names and shapes that bite inside a Field box.** Every snippet on this page runs in one, and none
-of these four is WFC-specific:
+of these two is WFC-specific:
 
-- A **local `fun` nested inside a lambda** trips a K2 codegen assertion
-  (`IrFunctionImpl has no callableId`). Declare helpers at the top level of the box.
-- A **named function that touches the box's implicit `Box` receiver** — and `println` does — cannot be
-  code-generated either (`No mapping for symbol: SCRIPT_IMPLICIT_RECEIVER`). Keep helpers pure and
-  return a value, or declare them as `fun Box.foo()`.
 - **A box's scope is crowded.** `h`, `sky` and `error` all resolve to something Field already defines
   ahead of a script-local `val` of the same name once you are inside a lambda with its own receiver.
   `outW`/`outH`/`skyPattern` are not paranoia, and `throw` beats `error(...)`.
