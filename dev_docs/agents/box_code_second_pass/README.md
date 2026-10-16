@@ -8,8 +8,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 | --- | --- |
 | [Graphics, lifecycle, mesh and first Loris box](../box_code_adoption_batch_1/README.md) | Committed/enqueued as `ffa7ab7fb`; collection-style correction `e97a8c4a9`. Seven findings addressed. |
 | [Remaining Loris and Field Audio pipelines](../box_code_adoption_batch_2/README.md) | Two more findings addressed; Field Audio adapter implemented with fresh-service evidence still pending. |
+| [Traces, stage snapshots, image timings and spatial grids](../box_code_adoption_batch_3/README.md) | Eight more findings addressed; real before/after results and captures verified. |
 
-[Machine checkpoint](checkpoint.json): **9 of 405 findings addressed**, one implemented with
+[Machine checkpoint](checkpoint.json): **17 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
