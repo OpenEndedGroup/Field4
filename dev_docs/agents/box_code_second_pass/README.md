@@ -22,7 +22,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Exact landing and immutable solve requests](../box_code_adoption_batch_9/README.md) | Eight more findings addressed; actual 20-cell landing, positioned graphs, renderer-free Frames and request freshness checks. Optional Kratos worker acceptance remains unexercised. |
 
-[Machine checkpoint](checkpoint.json): **102 of 405 findings addressed**, one implemented with
+| [Shader contracts and comment-safe formatting](../box_code_adoption_batch_10/README.md) | Nine more findings addressed; seven formatter regressions, five actual programs, three compiled shaders, four document refreshes and remote transcript compilation pass. |
+
+[Machine checkpoint](checkpoint.json): **111 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.

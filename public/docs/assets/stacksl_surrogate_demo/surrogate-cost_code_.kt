@@ -1,31 +1,31 @@
-// Why `AdSurrogate.all(...)` is not the default, and why the brief that asked for this work had
-// the question upside down.
-//
-// `fbm`'s lattice is `floor(p)`, and it was supposed to be the wall blocking a noise fit. It is the
-// opposite. `_hash21` is `fract(p * vec2(123.34, 456.21))`, `p += dot(p, p + 45.32)`,
-// `fract(p.x * p.y)` — all differentiable, none of it bit-twiddling, and utterly chaotic. Inside a
-// value-noise cell the four corner hashes ARE constants, so zero is the TRUE derivative there, and
-// `floor` is the thing keeping that chaos out of the answer.
-//
-// So this box runs the experiment the premise implies, and watches it fail on purpose.
+/*
+Why staircase surrogates can corrupt a noise fit's gradient.
+
+`fbm` selects lattice cells with `floor(p)`. The corner hash `_hash21` is
+`fract(p * vec2(123.34, 456.21))`, `p += dot(p, p + 45.32)`,
+`fract(p.x * p.y)` — all differentiable, none of it bit-twiddling, and utterly chaotic. Inside a
+value-noise cell the four corner hashes ARE constants, so zero is the TRUE derivative there, and
+`floor` is the thing keeping that chaos out of the answer.
+
+Compare the true gradient with the surrogate and measure the resulting fit.
+*/
 
 import afield.lang.stacksl.cpu.AdSurrogate
 import afield.lang.stacksl.cpu.StackSLCpu
 import afield.lang.stacksl.cpu.StackSLImageLoss
 import afield.lang.stacksl.cpu.StackSLWires
-import kotlin.math.abs
-import kotlin.math.max
 
 run {
-
-    val program = """
+    val program =
+        """
         uv 3 * fbm
         0.5 0.5 0.5 1 vec4
         0.5 0.5 0.5 1 vec4
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
         palette
-    """.trimIndent()
+        """
+            .trimIndent()
 
     val template = StackSLCpu.stillTemplate()
     val dim = 32
@@ -56,7 +56,7 @@ run {
     println("  temperature   staircase gradient    relative disagreement")
     var worst = 0.0
     var signsSeen = 0
-    listOf(0.25, 0.1, 0.04, 0.016).forEach { t ->
+    [0.25, 0.1, 0.04, 0.016].forEach { t ->
         val g = loss.valueAndGradient(values, AdSurrogate.staircaseOnly(t)).gradient[wire.index]
         val relative = abs(g - fd) / max(abs(fd), 1e-12)
         if (relative > worst) worst = relative
@@ -65,15 +65,18 @@ run {
         println("     %.3f        % .6e         %.3e".format(t, g, relative))
     }
     println()
-    // Read off the measurement rather than remembered: the exact size depends on the target and
-    // the resolution, and a sentence with a number baked into it goes stale the first time either
-    // one moves. Five to seven orders of magnitude at this target; the jvmTest fence, on a
-    // different target, measures six to eight.
+    /*
+    Read off the measurement rather than remembered: the exact size depends on the target and
+    the resolution, and a sentence with a number baked into it goes stale the first time either
+    one moves. Five to seven orders of magnitude at this target; the jvmTest fence, on a
+    different target, measures six to eight.
+    */
     println(
-        "That is %.0f orders of magnitude, and the sign %s.".format(
-            kotlin.math.log10(worst),
-            if (signsSeen == 3) "FLIPS across the sweep" else "at least stays put"
-        )
+        "That is %.0f orders of magnitude, and the sign %s."
+            .format(
+                kotlin.math.log10(worst),
+                if (signsSeen == 3) "FLIPS across the sweep" else "at least stays put",
+            ),
     )
     println("It gets WORSE as the schedule cools, because a narrower kernel has a taller peak and")
     println("the hash multiplies it up. A soft floor does not help this wire - it is exactly what")
@@ -85,7 +88,9 @@ run {
     // And the picture the wire draws, so the thing being argued about is on screen.
     display(StackSLCpu.renderStill(program, dim = 220).toPngBytes())
 
-    // Try it: change `AdSurrogate.staircaseOnly(t)` to `AdSurrogate.stepOnly(t)`. The numbers go
-    // straight back to the exact gradient, because this program contains no `step` at all — which
-    // is the argument for a per-family surrogate rather than one switch.
+    /*
+    Try it: change `AdSurrogate.staircaseOnly(t)` to `AdSurrogate.stepOnly(t)`. The numbers go
+    straight back to the exact gradient, because this program contains no `step` at all — which
+    is the argument for a per-family surrogate rather than one switch.
+    */
 }
