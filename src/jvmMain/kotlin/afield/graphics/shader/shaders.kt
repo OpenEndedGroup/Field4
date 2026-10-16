@@ -3145,7 +3145,9 @@ private data class GeneratedShaderStructure(
     val members: List<Introspected.Member>,
     val byteSize: Int,
     val signature: String,
-    val bufferReference: Boolean
+    val bufferReference: Boolean,
+    /** The type the box already imports under the block's own name, which [className] steps around. */
+    val wouldHide: String? = null,
 )
 
 private fun shaderMemberSignature(member: Introspected.Member): String =
@@ -3204,10 +3206,15 @@ private fun collectGeneratedShaderStructures(introspections: List<Introspection>
         val signature = shaderMembersSignature(candidate.members)
         if (!seenByNameAndSignature.add(candidate.name to signature)) return@forEach
 
-        val baseClassName = sanitizeKotlinTypeName(candidate.name)
+        // A block named after a type every box imports (`camera` -> `Camera`) would hide it: `Camera()`
+        // would build the block and `camera.at` stop resolving. Such a block's class is `CameraBlock`.
+        val plainName = sanitizeKotlinTypeName(candidate.name)
+        val wouldHide = afield.runtime.kotlin.introProvidedType(plainName)
+        val baseClassName = if (wouldHide != null) "${plainName}Block" else plainName
         var className = baseClassName
         var suffix = 2
-        while (signatureByClassName[className] != null && signatureByClassName[className] != signature) {
+        while ((signatureByClassName[className] != null && signatureByClassName[className] != signature) ||
+            (className != plainName && className != baseClassName && afield.runtime.kotlin.introProvidedType(className) != null)) {
             className = "$baseClassName$suffix"
             suffix += 1
         }
@@ -3219,7 +3226,8 @@ private fun collectGeneratedShaderStructures(introspections: List<Introspection>
             members = candidate.members,
             byteSize = maxOf(candidate.size, candidate.members.membersLayoutSizeInBytes()),
             signature = signature,
-            bufferReference = candidate.bufferReference
+            bufferReference = candidate.bufferReference,
+            wouldHide = wouldHide,
         )
     }
 
@@ -3302,6 +3310,9 @@ private fun buildShaderStructurePreamble(prefix: String, introspections: List<In
         val layoutFunctionName = "${structure.className}LayoutMembers"
         val byteSizeFunctionName = "${structure.className}ByteSize"
         val body = buildString {
+            structure.wouldHide?.let {
+                appendLine("// GLSL block `${structure.glslName}` is ${structure.className} here: ${sanitizeKotlinTypeName(structure.glslName)} would hide $it.")
+            }
             appendLine("class ${structure.className}(")
             appendLine("    members: List<Introspected.Member> = $layoutFunctionName(),")
             appendLine("    baseOffset: Int = 0,")
