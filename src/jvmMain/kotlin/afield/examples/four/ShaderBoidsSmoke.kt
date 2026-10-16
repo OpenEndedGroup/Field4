@@ -126,6 +126,10 @@ object ShaderBoidsSmoke {
         ) {
             name = "boids$tag"
             radius = DOMAIN / CELLS
+            // The single-radius textbook rule, pinned so these checks do not move with the
+            // flocking defaults.
+            separation = 0.02f; alignment = 1.2f; cohesion = 0.8f
+            separationRadiusFraction = 1f; maxSpeed = 0.35f
             configure()
         }
 
