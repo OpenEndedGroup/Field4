@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 15914 of 31926 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 15920 of 31932 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2306 undocumented entry points** (types, top-level functions and values) and 13036 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -38,7 +38,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FieldStats.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/FieldStats.kt) | Graphics | field_probes | 11 | 45 | 0% |
 | [Filters.kt](../src/jvmMain/kotlin/afield/audio/synth/Filters.kt) | Synthesis | subharmonic_sound, agent_transcripts | 11 | 28 | 15% |
 | [StackAutoStudyTools.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackAutoStudyTools.kt) | Languages | stackauto_conversation, stacksl_examples | 11 | 14 | 16% |
-| [Module.kt](../src/jvmMain/kotlin/afield/graphics/render/Module.kt) | Graphics | fabricate_renderer, fieldml_host_bridge, keyframer_examples | 10 | 137 | 5% |
+| [Module.kt](../src/jvmMain/kotlin/afield/graphics/render/Module.kt) | Graphics | fabricate_renderer, fieldml_host_bridge | 10 | 137 | 5% |
 | [Signal.kt](../src/jvmMain/kotlin/afield/audio/synth/Signal.kt) | Synthesis | sound_paths, faust, chain_pattern_particles | 10 | 53 | 26% |
 | [FieldProbe.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/FieldProbe.kt) | Graphics | field_probes | 10 | 44 | 1% |
 | [Logging.kt](../src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt) | Machine learning | logging, visualizers, agent_transcripts | 10 | 21 | 6% |
@@ -73,7 +73,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Renderer.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/Renderer.kt) | Graphics | open_dlss_nr, profiling_timeline | 3 | 64 | 12% |
 | [SonicPi.kt](../src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt) | Audio | sonic_pi | 3 | 46 | 34% |
 | [SpectralEmbeddingProjection.kt](../src/jvmMain/kotlin/afield/audio/ai/SpectralEmbeddingProjection.kt) | Audio AI | audio_ai_spectral_embeddings, visualizers | 3 | 29 | 21% |
-| [ComputeModule.kt](../src/jvmMain/kotlin/afield/graphics/render/ComputeModule.kt) | Graphics | keyframer_examples | 3 | 28 | 5% |
 | [SlideShow.kt](../src/jvmMain/kotlin/afield/ui/slides/SlideShow.kt) | Visualization | interactive_guides | 3 | 25 | 53% |
 | [saving.kt](../src/jvmMain/kotlin/afield/document/persistence/saving.kt) | Workspace | document_on_disk | 3 | 20 | 28% |
 | [Mesh.kt](../src/jvmMain/kotlin/afield/graphics/render/Mesh.kt) | Graphics | field_probes, fieldml_host_bridge, python_cv | 3 | 20 | 11% |
@@ -352,6 +351,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [InFieldAgentEvals.kt](../src/jvmMain/kotlin/afield/ai/agent/InFieldAgentEvals.kt) | Machine learning | — | 3 | 58 | 32% |
 | [PointController.kt](../src/jvmMain/kotlin/afield/simulation/physics/PointController.kt) | Simulation | — | 3 | 45 | 17% |
 | [SemanticSearchManager.kt](../src/jvmMain/kotlin/afield/ai/retrieval/SemanticSearchManager.kt) | Data | — | 3 | 34 | 0% |
+| [ComputeModule.kt](../src/jvmMain/kotlin/afield/graphics/render/ComputeModule.kt) | Graphics | — | 3 | 28 | 5% |
 | [Window.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/Window.kt) | Graphics | — | 3 | 28 | 6% |
 | [MeshModule.kt](../src/jvmMain/kotlin/afield/graphics/render/MeshModule.kt) | Graphics | — | 3 | 27 | 5% |
 | [JSONLineServer.kt](../src/jvmMain/kotlin/afield/io/process/JSONLineServer.kt) | Data | — | 3 | 27 | 3% |
@@ -1186,8 +1186,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `AccelerationStructureAabbs` | class | `src/jvmMain/kotlin/afield/graphics/render/AccelerationStructure.kt:43` |
 | `RayTracingInstance` | class | `src/jvmMain/kotlin/afield/graphics/render/AccelerationStructure.kt:53` |
 | `AccelerationStructure` | class | `src/jvmMain/kotlin/afield/graphics/render/AccelerationStructure.kt:72` |
-| `ComputeModulePointer` | class | `src/jvmMain/kotlin/afield/graphics/render/ComputeModule.kt:32` |
-| `ComputeModule` | class | `src/jvmMain/kotlin/afield/graphics/render/ComputeModule.kt:133` |
 | `GeometryFileEntry` | class | `src/jvmMain/kotlin/afield/graphics/render/GeometryAgentTools.kt:323` |
+| `ListGeometryFilesResult` | class | `src/jvmMain/kotlin/afield/graphics/render/GeometryAgentTools.kt:330` |
+| `FromInput` | class | `src/jvmMain/kotlin/afield/graphics/render/Mesh.kt:27` |
 
 …and **2186 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
