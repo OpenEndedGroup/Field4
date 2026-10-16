@@ -642,15 +642,8 @@ of the target, so read the report with that in mind.
     reaches the same loss in 36 iterations. The figures use ADAM because its small steps make a
     readable filmstrip ([`dev_docs/SOLIDSL_OPTIMIZER_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/SOLIDSL_OPTIMIZER_MEASUREMENTS.md)).
 
-!!! note "A cube hidden inside the bar gets zero gradient"
-
-    Seed `cubeSize` at `0.40` against a bar of radius `0.55` and the fit reports
-    `cubeSize 0.400000 -> 0.400000` after 372 iterations. `Union` is `min`, so
-    a child that is never the nearest surface at any sample point receives **exactly** zero
-    gradient, and a cube small enough to sit wholly inside the bar is never the nearest surface
-    anywhere. `fit.deadParameters` reports `none` here, because it only looks at the gradient at
-    the seed, and there the cube is invisible to the loss rather than stationary in it. [What makes a parameter refuse to move](#what-makes-a-parameter-refuse-to-move)
-    is the same failure mode arriving by a different route.
+A cube small enough to sit wholly inside the bar never moves at all: seeded at `0.40` against a bar
+of radius `0.55`, `cubeSize` comes back `0.400000` and `fit.deadParameters` names it.
 
 ### What makes a parameter refuse to move
 
@@ -668,7 +661,8 @@ smoothUnion(sphere(1.0), sphere(0.25), k = 0.9).parameterize { … }
     .fitParameters(target, …).deadParameters      // []
 ```
 
-`SolidFit.deadParameters` names the parameters whose gradient was exactly zero at the start. It is
+`SolidFit.deadParameters` names the parameters whose gradient was exactly zero at the start, and
+those the descent never moved off their seed. It is
 reported rather than thrown, because a legitimately dead parameter is a fine thing to have in a
 vector — a fit over six holes where one is genuinely irrelevant — and it is the *unexpectedly* dead
 one that looks like a success.
