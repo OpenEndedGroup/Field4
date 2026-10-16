@@ -883,18 +883,12 @@ Both of these are 256 samples per pixel at 480 × 360, three bounces, two lamps 
 The extra shadow ray costs one traversal per surface interaction. A scene with no
 emissive triangle is bit-for-bit identical with the control on or off.
 
-Four things are excluded from the table, and in each case the consequence is
+Each emissive triangle is weighted by its area times its emitted brightness: the emission factor, times the mean of its emission texture when it has one. Three things are excluded from the table, and in each case the consequence is
 that emission from them is found by BSDF sampling alone, exactly as before:
 
 - **Emitters behind stochastic alpha coverage** (`AlphaMode.MASK` or `BLEND`). The
   two strategies would otherwise disagree about whether the emitter is there at all.
 - **Emissive glass.** Transmissive materials are shaded on the dielectric path.
-- **Emission that comes only from a texture.** The table's weight reads the
-  material's emission factor, so a triangle whose factor is black and whose emissive
-  *texture* is bright carries weight zero. Where the factor is non-zero the texture
-  is fully honoured: the direct sampler reads radiance through the same texture
-  lookup, and the same box-authored `shadeMaterial` hook, that a BSDF hit does. If
-  those two disagreed about one point, their combination would be biased.
 - **Zero-area triangles**, which cannot be sampled by area at all.
 
 `maxBounces` is a path length limit, and a shadow ray reaches one segment past it: the connection from the
