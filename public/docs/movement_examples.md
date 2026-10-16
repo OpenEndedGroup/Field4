@@ -344,16 +344,18 @@ for (i in 0 until frames) {
 }
 
 val targetPath = fline {
+    breakNext()
     for (i in 0..600) {
         val p = target(i / 600.0 * period)
-        if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
+        lineTo(p.x, p.y)
     }
     color = vec(1, 1, 1, 0.22)
     thickness = 1.6
 }
 
 val walked = fline {
-    path.forEachIndexed { i, p -> if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) }
+    breakNext()
+    path.forEach { p -> lineTo(p.x, p.y) }
     color = vec(0.48, 0.85, 1.0, 0.95)
     thickness = 2.6
 }
@@ -509,7 +511,8 @@ for ((_, params, rgba) in runs) {
     }
 
     drawn += fline {
-        trace.forEachIndexed { i, p -> if (i == 0) moveTo(sx(p.x), sy(p.y)) else lineTo(sx(p.x), sy(p.y)) }
+        breakNext()
+        trace.forEach { p -> lineTo(sx(p.x), sy(p.y)) }
         color = rgba
         thickness = 2.6
     }
