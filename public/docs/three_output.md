@@ -253,9 +253,6 @@ ring per hole, and this example draws those rings in the same scene as the solid
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/scene.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// FIELD_DOCS_EXPECT_SVG: false — the docs runner reads a bare `lines(` as Box.lines's 2D SVG path
-// and then demands an <svg>. The `lines(rims)` below is the scene builder's and emits an iframe.
-//
 // A gyroid is a triply-periodic minimal surface. Marched inside a finite box it is OPEN: the
 // surface leaves the sampling window rather than closing inside it, and every place it does that
 // is a boundary loop. `open(20)` in the printed summary is the claim; the picture is the evidence.
@@ -605,8 +602,6 @@ of the solid to an annotation beside it, as in this example:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/section.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// FIELD_DOCS_EXPECT_SVG: false — `lines(datum)` below is the scene builder's, not Box.lines.
-//
 // A block with a bore drilled down through it, and a datum line standing beside it.
 val part = marchingCubes(
     sdfSubtract(sdfBox(vec(2.0, 1.2, 1.2)), sdfCylinder(0.35, 2.0)),
@@ -738,7 +733,6 @@ This small example adds a reference-axis toggle:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/tools.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// FIELD_DOCS_EXPECT_SVG: false — `lines(...)` below is the scene builder's, not Box.lines.
 three(name = "tools-example") {
     tools("/threejs_tools_demo.js")
     lines(fline { moveTo(0.0, 0.0, 0.0); lineTo(2.0, 1.0, 0.0) })
@@ -781,12 +775,6 @@ once validation has accepted it.
     readiness includes the tools and a rendered frame, not just a loaded HTML document.
     Use the same source geometry revision when restoring a note. An application owns its
     modules and their behavior; registration does not validate geometry produced by a tool.
-
-??? aside "Agents: a bare `lines(` in a docs fence"
-    The runner's output validator treats a bare `lines(` in the code as a call to `Box.lines(...)`, the 2D
-    SVG path, and then fails the capture because no `<svg>` appeared. Inside `three { }`, `lines(…)` is the
-    scene builder's and emits an iframe — `// FIELD_DOCS_EXPECT_SVG: false` in the fence is the escape
-    hatch, and the first figure on this page carries it.
 
 ## Data colours and late viewers
 

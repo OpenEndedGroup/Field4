@@ -4639,7 +4639,31 @@ def runner_code_expects_svg(code: str) -> bool:
     # Only a bare call to Field's own `lines(...)` FLine renderer counts, so a member call is excluded.
     # The cost is that an explicit `someBox.lines(...)` no longer implies SVG; a snippet written that way
     # can say so with a FIELD_DOCS_EXPECT_SVG codegen expectation.
-    return re.search(r"(?<![.\w])lines\s*\(", code) is not None
+    # A `lines(...)` inside a `three { }` / `threeLines { }` builder adds FLines to the Three.js scene
+    # and makes no SVG, so those blocks do not count.
+    return re.search(r"(?<![.\w])lines\s*\(", without_three_blocks(code)) is not None
+
+
+_THREE_BLOCK_OPEN = re.compile(r"(?<![.\w])three(?:Lines)?\b[^{\n]*\{")
+
+
+def without_three_blocks(code: str) -> str:
+    """[code] with the body of every `three ... { }` / `threeLines ... { }` builder block removed."""
+    out = []
+    i = 0
+    while True:
+        m = _THREE_BLOCK_OPEN.search(code, i)
+        if not m:
+            out.append(code[i:])
+            return "".join(out)
+        out.append(code[i:m.end()])
+        depth = 1
+        j = m.end()
+        while j < len(code) and depth:
+            depth += {"{": 1, "}": -1}.get(code[j], 0)
+            j += 1
+        out.append("}")
+        i = j
 
 
 def runner_code_expects_output_area(code: str) -> bool:
