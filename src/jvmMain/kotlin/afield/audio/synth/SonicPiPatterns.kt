@@ -365,14 +365,13 @@ private const val SONIC_PI_MAX_EVENTS = 20_000
  * println(pat("bd [hh hh] sd hh").toSonicPi(cps = 0.5))
  * ```
  *
- * [cycles] is the length of the emitted loop in cycles, and it is the one parameter that needs
- * thought: a pattern that varies per cycle (`<a b>`, `.every(4)`, `.iter`) needs a loop long enough
- * to contain the variation, or the emitted program plays cycle 0 forever. Four is a common answer;
- * `pat("<a b c>")` wants three.
+ * [cycles] is the length of the emitted loop in cycles. Left out, it is the pattern's own period:
+ * `pat("<a b c>")` gets three, `.every(4)` four, up to 16 for a pattern that does not repeat sooner.
+ * Given shorter than that, the program's header says which layers it cuts short.
  */
 fun PatPattern<String>.toSonicPi(
     cps: Number = 1.0,
-    cycles: Int = 1,
+    cycles: Int? = null,
     name: String = "field",
     instruments: SonicPiInstruments = SonicPiInstruments()
 ): String = sonicPiProgram(name to this, cps = cps, cycles = cycles, instruments = instruments).source
@@ -384,7 +383,7 @@ fun PatPattern<String>.toSonicPi(
  */
 fun PatPattern<String>.toSonicPiProgram(
     cps: Number = 1.0,
-    cycles: Int = 1,
+    cycles: Int? = null,
     name: String = "field",
     instruments: SonicPiInstruments = SonicPiInstruments()
 ): SonicPiProgram = sonicPiProgram(name to this, cps = cps, cycles = cycles, instruments = instruments)
@@ -413,7 +412,7 @@ fun PatPattern<String>.toSonicPiProgram(
 fun sonicPiProgram(
     vararg layers: Pair<String, PatPattern<String>>,
     cps: Number = 1.0,
-    cycles: Int = 1,
+    cycles: Int? = null,
     instruments: SonicPiInstruments = SonicPiInstruments()
 ): SonicPiProgram = sonicPiProgram(
     layers = layers.map { SonicPiLayer(it.first, it.second) }.toTypedArray(),
@@ -513,11 +512,20 @@ infix fun Pair<String, PatPattern<String>>.using(instruments: SonicPiInstruments
 fun sonicPiProgram(
     vararg layers: SonicPiLayer,
     cps: Number = 1.0,
-    cycles: Int = 1,
+    cycles: Int? = null,
     instruments: SonicPiInstruments = SonicPiInstruments()
 ): SonicPiProgram {
     require(layers.isNotEmpty()) { "a Sonic Pi program needs at least one layer" }
-    require(cycles >= 1) { "cycles must be at least 1, was $cycles" }
+    require(cycles == null || cycles >= 1) { "cycles must be at least 1, was $cycles" }
+    // Every layer loops over the same number of cycles, so the program needs the longest period.
+    val periods = layers.associate { rubyLoopName(it.name) to patternPeriod(it.pattern) }
+    val needed = periods.values.maxOf { it ?: SONIC_PI_PERIOD_SEARCH }
+    // A dense pattern that never repeats could run past the event budget over 16 cycles; a default
+    // must not throw where an explicit 1 would not, so it shrinks until every layer fits.
+    val cycles = cycles ?: (needed downTo 1).first { c ->
+        c == 1 || layers.all { layer -> runCatching { patternEventsForCycles(layer.pattern, c) }.isSuccess }
+    }
+    val tooShort = periods.filter { (_, p) -> (p ?: SONIC_PI_PERIOD_SEARCH) > cycles }
     val cpsValue = cps.toDouble()
     require(cpsValue.isFinite() && cpsValue > 0.0) { "cps must be finite and > 0, was $cps" }
 
@@ -550,7 +558,7 @@ fun sonicPiProgram(
         bodies += renderLiveLoop(layer, lowered, cycles, cpsValue, kit.defaultSynth, spec.fx)
     }
 
-    val header = renderHeader(layers.map { it.name }, cpsValue, cycles, unresolved, dropped)
+    val header = renderHeader(layers.map { it.name }, cpsValue, cycles, unresolved, dropped, tooShort)
     val source = (listOf(header) + bodies).joinToString("\n")
 
     return SonicPiProgram(
@@ -571,6 +579,28 @@ fun sonicPiProgram(
  * which fragment of a note crossing a bar line is the one that strikes. `eventSequence` already
  * answers that (only the onset fragment, widened back to its whole); this only bounds it.
  */
+/** How far [patternPeriod] looks: a pattern that has not repeated by then is treated as not repeating. */
+internal const val SONIC_PI_PERIOD_SEARCH = 16
+
+/**
+ * The smallest number of cycles after which [pattern] repeats exactly, looking at its first
+ * [SONIC_PI_PERIOD_SEARCH] cycles; `null` when it does not repeat within them (a `?` or `|` draws
+ * afresh each cycle, so one usually does not). `<a b>` gives 2, `.every(4)` gives 4.
+ */
+internal fun <A> patternPeriod(pattern: PatPattern<A>): Int? {
+    val events = runCatching { patternEventsForCycles(pattern, SONIC_PI_PERIOD_SEARCH) }.getOrNull() ?: return null
+    val perCycle = Array(SONIC_PI_PERIOD_SEARCH) { mutableListOf<String>() }
+    for (event in events) {
+        val cycle = kotlin.math.floor(event.arc.start.toDouble()).toInt().coerceIn(0, SONIC_PI_PERIOD_SEARCH - 1)
+        val offset = PatQ.of(cycle)
+        perCycle[cycle] += "${event.arc.start - offset}|${event.arc.end - offset}|${event.value}|${event.annotations}"
+    }
+    for (p in 1 until SONIC_PI_PERIOD_SEARCH) {
+        if ((p until SONIC_PI_PERIOD_SEARCH).all { k -> perCycle[k] == perCycle[k % p] }) return p
+    }
+    return null
+}
+
 internal fun <A> patternEventsForCycles(pattern: PatPattern<A>, cycles: Int): List<PatEvent<A>> {
     val limit = PatQ.of(cycles)
     val out = mutableListOf<PatEvent<A>>()
@@ -590,7 +620,8 @@ private fun renderHeader(
     cps: Double,
     cycles: Int,
     unresolved: List<SonicPiUnresolvedAtom>,
-    dropped: List<SonicPiDroppedOpt>
+    dropped: List<SonicPiDroppedOpt>,
+    tooShort: Map<String, Int?> = emptyMap(),
 ): String = buildString {
     appendLine("#sonicpi")
     appendLine("# Generated from a Field pattern. Ordinary Sonic Pi from here on — edit it freely.")
@@ -600,6 +631,15 @@ private fun renderHeader(
     appendLine("# use_bpm makes one beat exactly one Field cycle, so every sleep below is the cycle")
     appendLine("# fraction the pattern computed. Rational(n, d) appears where a decimal would round.")
     appendLine("# ${formatRubyNumber(cps)} cycles/second, ${cycles} cycle(s) per loop.")
+    if (tooShort.isNotEmpty()) {
+        appendLine("#")
+        appendLine("# SHORTER THAN THE PATTERN — these layers vary over more cycles than the loop holds,")
+        appendLine("# so the loop repeats only their first $cycles:")
+        tooShort.forEach { (layer, period) ->
+            appendLine("#   $layer: " + (period?.let { "repeats every $it cycles" }
+                ?: "does not repeat within $SONIC_PI_PERIOD_SEARCH cycles"))
+        }
+    }
     if (unresolved.isNotEmpty()) {
         appendLine("#")
         appendLine("# NOT PLAYED — no sample, synth, note or alias matched these atoms:")
@@ -974,7 +1014,7 @@ internal fun normalisePatQ(q: PatQ): PatQ = PatQ.ZERO + q
 fun Box.sonicPiPattern(
     pattern: PatPattern<String>,
     cps: Number = 1.0,
-    cycles: Int = 1,
+    cycles: Int? = null,
     name: String? = null,
     instruments: SonicPiInstruments = SonicPiInstruments()
 ): SonicPiLaunch = sonicPiPattern(
@@ -988,7 +1028,7 @@ fun Box.sonicPiPattern(
 fun Box.sonicPiPattern(
     vararg layers: Pair<String, PatPattern<String>>,
     cps: Number = 1.0,
-    cycles: Int = 1,
+    cycles: Int? = null,
     instruments: SonicPiInstruments = SonicPiInstruments()
 ): SonicPiLaunch = sonicPiPattern(
     layers = layers.map { SonicPiLayer(it.first, it.second) }.toTypedArray(),
@@ -1012,7 +1052,7 @@ fun Box.sonicPiPattern(
 fun Box.sonicPiPattern(
     vararg layers: SonicPiLayer,
     cps: Number = 1.0,
-    cycles: Int = 1,
+    cycles: Int? = null,
     instruments: SonicPiInstruments = SonicPiInstruments()
 ): SonicPiLaunch {
     val program = sonicPiProgram(*layers, cps = cps, cycles = cycles, instruments = instruments)
@@ -1027,7 +1067,7 @@ fun Box.sonicPiPattern(
 /** The Sonic Pi source for a pattern, ready to paste into a `#sonicpi` region. */
 fun PatPattern<String>.sonicPiSource(
     cps: Number = 1.0,
-    cycles: Int = 1,
+    cycles: Int? = null,
     name: String = "field",
     instruments: SonicPiInstruments = SonicPiInstruments()
 ): String = sonicPiProgram(name to this, cps = cps, cycles = cycles, instruments = instruments).source

@@ -221,9 +221,8 @@ Three even hits inside a quarter of a bar fall at twelfths, which no decimal hol
 rounded `sleep` would drift out of time over a long `live_loop`. So a duration is written as a
 decimal when it has one that ends (halves, quarters, fifths) and as a Ruby `Rational` otherwise.
 
-Choose `cycles` with care. A pattern that varies per cycle (`<a b>`,
-`.every(4)`, `.iter`) needs a loop long enough to contain the variation, or the emitted program
-plays cycle 0 for ever.
+Leave `cycles` out and the loop is as long as the pattern takes to repeat (`<a b>` gives 2,
+`.every(4)` gives 4, up to 16). Give fewer and the program's header lists the layers it cuts short.
 
 ### How words in a pattern become instruments
 
