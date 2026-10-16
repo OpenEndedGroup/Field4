@@ -4,6 +4,7 @@ package afield.audio.synth
 import afield.document.graph.Box
 import afield.runtime.execution.ReturnValueRegistry
 import afield.runtime.lifecycle.RunsAt
+import afield.ui.controls.ControlLaw
 import afield.ui.output.controlGroup
 import afield.runtime.lifecycle.inMain
 import afield.document.graph.registerLaunchJob
@@ -235,15 +236,11 @@ class FaustLaunch internal constructor(
  * across box reruns — which is exactly what live-coding a DSP needs, since recompiling must not snap
  * every slider back to its default.
  *
- * Three declarations do not map cleanly, and are handled rather than hidden:
- *
- *  * `button` is momentary and Field's checkbox latches, so it becomes a checkbox labelled `(hold)`.
- *    [FaustLaunch.press] is the momentary path for code.
- *  * `hbargraph`/`vbargraph` are outputs, not inputs, so they are not controls at all — read them
- *    with [FaustLaunch.meter].
- *  * `[scale:log]` is not something a Field slider can do yet, so the slider stays linear over the
- *    declared range. The declared numbers remain correct, which is the half worth keeping; see
- *    [FaustControl.fromNormalised] for the law itself.
+ * `button` becomes Field's momentary button (down while held), `[scale:log]` and `[scale:exp]`
+ * become the slider's logarithmic and exponential laws, and `hbargraph`/`vbargraph`, which are
+ * outputs rather than inputs, are not controls at all — read them with [FaustLaunch.meter]. A
+ * `[scale:log]` over a range that reaches zero or below has no logarithm, so that slider stays
+ * linear.
  */
 fun Box.faustControls(launch: FaustLaunch, channel: String = "controls") {
     controlGroup(channel) {
@@ -253,8 +250,8 @@ fun Box.faustControls(launch: FaustLaunch, channel: String = "controls") {
                     launch.set(control, if (on) 1.0 else 0.0)
                 }
 
-                control.isMomentary -> checkbox("${control.displayLabel} (hold)", false) { on ->
-                    launch.set(control, if (on) 1.0 else 0.0)
+                control.isMomentary -> button(control.displayLabel) { down ->
+                    launch.set(control, if (down) 1.0 else 0.0)
                 }
 
                 else -> slider(
@@ -263,13 +260,21 @@ fun Box.faustControls(launch: FaustLaunch, channel: String = "controls") {
                     max = control.max,
                     // A step of 0 means continuous in Faust and would divide by zero in a UI.
                     step = if (control.step > 0.0) control.step else (control.max - control.min) / 200.0,
-                    initialValue = control.init
+                    initialValue = control.init,
+                    law = control.sliderLaw(),
                 ) { value ->
                     launch.set(control, value)
                 }
             }
         }
     }
+}
+
+/** The slider law for a control's `[scale:...]`; a log scale over a range reaching zero stays linear. */
+internal fun FaustControl.sliderLaw(): ControlLaw = when (scale) {
+    FaustScale.LOG -> if (min > 0.0) ControlLaw.LOGARITHMIC else ControlLaw.LINEAR
+    FaustScale.EXP -> ControlLaw.EXPONENTIAL
+    FaustScale.LINEAR -> ControlLaw.LINEAR
 }
 
 /**
