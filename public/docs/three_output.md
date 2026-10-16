@@ -329,9 +329,8 @@ The names and meanings match, so one camera can be handed to either renderer.
 
 ## Contact sheets
 
-For a custom contact sheet, `panel(...)` declares viewports in order and `mesh(..., panel = n)`
-assigns geometry to them. Calling `panel` does not change which viewport the next mesh goes into:
-the default stays `0`. FLine content is shared between viewports. This example builds a sheet by
+For a custom contact sheet, `panel(...)` declares viewports in order, and a `mesh(...)` goes into
+the panel declared most recently, or the one `panel = n` names. FLine content is shared between viewports. This example builds a sheet by
 hand:
 
 ```diffstatic {data-lang=kotlin}

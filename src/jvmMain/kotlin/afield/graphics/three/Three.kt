@@ -100,7 +100,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * is on in [MeshView]: it turns "a smooth blob" into "a mesh you can count the triangles in".
      * @param cullBackFaces on by default, so an inside-out face is a *missing* face — the diagnostic
      * the rasterizer has always given and the switch of renderer must not silently drop.
-     * @param panel which viewport draws it; `-1` for all of them.
+     * @param panel which viewport draws it; `-1` for all of them. Left out, the panel declared most recently.
      * @param id a stable name for the solid, echoed back on every hit as [ThreeSurfaceHit.id]. Free,
      * and the thing a shared `onClick` closure switches on.
      * @param onClick called with a [ThreeSurfaceHit] naming the triangle, edge or vertex that was
@@ -138,7 +138,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         cullBackFaces: Boolean = true,
         flatShading: Boolean = false,
         opacity: Double = 1.0,
-        panel: Int = 0,
+        panel: Int? = null,
         id: String = "",
         onClick: ((ThreeSurfaceHit) -> Unit)? = null,
         hoverColor: Vec4? = null,
@@ -154,6 +154,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         require(solidOpacity == null || (solidOpacity.isFinite() && solidOpacity in 0.0..1.0)) {
             "solidOpacity must be between 0 and 1, got $solidOpacity"
         }
+        // Left out, the mesh goes into the panel declared most recently (the first, before any).
+        @Suppress("NAME_SHADOWING") val panel = panel ?: (panels.size - 1).coerceAtLeast(0)
         drawables += mesh.toThreeDrawable(
             style = ThreeDrawStyle.surface(
                 wireframe = wireframe,
@@ -306,7 +308,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         shot = ThreeShotSpec(periodSeconds, keys.toList(), resumeAfterSeconds)
     }
 
-    /** A titled viewport. Call it once per panel, in order; [columns] lays them out. */
+    /**
+     * A titled viewport. Call it once per panel, in order; [columns] lays them out. A [mesh] that
+     * names no `panel` goes into the panel declared most recently.
+     */
     fun panel(
         title: String? = null,
         caption: String? = null,
