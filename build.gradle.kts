@@ -3702,7 +3702,31 @@ val buildSlugNative = tasks.register<Exec>("buildSlugNative") {
 tasks.register("buildSmokeNativePrerequisites") {
     group = "build"
     description = "Builds or fetches the native helpers the smoke catalog needs (Steam Audio, field-slug)."
-    dependsOn(fetchSteamAudioNatives, buildSlugNative)
+    dependsOn(fetchSteamAudioNatives, buildSlugNative, buildD2LayoutHelper)
+}
+
+// native/field-d2-layout, the Go helper behind PetriLayout.TALA and box layout, built where D2Layout looks
+// for it. Go is optional: without it this says how to get it and succeeds, and TALA falls back to FORCE.
+val buildD2LayoutHelper = tasks.register("buildD2LayoutHelper") {
+    group = "build"
+    description = "Builds native/field-d2-layout (d2's TALA layout) when a Go toolchain is on PATH; skips otherwise."
+    val dir = layout.projectDirectory.dir("native/field-d2-layout").asFile
+    val windows = System.getProperty("os.name").lowercase().contains("windows")
+    val exe = File(dir, "build/field-d2-layout" + if (windows) ".exe" else "")
+    inputs.files(fileTree(dir) { include("*.go", "go.mod", "go.sum") }).withPropertyName("goSources")
+    outputs.file(exe).withPropertyName("helper")
+    // A skipped run produced nothing, so it must not count as up to date once Go is installed.
+    outputs.upToDateWhen { exe.isFile }
+    doLast {
+        val go = (System.getenv("PATH") ?: "").split(File.pathSeparator)
+            .map { File(it, if (windows) "go.exe" else "go") }.firstOrNull { it.canExecute() }
+        if (go == null) {
+            println("Go not found; PetriLayout.TALA needs it, install Go and re-run ./gradlew buildD2LayoutHelper")
+            return@doLast
+        }
+        val process = ProcessBuilder(go.path, "build", "-o", exe.path, ".").directory(dir).inheritIO().start()
+        check(process.waitFor() == 0) { "go build of native/field-d2-layout failed (exit ${process.exitValue()})" }
+    }
 }
 
 // Explicit opt-in: no ordinary build, check or Field startup downloads/builds Loris.
@@ -4002,7 +4026,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, fetchSteamAudioNatives, "buildLorisNative")
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, fetchSteamAudioNatives, "buildLorisNative", buildD2LayoutHelper)
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 
