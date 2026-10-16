@@ -12,7 +12,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Faust, OSC, slices, Syphon and RectSL](../box_code_adoption_batch_4/README.md) | Six more findings addressed; actual audio buffers, native geometry/rendering and lifecycle checks passed. |
 
-[Machine checkpoint](checkpoint.json): **23 of 405 findings addressed**, one implemented with
+| [Demo comment corrections](../box_code_adoption_batch_5/README.md) | Twelve more findings addressed; source/API checks, unchanged shader tokens and real executable comparisons. |
+
+[Machine checkpoint](checkpoint.json): **35 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.

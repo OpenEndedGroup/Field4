@@ -105,13 +105,62 @@
     "66e56f9df08a-02": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_4/README.md"
+    },
+    "26600b760ed2-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "2faae815ec59-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "38f740826e40-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "3e079fb5b468-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "529867af68d6-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "5785aee81323-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "5e4f699ab6f2-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "7cf9b84db8a9-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "828653ef6c8f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "c6c74dbec00b-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "c6c74dbec00b-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "e6ef02e482cb-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_5/README.md"
     }
   },
   "batches": [
     "../box_code_adoption_batch_1/README.md",
     "../box_code_adoption_batch_2/README.md",
     "../box_code_adoption_batch_3/README.md",
-    "../box_code_adoption_batch_4/README.md"
+    "../box_code_adoption_batch_4/README.md",
+    "../box_code_adoption_batch_5/README.md"
   ],
   "next": "Continue source findings: comment corrections, GLSL intent/layout, collection literals, code smells and remaining helper adoption. Full corpus coverage remains open."
 }
