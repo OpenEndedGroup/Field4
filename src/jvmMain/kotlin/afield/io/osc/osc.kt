@@ -468,9 +468,29 @@ class OscClient(
     }
 
     /**
+     * Send [messages] as one bundle, for the receiver to act on at [atMillis] (wall-clock
+     * `System.currentTimeMillis()` time), or at once when it is null.
+     *
+     * ```kotlin
+     * oscClient("127.0.0.1", 57120).sendBundle(listOf(OSCMessage("/note", [60])), atMillis = System.currentTimeMillis() + 500)
+     * ```
+     */
+    fun sendBundle(messages: List<OSCMessage>, atMillis: Long? = null) {
+        send(com.illposed.osc.OSCBundle(messages, atMillis?.let(::oscTimeTag) ?: com.illposed.osc.argument.OSCTimeTag64.IMMEDIATE))
+    }
+
+    /** One message, in a bundle timetagged [millis] from now — [sendBundle] for the common case. */
+    fun sendIn(millis: Long, address: String, vararg arguments: Any?) {
+        sendBundle(listOf(OSCMessage(address, arguments.toList())), System.currentTimeMillis() + millis)
+    }
+
+    /**
      * Send a pre-built OSC message.
      */
-    fun send(message: OSCMessage) {
+    fun send(message: OSCMessage) = send(message as com.illposed.osc.OSCPacket)
+
+    /** Send a pre-built OSC message or bundle. */
+    fun send(message: com.illposed.osc.OSCPacket) {
         val out = try {
             ensurePort()
         } catch (t: Throwable) {
@@ -480,7 +500,7 @@ class OscClient(
         if (!out.isConnected) connect()
         try {
             if (debug) {
-                println("OSC -> ${message.address} = ${message.arguments.joinToString(", ")}")
+                println("OSC -> " + if (message is OSCMessage) "${message.address} = ${message.arguments.joinToString(", ")}" else "$message")
             }
             out.send(message)
         } catch (t: Throwable) {
@@ -492,6 +512,17 @@ class OscClient(
         try { port?.close() } catch (_: Throwable) { }
         port = null
     }
+}
+
+/**
+ * The OSC timetag for wall-clock time [atMillis]: NTP seconds since 1900 in the high 32 bits, the
+ * fraction of a second in the low 32. Built from the numbers directly because JavaOSC's own
+ * conversion from a `Date` counts from an epoch an hour away from the true one.
+ */
+fun oscTimeTag(atMillis: Long): com.illposed.osc.argument.OSCTimeTag64 {
+    val seconds = Math.floorDiv(atMillis, 1000L) + 2_208_988_800L
+    val fraction = (Math.floorMod(atMillis, 1000L) shl 32) / 1000L
+    return com.illposed.osc.argument.OSCTimeTag64.valueOf((seconds shl 32) or fraction)
 }
 
 private data class OscEntry(val server: OscServer, val job: Job)
