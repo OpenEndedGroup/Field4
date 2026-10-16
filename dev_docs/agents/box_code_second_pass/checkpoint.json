@@ -392,6 +392,38 @@
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_8/README.md",
       "commit": "c7c58915d"
+    },
+    "e66d79c561bf-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "e66d79c561bf-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "1c5968b652f2-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "1c5968b652f2-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "1c5968b652f2-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "e667e592a8c0-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "e667e592a8c0-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
+    },
+    "e667e592a8c0-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_9/README.md"
     }
   },
   "batches": [
