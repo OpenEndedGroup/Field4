@@ -331,23 +331,8 @@ against `Solid.volume` before you trust a result.
     normally TetGen calls `exit()` there, which inside a live Field session ends the session. The
     wrapper is compiled with `TETLIBRARY`, which makes TetGen throw an `int` instead, and
     [`field_tetgen.cpp`](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-tetgen/src/field_tetgen.cpp) catches it: letting a C++ exception unwind through FFM's downcall frames
-    aborts the VM. `TetgenTest.anOpenSurfaceIsRefusedWithoutTakingTheProcessDown` guards that the
-    process survives — though note that on this build the five-faced cube it uses comes back through
-    the *empty mesh* path rather than the throw, so the two inputs that genuinely exercise the catch
-    are the self-intersecting pair and the degenerate one.
-
-    TetGen also writes to the process's stdout on that path — `Exception: All vertices are (nearly)
-    collinear (Tol = 1e-08).` — despite the `Q` (quiet) switch. The message reaching Kotlin is the
-    wrapper's; the line in your terminal is TetGen's.
-
-!!! warning "A refused surface leaves two files in your working directory"
-    Refusing a self-intersecting surface leaves `tetgen-tmpfile_skipped.node` and
-    `tetgen-tmpfile_skipped.face` in the **process's current working directory**, holding the facets
-    it gave up on. `Q` does not suppress it and `TETLIBRARY` does not redirect it. In a live Field
-    session that directory is wherever the server was launched from.
-
-    They are TetGen's own debugging aid: the pair from a failed Boolean is a Medit-readable dump of
-    exactly which facets tangled. Delete them when you are done with them.
+    aborts the VM. `TetgenTest.aFatalSurfaceIsRefusedWithoutTakingTheProcessDown` feeds it both
+    inputs and checks the process survives.
 
 ## Installing it
 
