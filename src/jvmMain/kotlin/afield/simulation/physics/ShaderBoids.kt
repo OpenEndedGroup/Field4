@@ -310,6 +310,27 @@ class ShaderBoids(
      * live in the same `others` map, which is ordered — so this is one call rather than two, so
      * that the ordering cannot be got wrong by a caller.
      */
+    @Volatile private var warnedRadius = false
+
+    /**
+     * [BoidSettings.radius], held to the grid's cell size. [install] refuses a radius that does not
+     * fit, but `settings.radius` is live: one raised past the cell later would make the 3x3 query
+     * silently miss neighbours, so it is clamped and the clamp is reported once.
+     */
+    private fun effectiveRadius(): Float {
+        val r = settings.radius
+        if (r <= grid.cellSize + 1e-6f) return r
+        if (!warnedRadius) {
+            warnedRadius = true
+            afield.app.diagnostics.logging.lprintln(
+                "warning,boids",
+                "${settings.name}: radius ${settings.radius} is larger than the grid's cell (${grid.cellSize}); " +
+                    "using ${grid.cellSize} so the neighbour query stays exact. Build the grid from the radius to go wider.",
+            )
+        }
+        return grid.cellSize
+    }
+
     fun install(into: MutableMap<String, Target>) {
         require(settings.radius <= grid.cellSize + 1e-6f) {
             "a radius of ${settings.radius} does not fit a cell of ${grid.cellSize}; " +
@@ -331,14 +352,14 @@ class ShaderBoids(
             push.bind("cellEnd") { grid.cellEnd }
             push.bind("domainMin") { grid.domainMin }
             push.bind("invCellSize") { grid.cellsPerSide / grid.domainSize }
-            push.bind("radius") { settings.radius }
+            push.bind("radius") { effectiveRadius() }
             push.bind("separation") { settings.separation }
             push.bind("alignment") { settings.alignment }
             push.bind("cohesion") { settings.cohesion }
             push.bind("maxSpeed") { settings.maxSpeed }
             push.bind("dt") { settings.dt }
-            push.bind("minSeparation") { settings.radius * settings.minSeparationFraction }
-            push.bind("separationRadius") { settings.radius * settings.separationRadiusFraction }
+            push.bind("minSeparation") { effectiveRadius() * settings.minSeparationFraction }
+            push.bind("separationRadius") { effectiveRadius() * settings.separationRadiusFraction }
             push.bind("containment") { settings.containment }
             push.bind("containmentRadius") { settings.containmentRadius }
             push.bind("containmentCenter") { settings.containmentCenter }

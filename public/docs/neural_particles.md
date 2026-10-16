@@ -292,13 +292,10 @@ Cells are row-major rather than Morton-ordered. A hierarchy needs a node's *chil
 flat grid needs a *cell's members* contiguous, and row-major does that while making the nine
 indices of a 3x3 neighbourhood plain arithmetic instead of a bit interleave.
 
-!!! warning "Cell size is the interaction radius"
-
-    The 3x3 block covers one cell width, so `cellSize` (`domainSize / cellsPerSide`) is the
-    largest radius the query answers correctly. Make the cells smaller than your interaction radius
-    and the query silently misses neighbours: the shader still runs and the flock still flocks, but
-    the result is wrong and nothing reports it. Size the grid from the radius, not from the
-    particle count.
+The 3x3 block covers one cell width, so `cellSize` (`domainSize / cellsPerSide`) is the largest
+radius the query answers correctly. `install` refuses a larger radius, and one raised past it later
+is held to `cellSize` with a warning in the log. Size the grid from the radius, not from the
+particle count.
 
 Particles outside the domain are clamped into the edge cells rather than dropped, because a lost
 particle is a particle that silently stops interacting.
