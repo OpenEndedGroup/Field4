@@ -52,14 +52,14 @@ operations:
           val d12 = dodecahedronMesh(0.6)
 
           for ((label, m) in
-              listOf(
+              [
                   "cube" to cube,
                   "icosphere" to ball,
                   "torus" to ring,
                   "capsule" to pill,
                   "cone" to horn,
                   "dodecahedron" to d12,
-              )) {
+              ]) {
               val t = m.topology()
               println(
                   "%-13s %5d verts %5d tris  chi=%2d genus=%s watertight=%s  volume=%.5f"
@@ -120,7 +120,7 @@ operations:
           */
           val exact = 4.0 / 3.0 * PI
           println("resolution   tris    volume     relative error")
-          for (resolution in listOf(12, 24, 48, 64)) {
+          for (resolution in [12, 24, 48, 64]) {
               val m = marchingCubes(sdfSphere(1.0), boundsAround(radius = 1.4), resolution)
               val error = abs(m.signedVolume() - exact) / exact
               println(
@@ -290,7 +290,7 @@ operations:
           println()
           println("target    got   deviation   min angle   watertight")
           val budgets = ArrayList<Pair<String, TriMesh>>()
-          for (target in listOf(2000, 600, 150)) {
+          for (target in [2000, 600, 150]) {
               val small = detailed.decimate(target)
               val deviation = maxDeviation(detailed, small)
               println(
@@ -355,11 +355,11 @@ operations:
           not every local curvature value; the sphere estimates above are a separate check.
           */
           for ((label, m) in
-              listOf(
+              [
                   "icosphere" to ball,
                   "torus" to torusMesh(64, 32, 0.6, 0.24),
                   "cube" to boxMesh(),
-              )) {
+              ]) {
               compare("Gauss-Bonnet on $label", m.integrate(m.gaussianCurvature()), 2.0 * PI * m.eulerCharacteristic())
           }
 

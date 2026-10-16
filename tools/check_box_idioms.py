@@ -28,6 +28,10 @@ This is the check that retires the prose. The rules:
   lines is a note, since a literal takes no spread and this line-by-line check cannot see one on a
   later line. ``listOf()``, ``listOf<T>(...)`` and a spread (``listOf(*xs)``) are left alone.
 
+Use ``--collection-literals --paths <files>`` during the code revision pass to include
+those selected transcripts/demos/templates in the list-literal audit. Default landing scope stays
+limited to handwritten docs until the wider corpus conversion finishes.
+
 Where it looks: Kotlin in ``code: |`` block scalars of ``dev_docs/agents/transcripts/**.yaml`` and
 of each demo's ``build.yaml`` / ``verify.yaml``, ``*.kt`` files under the published corpora,
 ```` ```kotlin ```` fences in ``public/docs/**.md``, and the Field-written ``document.md`` mirror of
@@ -333,7 +337,7 @@ def fix_block(lines: list[str], start: int, end: int, literals: bool = False) ->
     return out
 
 
-def process(path: str, root: Path, fix: bool) -> list[Finding]:
+def process(path: str, root: Path, fix: bool, collection_literals: bool = False) -> list[Finding]:
     file = root / path
     try:
         original = file.read_text(encoding="utf-8")
@@ -341,7 +345,7 @@ def process(path: str, root: Path, fix: bool) -> list[Finding]:
         return []
     lines = original.split("\n")
     blocks = kotlin_blocks(path, lines)
-    literals = lists_as_literals(path)
+    literals = collection_literals or lists_as_literals(path)
     findings = [
         Finding(path, i + 1, rule, message, fixable, blocking=fixable or rule not in NOTE_RULES)
         for start, end in blocks
@@ -436,6 +440,8 @@ def scoped_paths(args: argparse.Namespace) -> list[str] | None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--paths", nargs="*", help="repo-relative files to check (default: the whole corpus)")
+    parser.add_argument("--collection-literals", action="store_true",
+                        help="also audit collection literals in selected transcripts, demos and templates")
     parser.add_argument("--fix", action="store_true", help="rewrite fixable findings in place")
     parser.add_argument("--root", type=Path, default=REPO_ROOT, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
@@ -449,7 +455,7 @@ def main(argv: list[str] | None = None) -> int:
         p for p in scope if in_corpus(p) and (args.root / p).is_file()
     )
 
-    findings = [f for path in paths for f in process(path, args.root, args.fix)]
+    findings = [f for path in paths for f in process(path, args.root, args.fix, args.collection_literals)]
     if args.fix:
         # A fixed demo file has copies in its document.md mirror: fix those fences too (even when the
         # mirror was not in scope), then bring the mirror's digests up to date.
@@ -458,7 +464,7 @@ def main(argv: list[str] | None = None) -> int:
             mirror = f"{demo}/document.md"
             if (args.root / mirror).is_file():
                 if mirror not in paths:
-                    process(mirror, args.root, True)
+                    process(mirror, args.root, True, args.collection_literals)
                 refresh_mirror_digests(args.root / mirror)
         if demos:
             print("check_box_idioms: refresh the inline copies with ./gradlew regenerateAgentDemos -Ponly="
