@@ -49,8 +49,7 @@ generator rather than a plain function.
 The last line sends the message that the handler receives. `oscClient(host, port)` is cached by host
 and port in the same way as `osc`, and opens its socket on the first `send`.
 
-`osc()` with no argument listens on 9000. So does Field's own OSC editor (below), when it is
-enabled, which is a reason to give your boxes a different port.
+`osc()` with no argument listens on 9000.
 
 ## Where handler code runs
 
@@ -548,9 +547,7 @@ Separately from anything a box does, Field can listen for OSC itself and use it 
 (`/field/float` by default) replaces the number under the editor's cursor with the message's last
 numeric argument and, after a short pause, runs the box being edited again, so a physical fader can
 scrub a constant in your code. The *launch* and *stop* addresses (`/field/launch`, `/field/stop`)
-launch and stop the box being edited. The default port is 9000,
-the same as `osc()`'s default, so a box that listens on 9000 shares that port with the editor;
-give your boxes another one.
+launch and stop the box being edited. It listens on 9001 by default, one up from `osc()`'s 9000.
 
 See also: [Mobile controllers](mobile_controllers.md) for building a control surface in Field
 itself, [OSCQuery](oscquery.md), and [Sonic Pi](sonic_pi.md).

@@ -408,7 +408,7 @@ data class FieldPreferences(
     val autoOpenLastDocumentInDesktop: Boolean = false,
     val editorPropertyStickiness: String = "none",
     val oscEditorEnabled: Boolean = false,
-    val oscEditorPort: Int = 9000,
+    val oscEditorPort: Int = 9001,
     val oscEditorFloatAddress: String = "/field/float",
     val oscEditorLaunchAddress: String = "/field/launch",
     val oscEditorStopAddress: String = "/field/stop",

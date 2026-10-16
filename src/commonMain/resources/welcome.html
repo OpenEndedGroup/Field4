@@ -2413,7 +2413,7 @@
                             </div>
                             <label class="osc-settings-field">
                                 <span>UDP port</span>
-                                <input id="osc-editor-port" type="number" min="1" max="65535" step="1" autocomplete="off" placeholder="9000">
+                                <input id="osc-editor-port" type="number" min="1" max="65535" step="1" autocomplete="off" placeholder="9001">
                             </label>
                             <label class="osc-settings-field">
                                 <span>debounce ms</span>
@@ -2614,7 +2614,7 @@
             autoOpenLastDocumentInDesktop: false,
             editorPropertyStickiness: "none",
             oscEditorEnabled: false,
-            oscEditorPort: 9000,
+            oscEditorPort: 9001,
             oscEditorFloatAddress: "/field/float",
             oscEditorLaunchAddress: "/field/launch",
             oscEditorStopAddress: "/field/stop",
@@ -3772,12 +3772,12 @@
         if (stateNode) {
             const mode = prefs.oscEditorDeltaMode ? "delta" : "absolute";
             const label = prefs.oscEditorEnabled
-                ? `UDP ${prefs.oscEditorPort || 9000} · ${mode} · ${prefs.oscEditorFloatAddress || "/field/float"}`
+                ? `UDP ${prefs.oscEditorPort || 9001} · ${mode} · ${prefs.oscEditorFloatAddress || "/field/float"}`
                 : "disabled";
             stateNode.textContent = label;
         }
         if (enabled) enabled.checked = !!prefs.oscEditorEnabled;
-        if (port) port.value = String(prefs.oscEditorPort || 9000);
+        if (port) port.value = String(prefs.oscEditorPort || 9001);
         if (floatAddress) floatAddress.value = prefs.oscEditorFloatAddress || "/field/float";
         if (launchAddress) launchAddress.value = prefs.oscEditorLaunchAddress || "/field/launch";
         if (stopAddress) stopAddress.value = prefs.oscEditorStopAddress || "/field/stop";
@@ -3819,7 +3819,7 @@
             autoOpenLastDocumentInDesktop: !!document.getElementById("pref-auto-open-last")?.checked,
             editorPropertyStickiness: document.querySelector(".stickiness-segment.active")?.getAttribute("data-stickiness-value") || "none",
             oscEditorEnabled: !!document.getElementById("osc-editor-enabled")?.checked,
-            oscEditorPort: Number.parseInt(document.getElementById("osc-editor-port")?.value || "9000", 10) || 9000,
+            oscEditorPort: Number.parseInt(document.getElementById("osc-editor-port")?.value || "9001", 10) || 9001,
             oscEditorFloatAddress: String(document.getElementById("osc-editor-float-address")?.value || "/field/float").trim(),
             oscEditorLaunchAddress: String(document.getElementById("osc-editor-launch-address")?.value || "/field/launch").trim(),
             oscEditorStopAddress: String(document.getElementById("osc-editor-stop-address")?.value || "/field/stop").trim(),
@@ -6058,7 +6058,7 @@
 
     async function learnOscAddress(targetId) {
         const target = document.getElementById(targetId);
-        const port = Number.parseInt(document.getElementById("osc-editor-port")?.value || "9000", 10) || 9000;
+        const port = Number.parseInt(document.getElementById("osc-editor-port")?.value || "9001", 10) || 9001;
         if (!target) return;
         const preferenceKeys = {
             "osc-editor-float-address": "oscEditorFloatAddress",
