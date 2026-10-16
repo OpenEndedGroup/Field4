@@ -178,8 +178,7 @@ uv run --project . --group backdoor python tools/run_field_tests.py --refresh-ca
 `--refresh-catalog` rebuilds `build/field-tests/catalog.json` first, then runs
 each discovered test one at a time. The runner prewarms one persistent Field on
 `--port` for the whole run (pass `--no-prewarm` to reuse an already-running
-server instead). Per-test timeouts come from each test's annotation, so **don't**
-pass `--timeout` to this runner.
+server instead). Each test's timeout is the `timeoutSec` in its annotation.
 
 **Committed generated assets.** Several things in the repo are generated from
 source and then committed, so that a change to one shows up as a reviewable diff.

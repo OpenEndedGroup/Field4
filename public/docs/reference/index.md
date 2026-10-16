@@ -627,7 +627,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**31995 public symbols across 1449 source files**, 15982 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**32006 public symbols across 1449 source files**, 15985 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -654,9 +654,9 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1313 | 718 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2092 | 1010 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 21 | 571 | 385 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 120 | 3062 | 1379 (45%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 209 | 2974 | 1032 (34%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Machine learning](machine-learning.md) | 91 | 2192 | 665 (30%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Languages](languages.md) | 120 | 3070 | 1380 (44%) | Field's small languages, from the host side. |
+| [Workspace](workspace.md) | 209 | 2974 | 1033 (34%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Machine learning](machine-learning.md) | 91 | 2195 | 666 (30%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 
 ## Every file
@@ -1357,7 +1357,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>models/<wbr></small> [LlmBridge.kt](machine-learning.md#llmbridge-kt) | Machine learning | 17 | 5 | Provider-neutral seam for the IDE agent loop. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [LoadPly.kt](graphics.md#loadply-kt) | Graphics | 15 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>diagnostics/<wbr>logging/<wbr></small> [logger.kt](workspace.md#logger-kt) | Workspace | 9 | 1 |  | [Logging: channels, sinks and the console](../logging.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>diagnostics/<wbr></small> [Logging.kt](machine-learning.md#logging-kt) | Machine learning | 33 | 2 |  | [Logging: channels, sinks and the console](../logging.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>diagnostics/<wbr></small> [Logging.kt](machine-learning.md#logging-kt) | Machine learning | 36 | 3 |  | [Logging: channels, sinks and the console](../logging.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [logstream.kt](workspace.md#logstream-kt) | Workspace · internal | 14 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>analysis/<wbr>loris/<wbr></small> [Loris.kt](audio.md#loris-kt) | Audio | 42 | 18 |  | [Loris: partial tracks and resynthesis](../loris.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>analysis/<wbr>loris/<wbr></small> [LorisDocs.kt](audio.md#lorisdocs-kt) | Audio | 15 | 4 |  |  |
@@ -1674,7 +1674,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserVrPanel.kt](imaging.md#puppetbrowservrpanel-kt) | Imaging | 13 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserWindowPanel.kt](imaging.md#puppetbrowserwindowpanel-kt) | Imaging | 13 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>vision/<wbr></small> [PyramidOpticalFlow.kt](imaging.md#pyramidopticalflow-kt) | Imaging | 14 | 4 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>python/<wbr></small> [PythonInterface.kt](languages.md#pythoninterface-kt) | Languages | 42 | 2 | Python as a Field main language: a box whose source is Python, executed **in this process** by CPython through JEP. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>python/<wbr></small> [PythonInterface.kt](languages.md#pythoninterface-kt) | Languages | 50 | 3 | Python as a Field main language: a box whose source is Python, executed **in this process** by CPython through JEP. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>python/<wbr></small> [PythonLineNotes.kt](languages.md#pythonlinenotes-kt) | Languages | 3 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>source/<wbr></small> [QualifiedSource.kt](workspace.md#qualifiedsource-kt) | Workspace | 60 | 45 | # Qualified sources: changing a rule without breaking what already works | [Change a rule without breaking what already works](../qualified_sources.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [QualityPreset.kt](audio.md#qualitypreset-kt) | Audio | 11 | 10 |  |  |
@@ -1774,7 +1774,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>properties/<wbr></small> [saved.kt](data.md#saved-kt) | Data | 7 | 7 | Per-box persistence for Kotlin values, on top of kotlinx.serialization. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [SavedJsonSmokeTest.kt](examples.md#savedjsonsmoketest-kt) | Examples · internal | 3 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>diagnostics/<wbr>logging/<wbr></small> [SaveReloadLog.kt](workspace.md#savereloadlog-kt) | Workspace | 4 | 0 |  |  |
-| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>persistence/<wbr></small> [saving.kt](workspace.md#saving-kt) | Workspace · internal | 32 | 9 |  | [What a document is on disk](../document_on_disk.md) |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>persistence/<wbr></small> [saving.kt](workspace.md#saving-kt) | Workspace · internal | 32 | 10 |  | [What a document is on disk](../document_on_disk.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Scene.kt](audio.md#scene-kt) | Audio | 26 | 19 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>dmx/<wbr></small> [SceneOnARig.kt](lighting.md#sceneonarig-kt) | Lighting | 16 | 13 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [scratch.kt](internal.md#scratch-kt) | Internal · internal | 4 | 2 |  | [Running code in a box](../running_code.md), [Why does this value resolve here?](../why.md) |

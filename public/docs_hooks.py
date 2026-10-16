@@ -3376,6 +3376,13 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
     capture = (first_attr(attrs, "capture", "mode") or "box").strip().lower()
     if capture not in {"box", "window", "window-editor", "editor", "native-window", "ui"}:
         raise RuntimeError(f"{page_path}:{line_number} unsupported capture={capture!r}")
+    if capture == "native-window" and video:
+        # The video recorders all record the browser page; recording "the native window" through
+        # them would silently capture the wrong surface (capture_limits.md).
+        raise RuntimeError(
+            f"{page_path}:{line_number} capture=\"native-window\" cannot take video=: no recorder "
+            "records the native window; use screenshot= or a browser capture for the video"
+        )
 
     # capture="ui" runs the fence body as a `drive` transcript that scripts the live
     # editor (keypresses/clicks) via Playwright and captures a video and/or still. The

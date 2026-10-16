@@ -29,7 +29,9 @@ import sys
 import tempfile
 from pathlib import Path
 
-# The client's own eleven buckets, unchanged — the left column of `CATEGORY_WEIGHT` as shipped.
+# The client's own eleven buckets — `CATEGORY_WEIGHT` before it learned the server vocabulary.
+# Every experiment REPLACES the shipped table with BASE + its extras, so R0 is the old ranker and R2
+# is what `fieldSuggest.js` ships since 2026-10-16 (extended there to the whole server vocabulary).
 BASE = [("local", 28), ("graphics", 26), ("functions", 22), ("values", 20), ("types", 18),
         ("shader", 16), ("metadata", 14), ("imports", 10), ("snippets", 8), ("ai", 6), ("other", 0)]
 

@@ -953,7 +953,7 @@ object HistoryManager {
         snapshot: VersionSnapshot,
         savingContext: SavingContext
     ): Map<String, HistoryBoxState> {
-        val patterns = Box.ioPersistentProperties.map { it.toRegex() }
+        val patterns = Box.persistentPropertiesFor(snapshot.directory).map { it.toRegex() }
         fun isPersistent(name: String) = patterns.any { name.matches(it) }
 
         return snapshot.transfers
@@ -1313,7 +1313,7 @@ object HistoryManager {
         sessionInfo: SessionInformation,
         preferInlineFiles: Boolean
     ) {
-        val patterns = Box.ioPersistentProperties.map { it.toRegex() }
+        val patterns = Box.persistentPropertiesFor(documentPath).map { it.toRegex() }
         fun isPersistent(name: String) = patterns.any { name.matches(it) }
 
         val sourcePersistentNames = source.properties.keys.filter(::isPersistent).toSet()
@@ -1352,7 +1352,7 @@ object HistoryManager {
         selectedProperties: Set<String>?,
         includeTopology: Boolean
     ): Int {
-        val patterns = Box.ioPersistentProperties.map { it.toRegex() }
+        val patterns = Box.persistentPropertiesFor(documentPath).map { it.toRegex() }
         fun isPersistent(name: String) = patterns.any { name.matches(it) }
         fun canTouch(name: String) =
             isPersistent(name) &&

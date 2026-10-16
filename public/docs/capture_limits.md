@@ -63,11 +63,6 @@ the reply.
 
 A capture can be correctly sized, correctly timed, and still of the wrong thing.
 
-- **The previous selection can still be in focus.** `screenshot-box` selects the box, but the
-  canvas's depth-of-field can lag, and the result is a plausible-looking blurred figure.
-  The reliable recipe is `editor-open <uid> --open-outputs`, settle, then
-  `screenshot-box --preserve-selection`. Two consecutive `screenshot-box` calls on the same box
-  are not reliable (`dev_docs/chart_primitive.md`).
 - **Neighbouring panels bleed in.** With several output panels open on one canvas, the clip around
   the target can contain its neighbours' panels too (`dev_docs/chart_bad_separation.md`).
 - **The box capture path pans, and panning drops the selection.** A figure whose subject *is* the
@@ -83,8 +78,9 @@ own swapchain image straight to a file. It needs no screen recording permission,
 the window, and works headless.
 
 One budget, 15 seconds by default, covers renderer readiness, settling *and* the copy; it is not
-a fresh allowance per stage (`afield/tools/docs/doc.kt`). When it expires you get "Timed out waiting for
-native renderer" and no information about which stage ate it.
+a fresh allowance per stage (`afield/tools/docs/doc.kt`). When it expires, the error names the stage that
+was running (renderer readiness, settle frames or the swapchain copy) and how many settle steps
+had finished.
 
 Here is how per-frame work on one scene affects this path:
 
@@ -105,22 +101,13 @@ general.
     They are carried over from the skinning work, in `dev_docs/SKINNED_CHARACTERS.md` and
     `dev_docs/GPU_SKINNING.md`, and were **not** re-run for this page.
 
-A related limit is not a timeout at all and is easy to mistake for one: **`MeshInstance.applyToMesh`
-cannot run from a `main` in the first place.** Its buffers come from `defaultBuffer { … }.buffer`,
-which allocates through a renderer parameter defaulting to `fromContext()`, and `fromContext` reads
-`Box.context`, which is a box. From a `main` there is no box, and it throws
-`Cannot invoke "afield.document.graph.Box.getProperties()"` before any capture is attempted. A `jvm-main` smoke
-test runs as a `main`, so it meets this.
-
 ---
 
 ## Pictures no capture can take
 
 **There is no moving picture of the native window that an agent can take.** The backdoor's
-`record-window`, `record-editor` and `record-box` all record the *browser*, through the page. A
-docs fence that asks for `capture="native-window"` together with `video=` is accepted, falls through
-to the browser recorder, and silently records the wrong window
-(`dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`). No published page does this today.
+`record-window`, `record-editor` and `record-box` all record the *browser*, through the page, so a
+docs fence that asks for `capture="native-window"` together with `video=` is refused.
 
 A native-window recorder **does** exist: `Window.raiseAndRecord`, in `afield/tools/docs/doc.kt`, raises
 the GLFW window and records its rectangle with macOS `screencapture`. Its only caller is the
@@ -182,7 +169,6 @@ Some practical points:
     | neighbouring panels inside the clip | `dev_docs/chart_bad_separation.md` |
     | box capture pans and drops the selection | [Moving around the canvas](moving_around_the_canvas.md#what-the-overlay-draws) |
     | per-frame vertex re-upload and property read time out the native capture | `dev_docs/SKINNED_CHARACTERS.md`, `dev_docs/GPU_SKINNING.md` |
-    | `applyToMesh` throws from a `main` | `dev_docs/GPU_SKINNING.md` |
     | no native-window video on any agent-facing path | `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`, [Pattern → particles](chain_pattern_particles.md) |
     | `screencapture` needs permission; the swapchain copy does not | `dev_docs/imgui_vr_panel.md` |
     | a static capture cannot click | `dev_docs/three_inspector.md` |

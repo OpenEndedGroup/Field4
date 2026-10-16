@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 15982 of 31995 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 15985 of 32006 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2306 undocumented entry points** (types, top-level functions and values) and 13037 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2306 undocumented entry points** (types, top-level functions and values) and 13045 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -41,7 +41,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Module.kt](../src/jvmMain/kotlin/afield/graphics/render/Module.kt) | Graphics | fabricate_renderer, fieldml_host_bridge | 10 | 137 | 5% |
 | [Signal.kt](../src/jvmMain/kotlin/afield/audio/synth/Signal.kt) | Synthesis | sound_paths, faust, chain_pattern_particles | 10 | 53 | 26% |
 | [FieldProbe.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/FieldProbe.kt) | Graphics | field_probes | 10 | 44 | 3% |
-| [Logging.kt](../src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt) | Machine learning | logging, visualizers, agent_transcripts | 10 | 21 | 6% |
+| [Logging.kt](../src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt) | Machine learning | logging, visualizers, agent_transcripts | 10 | 23 | 8% |
 | [Sequencing.kt](../src/jvmMain/kotlin/afield/audio/synth/Sequencing.kt) | Patterns | boolean_network_music_examples, visualizers | 9 | 38 | 7% |
 | [FunctionStudyTools.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionStudyTools.kt) | Function | function_conversation | 9 | 14 | 41% |
 | [NanoInterface.kt](../src/jvmMain/kotlin/afield/lang/nano/NanoInterface.kt) | Languages | document_on_disk | 9 | 7 | 15% |
@@ -74,8 +74,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SonicPi.kt](../src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt) | Audio | sonic_pi | 3 | 46 | 34% |
 | [SpectralEmbeddingProjection.kt](../src/jvmMain/kotlin/afield/audio/ai/SpectralEmbeddingProjection.kt) | Audio AI | audio_ai_spectral_embeddings, visualizers | 3 | 29 | 21% |
 | [SlideShow.kt](../src/jvmMain/kotlin/afield/ui/slides/SlideShow.kt) | Visualization | interactive_guides | 3 | 25 | 53% |
-| [saving.kt](../src/jvmMain/kotlin/afield/document/persistence/saving.kt) | Workspace | document_on_disk | 3 | 20 | 28% |
 | [Mesh.kt](../src/jvmMain/kotlin/afield/graphics/render/Mesh.kt) | Graphics | field_probes, fieldml_host_bridge, python_cv | 3 | 20 | 14% |
+| [saving.kt](../src/jvmMain/kotlin/afield/document/persistence/saving.kt) | Workspace | document_on_disk | 3 | 19 | 31% |
 | [FLineGaussianProcess.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineGaussianProcess.kt) | Graphics | gaussian_processes | 3 | 16 | 45% |
 | [Runloop.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt) | Workspace | profiling_timeline, animation_time_model | 3 | 14 | 10% |
 | [PlanarContact.kt](../src/jvmMain/kotlin/afield/geometry/solid/manifold/PlanarContact.kt) | Graphics | manifold | 3 | 5 | 38% |
@@ -276,7 +276,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [provisional.kt](../src/jvmMain/kotlin/afield/document/workspace/provisional.kt) | Workspace | — | 16 | 2 | 0% |
 | [Types.kt](../src/jvmMain/kotlin/afield/lang/fieldml/type/Types.kt) | Languages | — | 14 | 12 | 10% |
 | [modelling.kt](../src/jvmMain/kotlin/afield/math/control/modelling.kt) | Graphics | — | 13 | 54 | 0% |
-| [PythonInterface.kt](../src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt) | Languages | — | 13 | 27 | 4% |
+| [PythonInterface.kt](../src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt) | Languages | — | 13 | 34 | 6% |
 | [binding.kt](../src/jvmMain/kotlin/afield/document/properties/binding.kt) | Internal | — | 13 | 12 | 0% |
 | [Ai4Installer.kt](../src/jvmMain/kotlin/afield/ai/models/Ai4Installer.kt) | Machine learning | — | 13 | 8 | 12% |
 | [browsing.kt](../src/jvmMain/kotlin/afield/app/server/browsing.kt) | Workspace | — | 12 | 23 | 18% |
@@ -1093,9 +1093,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `LogEvent` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:17` |
 | `BlockBoundary` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:26` |
 | `LogSink` | interface | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:28` |
-| `NotifyLog` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:154` |
-| `TraceLogger` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:177` |
-| `AiToolIoLogger` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:253` |
+| `NotifyLog` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:179` |
+| `TraceLogger` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:202` |
+| `AiToolIoLogger` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:278` |
 | `Keyframe` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:619` |
 | `Handles` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:628` |
 | `Handle` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:634` |

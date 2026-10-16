@@ -169,13 +169,10 @@ Both of these limits are published for readers, alongside the other nine the tre
 `public/docs/capture_limits.md`. That page also names the technique for telling a capture that
 timed out from a subject that is broken — run a **trusted control** in the same invocation.
 
-**`MeshInstance.applyToMesh` cannot be called from a `main`.** Its buffers come from
-`defaultBuffer { … }.buffer` (`src/jvmMain/kotlin/afield/graphics/vulkan/buffers/magic.kt:237#buffer`), which
-allocates through `src/jvmMain/kotlin/afield/graphics/vulkan/buffers/VulkanBuffer.kt:102#renderer` — a
-constructor parameter defaulting to `fromContext()`. Inside a box that resolves; from a `main` —
-which is where every smoke and the evidence renderer live — it throws
-`Cannot invoke "afield.document.graph.Box.getProperties()"`. `GpuSkinner` therefore owns its own vertex and index
-buffers with an explicit renderer, which it wants anyway: it uploads geometry **once**.
+**`MeshInstance.applyToMesh` used to fail from a `main`** with a null-box NPE, because its buffers
+allocated through `fromContext()`. Since 2026-10-16 it allocates on the mesh's own renderer, and a
+`fromContext()` with no box says so. `GpuSkinner` still owns its vertex and index buffers with an
+explicit renderer, because it uploads geometry **once**.
 
 **A `CpuSkinner` and a `GpuSkinner` on the same `MeshInstance` fight.** `CpuSkinner.pose` rewrites
 `instance.buffers` in place, so a GPU skinner that read the buffer later would skin

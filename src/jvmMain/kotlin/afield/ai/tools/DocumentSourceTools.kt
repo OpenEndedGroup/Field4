@@ -168,7 +168,7 @@ internal class DocumentSourceTools(private val info: SessionInformation) {
             val operations = mutableListOf<Map<String, Any>>()
             ordered.forEach { box ->
                 val properties = linkedMapOf<String, Any>()
-                val patterns = Box.ioPersistentProperties.map { it.toRegex() }
+                val patterns = Box.persistentPropertiesFor(info.filename).map { it.toRegex() }
                 box.properties.keys.filter { key -> !Box.isNeverPersisted(key) && patterns.any { key.matches(it) } }
                     .sorted().filter { !it.startsWith("_") && it !in setOf("children", "parents", "nested", "nestedIn", "frame", "name") }
                     .forEach { key ->

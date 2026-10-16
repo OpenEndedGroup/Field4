@@ -34,11 +34,6 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 The source corpus lives in the repository at `dev_docs/agents/transcripts/`, with a companion
 `README.md` covering the op vocabulary, capture commands, and the graphics-topology rule.
 
-??? aside "Agents: editing a saved document"
-    **Do not hand-edit a `metadata.edn`.** `AgentDemoDriftGuard` requires it to be byte-for-byte what
-    Field's own EDN codec writes, so an edit that looks right comes back modified from the next
-    regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or change it in Field.
-
 ## How CI checks them
 
 <!-- transcript-index: totals -->
@@ -2167,7 +2162,7 @@ importable from Python, and `fig.show()` landing in the box. The root stays Kotl
 swaps the execution of a root's **children**, never of the root; its `mainLanguage` property is what
 makes the four boxes below Python. This one has a prerequisite the
 other scenes do not — Field must have found an interpreter with JEP's native library in it *before it
-started*, or the four cells stay Kotlin and fail to compile. [Python in Field](python.md) has the recipe.
+started*; without one each cell reports "Python unavailable" and how to fix it. [Python in Field](python.md) has the recipe.
 
 `DemoTranscriptExecSmokeTest` compiles the Kotlin root and **skips the four Python cells**, because
 they are not Kotlin, so CI checks one box of five. Run against a real interpreter, the cells print

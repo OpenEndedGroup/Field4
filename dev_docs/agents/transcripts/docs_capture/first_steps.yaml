@@ -11,7 +11,7 @@ operations:
       h: 100.0
     properties:
       code: "// Launch: Alt+Up. Stop: Alt+Down. On a Mac, Alt is Option.\nvar petals\
-        \ = 5 // Change 5 to 8, then launch again.\nprintln(petals) // Field shows\
+        \ = 5\npetals = 5 // Change this 5 to 8, then press Alt+Enter on this line while the drawing runs.\nprintln(petals) // Field shows\
         \ this value beside the code.\nvar phase = 0.0\n\nloop {\n    phase += 0.045\n\
         \    // Each curve is a little further into the wave: together they make a\
         \ ribbon.\n    val ribbon = (0..23).map { layer ->\n        val depth = layer\

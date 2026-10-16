@@ -3360,7 +3360,7 @@ class Server {
                 val info = thisSessionInfo.get()
                 val usedIds = info.boxes.keys
                 val ctx = SavingContext()
-                val transferIds = ctx.readEdnTransfersFromString(req.edn).map { it.id }.toSet()
+                val transferIds = ctx.readEdnTransfersFromString(req.edn, recordInto = info.filename).map { it.id }.toSet()
                 // Keep refs to boxes that already exist in this document, but only remap ids that belong to
                 // the pasted payload itself.
                 val allowedRefIds = transferIds + usedIds + "root"

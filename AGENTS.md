@@ -478,7 +478,7 @@ code, and a landing runs it on what it changed.
   (plain vectors for frames, inline code strings); the loader is deliberately permissive.
 - Sidecar naming is `<boxId>_<propertyName>_.<extension>`, mapped by `Box.ioSeparateProperties`
   (`Boxes.kt`): `code` → `kt`; `fragment|vertex|compute|task|mesh` → `glsl`;
-  `customization|remote_js` → `js`; `metadata` → `yaml`. `FileWatchManager` reloads externally
+  `customization` → `js`; `metadata` → `yaml`. `FileWatchManager` reloads externally
   edited sidecars into live sessions (`dev_docs/FileWatchManager.md`).
 - History: `File.safeSave(...)` (`saving.kt`) writes `backups/`; `HistoryManager` (`history.kt`)
   writes `versions.edn` — `transitions` (`{fromIndex,toIndex,timestamp}`) and `names` (version

@@ -14,7 +14,7 @@ lprintln("info,mypage", "something happened")
 
 `"info,mypage"` is a **channel**: a comma-separated list of *tags*, which every consumer
 downstream selects on. A channel is neither a level nor a logger name. There
-are **1035**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
+are **1038**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
 `lprintln` with the channel written out as a literal, spelling
 **242**<!--count:logChannelStrings--> distinct channel strings between them.
 
@@ -83,77 +83,55 @@ Use `withSink` rather than a bare `addSink` from a box. The dispatcher is global
 that is never removed keeps receiving events for the life of the JVM, and because
 `LogDispatcher.log` wraps each sink in `runCatching`, one that throws fails silently.
 
-## Channel matching: three mechanisms, three rules
+## Channel matching: one rule
 
-Three mechanisms select on the channel, and each matches differently:
-
-| Mechanism | What it compares | Rule | Case |
-|---|---|---|---|
-| `ConsoleMute.isMuted` | the **whole** channel string | exact set membership | sensitive |
-| the pinned console's `matchedPin` | each `,`-split **tag** | exact membership | sensitive |
-| `LogStream.Filter.channels` | the whole channel string | **substring** | **insensitive** |
-
-Each rule is one line of source:
-
-- `Logging.kt:86#fun isMuted(channel: String): Boolean = channel in channels`
-- `PinnedConsole.kt:961#val tokens = channel.split(',').mapTo(HashSet(), String::trim)`
-- `logstream.kt:142#if (!wanted.any { token -> e.channel.contains(token, ignoreCase = true) }) return false`
-
-So muting wants the exact string you wrote at the call site, pinning wants one of its tags,
-and the log widget will take any substring of it. Start with muting, which is the strictest
-and the most surprising:
+The console mute set, the pinned console and the log widget's filter all select channels the
+same way (`Logging.kt:118#object ChannelMatch`). A channel is a comma-separated set of tags, and a
+selector matches when every one of its tags is among the channel's. Tag order does not matter,
+extra tags do not matter, and tags compare exactly, case included.
 
 <!--
 FIELD_TEST
-id: docs.logging.mute_is_exact
+id: docs.logging.mute_matches_tags
 runner: backdoor-box
 tags: [docs, logging, tohtml]
 timeoutSec: 120
 waitSec: 1.5
 expect:
   outputContains:
-    - "info,boxes"
+    - "info,boxes,extra"
     - "info,Boxes"
     - ">true</td>"
     - ">false</td>"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/logging/mute-is-exact.png" capture="box" w="860" h="260" wait="1.5" timeout="120" embed=true name="logging-mute-is-exact" alt="A Field box output panel labelled main, holding a two-column table titled 'ConsoleMute compares the whole channel string', headed channel string and isMuted. Five rows: info,boxes is true; boxes,info is false; info,boxes,extra is false; info,Boxes is false; boxes is false. A footnote lists the channels the mute set holds."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/logging/mute-matches-tags.png" capture="box" w="860" h="260" wait="1.5" timeout="120" embed=true name="logging-mute-matches-tags" alt="A Field box output panel labelled main, holding a two-column table titled 'ConsoleMute matches tags', headed channel string and isMuted. Five rows: info,boxes, boxes,info and info,boxes,extra are muted; info,Boxes and boxes are not. A footnote lists the selectors the mute set holds."}
 :::static
 import afield.ai.diagnostics.ConsoleMute
 
-// isMuted compares the WHOLE channel string against the mute set. Nothing is split.
+// The default mute set holds the selector "info,boxes": a channel is muted when it carries both tags.
 val spellings = ["info,boxes", "boxes,info", "info,boxes,extra", "info,Boxes", "boxes"]
 
 display("main", Table(
     ["channel string", "isMuted"],
-    title = "ConsoleMute compares the whole channel string",
+    title = "ConsoleMute matches tags",
     note = "the set this JVM booted with: " + ConsoleMute.channels.sorted().joinToString(", ")
 )
     .rows(spellings.map { [it, ConsoleMute.isMuted(it)] })
     .role("channel string", CellRole.ACCENT)
     .roleBy("isMuted") { if (it == true) CellRole.WARN else CellRole.OK }
-    .expect("isMuted", because = "only the exact spelling in the set is muted") { it is Boolean })
+    .expect("isMuted", because = "a channel carrying both tags of a selector is muted") { it is Boolean })
 ```
 
-Only the first spelling is muted. Reordering the tags, adding one, or changing a letter's
-case all produce a channel the mute set has never heard of. This is deliberate, since a
-mute list of exact strings cannot accidentally silence a channel you meant to keep, but it
-means the default set silences `"info,boxes"` and would not silence
-`"info,boxes,slow"`, and it means you cannot mute *a tag*. To change the set, pass
-`-Dafield.log.mute=` or `AFIELD_LOG_MUTE=` a semicolon-separated list of exact channel
-strings (`Logging.kt:80#raw.split(';').map { it.trim() }.filter { it.isNotEmpty() }.toSet()`),
-or a blank value to mute nothing.
+Reordering the tags or adding one still matches; `info,Boxes` has a different tag, and `boxes`
+alone lacks `info`. To mute a whole subsystem, name its tag: `-Dafield.log.mute=boxes` (or
+`AFIELD_LOG_MUTE=`) takes a semicolon-separated list of selectors, and a blank value mutes nothing.
 
-The log widget's filter, at the other extreme, matches any substring. In the tree today,
-**124**<!--count:logChannelSubstringCollisions--> pairs of a real
-tag and a real channel string are matched by a `LogStream` filter and
-would not be pinned by the same word. `kotlin` is the clearest of them: it is one of the
-most-used tags in the tree, and `kotlinjs` (the Kotlin/JS build) is a separate tag that
-a filter for `kotlin` also matches, because one name is a prefix of the other:
+The widget's filter follows the same rule, so a filter for `kotlin` takes the channels tagged
+`kotlin` and not `kotlinjs`, the Kotlin/JS build's separate tag:
 
 <!--
 FIELD_TEST
-id: docs.logging.filter_is_substring
+id: docs.logging.filter_matches_tags
 runner: backdoor-box
 tags: [docs, logging, tohtml]
 timeoutSec: 120
@@ -162,8 +140,9 @@ expect:
   outputContains:
     - "info,kotlin"
     - "info,kotlinjs"
+    - "1 of 3 matched"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/logging/filter-is-substring.png" capture="box" w="900" h="240" wait="2.0" timeout="120" embed=true name="logging-filter-is-substring" alt="A Field box output panel labelled main, holding a two-column table titled 'a LogStream filter of [kotlin] against three channels', headed channel emitted and pushed to the subscriber. Three rows: info,kotlin is true; info,kotlinjs is true; info,graphics is false. A footnote records that two of the three lines matched."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/logging/filter-matches-tags.png" capture="box" w="900" h="240" wait="2.0" timeout="120" embed=true name="logging-filter-matches-tags" alt="A Field box output panel labelled main, holding a two-column table titled 'a LogStream filter of [kotlin] against three channels', headed channel emitted and pushed to the subscriber. Three rows: info,kotlin is true; info,kotlinjs is false; info,graphics is false. A footnote records that one of the three lines matched."}
 :::static
 import afield.app.diagnostics.logging.lprintln
 import afield.app.server.LogStream
@@ -172,7 +151,7 @@ import afield.app.server.LogStream
 // 20,000-record archive out of the replay, so what arrives is only what I emit below.
 val pushed = mutableListOf<String>()
 LogStream.addSubscription(
-    "logdoc-substring",
+    "logdoc-tags",
     LogStream.Filter(
         channels = ["kotlin"],
         sinceEpochMs = System.currentTimeMillis(),
@@ -185,7 +164,7 @@ val emitted = ["info,kotlin", "info,kotlinjs", "info,graphics"]
 try {
     emitted.forEach { lprintln(it, "«logdoc» a line on $it") }
 } finally {
-    LogStream.unsubscribe("logdoc-substring")
+    LogStream.unsubscribe("logdoc-tags")
 }
 
 val matched = pushed.filter { "«logdoc»" in it }
@@ -195,18 +174,12 @@ val matched = pushed.filter { "«logdoc»" in it }
 display("main", Table(
     ["channel emitted", "pushed to the subscriber"],
     title = "a LogStream filter of [\"kotlin\"] against three channels",
-    note = "${matched.size} of ${emitted.size} matched: kotlin is a tag in the first and only a " +
-        "substring in the second. The pinned console splits on commas, so it would take only the first."
+    note = "${matched.size} of ${emitted.size} matched: only the first carries the tag kotlin."
 )
     .rows(emitted.map { [it, it in matched] })
     .role("channel emitted", CellRole.ACCENT)
     .roleBy("pushed to the subscriber") { if (it == true) CellRole.OK else CellRole.DIM })
 ```
-
-Two of three match. The third is rejected; the second matches because `kotlin` is a
-prefix of `kotlinjs`, whatever tags the call site uses. If you
-want one subsystem in the widget and its name is a prefix of another's, filter on the full
-channel string (`"info,kotlin"`) rather than the bare tag.
 
 ## Muting only affects the console
 
@@ -326,12 +299,8 @@ display("main", Table(
 The footnote shows how nesting is stored: it is carried in an `indent` string kept separately for each
 thread, and it holds one block UUID and a tab per level rather than spaces
 (`logger.kt:69#val added = "${u}\t"`). `PinnedConsole` parses those tokens back out to find
-which open block a line belongs to, which is what they are for. `StdoutLog` does not: it
-concatenates the indent into the line as-is
-(`Logging.kt:106#val full = prefix + channelPart + event.indent + boundaryMarker + event.message`),
-so on a plain terminal a line logged inside an `lblock` is prefixed by a raw 36-character
-UUID. `lblock` is called with a channel literal in only six<!--count:lblockCallSites-->
-places in the tree, so few terminal lines carry one.
+which open block a line belongs to, which is what they are for. On a plain terminal
+`StdoutLog` prints only the depth, two spaces per level.
 
 Because `indent` is per thread, a block does not nest across threads: work handed to
 another thread inside an `lblock` logs at depth zero.

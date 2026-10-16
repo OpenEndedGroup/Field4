@@ -109,12 +109,30 @@ inline fun <R> LogDispatcher.withSink(sink: LogSink, block: () -> R): R {
 }
 
 /**
+ * The one rule every channel selector follows — the console mute set, the pinned console and the
+ * `LogStream` filter: a channel is a comma-separated set of tags, and a selector matches when every
+ * one of its tags is among the channel's. So `boxes` matches `info,boxes` and `boxes,debug`;
+ * `info,boxes` matches `boxes,info` and `info,boxes,slow`; `kotlin` does not match `kotlinjs`.
+ * Tags compare exactly, case included, as written at the call site.
+ */
+object ChannelMatch {
+    fun tags(channel: String): Set<String> =
+        channel.split(',').mapNotNullTo(HashSet()) { it.trim().takeIf(String::isNotEmpty) }
+
+    fun matches(channel: String, selector: String): Boolean {
+        val wanted = tags(selector)
+        return wanted.isNotEmpty() && tags(channel).containsAll(wanted)
+    }
+}
+
+/**
  * Channels suppressed from the console — both the plain [StdoutLog] and the interactive
  * PinnedConsole honor this. Muted events still reach every *other* sink (e.g. the LogStream web
  * widget), so nothing is lost; they're just too chatty for the terminal. Default mutes the
  * chatty background channels (`info,boxes`, `info,persist`, `info,ai.boxnames`, `debug,boxes`).
  * Override with `-Dafield.log.mute=...` or `AFIELD_LOG_MUTE=...`
- * (semicolon-separated exact channel strings); set to a blank/empty value to mute nothing.
+ * (semicolon-separated selectors, matched by [ChannelMatch]: `boxes` mutes every channel tagged
+ * `boxes`); set to a blank/empty value to mute nothing.
  */
 object ConsoleMute {
     val channels: Set<String> = run {
@@ -126,7 +144,7 @@ object ConsoleMute {
         }
     }
 
-    fun isMuted(channel: String): Boolean = channel in channels
+    fun isMuted(channel: String): Boolean = channels.any { ChannelMatch.matches(channel, it) }
 }
 
 object StdoutLog : LogSink {
@@ -146,9 +164,16 @@ object StdoutLog : LogSink {
             BlockBoundary.END -> "<|< "
             null -> ""
         }
-        val full = prefix + channelPart + event.indent + boundaryMarker + event.message
+        val full = prefix + channelPart + depthIndent(event.indent) + boundaryMarker + event.message
         println(full)
     }
+
+    /**
+     * An `lblock` indent is one `"<block uuid>\t"` token per open block — the structured sinks use
+     * the ids. A terminal wants the depth: two spaces per level, not 36 characters of UUID.
+     */
+    internal fun depthIndent(indent: String): String =
+        if (indent.isEmpty()) "" else "  ".repeat(indent.count { it == '\t' }.coerceAtLeast(1))
 }
 
 class NotifyLog(

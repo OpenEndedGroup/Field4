@@ -230,17 +230,49 @@ fun makeInterpreter() {
 @RunsAt(early, priority = -10)
 fun installPython() {
     Box.ioPersistentProperties.add("isPythonRoot")
-    if (PythonInterface.pythonConfigAvailable) {
-        registerMainLanguageRuntime(
-            MainLanguageRuntime(
-                id = "python",
-                label = "Python",
-                runtimeClass = PythonExecution::class,
-                setLegacyRoot = { box, enabled -> box.isPythonRoot = enabled },
-                applyTopology = ::pythonTopologyNeedsUpdating,
-            ),
-        )
+    // Registered with or without JEP: without it a Python box gets [PythonUnavailableExecution],
+    // which says why, instead of falling through to Kotlin and failing to compile its Python.
+    registerMainLanguageRuntime(
+        MainLanguageRuntime(
+            id = "python",
+            label = "Python",
+            runtimeClass = pythonRuntimeClass(),
+            setLegacyRoot = { box, enabled -> box.isPythonRoot = enabled },
+            applyTopology = ::pythonTopologyNeedsUpdating,
+        ),
+    )
+}
+
+private fun pythonRuntimeClass() =
+    if (PythonInterface.pythonConfigAvailable) PythonExecution::class else PythonUnavailableExecution::class
+
+/**
+ * The Python runtime when no interpreter with JEP was found at startup: every run reports one error
+ * naming the problem and the fix, and the box's verdict fails.
+ */
+class PythonUnavailableExecution : BoxExecution {
+    private fun refuse(inside: Box, execute: Execute, mode: String, reply: (Message) -> Unit) {
+        val trace = ExecutionTrace.forEngine(inside, execute, mode, reply)
+        val origin = thisSession.get()
+        inMain {
+            configureOutputProxies(inside, trace.reply, origin)
+            val message = "Python unavailable: no interpreter with JEP was found when Field started. " +
+                PythonInterface.pythonConfigMessage + " (see the Python page, python.md)"
+            inside.error(message)
+            trace.finish(false, message)
+        }
     }
+
+    override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) =
+        refuse(inside, execute, "run", reply)
+    override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) =
+        refuse(inside, execute, "run", reply)
+    override fun launchAll(inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit) =
+        refuse(inside, execute, "launch", reply)
+    override fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: (Message) -> Unit) {}
+    override fun stop(inside: Box) {}
+    override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {}
+    override val languageName: String get() = "Python"
 }
 
 @RunsAt(plugins)
@@ -252,9 +284,9 @@ fun install() {
 fun pythonTopologyNeedsUpdating(values: Collection<Box>) {
     applyRuntimeToggle(
         boxes = values,
-        isRoot = { PythonInterface.pythonConfigAvailable && (it.isPythonRoot == true || it.isMainLanguage("python")) },
-        runtimeClass = PythonExecution::class,
-        newExecution = { _ -> PythonExecution() },
+        isRoot = { it.isPythonRoot == true || it.isMainLanguage("python") },
+        runtimeClass = pythonRuntimeClass(),
+        newExecution = { _ -> if (PythonInterface.pythonConfigAvailable) PythonExecution() else PythonUnavailableExecution() },
         language = "Python",
         customization = "",
         notifyCategory = "python"

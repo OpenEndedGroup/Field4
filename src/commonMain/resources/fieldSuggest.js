@@ -39,6 +39,35 @@ const CATEGORY_WEIGHT = new Map([
   ["imports", 10],
   ["snippets", 8],
   ["ai", 6],
+  // The server's own vocabulary: every `@CompletionCategory` in the tree, plus what
+  // `KotlinCompletionSupport.classifyMetadata` assigns by itself (Kotlin, External, Generic).
+  // FieldSuggestPresentationTest fails when a category reaches the popup without a row here.
+  // 12 / 8 / 4 is variant R2 of dev_docs/completion_rank_at_scale.md: +0.051 bare contested recall,
+  // +0.120 recall on receivers this tree cannot annotate, owned recall unchanged.
+  ["math", 12],
+  ["audio", 12],
+  ["audio ai", 12],
+  ["data", 12],
+  ["visualization", 12],
+  ["polytopes", 12],
+  ["alife", 12],
+  ["function", 12],
+  ["imaging", 12],
+  ["machine learning", 12],
+  ["solvers", 12],
+  ["patterns", 12],
+  ["synthesis", 12],
+  ["simulation", 12],
+  ["workspace", 12],
+  ["networking", 12],
+  ["lighting", 12],
+  ["search", 12],
+  ["video", 12],
+  ["kotlin", 8],
+  ["external", 4],
+  // Implementation detail and universal members: present, deliberately unweighted.
+  ["internal", 0],
+  ["generic", 0],
   ["other", 0],
 ]);
 

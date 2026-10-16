@@ -78,7 +78,7 @@ object LogStream : LogSink {
 
     @Serializable
     data class Filter(
-        val channels: List<String>? = null,            // matches if any token is contained in event.channel
+        val channels: List<String>? = null,            // matches if any selector matches (ChannelMatch: tags)
         val messageContains: String? = null,           // case-insensitive substring
         val messageRegex: String? = null,              // optional regex match
         val blockId: String? = null,                   // match specific block id
@@ -177,7 +177,7 @@ object LogStream : LogSink {
         if (filter.blockId != null && filter.blockId != e.blockId) return false
 
         filter.channels?.let { wanted ->
-            if (!wanted.any { token -> e.channel.contains(token, ignoreCase = true) }) return false
+            if (!wanted.any { selector -> afield.ai.diagnostics.ChannelMatch.matches(e.channel, selector) }) return false
         }
 
         filter.messageContains?.let {

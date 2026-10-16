@@ -328,20 +328,15 @@ What that does **not** cover is Chromium deciding which `<g>` a click landed in.
 `tools/fline_hit_proof.py` covers that half for `FLineHitInspectorFigure`, and the markup here comes
 out of the same `buildInteractiveSVG`.
 
-## Capture gotcha
+## Capture gotcha (fixed 2026-10-16)
 
-`screenshot-box <uid>` selects the box, but the canvas's depth-of-field can still have the *previous*
-selection in focus when the shot lands, and the result is a plausible-looking blurred figure. The
-reliable recipe is to open the box first and preserve that selection:
-
-```
---command 'editor-open <uid> --open-outputs'
---command 'sleep 2'
---command 'screenshot-box <uid> out.png --padding 10 --preserve-selection'
-```
-
-Two consecutive `screenshot-box` calls on the same box sometimes works and sometimes does not; the
-`editor-open` form worked every time.
+This section used to recommend `editor-open --open-outputs`, a sleep, then
+`screenshot-box --preserve-selection`, blaming a canvas depth-of-field lag. Field has no
+depth-of-field. What made repeats unreliable was the prep itself: `fitBoxWidthToOutputsForScreenshot`
+measured each panel at the width the previous capture had set and added 56 px, so every repeated
+`screenshot-box` of a box was wider than the last. It now measures at the panel's pre-capture
+width, and the prep also waits for a navigation pan or a finite CSS animation to finish before
+the shot. Three consecutive shots of one box now come out the same size, with the same content.
 
 ## Migrating a hand-roller
 
