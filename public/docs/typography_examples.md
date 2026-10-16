@@ -459,16 +459,6 @@ Typefaces.fromFile("/path/to/Whatever.ttf", 64.0)        // Font.createFont, not
 `SansSerif` and `Serif` map to different real fonts on different machines, so the pictures above
 will look a little different on yours. The ring counts, genus and winding do not change.
 
-??? aside "Reading outlines in a JVM you launched yourself"
-
-    A JVM that reads glyph outlines and passes `-XstartOnFirstThread` must also pass
-    `-Djava.awt.headless=true`, set before any AWT class initialises. On macOS
-    `sun.font.CFontManager.loadFonts` dispatches to the process's first thread and waits, and under
-    `-XstartOnFirstThread`, which GLFW requires, that thread only services the dispatch if something is
-    pumping its run loop. `Typefaces.warm()` detects this in four seconds and throws with the flag in the
-    message rather than hanging. Field's own desktop JVM sets it (`build.gradle.kts`, `requiredRunJvmArgs`),
-    so you only meet this in a JVM you launched yourself.
-
 ## Run it yourself
 
 The page's boxes are also the [`typography_worked_example`](agent_transcripts.md#typography_worked_example)
