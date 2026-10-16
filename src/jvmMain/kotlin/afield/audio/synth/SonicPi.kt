@@ -82,6 +82,38 @@ class SonicPi private constructor(
         @Volatile
         private var sharedInstance: SonicPi? = null
 
+        /** Where the running daemon's PID is recorded, so the next boot can find one left behind. */
+        internal fun daemonPidFile(): File {
+            val cacheBase = System.getenv("XDG_CACHE_HOME")?.takeIf(String::isNotBlank)?.let(::File)
+                ?: File(System.getProperty("user.home"), ".cache")
+            return File(cacheBase, "field4/sonic-pi/daemon.pid")
+        }
+
+        /**
+         * End the daemon [pidFile] names if it is still alive and is a Sonic Pi daemon, with its
+         * process tree (the spider and the audio server), and say what was done; `null` when there
+         * was nothing to reap. [isDaemon] decides from the process's command line, so a PID the OS
+         * has since reused for something else is left alone.
+         */
+        internal fun reapAbandonedDaemon(
+            pidFile: File,
+            isDaemon: (ProcessHandle) -> Boolean = { h ->
+                h.info().commandLine().orElse("").contains("daemon.rb")
+            },
+        ): String? {
+            val pid = runCatching { pidFile.readText().trim().toLong() }.getOrNull() ?: return null
+            pidFile.delete()
+            val handle = ProcessHandle.of(pid).orElse(null) ?: return null
+            if (!handle.isAlive || !isDaemon(handle)) return null
+            val tree = handle.descendants().toList() + handle
+            tree.forEach { it.destroy() }
+            val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+            while (tree.any { it.isAlive } && System.nanoTime() < deadline) Thread.sleep(50)
+            tree.filter { it.isAlive }.forEach { it.destroyForcibly() }
+            return "ended an abandoned Sonic Pi daemon (pid $pid, ${tree.size} process(es)) left by an earlier Field, " +
+                "so this boot can have the cue port"
+        }
+
         /**
          * The one Sonic Pi this Field owns, booting it if necessary.
          *
@@ -182,10 +214,15 @@ class SonicPi private constructor(
         require(install.ruby.canExecute()) { "Sonic Pi's bundled ruby is not executable: ${install.ruby}" }
         require(install.daemon.isFile) { "Sonic Pi's daemon.rb is missing: ${install.daemon}" }
 
+        // A daemon an earlier Field started and never stopped (it crashed, or was killed) holds the
+        // cue port for about 90 s more, which pushes this boot onto a random one. End it first.
+        reapAbandonedDaemon(daemonPidFile())?.let { println("SonicPi: $it") }
+
         val processBuilder = ProcessBuilder(install.ruby.absolutePath, install.daemon.absolutePath)
             .directory(install.daemon.parentFile)
         processBuilder.environment().putAll(install.environment)
         process = processBuilder.start()
+        runCatching { daemonPidFile().apply { parentFile.mkdirs() }.writeText("${process.pid()}\n") }
 
         // The daemon prints one line — six whitespace-separated integers — then keeps the pipe open
         // for its own logging. Both streams need draining forever regardless, or a full pipe buffer
@@ -632,6 +669,10 @@ class SonicPi private constructor(
         if (!process.waitFor(10, TimeUnit.SECONDS)) {
             process.destroyForcibly()
             process.waitFor(5, TimeUnit.SECONDS)
+        }
+        runCatching {
+            val file = daemonPidFile()
+            if (file.readText().trim() == process.pid().toString()) file.delete()
         }
 
         if (!fromHook) {

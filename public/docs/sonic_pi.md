@@ -520,8 +520,8 @@ Field sends `/daemon/keep-alive` every 1.2 s and asks the daemon to exit when Fi
 dies instead, the daemon shuts down its audio server by itself, but only after about 90 s (Sonic Pi's
 `daemon.rb` says 3 s; its `KillSwitch` waits much longer).
 
-Until then the abandoned daemon holds the cue port, so the next boot gets a random one. If
-`oscCues` is not 4560, look for a leftover Sonic Pi process.
+Until then the abandoned daemon holds the cue port. Field records the PID of each daemon it starts,
+so the next boot ends one an earlier Field left behind before starting its own, and keeps 4560.
 
 Stopping a box takes about a second and a half to go quiet. Sonic Pi has already scheduled the next
 moment of audio, and that drains after the stop.
