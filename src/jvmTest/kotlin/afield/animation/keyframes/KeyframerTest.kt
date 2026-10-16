@@ -542,7 +542,7 @@ class KeyframerTest {
     }
 
     @Test
-    fun aFloatPairStaysFloatAndAnyOtherNumericPairBecomesDouble() {
+    fun aNumericLaneKeepsItsOwnKind() {
         val scope = KeyframeScope()
 
         val floats = scope.interpolate(
@@ -553,14 +553,14 @@ class KeyframerTest {
         assertTrue(floats is Float, "Float + Float stays Float")
         assertEquals(0.5f, floats)
 
-        // Two Int keyframes yield a Double — which an Int uniform will not accept.
+        // Two Int keyframes stay an Int, rounded, so an Int uniform still accepts the blend.
         val ints = scope.interpolate(
             scope.Key(mutableMapOf("v" to 0)),
             scope.Key(mutableMapOf("v" to 10)),
             0.5
         )["v"]
-        assertTrue(ints is Double, "Int + Int becomes Double, not Int")
-        assertEquals(5.0, ints)
+        assertTrue(ints is Int, "Int + Int stays Int")
+        assertEquals(5, ints)
 
         // Mixed Float/Double is Double too.
         val mixed = scope.interpolate(

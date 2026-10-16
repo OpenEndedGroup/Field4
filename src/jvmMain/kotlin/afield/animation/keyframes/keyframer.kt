@@ -1113,9 +1113,12 @@ class KeyframeScope(val schemaVersion: Int = 0) {
             val interpolated: Any = when {
                 va is Number && vb is Number -> {
                     val v = lerp(va.toDouble(), vb.toDouble(), tEffective)
+                    // The lane keeps its own numeric kind, so an Int uniform still gets an Int.
                     when {
-                        va is Float && vb is Float -> v.toFloat()
-                        va is Double && vb is Double -> v
+                        va is Int && vb is Int -> Math.round(v).toInt()
+                        va is Long && vb is Long -> Math.round(v)
+                        va is Double || vb is Double -> v
+                        va is Float || vb is Float -> v.toFloat()
                         else -> v
                     }
                 }
