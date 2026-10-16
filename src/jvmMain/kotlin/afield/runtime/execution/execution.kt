@@ -1,5 +1,6 @@
 package afield.runtime.execution
 
+import afield.runtime.mainLanguage
 import afield.app.protocol.handle
 import afield.app.server.Server
 import afield.app.server.documents
@@ -3876,6 +3877,19 @@ private fun MutableMap<String, Int>.incrementAndGet(name: String): Int {
     return this[name]!!
 }
 
+/**
+ * A language root's own code is still Kotlin (only its children run in the language), so Python typed
+ * into the Python root fails as Kotlin with a message about Kotlin. Say which box this is instead.
+ */
+internal fun languageRootHint(b: Box): String? {
+    val language = b.mainLanguage?.takeIf { it.isNotBlank() && !it.equals("kotlin", ignoreCase = true) }
+        ?: if ((b.getPropertyRaw("isPythonRoot", null) as? Boolean) == true) "python" else null
+    return language?.let {
+        "This box is the $it root: the boxes connected under it run as $it, but its own code is Kotlin. " +
+            "Put the $it in a child box."
+    }
+}
+
 fun improveMessage(
     b: Box,
     errorMessage: String,
@@ -3888,6 +3902,7 @@ fun improveMessage(
     // They are surfaced as structured, actionable rows via suggestionsFor() (Apply / Ask AI4
     // buttons in the error output area). The numeric-mismatch hint stays as explanatory context.
     numericMismatchHint(errorMessage)?.let { hints += escapeNotifyHtml(it) }
+    languageRootHint(b)?.let { hints += escapeNotifyHtml(it) }
 
     val escapedMessage = escapeNotifyHtml(errorMessage)
     if (hints.isEmpty()) return escapedMessage

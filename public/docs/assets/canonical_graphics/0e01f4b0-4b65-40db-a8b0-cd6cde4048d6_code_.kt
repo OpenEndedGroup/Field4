@@ -18,7 +18,7 @@ camera.at = vec(0,0,-10)
 camera.p()
 
 loop {
-    module.VertexData.modelView = camera.m()
+    module.VertexData.modelView = meshes[0].meshes[0].modelView(camera)
     module.VertexData.proj = camera.p()
     frame()
 }

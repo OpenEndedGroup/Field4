@@ -430,11 +430,8 @@ between them they are the examples this page is drawn from.
     the shipped [agent transcripts](agent_transcripts.md).
 
     ```diffstatic {data-lang=bash}
-    VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision-preview python3 tools/run_field_tests.py --id vision.geometry-preview
+    VISION_GEOMETRY_PREVIEW_DIR=public/docs/assets/vision_geometry python3 tools/run_field_tests.py --id vision.geometry-preview
     ```
-
-    Render to a temp directory and copy the files in afterwards. Writing them straight into the working
-    tree, while the runner's Field server is watching it, takes the child process down mid-run.
 
     The FIELD_TEST asserts as well as draws: the mesh invariants, the analytic vertex and triangle
     counts of every shape primitive, the packed stride against **both** `VISION_METAL_VERTEX_FLOATS` and

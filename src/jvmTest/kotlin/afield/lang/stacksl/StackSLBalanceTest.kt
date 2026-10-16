@@ -37,4 +37,15 @@ class StackSLBalanceTest {
         )
         assertTrue(result.ok, result.diagnostics.joinToString("\n"))
     }
+
+    @Test
+    fun aMarkNamedLikeALaneIsExplained() {
+        val result = compile(
+            """
+            uv >x <x
+            """
+        )
+        assertFalse(result.ok)
+        assertTrue(result.diagnostics.any { "lane" in it.message && "another name" in it.message }, result.diagnostics.joinToString("\n"))
+    }
 }

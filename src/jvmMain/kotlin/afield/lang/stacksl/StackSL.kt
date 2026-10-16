@@ -1762,6 +1762,12 @@ private class FunctionCompiler(
         val value = localMarks[key]
         if (value != null) {
             push(value)
+        } else if (key in setOf("x", "y", "z", "w")) {
+            errorOrWarning(
+                token,
+                "No mark '$name' can exist: `>$name` is the word that replaces the $name lane of a value, not a " +
+                    "mark write, so `<$name` has nothing to read. Give the mark another name.",
+            )
         } else {
             errorOrWarning(token, "Unknown StackSL local mark '$name'.")
         }
