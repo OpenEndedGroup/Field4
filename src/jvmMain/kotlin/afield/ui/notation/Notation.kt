@@ -572,19 +572,12 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
     fun line(points: List<Vec2>, name: String? = null, stroke: String = this.stroke): MarkRef =
         add(linear("line", nextId(name), points, name, stroke))
 
-    /** [line] through the points of an [FLine] (curves are sampled). */
-    fun line(fline: FLine, name: String? = null, stroke: String = this.stroke): MarkRef =
-        line(sample(fline), name, stroke)
-
     /**
      * A freehand stroke — the same kind of mark as one drawn with the pen tool. Give [pressure]
      * (a function of the fraction of the way along the stroke, 0..1, returning 0..1) to record
      * pen pressure the way a tablet does; without it the stroke is like a mouse stroke, and
      * [Mark.pressures] reads back empty.
      */
-    fun stroke(fline: FLine, name: String? = null, stroke: String = this.stroke, pressure: ((Double) -> Double)? = null): MarkRef =
-        stroke(sample(fline), name, stroke, pressure)
-
     fun stroke(points: List<Vec2>, name: String? = null, stroke: String = this.stroke, pressure: ((Double) -> Double)? = null): MarkRef {
         val pressures = if (pressure == null || points.isEmpty()) emptyList() else {
             val arc = DoubleArray(points.size)
@@ -778,7 +771,7 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
         return (lines.maxOf { it.length } * size * 0.55).coerceAtLeast(size) to lines.size * size * 1.25
     }
 
-    private fun sample(fline: FLine): List<Vec2> {
+    internal fun sample(fline: FLine): List<Vec2> {
         val out = ArrayList<Vec2>()
         var last: afield.math.linalg.Vec3? = null
         for (node in fline.nodes) {
@@ -880,3 +873,14 @@ internal object NotationStore {
     fun setSelection(info: SessionInformation, ids: List<String>) { selections[info] = ids }
     fun selection(info: SessionInformation): List<String> = selections[info] ?: emptyList()
 }
+
+// The FLine overloads are extensions so that a `[a, b]` literal, which could build either a List or an
+// FLine, resolves to the member List overload instead of being ambiguous: a member that applies wins.
+
+/** [NotationBuilder.line] through the points of an [FLine] (curves are sampled). */
+fun NotationBuilder.line(fline: FLine, name: String? = null, stroke: String = this.stroke): MarkRef =
+    line(sample(fline), name, stroke)
+
+/** [NotationBuilder.stroke] along an [FLine] (curves are sampled). */
+fun NotationBuilder.stroke(fline: FLine, name: String? = null, stroke: String = this.stroke, pressure: ((Double) -> Double)? = null): MarkRef =
+    stroke(sample(fline), name, stroke, pressure)
