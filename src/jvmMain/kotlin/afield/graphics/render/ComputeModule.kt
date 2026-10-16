@@ -41,8 +41,26 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
         }
     }
 
-    fun reload(p: Parameters, onError: (String, Throwable?) -> Unit = p.errorHandler): Boolean {
-        if (current.valid && p == current.parameters) return false
+    /** What a [reloadOutcome] did. */
+    enum class ReloadOutcome {
+        /** The parameters were already the compiled ones; nothing happened. */
+        UNCHANGED,
+        /** A new module compiled and replaced the old one. */
+        RELOADED,
+        /** The new parameters did not compile; the old module keeps running. */
+        FAILED,
+    }
+
+    /**
+     * True when the module was replaced. False covers both "already compiled" and "did not
+     * compile"; [reloadOutcome] tells them apart.
+     */
+    fun reload(p: Parameters, onError: (String, Throwable?) -> Unit = p.errorHandler): Boolean =
+        reloadOutcome(p, onError) == ReloadOutcome.RELOADED
+
+    /** [reload], saying which of the three things happened. */
+    fun reloadOutcome(p: Parameters, onError: (String, Throwable?) -> Unit = p.errorHandler): ReloadOutcome {
+        if (current.valid && p == current.parameters) return ReloadOutcome.UNCHANGED
 
         p.errorHandler = onError
 
@@ -90,10 +108,10 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
             current = m
             // Retired through the renderer's deferred queue, as in ModulePointer.reload.
             previous.cleanup()
-            return true
+            return ReloadOutcome.RELOADED
         }
         m.cleanup()
-        return false
+        return ReloadOutcome.FAILED
     }
 
     operator fun plusAssign(m: Pair<String, ComputeTask>) {

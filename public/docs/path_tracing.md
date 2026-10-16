@@ -1066,10 +1066,8 @@ will not reflect your edit until the next build. Either way the backend's `#defi
 HARDWARE_QUERY` is applied for you, and applied idempotently: source that already carries
 one, or lacks one, both come out right for this device.
 
-`reloadIntegrator` reports one of three outcomes. (The underlying
-`ComputeModulePointer.reload` answers `false` both for "this source is already compiled"
-and for "this source does not compile", so code wrapping it in `check(…)` throws on a
-no-op.)
+`reloadIntegrator` reports one of three outcomes, as `ComputeModulePointer.reloadOutcome` does for
+any compute module.
 
 | `IntegratorReload.status` | meaning | `ok` | `reloaded` |
 | --- | --- | --- | --- |
