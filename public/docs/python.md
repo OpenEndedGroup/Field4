@@ -190,8 +190,8 @@ Field looks for an interpreter in this order, and uses the first one that has `l
 
 1. `-Dafield.python.venv=…` / `-Dafield.python.executable=…`
 2. `FIELD_PYTHON_VENV` / `FIELD_PYTHON_EXECUTABLE`
-3. whatever `/welcome` last saved, in `~/.afield/python.properties`
-4. `VIRTUAL_ENV`, then `CONDA_PREFIX`
+3. `VIRTUAL_ENV`, then `CONDA_PREFIX`, so an environment active in the shell that started Field wins
+4. whatever `/welcome` last saved, in `~/.afield/python.properties`
 5. `python3`, then `python`, on `PATH`
 
 The `/welcome` panel has an **Install JEP** button. It installs pip if needed, then runs
@@ -225,9 +225,6 @@ export FIELD_PYTHON_VENV="$PWD/.venv"
 
 Install the `jep` version that matches the jar Field ships (`libs/jep-4.3.1.jar`). JEP does not
 check that its native library and jar come from the same release.
-
-Activating a venv may not be enough to switch interpreters: the one saved by `/welcome` ranks above
-`VIRTUAL_ENV`. Set `FIELD_PYTHON_VENV` or `FIELD_PYTHON_EXECUTABLE` to be sure.
 
 ??? aside "Agents: how this page's pictures are made"
 

@@ -1926,9 +1926,12 @@ class PythonInterface {
             add("executable", System.getProperty("afield.python.executable"), "system property afield.python.executable")
             add("venv", System.getenv("FIELD_PYTHON_VENV"), "env FIELD_PYTHON_VENV")
             add("executable", System.getenv("FIELD_PYTHON_EXECUTABLE"), "env FIELD_PYTHON_EXECUTABLE")
-            readPersistedPythonChoice()?.let { choices += it.copy(source = "welcome settings") }
+            // An environment activated in the shell that launched Field is the most recent choice anyone
+            // made, so it outranks the one /welcome saved; an active env without JEP is skipped and the
+            // saved choice is tried next.
             add("venv", System.getenv("VIRTUAL_ENV"), "env VIRTUAL_ENV")
             add("venv", System.getenv("CONDA_PREFIX"), "env CONDA_PREFIX")
+            readPersistedPythonChoice()?.let { choices += it.copy(source = "welcome settings") }
             add("executable", "python3", "PATH python3")
             add("executable", "python", "PATH python")
             return choices.distinctBy { it.kind to it.path }
