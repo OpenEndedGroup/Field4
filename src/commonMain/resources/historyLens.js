@@ -707,7 +707,7 @@ const HistoryLens = (() => {
     function createMarginDom(editor) {
         const margin = document.createElement("div");
         margin.className = "history-lens-margin";
-        margin.innerHTML = `<div class="history-lens-margin-close closeBox hoverable" title="Close history lens">×</div>`;
+        margin.innerHTML = `<div class="history-lens-margin-close closeBox hoverable" title="Close code history">×</div>`;
         for (const eventName of ["pointerdown", "mousedown", "mouseup"]) {
             margin.addEventListener(eventName, (event) => {
                 event.stopPropagation();
