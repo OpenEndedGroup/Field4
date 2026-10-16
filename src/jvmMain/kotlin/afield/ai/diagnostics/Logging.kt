@@ -146,9 +146,16 @@ object StdoutLog : LogSink {
             BlockBoundary.END -> "<|< "
             null -> ""
         }
-        val full = prefix + channelPart + event.indent + boundaryMarker + event.message
+        val full = prefix + channelPart + depthIndent(event.indent) + boundaryMarker + event.message
         println(full)
     }
+
+    /**
+     * An `lblock` indent is one `"<block uuid>\t"` token per open block — the structured sinks use
+     * the ids. A terminal wants the depth: two spaces per level, not 36 characters of UUID.
+     */
+    internal fun depthIndent(indent: String): String =
+        if (indent.isEmpty()) "" else "  ".repeat(indent.count { it == '\t' }.coerceAtLeast(1))
 }
 
 class NotifyLog(

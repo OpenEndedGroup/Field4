@@ -196,15 +196,6 @@ class ProseNumeralContractTest {
         val CHANNEL_CALL = Regex("\\blprintln\\(\"([^\"\\n]+)\"")
 
         /**
-         * The same rule as [CHANNEL_CALL] for `lblock`, which brackets a scope rather than
-         * emitting a line. Literal-only for the same reason, and the correction it forced is
-         * recorded on the `lblockCallSites` derivation: a bare `lblock(` count is 12 and includes
-         * the declaration and its deprecated overload, so it counts the function among its own
-         * callers.
-         */
-        val LBLOCK_CALL = Regex("\\blblock\\(\"")
-
-        /**
          * The single method [afield.ai.diagnostics.LogSink] declares, which every implementation must
          * override. Counted instead of a `: LogSink` supertype list because `NotifyLog`'s supertype
          * sits on its own line after a multi-line constructor, where a line-oriented regex misses
@@ -677,39 +668,6 @@ class ProseNumeralContractTest {
                             tag !in c.split(',').map { it.trim() }
                     }.map { c -> "$tag -> $c" }
                 }
-            },
-        ),
-        DerivedCountGuard.Derivation(
-            key = "lblockCallSites",
-            page = "public/docs/logging.md",
-            what = "calls to `lblock` with the channel written as a literal",
-            // 6 on 2026-09-07, and the page uses the number to explain why a real wart has
-            // survived: a line logged inside an `lblock` is prefixed by a raw 36-character UUID
-            // on a plain terminal, and six call sites is not enough friction for anyone to have
-            // minded. That argument is load-bearing on the count being *small*, which is the
-            // unusual case here — every other floor on this page guards a number against
-            // shrinking, and this one is really an implicit ceiling.
-            //
-            // Literal-channel, the same rule as [CHANNEL_CALL], and the reason is the same
-            // correction: a bare `\blblock\(` count is 12, of which 2 are the declaration and
-            // its deprecated overload in `logger.kt`. The page said "twelve" until this
-            // derivation was written and the two numbers had to be reconciled — the definition
-            // won, because "twelve" was counting the function as one of its own callers.
-            //
-            // Floored at 2 rather than near 6 for the reason above. If `lblock` grew to a
-            // hundred call sites this floor would not notice, but the sentence would be wrong;
-            // that is a limit of the mechanism, and the honest thing is to say so here rather
-            // than to imply a ceiling exists. What the floor does catch is the scrape silently
-            // stopping, which is the failure this class was built against.
-            floor = 2,
-            landmarks = setOf("src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface2.kt#0"),
-            derive = { r ->
-                DerivedCountGuard.kotlinSourcesUnder(r, *LOG_SCRAPE_ROOTS)
-                    .flatMapTo(sortedSetOf()) { f ->
-                        val rel = f.relativeTo(r).path
-                        val n = LBLOCK_CALL.findAll(f.readText()).count()
-                        (0 until n).map { "$rel#$it" }
-                    }
             },
         ),
         DerivedCountGuard.Derivation(

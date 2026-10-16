@@ -326,12 +326,8 @@ display("main", Table(
 The footnote shows how nesting is stored: it is carried in an `indent` string kept separately for each
 thread, and it holds one block UUID and a tab per level rather than spaces
 (`logger.kt:69#val added = "${u}\t"`). `PinnedConsole` parses those tokens back out to find
-which open block a line belongs to, which is what they are for. `StdoutLog` does not: it
-concatenates the indent into the line as-is
-(`Logging.kt:106#val full = prefix + channelPart + event.indent + boundaryMarker + event.message`),
-so on a plain terminal a line logged inside an `lblock` is prefixed by a raw 36-character
-UUID. `lblock` is called with a channel literal in only six<!--count:lblockCallSites-->
-places in the tree, so few terminal lines carry one.
+which open block a line belongs to, which is what they are for. On a plain terminal
+`StdoutLog` prints only the depth, two spaces per level.
 
 Because `indent` is per thread, a block does not nest across threads: work handed to
 another thread inside an `lblock` logs at depth zero.
