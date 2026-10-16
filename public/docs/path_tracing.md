@@ -1066,10 +1066,8 @@ will not reflect your edit until the next build. Either way the backend's `#defi
 HARDWARE_QUERY` is applied for you, and applied idempotently: source that already carries
 one, or lacks one, both come out right for this device.
 
-`reloadIntegrator` reports one of three outcomes. (The underlying
-`ComputeModulePointer.reload` answers `false` both for "this source is already compiled"
-and for "this source does not compile", so code wrapping it in `check(…)` throws on a
-no-op.)
+`reloadIntegrator` reports one of three outcomes, as `ComputeModulePointer.reloadOutcome` does for
+any compute module.
 
 | `IntegratorReload.status` | meaning | `ok` | `reloaded` |
 | --- | --- | --- | --- |
@@ -1080,9 +1078,7 @@ no-op.)
 A failed reload is invisible in the window — the image carries on from where it was — which
 is the same guarantee the material-shader path gives.
 
-The swap takes effect a frame after it is requested: `reloadIntegrator` replaces the module, and the
-next frame is what notices the new pipeline and discards accumulation. So waiting on a
-sample count immediately after a reload is satisfied by the count the **old** integrator
-left behind. Wait for `samples` to fall first, or for `lastResetReason` to change.
+A successful reload sets `samples` back to 0 at once, so waiting on a sample count afterwards waits
+for the new integrator's samples.
 
 The opaque path tracer can also feed [Ray Reconstruction](path_traced_reconstruction.md), with raw and progressive views retained.

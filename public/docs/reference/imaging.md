@@ -4,7 +4,7 @@
 
 Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. Dependency-free CPU float math built on one value type, `Img`, with the separable-convolution core vectorized to roughly OpenCV's single-threaded speed. Every detector hands back geometry, so results go straight to `lines()`.
 
-45 source file(s), 735 public symbol(s), 335 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+45 source file(s), 736 public symbol(s), 336 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1679,29 +1679,35 @@ One immutable, fence-completed Vulkan image for the Electron nativePixmap import
 | --- | --- |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/stream/LinuxElectronImportProbe/#L24) |  |
 
-## OpticalFlow.kt { #opticalflow-kt }
+## HardwareOpticalFlow.kt { #hardwareopticalflow-kt }
 
-`src/jvmMain/kotlin/afield/media/vision/OpticalFlow.kt` — [read the source](source/jvmMain/afield/media/vision/OpticalFlow/)
+`src/jvmMain/kotlin/afield/media/vision/HardwareOpticalFlow.kt` — [read the source](source/jvmMain/afield/media/vision/HardwareOpticalFlow/)
 
-### OpticalFlow { #opticalflow-kt-opticalflow }
+### HardwareOpticalFlow { #hardwareopticalflow-kt-hardwareopticalflow }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">OpticalFlow</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span><span class="k">override</span> <span class="k">val</span> <span class="n">first</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span><span class="k">override</span> <span class="k">val</span> <span class="n">second</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">grid</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="k">val</span> <span class="n">quality</span><span class="p">:</span> <span class="nc">Quality</span><span class="o">=</span><span class="nc">Quality</span><span class="p">.</span><span class="nc">SLOW</span><span class="p">)</span> <span class="p">:</span> <span class="nc">OpticalFlowOperation</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L37)
+[<code class="highlight"><span class="k">class</span> <span class="nf">HardwareOpticalFlow</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span><span class="p">,</span><span class="k">override</span> <span class="k">val</span> <span class="n">first</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span><span class="k">override</span> <span class="k">val</span> <span class="n">second</span><span class="p">:</span> <span class="nc">HasImageView</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">grid</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="k">val</span> <span class="n">quality</span><span class="p">:</span> <span class="nc">Quality</span><span class="o">=</span><span class="nc">Quality</span><span class="p">.</span><span class="nc">SLOW</span><span class="p">)</span> <span class="p">:</span> <span class="nc">OpticalFlowOperation</span></code>](source/jvmMain/afield/media/vision/HardwareOpticalFlow/#L37)
 
 Dedicated hardware image correspondence. Call `evaluate` between Field frames, after producers have submitted. Images stay on the GPU. This first implementation waits for one final fence; it does not overlap pairs, and includes conversion/synchronization in `milliseconds`.
 
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">grid</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">Quality</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">vk</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L40) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">width</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L46) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">height</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L47) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">flowWidth</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L48) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">flowHeight</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L49) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">opticalTimestampBits</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L54) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">output</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L75) | Sampled RGBA32F texture: XY displacement in input pixels, Z matching cost, W = 1. Dimensions are ceil(input width/grid) by ceil(input height/grid), owned by this operation. |
-| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">milliseconds</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L86) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">reset</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L141) | Reset temporal hints for a cut, image-order change or nonconsecutive pair. |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/OpticalFlow/#L195) |  |
+| [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">Quality</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">vk</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/HardwareOpticalFlow/#L40) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">width</span></code>](source/jvmMain/afield/media/vision/HardwareOpticalFlow/#L46) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">height</span></code>](source/jvmMain/afield/media/vision/HardwareOpticalFlow/#L47) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">flowWidth</span></code>](source/jvmMain/afield/media/vision/HardwareOpticalFlow/#L48) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">flowHeight</span></code>](source/jvmMain/afield/media/vision/HardwareOpticalFlow/#L49) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">opticalTimestampBits</span></code>](source/jvmMain/afield/media/vision/HardwareOpticalFlow/#L54) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">output</span></code>](source/jvmMain/afield/media/vision/HardwareOpticalFlow/#L75) | Sampled RGBA32F texture: XY displacement in input pixels, Z matching cost, W = 1. Dimensions are ceil(input width/grid) by ceil(input height/grid), owned by this operation. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">milliseconds</span></code>](source/jvmMain/afield/media/vision/HardwareOpticalFlow/#L86) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">reset</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/HardwareOpticalFlow/#L141) | Reset temporal hints for a cut, image-order change or nonconsecutive pair. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/vision/HardwareOpticalFlow/#L195) |  |
+
+### OpticalFlow { #hardwareopticalflow-kt-opticalflow }
+
+[<code class="highlight"><span class="k">typealias</span> <span class="nc">OpticalFlow</span> <span class="o">=</span> <span class="nc">HardwareOpticalFlow</span></code>](source/jvmMain/afield/media/vision/HardwareOpticalFlow/#L237)
+
+The old name of [`HardwareOpticalFlow`](imaging.md#hardwareopticalflow-kt-hardwareopticalflow), which read as the general entry point; `opticalFlow(...)` is that.
 
 ## OpticalFlowDemo.kt { #opticalflowdemo-kt }
 

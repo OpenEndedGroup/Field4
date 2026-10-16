@@ -456,8 +456,6 @@ polytope box's AI4 chat. Opening the chat does not call a model.
   only rebind the slots.
 - A sheet is sampled in real time: its frames are as far apart as the window was when they were read
   back, and each is labelled with when it was taken.
-- On macOS the shader is translated to Metal, and a function named like one of Metal's types (`decay`,
-  `array`) will not build there. A slot with such a name is refused before it is compiled.
 
 ??? aside "How this page was recorded and checked"
 

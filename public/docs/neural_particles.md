@@ -292,13 +292,10 @@ Cells are row-major rather than Morton-ordered. A hierarchy needs a node's *chil
 flat grid needs a *cell's members* contiguous, and row-major does that while making the nine
 indices of a 3x3 neighbourhood plain arithmetic instead of a bit interleave.
 
-!!! warning "Cell size is the interaction radius"
-
-    The 3x3 block covers one cell width, so `cellSize` (`domainSize / cellsPerSide`) is the
-    largest radius the query answers correctly. Make the cells smaller than your interaction radius
-    and the query silently misses neighbours: the shader still runs and the flock still flocks, but
-    the result is wrong and nothing reports it. Size the grid from the radius, not from the
-    particle count.
+The 3x3 block covers one cell width, so `cellSize` (`domainSize / cellsPerSide`) is the largest
+radius the query answers correctly. `install` refuses a larger radius, and one raised past it later
+is held to `cellSize` with a warning in the log. Size the grid from the radius, not from the
+particle count.
 
 Particles outside the domain are clamped into the edge cells rather than dropped, because a lost
 particle is a particle that silently stops interacting.
@@ -515,20 +512,9 @@ about it**, so two flocks side by side still differ only in their rule. No retra
 
 ---
 
-## Running it
-
-The four transcripts are the intended entry point. The four GPU smokes are the same machinery driven
-headlessly, and are what to run after changing any of it:
-
-```diffstatic {data-lang=text}
-tools/run_field_tests.py --id four.neural-field-parity.smoke   # one forward pass, CPU vs GPU
-tools/run_field_tests.py --id four.neural-particles.smoke      # a whole trajectory, point by point
-tools/run_field_tests.py --id four.neighbour-grid.smoke        # neighbour sets vs brute force
-tools/run_field_tests.py --id four.shader-boids.smoke          # both rules vs a CPU brute force
-```
-
-All four need a GPU and an awake display: Field 4 has no headless mode, so even a
-compute-only dispatch needs a `Window` for the device to exist.
+??? aside "Agents: smoke tests"
+    The four GPU smokes that check this machinery, and what each compares, are listed in
+    [`dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md#smoke-tests).
 
 ## Limits
 

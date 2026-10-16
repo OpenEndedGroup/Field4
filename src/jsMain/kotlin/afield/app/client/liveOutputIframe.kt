@@ -100,13 +100,26 @@ fun installLiveOutputIframeClient() {
         request.frameName = frameName
         request.frameUrl = frame.src
         if (command.operation == "screenshot") {
+            // An output area panned off the canvas has no pixels to capture. Bring it into view the
+            // way a reader would, by panning the canvas so it is centred, then measure again.
+            frame.getBoundingClientRect().let { r ->
+                val offscreen = r.right <= 0.0 || r.bottom <= 0.0 ||
+                    r.left >= window.innerWidth.toDouble() || r.top >= window.innerHeight.toDouble()
+                if (offscreen) {
+                    val (tx, ty) = mainTranslation
+                    moveCanvasCamera(
+                        tx + window.innerWidth / 2.0 - (r.left + r.width / 2.0),
+                        ty + window.innerHeight / 2.0 - (r.top + r.height / 2.0),
+                    )
+                }
+            }
             val rect = frame.getBoundingClientRect()
             val x = maxOf(0.0, rect.left)
             val y = maxOf(0.0, rect.top)
             val right = minOf(window.innerWidth.toDouble(), rect.right)
             val bottom = minOf(window.innerHeight.toDouble(), rect.bottom)
             if (right <= x || bottom <= y) {
-                fail("Iframe is outside the visible Electron tab")
+                fail("Iframe is outside the visible Electron tab even after panning the canvas to it; is its output area collapsed?")
                 return@put Handled.yes
             }
             request.captureRect = JSON.parse<dynamic>("{}")

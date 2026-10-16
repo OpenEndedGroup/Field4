@@ -545,11 +545,9 @@ class PathTracingRenderer(
      * current then and the superseded one is this method's to release.
      *
      * Accumulation resets itself — [updateFrame] notices the new pipeline and discards history,
-     * which is also where the superseded per-frame uniform buffers are retired. So `samples` does
-     * not fall until the *next* frame is recorded, which is worth knowing if you are about to read
-     * the image back: waiting on a sample count immediately after a reload will be satisfied by the
-     * count the old integrator left behind. This method names the reason for that reset rather than
-     * performing it, so [resetGeneration] advances once, not twice.
+     * which is also where the superseded per-frame uniform buffers are retired. `samples` is set to 0
+     * here, at once, so a wait on the sample count after a reload can only be satisfied by the new
+     * integrator. The reason is named here and the generation advances once, in that next frame.
      */
     fun reloadIntegrator(source: String = integratorSource()): IntegratorReload {
         check(!closed) { "This tracer is closed" }
@@ -569,6 +567,7 @@ class PathTracingRenderer(
         // `updateFrame`'s own reset a frame later says the same thing instead of "property edit".
         resetReason = "integrator reloaded"
         pendingPipelineReason = "integrator reloaded"
+        samples = 0
         return IntegratorReload.reloaded(source)
     }
 

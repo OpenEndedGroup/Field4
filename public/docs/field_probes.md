@@ -197,11 +197,9 @@ val snap: FieldProbeSnapshot? = probe.readLatest()
 box; `onSnapshot { }` hands you the raw `FieldProbeSnapshot` on the read-back
 thread if you would rather build your own UI or drive control logic. Read-back
 always happens off the render thread, so a slow front end never stalls the GPU.
-`maxDisplayHz` always limits how often the card is sent, but it limits the
-GPU-to-CPU read only for a probe that has a display channel and no callback.
-With `onSnapshot` registered, or with `readLatest()` and no display channel,
-the read runs every frame, so a callback that does real work runs at full frame
-rate.
+`maxDisplayHz` limits how often the card is sent. `maxReadHz` limits the
+GPU-to-CPU read for every kind of probe; left unset, a display-only probe reads at
+`maxDisplayHz` and one with `onSnapshot` or `readLatest()` reads every frame.
 
 ### The snapshot
 
@@ -409,7 +407,7 @@ control loop and switch on `fieldProbe` only while you are looking.
   discrete GPU. A host-visible-but-uncached (write-combined) buffer maps fine but
   its CPU reads are very slow. If you build your own read-back buffer, ask for the same: `storage(); streamReads()`.
 - **Throttling.** `fieldProbe` reads back off the render thread, at most
-  `maxDisplayHz` times a second when it only has a `display(...)` channel;
+  `maxReadHz` times a second when that is set, else `maxDisplayHz` when it only has a `display(...)` channel;
   raising it updates the card more often at the cost of more read-backs. `fieldStats` reads back once per frame
   when `cpuSnapshotsEnabled` is true; set it to `false` when only the GPU consumes
   the results.

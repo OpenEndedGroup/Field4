@@ -544,12 +544,16 @@ private fun validateStackAutoShaderName(name: String) {
     require(stackAutoShaderNameRegex.matches(name)) {
         "stack.auto name '$name' must be a GLSL identifier."
     }
-    // The name is the slot's GLSL function's; on macOS a name Metal already has breaks the shader's build.
-    require(name !in afield.graphics.shader.MetalShaderErrors.reservedNames) {
-        "stack.auto name '$name' is also metal::$name in Metal's standard library. On macOS the shader runs through MoltenVK, " +
-            "which puts both in scope, and the shader will not build. Choose another name."
-    }
 }
+
+/**
+ * The slot's GLSL function is called by its name, and on macOS the shader goes through Metal, where a
+ * name such as `decay` or `array` is already taken. For those names a `#define` renames the function
+ * and every later call to it before SPIR-V is made, so the user's spelling still works and Metal never
+ * sees the clash.
+ */
+private fun withMetalSafeName(name: String, glsl: String): String =
+    if (name in afield.graphics.shader.MetalShaderErrors.reservedNames) "\n#define $name stackauto_$name\n$glsl" else glsl
 
 private fun validateStackAutoEntrypointName(name: String) {
     require(stackAutoEntrypointNameRegex.matches(name)) {
@@ -870,14 +874,15 @@ private fun publishStackAutoReport(box: Box, report: StackAutoReport?) {
 private fun stackAutoShaderFunctionFor(box: Box, target: StackAutoShaderTarget, kind: ShaderKind? = null): String {
     validateStackAutoShaderName(target.name)
     box.stackAutoShaderSources.putIfAbsent(target.name, "")
-    if (kind != null && kind in STACK_AUTO_LIVE_STAGES && stackAutoLiveNumbersEnabled()) return liveStackAutoShaderFunctionFor(box, target)
+    if (kind != null && kind in STACK_AUTO_LIVE_STAGES && stackAutoLiveNumbersEnabled())
+        return withMetalSafeName(target.name, liveStackAutoShaderFunctionFor(box, target))
     val (glsl, report) = compileStackAutoShaderFunctionReporting(
         target, box.stackAutoShaderSources[target.name] ?: ""
     )
     // Also here, not only on the live-coding setter: a slot bound before its shader existed is compiled
     // for the first time during preprocessing, and that is the compile whose warnings matter most.
     publishStackAutoReport(box, report)
-    return glsl
+    return withMetalSafeName(target.name, glsl)
 }
 
 /** The stages whose modules reflect uniform blocks into live structures, so a slot's numbers can live in one ([StackAutoNumbers]). */

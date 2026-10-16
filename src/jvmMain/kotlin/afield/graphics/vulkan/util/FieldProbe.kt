@@ -517,6 +517,13 @@ class ShaderFieldProbe(
     var enabled: Boolean = true
     var maxDisplayHz: Double = 5.0
 
+    /**
+     * How often the GPU-to-CPU read may run, for every kind of probe: callback, [readLatest] or
+     * display. Unset, a display-only probe reads at [maxDisplayHz] and one with a callback or no
+     * display channel reads every frame. `0.0` reads every frame.
+     */
+    var maxReadHz: Double? = null
+
     var ordinalStart: UInt = 0u
         private set
     var ordinalEndExclusive: UInt = UInt.MAX_VALUE
@@ -653,9 +660,10 @@ class ShaderFieldProbe(
     }
 
     private fun shouldReadSnapshot(now: Long): Boolean {
-        if (continuousSnapshotReads || snapshotCallback != null || displayChannel == null) return true
-        if (maxDisplayHz <= 0.0) return true
-        val minIntervalNanos = (1_000_000_000.0 / maxDisplayHz).toLong()
+        if (continuousSnapshotReads) return true
+        val hz = maxReadHz ?: if (snapshotCallback != null || displayChannel == null) 0.0 else maxDisplayHz
+        if (hz <= 0.0) return true
+        val minIntervalNanos = (1_000_000_000.0 / hz).toLong()
         return !hasSnapshotRead || now < lastSnapshotReadNanos || now - lastSnapshotReadNanos >= minIntervalNanos
     }
 

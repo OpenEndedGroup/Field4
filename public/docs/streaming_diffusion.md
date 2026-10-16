@@ -81,15 +81,15 @@ export FIELD_STREAMDIFFUSION_ROOT=/path/to/sd2
 
 Run Field from its checkout. An existing compatible backend can be reused: install
 `optional/streamdiffusion/requirements.txt` into its environment and set the same
-variable. If Field is already running, replace the curves box's `root` expression
-with `java.io.File("/path/to/sd2")` and run the box again. Nothing is downloaded
+variable. If Field is already running, write the path into
+`~/.afield/streamdiffusion-root.txt` instead and run the box again. Nothing is downloaded
 merely by opening the document.
 
 TAEHV is the decoder for this integration. `useTensorRT = true` is the default;
 the first run may build engines. To use the Torch decoder path instead, set
-`useTensorRT = false` in the configuration. Check
-`view.session.capabilities.optBoolean("tensorrt_active")` to see whether an engine
-actually executed; requesting TensorRT does not establish that it is active.
+`useTensorRT = false` in the configuration. `view.session.tensorRtActive` says whether an
+engine actually executed, and `view.session.status` notes it when TensorRT was requested and is not
+running.
 
 ## Process your own rendered texture
 

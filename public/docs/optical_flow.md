@@ -10,7 +10,7 @@ Field has two implementations behind one contract. `opticalFlow(...)` picks betw
 
 | Backend | Class | Runs on | Cost channel |
 | --- | --- | --- | --- |
-| `HARDWARE` | `OpticalFlow` | Devices with `VK_NV_optical_flow` enabled: NVIDIA Ada (RTX 40-series) and later | The engine's raw matching cost |
+| `HARDWARE` | `HardwareOpticalFlow` | Devices with `VK_NV_optical_flow` enabled: NVIDIA Ada (RTX 40-series) and later | The engine's raw matching cost |
 | `PYRAMID` | `PyramidOpticalFlow` | Every Vulkan device Field runs on, including macOS through MoltenVK | Mean absolute window residual, in grey levels 0–255 |
 
 `OpticalFlowBackend.AUTO`, the default, chooses `HARDWARE` when the device reports the extension and `PYRAMID` otherwise. Both starting points below print the backend they used. The motion vectors mean the same thing on both. **The cost scales differ**, so a rejection threshold tuned on one backend does not transfer to the other.
@@ -39,7 +39,7 @@ The field can be useful even when the correspondence is imperfect. Repetition, n
 
 ## Constructing the operation
 
-`opticalFlow(renderer, firstImage, secondImage, grid = 4)` creates a reusable operation, an `OpticalFlowOperation`, on whichever backend `AUTO` picks. Pass `backend = OpticalFlowBackend.PYRAMID` to force the portable one. Constructing `OpticalFlow(...)` directly still means hardware only, and it fails on a device without the extension. The two image arguments have type **`HasImageView`**, Field's interface for a GPU image view. **A `RenderToTexture` implements that interface**, so two RTTs can be passed directly:
+`opticalFlow(renderer, firstImage, secondImage, grid = 4)` creates a reusable operation, an `OpticalFlowOperation`, on whichever backend `AUTO` picks. Pass `backend = OpticalFlowBackend.PYRAMID` to force the portable one. The two image arguments have type **`HasImageView`**, Field's interface for a GPU image view. **A `RenderToTexture` implements that interface**, so two RTTs can be passed directly:
 
 ```diffstatic {data-lang=kotlin}
 // firstTarget and secondTarget are already-rendered RTTs of the same size.
@@ -59,7 +59,7 @@ prop<RenderToTexture>(motion) = flow.output
 | `secondImage` | Later image, with the same width and height. |
 | `grid = 4` | One flow texel per 4 × 4 input pixels. A 960 × 540 pair produces a 240 × 135 field. Supported grids are checked on the device. |
 | `backend` | `OpticalFlowBackend.AUTO` (the default), `HARDWARE`, or `PYRAMID`. |
-| `quality` | Hardware only, on `OpticalFlow(...)`: `OpticalFlow.Quality.FAST`, `MEDIUM`, or `SLOW` (the default). |
+| `quality` | Hardware only, on `HardwareOpticalFlow(...)`: `HardwareOpticalFlow.Quality.FAST`, `MEDIUM`, or `SLOW` (the default). |
 | `flow.output` | An owned **`RenderToTexture`**, containing a sampled RGBA32F motion texture. |
 
 For two attachments of one RTT, select them explicitly:
