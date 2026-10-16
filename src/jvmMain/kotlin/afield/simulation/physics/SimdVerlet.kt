@@ -219,12 +219,9 @@ class SimdVerlet(
         constraintEdits.remove(name)
     }
 
-    /**
-     * The two post-integration stages, in their fixed order: every [positionProjections] pass,
-     * then every [constraintEdits] pass. Both [step] overloads end here.
-     */
     /** Set once this simulation has reported a non-finite position, so it says so once. */
-    @Volatile var diverged: Boolean = false
+    @Volatile
+    var diverged: Boolean = false
         private set
 
     /**
@@ -246,6 +243,10 @@ class SimdVerlet(
         }
     }
 
+    /**
+     * The two post-integration stages, in their fixed order: every [positionProjections] pass,
+     * then every [constraintEdits] pass. Both [step] overloads end here.
+     */
     private fun runPostIntegration(dt: Float) {
         if (positionProjections.isNotEmpty()) {
             for (projection in positionProjections.values) {
