@@ -430,7 +430,7 @@ exactly what a fresh `keybindings.yaml` says.
 | `execute-all` | `alt+0` | editor | Run Box |
 | `execute-fragment` | `alt+enter` | editor | Run Line / Selection |
 | `forward-next-property` | `cmd+.` | editor | Next Property |
-| `history-lens-selection` | `alt+shift+h` | editor | Show History Lens for Line / Selection |
+| `history-lens-selection` | `alt+shift+h` | editor | Show Code History for Line / Selection |
 | `launch-all` | `alt+up` | editor | Launch Box |
 | `launch-fragment` | `alt+1` | editor | Launch Line / Selection |
 | `paired-shader-definition` | `f12` | editor | Go to Paired Shader Definition |

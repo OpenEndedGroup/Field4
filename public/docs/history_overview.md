@@ -11,7 +11,7 @@ again by describing it.
 Each keeps its own record, for its own length of time. The tools:
 
 - **[Document history](document_history.md)** — every earlier save of a document as a timeline; put back the whole document or just the boxes you pick, and compare any save with now.
-- **[Inline history: the History Lens](history_lens.md)** — scrub a single line or selection back through its versions without leaving the editor.
+- **[Inline history: Code History](history_lens.md)** — scrub a single line or selection back through its versions without leaving the editor.
 - **[AI tool-use history](ai_tool_use_history.md)** — the per-send tool calls recorded by AI4, and a loop that reads those logs back to propose improvements.
 - **[AI documentation polish](ai_doc_polish.md)** — the cache of AI-generated documentation and the cycle that folds it back into real source comments.
 - **[The semantic index](semantic_index.md)** — a searchable, meaning-aware index of the indexed
@@ -103,7 +103,7 @@ above describe each one.
 | I want to… | Use |
 | --- | --- |
 | Roll a document back to an earlier save | [Document history](document_history.md) |
-| See how one line changed across versions, without leaving the editor | [History Lens](history_lens.md) |
+| See how one line changed across versions, without leaving the editor | [Code History](history_lens.md) |
 | Watch a running value change over time | the inline `history()` visualizer — see [Visualizers & Controls](visualizers.md) |
 | Understand what the agents are doing and make them do it better | [AI tool-use history](ai_tool_use_history.md) |
 | Turn scattered AI-written docs into real source comments | [AI documentation polish](ai_doc_polish.md) |

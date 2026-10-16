@@ -193,6 +193,6 @@ Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome 
 | `mark.kind`, `.bounds`, `.points`, `.label`, `.box`, `.fromBox`, `.toBox`, `.toFLine()`, `.yAt(x)`, `.xAt(y)` | one mark |
 
 !!! note "Colours"
-    Field shows the drawing in Excalidraw's dark theme, which draws every colour through an inversion. A colour given from code is shown transformed: pale yellow becomes dark brown. The strong colours of Excalidraw's own palette, the ones used on this page, come through well.
+    Field shows the drawing in Excalidraw's dark theme, which draws every colour through an inversion. A colour given from code is stored adjusted for it, so greys, greens and blues appear as asked, and `stroke` and `fill` read back the colour you gave. The default ink, `#1e1e1e`, still follows the theme, so it shows light on dark. Warm and pale colours (`#e03131`, `#ffec99`) lie outside what the inversion can show and appear duller or shifted.
 
 The drawing is one scene per document, kept in the document's root box. When code and a hand change it at the same moment, both changes are kept.
