@@ -1,0 +1,16 @@
+{
+  "id" : "r4-0965f8e07715",
+  "parent" : "r3-7837e20bb90d",
+  "description" : "Palette-only recolor of adopted ten-point tiles: terracotta, cream, deep green",
+  "created" : "2026-10-16T09:56:27.017215Z",
+  "sourceHash" : "0965f8e077155b94b853829a7dc33bc565f59b4b858157effd4bc8992f9bb0c6",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : false,
+    "nonFiniteFraction" : 0.0,
+    "words" : 124,
+    "knobs" : 70,
+    "stages" : 14
+  }
+}

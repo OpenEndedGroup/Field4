@@ -1,0 +1,23 @@
+{
+  "against" : "r2-fafd8168ed0f",
+  "liveSourceHash" : "fafd8168ed0fa1a03a67f58c0e2eed3f8407823937ff271646445a69a1703dae",
+  "adopted" : "10 points",
+  "variants" : [ {
+    "label" : "6 points",
+    "note" : "6 points; same colors, spacing and outer radius.",
+    "file" : "6_points.stacksl"
+  }, {
+    "label" : "8 points",
+    "note" : "Original eight-point design.",
+    "file" : "8_points.stacksl"
+  }, {
+    "label" : "10 points",
+    "note" : "10 points; same colors, spacing and outer radius.",
+    "file" : "10_points.stacksl"
+  }, {
+    "label" : "12 points",
+    "note" : "12 points; same colors, spacing and outer radius.",
+    "file" : "12_points.stacksl"
+  } ],
+  "as" : "r3-7837e20bb90d"
+}

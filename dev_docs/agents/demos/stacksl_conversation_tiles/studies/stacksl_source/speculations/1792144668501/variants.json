@@ -1,0 +1,10 @@
+{
+  "against" : "r4-0965f8e07715",
+  "liveSourceHash" : "dff520b30859eb79e21ce657a0c6f5b335db3281b8169e1ceece12c5f6ff9627",
+  "adopted" : null,
+  "variants" : [ {
+    "label" : "Your wider grout",
+    "note" : "Live editor version, retaining 0.012–0.015 outer grout; centers untouched.",
+    "file" : "Your_wider_grout.stacksl"
+  } ]
+}
