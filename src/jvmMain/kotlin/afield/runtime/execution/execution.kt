@@ -3878,6 +3878,23 @@ private fun MutableMap<String, Int>.incrementAndGet(name: String): Int {
 }
 
 /**
+ * `sim.force = "…"` on a mesh resolves against the two `ModulePointer` slot setters and fails as a
+ * receiver mismatch naming both, which does not say the actual mistake: a `stack.auto` slot belongs to
+ * the compiled shader, so it is set on the module, not on the mesh that only carries push constants.
+ */
+internal fun stackAutoSlotOnMeshHint(errorMessage: String, slots: Set<String> = emptySet()): String? {
+    val namesModuleSetters = "ModulePointer" in errorMessage && errorMessage.contains("receiver", ignoreCase = true)
+    // Without the slot's setters in scope the same mistake reads "Unresolved reference 'force' on a
+    // ComputeMesh"; it is this mistake when the box's own shaders declare that slot.
+    val unresolved = Regex("""Unresolved reference '(\w+)' on receiver of type '(?:ComputeMesh|Mesh|MeshMesh)'""")
+        .find(errorMessage.replace("&#39;", "'"))?.groupValues?.get(1)
+    val namesADeclaredSlot = unresolved != null && unresolved in slots
+    if (!namesModuleSetters && !namesADeclaredSlot) return null
+    return "A stack.auto slot is a property of the compiled shader, so it is set on the module " +
+        "(simModule.force = \"…\"), not on the mesh, which only carries push constants."
+}
+
+/**
  * A language root's own code is still Kotlin (only its children run in the language), so Python typed
  * into the Python root fails as Kotlin with a message about Kotlin. Say which box this is instead.
  */
@@ -3903,6 +3920,7 @@ fun improveMessage(
     // buttons in the error output area). The numeric-mismatch hint stays as explanatory context.
     numericMismatchHint(errorMessage)?.let { hints += escapeNotifyHtml(it) }
     languageRootHint(b)?.let { hints += escapeNotifyHtml(it) }
+    stackAutoSlotOnMeshHint(errorMessage, runCatching { afield.lang.stacksl.study.EmbeddedStackSL.slots(b) }.getOrDefault(emptySet()))?.let { hints += escapeNotifyHtml(it) }
 
     val escapedMessage = escapeNotifyHtml(errorMessage)
     if (hints.isEmpty()) return escapedMessage

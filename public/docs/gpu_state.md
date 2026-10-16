@@ -257,10 +257,8 @@ simModule.force = """
 """
 ```
 
-A `stack.auto` slot is a property of the compiled shader; the mesh only carries push constants.
-`sim.force = …` is a receiver-type mismatch naming both `ModulePointer` overloads, which is a
-confusing way to learn that distinction and easy to hit, because everything else in this box is set on
-the mesh.
+A `stack.auto` slot is a property of the compiled shader, so it is set on the module; the mesh only
+carries push constants, and `sim.force = …` fails with a note saying so.
 
 Changing that string and hitting run costs nothing. Field lowers the StackSL to GLSL, patches this
 module's pipeline on a background thread, and leaves the old binding in place if the new one does not
