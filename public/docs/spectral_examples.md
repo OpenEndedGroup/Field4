@@ -392,10 +392,8 @@ other per-sample filter in the toolkit.
 
 ## Open the examples as a document
 
-The five frequency-domain examples, from [One spectrum](#one-spectrum) on, are also a starting
-point: open [`spectral_examples`](agent_transcripts.md#spectral_examples) from the welcome screen
+Every example on this page is also a starting point: open [`spectral_examples`](agent_transcripts.md#spectral_examples) from the welcome screen
 and each box computes and draws its own figure with no other setup.
 
 Then edit the signal, or swap `WindowType.HANN` for `HAMMING` / `BLACKMAN`, and re-run a box to
-watch its figure change. The two time-domain examples at the top of the page are not in that
-document; paste either fence into a box to run it.
+watch its figure change.
