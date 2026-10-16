@@ -47,12 +47,12 @@ def revision(name: str) -> str:
 
 
 def source_blocks() -> dict[str, str]:
-    """Listings derive from saved Kotlin, with the disclosed current list spelling."""
+    """Listings are the saved Kotlin's bytes, so the page and its downloads show the same source."""
     def excerpt(source: str, start: str, end: str) -> str:
         return textwrap.dedent(source[source.index(start) : source.index(end)]).strip()
 
     def listing(source: str) -> str:
-        return "```diffstatic {data-lang=kotlin}\n" + demo.current_kotlin_listing(source).rstrip() + "\n```"
+        return "```diffstatic {data-lang=kotlin}\n" + source.rstrip() + "\n```"
 
     created = revision("r3-66fd67f6fe7c")
     stretched = revision("r5-2aa6023ddfca")
