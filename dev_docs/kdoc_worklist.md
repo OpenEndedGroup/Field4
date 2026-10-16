@@ -59,7 +59,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Phased.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt) | Workspace | animation_time_model | 6 | 12 | 47% |
 | [Solver.kt](../src/jvmMain/kotlin/afield/simulation/physics/pressure/Solver.kt) | Simulation | pressure_membranes | 6 | 12 | 9% |
 | [SolidExpr.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidExpr.kt) | Graphics | solid_notation, manifold | 6 | 11 | 77% |
-| [keyframes.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt) | Graphics | agent_transcripts, keyframe_editor | 5 | 13 | 64% |
+| [keyframes.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt) | Graphics | keyframe_editor, agent_transcripts | 5 | 13 | 64% |
 | [ImageView.kt](../src/jvmMain/kotlin/afield/graphics/texture/ImageView.kt) | Graphics | afield_four_graphics | 5 | 12 | 0% |
 | [nesting.kt](../src/jvmMain/kotlin/afield/document/graph/nesting.kt) | Workspace | visualizers | 5 | 0 | 50% |
 | [ParamQuery.kt](../src/jvmMain/kotlin/afield/audio/synth/ParamQuery.kt) | Synthesis | graph_query | 4 | 46 | 8% |
@@ -1095,9 +1095,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `NotifyLog` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:154` |
 | `TraceLogger` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:177` |
 | `AiToolIoLogger` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:253` |
-| `Keyframe` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:590` |
-| `Handles` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:599` |
-| `Handle` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:605` |
+| `Keyframe` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:619` |
+| `Handles` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:628` |
+| `Handle` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:634` |
 | `GestureCurveKind` | class | `src/jvmMain/kotlin/afield/audio/ai/Protocol.kt:224` |
 | `GesturePoint` | class | `src/jvmMain/kotlin/afield/audio/ai/Protocol.kt:232` |
 | `GestureCurve` | class | `src/jvmMain/kotlin/afield/audio/ai/Protocol.kt:238` |
