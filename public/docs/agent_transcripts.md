@@ -2785,6 +2785,36 @@ per spin), and a "lattice view" draw box whose fragment shader colours each cell
 
 [Open ↗](offline.html?file=assets/agent_transcripts/spin_glass/metadata.edn)
 
+### lattice_boltzmann_cylinder
+
+A **lattice Boltzmann fluid** in a wind tunnel, with a cylinder in the way. Three boxes: a renderer
+that opens its own window, a fluid box that builds a `ShaderLatticeBoltzmannSystem` and publishes it as
+`lbm`, and a cylinder box beneath it whose fragment shader draws into the fluid's control texture: a
+solid disc, walls top and bottom, and stripes at the left edge that release dye and hold the wind
+steady. Within a minute or so the wake behind the cylinder starts shedding a von Kármán vortex
+street, shown as vorticity. Assign `lbm.settings.previewMode` from another box to see the dye, the
+speed or the velocity instead. The fluid box's `fragment` tab is the collision-and-streaming rule. The
+same two boxes are lessons 10 and 10b of `canonical_graphics`;
+[A fluid: lattice Boltzmann](afield_four_graphics.md#lattice-boltzmann) walks through them.
+
+![Vorticity behind a white cylinder in a dark wind tunnel: the flow divides round it and the shear layers behind it have rolled up into a street of alternating orange and blue vortices](assets/afield_four_graphics/10-lattice-boltzmann.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/lattice_boltzmann_cylinder/metadata.edn)
+
+### forest_fire
+
+A **forest fire** on the GPU, in a square window. A renderer box, a forest box that builds a
+`ShaderForestFireSystem` and publishes it as `fire`, and a fire-starter box beneath it whose fragment
+shader keeps two points lit in the fire's ignition texture, one red and one green. Burnt trees
+recover, so each point sends out a train of ragged rings, one per recovery time, and where the two
+trains meet they interleave. Red recovers faster, so its rings come more often. The forest box's
+`fragment` tab is the spreading rule. The same two boxes are lessons 11 and 11b of
+`canonical_graphics`; [A forest fire](afield_four_graphics.md#forest-fire) walks through them.
+
+![A square forest crowded with ragged concentric rings of red and green fire, the two trains interleaved where they have met](assets/afield_four_graphics/11-forest-fire.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/forest_fire/metadata.edn)
+
 ### recstl_playground
 
 A one-stop [RectSL](rectsl_examples.md) playground: a Window + Renderer, a

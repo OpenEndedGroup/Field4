@@ -1583,6 +1583,143 @@ void main() {
 }
 ```
 
+## A fluid: lattice Boltzmann { #lattice-boltzmann }
+
+`ShaderLatticeBoltzmannSystem` is a two-dimensional fluid. Every texel is a lattice site holding nine numbers, how much fluid there is moving in each of nine directions: still, the four neighbours, the four diagonals. A step moves each of those one site along its direction, then relaxes each site toward the equilibrium for its own density and velocity, and a population that runs into a solid site bounces back where it came from. Density and velocity are never stored; they are sums over the nine. This box builds one as a wind tunnel, wind blowing left to right across a lattice that wraps:
+
+```diffstatic {data-lang=kotlin}
+// A lattice Boltzmann fluid in a wind tunnel: a wind blows left to right and the
+// lattice wraps, so what leaves on the right comes back on the left.
+// On its own it is uniform wind and shows nothing; the box beneath this one puts
+// something in its way.
+prop<ShaderLatticeBoltzmannSystem>(lbm) = ShaderLatticeBoltzmannSystem() {
+    width = 800
+    height = 480
+    baseVelocity = Vector2f(0.08f, 0f)
+    // a thin fluid (viscosity about 0.014) so the wake sheds vortices
+    relaxation = 1.85f
+    // nothing pulls the fluid back toward the wind, so the wake travels;
+    // the inlet that 10b draws at the left edge keeps the wind blowing
+    driveBlend = 0f
+    stepsPerFrame = 8
+    dyeDecayPerFrame = 0.001f
+    // vorticity: orange turns one way, blue the other. Try COMPOSITE, DYE or SPEED
+    previewMode = FluidVisualizationMode.CURL
+}
+
+// this installs the editable collision-and-streaming rule in this box's fragment tab
+lbm.installInto()
+```
+
+A wind through an empty tunnel is uniform and shows nothing, so a second box beneath this one puts something in its way. It draws into the fluid's control texture, where red is solid, green and blue a push, and alpha a dye source that also holds the wind steady. `controlsParameters` gives the module additive blending, and the controls are carried from frame to frame, so what the shader writes is a drawing that stays until `clearControls()` erases it:
+
+```diffstatic {data-lang=kotlin}
+// Draws into the fluid's control texture: a solid disc, walls top and bottom, and
+// stripes of dye released at the left edge. The controls persist from frame to
+// frame, so clear them first or a re-run leaves the old drawing behind.
+lbm.clearControls()
+
+var module = moduleHere(lbm.controlsParameters("cylinder"))
+lbm.addControls("cylinder", module)
+
+val quad = fullscreenTriangle(module)
+module += "quad" to quad
+
+quad.center = { vec(160f, 236f) }
+quad.radius = { 24f }
+quad.height = { 480f }
+```
+
+```diffstatic {data-lang=glsl}
+void main() {
+    vec2 p = gl_FragCoord.xy;
+    outColor = vec4(0.0);
+
+    if (distance(p, push.center) < push.radius) outColor.r = 1.0;
+    if (p.y < 3.0 || p.y > push.height - 3.0) outColor.r = 1.0;
+
+    if (p.x < 4.0 && mod(floor(p.y / 12.0), 2.0) == 0.0) outColor.a = 1.0;
+}
+```
+
+These are the `10. lattice boltzmann` and `10b. lbm cylinder` lessons of `canonical_graphics`, and the [`lattice_boltzmann_cylinder`](agent_transcripts.md#lattice_boltzmann_cylinder) starting point builds both with their renderer. The flow divides round the cylinder, and within a minute or so the two layers of shear behind it start to roll up alternately, one turning each way, and leave a von Kármán vortex street:
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="lbm_renderer" transcript="dev_docs/agents/transcripts/lattice_boltzmann_cylinder.yaml" screenshot="assets/afield_four_graphics/10-lattice-boltzmann.png" wait="80" timeout="240" native-wait-frames="4" embed=true hidden=true name="four-lattice-boltzmann" alt="vorticity behind a white cylinder in a dark wind tunnel: the flow from the left divides round it, and behind it the shear layers have rolled up into a street of alternating orange and blue vortices drifting to the right"}
+// The transcript built the renderer, the fluid and the cylinder and launched them;
+// this waits for the wake to start shedding and captures the window.
+```
+
+What decides it is the Reynolds number, speed times cylinder width over viscosity. The viscosity is `(1/relaxation − 0.5) / 3`, so `relaxation = 1.85f` gives about 0.014 and, with a wind of 0.08 sites per step past a 48-site cylinder, a Reynolds number near 280. Two settings in this box are there to let the street form. `driveBlend = 0f` turns off the pull back toward the wind that every site otherwise feels, which would damp a growing wake faster than it grows; the inlet stripes keep the wind blowing instead. And `initialNoise`, on by default, starts the fluid with a velocity too small to see, because a symmetric setup computed exactly stays symmetric and the wake would never start to swing.
+
+`stepsPerFrame = 8` runs eight lattice steps a frame. The method is only accurate while the fluid moves well under a site per step, so at one step a frame a gust takes thousands of frames to cross the window. `previewMode` chooses what you see: `CURL` is vorticity, `DYE` the dye alone, `SPEED` and `VELOCITY` the flow, `COMPOSITE` the dye lit by the flow. It is read every frame, so assigning `lbm.settings.previewMode` from another box changes the view without restarting anything, and so does every other setting except the sizes.
+
+The box's `fragment` tab holds one step of the method, all nine populations written to three attachments of one ping-pong target in a single pass, and editing it re-runs the fluid.
+
+## A forest fire { #forest-fire }
+
+`ShaderForestFireSystem` spreads fire through a forest. Each texel is a tree or bare ground, decided once from a hash of its position, and each tree is ready to burn, burning, or recovering. A ready tree catches from a burning neighbour, by chance: each burning neighbour gets one try per frame with probability `spreadProbability`, half by default. A tree burns for a few frames, then cannot burn again until it has recovered. Because trees recover, the fire never runs out of fuel, and a front can be followed by another one through the same trees. There are four kinds of fire, one per colour channel, and they compete: a tree that catches one kind is not available to the others until it has recovered. This box builds a forest the shape of the window:
+
+```diffstatic {data-lang=kotlin}
+// A forest fire: a fixed scatter of trees, and four kinds of fire (red, green, blue,
+// magenta) that compete for them. Burnt trees recover, so a fire front can be
+// followed by another. Nothing burns until something is lit; the box beneath this
+// one lights it.
+// The forest is 768 trees high and as wide as the window's shape needs, so it fills
+// the window without being stretched.
+val treesHigh = 768
+prop<ShaderForestFireSystem>(fire) = ShaderForestFireSystem() {
+    height = treesHigh
+    width = treesHigh * window.width / window.height
+    treeDensity = 0.6f
+}
+
+// this installs the editable spreading rule in this box's fragment tab
+fire.installInto()
+```
+
+Nothing burns until something is lit. The box beneath it draws into the fire's ignition texture, one kind of fire per channel; `fireInputParameters` makes the drawing additive, so writing 1 into a channel lights that kind there. This one lights two points, red and green, and keeps them lit:
+
+```diffstatic {data-lang=kotlin}
+// Draws into the fire's ignition texture: two points that burn for ever, one red
+// and one green. Each relights its neighbourhood as soon as the trees recover, so
+// each sends out a train of rings, and where the trains meet one kind takes over.
+fire.clearFireInput()
+fire.clearState()
+
+var module = moduleHere(fire.fireInputParameters("starter"))
+fire.addFireInput("starter", module)
+
+val quad = fullscreenTriangle(module)
+module += "quad" to quad
+
+// positions are in trees, so place them as fractions of the forest's size
+val w = fire.settings.width.toFloat()
+val h = fire.settings.height.toFloat()
+quad.red = { vec(w * 0.33f, h * 0.5f) }
+quad.green = { vec(w * 0.68f, h * 0.5f) }
+quad.radius = { 4f }
+```
+
+```diffstatic {data-lang=glsl}
+void main() {
+    vec2 p = gl_FragCoord.xy;
+    outColor = vec4(0.0);
+    if (distance(p, push.red) < push.radius) outColor.r = 1.0;
+    if (distance(p, push.green) < push.radius) outColor.g = 1.0;
+}
+```
+
+These are the `11. forest fire` and `11b. fire starter` lessons of `canonical_graphics`, and the [`forest_fire`](agent_transcripts.md#forest_fire) starting point builds both with a square window of their own. A point that never goes out relights the trees round it as soon as they recover, so each sends out a train of rings, one ring per recovery time. Red recovers faster than green by default, so its rings come more often. The two trains meet, and in the trees between the sources they interleave, each kind taking the trees the other has just left:
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="fire_renderer" transcript="dev_docs/agents/transcripts/forest_fire.yaml" screenshot="assets/afield_four_graphics/11-forest-fire.png" wait="30" timeout="240" native-wait-frames="4" embed=true hidden=true name="four-forest-fire" alt="a square forest crowded with ragged concentric rings of red and green fire, the trains from the two ignition points interleaved where they have met and passed through the recovering trees"}
+// The transcript built the renderer, the forest and the fire starter and launched them;
+// this waits for the two trains of rings to fill the forest and captures the window.
+```
+
+`spreadProbability` is what makes the rings round. At 1 every burning tree lights all eight of its neighbours at once, the fire moves one texel a frame along the diagonals as fast as along the axes, and the rings come out square. At one half each front advances by chance, slower on average, and roughens into a ragged circle. `treeDensity` is the other setting to try: it is the fraction of texels that hold a tree, and the default of 0.72 makes a denser, more uniform forest than the 0.6 here.
+
+The box's `fragment` tab holds the spreading rule, and editing it re-runs the fire.
+
 ## Stopping the renderer
 
 Stopping the box that owns `renderer` also stops every running box connected beneath it, then
