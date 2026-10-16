@@ -28,7 +28,7 @@ for (round in 1..3) {
 
 /*
 Smoothing: a Laplacian pass is a diffusion, so it deflates the shape; Taubin's lambda /
-mu pair alternates a shrink with an inflate and holds the volume. Both remove the same
+mu pair alternates a shrink with an inflate to reduce shrinkage. Both remove the same
 noise, and the numbers are the whole point.
 */
 val rng = java.util.Random(7)
@@ -46,7 +46,7 @@ println()
 println("clean     volume %.5f".format(clean.signedVolume()))
 println("noisy     volume %.5f".format(noisy.signedVolume()))
 println("laplacian volume %.5f  <- a diffusion deflates the ball".format(laplacian.signedVolume()))
-println("taubin    volume %.5f  <- the lambda/mu pair holds it".format(taubin.signedVolume()))
+println("taubin    volume %.5f  <- the lambda/mu pair reduces shrinkage".format(taubin.signedVolume()))
 
 /*
 QEM decimation: quadric error metric edge collapse with the link condition (so a
@@ -77,9 +77,9 @@ showMeshGrid(
     "icosahedronMesh() control" to icosahedronMesh(0.8),
     "loopSubdivide(1)" to rounds[0],
     "loopSubdivide(3)" to rounds[2],
-    "+18% radial noise" to noisy,
+    "±9% radial noise" to noisy,
     "laplacianSmooth(30) — deflated" to laplacian,
-    "taubinSmooth(30) — volume held" to taubin,
+    "taubinSmooth(30) — reduced shrinkage" to taubin,
     budgets[0].first to budgets[0].second,
     budgets[1].first to budgets[1].second,
     budgets[2].first to budgets[2].second,

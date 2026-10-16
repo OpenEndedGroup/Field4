@@ -35,8 +35,15 @@ start(renderer::run)
 
 <!-- field-box id="sg_update" index="1" -->
 
+### Narrative
+
+From `code`
+
+Rebuild update, measure and view after changing the lattice size or bond model.
+Periodic checkerboard neighbours need a positive, even side length.
+
 ```edn [field-box id="sg_update" role="properties"]
-{"id" "sg_update" "index" 1 "name" "metropolis update" "parents" ["root" "sg_renderer"] "children" ["sg_measure"] "properties" {"children" #{#afield/box "sg_measure"} "parents" #{#afield/box "root" #afield/box "sg_renderer"} "name" "metropolis update" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_update_compute_.glsl" "lines" 81 "characters" 2130 "sha256" "2f37f71d5e9956c485d968d3cbdf58d384923914ec9b458d460699546062963e"} {"name" "code" "language" "kotlin" "path" "sg_update_code_.kt" "lines" 96 "characters" 3169 "sha256" "9f28fcb00f56b8c061175b5f7acfa78b97863ee0d5ed33730d9836419a38bb89"}]}
+{"id" "sg_update" "index" 1 "name" "metropolis update" "parents" ["root" "sg_renderer"] "children" ["sg_measure"] "properties" {"children" #{#afield/box "sg_measure"} "parents" #{#afield/box "root" #afield/box "sg_renderer"} "name" "metropolis update" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_update_compute_.glsl" "lines" 81 "characters" 2130 "sha256" "2f37f71d5e9956c485d968d3cbdf58d384923914ec9b458d460699546062963e"} {"name" "code" "language" "kotlin" "path" "sg_update_code_.kt" "lines" 96 "characters" 3403 "sha256" "ff1a5e610c9d1b329b61b119978dbe5b1ff6b8c66a17a5cfcab50ef9d5ddaa64"}]}
 ```
 
 ```glsl [field-property box="sg_update" name="compute" path="sg_update_compute_.glsl"]
@@ -124,15 +131,15 @@ void main() {
 ```
 
 ```kotlin [field-property box="sg_update" name="code" path="sg_update_code_.kt"]
-import afield.graphics.render.computeMemoryBarrier
-import afield.graphics.render.computeTask
-
-val L = 128
-val N = L * L
+// Rebuild update, measure and view after changing the lattice size or bond model.
+// Periodic checkerboard neighbours need a positive, even side length.
+val latticeSide = 128
+require(latticeSide > 0 && latticeSide % 2 == 0) { "L must be positive and even" }
+val N = latticeSide * latticeSide
 val groups = (N + 63) / 64
 
-// simulation parameters, published so the measure + view boxes can read them
-prop<Int>(sgL) = L
+// Published controls. To set temperature live, first run sgAnneal = false.
+prop<Int>(sgL) = latticeSide
 prop<Double>(sgTemperature) = 3.0
 prop<Double>(sgField) = 0.0
 prop<Int>(sgMode) = 0 // 0 = Metropolis, 1 = heat-bath
@@ -144,12 +151,12 @@ prop<Boolean>(sgAnneal) = true
 val Thi = 3.0
 val Tlo = 0.04
 val period = 6000
-val model = sgModel
+val model = sgModel // Sampled while building bonds; changing it requires rebuilding.
 
 // in-place lattice state (single, persistent copy — not per-frame)
-var spins = defaultBuffer { size = N.floats }.buffer
-var jRight = defaultBuffer { size = N.floats }.buffer
-var jDown = defaultBuffer { size = N.floats }.buffer
+val spinData = defaultBuffer { size = N.floats }.buffer
+val rightBonds = defaultBuffer { size = N.floats }.buffer
+val downBonds = defaultBuffer { size = N.floats }.buffer
 
 val rng = java.util.Random(20260720L)
 /*
@@ -157,17 +164,17 @@ random initial spins, then bonds: Gaussian when sgModel == 1, else +/-1.
 The bond draw is written out twice because a local `fun` that reads a prop
 fails K2 codegen in a box script.
 */
-spins.write { for (i in 0 until N) put(if (rng.nextBoolean()) 1f else -1f) }
-jRight.write {
+spinData.write { for (i in 0 until N) put(if (rng.nextBoolean()) 1f else -1f) }
+rightBonds.write {
     for (i in 0 until N) put(if (model == 1) rng.nextGaussian().toFloat() else if (rng.nextBoolean()) 1f else -1f)
 }
-jDown.write {
+downBonds.write {
     for (i in 0 until N) put(if (model == 1) rng.nextGaussian().toFloat() else if (rng.nextBoolean()) 1f else -1f)
 }
 
-prop<FrameBufferGroup>(sgSpins) = spins
-prop<FrameBufferGroup>(sgJRight) = jRight
-prop<FrameBufferGroup>(sgJDown) = jDown
+prop<FrameBufferGroup>(sgSpins) = spinData
+prop<FrameBufferGroup>(sgJRight) = rightBonds
+prop<FrameBufferGroup>(sgJDown) = downBonds
 
 var sweep = 0
 var seed = 1
@@ -194,32 +201,32 @@ module +=
             }
         }
 module += "even" to even
-module += "barrierE" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
+module += "barrierE" to computeBarrier()
 module += "odd" to odd
-module += "barrierO" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
+// Publish the completed sweep to the measure pass and the fragment shader.
+module += "barrierO" to computeBarrier(graphics = true)
 renderer += "spinGlassUpdate" to module
 
 // both half-sweeps share bindings; they differ only in checkerboard colour and seed
-for (m in listOf(even, odd)) {
-    m.x = groups
-    m.y = 1
-    m.z = 1
-    m.spins = { spins }
-    m.jRight = { jRight }
-    m.jDown = { jDown }
-    m.L = { L.toUInt() } // uint push members need UInt-returning lambdas
-    m.mode = { sgMode.toUInt() }
-    m.field = { sgField.toFloat() }
-    m.temperature = { T.toFloat() }
+bindPush(even, odd) {
+    x = groups
+    y = 1
+    z = 1
+    spins = { spinData }
+    jRight = { rightBonds }
+    jDown = { downBonds }
+    L = { latticeSide }
+    mode = { sgMode }
+    field = { sgField.toFloat() }
+    temperature = { T.toFloat() }
 }
-even.color = { 0u }
-odd.color = { 1u }
+even.color = { 0 }
+odd.color = { 1 }
 even.seed = { seed.toUInt() }
-odd.seed = {
-    (seed + 100003).toUInt()
-} // offset so the two passes draw different randoms
+// Offset the seed so the two passes draw different randoms.
+odd.seed = { (seed + 100003).toUInt() }
 
-println("update launched L=" + L + " N=" + N + " groups=" + groups)
+println("update launched L=" + latticeSide + " N=" + N + " groups=" + groups)
 ```
 
 ## 3. measure (energy / magnetization)
@@ -227,7 +234,7 @@ println("update launched L=" + L + " N=" + N + " groups=" + groups)
 <!-- field-box id="sg_measure" index="2" -->
 
 ```edn [field-box id="sg_measure" role="properties"]
-{"id" "sg_measure" "index" 2 "name" "measure (energy / magnetization)" "parents" ["root" "sg_update"] "children" ["sg_draw"] "properties" {"children" #{#afield/box "sg_draw"} "parents" #{#afield/box "root" #afield/box "sg_update"} "name" "measure (energy / magnetization)" "_tombstone" false "frame" #afield/rect [670.0 40.0 330.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_measure_compute_.glsl" "lines" 37 "characters" 902 "sha256" "93f4b4399393367312771380d909f55e43ef0dc2df3087fc25bb9bb7c1266bd2"} {"name" "code" "language" "kotlin" "path" "sg_measure_code_.kt" "lines" 28 "characters" 866 "sha256" "f21ff4155dff1cc284e440152ef527eb539e59da5b4fbcc06597ce7b25491609"}]}
+{"id" "sg_measure" "index" 2 "name" "measure (energy / magnetization)" "parents" ["root" "sg_update"] "children" ["sg_draw"] "properties" {"children" #{#afield/box "sg_draw"} "parents" #{#afield/box "root" #afield/box "sg_update"} "name" "measure (energy / magnetization)" "_tombstone" false "frame" #afield/rect [670.0 40.0 330.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_measure_compute_.glsl" "lines" 37 "characters" 902 "sha256" "93f4b4399393367312771380d909f55e43ef0dc2df3087fc25bb9bb7c1266bd2"} {"name" "code" "language" "kotlin" "path" "sg_measure_code_.kt" "lines" 27 "characters" 792 "sha256" "05d24758f9ea6e4a58b717c2a600c639ade3a0ad1fe1afe2a5db1be591d6a083"}]}
 ```
 
 ```glsl [field-property box="sg_measure" name="compute" path="sg_measure_compute_.glsl"]
@@ -271,9 +278,6 @@ void main() {
 ```
 
 ```kotlin [field-property box="sg_measure" name="code" path="sg_measure_code_.kt"]
-import afield.graphics.render.computeMemoryBarrier
-import afield.graphics.render.computeTask
-
 val L = sgL
 val N = L * L
 val groups = (N + 63) / 64
@@ -286,7 +290,7 @@ displayOpen("stats")
 var module = computeModuleHere {}
 val m = ComputeMesh()
 // leading barrier: make the update box's spin writes visible to this read.
-module += "sync" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
+module += "sync" to computeBarrier()
 module += "measure" to m
 renderer += "spinGlassMeasure" to module
 
@@ -296,7 +300,9 @@ m.z = 1
 m.spins = { sgSpins }
 m.jRight = { sgJRight }
 m.jDown = { sgJDown }
-m.L = { sgL.toUInt() }
+m.L = {
+    L
+} // Match the dispatch count captured for this measurement setup.
 m.field = { sgField.toFloat() }
 println("measure launched N=" + N)
 ```
@@ -306,7 +312,7 @@ println("measure launched N=" + N)
 <!-- field-box id="sg_draw" index="3" -->
 
 ```edn [field-box id="sg_draw" role="properties"]
-{"id" "sg_draw" "index" 3 "name" "lattice view" "parents" ["root" "sg_measure"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sg_measure"} "name" "lattice view" "_tombstone" false "frame" #afield/rect [1020.0 40.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "sg_draw_vertex_.glsl" "lines" 8 "characters" 245 "sha256" "852162ed2f08d7ffd06e2e62b4d9690cd3c965fe20fffd0ee96aec38bf529865"} {"name" "fragment" "language" "glsl" "path" "sg_draw_fragment_.glsl" "lines" 50 "characters" 1390 "sha256" "4531ab65f9cf7758d4e95ffa3cbfe0f06b25087ceb9e2ba338be9036b9b23f73"} {"name" "code" "language" "kotlin" "path" "sg_draw_code_.kt" "lines" 15 "characters" 487 "sha256" "99dc1cc451724b07167cd8bf0f0e49559f520c2e4465b10e4d6b233a35bd3c3c"}]}
+{"id" "sg_draw" "index" 3 "name" "lattice view" "parents" ["root" "sg_measure"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sg_measure"} "name" "lattice view" "_tombstone" false "frame" #afield/rect [1020.0 40.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "sg_draw_vertex_.glsl" "lines" 8 "characters" 245 "sha256" "852162ed2f08d7ffd06e2e62b4d9690cd3c965fe20fffd0ee96aec38bf529865"} {"name" "fragment" "language" "glsl" "path" "sg_draw_fragment_.glsl" "lines" 50 "characters" 1390 "sha256" "4531ab65f9cf7758d4e95ffa3cbfe0f06b25087ceb9e2ba338be9036b9b23f73"} {"name" "code" "language" "kotlin" "path" "sg_draw_code_.kt" "lines" 13 "characters" 397 "sha256" "7f218d02d8c53bb6d4c62ecb80932ad97601e68dea14a67a764dd1f3361ecd07"}]}
 ```
 
 ```glsl [field-property box="sg_draw" name="vertex" path="sg_draw_vertex_.glsl"]
@@ -375,19 +381,17 @@ void main() {
 
 ```kotlin [field-property box="sg_draw" name="code" path="sg_draw_code_.kt"]
 var module = moduleHere { primitiveType = triangles }
-var m = Mesh()
+val m = fullscreenTriangle(module)
 module += "grid" to m
 renderer += "spinGlassDraw" to module
 
 m.spins = { sgSpins }
 m.jRight = { sgJRight }
 m.jDown = { sgJDown }
-m.L = { sgL.toUInt() }
+m.L = { sgL }
 m.aspect = { window.width / window.height.toFloat() }
-// set to { 1u } and re-run to overlay frustrated plaquettes
-m.showFrustration = { 0u }
-// three vertices, no index buffer: the vertex shader makes the fullscreen triangle
-m.set(3, 0) {}
+// set to { 1 } and re-run to overlay frustrated plaquettes
+m.showFrustration = { 0 }
 println("draw launched")
 ```
 

@@ -627,7 +627,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**32006 public symbols across 1449 source files**, 15985 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**32009 public symbols across 1450 source files**, 15988 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -654,8 +654,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1313 | 718 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2092 | 1010 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 21 | 571 | 385 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 120 | 3070 | 1380 (44%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 209 | 2974 | 1033 (34%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Languages](languages.md) | 120 | 3071 | 1381 (44%) | Field's small languages, from the host side. |
+| [Workspace](workspace.md) | 210 | 2976 | 1035 (34%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 91 | 2195 | 666 (30%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 
@@ -1215,7 +1215,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>history/<wbr></small> [HistoryMetrics.kt](workspace.md#historymetrics-kt) | Workspace · internal | 9 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>history/<wbr></small> [HistoryScreenshotCapture.kt](workspace.md#historyscreenshotcapture-kt) | Workspace · internal | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>core/<wbr></small> [HostBridge.kt](languages.md#hostbridge-kt) | Languages | 29 | 29 | How a FieldML box calls Kotlin: `hostCall`, `hostNew` and `hostGet` all arrive here, and so does a `.field` read on a host value. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>type/<wbr></small> [HostTypes.kt](languages.md#hosttypes-kt) | Languages | 30 | 18 | The reflection behind FieldML's host types: what a `THost` names, and what can therefore be said at type-check time about a member's type, a resolved overload's result, the parameter slots a call's arguments land in, and the members a receiver actually has. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>type/<wbr></small> [HostTypes.kt](languages.md#hosttypes-kt) | Languages | 31 | 19 | The reflection behind FieldML's host types: what a `THost` names, and what can therefore be said at type-check time about a member's type, a resolved overload's result, the parameter slots a call's arguments land in, and the members a receiver actually has. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Hrtf.kt](audio.md#hrtf-kt) | Audio | 4 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>steamaudio/<wbr></small> [HrtfProbe.kt](examples.md#hrtfprobe-kt) | Examples | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [HtcEyeTracker.kt](graphics.md#htceyetracker-kt) | Graphics | 0 | 0 |  |  |
@@ -1304,6 +1304,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [KotlinJsRemoteLifecycleSmokeTest.kt](examples.md#kotlinjsremotelifecyclesmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [KotlinJsSourcePreparationSmokeTest.kt](examples.md#kotlinjssourcepreparationsmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [KotlinJsToneSurfaceSmokeTest.kt](examples.md#kotlinjstonesurfacesmoketest-kt) | Examples · internal | 2 | 1 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [KotlinLineNotes.kt](workspace.md#kotlinlinenotes-kt) | Workspace · internal | 2 | 2 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [KotlinScriptEngine.kt](workspace.md#kotlinscriptengine-kt) | Workspace · internal | 91 | 23 |  | [Running code in a box](../running_code.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [KotlinSourceIndex.kt](workspace.md#kotlinsourceindex-kt) | Workspace · internal | 32 | 4 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [KotlinSourcePartition.kt](workspace.md#kotlinsourcepartition-kt) | Workspace · internal | 9 | 9 |  |  |

@@ -22,30 +22,22 @@ println(
         ),
 )
 
-// Gauss-Bonnet is a global identity: the integral of Gaussian curvature over a closed
-// surface is 2 pi times its Euler characteristic. No local bug survives it.
+/*
+Gauss-Bonnet is a global identity: the integral of Gaussian curvature over a closed
+surface is 2 pi times its Euler characteristic. This checks the aggregate,
+not every local curvature value; the sphere estimates above are a separate check.
+*/
 for ((label, m) in
     listOf(
         "icosphere" to ball,
         "torus" to torusMesh(64, 32, 0.6, 0.24),
         "cube" to boxMesh(),
     )) {
-    val k = m.gaussianCurvature()
-    val areas = m.mixedVertexAreas()
-    var total = 0.0
-    for (v in 0 until m.vertexCount) total += k[v] * areas[v]
-    println(
-        "Gauss-Bonnet on the %-10s integral %10.6f against 2 pi chi = %10.6f"
-            .format(
-                label,
-                total,
-                2.0 * PI * m.eulerCharacteristic(),
-            ),
-    )
+    compare("Gauss-Bonnet on $label", m.integrate(m.gaussianCurvature()), 2.0 * PI * m.eulerCharacteristic())
 }
 
-// The BVH turns every useful query from O(n) into O(log n). Each answer below has an
-// analytic counterpart, printed beside it.
+// The BVH prunes spatially irrelevant triangles for repeated ray and nearest queries.
+// Analytic answers below check the results; inside tests need a closed mesh.
 val tree = ball.bvh()
 val hit = tree.raycast(vec(0, 0, -5), vec(0, 0, 1))
 println()

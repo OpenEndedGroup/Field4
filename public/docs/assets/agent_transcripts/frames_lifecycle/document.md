@@ -20,7 +20,7 @@ Compare frameNumber with elapsed time: the counter measures work, not seconds.
 A time-derived hue makes the new launch visible even with a fresh script context.
 
 ```edn [field-box id="frames_lifecycle_rerun" role="properties"]
-{"id" "frames_lifecycle_rerun" "index" 0 "name" "3 · re-run replaces, it does not stack" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · re-run replaces, it does not stack" "_tombstone" false "frame" #afield/rect [60.0 620.0 560.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_rerun_code_.kt" "lines" 34 "characters" 1209 "sha256" "a324c8f045748d66157d4950a71b162a55c5721df2c11d3d24aceb9be52a2e2f"}]}
+{"id" "frames_lifecycle_rerun" "index" 0 "name" "3 · re-run replaces, it does not stack" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · re-run replaces, it does not stack" "_tombstone" false "frame" #afield/rect [60.0 620.0 560.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_rerun_code_.kt" "lines" 34 "characters" 1197 "sha256" "c8b7dd2df4eaffc88bededa10355c138626303c4ec51ac70ecc13864edb000bf"}]}
 ```
 
 ```kotlin [field-property box="frames_lifecycle_rerun" name="code" path="frames_lifecycle_rerun_code_.kt"]
@@ -44,7 +44,7 @@ val show: (Int, Double) -> Unit = { n, elapsed ->
         """
         ### frame ${"%,d".format(n)}
 
-        {muted:$rate · ${"%.1f".format(elapsed)} s elapsed}
+        {muted:$rate · ${elapsed.f1} s elapsed}
 
         {muted:this launch's colour is $swatch}
         """,
@@ -151,7 +151,7 @@ Launch this box yourself and try three exits:
 The .end block handles cancellation; finally also handles a normal return.
 
 ```edn [field-box id="frames_lifecycle_cleanup" role="properties"]
-{"id" "frames_lifecycle_cleanup" "index" 2 "name" "4 · cleanup — stop it, wait it out, then re-run it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · cleanup — stop it, wait it out, then re-run it" "_tombstone" false "frame" #afield/rect [700.0 620.0 620.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_cleanup_code_.kt" "lines" 40 "characters" 1481 "sha256" "e6cc078c3dd42333986f192e14f02917d257a665a0fbdfbbffcd4785ab21c124"}]}
+{"id" "frames_lifecycle_cleanup" "index" 2 "name" "4 · cleanup — stop it, wait it out, then re-run it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · cleanup — stop it, wait it out, then re-run it" "_tombstone" false "frame" #afield/rect [700.0 620.0 620.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_cleanup_code_.kt" "lines" 39 "characters" 1494 "sha256" "829f9eaf0efaff15fc49a14cd5a065a882a3ef09644bf1b7da5d4b4135daef89"}]}
 ```
 
 ```kotlin [field-property box="frames_lifecycle_cleanup" name="code" path="frames_lifecycle_cleanup_code_.kt"]
@@ -164,15 +164,14 @@ The .end block handles cancellation; finally also handles a normal return.
 */
 val started = AnimationClock.nowSeconds()
 val runFor = 8.0
-val notes = mutableListOf<String>()
 var nextDraw = 0.0
 
 val show: (String) -> Unit = { headline -> markdown("main", headline.md) }
 
-// Keep cleanup in its own channel so a new launch's readout leaves it visible.
+// Keep a bounded cleanup history across launches. Old cleanup cannot overwrite a
+// newer run's cleanup; the live readout uses a separate channel.
 val note: (String) -> Unit = { line ->
-    notes += line
-    markdown("cleanup", notes.joinToString("\n\n") { "{ok:${it.md}}" })
+    markdownAppend("cleanup", "{ok:${line.md}}", maxEntries = 12)
 }
 
 frames {
@@ -180,7 +179,7 @@ frames {
         var elapsed = AnimationClock.nowSeconds() - started
         while (elapsed < runFor) {
             if (elapsed >= nextDraw) {
-                show("running - %.1f s of %.0f, frame %,d".format(elapsed, runFor, frameNumber))
+                show("running - ${elapsed.f1} s of ${runFor.f0}, frame ${"%,d".format(frameNumber)}")
                 nextDraw = elapsed + 0.1
             }
             frame()

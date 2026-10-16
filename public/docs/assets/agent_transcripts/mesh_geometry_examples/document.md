@@ -96,7 +96,7 @@ partitions its clip box exactly, so the cell volumes must sum to the box's own v
 a one-line check on the whole conversion.
 
 ```edn [field-box id="mesh_bridges" role="properties"]
-{"id" "mesh_bridges" "index" 1 "name" "Bridges — Voronoi, FLines, OBJ and STL" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Bridges — Voronoi, FLines, OBJ and STL" "_tombstone" false "frame" #afield/rect [1020.0 960.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_bridges_code_.kt" "lines" 98 "characters" 3906 "sha256" "649273faa33d658b12c81480b61f03665be0bd9c61df0a048abc23ea405f654a"}]}
+{"id" "mesh_bridges" "index" 1 "name" "Bridges — Voronoi, FLines, OBJ and STL" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Bridges — Voronoi, FLines, OBJ and STL" "_tombstone" false "frame" #afield/rect [1020.0 960.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_bridges_code_.kt" "lines" 96 "characters" 3854 "sha256" "fb758ac5765b06dc426c447d1731ed27fdb369986488fc816885b84a08ef2aae"}]}
 ```
 
 ```kotlin [field-property box="mesh_bridges" name="code" path="mesh_bridges_code_.kt"]
@@ -106,10 +106,7 @@ triangulates each cell's polygonal faces into a closed solid. A Voronoi tessella
 partitions its clip box exactly, so the cell volumes must sum to the box's own volume —
 a one-line check on the whole conversion.
 */
-val rand = java.util.Random(31)
-val sites = List(48) {
-    vec(rand.nextFloat() * 1.6 - 0.8, rand.nextFloat() * 1.6 - 0.8, rand.nextFloat() * 1.6 - 0.8)
-}
+val sites = randomPoints(48, seed = 31, bounds = AxisAlignedBoundingBox3D(vec(-0.8, -0.8, -0.8), vec(0.8, 0.8, 0.8)))
 val lattice = Voronoi3d.build(sites, clipPadding = 0.15f)
 var total = 0.0
 var closed = 0
@@ -135,11 +132,12 @@ println("${interior.size} of them are interior cells (no face touches the clip b
 // A tube swept along an FLine: rotation-minimising frames, so it does not twist where the
 // path's curvature swings through vertical.
 val path = FLine()
+path.breakNext()
 for (i in 0..120) {
     val t = i / 120.0
     val a = 2.0 * PI * 2.0 * t
     val p = vec(cos(a) * 0.6, (t - 0.5) * 1.3, sin(a) * 0.6)
-    if (i == 0) path.moveTo(p) else path.lineTo(p)
+    path.lineTo(p)
 }
 val coil = tubeMesh(path, radius = 0.1, sides = 18, samples = 120, caps = true)
 println()
@@ -286,7 +284,7 @@ monotonically toward the Loop limit surface — it converges on that, NOT on the
 its control vertices sit on — in geometrically shrinking steps.
 
 ```edn [field-box id="mesh_process" role="properties"]
-{"id" "mesh_process" "index" 3 "name" "Subdivide, smooth, decimate" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Subdivide, smooth, decimate" "_tombstone" false "frame" #afield/rect [1020.0 520.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_process_code_.kt" "lines" 88 "characters" 3199 "sha256" "2476ab7481f8a13e74f16b9b2db3085ffaf897e96b5b4e0df5bd1726729143f4"}]}
+{"id" "mesh_process" "index" 3 "name" "Subdivide, smooth, decimate" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Subdivide, smooth, decimate" "_tombstone" false "frame" #afield/rect [1020.0 520.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_process_code_.kt" "lines" 88 "characters" 3212 "sha256" "10ab77079e7925d63125536537bac239d53383aae4f18dd85eed8a4a292d5f71"}]}
 ```
 
 ```kotlin [field-property box="mesh_process" name="code" path="mesh_process_code_.kt"]
@@ -320,7 +318,7 @@ for (round in 1..3) {
 
 /*
 Smoothing: a Laplacian pass is a diffusion, so it deflates the shape; Taubin's lambda /
-mu pair alternates a shrink with an inflate and holds the volume. Both remove the same
+mu pair alternates a shrink with an inflate to reduce shrinkage. Both remove the same
 noise, and the numbers are the whole point.
 */
 val rng = java.util.Random(7)
@@ -338,7 +336,7 @@ println()
 println("clean     volume %.5f".format(clean.signedVolume()))
 println("noisy     volume %.5f".format(noisy.signedVolume()))
 println("laplacian volume %.5f  <- a diffusion deflates the ball".format(laplacian.signedVolume()))
-println("taubin    volume %.5f  <- the lambda/mu pair holds it".format(taubin.signedVolume()))
+println("taubin    volume %.5f  <- the lambda/mu pair reduces shrinkage".format(taubin.signedVolume()))
 
 /*
 QEM decimation: quadric error metric edge collapse with the link condition (so a
@@ -369,9 +367,9 @@ showMeshGrid(
     "icosahedronMesh() control" to icosahedronMesh(0.8),
     "loopSubdivide(1)" to rounds[0],
     "loopSubdivide(3)" to rounds[2],
-    "+18% radial noise" to noisy,
+    "±9% radial noise" to noisy,
     "laplacianSmooth(30) — deflated" to laplacian,
-    "taubinSmooth(30) — volume held" to taubin,
+    "taubinSmooth(30) — reduced shrinkage" to taubin,
     budgets[0].first to budgets[0].second,
     budgets[1].first to budgets[1].second,
     budgets[2].first to budgets[2].second,
@@ -394,7 +392,7 @@ for mean, both divided by the mixed Voronoi area. On a sphere of radius r they a
 outside and negative in the hole, which is why a torus is the shape to look at.
 
 ```edn [field-box id="mesh_measure" role="properties"]
-{"id" "mesh_measure" "index" 4 "name" "Curvature, rays, closest points, inside" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Curvature, rays, closest points, inside" "_tombstone" false "frame" #afield/rect [80.0 960.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_measure_code_.kt" "lines" 87 "characters" 3077 "sha256" "e6e98bc5cf26c849e4c26ad2e1a30ac510c04459b093bb273a8f9f4a461bfd21"}]}
+{"id" "mesh_measure" "index" 4 "name" "Curvature, rays, closest points, inside" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Curvature, rays, closest points, inside" "_tombstone" false "frame" #afield/rect [80.0 960.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_measure_code_.kt" "lines" 79 "characters" 2921 "sha256" "a510bdda0ea08ae654313b562bc4ded3ae866748061e8dce942ffae39007fd24"}]}
 ```
 
 ```kotlin [field-property box="mesh_measure" name="code" path="mesh_measure_code_.kt"]
@@ -422,30 +420,22 @@ println(
         ),
 )
 
-// Gauss-Bonnet is a global identity: the integral of Gaussian curvature over a closed
-// surface is 2 pi times its Euler characteristic. No local bug survives it.
+/*
+Gauss-Bonnet is a global identity: the integral of Gaussian curvature over a closed
+surface is 2 pi times its Euler characteristic. This checks the aggregate,
+not every local curvature value; the sphere estimates above are a separate check.
+*/
 for ((label, m) in
     listOf(
         "icosphere" to ball,
         "torus" to torusMesh(64, 32, 0.6, 0.24),
         "cube" to boxMesh(),
     )) {
-    val k = m.gaussianCurvature()
-    val areas = m.mixedVertexAreas()
-    var total = 0.0
-    for (v in 0 until m.vertexCount) total += k[v] * areas[v]
-    println(
-        "Gauss-Bonnet on the %-10s integral %10.6f against 2 pi chi = %10.6f"
-            .format(
-                label,
-                total,
-                2.0 * PI * m.eulerCharacteristic(),
-            ),
-    )
+    compare("Gauss-Bonnet on $label", m.integrate(m.gaussianCurvature()), 2.0 * PI * m.eulerCharacteristic())
 }
 
-// The BVH turns every useful query from O(n) into O(log n). Each answer below has an
-// analytic counterpart, printed beside it.
+// The BVH prunes spatially irrelevant triangles for repeated ray and nearest queries.
+// Analytic answers below check the results; inside tests need a closed mesh.
 val tree = ball.bvh()
 val hit = tree.raycast(vec(0, 0, -5), vec(0, 0, 1))
 println()
@@ -569,7 +559,7 @@ closed genus-0 solid and 0 for a torus, and that single integer catches a duplic
 seam, a missing cap or an unwelded weld — all of which still look plausible in a render.
 
 ```edn [field-box id="mesh_primitives" role="properties"]
-{"id" "mesh_primitives" "index" 6 "name" "Primitives — welded, watertight, and χ = 2" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Primitives — welded, watertight, and χ = 2" "_tombstone" false "frame" #afield/rect [80.0 80.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_primitives_code_.kt" "lines" 81 "characters" 2794 "sha256" "da7495fa4c9aa9ed12dab61a498e0c85f7ccdb849becc570658c0cac70b971e9"}]}
+{"id" "mesh_primitives" "index" 6 "name" "Primitives — welded, watertight, and χ = 2" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Primitives — welded, watertight, and χ = 2" "_tombstone" false "frame" #afield/rect [80.0 80.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_primitives_code_.kt" "lines" 69 "characters" 2610 "sha256" "7242eff50eb2a16ea075b1e6dcbb0c08347b384a48594f624eccbca4cef853c1"}]}
 ```
 
 ```kotlin [field-property box="mesh_primitives" name="code" path="mesh_primitives_code_.kt"]
@@ -616,20 +606,8 @@ for ((label, m) in
 // sphere is an inscribed polyhedron, so it is always a little under.
 println()
 println("unit cube      volume ${cube.signedVolume()}  area ${cube.surfaceArea()}")
-println(
-    "icosphere(3)   volume %.6f against 4/3 pi r^3 = %.6f"
-        .format(
-            ball.signedVolume(),
-            4.0 / 3.0 * PI * r * r * r,
-        ),
-)
-println(
-    "icosphere(3)   area   %.6f against 4 pi r^2   = %.6f"
-        .format(
-            ball.surfaceArea(),
-            4.0 * PI * r * r,
-        ),
-)
+compare("icosphere(3) volume", ball.signedVolume(), 4.0 / 3.0 * PI * r * r * r)
+compare("icosphere(3) area", ball.surfaceArea(), 4.0 * PI * r * r)
 
 /*
 The generators are already welded, so weld() finds nothing to merge and returns the
