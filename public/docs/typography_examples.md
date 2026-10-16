@@ -358,15 +358,6 @@ Back faces are culled in this render, so an inside-out wall would show up as a *
 than as odd shading. The line of facts under the `word` panel is computed by `showMesh` from the
 mesh it was given ([Field's 3D output](three_output.md#showmesh-and-the-renderer-parameter)).
 
-??? aside "`flatShaded()` and the figure's fact line"
-
-    It un-welds every triangle into its own three vertices, so the copy is no longer topologically
-    anything — and `showMesh` computes `topology()` on whatever you hand it and prints the answer
-    *as fact* in the figure's fact line. Pass it a flat-shaded `o` and that line reads
-    `open (N boundary loop(s))` beside a title stating the mesh is closed. You do not need it in any
-    case: both renderers apply `shadedNormals` to a mesh that arrives without normals, and an
-    extrusion is all creases, so it comes out faceted anyway.
-
 ## Letters in the SDF family
 
 `toSdf` builds a 2D signed-distance grid over the layout, samples it bilinearly and extrudes it in z.

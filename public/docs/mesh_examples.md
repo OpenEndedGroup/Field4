@@ -131,11 +131,10 @@ tiled into viewports rather than one iframe per panel. See [Field's 3D
 output](three_output.md#one-webgl-context-several-panels). Pass `renderer = MeshRenderer.CPU` for a
 static rasterized sheet instead.
 
-Its panels carry a label and no fact line. The counts, extent, χ, genus and volume that the
-single-mesh `showMesh` and the inline card print are not there, because `showMeshGrid` calls
-`threeGrid` with `facts` left off. To get them under every panel, call `threeGrid(..., facts = true)`
-directly, or hand it `ThreeMeshPanel(label, mesh, facts = "…")` cells with a sentence of your own;
-[polytope_examples.md](polytope_examples.md) does the latter throughout.
+Each panel carries its label and the same fact line `showMesh` prints: counts, extent, χ, genus and
+volume (`facts = false` leaves it off). For a sentence of your own under each cell, hand `threeGrid`
+`ThreeMeshPanel(label, mesh, facts = "…")` cells; [polytope_examples.md](polytope_examples.md) does
+that throughout.
 
 The primitives are `sdfSphere`, `sdfBox`, `sdfRoundBox`, `sdfTorus`, `sdfPlane`, `sdfCylinder`,
 `sdfCapsule`, `sdfGyroid` and `sdfMetaballs`. The combinators are `sdfUnion`, `sdfIntersect`,
@@ -280,16 +279,14 @@ showMeshGrid(
     "taubinSmooth(30) — volume held" to taubin,
     columns = 3,
     cellWidth = 290,
+    // One scale for every panel, so the deflated ball looks deflated.
+    sharedScale = true,
 )
 :::endfold
 ```
 
-![An icosahedron and its first and third Loop subdivisions, then a lumpy noisy ball and the same ball smoothed by 30 Laplacian and 30 Taubin iterations; the last two panels are both smooth round balls at the same apparent size, headed "laplacianSmooth(30) — deflated" and "taubinSmooth(30) — volume held"](assets/mesh_examples/process.png)
+![An icosahedron and its first and third Loop subdivisions, then a lumpy noisy ball and the same ball smoothed by 30 Laplacian and 30 Taubin iterations; the last two panels are both smooth round balls, the Laplacian one visibly smaller, headed "laplacianSmooth(30) — deflated" and "taubinSmooth(30) — volume held"](assets/mesh_examples/process.png)
 
-The picture will not settle the two smoothed balls for you: **look at the printed volumes, not at the
-panels.** Each panel of a `showMeshGrid` frames its own bounds and zoom-to-fits, so the Laplacian
-ball's 20% smaller extent is normalised straight back out and the two come out the same apparent
-size.
 The noisy input encloses **2.1293** across an extent of 1.701. Thirty Laplacian iterations at λ = 0.6
 leave **1.1509** across 1.301: it has thrown away **46% of the volume**. Thirty Taubin iterations of
 the same λ, with μ = −0.63, leave **2.1840** across 1.631, within about 3% of the clean ball this
