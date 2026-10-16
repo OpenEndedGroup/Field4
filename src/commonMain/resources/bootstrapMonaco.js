@@ -438,6 +438,18 @@ const installDebugProbeDoubleClick = (editor, resolveContext) => {
 
 window.installDebugProbeDoubleClick = installDebugProbeDoubleClick
 
+// The StackSL strings of the selected box's code, as the server finds them: it alone knows the box's
+// `stack.auto` slots, so only it can tell that a string assigned to one is StackSL. stacksl.js asks.
+window.requestStackSLRegions = (code, done) => {
+        const selected = window.currentSelectedCode || []
+        if (!selected[0] || !selected[0].uid || (window.currentSelectedProperty || "code") !== "code") return false
+        sendWithReply("stacksl-regions", { uid: selected[0].uid, code }, "stacksl-regions", (_message, payload) => {
+                done(Array.isArray(payload && payload.regions) ? payload.regions : [])
+                return true
+        })
+        return true
+}
+
 const buildSymbolContextRequest = (editor, resolveContext, options = {}) => {
         const allowUnfocused = !!options.allowUnfocused
         if (!editor || (!allowUnfocused && typeof editor.hasTextFocus === "function" && !editor.hasTextFocus())) return null

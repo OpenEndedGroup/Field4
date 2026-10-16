@@ -418,6 +418,7 @@ class Inferencer {
         val (head, arguments) = sourceSpine(call) ?: return null
         if (env[head.name] !== FieldMLTypePrelude.schemes[head.name]) return null
         val shape = hostCallShape(head.name, arguments) ?: return null
+        namedRecordWithLambda(shape)?.let { record -> return preInferNamedHostCall(head.name, shape, record, env) }
         if (shape.arguments.none { it is ELambda }) return null
 
         val memo = SpineMemo(env)
@@ -430,10 +431,16 @@ class Inferencer {
             }
         }
         val ownerType = prune(owner.type)
+        // How many parameters each lambda was written with, which picks between overloads that
+        // differ only in their callback's arity — the same tie-break the bridge makes at run time.
+        // Not offered when another argument is a function value, whose arity the source cannot see.
+        val lambdaArities = shape.arguments.map { (it as? ELambda)?.parameters?.size }
+            .takeIf { arities -> shape.arguments.indices.none { arities[it] == null && argumentTypes[it] is TFun } }
+            .orEmpty()
         val parameters = when {
-            shape.method == null -> FieldMLHostTypes.constructorParameters(ownerType, argumentTypes)
-            shape.static -> FieldMLHostTypes.staticParameters(ownerType, shape.method, argumentTypes)
-            else -> FieldMLHostTypes.instanceParameters(ownerType, shape.method, argumentTypes)
+            shape.method == null -> FieldMLHostTypes.constructorParameters(ownerType, argumentTypes, lambdaArities)
+            shape.static -> FieldMLHostTypes.staticParameters(ownerType, shape.method, argumentTypes, lambdaArities)
+            else -> FieldMLHostTypes.instanceParameters(ownerType, shape.method, argumentTypes, lambdaArities)
         }
         shape.arguments.forEachIndexed { index, argument ->
             if (argument !is ELambda) return@forEachIndexed
@@ -442,6 +449,42 @@ class Inferencer {
             if (slot != null && expected != null) checkLambdaArity(argument, expected, slot, shape, ownerType)
             memo[argument] = inferLambda(argument.parameters, argument.body, argument.range, env, expected)
         }
+        return memo
+    }
+
+    /** The record a named host call is written with, when one of its fields is a lambda; else null. */
+    private fun namedRecordWithLambda(shape: HostCallShape): ERecord? =
+        (shape.arguments.lastOrNull() as? ERecord)?.takeIf { record -> record.fields.any { it.value is ELambda } }
+
+    /**
+     * [preInferHostSpine] for a call written with a record, `hostStaticCall "f" {a = 1, g = fun p -> …} C`:
+     * each lambda field is checked against the parameter of the same name. The record is inferred
+     * here as a whole and memoised, since it is the spine argument the ordinary walk will reach.
+     */
+    private fun preInferNamedHostCall(headName: String, shape: HostCallShape, record: ERecord, env: TypeEnv): SpineMemo {
+        val memo = SpineMemo(env)
+        val ownerType = prune(preInfer(shape.owner, env, memo).type)
+        // `hostExt`'s piped receiver comes before the record.
+        shape.arguments.dropLast(1).forEach { preInfer(it, env, memo) }
+        val parameters = FieldMLHostTypes.namedParameters(
+            ownerType,
+            shape.method,
+            shape.static,
+            record.fields.map { it.name }.toSet(),
+            wantsExtensionReceiver = headName == "hostExt",
+        )
+        val fields = record.fields.map { field ->
+            val value = field.value
+            field.name to if (value is ELambda) {
+                val slot = parameters[field.name]
+                val expected = slot?.let { FieldMLHostTypes.samParameterTypes(it) }
+                if (slot != null && expected != null) checkLambdaArity(value, expected, slot, shape, ownerType)
+                inferLambda(value.parameters, value.body, value.range, env, expected)
+            } else {
+                inferFresh(value, env)
+            }
+        }
+        memo[record] = TExprRecord(fields, record.range, TRecord(fields.associate { it.first to it.second.type }))
         return memo
     }
 

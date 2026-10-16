@@ -228,6 +228,61 @@ class MorphoExecution(val inside: Box) : BoxExecution {
         """.trimIndent()
     }
 
+    // ---------------------------------------------------------------- line notes
+
+    /**
+     * What each part of [code] came to in the grown [circuit], as line notes: the `# main` line is
+     * the circuit; a `Name = LUT(…)` line is how many gates it became; a `def` (with its decorator
+     * and body) is how many times it was expanded, at which widths, and the gates beneath it.
+     */
+    internal fun lineNotes(code: String, directive: Directive, circuit: MorphoCircuit): List<LastRunNotes.Produced> {
+        val n = circuit.netlist
+        val lines = code.split("\n")
+        // A cell's name is `design:[widths]` for an expanded morpho cell, the LUT's own name for a gate.
+        fun cellName(cell: Int) = n.name(cell).substringBefore(':')
+        val expansions = (0 until n.nCells).filter { n.type(it) == MorphoNetlist.MORPHO }
+            .groupBy({ cellName(it) }, { n.name(it).substringAfter(':', "") })
+        val gatesUnder = HashMap<String, Int>()
+        val gatesOf = HashMap<String, Int>()
+        for (cell in n.activeCells) {
+            if (!n.isLut(cell)) continue
+            gatesOf.merge(cellName(cell), n.slots(cell), Int::plus)
+            val seen = HashSet<String>()
+            var up = n.parent(cell)
+            while (up >= 0) {
+                if (n.type(up) == MorphoNetlist.MORPHO && seen.add(cellName(up))) gatesUnder.merge(cellName(up), n.slots(cell), Int::plus)
+                up = n.parent(up)
+            }
+        }
+        fun plural(count: Int, word: String) = "$count $word" + if (count == 1) "" else "s"
+        val out = mutableListOf<LastRunNotes.Produced>()
+        out += LastRunNotes.Produced(directive.line + 1, directive.line + 1,
+            "${circuit.design}(${circuit.signature.joinToString(", ")}): ${plural(n.gateCount, "gate")} in " +
+                "${plural(n.activeCount, "cell")}, depth ${circuit.depth.toInt()}, ${plural(circuit.expansions, "expansion")}")
+        val lut = Regex("""^([A-Za-z_]\w*)\s*=\s*LUT\s*\(""")
+        val def = Regex("""^def\s+([A-Za-z_]\w*)\s*\(""")
+        lines.forEachIndexed { index, line ->
+            lut.find(line)?.let { m ->
+                val name = m.groupValues[1]
+                out += LastRunNotes.Produced(index + 1, index + 1, "$name: ${plural(gatesOf[name] ?: 0, "gate")} in this circuit")
+            }
+            def.find(line)?.let { m ->
+                val name = m.groupValues[1]
+                val first = generateSequence(index) { (it - 1).takeIf { i -> i >= 0 && lines[i].trimStart().startsWith("@") } }.last()
+                var last = index
+                while (last + 1 < lines.size && (lines[last + 1].isBlank() || lines[last + 1].first().isWhitespace())) last++
+                while (last > index && lines[last].isBlank()) last--
+                val widths = expansions[name].orEmpty()
+                val caption = if (widths.isEmpty()) "$name: not used by ${circuit.design}"
+                    else "$name: expanded ${plural(widths.size, "time")} (" +
+                        widths.groupingBy { it }.eachCount().entries.joinToString(", ") { (w, c) -> if (c == 1) w else "$w ×$c" } +
+                        "), ${plural(gatesUnder[name] ?: 0, "gate")} beneath it"
+                out += LastRunNotes.Produced(first + 1, last + 1, caption)
+            }
+        }
+        return out
+    }
+
     // ---------------------------------------------------------------- execute
 
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) =
@@ -263,10 +318,13 @@ class MorphoExecution(val inside: Box) : BoxExecution {
                     inside.morphoCircuit = circuit
                     clearErrors(execute, trace.reply, originSession)
                     report(execute, trace.reply, originSession, describe(circuit))
+                    LastRunNotes.record(inside, "code", execute.code, execute.line, lineNotes(execute.code, directive, circuit))
                     ok = true
                 } catch (e: Throwable) {
                     if (e is InterruptedException) throw e
                     fail(execute, e, directive.line)
+                    LastRunNotes.record(inside, "code", execute.code, execute.line, emptyList(),
+                        stoppedAt = (e as? MorphoException)?.line ?: (directive.line + 1), stopReason = e.message ?: e.javaClass.simpleName)
                 }
             } finally {
                 trace.finish(ok)
@@ -328,9 +386,15 @@ class MorphoExecution(val inside: Box) : BoxExecution {
             strandJobs[strand] = inMain {
                 try {
                     var lastReported = -1
+                    var noted = false
                     while (inside.runGeneration[strand] == generation) {
                         try {
-                            circuit.step(grow = directive.grow, relax = directive.relax)
+                            val growing = circuit.step(grow = directive.grow, relax = directive.relax)
+                            // The notes describe the grown circuit, so they are recorded once it is.
+                            if (!growing && !noted) {
+                                noted = true
+                                LastRunNotes.record(inside, "code", code, execute.line, lineNotes(code, directive, circuit))
+                            }
                             if (circuit.expansions != lastReported) {
                                 lastReported = circuit.expansions
                                 inside.output.display("morpho", describe(circuit))

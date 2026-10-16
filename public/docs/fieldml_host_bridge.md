@@ -243,12 +243,10 @@ A name the method does not have is an error where it is written. When two overlo
 
 ## What it still will not do
 
-- A lambda inside a named record has untyped parameters, because parameter types only reach a lambda written as a positional argument. When a callback is involved, use the positional form: `hostStaticCall "defaultBuffer" (hostNull, "inData", fun p -> …)` types `p`, the named spelling does not.
 - A JVM `Map` comes back as a FieldML record, so passing one to `hostCall` as one argument needs `hostCall1`, which never spreads. Lists work the same way.
 - A callback written inside a helper has untyped parameters. `line |> hostCall1 "transform" (fun p -> …)` in a pipeline is typed; the same call inside `let warp line = …` is not, because `line` is a function parameter with no known class. Use `hostAs "Vec3"` there.
 - A lambda's result is not checked against what Kotlin wants. It is converted, which is why `fun x y -> 0` satisfies a function returning `Float`, but a result of the wrong shape fails when it runs.
 - A `suspend` method cannot be called. Passing a FieldML function as a suspend lambda works (see [Every frame](#every-frame)), but calling `Renderer.run`, which is `suspend`, does not. The box that owns your window and renderer is still a Kotlin box.
-- Two overloads that differ only in how many parameters their lambda takes leave the callback untyped. `start` takes both `suspend Frames.() -> Unit` and `suspend () -> Unit`; the call works, but `eachFrame`, `loop` and `forever`, which have one form each, type the parameter.
 - `internal` Kotlin members cannot be reached by their source names, because the compiler renames them.
 - Buffers, kernels and anchors, which FieldML cannot build and which have no constructor to call, are out of reach.
 

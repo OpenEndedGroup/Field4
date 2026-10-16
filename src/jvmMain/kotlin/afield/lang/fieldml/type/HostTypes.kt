@@ -8,6 +8,8 @@ import java.lang.reflect.TypeVariable
 import java.lang.reflect.WildcardType
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
+import kotlin.reflect.jvm.javaConstructor
+import kotlin.reflect.jvm.javaMethod
 import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.kotlinFunction
 
@@ -259,6 +261,42 @@ object FieldMLHostTypes {
         return Resolution.Found(valueType(owner))
     }
 
+    /**
+     * The parameter slot each name of a named call lands in, for the names every candidate that
+     * accepts [argumentNames] agrees on. A name whose slot differs between candidates is left out,
+     * which is "no claim" — the same rule [parametersOf] follows for positions.
+     *
+     * [owner] is the class for a static or constructor call, the receiver's class for an instance
+     * call; [method] null means a constructor.
+     */
+    fun namedParameters(
+        receiverOrClass: Type,
+        method: String?,
+        static: Boolean,
+        argumentNames: Set<String>,
+        wantsExtensionReceiver: Boolean,
+    ): Map<String, HostParameter> {
+        val owner = (if (static || method == null) classHandleName(receiverOrClass)?.let { loadClass(it) } else jvmClassOf(receiverOrClass))
+            ?: return emptyMap()
+        val candidates: List<KFunction<*>> = when {
+            method == null -> owner.constructors.mapNotNull { runCatching { it.kotlinFunction }.getOrNull() }
+            static -> kotlinFunctionsOf(FieldMLHostBridge.staticMethods(owner, method))
+            else -> kotlinFunctionsOf(FieldMLHostBridge.instanceMethods(owner, method))
+        }
+        val viable = candidates.filter { acceptsNames(it, argumentNames, wantsExtensionReceiver) }
+        if (viable.isEmpty()) return emptyMap()
+        val slots = viable.map { candidate ->
+            val executable: Executable = candidate.javaMethod ?: candidate.javaConstructor ?: return emptyMap()
+            // kotlin-reflect counts the instance as parameter zero; the JVM does not.
+            val shift = if (candidate.parameters.any { it.kind == KParameter.Kind.INSTANCE }) 1 else 0
+            candidate.parameters.filter { it.kind == KParameter.Kind.VALUE && it.name in argumentNames }
+                .associate { it.name!! to parameterSlot(executable, it.index - shift) }
+        }
+        return argumentNames.mapNotNull { name ->
+            slots.map { it[name] }.distinct().singleOrNull()?.let { name to it }
+        }.toMap()
+    }
+
     /** Through the bridge's cache, so the two sides of a named call read the metadata once between them. */
     private fun kotlinFunctionsOf(methods: List<java.lang.reflect.Method>): List<KFunction<*>> =
         methods.mapNotNull { FieldMLHostBridge.kotlinFunctionOf(it) }
@@ -358,19 +396,19 @@ object FieldMLHostTypes {
      * [arguments] may contain placeholders for the positions not yet inferred; a `TVar` scores as
      * unknown and so never narrows the candidate set on its own.
      */
-    fun instanceParameters(receiver: Type, name: String, arguments: List<Type>): List<HostParameter?> {
+    fun instanceParameters(receiver: Type, name: String, arguments: List<Type>, lambdaArities: List<Int?> = emptyList()): List<HostParameter?> {
         val owner = jvmClassOf(receiver) ?: return emptyList()
-        return parametersOf(FieldMLHostBridge.instanceMethods(owner, name, arguments.size), arguments)
+        return parametersOf(FieldMLHostBridge.instanceMethods(owner, name, arguments.size), arguments, lambdaArities)
     }
 
-    fun staticParameters(classType: Type, name: String, arguments: List<Type>): List<HostParameter?> {
+    fun staticParameters(classType: Type, name: String, arguments: List<Type>, lambdaArities: List<Int?> = emptyList()): List<HostParameter?> {
         val owner = classHandleName(classType)?.let { loadClass(it) } ?: return emptyList()
-        return parametersOf(FieldMLHostBridge.staticMethods(owner, name, arguments.size), arguments)
+        return parametersOf(FieldMLHostBridge.staticMethods(owner, name, arguments.size), arguments, lambdaArities)
     }
 
-    fun constructorParameters(classType: Type, arguments: List<Type>): List<HostParameter?> {
+    fun constructorParameters(classType: Type, arguments: List<Type>, lambdaArities: List<Int?> = emptyList()): List<HostParameter?> {
         val owner = classHandleName(classType)?.let { loadClass(it) } ?: return emptyList()
-        return parametersOf(FieldMLHostBridge.constructors(owner, arguments.size), arguments)
+        return parametersOf(FieldMLHostBridge.constructors(owner, arguments.size), arguments, lambdaArities)
     }
 
     /**
@@ -378,13 +416,27 @@ object FieldMLHostTypes {
      * have the *same* signature. Two equally good overloads with different parameters is exactly the
      * case where claiming one would be a guess, and [resolve] already degrades the result type the
      * same way. An empty list means "no claim", which leaves inference exactly as it was.
+     *
+     * One tie is broken, and only the way the bridge breaks it at run time
+     * (`FieldMLHostBridge.choose`): overloads that differ in how many arguments a callback is handed,
+     * where [lambdaArities] (per position, null for a non-lambda) says how many the lambda takes.
+     * `start(suspend Frames.() -> Unit)` beside `start(suspend () -> Unit)` is the case.
      */
-    private fun parametersOf(candidates: List<Executable>, arguments: List<Type>): List<HostParameter?> {
+    private fun parametersOf(candidates: List<Executable>, arguments: List<Type>, lambdaArities: List<Int?> = emptyList()): List<HostParameter?> {
         val scored = candidates.mapNotNull { candidate -> scoreCandidate(candidate, arguments)?.let { candidate to it } }
         if (scored.isEmpty()) return emptyList()
         val best = scored.minOf { it.second }
-        val tied = scored.filter { it.second == best }.map { it.first }
-        val signatures = tied.map { it.parameterTypes.toList() to it.genericParameterTypes.toList() }.distinct()
+        var tied = scored.filter { it.second == best }.map { it.first }
+        val signature = { it: Executable -> it.parameterTypes.toList() to it.genericParameterTypes.toList() }
+        if (tied.map(signature).distinct().size > 1 && lambdaArities.any { it != null }) {
+            val exact = tied.filter { candidate ->
+                !candidate.isVarArgs && lambdaArities.withIndex().all { (index, arity) ->
+                    arity == null || samParameterTypes(parameterSlot(candidate, index))?.size == arity
+                }
+            }
+            if (exact.isNotEmpty()) tied = exact
+        }
+        val signatures = tied.map(signature).distinct()
         if (signatures.size != 1) return emptyList()
         val chosen = tied.first()
         val raw = chosen.parameterTypes
