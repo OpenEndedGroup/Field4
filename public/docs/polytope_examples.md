@@ -281,6 +281,7 @@ fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<Stri
         },
         channel = channel,
         name = "gallery-$channel",
+        padding = 1.02,
         columns = columns,
         height = rows * (cell * 0.84).toInt(),
         cellWidth = cell,
@@ -326,6 +327,7 @@ fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<Stri
         },
         channel = channel,
         name = "gallery-$channel",
+        padding = 1.02,
         columns = columns,
         height = rows * (cell * 0.84).toInt(),
         cellWidth = cell,
@@ -392,7 +394,7 @@ val painted = TriMesh(g.mesh.positions, g.mesh.indices, g.mesh.normals, null, co
 // written to "gyro" would silently take the viewer's place and the figure would lose its mesh.
 three(
     painted, channel = "gyro3d", name = "gyro",
-    view = MeshView(wireframe = false, width = 860, height = 560, distance = 2.4), facts = false,
+    view = MeshView(wireframe = false, width = 860, height = 560, distance = 2.4), facts = false, padding = 1.02,
 )
 // The count behind the flatness: 24 faces sharing only 6 distinct outward normals.
 val distinctNormals = gyro.topology.elements(2)
@@ -435,6 +437,7 @@ fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<Stri
         },
         channel = channel,
         name = "gallery-$channel",
+        padding = 1.02,
         columns = columns,
         height = rows * (cell * 0.84).toInt(),
         cellWidth = cell,
@@ -687,7 +690,7 @@ val painted = TriMesh(g.mesh.positions, g.mesh.indices, g.mesh.normals, null, co
 // Its own channel — see the note on the gyro figure: a later display() to the same channel replaces.
 three(
     painted, channel = "field3d", name = "field",
-    view = MeshView(wireframe = false, width = 820, height = 560, distance = 2.3, yawDegrees = 0.0, pitchDegrees = 6.0),
+    view = MeshView(wireframe = false, width = 820, height = 560, distance = 2.3, yawDegrees = 0.0, pitchDegrees = 6.0), padding = 1.02,
     facts = false,
 )
 markdown("field", """
@@ -769,7 +772,7 @@ threeGrid(
     "every vertex jittered" to jittered.toTriMesh(),
     "solveRealization()" to solved.polyhedron.toTriMesh(),
     channel = "solve3d", name = "embeddings", columns = 3, height = 340, cellWidth = 400,
-    view = MeshView(wireframe = false, distance = 2.5),
+    view = MeshView(wireframe = false, distance = 2.5), padding = 1.02,
 )
 // A Table for the diagnostics — the numeric columns right-align themselves and each carries its
 // own format — inside a markdown card that holds the solver's summary as prose.
@@ -849,7 +852,7 @@ threeGrid(
     "gC as the operator built it" to before.toTriMesh(),
     "gC.canonicalize()" to after.toTriMesh(),
     channel = "canon3d", name = "embeddings", columns = 2, height = 380, cellWidth = 430,
-    view = MeshView(wireframe = false, distance = 3.2),
+    view = MeshView(wireframe = false, distance = 3.2), padding = 1.26,
 )
 val sci = { v: Any? -> "%.3e".format(v) }
 fun row(label: String, d: CanonicalDiagnostics) = [
@@ -937,7 +940,7 @@ val panels = [
 threeGrid(
     panels.map { (label, p) -> ThreeMeshPanel(label, p.toTriMesh()) },
     channel = "kkc3d", name = "embeddings", columns = 3, height = 340, cellWidth = 380,
-    view = MeshView(wireframe = false, distance = 3.2),
+    view = MeshView(wireframe = false, distance = 3.2), padding = 1.26,
 )
 val sci = { v: Any? -> "%.3e".format(v) }
 fun row(label: String, p: PolyhedralObject): List<Any?> {
@@ -1011,7 +1014,7 @@ threeGrid(
     "2 · canonicalize()" to recovered.polyhedron.normalize(gauge).toTriMesh(),
     "3 · canonicalize()" to fromOperator.polyhedron.normalize(gauge).toTriMesh(),
     channel = "spectral3d", name = "routes", columns = 3, height = 330, cellWidth = 380,
-    view = MeshView(wireframe = false, distance = 3.2),
+    view = MeshView(wireframe = false, distance = 3.2), padding = 1.26,
 )
 val dev = recovered.polyhedron.symmetryDeviation()
 val spectralOnly = spectral.canonicalDiagnostics()
@@ -1354,7 +1357,7 @@ val cells = [true, false].map { withRing ->
             " · ${plate.triangulate().triangleCount} triangles",
     )
 }
-threeGrid(cells, channel = "plates", name = "plates", columns = 2, height = 260, view = view)
+threeGrid(cells, channel = "plates", name = "plates", columns = 2, height = 260, view = view, padding = 1.02)
 ```
 
 ![Two wireframe renders side by side. The left plate, built with addFaceHole, is a square annulus — a square frame with an empty square window at its centre, triangulated into eight triangles around the rim, reported as 8 vertices, 8 edges and 2 rings. The right plate is the identical outline with the ring dropped: a solid filled square of 2 triangles, 4 vertices, 4 edges and 1 ring](assets/polytope_examples/face_hole_counterfactual.png)
