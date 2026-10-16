@@ -401,6 +401,7 @@ nav:
       - Audio AI: reference/audio-ai.md
       - Languages: reference/languages.md
       - Workspace: reference/workspace.md
+      - Execution: reference/execution.md
       - Machine learning: reference/machine-learning.md
       - Networking: reference/networking.md
       - Video: reference/video.md
