@@ -1759,6 +1759,22 @@ private fun containsFillWidthIframe(element: Element): Boolean =
 
 private fun fitBoxWidthToOutputsForScreenshot(box: HTMLElement, outputArea: HTMLElement) {
     val currentWidth = box.getBoundingClientRect().width
+    // Measure at the width the panel had before any capture touched it. Block children fill
+    // whatever width they are given, so measuring at the last pass's width (+56) made every repeated
+    // `screenshot-box` of the same box 56 px per panel wider than the one before.
+    (outputArea.querySelectorAll(".disclosure").asList() + outputArea.querySelectorAll(".disclosure-content").asList())
+        .mapNotNull { it as? HTMLElement }
+        .filterNot(::containsFillWidthIframe)
+        .forEach { panel ->
+            val original = panel.getAttribute("data-afield-precapture-width")
+            if (original == null) {
+                panel.setAttribute("data-afield-precapture-width", panel.style.width)
+                panel.setAttribute("data-afield-precapture-max-width", panel.style.maxWidth)
+            } else {
+                panel.style.width = original
+                panel.style.maxWidth = panel.getAttribute("data-afield-precapture-max-width") ?: ""
+            }
+        }
     val maxContentWidth = outputArea.querySelectorAll(".disclosure-content").asList()
         .mapNotNull { it as? HTMLElement }
         .map { content ->
@@ -5623,6 +5639,8 @@ suspend fun main() {
     window.unsafeCast<dynamic>().selectBox = ::selectBox
     window.unsafeCast<dynamic>().deselectBox = ::deselectBox
     window.asDynamic().fieldBackdoorPrepareBoxScreenshot = { raw: dynamic -> prepareBoxScreenshotJson(raw) }
+    // True while a navigation pan is animating; screenshot prep waits for it before shooting.
+    window.asDynamic().fieldCanvasMotionActive = { navigationPanAnimationHandle != null }
     window.asDynamic().fieldBackdoorPrepareWindowScreenshot = { raw: dynamic -> prepareWindowScreenshotJson(raw) }
     window.asDynamic().clearEditorOutputsForBox = { uid: String ->
         clearEditorOutputsForBox(uid)

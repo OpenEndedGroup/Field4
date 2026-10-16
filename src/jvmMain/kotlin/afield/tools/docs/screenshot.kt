@@ -975,6 +975,21 @@ ${prepDeadlinesJs(prepTimeoutMs, "box", "\"\"")}
               const prepared = await bounded("window.fieldBackdoorPrepareBoxScreenshot", fn(request));
               const decoded = decode(prepared);
               if (decoded && decoded.success) {
+                // The prep may have started a canvas pan (a requestAnimationFrame loop) or a CSS
+                // transition on the selection; shooting mid-motion gave plausible, wrong figures, and a
+                // second screenshot-box of the same box raced the first one's pan.
+                const motionDeadline = Math.min(deadline, Date.now() + 2000);
+                const finiteRunning = () => typeof document.getAnimations === "function" &&
+                  document.getAnimations().some((a) => {
+                    if (a.playState !== "running") return false;
+                    const end = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming().endTime : Infinity;
+                    return Number.isFinite(end);
+                  });
+                while (Date.now() < motionDeadline) {
+                  const panning = typeof window.fieldCanvasMotionActive === "function" && window.fieldCanvasMotionActive();
+                  if (!panning && !finiteRunning()) break;
+                  await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                }
                 await settle(request.openOutputs ? 2 : 1);
                 if (!pageReady()) {
                   lastMessage = "Field page disconnected during screenshot prep";
@@ -1324,6 +1339,21 @@ ${prepDeadlinesJs(prepTimeoutMs, "window", "null")}
               const prepared = await bounded("window.fieldBackdoorPrepareWindowScreenshot", fn(request));
               const decoded = decode(prepared);
               if (decoded && decoded.success) {
+                // The prep may have started a canvas pan (a requestAnimationFrame loop) or a CSS
+                // transition on the selection; shooting mid-motion gave plausible, wrong figures, and a
+                // second screenshot-box of the same box raced the first one's pan.
+                const motionDeadline = Math.min(deadline, Date.now() + 2000);
+                const finiteRunning = () => typeof document.getAnimations === "function" &&
+                  document.getAnimations().some((a) => {
+                    if (a.playState !== "running") return false;
+                    const end = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming().endTime : Infinity;
+                    return Number.isFinite(end);
+                  });
+                while (Date.now() < motionDeadline) {
+                  const panning = typeof window.fieldCanvasMotionActive === "function" && window.fieldCanvasMotionActive();
+                  if (!panning && !finiteRunning()) break;
+                  await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                }
                 await settle(request.openOutputs || request.showEditor ? 3 : 1);
                 if (!pageReady()) {
                   lastMessage = "Field page disconnected during screenshot prep";

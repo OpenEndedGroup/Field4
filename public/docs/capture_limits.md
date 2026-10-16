@@ -63,11 +63,6 @@ the reply.
 
 A capture can be correctly sized, correctly timed, and still of the wrong thing.
 
-- **The previous selection can still be in focus.** `screenshot-box` selects the box, but the
-  canvas's depth-of-field can lag, and the result is a plausible-looking blurred figure.
-  The reliable recipe is `editor-open <uid> --open-outputs`, settle, then
-  `screenshot-box --preserve-selection`. Two consecutive `screenshot-box` calls on the same box
-  are not reliable (`dev_docs/chart_primitive.md`).
 - **Neighbouring panels bleed in.** With several output panels open on one canvas, the clip around
   the target can contain its neighbours' panels too (`dev_docs/chart_bad_separation.md`).
 - **The box capture path pans, and panning drops the selection.** A figure whose subject *is* the
