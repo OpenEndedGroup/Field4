@@ -30,12 +30,10 @@ import kotlin.math.sin
  *
  * # Where to pump from
  *
- * [OpenXRHmdTarget]'s pose comes from `xrLocateViews` on the renderer's queue thread and is stored
- * as plain non-volatile floats, so a reader on another thread can in principle see a position from
- * one frame with an orientation from the next. That is why [HeadTrackedListener] can be driven two
- * ways, and why the OpenXR one is the manual one: construct it with `hz = 0.0` and call
- * [HeadTrackedListener.pump] once per frame from inside the frame callback, where the pose is whole.
- * A [StereoPoseSource] has no such problem -- it latches by contract -- and is fine on the timer.
+ * [OpenXRHmdTarget]'s pose comes from `xrLocateViews` on the renderer's queue thread and is
+ * published whole, once per frame, so the timer default is safe for it as for a [StereoPoseSource]
+ * (which latches by contract). Construct with `hz = 0.0` and call [HeadTrackedListener.pump] from
+ * the frame callback only when the pose should change exactly on frame boundaries.
  */
 
 /**
