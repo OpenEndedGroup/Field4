@@ -112,7 +112,7 @@ notation {
     }
     rect(520, 170, 200, 170, name = "grid", stroke = "#868e96")
     ellipse(580, 230, 10, 10, name = "point", fill = "#868e96")
-    line(listOf(vec(585, 235), vec(1010, 470)), name = "the line", stroke = "#1e1e1e")
+    line([vec(585, 235), vec(1010, 470)], name = "the line", stroke = "#1e1e1e")
 }
 val line = notation.named("the line")!!
 val crossings = notation.intersect(line.start!!, line.end!!).filter { it.mark.name!!.startsWith("curve") }
@@ -129,7 +129,7 @@ Feldman's grid, read as events. Time runs across the frame and the three rows ar
 notation {
     stroke = "#868e96"
     frame("projection", 260, 30, 800, 240)
-    for (row in 1..2) line(listOf(vec(260, 30 + row * 80), vec(1060, 30 + row * 80)))
+    for (row in 1..2) line([vec(260, 30 + row * 80), vec(1060, 30 + row * 80)])
     fill = "#1971c2"
     rect(300, 42, 120, 56)
     rect(500, 122, 200, 56)
