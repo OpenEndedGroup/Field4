@@ -1,0 +1,287 @@
+{
+  "baseline": "32744aa1d",
+  "scope": "representative edit pilot, four transcripts; not corpus completion",
+  "source": {
+    "dev_docs/agents/transcripts/spin_glass.yaml": {
+      "sha256": "a08847031436a1da1f26234797149f7744c6db842e6924fdbc6a5caf4b86905e",
+      "nonCodeStructureUnchanged": true,
+      "fragmentMarkersUnchanged": true,
+      "changedBodies": [
+        "sg_update:code",
+        "sg_measure:code",
+        "sg_draw:code"
+      ]
+    },
+    "dev_docs/agents/transcripts/frames_lifecycle.yaml": {
+      "sha256": "d1f933e042873149fe52ddc3f68c7af23f806f24c6b166dd40778d342806f716",
+      "nonCodeStructureUnchanged": true,
+      "fragmentMarkersUnchanged": true,
+      "changedBodies": [
+        "frames_lifecycle_rerun:code",
+        "frames_lifecycle_cleanup:code"
+      ]
+    },
+    "dev_docs/agents/transcripts/mesh_geometry_examples.yaml": {
+      "sha256": "85fb945ad12391e671922477787d71d8582a7e8471ca00e0575e2c1b50599be6",
+      "nonCodeStructureUnchanged": true,
+      "fragmentMarkersUnchanged": true,
+      "changedBodies": [
+        "mesh_primitives:code",
+        "mesh_process:code",
+        "mesh_measure:code",
+        "mesh_bridges:code"
+      ]
+    },
+    "dev_docs/agents/transcripts/loris_partial_explorer.yaml": {
+      "sha256": "5a648dbd02f5476e28440e3254acf93e42ac6973fd448edaa4e4582b85fbdaa2",
+      "nonCodeStructureUnchanged": true,
+      "fragmentMarkersUnchanged": true,
+      "changedBodies": [
+        "loris_source_and_partials:code",
+        "loris_edit_partials:code",
+        "loris_two_resolutions:code",
+        "loris_spectral_whirlpool:code",
+        "loris_label_align_morph:code"
+      ]
+    }
+  },
+  "batches": {
+    "original_mesh": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "original_mesh_checks": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "original_mesh_layout": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "original_mesh_captures": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 3
+    },
+    "revised_mesh": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "revised_mesh_checks": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "revised_mesh_layout": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "revised_mesh_captures": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 3
+    },
+    "spin_128": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "spin_128_capture": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 3
+    },
+    "spin_128_probe": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "spin_128_edit_controls": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "spin_128_live": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 1
+    },
+    "spin_128_live_check": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "spin_128_stop": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 1
+    },
+    "spin_130": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "spin_130_capture": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 3
+    },
+    "spin_130_probe": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "spin_130_edit_controls": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "spin_130_live": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 1
+    },
+    "spin_130_live_check": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "spin_130_stop": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 1
+    },
+    "gaussian_bonds": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "frames": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "cleanup_stop": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 7
+    },
+    "cleanup_return": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 6
+    },
+    "cleanup_rerun": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 11
+    },
+    "loris_create": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "loris_complete": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 3
+    },
+    "loris_rerun": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 3
+    },
+    "loris_cold_create": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "loris_cold_launch": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "loris_cold_stop": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "loris_after_cancel": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "invalid_size_0": {
+      "ok": false,
+      "expectedRejection": true,
+      "commands": 2
+    },
+    "invalid_size_0_no_buffers": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "invalid_size_0_stop": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 1
+    },
+    "invalid_size_129": {
+      "ok": false,
+      "expectedRejection": true,
+      "commands": 2
+    },
+    "invalid_size_129_no_buffers": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 2
+    },
+    "invalid_size_129_stop": {
+      "ok": true,
+      "expectedRejection": false,
+      "commands": 1
+    }
+  },
+  "commandsIncludingExpectedRejections": 98,
+  "cleanupOrder": {
+    "cleanup_stop": [
+      ".end",
+      "finally"
+    ],
+    "cleanup_return": [
+      ".end",
+      "finally",
+      "returned",
+      "finally"
+    ],
+    "cleanup_rerun": [
+      ".end",
+      "finally",
+      "returned",
+      "finally",
+      ".end",
+      "finally",
+      ".end",
+      "finally"
+    ]
+  },
+  "nativeCancellation": {
+    "workers": [
+      21927
+    ],
+    "exited": true,
+    "temporaryDirectoriesRemoved": true
+  },
+  "deferred": [
+    "Loris async bodies 2-5",
+    "Loris whirlpool creative controls",
+    "all other corpus groups"
+  ],
+  "descriptionsHandoff": "14a871f3",
+  "fullGuard": "landing queue"
+}

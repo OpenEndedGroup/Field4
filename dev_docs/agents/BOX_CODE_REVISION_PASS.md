@@ -41,6 +41,10 @@ the limits of the current census and the verification needed before a larger pas
 The [second rehearsal](box_code_revision_batch_2/README.md) applies existing drawing helpers,
 revises lifecycle and fragment comments, and records a formatter repair discovered by replay.
 
+The [first helper-adoption batch](box_code_adoption_batch_1/README.md) starts the editing sweep
+after helper implementation: four representative transcripts with native graphics, lifecycle,
+mesh and Loris verification. Its checkpoint lists completed and deferred work explicitly.
+
 ## Imports
 
 A box is compiled with `intro` (`Boxes.kt`) prepended, so most imports agents write add nothing.
