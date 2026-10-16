@@ -2073,6 +2073,8 @@ inline fun <reified T> Box.findWithNameOrNull(start: Box, name: String): T? {
     visitParents {
         val v = it.getPropertyRaw(name)
         if (v is T) {
+            // A read of another box's slot, so a propDown write to it reruns this box.
+            afield.document.properties.PropertyDependencies.recordNamedRead(this, it, name)
             return@findWithNameOrNull v
         }
     }

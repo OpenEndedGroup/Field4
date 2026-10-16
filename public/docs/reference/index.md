@@ -562,7 +562,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 - [Workspace](workspace.md#languageruntimesupport-kt)
 - <span class="reference-internal">[completion](workspace.md#aacompletionclient-kt)</span>
-- *execution* — [Internal](internal.md#actors-kt) · [Workspace](workspace.md#executionverdict-kt)
+- *execution* — [Internal](internal.md#actors-kt) · [Workspace](workspace.md#boxbodyrun-kt)
 - <span class="reference-internal">[kotlin](workspace.md#compiledsnippettest-kt)</span>
 - [languages](workspace.md#languageroots-kt)
 - *lifecycle* — [Execution](execution.md#asyncoperation-kt) · [Internal](internal.md#scratch-kt) · [Workspace](workspace.md#lifecycleledger-kt)
@@ -627,20 +627,20 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**32015 public symbols across 1451 source files**, 15994 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**32037 public symbols across 1454 source files**, 16013 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 208 | 671 | 294 (43%) | Runnable examples, galleries and verification programs. |
-| [Internal](internal.md) | 16 | 155 | 49 (31%) | Implementation details explicitly marked Internal by their source. |
+| [Examples](examples.md) | 209 | 673 | 295 (43%) | Runnable examples, galleries and verification programs. |
+| [Internal](internal.md) | 16 | 156 | 50 (32%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 203 | 156 (76%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 12 | 125 | 41 (32%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 40 | 1935 | 1395 (72%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 289 | 6964 | 3441 (49%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 289 | 6969 | 3444 (49%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 42 | 742 | 373 (50%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
@@ -649,14 +649,14 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ALife](alife.md) | 12 | 656 | 453 (69%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 5 | 349 | 199 (57%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 50 | 1455 | 992 (68%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 50 | 1457 | 994 (68%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 42 | 1506 | 737 (48%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1313 | 718 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2092 | 1010 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 21 | 571 | 385 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 120 | 3071 | 1381 (44%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 210 | 2977 | 1036 (34%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Machine learning](machine-learning.md) | 91 | 2195 | 666 (30%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Workspace](workspace.md) | 211 | 2981 | 1040 (34%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Machine learning](machine-learning.md) | 92 | 2203 | 674 (30%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 
 ## Every file
@@ -711,6 +711,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiRateLimitRecovery.kt](machine-learning.md#airatelimitrecovery-kt) | Machine learning | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiRequestLedger.kt](machine-learning.md#airequestledger-kt) | Machine learning | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiSessionTree.kt](machine-learning.md#aisessiontree-kt) | Machine learning | 27 | 17 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiStatePruning.kt](machine-learning.md#aistatepruning-kt) | Machine learning | 8 | 8 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiToastPolicy.kt](machine-learning.md#aitoastpolicy-kt) | Machine learning | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr>tooluse/<wbr></small> [AiToolUseImprovementCli.kt](machine-learning.md#aitooluseimprovementcli-kt) | Machine learning | 13 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [AiToolUseImprovementMonitor.kt](machine-learning.md#aitooluseimprovementmonitor-kt) | Machine learning | 5 | 0 |  |  |
@@ -784,6 +785,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [BoxAgentTask.kt](machine-learning.md#boxagenttask-kt) | Machine learning | 2 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [BoxAiTools.kt](machine-learning.md#boxaitools-kt) | Machine learning | 58 | 35 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>ai/<wbr></small> [BoxAiToolsSmokeTest.kt](examples.md#boxaitoolssmoketest-kt) | Examples · internal | 2 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>execution/<wbr></small> [BoxBodyRun.kt](workspace.md#boxbodyrun-kt) | Workspace | 3 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BoxCodeCompileGuard.kt](examples.md#boxcodecompileguard-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BoxCodeFormat.kt](examples.md#boxcodeformat-kt) | Examples | 3 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>graph/<wbr></small> [Boxes.kt](workspace.md#boxes-kt) | Workspace | 79 | 19 |  | [Keyboard shortcuts](../keybindings.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
@@ -935,7 +937,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [descriptions.kt](workspace.md#descriptions-kt) | Workspace · internal | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [DescriptorSet.kt](graphics.md#descriptorset-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [DescriptorSetLayout.kt](graphics.md#descriptorsetlayout-kt) | Graphics | 8 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [Device.kt](graphics.md#device-kt) | Graphics | 42 | 16 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [Device.kt](graphics.md#device-kt) | Graphics | 44 | 17 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Devices.kt](audio.md#devices-kt) | Audio | 36 | 18 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [di.kt](workspace.md#di-kt) | Workspace | 11 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>diag/<wbr></small> [Diagnostics.kt](languages.md#diagnostics-kt) | Languages | 13 | 13 | Where a FieldML compile says something is wrong, and how badly. |  |
@@ -1247,7 +1249,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [inspecting.kt](workspace.md#inspecting-kt) | Workspace · internal | 29 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [Instance.kt](graphics.md#instance-kt) | Graphics | 5 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [Instructions.kt](machine-learning.md#instructions-kt) | Machine learning | 9 | 4 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>graph/<wbr></small> [interactionnets.kt](visualization.md#interactionnets-kt) | Visualization | 207 | 205 | Interaction nets as a live-codeable medium: a graph whose nodes rewrite each other wherever two of them touch principal port to principal port, with a DSL for building nets, a rule language for the rewrites, a scheduler that decides which collision fires next, and a force-directed layout so you can watch it happen. | [Interaction Nets examples](../interaction_nets_examples.md), [A λ-term you can hear](../chain_lambda_sound.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>graph/<wbr></small> [interactionnets.kt](visualization.md#interactionnets-kt) | Visualization | 209 | 207 | Interaction nets as a live-codeable medium: a graph whose nodes rewrite each other wherever two of them touch principal port to principal port, with a DSL for building nets, a rule language for the rewrites, a scheduler that decides which collision fires next, and a force-directed layout so you can watch it happen. | [Interaction Nets examples](../interaction_nets_examples.md), [A λ-term you can hear](../chain_lambda_sound.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [InteractionNetsSmokeTest.kt](examples.md#interactionnetssmoketest-kt) | Examples · internal | 3 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>optimization/<wbr>ceres/<wbr></small> [InteractiveSolving.kt](solvers.md#interactivesolving-kt) | Solvers | 43 | 28 | The mutable, reuse-oriented half of the Ceres solver API, for solving the same program over and over at interactive rates. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>interpolation/<wbr></small> [interpolants.kt](math.md#interpolants-kt) | Math | 11 | 11 | `smoothTo` wraps a target-producing lambda so that reading it eases toward the target instead of jumping to it. | [Values over time: interpolants & keyframes](../interpolants_examples.md) |
@@ -1354,6 +1356,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [LiveFrameBufferLifetimeSmoke.kt](examples.md#liveframebufferlifetimesmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [LiveOutputIframe.kt](visualization.md#liveoutputiframe-kt) | Visualization | 14 | 11 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>diagnostics/<wbr>debug/<wbr></small> [LiveProbeClient.kt](workspace.md#liveprobeclient-kt) | Workspace | 4 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [LiveProfilingSwitchSmoke.kt](examples.md#liveprofilingswitchsmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>source/<wbr></small> [LiveStudy.kt](workspace.md#livestudy-kt) | Workspace | 54 | 23 |  | [Studies](../studies.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>models/<wbr></small> [LlmBridge.kt](machine-learning.md#llmbridge-kt) | Machine learning | 17 | 5 | Provider-neutral seam for the IDE agent loop. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [LoadPly.kt](graphics.md#loadply-kt) | Graphics | 15 | 1 |  |  |
@@ -1664,7 +1667,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ProfilingPanelWorkout.kt](examples.md#profilingpanelworkout-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [Projection.kt](graphics.md#projection-kt) | Graphics | 31 | 7 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>properties/<wbr></small> [PropertyBag.kt](workspace.md#propertybag-kt) | Workspace | 16 | 4 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>properties/<wbr></small> [PropertyDependencies.kt](workspace.md#propertydependencies-kt) | Workspace | 21 | 14 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>properties/<wbr></small> [PropertyDependencies.kt](workspace.md#propertydependencies-kt) | Workspace | 22 | 15 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>properties/<wbr></small> [props.kt](workspace.md#props-kt) | Workspace | 4 | 4 | The `prop` / `rootProp` macro pair — the typed, inheritable box-property slot. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>ai/<wbr></small> [Protocol.kt](audio-ai.md#protocol-kt) | Audio AI | 268 | 196 | The wire vocabulary of Field Audio — one Kotlin type per JSON object in the pinned service contract, and nothing else. | [Field Audio service reference](../field_audio_service_reference.md), [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ProvideDelegateReplSmokeTest.kt](examples.md#providedelegatereplsmoketest-kt) | Examples · internal | 5 | 3 |  |  |
@@ -1745,7 +1748,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr></small> [Renderer.kt](graphics.md#renderer-kt) | Graphics | 86 | 11 |  | [Neural image rendering with OpenDLSS-NR](../open_dlss_nr.md), [Profiling](../profiling_timeline.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [rendererBrowsing.kt](workspace.md#rendererbrowsing-kt) | Workspace · internal | 2 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [RendererCleanupSmoke.kt](examples.md#renderercleanupsmoke-kt) | Examples | 2 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [RenderTarget.kt](graphics.md#rendertarget-kt) | Graphics | 17 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [RenderTarget.kt](graphics.md#rendertarget-kt) | Graphics | 19 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [RenderToTexture.kt](graphics.md#rendertotexture-kt) | Graphics | 73 | 9 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr>templates/<wbr></small> [replacements.kt](visualization.md#replacements-kt) | Visualization | 4 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [ReplBootstrapGateTest.kt](workspace.md#replbootstrapgatetest-kt) | Workspace · internal | 3 | 1 |  |  |
@@ -1884,7 +1887,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [SoundPathMap.kt](audio.md#soundpathmap-kt) | Audio | 35 | 35 | Every route Field has from code to something audible, declared — and re-derived from the code. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [SoundRenderPathDocs.kt](audio.md#soundrenderpathdocs-kt) | Audio · internal | 20 | 19 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>macros/<wbr></small> [source_block_macro.kt](workspace.md#source-block-macro-kt) | Workspace | 1 | 0 |  |  |
-| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>source/<wbr></small> [SourceBackedBlock.kt](internal.md#sourcebackedblock-kt) | Internal · internal | 8 | 2 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>source/<wbr></small> [SourceBackedBlock.kt](internal.md#sourcebackedblock-kt) | Internal · internal | 9 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>source/<wbr></small> [sourceBlock.kt](workspace.md#sourceblock-kt) | Workspace | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>source/<wbr></small> [SourceFramesStudy.kt](workspace.md#sourceframesstudy-kt) | Workspace | 20 | 8 |  | [Studies](../studies.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [SourcePageGenerator.kt](workspace.md#sourcepagegenerator-kt) | Workspace · internal | 8 | 7 |  |  |
@@ -1997,7 +2000,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [synth.kt](synthesis.md#synth-kt) | Synthesis | 78 | 20 | The terse surface a box imports: `audio { … }` to close a graph, `.p` to make a number a `Param`, and lowercase names for the things reached for constantly. | [Pure Data](../pure_data.md), [How to make sound in Field](../sound_paths.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [SynthCookbookCompileDemo.kt](audio.md#synthcookbookcompiledemo-kt) | Audio · internal | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>syphon/<wbr></small> [Syphon.kt](graphics.md#syphon-kt) | Graphics | 41 | 34 |  | [Syphon: sharing frames with other applications](../syphon.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>syphon/<wbr></small> [SyphonGpu.kt](graphics.md#syphongpu-kt) | Graphics | 8 | 3 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>syphon/<wbr></small> [SyphonGpu.kt](graphics.md#syphongpu-kt) | Graphics | 9 | 4 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>syphon/<wbr></small> [SyphonNative.kt](internal.md#syphonnative-kt) | Internal · internal | 9 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>syphon/<wbr></small> [SyphonTexture.kt](graphics.md#syphontexture-kt) | Graphics | 19 | 6 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [tables.kt](visualization.md#tables-kt) | Visualization | 35 | 35 | Tabular output — the structure, and the one renderer for it. | [Frames and the animation loop](../animation_time_model.md), [How completions are ranked](../completion_ranking.md), [DataFrames in a Box](../dataframe.md) |

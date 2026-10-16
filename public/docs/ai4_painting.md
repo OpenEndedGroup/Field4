@@ -143,8 +143,8 @@ request.
 
 !!! note "A canvas is large"
     Each saved state of the Studio's canvas is about 28 MB on disk, kept in the document's `ai4_blobs/state`
-    folder. Every request that changes the painting adds one, and none is deleted yet. The kept tools
-    are small beside it, some 20 kB a request.
+    folder. Every request that changes the painting adds one; `pruneAiStates(dryRun = false)` frees all
+    but the latest three along each branch. The kept tools are small beside it, some 20 kB a request.
 
 ## What the box defines
 

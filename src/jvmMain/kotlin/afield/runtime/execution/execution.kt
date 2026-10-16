@@ -1587,9 +1587,14 @@ class KotlinExecution : BoxExecution {
                 clearPendingLaunch(request)
             }
 
+            var reactiveStarted = false
             try {
                 if (!box.isLaunchEpochCurrent(request.launchEpoch)) return
 
+                // As executeInBox does: propUp pulls and propDown cascades need to know this box is
+                // running, and in what order boxes last ran.
+                ReactiveRuns.runStarted(box, "launch")
+                reactiveStarted = true
                 withContext(request.runScope.element) {
                 Box.withBoxContext(box) {
                     box.resetStdlibRandom()
@@ -1701,7 +1706,7 @@ class KotlinExecution : BoxExecution {
                         //    setting the box's shader-source property) are visible to the NEXT fragment's
                         //    macro expansion — which is the whole point of the `//%-` fragment break.
                         var fragmentFailed = false
-                        val result = withContext(Runloop.runLoop.main) {
+                        val result = withContext(Runloop.runLoop.main) { BoxBodyRun.during(box) {
                             snippet.eval(
                                 // Commit this snippet's declarations to the REPL context, exactly as the
                                 // exec path (`standardExecutionPractice` -> `KotlinInterface2.exec`) does.
@@ -1737,7 +1742,7 @@ class KotlinExecution : BoxExecution {
                                     )
                                 }
                             )
-                        }
+                        } }
                         results += result
                         if (fragmentFailed) break
                     }
@@ -1780,6 +1785,7 @@ class KotlinExecution : BoxExecution {
                 box.runScopes.supersede(request.runScope)
                 clearPendingOnce()
                 trace.finish(executionSucceeded && box.isLaunchEpochCurrent(request.launchEpoch))
+                if (reactiveStarted) ReactiveRuns.runFinished(box, executionSucceeded && box.isLaunchEpochCurrent(request.launchEpoch), "launch")
             }
         }
 
@@ -2723,7 +2729,7 @@ class KotlinExecution : BoxExecution {
                 // Clear any stale pinned compile error before re-running; re-pinned below on failure.
                 PinnedConsole.clearError(box.id)
                 beginExecutionErrorScope(box)
-                val returnValues: List<ResultValue?> = box.ki.withSourceProperty(property) {
+                val returnValues: List<ResultValue?> = BoxBodyRun.during(box) { box.ki.withSourceProperty(property) {
                     standardExecutionPractice(box.ki, code, { compileError ->
                         hasError = true
                         lprintln("error,execution", "compiler error")
@@ -2857,7 +2863,7 @@ class KotlinExecution : BoxExecution {
                             )
                         }
                     )
-                }
+                } }
 
                 if (!hasError) {
                     var size = 0

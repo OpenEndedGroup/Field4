@@ -105,8 +105,8 @@ class GpuProfiler(
             val apiVersion = props.apiVersion()
             props.free()
 
-            val features2 = VkPhysicalDeviceFeatures2.calloc()
-            val meshFeat = VkPhysicalDeviceMeshShaderFeaturesEXT.calloc()
+            val features2 = VkPhysicalDeviceFeatures2.calloc().`sType$Default`()
+            val meshFeat = VkPhysicalDeviceMeshShaderFeaturesEXT.calloc().`sType$Default`()
             features2.pNext(meshFeat.address())
             vkGetPhysicalDeviceFeatures2(physicalDevice, features2)
 

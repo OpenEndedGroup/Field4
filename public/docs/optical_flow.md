@@ -109,14 +109,14 @@ Open the [optical_flow_pingpong](agent_transcripts.md#optical_flow_pingpong) sta
 ![One editable shader, retained previous/current frames, and the motion texture sampled by another module](assets/optical_flow/pingpong.png)
 
 ```diffstatic {data-lang=kotlin}
-prop<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer) {
+propDown<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer) {
     width = 960; height = 540; useDepth = false
     format = VK_FORMAT_R16G16B16A16_SFLOAT
 }
 
 val flow = opticalFlow(renderer,
     history.previousImageView, history.latestImageView, grid = 4)
-prop<RenderToTexture>(motion) = flow.output
+propDown<RenderToTexture>(motion) = flow.output
 ```
 
 Those two image-view providers follow the ring as it rotates; keep the providers themselves, rather than caching their `.imageView` handles. After each source render, `latestImageView` is the new completed frame and `previousImageView` is the one before it. No manual swap is needed.
@@ -132,7 +132,7 @@ flow.evaluate(reset = reset || !animate)
 frame()                    // The child now samples the completed motion texture.
 ```
 
-Edit the parent's **fragment** to change the source; edit the child's **fragment** to use the motion. **Animate source** pauses time: both slots receive the paused frame, and motion should settle near zero. Repeated paused pairs disable temporal hints on every evaluation. **Reset the pair** seeds both slots and disables hints for that pair. A successful source shader edit does the same, so unrelated old and new patterns are not treated as consecutive animation frames. When relaunching the parent, relaunch the child too so its texture bindings follow the new allocation.
+Edit the parent's **fragment** to change the source; edit the child's **fragment** to use the motion. **Animate source** pauses time: both slots receive the paused frame, and motion should settle near zero. Repeated paused pairs disable temporal hints on every evaluation. **Reset the pair** seeds both slots and disables hints for that pair. A successful source shader edit does the same, so unrelated old and new patterns are not treated as consecutive animation frames. The parent publishes its textures as `propDown` slots, so relaunching it relaunches the child too, and the child's samplers bind the new allocation.
 
 This source also publishes `expectedMotion`, its analytical displacement in input pixels. The live check compares the measured interior field against it through movement, pause, reset, and relaunch. The brightness texture between the circles gives the matcher distinctive details to follow. If you replace it with a repeating pattern, one circle can match a neighboring cell instead of itself. The example shows the raw field: matching cost often rises in wrong patches, but a wrong match can also have low cost. Cost is useful for rejecting vectors, not a guarantee of their accuracy.
 

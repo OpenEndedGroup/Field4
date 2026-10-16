@@ -11,31 +11,32 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chart_expect" index="0" -->
 
 ```edn [field-box id="chart_expect" role="properties"]
-{"id" "chart_expect" "index" 0 "name" "4 - An assertion you can watch fail" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - An assertion you can watch fail" "_tombstone" false "frame" #afield/rect [634.2 226.0 534.2 136.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chart_expect_code_.kt" "lines" 27 "characters" 1084 "sha256" "b8e31c24c28c72c5e92040648755c5b11b85147d33ec1d46de1376d8780b8f29"}]}
+{"id" "chart_expect" "index" 0 "name" "4 - An assertion you can watch fail" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - An assertion you can watch fail" "_tombstone" false "frame" #afield/rect [634.2 226.0 534.2 136.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chart_expect_code_.kt" "lines" 28 "characters" 1108 "sha256" "221a755fe7a57dea5c7900c850bc3acb9f7c6762c80839f745945ee421310883"}]}
 ```
 
 ```kotlin [field-property box="chart_expect" name="code" path="chart_expect_code_.kt"]
-import kotlin.math.exp
-
-// `Chart.expect` is `Table.expect`'s counterpart, and it DRAWS the claim rather than
-// only checking it: the accepted range becomes a band, the bound it names is ruled,
-// the data outside recolours, and the footnote counts them. An unbounded side draws no
-// edge — that is the visual difference between "at most 1e-6" and "0 to 1e-6".
+/*
+`Chart.expect` is `Table.expect`'s counterpart, and it DRAWS the claim rather than
+only checking it: the accepted range becomes a band, the bound it names is ruled,
+the data outside recolours, and the footnote counts them. An unbounded side draws no
+edge — that is the visual difference between "at most 1e-6" and "0 to 1e-6".
+*/
 val iterations = (0..40).toList()
 val residual = iterations.map { i ->
     val base = exp(-i * 0.22) * 1.5e-6
-    if (i == 11 || i == 23) base + 2.4e-6 else base   // two real overshoots
+    if (i == 11 || i == 23) base + 2.4e-6 else base // two real overshoots
 }
 
-val c = Chart(
-    title = "residual per iteration",
-    xLabel = "iteration",
-    yLabel = "|r|",
-    note = "Adam, lr 0.05",
-)
-    .line("residual", iterations, residual)
-    .points("residual", iterations, residual)
-    .expect(max = 1e-6, because = "converged below 1e-6")
+val c =
+    Chart(
+            title = "residual per iteration",
+            xLabel = "iteration",
+            yLabel = "|r|",
+            note = "Adam, lr 0.05",
+        )
+        .line("residual", iterations, residual)
+        .points("residual", iterations, residual)
+        .expect(max = 1e-6, because = "converged below 1e-6")
 
 showChart(c)
 
@@ -49,23 +50,39 @@ facts(c.deviations.map { "iteration ${it.index}" to it.y })
 <!-- field-box id="chart_dataframe" index="1" -->
 
 ```edn [field-box id="chart_dataframe" role="properties"]
-{"id" "chart_dataframe" "index" 1 "name" "2 - A DataFrame charts itself" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A DataFrame charts itself" "_tombstone" false "frame" #afield/rect [634.2 60.0 463.9 136.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chart_dataframe_code_.kt" "lines" 21 "characters" 750 "sha256" "50d78b2e86c97aa05e4529d1b290f9945de419d3261996b14421f1639a6335e2"}]}
+{"id" "chart_dataframe" "index" 1 "name" "2 - A DataFrame charts itself" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A DataFrame charts itself" "_tombstone" false "frame" #afield/rect [634.2 60.0 463.9 136.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chart_dataframe_code_.kt" "lines" 37 "characters" 803 "sha256" "e28346464d944438c004b86b54cbbb1e3fb540b5218a68992cdd804f36c10629"}]}
 ```
 
 ```kotlin [field-property box="chart_dataframe" name="code" path="chart_dataframe_code_.kt"]
 import org.jetbrains.kotlinx.dataframe.api.*
 
-// A frame already renders as a table — that is the right compact form, because a frame
-// is rows and columns first. This is the other question a reader has about a numeric
-// column: what shape is it.
+/*
+A frame already renders as a table — that is the right compact form, because a frame
+is rows and columns first. This is the other question a reader has about a numeric
+column: what shape is it.
+*/
 val runs = dataFrameOf("iteration", "residual", "step")(
-    0, 1.00, 0.50,
-    1, 0.62, 0.44,
-    2, 0.31, 0.39,
-    3, 0.18, 0.35,
-    4, 0.09, 0.31,
-    5, 0.05, 0.28,
-    6, 0.02, 0.25,
+    0,
+    1.00,
+    0.50,
+    1,
+    0.62,
+    0.44,
+    2,
+    0.31,
+    0.39,
+    3,
+    0.18,
+    0.35,
+    4,
+    0.09,
+    0.31,
+    5,
+    0.05,
+    0.28,
+    6,
+    0.02,
+    0.25,
 )
 
 // No column named: the first numeric column becomes the x axis and the rest become

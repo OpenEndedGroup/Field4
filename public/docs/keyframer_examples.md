@@ -1041,7 +1041,7 @@ gain * afield.animation.keyframes.kfMix(0.5f, 1.5f, afield.animation.keyframes.k
 Fully qualified, so it resolves inside a `sourceBlock` body in a box that imported nothing. One
 thing to know before you call the result: a blended block compiles its generated source in the box
 the two keyframes came from, so invoke it from a frame loop, a control callback or another box — not
-from inside that box's own running code, which re-enters. The whole call is handed the endpoints
+from inside that box's own running code, which stops with an error saying so. The whole call is handed the endpoints
 rather than their components, which is what lets a `Quaternionf`
 site slerp and a `DualQuaternionf` site sclerp instead of drifting through the inside of the sphere
 component by component. A literal keeps its type: `0.5f` and `1.5f` blend to a `Float`, `1` and `3`

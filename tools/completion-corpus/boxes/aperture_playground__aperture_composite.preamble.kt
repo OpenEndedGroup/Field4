@@ -13,19 +13,19 @@ import afield.graphics.vulkan.targets.RenderToTexture
 /*graphics-pc-structure:displayControl*/ var Structure.displayControl by Structure.FromStructure<Any>()
 /*graphics-pc-binding:displayControl*/ var Mesh.displayControl by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
 /*graphics-pc-binding-group:displayControl*/ var MeshGroup.displayControl by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
-var Box.paintMedium by Inheritance<RenderToTexture>() /*from:aperture_medium*/ /**/
+var Box.paintMedium by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /*from:aperture_medium*/ /**/
 val Once.paintMedium by Onceing<RenderToTexture>() /*from:aperture_medium*/ /**/
 val Why.paintMedium by Whying() /*from:aperture_medium*/ /**/
-var Box.paintBroad by Inheritance<RenderToTexture>() /*from:aperture_broad*/ /**/
+var Box.paintBroad by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /*from:aperture_broad*/ /**/
 val Once.paintBroad by Onceing<RenderToTexture>() /*from:aperture_broad*/ /**/
 val Why.paintBroad by Whying() /*from:aperture_broad*/ /**/
-var Box.paintHalf by Inheritance<RenderToTexture>() /*from:aperture_half*/ /**/
+var Box.paintHalf by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /*from:aperture_half*/ /**/
 val Once.paintHalf by Onceing<RenderToTexture>() /*from:aperture_half*/ /**/
 val Why.paintHalf by Whying() /*from:aperture_half*/ /**/
-var Box.paintQuarter by Inheritance<RenderToTexture>() /*from:aperture_quarter*/ /**/
+var Box.paintQuarter by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /*from:aperture_quarter*/ /**/
 val Once.paintQuarter by Onceing<RenderToTexture>() /*from:aperture_quarter*/ /**/
 val Why.paintQuarter by Whying() /*from:aperture_quarter*/ /**/
-var Box.paintSource by Inheritance<RenderToTexture>() /*from:aperture_source*/ /**/
+var Box.paintSource by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /*from:aperture_source*/ /**/
 val Once.paintSource by Onceing<RenderToTexture>() /*from:aperture_source*/ /**/
 val Why.paintSource by Whying() /*from:aperture_source*/ /**/
 var Box.apertureControl by Inheritance<afield.math.linalg.Vec4>() /*from:aperture_source*/ /**/

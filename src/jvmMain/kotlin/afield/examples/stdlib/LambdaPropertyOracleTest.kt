@@ -109,9 +109,10 @@ object LambdaPropertyOracleTest {
     private const val TYPED_NET_BUDGET = 100_000
     private const val SOUP_ORACLE_BUDGET = 2_000
     private const val SOUP_ORACLE_WORK = 4_000_000
-    // 4_000 and not more: `Reducer` calls `Net.incrementAges` once per reaction, which is O(nodes), so a reaction
-    // budget on a net that grows is a quadratic time budget. One soup draw spent 15 seconds inside it at 20_000.
-    private const val SOUP_NET_BUDGET = 4_000
+    // `Reducer` calls `Net.incrementAges` once per reaction, which is O(nodes), so a reaction budget on a net that
+    // grows is a quadratic time budget. 4_000 with labelled fans; 24_000 since Lambdascope (2026-10-16), whose scope
+    // delimiters cost about six reactions for every one the fans did on the corpus. The whole run takes ~110 s.
+    private const val SOUP_NET_BUDGET = 24_000
 
     fun runTests(): Boolean {
         return try {
@@ -486,10 +487,12 @@ object LambdaPropertyOracleTest {
     // `marksIn` returning every term's marks as "something" would drive this to zero too. SCOPE_MARKED_CHECKS below
     // is the counterfactual that rules that out.
     private const val QUIET_DISAGREEMENTS = 0
-    private const val MARKED_DISAGREEMENTS = 84
+    // Since Lambdascope (2026-10-16): every typed term and the corpus agree; the 16 marked disagreements are soup
+    // terms whose readback cannot place a fan (`⋈`), never a wrong answer. With labelled fans: 84, 24 and 9.
+    private const val MARKED_DISAGREEMENTS = 16
     private const val THREW_CHECKS = 0
-    private const val UNFINISHED_CHECKS = 24
-    private const val CONFLUENCE_FAILURES = 9
+    private const val UNFINISHED_CHECKS = 36
+    private const val CONFLUENCE_FAILURES = 2
 
     // Readbacks of a *closed* term that come back open, marks excluded. Also zero now, and for two reasons worth
     // keeping apart: four of the old 28 became *correct*, and the remaining 24 still have the defect but report it
@@ -503,7 +506,10 @@ object LambdaPropertyOracleTest {
     // reported rather than named. If a future change drove this to zero as well, either the defect was genuinely
     // fixed — in which case say so on the page — or the detector stopped detecting, which is how this failure class
     // stayed quiet for the three days before it was found.
-    private const val SCOPE_MARKED_CHECKS = 24
+    //
+    // It went to zero on 2026-10-16 for the first reason: Lambdascope's scopes put every occurrence back inside its
+    // binder (the 24 were labelled-fan scope leaks). assertTheMarkerDetectorSeesAMarker still proves the detector.
+    private const val SCOPE_MARKED_CHECKS = 0
 
     // Distinct de Bruijn keys, so a generator that emits the same term N times fails.
     private const val TYPED_DISTINCT_FLOOR = 2_000
@@ -862,34 +868,35 @@ object LambdaPropertyOracleTest {
         KnownCase(
             name = "dup-of-an-erasing-abstraction",
             source = "(\\x z. x z x) (\\x y. y y)",
-            outcome = Outcome.DISAGREES,
+            outcome = Outcome.AGREES,
             oracle = "λz. λy. y y",
-            netToday = "λa. λb. b ⊥",
-            marks = setOf("⊥"),
-            note = "a duplicated abstraction that erases its argument loses one copy to the ERASE — loud, with a ⊥"
+            netToday = "λa. λb. b b",
+            marks = emptySet(),
+            wasBefore = "λa. λb. b ⊥",
+            note = "fixed by Lambdascope (2026-10-16): with labelled fans one copy was lost to the ERASE"
         ),
         // Shrunk from soup #4 and #19. `two two` is Church four and the net reaches a normal form in 19 reactions,
         // but the readback cannot walk it: the fan stack never closes, so the walk runs past its node budget.
         KnownCase(
             name = "two-applied-to-two-unwalkable",
             source = "(\\x y. y y) (\\x. x) (\\f x. f (f x))",
-            outcome = Outcome.DISAGREES,
+            outcome = Outcome.AGREES,
             oracle = "λx. λx'. x (x (x (x x')))",
-            netToday = "λa. λb. …",
-            marks = setOf("…"),
-            note = "net reports finished in 19 reactions; readback exhausts its budget rather than closing the fans"
+            netToday = "λa. λb. a (a (a (a b)))",
+            marks = emptySet(),
+            wasBefore = "λa. λb. …",
+            note = "fixed by Lambdascope (2026-10-16): with labelled fans the readback could not close the fans"
         ),
         // Shrunk from soup #48. The net's answer is not merely wrong, it is **not closed** — and since binder names
         // are now scoped, what used to be a bare free name is the `?` mark instead. Same defect, reported.
         KnownCase(
             name = "compose-self-apply-scope-leak",
             source = "(\\m n f. m (n f)) (\\f. f f) (\\n f. f (n f))",
-            outcome = Outcome.DISAGREES,
+            outcome = Outcome.AGREES,
             oracle = "λf. f (λf'. f' (f f')) (f (f (λf'. f' (f f'))))",
-            netToday = "",
-            marks = setOf("…", "?"),
-            note = "an occurrence outside its binder's body; reported as ? rather than silently named, and the " +
-                "printed form is thousands of characters so only the mark set is pinned"
+            netToday = "λa. a (λb. b (a b)) (a (a (λc. c (a c))))",
+            marks = emptySet(),
+            note = "fixed by Lambdascope (2026-10-16): with labelled fans an occurrence leaked out of its binder (? and …)"
         )
     )
 

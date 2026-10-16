@@ -31,7 +31,7 @@ shaders. The vertex shader asks one slot where each face goes:
 <!-- stackauto-study-source:starter-vertex -->
 ```diffstatic {data-lang=glsl}
 // explode(vec4(face centre xyz, time)): .x pushes the face out along its normal,
-// .y shrinks it about its own centre (0 keeps it whole, 1 shrinks it to a point).
+// .y shrinks about the face centre: 0 keeps it whole; values >= 0.95 leave 5% size.
 {{ stack.auto.explode }}
 
 void main() {

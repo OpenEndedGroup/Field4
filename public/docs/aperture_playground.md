@@ -11,10 +11,10 @@ To start the whole graph, hold **Shift–Alt** and drag a short launch stroke th
 order. Use **Stop Box** (Alt–Down in the renderer's editor) to stop. Repeat the same
 Shift–Alt stroke to rebuild and restart the passes, preserving your shader edits.
 
-You can also launch the renderer alone, then execute boxes 2–8 in number order. Relaunching
-only the renderer creates a fresh graphics context, so the passes must be executed again.
-The shaders are ordinary shader properties, and edit and reload as they do in any box. After changing a texture's
-size, execute its downstream resource boxes again.
+You can also launch the renderer alone, then execute boxes 2–8 in number order.
+The shaders are ordinary shader properties, and edit and reload as they do in any box. Change a
+texture's size and execute its box again, and the passes that read the texture are rebuilt with it,
+in order: each texture is a `propDown` slot.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/aperture_playground/aperture.png" capture="native-window" native-wait-frames="12" embed=true hidden=true timeout="180" name="aperture-playground" alt="Four rows of lines and discs, progressively broader and dimmer from top to bottom, rendered through Field's editable aperture passes; an analytic sprite column is on the right." macro-file="../../dev_docs/agents/transcripts/aperture_playground.yaml" capture-box="agent_graphics_context"}
 // The transcript creates the real renderer, textures and editable shader graph.

@@ -195,6 +195,9 @@ class SourceBackedFnRewriteNumberExpression(
         val box = sourceBackedBlockBox(boxId)
             ?: throw IllegalStateException("Cannot hydrate Fn rewrite Kotlin; box '$boxId' is not loaded.")
 
+        // Refuse to hydrate on this box's engine while its own body is running: it would run the body again.
+        if (afield.runtime.execution.BoxBodyRun.isRunning(boxId))
+            throw afield.study.source.SourceBackedBlockDuringOwnBody(box, source)
         // Refuse the second hydration for this box on this thread — see [FnRewriteSelfBoxReentry].
         // Logged as well as thrown: the throw lands inside a *re-entrant* run of the box body, and
         // whatever instantiates the snippet chain absorbs it without reporting, so the throw alone is

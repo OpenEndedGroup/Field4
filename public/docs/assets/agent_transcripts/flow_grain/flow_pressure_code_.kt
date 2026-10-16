@@ -1,17 +1,4 @@
-import afield.document.context.fromContextWithNameOrNull
-import afield.graphics.vulkan.buffers.VulkanBuffer
-import afield.graphics.render.computeMemoryBarrier
-import afield.graphics.render.graphicsMemoryBarrier
-import afield.graphics.render.computeTask
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
-val divergence = fromContextWithNameOrNull<FrameBufferGroup>("divergence")!!
-val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
-val pressureB = fromContextWithNameOrNull<FrameBufferGroup>("pressureB")!!
-val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
-val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
-val flowSimulation = fromContextWithNameOrNull<afield.graphics.vulkan.targets.ComputeTarget>("flowSimulation")!!
 
 var module = computeModuleHere {}
 
@@ -27,11 +14,14 @@ for (i in 0 until 24) {
     mesh.tiles = { tileHeaders }
     mesh.clock = { flowClock }
     mesh.emitter = { flowEmitter }
-    module += "barrier-$i" to computeTask { _, cmd, _ ->
-        computeMemoryBarrier(cmd, null as VulkanBuffer?)
-    }
+    module +=
+        "barrier-$i" to
+            computeTask { _, cmd, _ ->
+                computeMemoryBarrier(cmd, null as VulkanBuffer?)
+            }
 }
 flowSimulation += "pressure" to module
-loop { true }.end {
-    if (flowSimulation.modules["pressure"] === module) flowSimulation.modules.remove("pressure")
-}
+loop { true }
+    .end {
+        if (flowSimulation.modules["pressure"] === module) flowSimulation.modules.remove("pressure")
+    }

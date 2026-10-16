@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="syphon_receive" index="0" -->
 
 ```edn [field-box id="syphon_receive" role="properties"]
-{"id" "syphon_receive" "index" 0 "name" "Syphon — receive a server's frames" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Syphon — receive a server's frames" "_tombstone" false "frame" #afield/rect [80.0 960.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_receive_code_.kt" "lines" 12 "characters" 319 "sha256" "a7097cb34d62a0962c5418b935faecd4c8d896f19c4957d9232ce809badac698"}]}
+{"id" "syphon_receive" "index" 0 "name" "Syphon — receive a server's frames" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Syphon — receive a server's frames" "_tombstone" false "frame" #afield/rect [80.0 960.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_receive_code_.kt" "lines" 16 "characters" 488 "sha256" "5a006118d6b52f20e24ab15bbee5be8d5050760ff79a12341462780c0c1c2612"}]}
 ```
 
 ```kotlin [field-property box="syphon_receive" name="code" path="syphon_receive_code_.kt"]
@@ -20,7 +20,11 @@ import afield.io.syphon.*
 // without the library this stops here and says how to build it
 check(Syphon.isAvailable) { Syphon.describe() }
 
-// a server's name, app name or uuid; "" takes the first one announced
+/*
+Match a server name, app name or UUID; "" takes the first announced server.
+This named client is shared across reruns; a closed client is recreated on lookup.
+Stop ends this receive loop while leaving the shared connection available.
+*/
 val inp = syphonClient("Field pattern")
 
 loop {
@@ -78,21 +82,23 @@ loop {
 <!-- field-box id="syphon_servers" index="2" -->
 
 ```edn [field-box id="syphon_servers" role="properties"]
-{"id" "syphon_servers" "index" 2 "name" "Syphon — servers on this machine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Syphon — servers on this machine" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_servers_code_.kt" "lines" 12 "characters" 300 "sha256" "6f5dcc7f02f34269ffd292e93e245b48543114baff85cea963d13747335225cd"}]}
+{"id" "syphon_servers" "index" 2 "name" "Syphon — servers on this machine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Syphon — servers on this machine" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_servers_code_.kt" "lines" 14 "characters" 338 "sha256" "d2e3d8a27571e3ff2813f0929f7583eceb5f9a45545981612ce62388a635f857"}]}
 ```
 
 ```kotlin [field-property box="syphon_servers" name="code" path="syphon_servers_code_.kt"]
 import afield.io.syphon.*
 
 run {
-if (!Syphon.isAvailable) {
-    markdown(Syphon.describe())
-    return@run
-}
+    if (!Syphon.isAvailable) {
+        markdown(Syphon.describe())
+        return@run
+    }
 
-val servers = Syphon.servers(waitMs = 1000)
-markdown(if (servers.isEmpty()) "No Syphon servers are running."
-         else servers.joinToString("\n") { "- **${it.appName}** ${it.name}" })
+    val servers = Syphon.servers(waitMs = 1000)
+    markdown(
+        if (servers.isEmpty()) "No Syphon servers are running."
+        else servers.joinToString("\n") { "- **${it.appName}** ${it.name}" },
+    )
 }
 ```
 

@@ -123,11 +123,17 @@ object InteractionNetsSmokeTest {
         val detail = reducer.stepDetailed(net) ?: error("Expected beta step")
         require(detail.ruleName == "beta-linear") { "Expected beta-linear, got ${detail.ruleName}" }
         require(detail.swapped) { "Expected swapped=true when the pair is connected as LAM -> APP" }
-        require(detail.createdNodeIds.isEmpty()) { "beta-linear should not create nodes" }
+        // Lambdascope: the body reaches the result, and the argument the binder, each through a level-0 scope.
+        require(detail.createdNodeIds.size == 2 && detail.createdNodeIds.all { net.node(it).type == Lambda.DELIM && Lambda.levelOf(net.node(it)) == 0.0 }) {
+            "beta-linear should create two level-0 delimiters, created ${detail.createdNodeIds.map { net.node(it).type.name }}"
+        }
         require(detail.events.singleOrNull()?.kind == "beta") { "beta-linear should emit a beta event" }
-        requireConnected(net, net.node("root"), net.node("body"))
-        requireConnected(net, net.node("binder"), net.node("arg"))
         require(net.nodes.none { it.id == "app" || it.id == "lam" }) { "APP/LAM nodes should be removed" }
+        // Both delimiters face an atom (the root, the constant), so they go, and the plain wiring is left.
+        reducer.reduce(net, maxSteps = 8)
+        require(net.nodes.none { it.type == Lambda.DELIM }) { "the delimiters should leave against the root and the constant" }
+        requireConnected(net, net.nodes.single { it.type == Lambda.ROOT }, net.node("body"))
+        requireConnected(net, net.node("binder"), net.nodes.single { it.type == Lambda.CONST })
     }
 
     private fun testEnergyBiasedSchedulerPrefersHotterPair() {
