@@ -33,6 +33,8 @@ LANGUAGES.update(dict.fromkeys(("vertex", "fragment", "compute", "task", "mesh",
 LANGUAGES.update({p + "_s": "slang" for p in list(LANGUAGES) if LANGUAGES[p] == "glsl"})
 EXTENSIONS = {"kt": "kotlin", "kts": "kotlin", "glsl": "glsl", "slang": "slang",
               "metal": "metal", "stacksl": "stacksl", "rectsl": "rectsl", "js": "javascript"}
+EXTENSIONS.update(dict.fromkeys(("vert", "frag", "comp", "geom", "tesc", "tese",
+                                 "rgen", "rchit", "rmiss", "rahit", "rint", "rcall"), "glsl"))
 ALIASES = {"kt": "kotlin", "javascript": "javascript", "js": "javascript", "remotejs": "javascript",
            "kotlinjs": "kotlinjs", "kotlin/js": "kotlinjs", "py": "python"}
 PUBLISHED = ("dev_docs/agents/transcripts/", "dev_docs/agents/demos/", "public/docs/", "templates/")
@@ -116,8 +118,34 @@ class Inventory:
                 fields = box.mapping()
                 props = fields["properties"].mapping()
                 records.append((fields.get("id").value, {k: v.value for k, v in props.items()}, props, box))
+        declared_languages = {}
+        parents = {}
         for box, values, props, node in records:
-            declared = values.get("code_language", "kotlin")
+            declared = values.get("code_language") or values.get("mainLanguage")
+            if declared:
+                declared_languages[box] = declared
+            if path.endswith(".json"):
+                parents[box] = [str(p) for p in values.get("parents", [])]
+            else:
+                parent_node = props.get("parents")
+                parents[box] = [p.children[0].value if p.kind == "tag" and p.children else p.value
+                                for p in parent_node.children] if parent_node else []
+
+        def inherited_language(box, seen=None):
+            seen = set() if seen is None else seen
+            if box in seen:
+                return None
+            seen.add(box)
+            if box in declared_languages:
+                return declared_languages[box]
+            for parent in parents.get(box, []):
+                found = inherited_language(parent, seen)
+                if found:
+                    return found
+            return None
+
+        for box, values, props, node in records:
+            declared = inherited_language(box) or "kotlin"
             for prop in LANGUAGES:
                 if prop not in props:
                     continue
@@ -161,6 +189,7 @@ class Inventory:
         root = yaml.compose(text, Loader=yaml.SafeLoader)
         visited = set()
         box_languages = {}
+        box_parents = defaultdict(list)
         collected = set()
 
         def collect(node):
@@ -172,17 +201,31 @@ class Inventory:
                 box, props = pairs.get("box"), pairs.get("properties")
                 if isinstance(box, ScalarNode) and isinstance(props, MappingNode):
                     values = {k.value: v.value for k, v in props.value if isinstance(v, ScalarNode)}
-                    declared = values.get("code_language")
-                    if declared is None and values.get("mainLanguage", "").lower() == "kotlinjs":
-                        declared = "kotlinjs"
+                    declared = values.get("code_language") or values.get("mainLanguage")
                     if declared:
                         box_languages[box.value] = declared
+                parent, child = pairs.get("parent"), pairs.get("child")
+                if isinstance(parent, ScalarNode) and isinstance(child, ScalarNode):
+                    box_parents[child.value].append(parent.value)
                 for _, value in node.value:
                     collect(value)
             elif isinstance(node, SequenceNode):
                 for child in node.value:
                     collect(child)
         collect(root)
+
+        def inherited_box_language(box, seen=None):
+            seen = set() if seen is None else seen
+            if box in seen:
+                return None
+            seen.add(box)
+            if box in box_languages:
+                return box_languages[box]
+            for parent in box_parents.get(box, []):
+                found = inherited_box_language(parent, seen)
+                if found:
+                    return found
+            return None
 
         def walk(node, locator="yaml", box="", prop="code", lang="kotlin"):
             if node is None or id(node) in visited:
@@ -195,7 +238,7 @@ class Inventory:
                     return value.value if isinstance(value, ScalarNode) else fallback
                 box = scalar("box", box)
                 prop = scalar("property", scalar("prop", prop))
-                lang = scalar("code_language", scalar("language", box_languages.get(box, lang)))
+                lang = scalar("code_language", scalar("language", inherited_box_language(box) or lang))
                 properties = pairs.get("properties")
                 if isinstance(properties, MappingNode):
                     lang = next((v.value for k, v in properties.value if k.value == "code_language"), lang)

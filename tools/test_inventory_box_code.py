@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from inventory_box_code import Inventory
+from tools.inventory_box_code import Inventory
 
 
 class InventoryTest(unittest.TestCase):
@@ -48,6 +48,36 @@ class InventoryTest(unittest.TestCase):
 '''})
         self.assertEqual([r["language"] for r in result.rows], ["kotlinjs", "kotlinjs", "glsl"])
         self.assertEqual(result.rows[0]["identical_sources"], [result.rows[1]["id"]])
+
+    def test_metadata_main_language_is_a_fallback_for_legacy_sidecars(self):
+        metadata = json.dumps([dict(id="a", properties={
+            "mainLanguage": dict(first="String", second="remotejs"),
+            "code": dict(first="__file__", second="a_code_.kt")})])
+        result = self.census({"templates/test/metadata.json": metadata,
+                              "templates/test/a_code_.kt": "const branches = new LSystem();"})
+        self.assertEqual(result.rows[0]["language"], "javascript")
+
+    def test_stage_specific_glsl_extensions_are_authored_review_sources(self):
+        files = {f"dev_docs/agents/demos/test/stage.{ext}": '#version 450\nvoid main() {}'
+                 for ext in ("vert", "frag", "comp", "rgen", "rchit", "rmiss")}
+        result = self.census(files)
+        self.assertEqual(len(result.rows), len(files))
+        self.assertTrue(all(r["language"] == "glsl" and r["role"] == "source" for r in result.rows))
+        self.assertEqual({r["group"] for r in result.rows}, {"dev_docs/agents/demos/test"})
+
+    def test_document_child_inherits_language_through_parents(self):
+        metadata = '{"boxes" [{"id" "child" "properties" {"parents" #{#afield/box "root"} "code" "xs = [1, 2]"}} {"id" "root" "properties" {"mainLanguage" "python"}}]}'
+        result = self.census({"dev_docs/agents/demo/metadata.edn": metadata})
+        self.assertEqual(result.rows[0]["language"], "python")
+
+    def test_transcript_language_inheritance_uses_connections(self):
+        result = self.census({"dev_docs/agents/transcripts/test.yaml": '''operations:
+  - create: {box: root, properties: {mainLanguage: forth}}
+  - create: {box: child, properties: {code: '1 2 +'}}
+  - connect: {parent: root, child: child}
+  - execute: {box: child, code: '3 4 +'}
+'''})
+        self.assertEqual([r["language"] for r in result.rows], ["forth", "forth"])
 
     def test_drivers_mirrors_and_generated_copies_are_not_review_sources(self):
         result = self.census({
