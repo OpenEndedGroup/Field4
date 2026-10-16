@@ -62,14 +62,14 @@ fun BufferParameters.asBonds(): Bonds =
 /*graphics-pc-binding:jDown*/ var Mesh.jDown by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-binding-group:jDown*/ var MeshGroup.jDown by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-structure:L*/ var Structure.L by Structure.FromStructure<Any>()
-/*graphics-pc-binding:L*/ var Mesh.L by Mesh.BoundFromStructure<UInt>()
-/*graphics-pc-binding-group:L*/ var MeshGroup.L by MeshGroup.BoundFromStructure<UInt>()
+/*graphics-pc-binding:L*/ var Mesh.L by Mesh.BoundFromStructure<Any>()
+/*graphics-pc-binding-group:L*/ var MeshGroup.L by MeshGroup.BoundFromStructure<Any>()
 /*graphics-pc-structure:aspect*/ var Structure.aspect by Structure.FromStructure<Any>()
 /*graphics-pc-binding:aspect*/ var Mesh.aspect by Mesh.BoundFromStructure<Float>()
 /*graphics-pc-binding-group:aspect*/ var MeshGroup.aspect by MeshGroup.BoundFromStructure<Float>()
 /*graphics-pc-structure:showFrustration*/ var Structure.showFrustration by Structure.FromStructure<Any>()
-/*graphics-pc-binding:showFrustration*/ var Mesh.showFrustration by Mesh.BoundFromStructure<UInt>()
-/*graphics-pc-binding-group:showFrustration*/ var MeshGroup.showFrustration by MeshGroup.BoundFromStructure<UInt>()
+/*graphics-pc-binding:showFrustration*/ var Mesh.showFrustration by Mesh.BoundFromStructure<Any>()
+/*graphics-pc-binding-group:showFrustration*/ var MeshGroup.showFrustration by MeshGroup.BoundFromStructure<Any>()
 var Box.sgL by Inheritance<Int>() /*from:sg_update*/ /**/
 val Once.sgL by Onceing<Int>() /*from:sg_update*/ /**/
 val Why.sgL by Whying() /*from:sg_update*/ /**/

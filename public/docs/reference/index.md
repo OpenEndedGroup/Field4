@@ -432,7 +432,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ### geometry
 
-- *mesh* — [Graphics](graphics.md#mesh-kt) · [Math](math.md#linalg-mesh-kt) · [Simulation](simulation.md#tetmeshviews-kt)
+- *mesh* — [Graphics](graphics.md#measurementhelpers-kt) · [Math](math.md#linalg-mesh-kt) · [Simulation](simulation.md#tetmeshviews-kt)
     - [tetgen](simulation.md#tetmeshviews-kt)
 - *path* — [Graphics](graphics.md#fline-kt) · [Math](math.md#cubicbezier3d-kt)
     - [java2d](graphics.md#flinesandjavashapes-kt)
@@ -552,7 +552,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - [stream](imaging.md#electronrttview-kt)
 - [video](video.md#sharedgpuslot-kt)
     - [diffusion](video.md#sharedgpuslot-kt)
-- [vision](imaging.md#opticalflow-kt)
+- [vision](imaging.md#hardwareopticalflow-kt)
 
 </div>
 
@@ -627,7 +627,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**31972 public symbols across 1446 source files**, 15958 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**31995 public symbols across 1449 source files**, 15982 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -637,19 +637,19 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Internal](internal.md) | 16 | 155 | 49 (31%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 203 | 156 (76%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
-| [Video](video.md) | 12 | 124 | 40 (32%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
+| [Video](video.md) | 12 | 125 | 41 (32%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 40 | 1935 | 1395 (72%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 288 | 6952 | 3428 (49%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 289 | 6962 | 3439 (49%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 42 | 741 | 371 (50%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 42 | 985 | 526 (53%) | Making a shape behave. |
-| [Imaging](imaging.md) | 45 | 735 | 335 (45%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
+| [Imaging](imaging.md) | 45 | 736 | 336 (45%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 12 | 656 | 453 (69%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 5 | 349 | 199 (57%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 48 | 1444 | 981 (67%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 50 | 1455 | 992 (68%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 42 | 1506 | 737 (48%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1313 | 718 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2092 | 1010 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
@@ -872,8 +872,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [CompressedSplatPly.kt](graphics.md#compressedsplatply-kt) | Graphics | 22 | 22 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [CompressedSplatPlyFixture.kt](graphics.md#compressedsplatplyfixture-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [CompressedSplatPlyWriter.kt](graphics.md#compressedsplatplywriter-kt) | Graphics | 6 | 6 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [ComputeMesh.kt](graphics.md#computemesh-kt) | Graphics | 22 | 7 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [ComputeModule.kt](graphics.md#computemodule-kt) | Graphics | 37 | 2 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [ComputeMesh.kt](graphics.md#computemesh-kt) | Graphics | 23 | 8 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [ComputeModule.kt](graphics.md#computemodule-kt) | Graphics | 39 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [ComputeTarget.kt](graphics.md#computetarget-kt) | Graphics | 12 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Constraints.kt](polytopes.md#constraints-kt) | Polytopes | 68 | 33 | The constraint vocabulary a realization run is written in. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ContextLocalVariableShadowingSmokeTest.kt](examples.md#contextlocalvariableshadowingsmoketest-kt) | Examples · internal | 2 | 1 |  |  |
@@ -1066,7 +1066,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr></small> [FieldMLSourceIndex.kt](languages.md#fieldmlsourceindex-kt) | Languages | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>type/<wbr></small> [FieldMLTypePrelude.kt](languages.md#fieldmltypeprelude-kt) | Languages | 10 | 10 | The type of every name a FieldML program has before it declares anything: the prelude, as the type checker sees it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>ai/<wbr></small> [FieldPersistence.kt](audio-ai.md#fieldpersistence-kt) | Audio AI | 5 | 5 | How a Field document remembers audio work: ids and judgements in a box property, and not one sample of audio. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [FieldProbe.kt](graphics.md#fieldprobe-kt) | Graphics | 55 | 1 |  | [Field Probes: instrumenting shaders](../field_probes.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [FieldProbe.kt](graphics.md#fieldprobe-kt) | Graphics | 56 | 2 |  | [Field Probes: instrumenting shaders](../field_probes.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [FieldProbeSmokeTest.kt](examples.md#fieldprobesmoketest-kt) | Examples · internal | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>stream/<wbr></small> [FieldRTTStreamer.kt](imaging.md#fieldrttstreamer-kt) | Imaging | 12 | 11 |  | [Field on Apple Vision Pro](../vision.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [FieldStats.kt](graphics.md#fieldstats-kt) | Graphics | 56 | 0 |  | [Field Probes: instrumenting shaders](../field_probes.md) |
@@ -1196,13 +1196,14 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [GraphConnectivitySmokeTest.kt](examples.md#graphconnectivitysmoketest-kt) | Examples · internal | 3 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>graph/<wbr></small> [GraphQuery.kt](data.md#graphquery-kt) | Data | 96 | 38 | A reflective, XPath-style query layer over arbitrary live object graphs. | [Querying object graphs](../graph_query.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>graph/<wbr></small> [GraphQuerySmokeTest.kt](data.md#graphquerysmoketest-kt) | Data · internal | 3 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [groups.kt](graphics.md#groups-kt) | Graphics | 6 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [groups.kt](graphics.md#groups-kt) | Graphics | 7 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>graph/<wbr></small> [growing.kt](data.md#growing-kt) | Data | 14 | 8 | A 3-regular graph that grows by local rewriting. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [GrowingGraphSimdVerletExample.kt](examples.md#growinggraphsimdverletexample-kt) | Examples | 20 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [H2DomainAdapters.kt](visualization.md#h2domainadapters-kt) | Visualization | 1 | 1 | `.h2` adapters for the Field types where the *reflective* default in `H2Reflect.kt` reads badly. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [h2explorer.kt](workspace.md#h2explorer-kt) | Workspace · internal | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [H2Reflect.kt](visualization.md#h2reflect-kt) | Visualization | 0 | 0 | The reflective half of `.h2`: what a domain object's *children* are, computed once and shared by every surface that shows them. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Handles.kt](audio.md#handles-kt) | Audio | 4 | 3 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>vision/<wbr></small> [HardwareOpticalFlow.kt](imaging.md#hardwareopticalflow-kt) | Imaging | 13 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [HarmonicPhaseTracker.kt](synthesis.md#harmonicphasetracker-kt) | Synthesis | 27 | 20 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [HeadlessPuppetBrowser.kt](imaging.md#headlesspuppetbrowser-kt) | Imaging | 26 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>steamaudio/<wbr></small> [HeadTrackedPatternDemo.kt](examples.md#headtrackedpatterndemo-kt) | Examples | 4 | 3 |  |  |
@@ -1384,11 +1385,13 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [MarfGallery.kt](patterns.md#marfgallery-kt) | Patterns | 11 | 8 | Headless **figure gallery** for the function-generation layer in `Marf.kt`, and the check that every figure on `marf.md` is a measurement of the reader it claims to draw. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [MarfSmokeTest.kt](patterns.md#marfsmoketest-kt) | Patterns · internal | 2 | 1 | The worked example for `Marf.kt`, and the check that it holds together: one bank, several readers, and what each reader is doing printed as text. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [MarfVectors.kt](patterns.md#marfvectors-kt) | Patterns | 22 | 4 | `MarfSpace` instances for Field's generated linalg vectors, so a reader can emit a position, a colour or a set of material parameters instead of one number. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [MarkdownAppend.kt](visualization.md#markdownappend-kt) | Visualization | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [MarkdownOutput.kt](visualization.md#markdownoutput-kt) | Visualization | 11 | 11 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md), [Measuring dependence between two signals](../statistics_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>functions/<wbr></small> [math.kt](math.md#math-kt) | Math | 13 | 13 | `Number`-taking overloads of the trigonometric functions, so `sin(1)` and `sin(1f)` work without writing `.toDouble()` at every call site. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>matrixprofile/<wbr></small> [MatrixProfile.kt](math.md#matrixprofile-kt) | Math | 29 | 25 |  | [Motifs, Discords and Contrast: the Matrix Profile](../matrix_profile.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [MavenClasspathManager.kt](workspace.md#mavenclasspathmanager-kt) | Workspace · internal | 10 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>osc/<wbr>query/<wbr></small> [Mdns.kt](networking.md#mdns-kt) | Networking | 9 | 4 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr></small> [MeasurementHelpers.kt](graphics.md#measurementhelpers-kt) | Graphics | 4 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr>pressure/<wbr></small> [Mechanics.kt](simulation.md#mechanics-kt) | Simulation | 13 | 2 |  | [Pressure membranes](../pressure_membranes.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>mega/<wbr></small> [MegaTexture.kt](graphics.md#megatexture-kt) | Graphics | 82 | 39 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>mega/<wbr></small> [MegaTextureCatalog.kt](graphics.md#megatexturecatalog-kt) | Graphics | 24 | 14 |  |  |
@@ -1397,7 +1400,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [megaTextures.kt](graphics.md#megatextures-kt) | Graphics | 12 | 12 | A directory of images as one texture, however many of them there are. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>mega/<wbr></small> [megaTextureShader.kt](graphics.md#megatextureshader-kt) | Graphics | 7 | 7 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr></small> [mesh.kt](graphics.md#mesh-kt) | Graphics | 59 | 53 | `TriMesh` — the CPU triangle mesh Field's 3D geometry family is built on, plus the builder that makes one and the whole-mesh transforms that move one around. | [Meshes and 3D geometry](../mesh_examples.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [Mesh.kt](graphics.md#mesh-kt-src-jvmmain-kotlin-afield-graphics-render) | Graphics | 27 | 3 |  | [Field Probes: instrumenting shaders](../field_probes.md), [FieldML's JVM bridge](../fieldml_host_bridge.md), [Computer vision in Python](../python_cv.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [Mesh.kt](graphics.md#mesh-kt-src-jvmmain-kotlin-afield-graphics-render) | Graphics | 28 | 4 |  | [Field Probes: instrumenting shaders](../field_probes.md), [FieldML's JVM bridge](../fieldml_host_bridge.md), [Computer vision in Python](../python_cv.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>context/<wbr></small> [Mesh_context.kt](workspace.md#mesh-context-kt) | Workspace | 2 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr></small> [mesh_field.kt](graphics.md#mesh-field-kt) | Graphics | 33 | 33 | What makes the mesh family *Field's* rather than a generic geometry library: the bridges out of `TriMesh` and into the things Field already draws, renders and displays. | [Geometry from disk](../geometry_from_disk.md), [Meshes and 3D geometry](../mesh_examples.md), [Three.js scenes with `three { … }`](../three_output.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr></small> [mesh_generate.kt](graphics.md#mesh-generate-kt) | Graphics | 23 | 23 | Where a `TriMesh` comes from: the primitives (`boxMesh`, `uvSphereMesh`, `icosphereMesh`, `torusMesh`, `cylinderMesh`, `coneMesh`, `capsuleMesh`, the five platonics) and the *derived* generators that build one out of something you already have (`extrudeMesh`, `revolveMesh`, `tubeMesh`, `heightfieldMesh`, `reliefMesh`, `polygonMesh`). | [Meshes and 3D geometry](../mesh_examples.md), [Three.js scenes with `three { … }`](../three_output.md), [A photograph, closed and mounted](../chain_photo_to_solid.md) |
@@ -1485,6 +1488,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [NotebookExportSmokeTest.kt](examples.md#notebookexportsmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [NotebookImportSmokeTest.kt](examples.md#notebookimportsmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>ai/<wbr></small> [NpyIntTensor.kt](audio-ai.md#npyinttensor-kt) | Audio AI | 6 | 6 | A dependency-free reader for the integer NPY tensors the audio service emits — the codec token grids, in practice. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [NumericFormatting.kt](visualization.md#numericformatting-kt) | Visualization | 10 | 10 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>python/<wbr></small> [numpy.kt](data.md#numpy-kt) | Data | 37 | 32 | Reader for NumPy's `.npy` and `.npz` on-disk formats. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>python/<wbr></small> [NumpyShared.kt](languages.md#numpyshared-kt) | Languages | 24 | 17 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr></small> [OctreeBarnesHut.kt](simulation.md#octreebarneshut-kt) | Simulation | 10 | 10 | Approximate inverse-square forces over a particle cloud, by summarising distant groups as a single mass each. |  |
@@ -1508,7 +1512,6 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>automation/<wbr></small> [operation_transcript.kt](workspace.md#operation-transcript-kt) | Workspace · internal | 26 | 4 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [OperationTranscriptMacroSmokeTest.kt](examples.md#operationtranscriptmacrosmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [OperationTranscriptPromoteSmokeTest.kt](examples.md#operationtranscriptpromotesmoketest-kt) | Examples · internal | 2 | 0 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>vision/<wbr></small> [OpticalFlow.kt](imaging.md#opticalflow-kt) | Imaging | 12 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>vision/<wbr></small> [OpticalFlowDemo.kt](imaging.md#opticalflowdemo-kt) | Imaging | 16 | 6 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>vision/<wbr></small> [OpticalFlowOperation.kt](imaging.md#opticalflowoperation-kt) | Imaging | 18 | 10 |  | [Optical flow](../optical_flow.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>vision/<wbr></small> [OpticalFlowSmoke.kt](imaging.md#opticalflowsmoke-kt) | Imaging | 2 | 0 |  |  |
@@ -1963,7 +1966,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr></small> [Strand.kt](simulation.md#strand-kt) | Simulation | 27 | 27 | A rope inside somebody else's `SimdVerlet`: the one-dimensional sibling of `Cloth`, and the same shape of thing. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr>diffusion/<wbr></small> [StreamDiffusionConfig.kt](video.md#streamdiffusionconfig-kt) | Video | 24 | 3 |  | [Streaming diffusion](../streaming_diffusion.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr>diffusion/<wbr></small> [StreamDiffusionMotion.kt](video.md#streamdiffusionmotion-kt) | Video | 9 | 4 |  | [Streaming diffusion](../streaming_diffusion.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr>diffusion/<wbr></small> [StreamDiffusionSession.kt](video.md#streamdiffusionsession-kt) | Video | 11 | 2 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr>diffusion/<wbr></small> [StreamDiffusionSession.kt](video.md#streamdiffusionsession-kt) | Video | 12 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr>diffusion/<wbr></small> [StreamDiffusionSupport.kt](video.md#streamdiffusionsupport-kt) | Video | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr>diffusion/<wbr></small> [StreamDiffusionTemporalOutput.kt](video.md#streamdiffusiontemporaloutput-kt) | Video | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr>diffusion/<wbr></small> [StreamDiffusionView.kt](video.md#streamdiffusionview-kt) | Video | 19 | 2 |  |  |

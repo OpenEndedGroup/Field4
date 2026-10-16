@@ -160,8 +160,8 @@ var MeshModulePointer.force: String
 /*compute-pc-binding:knobs*/ var ComputeMesh.knobs by ComputeMesh.BoundFromStructure<afield.math.linalg.Vector4f>() // .x seconds, .y force gain
 /*compute-pc-binding-group:knobs*/ var ComputeMeshGroup.knobs by ComputeMeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // .x seconds, .y force gain
 /*compute-pc-structure:count*/ var Structure.count by Structure.FromStructure<Any>()
-/*compute-pc-binding:count*/ var ComputeMesh.count by ComputeMesh.BoundFromStructure<UInt>()
-/*compute-pc-binding-group:count*/ var ComputeMeshGroup.count by ComputeMeshGroup.BoundFromStructure<UInt>()
+/*compute-pc-binding:count*/ var ComputeMesh.count by ComputeMesh.BoundFromStructure<Any>()
+/*compute-pc-binding-group:count*/ var ComputeMeshGroup.count by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:dt*/ var Structure.dt by Structure.FromStructure<Any>()
 /*compute-pc-binding:dt*/ var ComputeMesh.dt by ComputeMesh.BoundFromStructure<Float>()
 /*compute-pc-binding-group:dt*/ var ComputeMeshGroup.dt by ComputeMeshGroup.BoundFromStructure<Float>()

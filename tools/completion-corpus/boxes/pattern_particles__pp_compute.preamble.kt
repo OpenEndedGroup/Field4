@@ -73,8 +73,8 @@ fun BufferParameters.asOut(): Out =
 /*compute-pc-binding:band3*/ var ComputeMesh.band3 by ComputeMesh.BoundFromStructure<Float>()
 /*compute-pc-binding-group:band3*/ var ComputeMeshGroup.band3 by ComputeMeshGroup.BoundFromStructure<Float>()
 /*compute-pc-structure:count*/ var Structure.count by Structure.FromStructure<Any>()
-/*compute-pc-binding:count*/ var ComputeMesh.count by ComputeMesh.BoundFromStructure<UInt>()
-/*compute-pc-binding-group:count*/ var ComputeMeshGroup.count by ComputeMeshGroup.BoundFromStructure<UInt>()
+/*compute-pc-binding:count*/ var ComputeMesh.count by ComputeMesh.BoundFromStructure<Any>()
+/*compute-pc-binding-group:count*/ var ComputeMeshGroup.count by ComputeMeshGroup.BoundFromStructure<Any>()
 var Box.outputPositions by Inheritance<FrameBufferGroup>() /**/
 val Once.outputPositions by Onceing<FrameBufferGroup>() /**/
 val Why.outputPositions by Whying() /**/
