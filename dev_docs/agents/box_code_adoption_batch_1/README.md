@@ -78,3 +78,14 @@ uv run --project . --group backdoor python dev_docs/agents/box_code_adoption_bat
 [Evidence record](verification.json) binds source hashes, verdicts and the preserved structure.
 [Evidence archive](evidence.tar.gz) contains actual captures, baseline sources and raw verdicts.
 Public starting-point regeneration and the full guard belong to the landing queue.
+
+## Collection-literal correction
+
+The pilot initially retained seven `listOf(...)` calls. A follow-up converts all seven to collection
+literals in mesh and Loris code, runs mechanical formatting, and passes the two-transcript
+compile/replay guard. The earlier sweep had deliberately deferred transcripts/demos/templates;
+its default checker scope still covered handwritten docs only. The editing pass now explicitly
+runs `check_box_idioms.py --collection-literals --paths <edited files>`; the checker regression
+suite passes all 21 tests. Historical runtime evidence and `sources.diff` above record the original
+pilot spelling; [collection-style evidence](collection-style-evidence.tar.gz) records this syntax
+correction and its verification.
