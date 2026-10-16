@@ -189,7 +189,7 @@ class ShaderBmlSystem(
 
     private val stepFragmentSource: String = settings.probe?.let { expression ->
         STEP_FRAGMENT
-            .replace(OUTPUT_DECLARATION, "{% include \"fieldProbe\" %}\n\n$OUTPUT_DECLARATION")
+            .replace(OUTPUT_DECLARATION, "{% property \"fieldProbe\" %}\n\n$OUTPUT_DECLARATION")
             .replace(MOVE_MARKER, "fieldProbe($expression);\n        $MOVE_MARKER")
     } ?: STEP_FRAGMENT
 

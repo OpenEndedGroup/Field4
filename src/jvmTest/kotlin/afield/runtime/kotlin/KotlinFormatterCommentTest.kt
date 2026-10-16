@@ -233,7 +233,7 @@ class KotlinFormatterCommentTest {
 
     @Test
     fun glslTemplatesAndBlockInstancesSurvive() {
-        val code = "layout(push_constant) uniform P {\n    float a;\n} pc;\n\n{% include \"fieldProbe\" %}\n\nvoid main() {\n    {{ mega.vertex }}\n}\n"
+        val code = "layout(push_constant) uniform P {\n    float a;\n} pc;\n\n{% property \"fieldProbe\" %}\n\nvoid main() {\n    {{ mega.vertex }}\n}\n"
         val once = formatGlslCode(code)
         assertEquals(code, once)
         assertEquals(once, formatGlslCode(once))

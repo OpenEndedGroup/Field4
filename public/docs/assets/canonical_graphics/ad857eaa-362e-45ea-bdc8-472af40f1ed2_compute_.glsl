@@ -12,7 +12,7 @@ layout(std430, buffer_reference) buffer outData
     vec4 a[];
 };
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 layout(push_constant) uniform dat {
     inData inData;

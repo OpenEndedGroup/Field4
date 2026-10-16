@@ -461,7 +461,7 @@
   //
   // Three things here that a stock GLSL grammar would not have:
   //
-  //   - Field's template spans. `{% include "fieldProbe" %}` and `{{ pc.dec }}` are how a Field
+  //   - Field's template spans. `{% property "fieldProbe" %}` and `{{ pc.dec }}` are how a Field
   //     shader pulls in a preamble or a generated block, they appear in the docs corpus more often
   //     than any GLSL builtin except `vec3`, and they are not GLSL -- so they are scoped `meta`,
   //     the same colour as the `#` preprocessor, which is what they are the Field-side equivalent
@@ -636,7 +636,7 @@
           // `gl_FragCoord`, `gl_LaunchIDEXT`, `gl_RayFlagsOpaqueEXT`. By prefix, because the `gl_`
           // namespace is reserved for exactly this and every extension adds to it.
           { scope: "built_in", match: /\bgl_[A-Za-z_]\w*/, relevance: 10 },
-          // Field's injected helpers, from `{% include "fieldProbe" %}` and friends.
+          // Field's injected helpers, from `{% property "fieldProbe" %}` and friends.
           { scope: "built_in", match: /\bfield(?:Probe|Stats)[A-Za-z0-9_]*/, relevance: 10 },
           // `layout(set = 0, binding = 1, std430)`. The qualifier names are `attr` and only here.
           {
