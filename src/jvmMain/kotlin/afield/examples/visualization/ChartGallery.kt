@@ -823,6 +823,36 @@ object ChartGallery {
     // ── rasterising ───────────────────────────────────────────────────────────────
 
     /** One rendered figure: its pixels, and the PNG bytes for the same. */
+/**
+     * The gallery figures in [dir] that no longer match what the chart code draws: missing, a
+     * different size, or more than one pixel in a thousand off by more than a few levels. The docs
+     * runner does not make these figures, so `ChartTest` asks this and fails until they are
+     * regenerated.
+     */
+    internal fun staleCommittedFigures(dir: File): List<String> = FIGURES.mapNotNull { figure ->
+        val file = File(dir, "chart-${figure.name}.png")
+        if (!file.isFile) return@mapNotNull "${figure.name}: no committed figure"
+        val now = render(figure.build())
+        val image = org.jetbrains.skia.Image.makeFromEncoded(file.readBytes())
+        val bitmap = Bitmap.makeFromImage(image)
+        try {
+            if (bitmap.width != now.width || bitmap.height != now.height)
+                return@mapNotNull "${figure.name}: committed ${bitmap.width}x${bitmap.height}, drawn ${now.width}x${now.height}"
+            var off = 0
+            for (i in now.pixels.indices) {
+                val a = now.pixels[i]
+                val b = bitmap.getColor(i % now.width, i / now.width)
+                val d = maxOf(abs(((a shr 16) and 255) - ((b shr 16) and 255)),
+                    abs(((a shr 8) and 255) - ((b shr 8) and 255)), abs((a and 255) - (b and 255)))
+                if (d > 3) off++
+            }
+            if (off * 1000 > now.pixels.size) "${figure.name}: $off pixels differ" else null
+        } finally {
+            runCatching { bitmap.close() }
+            runCatching { image.close() }
+        }
+    }
+
     private class Raster(val width: Int, val height: Int, val pixels: IntArray, val png: ByteArray)
 
     /**
