@@ -108,7 +108,7 @@ Each neighbour card shows where the window comes from, a bar for each of the fiv
 player that crossfades from the query into the neighbour. The query and neighbour players both start
 at zero, so hovering, zooming, clicking and playback stay aligned between the two recordings. Each
 card also lists the window's timestamps in its source and the ids of the windows before and after
-it. Placing a neighbour on a timeline is not supported.
+it.
 
 See also: the [EnCodec round trip](audio_ai_codec.md) for the token representation,
 and [Short-time spectral spaces](audio_ai_spectral_embeddings.md).
