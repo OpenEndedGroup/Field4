@@ -74,8 +74,6 @@ A space is the only separator the notation has, and it always means *divide this
 
 Two steps, half a cycle each.
 
-Colour is per instrument throughout this page: `bd` is always this blue, `sd` always this orange. The colours are the drum map, so two bars that look different sound different.
-
 </div>
 
 <div class="pat-mini" markdown>
@@ -376,7 +374,7 @@ Deterministic matters more than it sounds: a pattern you can re-query is a patte
 
 `|` picks **one** of the alternatives per cycle at random — where `<>` cycles through them in order.
 
-The brackets are only for show here — a whole string is a group like any other, so bare `bd|sd|cp` parses to exactly this. (It did not until September 2026: `|` was reachable only from inside a `[…]`, and the bare form was a parse error.) Deterministic in the same way `?` is, so this figure is not a different picture every time the docs build runs.
+The brackets are only for show here — a whole string is a group like any other, so bare `bd|sd|cp` parses to exactly this. Deterministic in the same way `?` is, so this figure is not a different picture every time the docs build runs.
 
 </div>
 
@@ -435,7 +433,7 @@ Two bracket suffixes that do not spell a rhythm out but *construct* one, from a 
 
 Euclidean: spread three onsets as evenly as eight slots allow. Three against eight is `x..x..x.` — gaps of 3, 3 and 2, the tresillo.
 
-This is Tidal's spelling, bead for bead, and so is every other `(pulses, steps)` pair. It was not always: until September 2026 Field's `bjorklund` stopped one pairing late and returned a *rotation* of this figure for a little over half of all inputs — the same necklace, equally even, starting on a different bead. `bd(3,8)` came out `x..x.x..`. A rotation is a different groove against the downbeat, which is the whole reason a shared notation has to agree on one.
+This is Tidal's spelling, bead for bead, and so is every other `(pulses, steps)` pair. That matters because a rotation of the same figure is a different groove against the downbeat, so a shared notation has to agree on one.
 
 </div>
 
