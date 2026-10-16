@@ -924,10 +924,15 @@ object Functions {
         require(domain.isFinite) { "$label domain must be finite for stretch; got $domain" }
     }
 
+    /**
+     * [base] narrowed by the parameter signals that configure a function. A constant (`c(2.0)`,
+     * `constant(2.0)`) does not narrow it: the same everywhere, its domain says nothing about where
+     * the function it configures is defined, so `sin(frequency = c(2.0))` is `sin(frequency = 2.0.c)`.
+     */
     private fun intersectDomains(base: Domain, vararg fns: Fn?): Domain {
         var d = base
         for (f in fns) {
-            if (f != null) d = d.intersect(f.domain)
+            if (f != null && f.graph?.op != "const") d = d.intersect(f.domain)
         }
         return d
     }
@@ -1088,8 +1093,8 @@ object Functions {
      * anything it is combined with; `0.5.c` is a parameter signal over [Domain.ALL] and will not. The
      * factories in this file take the second route, **not** this one: a `Number` passed where an [Fn]
      * is expected is wrapped as an unbounded parameter, precisely so that configuring a function does
-     * not clip it. So `sin(frequency = 2.0)` and `sin(frequency = 2.0.c)` agree, while
-     * `sin(frequency = c(2.0))` clips the oscillator to `0.0..1.0`.
+     * not clip it. A constant used as a parameter does not clip it either, so `sin(frequency = 2.0)`,
+     * `sin(frequency = 2.0.c)` and `sin(frequency = c(2.0))` agree.
      */
     fun c(value: Number, domain: Domain = Domain.DEFAULT): Fn {
         val v = value.toDouble()
@@ -1135,10 +1140,8 @@ object Functions {
      * This number as a **parameter signal**: a constant over [Domain.ALL], so using it to configure a
      * function will not shrink that function's domain.
      *
-     * That unbounded domain is the whole point of the distinction from [c]. Domains intersect when
-     * functions combine, so `sin(frequency = c(2.0))` would clip the oscillator to `0.0..1.0`, whereas
-     * `sin(frequency = 2.0.c)` leaves it alone. Reach for `2.0.c` whenever the number is a knob rather
-     * than a signal in its own right.
+     * As a parameter it behaves exactly as `c(2.0)` does, since neither narrows the function it
+     * configures; the difference is only when it stands alone, where [c] has the default domain.
      */
     val Number.c: Fn
         get() = param(this)

@@ -327,7 +327,7 @@ take.smooth(0.05)      // over about a twentieth of a second
 take.simplify(0.01)    // within 0.01 of the smoothed curve, everywhere
 ```
 
-A take from a gesture pad bakes into two lanes whose keys share their times. Smoothing a lane leaves its times alone, but simplifying the lanes one at a time does not. To thin out a take, smooth it and bake it again, as in [A shaky take](#a-shaky-take).
+A take from a gesture pad bakes into two lanes whose keys share their times. `KeyframeEvaluator.simplifyTogether(listOf(sx, sy), 0.01)` thins both and keeps their keys at the same times: a time stays if either lane needs it.
 
 ## Key types
 
@@ -701,7 +701,7 @@ For a two-second figure eight drawn by hand, 240 samples:
 
 ### A shaky take
 
-The tolerance keeps what you performed, tremor and all. The same figure eight drawn by a shakier hand bakes to 146 keys of its 240 samples, most of them following the shake. To keep the movement and lose the tremor, smooth the take before you bake it: bake every sample, smooth both lanes, send them back to the pad, and bake again. The second bake needs 29 keys, and both lanes still have their keys at the same times. Using **Simplify** on each lane separately would give each lane different key times.
+The tolerance keeps what you performed, tremor and all. The same figure eight drawn by a shakier hand bakes to 146 keys of its 240 samples, most of them following the shake. To keep the movement and lose the tremor, smooth the take before you bake it: bake every sample, smooth both lanes, send them back to the pad, and bake again. The second bake needs 29 keys, and both lanes still have their keys at the same times.
 
 ```diffstatic {data-lang=kotlin}
 fun smoothTake() {

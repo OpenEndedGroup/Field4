@@ -364,6 +364,14 @@ class KeyframeEvaluator(jsonString: String) {
         simplifyKeys(keyframes, tolerance, ::segmentKind, ::evaluateValueAt, ::segmentValue)
     )
 
+    /** [simplify] with the times in [pinned] kept as they are; see [simplifyTogether]. */
+    private fun simplifyKeeping(tolerance: Double, pinned: Set<Double>): List<Keyframe> {
+        val marked = keyframes.map { if (it.time in pinned && !it.locked) it.copy(locked = true) else it }
+        val wasLocked = keyframes.map { it.locked }.zip(keyframes.map { it.time }).filter { it.first }.map { it.second }.toSet()
+        return simplifyKeys(marked, tolerance, ::segmentKind, ::evaluateValueAt, ::segmentValue)
+            .map { if (it.locked && it.time !in wasLocked) it.copy(locked = false) else it }
+    }
+
     /**
      * Smooths the keys' values with a Gaussian [width] wide in time (its standard deviation), so the
      * jitter in a recorded take goes and its shape stays. The first and last keys and locked keys
@@ -575,6 +583,27 @@ class KeyframeEvaluator(jsonString: String) {
     }
 
     companion object {
+        /**
+         * [simplify] for curves whose keys share their times, such as the lanes a gesture take bakes
+         * into: every lane ends up with the same key times, each within [tolerance] of where it was.
+         * A time stays if any lane needs it.
+         *
+         * ```kotlin
+         * KeyframeEvaluator.simplifyTogether(listOf(xCurve, yCurve), 0.01)
+         * ```
+         */
+        fun simplifyTogether(curves: List<KeyframeEvaluator>, tolerance: Double) {
+            var pinned = emptySet<Double>()
+            var results: List<List<Keyframe>>
+            while (true) {
+                results = curves.map { it.simplifyKeeping(tolerance, pinned) }
+                val union = results.flatMap { lane -> lane.map { it.time } }.toSet()
+                if (union == pinned || results.all { lane -> lane.map { it.time }.toSet() == union }) break
+                pinned = union
+            }
+            curves.zip(results).forEach { (curve, keys) -> curve.setKeys(keys) }
+        }
+
         private const val EPSILON = 1e-6
 
         // The neighbours a menu icon is drawn between, so the splines have something to look at.

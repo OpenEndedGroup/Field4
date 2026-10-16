@@ -967,13 +967,9 @@ Produces a flat function that evaluates to `0.5` everywhere in the default domai
 val f = constant(0.5)
 ```
 
-`0.5.c` is the same value as a *parameter signal*: a constant over `Domain.ALL`, so it does not shrink the domain of anything it is combined with. `c(0.5)` and `constant(0.5)` carry the default `0.0..1.0`, and domains intersect, so `sin(frequency = c(2.0))` clips the oscillator to `0.0..1.0` where `sin(frequency = 2.0.c)` (or plain `2.0`) leaves it unbounded. Use `c(...)` when the constant is a signal in its own right and `.c` when it is a knob.
-
-```diffstatic {data-lang=kotlin}
-val knob = 0.5.c                          // Domain.ALL
-val wobble = sin(frequency = 2.0.c)       // still unbounded
-val clipped = sin(frequency = c(2.0))     // domain is now 0.0..1.0
-```
+`0.5.c` is the same value over `Domain.ALL`. As a parameter they behave the same, since a constant
+never narrows the function it configures: `sin(frequency = c(2.0))` and `sin(frequency = 2.0.c)` are
+both unbounded.
 
 **Creative**
 
@@ -3809,10 +3805,9 @@ Useful term forms:
 | `op=saw` | Matches the current node’s operation exactly. It does not select an incoming parameter merely named `saw`. |
 | `role=frequency` | Matches a node reached through a frequency parameter edge. This selects the use of a node within its parent. |
 | `edge=frequency` | Selects the incoming frequency edge. `edge` is an alias for `role`. |
-| `param=frequency` | Selects the incoming frequency parameter. `param` is an alias for `role`, not the `param` node class. |
 | `parameter=frequency` | Selects the same edge as `role=frequency`. Use whichever spelling makes the rule easier to read. |
-| `parent=sin` | Matches when the immediate parent operation is `sin`. Use a path with `**` to match more distant ancestry. |
-| `under=sin` | Uses the same immediate-parent check as `parent=sin`. It does not mean any ancestor at any depth. |
+| `parent=sin` | Matches when the immediate parent operation is `sin`. |
+| `under=sin` | Matches anywhere below a `sin`, at any depth. |
 | `name=lead` | Matches the function’s public `name`. Give a function a name when it needs a stable target independent of its operation. |
 | `tag=number` | Requires membership in the node’s tag set. This avoids the broader operation-or-role interpretation of a bare term. |
 | `depth=2` | Matches occurrences two edges below the root. The root is depth zero. |
