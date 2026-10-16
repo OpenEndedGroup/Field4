@@ -77,15 +77,23 @@ data class BoidSettings(
     /** Prefix for the buffer, module and target names this system creates, so two flocks can share a renderer. */
     var name: String = "boids",
     /** Interaction radius. Must be at most the grid's cell size or the 3x3 query misses people. */
-    var radius: Float = 0.06f,
-    /** Push away from neighbours, as `1/r`. */
+    var radius: Float = 2f / 64f,
+    /**
+     * Push away from neighbours, as `1/r`.
+     *
+     * This and the next two defaults are tuned to flock at [radius] `2/64` with about 12,000
+     * boids over a unit square, and are far from the textbook `0.02 / 1.2 / 0.8` because
+     * separation *sums* over neighbours while alignment and cohesion take *means*. The terms are
+     * deliberately not normalised: the sum/mean split is the structure the learned interactions
+     * are measured against. Change the density or the radius and the balance moves with it.
+     */
     var separation: Float = 0.02f,
     /** Match neighbours' velocity. */
-    var alignment: Float = 1.2f,
+    var alignment: Float = 3f,
     /** Move toward neighbours' centre of mass. */
-    var cohesion: Float = 0.8f,
+    var cohesion: Float = 200f,
     /** Speed ceiling, applied after the acceleration. */
-    var maxSpeed: Float = 0.35f,
+    var maxSpeed: Float = 0.25f,
     /** Integration step. Set to 0 to compute accelerations without moving anything. */
     var dt: Float = 1f / 60f,
     /**
@@ -99,7 +107,7 @@ data class BoidSettings(
     var minSeparationFraction: Float = 0.05f,
     /**
      * The separation term's range, as a fraction of [radius]. 1 means "the same range as
-     * everything else", which is the default and what the tests assert against.
+     * everything else"; the default, 0.25, is the setting that clumps.
      *
      * Below 1 this is the classical three-radius formulation, and it is the difference between a
      * flock that can clump and one that cannot. With a single radius, cohesion acts on the *mean*
@@ -112,7 +120,7 @@ data class BoidSettings(
      * more than a radius apart can never find each other. That is what produces several clumps
      * instead of one disc.
      */
-    var separationRadiusFraction: Float = 1f,
+    var separationRadiusFraction: Float = 0.25f,
     /**
      * Pull back toward the origin once a boid is further out than [containmentRadius], per unit
      * of excess. Zero — the default — adds exactly nothing, which is what the tests rely on.

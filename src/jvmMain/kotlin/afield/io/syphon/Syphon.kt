@@ -96,6 +96,7 @@ object Syphon {
     }
 
     internal val open = ConcurrentHashMap<String, SyphonServer>()
+    internal val clients = ConcurrentHashMap<String, SyphonClient>()
 }
 
 /** One announced server: what [SyphonClient] can connect to. */
@@ -274,6 +275,8 @@ class SyphonServer internal constructor(val name: String) : AutoCloseable {
 class SyphonClient internal constructor(private val handle: MemorySegment) : AutoCloseable {
     private val cleanable = SyphonNative.cleaner.register(this, SyphonNative.Free(handle, SyphonNative::clientFree))
     @Volatile private var closed = false
+    /** Whether this client's native connection has been released. */
+    val isClosed: Boolean get() = closed
     private var buffer: ByteArray? = null
 
     /** The server this client is connected to. */
@@ -324,6 +327,7 @@ class SyphonClient internal constructor(private val handle: MemorySegment) : Aut
         if (closed) return
         closed = true
         synchronized(this) { cleanable.clean() }
+        Syphon.clients.entries.removeIf { it.value === this }
     }
 
     override fun toString(): String = "SyphonClient($server, ${if (closed) "closed" else "$frameCount frames"})"
@@ -365,15 +369,22 @@ fun syphonServer(name: String = "Field"): SyphonServer {
 /**
  * Connect to the first server whose uuid, name, or app name (tried in that order) is [match]; an
  * empty [match] takes the first server announced. Waits up to [waitMs] for it to appear, then
- * throws, listing the servers it could see.
+ * throws, listing the servers it could see. Reuses the open client cached under exactly [match];
+ * a missing or closed client is recreated. Calls with different matches have separate cache slots.
+ * Clients persist across box runs; close one explicitly when its shared connection is no longer needed.
  */
 @JvmOverloads
 fun syphonClient(match: String = "", waitMs: Int = 2000): SyphonClient {
     Syphon.requireLibrary()
-    val h = SyphonNative.clientNew(match, waitMs) ?: run {
-        val why = SyphonNative.lastErrorMessage()
-        val seen = runCatching { Syphon.servers(0) }.getOrDefault(emptyList())
-        throw IllegalStateException("Syphon: $why. Announced: ${if (seen.isEmpty()) "none" else seen.joinToString()}")
-    }
-    return SyphonClient(h)
+    require(waitMs >= 0) { "waitMs must be non-negative" }
+    return Syphon.clients.compute(match) { _, existing ->
+        if (existing != null && !existing.isClosed) existing else {
+            val h = SyphonNative.clientNew(match, waitMs) ?: run {
+                val why = SyphonNative.lastErrorMessage()
+                val seen = runCatching { Syphon.servers(0) }.getOrDefault(emptyList())
+                throw IllegalStateException("Syphon: $why. Announced: ${if (seen.isEmpty()) "none" else seen.joinToString()}")
+            }
+            SyphonClient(h)
+        }
+    }!!
 }

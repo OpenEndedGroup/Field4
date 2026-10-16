@@ -26,6 +26,23 @@ the transcript that showed each pattern is in brackets. New proposals go under *
   every push-constant member, so `step.band0 = { ... }` is already the form; numbered members
   do not need a `bind("band", 4)`. [pattern_particles]
 
+### Implemented from the 2026-10-16 decisions
+
+These are available in the helper implementation branch, with [verification evidence](box_code_helpers/README.md):
+
+- Callable `Interpolant<T>` from `smoothTo`/`inertialTo`, exposing `startAt`.
+- Public `WallSpec.worldToClip()` and `FaustPatternRender.wav(normalizePeak = ...)`.
+- Named reuse in `syphonClient(match)`, recreating missing/closed connections.
+- Shared `runAsync` ownership/publication; `FieldAudioClient.trackAnalysis` uses it.
+- OSC `on(address, runOwned = true)` for opt-in stop/rerun cleanup.
+- `Solid.sampleSlices(n) { z, section -> ... }` with scoped native section lifetime.
+- Append-style `FLine.grid(bounds, nx, ny)` and `bestTimeMs(repetitions, warmup) { ... }`.
+- `stage(...)` / `showInteractionStages(...)` for captured interaction-net layouts.
+
+ToolPool notes are approved but reserved for the house-machine agents. The eight earlier families rediscovered by the sweep are also implemented; see
+[their API contracts and evidence](box_code_helpers/OLDER_APPROVALS.md). Other earlier approvals
+below remain separate work.
+
 ## Approved
 
 - **Approved 2026-10-16:** arrange captured interaction-net stages with
@@ -106,9 +123,8 @@ the transcript that showed each pattern is in brackets. New proposals go under *
 - `StatsDependence.all(x, y)` with `caption()`, `permutationNull(x, y, reps, seed) { a, b -> ... }`,
   `RollingPearson(w)`. [statistics_examples]
 - `markdownAppend("channel", line)`, with a maximum size that trims the earliest lines.
-  Implementation follow-up: add the bounded append operation beside `Box.markdown` in
-  `ui/output/MarkdownOutput.kt`; verify cancellation and rerun ordering before replacing the
-  cleanup example's per-launch `notes` list. [frames_lifecycle]
+  Implemented beside `Box.markdown`, with bounds and old-run/new-run ordering tests;
+  the teaching cleanup example can use it in the corpus edit pass. [frames_lifecycle]
 - **Bug, fixed 2026-10-07:** `prop<>` dropped the box's own imports, forcing
   `prop<afield.graphics.scene.fabricated.StandardRenderer.Bundle>`; six transcripts now use the short name.
   [four_simulation_chain]

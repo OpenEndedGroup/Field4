@@ -14,3 +14,7 @@ Why this is a project rather than a fix: `LambdaTerms.compile` (`src/jvmMain/kot
 - **Closed reduction** (Mackie): not optimal, but correct with a small change to when β may fire.
 
 Each of these changes `Lambda.rules()`, `compile` and `readback`, and so the event vocabulary `LambdaSoundDocs` sonifies (`EVENT_KINDS`). The four sonified pages' audio and the rule-tally readouts would all change. Pick a target (optimality, or just correctness), then implement it with the four probes plus the corpus checked against the normal-order evaluator, and delete the aside and caveat.
+
+## Decision, 2026-10-16 (Marc)
+
+**Lambdascope** (van Oostrom, van de Looij, Zwitserlood): optimal and correct. Its scope delimiters replace the per-`DUP` `FAN_LABEL` scheme. Implement it in `Lambda.rules()`, `LambdaTerms.compile` and `readback`, and extend `LambdaSoundDocs.EVENT_KINDS` with the delimiter interactions. Check all four `CONFLUENCE_PROBES` and the corpus against the normal-order evaluator. Then recapture the four sonified pages' audio and rule tallies, and delete the chain_lambda_sound.md aside and the interaction_nets_examples.md caveat. Filed as a code handoff.

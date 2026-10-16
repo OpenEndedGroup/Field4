@@ -87,10 +87,10 @@ import kotlin.test.assertTrue
  *  - **The same source.** Both fields map one shared cloud (a unit circle, phase-aligned to each
  *    contour) so that particle `i` has one start point and two destinations. Fields trained from
  *    different sources have no common particle to follow.
- *  - **The same initialisation.** Two independently initialised networks sit in different basins,
- *    related by a permutation of hidden units, and averaging them is averaging two unrelated
- *    functions. [interpolationNeedsASharedInitialisation] is the control that measures this rather
- *    than assuming it — and it is the reason `seed` is pinned in both calls.
+ *  - **The same initialisation, maybe.** The permutation argument predicts that two independently
+ *    initialised networks sit in different basins, so averaging them averages unrelated
+ *    functions. [interpolationNeedsASharedInitialisation] measures it, and for these targets it
+ *    does not hold; `seed` is still pinned in both calls so the other tests do not depend on that.
  */
 class WeightInterpolationTest {
 

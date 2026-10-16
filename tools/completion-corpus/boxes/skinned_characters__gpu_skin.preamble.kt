@@ -61,17 +61,17 @@ fun BufferParameters.asIndexBuffer(): IndexBuffer =
 /*graphics-pc-binding:materialBaseColor*/ var Mesh.materialBaseColor by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
 /*graphics-pc-binding-group:materialBaseColor*/ var MeshGroup.materialBaseColor by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
 /*graphics-pc-structure:vertexOffset*/ var Structure.vertexOffset by Structure.FromStructure<Any>() // in floats
-/*graphics-pc-binding:vertexOffset*/ var Mesh.vertexOffset by Mesh.BoundFromStructure<UInt>() // in floats
-/*graphics-pc-binding-group:vertexOffset*/ var MeshGroup.vertexOffset by MeshGroup.BoundFromStructure<UInt>() // in floats
+/*graphics-pc-binding:vertexOffset*/ var Mesh.vertexOffset by Mesh.BoundFromStructure<Any>() // in floats
+/*graphics-pc-binding-group:vertexOffset*/ var MeshGroup.vertexOffset by MeshGroup.BoundFromStructure<Any>() // in floats
 /*graphics-pc-structure:indexOffset*/ var Structure.indexOffset by Structure.FromStructure<Any>() // in indices
-/*graphics-pc-binding:indexOffset*/ var Mesh.indexOffset by Mesh.BoundFromStructure<UInt>() // in indices
-/*graphics-pc-binding-group:indexOffset*/ var MeshGroup.indexOffset by MeshGroup.BoundFromStructure<UInt>() // in indices
+/*graphics-pc-binding:indexOffset*/ var Mesh.indexOffset by Mesh.BoundFromStructure<Any>() // in indices
+/*graphics-pc-binding-group:indexOffset*/ var MeshGroup.indexOffset by MeshGroup.BoundFromStructure<Any>() // in indices
 /*graphics-pc-structure:vertexStride*/ var Structure.vertexStride by Structure.FromStructure<Any>() // in floats
-/*graphics-pc-binding:vertexStride*/ var Mesh.vertexStride by Mesh.BoundFromStructure<UInt>() // in floats
-/*graphics-pc-binding-group:vertexStride*/ var MeshGroup.vertexStride by MeshGroup.BoundFromStructure<UInt>() // in floats
+/*graphics-pc-binding:vertexStride*/ var Mesh.vertexStride by Mesh.BoundFromStructure<Any>() // in floats
+/*graphics-pc-binding-group:vertexStride*/ var MeshGroup.vertexStride by MeshGroup.BoundFromStructure<Any>() // in floats
 /*graphics-pc-structure:useVertexColor*/ var Structure.useVertexColor by Structure.FromStructure<Any>() // bool as uint
-/*graphics-pc-binding:useVertexColor*/ var Mesh.useVertexColor by Mesh.BoundFromStructure<UInt>() // bool as uint
-/*graphics-pc-binding-group:useVertexColor*/ var MeshGroup.useVertexColor by MeshGroup.BoundFromStructure<UInt>() // bool as uint
+/*graphics-pc-binding:useVertexColor*/ var Mesh.useVertexColor by Mesh.BoundFromStructure<Any>() // bool as uint
+/*graphics-pc-binding-group:useVertexColor*/ var MeshGroup.useVertexColor by MeshGroup.BoundFromStructure<Any>() // bool as uint
 /*graphics-pc-structure:vertexBuffer*/ var Structure.vertexBuffer by Structure.FromStructure<Any>()
 /*graphics-pc-binding:vertexBuffer*/ var Mesh.vertexBuffer by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-binding-group:vertexBuffer*/ var MeshGroup.vertexBuffer by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()

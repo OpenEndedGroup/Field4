@@ -3950,6 +3950,12 @@ private fun kotlinBindingTypeName(member: Introspected.Member): String =
     if (member.physicalPointer) "afield.graphics.vulkan.buffers.HasBuffer"
     else member.type.fold({ it.kotlinTypeName }, { "Any" })
 
+// Kotlin has no Int | UInt type. Only scalar uint push suppliers use Any; Structure validates
+// their evaluated values. Uniform/attribute types keep their existing UInt declarations.
+private fun kotlinPushBindingTypeName(member: Introspected.Member): String =
+    if (!member.physicalPointer && member.type.fold({ it == PrimitiveType.uint }, { false })) "Any"
+    else kotlinBindingTypeName(member)
+
 /**
  * The `// …` note the shader source carried at the end of a member's declaration line, formatted to
  * append to the generated preamble declaration for it — `""` when the source said nothing.
@@ -3988,7 +3994,7 @@ internal fun buildComputeInsert(ci: Introspection, box: Box? = null): Insert {
                 "compute-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()$note"
             ) + "\n"
-            val ty = kotlinBindingTypeName(member)
+            val ty = kotlinPushBindingTypeName(member)
             postImport += prefixed(
                 "compute-pc-binding:${member.name}",
                 "var ComputeMesh.${member.name} by ComputeMesh.BoundFromStructure<$ty>()$note"
@@ -4196,7 +4202,7 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
                 "mesh-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()$note"
             ) + "\n"
-            val ty = kotlinBindingTypeName(member)
+            val ty = kotlinPushBindingTypeName(member)
             postImport += prefixed(
                 "mesh-pc-binding:${member.name}",
                 "var MeshMesh.${member.name} by MeshMesh.BoundFromStructure<$ty>()$note"
@@ -4404,7 +4410,7 @@ private fun buildRayTracingInsert(introspections: List<Introspection>): Insert {
                 "ray-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()$note"
             ) + "\n"
-            val ty = kotlinBindingTypeName(member)
+            val ty = kotlinPushBindingTypeName(member)
             postImport += prefixed(
                 "ray-pc-binding:${member.name}",
                 "var RayTracingDispatch.${member.name} by RayTracingDispatch.BoundFromStructure<$ty>()$note"
@@ -4978,7 +4984,7 @@ fun insertForShader(
                 "graphics-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()$note"
             ) + "\n"
-            val ty = kotlinBindingTypeName(member)
+            val ty = kotlinPushBindingTypeName(member)
             postImport += prefixed(
                 "graphics-pc-binding:${member.name}",
                 "var Mesh.${member.name} by Mesh.BoundFromStructure<$ty>()$note"

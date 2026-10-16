@@ -59,7 +59,7 @@ class InterpolantsTest {
             steps = null,
             clock = frameClock(4.0) { frame },
         ) { 1.0f }
-        (eased as NeedsStartingValue<Float>).startAt(0.0f)
+        eased.startAt(0.0f)
 
         assertEquals(0.0f, eased(), 0.0f)
         assertEquals(0.0f, eased(), 0.0f, "two evaluations in one frame must agree")
@@ -79,7 +79,7 @@ class InterpolantsTest {
             steps = null,
             clock = frameClock(10.0) { frame },
         ) { 1.0f }
-        val restartable = eased as NeedsStartingValue<Float>
+        val restartable = eased
 
         restartable.startAt(0.0f)
         assertEquals(0.0f, eased(), 0.0f)
@@ -95,7 +95,7 @@ class InterpolantsTest {
     @Test
     fun stepModeDoesNotReadAnInjectedClock() {
         val eased = smoothTo<Float>(steps = 2, clock = { error("step mode read the clock") }) { 1.0f }
-        (eased as NeedsStartingValue<Float>).startAt(0.0f)
+        eased.startAt(0.0f)
 
         assertEquals(0.0f, eased(), 0.0f)
         assertEquals(0.5f, eased(), 1e-6f)
@@ -149,7 +149,7 @@ class InterpolantsTest {
     @Test
     fun inertialEasingArrivesAndStays() {
         val eased = inertialTo<Float>(steps = 4) { 1.0f }
-        (eased as NeedsStartingValue<Float>).startAt(0.0f)
+        eased.startAt(0.0f)
 
         // One quarter of a blend time per evaluation, along 3t² - 2t³.
         assertEquals(0.15625f, eased(), 1e-6f)
@@ -163,7 +163,7 @@ class InterpolantsTest {
     fun retargetingKeepsTheVelocityItAlreadyHad() {
         var target = 1.0
         val eased = inertialTo<Double>(steps = 100) { target }
-        (eased as NeedsStartingValue<Double>).startAt(0.0)
+        eased.startAt(0.0)
 
         repeat(28) { eased() }
         val twoAgo = eased()
@@ -179,7 +179,7 @@ class InterpolantsTest {
 
         // For scale: what a standing start into the same gap would have managed.
         val fromRest = inertialTo<Double>(steps = 100) { 2.0 }
-        (fromRest as NeedsStartingValue<Double>).startAt(before)
+        fromRest.startAt(before)
         val standstillStep = fromRest() - before
         assertTrue(
             stepAfter > 5 * standstillStep,
@@ -191,7 +191,7 @@ class InterpolantsTest {
     fun aMovingTargetIsTrackedRatherThanRestarted() {
         var target = 0.0
         val eased = inertialTo<Double>(steps = 20) { target }
-        (eased as NeedsStartingValue<Double>).startAt(0.0)
+        eased.startAt(0.0)
 
         // A ramp: the target moves a twentieth of the blend distance every evaluation, forever.
         var value = 0.0
@@ -211,7 +211,7 @@ class InterpolantsTest {
     @Test
     fun vectorComponentsEaseOnTheirOwnCurves() {
         val eased = inertialTo<Vector3f>(steps = 4) { Vector3f(1f, 2f, 0.5f) }
-        (eased as NeedsStartingValue<Vector3f>).startAt(Vector3f(0f, 0f, 0f))
+        eased.startAt(Vector3f(0f, 0f, 0f))
 
         val first = eased()
         assertEquals(0.15625f, first.x, 1e-6f)
@@ -233,7 +233,7 @@ class InterpolantsTest {
             steps = null,
             clock = frameClock(4.0) { frame },
         ) { 1.0f }
-        (eased as NeedsStartingValue<Float>).startAt(0.0f)
+        eased.startAt(0.0f)
 
         assertEquals(0.0f, eased(), 0.0f, "no elapsed time, no motion")
         assertEquals(0.0f, eased(), 0.0f, "two evaluations in one frame must agree")
@@ -300,7 +300,7 @@ class InterpolantsTest {
     @Test
     fun aTypeItCannotEaseArrivesImmediately() {
         val eased = inertialTo<String>(steps = 4) { "there" }
-        (eased as NeedsStartingValue<String>).startAt("here")
+        eased.startAt("here")
 
         assertEquals("there", eased())
     }

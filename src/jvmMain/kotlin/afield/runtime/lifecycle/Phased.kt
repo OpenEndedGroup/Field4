@@ -536,6 +536,19 @@ class Generator<In, Out> internal constructor(
         return pollOutput()
     }
 
+    /** Resume a suspended generator with cancellation so its finally blocks can release resources. */
+    internal fun cancel() {
+        if (completed) return
+        val continuation = waitingContinuation
+        waitingContinuation = null
+        continuation?.resumeWith(Result.failure(CancellationException("Generator cancelled")))
+        completed = true
+        pendingOutput = null
+        val thrown = failure
+        failure = null
+        if (thrown != null && thrown !is CancellationException) throw thrown
+    }
+
     val isCompleted: Boolean
         get() = completed && failure == null
 

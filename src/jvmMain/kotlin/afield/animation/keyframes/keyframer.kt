@@ -577,6 +577,9 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * saving all leave the running sketch exactly as it was.
      */
     inner class Key(val values: MutableMap<String, Any?>) : ToHTML {
+        /** Construct a snapshot from named values; repeated names keep their last supplied value. */
+        constructor(vararg values: Pair<String, Any?>) : this(linkedMapOf(*values))
+
         /**
          * Write every value in this key back to its registered target — the moment a snapshot becomes
          * the state of the sketch again.

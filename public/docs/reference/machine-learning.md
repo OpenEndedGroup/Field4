@@ -4,7 +4,7 @@
 
 Models small enough to train inside a box, in plain Kotlin, while you watch. Flow matching carries one 2D or 3D point cloud onto another and hands back the deformation between them; the multi-output regression head it trains is usable on its own. See [Flow Matching](../flow_matching.md).
 
-91 source file(s), 2192 public symbol(s), 665 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+91 source file(s), 2195 public symbol(s), 666 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1775,58 +1775,69 @@ Constants: `BEGIN`, `END`.
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">log</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">LogEvent</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L56) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">log</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">indent</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">blockId</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">boundary</span><span class="p">:</span> <span class="nc">BlockBoundary</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L62) |  |
 
-### ConsoleMute { #logging-kt-consolemute }
+### ChannelMatch { #logging-kt-channelmatch }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">ConsoleMute</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L119)
+[<code class="highlight"><span class="k">object</span> <span class="nc">ChannelMatch</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L118)
 
-Channels suppressed from the console — both the plain [`StdoutLog`](machine-learning.md#logging-kt-stdoutlog) and the interactive PinnedConsole honor this. Muted events still reach every *other* sink (e.g. the LogStream web widget), so nothing is lost; they're just too chatty for the terminal. Default mutes the chatty background channels (`info,boxes`, `info,persist`, `info,ai.boxnames`, `debug,boxes`). Override with `-Dafield.log.mute=...` or `AFIELD_LOG_MUTE=...` (semicolon-separated exact channel strings); set to a blank/empty value to mute nothing.
+The one rule every channel selector follows — the console mute set, the pinned console and the `LogStream` filter: a channel is a comma-separated set of tags, and a selector matches when every one of its tags is among the channel's. So `boxes` matches `info,boxes` and `boxes,debug`; `info,boxes` matches `boxes,info` and `info,boxes,slow`; `kotlin` does not match `kotlinjs`. Tags compare exactly, case included, as written at the call site.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">channels</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L120) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">isMuted</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L129) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">tags</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L119) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">matches</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">selector</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L122) |  |
+
+### ConsoleMute { #logging-kt-consolemute }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">ConsoleMute</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L137)
+
+Channels suppressed from the console — both the plain [`StdoutLog`](machine-learning.md#logging-kt-stdoutlog) and the interactive PinnedConsole honor this. Muted events still reach every *other* sink (e.g. the LogStream web widget), so nothing is lost; they're just too chatty for the terminal. Default mutes the chatty background channels (`info,boxes`, `info,persist`, `info,ai.boxnames`, `debug,boxes`). Override with `-Dafield.log.mute=...` or `AFIELD_LOG_MUTE=...` (semicolon-separated selectors, matched by [`ChannelMatch`](machine-learning.md#logging-kt-channelmatch): `boxes` mutes every channel tagged `boxes`); set to a blank/empty value to mute nothing.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">channels</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L138) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">isMuted</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L147) |  |
 
 ### StdoutLog { #logging-kt-stdoutlog }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">StdoutLog</span> <span class="p">:</span> <span class="nc">LogSink</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L132)
+[<code class="highlight"><span class="k">object</span> <span class="nc">StdoutLog</span> <span class="p">:</span> <span class="nc">LogSink</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L150)
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">log</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">LogEvent</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L137) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">log</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">LogEvent</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L155) |  |
 
 ### NotifyLog { #logging-kt-notifylog }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">NotifyLog</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;AI4&quot;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;AI4&quot;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">maxLen</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">dedupeWindowMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">)</span> <span class="p">:</span> <span class="nc">LogSink</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L154)
+[<code class="highlight"><span class="k">class</span> <span class="nf">NotifyLog</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;AI4&quot;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;AI4&quot;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">maxLen</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">dedupeWindowMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">)</span> <span class="p">:</span> <span class="nc">LogSink</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L179)
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">log</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">LogEvent</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L162) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">log</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">LogEvent</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L187) |  |
 
 ### SilentLog { #logging-kt-silentlog }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">SilentLog</span> <span class="p">:</span> <span class="nc">LogSink</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L171)
+[<code class="highlight"><span class="k">object</span> <span class="nc">SilentLog</span> <span class="p">:</span> <span class="nc">LogSink</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L196)
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">log</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">LogEvent</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L172) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">log</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="nc">LogEvent</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L197) |  |
 
 ### TraceLogger { #logging-kt-tracelogger }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">TraceLogger</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">maxChars</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L177)
+[<code class="highlight"><span class="k">class</span> <span class="nc">TraceLogger</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">maxChars</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L202)
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">log</span><span class="p">(</span><span class="n">section</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L183) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">log</span><span class="p">(</span><span class="n">section</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L208) |  |
 
 ### AiToolIoLogger { #logging-kt-aitooliologger }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">AiToolIoLogger</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">maxChars</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">log</span><span class="p">:</span> <span class="nc">LogSink</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L253)
+[<code class="highlight"><span class="k">class</span> <span class="nc">AiToolIoLogger</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">maxChars</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">log</span><span class="p">:</span> <span class="nc">LogSink</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L278)
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Session</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L258) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">begin</span><span class="p">(</span><span class="n">fields</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Session</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L265) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">event</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="nc">Session</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">fields</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L278) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Session</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L283) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">begin</span><span class="p">(</span><span class="n">fields</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Session</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L290) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">event</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="nc">Session</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">fields</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/ai/diagnostics/Logging/#L303) |  |
 
 ## Clip.kt { #clip-kt }
 

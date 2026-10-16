@@ -58,7 +58,7 @@ import kotlin.math.sqrt
  * [smoothTo] wraps a target-producing lambda so that reading it eases toward the target instead
  * of jumping to it.
  *
- * The returned `() -> T` is privately also a `HasUniform`/`ProgressingUniform`, so it can sit
+ * The returned [Interpolant] is also a `HasUniform`/`ProgressingUniform`, so it can sit
  * where Field expects a uniform and be re-evaluated per frame. It implements
  * [NeedsStartingValue], and whoever binds it is responsible for calling `startAt` with the
  * current value — until that happens the interpolant simply reports the target and marks itself
@@ -80,7 +80,7 @@ import kotlin.math.sqrt
 /**
  * Implemented by a value that can only interpolate once something tells it where it is starting from.
  *
- * [smoothTo]'s interpolant is the one implementation: whatever binds it — a uniform slot, a
+ * Both [smoothTo] and [inertialTo] implement this: whatever binds it — a uniform slot, a
  * structure-bound property — is expected to call [startAt] with the current value before the first
  * read. Until that happens the interpolant has nothing to ease *from* and simply reports the target.
  */
@@ -95,12 +95,15 @@ interface NeedsStartingValue<T> {
     fun startAt(a: Any?)
 }
 
+/** A callable interpolation whose starting value can be set or restarted explicitly. */
+interface Interpolant<T> : () -> T, NeedsStartingValue<T>
+
 private class SmoothInterpolant<T>(
     private val durationSeconds: Double?,
     private val steps: Int?,
     private val clock: (() -> Double)?,
     private val target: () -> T
-) : NeedsStartingValue<T>, HasUniform<T>, ProgressingUniform {
+) : Interpolant<T>, HasUniform<T>, ProgressingUniform {
 
     private var start: Any? = null
     private var startedAt: Double? = null
@@ -271,7 +274,7 @@ fun <T> smoothTo(
     steps: Int? = 100,
     clock: (() -> Double)? = null,
     a: () -> T
-): () -> T {
+): Interpolant<T> {
     return SmoothInterpolant(time, steps, clock, a)
 }
 
@@ -364,7 +367,7 @@ private class InertialInterpolant<T>(
     private val clock: (() -> Double)?,
     private val overshoot: Double,
     private val target: () -> T
-) : NeedsStartingValue<T>, HasUniform<T>, ProgressingUniform {
+) : Interpolant<T>, HasUniform<T>, ProgressingUniform {
 
     private var start: Any? = null
     private var started = false
@@ -533,7 +536,7 @@ fun <T> inertialTo(
     clock: (() -> Double)? = null,
     overshoot: Double = 0.05,
     a: () -> T
-): () -> T {
+): Interpolant<T> {
     return InertialInterpolant(time, steps, clock, overshoot, a)
 }
 

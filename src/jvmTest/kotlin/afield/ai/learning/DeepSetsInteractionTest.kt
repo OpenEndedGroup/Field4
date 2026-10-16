@@ -65,7 +65,7 @@ import kotlin.test.assertTrue
  */
 class DeepSetsInteractionTest {
 
-    // The rule being imitated, matching ShaderBoids' defaults exactly.
+    // The rule being imitated: ShaderBoids' single-radius textbook weights, as the smoke pins them.
     private val radius = 2f / 24f
     private val separation = 0.02f
     private val alignment = 1.2f
