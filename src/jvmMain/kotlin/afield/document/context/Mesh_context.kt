@@ -44,6 +44,15 @@ import kotlin.reflect.full.isSubclassOf
  */
 inline fun <reified A> fromContext(defaultValue: A? = null, includeLocalVariables: Boolean = false): A {
     val f = Box.context.get()
+    if (f == null) {
+        if (defaultValue != null) return defaultValue
+        // A `main`, a test or a background thread: there is no box to search, so say that, rather
+        // than letting the walk fail on a null box.
+        throw IllegalStateException(
+            "fromContext<${A::class.java.simpleName}>() needs a running box, and this code is not running " +
+                "inside one (a main, a test, or another thread); pass the ${A::class.java.simpleName} explicitly"
+        )
+    }
     val found = ContextResolution.walk(
         f,
         ContextResolution.Query.byType(A::class.java) { it is A },

@@ -219,7 +219,7 @@ object PlySupport {
 
             val vertexData = defaultBuffer {
                 size = (buffers.vertexCount * 10).floats
-            }.buffer
+            }.toBuffer(m.renderer)
 
             m.push["vertexBuffer"] = vertexData
 
@@ -229,7 +229,7 @@ object PlySupport {
                 // For point clouds, create a simple sequential index buffer for compatibility
                 val indexData = defaultBuffer {
                     size = buffers.vertexCount.ints
-                }.buffer
+                }.toBuffer(m.renderer)
 
                 m.push["indexBuffer"] = indexData
 
@@ -244,7 +244,7 @@ object PlySupport {
                 // For triangle meshes, use index buffer
                 val indexData = defaultBuffer {
                     size = buffers.indexCount.ints
-                }.buffer
+                }.toBuffer(m.renderer)
 
                 m.push["indexBuffer"] = indexData
 
@@ -298,7 +298,7 @@ object PlySupport {
 
             val vertexData = defaultBuffer {
                 size = (buffers.vertexCount * 10).floats
-            }.buffer
+            }.toBuffer(m.renderer)
 
             m.push["vertexBuffer"] = vertexData
 
@@ -307,7 +307,7 @@ object PlySupport {
             // Create index buffer for point data
             val indexData = defaultBuffer {
                 size = buffers.vertexCount.ints
-            }.buffer
+            }.toBuffer(m.renderer)
 
             m.push["indexBuffer"] = indexData
 

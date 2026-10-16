@@ -291,11 +291,13 @@ object GltfSupport {
             fun freshVertexParameters() = defaultBuffer { size = (buffers.vertexCount * 12).floats }
             fun freshIndexParameters() = defaultBuffer { size = buffers.indexCount.ints }
 
-            val vertexData = if (!reuseBuffers) freshVertexParameters().buffer else {
-                (heldVertexBuffer ?: freshVertexParameters().also { heldVertexBuffer = it }).buffer
+            // Allocated on the mesh's own renderer, so this also works from a `main`, where there is
+            // no box context to find one in.
+            val vertexData = if (!reuseBuffers) freshVertexParameters().toBuffer(m.renderer) else {
+                (heldVertexBuffer ?: freshVertexParameters().also { heldVertexBuffer = it }).toBuffer(m.renderer)
             }
-            val indexData = if (!reuseBuffers) freshIndexParameters().buffer else {
-                (heldIndexBuffer ?: freshIndexParameters().also { heldIndexBuffer = it }).buffer
+            val indexData = if (!reuseBuffers) freshIndexParameters().toBuffer(m.renderer) else {
+                (heldIndexBuffer ?: freshIndexParameters().also { heldIndexBuffer = it }).toBuffer(m.renderer)
             }
 
             m.push["vertexBuffer"] = vertexData

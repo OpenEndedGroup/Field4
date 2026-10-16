@@ -101,13 +101,6 @@ general.
     They are carried over from the skinning work, in `dev_docs/SKINNED_CHARACTERS.md` and
     `dev_docs/GPU_SKINNING.md`, and were **not** re-run for this page.
 
-A related limit is not a timeout at all and is easy to mistake for one: **`MeshInstance.applyToMesh`
-cannot run from a `main` in the first place.** Its buffers come from `defaultBuffer { … }.buffer`,
-which allocates through a renderer parameter defaulting to `fromContext()`, and `fromContext` reads
-`Box.context`, which is a box. From a `main` there is no box, and it throws
-`Cannot invoke "afield.document.graph.Box.getProperties()"` before any capture is attempted. A `jvm-main` smoke
-test runs as a `main`, so it meets this.
-
 ---
 
 ## Pictures no capture can take
@@ -176,7 +169,6 @@ Some practical points:
     | neighbouring panels inside the clip | `dev_docs/chart_bad_separation.md` |
     | box capture pans and drops the selection | [Moving around the canvas](moving_around_the_canvas.md#what-the-overlay-draws) |
     | per-frame vertex re-upload and property read time out the native capture | `dev_docs/SKINNED_CHARACTERS.md`, `dev_docs/GPU_SKINNING.md` |
-    | `applyToMesh` throws from a `main` | `dev_docs/GPU_SKINNING.md` |
     | no native-window video on any agent-facing path | `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`, [Pattern → particles](chain_pattern_particles.md) |
     | `screencapture` needs permission; the swapchain copy does not | `dev_docs/imgui_vr_panel.md` |
     | a static capture cannot click | `dev_docs/three_inspector.md` |
