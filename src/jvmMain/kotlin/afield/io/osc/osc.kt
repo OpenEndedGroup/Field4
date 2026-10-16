@@ -247,7 +247,12 @@ class OscServer(
      * way on every message — a fader sends dozens a second — to one error on the box rather than a
      * stream of them; registering the pattern again starts a fresh registration.
      */
-    private class Registration(val handler: (Message) -> Generator<Message, *>, val owner: Box?) {
+    private class Registration(
+        val handler: (Message) -> Generator<Message, *>,
+        val owner: Box?,
+        val runOwned: Boolean = false,
+    ) {
+        @Volatile var active = true
         @Volatile var lastReported: String? = null
     }
 
@@ -286,11 +291,27 @@ class OscServer(
      * the box leaves it in place (a re-run that calls `on` again replaces it), and deleting the box
      * or closing its document removes it.
      */
-    fun on(pattern: String, handler: (Message) -> Generator<Message, *>) {
-        val owner = Box.context.get()
-        val previous = handlers.put(pattern, Registration(handler, owner))
+    fun on(pattern: String, handler: (Message) -> Generator<Message, *>) =
+        on(pattern, runOwned = false, handler)
+
+    /**
+     * Register a handler, optionally releasing it on this run's stop, rerun or retirement.
+     * Cleanup removes only this registration, never a newer replacement or the shared socket.
+     * With [runOwned] false, the ordinary persistent registration semantics apply.
+     */
+    fun on(pattern: String, runOwned: Boolean, handler: (Message) -> Generator<Message, *>) {
+        val scope = if (runOwned) requireNotNull(afield.runtime.lifecycle.RunScope.current()) {
+            "runOwned OSC handlers need an executing box run"
+        } else null
+        val owner = scope?.box ?: Box.context.get()
+        val registration = Registration(handler, owner, runOwned)
+        val previous = handlers.put(pattern, registration)
+        if (scope != null) scope.own {
+            registration.active = false
+            handlers.remove(pattern, registration)
+        }
         // One release per (box, pattern), not one per re-run: a re-run replaces the handler in place.
-        if (owner != null && previous?.owner !== owner) {
+        if (!runOwned && owner != null && (previous?.owner !== owner || previous.runOwned)) {
             owner.runScopes.parent.own(afield.runtime.lifecycle.ReleasePolicy.KEYED) {
                 handlers.computeIfPresent(pattern) { _, current -> if (current.owner === owner) null else current }
             }
@@ -332,6 +353,7 @@ class OscServer(
     )
 
     private fun enqueue(pattern: String, registration: Registration, event: OSCMessageEvent) {
+        if (!registration.active) return
         val message = Message(
             address = event.message.address,
             arguments = event.message.arguments?.toList() ?: emptyList(),
@@ -347,6 +369,7 @@ class OscServer(
     private fun service() {
         while (true) {
             val run = pendingStart.poll() ?: break
+            if (!run.registration.active) continue
             try {
                 val gen = run.generator
                 gen.start()
@@ -360,6 +383,11 @@ class OscServer(
         while (it.hasNext()) {
             val run = it.next()
             try {
+                if (!run.registration.active) {
+                    run.generator.cancel()
+                    it.remove()
+                    continue
+                }
                 run.generator.next(run.message)
                 if (run.generator.isCompleted) it.remove()
             } catch (t: Throwable) {

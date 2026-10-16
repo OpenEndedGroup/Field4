@@ -170,6 +170,9 @@ class FieldAudioServiceStub : AutoCloseable {
     /** Answer `GET /v1/analysis-results/{id}` with exactly these bytes, whatever they are. */
     var analysisResponseOverride: String? = null
 
+    /** Refuse even known jobs' progress handshakes, exercising a failed subscription transport. */
+    var rejectEventSubscriptions: Boolean = false
+
     // ---- server ------------------------------------------------------------------------------
 
     private val server = embeddedServer(Netty, port = 0, host = "127.0.0.1") { stubModule() }
@@ -192,7 +195,8 @@ class FieldAudioServiceStub : AutoCloseable {
         // upgrade here instead; the client still sees a failed handshake.
         intercept(ApplicationCallPipeline.Plugins) {
             val path = call.request.path()
-            if (path.startsWith("/v1/events/") && !jobs.containsKey(path.removePrefix("/v1/events/"))) {
+            if (path.startsWith("/v1/events/") &&
+                (rejectEventSubscriptions || !jobs.containsKey(path.removePrefix("/v1/events/")))) {
                 call.respondText(
                     """{"detail":"job not found"}""",
                     ContentType.Application.Json,
