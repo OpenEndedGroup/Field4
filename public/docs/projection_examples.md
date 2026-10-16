@@ -579,8 +579,6 @@ tenth eigenvalue" is a worse first experience than losing 0.015 of a correlation
   the data has structure gives a column of zeros, which is correct. Asking for more than an
   uncorrected non-Euclidean matrix can support raises `IllegalArgumentException`
   (`smile_mds.kt:440#val floor = -1e-9 * max(1.0, abs(values[retained.first()]))`).
-- **t-SNE logs every tenth iteration to slf4j at INFO**, which is ~75 lines per fit. Harmless, and
-  loud if you are watching a log.
 - **t-SNE needs at least four rows and a perplexity below the row count**, and its axes carry no
   meaning at all: not units, not order, not orientation. Only the neighbourhoods do.
 
