@@ -51,4 +51,19 @@ class ComputePreambleTest {
         assertFalse("var Mesh.params" in preamble, "nor a graphics mesh's push constant")
         assertTrue("var Structure.gain by Structure.FromStructure" in preamble, "its members are still reachable")
     }
+    @Test
+    fun scalarUintPushSuppliersAcceptIntWithoutRelaxingUniformTypes() {
+        val shader = """#version 450
+layout(local_size_x = 1) in;
+layout(push_constant) uniform Push { uint count; } pc;
+layout(std140, set = 0, binding = 0) uniform params { uint limit; };
+layout(std430, set = 0, binding = 1) buffer outbuf { uint values[]; };
+void main() { values[0] = min(pc.count, limit); }
+"""
+        val preamble = buildComputeInsert(Introspection(shader, ShaderKind.COMPUTE_SHADER)).preambleAfterImports
+        assertTrue("var ComputeMesh.count by ComputeMesh.BoundFromStructure<Any>()" in preamble, preamble)
+        assertTrue("var ComputeMeshGroup.count by ComputeMeshGroup.BoundFromStructure<Any>()" in preamble, preamble)
+        assertTrue("var Structure.limit by Structure.FromStructure<UInt>()" in preamble, preamble)
+    }
+
 }

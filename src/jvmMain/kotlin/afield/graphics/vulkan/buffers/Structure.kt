@@ -66,7 +66,17 @@ fun <T> Structure.getPushConstant(name: String, notFound: () -> Nothing): T =
 
 /** Binds a live push-constant supplier by name, or invokes [notFound] if [name] isn't a known offset. */
 fun Structure.bindPushConstant(name: String, value: Function0<*>, notFound: () -> Nothing) {
-    if (offsets.containsKey(name)) bind(name, value) else notFound()
+    if (!offsets.containsKey(name)) notFound()
+    val unsigned = members.firstOrNull { it.name == name }?.type?.fold(
+        { it == afield.graphics.shader.PrimitiveType.uint }, { false }
+    ) == true
+    bind(name, if (unsigned) {
+        {
+            val next = value()
+            require(next is Int || next is UInt) { "uint push member '$name' needs an Int or UInt, got ${next?.javaClass?.simpleName}" }
+            next
+        }
+    } else value)
 }
 
 /** Reads a bound push-constant supplier by name, or invokes [notFound] if [name] isn't a known offset. */
