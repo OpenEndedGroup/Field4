@@ -28,11 +28,11 @@ surface is 2 pi times its Euler characteristic. This checks the aggregate,
 not every local curvature value; the sphere estimates above are a separate check.
 */
 for ((label, m) in
-    listOf(
+    [
         "icosphere" to ball,
         "torus" to torusMesh(64, 32, 0.6, 0.24),
         "cube" to boxMesh(),
-    )) {
+    ]) {
     compare("Gauss-Bonnet on $label", m.integrate(m.gaussianCurvature()), 2.0 * PI * m.eulerCharacteristic())
 }
 

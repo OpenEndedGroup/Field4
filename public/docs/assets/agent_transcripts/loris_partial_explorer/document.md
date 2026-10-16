@@ -135,7 +135,7 @@ client
 <!-- field-box id="loris_two_resolutions" index="2" -->
 
 ```edn [field-box id="loris_two_resolutions" role="properties"]
-{"id" "loris_two_resolutions" "index" 2 "name" "3 · independent fine-time and fine-frequency passes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · independent fine-time and fine-frequency passes" "_tombstone" false "frame" #afield/rect [40.0 2200.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_two_resolutions_code_.kt" "lines" 35 "characters" 1377 "sha256" "ac24110f32a6086f5451afbca682ff5090e33929532352e3238155f0b3e42007"}]}
+{"id" "loris_two_resolutions" "index" 2 "name" "3 · independent fine-time and fine-frequency passes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · independent fine-time and fine-frequency passes" "_tombstone" false "frame" #afield/rect [40.0 2200.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_two_resolutions_code_.kt" "lines" 35 "characters" 1371 "sha256" "639596c1030b1f6985484a9077306f7d4a1b0b08c0bd7da336d0d04289efc87e"}]}
 ```
 
 ```kotlin [field-property box="loris_two_resolutions" name="code" path="loris_two_resolutions_code_.kt"]
@@ -144,10 +144,10 @@ import java.util.concurrent.CompletableFuture
 val client = LorisClient()
 val path = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
 val passes =
-    listOf(
+    [
             "fine time" to LorisOptions(resolutionHz = 80.0, windowWidthHz = 160.0, hopSeconds = .003),
             "fine frequency" to LorisOptions(resolutionHz = 20.0, windowWidthHz = 40.0, hopSeconds = .005),
-        )
+        ]
         .map { (name, settings) ->
             client
                 .analyzeWavAsync(
@@ -230,7 +230,7 @@ runAsync(
 <!-- field-box id="loris_label_align_morph" index="4" -->
 
 ```edn [field-box id="loris_label_align_morph" role="properties"]
-{"id" "loris_label_align_morph" "index" 4 "name" "5 · label, align and morph two phrases" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · label, align and morph two phrases" "_tombstone" false "frame" #afield/rect [40.0 4400.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_label_align_morph_code_.kt" "lines" 34 "characters" 1395 "sha256" "27ab66ff93b3c8cd8eaa355576e6d3ae4e5b0c8428cc1f316557434f144ad7f0"}]}
+{"id" "loris_label_align_morph" "index" 4 "name" "5 · label, align and morph two phrases" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · label, align and morph two phrases" "_tombstone" false "frame" #afield/rect [40.0 4400.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "loris_label_align_morph_code_.kt" "lines" 34 "characters" 1383 "sha256" "f4aa4cb64c611d8a89b36893d46daaa13a493173c7d1737ea78ad63dad50b459"}]}
 ```
 
 ```kotlin [field-property box="loris_label_align_morph" name="code" path="loris_label_align_morph_code_.kt"]
@@ -256,8 +256,8 @@ client
             client
                 .dilate(
                     b,
-                    listOf(0.0, b.loudestTimeSeconds(), end),
-                    listOf(0.0, a.loudestTimeSeconds(), end),
+                    [0.0, b.loudestTimeSeconds(), end],
+                    [0.0, a.loudestTimeSeconds(), end],
                     durationSeconds = end,
                 )
                 .model

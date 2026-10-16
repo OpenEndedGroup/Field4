@@ -20,8 +20,8 @@ client
             client
                 .dilate(
                     b,
-                    listOf(0.0, b.loudestTimeSeconds(), end),
-                    listOf(0.0, a.loudestTimeSeconds(), end),
+                    [0.0, b.loudestTimeSeconds(), end],
+                    [0.0, a.loudestTimeSeconds(), end],
                     durationSeconds = end,
                 )
                 .model

@@ -14,14 +14,14 @@ val horn = coneMesh(32, 0.45, 0.9)
 val d12 = dodecahedronMesh(0.6)
 
 for ((label, m) in
-    listOf(
+    [
         "cube" to cube,
         "icosphere" to ball,
         "torus" to ring,
         "capsule" to pill,
         "cone" to horn,
         "dodecahedron" to d12,
-    )) {
+    ]) {
     val t = m.topology()
     println(
         "%-13s %5d verts %5d tris  chi=%2d genus=%s watertight=%s  volume=%.5f"

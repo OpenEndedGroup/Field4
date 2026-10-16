@@ -21,7 +21,7 @@ values, so the two cubes either side of the face always agree. That agreement is
 the output is closed; plain marching cubes leaks exactly there.
 
 ```edn [field-box id="mesh_marching" role="properties"]
-{"id" "mesh_marching" "index" 0 "name" "Marching cubes — a watertight surface from a field" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Marching cubes — a watertight surface from a field" "_tombstone" false "frame" #afield/rect [80.0 520.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_marching_code_.kt" "lines" 55 "characters" 2106 "sha256" "6feb32c4d425918d0dba387de4819872026c27244621648d512abf4c87716cf4"}]}
+{"id" "mesh_marching" "index" 0 "name" "Marching cubes — a watertight surface from a field" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Marching cubes — a watertight surface from a field" "_tombstone" false "frame" #afield/rect [80.0 520.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_marching_code_.kt" "lines" 55 "characters" 2100 "sha256" "d57803e95f4d0089a2eab5bc3cc9d747947cb6faa7b5582b55561ddb048a8f9c"}]}
 ```
 
 ```kotlin [field-property box="mesh_marching" name="code" path="mesh_marching_code_.kt"]
@@ -34,7 +34,7 @@ the output is closed; plain marching cubes leaks exactly there.
 */
 val exact = 4.0 / 3.0 * PI
 println("resolution   tris    volume     relative error")
-for (resolution in listOf(12, 24, 48, 64)) {
+for (resolution in [12, 24, 48, 64]) {
     val m = marchingCubes(sdfSphere(1.0), boundsAround(radius = 1.4), resolution)
     val error = abs(m.signedVolume() - exact) / exact
     println(
@@ -284,7 +284,7 @@ monotonically toward the Loop limit surface — it converges on that, NOT on the
 its control vertices sit on — in geometrically shrinking steps.
 
 ```edn [field-box id="mesh_process" role="properties"]
-{"id" "mesh_process" "index" 3 "name" "Subdivide, smooth, decimate" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Subdivide, smooth, decimate" "_tombstone" false "frame" #afield/rect [1020.0 520.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_process_code_.kt" "lines" 88 "characters" 3212 "sha256" "10ab77079e7925d63125536537bac239d53383aae4f18dd85eed8a4a292d5f71"}]}
+{"id" "mesh_process" "index" 3 "name" "Subdivide, smooth, decimate" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Subdivide, smooth, decimate" "_tombstone" false "frame" #afield/rect [1020.0 520.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_process_code_.kt" "lines" 88 "characters" 3206 "sha256" "17740b5bd86a6abb481047595f42f553516455a4703fb1bd73a804d71142f68d"}]}
 ```
 
 ```kotlin [field-property box="mesh_process" name="code" path="mesh_process_code_.kt"]
@@ -347,7 +347,7 @@ val detailed = icosphereMesh(4, 0.8)
 println()
 println("target    got   deviation   min angle   watertight")
 val budgets = ArrayList<Pair<String, TriMesh>>()
-for (target in listOf(2000, 600, 150)) {
+for (target in [2000, 600, 150]) {
     val small = detailed.decimate(target)
     val deviation = maxDeviation(detailed, small)
     println(
@@ -392,7 +392,7 @@ for mean, both divided by the mixed Voronoi area. On a sphere of radius r they a
 outside and negative in the hole, which is why a torus is the shape to look at.
 
 ```edn [field-box id="mesh_measure" role="properties"]
-{"id" "mesh_measure" "index" 4 "name" "Curvature, rays, closest points, inside" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Curvature, rays, closest points, inside" "_tombstone" false "frame" #afield/rect [80.0 960.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_measure_code_.kt" "lines" 79 "characters" 2921 "sha256" "a510bdda0ea08ae654313b562bc4ded3ae866748061e8dce942ffae39007fd24"}]}
+{"id" "mesh_measure" "index" 4 "name" "Curvature, rays, closest points, inside" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Curvature, rays, closest points, inside" "_tombstone" false "frame" #afield/rect [80.0 960.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_measure_code_.kt" "lines" 79 "characters" 2915 "sha256" "70ef16a848fc5e645605acd8172947586ee1227cccc1ea57c01cd46f639f76db"}]}
 ```
 
 ```kotlin [field-property box="mesh_measure" name="code" path="mesh_measure_code_.kt"]
@@ -426,11 +426,11 @@ surface is 2 pi times its Euler characteristic. This checks the aggregate,
 not every local curvature value; the sphere estimates above are a separate check.
 */
 for ((label, m) in
-    listOf(
+    [
         "icosphere" to ball,
         "torus" to torusMesh(64, 32, 0.6, 0.24),
         "cube" to boxMesh(),
-    )) {
+    ]) {
     compare("Gauss-Bonnet on $label", m.integrate(m.gaussianCurvature()), 2.0 * PI * m.eulerCharacteristic())
 }
 
@@ -559,7 +559,7 @@ closed genus-0 solid and 0 for a torus, and that single integer catches a duplic
 seam, a missing cap or an unwelded weld — all of which still look plausible in a render.
 
 ```edn [field-box id="mesh_primitives" role="properties"]
-{"id" "mesh_primitives" "index" 6 "name" "Primitives — welded, watertight, and χ = 2" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Primitives — welded, watertight, and χ = 2" "_tombstone" false "frame" #afield/rect [80.0 80.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_primitives_code_.kt" "lines" 69 "characters" 2610 "sha256" "7242eff50eb2a16ea075b1e6dcbb0c08347b384a48594f624eccbca4cef853c1"}]}
+{"id" "mesh_primitives" "index" 6 "name" "Primitives — welded, watertight, and χ = 2" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Primitives — welded, watertight, and χ = 2" "_tombstone" false "frame" #afield/rect [80.0 80.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_primitives_code_.kt" "lines" 69 "characters" 2604 "sha256" "21a8075aedd09814409f85fa16a5e4abc89adbea261fafaf007b59601c9404b3"}]}
 ```
 
 ```kotlin [field-property box="mesh_primitives" name="code" path="mesh_primitives_code_.kt"]
@@ -579,14 +579,14 @@ val horn = coneMesh(32, 0.45, 0.9)
 val d12 = dodecahedronMesh(0.6)
 
 for ((label, m) in
-    listOf(
+    [
         "cube" to cube,
         "icosphere" to ball,
         "torus" to ring,
         "capsule" to pill,
         "cone" to horn,
         "dodecahedron" to d12,
-    )) {
+    ]) {
     val t = m.topology()
     println(
         "%-13s %5d verts %5d tris  chi=%2d genus=%s watertight=%s  volume=%.5f"

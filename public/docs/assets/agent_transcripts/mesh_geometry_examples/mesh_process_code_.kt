@@ -57,7 +57,7 @@ val detailed = icosphereMesh(4, 0.8)
 println()
 println("target    got   deviation   min angle   watertight")
 val budgets = ArrayList<Pair<String, TriMesh>>()
-for (target in listOf(2000, 600, 150)) {
+for (target in [2000, 600, 150]) {
     val small = detailed.decimate(target)
     val deviation = maxDeviation(detailed, small)
     println(

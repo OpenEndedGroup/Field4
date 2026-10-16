@@ -10,9 +10,10 @@ import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*start*/
-/*graphics-structure-type:VertexBuffer:VertexBuffer*/
-class VertexBuffer(
-    members: List<Introspected.Member> = VertexBufferLayoutMembers(),
+/*graphics-structure-type:VertexBuffer:VertexBufferBlock*/
+// GLSL block `VertexBuffer` is VertexBufferBlock here: VertexBuffer would hide afield.graphics.vulkan.buffers.VertexBuffer.
+class VertexBufferBlock(
+    members: List<Introspected.Member> = VertexBufferBlockLayoutMembers(),
     baseOffset: Int = 0,
     pathPrefix: String = "",
     root: Structure? = null
@@ -20,15 +21,15 @@ class VertexBuffer(
     init { setMembers(members) }
     var vertexData by Structure.FromStructure<Float>()
 }
-fun VertexBufferByteSize(): Long = 4L
-fun VertexBufferLayoutMembers(): List<Introspected.Member> =
+fun VertexBufferBlockByteSize(): Long = 4L
+fun VertexBufferBlockLayoutMembers(): List<Introspected.Member> =
     listOf(
         Introspected.Member("vertexData", 0, PrimitiveType.float.left(), 4, false),
     )
-fun HasBuffer.asVertexBuffer(): VertexBuffer =
-    asStructure(VertexBuffer(), VertexBufferLayoutMembers())
-fun BufferParameters.asVertexBuffer(): VertexBuffer =
-    buffer.asVertexBuffer()
+fun HasBuffer.asVertexBufferBlock(): VertexBufferBlock =
+    asStructure(VertexBufferBlock(), VertexBufferBlockLayoutMembers())
+fun BufferParameters.asVertexBufferBlock(): VertexBufferBlock =
+    buffer.asVertexBufferBlock()
 /*end*/
 /*start*/
 /*graphics-structure-type:IndexBuffer:IndexBuffer*/
