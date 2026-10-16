@@ -44,6 +44,8 @@ revises lifecycle and fragment comments, and records a formatter repair discover
 The [first helper-adoption batch](box_code_adoption_batch_1/README.md) starts the editing sweep
 after helper implementation: four representative transcripts with native graphics, lifecycle,
 mesh and Loris verification. Its checkpoint lists completed and deferred work explicitly.
+The [second-pass checkpoint](box_code_second_pass/README.md) tracks addressed finding IDs and
+remaining work as further batches land.
 
 ## Imports
 

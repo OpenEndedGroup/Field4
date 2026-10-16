@@ -88,7 +88,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertIn("checkPythonTools", task_names([path]))
 
-    def test_transcript_change_selects_bundle_and_index(self) -> None:
+    def test_transcript_change_selects_bundle_then_completion_fixtures_and_index(self) -> None:
         self.assertEqual(
             task_names(["dev_docs/agents/transcripts/hello.yaml"]),
             # citationGates because PersonalBoundaryTest reads transcript yaml: a box program is
@@ -96,6 +96,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             [
                 "checkAgentTranscripts",
                 "checkAgentTranscriptIndex",
+                "checkCompletionCorpusFixtures",
                 "checkBoxIdioms",
                 "checkBoxCodeCompiles",
                 "citationGates",

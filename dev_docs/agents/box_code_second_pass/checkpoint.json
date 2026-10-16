@@ -1,0 +1,59 @@
+{
+  "worklist": "../box_code_first_pass/findings.json",
+  "worklistFindings": 405,
+  "unlistedStatus": "open",
+  "findings": {
+    "2bd52af3a439-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_1/README.md",
+      "commit": "ffa7ab7fb"
+    },
+    "2bd52af3a439-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_1/README.md",
+      "commit": "ffa7ab7fb"
+    },
+    "2bd52af3a439-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_1/README.md",
+      "commit": "ffa7ab7fb"
+    },
+    "2bd52af3a439-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_1/README.md",
+      "commit": "ffa7ab7fb"
+    },
+    "2bd52af3a439-05": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_1/README.md",
+      "commit": "ffa7ab7fb"
+    },
+    "c473c040a9cc-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_1/README.md",
+      "commit": "ffa7ab7fb"
+    },
+    "c473c040a9cc-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_1/README.md",
+      "commit": "ffa7ab7fb"
+    },
+    "93089e79009a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_2/README.md"
+    },
+    "93089e79009a-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_2/README.md"
+    },
+    "3b06cede4fe6-01": {
+      "status": "implemented; fresh-service verification pending",
+      "evidence": "../box_code_adoption_batch_2/README.md"
+    }
+  },
+  "batches": [
+    "../box_code_adoption_batch_1/README.md",
+    "../box_code_adoption_batch_2/README.md"
+  ],
+  "next": "Remaining approved-helper families, then remaining source findings; audit collection literals explicitly in every batch."
+}

@@ -3,7 +3,9 @@ package afield.audio.ai
 import afield.audio.engine.WavFloatArrayWriter
 import afield.document.graph.Box
 import afield.runtime.lifecycle.RunScope
+import afield.runtime.lifecycle.runAsync
 import java.nio.file.Files
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
@@ -73,6 +75,57 @@ class TrackedAnalysisTest {
             // The service owns the durable job; leaving the watch did not pretend to cancel it.
             val job = client.inspect(stub.jobIdFor(request.operation)!!).get(5, TimeUnit.SECONDS)
             assertTrue(job.state != JobState.CANCELLED)
+            box.runScopes.closeAll()
+        }
+    }
+
+    @Test fun aTrackedLegStartedByAFutureContinuationStillStopsWithItsOriginatingRun() {
+        FieldAudioServiceStub().use { stub ->
+            stub.defaultScript = FieldAudioServiceStub.ScriptedJob(neverFinishes = true)
+            val client = FieldAudioClient(stub.baseUrl)
+            val request = request(client)
+            val box = Box("tracked-continuation")
+            val scope = box.runScopes.begin("code", "test")
+            val gate = CompletableFuture<Unit>()
+            val progress = CountDownLatch(1)
+            val operation = RunScope.withCurrent(scope) {
+                runAsync(onError = { throw AssertionError(it) }) {
+                    val origin = RunScope.current()
+                    gate.thenCompose {
+                        RunScope.withCurrent(origin) {
+                            client.trackAnalysis(request, onProgress = { _, _ ->
+                                assertSame(scope, RunScope.current())
+                                assertSame(box, Box.context.get())
+                                progress.countDown()
+                            })
+                        }
+                    }
+                }
+            }
+            CompletableFuture.runAsync { gate.complete(Unit) }.get(5, TimeUnit.SECONDS)
+            assertTrue(progress.await(10, TimeUnit.SECONDS))
+            box.runScopes.stopAll()
+            assertTrue(operation.future.isCancelled)
+            waitUntil { stub.openEventSockets == 0 }
+            assertNotEquals(JobState.CANCELLED,
+                client.inspect(stub.jobIdFor(request.operation)!!).get(5, TimeUnit.SECONDS).state)
+            box.runScopes.closeAll()
+        }
+    }
+
+    @Test fun anEndedRunCannotSubmitANewLegFromALateContinuation() {
+        FieldAudioServiceStub().use { stub ->
+            val client = FieldAudioClient(stub.baseUrl)
+            val request = request(client)
+            val box = Box("tracked-late-continuation")
+            val scope = box.runScopes.begin("code", "test")
+            box.runScopes.stopAll()
+            val pending = CompletableFuture.supplyAsync {
+                RunScope.withCurrent(scope) { client.trackAnalysis(request) }
+            }.get(5, TimeUnit.SECONDS)
+            assertTrue(pending.isCancelled)
+            assertNull(stub.jobIdFor(request.operation))
+            assertEquals(0, stub.eventSocketsOpened)
             box.runScopes.closeAll()
         }
     }
