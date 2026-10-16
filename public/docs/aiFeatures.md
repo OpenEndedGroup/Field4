@@ -672,8 +672,8 @@ setup finished. A Kotlin macro whose later steps depend on a launch stops when s
 fails, and keeps the changes made so far so you can inspect them; undoing them is up
 to you.
 
-Macros in other languages run as before, and their receipts say
-`setupVerified: false` with a message that completion was not checked.
+Macros in other languages wait (up to ten seconds) for each engine's execution verdict, so their
+receipts report completion too, and a failed execution is an error.
 The external backdoor's awaited `run`, `launch` and `continue` commands get a receipt
 from every engine, not only Kotlin. A box that printed an error comes back failed even
 when its engine reported success.
