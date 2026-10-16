@@ -9,7 +9,7 @@ import afield.graphics.render.*
 import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
 import afield.graphics.vulkan.targets.RenderToTexture
-var Box.paintSource by Inheritance<RenderToTexture>() /**/
+var Box.paintSource by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /**/
 val Once.paintSource by Onceing<RenderToTexture>() /**/
 val Why.paintSource by Whying() /**/
 var Box.apertureControl by Inheritance<afield.math.linalg.Vec4>() /**/

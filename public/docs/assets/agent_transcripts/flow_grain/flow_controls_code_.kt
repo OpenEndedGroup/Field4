@@ -1,12 +1,6 @@
 import afield.document.context.fromContextWithNameOrNull
 
 // Dependencies are explicit graph exports; resources stay in their parent box.
-val flowLook = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowLook")!!
-val force = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("force")!!
-val grainCell = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("grainCell")!!
-val strokeTime = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("strokeTime")!!
-val flowWidth = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("flowWidth")!!
-val travel = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")!!
 
 // Edit and execute this box. The shader receives the effective values; all values
 // and bounds remain inspectable through Field's ordinary object viewer.

@@ -15,23 +15,23 @@ import afield.graphics.vulkan.targets.PingPongRenderToTexture
 var Box.flowSession by Inheritance<AutoCloseable>() /**/
 val Once.flowSession by Onceing<AutoCloseable>() /**/
 val Why.flowSession by Whying() /**/
-var Box.history by Inheritance<PingPongRenderToTexture>() /**/
+var Box.history by ReactiveInheritance<PingPongRenderToTexture>(Reactive.DOWN) /**/
 val Once.history by Onceing<PingPongRenderToTexture>() /**/
 val Why.history by Whying() /**/
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*graphics-pc-structure:time*/ var Structure.time by Structure.FromStructure<Any>()
 /*graphics-pc-binding:time*/ var Mesh.time by Mesh.BoundFromStructure<Float>()
 /*graphics-pc-binding-group:time*/ var MeshGroup.time by MeshGroup.BoundFromStructure<Float>()
-var Box.previousImage by Inheritance<HasImageView>() /**/
+var Box.previousImage by ReactiveInheritance<HasImageView>(Reactive.DOWN) /**/
 val Once.previousImage by Onceing<HasImageView>() /**/
 val Why.previousImage by Whying() /**/
-var Box.currentImage by Inheritance<HasImageView>() /**/
+var Box.currentImage by ReactiveInheritance<HasImageView>(Reactive.DOWN) /**/
 val Once.currentImage by Onceing<HasImageView>() /**/
 val Why.currentImage by Whying() /**/
 var Box.flow by Inheritance<afield.media.vision.OpticalFlowOperation>() /**/
 val Once.flow by Onceing<afield.media.vision.OpticalFlowOperation>() /**/
 val Why.flow by Whying() /**/
-var Box.motion by Inheritance<RenderToTexture>() /**/
+var Box.motion by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /**/
 val Once.motion by Onceing<RenderToTexture>() /**/
 val Why.motion by Whying() /**/
 var Box.expectedMotion by Inheritance<Vector2f>() /**/

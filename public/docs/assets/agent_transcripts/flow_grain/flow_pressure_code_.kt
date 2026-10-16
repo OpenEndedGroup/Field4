@@ -5,13 +5,6 @@ import afield.graphics.render.graphicsMemoryBarrier
 import afield.graphics.render.computeTask
 
 // Dependencies are explicit graph exports; resources stay in their parent box.
-val divergence = fromContextWithNameOrNull<FrameBufferGroup>("divergence")!!
-val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
-val pressureB = fromContextWithNameOrNull<FrameBufferGroup>("pressureB")!!
-val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
-val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
-val flowSimulation = fromContextWithNameOrNull<afield.graphics.vulkan.targets.ComputeTarget>("flowSimulation")!!
 
 var module = computeModuleHere {}
 

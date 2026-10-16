@@ -9,11 +9,11 @@ import afield.graphics.render.*
 import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
 import afield.graphics.vulkan.targets.RenderToTexture
-var Box.paintHalf by Inheritance<RenderToTexture>() /**/
+var Box.paintHalf by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /**/
 val Once.paintHalf by Onceing<RenderToTexture>() /**/
 val Why.paintHalf by Whying() /**/
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
-var Box.paintSource by Inheritance<RenderToTexture>() /*from:aperture_source*/ /**/
+var Box.paintSource by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /*from:aperture_source*/ /**/
 val Once.paintSource by Onceing<RenderToTexture>() /*from:aperture_source*/ /**/
 val Why.paintSource by Whying() /*from:aperture_source*/ /**/
 var Box.apertureControl by Inheritance<afield.math.linalg.Vec4>() /*from:aperture_source*/ /**/

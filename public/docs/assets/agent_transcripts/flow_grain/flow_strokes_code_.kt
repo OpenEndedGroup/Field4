@@ -1,10 +1,6 @@
 import afield.document.context.fromContextWithNameOrNull
 
 // Dependencies are explicit graph exports; resources stay in their parent box.
-val particleA = fromContextWithNameOrNull<FrameBufferGroup>("particleA")!!
-val particleB = fromContextWithNameOrNull<FrameBufferGroup>("particleB")!!
-val cameraHistory = fromContextWithNameOrNull<FrameBufferGroup>("cameraHistory")!!
-val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
 
 var module = moduleHere { depthTest = false
     depthWrite = false
