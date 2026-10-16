@@ -1,0 +1,100 @@
+[
+  {
+    "path": "public/docs/assets/stacksl_fit_demo/stacksl-roundtrip_code_.kt",
+    "old": "    // The one lossy step in the trip is the printing: `%.8f` is eight significant decimals and\n    // binary32 needs nine to round-trip in general, so a fitted value can land one ulp away in the\n    // source. Both outcomes have been seen and both are fine: `StackSLFitFigureTest`'s 64x64 fit",
+    "new": "    // `%.8f` writes eight places after the decimal point, not eight significant digits.\n    // That fixed precision can perturb a fitted Float; its error depends on the value's magnitude.\n    // `StackSLFitFigureTest`'s 64x64 fit",
+    "finding": "989a5a4701ef-01"
+  },
+  {
+    "path": "public/docs/assets/stacksl_surrogate_demo/surrogate-cost_code_.kt",
+    "old": "// Why `AdSurrogate.all(...)` is not the default, and why the brief that asked for this work had\n// the question upside down.",
+    "new": "// Why staircase surrogates can corrupt a noise fit's gradient.",
+    "finding": "05626017d0bb-01"
+  },
+  {
+    "path": "public/docs/assets/stacksl_surrogate_demo/surrogate-cost_code_.kt",
+    "old": "// So this box runs the experiment the premise implies, and watches it fail on purpose.",
+    "new": "// Compare the true gradient with the surrogate and measure the resulting fit.",
+    "finding": "05626017d0bb-01"
+  },
+  {
+    "path": "public/docs/assets/stacksl_surrogate_demo/surrogate-wall_code_.kt",
+    "old": "    // The wall itself. Not \"small\" \u2014 exactly zero, printed as a raw bit pattern so there is no\n    // chance of reading 1e-18 as 0.",
+    "new": "    // Compare the gradient with exact zero as well as printing its numeric value;\n    // rounded display alone could conceal a small nonzero gradient.",
+    "finding": "05626017d0bb-02"
+  },
+  {
+    "path": "src/jvmMain/resources/nano_compute.glsl",
+    "old": "// VM state.  OUT bytes are at outWords[outBase .. outBase+outOff).",
+    "new": "// VM state. OUT occupies byte offsets [outBase, outBase + outOff) in packed outWords.\n    // Byte byteOffset uses word byteOffset >> 2 and byte lane byteOffset & 3 (see outStore).",
+    "finding": "6bcdc2e8f183-02"
+  },
+  {
+    "path": "templates/timeSlider/3c6a8254-9160-4021-803c-57c4ff93f8f1_code_.kt",
+    "old": "// export this box so that any box can now write 'execute' to talk about this box",
+    "new": "// Publish this timeline controller as execution so other boxes can refer to it.",
+    "finding": "7b313a87a84a-01"
+  },
+  {
+    "path": "templates/h2-explorer-examples/9a3aaad6-0c2f-4851-9ef7-ae0fc6af4d00_code_.kt",
+    "old": "// The collection half of the gate used to be narrower than its own machinery: it admitted\n// `IntArray` but not `ByteArray`, `List` but not `Set`, while both the tree and the explorer\n// already knew how to draw all of them. Swap the two lines below to compare `.h` and `.h2`.",
+    "new": "// Sets are browsable collections. Swap the two display lines to compare the compact\n// `.h` view with the paged `.h2` explorer.",
+    "finding": "60769e678e73-02"
+  },
+  {
+    "path": "templates/first-graphics/first_graphics_triangle_vertex_.glsl",
+    "old": "// layout(push_constant) uniform matrices {\n//     mat4 projectionMatrix;\n//     mat4 modelMatrix;\n// } push_constants;",
+    "new": "// pos is already in clip space; col is passed to the fragment shader.",
+    "finding": "231a6405af15-02"
+  },
+  {
+    "path": "templates/first-graphics/first_graphics_triangle_vertex_.glsl",
+    "old": "    // gl_Position = push_constants.projectionMatrix * push_constants.modelMatrix * vec4(pos, 1);\n",
+    "new": "",
+    "finding": "231a6405af15-02"
+  },
+  {
+    "path": "dev_docs/agents/transcripts/remotear_scene_motion.yaml",
+    "old": "richer materials / geometries / lights (roadmap item 3)",
+    "new": "Materials, geometry and lights",
+    "finding": "ba6b1a9fc12f-01"
+  },
+  {
+    "path": "dev_docs/agents/transcripts/remotear_scene_motion.yaml",
+    "old": "FLine transform operators (roadmap item 1)",
+    "new": "Orbit transforms",
+    "finding": "ba6b1a9fc12f-01"
+  },
+  {
+    "path": "dev_docs/agents/transcripts/remotear_scene_motion.yaml",
+    "old": "assets + animation (roadmap item 2): load a glTF and drive the mixer via play()",
+    "new": "Asset animation: load a glTF and drive its mixer with play()",
+    "finding": "ba6b1a9fc12f-01"
+  },
+  {
+    "path": "public/docs/assets/stacksl_surrogate_demo/surrogate-cost_code_.kt",
+    "old": "// `fbm`'s lattice is `floor(p)`, and it was supposed to be the wall blocking a noise fit. It is the\n// opposite. `_hash21` is `fract(p * vec2(123.34, 456.21))`, `p += dot(p, p + 45.32)`,",
+    "new": "// `fbm` selects lattice cells with `floor(p)`. The corner hash `_hash21` is\n// `fract(p * vec2(123.34, 456.21))`, `p += dot(p, p + 45.32)`,",
+    "finding": "05626017d0bb-01"
+  },
+  {
+    "path": "dev_docs/agents/demos/rr_plumbing/fragment.glsl",
+    "old": "#version 460\nlayout(set=0,binding=0) uniform sampler2D positions;\nlayout(set=0,binding=1) uniform sampler2D normals;\nlayout(set=0,binding=2) uniform sampler2D albedo;\nlayout(set=0,binding=3) uniform sampler2D velocity;\nlayout(location=0) out float depth;\nlayout(location=1) out vec2 motion;\nlayout(location=2) out vec4 diffuse;\nlayout(location=3) out vec4 specular;\nlayout(location=4) out vec4 normalRoughness;\nvoid main(){ivec2 p=ivec2(gl_FragCoord.xy);vec4 pos=texelFetch(positions,p,0);\ndepth=pos.w;motion=-texelFetch(velocity,p,0).xy*vec2(textureSize(velocity,0));\nvec3 n=texelFetch(normals,p,0).xyz;bool valid=pos.w<1 && dot(n,n)>.01;\ndiffuse=vec4(valid?texelFetch(albedo,p,0).rgb:vec3(0),1);\nspecular=vec4(0,0,0,1);normalRoughness=vec4(valid?normalize(n):vec3(0,0,1),1);\n}\n",
+    "new": "#version 460\n\nlayout(set = 0, binding = 0) uniform sampler2D positions;\nlayout(set = 0, binding = 1) uniform sampler2D normals;\nlayout(set = 0, binding = 2) uniform sampler2D albedo;\nlayout(set = 0, binding = 3) uniform sampler2D velocity;\n\nlayout(location = 0) out float depth;\nlayout(location = 1) out vec2 motion;\nlayout(location = 2) out vec4 diffuse;\nlayout(location = 3) out vec4 specular;\nlayout(location = 4) out vec4 normalRoughness;\n\nvoid main() {\n    ivec2 pixel = ivec2(gl_FragCoord.xy);\n    vec4 positionAndDepth = texelFetch(positions, pixel, 0);\n\n    // G-buffer alpha stores Vulkan depth in [0, 1]; 1 is the cleared background.\n    depth = positionAndDepth.w;\n\n    // Raster motion is currentUV - previousUV, unjittered and Y down.\n    // Reconstruction wants current-to-previous motion in input pixels.\n    vec2 uvMotion = texelFetch(velocity, pixel, 0).xy;\n    vec2 inputSize = vec2(textureSize(velocity, 0));\n    motion = -uvMotion * inputSize;\n\n    vec3 worldNormal = texelFetch(normals, pixel, 0).xyz;\n    bool valid = positionAndDepth.w < 1 && dot(worldNormal, worldNormal) > .01;\n    diffuse = vec4(valid ? texelFetch(albedo, pixel, 0).rgb : vec3(0), 1);\n\n    // Opaque Lambertian material: zero specular RGB and roughness 1 in normalRoughness.w.\n    // Background uses a unit fallback normal instead of normalizing zero.\n    specular = vec4(0, 0, 0, 1);\n    normalRoughness = vec4(valid ? normalize(worldNormal) : vec3(0, 0, 1), 1);\n}\n",
+    "finding": "2fc7c487bcec-01",
+    "bodyChanges": "Descriptive local names and two intermediates. Exact executable-token equality after inlining intermediates and reversing local renames."
+  },
+  {
+    "path": "src/jvmMain/resources/nano_compute.glsl",
+    "finding": "6bcdc2e8f183-02",
+    "bodyChanges": "Rename the local identifier flat to byteOffset: flat is a reserved GLSL qualifier. Baseline glslc failed at line 149. Byte packing expressions are unchanged.",
+    "old": "",
+    "new": ""
+  },
+  {
+    "path": "src/jvmMain/resources/nano_compute.glsl",
+    "finding": "6bcdc2e8f183-02",
+    "old": "// Read byte at absolute buffer offset flat = base + addr.",
+    "new": "// Read byte at absolute buffer offset byteOffset = base + addr."
+  }
+]
