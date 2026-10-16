@@ -30,9 +30,8 @@ repeat(30) { opt.step { misfit(it) } }
 
 fun draw(pts: List<Pair<Double, Double>>, dx: Double, colour: Vec4, width: Double) =
     FLine().also { f ->
-        pts.forEachIndexed { i, (x, y) ->
-            if (i == 0) f.moveTo(dx + 100 * x, -100 * y) else f.lineTo(dx + 100 * x, -100 * y)
-        }
+        f.breakNext()
+        pts.forEach { (x, y) -> f.lineTo(dx + 100 * x, -100 * y) }
         f.color = colour
         f.thickness = width
     }
@@ -40,7 +39,8 @@ val grey = vec(0.6, 0.6, 0.6, 1.0)
 lines(
     [draw(target, 0.0, grey, 6.0)] +
         opt.history.take(5).map { draw(curve(it.parameters), 0.0, vec(0.2, 0.4, 0.9, 0.35), 1.0) } +
-        [draw(target, 320.0, grey, 6.0), draw(curve(opt.best!!.parameters), 320.0, vec(0.9, 0.2, 0.2, 1.0), 2.0)],
+        draw(target, 320.0, grey, 6.0) +
+        draw(curve(opt.best!!.parameters), 320.0, vec(0.9, 0.2, 0.2, 1.0), 2.0),
     w = 640.0,
     h = 300.0,
     fitToSize = true,
@@ -128,12 +128,13 @@ records which one won:
 fun rosette(p: Map<String, Double>, dx: Double) =
     FLine().also { f ->
         val petals = p["petals"]!!.roundToInt()
+        f.breakNext()
         for (i in 0..600) {
             val t = 2 * PI * i / 600
             val r = 1 + p["depth"]!! * cos(petals * t) + 0.15 * p["depth"]!! * cos(2 * petals * t + 3 * p["curl"]!!)
             val x = dx + 90 * r * cos(t + p["curl"]!! * sin(petals * t) * 0.3)
             val y = -90 * r * sin(t + p["curl"]!! * sin(petals * t) * 0.3)
-            if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+            f.lineTo(x, y)
         }
         f.color = okhsl(p["hue"]!!, 0.8, 0.55, 1.0)
         f.thickness = 2.0
@@ -191,12 +192,13 @@ own colour, so shape and colour can both be compared.
 fun rosette(p: Map<String, Double>, dx: Double) =
     FLine().also { f ->
         val petals = p["petals"]!!.roundToInt()
+        f.breakNext()
         for (i in 0..600) {
             val t = 2 * PI * i / 600
             val r = 1 + p["depth"]!! * cos(petals * t) + 0.15 * p["depth"]!! * cos(2 * petals * t + 3 * p["curl"]!!)
             val x = dx + 90 * r * cos(t + p["curl"]!! * sin(petals * t) * 0.3)
             val y = -90 * r * sin(t + p["curl"]!! * sin(petals * t) * 0.3)
-            if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+            f.lineTo(x, y)
         }
         f.color = okhsl(p["hue"]!!, 0.8, 0.55, 1.0)
         f.thickness = 2.0

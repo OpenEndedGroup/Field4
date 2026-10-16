@@ -1,15 +1,14 @@
-import afield.geometry.spatial.loadStippleTransport
-
 // Run this in a Field box. The small portable model needs no Python at runtime.
 val field = loadStippleTransport("public/docs/assets/stipple_transport/two-images.json")
 val canonical = field.sourceParticles(400, seed = 44)
-val lattice = (0..6).flatMap { row ->
-    val v = -1.0 + row / 3.0
-    listOf(
-        (0..24).map { vec(-1.0 + it / 12.0, v, 0.0) },
-        (0..24).map { vec(v, -1.0 + it / 12.0, 0.0) },
-    )
-}
+val lattice =
+    (0..6).flatMap { row ->
+        val v = -1.0 + row / 3.0
+        [
+            (0..24).map { vec(-1.0 + it / 12.0, v, 0.0) },
+            (0..24).map { vec(v, -1.0 + it / 12.0, 0.0) },
+        ]
+    }
 var transportTime = 1.0
 var movieTime = 0.5
 var integrationSteps = 24
@@ -24,15 +23,19 @@ fun drawSheet() {
     dots.color = vec(0.45, 0.85, 0.8, 1.0)
     val warped = lattice.map { row ->
         val f = FLine()
-        field.transport(row, transportTime, movieTime, integrationSteps).forEachIndexed { i, p ->
-            if (i == 0) f.moveTo(p * 180.0) else f.lineTo(p * 180.0)
+        f.breakNext()
+        field.transport(row, transportTime, movieTime, integrationSteps).forEach { p ->
+            f.lineTo(p * 180.0)
         }
         f.color = vec(0.55, 0.65, 0.8, 0.65)
         f.thickness = 0.65
         f
     }
     lines(warped + dots, w = 800.0, h = 540.0, fitToSize = true)
-    markdown("times", "transport time **$transportTime** · movie time **$movieTime** · $integrationSteps integration steps")
+    markdown(
+        "times",
+        "transport time **$transportTime** · movie time **$movieTime** · $integrationSteps integration steps",
+    )
 }
 
 controlGroup("transport plane") {

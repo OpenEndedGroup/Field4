@@ -18,7 +18,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Documentation code explanations and layout](../box_code_adoption_batch_7/README.md) | Sixteen more findings addressed; 407 Kotlin states and four GLSL states mechanically checked. |
 
-[Machine checkpoint](checkpoint.json): **71 of 405 findings addressed**, one implemented with
+| [Drawing paths and grid helpers](../box_code_adoption_batch_8/README.md) | Twenty more findings addressed, plus three upstream logging fixes accounted for; real geometry and launch lifecycle checks pass. |
+
+[Machine checkpoint](checkpoint.json): **94 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
