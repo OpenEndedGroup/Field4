@@ -1,25 +1,27 @@
 # Helper triage after the first sweep
 
-These are recommendations for Marc's decision. No new API is approved by this report.
+All twelve proposals were approved by Marc on 2026-10-16, with the adjustments recorded below.
+Implementation is pending. ToolPool notes are reserved for the house-machine agents; Field Audio
+uses the shared async mechanism from decision 5. The original proposal evidence remains unchanged.
 The complete before/after sketches, checked alternatives, source evidence and required tests
 are in [helper-proposals.json](helper-proposals.json). API spellings there are illustrative.
 
 ## Twelve new decisions
 
-| Family | Recommendation | Reason and boundary |
+| Family | Decision | Scope and boundary |
 | --- | --- | --- |
-| Callable interpolant with `startAt` | Approve a small public type | Existing implementations support restart, but factories erase that capability behind `() -> T`, forcing casts. Preserve callable use and explicit restart. |
-| RectSL wall projection | Approve exposing the existing operation | `WallSpec.worldToClip` already handles origin semantics internally. Expose that calculation and verify centered/top-left output. |
-| Faust render → WAV | Approve a conversion on the existing render result | Remove repeated left/right/sample-rate unpacking. Encode the existing samples; no implicit second render or playback. |
-| Syphon client run ownership | Approve the ownership convention | Register newly created clients with the current run. Preserve standalone explicit close and shared server lifetimes; prove close once on stop/rerun. |
-| Run-owned future publication | Design before applying | Gate progress and completion by run identity. Cancellation must distinguish suppressing stale output from actually stopping native work. This is a shared correctness issue. |
-| Field Audio tracked analysis | Design with the preceding ownership contract | Repeated submit/watch/await adapters drop transport ownership. Preserve explicit operation/progress and handle WebSocket handshake failure and cancellation at every stage. |
-| Box-owned OSC handler | Design an opt-in registration | Release by registration identity so older cleanup cannot remove a replacement. Keep intentional persistent listeners and cached sockets available. |
-| ToolPool versioned notes | Separate feature work | Typed note persistence is worthwhile, but includes revision identity, atomic writes, pagination and authorization contracts. It exceeds the readability pass. |
-| Midpoint solid slice visitor | Rehearse locally before adding API | Repeated midpoint slicing and `Section.use` could share a visitor. Keep integration math visible and prevent closed native sections escaping. |
-| Sampling grid FLine | Keep a local helper initially | Two examples share a small grid loop. Check whether a broader public drawing operation earns its surface area. |
-| Warmed minimum timing | Keep a local/shared example helper initially | Three boxes repeat the same timer. Preserve explicit warmup/repetition policy and exception behavior; avoid implying a rigorous benchmark. |
-| Interaction snapshot stages | Rehearse locally before adding API | Several examples repeat stage layout. Keep snapshots, reducer scheduling and mutation visible; reuse the existing overview renderer. |
+| Callable interpolant with `startAt` | **Approved 2026-10-16** | Return a public callable type from `smoothTo` and `inertialTo`; expose the existing restart operation without casts. Preserve callable use, uniform bindings and explicit restart. Implementation pending. |
+| RectSL wall projection | **Approved 2026-10-16** | Expose the existing `WallSpec.worldToClip()` publicly; preserve centered/top-left origin semantics and verify both outputs. Implementation pending. |
+| Faust render → WAV | **Approved 2026-10-16** | Add `render.wav(normalizePeak = ...)` using the existing stereo encoder. Encode existing samples; preserve level when normalization is omitted. Implementation pending. |
+| Syphon client named reuse | **Approved with adjustment 2026-10-16** | `syphonClient(name)` returns the existing open client cached under that name; create/cache when missing or closed. Replaces the original per-call allocation/run-ownership proposal. Automatic close-on-rerun was not approved. Implementation pending. |
+| Run-owned future publication | **Approved 2026-10-16; API rehearsal next** | Shared convention for growing long-running cached client/server workflows, including audio AI. Gate publication by originating run, report failures and request supported cancellation. Keep shared client/cache lifetime separate from operation ownership; distinguish stale-output suppression from stopping actual work. |
+| Field Audio tracked analysis | **Approved 2026-10-16: use decision 5** | Apply the shared async mechanism to submit/watch/await/inspect. Reuse rendered-audio cancellation/connection cleanup; keep the requested operation explicit. Concrete API spelling follows the decision-5 rehearsal. |
+| Box-owned OSC handler | **Approved 2026-10-16** | Agreed syntax: `osc(port).on(address, runOwned = true) { message -> ... }`. Release by registration identity on stop/rerun/retirement. Omitting the option preserves persistent behavior; cached server sockets stay open. Implementation pending. |
+| ToolPool versioned notes | **Approved 2026-10-16; house-machine agents** | Marc will take implementation back to the house-machine agents. Excluded from this pass's implementation scope. Preserve revision identity, atomic writes, pagination and authorization contracts; method names remain illustrative. |
+| Midpoint solid slice visitor | **Approved 2026-10-16: public API** | `solid.sampleSlices(n) { z, section -> ... }`: evenly spaced layer midpoints, collect callback results and close each native section after its callback. Keep integration math visible and document scoped section lifetime. Implementation pending. |
+| Sampling grid FLine | **Approved with adjustment 2026-10-16** | `someFline.grid(bounds, nx, ny)` appends disconnected grid lines and returns the FLine, like `rect`. Counts are cells; styling stays on the FLine. Replaces the standalone factory proposal. Implementation pending. |
+| Warmed minimum timing | **Approved 2026-10-16** | `bestTimeMs(repetitions = 5, warmup = 2) { ... }`: untimed warmups, shortest measured duration in milliseconds, ordinary exception propagation. Implementation pending. |
+| Interaction snapshot stages | **Approved 2026-10-16** | `showInteractionStages(stage("Before", beforeLines, beforeSummary), ...)` arranges captured stages through the existing overview renderer. Keep mutation, scheduling and capture explicit; earlier snapshots must stay independent. Implementation pending. |
 
 ## Eight previously approved families rediscovered
 
@@ -51,7 +53,9 @@ points stay visible.
 
 ## Suggested sequence
 
-1. Implement/check the eight approved families and the small new proposals Marc selects.
+1. Implement/check the eight previously approved families and the new approved work, excluding
+   ToolPool notes (Marc will take that to the house-machine agents). Honor the named Syphon cache,
+   append-style `FLine.grid`, and opt-in OSC `runOwned = true` adjustments.
 2. Resolve the shared async ownership contract before replacing repeated adapters.
 3. Apply second-pass edits in bounded groups, using the saved findings and formatter candidates.
 4. Compile each changed box in its actual context; run/capture the affected behavior, including
