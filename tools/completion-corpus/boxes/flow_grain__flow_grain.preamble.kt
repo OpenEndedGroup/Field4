@@ -83,24 +83,24 @@ fun HasBuffer.asHistory(): History =
 fun BufferParameters.asHistory(): History =
     buffer.asHistory()
 /*end*/
-/*graphics-pc-structure:item*/ var Structure.item by Structure.FromStructure<Any>() // Current pose and MotionItems previous affine/validity.
-/*graphics-pc-binding:item*/ var Mesh.item by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // Current pose and MotionItems previous affine/validity.
-/*graphics-pc-binding-group:item*/ var MeshGroup.item by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // Current pose and MotionItems previous affine/validity.
-/*graphics-pc-structure:velocity*/ var Structure.velocity by Structure.FromStructure<Any>() // Current projected fluid velocity.
-/*graphics-pc-binding:velocity*/ var Mesh.velocity by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // Current projected fluid velocity.
-/*graphics-pc-binding-group:velocity*/ var MeshGroup.velocity by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // Current projected fluid velocity.
-/*graphics-pc-structure:tiles*/ var Structure.tiles by Structure.FromStructure<Any>() // Resident world coordinates and generations.
-/*graphics-pc-binding:tiles*/ var Mesh.tiles by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // Resident world coordinates and generations.
-/*graphics-pc-binding-group:tiles*/ var MeshGroup.tiles by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // Resident world coordinates and generations.
-/*graphics-pc-structure:history*/ var Structure.history by Structure.FromStructure<Any>() // FrameHistory's complete 68-float layout.
-/*graphics-pc-binding:history*/ var Mesh.history by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // FrameHistory's complete 68-float layout.
-/*graphics-pc-binding-group:history*/ var MeshGroup.history by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>() // FrameHistory's complete 68-float layout.
-/*graphics-pc-structure:clock*/ var Structure.clock by Structure.FromStructure<Any>() // x time; y dt; zw reserved.
-/*graphics-pc-binding:clock*/ var Mesh.clock by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // x time; y dt; zw reserved.
-/*graphics-pc-binding-group:clock*/ var MeshGroup.clock by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // x time; y dt; zw reserved.
-/*graphics-pc-structure:look*/ var Structure.look by Structure.FromStructure<Any>() // x world grain cell; y stroke seconds; z gain; w debug view.
-/*graphics-pc-binding:look*/ var Mesh.look by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // x world grain cell; y stroke seconds; z gain; w debug view.
-/*graphics-pc-binding-group:look*/ var MeshGroup.look by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // x world grain cell; y stroke seconds; z gain; w debug view.
+/*graphics-pc-structure:item*/ var Structure.item by Structure.FromStructure<Any>()
+/*graphics-pc-binding:item*/ var Mesh.item by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:item*/ var MeshGroup.item by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-structure:velocity*/ var Structure.velocity by Structure.FromStructure<Any>()
+/*graphics-pc-binding:velocity*/ var Mesh.velocity by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:velocity*/ var MeshGroup.velocity by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-structure:tiles*/ var Structure.tiles by Structure.FromStructure<Any>()
+/*graphics-pc-binding:tiles*/ var Mesh.tiles by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:tiles*/ var MeshGroup.tiles by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-structure:history*/ var Structure.history by Structure.FromStructure<Any>()
+/*graphics-pc-binding:history*/ var Mesh.history by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:history*/ var MeshGroup.history by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-structure:clock*/ var Structure.clock by Structure.FromStructure<Any>()
+/*graphics-pc-binding:clock*/ var Mesh.clock by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*graphics-pc-binding-group:clock*/ var MeshGroup.clock by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*graphics-pc-structure:look*/ var Structure.look by Structure.FromStructure<Any>()
+/*graphics-pc-binding:look*/ var Mesh.look by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*graphics-pc-binding-group:look*/ var MeshGroup.look by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
 var Box.flowA by ReactiveInheritance<FrameBufferGroup>(Reactive.DOWN) /*from:flow_resources*/ /**/
 val Once.flowA by Onceing<FrameBufferGroup>() /*from:flow_resources*/ /**/
 val Why.flowA by Whying() /*from:flow_resources*/ /**/

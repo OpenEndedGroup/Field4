@@ -12,9 +12,6 @@ Start with the ordinary case: one signal, one graph. Once a stack can become a c
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/harmonic_stack_box.png" wait="1.0" capture="box" w="1200"}
 :::static
-import afield.geometry.path.FLine
-import afield.math.functions.Functions
-
 with(Functions) {
     val x0 = 40.0
     val x1 = 940.0
@@ -61,7 +58,7 @@ with(Functions) {
             lineTo((x0 + x1) * 0.5, y1)
             color = vec(1.0, 1.0, 1.0, 0.12)
             this.thickness = 1.0
-        }
+        },
     ]
 
     lines(guides + waveform, channel = "harmonic-graph", w = 980.0, h = 430.0, fitToSize = false)
@@ -81,16 +78,14 @@ Smooth oscillation is only one side of the system. Edges, gates, bursts, latches
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/pulse_stack_window.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
-import afield.geometry.path.FLine
-import afield.math.functions.Functions
-
 with(Functions) {
     val x0 = 30.0
     val x1 = 950.0
     val y0 = 40.0
     val y1 = 360.0
 
-    val pulses = pulseTrain(period = 0.13, duty = 0.36, rise = 0.01, fall = 0.03, edge = SMOOTH, profile = HANN, amplitude = 1.0)
+    val pulses =
+        pulseTrain(period = 0.13, duty = 0.36, rise = 0.01, fall = 0.03, edge = SMOOTH, profile = HANN, amplitude = 1.0)
 
     val mod = sin(frequency = 1.5, phase = 0.7, amplitude = 0.28)
     val textured = (pulses + mod).clip(1.0)
@@ -142,43 +137,55 @@ Amplitude and offset are easy to fit. **Oscillator frequency is not.** The error
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/fit_to_target_box.png" wait="1.5" capture="box" w="1200"}
 :::static
-import afield.geometry.path.FLine
-import afield.math.functions.Functions
-import afield.math.functions.fitBest
-
 with(Functions) {
-    val x0 = 40.0; val x1 = 940.0
-    val y0 = 40.0; val y1 = 400.0
-    val midY = 220.0; val amp = 150.0
+    val x0 = 40.0
+    val x1 = 940.0
+    val y0 = 40.0
+    val y1 = 400.0
+    val midY = 220.0
+    val amp = 150.0
 
     // A target that is awkward to hand-tune: two oscillators multiplied together.
     val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)
     // Same *shape*, wrong *numbers* — both frequencies far off, which is the point.
     val seed = cos(3.4) * sin(1.0, amplitude = 2.0)
 
-    // Gradient descent with jittered restarts. A single fitGradient would stall in a
-    // frequency local-minimum (~0.19); fitBest escapes it. This target is unbounded,
-    // so fitBest falls back to the finite 0..1 sampling domain.
-    val run = fitBest(target, seed, restarts = 16)   // RMSE ~0.72 -> ~0.006
+    /*
+    Gradient descent with jittered restarts. A single fitGradient would stall in a
+    frequency local-minimum (~0.19); fitBest escapes it. This target is unbounded,
+    so fitBest falls back to the finite 0..1 sampling domain.
+    */
+    val run = fitBest(target, seed, restarts = 16) // RMSE ~0.72 -> ~0.006
 
-    fun asLine(fn: Functions.Fn, color: Vec4, thickness: Double): FLine =
-        fn.toFLine(0.0 .. 1.0, samples = 900, xScale = x1 - x0, yScale = amp, xOffset = x0, yOffset = midY).apply {
-            this.color = color; this.thickness = thickness
-        }
+    fun asLine(fn: Functions.Fn, color: Vec4, thickness: Double): FLine = fn.toFLine(0.0..1.0, samples = 900, xScale = x1 - x0, yScale = amp, xOffset = x0, yOffset = midY).apply {
+        this.color = color
+        this.thickness = thickness
+    }
     fun hLine(y: Double, color: Vec4, thickness: Double): FLine = fline {
-        moveTo(x0, y); lineTo(x1, y); this.color = color; this.thickness = thickness
+        moveTo(x0, y)
+        lineTo(x1, y)
+        this.color = color
+        this.thickness = thickness
     }
     val frame = fline {
-        moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0)
-        color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6
+        moveTo(x0, y0)
+        lineTo(x1, y0)
+        lineTo(x1, y1)
+        lineTo(x0, y1)
+        lineTo(x0, y0)
+        color = vec(1.0, 1.0, 1.0, 0.28)
+        thickness = 1.6
     }
 
     val guides = [frame, hLine(midY, vec(1.0, 1.0, 1.0, 0.30), 1.2)]
-    val targetLine = asLine(target, vec(0.30, 0.79, 0.94, 1.0), 4.5)      // cyan, thick
-    val fittedLine = asLine(run.fitted, vec(0.97, 0.45, 0.18, 1.0), 2.2)  // orange, thin, on top
+    val targetLine = asLine(target, vec(0.30, 0.79, 0.94, 1.0), 4.5) // cyan, thick
+    val fittedLine = asLine(run.fitted, vec(0.97, 0.45, 0.18, 1.0), 2.2) // orange, thin, on top
 
     lines(guides + targetLine + fittedLine, channel = "fit-graph", w = 980.0, h = 440.0, fitToSize = false)
-    markdown("notes", "**fit to target** — target (cyan) vs gradient-fitted (orange), RMSE ${"%.4f".format(run.finalError)}")
+    markdown(
+        "notes",
+        "**fit to target** — target (cyan) vs gradient-fitted (orange), RMSE ${"%.4f".format(run.finalError)}",
+    )
     run
 }
 ```
@@ -195,11 +202,6 @@ once: the target, the seed it started from, and where it ended up.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/fit_before_after_box.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="functions-fit-before-after"}
 :::static
-import afield.geometry.path.FLine
-import afield.geometry.path.byDashing
-import afield.math.functions.Functions
-import afield.math.functions.fitGradient
-
 with(Functions) {
     // The same graph structure as the target, with the wrong numbers in it: a fifth of the
     // amplitude and the offset the wrong way. One fitGradient, no restarts.
@@ -208,30 +210,59 @@ with(Functions) {
     val run = fitGradient(target = target, seed = seed, iterations = 400, lr = 0.05, samples = 160, rngSeed = 0L)
 
     :::fold the plot frame: 900 x 380 px, y up, values -1.1..1.1
-    val x0 = 40.0; val x1 = 940.0; val y0 = 30.0; val y1 = 410.0
-    val lo = -1.1; val hi = 1.1
+    val x0 = 40.0
+    val x1 = 940.0
+    val y0 = 30.0
+    val y1 = 410.0
+    val lo = -1.1
+    val hi = 1.1
     val yScale = -(y1 - y0) / (hi - lo)
     val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
     fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
         val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
         val parts = if (dashed) line.byDashing(10f, 7f) else [line]
-        return parts.onEach { it.color = color; it.thickness = thickness }
+        return parts.onEach {
+            it.color = color
+            it.thickness = thickness
+        }
     }
     val guides = [
-        fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
-        fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
+        fline {
+            moveTo(x0, y0)
+            lineTo(x1, y0)
+            lineTo(x1, y1)
+            lineTo(x0, y1)
+            lineTo(x0, y0)
+            color = vec(1.0, 1.0, 1.0, 0.28)
+            thickness = 1.6
+        },
+        fline {
+            moveTo(x0, zeroY)
+            lineTo(x1, zeroY)
+            color = vec(1.0, 1.0, 1.0, 0.30)
+            thickness = 1.2
+        },
     ]
-    val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
-    val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
-    val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
+    val orange = vec(0.97, 0.45, 0.18, 1.0)
+    val cyan = vec(0.30, 0.79, 0.94, 1.0)
+    val grey = vec(0.6, 0.6, 0.6, 1.0)
+    val violet = vec(0.66, 0.50, 0.98, 1.0)
+    val green = vec(0.45, 0.85, 0.45, 1.0)
+    val pink = vec(0.96, 0.45, 0.72, 1.0)
     :::endfold
 
     lines(
         guides + curve(target, orange, 5.0) + curve(seed, grey, 2.0, dashed = true) + curve(run.fitted, cyan, 2.0),
-        channel = "fit", w = 980.0, h = 440.0, fitToSize = false
+        channel = "fit",
+        w = 980.0,
+        h = 440.0,
+        fitToSize = false,
     )
-    markdown("notes", "**fitGradient, before and after**: target (orange), seed (grey, dashed), fitted (cyan); " +
-        "error ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}")
+    markdown(
+        "notes",
+        "**fitGradient, before and after**: target (orange), seed (grey, dashed), fitted (cyan); " +
+            "error ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}",
+    )
 }
 ```
 
@@ -242,41 +273,68 @@ And the descent itself, one frame every 8 iterations from 0 to 320. Each frame i
 
 ```diffstatic_runner {data-lang=kotlin video="assets/functions_examples/fit_convergence.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="3" fps="20" timeout="240" w="1200" embed=true name="functions-fit-convergence" alt="a cyan curve starting far below a thick orange target sine, growing in amplitude and sliding into place over successive iterations until it lies exactly on the target, the iteration count and its error printed under it"}
 :::static
-import afield.geometry.path.FLine
-import afield.geometry.path.byDashing
-import afield.math.functions.Functions
-import afield.math.functions.fitGradient
-
-// One frame every 8 iterations, from 0 to 320, then the last frame held. Each frame is its own
-// fitGradient run, truncated at that iteration count, so the error under it belongs to that run.
-// k starts a step early because the recording begins on the launch's second frame.
+/*
+One frame every 8 iterations, from 0 to 320, then the last frame held. Each frame is its own
+fitGradient run, truncated at that iteration count, so the error under it belongs to that run.
+k starts a step early because the recording begins on the launch's second frame.
+*/
 var k = -8
 loop {
     with(Functions) {
         val target = sin(frequency = 2.0, amplitude = 0.8, offset = 0.12)
         val seed = sin(frequency = 2.0, amplitude = 0.30, offset = -0.15)
-        val run = fitGradient(target = target, seed = seed, iterations = maxOf(k, 0), lr = 0.05, samples = 160, rngSeed = 0L)
+        val run =
+            fitGradient(target = target, seed = seed, iterations = maxOf(k, 0), lr = 0.05, samples = 160, rngSeed = 0L)
         :::fold the plot frame: 900 x 380 px, y up, values -1.1..1.1
-        val x0 = 40.0; val x1 = 940.0; val y0 = 30.0; val y1 = 410.0
-        val lo = -1.1; val hi = 1.1
+        val x0 = 40.0
+        val x1 = 940.0
+        val y0 = 30.0
+        val y1 = 410.0
+        val lo = -1.1
+        val hi = 1.1
         val yScale = -(y1 - y0) / (hi - lo)
         val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
         fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
-            val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
+            val line =
+                fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
             val parts = if (dashed) line.byDashing(10f, 7f) else [line]
-            return parts.onEach { it.color = color; it.thickness = thickness }
+            return parts.onEach {
+                it.color = color
+                it.thickness = thickness
+            }
         }
         val guides = [
-            fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
-            fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
+            fline {
+                moveTo(x0, y0)
+                lineTo(x1, y0)
+                lineTo(x1, y1)
+                lineTo(x0, y1)
+                lineTo(x0, y0)
+                color = vec(1.0, 1.0, 1.0, 0.28)
+                thickness = 1.6
+            },
+            fline {
+                moveTo(x0, zeroY)
+                lineTo(x1, zeroY)
+                color = vec(1.0, 1.0, 1.0, 0.30)
+                thickness = 1.2
+            },
         ]
-        val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
-        val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
-        val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
+        val orange = vec(0.97, 0.45, 0.18, 1.0)
+        val cyan = vec(0.30, 0.79, 0.94, 1.0)
+        val grey = vec(0.6, 0.6, 0.6, 1.0)
+        val violet = vec(0.66, 0.50, 0.98, 1.0)
+        val green = vec(0.45, 0.85, 0.45, 1.0)
+        val pink = vec(0.96, 0.45, 0.72, 1.0)
         :::endfold
 
-        lines(guides + curve(target, orange, 5.0) + curve(run.fitted, cyan, 2.0),
-            channel = "descent", w = 980.0, h = 440.0, fitToSize = false)
+        lines(
+            guides + curve(target, orange, 5.0) + curve(run.fitted, cyan, 2.0),
+            channel = "descent",
+            w = 980.0,
+            h = 440.0,
+            fitToSize = false,
+        )
         markdown("iteration", "**iteration ${maxOf(k, 0)}**: error ${"%.4f".format(run.finalError)}")
     }
     if (k < 320) k += 8
@@ -296,21 +354,20 @@ A function stack does not have to mean "height over x". Two of them can steer a 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/parametric_lissajous_box.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
-import afield.geometry.path.FLine
-import afield.math.functions.Functions
-
 with(Functions) {
     val tDomain = 0.0..1.0
     val cx = 500.0
     val cy = 250.0
 
-    val xFn = (sin(frequency = 3.0, phase = 0.2, amplitude = 1.0, domain = tDomain)
-            + sin(frequency = 9.0, phase = 1.1, amplitude = 0.18, domain = tDomain))
-        .softClip(1.15)
+    val xFn =
+        (sin(frequency = 3.0, phase = 0.2, amplitude = 1.0, domain = tDomain) +
+                sin(frequency = 9.0, phase = 1.1, amplitude = 0.18, domain = tDomain))
+            .softClip(1.15)
 
-    val yFn = (sin(frequency = 4.0, phase = 1.2, amplitude = 1.0, domain = tDomain)
-            + valueNoise(seed = 88L, frequency = 16.0, amplitude = 0.1, domain = tDomain))
-        .softClip(1.2)
+    val yFn =
+        (sin(frequency = 4.0, phase = 1.2, amplitude = 1.0, domain = tDomain) +
+                valueNoise(seed = 88L, frequency = 16.0, amplitude = 0.1, domain = tDomain))
+            .softClip(1.2)
 
     fun parametric(xf: Functions.Fn, yf: Functions.Fn, samples: Int = 1400): FLine {
         val f = FLine()
@@ -345,7 +402,7 @@ with(Functions) {
             lineTo(cx, 440.0)
             color = vec(1.0, 1.0, 1.0, 0.12)
             thickness = 1.0
-        }
+        },
     ]
 
     val curve = parametric(xFn, yFn).apply {
@@ -370,25 +427,21 @@ Sometimes the useful coordinates are radius and angle, not x and y. That shift s
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/parametric_rosette_window.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
-import afield.geometry.path.FLine
-import afield.math.functions.Functions
-
 with(Functions) {
     val tDomain = 0.0..1.0
     val cx = 500.0
     val cy = 250.0
 
-    val radial = (
-        one(tDomain) * 0.62
-            + pulseTrain(period = 0.25, duty = 0.5, profile = TRIANGLE, amplitude = 0.22, domain = tDomain)
-            + valueNoise(seed = 5L, frequency = 14.0, amplitude = 0.05, domain = tDomain)
-        )
-        .clamp(0.12, 1.0)
+    val radial =
+        (one(tDomain) * 0.62 +
+                pulseTrain(period = 0.25, duty = 0.5, profile = TRIANGLE, amplitude = 0.22, domain = tDomain) +
+                valueNoise(seed = 5L, frequency = 14.0, amplitude = 0.05, domain = tDomain))
+            .clamp(0.12, 1.0)
 
     val theta = ramp(start = 0.0, end = 1.0, domain = tDomain) * Math.PI * 2.0 * 6.0
 
-    val xFn = (radial * cos(frequency = 0.0, phase = 0.0, amplitude = 1.0, offset = 0.0, domain = tDomain))
-        .mapY { _ -> 0.0 }
+    val xFn =
+        (radial * cos(frequency = 0.0, phase = 0.0, amplitude = 1.0, offset = 0.0, domain = tDomain)).mapY { _ -> 0.0 }
 
     // Explicit x/y from radial + theta, sampled directly for clarity.
     val line = FLine()
@@ -444,9 +497,6 @@ With `Functions`, a small edit can materially change the drawing. That makes dif
 
 ```diff_runner {data-lang=kotlin screenshot="assets/functions_examples/diff_runner_after.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::before
-import afield.geometry.path.FLine
-import afield.math.functions.Functions
-
 with(Functions) {
     val a = sin(frequency = 2.0, amplitude = 0.7)
     val b = pulseTrain(period = 0.2, duty = 0.35, amplitude = 0.35)
@@ -471,9 +521,6 @@ with(Functions) {
     markdown("notes", "**Before**: simple sin + pulse stack.")
 }
 :::after
-import afield.geometry.path.FLine
-import afield.math.functions.Functions
-
 with(Functions) {
     val a = sin(frequency = 2.0, amplitude = 0.7)
     val b = pulseTrain(period = 0.2, duty = 0.35, rise = 0.01, fall = 0.025, profile = HANN, amplitude = 0.35)
@@ -536,20 +583,30 @@ The first form builds the pulse train with `0.0..0.8` as its construction-time d
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/domain-over-pulsetrain-difference.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="120" name="functions-domain-over-pulsetrain-difference"}
 :::static
-import afield.math.functions.Functions
-
 with(Functions) {
     val a = pulseTrain(period = 0.08, duty = 0.35, domain = 0.0..0.8)
     val b = pulseTrain(period = 0.08, duty = 0.35) over (0.0..0.8)
 
-    a.plot("a", domain(0.0..0.8), heightPx = 200, title = "a: pulseTrain(..., domain = 0.0..0.8)", yDomain = domain((-0.1)..1.1))
-    b.plot("b", domain(0.0..0.8), heightPx = 200, title = "b: pulseTrain(...) over (0.0..0.8)", yDomain = domain((-0.1)..1.1))
+    a.plot(
+        "a",
+        domain(0.0..0.8),
+        heightPx = 200,
+        title = "a: pulseTrain(..., domain = 0.0..0.8)",
+        yDomain = domain((-0.1)..1.1),
+    )
+    b.plot(
+        "b",
+        domain(0.0..0.8),
+        heightPx = 200,
+        title = "b: pulseTrain(...) over (0.0..0.8)",
+        yDomain = domain((-0.1)..1.1),
+    )
 
     (a - b).plot(
         "difference",
         domain(0.0..0.8),
         title = "a - b: construction domain - over domain",
-        yDomain = domain((-0.1)..0.1)
+        yDomain = domain((-0.1)..0.1),
     )
 }
 ```
@@ -565,8 +622,6 @@ val relabeled = hannWindow() over (0.0..0.8)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/domain-over-hannwindow-difference.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="120" name="functions-domain-over-hannwindow-difference"}
 :::static
-import afield.math.functions.Functions
-
 with(Functions) {
     val shaped = hannWindow(0.0..0.8)
     val relabeled = hannWindow() over (0.0..0.8)
@@ -575,7 +630,7 @@ with(Functions) {
         "plot",
         domain(0.0..0.8),
         title = "hannWindow: construction domain - over domain",
-        yDomain = domain((-1.0)..1.0)
+        yDomain = domain((-1.0)..1.0),
     )
 }
 ```
@@ -608,8 +663,6 @@ val custom = pulseTrain(0.1).stretchBy(0.0..4.0, warp = smoothStep(0.0, 1.0))
 ```
 
 ```diffstatic {data-lang=kotlin}
-import afield.math.functions.Functions
-
 with(Functions) {
     val tone = ((sin(5) * 1.4) / delay(0.4) / slower(2)) over (0.0..10.0)
     val forever = sin(0.25) / all
@@ -626,17 +679,21 @@ with(Functions) {
     val palette = [
         sin(2.0) over (0.0..1.0),
         saw(0.12) over (0.0..0.6),
-        pulseTrain(period = 0.08, duty = 0.35, domain = 0.0..0.8)
+        pulseTrain(period = 0.08, duty = 0.35, domain = 0.0..0.8),
     ]
 
     val movingOverlap = ramp(0.02, 0.18, 0.0..10.0)
     val melody = palette.sequence(overlap = movingOverlap)
-    val endless = (palette.randomSequence(seed = 4, overlap = 0.05, slot = ramp(0.18, 0.42, 0.0..10.0)) / all) over (0.0..10.0)
+    val endless =
+        (palette.randomSequence(seed = 4, overlap = 0.05, slot = ramp(0.18, 0.42, 0.0..10.0)) / all) over (0.0..10.0)
     val shuffled = palette.shuffleLoop(seed = 9, overlap = 0.12) over (0.0..12.0)
     val morph = palette.morph(ramp(0.0, 2.0, 0.0..1.0))
 
     val tornTape =
-        (sin(5.0) / slower(ramp(0.8, 1.6, 0.0..4.0)) / turbulence(amount = 0.035, frequency = 11.0) / randomCopyPaste(grain = ramp(0.08, 0.2, 0.0..4.0), seed = 5)) over (0.0..4.0)
+        (sin(5.0) /
+            slower(ramp(0.8, 1.6, 0.0..4.0)) /
+            turbulence(amount = 0.035, frequency = 11.0) /
+            randomCopyPaste(grain = ramp(0.08, 0.2, 0.0..4.0), seed = 5)) over (0.0..4.0)
 }
 ```
 
@@ -693,51 +750,77 @@ of `-1.5..1.5`, against the ramp itself as a dashed reference:
 ```diffstatic {data-lang=kotlin}
 val sweep = ramp(-1.5, 1.5) over Functions.Domain.of(0.0, 1.0)
 
-sweep.fold(0.7)                            // reflects back at the threshold
-sweep.softClip(2.5)                        // a bounded S, smooth everywhere
-sweep.chebyshev(3)                         // the 3rd Chebyshev polynomial
-sweep.rectify(Functions.RectifyMode.FULL)  // absolute value, folded about zero
+sweep.fold(0.7) // reflects back at the threshold
+sweep.softClip(2.5) // a bounded S, smooth everywhere
+sweep.chebyshev(3) // the 3rd Chebyshev polynomial
+sweep.rectify(Functions.RectifyMode.FULL) // absolute value, folded about zero
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/waveshaper_transfer_box.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="functions-waveshaper-transfer"}
 :::static
-import afield.geometry.path.FLine
-import afield.geometry.path.byDashing
-import afield.math.functions.Functions
-
 with(Functions) {
     // Push a rising ramp through each shaper: what comes out is the shape it imposes.
     val sweep = ramp(-1.5, 1.5) over Functions.Domain.of(0.0, 1.0)
 
     :::fold the plot frame: 900 x 380 px, y up, values -1.7..1.7
-    val x0 = 40.0; val x1 = 940.0; val y0 = 30.0; val y1 = 410.0
-    val lo = -1.7; val hi = 1.7
+    val x0 = 40.0
+    val x1 = 940.0
+    val y0 = 30.0
+    val y1 = 410.0
+    val lo = -1.7
+    val hi = 1.7
     val yScale = -(y1 - y0) / (hi - lo)
     val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
     fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
         val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
         val parts = if (dashed) line.byDashing(10f, 7f) else [line]
-        return parts.onEach { it.color = color; it.thickness = thickness }
+        return parts.onEach {
+            it.color = color
+            it.thickness = thickness
+        }
     }
     val guides = [
-        fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
-        fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
+        fline {
+            moveTo(x0, y0)
+            lineTo(x1, y0)
+            lineTo(x1, y1)
+            lineTo(x0, y1)
+            lineTo(x0, y0)
+            color = vec(1.0, 1.0, 1.0, 0.28)
+            thickness = 1.6
+        },
+        fline {
+            moveTo(x0, zeroY)
+            lineTo(x1, zeroY)
+            color = vec(1.0, 1.0, 1.0, 0.30)
+            thickness = 1.2
+        },
     ]
-    val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
-    val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
-    val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
+    val orange = vec(0.97, 0.45, 0.18, 1.0)
+    val cyan = vec(0.30, 0.79, 0.94, 1.0)
+    val grey = vec(0.6, 0.6, 0.6, 1.0)
+    val violet = vec(0.66, 0.50, 0.98, 1.0)
+    val green = vec(0.45, 0.85, 0.45, 1.0)
+    val pink = vec(0.96, 0.45, 0.72, 1.0)
     :::endfold
 
     lines(
-        guides + curve(sweep, grey, 2.0, dashed = true) +
+        guides +
+            curve(sweep, grey, 2.0, dashed = true) +
             curve(sweep.fold(0.7), cyan, 2.4) +
             curve(sweep.softClip(2.5), orange, 2.4) +
             curve(sweep.chebyshev(3), violet, 2.4) +
             curve(sweep.rectify(Functions.RectifyMode.FULL), green, 2.4),
-        channel = "transfer", w = 980.0, h = 440.0, fitToSize = false
+        channel = "transfer",
+        w = 980.0,
+        h = 440.0,
+        fitToSize = false,
     )
-    markdown("notes", "**transfer curves over a -1.5..1.5 sweep**: input ramp (grey, dashed), fold(0.7) (cyan), " +
-        "softClip(2.5) (orange), chebyshev(3) (violet), rectify(FULL) (green)")
+    markdown(
+        "notes",
+        "**transfer curves over a -1.5..1.5 sweep**: input ramp (grey, dashed), fold(0.7) (cyan), " +
+            "softClip(2.5) (orange), chebyshev(3) (violet), rectify(FULL) (green)",
+    )
 }
 ```
 
@@ -753,41 +836,67 @@ corners in it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/waveshaper_on_sine_box.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="functions-waveshaper-on-sine"}
 :::static
-import afield.geometry.path.FLine
-import afield.geometry.path.byDashing
-import afield.math.functions.Functions
-
 with(Functions) {
     val tone = sin(frequency = 2.0, amplitude = 1.2)
 
     :::fold the plot frame: 900 x 380 px, y up, values -1.4..1.4
-    val x0 = 40.0; val x1 = 940.0; val y0 = 30.0; val y1 = 410.0
-    val lo = -1.4; val hi = 1.4
+    val x0 = 40.0
+    val x1 = 940.0
+    val y0 = 30.0
+    val y1 = 410.0
+    val lo = -1.4
+    val hi = 1.4
     val yScale = -(y1 - y0) / (hi - lo)
     val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
     fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
         val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
         val parts = if (dashed) line.byDashing(10f, 7f) else [line]
-        return parts.onEach { it.color = color; it.thickness = thickness }
+        return parts.onEach {
+            it.color = color
+            it.thickness = thickness
+        }
     }
     val guides = [
-        fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
-        fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
+        fline {
+            moveTo(x0, y0)
+            lineTo(x1, y0)
+            lineTo(x1, y1)
+            lineTo(x0, y1)
+            lineTo(x0, y0)
+            color = vec(1.0, 1.0, 1.0, 0.28)
+            thickness = 1.6
+        },
+        fline {
+            moveTo(x0, zeroY)
+            lineTo(x1, zeroY)
+            color = vec(1.0, 1.0, 1.0, 0.30)
+            thickness = 1.2
+        },
     ]
-    val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
-    val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
-    val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
+    val orange = vec(0.97, 0.45, 0.18, 1.0)
+    val cyan = vec(0.30, 0.79, 0.94, 1.0)
+    val grey = vec(0.6, 0.6, 0.6, 1.0)
+    val violet = vec(0.66, 0.50, 0.98, 1.0)
+    val green = vec(0.45, 0.85, 0.45, 1.0)
+    val pink = vec(0.96, 0.45, 0.72, 1.0)
     :::endfold
 
     lines(
-        guides + curve(tone, grey, 2.0, dashed = true) +
+        guides +
+            curve(tone, grey, 2.0, dashed = true) +
             curve(tone.softClip(2.0), cyan, 2.4) +
             curve(tone.fold(0.8), orange, 2.4) +
             curve(tone.clip(0.7), pink, 2.4),
-        channel = "on-sine", w = 980.0, h = 440.0, fitToSize = false
+        channel = "on-sine",
+        w = 980.0,
+        h = 440.0,
+        fitToSize = false,
     )
-    markdown("notes", "**a sine of amplitude 1.2, shaped**: the sine (grey, dashed), softClip(2.0) (cyan), " +
-        "fold(0.8) (orange), clip(0.7) (pink)")
+    markdown(
+        "notes",
+        "**a sine of amplitude 1.2, shaped**: the sine (grey, dashed), softClip(2.0) (cyan), " +
+            "fold(0.8) (orange), clip(0.7) (pink)",
+    )
 }
 ```
 
@@ -831,10 +940,7 @@ A fuller gesture layers the vocabulary. Here a tone's time-base slows across the
 turbulence roughens it before a mirror about its centre:
 
 ```diffstatic {data-lang=kotlin}
-val tornTape = (cos(5.0)
-    / slower(2.0)
-    / turbulence(amount = 0.04, frequency = 11.0)
-    / mirror()) over (0.0..4.0)
+val tornTape = (cos(5.0) / slower(2.0) / turbulence(amount = 0.04, frequency = 11.0) / mirror()) over (0.0..4.0)
 tornTape.plot("tornTape")
 ```
 
@@ -849,10 +955,6 @@ envelope, then folded, then soft-clipped:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/composed_pipeline_box.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="functions-composed-pipeline"}
 :::static
-import afield.geometry.path.FLine
-import afield.geometry.path.byDashing
-import afield.math.functions.Functions
-
 with(Functions) {
     // One signal, plotted at each stage of its pipeline.
     val carrier = sin(frequency = 3.0, amplitude = 1.0)
@@ -862,30 +964,59 @@ with(Functions) {
     val stage2 = stage1.softClip(2.0)
 
     :::fold the plot frame: 900 x 380 px, y up, values -1.3..1.3
-    val x0 = 40.0; val x1 = 940.0; val y0 = 30.0; val y1 = 410.0
-    val lo = -1.3; val hi = 1.3
+    val x0 = 40.0
+    val x1 = 940.0
+    val y0 = 30.0
+    val y1 = 410.0
+    val lo = -1.3
+    val hi = 1.3
     val yScale = -(y1 - y0) / (hi - lo)
     val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
     fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
         val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
         val parts = if (dashed) line.byDashing(10f, 7f) else [line]
-        return parts.onEach { it.color = color; it.thickness = thickness }
+        return parts.onEach {
+            it.color = color
+            it.thickness = thickness
+        }
     }
     val guides = [
-        fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
-        fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
+        fline {
+            moveTo(x0, y0)
+            lineTo(x1, y0)
+            lineTo(x1, y1)
+            lineTo(x0, y1)
+            lineTo(x0, y0)
+            color = vec(1.0, 1.0, 1.0, 0.28)
+            thickness = 1.6
+        },
+        fline {
+            moveTo(x0, zeroY)
+            lineTo(x1, zeroY)
+            color = vec(1.0, 1.0, 1.0, 0.30)
+            thickness = 1.2
+        },
     ]
-    val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
-    val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
-    val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
+    val orange = vec(0.97, 0.45, 0.18, 1.0)
+    val cyan = vec(0.30, 0.79, 0.94, 1.0)
+    val grey = vec(0.6, 0.6, 0.6, 1.0)
+    val violet = vec(0.66, 0.50, 0.98, 1.0)
+    val green = vec(0.45, 0.85, 0.45, 1.0)
+    val pink = vec(0.96, 0.45, 0.72, 1.0)
     :::endfold
 
     lines(
         guides + curve(stage0, grey, 2.0, dashed = true) + curve(stage1, orange, 2.4) + curve(stage2, cyan, 2.4),
-        channel = "stages", w = 980.0, h = 440.0, fitToSize = false
+        channel = "stages",
+        w = 980.0,
+        h = 440.0,
+        fitToSize = false,
     )
-    markdown("notes", "**carrier x envelope, stage by stage**: the product (grey, dashed), after fold(0.75) (orange), " +
-        "after softClip(2.0) (cyan)")
+    markdown(
+        "notes",
+        "**carrier x envelope, stage by stage**: the product (grey, dashed), after fold(0.75) (orange), " +
+            "after softClip(2.0) (cyan)",
+    )
 }
 ```
 
@@ -918,7 +1049,6 @@ grows a set of behaviourally distinct shapes from a seed using the same pure-`Fn
 All snippets below assume:
 
 ```diffstatic {data-lang=kotlin}
-import afield.math.functions.Functions
 with(Functions) {
     // examples here
 }
@@ -946,9 +1076,6 @@ val f = fn { x -> x * x }
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = fn { x -> kotlin.math.sin(20.0 * x) * kotlin.math.exp(-3.0 * x) }
     f.plot()
@@ -975,9 +1102,6 @@ both unbounded.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/c-constant.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-c-constant"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = (constant(0.6) + valueNoise(5, 12.0, 0.05)).clamp(0.0, 1.0)
     f.plot()
@@ -1000,9 +1124,6 @@ val gate = one()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/zero-one.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-zero-one"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val gate = (one() - pulseTrain(period = 0.2, duty = 0.8)).clip(1.0)
     gate.plot()
@@ -1025,9 +1146,6 @@ val x = identity()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/identity.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-identity"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val spiralT = identity().pow(1.7).withEdge(Functions.EdgeMode.CLAMP)
     spiralT.plot()
@@ -1050,9 +1168,6 @@ val r = ramp(0.0, 1.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/ramp.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-ramp"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val env = ramp(0.1, 0.9).crossfade(ramp(0.9, 0.1), center = 0.5, width = 0.25)
     env.plot()
@@ -1075,9 +1190,6 @@ val s = step(0.5)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/step.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-step"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val trem = step(sin(2.0, amplitude = 0.15, offset = 0.5))
     trem.plot()
@@ -1100,9 +1212,6 @@ val s = smoothStep(0.2, 0.8)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/smoothstep.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-smoothstep"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val mask = smoothStep(valueNoise(2, 3.0, 0.2), 0.9)
     mask.plot()
@@ -1130,9 +1239,6 @@ should continue beyond `0..1`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/tween-ease.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-tween-ease"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     // A settling spring, textured with a windowed tremor — the headline motion gesture.
     val motion = tween(-1.0, 1.0, 0.0..1.0, Functions.Easing.BACK_OUT)
@@ -1161,9 +1267,6 @@ val f = sin(frequency = 3.0, amplitude = 0.8)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/sin.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-sin"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = sin(2.0, phase = valueNoise(7, 5.0, 0.3), amplitude = 0.7)
     f.plot()
@@ -1186,9 +1289,6 @@ val f = cos(frequency = 2.0, amplitude = 1.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cos.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cos"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = cos(5.0, phase = ramp(0.0, Math.PI), amplitude = 0.5)
     f.plot()
@@ -1211,9 +1311,6 @@ val f = saw(period = 0.25, amplitude = 1.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/saw.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-saw"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = saw(period = 0.14, amplitude = 0.7).softClip(1.6)
     f.plot()
@@ -1236,9 +1333,6 @@ val f = triangle(period = 0.2, amplitude = 0.9)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/triangle.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-triangle"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = triangle(0.2, amplitude = fbm(9, 1.0, 0.6))
     f.plot()
@@ -1261,9 +1355,6 @@ val f = square(period = 0.25, duty = 0.5, amplitude = 1.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/square.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-square"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = square(0.125, duty = sin(1.0, amplitude = 0.2, offset = 0.5), amplitude = 0.8)
     f.plot()
@@ -1286,9 +1377,6 @@ val f = pulseTrain(period = 0.2, duty = 0.35)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulsetrain.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulsetrain"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = pulseTrain(period = 0.15, duty = 0.4, rise = 0.01, fall = 0.02, profile = HANN, jitter = 0.08, seed = 42)
     f.plot()
@@ -1311,9 +1399,6 @@ val f = pulseTrainWidth(period = 0.2, width = 0.08)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulsetrainwidth.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulsetrainwidth"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = pulseTrainWidth(period = 0.18, width = sin(0.5, amplitude = 0.05, offset = 0.08), profile = GAUSSIAN)
     f.plot()
@@ -1336,9 +1421,6 @@ val f = pulseTrainHz(frequency = 8.0, duty = 0.3)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulsetrainhz.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulsetrainhz"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = pulseTrainHz(frequency = ramp(4.0, 16.0), duty = 0.22, edge = Functions.PulseEdge.SINE)
     f.plot()
@@ -1361,9 +1443,6 @@ val f = pulseTrainPattern(doubleArrayOf(1.0, 0.5, 1.0, 0.2), period = 0.2)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulsetrainpattern.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulsetrainpattern"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = pulseTrainPattern(doubleArrayOf(1.0, 0.0, 0.8, 0.3, 1.2), period = 0.11, jitter = 0.1, profile = TRIANGLE)
     f.plot()
@@ -1386,9 +1465,6 @@ val f = impulseTrain(period = 0.1, width = 0.01)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/impulsetrain.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-impulsetrain"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = impulseTrain(period = 0.12, width = 0.02, sigma = 0.09, jitter = 0.2, seed = 9)
     f.plot()
@@ -1411,9 +1487,6 @@ val f = pulseBurst(count = 5, period = 0.1, start = 0.2)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulseburst.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulseburst"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = pulseBurst(9, period = 0.07, start = 0.12, edge = EXP, curve = 3.0, profile = HANN)
     f.plot()
@@ -1436,9 +1509,6 @@ val f = gaussian(mean = 0.5, sigma = 0.1, amplitude = 1.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/gaussian.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-gaussian"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = gaussian(mean = sin(0.5, amplitude = 0.15, offset = 0.5), sigma = 0.08, amplitude = 0.9)
     f.plot()
@@ -1464,9 +1534,6 @@ val f = sin(2.0) + saw(0.2)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/plus-minus.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-plus-minus"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = (sin(3.0) * pulseTrain(0.18)) / (one() + constant(0.2))
     f.plot()
@@ -1489,9 +1556,6 @@ val f = sin(2.0).mapY { it * 0.5 }
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/mapy.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-mapy"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = valueNoise(3, 14.0, 1.0).mapY { v -> kotlin.math.sign(v) * kotlin.math.sqrt(kotlin.math.abs(v)) }
     f.plot()
@@ -1514,9 +1578,6 @@ val f = sin(2.0).mapX { x -> x * 0.5 }
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/mapx.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-mapx"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = sin(4.0).mapX { x -> x + 0.08 * kotlin.math.sin(16.0 * x) }
     f.plot()
@@ -1539,9 +1600,6 @@ val f = sin(2.0).shift(0.1)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/shift-delay.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-shift-delay"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = valueNoise(7, 10.0, 0.7).delay(sin(0.5, amplitude = 0.03))
     f.plot()
@@ -1564,9 +1622,6 @@ val f = saw(0.2).scaleX(2.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/scalex-faster-slower.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-scalex-faster-slower"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = (sin(3.0).faster(2.0) / slower(0.75)).scaleX(scale = ramp(0.8, 1.6), about = 0.5)
     f.plot()
@@ -1589,9 +1644,6 @@ val f = sin(2.0).scaleY(0.5).offsetY(0.2)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/scaley-offsety.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-scaley-offsety"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = fbm(1, 2.0, 1.0).scaleY(smoothStep(0.0, 1.0)).offsetY(valueNoise(2, 3.0, 0.1))
     f.plot()
@@ -1614,9 +1666,6 @@ val f = ramp(0.0, 1.0).reverse()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/reverse-flip.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-reverse-flip"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = (sin(2.0).reverse(0.5) + triangle(0.12)).flip()
     f.plot()
@@ -1639,9 +1688,6 @@ val f = sin(3.0).abs()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/abs-sign-rectify.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-abs-sign-rectify"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = fbmPerlin(7, 2.5, 1.0).sign().rectify()
     f.plot()
@@ -1664,9 +1710,6 @@ val f = ramp(0.0, 1.0).pow(2.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pow-exp-log.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pow-exp-log"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = (gaussian(0.5, 0.12, 1.0) + constant(1.2)).log(kotlin.math.E).exp()
     f.plot()
@@ -1689,9 +1732,6 @@ val f = sin(2.0).clip(0.7)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/clamp-clip-softclip-fold-wrapy.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-clamp-clip-softclip-fold-wrapy"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = (saw(0.11) * constant(2.5)).fold(0.8).softClip(1.4).wrapY(-0.7, 0.7)
     f.plot()
@@ -1714,9 +1754,6 @@ val f = sin(3.0).withEdge(Functions.EdgeMode.CLAMP)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/withedge.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-withedge"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = gaussian(0.5, 0.08, 1.0).withEdge(Functions.EdgeMode.MIRROR, outside = valueNoise(8, 4.0, 0.05))
     f.plot()
@@ -1739,9 +1776,6 @@ val f = sin(2.0).quantize(8)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/quantize-bitcrush.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-quantize-bitcrush"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = (fbm(4, 3.0, 1.0).bitCrush(5)).mix(sin(1.0), constant(0.2))
     f.plot()
@@ -1764,9 +1798,6 @@ val f = sin(2.0).mix(saw(0.2), 0.5)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/mix-crossfade.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-mix-crossfade"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = triangle(0.12).crossfade(fbmPerlin(11, 2.0, 1.0), center = 0.55, width = 0.35)
     f.plot()
@@ -1789,9 +1820,6 @@ val f = sin(2.0).cut(0.2..0.8)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cut-trim-slice-replace.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cut-trim-slice-replace"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = saw(0.18).replace(0.35..0.6, pulseTrain(0.08, duty = 0.4))
     f.plot()
@@ -1814,11 +1842,9 @@ val f = sin(2.0).window(hannWindow())
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/window-amplitudemod-ringmod-warp.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-window-amplitudemod-ringmod-warp"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val f = sin(4.0).amplitudeMod(fbm(2, 6.0, 0.7), depth = 0.8).ringMod(cos(9.0), 0.5).warp(valueNoise(2, 5.0, 1.0), 0.05)
+    val f =
+        sin(4.0).amplitudeMod(fbm(2, 6.0, 0.7), depth = 0.8).ringMod(cos(9.0), 0.5).warp(valueNoise(2, 5.0, 1.0), 0.05)
     f.plot()
 }
 ```
@@ -1839,9 +1865,6 @@ val f = sin(2.0).sampleHold(0.05)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/quantizex-samplehold.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-quantizex-samplehold"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = valueNoise(9, 16.0, 0.8).quantizeX(step = ramp(0.02, 0.09)).sampleHold(step = 0.03, offset = 0.01)
     f.plot()
@@ -1864,9 +1887,6 @@ val f = sin(2.0).phaseMod(sin(8.0), 0.02)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/phasemod-frequencymod.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-phasemod-frequencymod"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = triangle(0.2).frequencyMod(fbmPerlin(5, 4.0, 1.0), depth = 0.04)
     f.plot()
@@ -1889,9 +1909,6 @@ val f = sin(2.0).saturate(1.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/saturate-jitterx.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-saturate-jitterx"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = pulseTrain(0.15, duty = 0.3).jitterX(0.03, seed = 7).saturate(1.8)
     f.plot()
@@ -1914,9 +1931,6 @@ val f = sin(2.0).repeat(0.25, 0.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/repeat-mirrorrepeat-tile-pad-echo.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-repeat-mirrorrepeat-tile-pad-echo"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = saw(0.2).mirrorRepeat(0.17).tile(6, 0.12).pad(0.05, 0.08, 0.0).echo(0.03, 0.45, repeats = 6)
     f.plot()
@@ -1939,9 +1953,6 @@ val slope = sin(2.0).derivative()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/derivative-integral.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-derivative-integral"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val area = (pulseTrain(0.2) * hannWindow()).integral(step = 1e-3, origin = 0.0)
     area.plot()
@@ -1964,11 +1975,16 @@ val sm = valueNoise(3, 14.0, 1.0).movingAverage(0.08, samples = 64)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/convolve-correlate-movingaverage-blur.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-convolve-correlate-movingaverage-blur"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val f = fbm(9, 2.0, 1.0).convolve(gaussianWindow(-0.06..0.06, sigma = 0.3), samples = 41, kernelDomain = -0.06..0.06, normalize = true).blur(0.01, samples = 31)
+    val f =
+        fbm(9, 2.0, 1.0)
+            .convolve(
+                gaussianWindow(-0.06..0.06, sigma = 0.3),
+                samples = 41,
+                kernelDomain = -0.06..0.06,
+                normalize = true,
+            )
+            .blur(0.01, samples = 31)
     f.plot()
 }
 ```
@@ -1991,9 +2007,6 @@ val piped = sin(5.0) / stretch(0.0..10.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/over-pipe.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-over-pipe"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = ((sin(5.0) * 1.4) / delay(0.4) / softClipBy(1.2)) over (0.0..10.0)
     f.plot()
@@ -2016,9 +2029,6 @@ val f = sin(3.0) / gain(0.5)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fntransform.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fntransform"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val shape = delay(0.1) / gain(0.75) / hold(0.02)
     val f = pulseTrain(0.12) / shape
@@ -2045,9 +2055,6 @@ val f = doubleArrayOf(0.0, 1.0, 0.4, -0.2).toFn(domain = 0.0..1.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/doublearray-tofn-list-tofn.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-doublearray-tofn-list-tofn"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = [0.0, 0.4, 1.0, 0.2, -0.4].toFn(domain = 0.0..1.0, interpolation = CUBIC).softClip(1.5)
     f.plot()
@@ -2070,9 +2077,6 @@ val ys = sin(2.0).sampleAt(doubleArrayOf(0.0, 0.25, 0.5))
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/sampleat-samplesat.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-sampleat-samplesat"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = fbmPerlin(8, 2.0, 1.0)
     val pts = f.samplesAt(DoubleArray(32) { it / 31.0 })
@@ -2096,9 +2100,6 @@ val ys = sin(3.0).toDoubleArray(128)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/todoublearray-tovec2list.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-todoublearray-tovec2list"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val pts = pulseTrain(0.13, duty = 0.32).toVec2List(256)
     val f = pts.map { it.y.toDouble() }.toFn(domain = 0.0..1.0, interpolation = NEAREST).withName("toVec2List")
@@ -2122,9 +2123,6 @@ val c0 = sin(2.0).cursor(start = 0.0, step = 0.01)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cursor.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cursor"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val scratch = fbm(6, 3.0, 0.8).cursor(0.0, 0.002).next(1024).toFn(0.0..1.0)
     scratch.plot()
@@ -2147,9 +2145,6 @@ val first = sin(2.0).stream(start = 0.0, step = 0.01).take(8).toList()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/stream-streamwithx.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-stream-streamwithx"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val pairs = pulseTrain(0.15).streamWithX(0.0, 0.005).take(200).toList()
     val f = pairs.map { it.second }.toFn(domain = 0.0..1.0, interpolation = NEAREST).withName("streamWithX")
@@ -2173,9 +2168,6 @@ val line = sin(2.0).toFLine(samples = 600)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/tofline.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-tofline"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = sin(2.0) + fbm(5, 6.0, 0.2)
     val line = f.toFLine(samples = 1400, xScale = 980.0, yScale = 170.0, xOffset = 30.0, yOffset = 220.0)
@@ -2202,9 +2194,6 @@ val w = hannWindow()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/hannwindow-hammingwindow-blackmanwindow-gaussianwindow.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-hannwindow-hammingwindow-blackmanwindow-gaussianwindow"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val w = gaussianWindow(sigma = 0.25).mix(blackmanWindow(), constant(0.4))
     w.plot()
@@ -2227,9 +2216,6 @@ val n = valueNoise(seed = 1, frequency = 12.0, amplitude = 0.5)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/whitenoise-valuenoise-perlinnoise.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-whitenoise-valuenoise-perlinnoise"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val n = whiteNoise(4, 24.0, 0.3).mix(perlinNoise(5, 3.0, 0.7), constant(0.65))
     n.plot()
@@ -2252,9 +2238,6 @@ val n = fbm(seed = 2, frequency = 2.0, amplitude = 1.0, octaves = 5)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fbm-fbmperlin-randomwalk.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fbm-fbmperlin-randomwalk"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val n = fbmPerlin(4, 1.8, 1.0, octaves = 6).mix(randomWalk(8, step = 0.03, amplitude = 0.02), constant(0.3))
     n.plot()
@@ -2277,9 +2260,6 @@ val f = fbm(4, 2.0, 1.0).autoScale()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/autoscale-znormalize-whitencdf.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-autoscale-znormalize-whitencdf"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = valueNoise(12, 18.0, 1.0).zNormalize().whitenCdf(bins = 128, targetMin = -1.0, targetMax = 1.0)
     f.plot()
@@ -2302,9 +2282,6 @@ val s = sin(2.0).sampleUniform(32)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/sampleuniform-samplejittered-samplerandom.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-sampleuniform-samplejittered-samplerandom"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = fbm(2, 3.0, 1.0)
     val s = f.sampleJittered(128, jitter = 0.4, seed = 9)
@@ -2328,9 +2305,6 @@ val zc = sin(6.0).sampleZeroCrossings()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/samplebydensity-samplezerocrossings-samplepeaks.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-samplebydensity-samplezerocrossings-samplepeaks"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val source = sin(3.0) + fbm(1, 7.0, 0.25)
     val peaks = source.samplePeaks(20)
@@ -2357,9 +2331,6 @@ val pts = points(0.0 to 0.0, 0.4 to 1.0, 1.0 to 0.2)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/points.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-points"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val pts = points(0.0 to 0.0, 0.12 to 0.9, 0.32 to -0.4, 0.75 to 0.7, 1.0 to 0.0)
     val f = rbf(pts, kernel = RbfKernels.gaussian(2.4), smoothing = 1e-3) over (0.0..1.0)
@@ -2383,11 +2354,13 @@ val f = piecewise(zero(), 0.0..0.5 to one(), 0.5..1.0 to zero())
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/piecewise.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-piecewise"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val f = piecewise(default = valueNoise(3, 8.0, 0.1), 0.0..0.33 to sin(3.0), 0.33..0.66 to saw(0.2), 0.66..1.0 to pulseTrain(0.1))
+    val f = piecewise(
+        default = valueNoise(3, 8.0, 0.1),
+        0.0..0.33 to sin(3.0),
+        0.33..0.66 to saw(0.2),
+        0.66..1.0 to pulseTrain(0.1),
+    )
     f.plot()
 }
 ```
@@ -2408,11 +2381,23 @@ val f = piecewiseLinear([Keyframe(0.0, 0.0, "linear"), Keyframe(1.0, 1.0, "linea
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/piecewiselinear-catmullromspline-monotonecubic.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-piecewiselinear-catmullromspline-monotonecubic"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val f = catmullRomSpline([Keyframe(0.0, 0.0, "linear"), Keyframe(0.2, 0.9, "linear"), Keyframe(0.6, -0.4, "linear"), Keyframe(1.0, 0.2, "linear")], alpha = 0.5).mix(monotoneCubic([Keyframe(0.0, 0.1, "linear"), Keyframe(0.4, 0.8, "linear"), Keyframe(1.0, 0.0, "linear")]), constant(0.35))
+    val f =
+        catmullRomSpline(
+                [
+                    Keyframe(0.0, 0.0, "linear"),
+                    Keyframe(0.2, 0.9, "linear"),
+                    Keyframe(0.6, -0.4, "linear"),
+                    Keyframe(1.0, 0.2, "linear"),
+                ],
+                alpha = 0.5,
+            )
+            .mix(
+                monotoneCubic(
+                    [Keyframe(0.0, 0.1, "linear"), Keyframe(0.4, 0.8, "linear"), Keyframe(1.0, 0.0, "linear")],
+                ),
+                constant(0.35),
+            )
     f.plot()
 }
 ```
@@ -2433,11 +2418,17 @@ val f = bSplineQuadratic([Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "line
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/hermitefromhandles-bsplinequadratic.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-hermitefromhandles-bsplinequadratic"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val f = hermiteFromHandles([Keyframe(0.0, 0.0, "linear"), Keyframe(0.3, 0.8, "linear"), Keyframe(0.75, -0.2, "linear"), Keyframe(1.0, 0.1, "linear")]).softClip(constant(1.2))
+    val f =
+        hermiteFromHandles(
+                [
+                    Keyframe(0.0, 0.0, "linear"),
+                    Keyframe(0.3, 0.8, "linear"),
+                    Keyframe(0.75, -0.2, "linear"),
+                    Keyframe(1.0, 0.1, "linear"),
+                ],
+            )
+            .softClip(constant(1.2))
     f.plot()
 }
 ```
@@ -2458,11 +2449,27 @@ val f = stepHold([Keyframe(0.0, 0.0, "linear"), Keyframe(0.5, 1.0, "linear"), Ke
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/stephold-nearestvalue-cosineinterp-smoothstepinterp-smootherstepinterp.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-stephold-nearestvalue-cosineinterp-smoothstepinterp-smootherstepinterp"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val f = cosineInterp([Keyframe(0.0, 0.2, "linear"), Keyframe(0.3, 0.9, "linear"), Keyframe(0.8, -0.4, "linear"), Keyframe(1.0, 0.1, "linear")]).mix(smootherStepInterp([Keyframe(0.0, 0.2, "linear"), Keyframe(0.3, 0.9, "linear"), Keyframe(0.8, -0.4, "linear"), Keyframe(1.0, 0.1, "linear")]), constant(0.5))
+    val f =
+        cosineInterp(
+                [
+                    Keyframe(0.0, 0.2, "linear"),
+                    Keyframe(0.3, 0.9, "linear"),
+                    Keyframe(0.8, -0.4, "linear"),
+                    Keyframe(1.0, 0.1, "linear"),
+                ],
+            )
+            .mix(
+                smootherStepInterp(
+                    [
+                        Keyframe(0.0, 0.2, "linear"),
+                        Keyframe(0.3, 0.9, "linear"),
+                        Keyframe(0.8, -0.4, "linear"),
+                        Keyframe(1.0, 0.1, "linear"),
+                    ],
+                ),
+                constant(0.5),
+            )
     f.plot()
 }
 ```
@@ -2483,11 +2490,16 @@ val f = differentiate(sin(2.0))
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/gaussiansmooth-differentiate-fromkeyframeeditor-resample.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-gaussiansmooth-differentiate-fromkeyframeeditor-resample"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val f = gaussianSmooth(fromKeyframeEditor([Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "bezier"), Keyframe(1.0, 0.1, "linear")]), sigma = 0.03, taps = 41).let { resample(it, sampleCount = 512, interpolation = CUBIC) }
+    val f =
+        gaussianSmooth(
+                fromKeyframeEditor(
+                    [Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "bezier"), Keyframe(1.0, 0.1, "linear")],
+                ),
+                sigma = 0.03,
+                taps = 41,
+            )
+            .let { resample(it, sampleCount = 512, interpolation = CUBIC) }
     f.plot()
 }
 ```
@@ -2508,11 +2520,9 @@ val f = rbfThinPlate(points(0.0 to 0.0, 0.4 to 1.0, 1.0 to 0.2))
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/rbf-rbfquadratic-rbfcubic-rbfthinplate-and-fn-variants.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-rbf-rbfquadratic-rbfcubic-rbfthinplate-and-fn-variants"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val f = sin(2.0).rbf(points(0.1 to 0.6, 0.52 to -0.3, 0.9 to 0.7), kernel = RbfKernels.gaussian(2.5), smoothing = 1e-4)
+    val f =
+        sin(2.0).rbf(points(0.1 to 0.6, 0.52 to -0.3, 0.9 to 0.7), kernel = RbfKernels.gaussian(2.5), smoothing = 1e-4)
     f.plot()
 }
 ```
@@ -2536,9 +2546,6 @@ val w = spliceWindow(fadeIn = 0.1, fadeOut = 0.1)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/splicewindow.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-splicewindow"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val w = spliceWindow(0.2, 0.35).pow(constant(0.7))
     w.plot()
@@ -2563,15 +2570,14 @@ val t = timeline {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinegraph-timeline.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinegraph-timeline"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val t = timeline(name = "scene") { mark("start")
-    pulseTrain(0.12).place(duration = 0.7, mapMode = Functions.ChunkMapMode.WRAP)
-    fbm(4, 3.0, 0.35).overlap(amount = 0.15, duration = 0.8, blend = ADD)
-    moveToMark("start", 0.35)
-    saw(0.2).splice(lookBack = 0.2, duration = 0.5) }
+    val t = timeline(name = "scene") {
+        mark("start")
+        pulseTrain(0.12).place(duration = 0.7, mapMode = Functions.ChunkMapMode.WRAP)
+        fbm(4, 3.0, 0.35).overlap(amount = 0.15, duration = 0.8, blend = ADD)
+        moveToMark("start", 0.35)
+        saw(0.2).splice(lookBack = 0.2, duration = 0.5)
+    }
     t.plot()
 }
 ```
@@ -2592,9 +2598,6 @@ val phrase = (sin(2.0) over (0.0..1.0)) then (saw(0.15) over (0.0..1.0))
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/then-overlapping-overlapwith.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-then-overlapping-overlapwith"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val phrase = ((sin(2.0) over (0.0..1.0)) overlapping ramp(0.05, 0.25)) with (pulseTrain(0.1) / gain(0.4))
     val same = sin(2.0).overlapping(0.25, saw(0.15))
@@ -2618,9 +2621,6 @@ val phrase = [sin(2.0), saw(0.12), square(0.18)].sequence(overlap = 0.05)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/list-sequence-palindrome-roundrobin.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-list-sequence-palindrome-roundrobin"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val cycle = [sin(2.0), pulseTrain(0.09), fbm(3, 4.0, 0.4)].palindrome(overlap = ramp(0.02, 0.12)) / repeatEvery(2.0)
     cycle.plot()
@@ -2643,9 +2643,6 @@ val f = [sin(2.0), saw(0.2)].sequenceLoop() over (0.0..8.0)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/list-sequenceloop-shuffleloop.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-list-sequenceloop-shuffleloop"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = [sin(2.0), saw(0.13), pulseTrain(0.08)].shuffleLoop(seed = 12, overlap = 0.1) over (0.0..12.0)
     f.plot()
@@ -2668,11 +2665,12 @@ val f = [sin(2.0), saw(0.2)].randomSequence(seed = 3, slot = 0.4) over (0.0..6.0
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/list-randomsequence-weightedsequence.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-list-randomsequence-weightedsequence"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val f = [sin(2.0), saw(0.12), pulseTrain(0.08)].weightedSequence([0.6, ramp(0.1, 0.35), 0.15], seed = 7, overlap = ramp(0.02, 0.08)) over (0.0..10.0)
+    val f = [sin(2.0), saw(0.12), pulseTrain(0.08)].weightedSequence(
+        [0.6, ramp(0.1, 0.35), 0.15],
+        seed = 7,
+        overlap = ramp(0.02, 0.08),
+    ) over (0.0..10.0)
     f.plot()
 }
 ```
@@ -2693,9 +2691,6 @@ val f = [sin(2.0), saw(0.2) * 0.3].stack()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/list-stack-average-select-morph.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-list-stack-average-select-morph"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = [sin(2.0), saw(0.14), fbm(3, 3.0, 0.6)].morph(ramp(0.0, 2.0))
     f.plot()
@@ -2718,11 +2713,15 @@ val f = sin(3.0) / stretch(0.0..4.0) / faster(2.0) / lowPass(0.04) / gain(0.8)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/transform-palette.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-transform-palette"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val f = (fbm(4, 5.0, 1.0) / all / slower(ramp(0.8, 1.7)) / highPass(remap(0.02, 0.08)) / turbulence(0.02, ramp(8.0, 18.0)) / crush(5) / mirrorEvery(0.4)) over (0.0..4.0)
+    val f =
+        (fbm(4, 5.0, 1.0) /
+            all /
+            slower(ramp(0.8, 1.7)) /
+            highPass(remap(0.02, 0.08)) /
+            turbulence(0.02, ramp(8.0, 18.0)) /
+            crush(5) /
+            mirrorEvery(0.4)) over (0.0..4.0)
     f.plot()
 }
 ```
@@ -2751,14 +2750,11 @@ val f = (ramp(-2.0, 2.0) over (0.0..1.0)) / fold(0.7)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fold-rectify-quantize.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fold-rectify-quantize"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     // A loud sine, folded then rectified then staircased — a full distortion chain.
     val f = (sin(3.0) * 1.6 / fold(0.7) / rectify() / quantize(8)) over (0.0..2.0)
     f.plot("waveshaped")
-    // Compare the raw transfer curves by sweeping a ramp through each shaper.
+    // Compare the shapes produced by applying each shaper to the same sine samples.
     val sweep = ((sin(0.5) * 2.0) over (0.0..2.0))
     (sweep / fold(0.6)).plot("fold(0.6)")
     (sweep / quantize(5)).plot("quantize(5)")
@@ -2771,16 +2767,22 @@ with(Functions) {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/waveshape-transfer-curves.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-waveshape-transfer-curves"}
 :::static
-import afield.math.functions.Functions
-
 with(Functions) {
     // A ramp sweeping -2..2 across the window: plotting a shaper of it against x draws
     // that shaper's transfer curve directly — the shape it imposes on its input.
     val sweep = ramp(-2.0, 2.0) over (0.0..1.0)
     sweep.withName("input sweep -2..2").plot(channel = "sweep", title = "input: ramp -2..2", heightPx = 150)
     (sweep / fold(0.7)).plot(channel = "fold", title = "fold(0.7) — wavefolder triangle", heightPx = 150)
-    (sweep / rectify(Functions.RectifyMode.FULL)).plot(channel = "rectFull", title = "rectify(FULL) — |x|", heightPx = 150)
-    (sweep / rectify(Functions.RectifyMode.HALF)).plot(channel = "rectHalf", title = "rectify(HALF) — max(0, x)", heightPx = 150)
+    (sweep / rectify(Functions.RectifyMode.FULL)).plot(
+        channel = "rectFull",
+        title = "rectify(FULL) — |x|",
+        heightPx = 150,
+    )
+    (sweep / rectify(Functions.RectifyMode.HALF)).plot(
+        channel = "rectHalf",
+        title = "rectify(HALF) — max(0, x)",
+        heightPx = 150,
+    )
     (sweep / quantize(6)).plot(channel = "quant", title = "quantize(6) — staircase", heightPx = 150)
     (sweep / crush(3)).plot(channel = "crush", title = "crush(3) — bit-depth steps", heightPx = 150)
     (sweep / chebyshev(3)).plot(channel = "cheb", title = "chebyshev(3) — T₃ (clamps to [-1, 1])", heightPx = 150)
@@ -2797,17 +2799,19 @@ with(Functions) {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/chebyshev-harmonic-ladder.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-chebyshev-harmonic-ladder"}
 :::static
-import afield.math.functions.Functions
-
 with(Functions) {
     val fundamental = sin(1.0) over (0.0..1.0)
-    fundamental.withName("fundamental (harmonic 1)").plot(channel = "fund", title = "input: sine, 1 cycle", heightPx = 150)
+    fundamental
+        .withName("fundamental (harmonic 1)")
+        .plot(channel = "fund", title = "input: sine, 1 cycle", heightPx = 150)
     (fundamental / chebyshev(2)).plot(channel = "h2", title = "chebyshev(2) — 2nd harmonic", heightPx = 150)
     (fundamental / chebyshev(3)).plot(channel = "h3", title = "chebyshev(3) — 3rd harmonic", heightPx = 150)
     (fundamental / chebyshev(4)).plot(channel = "h4", title = "chebyshev(4) — 4th harmonic", heightPx = 150)
     (fundamental / chebyshev(5)).plot(channel = "h5", title = "chebyshev(5) — 5th harmonic", heightPx = 150)
     // order is an Fn, so a value ramp 1..6 sweeps the harmonic across the window.
-    fundamental.chebyshev(ramp(1.0, 6.0) over (0.0..1.0)).plot(channel = "sweep", title = "chebyshev(order = ramp 1..6) — harmonic sweep", heightPx = 160)
+    fundamental
+        .chebyshev(ramp(1.0, 6.0) over (0.0..1.0))
+        .plot(channel = "sweep", title = "chebyshev(order = ramp 1..6) — harmonic sweep", heightPx = 160)
 }
 ```
 
@@ -2815,8 +2819,6 @@ Because a waveshaper reshapes *amplitude*, `chebyshev` colours any bounded signa
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/chebyshev-perlin-waveshaping.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-chebyshev-perlin-waveshaping"}
 :::static
-import afield.math.functions.Functions
-
 with(Functions) {
     // Amplified toward [-1, 1] so the shaper has full range (chebyshev clamps internally).
     val noise = perlinNoise(seed = 7L, frequency = 6.0, amplitude = 1.6) over (0.0..1.0)
@@ -2843,11 +2845,11 @@ val f = sin(3.0) / copyPaste(0.1..0.3, 0.7..0.9)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/copypaste-randomrepeat-randomcopypaste.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-copypaste-randomrepeat-randomcopypaste"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val f = (pulseTrain(0.08) / randomRepeat(period = ramp(0.12, 0.28), seed = 4) / randomCopyPaste(grain = ramp(0.04, 0.12), seed = 8, density = ramp(0.35, 0.85))) over (0.0..6.0)
+    val f =
+        (pulseTrain(0.08) /
+            randomRepeat(period = ramp(0.12, 0.28), seed = 4) /
+            randomCopyPaste(grain = ramp(0.04, 0.12), seed = 8, density = ramp(0.35, 0.85))) over (0.0..6.0)
     f.plot()
 }
 ```
@@ -2870,9 +2872,6 @@ val g = timelineGraph {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/repeattofit-stretchtofit-snapshot-lookback.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-repeattofit-stretchtofit-snapshot-lookback"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val g = timelineGraph {
         stretchToFit(fbmPerlin(2, 2.0, 1.0), duration = 3.0)
@@ -2899,11 +2898,17 @@ val f = sin(3.0).granular(grainSize = 0.05, spacing = 0.04)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/granular.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-granular"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val f = fbmPerlin(1, 3.0, 0.8).granular(grainSize = 0.04, spacing = 0.027, jitter = 0.35, overlap = 2, seed = 3, window = gaussianWindow(0.0..1.0, 0.3))
+    val f =
+        fbmPerlin(1, 3.0, 0.8)
+            .granular(
+                grainSize = 0.04,
+                spacing = 0.027,
+                jitter = 0.35,
+                overlap = 2,
+                seed = 3,
+                window = gaussianWindow(0.0..1.0, 0.3),
+            )
     f.plot()
 }
 ```
@@ -2924,9 +2929,6 @@ val s = sin(2.0).lowpassStream(alpha = 0.2).take(64).toList()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/lowpassstream-highpassstream.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-lowpassstream-highpassstream"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val s = (pulseTrain(0.12) + valueNoise(5, 22.0, 0.2)).highpassStream(alpha = 0.88, step = 0.004).take(256).toList()
     val f = s.toFn(domain = 0.0..1.0).withName("highpassStream")
@@ -2950,9 +2952,6 @@ val result = demo(sampleCount = 256)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/demo.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-demo"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val result = demo(sampleCount = 1024, seed = 77, domain = -0.25..1.25, printSummary = false)
     val series = result.series.first { it.name == "mixed" }
@@ -2987,6 +2986,7 @@ val b = sin(5, domain = 0..1)
 
 ```diffstatic {data-lang=kotlin}
 val a = Functions.Domain.centered(0.5, 0.42).intersect(domain(0.0..1.0))
+
 // → Domain(0.08..0.92)
 ```
 
@@ -2999,13 +2999,13 @@ Containment checks ask whether an x value lies inside a domain.
 Reports that `0.2` lies inside the domain.
 
 ```diffstatic {data-lang=kotlin}
-val inside = d.containsInclusive(0.2)   // → true
+val inside = d.containsInclusive(0.2) // → true
 ```
 
 **Creative**
 
 ```diffstatic {data-lang=kotlin}
-val mask = if (d.contains(0.77)) one() else zero()   // 0.77 is inside → one()
+val mask = if (d.contains(0.77)) one() else zero() // 0.77 is inside → one()
 ```
 
 #### expand / shrink
@@ -3017,13 +3017,13 @@ Expansion and shrinking grow or contract a domain around its endpoints.
 Widens the domain by `0.1` on both sides.
 
 ```diffstatic {data-lang=kotlin}
-val wide = d.expand(0.1)          // → Domain(-0.1..1.1)
+val wide = d.expand(0.1) // → Domain(-0.1..1.1)
 ```
 
 **Creative**
 
 ```diffstatic {data-lang=kotlin}
-val band = d.expand(0.2).shrink(0.05)   // → Domain(-0.15..1.15)
+val band = d.expand(0.2).shrink(0.05) // → Domain(-0.15..1.15)
 ```
 
 #### shift / scale
@@ -3035,13 +3035,13 @@ Domain shifts and scales move or zoom intervals without sampling an `Fn`.
 Shifts the whole domain forward by `0.15`.
 
 ```diffstatic {data-lang=kotlin}
-val moved = d.shift(0.15)         // → Domain(0.15..1.15)
+val moved = d.shift(0.15) // → Domain(0.15..1.15)
 ```
 
 **Creative**
 
 ```diffstatic {data-lang=kotlin}
-val zoom = d.scale(0.5, about = d.center).shift(0.1)   // → Domain(0.35..0.85)
+val zoom = d.scale(0.5, about = d.center).shift(0.1) // → Domain(0.35..0.85)
 ```
 
 #### lerp / alphaOf
@@ -3053,7 +3053,7 @@ Interpolation helpers convert between normalized alpha and concrete x positions.
 Returns the point one-quarter of the way across the domain.
 
 ```diffstatic {data-lang=kotlin}
-val x = d.lerp(0.25)              // → 0.25 (a quarter across 0..1)
+val x = d.lerp(0.25) // → 0.25 (a quarter across 0..1)
 ```
 
 **Creative**
@@ -3072,13 +3072,13 @@ Domain edge helpers keep x values inside an interval by clamping, wrapping, or r
 Clamps an outside value back to the domain's upper edge.
 
 ```diffstatic {data-lang=kotlin}
-val x = d.clamp(1.2)              // → 1.0 (pulled back to the upper edge)
+val x = d.clamp(1.2) // → 1.0 (pulled back to the upper edge)
 ```
 
 **Creative**
 
 ```diffstatic {data-lang=kotlin}
-val pingPong = d.reflect(2.7)     // → 0.7 (folded back into 0..1)
+val pingPong = d.reflect(2.7) // → 0.7 (folded back into 0..1)
 ```
 
 #### intersect / union
@@ -3090,13 +3090,13 @@ Domain set operations find overlap or coverage across intervals.
 Computes the overlapping interval between `d` and `0.2..0.7`.
 
 ```diffstatic {data-lang=kotlin}
-val i = d.intersect(domain(0.2..0.7))   // → Domain(0.2..0.7)
+val i = d.intersect(domain(0.2..0.7)) // → Domain(0.2..0.7)
 ```
 
 **Creative**
 
 ```diffstatic {data-lang=kotlin}
-val merged = d.union(domain(-0.3..0.3)).intersect(domain(-0.1..0.9))   // → Domain(-0.1..0.9)
+val merged = d.union(domain(-0.3..0.3)).intersect(domain(-0.1..0.9)) // → Domain(-0.1..0.9)
 ```
 
 
@@ -3156,9 +3156,6 @@ val f = sin(2.0).withName("lead")
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/withdomain-withname.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-withdomain-withname"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = ((valueNoise(4, 12.0, 0.5) over (0.1..0.9)) / all).withName("noise-bed")
     f.plot()
@@ -3186,9 +3183,6 @@ val y = cur.next()
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cursor-next.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cursor-next"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val cur = fbm(5, 3.0, 0.7).cursor(0.0, 0.002)
     repeat(32) { cur.next() }
@@ -3213,9 +3207,6 @@ val ys = sin(2.0).cursor().next(16)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cursor-next-count.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cursor-next-count"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val ys = pulseTrain(0.15).cursor(start = 0.25, step = 0.003).next(1024)
     val f = ys.toFn(domain = 0.0..1.0, interpolation = NEAREST).withName("cursor batch")
@@ -3262,11 +3253,14 @@ val s = ch.sampleAt(0.3)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinechunk-contains-sampleat.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinechunk-contains-sampleat"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val ch = Functions.TimelineChunk(fbm(2, 2.0, 0.5), sourceDomain = 0.0..1.0, domain = 1.0..2.0, mapMode = Functions.ChunkMapMode.WRAP, window = hannWindow(0.0..1.0))
+    val ch = Functions.TimelineChunk(
+        fbm(2, 2.0, 0.5),
+        sourceDomain = 0.0..1.0,
+        domain = 1.0..2.0,
+        mapMode = Functions.ChunkMapMode.WRAP,
+        window = hannWindow(0.0..1.0),
+    )
     val on = ch.contains(1.35)
     val f = fn(1.0..2.0, "chunk sample") { x -> ch.sampleAt(x) ?: 0.0 }
     f.plot()
@@ -3289,11 +3283,13 @@ val w = Functions.TimelineChunk(sin(2.0), domain = 0.0..1.0).weightAt(0.5)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinechunk-weightat.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinechunk-weightat"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val ch = Functions.TimelineChunk(saw(0.2), domain = 0.0..1.0, window = spliceWindow(0.2, 0.2, 0.0..1.0), gain = valueNoise(1, 4.0, 0.2))
+    val ch = Functions.TimelineChunk(
+        saw(0.2),
+        domain = 0.0..1.0,
+        window = spliceWindow(0.2, 0.2, 0.0..1.0),
+        gain = valueNoise(1, 4.0, 0.2),
+    )
     val w = ch.weightAt(0.6)
     val f = fn(name = "chunk weight") { x -> ch.weightAt(x) }
     f.plot()
@@ -3319,9 +3315,6 @@ val y = g.eval(0.4)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinegraph-eval-invoke.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinegraph-eval-invoke"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val g = timelineGraph {
         pulseTrain(0.11).place(duration = 0.7)
@@ -3343,20 +3336,19 @@ Exposes the timeline graph as a named `Fn`.
 ```diffstatic {data-lang=kotlin}
 val f = timelineGraph {
     sin(2.0).place()
-}.asFn("main")
+}
+    .asFn("main")
 ```
 
 **Creative**
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinegraph-asfn-tap.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinegraph-asfn-tap"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val delayed = timelineGraph {
         saw(0.2).place()
-    }.tap(offset = 0.12, name = "echoTap")
+    }
+        .tap(offset = 0.12, name = "echoTap")
     delayed.plot()
 }
 ```
@@ -3384,9 +3376,6 @@ val t = timeline {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/mark-marker.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-mark-marker"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val t = timeline {
         mark("intro", 0.5)
@@ -3417,9 +3406,6 @@ val t = timeline {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/moveto-movetomark-advance-rewind.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-moveto-movetomark-advance-rewind"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val t = timeline {
         mark("drop")
@@ -3449,9 +3435,6 @@ val t = timeline {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/repeattofit-stretchtofit.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-repeattofit-stretchtofit"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val t = timeline {
         stretchToFit(fbmPerlin(9, 2.0, 0.6), duration = 3.5, blend = ADD, gain = 0.45)
@@ -3478,9 +3461,6 @@ val t = timeline {
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-place-overlap-splice.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-place-overlap-splice"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val t = timeline {
         saw(0.18).place(duration = 1.1)
@@ -3503,21 +3483,21 @@ Builds a graph from placed chunks and creates an empty named timeline.
 val g = timelineGraph {
     one().place()
 }
-val cs = timeline(start = 0.0) { }.withName("empty")
+val cs = timeline(start = 0.0) {}.withName("empty")
 ```
 
 **Creative**
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/chunks-buildgraph-build.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-chunks-buildgraph-build"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val f = Functions.TimelineBuilder(start = 0.0).apply {
-        sin(2.0).place()
-        fbm(3, 4.0, 0.3).overlap(0.1, blend = ADD)
-    }.build(name = "stacked")
+    val f =
+        Functions.TimelineBuilder(start = 0.0)
+            .apply {
+                sin(2.0).place()
+                fbm(3, 4.0, 0.3).overlap(0.1, blend = ADD)
+            }
+            .build(name = "stacked")
     f.plot()
 }
 ```
@@ -3543,11 +3523,9 @@ val f = rbf(points(0.0 to 0.0, 1.0 to 1.0), kernel = RbfKernels.linear)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/functions-rbfkernels-linear-quadratic-cubic-thinplate.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-functions-rbfkernels-linear-quadratic-cubic-thinplate"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val f = rbf(points(0.0 to 0.0, 0.3 to 1.0, 0.8 to -0.5, 1.0 to 0.2), kernel = RbfKernels.thinPlate, smoothing = 1e-3)
+    val f =
+        rbf(points(0.0 to 0.0, 0.3 to 1.0, 0.8 to -0.5, 1.0 to 0.2), kernel = RbfKernels.thinPlate, smoothing = 1e-3)
     f.plot()
 }
 ```
@@ -3568,9 +3546,6 @@ val f = rbf(points(0.0 to 0.0, 1.0 to 0.4), kernel = RbfKernels.gaussian(2.0))
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/functions-rbfkernels-gaussian-multiquadric-inverse.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-functions-rbfkernels-gaussian-multiquadric-inverse"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
     val f = rbf(points(0.0 to 0.2, 0.4 to 0.9, 1.0 to -0.1), kernel = RbfKernels.inverseQuadratic(0.5), base = sin(2.0))
     f.plot()
@@ -3594,11 +3569,13 @@ val y = i.eval(0.5)
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/rbfinterpolator-eval.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-rbfinterpolator-eval"}
 :::static
-import afield.animation.keyframes.Keyframe
-import afield.math.functions.Functions
-
 with(Functions) {
-    val i = RbfInterpolator(points(0.0 to 0.0, 0.2 to 0.9, 0.9 to -0.2), RbfKernels.gaussian(3.0), smoothing = 1e-4, base = sin(1.0))
+    val i = RbfInterpolator(
+        points(0.0 to 0.0, 0.2 to 0.9, 0.9 to -0.2),
+        RbfKernels.gaussian(3.0),
+        smoothing = 1e-4,
+        base = sin(1.0),
+    )
     val y = i.eval(0.63)
     val f = fn(name = "rbf interpolator") { x -> i.eval(x) }
     f.plot()
@@ -3610,10 +3587,7 @@ with(Functions) {
 The final plot answers “what shape did I make?” `browseGraph()` answers “how did each occurrence become part of that shape?” It keeps the root function’s x-axis fixed while you select nodes in the structural graph:
 
 ```diffstatic {data-lang=kotlin}
-val gesture = (
-    sin(2.0).shift(0.12) *
-    tween(0.15, 1.0, 0.0..1.0, Functions.Easing.CUBIC_IN_OUT)
-).softClip(0.8)
+val gesture = (sin(2.0).shift(0.12) * tween(0.15, 1.0, 0.0..1.0, Functions.Easing.CUBIC_IN_OUT)).softClip(0.8)
 
 gesture.browseGraph(channel = "components")
 ```
@@ -3648,11 +3622,14 @@ Effect is called *contextual effect* rather than contribution. For addition it b
 The occurrence browser answers "how did each piece become the final shape?"; `browseRewrite(...)` answers "what did each rewrite do to that shape?" It applies the rules one at a time and steps through the result on the same time-base, drawing *before* (dashed), *after* (cyan), and *delta* (orange) for each rule:
 
 ```diffstatic {data-lang=kotlin}
-gesture.browseRewrite("""
+gesture.browseRewrite(
+    """
 #fnrewrite
 saw => op=triangle
 **/[role=amplitude] => *= 0.5
-""", channel = "rewrite")
+""",
+    channel = "rewrite",
+)
 ```
 
 `graphRewriteTrace(...)` is the non-HTML form, and it also accepts a `List<FnGraphRule>`, so the same before/after lanes work for the pattern rules and programmatic rules described below, not just the string DSL. Together, the two browsers close the loop between structural editing and perceptual confirmation: rewrite the graph, then watch exactly which occurrence moved and by how much.
@@ -3669,37 +3646,43 @@ Inspects the graph of a nested function, then rewrites the `saw` under a `sin` i
 
 ```diffstatic {data-lang=kotlin}
 val base = sin(sin(saw(0.25)))
-val changed = base.rewriteKotlin("""
+val changed =
+    base.rewriteKotlin(
+        """
 #fnrewrite
 sin/*/saw => op=triangle
-""")
+""",
+    )
 ```
 
 **Creative**
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-rewrite-graph-inspection.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-rewrite-graph-inspection"}
 :::static
-import afield.math.functions.Functions
-import afield.math.functions.graphSvg
-import afield.math.functions.rewriteKotlin
-
 with(Functions) {
     val base = sin(sin(saw(0.25))).withName("nested carrier")
-    val changed = base.rewriteKotlin("""
+    val changed =
+        base.rewriteKotlin(
+            """
 #fnrewrite
 sin/*/saw => op=triangle
 sin/**/[tag=number][value>0.2] => = 0.5
-""")
+""",
+        )
 
     :::fold render the before/after graphs
     // The two graphs are stacked, not side by side — the original grid was a single column.
-    markdown("graph", """
+    markdown(
+        "graph",
+        """
         #### before
         ${base.graphSvg(width = 1060, nodeWidth = 186.0, nodeHeight = 52.0, xGap = 200.0, yGap = 70.0, maxDepth = 5)}
 
         #### after
         ${changed.graphSvg(width = 1060, nodeWidth = 186.0, nodeHeight = 52.0, xGap = 200.0, yGap = 70.0, maxDepth = 5)}
-    """, width = 1120)
+    """,
+        width = 1120,
+    )
     :::endfold
 }
 ```
@@ -3714,7 +3697,8 @@ Each non-constant card also carries a **sparkline**: a faint teal waveform drawn
 
 ```diffstatic {data-lang=kotlin}
 val source = (saw(0.2) * 0.5).withName("gesture")
-val spec = """
+val spec =
+    """
 #fnrewrite
 saw -> op=triangle                 # `->` reads naturally
 **/[role=amplitude] → *= 0.75      # unicode arrows are welcome too
@@ -3765,7 +3749,8 @@ That rule doubles the current numeric value, then adds one to the doubled value.
 Lines starting with `#` or `//` are comments. The `#fnrewrite` header is optional for runtime parsing, but useful inside Kotlin triple-quoted strings because the Monaco language extension recognizes it:
 
 ```diffstatic {data-lang=kotlin}
-val spec = """
+val spec =
+    """
 #fnrewrite
 sin/**/[tag=number] => *= @{1.0 + depth * 0.1}
 """
@@ -3974,10 +3959,13 @@ The older `${...}` form is still accepted for compatibility, but `@{...}` is the
 Use `rewriteKotlin(...)` in live Field code. It accepts all rewrite syntax, including `@{...}` RHS snippets:
 
 ```diffstatic {data-lang=kotlin}
-val g = f.rewriteKotlin("""
+val g =
+    f.rewriteKotlin(
+        """
 #fnrewrite
 sin/**/[tag=number] => *= @{1.1}
-""")
+""",
+    )
 ```
 
 The lower-level `rewrite(...)` function is useful when the RHS is plain numbers and actions, or when you are supplying your own evaluator through `FnRewriteOptions`. It does not depend on the live-code compiler at all.
@@ -3992,7 +3980,7 @@ val eliminateAddZero = FnGraphRule(
     matches = { c ->
         c.op == "add" && c.node.child("right")?.graphNode()?.numbers?.get("value") == 0.0
     },
-    replace = { _, copy -> copy.graphNode().child("left") ?: copy }
+    replace = { _, copy -> copy.graphNode().child("left") ?: copy },
 )
 
 val run = ((sin(2.0) + 0.0) + 0.0).rewriteUntilStable(eliminateAddZero)
@@ -4019,8 +4007,8 @@ The selector DSL edits one matched node in place. Its algebraic sibling is *patt
 
 ```diffstatic {data-lang=kotlin}
 val simplified = ((sin(2.0) + 0.0) + 0.0).rewritePatterns(
-    "add(?x, 0) => ?x",       // additive identity, applied to a fixed point
-    "multiply(?x, 1) => ?x"   // multiplicative identity
+    "add(?x, 0) => ?x", // additive identity, applied to a fixed point
+    "multiply(?x, 1) => ?x", // multiplicative identity
 )
 println(simplified.function.graphNode().op) // sin
 ```
@@ -4029,7 +4017,7 @@ println(simplified.function.graphNode().op) // sin
 
 ```diffstatic {data-lang=kotlin}
 val folded = (sin(1.0) + sin(1.0)).rewriteUntilStable(
-    fnRule("fold ?x + ?x", "add(?x, ?x)") { m -> m.sub("x") * 2.0 }
+    fnRule("fold ?x + ?x", "add(?x, ?x)") { m -> m.sub("x") * 2.0 },
 )
 ```
 
@@ -4043,7 +4031,7 @@ val run = evolve(
     seed = saw(1.0),
     iterations = 80,
     rngSeed = 1L,
-    fitness = matchFitness(target, samples = 128, complexityWeight = 0.02)
+    fitness = matchFitness(target, samples = 128, complexityWeight = 0.02),
 )
 println("${run.bestScore} after ${run.steps.size} accepted mutations")
 run.best.browseGraph(channel = "evolved")
@@ -4066,7 +4054,7 @@ val run = evolve(
     iterations = 120,
     lambda = 8,
     rngSeed = 3L,
-    fitness = matchFitness(target, samples = 160, complexityWeight = 0.01)
+    fitness = matchFitness(target, samples = 160, complexityWeight = 0.01),
 )
 ```
 
@@ -4074,20 +4062,20 @@ The same run, plotted live in a box: target, seed, and `run.best` overlaid by co
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/evolve-overlay.png" wait="2.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-evolve-overlay"}
 :::static
-import afield.geometry.path.FLine
-import afield.math.functions.Functions
-import afield.math.functions.evolve
-import afield.math.functions.matchFitness
-
 with(Functions) {
-    val x0 = 40.0; val x1 = 940.0
-    val y0 = 40.0; val y1 = 400.0
-    val midY = 220.0; val amp = 150.0
+    val x0 = 40.0
+    val x1 = 940.0
+    val y0 = 40.0
+    val y1 = 400.0
+    val midY = 220.0
+    val amp = 150.0
 
-    // Adversarial setup: the target is a half-amplitude sine; the seed is a
-    // full-amplitude COSINE — the wrong op AND the wrong amplitude. A good run must
-    // both substitute the op and dial in the numeric leaves. Fixed rngSeed = 3L, so
-    // the run — and this figure — reproduces exactly.
+    /*
+    Adversarial setup: the target is a half-amplitude sine; the seed is a
+    full-amplitude COSINE — the wrong op AND the wrong amplitude. A good run must
+    both substitute the op and dial in the numeric leaves. Fixed rngSeed = 3L, so
+    the run — and this figure — reproduces exactly.
+    */
     val target = sin(frequency = 1.0, amplitude = 0.5)
     val seed = cos(frequency = 1.0, amplitude = 1.0)
     val run = evolve(
@@ -4095,28 +4083,45 @@ with(Functions) {
         iterations = 120,
         lambda = 8,
         rngSeed = 3L,
-        fitness = matchFitness(target, samples = 160, complexityWeight = 0.01)
+        fitness = matchFitness(target, samples = 160, complexityWeight = 0.01),
     )
 
-    fun asLine(fn: Functions.Fn, color: Vec4, thickness: Double): FLine =
-        fn.toFLine(0.0 .. 1.0, samples = 160, xScale = x1 - x0, yScale = -amp, xOffset = x0, yOffset = midY).apply {
-            this.color = color; this.thickness = thickness
-        }
+    fun asLine(fn: Functions.Fn, color: Vec4, thickness: Double): FLine = fn.toFLine(0.0..1.0, samples = 160, xScale = x1 - x0, yScale = -amp, xOffset = x0, yOffset = midY).apply {
+        this.color = color
+        this.thickness = thickness
+    }
     fun hLine(y: Double, color: Vec4, thickness: Double): FLine = fline {
-        moveTo(x0, y); lineTo(x1, y); this.color = color; this.thickness = thickness
+        moveTo(x0, y)
+        lineTo(x1, y)
+        this.color = color
+        this.thickness = thickness
     }
     val frame = fline {
-        moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0)
-        color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6
+        moveTo(x0, y0)
+        lineTo(x1, y0)
+        lineTo(x1, y1)
+        lineTo(x0, y1)
+        lineTo(x0, y0)
+        color = vec(1.0, 1.0, 1.0, 0.28)
+        thickness = 1.6
     }
 
     val guides = [frame, hLine(midY, vec(1.0, 1.0, 1.0, 0.30), 1.2)]
-    val seedLine   = asLine(seed,     vec(0.55, 0.55, 0.55, 0.9), 2.0)   // grey: where it started
-    val targetLine = asLine(target,   vec(0.84, 0.15, 0.16, 1.0), 4.5)   // red: the target
-    val bestLine   = asLine(run.best, vec(0.12, 0.47, 0.71, 1.0), 2.4)   // blue: evolved best, on top
+    val seedLine = asLine(seed, vec(0.55, 0.55, 0.55, 0.9), 2.0) // grey: where it started
+    val targetLine = asLine(target, vec(0.84, 0.15, 0.16, 1.0), 4.5) // red: the target
+    val bestLine = asLine(run.best, vec(0.12, 0.47, 0.71, 1.0), 2.4) // blue: evolved best, on top
 
-    lines(guides + seedLine + targetLine + bestLine, channel = "evolve-overlay", w = 980.0, h = 440.0, fitToSize = false)
-    markdown("notes", "**evolve** — seed cosine (grey) → target sine (red); the evolved best (blue) tracks the target. score ${"%.4f".format(run.initialScore)} → ${"%.4f".format(run.bestScore)}")
+    lines(
+        guides + seedLine + targetLine + bestLine,
+        channel = "evolve-overlay",
+        w = 980.0,
+        h = 440.0,
+        fitToSize = false,
+    )
+    markdown(
+        "notes",
+        "**evolve** — seed cosine (grey) → target sine (red); the evolved best (blue) tracks the target. score ${"%.4f".format(run.initialScore)} → ${"%.4f".format(run.bestScore)}",
+    )
     run
 }
 ```
@@ -4134,11 +4139,11 @@ Novelty is measured on a *behavioural* coordinate: what a graph does, not how it
 ```diffstatic {data-lang=kotlin}
 val variety = evolveVariety(
     seed = sin(2.0) * 0.5,
-    count = 6,          // how many mutually-distant gestures to return
+    count = 6, // how many mutually-distant gestures to return
     iterations = 48,
-    rngSeed = 7L,       // same seed + inputs -> identical set
-    neighbours = 3,     // k-nearest novelty
-    normalize = true    // measure distance in *shape*, not amplitude (see below)
+    rngSeed = 7L, // same seed + inputs -> identical set
+    neighbours = 3, // k-nearest novelty
+    normalize = true, // measure distance in *shape*, not amplitude (see below)
 )
 println("spread = ${variety.meanPairwiseDistance}")
 variety.results.forEachIndexed { i, fn -> fn.browseGraph(channel = "variety-$i") }
@@ -4156,14 +4161,12 @@ Passing `normalize = true` z-scores each descriptor (subtract the mean, divide b
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/evolve-variety.png" wait="2.5" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-evolve-variety"}
 :::static
-import afield.geometry.path.FLine
-import afield.math.functions.Functions
-import afield.math.functions.evolveVariety
-
 with(Functions) {
-    // Same run as the harness: grow 6 behaviourally distinct gestures from one seed by
-    // novelty search. normalize = true measures distance in *shape*, not amplitude, so
-    // the set spreads across genuinely different waveforms. Fixed rngSeed = 7L.
+    /*
+    Same run as the harness: grow 6 behaviourally distinct gestures from one seed by
+    novelty search. normalize = true measures distance in *shape*, not amplitude, so
+    the set spreads across genuinely different waveforms. Fixed rngSeed = 7L.
+    */
     val variety = evolveVariety(
         seed = sin(2.0) * 0.5,
         count = 6,
@@ -4171,32 +4174,43 @@ with(Functions) {
         rngSeed = 7L,
         samples = 120,
         neighbours = 3,
-        normalize = true
+        normalize = true,
     )
 
     val cols = 3
-    val cellW = 300.0; val cellH = 180.0
-    val gap = 20.0; val topPad = 44.0
+    val cellW = 300.0
+    val cellH = 180.0
+    val gap = 20.0
+    val topPad = 44.0
     val out = mutableListOf<FLine>()
 
-    // One mini-plot per result, laid out in a grid. Plot the stored *normalized*
-    // behaviour (variety.behaviours[i].samples) so every cell shares one z-scored
-    // scale and the montage reads as pure shape variety, not "the same wave rescaled".
+    /*
+    One mini-plot per result, laid out in a grid. Plot the stored *normalized*
+    behaviour (variety.behaviours[i].samples) so every cell shares one z-scored
+    scale and the montage reads as pure shape variety, not "the same wave rescaled".
+    */
     variety.behaviours.forEachIndexed { i, b ->
-        val col = i % cols; val row = i / cols
+        val col = i % cols
+        val row = i / cols
         val cx0 = gap + col * (cellW + gap)
         val cy0 = topPad + row * (cellH + gap)
         val cyc = cy0 + cellH / 2
-        val amp = (cellH / 2 - 12) / 2.6   // z-scored signal spans roughly +/-2.6
+        val amp = (cellH / 2 - 12) / 2.6 // z-scored signal spans roughly +/-2.6
 
         out += fline {
-            moveTo(cx0, cy0); lineTo(cx0 + cellW, cy0); lineTo(cx0 + cellW, cy0 + cellH)
-            lineTo(cx0, cy0 + cellH); lineTo(cx0, cy0)
-            color = vec(1.0, 1.0, 1.0, 0.22); thickness = 1.2
+            moveTo(cx0, cy0)
+            lineTo(cx0 + cellW, cy0)
+            lineTo(cx0 + cellW, cy0 + cellH)
+            lineTo(cx0, cy0 + cellH)
+            lineTo(cx0, cy0)
+            color = vec(1.0, 1.0, 1.0, 0.22)
+            thickness = 1.2
         }
         out += fline {
-            moveTo(cx0, cyc); lineTo(cx0 + cellW, cyc)
-            color = vec(1.0, 1.0, 1.0, 0.18); thickness = 1.0
+            moveTo(cx0, cyc)
+            lineTo(cx0 + cellW, cyc)
+            color = vec(1.0, 1.0, 1.0, 0.18)
+            thickness = 1.0
         }
         val s = b.samples
         val curve = FLine()
@@ -4205,12 +4219,16 @@ with(Functions) {
             val py = cyc - amp * s[k]
             if (k == 0) curve.moveTo(px, py) else curve.lineTo(px, py)
         }
-        curve.color = vec(0.12, 0.47, 0.71, 1.0); curve.thickness = 2.2
+        curve.color = vec(0.12, 0.47, 0.71, 1.0)
+        curve.thickness = 2.2
         out += curve
     }
 
     lines(out, channel = "evolve-variety", w = 980.0, h = 440.0, fitToSize = false)
-    markdown("notes", "**evolveVariety** — ${variety.results.size} behaviourally distinct gestures from one seed, meanPairwiseDistance ${"%.3f".format(variety.meanPairwiseDistance)} (normalized shape)")
+    markdown(
+        "notes",
+        "**evolveVariety** — ${variety.results.size} behaviourally distinct gestures from one seed, meanPairwiseDistance ${"%.3f".format(variety.meanPairwiseDistance)} (normalized shape)",
+    )
     variety
 }
 ```
@@ -4225,20 +4243,22 @@ This example rewrites a nested graph in two ways: it changes a descendant `saw` 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-rewrite-language-plot.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-rewrite-language-plot"}
 :::static
-import afield.math.functions.Functions
-import afield.math.functions.rewriteKotlin
-
 with(Functions) {
     val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)
-    val changed = base.rewriteKotlin("""
+    val changed =
+        base.rewriteKotlin(
+            """
 #fnrewrite
 sin/*/saw => op=triangle
 sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}
 **/[role=amplitude] => *= @{if (parentOp == "sin") 0.75 else 1.0}
-""")
+""",
+        )
     base.withName("before rewrite").plot(0.0..3.0, channel = "before", heightPx = 240, title = "before rewrite")
     changed.withName("after rewrite").plot(0.0..3.0, channel = "after", heightPx = 240, title = "after rewrite")
-    (changed - base).withName("rewrite delta").plot(0.0..3.0, channel = "delta", heightPx = 220, title = "after - before")
+    (changed - base)
+        .withName("rewrite delta")
+        .plot(0.0..3.0, channel = "delta", heightPx = 220, title = "after - before")
 }
 ```
 

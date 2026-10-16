@@ -41,9 +41,6 @@ a `radius` without colliding.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/capture_apply.png" wait="2.0" capture="box" open-outputs="true" w="900" h="620" padding="16"}
 :::static
-import afield.graphics.vulkan.buffers.Structure
-import afield.animation.keyframes.KeyframeScope
-
 // Two independent uniform structures, as a glow pass and a blur pass would each have.
 val glow = Structure()
 val blur = Structure()
@@ -72,12 +69,14 @@ edited()
 // bare property name, not on the qualified key name.
 fun live(s: Structure, p: String) = s.bindings[p]?.invoke()?.toString() ?: "{dim:unbound}"
 // Read now, while the edit is still applied — the next line puts the old values back.
-val liveRows = [
-    "glow.radius" to live(glow, "radius"),
-    "glow.intensity" to live(glow, "intensity"),
-    "blur.radius" to live(blur, "radius"),
-    "glow.*glow@radius*" to live(glow, "glow@radius")
-].joinToString("\n") { (k, v) -> "| $k | $v |" }
+val liveRows =
+    [
+            "glow.radius" to live(glow, "radius"),
+            "glow.intensity" to live(glow, "intensity"),
+            "blur.radius" to live(blur, "radius"),
+            "glow.*glow@radius*" to live(glow, "glow@radius"),
+        ]
+        .joinToString("\n") { (k, v) -> "| $k | $v |" }
 
 // Put the original back, and diff to show the scope is exactly where it started.
 captured()
@@ -85,7 +84,9 @@ val restored = scope.capture()
 
 :::fold render the four panels
 // The card's width is pinned so the figure stays legible — see the persistence example below.
-markdown("keys", """
+markdown(
+    "keys",
+    """
     #### 1 — capture()
     ${captured.h}
 
@@ -102,7 +103,9 @@ markdown("keys", """
     ~~~
 ${captured.diffText(restored, "captured", "restored")}
     ~~~
-""", width = 820)
+""",
+    width = 820,
+)
 :::endfold
 ```
 
@@ -158,13 +161,20 @@ val keys = KeyframeScope()
 
 thisBox.controlGroup("projected light") {
     keyframeFloatSlider(
-        scope = keys, name = "light.gain", label = "gain",
-        min = 0.0, max = 4.0,
-        get = { gain }, set = { gain = it }
+        scope = keys,
+        name = "light.gain",
+        label = "gain",
+        min = 0.0,
+        max = 4.0,
+        get = { gain },
+        set = { gain = it },
     )
     keyframeCheckbox(
-        scope = keys, name = "light.projectedOnly", label = "projected only",
-        get = { projectedOnly }, set = { projectedOnly = it }
+        scope = keys,
+        name = "light.projectedOnly",
+        label = "projected only",
+        get = { projectedOnly },
+        set = { projectedOnly = it },
     )
 }
 ```
@@ -191,8 +201,7 @@ class Look : KeyframeContributor {
     }
 }
 
-val keys = KeyframeScope(schemaVersion = 2)
-    .include(Look(), prefix = "foreground")
+val keys = KeyframeScope(schemaVersion = 2).include(Look(), prefix = "foreground")
 ```
 
 Composition-specific choices stay in the contributor: what a lane means, when its setter is queued,
@@ -222,17 +231,17 @@ the entire frame is a `vec4 tint` in the shader's uniform block, and the only th
 that uniform is a keyframe.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/gpu_tint.png" wait="0.25" timeout="20" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true name="keyframer-gpu-tint" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.animation.keyframes.KeyframeScope
-
 var m = Mesh()
 var module = moduleHere()
 
 module += "mainMesh" to m
 renderer += module
 
-// Fully qualified, and it has to be: a uniform block makes moduleHere() generate a Kotlin class of the
-// same (capitalised) name straight into this box's preamble, and a declaration in the box beats
-// any import. The block here is `look`, so the trap would bite anything called `Look`.
+/*
+Fully qualified, and it has to be: a uniform block makes moduleHere() generate a Kotlin class of the
+same (capitalised) name straight into this box's preamble, and a declaration in the box beats
+any import. The block here is `look`, so the trap would bite anything called `Look`.
+*/
 val camera = afield.graphics.vulkan.util.Camera()
 camera.at = vec(0, 0, 7)
 camera.target = vec(0, 0, 0)
@@ -247,27 +256,37 @@ m.set(3 * N, 1 * N) {
         val a0 = it / N.toDouble() * Math.PI * 2.0
         val a1 = (it + 0.62) / N.toDouble() * Math.PI * 2.0
         pos.add(
-            0.0, 0.0, 0.0,
-            2.4 * kotlin.math.cos(a0), 2.4 * kotlin.math.sin(a0), 0.0,
-            2.4 * kotlin.math.cos(a1), 2.4 * kotlin.math.sin(a1), 0.0
+            0.0,
+            0.0,
+            0.0,
+            2.4 * kotlin.math.cos(a0),
+            2.4 * kotlin.math.sin(a0),
+            0.0,
+            2.4 * kotlin.math.cos(a1),
+            2.4 * kotlin.math.sin(a1),
+            0.0,
         )
         3 { col.add(1, 1, 1, 1) }
         tri.add(0 + 3 * it, 1 + 3 * it, 2 + 3 * it)
     }
 }
 
-// ---- the keyframe part -------------------------------------------------------------------
-// `module.look` resolves to the block's live uniform Structure (Module.kt:217), so the ordinary
-// Structure target drives it. This is the overload to use for a module uniform.
+/*
+---- the keyframe part -------------------------------------------------------------------
+`module.look` resolves to the block's live uniform Structure (Module.kt:217), so the ordinary
+Structure target drives it. This is the overload to use for a module uniform.
+*/
 val scope = KeyframeScope()
 scope.target("tint", module.look)
 
 val cool = scope.Key(mutableMapOf("tint" to vec(0.20, 0.65, 1.00, 1.0)))
 val warm = scope.Key(mutableMapOf("tint" to vec(1.00, 0.50, 0.12, 1.0)))
 
-// A quarter of the way from cool to warm — NOT the midpoint. These two are nearly
-// complementary, so t = 0.5 blends to (0.60, 0.575, 0.56): a grey indistinguishable from an
-// untinted fan, which would make the picture prove nothing. t = 0.25 is (0.40, 0.6125, 0.78).
+/*
+A quarter of the way from cool to warm — NOT the midpoint. These two are nearly
+complementary, so t = 0.5 blends to (0.60, 0.575, 0.56): a grey indistinguishable from an
+untinted fan, which would make the picture prove nothing. t = 0.25 is (0.40, 0.6125, 0.78).
+*/
 scope.interpolate(cool, warm, 0.25)()
 ```
 
@@ -295,8 +314,6 @@ Each frame is a separate native Vulkan window capture. `t` is the only differenc
 runs, and everything that moves is a uniform a keyframe wrote.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t00.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true name="keyframer-strip-t00" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.animation.keyframes.KeyframeScope
-
 var m = Mesh()
 var module = moduleHere()
 module += "mainMesh" to m
@@ -311,9 +328,15 @@ m.set(3 * N, 1 * N) {
         val a0 = it / N.toDouble() * Math.PI * 2.0
         val a1 = (it + 0.62) / N.toDouble() * Math.PI * 2.0
         pos.add(
-            0.0, 0.0, 0.0,
-            2.4 * kotlin.math.cos(a0), 2.4 * kotlin.math.sin(a0), 0.0,
-            2.4 * kotlin.math.cos(a1), 2.4 * kotlin.math.sin(a1), 0.0
+            0.0,
+            0.0,
+            0.0,
+            2.4 * kotlin.math.cos(a0),
+            2.4 * kotlin.math.sin(a0),
+            0.0,
+            2.4 * kotlin.math.cos(a1),
+            2.4 * kotlin.math.sin(a1),
+            0.0,
         )
         3 { col.add(1, 1, 1, 1) }
         tri.add(0 + 3 * it, 1 + 3 * it, 2 + 3 * it)
@@ -321,16 +344,20 @@ m.set(3 * N, 1 * N) {
 }
 
 val scope = KeyframeScope()
-scope.camera(camera)               // a CameraPose target — sclerped, not lerped
-scope.target("tint", module.look)  // the uniform block's live Structure
+scope.camera(camera) // a CameraPose target — sclerped, not lerped
+scope.target("tint", module.look) // the uniform block's live Structure
 
-// Two endpoints. The camera swings 90 degrees around the fan and lifts, while the tint goes cool to
-// warm. Poses are read off the camera rather than constructed, so this is exactly what capture()
-// would have stored. Tint is a literal here rather than a captured value, since there is nothing
-// to capture from yet — the uniform is untouched until the first key lands on it.
-camera.at = vec(0, 0, 3.5); camera.target = vec(0, 0, 0)
+/*
+Two endpoints. The camera swings about 60 degrees around the fan and lifts, while the tint goes cool to
+warm. Poses are read off the camera rather than constructed, so this is exactly what capture()
+would have stored. Tint is a literal here rather than a captured value, since there is nothing
+to capture from yet — the uniform is untouched until the first key lands on it.
+*/
+camera.at = vec(0, 0, 3.5)
+camera.target = vec(0, 0, 0)
 val poseCool = camera.pose()
-camera.at = vec(-3.03, 1.0, 1.75); camera.target = vec(0, 0, 0)
+camera.at = vec(-3.03, 1.0, 1.75)
+camera.target = vec(0, 0, 0)
 val poseWarm = camera.pose()
 
 val cool = scope.Key(mutableMapOf("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0)))
@@ -345,8 +372,6 @@ module.look.m = camera.m()
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t33.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t33" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.animation.keyframes.KeyframeScope
-
 var m = Mesh()
 var module = moduleHere()
 module += "mainMesh" to m
@@ -358,9 +383,15 @@ m.set(3 * N, 1 * N) {
         val a0 = it / N.toDouble() * Math.PI * 2.0
         val a1 = (it + 0.62) / N.toDouble() * Math.PI * 2.0
         pos.add(
-            0.0, 0.0, 0.0,
-            2.4 * kotlin.math.cos(a0), 2.4 * kotlin.math.sin(a0), 0.0,
-            2.4 * kotlin.math.cos(a1), 2.4 * kotlin.math.sin(a1), 0.0
+            0.0,
+            0.0,
+            0.0,
+            2.4 * kotlin.math.cos(a0),
+            2.4 * kotlin.math.sin(a0),
+            0.0,
+            2.4 * kotlin.math.cos(a1),
+            2.4 * kotlin.math.sin(a1),
+            0.0,
         )
         3 { col.add(1, 1, 1, 1) }
         tri.add(0 + 3 * it, 1 + 3 * it, 2 + 3 * it)
@@ -369,9 +400,11 @@ m.set(3 * N, 1 * N) {
 val scope = KeyframeScope()
 scope.camera(camera)
 scope.target("tint", module.look)
-camera.at = vec(0, 0, 3.5); camera.target = vec(0, 0, 0)
+camera.at = vec(0, 0, 3.5)
+camera.target = vec(0, 0, 0)
 val poseCool = camera.pose()
-camera.at = vec(-3.03, 1.0, 1.75); camera.target = vec(0, 0, 0)
+camera.at = vec(-3.03, 1.0, 1.75)
+camera.target = vec(0, 0, 0)
 val poseWarm = camera.pose()
 val cool = scope.Key(mutableMapOf("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0)))
 val warm = scope.Key(mutableMapOf("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0)))
@@ -381,8 +414,6 @@ module.look.m = camera.m()
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t66.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t66" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.animation.keyframes.KeyframeScope
-
 var m = Mesh()
 var module = moduleHere()
 module += "mainMesh" to m
@@ -394,9 +425,15 @@ m.set(3 * N, 1 * N) {
         val a0 = it / N.toDouble() * Math.PI * 2.0
         val a1 = (it + 0.62) / N.toDouble() * Math.PI * 2.0
         pos.add(
-            0.0, 0.0, 0.0,
-            2.4 * kotlin.math.cos(a0), 2.4 * kotlin.math.sin(a0), 0.0,
-            2.4 * kotlin.math.cos(a1), 2.4 * kotlin.math.sin(a1), 0.0
+            0.0,
+            0.0,
+            0.0,
+            2.4 * kotlin.math.cos(a0),
+            2.4 * kotlin.math.sin(a0),
+            0.0,
+            2.4 * kotlin.math.cos(a1),
+            2.4 * kotlin.math.sin(a1),
+            0.0,
         )
         3 { col.add(1, 1, 1, 1) }
         tri.add(0 + 3 * it, 1 + 3 * it, 2 + 3 * it)
@@ -405,9 +442,11 @@ m.set(3 * N, 1 * N) {
 val scope = KeyframeScope()
 scope.camera(camera)
 scope.target("tint", module.look)
-camera.at = vec(0, 0, 3.5); camera.target = vec(0, 0, 0)
+camera.at = vec(0, 0, 3.5)
+camera.target = vec(0, 0, 0)
 val poseCool = camera.pose()
-camera.at = vec(-3.03, 1.0, 1.75); camera.target = vec(0, 0, 0)
+camera.at = vec(-3.03, 1.0, 1.75)
+camera.target = vec(0, 0, 0)
 val poseWarm = camera.pose()
 val cool = scope.Key(mutableMapOf("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0)))
 val warm = scope.Key(mutableMapOf("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0)))
@@ -417,8 +456,6 @@ module.look.m = camera.m()
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t10.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t10" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.animation.keyframes.KeyframeScope
-
 var m = Mesh()
 var module = moduleHere()
 module += "mainMesh" to m
@@ -430,9 +467,15 @@ m.set(3 * N, 1 * N) {
         val a0 = it / N.toDouble() * Math.PI * 2.0
         val a1 = (it + 0.62) / N.toDouble() * Math.PI * 2.0
         pos.add(
-            0.0, 0.0, 0.0,
-            2.4 * kotlin.math.cos(a0), 2.4 * kotlin.math.sin(a0), 0.0,
-            2.4 * kotlin.math.cos(a1), 2.4 * kotlin.math.sin(a1), 0.0
+            0.0,
+            0.0,
+            0.0,
+            2.4 * kotlin.math.cos(a0),
+            2.4 * kotlin.math.sin(a0),
+            0.0,
+            2.4 * kotlin.math.cos(a1),
+            2.4 * kotlin.math.sin(a1),
+            0.0,
         )
         3 { col.add(1, 1, 1, 1) }
         tri.add(0 + 3 * it, 1 + 3 * it, 2 + 3 * it)
@@ -441,9 +484,11 @@ m.set(3 * N, 1 * N) {
 val scope = KeyframeScope()
 scope.camera(camera)
 scope.target("tint", module.look)
-camera.at = vec(0, 0, 3.5); camera.target = vec(0, 0, 0)
+camera.at = vec(0, 0, 3.5)
+camera.target = vec(0, 0, 0)
 val poseCool = camera.pose()
-camera.at = vec(-3.03, 1.0, 1.75); camera.target = vec(0, 0, 0)
+camera.at = vec(-3.03, 1.0, 1.75)
+camera.target = vec(0, 0, 0)
 val poseWarm = camera.pose()
 val cool = scope.Key(mutableMapOf("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0)))
 val warm = scope.Key(mutableMapOf("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0)))
@@ -482,10 +527,6 @@ at the same subject, those are very different moves:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/camera_screw.png" wait="2.5" capture="box" open-outputs="true" w="1000" h="520" padding="16"}
 :::static
-import afield.graphics.vulkan.util.CameraPose
-import afield.animation.keyframes.KeyframeScope
-import afield.math.linalg.Vector3f
-
 val scope = KeyframeScope()
 // Two cameras, both two units up, both looking at the origin, a quarter turn apart.
 val a = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(Vector3f(8f, 2f, 0f), Vector3f(0f, 0f, 0f))))
@@ -504,27 +545,34 @@ val screw = fline {
         val p = sclerpAt(i.toDouble() / n).position
         if (i == 0) moveTo(p.x * S, p.z * S) else lineTo(p.x * S, p.z * S)
     }
-    color = vec(0.36, 0.84, 1.0, 1.0); thickness = 3.0
+    color = vec(0.36, 0.84, 1.0, 1.0)
+    thickness = 3.0
 }
 val chord = fline {
-    moveTo(pa.x * S, pa.z * S); lineTo(pb.x * S, pb.z * S)
-    color = vec(1.0, 0.62, 0.26, 1.0); thickness = 3.0
+    moveTo(pa.x * S, pa.z * S)
+    lineTo(pb.x * S, pb.z * S)
+    color = vec(1.0, 0.62, 0.26, 1.0)
+    thickness = 3.0
 }
 // Sight lines from the sclerp path to the subject: every one is the same length.
 val sight = fline {
     for (i in 0..10) {
         val p = sclerpAt(i / 10.0).position
-        moveTo(p.x * S, p.z * S); lineTo(0.0, 0.0)
+        moveTo(p.x * S, p.z * S)
+        lineTo(0.0, 0.0)
     }
-    color = vec(0.36, 0.84, 1.0, 0.22); thickness = 1.0
+    color = vec(0.36, 0.84, 1.0, 0.22)
+    thickness = 1.0
 }
 // …and from the lerped positions, which are visibly shorter in the middle.
 val sightLerp = fline {
     for (i in 0..10) {
         val p = lerpAt(i / 10.0)
-        moveTo(p.x * S, p.z * S); lineTo(0.0, 0.0)
+        moveTo(p.x * S, p.z * S)
+        lineTo(0.0, 0.0)
     }
-    color = vec(1.0, 0.62, 0.26, 0.22); thickness = 1.0
+    color = vec(1.0, 0.62, 0.26, 0.22)
+    thickness = 1.0
 }
 val subject = fline {
     val r = 14.0
@@ -533,7 +581,8 @@ val subject = fline {
         if (i == 0) moveTo(r * kotlin.math.cos(ang), r * kotlin.math.sin(ang))
         else lineTo(r * kotlin.math.cos(ang), r * kotlin.math.sin(ang))
     }
-    color = vec(0.95, 0.95, 0.95, 0.9); thickness = 2.0
+    color = vec(0.95, 0.95, 0.95, 0.9)
+    thickness = 2.0
 }
 
 // ---- panel 2: distance from the camera to the subject, against t.
@@ -544,7 +593,8 @@ val dScrew = fline {
         if (i == 0) moveTo(0.0, plotY(sclerpAt(t).position.length().toDouble()))
         else lineTo(t * 400.0, plotY(sclerpAt(t).position.length().toDouble()))
     }
-    color = vec(0.36, 0.84, 1.0, 1.0); thickness = 3.0
+    color = vec(0.36, 0.84, 1.0, 1.0)
+    thickness = 3.0
 }
 val dChord = fline {
     for (i in 0..n) {
@@ -552,7 +602,8 @@ val dChord = fline {
         if (i == 0) moveTo(0.0, plotY(lerpAt(t).length().toDouble()))
         else lineTo(t * 400.0, plotY(lerpAt(t).length().toDouble()))
     }
-    color = vec(1.0, 0.62, 0.26, 1.0); thickness = 3.0
+    color = vec(1.0, 0.62, 0.26, 1.0)
+    thickness = 3.0
 }
 
 // Every number in the captions is measured here, not asserted from memory.
@@ -567,16 +618,26 @@ showPlaneGrid(
         "blue: sclerp, a quarter circle. orange: the straight line between the same two positions") to
         [sight, sightLerp, subject, chord, screw],
     ("distance to the subject, over the move\n" +
-        "sclerp holds %.4f..%.4f; the straight line dips to %.4f — %.1f%% nearer".format(
-            rMin, rMax, lerpMid, closer)) to
-        [dScrew, dChord],
-    columns = 2, cellWidth = 440, cellHeight = 380
+        "sclerp holds %.4f..%.4f; the straight line dips to %.4f — %.1f%% nearer"
+            .format(
+                rMin,
+                rMax,
+                lerpMid,
+                closer,
+            )) to [dScrew, dChord],
+    columns = 2,
+    cellWidth = 440,
+    cellHeight = 380,
 )
 :::fold render the aiming-error note
-markdown("aim", """
+markdown(
+    "aim",
+    """
     worst-case aiming error along the sclerp path: **%.6f** world units —
     {muted:the subject never leaves the centre of frame.}
-""".format(worstAim))
+"""
+        .format(worstAim),
+)
 :::endfold
 ```
 
@@ -620,40 +681,52 @@ block. Anything else (a list, a null) is left out, and each one is reported on t
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/persistence.png" wait="3.0" capture="box" open-outputs="true" w="960" h="760" padding="16"}
 :::static
-import afield.animation.keyframes.KeyframeScope
-import afield.animation.keyframes.stackSLString
-import afield.math.linalg.Vector3f
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframer-docs")
 val path = dir.resolve("look.json")
 
 val scope = KeyframeScope(schemaVersion = 1)
-scope.saveKey(path, scope.Key(mutableMapOf(
-    "gain" to 0.20f,
-    "pos" to Vector3f(1f, 2f, 3f),
-    "voice" to stackSLString("saw 110 *")
-)), note = "first pass")
+scope.saveKey(
+    path,
+    scope.Key(
+        mutableMapOf(
+            "gain" to 0.20f,
+            "pos" to Vector3f(1f, 2f, 3f),
+            "voice" to stackSLString("saw 110 *"),
+        ),
+    ),
+    note = "first pass",
+)
 
-scope.saveKey(path, scope.Key(mutableMapOf(
-    "gain" to 0.65f,
-    "pos" to Vector3f(4f, 5f, 6f),
-    "voice" to stackSLString("sin 220 * fold")
-)), note = "brighter")
+scope.saveKey(
+    path,
+    scope.Key(
+        mutableMapOf(
+            "gain" to 0.65f,
+            "pos" to Vector3f(4f, 5f, 6f),
+            "voice" to stackSLString("sin 220 * fold"),
+        ),
+    ),
+    note = "brighter",
+)
 
 // A third save that also carries values the union cannot represent.
-val lossy = scope.Key(mutableMapOf(
-    "gain" to 0.90f,
-    "enabled" to true,          // a Boolean is kept
-    "taps" to [1, 2, 3],  // a list is not
-    "absent" to null            // and neither is a null
-))
+val lossy = scope.Key(
+    mutableMapOf(
+        "gain" to 0.90f,
+        "enabled" to true, // a Boolean is kept
+        "taps" to [1, 2, 3], // a list is not
+        "absent" to null, // and neither is a null
+    ),
+)
 scope.saveKey(path, lossy, note = "with unsupported values")
 
 val versions = scope.keyVersions(path)
-val versionRows = versions.joinToString("\n") { v ->
-    "| ${v.index} | ${v.file.md} | ${v.note?.md ?: "—"} |"
-}
+val versionRows =
+    versions.joinToString("\n") { v ->
+        "| ${v.index} | ${v.file.md} | ${v.note?.md ?: "—"} |"
+    }
 
 val reloaded = scope.loadKey(path)
 val kept = reloaded.values.keys.sorted().joinToString(", ")
@@ -661,21 +734,28 @@ val droppedNames = lossy.values.keys.sorted().filter { it !in reloaded.values.ke
 
 // An older snapshot loaded into a scope that has since grown a parameter.
 val newer = KeyframeScope(schemaVersion = 1)
-newer.missingKey("wet", 0.5f)                  // applies to every file this scope loads
-newer.missingKey(1, "mode", "legacy-v1")       // only to files stamped schemaVersion = 1
+newer.missingKey("wet", 0.5f) // applies to every file this scope loads
+newer.missingKey(1, "mode", "legacy-v1") // only to files stamped schemaVersion = 1
 val migrated = newer.loadKey(path, version = 0)
 
 :::fold render the persistence card
-// Rendered as flat text rather than through `migrated.h`. The Key's own HTML gives a Vector3f the
-// interactive 3D axis widget, which is lovely in a box and wrong here: it loads asynchronously and
-// reflowed the card mid-screenshot, so the first capture of this figure came out clipped.
-val migratedRows = migrated.values.entries.sortedBy { it.key }.joinToString("\n") { (k, v) ->
-    "| ${k.md} | ${v.md} |"
-}
+/*
+Rendered as flat text rather than through `migrated.h`. The Key's own HTML gives a Vector3f the
+interactive 3D axis widget, which is lovely in a box and wrong here: it loads asynchronously and
+reflowed the card mid-screenshot, so the first capture of this figure came out clipped.
+*/
+val migratedRows =
+    migrated.values.entries
+        .sortedBy { it.key }
+        .joinToString("\n") { (k, v) ->
+            "| ${k.md} | ${v.md} |"
+        }
 
 // The width is pinned. A `capture="box"` screenshot clips to the output card, and an
 // unpinned card sized by its widest unbreakable line loses everything past the clip.
-markdown("persist", """
+markdown(
+    "persist",
+    """
     #### version history after three saves
 
     | # | file | note |
@@ -698,7 +778,9 @@ markdown("persist", """
     ~~~json
 ${java.nio.file.Files.readString(dir.resolve("look.json.versions").resolve("000000.json"))}
     ~~~
-""", width = 820)
+""",
+    width = 820,
+)
 :::endfold
 ```
 
@@ -770,8 +852,6 @@ through. Without it the browser only reads.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/browser.png" wait="4.0" capture="box" open-outputs="true" w="960" h="560" padding="16"}
 :::static
-import afield.graphics.vulkan.buffers.Structure
-import afield.animation.keyframes.KeyframeScope
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -790,16 +870,17 @@ scope.target("glow@falloff", glow)
 
 // Four looks, each saved as its own key with a note.
 [
-    Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
-    Triple("hot", [9f, 0.80f, 0.6f], "too much"),
-    Triple("mid", [6f, 0.50f, 1.0f], "between the two"),
-    Triple("wide", [12f, 0.35f, 2.2f], "for the long shot"),
-].forEach { (name, v, note) ->
-    glow.bind("radius") { v[0] }
-    glow.bind("intensity") { v[1] }
-    glow.bind("falloff") { v[2] }
-    scope.capture().save(dir.resolve(name), note)
-}
+        Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
+        Triple("hot", [9f, 0.80f, 0.6f], "too much"),
+        Triple("mid", [6f, 0.50f, 1.0f], "between the two"),
+        Triple("wide", [12f, 0.35f, 2.2f], "for the long shot"),
+    ]
+    .forEach { (name, v, note) ->
+        glow.bind("radius") { v[0] }
+        glow.bind("intensity") { v[1] }
+        glow.bind("falloff") { v[2] }
+        scope.capture().save(dir.resolve(name), note)
+    }
 
 keyframeBrowser(dir, scope = scope, height = 330)
 ```
@@ -818,33 +899,32 @@ fiddling becomes a diff you can commit.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/update_code.png" wait="2.0" capture="box" open-outputs="true" w="900" h="560" padding="16"}
 :::static
-import afield.animation.keyframes.KeyframeScope
-import afield.study.source.SourceBackedBlock
-import afield.animation.keyframes.stackSLString
-import afield.math.linalg.Vector3f
-import afield.math.linalg.Quaternionf
-
 val scope = KeyframeScope()
-val key = scope.Key(mutableMapOf<String, Any?>(
-    "gain" to 0.65f,           // a Float, and the 'f' suffix matters
-    "steps" to 12,
-    "seed" to 99L,
-    "pos" to Vector3f(1.5f, 0f, -2.25f),
-    "spin" to Quaternionf().setAngleAxis(0.7f, 0f, 1f, 0f),
-    "voice" to stackSLString("sin 220 * fold"),
-    // A source block whose body mentions a '$'. Emitting this as a Kotlin *raw* string would
-    // have let the '$' interpolate at paste time; it now falls back to an escaped literal.
-    "block" to SourceBackedBlock<Any?>("box-1", "val total = 2\nprintln(\"sum: \$total\")"),
-    "notes" to listOf<String>("unsupported", "on purpose")   // typed: a bare [..] has no element type here
-))
+val key = scope.Key(
+    mutableMapOf<String, Any?>(
+        "gain" to 0.65f, // a Float, and the 'f' suffix matters
+        "steps" to 12,
+        "seed" to 99L,
+        "pos" to Vector3f(1.5f, 0f, -2.25f),
+        "spin" to Quaternionf().setAngleAxis(0.7f, 0f, 1f, 0f),
+        "voice" to stackSLString("sin 220 * fold"),
+        // A source block whose body mentions a '$'. Emitting this as a Kotlin *raw* string would
+        // have let the '$' interpolate at paste time; it now falls back to an escaped literal.
+        "block" to SourceBackedBlock<Any?>("box-1", "val total = 2\nprintln(\"sum: \$total\")"),
+        "notes" to listOf<String>("unsupported", "on purpose"), // typed: a bare [..] has no element type here
+    ),
+)
 
 :::fold render the generated update code
 // A multi-line value goes into a fence at column zero, so it arrives byte for byte.
-markdown("code", """
+markdown(
+    "code",
+    """
     ~~~kotlin
 ${key.updateCode("look")}
     ~~~
-""")
+""",
+)
 :::endfold
 ```
 
@@ -884,20 +964,20 @@ Two programs that differ only in *numbers* are the exception, and they are the c
 two keys are two looks for one patch. `codeBlend` turns that case on:
 
 ```diffstatic {data-lang=kotlin}
-import afield.animation.keyframes.CodeBlendMode
-import afield.animation.keyframes.CodeBlendOptions
-import afield.animation.keyframes.KeyframeScope
-import afield.animation.keyframes.planStackSLCodeBlend
-
 val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
 val cool = "uv 8.0 * fbm 0.45 + [0.2,0.5,1.0] *"
 
 val plan = planStackSLCodeBlend(warm, cool, CodeBlendOptions(mode = CodeBlendMode.RUNTIME))
-println(plan.describe())
-// stacksl blend: 3 moving site(s) of 3, 0 divergence(s) — RUNTIME -> RUNTIME
-//   number: 3.0 -> 8.0
-//   number: 0.15 -> 0.45
-//   vector: [1.0,0.55,0.2] -> [0.2,0.5,1.0]
+println(
+    plan.describe(),
+)
+
+/*
+ stacksl blend: 3 moving site(s) of 3, 0 divergence(s) — RUNTIME -> RUNTIME
+   number: 3.0 -> 8.0
+   number: 0.15 -> 0.45
+   vector: [1.0,0.55,0.2] -> [0.2,0.5,1.0]
+ */
 ```
 
 Both sources are lexed with the language's own tokeniser, the two token streams are aligned on a

@@ -3,24 +3,40 @@
 #include "flow/grain.glsl"
 #include "flow/motion.glsl"
 #include "flow/tiles.glsl"
-layout(std430, buffer_reference) readonly buffer Field { vec4 v[]; };
-layout(std430, buffer_reference) readonly buffer Tiles { ivec4 v[]; };
-layout(std430, buffer_reference) readonly buffer History { FlowFrameHistory frame; };
+layout(std430, buffer_reference) readonly buffer Field {
+    vec4 v[];
+};
+layout(std430, buffer_reference) readonly buffer Tiles {
+    ivec4 v[];
+};
+layout(std430, buffer_reference) readonly buffer History {
+    FlowFrameHistory frame;
+};
 layout(push_constant) uniform Push {
-    Field item; // Current pose and MotionItems previous affine/validity.
-    Field velocity; // Current projected fluid velocity.
-    Tiles tiles; // Resident world coordinates and generations.
-    History history; // FrameHistory's complete 68-float layout.
-    vec4 clock; // x time; y dt; zw reserved.
-    vec4 look; // x world grain cell; y stroke seconds; z gain; w debug view.
+    Field item;
+    // Current pose and MotionItems previous affine/validity.
+    Field velocity;
+    // Current projected fluid velocity.
+    Tiles tiles;
+    // Resident world coordinates and generations.
+    History history;
+    // FrameHistory's complete 68-float layout.
+    vec4 clock;
+    // x time; y dt; zw reserved.
+    vec4 look;
+    // x world grain cell; y stroke seconds; z gain; w debug view.
 } pc;
 layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 color;
-layout(location = 1) out vec4 motion; // Previous UV, valid, coverage. No blending on this attachment.
-
+layout(location = 1) out vec4 motion;
+// Previous UV, valid, coverage. No blending on this attachment.
 const float H = 4. / 24.;
-bool rock(vec2 p) { return (abs(p.y + 2.) < .10 && abs(p.x) < 4.) || length(p - vec2(2.4, 1.2)) < .8; }
-float flowMask(vec2 p) { return rock(p) ? 0. : 1.; }
+bool rock(vec2 p) {
+    return (abs(p.y + 2.) < .10 && abs(p.x) < 4.) || length(p - vec2(2.4, 1.2)) < .8;
+}
+float flowMask(vec2 p) {
+    return rock(p) ? 0. : 1.;
+}
 vec2 atCell(ivec2 cell) {
     ivec2 local = ivec2(flowFloorMod(cell.x,24),flowFloorMod(cell.y,24));
     ivec2 tile = (cell - local) / 24;

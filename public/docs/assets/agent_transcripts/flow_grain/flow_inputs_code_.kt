@@ -1,8 +1,4 @@
-import afield.document.context.fromContextWithNameOrNull
 import afield.simulation.flow.TileAtlasLayout
-import afield.graphics.vulkan.targets.*
-import afield.graphics.render.TileResidency
-import kotlin.math.*
 
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
@@ -43,15 +39,32 @@ frames {
                 val height = flowWidth.effective * if (travel.get()) 1.0 + .18 * sin(time * .25) else 1.0
                 val width = height * window.width / window.height.toDouble()
                 matrix.set(
-                    (1.0/width).toFloat(), 0f, 0f, 0f,
-                    0f, (1.0/height).toFloat(), 0f, 0f,
-                    0f, 0f, -1f, 0f,
-                    (-pan/width).toFloat(), 0f, 0f, 1f
+                    (1.0 / width).toFloat(),
+                    0f,
+                    0f,
+                    0f,
+                    0f,
+                    (1.0 / height).toFloat(),
+                    0f,
+                    0f,
+                    0f,
+                    0f,
+                    -1f,
+                    0f,
+                    (-pan / width).toFloat(),
+                    0f,
+                    0f,
+                    1f,
                 )
                 camera.capture(serial, matrix, 960, 720, resetFlow.epoch)
                 cameraHistory.mapAndWrite { put(camera.packed) }
-                flowClock.set(time.toFloat(), 1f/60, resetEpoch.toFloat(), 0f)
-                flowEmitter.set((pan + cos(time*.7)*2).toFloat(), sin(time*.9).toFloat(), force.effective.toFloat(), 0f)
+                flowClock.set(time.toFloat(), 1f / 60, resetEpoch.toFloat(), 0f)
+                flowEmitter.set(
+                    (pan + cos(time * .7) * 2).toFloat(),
+                    sin(time * .9).toFloat(),
+                    force.effective.toFloat(),
+                    0f,
+                )
                 flowLook.x = grainCell.effective.toFloat()
                 flowLook.y = strokeTime.effective.toFloat()
             }
@@ -75,7 +88,9 @@ frames {
         while (frame()) {
             if (renderer.frameCounter - report >= 120) {
                 report = renderer.frameCounter
-                println("render=$report step=$ticks tiles=${pool.capacity} relocations=${pool.relocations} reset=${resetFlow.completed} history=${camera.available}")
+                println(
+                    "render=$report step=$ticks tiles=${pool.capacity} relocations=${pool.relocations} reset=${resetFlow.completed} history=${camera.available}",
+                )
             }
         }
     } finally {

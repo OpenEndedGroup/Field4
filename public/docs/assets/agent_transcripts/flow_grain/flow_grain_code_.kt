@@ -1,5 +1,3 @@
-import afield.document.context.fromContextWithNameOrNull
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
 var module = moduleHere {

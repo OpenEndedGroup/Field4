@@ -14,9 +14,9 @@ import afield.graphics.render.*
 import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
-/*graphics-pc-structure:look*/ var Structure.look by Structure.FromStructure<Any>() // w: 0 color; 3 previous UV; 4 displacement magnified.
-/*graphics-pc-binding:look*/ var Mesh.look by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // w: 0 color; 3 previous UV; 4 displacement magnified.
-/*graphics-pc-binding-group:look*/ var MeshGroup.look by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // w: 0 color; 3 previous UV; 4 displacement magnified.
+/*graphics-pc-structure:look*/ var Structure.look by Structure.FromStructure<Any>()
+/*graphics-pc-binding:look*/ var Mesh.look by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*graphics-pc-binding-group:look*/ var MeshGroup.look by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
 var Box.flowA by ReactiveInheritance<FrameBufferGroup>(Reactive.DOWN) /*from:flow_resources*/ /**/
 val Once.flowA by Onceing<FrameBufferGroup>() /*from:flow_resources*/ /**/
 val Why.flowA by Whying() /*from:flow_resources*/ /**/

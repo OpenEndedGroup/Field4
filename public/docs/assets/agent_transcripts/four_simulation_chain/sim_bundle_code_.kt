@@ -1,7 +1,6 @@
 // `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
 import afield.graphics.scene.fabricated.StandardRenderer
 import afield.graphics.scene.fabricated.applyScenePlan
-import afield.math.linalg.Vector3f
 
 prop<StandardRenderer.Bundle>(bundle)
 

@@ -2,7 +2,8 @@
 layout(set=0,binding=0) uniform sampler2D colorTexture;
 layout(set=0,binding=1) uniform sampler2D motionTexture;
 layout(push_constant) uniform Push {
-    vec4 look; // w: 0 color; 3 previous UV; 4 displacement magnified.
+    vec4 look;
+    // w: 0 color; 3 previous UV; 4 displacement magnified.
 } pc;
 layout(location=0) in vec2 uv;
 layout(location=0) out vec4 color;

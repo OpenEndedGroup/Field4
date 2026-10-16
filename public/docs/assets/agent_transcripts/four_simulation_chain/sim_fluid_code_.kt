@@ -1,8 +1,6 @@
 import afield.graphics.scene.fabricated.FabricatePassChain
 import afield.graphics.scene.fabricated.FabricatePassLibrary
 import afield.graphics.scene.fabricated.addPassChain
-import afield.graphics.vulkan.util.MouseEvent
-import afield.graphics.vulkan.util.MouseEvents
 
 prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(fluid)
 

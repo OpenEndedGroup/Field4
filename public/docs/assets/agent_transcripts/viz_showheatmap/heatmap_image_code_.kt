@@ -1,6 +1,7 @@
 // showImage displays a ready-made ARGB IntArray directly (encode + display), for when you
 // already have a pixel buffer rather than a scalar field.
-val w = 512; val h = 256
+val w = 512
+val h = 256
 val px = IntArray(w * h)
 for (y in 0 until h) for (x in 0 until w) {
     val r = x * 255 / (w - 1)

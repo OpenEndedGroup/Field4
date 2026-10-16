@@ -1,9 +1,3 @@
-import afield.document.context.fromContextWithNameOrNull
-import afield.graphics.vulkan.buffers.VulkanBuffer
-import afield.graphics.render.computeMemoryBarrier
-import afield.graphics.render.graphicsMemoryBarrier
-import afield.graphics.render.computeTask
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
 var module = computeModuleHere {}
@@ -20,11 +14,14 @@ for (i in 0 until 24) {
     mesh.tiles = { tileHeaders }
     mesh.clock = { flowClock }
     mesh.emitter = { flowEmitter }
-    module += "barrier-$i" to computeTask { _, cmd, _ ->
-        computeMemoryBarrier(cmd, null as VulkanBuffer?)
-    }
+    module +=
+        "barrier-$i" to
+            computeTask { _, cmd, _ ->
+                computeMemoryBarrier(cmd, null as VulkanBuffer?)
+            }
 }
 flowSimulation += "pressure" to module
-loop { true }.end {
-    if (flowSimulation.modules["pressure"] === module) flowSimulation.modules.remove("pressure")
-}
+loop { true }
+    .end {
+        if (flowSimulation.modules["pressure"] === module) flowSimulation.modules.remove("pressure")
+    }

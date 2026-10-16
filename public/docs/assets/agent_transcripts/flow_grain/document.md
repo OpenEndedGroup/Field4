@@ -33,21 +33,18 @@ start(renderer::run)
 <!-- field-box id="flow_resources" index="1" -->
 
 ```edn [field-box id="flow_resources" role="properties"]
-{"id" "flow_resources" "index" 1 "name" "2. Resident tiles and resources" "parents" ["root" "flow_renderer"] "children" ["flow_inputs" "flow_helpers" "flow_advect" "flow_divergence" "flow_pressure" "flow_project" "flow_particles" "flow_grain" "flow_resolve" "flow_strokes" "flow_controls" "flow_reset" "flow_profile"] "properties" {"children" #{#afield/box "flow_inputs" #afield/box "flow_helpers" #afield/box "flow_advect" #afield/box "flow_divergence" #afield/box "flow_pressure" #afield/box "flow_project" #afield/box "flow_particles" #afield/box "flow_grain" #afield/box "flow_resolve" #afield/box "flow_strokes" #afield/box "flow_controls" #afield/box "flow_reset" #afield/box "flow_profile"} "parents" #{#afield/box "root" #afield/box "flow_renderer"} "name" "2. Resident tiles and resources" "_tombstone" false "frame" #afield/rect [80.0 230.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_resources_code_.kt" "lines" 91 "characters" 3461 "sha256" "48d832bfd1e60449f1b8ac302997be2f36bc652c7ee46a96115da7f804b0cca5"}]}
+{"id" "flow_resources" "index" 1 "name" "2. Resident tiles and resources" "parents" ["root" "flow_renderer"] "children" ["flow_inputs" "flow_helpers" "flow_advect" "flow_divergence" "flow_pressure" "flow_project" "flow_particles" "flow_grain" "flow_resolve" "flow_strokes" "flow_controls" "flow_reset" "flow_profile"] "properties" {"children" #{#afield/box "flow_inputs" #afield/box "flow_helpers" #afield/box "flow_advect" #afield/box "flow_divergence" #afield/box "flow_pressure" #afield/box "flow_project" #afield/box "flow_particles" #afield/box "flow_grain" #afield/box "flow_resolve" #afield/box "flow_strokes" #afield/box "flow_controls" #afield/box "flow_reset" #afield/box "flow_profile"} "parents" #{#afield/box "root" #afield/box "flow_renderer"} "name" "2. Resident tiles and resources" "_tombstone" false "frame" #afield/rect [80.0 230.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_resources_code_.kt" "lines" 96 "characters" 3360 "sha256" "9d970ac3f25f386c75fdee167dd909d20e1b16e3c64abc16cbea1bc5aab4f919"}]}
 ```
 
 ```kotlin [field-property box="flow_resources" name="code" path="flow_resources_code_.kt"]
-import afield.runtime.lifecycle.SimulationReset
-import afield.ui.controls.EffectiveParameter
-import afield.graphics.render.TileResidency
 import afield.simulation.flow.*
-import afield.graphics.vulkan.targets.*
 
 val render: Renderer = fromContext()
 fun grid() = defaultBuffer {
     size = 14400.vec4s
     zeroInit()
-}.buffer
+}
+    .buffer
 propDown<FrameBufferGroup>(flowA)
 flowA = grid()
 propDown<FrameBufferGroup>(flowB)
@@ -64,27 +61,32 @@ propDown<FrameBufferGroup>(particleA)
 particleA = defaultBuffer {
     size = 32000.vec4s
     zeroInit()
-}.buffer
+}
+        .buffer
 propDown<FrameBufferGroup>(particleB)
 particleB = defaultBuffer {
     size = 32000.vec4s
     zeroInit()
-}.buffer
+}
+        .buffer
 propDown<FrameBufferGroup>(tileHeaders)
 tileHeaders = defaultBuffer {
     perFrame = true
     size = 25.vec4s
-}.buffer
+}
+        .buffer
 propDown<FrameBufferGroup>(cameraHistory)
 cameraHistory = defaultBuffer {
     perFrame = true
     size = 17.vec4s
-}.buffer
+}
+        .buffer
 propDown<FrameBufferGroup>(itemHistory)
 itemHistory = defaultBuffer {
     perFrame = true
     size = 3.vec4s
-}.buffer
+}
+        .buffer
 propDown<SimulationReset>(resetFlow)
 resetFlow = SimulationReset()
 propDown<EffectiveParameter>(force)
@@ -96,7 +98,7 @@ strokeTime = EffectiveParameter("Stroke time", .15, .01, .6, "s", "Noise integra
 propDown<afield.math.linalg.Vec4>(flowLook)
 flowLook = vec(.018, .15, .45, 0) // Grain cell, integration seconds, gain, debug view.
 propDown<afield.math.linalg.Vec4>(flowClock)
-flowClock = vec(0, 1.0/60, 0, 0) // Time, fixed step, reset generation, reserved.
+flowClock = vec(0, 1.0 / 60, 0, 0) // Time, fixed step, reset generation, reserved.
 propDown<afield.math.linalg.Vec4>(flowEmitter)
 flowEmitter = vec(0, 0, 2.5, 0) // World position and force strength.
 propDown<ComputeTarget>(flowSimulation)
@@ -106,7 +108,8 @@ flowStep = java.util.concurrent.atomic.AtomicLong()
 propDown<java.util.concurrent.atomic.AtomicBoolean>(travel)
 travel = java.util.concurrent.atomic.AtomicBoolean(false) // Move across tile boundaries and exercise zoom history.
 propDown<EffectiveParameter>(flowWidth)
-flowWidth = EffectiveParameter("View half-height", 8.0, 3.0, 10.0, "world") // Visible vertical half-width in world units.
+flowWidth =
+    EffectiveParameter("View half-height", 8.0, 3.0, 10.0, "world") // Visible vertical half-height in world units.
 
 // A color surface and a correspondence attachment. The latter stores previous UV,
 // validity, and coverage; it is a sampling coordinate, not a velocity in pixels/s.
@@ -115,7 +118,8 @@ flowSurface = RenderToTexture {
     width = 960
     height = 720
     colorAttachments = 2
-    colorFormats = listOf(org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT, org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT)
+    colorFormats =
+        [org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT, org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT]
     useDepth = false
     clearFirst = true
     clearColor = vec(0, 0, 0, 0)
@@ -124,27 +128,28 @@ flowSurface = RenderToTexture {
 val targets = render.renderList.preTargets
 targets["flow-simulation"] = flowSimulation
 targets["flow-surface"] = flowSurface
-loop { true }.end {
-    if (targets["flow-simulation"] === flowSimulation) targets.remove("flow-simulation")
-    if (targets["flow-surface"] === flowSurface) targets.remove("flow-surface")
-}
+loop { true }
+    .end {
+        if (targets["flow-simulation"] === flowSimulation) targets.remove("flow-simulation")
+        if (targets["flow-surface"] === flowSurface) targets.remove("flow-surface")
+    }
 ```
 
 ## 3. 5. Divergence
 
 <!-- field-box id="flow_divergence" index="2" -->
 
+### Narrative
+
+From `code`
+
+Dependencies are explicit graph exports; resources stay in their parent box.
+
 ```edn [field-box id="flow_divergence" role="properties"]
-{"id" "flow_divergence" "index" 2 "name" "5. Divergence" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "5. Divergence" "_tombstone" false "frame" #afield/rect [80.0 830.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_divergence_code_.kt" "lines" 28 "characters" 974 "sha256" "bc56e4a70d0008713899d9a43fd08611df2923322da8073c36b958f9ebab8519"} {"name" "compute" "language" "glsl" "path" "flow_divergence_compute_.glsl" "lines" 12 "characters" 493 "sha256" "9f665e46dad253ddfc65dabcd2c26823fc21fd8fa31add65806f26b5db0e1c94"}]}
+{"id" "flow_divergence" "index" 2 "name" "5. Divergence" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "5. Divergence" "_tombstone" false "frame" #afield/rect [80.0 830.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_divergence_code_.kt" "lines" 25 "characters" 769 "sha256" "2e1c2e38c299a8308ea36511e0bd82bab9d66c98d592eabc0270ab64518a8806"} {"name" "compute" "language" "glsl" "path" "flow_divergence_compute_.glsl" "lines" 12 "characters" 475 "sha256" "81418045a7bc1e9f960a4a7654dc74fc293df9bd260bf29eb3e33750e9a89f54"}]}
 ```
 
 ```kotlin [field-property box="flow_divergence" name="code" path="flow_divergence_code_.kt"]
-import afield.document.context.fromContextWithNameOrNull
-import afield.graphics.vulkan.buffers.VulkanBuffer
-import afield.graphics.render.computeMemoryBarrier
-import afield.graphics.render.graphicsMemoryBarrier
-import afield.graphics.render.computeTask
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
 var module = computeModuleHere {}
@@ -159,14 +164,17 @@ mesh.auxiliary = { pressureA }
 mesh.tiles = { tileHeaders }
 mesh.clock = { flowClock }
 mesh.emitter = { flowEmitter }
-module += "barrier" to computeTask { _, cmd, _ ->
-    computeMemoryBarrier(cmd, null as VulkanBuffer?)
-    graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
-}
+module +=
+    "barrier" to
+        computeTask { _, cmd, _ ->
+            computeMemoryBarrier(cmd, null as VulkanBuffer?)
+            graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
+        }
 flowSimulation += "divergence" to module
-loop { true }.end {
-    if (flowSimulation.modules["divergence"] === module) flowSimulation.modules.remove("divergence")
-}
+loop { true }
+    .end {
+        if (flowSimulation.modules["divergence"] === module) flowSimulation.modules.remove("divergence")
+    }
 ```
 
 ```glsl [field-property box="flow_divergence" name="compute" path="flow_divergence_compute_.glsl"]
@@ -179,7 +187,7 @@ void main() {
     if (i >= CELLS) return;
     ivec2 c = worldCell(i);
     float divergence = (readCell(pc.source, c + ivec2(1,0)).x - readCell(pc.source, c - ivec2(1,0)).x
-                      + readCell(pc.source, c + ivec2(0,1)).y - readCell(pc.source, c - ivec2(0,1)).y) / (2. * H);
+    + readCell(pc.source, c + ivec2(0,1)).y - readCell(pc.source, c - ivec2(0,1)).y) / (2. * H);
     storeCell(i, vec3(divergence, 0, 0));
 }
 ```
@@ -188,17 +196,17 @@ void main() {
 
 <!-- field-box id="flow_project" index="3" -->
 
+### Narrative
+
+From `code`
+
+Dependencies are explicit graph exports; resources stay in their parent box.
+
 ```edn [field-box id="flow_project" role="properties"]
-{"id" "flow_project" "index" 3 "name" "7. Project" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "7. Project" "_tombstone" false "frame" #afield/rect [510.0 230.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_project_code_.kt" "lines" 28 "characters" 1002 "sha256" "5ef4f363379f518a8990237b83c72eb008e7eb5951a31aa3ade82d0c94b2bb81"} {"name" "compute" "language" "glsl" "path" "flow_project_compute_.glsl" "lines" 19 "characters" 1037 "sha256" "65750e3799487e293a1a500e7b3f1ae977d9d9772edfcc62070391085cfe97ee"}]}
+{"id" "flow_project" "index" 3 "name" "7. Project" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "7. Project" "_tombstone" false "frame" #afield/rect [510.0 230.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_project_code_.kt" "lines" 25 "characters" 797 "sha256" "037d0204da7f1f2f31323ca27d79984535949f45aea8275425f89c2d5d412674"} {"name" "compute" "language" "glsl" "path" "flow_project_compute_.glsl" "lines" 19 "characters" 1016 "sha256" "60776a6ac32761d04c4f861ea50f2a83901b6f337fb28c231e73365a40cec89d"}]}
 ```
 
 ```kotlin [field-property box="flow_project" name="code" path="flow_project_code_.kt"]
-import afield.document.context.fromContextWithNameOrNull
-import afield.graphics.vulkan.buffers.VulkanBuffer
-import afield.graphics.render.computeMemoryBarrier
-import afield.graphics.render.graphicsMemoryBarrier
-import afield.graphics.render.computeTask
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
 var module = computeModuleHere {}
@@ -213,14 +221,17 @@ mesh.auxiliary = { pressureA }
 mesh.tiles = { tileHeaders }
 mesh.clock = { flowClock }
 mesh.emitter = { flowEmitter }
-module += "barrier" to computeTask { _, cmd, _ ->
-    computeMemoryBarrier(cmd, null as VulkanBuffer?)
-    graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
-}
+module +=
+    "barrier" to
+        computeTask { _, cmd, _ ->
+            computeMemoryBarrier(cmd, null as VulkanBuffer?)
+            graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
+        }
 flowSimulation += "project" to module
-loop { true }.end {
-    if (flowSimulation.modules["project"] === module) flowSimulation.modules.remove("project")
-}
+loop { true }
+    .end {
+        if (flowSimulation.modules["project"] === module) flowSimulation.modules.remove("project")
+    }
 ```
 
 ```glsl [field-property box="flow_project" name="compute" path="flow_project_compute_.glsl"]
@@ -233,7 +244,7 @@ void main() {
     if (i >= CELLS) return;
     ivec2 c = worldCell(i);
     vec2 gradient = vec2(readCell(pc.auxiliary, c + ivec2(1,0)).x - readCell(pc.auxiliary, c - ivec2(1,0)).x,
-                         readCell(pc.auxiliary, c + ivec2(0,1)).x - readCell(pc.auxiliary, c - ivec2(0,1)).x) / (2. * H);
+    readCell(pc.auxiliary, c + ivec2(0,1)).x - readCell(pc.auxiliary, c - ivec2(0,1)).x) / (2. * H);
     vec2 velocity = readCell(pc.source, c).xy - gradient;
     if (rock(worldPosition(i))) velocity = vec2(0);
     // Enforce no-through-flow against the grid stencil. Drawing uses the exact mask below.
@@ -249,13 +260,19 @@ void main() {
 
 <!-- field-box id="flow_reset" index="4" -->
 
+### Narrative
+
+From `code`
+
+Dependencies are explicit graph exports; resources stay in their parent box.
+
+Ordinary execution queues a reset; the existing renderer consumes it once at its boundary.
+
 ```edn [field-box id="flow_reset" role="properties"]
-{"id" "flow_reset" "index" 4 "name" "Reset — execute" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "Reset — execute" "_tombstone" false "frame" #afield/rect [940.0 230.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_reset_code_.kt" "lines" 6 "characters" 284 "sha256" "9b6341ab2ad785e6c3ed5cc35a19569b25f5013e1dbc69e2729ea030351b313a"}]}
+{"id" "flow_reset" "index" 4 "name" "Reset — execute" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "Reset — execute" "_tombstone" false "frame" #afield/rect [940.0 230.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_reset_code_.kt" "lines" 4 "characters" 226 "sha256" "04fb96ef5ab4d53754f3ac6e729a541f176292ff2e7cf57d9f31ea96640d0811"}]}
 ```
 
 ```kotlin [field-property box="flow_reset" name="code" path="flow_reset_code_.kt"]
-import afield.document.context.fromContextWithNameOrNull
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
 // Ordinary execution queues a reset; the existing renderer consumes it once at its boundary.
@@ -267,15 +284,11 @@ println("Reset requested: ${resetFlow.request()}")
 <!-- field-box id="flow_inputs" index="5" -->
 
 ```edn [field-box id="flow_inputs" role="properties"]
-{"id" "flow_inputs" "index" 5 "name" "3. Frame inputs and reset boundary" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "3. Frame inputs and reset boundary" "_tombstone" false "frame" #afield/rect [80.0 380.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_inputs_code_.kt" "lines" 85 "characters" 3571 "sha256" "7b307eca7202232d98ca473a9e44d47cf3475883ddcd41671aaf5b106b64273b"}]}
+{"id" "flow_inputs" "index" 5 "name" "3. Frame inputs and reset boundary" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "3. Frame inputs and reset boundary" "_tombstone" false "frame" #afield/rect [80.0 380.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_inputs_code_.kt" "lines" 100 "characters" 3802 "sha256" "b30edcee754e349ee6843b409451c3da31e3d2dce06fe6feef36c8cc83c39f83"}]}
 ```
 
 ```kotlin [field-property box="flow_inputs" name="code" path="flow_inputs_code_.kt"]
-import afield.document.context.fromContextWithNameOrNull
 import afield.simulation.flow.TileAtlasLayout
-import afield.graphics.vulkan.targets.*
-import afield.graphics.render.TileResidency
-import kotlin.math.*
 
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
@@ -316,15 +329,32 @@ frames {
                 val height = flowWidth.effective * if (travel.get()) 1.0 + .18 * sin(time * .25) else 1.0
                 val width = height * window.width / window.height.toDouble()
                 matrix.set(
-                    (1.0/width).toFloat(), 0f, 0f, 0f,
-                    0f, (1.0/height).toFloat(), 0f, 0f,
-                    0f, 0f, -1f, 0f,
-                    (-pan/width).toFloat(), 0f, 0f, 1f
+                    (1.0 / width).toFloat(),
+                    0f,
+                    0f,
+                    0f,
+                    0f,
+                    (1.0 / height).toFloat(),
+                    0f,
+                    0f,
+                    0f,
+                    0f,
+                    -1f,
+                    0f,
+                    (-pan / width).toFloat(),
+                    0f,
+                    0f,
+                    1f,
                 )
                 camera.capture(serial, matrix, 960, 720, resetFlow.epoch)
                 cameraHistory.mapAndWrite { put(camera.packed) }
-                flowClock.set(time.toFloat(), 1f/60, resetEpoch.toFloat(), 0f)
-                flowEmitter.set((pan + cos(time*.7)*2).toFloat(), sin(time*.9).toFloat(), force.effective.toFloat(), 0f)
+                flowClock.set(time.toFloat(), 1f / 60, resetEpoch.toFloat(), 0f)
+                flowEmitter.set(
+                    (pan + cos(time * .7) * 2).toFloat(),
+                    sin(time * .9).toFloat(),
+                    force.effective.toFloat(),
+                    0f,
+                )
                 flowLook.x = grainCell.effective.toFloat()
                 flowLook.y = strokeTime.effective.toFloat()
             }
@@ -348,7 +378,9 @@ frames {
         while (frame()) {
             if (renderer.frameCounter - report >= 120) {
                 report = renderer.frameCounter
-                println("render=$report step=$ticks tiles=${pool.capacity} relocations=${pool.relocations} reset=${resetFlow.completed} history=${camera.available}")
+                println(
+                    "render=$report step=$ticks tiles=${pool.capacity} relocations=${pool.relocations} reset=${resetFlow.completed} history=${camera.available}",
+                )
             }
         }
     } finally {
@@ -362,13 +394,20 @@ frames {
 
 <!-- field-box id="flow_controls" index="6" -->
 
+### Narrative
+
+From `code`
+
+Dependencies are explicit graph exports; resources stay in their parent box.
+
+Edit and execute this box. The shader receives the effective values; all values
+and bounds remain inspectable through Field's ordinary object viewer.
+
 ```edn [field-box id="flow_controls" role="properties"]
-{"id" "flow_controls" "index" 6 "name" "Parameters — edit and execute" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "Parameters — edit and execute" "_tombstone" false "frame" #afield/rect [940.0 80.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_controls_code_.kt" "lines" 13 "characters" 868 "sha256" "6cfcd9aea3539770fd1e2c23a980e780b4b5a165986eab1244ba16ce7ec876e8"}]}
+{"id" "flow_controls" "index" 6 "name" "Parameters — edit and execute" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "Parameters — edit and execute" "_tombstone" false "frame" #afield/rect [940.0 80.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_controls_code_.kt" "lines" 11 "characters" 805 "sha256" "f403bb9cba7540536936a55cdd4e62cbd5517023c7fe8ff5e120137921cb3b32"}]}
 ```
 
 ```kotlin [field-property box="flow_controls" name="code" path="flow_controls_code_.kt"]
-import afield.document.context.fromContextWithNameOrNull
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
 // Edit and execute this box. The shader receives the effective values; all values
@@ -377,22 +416,26 @@ force.requested = 2.5 // Vortex acceleration, clamped to 0–12 world units / se
 grainCell.requested = .018 // World-space cell size, clamped to .006–.12.
 strokeTime.requested = .15 // Integrated path length in seconds, clamped to .01–.6.
 travel.set(false) // Scroll across the fixed tile pool and vary zoom.
-flowWidth.requested = 8.0 // Visible vertical half-width in world units.
+flowWidth.requested = 8.0 // Visible vertical half-height in world units.
 flowLook.w = 0f // 0 grain; 1 fluid velocity; 2 camera UV; 3 object+camera UV; 4 displacement.
-listOf(force.snapshot(), grainCell.snapshot(), strokeTime.snapshot(), flowWidth.snapshot())
+[force.snapshot(), grainCell.snapshot(), strokeTime.snapshot(), flowWidth.snapshot()]
 ```
 
 ## 8. 9. Grain and correspondence RTT
 
 <!-- field-box id="flow_grain" index="7" -->
 
+### Narrative
+
+From `code`
+
+Dependencies are explicit graph exports; resources stay in their parent box.
+
 ```edn [field-box id="flow_grain" role="properties"]
-{"id" "flow_grain" "index" 7 "name" "9. Grain and correspondence RTT" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "9. Grain and correspondence RTT" "_tombstone" false "frame" #afield/rect [510.0 530.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_grain_code_.kt" "lines" 22 "characters" 768 "sha256" "b9a5b2e0750da1123d050eea8e012b477c6b8f4005bf8c64aec9c3f97c10480d"} {"name" "vertex" "language" "glsl" "path" "flow_grain_vertex_.glsl" "lines" 7 "characters" 202 "sha256" "093ff9c35c7d0656fa9929963897d03e432d20bb26c591aafde0c25275d29caa"} {"name" "fragment" "language" "glsl" "path" "flow_grain_fragment_.glsl" "lines" 66 "characters" 3473 "sha256" "1ebbe155988f182882ed394c2db420554285cde542ab074a889bad16f4dcab0e"}]}
+{"id" "flow_grain" "index" 7 "name" "9. Grain and correspondence RTT" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "9. Grain and correspondence RTT" "_tombstone" false "frame" #afield/rect [510.0 530.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_grain_code_.kt" "lines" 20 "characters" 710 "sha256" "054f91f5eb896a4b590d387b22d6798544c23a222268f62b5a93ffef10df07a1"} {"name" "vertex" "language" "glsl" "path" "flow_grain_vertex_.glsl" "lines" 7 "characters" 202 "sha256" "093ff9c35c7d0656fa9929963897d03e432d20bb26c591aafde0c25275d29caa"} {"name" "fragment" "language" "glsl" "path" "flow_grain_fragment_.glsl" "lines" 82 "characters" 3516 "sha256" "27a51a54a53e07d35b9e30dea6355ef146ea9636ee31de35f2a6841c07498699"}]}
 ```
 
 ```kotlin [field-property box="flow_grain" name="code" path="flow_grain_code_.kt"]
-import afield.document.context.fromContextWithNameOrNull
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
 var module = moduleHere {
@@ -431,24 +474,40 @@ void main() {
 #include "flow/grain.glsl"
 #include "flow/motion.glsl"
 #include "flow/tiles.glsl"
-layout(std430, buffer_reference) readonly buffer Field { vec4 v[]; };
-layout(std430, buffer_reference) readonly buffer Tiles { ivec4 v[]; };
-layout(std430, buffer_reference) readonly buffer History { FlowFrameHistory frame; };
+layout(std430, buffer_reference) readonly buffer Field {
+    vec4 v[];
+};
+layout(std430, buffer_reference) readonly buffer Tiles {
+    ivec4 v[];
+};
+layout(std430, buffer_reference) readonly buffer History {
+    FlowFrameHistory frame;
+};
 layout(push_constant) uniform Push {
-    Field item; // Current pose and MotionItems previous affine/validity.
-    Field velocity; // Current projected fluid velocity.
-    Tiles tiles; // Resident world coordinates and generations.
-    History history; // FrameHistory's complete 68-float layout.
-    vec4 clock; // x time; y dt; zw reserved.
-    vec4 look; // x world grain cell; y stroke seconds; z gain; w debug view.
+    Field item;
+    // Current pose and MotionItems previous affine/validity.
+    Field velocity;
+    // Current projected fluid velocity.
+    Tiles tiles;
+    // Resident world coordinates and generations.
+    History history;
+    // FrameHistory's complete 68-float layout.
+    vec4 clock;
+    // x time; y dt; zw reserved.
+    vec4 look;
+    // x world grain cell; y stroke seconds; z gain; w debug view.
 } pc;
 layout(location = 0) in vec2 uv;
 layout(location = 0) out vec4 color;
-layout(location = 1) out vec4 motion; // Previous UV, valid, coverage. No blending on this attachment.
-
+layout(location = 1) out vec4 motion;
+// Previous UV, valid, coverage. No blending on this attachment.
 const float H = 4. / 24.;
-bool rock(vec2 p) { return (abs(p.y + 2.) < .10 && abs(p.x) < 4.) || length(p - vec2(2.4, 1.2)) < .8; }
-float flowMask(vec2 p) { return rock(p) ? 0. : 1.; }
+bool rock(vec2 p) {
+    return (abs(p.y + 2.) < .10 && abs(p.x) < 4.) || length(p - vec2(2.4, 1.2)) < .8;
+}
+float flowMask(vec2 p) {
+    return rock(p) ? 0. : 1.;
+}
 vec2 atCell(ivec2 cell) {
     ivec2 local = ivec2(flowFloorMod(cell.x,24),flowFloorMod(cell.y,24));
     ivec2 tile = (cell - local) / 24;
@@ -498,17 +557,17 @@ void main() {
 
 <!-- field-box id="flow_pressure" index="8" -->
 
+### Narrative
+
+From `code`
+
+Dependencies are explicit graph exports; resources stay in their parent box.
+
 ```edn [field-box id="flow_pressure" role="properties"]
-{"id" "flow_pressure" "index" 8 "name" "6. Pressure — 24 iterations" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "6. Pressure — 24 iterations" "_tombstone" false "frame" #afield/rect [510.0 80.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_pressure_code_.kt" "lines" 30 "characters" 1114 "sha256" "c2c9fdf7bc6688ebe4bbb4ec18c48b1b662372473f7b65bafd330a4b8b0256c8"} {"name" "compute" "language" "glsl" "path" "flow_pressure_compute_.glsl" "lines" 13 "characters" 539 "sha256" "4dbcaa0f69668e78c34ecc69911a23e76a3e35dd80dbd28d6071192be32f9139"}]}
+{"id" "flow_pressure" "index" 8 "name" "6. Pressure — 24 iterations" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "6. Pressure — 24 iterations" "_tombstone" false "frame" #afield/rect [510.0 80.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_pressure_code_.kt" "lines" 27 "characters" 909 "sha256" "68c689b5fe156cf9b99b0c8be841fd1151fcf7118e34c1461b2c026d67a35f03"} {"name" "compute" "language" "glsl" "path" "flow_pressure_compute_.glsl" "lines" 13 "characters" 529 "sha256" "04201d2215376ac0ab4d723f5bfbd7b56b2845044c688aa11cd055d6e7efb2d2"}]}
 ```
 
 ```kotlin [field-property box="flow_pressure" name="code" path="flow_pressure_code_.kt"]
-import afield.document.context.fromContextWithNameOrNull
-import afield.graphics.vulkan.buffers.VulkanBuffer
-import afield.graphics.render.computeMemoryBarrier
-import afield.graphics.render.graphicsMemoryBarrier
-import afield.graphics.render.computeTask
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
 var module = computeModuleHere {}
@@ -525,14 +584,17 @@ for (i in 0 until 24) {
     mesh.tiles = { tileHeaders }
     mesh.clock = { flowClock }
     mesh.emitter = { flowEmitter }
-    module += "barrier-$i" to computeTask { _, cmd, _ ->
-        computeMemoryBarrier(cmd, null as VulkanBuffer?)
-    }
+    module +=
+        "barrier-$i" to
+            computeTask { _, cmd, _ ->
+                computeMemoryBarrier(cmd, null as VulkanBuffer?)
+            }
 }
 flowSimulation += "pressure" to module
-loop { true }.end {
-    if (flowSimulation.modules["pressure"] === module) flowSimulation.modules.remove("pressure")
-}
+loop { true }
+    .end {
+        if (flowSimulation.modules["pressure"] === module) flowSimulation.modules.remove("pressure")
+    }
 ```
 
 ```glsl [field-property box="flow_pressure" name="compute" path="flow_pressure_compute_.glsl"]
@@ -545,7 +607,7 @@ void main() {
     if (i >= CELLS) return;
     ivec2 c = worldCell(i);
     float sum = readCell(pc.source, c + ivec2(1,0)).x + readCell(pc.source, c - ivec2(1,0)).x
-              + readCell(pc.source, c + ivec2(0,1)).x + readCell(pc.source, c - ivec2(0,1)).x;
+    + readCell(pc.source, c + ivec2(0,1)).x + readCell(pc.source, c - ivec2(0,1)).x;
     float divergence = readCell(pc.auxiliary, c).x;
     storeCell(i, vec3((sum - divergence * H * H) * .25, 0, 0));
 }
@@ -555,17 +617,17 @@ void main() {
 
 <!-- field-box id="flow_particles" index="9" -->
 
+### Narrative
+
+From `code`
+
+Dependencies are explicit graph exports; resources stay in their parent box.
+
 ```edn [field-box id="flow_particles" role="properties"]
-{"id" "flow_particles" "index" 9 "name" "8. Advect finite grains" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "8. Advect finite grains" "_tombstone" false "frame" #afield/rect [510.0 380.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_particles_code_.kt" "lines" 28 "characters" 1080 "sha256" "d49150a761f3d6dc76e84d0f3b2237e2f9af4d7013164e881fae74c7a5848f2b"} {"name" "compute" "language" "glsl" "path" "flow_particles_compute_.glsl" "lines" 28 "characters" 1253 "sha256" "863a2f28ecdaf3b00fff0d087d016307982f36f7a9cc39fe1b4410e816325834"}]}
+{"id" "flow_particles" "index" 9 "name" "8. Advect finite grains" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "8. Advect finite grains" "_tombstone" false "frame" #afield/rect [510.0 380.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_particles_code_.kt" "lines" 25 "characters" 875 "sha256" "d9468d15bc8b9445f3d63727050152014c66e1cab714c4aadcda26e9c5417d19"} {"name" "compute" "language" "glsl" "path" "flow_particles_compute_.glsl" "lines" 32 "characters" 1261 "sha256" "fdc23487dd13b2563419813c2387feacb86c35936f4b5b4c6a15491f58dc7723"}]}
 ```
 
 ```kotlin [field-property box="flow_particles" name="code" path="flow_particles_code_.kt"]
-import afield.document.context.fromContextWithNameOrNull
-import afield.graphics.vulkan.buffers.VulkanBuffer
-import afield.graphics.render.computeMemoryBarrier
-import afield.graphics.render.graphicsMemoryBarrier
-import afield.graphics.render.computeTask
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
 var module = computeModuleHere {}
@@ -580,14 +642,17 @@ mesh.auxiliary = { if (flowStep.get() % 2L == 0L) flowB else flowA }
 mesh.tiles = { tileHeaders }
 mesh.clock = { flowClock }
 mesh.emitter = { flowEmitter }
-module += "barrier" to computeTask { _, cmd, _ ->
-    computeMemoryBarrier(cmd, null as VulkanBuffer?)
-    graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
-}
+module +=
+    "barrier" to
+        computeTask { _, cmd, _ ->
+            computeMemoryBarrier(cmd, null as VulkanBuffer?)
+            graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
+        }
 flowSimulation += "particles" to module
-loop { true }.end {
-    if (flowSimulation.modules["particles"] === module) flowSimulation.modules.remove("particles")
-}
+loop { true }
+    .end {
+        if (flowSimulation.modules["particles"] === module) flowSimulation.modules.remove("particles")
+    }
 ```
 
 ```glsl [field-property box="flow_particles" name="compute" path="flow_particles_compute_.glsl"]
@@ -597,8 +662,12 @@ loop { true }.end {
 #include "flow/strokes.glsl"
 #include "flow/grain.glsl"
 layout(local_size_x = 64) in;
-vec2 flowVelocity(vec2 p) { return sampleField(pc.auxiliary, p).xy; }
-float flowMask(vec2 p) { return rock(p) ? 0. : 1.; }
+vec2 flowVelocity(vec2 p) {
+    return sampleField(pc.auxiliary, p).xy;
+}
+float flowMask(vec2 p) {
+    return rock(p) ? 0. : 1.;
+}
 void main() {
     int id = int(gl_GlobalInvocationID.x);
     if (id >= 16000) return;
@@ -625,21 +694,31 @@ void main() {
 
 <!-- field-box id="flow_profile" index="10" -->
 
+### Narrative
+
+From `code`
+
+Dependencies are explicit graph exports; resources stay in their parent box.
+
 ```edn [field-box id="flow_profile" role="properties"]
-{"id" "flow_profile" "index" 10 "name" "Profile — 180 rendered frames" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "Profile — 180 rendered frames" "_tombstone" false "frame" #afield/rect [940.0 380.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_profile_code_.kt" "lines" 35 "characters" 2097 "sha256" "c2b9c6de5063b998f59f5f13407e29a6c81214b7df5d0bd6e42d85ddae7a1128"}]}
+{"id" "flow_profile" "index" 10 "name" "Profile — 180 rendered frames" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "Profile — 180 rendered frames" "_tombstone" false "frame" #afield/rect [940.0 380.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_profile_code_.kt" "lines" 41 "characters" 2107 "sha256" "637570a336f718e901c6b895e80181952b09d5710488e445348d8250fa1a6761"}]}
 ```
 
 ```kotlin [field-property box="flow_profile" name="code" path="flow_profile_code_.kt"]
-import afield.document.context.fromContextWithNameOrNull
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
-val resetFlow = requireNotNull(fromContextWithNameOrNull<afield.runtime.lifecycle.SimulationReset>("resetFlow")) { "Missing resetFlow; run Resources first" }
-val travel = requireNotNull(fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")) { "Missing travel; run Resources first" }
-val settings = listOf("force", "grainCell", "strokeTime", "flowWidth").map { parameterName ->
-    requireNotNull(fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>(parameterName)) {
-        "Run Resources first: missing parameter $parameterName"
-    }.snapshot()
+val resetFlow = requireNotNull(fromContextWithNameOrNull<afield.runtime.lifecycle.SimulationReset>("resetFlow")) {
+    "Missing resetFlow; run Resources first"
 }
+val travel = requireNotNull(fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")) {
+    "Missing travel; run Resources first"
+}
+val settings =
+    ["force", "grainCell", "strokeTime", "flowWidth"].map { parameterName ->
+        requireNotNull(fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>(parameterName)) {
+                "Run Resources first: missing parameter $parameterName"
+            }
+            .snapshot()
+    }
 
 // Compare a deterministic 180-frame path with identical settings after a reset.
 // Stop Box also ends this capture and restores the previous travel setting.
@@ -652,14 +731,16 @@ frames {
         println("Profile settings: $settings; reset ticket=${resetFlow.completed}")
         val start = renderer.frameCounter
         while (frame() && renderer.frameCounter - start < 60) {} // Warm shaders and caches.
-        CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("start", 30.0, stacks=true))
+        CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("start", 30.0, stacks = true))
         recording = true
         val recordingStart = renderer.frameCounter
         while (frame() && renderer.frameCounter - recordingStart < 180) {}
         val result = CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("stop"))
         recording = false
         thisBox.inBrowser("window.showProfilingTimeline(); document.getElementById('profile-tab-frames').click()")
-        println("Flow profile: ${result.frameRecords.size} intervals; ${renderer.frameCounter-recordingStart} rendered frames")
+        println(
+            "Flow profile: ${result.frameRecords.size} intervals; ${renderer.frameCounter-recordingStart} rendered frames",
+        )
     } finally {
         if (recording) CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("stop"))
         travel.set(wasTravelling)
@@ -671,17 +752,17 @@ frames {
 
 <!-- field-box id="flow_advect" index="11" -->
 
+### Narrative
+
+From `code`
+
+Dependencies are explicit graph exports; resources stay in their parent box.
+
 ```edn [field-box id="flow_advect" role="properties"]
-{"id" "flow_advect" "index" 11 "name" "4. Advect and inject" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "4. Advect and inject" "_tombstone" false "frame" #afield/rect [80.0 680.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_advect_code_.kt" "lines" 28 "characters" 999 "sha256" "a3c558b173dac798059c4a114fd310b698568d32ac4ee2729fd34b41954612d5"} {"name" "compute" "language" "glsl" "path" "flow_advect_compute_.glsl" "lines" 20 "characters" 803 "sha256" "6cb2bb16cfc49ecb7ab9344aecbcb81662f760cfc7c15b3bd08d6c02e5a557ef"}]}
+{"id" "flow_advect" "index" 11 "name" "4. Advect and inject" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "4. Advect and inject" "_tombstone" false "frame" #afield/rect [80.0 680.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_advect_code_.kt" "lines" 25 "characters" 794 "sha256" "a1bb2d0bb419a88037845eabd3fbb4c7f12591a8803197850d623f5bdebe047d"} {"name" "compute" "language" "glsl" "path" "flow_advect_compute_.glsl" "lines" 23 "characters" 823 "sha256" "51bb8e1f545e82db59e1f5c9847226a7f93a64662c0ecc4fd9a840b172009f29"}]}
 ```
 
 ```kotlin [field-property box="flow_advect" name="code" path="flow_advect_code_.kt"]
-import afield.document.context.fromContextWithNameOrNull
-import afield.graphics.vulkan.buffers.VulkanBuffer
-import afield.graphics.render.computeMemoryBarrier
-import afield.graphics.render.graphicsMemoryBarrier
-import afield.graphics.render.computeTask
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
 var module = computeModuleHere {}
@@ -696,14 +777,17 @@ mesh.auxiliary = { pressureA }
 mesh.tiles = { tileHeaders }
 mesh.clock = { flowClock }
 mesh.emitter = { flowEmitter }
-module += "barrier" to computeTask { _, cmd, _ ->
-    computeMemoryBarrier(cmd, null as VulkanBuffer?)
-    graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
-}
+module +=
+    "barrier" to
+        computeTask { _, cmd, _ ->
+            computeMemoryBarrier(cmd, null as VulkanBuffer?)
+            graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
+        }
 flowSimulation += "advect" to module
-loop { true }.end {
-    if (flowSimulation.modules["advect"] === module) flowSimulation.modules.remove("advect")
-}
+loop { true }
+    .end {
+        if (flowSimulation.modules["advect"] === module) flowSimulation.modules.remove("advect")
+    }
 ```
 
 ```glsl [field-property box="flow_advect" name="compute" path="flow_advect_compute_.glsl"]
@@ -715,7 +799,10 @@ void main() {
     int i = int(gl_GlobalInvocationID.x);
     if (i >= CELLS) return;
     vec2 p = worldPosition(i);
-    if (rock(p)) { storeCell(i, vec3(0)); return; }
+    if (rock(p)) {
+        storeCell(i, vec3(0));
+        return;
+    }
     vec2 velocity = readCell(pc.source, worldCell(i)).xy;
     vec2 back = p - velocity * pc.clock.y;
     if (rock(back)) back = p;
@@ -740,27 +827,41 @@ From `compute`
 Common storage contract for the editable fluid stages.
 
 ```edn [field-box id="flow_helpers" role="properties"]
-{"id" "flow_helpers" "index" 12 "name" "flow_helpers" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "flow_helpers" "_tombstone" false "frame" #afield/rect [80.0 530.0 370.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "flow_helpers_compute_.glsl" "lines" 51 "characters" 2397 "sha256" "aab30a0c2f1389b4a8f165229081bcd0e6e37bd23013b23c06e3e0563134e20e"}]}
+{"id" "flow_helpers" "index" 12 "name" "flow_helpers" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "flow_helpers" "_tombstone" false "frame" #afield/rect [80.0 530.0 370.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "flow_helpers_compute_.glsl" "lines" 67 "characters" 2422 "sha256" "c90d918e540253bd4cd80ad13c3bd8a25f4f0754e6bb7d994a31e5ecb1efb88c"}]}
 ```
 
 ```glsl [field-property box="flow_helpers" name="compute" path="flow_helpers_compute_.glsl"]
 // Common storage contract for the editable fluid stages.
 #include "flow/tiles.glsl"
-layout(std430, buffer_reference) buffer Field { vec4 v[]; };
-layout(std430, buffer_reference) readonly buffer Tiles { ivec4 v[]; };
+layout(std430, buffer_reference) buffer Field {
+    vec4 v[];
+};
+layout(std430, buffer_reference) readonly buffer Tiles {
+    ivec4 v[];
+};
 layout(push_constant) uniform Push {
-    Field source; // Stage input; xy velocity or x scalar; w generation bits.
-    Field target; // Stage output, on the same graphics queue.
-    Field auxiliary; // Divergence or pressure, depending on the stage.
-    Tiles tiles; // TileResidency.pack: world x/y, generation, occupied.
-    vec4 clock; // x seconds; y step seconds; zw reserved.
-    vec4 emitter; // xy force origin; z strength; w reserved.
+    Field source;
+    // Stage input; xy velocity or x scalar; w generation bits.
+    Field target;
+    // Stage output, on the same graphics queue.
+    Field auxiliary;
+    // Divergence or pressure, depending on the stage.
+    Tiles tiles;
+    // TileResidency.pack: world x/y, generation, occupied.
+    vec4 clock;
+    // x seconds; y step seconds; zw reserved.
+    vec4 emitter;
+    // xy force origin; z strength; w reserved.
 } pc;
 
-const int N = 24; // Cells along each tile; matches resources box.
-const ivec2 SHAPE = ivec2(5, 5); // Bounded residency; no periodic world wrapping.
-const float TILE = 4.; // World units per tile.
-const float H = TILE / float(N); // World units per fluid cell.
+const int N = 24;
+// Cells along each tile; matches resources box.
+const ivec2 SHAPE = ivec2(5, 5);
+// Bounded residency; no periodic world wrapping.
+const float TILE = 4.;
+// World units per tile.
+const float H = TILE / float(N);
+// World units per fluid cell.
 const int CELLS = 25 * N * N;
 
 bool rock(vec2 p) {
@@ -771,7 +872,9 @@ ivec2 worldCell(int index) {
     int slot = index / (N * N), local = index % (N * N);
     return pc.tiles.v[slot].xy * N + ivec2(local % N, local / N);
 }
-vec2 worldPosition(int index) { return (vec2(worldCell(index)) + .5) * H; }
+vec2 worldPosition(int index) {
+    return (vec2(worldCell(index)) + .5) * H;
+}
 int cellIndex(ivec2 cell) {
     ivec2 local = ivec2(flowFloorMod(cell.x, N), flowFloorMod(cell.y, N));
     ivec2 tile = (cell - local) / N;
@@ -790,7 +893,7 @@ vec4 sampleField(Field field, vec2 p) {
     ivec2 cell = ivec2(floor(grid));
     vec2 f = fract(grid);
     return mix(mix(readCell(field, cell), readCell(field, cell + ivec2(1,0)), f.x),
-               mix(readCell(field, cell + ivec2(0,1)), readCell(field, cell + ivec2(1)), f.x), f.y);
+    mix(readCell(field, cell + ivec2(0,1)), readCell(field, cell + ivec2(1)), f.x), f.y);
 }
 void storeCell(int index, vec3 value) {
     pc.target.v[index] = vec4(value, intBitsToFloat(pc.tiles.v[index / (N * N)].z));
@@ -801,13 +904,19 @@ void storeCell(int index, vec3 value) {
 
 <!-- field-box id="flow_resolve" index="13" -->
 
+### Narrative
+
+From `code`
+
+Dependencies are explicit graph exports; resources stay in their parent box.
+
+The color and motion attachment are both available to future postprocessing boxes.
+
 ```edn [field-box id="flow_resolve" role="properties"]
-{"id" "flow_resolve" "index" 13 "name" "10. Present color or motion" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "10. Present color or motion" "_tombstone" false "frame" #afield/rect [510.0 680.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_resolve_code_.kt" "lines" 19 "characters" 700 "sha256" "961234a9be6bf9b3ec84612021f7e0197bfec8c162700da803f7326826a6b916"} {"name" "vertex" "language" "glsl" "path" "flow_resolve_vertex_.glsl" "lines" 7 "characters" 202 "sha256" "093ff9c35c7d0656fa9929963897d03e432d20bb26c591aafde0c25275d29caa"} {"name" "fragment" "language" "glsl" "path" "flow_resolve_fragment_.glsl" "lines" 14 "characters" 617 "sha256" "9584afd5ba80f732a602006ecc661cd149e4013a7a459310b7718d4b4b642386"}]}
+{"id" "flow_resolve" "index" 13 "name" "10. Present color or motion" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "10. Present color or motion" "_tombstone" false "frame" #afield/rect [510.0 680.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_resolve_code_.kt" "lines" 18 "characters" 655 "sha256" "bfd4ccc2e7ed2c4793ec1fbe78da48c2ed2cfb64e0775861627595e638f96ba7"} {"name" "vertex" "language" "glsl" "path" "flow_resolve_vertex_.glsl" "lines" 7 "characters" 202 "sha256" "093ff9c35c7d0656fa9929963897d03e432d20bb26c591aafde0c25275d29caa"} {"name" "fragment" "language" "glsl" "path" "flow_resolve_fragment_.glsl" "lines" 15 "characters" 621 "sha256" "45f8fadc2c335b9de763a700e2dd5dc17721722816ad9c022384a53c396cf6a0"}]}
 ```
 
 ```kotlin [field-property box="flow_resolve" name="code" path="flow_resolve_code_.kt"]
-import afield.document.context.fromContextWithNameOrNull
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
 // The color and motion attachment are both available to future postprocessing boxes.
@@ -822,9 +931,10 @@ module += "present" to mesh
 mesh.look = { flowLook }
 mesh.resize(3)
 renderer += "flow-resolve" to module
-loop { true }.end {
-    if (renderer.renderList.modules["flow-resolve"] === module) renderer.renderList.modules.remove("flow-resolve")
-}
+loop { true }
+    .end {
+        if (renderer.renderList.modules["flow-resolve"] === module) renderer.renderList.modules.remove("flow-resolve")
+    }
 ```
 
 ```glsl [field-property box="flow_resolve" name="vertex" path="flow_resolve_vertex_.glsl"]
@@ -842,7 +952,8 @@ void main() {
 layout(set=0,binding=0) uniform sampler2D colorTexture;
 layout(set=0,binding=1) uniform sampler2D motionTexture;
 layout(push_constant) uniform Push {
-    vec4 look; // w: 0 color; 3 previous UV; 4 displacement magnified.
+    vec4 look;
+    // w: 0 color; 3 previous UV; 4 displacement magnified.
 } pc;
 layout(location=0) in vec2 uv;
 layout(location=0) out vec4 color;
@@ -858,18 +969,24 @@ void main() {
 
 <!-- field-box id="flow_strokes" index="14" -->
 
+### Narrative
+
+From `code`
+
+Dependencies are explicit graph exports; resources stay in their parent box.
+
 ```edn [field-box id="flow_strokes" role="properties"]
-{"id" "flow_strokes" "index" 14 "name" "11. Velocity strokes" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "11. Velocity strokes" "_tombstone" false "frame" #afield/rect [510.0 830.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_strokes_code_.kt" "lines" 18 "characters" 846 "sha256" "9c4c8bbb977324e4411eb0108ec4d07fcf6352e0f8d39ee0cf5d1f2049895ac0"} {"name" "vertex" "language" "glsl" "path" "flow_strokes_vertex_.glsl" "lines" 24 "characters" 1087 "sha256" "5cd508ce76fa277354df9d1a058abd6a0645ca136a22f9b33d6f61352ef5db71"} {"name" "fragment" "language" "glsl" "path" "flow_strokes_fragment_.glsl" "lines" 11 "characters" 435 "sha256" "9752e42e92d3d9bda251e7c5daa170efc6245410dc64df857a9bfda5e7a1e7af"}]}
+{"id" "flow_strokes" "index" 14 "name" "11. Velocity strokes" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "11. Velocity strokes" "_tombstone" false "frame" #afield/rect [510.0 830.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_strokes_code_.kt" "lines" 21 "characters" 809 "sha256" "8ad81aea383f9a206a9f90e723e5062705a50146d9b60b642fafc485c015352c"} {"name" "vertex" "language" "glsl" "path" "flow_strokes_vertex_.glsl" "lines" 32 "characters" 1107 "sha256" "d7164b666c2529edf702f44e836a66a9cbf25049c3cfe34b6eada57f6aa949dd"} {"name" "fragment" "language" "glsl" "path" "flow_strokes_fragment_.glsl" "lines" 11 "characters" 435 "sha256" "9752e42e92d3d9bda251e7c5daa170efc6245410dc64df857a9bfda5e7a1e7af"}]}
 ```
 
 ```kotlin [field-property box="flow_strokes" name="code" path="flow_strokes_code_.kt"]
-import afield.document.context.fromContextWithNameOrNull
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
-var module = moduleHere { depthTest = false
+var module = moduleHere {
+    depthTest = false
     depthWrite = false
-    primitiveType = triangles }
+    primitiveType = triangles
+}
 val mesh = Mesh()
 module += "velocity strokes" to mesh
 mesh.particles = { if (flowStep.get() % 2L == 0L) particleB else particleA }
@@ -880,7 +997,10 @@ val strokeViewport = vec(0, 0, 0, 0)
 mesh.viewport = { strokeViewport.set(window.width.toFloat(), window.height.toFloat(), 0f, 0f) }
 mesh.resize(16000 * 6)
 renderer += "flow-strokes" to module
-loop { true }.end { if (renderer.renderList.modules["flow-strokes"] === module) renderer.renderList.modules.remove("flow-strokes") }
+loop { true }
+    .end {
+        if (renderer.renderList.modules["flow-strokes"] === module) renderer.renderList.modules.remove("flow-strokes")
+    }
 ```
 
 ```glsl [field-property box="flow_strokes" name="vertex" path="flow_strokes_vertex_.glsl"]
@@ -888,13 +1008,21 @@ loop { true }.end { if (renderer.renderList.modules["flow-strokes"] === module) 
 #extension GL_EXT_buffer_reference : require
 #include "flow/strokes.glsl"
 #include "flow/motion.glsl"
-layout(std430, buffer_reference) readonly buffer Field { vec4 v[]; };
-layout(std430, buffer_reference) readonly buffer History { FlowFrameHistory frame; };
+layout(std430, buffer_reference) readonly buffer Field {
+    vec4 v[];
+};
+layout(std430, buffer_reference) readonly buffer History {
+    FlowFrameHistory frame;
+};
 layout(push_constant) uniform Push {
-    Field particles; // Pairs of position/generation and smoothed velocity.
-    History history; // Camera matrices and target resolution.
-    vec4 viewport; // xy current window dimensions; zw reserved.
-    vec4 look; // x seconds of stroke; y half-width pixels; z gain; w reserved.
+    Field particles;
+    // Pairs of position/generation and smoothed velocity.
+    History history;
+    // Camera matrices and target resolution.
+    vec4 viewport;
+    // xy current window dimensions; zw reserved.
+    vec4 look;
+    // x seconds of stroke; y half-width pixels; z gain; w reserved.
 } pc;
 layout(location=0) out vec2 edge;
 layout(location=1) out vec2 world;
@@ -906,7 +1034,7 @@ void main() {
     edge = corners[gl_VertexIndex % 6];
     world = p;
     gl_Position = flowStrokeClip(p, v, vec2(0,-1), edge, pc.history.frame.current,
-        pc.viewport.xy, pc.look.x, .035, .65, pc.look.y);
+    pc.viewport.xy, pc.look.x, .035, .65, pc.look.y);
 }
 ```
 

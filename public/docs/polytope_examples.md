@@ -22,10 +22,12 @@ val chain = conway("kbD")
 val run = chain.polyhedron.canonicalize()
 val solid = if (run.converged) run.polyhedron else chain.polyhedron
 
-// Now colour every one of those faces by the element of the ORIGINAL DODECAHEDRON it descends
-// from. Not by position, not by normal, not by size — `sourceElements` walks each output face's
-// lineage back through kis, through truncate, through ambo, to a single seed element. The
-// symmetry you can see is therefore a picture of the incidence structure, not of the geometry.
+/*
+Now colour every one of those faces by the element of the ORIGINAL DODECAHEDRON it descends
+from. Not by position, not by normal, not by size — `sourceElements` walks each output face's
+lineage back through kis, through truncate, through ambo, to a single seed element. The
+symmetry you can see is therefore a picture of the incidence structure, not of the geometry.
+*/
 :::fold colour each face by the seed pentagon its lineage flattens to, and draw
 fun hsv(hue: Double, s: Double, v: Double): Triple<Double, Double, Double> {
     val h = ((hue % 1.0) + 1.0) % 1.0
@@ -35,26 +37,33 @@ fun hsv(hue: Double, s: Double, v: Double): Triple<Double, Double, Double> {
     val q = v * (1 - f * s)
     val t = v * (1 - (1 - f) * s)
     return when (i % 6) {
-        0 -> Triple(v, t, p); 1 -> Triple(q, v, p); 2 -> Triple(p, v, t)
-        3 -> Triple(p, q, v); 4 -> Triple(t, p, v); else -> Triple(v, p, q)
+        0 -> Triple(v, t, p)
+        1 -> Triple(q, v, p)
+        2 -> Triple(p, v, t)
+        3 -> Triple(p, q, v)
+        4 -> Triple(t, p, v)
+        else -> Triple(v, p, q)
     }
 }
 
-// Which of the dodecahedron's twelve pentagons does an output face descend from? Element ids are
-// allocated rank by rank, so "the lowest source id" would silently pick a vertex every time — ask
-// for the rank-2 sources specifically. A face over the interior of one pentagon has exactly one; a
-// face straddling an original edge or corner has two or three, and gets a neutral grey.
+/*
+Which of the dodecahedron's twelve pentagons does an output face descend from? Element ids are
+allocated rank by rank, so "the lowest source id" would silently pick a vertex every time — ask
+for the rank-2 sources specifically. A face over the interior of one pentagon has exactly one; a
+face straddling an original edge or corner has two or three, whose colors are blended.
+*/
 val faces = solid.topology.elements(2)
-fun seedFacesOf(id: ElementId) =
-    chain.sourceElements(id).filter { it.rank == 2 }.map { it.id.value }.sorted()
+fun seedFacesOf(id: ElementId) = chain.sourceElements(id).filter { it.rank == 2 }.map { it.id.value }.sorted()
 
 val pentagons = faces.flatMap { seedFacesOf(it.id) }.distinct().sorted()
 val share = faces.groupingBy { seedFacesOf(it.id).size }.eachCount().toSortedMap()
 
-// A face over one pentagon takes that pentagon's hue. A face straddling two or three of them takes
-// the blend — so the seams of the original dodecahedron colour themselves in between, and the
-// twelve-fold pattern reads without a single line being drawn. Saturation and brightness carry a
-// second signal: how many seed vertices and edges the face also touches.
+/*
+A face over one pentagon takes that pentagon's hue. A face straddling two or three of them takes
+the blend — so the seams of the original dodecahedron colour themselves in between, and the
+twelve-fold pattern reads without a single line being drawn. Saturation and brightness carry a
+second signal: how many seed vertices and edges the face also touches.
+*/
 fun hueOf(pentagon: Int) = pentagons.indexOf(pentagon).toDouble() / pentagons.size
 val faceLines = solid.toFaceFLines { face, line ->
     val owners = seedFacesOf(face.id)
@@ -63,31 +72,44 @@ val faceLines = solid.toFaceFLines { face, line ->
     val edges = sources.count { it.rank == 1 }
     val sat = (1.00 - 0.16 * corners).coerceIn(0.38, 1.0)
     val value = (0.78 + 0.16 * edges + 0.12 * owners.size).coerceIn(0.74, 1.0)
-    val mixed = if (owners.isEmpty()) Triple(0.70, 0.74, 0.80) else owners
-        .map { hsv(hueOf(it), sat, value) }
-        .reduce { a, b -> Triple(a.first + b.first, a.second + b.second, a.third + b.third) }
-        .let { Triple(it.first / owners.size, it.second / owners.size, it.third / owners.size) }
+    val mixed =
+        if (owners.isEmpty()) Triple(0.70, 0.74, 0.80)
+        else
+            owners
+                .map { hsv(hueOf(it), sat, value) }
+                .reduce { a, b -> Triple(a.first + b.first, a.second + b.second, a.third + b.third) }
+                .let { Triple(it.first / owners.size, it.second / owners.size, it.third / owners.size) }
     line.filled = true
     line.stroked = false
     line.color = vec(mixed.first, mixed.second, mixed.third, if (owners.size == 1) 0.32 else 0.21)
     line.hoverColor = vec(0.98, 0.99, 1.00, 0.95)
 }
 
-threeLines(faceLines, channel = "hero", name = "kbD, canonical, coloured by seed provenance",
-    height = 560, autoFrame = true, editable = false)
+threeLines(
+    faceLines,
+    channel = "hero",
+    name = "kbD, canonical, coloured by seed provenance",
+    height = 560,
+    autoFrame = true,
+    editable = false,
+)
 displayOpen("hero")
 
 val topology = solid.topology
-markdown("what you are looking at", [
-    "`kbD` = kis · bevel · dodecahedron, canonicalized",
-    "${topology.elements(0).size} vertices · ${topology.elements(1).size} edges · " +
-        "${topology.elements(2).size} faces · chi = ${topology.eulerCharacteristic()}",
-    "seed pentagons found in the lineage: ${pentagons.size}",
-    "output faces by how many of those pentagons they straddle: $share",
-    "canonical: converged = ${run.converged}, reason = ${run.reason}, " +
-        "tangency radius spread ${"%.3e".format(run.initialDiagnostics.tangencyRadiusSpread)} " +
-        "→ ${"%.3e".format(run.finalDiagnostics.tangencyRadiusSpread)}",
-].joinToString("<br/>"))
+markdown(
+    "what you are looking at",
+    [
+            "`kbD` = kis · bevel · dodecahedron, canonicalized",
+            "${topology.elements(0).size} vertices · ${topology.elements(1).size} edges · " +
+                "${topology.elements(2).size} faces · chi = ${topology.eulerCharacteristic()}",
+            "seed pentagons found in the lineage: ${pentagons.size}",
+            "output faces by how many of those pentagons they straddle: $share",
+            "canonical: converged = ${run.converged}, reason = ${run.reason}, " +
+                "tangency radius spread ${"%.3e".format(run.initialDiagnostics.tangencyRadiusSpread)} " +
+                "→ ${"%.3e".format(run.finalDiagnostics.tangencyRadiusSpread)}",
+        ]
+        .joinToString("<br/>"),
+)
 :::endfold
 ```
 
@@ -141,10 +163,13 @@ val edgesOfFace = t.incidentDown(face.id)
 val anEdge = ElementId(edgesOfFace.first())
 
 :::fold format the read-out as a table
-val ranks = (0..t.rank).joinToString("\n") { r ->
-    "| $r | ${["vertices", "edges", "faces", "the whole polyhedron"].getOrElse(r) { "?" }} | ${t.elements(r).size} |"
-}
-markdown("topology", """
+val ranks =
+    (0..t.rank).joinToString("\n") { r ->
+        "| $r | ${["vertices", "edges", "faces", "the whole polyhedron"].getOrElse(r) { "?" }} | ${t.elements(r).size} |"
+    }
+markdown(
+    "topology",
+    """
 #### `cube().topology` — everything that is actually stored
 
 | rank | what it is | count |
@@ -160,7 +185,9 @@ $ranks
   `validate(checkManifold = true)` clean: **${t.validate(checkManifold = true).isValid}**
 
 Not one coordinate was consulted above.
-""", width = 720)
+""",
+    width = 720,
+)
 :::endfold
 ```
 
@@ -192,16 +219,26 @@ val abstractCube = PolyhedralObject(cube().topology)
 val d = abstractCube.transform(ConwayOperator.DUAL).polyhedron
 
 // Ask it for geometry anyway, and keep whatever it says.
-val refusal = try { d.toFaceFLines(); "no exception — unexpected" }
-    catch (e: Throwable) { "${e::class.simpleName}: ${e.message}" }
-val triRefusal = try { d.triangulate(); "no exception — unexpected" }
-    catch (e: Throwable) { "${e::class.simpleName}: ${e.message}" }
+val refusal = try {
+    d.toFaceFLines()
+    "no exception — unexpected"
+} catch (e: Throwable) {
+        "${e::class.simpleName}: ${e.message}"
+    }
+val triRefusal = try {
+    d.triangulate()
+    "no exception — unexpected"
+} catch (e: Throwable) {
+        "${e::class.simpleName}: ${e.message}"
+    }
 
 // Now, and only now, choose a policy that says where the dual's vertices go.
 val rd = cube().dual(DualCentroidRealization).polyhedron
 
 :::fold lay the two columns side by side
-markdown("dual", """
+markdown(
+    "dual",
+    """
 #### A dual with no coordinates at all
 
 | | abstract dual | dual + `DualCentroidRealization` |
@@ -214,7 +251,9 @@ markdown("dual", """
 | `triangulate()` | `$triRefusal` | ${rd.triangulate().triangleCount} triangles |
 
 The left column is a complete, valid, checkable octahedron. It simply has nowhere to be.
-""", width = 900)
+""",
+    width = 900,
+)
 :::endfold
 ```
 
@@ -234,21 +273,26 @@ that rewrite into primitives before anything runs. This table is generated from
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/operator_table.png" wait="1.5" capture="box" open-outputs="true" w="860" h="640" padding="14"}
 :::static
-val rows = ConwayOperator.entries.joinToString("\n") { op ->
-    // primitiveExpansion is in EXECUTION order (seed outward). Prefix notation writes it
-    // the other way round, so reverse it to get the string you would actually type.
-    val execution = op.primitiveExpansion.joinToString("") { it.symbol.toString() }
-    val written = op.primitiveExpansion.reversed().joinToString("") { it.symbol.toString() }
-    "| `${op.symbol}` | ${op.displayName} | ${if (op.primitive) "primitive" else "composite"} " +
-        "| `$execution` | `${written}C` |"
-}
-markdown("ops", """
+val rows =
+    ConwayOperator.entries.joinToString("\n") { op ->
+        // primitiveExpansion is in EXECUTION order (seed outward). Prefix notation writes it
+        // the other way round, so reverse it to get the string you would actually type.
+        val execution = op.primitiveExpansion.joinToString("") { it.symbol.toString() }
+        val written = op.primitiveExpansion.reversed().joinToString("") { it.symbol.toString() }
+        "| `${op.symbol}` | ${op.displayName} | ${if (op.primitive) "primitive" else "composite"} " +
+            "| `$execution` | `${written}C` |"
+    }
+markdown(
+    "ops",
+    """
 #### `ConwayOperator.entries`
 
 | letter | name | kind | primitives, seed outward | equivalent notation |
 |---|---|---|---|---|
 $rows
-""", width = 780)
+""",
+    width = 780,
+)
 ```
 
 ![A thirteen-row table listing d dual, a ambo, k kis, t truncate and g gyro as primitives expanding to themselves, then j join, n needle, z zip, o ortho, e expand, s snub, m meta and b bevel as composites with their primitive expansions ad, dk, kd, adad, aa, dgd, adk and at, and equivalent notations daC, kdC, dkC, dadaC, aaC, dgdC, kdaC and taC](assets/polytope_examples/operator_table.png)
@@ -273,11 +317,19 @@ fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<Stri
     threeGrid(
         panels.map { (label, p) ->
             val t = p.topology
-            ThreeMeshPanel(label, p.toTriMesh(), facts =
-                "${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f · " +
-                t.elements(2).groupingBy { t.faceCycle(it.id).size }.eachCount().toSortedMap()
-                    .entries.joinToString(" ") { "${it.value}×${it.key}-gon" } +
-                " · χ=${t.eulerCharacteristic()}")
+            ThreeMeshPanel(
+                label,
+                p.toTriMesh(),
+                facts =
+                    "${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f · " +
+                        t.elements(2)
+                            .groupingBy { t.faceCycle(it.id).size }
+                            .eachCount()
+                            .toSortedMap()
+                            .entries
+                            .joinToString(" ") { "${it.value}×${it.key}-gon" } +
+                        " · χ=${t.eulerCharacteristic()}",
+            )
         },
         channel = channel,
         name = "gallery-$channel",
@@ -287,15 +339,21 @@ fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<Stri
         view = view,
     )
 }
+
 :::endfold
 
-gallery("seeds", columns = 3, cell = 380, panels = [
-    "T  tetrahedron" to tetrahedron(),
-    "C  cube" to cube(),
-    "O  octahedron" to octahedron(),
-    "I  icosahedron" to icosahedron(),
-    "D  dodecahedron" to dodecahedron(),
-])
+gallery(
+    "seeds",
+    columns = 3,
+    cell = 380,
+    panels = [
+        "T  tetrahedron" to tetrahedron(),
+        "C  cube" to cube(),
+        "O  octahedron" to octahedron(),
+        "I  icosahedron" to icosahedron(),
+        "D  dodecahedron" to dodecahedron(),
+    ],
+)
 ```
 
 ![Five shaded polyhedra — tetrahedron, cube, octahedron, icosahedron, dodecahedron — each captioned with its vertex, edge and face counts, its face-degree histogram, and Euler characteristic 2](assets/polytope_examples/seeds_gallery.png)
@@ -318,11 +376,19 @@ fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<Stri
     threeGrid(
         panels.map { (label, p) ->
             val t = p.topology
-            ThreeMeshPanel(label, p.toTriMesh(), facts =
-                "${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f · " +
-                t.elements(2).groupingBy { t.faceCycle(it.id).size }.eachCount().toSortedMap()
-                    .entries.joinToString(" ") { "${it.value}×${it.key}-gon" } +
-                " · χ=${t.eulerCharacteristic()}")
+            ThreeMeshPanel(
+                label,
+                p.toTriMesh(),
+                facts =
+                    "${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f · " +
+                        t.elements(2)
+                            .groupingBy { t.faceCycle(it.id).size }
+                            .eachCount()
+                            .toSortedMap()
+                            .entries
+                            .joinToString(" ") { "${it.value}×${it.key}-gon" } +
+                        " · χ=${t.eulerCharacteristic()}",
+            )
         },
         channel = channel,
         name = "gallery-$channel",
@@ -332,17 +398,23 @@ fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<Stri
         view = view,
     )
 }
+
 :::endfold
 
 // One seed, five primitives. `conway(...)` parses and evaluates in one call.
-gallery("primitives", columns = 3, cell = 380, panels = [
-    "C    the seed" to conway("C").polyhedron,
-    "dC   dual" to conway("dC").polyhedron,
-    "aC   ambo" to conway("aC").polyhedron,
-    "kC   kis" to conway("kC").polyhedron,
-    "tC   truncate" to conway("tC").polyhedron,
-    "gC   gyro" to conway("gC").polyhedron,
-])
+gallery(
+    "primitives",
+    columns = 3,
+    cell = 380,
+    panels = [
+        "C    the seed" to conway("C").polyhedron,
+        "dC   dual" to conway("dC").polyhedron,
+        "aC   ambo" to conway("aC").polyhedron,
+        "kC   kis" to conway("kC").polyhedron,
+        "tC   truncate" to conway("tC").polyhedron,
+        "gC   gyro" to conway("gC").polyhedron,
+    ],
+)
 ```
 
 ![Six shaded polyhedra in two rows: the cube, its dual the octahedron, the ambo cuboctahedron, the kis tetrakis hexahedron with a pyramid on every square, the truncated cube with octagons and triangles, and the gyro pentagonal icositetrahedron made entirely of pentagons — each captioned with counts and its face-degree histogram](assets/polytope_examples/primitives_gallery.png)
@@ -391,20 +463,28 @@ val painted = TriMesh(g.mesh.positions, g.mesh.indices, g.mesh.normals, null, co
 // A separate channel from the caption below: `display` REPLACES a channel's content, so a caption
 // written to "gyro" would silently take the viewer's place and the figure would lose its mesh.
 three(
-    painted, channel = "gyro3d", name = "gyro",
-    view = MeshView(wireframe = false, width = 860, height = 560, distance = 2.4), facts = false,
+    painted,
+    channel = "gyro3d",
+    name = "gyro",
+    view = MeshView(wireframe = false, width = 860, height = 560, distance = 2.4),
+    facts = false,
 )
 // The count behind the flatness: 24 faces sharing only 6 distinct outward normals.
-val distinctNormals = gyro.topology.elements(2)
-    .map { gyro.faceNormal(it.id) }
-    .map { "%.3f,%.3f,%.3f".format(it.x, it.y, it.z) }
-    .distinct()
+val distinctNormals =
+    gyro.topology
+        .elements(2)
+        .map { gyro.faceNormal(it.id) }
+        .map { "%.3f,%.3f,%.3f".format(it.x, it.y, it.z) }
+        .distinct()
 
-markdown("gyro", """
+markdown(
+    "gyro",
+    """
     gC · ${gyro.topology.elements(2).size} faces, all
     ${gyro.topology.elements(2).map { gyro.topology.faceCycle(it.id).size }.distinct().joinToString("/")}-gons ·
     ${distinctNormals.size} distinct face normals: ${distinctNormals.joinToString(" ") { "($it)" }.md}
-""")
+""",
+)
 :::endfold
 ```
 
@@ -427,11 +507,19 @@ fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<Stri
     threeGrid(
         panels.map { (label, p) ->
             val t = p.topology
-            ThreeMeshPanel(label, p.toTriMesh(), facts =
-                "${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f · " +
-                t.elements(2).groupingBy { t.faceCycle(it.id).size }.eachCount().toSortedMap()
-                    .entries.joinToString(" ") { "${it.value}×${it.key}-gon" } +
-                " · χ=${t.eulerCharacteristic()}")
+            ThreeMeshPanel(
+                label,
+                p.toTriMesh(),
+                facts =
+                    "${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f · " +
+                        t.elements(2)
+                            .groupingBy { t.faceCycle(it.id).size }
+                            .eachCount()
+                            .toSortedMap()
+                            .entries
+                            .joinToString(" ") { "${it.value}×${it.key}-gon" } +
+                        " · χ=${t.eulerCharacteristic()}",
+            )
         },
         channel = channel,
         name = "gallery-$channel",
@@ -441,18 +529,24 @@ fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<Stri
         view = view,
     )
 }
+
 :::endfold
 
-gallery("composites", columns = 4, cell = 290, panels = [
-    "jC   join = da" to conway("jC").polyhedron,
-    "nC   needle = kd" to conway("nC").polyhedron,
-    "zC   zip = dk" to conway("zC").polyhedron,
-    "oC   ortho = jj" to conway("oC").polyhedron,
-    "eC   expand = aa" to conway("eC").polyhedron,
-    "sC   snub = dgd" to conway("sC").polyhedron,
-    "mC   meta = kj" to conway("mC").polyhedron,
-    "bC   bevel = ta" to conway("bC").polyhedron,
-])
+gallery(
+    "composites",
+    columns = 4,
+    cell = 290,
+    panels = [
+        "jC   join = da" to conway("jC").polyhedron,
+        "nC   needle = kd" to conway("nC").polyhedron,
+        "zC   zip = dk" to conway("zC").polyhedron,
+        "oC   ortho = jj" to conway("oC").polyhedron,
+        "eC   expand = aa" to conway("eC").polyhedron,
+        "sC   snub = dgd" to conway("sC").polyhedron,
+        "mC   meta = kj" to conway("mC").polyhedron,
+        "bC   bevel = ta" to conway("bC").polyhedron,
+    ],
+)
 ```
 
 ![Eight shaded polyhedra in two rows of four: join, needle, zip, ortho, expand, snub, meta and bevel applied to the cube, each captioned with its element counts, face-degree histogram and Euler characteristic 2](assets/polytope_examples/composites_gallery.png)
@@ -474,7 +568,9 @@ val chains = [
 ]
 
 :::fold one row per chain: what was asked for, and what actually ran
-markdown("chains", """
+markdown(
+    "chains",
+    """
 | chain | result | asked for | actually ran | &chi; |
 |---|---|---|---|---|
 ${chains.joinToString("\n") { (source, r) ->
@@ -488,7 +584,9 @@ ${chains.joinToString("\n") { (source, r) ->
 `notationHistory` keeps the operators you named; `history` is the primitive trace that ran. A
 composite is rewritten before anything executes, so the two columns differ exactly where a chain
 used one — `bevel` is `ta`.
-""", width = 900)
+""",
+    width = 900,
+)
 :::endfold
 ```
 
@@ -515,15 +613,19 @@ fun row(src: String): String = try {
         "| ${r.history.joinToString("") { it.symbol.toString() }.ifEmpty { "—" }} " +
         "| ${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f |"
 } catch (ex: ConwayParseException) {
-    "| `$src` | — | **${ex.message}** | — | — |"
-}
+        "| `$src` | — | **${ex.message}** | — | — |"
+    }
 
 val cases = ["C", "dC", "daC", "adC", "bC", "k4aC", "t4kC", "sD", "qC", "a4C", "4kC", "k2C", "dx"]
-markdown("parser", """
+markdown(
+    "parser",
+    """
 | written | seed | invocations, seed outward | primitives run | output |
 |---|---|---|---|---|
 ${cases.joinToString("\n") { row(it) }}
-""", width = 1020)
+""",
+    width = 1020,
+)
 ```
 
 ![A thirteen-row table. The first eight rows parse successfully, showing that daC runs ambo then dual while adC runs dual then ambo, that bC expands to at, that k4aC and t4kC carry degree selectors, and that sD produces sixty vertices, a hundred and fifty edges and ninety-two faces. The last five rows show the parser's own error messages for an unknown operator q, a degree on ambo, a leading digit, a kis degree below three, and a missing seed](assets/polytope_examples/parser_table.png)
@@ -541,7 +643,7 @@ of a bevelled cube:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/lineage.png" wait="2.0" capture="box" open-outputs="true" w="1000" h="560" padding="14"}
 :::static
-val result = conway("bC")   // bevel = ambo then truncate
+val result = conway("bC") // bevel = ambo then truncate
 
 fun describe(l: ElementLineage): String = when (l) {
     is ElementLineage.Source -> "seed r${l.element.rank}#${l.element.id.value}"
@@ -554,7 +656,9 @@ val roles = faces.groupingBy { (result.lineage(it.id) as ElementLineage.Derived)
 val sample = faces.first()
 
 :::fold format
-markdown("lineage", """
+markdown(
+    "lineage",
+    """
 #### `conway("bC")` — what every output face remembers
 
 - written: `${result.notationHistory.joinToString("") { it.symbol.toString() }}`
@@ -573,7 +677,9 @@ ${describe(result.lineage(sample.id))}
 ~~~
 
 flattened to seed elements: ${result.sourceElements(sample.id).joinToString { "rank ${it.rank} / id ${it.id.value}" }}
-""", width = 920)
+""",
+    width = 920,
+)
 :::endfold
 ```
 
@@ -596,7 +702,7 @@ its lineage when there is one. `ElementSelectors` supplies the common ones, and 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/selectors.png" wait="2.0" capture="box" open-outputs="true" w="1020" h="560" padding="14"}
 :::static
-val kisCube = cube().kis()          // apex over every square
+val kisCube = cube().kis() // apex over every square
 
 val cases = listOf<Pair<String, ElementSelector>>(
     "ElementSelectors.rank(0)" to ElementSelectors.rank(0),
@@ -612,11 +718,14 @@ val cases = listOf<Pair<String, ElementSelector>>(
 
 // Two receivers that behave differently: a PolyhedralObject has no lineage to consult, so a
 // provenance selector refuses there. A transform result can see it.
-val rows = cases.joinToString("\n") { (label, s) ->
-    val bare = runCatching { kisCube.polyhedron.selectElements(s).size }.fold({ "$it" }, { "refused" })
-    "| `$label` | $bare | ${kisCube.selectElements(s).size} |"
-}
-markdown("selectors", """
+val rows =
+    cases.joinToString("\n") { (label, s) ->
+        val bare = runCatching { kisCube.polyhedron.selectElements(s).size }.fold({ "$it" }, { "refused" })
+        "| `$label` | $bare | ${kisCube.selectElements(s).size} |"
+    }
+markdown(
+    "selectors",
+    """
 #### `cube().kis()` — 14 vertices, 36 edges, 24 triangles
 
 | selector | matches on the `PolyhedralObject` | matches on the `PolytopeTransformResult` |
@@ -624,7 +733,9 @@ markdown("selectors", """
 $rows
 
 The two columns differ exactly where a selector needs lineage.
-""", width = 940)
+""",
+    width = 940,
+)
 ```
 
 ![A table of eight selectors evaluated against a kis-ed cube on both a PolyhedralObject and a PolytopeTransformResult. Rank, face-degree and vertex-degree selectors give identical counts in both columns, while the provenanceRole rows, including the composed last one, read refused on the bare object and match six face apexes, eight original vertices and none on the transform result](assets/polytope_examples/selectors.png)
@@ -686,17 +797,22 @@ val painted = TriMesh(g.mesh.positions, g.mesh.indices, g.mesh.normals, null, co
 :::fold one figure, with its own caption, so nothing is read off a mesh-level summary
 // Its own channel — see the note on the gyro figure: a later display() to the same channel replaces.
 three(
-    painted, channel = "field3d", name = "field",
+    painted,
+    channel = "field3d",
+    name = "field",
     view = MeshView(wireframe = false, width = 820, height = 560, distance = 2.3, yawDegrees = 0.0, pitchDegrees = 6.0),
     facts = false,
 )
-markdown("field", """
+markdown(
+    "field",
+    """
     kis deployed over ${deployed.size} faces ·
     heightScale resolved ${"%.3f".format(lo)} … ${"%.3f".format(hi)}
 
     output ${out.topology.elements(0).size}v ${out.topology.elements(1).size}e ${out.topology.elements(2).size}f ·
     ${g.triangleCount} triangles over ${g.triangleFaceIds.toSet().size} source polygons
-""")
+""",
+)
 :::endfold
 ```
 
@@ -753,13 +869,18 @@ import kotlin.random.Random
 // Take a real Conway output and jitter every vertex. The topology is not touched at all.
 val clean = conway("aC").polyhedron
 val rng = Random(7)
-val jittered = clean.copy(realization = Realization3(clean.realization!!.vertexCoordinates.map {
-    Vec3(it).add(
-        (rng.nextDouble() - 0.5).toFloat() * 0.62f,
-        (rng.nextDouble() - 0.5).toFloat() * 0.62f,
-        (rng.nextDouble() - 0.5).toFloat() * 0.62f,
-    )
-}))
+val jittered = clean.copy(
+    realization = Realization3(
+        clean.realization!!.vertexCoordinates.map {
+            Vec3(it)
+                .add(
+                    (rng.nextDouble() - 0.5).toFloat() * 0.62f,
+                    (rng.nextDouble() - 0.5).toFloat() * 0.62f,
+                    (rng.nextDouble() - 0.5).toFloat() * 0.62f,
+                )
+        },
+    ),
+)
 
 val solved = jittered.solveRealization()
 
@@ -768,37 +889,58 @@ threeGrid(
     "aC as built" to clean.toTriMesh(),
     "every vertex jittered" to jittered.toTriMesh(),
     "solveRealization()" to solved.polyhedron.toTriMesh(),
-    channel = "solve3d", name = "embeddings", columns = 3, height = 340, cellWidth = 400,
+    channel = "solve3d",
+    name = "embeddings",
+    columns = 3,
+    height = 340,
+    cellWidth = 400,
     view = MeshView(wireframe = false, distance = 2.5),
 )
 // A Table for the diagnostics — the numeric columns right-align themselves and each carries its
 // own format — inside a markdown card that holds the solver's summary as prose.
 val sci = { v: Any? -> "%.3e".format(v) }
 fun row(label: String, d: RealizationDiagnostics) = [
-    label, d.edgeLengthMean, d.edgeLengthRmsDeviation, d.maxFacePlanarityError,
-    d.facePlanarityRmsError, d.degenerateFaces.size,
+    label,
+    d.edgeLengthMean,
+    d.edgeLengthRmsDeviation,
+    d.maxFacePlanarityError,
+    d.facePlanarityRmsError,
+    d.degenerateFaces.size,
 ]
 
-val metrics = Table([
-    "embedding", "edge mean", "edge RMS dev", "max planarity err", "planarity RMS", "degenerate",
-])
-    .rows([
-        row("aC as built", clean.geometryDiagnostics()),
-        row("jittered", solved.initialDiagnostics),
-        row("after solveRealization()", solved.finalDiagnostics),
-    ])
-    .format("edge mean") { "%.5f".format(it) }
-    .format("edge RMS dev", sci)
-    .format("max planarity err", sci)
-    .format("planarity RMS", sci)
+val metrics =
+    Table(
+            [
+                "embedding",
+                "edge mean",
+                "edge RMS dev",
+                "max planarity err",
+                "planarity RMS",
+                "degenerate",
+            ],
+        )
+        .rows(
+            [
+                row("aC as built", clean.geometryDiagnostics()),
+                row("jittered", solved.initialDiagnostics),
+                row("after solveRealization()", solved.finalDiagnostics),
+            ],
+        )
+        .format("edge mean") { "%.5f".format(it) }
+        .format("edge RMS dev", sci)
+        .format("max planarity err", sci)
+        .format("planarity RMS", sci)
 
-markdown("solve", """
+markdown(
+    "solve",
+    """
     ${metrics.h}
 
     converged = ${solved.converged} · iterations = ${solved.iterations} ·
     rmsResidual = ${sci(solved.rmsResidual)} · reason = ${solved.reason} ·
     topology object identical = ${solved.polyhedron.topology === jittered.topology}
-""")
+""",
+)
 :::endfold
 ```
 
@@ -848,29 +990,46 @@ val after = run.polyhedron.normalize(gauge)
 threeGrid(
     "gC as the operator built it" to before.toTriMesh(),
     "gC.canonicalize()" to after.toTriMesh(),
-    channel = "canon3d", name = "embeddings", columns = 2, height = 380, cellWidth = 430,
+    channel = "canon3d",
+    name = "embeddings",
+    columns = 2,
+    height = 380,
+    cellWidth = 430,
     view = MeshView(wireframe = false, distance = 3.2),
 )
 val sci = { v: Any? -> "%.3e".format(v) }
 fun row(label: String, d: CanonicalDiagnostics) = [
-    label, d.tangencyRadiusSpread, d.tangencyCentroidOffset, d.maxFacePlanarityError,
-    d.dihedralAngleMean, d.dihedralAngleSpread,
+    label,
+    d.tangencyRadiusSpread,
+    d.tangencyCentroidOffset,
+    d.maxFacePlanarityError,
+    d.dihedralAngleMean,
+    d.dihedralAngleSpread,
 ]
 fun degrees(o: PolyhedralObject) =
     o.topology.elements(2).mapNotNull { o.topology.faceCycleOrNull(it.id)?.size }.distinct().sorted()
 
-val metrics = Table([
-    "embedding", "tangency radius spread", "tangency centroid offset", "max planarity err",
-    "dihedral mean", "dihedral spread",
-])
-    .rows([row("as built", run.initialDiagnostics), row("canonical", run.finalDiagnostics)])
-    .format("tangency radius spread", sci)
-    .format("tangency centroid offset", sci)
-    .format("max planarity err", sci)
-    .format("dihedral mean") { "%.4f".format(it) }
-    .format("dihedral spread", sci)
+val metrics =
+    Table(
+            [
+                "embedding",
+                "tangency radius spread",
+                "tangency centroid offset",
+                "max planarity err",
+                "dihedral mean",
+                "dihedral spread",
+            ],
+        )
+        .rows([row("as built", run.initialDiagnostics), row("canonical", run.finalDiagnostics)])
+        .format("tangency radius spread", sci)
+        .format("tangency centroid offset", sci)
+        .format("max planarity err", sci)
+        .format("dihedral mean") { "%.4f".format(it) }
+        .format("dihedral spread", sci)
 
-markdown("canon", """
+markdown(
+    "canon",
+    """
     ${metrics.h}
 
     converged = ${run.converged} · reason = ${run.reason} ·
@@ -880,7 +1039,8 @@ markdown("canon", """
     distinct face degrees, before and after = ${degrees(before).md} →
     ${degrees(after).md} · topology object identical =
     ${run.polyhedron.topology === built.topology}
-""")
+""",
+)
 :::endfold
 ```
 
@@ -936,35 +1096,51 @@ val panels = [
 ]
 threeGrid(
     panels.map { (label, p) -> ThreeMeshPanel(label, p.toTriMesh()) },
-    channel = "kkc3d", name = "embeddings", columns = 3, height = 340, cellWidth = 380,
+    channel = "kkc3d",
+    name = "embeddings",
+    columns = 3,
+    height = 340,
+    cellWidth = 380,
     view = MeshView(wireframe = false, distance = 3.2),
 )
 val sci = { v: Any? -> "%.3e".format(v) }
 fun row(label: String, p: PolyhedralObject): List<Any?> {
     val d = p.canonicalDiagnostics()
     return [
-        label, d.tangencyRadiusSpread, d.tangencyCentroidOffset, d.maxFacePlanarityError,
+        label,
+        d.tangencyRadiusSpread,
+        d.tangencyCentroidOffset,
+        d.maxFacePlanarityError,
         d.dihedralAngleMin,
     ]
 }
 
-val metrics = Table([
-    "embedding", "tangency radius spread", "tangency centroid offset", "max planarity err",
-    "min dihedral",
-])
-    .rows(panels.map { (label, p) -> row(label, p) })
-    .format("tangency radius spread", sci)
-    .format("tangency centroid offset", sci)
-    .format("max planarity err", sci)
-    .format("min dihedral") { "%.3f".format(it) }
+val metrics =
+    Table(
+            [
+                "embedding",
+                "tangency radius spread",
+                "tangency centroid offset",
+                "max planarity err",
+                "min dihedral",
+            ],
+        )
+        .rows(panels.map { (label, p) -> row(label, p) })
+        .format("tangency radius spread", sci)
+        .format("tangency centroid offset", sci)
+        .format("max planarity err", sci)
+        .format("min dihedral") { "%.3f".format(it) }
 
-markdown("kkc", """
+markdown(
+    "kkc",
+    """
     ${metrics.h}
 
     canonicalize(): converged = ${iterated.converged} · reason = ${iterated.reason}
 
     relaxWithCeres(): ${solved.summary.md}
-""")
+""",
+)
 :::endfold
 ```
 
@@ -1010,29 +1186,44 @@ threeGrid(
     "1 · spectral only" to spectral.normalize(gauge).toTriMesh(),
     "2 · canonicalize()" to recovered.polyhedron.normalize(gauge).toTriMesh(),
     "3 · canonicalize()" to fromOperator.polyhedron.normalize(gauge).toTriMesh(),
-    channel = "spectral3d", name = "routes", columns = 3, height = 330, cellWidth = 380,
+    channel = "spectral3d",
+    name = "routes",
+    columns = 3,
+    height = 330,
+    cellWidth = 380,
     view = MeshView(wireframe = false, distance = 3.2),
 )
 val dev = recovered.polyhedron.symmetryDeviation()
 val spectralOnly = spectral.canonicalDiagnostics()
 val sci = { v: Any? -> "%.3e".format(v) }
-val routes = Table(["route", "tangency spread", "dihedral mean (rad)"])
-    .rows([
-        ["1 · spectral only", spectralOnly.tangencyRadiusSpread, spectralOnly.dihedralAngleMean],
-        ["2 · from combinatorics alone",
-            recovered.finalDiagnostics.tangencyRadiusSpread, recovered.finalDiagnostics.dihedralAngleMean],
-        ["3 · from the operator's coordinates",
-            fromOperator.finalDiagnostics.tangencyRadiusSpread, fromOperator.finalDiagnostics.dihedralAngleMean],
-    ])
-    .format("tangency spread", sci)
-    .format("dihedral mean (rad)") { "%.4f".format(it) }
+val routes =
+    Table(["route", "tangency spread", "dihedral mean (rad)"])
+        .rows(
+            [
+                ["1 · spectral only", spectralOnly.tangencyRadiusSpread, spectralOnly.dihedralAngleMean],
+                [
+                    "2 · from combinatorics alone",
+                    recovered.finalDiagnostics.tangencyRadiusSpread,
+                    recovered.finalDiagnostics.dihedralAngleMean,
+                ],
+                [
+                    "3 · from the operator's coordinates",
+                    fromOperator.finalDiagnostics.tangencyRadiusSpread,
+                    fromOperator.finalDiagnostics.dihedralAngleMean,
+                ],
+            ],
+        )
+        .format("tangency spread", sci)
+        .format("dihedral mean (rad)") { "%.4f".format(it) }
 
-markdown("spectral", """
+markdown(
+    "spectral",
+    """
     ${routes.h}
 
     {muted:2 and 3 agree on the dihedral mean to} ${"%.2e".format(
         Math.abs(recovered.finalDiagnostics.dihedralAngleMean -
-            fromOperator.finalDiagnostics.dihedralAngleMean))} rad
+            fromOperator.finalDiagnostics.dihedralAngleMean,),)} rad
 
     {muted:symmetry readout of the recovered solid}
 
@@ -1043,7 +1234,8 @@ markdown("spectral", """
     combinatorial classes — vertices ${dev.orbits.vertexClassSizes.md} ·
     edges ${dev.orbits.edgeClassSizes.md} · faces ${dev.orbits.faceClassSizes.md} ·
     fully transitive = ${dev.orbits.fullyTransitive}
-""")
+""",
+)
 :::endfold
 ```
 
@@ -1081,34 +1273,69 @@ the Conway operators require rank 3 and `triangulate`, FLine conversion and face
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/rank4.png" wait="3.0" capture="box" open-outputs="true" w="1180" h="760" padding="14"}
 :::static
-val seeds = ["5-cell" to fiveCell(), "tesseract" to tesseract(),
-    "16-cell" to sixteenCell(), "24-cell" to twentyFourCell()]
+val seeds = [
+    "5-cell" to fiveCell(),
+    "tesseract" to tesseract(),
+    "16-cell" to sixteenCell(),
+    "24-cell" to twentyFourCell(),
+]
 
 // Viewing is a Projection4 above realization, not part of the geometry.
 val projection = RotatedProjection4(
-    a = 0, b = 3, angle = 0.30, then = PerspectiveProjection4(eye = 4.2))
+    a = 0,
+    b = 3,
+    angle = 0.30,
+    then = PerspectiveProjection4(eye = 4.2),
+)
 
-val counts = Table([
-    "seed", "V", "E", "F", "C", "V-E+F-C", "polygons per cell", "closed 2-manifold?",
-])
-    .rows(seeds.map { (name, p) ->
-        val s = p.summary()
-        val manifold = runCatching { p.topology.validate(checkManifold = true).isValid }.getOrDefault(false)
-        [name, s.vertices, s.edges, s.polygons, s.cells, s.eulerCharacteristic,
-            s.cellPolygonCounts, manifold]
-    })
-    // A 4-polytope is not a surface, so the manifold check should answer false.
-    .expect("V-E+F-C", because = "the Euler relation for a convex 4-polytope") { it == 0 }
-    .expect("closed 2-manifold?", because = "a 4-polytope is not a surface") { it == false }
+val counts =
+    Table(
+            [
+                "seed",
+                "V",
+                "E",
+                "F",
+                "C",
+                "V-E+F-C",
+                "polygons per cell",
+                "closed 2-manifold?",
+            ],
+        )
+        .rows(
+            seeds.map { (name, p) ->
+                val s = p.summary()
+                val manifold = runCatching { p.topology.validate(checkManifold = true).isValid }.getOrDefault(false)
+                [
+                    name,
+                    s.vertices,
+                    s.edges,
+                    s.polygons,
+                    s.cells,
+                    s.eulerCharacteristic,
+                    s.cellPolygonCounts,
+                    manifold,
+                ]
+            },
+        )
+        // A 4-polytope is not a surface, so the manifold check should answer false.
+        .expect("V-E+F-C", because = "the Euler relation for a convex 4-polytope") { it == 0 }
+        .expect("closed 2-manifold?", because = "a 4-polytope is not a surface") { it == false }
 
 :::fold draw the tesseract's projected wireframe and print the four seeds' derived counts
-val lines = tesseract().toEdgeFLines(projection) { _, line ->
-    line.stroked = true
-    line.thickness = 2.0
-    line.color = vec(0.30, 0.82, 0.96, 0.85)
-}
-threeLines(lines, channel = "rank4", name = "tesseract, rotated perspective projection",
-    height = 430, autoFrame = true, editable = false)
+val lines =
+    tesseract().toEdgeFLines(projection) { _, line ->
+        line.stroked = true
+        line.thickness = 2.0
+        line.color = vec(0.30, 0.82, 0.96, 0.85)
+    }
+threeLines(
+    lines,
+    channel = "rank4",
+    name = "tesseract, rotated perspective projection",
+    height = 430,
+    autoFrame = true,
+    editable = false,
+)
 displayOpen("rank4")
 
 markdown("counts", counts.h)
@@ -1155,8 +1382,14 @@ val faceLines = out.toFaceFLines { face, line ->
     line.hoverColor = vec(0.96, 0.98, 1.00, 0.95)
 }
 
-threeLines(faceLines, channel = "faces", name = "role-coloured faces", height = 460,
-    autoFrame = true, editable = false)
+threeLines(
+    faceLines,
+    channel = "faces",
+    name = "role-coloured faces",
+    height = 460,
+    autoFrame = true,
+    editable = false,
+)
 displayOpen("faces")
 ```
 
@@ -1176,11 +1409,17 @@ val result = seed.truncate(ElementSelectors.ids(chosen), ElementParameters.const
 val out = result.polyhedron
 val faceLines = out.toFaceFLines()
 
-val roles = out.topology.elements(2)
-    .groupingBy { (result.lineage(it.id) as ElementLineage.Derived).role }.eachCount().toSortedMap()
+val roles =
+    out.topology
+        .elements(2)
+        .groupingBy { (result.lineage(it.id) as ElementLineage.Derived).role }
+        .eachCount()
+        .toSortedMap()
 val first = faceLines.first()
 
-markdown("carried", """
+markdown(
+    "carried",
+    """
 | | |
 |---|---|
 | deployments recorded | ${result.deployments.joinToString(", ") { d -> "`${d.operation.displayName}` → " + (d.selectedSources?.let { "${it.size} selected" } ?: "whole natural domain (`null`)") }} |
@@ -1190,7 +1429,9 @@ markdown("carried", """
 | roles present | ${roles.entries.joinToString(", ") { "`${it.key}` × ${it.value}" }} |
 | properties on the first line | `${first.properties.filterKeys { it.startsWith("polytope") }}` |
 | its node count | ${first.nodes.size} nodes for a ${out.topology.faceCycle(ElementId(first.properties[POLYTOPE_FACE_ID_PROPERTY] as Int)).size}-gon — the extra one is the `Close` marker |
-""", width = 940)
+""",
+    width = 940,
+)
 ```
 
 ![A table reporting two recorded deployments — ambo over its whole natural domain and truncate over four selected vertices — that four of twelve source vertices were selected, that the output is 24 vertices, 40 edges and 18 faces, that toFaceFLines returned 18 FLines, the role histogram of three original faces, eleven partially truncated faces and four vertex faces, the polytopeFaceId and polytopeFaceRank properties carried on the first line, and that line's node count against the face's polygon degree](assets/polytope_examples/face_fline_properties.png)
@@ -1207,11 +1448,13 @@ compares the polytope's counts with the render mesh's:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/triangulation.png" wait="2.5" capture="box" open-outputs="true" w="1060" h="560" padding="14"}
 :::static
-val p = conway("tC").polyhedron       // truncated cube: octagons and triangles
+val p = conway("tC").polyhedron // truncated cube: octagons and triangles
 val g = p.triangulate()
 
 // The polytope's own view of the object, and the render mesh's view of the same object.
-markdown("tri", """
+markdown(
+    "tri",
+    """
 #### `conway("tC").polyhedron.triangulate()`
 
 | | the polytope says | the render mesh says |
@@ -1229,7 +1472,9 @@ is the thing that knows the solid is closed.
 - distinct abstract vertices across all render vertices: **${g.vertexElementIds.toSet().size}**
 - flat normals present: **${g.mesh.normals != null}**
 - `mesh.summary()`: `${g.mesh.summary()}`
-""", width = 980)
+""",
+    width = 980,
+)
 ```
 
 ![A two-column table comparing the truncated cube as a polytope — 24 abstract vertices, 14 polygons made of 8 triangles and 6 octagons, Euler characteristic 2, closed — with the same object as a render mesh: many more render vertices, 44 triangles, a different Euler characteristic and not watertight. Below it, the counts of distinct source polygons and distinct abstract vertices recovered through the provenance arrays](assets/polytope_examples/triangulation.png)
@@ -1260,17 +1505,21 @@ val rimTriangles = (0 until geometry.triangleCount).count { geometry.sourceFace(
 val manifold = topology.validate(checkManifold = true)
 
 // Everything a holed face refuses, and the message it refuses with.
-val refusals = listOf<Pair<String, () -> Any>>(
-    "topology.dual()" to { topology.dual() },
-    "solid.bevel()" to { solid.bevel() },
-    "solid.toOff()" to { solid.toOff() },
-    "solid.triangulate(FanFaceTriangulator)" to { solid.triangulate(FanFaceTriangulator) },
-).map { (name, call) ->
-    name to (runCatching { call() }.exceptionOrNull()?.message ?: "no exception — unexpected")
-}
+val refusals =
+    listOf<Pair<String, () -> Any>>(
+            "topology.dual()" to { topology.dual() },
+            "solid.bevel()" to { solid.bevel() },
+            "solid.toOff()" to { solid.toOff() },
+            "solid.triangulate(FanFaceTriangulator)" to { solid.triangulate(FanFaceTriangulator) },
+        )
+        .map { (name, call) ->
+            name to (runCatching { call() }.exceptionOrNull()?.message ?: "no exception — unexpected")
+        }
 
 :::fold the boundary, the two characteristics, and the refusals
-markdown("window", """
+markdown(
+    "window",
+    """
 #### One face, two boundary rings
 
 | | value |
@@ -1288,7 +1537,9 @@ markdown("window", """
 | call | message |
 |---|---|
 ${refusals.joinToString("\n") { (call, message) -> "| `$call` | $message |" }}
-""", width = 940)
+""",
+    width = 940,
+)
 :::endfold
 ```
 
@@ -1309,18 +1560,26 @@ shows how to declare a hole with `PolytopeTopologyBuilder.addFaceHole`:
 val hole = 0.45f
 
 :::fold one square face, built by hand, optionally with one inner ring
-// This is the whole of the hole API from a caller's side: record the ring's edges as
-// incidences of the same face, then declare the ring with addFaceHole. Winding is a
-// convention — outer counter-clockwise about the normal, inner clockwise — and nothing
-// downstream leans on it, because the tessellator decides which ring is outer geometrically.
+/*
+This is the whole of the hole API from a caller's side: record the ring's edges as
+incidences of the same face, then declare the ring with addFaceHole. Winding is a
+convention — outer counter-clockwise about the normal, inner clockwise — and nothing
+downstream leans on it, because the tessellator decides which ring is outer geometrically.
+*/
 fun plate(withRing: Boolean): PolyhedralObject {
     val outer = [Vec3(-1f, -1f, 0f), Vec3(1f, -1f, 0f), Vec3(1f, 1f, 0f), Vec3(-1f, 1f, 0f)]
     val inner = [
-        Vec3(-hole, -hole, 0f), Vec3(-hole, hole, 0f), Vec3(hole, hole, 0f), Vec3(hole, -hole, 0f),
+        Vec3(-hole, -hole, 0f),
+        Vec3(-hole, hole, 0f),
+        Vec3(hole, hole, 0f),
+        Vec3(hole, -hole, 0f),
     ]
     // buildList, not `outer + inner`: a box has afield.geometry.path in scope, where
     // `List<Vec3> + List<Vec3>` is element-wise vector addition and returns four points.
-    val points = buildList { addAll(outer); if (withRing) addAll(inner) }
+    val points = buildList {
+        addAll(outer)
+        if (withRing) addAll(inner)
+    }
     val rings = if (withRing) [[0, 1, 2, 3], [4, 5, 6, 7]] else [[0, 1, 2, 3]]
 
     val builder = PolytopeTopologyBuilder(rank = 3)
@@ -1337,23 +1596,31 @@ fun plate(withRing: Boolean): PolyhedralObject {
     builder.addIncidence(face, builder.addElement(3))
     return PolyhedralObject(builder.buildValidated(), Realization3(points))
 }
+
 :::endfold
 
 val view = MeshView(
-    yawDegrees = 0.0, pitchDegrees = 0.0, distance = 2.2,
-    width = 300, height = 260, wireframe = true, cullBackFaces = true,
+    yawDegrees = 0.0,
+    pitchDegrees = 0.0,
+    distance = 2.2,
+    width = 300,
+    height = 260,
+    wireframe = true,
+    cullBackFaces = true,
 )
-val cells = [true, false].map { withRing ->
-    val plate = plate(withRing)
-    val t = plate.topology
-    val face = t.elements(2).single()
-    ThreeMeshPanel(
-        label = if (withRing) "addFaceHole(face, ring)" else "the same plate, no ring",
-        mesh = plate.toTriMesh(),
-        facts = "${t.elements(0).size}v ${t.elements(1).size}e · ${t.faceRings(face.id).size} ring(s)" +
-            " · ${plate.triangulate().triangleCount} triangles",
-    )
-}
+val cells =
+    [true, false].map { withRing ->
+        val plate = plate(withRing)
+        val t = plate.topology
+        val face = t.elements(2).single()
+        ThreeMeshPanel(
+            label = if (withRing) "addFaceHole(face, ring)" else "the same plate, no ring",
+            mesh = plate.toTriMesh(),
+            facts =
+                "${t.elements(0).size}v ${t.elements(1).size}e · ${t.faceRings(face.id).size} ring(s)" +
+                    " · ${plate.triangulate().triangleCount} triangles",
+        )
+    }
 threeGrid(cells, channel = "plates", name = "plates", columns = 2, height = 260, view = view)
 ```
 
