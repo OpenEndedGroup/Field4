@@ -75,6 +75,10 @@ class OpenDlssNrStudy(
     private var screen: ModulePointer?=null
     private var frame=0L
     private var closed=false
+    /** Closes this study when its renderer tears its device down, so the boxes using it need not stop first. */
+    private val closeWithRenderer=Runnable { close() }
+    /** Whether [close] has run, by the box or by the renderer going away. */
+    val isClosed: Boolean get()=closed
     var time=0f
     var animate=true
     /** The editable capture box reserves scene time while recording. */
@@ -85,6 +89,7 @@ class OpenDlssNrStudy(
         check(sourceModule.valid && compareModule.valid) { "NR study shader compilation failed" }
         source.modules["source"]=sourceModule.pointer()
         output.modules["compare"]=compareModule.pointer()
+        renderer.beforeDeviceCleanup+=closeWithRenderer
         if(attach)attach()
     }
     private fun triangle(module: Module, vertices: Int=3): Mesh = Mesh(renderer,module.pointer()).also {
@@ -141,6 +146,7 @@ class OpenDlssNrStudy(
     override fun close() {
         if(closed)return
         closed=true
+        renderer.beforeDeviceCleanup.remove(closeWithRenderer)
         renderer.renderList.preTargets.remove(name,this)
         renderer.renderList.modules.remove(name)
         pass?.close()
