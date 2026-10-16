@@ -203,7 +203,7 @@ Besides a `Structure`, a scope can target a member of a live module's uniform bl
 `target(module, "key@block.member")`, with `ComputeModulePointer` and `MeshModulePointer` forms. These
 need a live renderer, so every fence on this page uses the plain `Structure` form.
 
-??? aside "`capture()` reads either kind of property, and writes back a binding"
+??? aside "`capture()` reads and writes back either kind of property"
 
     A `Structure` can hold a property two ways: `structure.bind("radius") { 4f }` installs a
     binding, and `structure["radius"] = 4f` stores a value (and removes any binding). `capture()`
@@ -211,10 +211,8 @@ need a live renderer, so every fence on this page uses the plain `Structure` for
     (`Structure.kt:188#operator fun <T> get(property: String) =`) and the buffer writer (`Structure.kt:360`) use. Either kind snapshots,
     including a child `Structure`, whose bindings live in the *root's* map under a dotted path.
 
-    The write side is not symmetric. Applying a key always goes through `Structure.bind`, so a
-    value-held property comes back as a constant binding with the old `values` entry shadowed
-    underneath. Every reader in the engine agrees on the binding; the shadowing shows up only if you
-    inspect `structure.values` yourself.
+    Applying a key writes each property back the kind it was: a value as a value, a binding as a
+    binding.
 
 ## The same thing, driving a live GPU uniform
 
@@ -868,7 +866,8 @@ defeating the exact round trip `updateCode` exists for. Those bodies get the esc
 instead.
 
 `copyUpdateCodeToClipboard()` is the same string, put on the system clipboard. That one goes
-through AWT: it throws on a headless JVM, and it replaces whatever the user had copied.
+through AWT and replaces whatever the user had copied; on a headless JVM it logs a warning and
+only returns the string.
 
 ## Blending two programs, not just two numbers
 
