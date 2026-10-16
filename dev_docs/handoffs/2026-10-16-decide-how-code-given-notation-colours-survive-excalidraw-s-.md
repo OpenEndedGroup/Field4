@@ -23,3 +23,7 @@ So compensation fixes greys, blues and greens, but not warm or pale colours. Mak
 - draw code-owned marks on a separate unfiltered layer (needs the vendored bundle changed).
 
 Pick one; then delete or shrink the note.
+
+## Decision, 2026-10-16 (Marc)
+
+**Compensate, and keep a smaller note.** The `notation` writer stores the colour whose dark-theme filter output is closest to the requested one (projected least squares through shown = H180 · (0.93 − 0.86 · stored)). It keeps the requested colour in `customData`, and `Mark.stroke`/`fill` read the requested colour back. The page's "Colours" note shrinks to the warm/pale limit, citing the measured cases (#ffec99, #e03131). Filed as a code handoff.
