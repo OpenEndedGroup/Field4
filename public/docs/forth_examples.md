@@ -82,7 +82,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/variables_and_output_channels.png" alt="two output panels. The one labelled output holds the sentence Forth can emit HTML into Field output areas, wrapped in the literal markup for bold with its angle brackets shown as text rather than applied, and the one labelled debug holds count = 6.0. The first line is not what the code beside it produces: this capture predates the change that stopped the example asking display to emit HTML, and a re-render is owed. See docs_capture_staleness in dev_docs" wait="1.0" capture="box" trim=true embed=true name="forth-output-channels"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/variables_and_output_channels.png" alt="Two output panels: the one labelled output holds the sentence ForthField writes straight into a Field output area., and the one labelled debug holds count = 6.0" wait="1.0" capture="box" trim=true embed=true name="forth-output-channels"}
 :::static
 variable count
 0 count !
