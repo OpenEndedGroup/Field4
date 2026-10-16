@@ -246,10 +246,13 @@ than either endpoint, because a circle is the shortest closed curve there is.
     differently, because `t = 1` meaning "B's weights read in A's coordinates" is a different field
     from B and would look exactly like an interesting result.
 
-    **The same initialisation.** Train both with the same `seed`; nothing checks this for you.
-    Hidden units are exchangeable, so two runs from different random starts represent similar
-    functions through different permutations of the same machinery, and averaging across a
-    permutation should produce nothing.
+    **The seed matters less than you would expect.** Hidden units are exchangeable, so two runs
+    from different random starts could represent similar functions through different permutations
+    of the same machinery, and averaging across a permutation would produce nothing. For letters
+    trained with `PAIRED` coupling from a shared source, it does not happen: midpoints of fields
+    trained from different seeds are as tidy as those from one seed, because the two training
+    problems are nearly the same problem. `blendWith` does not check seeds. For a wider network,
+    harder targets or another coupling, train both with the same `seed` to be safe.
 
 The `letter_interpolation` transcript sweeps `t` slowly and continuously, forty seconds there and
 back, and `letter_interpolation_panels` is the still above. Both need letters that are a **single
