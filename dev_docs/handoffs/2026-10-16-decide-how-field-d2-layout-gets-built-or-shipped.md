@@ -16,3 +16,7 @@ Decision for Marc:
 - (b) fetch a pinned Go toolchain into the native download cache (checksummed, like Ceres/TetGen);
 - (c) ship prebuilt per-platform binaries;
 - (d) keep it optional. Under (d) the petri_nets.md paragraph stays as it is.
+
+## Decision, 2026-10-16 (Marc)
+
+**(a) Build it only when Go is present.** Add a Gradle task in the style of `buildDocsNativePrerequisites` that runs `go build` for `native/field-d2-layout` when `go` is on PATH. When Go is absent, it skips with one clear line that says how to get TALA layout. Without Go, the helper stays optional. Filed as a code handoff.

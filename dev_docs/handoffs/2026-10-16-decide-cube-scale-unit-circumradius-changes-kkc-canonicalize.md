@@ -24,3 +24,7 @@ canonicalization should be scale-invariant.
 Decision for Marc: (a) change the cube and rewrite the chain page's inside-out example, (b) keep side
 2 as deliberate and reduce the paragraph to one sentence, or (c) first make canonicalize
 scale-invariant (normalise on entry), which would make the seed scale moot.
+
+## Decision, 2026-10-16 (Marc)
+
+**(c) First make `canonicalize()` scale-invariant**: normalise on entry, restore scale on exit. The cube's scale is then a separate, cosmetic choice, to revisit once canonicalize no longer depends on it. Filed as a code handoff.
