@@ -27,14 +27,18 @@ import afield.ui.output.outputRequests
 import kotlinx.serialization.json.*
 import java.util.Base64
 
-/** An editable Klecks painting in this box's output. Press Klecks' Submit button to save it. */
+/**
+ * An editable Klecks painting in this box's output. Press Klecks' Submit button to save it into the
+ * document. Strokes not yet submitted are kept as a draft in the browser, so re-running the box or
+ * reloading the page brings them back until the next Submit.
+ */
 fun Box.klecks(channel: String = "klecks", width: Int = 800, height: Int = 600): KlecksPainting {
     require(channel.matches(Regex("[A-Za-z0-9_-]{1,40}"))) { "Klecks channel must be a simple name" }
     require(width in 1..2048 && height in 1..2048) { "Klecks dimensions must be 1..2048" }
     KlecksPainting.registerPersistence()
     val painting = KlecksPainting(this, channel)
     val binding = outputRequests("klecks-$channel") { painting.receive(it) }
-    display(channel, """<iframe title="Klecks painting" src="/klecks-field.html?binding=${binding.id}&amp;width=$width&amp;height=$height" style="border:0;display:block;background:#151515;width:${maxOf(width + 280, 700)}px;height:${maxOf(height + 90, 480)}px"></iframe>""")
+    display(channel, """<iframe title="Klecks painting" src="/klecks-field.html?binding=${binding.id}&amp;draft=${java.net.URLEncoder.encode(id + "/" + channel, "UTF-8")}&amp;width=$width&amp;height=$height" style="border:0;display:block;background:#151515;width:${maxOf(width + 280, 700)}px;height:${maxOf(height + 90, 480)}px"></iframe>""")
     displayOpen(channel)
     return painting
 }

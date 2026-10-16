@@ -4,6 +4,7 @@ const params = new URLSearchParams(location.search);
 const binding = params.get('binding');
 const width = Number(params.get('width'));
 const height = Number(params.get('height'));
+const draftKey = params.get('draft');
 const status = document.getElementById('field-klecks-status');
 const CHUNK = 400000;
 
@@ -31,6 +32,46 @@ function binary(value) {
 const requests = outputRequests(binding);
 let painting;
 
+// Unsubmitted strokes, kept in IndexedDB under the box and channel so a re-run or reload of the
+// panel does not lose them. Submit clears the draft.
+function drafts() {
+  return new Promise((resolve, reject) => {
+    const open = indexedDB.open('field-klecks-drafts', 1);
+    open.onupgradeneeded = () => open.result.createObjectStore('drafts');
+    open.onsuccess = () => resolve(open.result);
+    open.onerror = () => reject(open.error);
+  });
+}
+
+async function draftOp(mode, fn) {
+  if (!draftKey) return undefined;
+  const db = await drafts();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('drafts', mode);
+    const request = fn(tx.objectStore('drafts'));
+    tx.oncomplete = () => resolve(request?.result);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+let dirty = false;
+let draftTimer = null;
+let loaded = false;
+
+async function keepDraft() {
+  if (!dirty || !loaded) return;
+  dirty = false;
+  const psd = await painting.getPSD();
+  await draftOp('readwrite', store => store.put(psd, draftKey));
+}
+
+function noteChange() {
+  if (!loaded) return;
+  dirty = true;
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => keepDraft().catch(error => say(`Draft not kept: ${error.message || error}`, true)), 800);
+}
+
 async function save() {
   say('Saving layers and image…');
   const [psd, png] = await Promise.all([painting.getPSD(), painting.getPNG()]);
@@ -43,14 +84,25 @@ async function save() {
     }
   }
   await requests.request({op: 'commit', id});
+  dirty = false;
+  clearTimeout(draftTimer);
+  await draftOp('readwrite', store => store.delete(draftKey)).catch(() => {});
   say('Saved in Field document');
   return {psdBytes: psd.size, pngBytes: png.size};
 }
 
 async function load() {
+  const draft = await draftOp('readonly', store => store.get(draftKey)).catch(() => undefined);
+  if (draft) {
+    painting.openProject(await painting.readPSD(await draft.arrayBuffer()));
+    loaded = true;
+    say('Restored strokes not yet submitted · Submit saves to Field');
+    return;
+  }
   const info = await requests.request({op: 'info'});
   if (!info.psdLength) {
     painting.openProject({width, height, layers: [{name: 'Background', image: {fill: '#fff'}}]});
+    loaded = true;
     say('New painting · Submit saves to Field');
     return;
   }
@@ -59,6 +111,7 @@ async function load() {
     psd += await requests.request({op: 'read', offset});
   }
   painting.openProject(await painting.readPSD(binary(psd)));
+  loaded = true;
   say('Restored layers · Submit saves to Field');
 }
 
@@ -70,6 +123,7 @@ if (!binding || !Number.isInteger(width) || !Number.isInteger(height)) {
       save().then(onSuccess).catch(error => { say(`Save failed: ${error.message || error}`, true); onError(); });
     },
   });
-  window.fieldKlecks = {save, getPNG: () => painting.getPNG(), getPSD: () => painting.getPSD()};
+  window.fieldKlecks = {save, keepDraft, getPNG: () => painting.getPNG(), getPSD: () => painting.getPSD()};
+  for (const type of ['pointerup', 'keyup']) document.addEventListener(type, noteChange, true);
   load().catch(error => say(`Load failed: ${error.message || error}`, true));
 }
