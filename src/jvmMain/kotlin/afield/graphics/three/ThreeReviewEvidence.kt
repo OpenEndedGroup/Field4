@@ -23,6 +23,10 @@ internal object ThreeReviewEvidence {
     fun store(evidence: JsonObject, record: JsonObject, directory: Path): JsonObject {
         require(evidence["schemaVersion"]?.jsonPrimitive?.intOrNull == 1) { "Unknown image evidence version" }
         require(evidence["artifactDigest"] == record["artifactDigest"] && evidence["view"] == record["view"]) { "Images and saved view disagree" }
+        // On a contact sheet the images are of the panel the feature was picked in.
+        evidence["panel"]?.let { panel ->
+            require(panel.jsonPrimitive.intOrNull?.let { it >= 0 } == true && panel == record["selection"]?.jsonObject?.get("panel")) { "Images and feature name different panels" }
+        }
         for ((key, size) in listOf("viewport" to 2, "cropBounds" to 4)) {
             val values = evidence[key] as? JsonArray ?: error("Missing image $key")
             require(values.size == size && values.all { it.jsonPrimitive.doubleOrNull?.isFinite() == true }) { "Invalid image $key" }
@@ -64,7 +68,7 @@ internal object ThreeReviewEvidence {
                 finally { Files.deleteIfExists(temporary) }
             }
         }
-        return JsonObject(evidence.filterKeys { it in setOf("schemaVersion", "artifactDigest", "viewport", "cropBounds") } + metadata)
+        return JsonObject(evidence.filterKeys { it in setOf("schemaVersion", "artifactDigest", "viewport", "panel", "cropBounds") } + metadata)
     }
 
     fun read(hash: String, notes: List<JsonObject>, directory: Path): ByteArray? {

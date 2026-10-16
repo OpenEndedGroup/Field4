@@ -555,7 +555,9 @@ Thread {{ for (i in 1..20) {{ a.x = i; Thread.sleep(100) }} }}.start()''')
     s.check('''
 none("cap ")
 expectResult(B, 20)
-check(times("cascade $B") >= 4) { evText }
+// Each rerun (300 ms plus launch) coalesces the writes that land meanwhile, so 20 writes over 2 s
+// give about three cascades, not twenty. More than one shows B kept following the writer.
+check(times("cascade $B") >= 2) { evText }
 ''')
 
 

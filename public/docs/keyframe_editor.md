@@ -327,7 +327,7 @@ take.smooth(0.05)      // over about a twentieth of a second
 take.simplify(0.01)    // within 0.01 of the smoothed curve, everywhere
 ```
 
-A take from a gesture pad bakes into two lanes whose keys share their times. `KeyframeEvaluator.simplifyTogether(listOf(sx, sy), 0.01)` thins both and keeps their keys at the same times: a time stays if either lane needs it.
+A take from a gesture pad bakes into two lanes whose keys share their times. The Simplify slider thins them together: moved in one lane, it also simplifies every lane in the same group that has keys at the same times, and they keep the same key times, since a time stays if any of them needs it. The readout then counts the lanes, as in `241 → 17 keys, 2 lanes`. From code, `KeyframeEvaluator.simplifyTogether(listOf(sx, sy), 0.01)` does the same.
 
 ## Key types
 
