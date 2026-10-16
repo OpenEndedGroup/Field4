@@ -590,10 +590,9 @@ running is used from the next draw.
 - **Invariants only see token counts.** Read and inhibitor arcs don't change token counts, so the
   invariants can't see them. `net.report()` says so when a net uses them and suggests
   `stateSpace()`, which does see them.
-- **Loop detection compares colours by name.** Two different patterns both print as
-  `PatPattern(...)`, so to the loop detector swapping one section for another looks like nothing
-  happening. `stateSpace()` compares colours exactly, so a net that makes a new colour on every
-  firing runs out of search budget there instead.
+- **A net that makes a new colour on every firing has no loop.** Loop detection and `stateSpace()`
+  both compare colours by equality, so such a net never repeats a marking, and `stateSpace()` runs
+  out of search budget.
 - **The editor checks spelling, not behaviour.** The editor marks `@1/0` as a bad duration and
   `=> wobble` as an unknown combinator as you type. It can't tell that a transition will never
   fire; the Kotlin parser reports that when the box runs.
