@@ -1,0 +1,32 @@
+{
+  "baseline": "1e55af539",
+  "findingIds": [
+    "e66d79c561bf-01",
+    "e66d79c561bf-02",
+    "1c5968b652f2-01",
+    "1c5968b652f2-02",
+    "1c5968b652f2-03",
+    "e667e592a8c0-01",
+    "e667e592a8c0-02",
+    "e667e592a8c0-03"
+  ],
+  "compileReplay": "compile-final.log",
+  "runtime": [
+    "confluence_landing.json",
+    "frames_clock_live.json",
+    "request_freshness.json"
+  ],
+  "cells": 20,
+  "exactLanding": true,
+  "matchingPositionedGraphRows": [
+    "succ two",
+    "3^3"
+  ],
+  "nonmatchingRows": [
+    "mul 2 3",
+    "pred 3",
+    "2^3"
+  ],
+  "kratosWorkerAcceptance": "not exercised: optional local environment absent, existing Podman machine stopped",
+  "proseHandoff": "ee3f6373"
+}
