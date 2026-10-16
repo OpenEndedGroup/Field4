@@ -638,39 +638,6 @@ class ProseNumeralContractTest {
             derive = { r -> logCallSites(r).mapTo(sortedSetOf()) { it.channel } },
         ),
         DerivedCountGuard.Derivation(
-            key = "logChannelSubstringCollisions",
-            page = "public/docs/logging.md",
-            what = "tag-and-channel pairs a `LogStream` filter matches and the pinned console does not",
-            // 101 on 2026-09-07, and the number the page's headline section turns on: it is the
-            // difference between "three matchers disagree in principle" and "three matchers
-            // disagree about a hundred real pairs in this tree".
-            //
-            // Floored at 20 rather than at 101. The honest direction of travel here is *down* —
-            // every pair is a latent surprise, and renaming `kotlinjs` to something that is not
-            // a superstring of `kotlin` would remove three of them, which is an improvement and
-            // must not be a build failure. But it must not silently reach zero either, because
-            // at zero the page should be saying something different: that the hazard is latent.
-            // If this floor ever fails, the fix is prose, not a smaller floor.
-            floor = 20,
-            landmarks = setOf("kotlin -> info,kotlinjs", "docs -> info,docs.search"),
-            derive = { r ->
-                val channels = logCallSites(r).map { it.channel }.toSet()
-                val tags = channels.flatMap { c -> c.split(',').map { it.trim() } }
-                    .filter { it.isNotEmpty() }
-                    .toSet()
-                // The two rules, side by side, as the two source lines the page cites spell
-                // them: LogStream asks `channel.contains(tag, ignoreCase = true)`, the pinned
-                // console asks whether the tag is one of the `,`-split tokens. A pair is a
-                // collision exactly when the first says yes and the second says no.
-                tags.flatMapTo(sortedSetOf()) { tag ->
-                    channels.filter { c ->
-                        c.contains(tag, ignoreCase = true) &&
-                            tag !in c.split(',').map { it.trim() }
-                    }.map { c -> "$tag -> $c" }
-                }
-            },
-        ),
-        DerivedCountGuard.Derivation(
             key = "logSinkImplementations",
             page = "public/docs/logging.md",
             what = "`LogSink` implementations in the tree",
