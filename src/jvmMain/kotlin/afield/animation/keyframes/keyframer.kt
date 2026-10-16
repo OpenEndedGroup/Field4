@@ -142,8 +142,9 @@ import afield.ui.visualization.CellRole
  * numbers — see [KeyframeScope.codeBlend] and `keyframeCodeBlend.kt`.
  *
  * Persistence goes through the [KValue] serial union, so only the types [KValue.fromAny] recognises
- * survive a save — numbers, vec2/3/4, quaternion, dual quaternion, camera pose, string, StackSL
- * source and source-backed block; anything else is silently dropped. Every `saveKey` also writes a
+ * survive a save — numbers (a `Long` exactly), Booleans, vec2/3/4, quaternion, dual quaternion,
+ * camera pose, string, StackSL source and source-backed block; anything else is left out and reported
+ * on `error,keyframer`. Every `saveKey` also writes a
  * numbered copy into a `<file>.versions` directory with a manifest, which
  * [KeyframeScope.keyVersions] lists and [KeyframeScope.loadLatestKey] follows. [KeyframeScope.missingKey] supplies defaults for
  * keys absent from an older file, optionally per schema version.
@@ -177,15 +178,23 @@ private const val CODE_BLEND_CACHE_LIMIT = 64
  * dual quaternion, camera pose, string, StackSL source and source-backed block. A key in memory holds
  * plain Kotlin values; this is the serial union they are converted to on the way to disk and back.
  *
- * The set is closed and failure is quiet: [fromAny] returns null for anything it does not recognise
- * and `saveKey` simply drops that entry, so a key that captured, say, a `Boolean` or a list will load
- * back one value short with no warning anywhere.
+ * The set is closed: [fromAny] returns null for anything else (a null, a list), and `saveKey` then
+ * reports each such entry on the `error,keyframer` log channel rather than writing it. `Long` and
+ * `Boolean` are stored exactly.
  */
 @Serializable
 sealed interface KValue {
     /** Any Kotlin number, kept as a `Double` with the [NumKind] needed to restore its original type. */
     @Serializable @SerialName("num")
     data class Num(val kind: NumKind, val value: Double) : KValue
+
+    /** A `Long`, exactly: a `Double` would lose it past 2^53. */
+    @Serializable @SerialName("long")
+    data class LongValue(val value: Long) : KValue
+
+    /** A `Boolean`. */
+    @Serializable @SerialName("bool")
+    data class Bool(val value: Boolean) : KValue
 
     /** A `Vector2f`, component by component. */
     @Serializable @SerialName("vec2")
@@ -264,6 +273,8 @@ sealed interface KValue {
      * [SourceBlock] becomes a `SourceBackedBlock` that has not compiled anything yet.
      */
     fun toAny(): Any = when (this) {
+        is LongValue -> value
+        is Bool -> value
         is Num -> when (kind) {
             NumKind.BYTE -> value.toInt().toByte()
             NumKind.SHORT -> value.toInt().toShort()
@@ -305,7 +316,8 @@ sealed interface KValue {
             is Byte -> Num(NumKind.BYTE, v.toDouble())
             is Short -> Num(NumKind.SHORT, v.toDouble())
             is Int -> Num(NumKind.INT, v.toDouble())
-            is Long -> Num(NumKind.LONG, v.toDouble())
+            is Long -> LongValue(v)
+            is Boolean -> Bool(v)
             is Float -> Num(NumKind.FLOAT, v.toDouble())
             is Double -> Num(NumKind.DOUBLE, v)
             is Number -> Num(NumKind.DOUBLE, v.toDouble())
@@ -1202,7 +1214,14 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         KeyDTO(
             schemaVersion = schemaVersion,
             values.mapNotNull { (k, v) ->
-                val kv = KValue.fromAny(v) ?: return@mapNotNull null // drops null/unsupported
+                val kv = KValue.fromAny(v)
+                if (kv == null) {
+                    afield.app.diagnostics.logging.lprintln(
+                        "error,keyframer",
+                        "keyframe value '$k' was not saved: ${if (v == null) "null" else v::class.qualifiedName} is not a type a key can store"
+                    )
+                    return@mapNotNull null
+                }
                 k to kv
             }.toMap()
         )
@@ -1229,7 +1248,8 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * `Files.writeString(path, scope.encodeKeyJson(key))` produces a file [loadKey] reads and
      * [KeyframeCollection] browses.
      *
-     * Drops exactly what [saveKey] drops — nulls and types [KValue.fromAny] does not recognise.
+     * Leaves out exactly what [saveKey] leaves out — nulls and types [KValue.fromAny] does not
+     * recognise — and reports each on `error,keyframer`.
      */
     fun encodeKeyJson(key: Key): String = json.encodeToString(key.toDTO())
 
@@ -1244,8 +1264,9 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * document backup. See [keyVersions] for what a damaged manifest costs, which is notes, not
      * snapshots.
      *
-     * Only values [KValue.fromAny] recognises are written. Nulls and unsupported types are dropped in
-     * silence, and a `SourceBackedBlock` is written as its box id plus source text, not as a live lambda.
+     * Only values [KValue.fromAny] recognises are written; each null or unsupported value is reported on
+     * `error,keyframer`. A `SourceBackedBlock` is written as its box id plus source text, not as a live
+     * lambda.
      */
     fun saveKey(path: Path, key: Key, note: String? = null) {
         path.parent?.createDirectories()
