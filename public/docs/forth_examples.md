@@ -390,4 +390,4 @@ turn shows as a changing slope, and the `debug` panel counts the ticks.
 
 Use `see name` to check that the word running is the definition you think it is, and read the error before adding prints: it already names the failing token, the stack and the chain of word calls.
 
-Builtins and your own words share one dictionary, and `:` overwrites without warning, so `: dup ... ;` replaces the real `dup` for the rest of the run. `forget` will remove your replacement, but that leaves no `dup` at all; it does not bring the builtin back.
+Builtins and your own words share one dictionary, so `: dup ... ;` replaces the real `dup` for the rest of the run, with a warning in the output; `forget dup` brings the builtin back.
