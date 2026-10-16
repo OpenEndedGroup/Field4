@@ -18,7 +18,7 @@ import org.lwjgl.vulkan.VK13.*
 /** Portable dense optical flow: coarse-to-fine Lucas–Kanade in ordinary fragment passes.
  *
  * Runs on any Vulkan device Field runs on — MoltenVK included — because it asks for nothing beyond
- * float render targets and `texelFetch`. Same contract as the hardware [OpticalFlow] (see [OpticalFlowOperation]):
+ * float render targets and `texelFetch`. Same contract as the hardware [HardwareOpticalFlow] (see [OpticalFlowOperation]):
  * `output.xy` is [first] → [second] displacement in input pixels (X right, Y down), one texel per [grid] × [grid].
  *
  * The chain, recorded into one graphics command buffer per [evaluate]:

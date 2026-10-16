@@ -34,7 +34,7 @@ object OpticalFlowSmoke {
                 repeat(100){demo.update();window.pollEvents();renderer.render()}
                 val times=demo.flow.milliseconds.takeLast(100).sorted()
                 report.put("pairWallMsIncludingConversionAndFence",JSONObject().put("count",times.size).put("p50",times[50]).put("p95",times[95]))
-                report.put("opticalQueueTimestampBits",(demo.flow as OpticalFlow).opticalTimestampBits)
+                report.put("opticalQueueTimestampBits",(demo.flow as HardwareOpticalFlow).opticalTimestampBits)
                 demo.flow.gpuTimings.forEach { (name,values) -> val sorted=values.takeLast(100).sorted()
                     report.put(name+"GpuMs",if(sorted.isEmpty())JSONObject.NULL else JSONObject().put("count",sorted.size).put("p50",sorted[sorted.size/2]).put("p95",sorted[(sorted.size*.95).toInt()])) }
                 demo.deformation=true;demo.dx=0f;demo.dy=0f;demo.displayRange=3f
