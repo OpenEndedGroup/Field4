@@ -580,7 +580,8 @@ the fewest crossings.
 TALA needs a helper program, `native/field-d2-layout`, written in Go, which Field does not build or
 ship. Without it `PetriLayout.TALA` falls back to `FORCE`, so a document that asks for TALA still
 opens, and `D2Layout.available` tells you which one you got. When a box asks for TALA and the
-helper is missing, Field prints the command that builds it.
+helper is missing, Field prints the command that builds it, and a helper built while Field is
+running is used from the next draw.
 
 ---
 
