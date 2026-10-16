@@ -3936,6 +3936,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="three-sheet-review",
+            description="Pick and Save note on a Three.js contact sheet use the panel under the pointer, record it, and restore it.",
+            commands=[
+                "new-box --name SheetReviewRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-sheet-review.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-sheet-review.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="three-feature-review",
             description="Pick ordinary mesh faces, FLine strokes and points without construction-specific metadata.",
             commands=[

@@ -341,8 +341,9 @@ three(name = "comparison", channel = "comparison", width = 760, height = 320) {
 }
 ```
 
-`threeGrid` and `threeTurntable` below build common layouts for you. Feature annotation currently
-requires a single viewport, so use a separate single-view scene to review a mesh from a sheet.
+`threeGrid` and `threeTurntable` below build common layouts for you. Pick and Save note work on a
+sheet: a pick uses the panel under the pointer, and the note remembers that panel, so loading it
+selects the feature there again and its images are of that panel. Rectangle needs a single viewport.
 
 ### One WebGL context, several panels
 
