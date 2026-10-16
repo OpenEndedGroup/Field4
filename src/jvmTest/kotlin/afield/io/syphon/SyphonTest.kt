@@ -95,6 +95,7 @@ class SyphonTest {
         try {
             sender.inputStream.bufferedReader().readLine() // its description: it is up
             syphonClient(name, waitMs = 8000).use { client ->
+                kotlin.test.assertSame(client, syphonClient(name), "same name reuses its open client")
                 assertEquals(name, client.server.name)
                 assertTrue(client.waitForFrame(0, 5000) > 0, "no frame arrived")
                 val frame = client.latest()!!
@@ -104,6 +105,18 @@ class SyphonTest {
                 for ((i, pt) in points.withIndex()) {
                     val got = frame.rgbaAt(pt.first, pt.second)
                     assertContentEquals(expected[i], got, "pixel $pt: ${got.toList()}")
+                }
+                val readers = java.util.concurrent.Executors.newFixedThreadPool(4)
+                try {
+                    val lookups = List(8) { readers.submit<SyphonClient> { syphonClient(name) } }
+                    lookups.forEach { kotlin.test.assertSame(client, it.get(5, TimeUnit.SECONDS)) }
+                } finally { readers.shutdownNow() }
+                client.close()
+                assertTrue(client.isClosed)
+                syphonClient(name, waitMs = 8000).use { replacement ->
+                    kotlin.test.assertNotSame(client, replacement)
+                    assertTrue(!replacement.isClosed)
+                    assertTrue(replacement.waitForFrame(0, 5000) > 0)
                 }
             }
         } finally {

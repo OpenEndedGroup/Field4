@@ -87,6 +87,27 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
             return release.handle
         }
 
+    /**
+     * Sample [n] evenly spaced horizontal layer midpoints, from the bottom bound upward.
+     * Each [Section] is closed after [sample] returns, including when it throws. Return copied
+     * values such as area or polygons; a native section retained from the callback will be closed.
+     * [fillRule] has the same meaning as in [slice]. Integration weights remain the caller's choice.
+     */
+    fun <T> sampleSlices(
+        n: Int,
+        fillRule: FillRule = FillRule.POSITIVE,
+        sample: (z: Double, section: Section) -> T,
+    ): List<T> {
+        require(n > 0) { "slice count must be positive" }
+        val bounds = bounds
+        val low = bounds.min.z.toDouble()
+        val height = bounds.max.z.toDouble() - low
+        return List(n) { i ->
+            val z = low + height * ((i + 0.5) / n)
+            slice(z, fillRule).use { section -> sample(z, section) }
+        }
+    }
+
     /** `true` once [close] (or an enclosing [scope]) has released the native volume. */
     val isClosed: Boolean get() = release.released
 

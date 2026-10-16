@@ -362,6 +362,28 @@ fun FLine.rect(x: Number, y: Number, w: Number, h: Number): FLine {
 fun FLine.rect(rect: Rect): FLine = rect(rect.x, rect.y, rect.w, rect.h)
 
 /**
+ * Append a rectangular grid of [nx] by [ny] cells, retaining this line's existing paths and style.
+ * Each grid line starts a separate path: `nx + 1` vertical and `ny + 1` horizontal segments.
+ */
+fun FLine.grid(bounds: Rect, nx: Int, ny: Int): FLine {
+    require(nx > 0 && ny > 0) { "grid cell counts must be positive" }
+    require(listOf(bounds.x, bounds.y, bounds.w, bounds.h).all { it.isFinite() }) {
+        "grid bounds must be finite"
+    }
+    for (i in 0..nx) {
+        val x = bounds.x + bounds.w * (i.toDouble() / nx)
+        moveTo(x, bounds.y)
+        lineTo(x, bounds.y + bounds.h)
+    }
+    for (j in 0..ny) {
+        val y = bounds.y + bounds.h * (j.toDouble() / ny)
+        moveTo(bounds.x, y)
+        lineTo(bounds.x + bounds.w, y)
+    }
+    return this
+}
+
+/**
  * Append a closed circle of radius [r] about ([cx], [cy]) to this line, starting and ending at its
  * rightmost point.
  *

@@ -23,6 +23,8 @@ import afield.geometry.mesh.topology
 import afield.geometry.spatial.closest
 import afield.graphics.render.rangeTo
 import afield.graphics.render.rect
+import afield.graphics.render.arrow
+import afield.graphics.render.toFLine
 import afield.lang.lambda.LambdaTerms
 import afield.lang.stacksl.evolution.render
 import afield.math.autodiff.compareTo
@@ -954,6 +956,7 @@ class Net internal constructor(
             """<div style="margin-top:10px;color:#91a4ba;">No active principal-principal pairs.</div>"""
         } else {
             active.take(6).joinToString(
+                separator = "",
                 prefix = """<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">""",
                 postfix = "</div>"
             ) { pair ->
@@ -2322,6 +2325,75 @@ fun interactionSummaryGrid(vararg cards: String): String {
     """.trimIndent()
 }
 
+/** A captured drawing/summary for a stage in an interaction-net comparison. */
+class InteractionStage internal constructor(
+    val title: String,
+    lines: List<FLine>,
+    val summary: String,
+) {
+    private val snapshot = lines.map(::copyInteractionStageLine)
+    /** Copies keep later layout or caller mutations from changing the captured stage. */
+    val lines: List<FLine> get() = snapshot.map(::copyInteractionStageLine)
+}
+
+private fun copyInteractionStageLine(source: FLine): FLine = source.copy().apply {
+    fun copyColors(properties: MutableMap<String, Any?>) {
+        properties.replaceAll { _, value ->
+            if (value is afield.math.linalg.Vector4f) afield.math.linalg.Vector4f(value) else value
+        }
+    }
+    copyColors(properties)
+    nodes.forEach { copyColors(it.properties) }
+}
+
+/** Capture a stage now, before a later rewrite mutates the net or its drawing. */
+fun stage(title: String, lines: List<FLine>, summary: String): InteractionStage =
+    InteractionStage(title, lines, summary)
+
+/**
+ * Lay out captured stages in order, with arrows between their drawings and summaries above.
+ * Rewriting and snapshot capture remain explicit in the caller. Extra [cards] can describe the
+ * intervening reductions. Uses [showInteractionOverview] for the shared SVG/output rendering.
+ */
+fun Box.showInteractionStages(
+    vararg stages: InteractionStage,
+    cards: List<String> = emptyList(),
+    channel: String = "interaction-net-overview",
+    graphicTitle: String = stages.joinToString(" → ") { it.title },
+    stageWidth: Double = 404.0,
+    stageHeight: Double = 232.0,
+    gap: Double = 128.0,
+    padding: Double = 26.0,
+): String {
+    require(stages.isNotEmpty()) { "at least one stage is required" }
+    require(stageWidth.isFinite() && stageWidth > 0 && stageHeight.isFinite() && stageHeight > 0) {
+        "stage dimensions must be finite and positive"
+    }
+    require(gap.isFinite() && gap >= 0 && padding.isFinite() && padding >= 0 &&
+        padding * 2 < minOf(stageWidth, stageHeight)) { "invalid stage gap or padding" }
+    val frames = stages.indices.map { i -> Rect(52.0 + i * (stageWidth + gap), 54.0, stageWidth, stageHeight) }
+    val lines = mutableListOf<FLine>()
+    stages.forEachIndexed { i, stage ->
+        val frame = frames[i]
+        lines += frame.toFLine(filled = true, color = vec(0.08, 0.08, 0.08, 1.0))
+        lines += stage.lines.fitInto(frame, padding = padding)
+        if (i > 0 && gap > 0) {
+            val middle = frame.y + frame.h / 2
+            val inset = gap * 0.25
+            lines += arrow(frames[i - 1].right + inset, middle, frame.x - inset, middle,
+                color = vec(0.8, 0.8, 0.8, 1.0))
+        }
+    }
+    return showInteractionOverview(
+        graphicLines = lines,
+        cards = stages.map { it.summary } + cards,
+        channel = channel,
+        graphicTitle = graphicTitle,
+        graphicWidth = 104.0 + stages.size * stageWidth + (stages.size - 1) * gap,
+        graphicHeight = stageHeight + 108.0,
+    )
+}
+
 private fun interactionOverviewHtml(
     cards: List<String>,
     graphicHtml: String,
@@ -2329,8 +2401,8 @@ private fun interactionOverviewHtml(
 ): String = """
     <div style="display:flex;flex-direction:column;gap:12px;">
         ${interactionSummaryGrid(*cards.toTypedArray())}
-        <div style="padding:12px;background:linear-gradient(180deg,#0d1219,#090d12);border:1px solid #202b38;border-radius:10px;">
-            <div style="font-family:monospace;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#91a4ba;">${escapeInteractionHtml(graphicTitle)}</div>
+        <div style="padding:12px;background:#000;border:1px solid #202b38;border-radius:10px;">
+            <div style="font-family:Iosevka,monospace;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#91a4ba;">${escapeInteractionHtml(graphicTitle)}</div>
             <div style="margin-top:10px;">$graphicHtml</div>
         </div>
     </div>
@@ -2350,6 +2422,7 @@ fun ReductionStep.summaryHtml(title: String = "Reduction step"): String {
         """<div style="margin-top:10px;color:#91a4ba;">No emitted rewrite events.</div>"""
     } else {
         events.joinToString(
+            separator = "",
             prefix = """<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">""",
             postfix = "</div>"
         ) { event ->
@@ -2409,7 +2482,7 @@ private fun interactionMetric(label: String, value: String): String = """
 """.trimIndent()
 
 private fun interactionSummaryCard(title: String, body: String): String = """
-    <div style="font-family:monospace;background:linear-gradient(180deg,#111720,#0b0f15);color:#e7edf5;border:1px solid #223041;border-radius:10px;padding:14px 16px;">
+    <div style="font-family:Iosevka,monospace;background:#000;color:#e7edf5;border:1px solid #223041;border-radius:10px;padding:14px 16px;">
         <div style="font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#dce6f3;">${escapeInteractionHtml(title)}</div>
         <div style="margin-top:10px;">$body</div>
     </div>

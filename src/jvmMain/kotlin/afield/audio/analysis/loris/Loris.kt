@@ -6,6 +6,7 @@ import afield.audio.engine.WavFloatArrayLoader
 import java.io.*
 import java.nio.file.*
 import java.security.MessageDigest
+import afield.runtime.lifecycle.interruptibleFuture
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
@@ -138,13 +139,13 @@ class LorisClient(val cacheDirectory: Path = Path.of("build/field-loris/cache"),
     fun analyzeAsync(samples: FloatArray, sampleRate: Int, options: LorisOptions = LorisOptions(),
                      onProgress: (String) -> Unit = {}): CompletableFuture<LorisResult> {
         val snapshot = samples.copyOf()
-        return CompletableFuture.supplyAsync { analyze(snapshot, sampleRate, options, onProgress) }
+        return interruptibleFuture { analyze(snapshot, sampleRate, options, onProgress) }
     }
 
     /** WAV convenience uses the existing Field loader's explicit LEFT-channel policy. */
     fun analyzeWavAsync(path: Path, startSeconds: Double = 0.0, durationSeconds: Double? = null,
                         options: LorisOptions = LorisOptions(),
-                        onProgress: (String) -> Unit = {}): CompletableFuture<LorisResult> = CompletableFuture.supplyAsync {
+                        onProgress: (String) -> Unit = {}): CompletableFuture<LorisResult> = interruptibleFuture {
         val wav = WavFloatArrayLoader.loadWavToFloatArray(path.toString())
         require(startSeconds.isFinite() && startSeconds >= 0)
         val start = round(startSeconds * wav.sampleRate).toInt()
@@ -169,7 +170,7 @@ class LorisClient(val cacheDirectory: Path = Path.of("build/field-loris/cache"),
     }
 
     fun synthesizeAsync(model: LorisModel): CompletableFuture<LorisResult> =
-        CompletableFuture.supplyAsync { synthesize(model) }
+        interruptibleFuture { synthesize(model) }
 
     fun synthesize(model: LorisModel): LorisResult = request("synthesize", null, {}) { out ->
         out.writeInt(1); out.writeDouble(model.sampleRate.toDouble()); out.writeInt(model.frameCount)
@@ -197,14 +198,14 @@ class LorisClient(val cacheDirectory: Path = Path.of("build/field-loris/cache"),
     }
 
     fun distillAsync(model: LorisModel, reference: LorisReference, distill: Boolean = true): CompletableFuture<LorisResult> =
-        CompletableFuture.supplyAsync { distill(model, reference, distill) }
+        interruptibleFuture { distill(model, reference, distill) }
 
     fun dilateAsync(model: LorisModel, from: List<Double>, to: List<Double>): CompletableFuture<LorisResult> =
-        CompletableFuture.supplyAsync { dilate(model, from, to) }
+        interruptibleFuture { dilate(model, from, to) }
 
     fun morphAsync(source: LorisModel, target: LorisModel, frequency: LorisEnvelope, amplitude: LorisEnvelope = frequency,
                    bandwidth: LorisEnvelope = amplitude): CompletableFuture<LorisResult> =
-        CompletableFuture.supplyAsync { morph(source, target, frequency, amplitude, bandwidth) }
+        interruptibleFuture { morph(source, target, frequency, amplitude, bandwidth) }
 
     /** Loris's Sieve: of overlapping same-label partials keep the longest; others become label 0 (or are dropped). */
     fun sift(model: LorisModel, fadeSeconds: Double = .005, dropUnlabeled: Boolean = false): LorisResult {

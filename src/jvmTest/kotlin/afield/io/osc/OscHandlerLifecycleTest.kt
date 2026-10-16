@@ -56,3 +56,44 @@ class OscPortInUseTest {
         OscServer(localPort = 57393, autoStart = false).close()
     }
 }
+
+class OscRunOwnedHandlerTest {
+    @Test fun runOwnedStopKeepsTheSharedServerAndNewerRegistration() {
+        OscServer(localPort = 57431, autoStart = false).use { server ->
+            val box = Box("osc-run-owned")
+            val old = box.runScopes.begin("code", "test")
+            afield.runtime.lifecycle.RunScope.withCurrent(old) {
+                server.on("/shared", runOwned = true) { gather<OscServer.Message> { } }
+                server.on("/old", runOwned = true) { gather<OscServer.Message> { } }
+            }
+            val next = box.runScopes.begin("code", "test")
+            afield.runtime.lifecycle.RunScope.withCurrent(next) {
+                server.on("/shared", runOwned = true) { gather<OscServer.Message> { } }
+            }
+            box.runScopes.supersede(next)
+            assertFalse(server.hasHandler("/old"))
+            assertTrue(server.hasHandler("/shared"))
+            box.runScopes.stopAll()
+            assertFalse(server.hasHandler("/shared"))
+            // The socket remains usable, and a persistent replacement survives stop.
+            Box.withBoxContextNow(box) { server.on("/shared") { gather<OscServer.Message> { } } }
+            box.runScopes.stopAll()
+            assertTrue(server.hasHandler("/shared"))
+            box.runScopes.closeAll()
+            assertFalse(server.hasHandler("/shared"))
+        }
+    }
+
+    @Test fun generatorsReleaseFinallyOnCancellation() {
+        var released = false
+        val generator = afield.runtime.lifecycle.generator2<Int, Int> {
+            try { yield(1); error("resumed normally after cancellation") }
+            finally { released = true }
+        }
+        kotlin.test.assertEquals(1, generator.start())
+        generator.cancel()
+        assertTrue(released)
+        assertTrue(generator.isCompleted)
+        generator.cancel()
+    }
+}

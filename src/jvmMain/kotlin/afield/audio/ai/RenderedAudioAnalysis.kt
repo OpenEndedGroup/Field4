@@ -234,7 +234,7 @@ fun standardAudioAnalyses(
  * Every method is synchronized because a leg is populated on one HTTP callback thread and abandoned
  * from another; [abandon] arriving first must still release a socket that opens afterwards.
  */
-private class AnalysisLeg {
+internal class AnalysisLeg : AutoCloseable {
     private var abandoned = false
     private var socket: CompletableFuture<WebSocket>? = null
     private var analysis: CompletableFuture<AnalysisResult>? = null
@@ -265,6 +265,8 @@ private class AnalysisLeg {
      * waiting for. Measured against the stub, which counts live subscriptions, this is enough for
      * the service side to notice and drop its own end.
      */
+    override fun close() = abandon()
+
     private fun release(pending: CompletableFuture<WebSocket>) {
         pending.whenComplete { open, _ -> open?.abort() }
     }
