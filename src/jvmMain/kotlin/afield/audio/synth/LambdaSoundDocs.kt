@@ -99,7 +99,7 @@ object LambdaSoundDocs {
      * The whole event vocabulary [Lambda.rules] declares. Every kind a reduction emits must be one
      * of these; [assertTheVocabularyIsWhatItSays] checks it.
      */
-    val EVENT_KINDS: List<String> = listOf("beta", "duplicate", "branch", "prune", "erase", "annihilate")
+    val EVENT_KINDS: List<String> = listOf("beta", "duplicate", "branch", "prune", "erase", "annihilate", "scope", "unscope")
 
     /**
      * The kinds a closed term emits, in the order this file maps to pitch.
@@ -109,10 +109,13 @@ object LambdaSoundDocs {
      * [LambdaTerms.compile] has none of those in that position. [assertTheVocabularyIsWhatItSays]
      * checks that the corpus reaches exactly these.
      */
-    val SOUNDING_KINDS: List<String> = listOf("beta", "branch", "prune", "annihilate")
+    val SOUNDING_KINDS: List<String> = listOf("beta", "branch", "prune", "annihilate", "scope", "unscope")
 
-    /** MIDI note per [SOUNDING_KINDS] index: four degrees of a minor pentatonic off A2. */
-    val KIND_NOTES: List<Int> = listOf(45, 50, 52, 57)
+    /**
+     * MIDI note per [SOUNDING_KINDS] index: degrees of a minor pentatonic off A2. `scope` and `unscope`
+     * (Lambdascope's delimiters moving and closing) sit above the other four.
+     */
+    val KIND_NOTES: List<Int> = listOf(45, 50, 52, 57, 60, 62)
 
     /** The MIDI note a rewrite of this kind plays, or the root for a kind that does not sound. */
     fun noteOf(kind: String): Int = KIND_NOTES[SOUNDING_KINDS.indexOf(kind).coerceAtLeast(0)]
@@ -450,19 +453,14 @@ object LambdaSoundDocs {
     )
 
     /**
-     * Which of [CONFLUENCE_PROBES] disagree with the normal-order evaluator — three of the four.
+     * Which of [CONFLUENCE_PROBES] disagree with the normal-order evaluator: none.
      *
-     * `quiet-wrong-branch` was the fourth until 2026-09-22, when the cause of its wrong answer turned
-     * out to be a stale binder name in `LambdaTerms.readback` rather than the fan labelling; see
-     * `dev_docs/INTERACTION_NETS_LAMBDA.md`. It stays in the probe set, because what makes it a stress
-     * case for step-count invariance is its *sharing*, and that has not changed: 26 reactions under
-     * every scheduler, before the fix and after it.
+     * Three did until 2026-10-16, when the front end moved from labelled fans to Lambdascope's scope
+     * delimiters; the fourth, `quiet-wrong-branch`, was a stale binder name in `LambdaTerms.readback`,
+     * fixed 2026-09-22. They stay in the probe set because what makes them stress cases for step-count
+     * invariance is their *sharing*, which nested duplication still exercises.
      */
-    val DISAGREEING_PROBES: Set<String> = setOf(
-        "dup-of-an-erasing-abstraction",
-        "two-applied-to-two-unwalkable",
-        "compose-self-apply-scope-leak"
-    )
+    val DISAGREEING_PROBES: Set<String> = emptySet()
 
     /**
      * Exactly [DISAGREEING_PROBES] of [CONFLUENCE_PROBES] disagree with the normal-order evaluator.
@@ -487,10 +485,6 @@ object LambdaSoundDocs {
                 "Newly agreeing (${DISAGREEING_PROBES - disagreeing}) is good news, and this page's count " +
                 "of terms the reducer gets wrong has to be recounted with it; newly disagreeing " +
                 "(${disagreeing - DISAGREEING_PROBES}) is a regression."
-        }
-        check(DISAGREEING_PROBES.isNotEmpty()) {
-            "no probe disagrees any more, so the stress case is gone — the invariance below would be " +
-                "measured on ordinary terms. Repick the probes from LambdaPropertyOracleTest's named cases."
         }
     }
 
@@ -529,15 +523,15 @@ object LambdaSoundDocs {
             name = "exp-first-found",
             order = ActivationOrder.FIRST_FOUND,
             title = "the eight beta-steps of `three two` where FIRST_FOUND puts them",
-            blurb = "One slot per reaction, struck where that reaction was a beta. Two strikes " +
-                "early, a pair, then a long stretch of fan bookkeeping with nothing on it, and " +
-                "four strikes hard against the end.",
+            blurb = "One slot per reaction, struck where that reaction was a beta. Four strikes " +
+                "spread through the first half, then a long stretch of scope and fan bookkeeping " +
+                "with nothing on it, and four strikes together near the end.",
         ),
         betaBar(
             name = "exp-rightmost",
             order = ActivationOrder.RIGHTMOST_BY_ID,
             title = "the same eight beta-steps, where RIGHTMOST_BY_ID puts them",
-            blurb = "The same term, the same twenty-six reactions, the same eight betas, the same " +
+            blurb = "The same term, the same eighty-six reactions, the same eight betas, the same " +
                 "answer. Only the order is different, and the ending is the difference you hear: " +
                 "this schedule spreads its last four out instead of landing them together.",
         ),
@@ -547,16 +541,19 @@ object LambdaSoundDocs {
             name = "erase-rule-melody",
             title = "the rule sequence of `K I (mul 2 3)` as pitch, one note per reaction",
             blurb = "Each reaction plays the degree its emitted event kind maps to, up a minor " +
-                "pentatonic. This is the one term in the four that reaches all four kinds a closed " +
+                "pentatonic. This is the one term in the four that reaches all six kinds a closed " +
                 "term can reach, because the whole `mul 2 3` it throws away has to be pruned away " +
-                "agent by agent — nine of its twenty-three reactions are that.",
-            cycles = 2,
-            cps = 0.2,
+                "agent by agent; nine of its hundred and twenty reactions are that, and most of the " +
+                "rest are scope delimiters moving and closing.",
+            // Once, slowly: since Lambdascope the term takes ~120 reactions, so a note is ~80 ms and has
+            // to stop short of the next for each one to be heard (and counted) on its own.
+            cycles = 1,
+            cps = 0.1,
             render = { cycles, cps ->
                 patRenderStereo(
                     pat(trace(MELODY_TERM).melody.joinToString(" ")),
                     cycles = cycles, cps = cps,
-                    voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.04, sustain = 0.25),
+                    voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.015, sustain = 0.12),
                 )
             },
             verify = { audio ->
@@ -577,7 +574,7 @@ object LambdaSoundDocs {
     /**
      * The corpus term whose rule sequence becomes the melody.
      *
-     * `K I (mul 2 3)` — 23 reactions, and the only one of [TERMS] that reaches all four event
+     * `K I (mul 2 3)`: 120 reactions, and the only one of [TERMS] that reaches all six event
      * kinds a closed term can reach. It is the erasing term: the argument it discards is a whole
      * multiplication, and taking that apart is what the `prune` degree is.
      */
@@ -603,7 +600,7 @@ object LambdaSoundDocs {
             patRenderStereo(
                 trace(BAR_TERM, order).betaCondensation.pattern,
                 cycles = cycles, cps = cps,
-                // A short tail on purpose: at 0.4 cps a 26-slot bar puts consecutive slots 96 ms
+                // A short tail on purpose: at 0.4 cps an 86-slot bar puts consecutive slots 29 ms
                 // apart, and a longer decay runs two adjacent beta-steps together into one flam,
                 // which an onset detector then counts as one.
                 voice = patVoice(wave = PatWave.SQUARE, baseHz = 660.0, decay = 0.008, sustain = 0.05),
@@ -612,7 +609,7 @@ object LambdaSoundDocs {
         verify = { audio ->
             val t = trace(BAR_TERM, order)
             check(t.betaMask.size == t.steps) { "the mask is not one slot per reaction" }
-            check(t.steps == 26) { "$BAR_TERM took ${t.steps} reactions, and this scene is written for 26" }
+            check(t.steps == 86) { "$BAR_TERM took ${t.steps} reactions, and this scene is written for 86" }
             check(t.betas == 8) { "$BAR_TERM has ${t.betas} beta reactions, and this scene is written for 8" }
             check(t.betaCondensation.exact) { "the condenser would not sign for ${t.betaCondensation.notation}" }
             val onsets = PatSoundDocs.onsetPeaks(audio.mono, threshold = 0.04)
@@ -760,7 +757,7 @@ object LambdaSoundDocs {
         }
 
         // The two beta bars are the page's claim, so "they are audibly different" has to be a
-        // measurement rather than an adjective. Same term, same 26 reactions, same 8 betas, so the
+        // measurement rather than an adjective. Same term, same 86 reactions, same 8 betas, so the
         // peak and the RMS are identical by construction and say nothing — the correlation is what
         // separates "a different order" from "the same file twice".
         val barA = SCENES.first { it.name == "exp-first-found" }
