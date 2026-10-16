@@ -1991,8 +1991,8 @@ class PythonInterface {
                 emit("sitePackages", jep_site or (site_paths[0] if site_paths else ""))
                 emit("jepLibrary", libs[0] if libs else "")
                 try:
-                    import importlib.metadata
-                    emit("jepVersion", importlib.metadata.version("jep"))
+                    from importlib import metadata
+                    emit("jepVersion", metadata.version("jep"))
                 except Exception:
                     pass
             """.trimIndent()
