@@ -253,7 +253,7 @@ fun meshFromAnyFile(path: String): TriMesh {
             }
         }
         else -> assimpToTriMesh(path)
-    }
+    }.also { afield.geometry.mesh.requireGeometryFrom(file, it) }
 }
 
 /**

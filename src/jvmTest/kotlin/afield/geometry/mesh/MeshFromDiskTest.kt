@@ -374,22 +374,17 @@ class MeshFromDiskTest {
     // ==========================================================================================
 
     @Test
-    fun aFileWhoseContentsAreNotWhatItsExtensionSaysParsesToNothingWithoutComplaining() {
-        // The page's first troubleshooting row, and the one that costs an hour: meshFromFile is loud
-        // about a missing file and about an extension it does not read, and *silent* about a file whose
-        // contents make no sense. That is why the page says to print summary() before drawing.
+    fun aFileWhoseContentsAreNotWhatItsExtensionSaysIsRefused() {
+        // The page's first troubleshooting row: a non-empty file that parses to nothing throws,
+        // through meshFromAnyFile as well as meshFromFile, rather than drawing a blank panel.
         withTempDir { dir ->
             for (name in listOf("notreally.obj", "notreally.stl")) {
                 val f = File(dir, name).also { it.writeText("this is not a mesh at all\n") }
-                val mesh = meshFromAnyFile(f.path)
-                assertTrue(mesh.isEmpty, "$name should parse to an empty mesh, got ${mesh.summary()}")
-                assertEquals(0, mesh.vertexCount)
-                assertEquals(0, mesh.triangleCount)
+                val refusal = kotlin.test.assertFailsWith<IllegalArgumentException> { meshFromAnyFile(f.path) }
+                assertTrue("contains no" in refusal.message.orEmpty(), "$name: ${refusal.message}")
             }
         }
-        // And the diagnosis the page tells you to reach for really is that exact string.
-        assertEquals("TriMesh(empty)", TriMesh.empty.summary())
-        // showMesh on an empty mesh does not throw; it renders a blank panel, which is the symptom.
+        // showMesh on an empty mesh still does not throw; it renders a blank panel.
         assertTrue(TriMesh.empty.toFigureHtml().contains("<img"), "an empty mesh still produces a figure")
     }
 
