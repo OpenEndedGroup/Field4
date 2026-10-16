@@ -625,10 +625,7 @@ for free, with no look-at constraint anywhere in the loop.
     `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16#class Camera(val renderer: Renderer = fromContext()) {`), which resolves a renderer from
     the box context. So the *registration* is one of the eleven declarations no unit test reaches
     (the full list is in [`dev_docs/KEYFRAMER_COVERAGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/KEYFRAMER_COVERAGE.md)); the pose arithmetic
-    above, which is all of the behaviour, is tested. Note also that the target accepts a
-    `CameraPose` or a bare `DualQuaternionf` and **silently ignores any other type**
-    (`keyframer.kt:790#fun camera(camera: Camera, keyName: String = "camera") {` dispatches on a `when` with no `else`). A `Vector3f` "camera
-    position" key will appear to apply and do nothing.
+    above, which is all of the behaviour, is tested.
 
 ## Saving: every save is history
 

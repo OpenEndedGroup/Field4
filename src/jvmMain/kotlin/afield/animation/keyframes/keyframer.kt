@@ -1000,8 +1000,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * move rather than a separate position and target lerp.
      *
      * A raw `DualQuaternionf` value is accepted too and keeps the camera's *current* distance to target
-     * as the focus. Any other type is ignored without complaint, so a `Vector3f` "camera position" key
-     * will appear to apply and do nothing.
+     * as the focus. Any other type is not applied, and says so on the `error,keyframer` log channel.
      */
     fun camera(camera: Camera, keyName: String = "camera") {
         dynamicTargets[keyName] = Target(
@@ -1010,6 +1009,11 @@ class KeyframeScope(val schemaVersion: Int = 0) {
                 when (value) {
                     is CameraPose -> camera.applyPose(value)
                     is DualQuaternionf -> camera.applyPose(CameraPose(value, camera.distanceToTarget()))
+                    else -> afield.app.diagnostics.logging.lprintln(
+                        "error,keyframer",
+                        "camera key '$keyName' holds ${if (value == null) "null" else value::class.qualifiedName}; " +
+                            "a camera target applies a CameraPose or a DualQuaternionf, so nothing was applied"
+                    )
                 }
             },
             get = { camera.pose() }
