@@ -685,7 +685,7 @@ camera.at = vec(0,0,-10)
 camera.p()
 
 loop {
-    module.VertexData.modelView = camera.m()
+    module.VertexData.modelView = meshes[0].meshes[0].modelView(camera)
     module.VertexData.proj = camera.p()
     frame()
 }
@@ -693,7 +693,7 @@ loop {
 
 Three things to notice. `meshes[0].meshes[0].applyToMesh(m, camera)` copies one primitive of one model into your mesh; the outer index is the model, the inner one the primitive, so a multi-part file is addressed rather than flattened. `module.VertexData` is the reflected *uniform block*, assigned whole (`module.VertexData.proj = camera.p()`) instead of through per-member lambdas. And `camera.p.orthoness` / `camera.p.matchDepth` are Field's blend between perspective and orthographic rather than a choice between them.
 
-There is one thing to watch in that loop. `applyToMesh` composes `modelView` as `view * model`, defaulting `model` to the primitive's own node transform. That default assembles a multi-node file where its nodes put it, instead of heaping every part at the origin. Assigning `module.VertexData.modelView = camera.m()` each frame overwrites that with the view alone, which is fine for `Box.gltf` (one node, no transform) and wrong for anything positioned by its nodes. If you drive the camera from a loop like this, compose the model matrix in there too, or pass `model = Matrix4f()` to `applyToMesh` and own the placement yourself. [Geometry from disk](geometry_from_disk.md) has the measurement behind that.
+`applyToMesh` composes `modelView` as `view * model`, with the primitive's own node transform as the model, so a multi-node file assembles where its nodes put it. The loop keeps that by assigning `meshes[0].meshes[0].modelView(camera)`, the same product, rather than `camera.m()` alone. [Geometry from disk](geometry_from_disk.md) has the measurement behind it.
 
 The vertex shader shows what "already matched to the data" means. Rather than declaring vertex attributes, it reads a flat float array through a buffer reference and unpacks by stride:
 

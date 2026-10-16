@@ -244,9 +244,8 @@ object GltfSupport {
          *   instead of heaping every part at the origin. Pass `Matrix4f()` for the model-space draw
          *   this used to do unconditionally, or your own matrix to place the part yourself.
          *
-         *   `modelView` is a **push constant**, so a box that writes it again per frame (`loop {
-         *   module.VertexData.modelView = camera.m() }`) overwrites this and gets the origin back.
-         *   Compose the model matrix in there too if you drive the camera that way.
+         *   `modelView` is a **push constant**, so a box that writes it again per frame writes
+         *   [modelView]`(camera)`, which keeps this node transform, rather than `camera.m()` alone.
          *
          * @param reuseBuffers keep this instance's GPU buffers between calls instead of allocating a
          *   fresh pair. **Required for a per-frame call**, and off by default so that no existing
@@ -265,6 +264,13 @@ object GltfSupport {
          *   consequence worth knowing: the buffers are bound to the renderer in scope at the *first*
          *   such call, so do not share one instance across two renderers with this on.
          */
+        /**
+         * `view * model` for this primitive under [camera], with its own node transform as the model:
+         * what to assign to `modelView` each frame when a loop drives the camera, so a part positioned
+         * by its glTF nodes stays where they put it.
+         */
+        fun modelView(camera: Camera = fromContext()): Matrix4f = camera.m().mul(bindMatrix ?: bindPose.toMatrix())
+
         fun applyToMesh(
             m: Mesh,
             camera: Camera = fromContext(),
