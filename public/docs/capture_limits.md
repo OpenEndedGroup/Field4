@@ -83,8 +83,9 @@ own swapchain image straight to a file. It needs no screen recording permission,
 the window, and works headless.
 
 One budget, 15 seconds by default, covers renderer readiness, settling *and* the copy; it is not
-a fresh allowance per stage (`afield/tools/docs/doc.kt`). When it expires you get "Timed out waiting for
-native renderer" and no information about which stage ate it.
+a fresh allowance per stage (`afield/tools/docs/doc.kt`). When it expires, the error names the stage that
+was running (renderer readiness, settle frames or the swapchain copy) and how many settle steps
+had finished.
 
 Here is how per-frame work on one scene affects this path:
 
