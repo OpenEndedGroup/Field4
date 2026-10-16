@@ -94,7 +94,14 @@ class TetgenTest {
         assertTrue(Tetgen.tetrahedralize(cube.surface(), targetEdgeLength = 0.5).cellCount > 0)
     }
 
-    @Test fun nonsensicalOptionsAreRefusedBeforeTetGenSeesThem() {
+    @Test fun theMedianSurfaceEdgeIsWhatACoarseRequestIsComparedWith() {
+        // A unit cube in twelve triangles: eight edges of 1 per face pair and four diagonals of
+        // sqrt 2, so the median of the 36 per-triangle edges is 1.
+        val cube = SimulationBox("c", SimulationBounds(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)).surface()
+        assertEquals(1.0, Tetgen.medianEdgeLength(cube), 1e-6)
+    }
+
+        @Test fun nonsensicalOptionsAreRefusedBeforeTetGenSeesThem() {
         if (!available()) return
         val cube = SimulationBox("c", SimulationBounds(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)).surface()
         assertFails { Tetgen.tetrahedralize(cube, quality = 0.5) }

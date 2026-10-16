@@ -123,8 +123,7 @@ takes, a maximum element volume: `h³ / (6 sqrt 2)`, the volume of a regular tet
 
 The input surface sets the coarsest mesh you can get. TetGen keeps every triangle it is given, and
 this bracket's 618 triangles are already about 10 mm across, so asking for larger elements than that
-changes nothing and gives no warning. Check `cellCount` rather than assuming the size you passed
-took effect.
+changes nothing, and `tetrahedralize` logs a warning saying so.
 
 Finer requests work as expected. Cost grows roughly in proportion to the element count, about
 11–14 µs per element, so a 36,000-element mesh takes about half a second: fast enough to re-mesh on
