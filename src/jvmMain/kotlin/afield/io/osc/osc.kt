@@ -185,14 +185,34 @@ internal class BraceExpandingSelector(pattern: String) : MessageSelector {
     override fun matches(messageEvent: OSCMessageEvent): Boolean = selectors.any { it.matches(messageEvent) }
 }
 
+/** Throw, naming [localPort], when something on this machine already has it bound for UDP. */
+internal fun requireOscPortFree(localPort: Int) {
+    val probe = java.net.DatagramSocket(null as java.net.SocketAddress?)
+    try {
+        probe.reuseAddress = false
+        probe.bind(InetSocketAddress(localPort))
+    } catch (e: java.net.BindException) {
+        throw IllegalStateException(
+            "OSC port $localPort is already in use by another program (TouchOSC Bridge, Max, another Field?). " +
+                "Messages sent there would go to it, not here. Find it with `lsof -nP -iUDP:$localPort`, " +
+                "or listen on another port.",
+            e,
+        )
+    } finally {
+        probe.close()
+    }
+}
+
 /**
  * Bind a receiving OSC port on every interface at [localPort], with the two JavaOSC 0.9 decoding
  * defects above corrected. Listeners are added afterwards through `dispatcher.addListener`.
  *
- * JavaOSC sets `SO_REUSEADDR`, so this does not fail when another program already holds the port:
- * both sockets bind, and a program bound to `127.0.0.1` specifically takes the datagrams sent there.
+ * JavaOSC sets `SO_REUSEADDR`, under which binding a port another program already holds succeeds
+ * and the other program (bound to `127.0.0.1`, say) quietly keeps the datagrams. So the port is
+ * probed first with a plain bind, and a held port is refused by name.
  */
 internal fun openOscPortIn(localPort: Int): OSCPortIn {
+    requireOscPortFree(localPort)
     val parsers = OSCSerializerAndParserBuilder().setUsingDefaultHandlers(false)
     for ((id, handler) in Activator.createParserTypes()) {
         parsers.registerArgumentHandler(if (id == 'b') AdvancingBlobArgumentHandler() else handler, id)

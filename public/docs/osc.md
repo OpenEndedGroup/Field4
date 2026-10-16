@@ -360,16 +360,8 @@ share one slot, and whichever ran last owns it. Give each box its own addresses,
 new one. That makes `close()` the reset when a document's handlers have got into a state you can no
 longer reason about: close the server, then run the boxes that should be listening again.
 
-!!! warning "`osc(port)` succeeds even when another program already has the port"
-    JavaOSC opens its sockets with `SO_REUSEADDR`, so binding a port that TouchOSC Bridge, Max or a
-    second Field already holds succeeds, and `isListening` says `true`. Measured on macOS: a
-    program bound to `127.0.0.1` on that port goes on receiving everything sent to `127.0.0.1`, and
-    the Field box receives nothing, with no error anywhere. When a handler never fires, look for
-    another listener first:
-
-    ```diffstatic {data-lang=bash}
-    lsof -nP -iUDP:57301
-    ```
+`osc(port)` refuses a port another program (TouchOSC Bridge, Max, a second Field) already has, and
+the error names the port.
 
 ## Sending
 

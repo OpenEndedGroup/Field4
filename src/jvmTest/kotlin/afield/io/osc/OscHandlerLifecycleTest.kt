@@ -41,3 +41,18 @@ class OscHandlerLifecycleTest {
         }
     }
 }
+
+/** A port another program already holds is refused, rather than bound alongside it and left deaf. */
+class OscPortInUseTest {
+    @Test
+    fun aHeldPortIsRefusedByName() {
+        val holder = java.net.DatagramSocket(java.net.InetSocketAddress("127.0.0.1", 57393))
+        try {
+            val refusal = kotlin.test.assertFailsWith<IllegalStateException> { OscServer(localPort = 57393, autoStart = false) }
+            assertTrue("57393" in refusal.message.orEmpty(), refusal.message)
+        } finally {
+            holder.close()
+        }
+        OscServer(localPort = 57393, autoStart = false).close()
+    }
+}
