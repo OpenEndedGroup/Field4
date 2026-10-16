@@ -1660,7 +1660,7 @@ back out goes through `updateCode`, which emits pasteable Kotlin.
 | Declaration | Summary |
 | --- | --- |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">registerKeyframeBrowser</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="nc">KeyframeScope</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/keyframeBrowsing/#L114) | Register a directory + glob for browsing and return the token the iframe passes back on every request. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">installKeyframeBrowserHandler</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/keyframeBrowsing/#L638) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installKeyframeBrowserHandler</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/keyframeBrowsing/#L640) |  |
 
 ## logstream.kt { #logstream-kt }
 
