@@ -192,6 +192,16 @@ object PropertyDependencies {
     }
 
     /**
+     * Record that [reader] found [name] in [supplier]'s properties by name, as a shader's sampler
+     * binding does (`Box.findWithNameOrNull`). A `propDown` write to it then reruns [reader].
+     */
+    fun recordNamedRead(reader: Box, supplier: Box, name: String) {
+        if (!enabled || supplier === reader) return
+        record(reader, supplier.id, name, ContextResolution.Mechanism.FROM_CONTEXT_NAMED.name, Access.READ,
+            ContextResolution.MatchKind.PROPERTY.name, name)
+    }
+
+    /**
      * Record that the executing box wrote [name] into [holder] through an inherited delegate. A
      * write into the executing box itself (local shadowing) is not a dependency and is skipped.
      */

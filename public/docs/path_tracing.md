@@ -1000,12 +1000,11 @@ Rows at their default are dropped rather than shown as zeros, so a plain tracer 
 rows and each of the five optional groups — a non-agreeing up, a lens, temporal reuse,
 fog, an attached convergence log — adds one. Ten is the ceiling.
 
-**The tracer does not use `camera.up`.** It
-builds its own up as `right × forward`: the component of the declared up that is
-perpendicular to the view direction, normalised. So a declared up that is not already
-unit-length and perpendicular gives a different vector from the one the image is made
-with, and the row says how far apart they are. The shipped material study's camera is
-11.94° out. The row appears only when they disagree.
+**`up` is the part of `camera.up` perpendicular to the view direction**, normalised: the
+same up the raster camera's `lookAt` builds its image with. A camera that looks up or down
+with the default up of (0, 1, 0), as the material study's does, has an effective up that
+differs from the declared one, here by 11.94°, and the row says by how much. Both renderers
+use the effective up, so their images agree. The row appears only when the two differ.
 
 `samples` counts within a **generation**, and `resetGeneration` counts the generations.
 Two sample counts are comparable only if the generation between them has not advanced;

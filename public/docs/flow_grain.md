@@ -161,9 +161,10 @@ existing object viewer, and shader push constants read the effective values.
 
 The profile box uses `frameProfile`, named scopes and `CoroutineProfiles`, and captures
 CPU and allocations only; GPU pass timings stay in the renderer profiler. To get GPU
-queries too, set `Options.profiling = true` in the renderer box and relaunch the numbered
-graph. The setting is read at startup, so switching it on always costs you a restart, and
-which pipeline statistics you get back varies by device.
+queries too, set `Options.profiling = true` from any box: the running renderer starts its
+GPU timestamp queries on the next frame, and stops them when it is set back to `false`.
+Pipeline statistics are collected only on Windows, where the device supports them;
+Windows performance counters still need the setting on before the renderer starts.
 
 What each instrument measures, and what it is fair to compare, is in
 [Profiling](profiling_timeline.md), in its [Holding a frame budget](profiling_timeline.md#holding-a-frame-budget) part.

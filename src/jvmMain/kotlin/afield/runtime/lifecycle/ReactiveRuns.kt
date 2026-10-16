@@ -597,11 +597,13 @@ object ReactiveRuns {
             while ((isRunning(box) || isBlocked(box)) && System.currentTimeMillis() < deadline) delay(5)
         }
 
+        /** Relaunches [box] on the strand it is running on (its first, if several), else `default`. */
         private fun launchQueued(box: Box) {
             val source = box.getPropertyRaw("code") as? String ?: ""
-            val execute = Execute(box.id, "launch", 1, source, false, strand = "default")
-            FlightRecorder.recordLaunchEntrypoint("propDown.cascade", box, execute, strand = "default")
-            box.ke.launchAll(box, execute, source, "default", documentReply(box))
+            val strand = box.currentRunningStates.keys.firstOrNull { !it.startsWith("__") } ?: "default"
+            val execute = Execute(box.id, "launch", 1, source, false, strand = strand)
+            FlightRecorder.recordLaunchEntrypoint("propDown.cascade", box, execute, strand = strand)
+            box.ke.launchAll(box, execute, source, strand, documentReply(box))
         }
 
         /** Each reader still to rerun, with the earliest change it has not seen. */
