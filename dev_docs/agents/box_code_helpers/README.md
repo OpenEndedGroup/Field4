@@ -2,8 +2,9 @@
 
 Implements the 2026-10-16 [helper decisions](../box_code_first_pass/HELPER_TRIAGE.md).
 ToolPool notes remain with the house-machine agents. This change adds the eleven other approved
-facilities; the later corpus edit pass will use them. Earlier approvals from 2026-10-07 remain
-listed separately in [BOX_CODE_HELPER_IDEAS.md](../BOX_CODE_HELPER_IDEAS.md).
+facilities; the later corpus edit pass will use them. The eight earlier approvals rediscovered by the sweep are implemented in the follow-up; see
+[their API contracts and evidence](OLDER_APPROVALS.md). Other earlier ideas remain in
+[BOX_CODE_HELPER_IDEAS.md](../BOX_CODE_HELPER_IDEAS.md).
 
 ## Small APIs
 

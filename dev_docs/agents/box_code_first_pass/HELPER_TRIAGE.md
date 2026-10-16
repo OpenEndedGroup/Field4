@@ -25,7 +25,7 @@ are in [helper-proposals.json](helper-proposals.json). API spellings there are i
 
 ## Eight previously approved families rediscovered
 
-These require implementation/discovery and signature checks, not another approval:
+These are implemented in the follow-up helper change; see [API contracts and evidence](../box_code_helpers/OLDER_APPROVALS.md):
 
 - `uint` push members accepting `Int` lambdas.
 - Numeric `.fN` properties; the two proposal keys were consolidated.
