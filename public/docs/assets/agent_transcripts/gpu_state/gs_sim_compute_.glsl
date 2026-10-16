@@ -6,7 +6,7 @@ layout(std430, buffer_reference) buffer State   { vec4 a[]; };
 layout(std430, buffer_reference) buffer Anchors { vec4 a[]; };
 layout(std430, buffer_reference) buffer Heat    { vec4 a[]; };
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 layout(push_constant) uniform dat {
     State   state;        // this frame's half of the ping-pong — written

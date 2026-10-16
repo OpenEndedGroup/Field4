@@ -31,12 +31,12 @@ start(renderer::run)
 <!-- field-box id="path_trace_material_check" index="1" -->
 
 ```edn [field-box id="path_trace_material_check" role="properties"]
-{"id" "path_trace_material_check" "index" 1 "name" "editable-material-check" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "editable-material-check" "_tombstone" false "frame" #afield/rect [320.0 180.0 360.0 120.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "path_trace_material_check_compute_.glsl" "lines" 3 "characters" 111 "sha256" "3f35ab62c9062e7520cf50e53f2facce58f272fe9bdba7fb8da6ec9b6d6539a1"} {"name" "code" "language" "kotlin" "path" "path_trace_material_check_code_.kt" "lines" 47 "characters" 2317 "sha256" "980eea3f84a2283c633b00a6d5608fbcea0ff11519701ada92b3609a31a589ea"}]}
+{"id" "path_trace_material_check" "index" 1 "name" "editable-material-check" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "editable-material-check" "_tombstone" false "frame" #afield/rect [320.0 180.0 360.0 120.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "path_trace_material_check_compute_.glsl" "lines" 3 "characters" 112 "sha256" "f84237973383a2b88ee8701b1b0aa3f83cdad1cc9729d6e3bc29e03819860561"} {"name" "code" "language" "kotlin" "path" "path_trace_material_check_code_.kt" "lines" 47 "characters" 2317 "sha256" "980eea3f84a2283c633b00a6d5608fbcea0ff11519701ada92b3609a31a589ea"}]}
 ```
 
 ```glsl [field-property box="path_trace_material_check" name="compute" path="path_trace_material_check_compute_.glsl"]
 {{ pathTracing.preamble }}
-{% include "editable-material-check.pathTracePaint" %}
+{% property "editable-material-check.pathTracePaint" %}
 {{ pathTracing.integrator }}
 ```
 

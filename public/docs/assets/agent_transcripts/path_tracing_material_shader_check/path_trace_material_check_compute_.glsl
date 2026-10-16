@@ -1,3 +1,3 @@
 {{ pathTracing.preamble }}
-{% include "editable-material-check.pathTracePaint" %}
+{% property "editable-material-check.pathTracePaint" %}
 {{ pathTracing.integrator }}

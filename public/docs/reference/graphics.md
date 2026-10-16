@@ -8441,7 +8441,7 @@ user-facing entry points are the macro placeholders `Box.moduleHere`, `Box.compu
 `MacroNotExpandedException` if actually called, because `MacroRegistry` is expected to rewrite it
 into the real `_moduleHere`-family call.
 
-Before compilation every stage goes through `preprocess`, which resolves `{% include %}` template
+Before compilation every stage goes through `preprocess`, which resolves `{% property %}` template
 tags against other boxes' shader properties (with cycle detection and `#line` fixups) and against
 built-in includes such as the field probe, field stats and quantile warp. Registered include roots —
 `registerShaderFilesystemIncludeRoot` for a directory, `registerLygiaIncludeRoot` /
@@ -13856,7 +13856,7 @@ What a graphics box on this machine would get, and what is missing. Shown by the
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">getShaderTemplateResolverForBox</span><span class="p">(</span><span class="n">b</span> <span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Resolver</span><span class="p">&gt;</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L59) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">runTemplate</span><span class="p">(</span><span class="n">template</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">resolver</span><span class="p">:</span> <span class="nc">ResolverFn</span><span class="p">,</span> <span class="n">includeResolver</span><span class="p">:</span> <span class="nc">IncludeResolver</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L68)<span class="sig-overloads">+2 overloads · also Resolver, Any?</span> | Most permissive entrypoint. Allows passing: - Resolver - (String) -> Any? - Iterable<*> of resolvers - Map<String, Any?> (will be wrapped with MapResolver) |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">runShaderTemplate</span><span class="p">(</span><span class="n">template</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">resolver</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="n">includeResolver</span><span class="p">:</span> <span class="nc">IncludeResolver</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L82) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L648) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L649) |  |
 
 ### Resolver { #templating-kt-resolver }
 
@@ -13880,27 +13880,27 @@ What a graphics box on this machine would get, and what is missing. Shown by the
 
 ### MapResolver { #templating-kt-mapresolver }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">MapResolver</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">map</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Resolver</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L613)
+[<code class="highlight"><span class="k">class</span> <span class="nf">MapResolver</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">map</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Resolver</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L614)
 
 Map-backed resolver. - Looks up exact keys. - If the stored value is a Map, it returns a MapResolver to enable hierarchical resolution. - If the stored value is already a Resolver or Iterable of resolvers, returns it as-is.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">resolve</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L614) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">resolve</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L615) |  |
 
 ### CompositeResolver { #templating-kt-compositeresolver }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">CompositeResolver</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">resolvers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Resolver</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Resolver</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L628)
+[<code class="highlight"><span class="k">class</span> <span class="nf">CompositeResolver</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">resolvers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Resolver</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Resolver</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L629)
 
 Composite resolver that tries children in order. This is useful if you want a simple "first non-null wins" behavior without relying on the engine's "return a List<Resolver>" feature.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">resolve</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L629) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">resolve</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L630) |  |
 
 ### TemplateException { #templating-kt-templateexception }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">TemplateException</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L642)
+[<code class="highlight"><span class="k">class</span> <span class="nf">TemplateException</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/vulkan/util/templating/#L643)
 
 ## util.kt { #util-kt }
 
