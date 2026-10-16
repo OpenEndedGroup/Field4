@@ -512,20 +512,9 @@ about it**, so two flocks side by side still differ only in their rule. No retra
 
 ---
 
-## Running it
-
-The four transcripts are the intended entry point. The four GPU smokes are the same machinery driven
-headlessly, and are what to run after changing any of it:
-
-```diffstatic {data-lang=text}
-tools/run_field_tests.py --id four.neural-field-parity.smoke   # one forward pass, CPU vs GPU
-tools/run_field_tests.py --id four.neural-particles.smoke      # a whole trajectory, point by point
-tools/run_field_tests.py --id four.neighbour-grid.smoke        # neighbour sets vs brute force
-tools/run_field_tests.py --id four.shader-boids.smoke          # both rules vs a CPU brute force
-```
-
-All four need a GPU and an awake display: Field 4 has no headless mode, so even a
-compute-only dispatch needs a `Window` for the device to exist.
+??? aside "Agents: smoke tests"
+    The four GPU smokes that check this machinery, and what each compares, are listed in
+    [`dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md#smoke-tests).
 
 ## Limits
 
