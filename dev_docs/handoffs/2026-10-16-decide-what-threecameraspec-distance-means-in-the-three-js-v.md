@@ -17,3 +17,7 @@ Decide one of:
 1. Align: make the viewer's distance mean the rasterizer's (with a field of view that fits a sphere at 2.7), and re-tune and recapture those figures.
 2. Rename: split `ThreeCameraSpec.distance` into the rasterizer's `distance` and a viewer `padding`, so the name says what each renderer does.
 3. Keep fit-to-panel as the viewer contract and document it in the KDoc (then the aside can go and the bullet stays).
+
+## Decision, 2026-10-16 (Marc)
+
+**Split.** `ThreeCameraSpec.distance` keeps the rasterizer's meaning (eye at radius × distance). The Three.js viewer gets its own `padding` (the fit margin) and stops deriving its framing from `distance`. Choose `padding`'s default so figures that pass no value frame as today, and migrate the ten callers so their viewer framing is unchanged (today they all get the 1.02 floor). The aside "In the viewer, `distance` is a padding factor" goes; the "Framing differs" bullet becomes a short sentence naming both fields. Filed as a code handoff.
