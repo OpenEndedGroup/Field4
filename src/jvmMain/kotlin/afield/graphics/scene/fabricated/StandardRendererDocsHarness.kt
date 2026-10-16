@@ -665,7 +665,6 @@ object StandardRendererDocsHarness {
                             importedMaterial.baseColor.set(0.42f, 0.42f, 0.42f, 1f)
                             importedMaterial.metallic = 0f
                             importedMaterial.roughness = 1.0f
-                            importedMaterial.uvTransform.set(0f, 0f, 3f, 3f)
                             importedMaterial.receiveAo = false
                         }
                         "Glass" -> {
