@@ -15,10 +15,10 @@ what changes when you change the scheduler.
 ## One reduction, recorded
 
 `three two` is Church exponentiation the other way round: the numeral three applied to the numeral
-two, which is 2³. Most of its reactions are not β-steps but the fan-and-eraser bookkeeping that
-keeps sharing correct. The box below reduces it and plots the size of the net after each reaction.
+two, which is 2³. Most of its reactions are not β-steps but the bookkeeping that keeps sharing
+correct: fans copying, and the scope delimiters of the reducer's Lambdascope rules moving and closing. The box below reduces it and plots the size of the net after each reaction.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/one_reduction.png" wait="10" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="180" name="chain-lambda-one" embed=true alt="A two-trace plot over twenty-six reactions: an agent count that saws upward from twelve to a plateau of twenty-four around reaction twelve and then falls steadily to ten, and a lower trace of covered pairs that never leaves the range one to seven, above a table giving the term, fourteen agents and three fans compiled, twenty-six reactions of which eight are beta, the rule tally, and the answer as a lambda term"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/one_reduction.png" wait="10" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="180" name="chain-lambda-one" embed=true alt="A two-trace plot over eighty-six reactions: an agent count that climbs from about nineteen to a peak of forty-six around reactions thirty-five and forty-five and then falls, in steps, to twenty-six, and a lower trace of covered pairs that rises to fifteen and comes back down to zero, above a table giving the term, nineteen agents and three fans compiled, eighty-six reactions of which eight are beta, the rule tally led by delim-delim, and the answer λa. λb. a applied eight times to b"}
 :::static
 import afield.audio.synth.LambdaSoundDocs
 
@@ -31,7 +31,7 @@ showSignals(
     "agents standing" to t.nodeSeries,
     "pairs a rule covers" to t.choiceSeries,
     // Short, because a plotly title wider than the plot is clipped rather than wrapped.
-    title = "three two: after each of its 26 reactions",
+    title = "three two: after each of its 86 reactions",
     xTitle = "reaction",
     channel = "series",
 )
@@ -40,7 +40,7 @@ markdown("readout", """
 | | |
 |---|---|
 | term | `${t.source}` |
-| compiled to | ${t.initialNodes} agents, ${t.fans} labelled fans |
+| compiled to | ${t.initialNodes} agents, ${t.fans} fans |
 | reactions | ${t.steps} |
 | of those, β | ${t.betas} |
 | rules fired | ${t.ruleTally.entries.joinToString(", ") { "`${it.key}` x${it.value}" }} |
@@ -62,7 +62,7 @@ you pick, a term takes the same number of reactions, and fires the same rules th
 times; only the order differs. The box below reduces every term in the λ front end's corpus under
 all four schedulers and fails if any term breaks either rule.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/sweep.png" wait="25" capture="box" open-outputs="true" w="1180" h="560" padding="18" timeout="300" name="chain-lambda-sweep" embed=true alt="A table of twenty-two corpus terms sorted by how many distinct notations their beta mask condenses to: three terms at four spellings each, two at three, four at two and thirteen at one, with reaction counts from three to twenty-six and condensed notations ranging from x*3 to long mixtures of replicates and rests"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/sweep.png" wait="25" capture="box" open-outputs="true" w="1180" h="560" padding="18" timeout="300" name="chain-lambda-sweep" embed=true alt="A table of twenty-two corpus terms sorted by reaction count, from church-pred-three at 127 down to self-apply-identity at 10: every term but the last condenses to four distinct notations across the four schedulers, the last to three, and the FIRST_FOUND spellings are long mixtures of single strikes, rests and the odd replicate"}
 :::static
 import afield.audio.synth.LambdaSoundDocs
 
@@ -110,7 +110,7 @@ Because the order differs, the β-steps land in different places, and `patConden
 different notation for each scheduler. The box below takes `three two` under all four schedulers
 and draws where its β-steps fall.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/four_schedules.png" wait="14" capture="box" open-outputs="true" w="1180" h="420" padding="18" timeout="240" name="chain-lambda-four" embed=true alt="Four coloured piano-roll lanes of one cycle each, all with eight strikes in twenty-six slots but in visibly different places: FIRST_FOUND ends with four strikes packed against the right edge, LEFTMOST_BY_ID and HIGHEST_PAIR_ENERGY break theirs into pairs across the middle, and RIGHTMOST_BY_ID spreads its last four out singly. Below, a table giving all four schedulers the same twenty-six reactions and eight betas against four different condensed notations and compressions of 0.43, 0.61, 0.57 and 0.65, all four signed for by the search"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/four_schedules.png" wait="14" capture="box" open-outputs="true" w="1180" h="420" padding="18" timeout="240" name="chain-lambda-four" embed=true alt="Four coloured piano-roll lanes of one cycle each, all with eight strikes in eighty-six slots but in visibly different places: FIRST_FOUND spreads four through the first half and packs its last four together near the end, LEFTMOST_BY_ID and HIGHEST_PAIR_ENERGY break theirs into pairs, and RIGHTMOST_BY_ID puts four early and spreads its last four out singly. Below, all four read back as the same answer, and a table gives every scheduler the same eighty-six reactions and eight betas against four different condensed notations and compressions of 0.20, 0.28, 0.26 and 0.27, all four signed for by the search"}
 :::static
 import afield.audio.synth.LambdaSoundDocs
 
@@ -145,10 +145,10 @@ $rows
 ```
 
 
-FIRST_FOUND lands its last four β-steps against the end of the bar and the notation says so: a long
-rest and then `x!4`. RIGHTMOST_BY_ID spreads the same eight out far enough that the condenser finds
-a Euclidean figure in them and spells part of the bar as `x(4,13,3)`. Nothing in the condenser knows
-what a λ-term is; it is looking for the shortest string that plays what it was handed.
+FIRST_FOUND lands its last four β-steps together near the end of the bar and the notation says so: a
+long rest and then `x!4`. RIGHTMOST_BY_ID spreads its last four out, so its notation has no
+replicate at all, only single strikes and rests. Nothing in the condenser knows what a λ-term is; it
+is looking for the shortest string that plays what it was handed.
 
 Compression is a ratio of characters, so the length of the atom affects it. Both bars above use
 `x`, as [the CA chain](chain_ca_sound.md) does. Compare two notations only when they use the same
@@ -160,7 +160,7 @@ Here is FIRST_FOUND's bar, three cycles at 0.4 cycles per second:
 // Offline-rendered by LambdaSoundDocs.renderWav("exp-first-found").
 ```
 
-And RIGHTMOST_BY_ID's, same term, same twenty-six reactions, same eight β-steps, same answer:
+And RIGHTMOST_BY_ID's, same term, same eighty-six reactions, same eight β-steps, same answer:
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/chain_lambda_sound/exp-rightmost.wav" audio-spec="exp-rightmost" audio-renderer="afield.audio.synth.LambdaSoundDocs" embed=true hidden=true name="chain-lambda-rightmost-audio"}
 // Offline-rendered by LambdaSoundDocs.renderWav("exp-rightmost").
@@ -171,18 +171,19 @@ differ only in where the strikes fall.
 
 ## The reduction as pitch
 
-A rule emits an event when it fires. A closed term emits four kinds of event, `beta`, `branch`,
-`prune` and `annihilate`; map those to four degrees of a minor pentatonic and a reduction becomes a
-tune whose notes are its rule sequence.
+A rule emits an event when it fires. A closed term emits six kinds of event: `beta`, `branch`,
+`prune` and `annihilate`, and `scope` and `unscope` for a scope delimiter moving and closing. Map
+those to six degrees of a minor pentatonic and a reduction becomes a tune whose notes are its rule
+sequence.
 
 ```diffstatic {data-lang=kotlin}
 val notes = LambdaSoundDocs.trace("erase-argument").melody
 // -> one MIDI note per reaction, pitched by the kind that reaction emitted
 ```
 
-`K I (mul 2 3)` is the corpus's erasing term: it computes six and throws it away. Many of its
+`K I (mul 2 3)` is the corpus's erasing term: it computes six and throws it away. Nine of its 120
 reactions are `prune`, taking the discarded multiplication apart agent by agent, because an
-interaction net cannot simply drop a wire.
+interaction net cannot simply drop a wire; most of the rest are `scope` and `unscope`.
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/chain_lambda_sound/erase-rule-melody.wav" audio-spec="erase-rule-melody" audio-renderer="afield.audio.synth.LambdaSoundDocs" embed=true hidden=true name="chain-lambda-melody-audio"}
 // Offline-rendered by LambdaSoundDocs.renderWav("erase-rule-melody").
