@@ -207,6 +207,38 @@ class FieldMLLambdaExpectedTypeTest {
     }
 
     /**
+     * The same callback written as a **named** call, which leaves `from` to its Kotlin default. The
+     * record field is matched to the parameter of the same name, so `p` is typed exactly as it is
+     * positionally, and checked.
+     */
+    @Test
+    fun aLambdaInANamedRecordTakesTheTypeOfTheParameterItNames() {
+        val result = compileOk(
+            """
+            hostStaticCall "defaultBuffer" {name = "inData", parameters = fun p ->
+              p |> hostSet "size" (p |> hostCall1 "getVec4s" 100000)
+            } (hostClass "afield.graphics.vulkan.buffers.MagicKt")
+            """,
+        )
+        assertEquals(listOf("p: BufferParameters"), parameterSpellings(result))
+        assertRefused(
+            """
+            hostStaticCall "defaultBuffer" {name = "inData", parameters = fun p ->
+              p |> hostCall1 "getVec5s" 100000
+            } (hostClass "afield.graphics.vulkan.buffers.MagicKt")
+            """,
+            "has no method 'getVec5s'",
+        )
+        // A name no candidate has is still the named call's own refusal, not a lambda's.
+        assertRefused(
+            """
+            hostStaticCall "defaultBuffer" {nmae = "inData", parameters = fun p -> p} (hostClass "afield.graphics.vulkan.buffers.MagicKt")
+            """,
+            "exactly the named parameters",
+        )
+    }
+
+    /**
      * The Field 4 case that matters most, because it is the one that does *not* need the source
      * macro layer: `parameters(renderer) { vertex = …; fragment = … }` (`Module.kt:197`) takes plain
      * GLSL strings, and its receiver lambda now arrives with `p : Parameters`. That is a whole shader
