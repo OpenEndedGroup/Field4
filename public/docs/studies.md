@@ -96,12 +96,8 @@ rather than as text; the numbers beside it (mean luma, clipping, detail, palette
 frames) come back in the report's facts. The study keeps its revisions in the document, under
 `studies/<box id>/rings`, and the sheet is saved there too.
 
-!!! note "Saving the property"
-    A property is written to the document on save only if its name is in
-    `Box.ioPersistentProperties`, and a name you make up, such as `rings`, is not. The study's
-    revisions are files under `studies/` and survive, but the box's own text does not unless you add
-    the name: `Box.ioPersistentProperties.add("rings")`. The starting point below does this in its
-    first box.
+`sourceFramesStudy("rings", …)` registers `rings` as a saved property, so the box's text is written
+to the document along with the study's revisions under `studies/`.
 
 ## Changing it
 

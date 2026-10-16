@@ -270,6 +270,9 @@ fun Box.sourceFramesStudy(property: String, frames: StudyFrames<String>, extensi
                           withNumbers: (String, Map<Int, Double>) -> String = StudyKnobs::withPlainNumbers,
                           check: (String) -> Unit = {}, aspect: Double = 1.0, defaultSeconds: List<Double> = listOf(0.0)): SourceFramesStudy {
     val box = this
+    // The study's source lives in [property], and a box property is saved with the document only when
+    // its name is registered as persistent; a made-up name such as `rings` is not, until now.
+    afield.document.graph.Box.ioPersistentProperties.add(property)
     val replace: (String, String) -> Boolean = if (BoxStudies.documentOf(box) != null) BoxStudies.replacer(box, property) else { expected, replacement ->
         synchronized(box) {
             if ((box.getPropertyRaw(property, "") ?: "") != expected) false else { box.setPropertyRaw(property, replacement); true }
