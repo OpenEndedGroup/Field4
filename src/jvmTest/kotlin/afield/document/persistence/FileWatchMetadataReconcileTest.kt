@@ -125,6 +125,98 @@ class FileWatchMetadataReconcileTest {
             "{\"id\" \"$id\" \"properties\" {\"name\" \"$id\"}}"
         }
 
+    /** Like [externalMetadata], with each box's `name` given explicitly. */
+    private fun externalMetadataNamed(vararg boxes: Pair<String, String>): String =
+        (listOf("root" to "root") + boxes).joinToString(" ", "{\"version\" 2 \"boxes\" [", "]}\n") { (id, name) ->
+            "{\"id\" \"$id\" \"properties\" {\"name\" \"$name\"}}"
+        }
+
+    /**
+     * An external edit of a property of a box already open used to be ignored, and the next save wrote
+     * the in-memory value back over it. It is applied now — and only what the file changed is applied:
+     * a box the session renamed since the file was written keeps its new name.
+     */
+    @Test
+    fun externalPropertyEditOfAnOpenBoxIsAppliedAndSessionEditsSurvive() {
+        val directory = tempDocument("external-property")
+        val metadata = File(directory, SavingContext.METADATA_EDN)
+        metadata.writeText(externalMetadataNamed("a" to "a", "c" to "c"))
+        val loadedAt = metadata.lastModified()
+        val info = session(directory, "a", "c")
+        // Started now, after the load, so it takes the file as opened as its baseline.
+        val watcher = info.fileWatchManager
+        info.boxes.getValue("c").name = "c local"
+
+        metadata.writeText(externalMetadataNamed("a" to "a edited", "c" to "c"))
+        metadata.setLastModified(loadedAt + 2_000L)
+        runBlocking { watcher.handleMetadataChange(metadata) }
+
+        val a = info.boxes.getValue("a")
+        assertTrue(pumpMainUntil { a.name == "a edited" }, "the external edit of a's name was not applied (name=${a.name})")
+        repeat(5) { Runloop.runLoop.main.frame() }
+        kotlin.test.assertEquals("c local", info.boxes.getValue("c").name,
+            "c's name changed in the session and not in the file, so the reconcile must not revert it")
+    }
+
+    /**
+     * The watcher used to call any event "Field's own save" when the file had the size Field wrote and
+     * an mtime inside a 15 s grace window, so a same-length edit just after a save was invisible. It
+     * compares the content now.
+     */
+    @Test
+    fun aSameLengthEditJustAfterASaveIsSeen() {
+        val directory = tempDocument("same-length")
+        val info = session(directory, "a")
+        info.boxes.getValue("a").name = "a1"
+        val metadata = File(directory, SavingContext.METADATA_EDN)
+        var saved = false
+        SavingContext().save(info.filename, info.boxes.values.toSet(), onComplete = { saved = true }, inline = true)
+        assertTrue(pumpMainUntil { saved }, "premise failed: the save never completed")
+        runBlocking { info.fileWatchManager.handleMetadataChange(metadata) } // the save's own event
+        repeat(5) { Runloop.runLoop.main.frame() }
+
+        val written = metadata.readText()
+        assertTrue("\"a1\"" in written, "premise failed: the save did not write a's name")
+        val edited = written.replace("\"a1\"", "\"a2\"")
+        kotlin.test.assertEquals(written.length, edited.length, "premise failed: the edit changed the length")
+        val mtime = metadata.lastModified()
+        metadata.writeText(edited)
+        metadata.setLastModified(mtime)
+
+        runBlocking { info.fileWatchManager.handleMetadataChange(metadata) }
+        val a = info.boxes.getValue("a")
+        assertTrue(pumpMainUntil { a.name == "a2" }, "a same-length, same-mtime external edit was taken for Field's own save")
+    }
+
+    /**
+     * The property reconcile calls a value "edited" when it is not `==` to the same box's value in the
+     * previous file. If any stored type lacked value equality (a rect, a sidecar reference, a nested
+     * map), every such property would look edited on every external change, and stale disk values
+     * would overwrite live ones. So: the same text parsed twice must compare equal, property by property,
+     * across real committed documents.
+     */
+    @Test
+    fun theSameMetadataParsedTwiceComparesEqual() {
+        val demos = File(System.getProperty("user.dir"), "dev_docs/agents/demos")
+        val files = demos.listFiles().orEmpty().map { File(it, SavingContext.METADATA_EDN) }.filter { it.isFile }.take(40)
+        assertTrue(files.size >= 10, "premise failed: found only ${files.size} demo documents under $demos")
+        val ctx = SavingContext()
+        var compared = 0
+        for (file in files) {
+            val text = file.readText()
+            val first = ctx.readEdnTransfersFromString(text).associateBy { it.id }
+            val second = ctx.readEdnTransfersFromString(text).associateBy { it.id }
+            for ((id, transfer) in first) {
+                for ((name, value) in transfer.properties) {
+                    compared++
+                    kotlin.test.assertEquals(value, second.getValue(id).properties[name],
+                        "${file.parentFile.name}: $id.$name (${value?.let { it::class.simpleName }}) is not equal to itself re-read")
+                }
+            }
+        }
+        assertTrue(compared > 100, "premise failed: compared only $compared properties")
+    }
+
     @Test
     fun ownMetadataWriteSeenBeforeTheSaveCompletesKeepsABoxCreatedDuringTheSave() {
         val directory = tempDocument("own-write")

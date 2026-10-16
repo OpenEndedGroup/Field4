@@ -604,7 +604,8 @@ class SavingContext {
                     snapshot.fileWatchManager?.markMetadataWrite(
                         File(metadataPath),
                         snapshot.transfers.map { it.id },
-                        written = metadataChanged
+                        written = metadataChanged,
+                        text = ednText
                     )
                     altered = altered || metadataChanged
                     if (metadataChanged) alteredFiles.add(metadataPath)

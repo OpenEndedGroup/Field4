@@ -158,28 +158,27 @@ externally only stops the watcher tracking it; the in-memory property is left al
 (`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:326#External deletion of sidecar`). This is the
 supported way to edit a box's code from outside Field.
 
-**A `metadata.edn` edit is reconciled at box granularity, not merged.** An external modification runs
+**A `metadata.edn` edit is reconciled.** An external modification runs
 `src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:500#private fun reconcileMetadata(workspaceDir: File)`,
 which adds boxes present on disk and absent from the session, and tombstones boxes that were in the
 last `metadata.edn` Field wrote or loaded and are absent from the new one
 (`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:578#box.setPropertyRaw("_tombstone", true, doResync = true)`).
 A box created in the session since that write is left alone: it was never in the file, so the edit
-cannot have removed it. The properties of boxes already present in the session are left alone
-(`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:496#properties of boxes already present in the`).
-So *adding* or *removing* a box by editing `metadata.edn` under a live Field
-works, and *changing a property of a box that is already open* does not — that edit is not applied,
-and the next save overwrites it from memory. Hand-edit the sidecar instead.
+cannot have removed it. A property of a box already open is applied when the new file's value
+differs from that box's value in the last `metadata.edn` Field wrote or read
+(`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:734#private fun applyExternalPropertyEdits(`),
+so a value you changed in Field since the last save, and the file did not touch, is kept. Two things
+the reconcile does not do: it does not rewire the connections of a box already open (`children`,
+`parents`, nesting), and it does not remove a property you delete from the file, because the next save
+writes it back.
 
 **A `document.md` edit does nothing**, for the reason above: nothing reads it, and the watcher does
 not decode it either.
 
-Two more details of the watcher account for an edit that looks lost. Field marks
-its own writes, and a watch event whose size and modification time still match a recorded internal
-save is discarded — a 15-second grace window on the timestamp and a 120-second window on the
-signature
-(`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:161#private fun isInternalSaveEvent(file: File, currentTime: Long): Boolean`).
-An external edit that happens to leave the file exactly the same length, moments after Field's own
-save, is therefore invisible. And the watcher registers the document directory itself and no
+Field recognises its own writes by content: a watch event is discarded only while the file still
+hashes to what Field wrote
+(`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:260#private fun isInternalSaveEvent(file: File): Boolean`),
+so an edit made moments after a save is seen. The watcher registers the document directory itself and no
 subdirectory
 (`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:175#val key = path.register(`), so nothing under
 `files/` is watched at all.
