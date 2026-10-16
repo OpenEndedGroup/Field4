@@ -223,8 +223,8 @@ CFLAGS="-isysroot $(xcrun --show-sdk-path)" .venv/bin/python3 -m pip install 'je
 export FIELD_PYTHON_VENV="$PWD/.venv"
 ```
 
-Install the `jep` version that matches the jar Field ships (`libs/jep-4.3.1.jar`). JEP does not
-check that its native library and jar come from the same release.
+Install the `jep` version that matches the jar Field ships (`libs/jep-4.3.1.jar`); Field refuses an
+interpreter whose `jep` is a different release, and says which two versions it found.
 
 ??? aside "Agents: how this page's pictures are made"
 

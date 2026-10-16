@@ -1990,6 +1990,11 @@ class PythonInterface {
                 emit("basePrefix", getattr(sys, "base_prefix", ""))
                 emit("sitePackages", jep_site or (site_paths[0] if site_paths else ""))
                 emit("jepLibrary", libs[0] if libs else "")
+                try:
+                    import importlib.metadata
+                    emit("jepVersion", importlib.metadata.version("jep"))
+                except Exception:
+                    pass
             """.trimIndent()
             val process = ProcessBuilder(executable, "-c", script)
                 .redirectErrorStream(true)
@@ -2007,6 +2012,16 @@ class PythonInterface {
                 .toMap()
             val jep = values["jepLibrary"]?.takeIf { it.isNotBlank() } ?: return null
             val home = values["home"]?.takeIf { it.isNotBlank() } ?: return null
+            // JEP does not check that its native library and its jar come from one release, and a
+            // mismatch fails somewhere unrelated, so it is refused here, naming both.
+            val nativeVersion = values["jepVersion"]?.takeIf { it.isNotBlank() }
+            val jarVersion = shippedJepJarVersion()
+            if (nativeVersion != null && jarVersion != null && nativeVersion != jarVersion) {
+                throw IllegalStateException(
+                    "$executable has jep $nativeVersion, but Field ships the jep $jarVersion jar; " +
+                        "install the matching native library with `pip install 'jep==$jarVersion'`",
+                )
+            }
             val py = values["executable"]?.takeIf { it.isNotBlank() } ?: executable
             val prefix = values["prefix"]?.takeIf { it.isNotBlank() }
             val basePrefix = values["basePrefix"]?.takeIf { it.isNotBlank() }
@@ -2026,6 +2041,10 @@ class PythonInterface {
                 venvPath = venvPath,
             )
         }
+
+        /** The version of the `jep-x.y.z.jar` on this JVM's classpath, or null if it cannot be told. */
+        private fun shippedJepJarVersion(): String? =
+            Regex("""jep-(\d+(?:\.\d+)+)\.jar""").find(System.getProperty("java.class.path").orEmpty())?.groupValues?.get(1)
 
         private fun readPersistedPythonChoice(): PythonConfigChoice? {
             val file = pythonSettingsFile()
