@@ -236,6 +236,13 @@ object GltfSupport {
         private var heldIndexBuffer: afield.graphics.vulkan.buffers.BufferParameters? = null
 
         /**
+         * `view * model` for this primitive under [camera], with its own node transform as the model:
+         * what to assign to `modelView` each frame when a loop drives the camera, so a part positioned
+         * by its glTF nodes stays where they put it.
+         */
+        fun modelView(camera: Camera = fromContext()): Matrix4f = camera.m().mul(bindMatrix ?: bindPose.toMatrix())
+
+        /**
          * Upload this instance's buffers and set the push constants the bundled shaders expect.
          *
          * @param model the model matrix, composed into `modelView` as `view * model`. The default is
@@ -264,13 +271,6 @@ object GltfSupport {
          *   consequence worth knowing: the buffers are bound to the renderer in scope at the *first*
          *   such call, so do not share one instance across two renderers with this on.
          */
-        /**
-         * `view * model` for this primitive under [camera], with its own node transform as the model:
-         * what to assign to `modelView` each frame when a loop drives the camera, so a part positioned
-         * by its glTF nodes stays where they put it.
-         */
-        fun modelView(camera: Camera = fromContext()): Matrix4f = camera.m().mul(bindMatrix ?: bindPose.toMatrix())
-
         fun applyToMesh(
             m: Mesh,
             camera: Camera = fromContext(),

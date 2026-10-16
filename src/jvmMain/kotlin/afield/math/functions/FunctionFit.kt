@@ -269,6 +269,19 @@ private fun finiteDifferenceGradient(
 }
 
 /**
+ * The name-node prefix a lowering gives a number that is meant to be solved for (RectSL's
+ * `free-param`, Kotlin's `FreeParamTrack`). A graph carrying one is a track with declared unknowns,
+ * and [fitGradient] refuses it: it would move every number, key times and clamp bounds included.
+ */
+const val FN_FREE_PARAMETER_PREFIX: String = "rectsl.param:"
+
+private fun Functions.Fn.namesFreeParameters(): Boolean {
+    val node = graphNode()
+    if (node.op == "name" && node.strings["name"]?.startsWith(FN_FREE_PARAMETER_PREFIX) == true) return true
+    return node.children.any { it.fn.namesFreeParameters() }
+}
+
+/**
  * Fits the numeric leaves of [seed] to [target] by Adam descent on the RMSE loss.
  *
  * The graph *structure* of [seed] is fixed; only its numbers move. This is the
@@ -299,19 +312,6 @@ private fun finiteDifferenceGradient(
  *        objective.
  * @return an [FnFitRun] with the fitted graph and the full loss trajectory.
  */
-/**
- * The name-node prefix a lowering gives a number that is meant to be solved for (RectSL's
- * `free-param`, Kotlin's `FreeParamTrack`). A graph carrying one is a track with declared unknowns,
- * and [fitGradient] refuses it: it would move every number, key times and clamp bounds included.
- */
-const val FN_FREE_PARAMETER_PREFIX: String = "rectsl.param:"
-
-private fun Functions.Fn.namesFreeParameters(): Boolean {
-    val node = graphNode()
-    if (node.op == "name" && node.strings["name"]?.startsWith(FN_FREE_PARAMETER_PREFIX) == true) return true
-    return node.children.any { it.fn.namesFreeParameters() }
-}
-
 fun fitGradient(
     target: Functions.Fn,
     seed: Functions.Fn,

@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "source_commit": "eb6b34e4fbec4cc228bcfab66027a285995c01e3",
+  "scope_groups": 568,
+  "completed_groups": 568,
+  "remaining_groups": 0,
+  "review_records_saved": 576,
+  "duplicate_groups": [],
+  "invalid_jsonl": [],
+  "needs_reconciliation": [],
+  "stale_sources": [],
+  "schema_problems": [],
+  "dispositions": {
+    "keep": 302,
+    "revise": 265,
+    "needs-context": 1
+  },
+  "remaining": []
+}
