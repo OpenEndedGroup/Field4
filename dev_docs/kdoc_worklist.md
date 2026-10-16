@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 15937 of 31949 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 15942 of 31954 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2306 undocumented entry points** (types, top-level functions and values) and 13036 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -40,7 +40,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StackAutoStudyTools.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackAutoStudyTools.kt) | Languages | stackauto_conversation, stacksl_examples | 11 | 14 | 16% |
 | [Module.kt](../src/jvmMain/kotlin/afield/graphics/render/Module.kt) | Graphics | fabricate_renderer, fieldml_host_bridge | 10 | 137 | 5% |
 | [Signal.kt](../src/jvmMain/kotlin/afield/audio/synth/Signal.kt) | Synthesis | sound_paths, faust, chain_pattern_particles | 10 | 53 | 26% |
-| [FieldProbe.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/FieldProbe.kt) | Graphics | field_probes | 10 | 44 | 1% |
+| [FieldProbe.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/FieldProbe.kt) | Graphics | field_probes | 10 | 44 | 3% |
 | [Logging.kt](../src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt) | Machine learning | logging, visualizers, agent_transcripts | 10 | 21 | 6% |
 | [Sequencing.kt](../src/jvmMain/kotlin/afield/audio/synth/Sequencing.kt) | Patterns | boolean_network_music_examples, visualizers | 9 | 38 | 7% |
 | [FunctionStudyTools.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionStudyTools.kt) | Function | function_conversation | 9 | 14 | 41% |
@@ -254,6 +254,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SolidGlsl.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidGlsl.kt) | Graphics | solid_notation | 0 | 1 | 77% |
 | [FieldRTTStreamer.kt](../src/jvmMain/kotlin/afield/media/stream/FieldRTTStreamer.kt) | Imaging | vision | 0 | 1 | 91% |
 | [PetriMusic.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriMusic.kt) | Audio | petri_nets, petri_cheatsheet | 0 | 1 | 94% |
+| [ShaderBoids.kt](../src/jvmMain/kotlin/afield/simulation/physics/ShaderBoids.kt) | Simulation | neural_particles | 0 | 1 | 97% |
 | [dir.kt](../src/jvmMain/kotlin/afield/document/workspace/dir.kt) | Workspace | — | 70 | 307 | 4% |
 | [AI4.kt](../src/jvmMain/kotlin/afield/ai/compat/AI4.kt) | Machine learning | — | 64 | 0 | 0% |
 | [spreadsheet.kt](../src/jvmMain/kotlin/afield/data/table/spreadsheet.kt) | Data | — | 63 | 77 | 0% |
@@ -350,8 +351,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [InFieldAgentEvals.kt](../src/jvmMain/kotlin/afield/ai/agent/InFieldAgentEvals.kt) | Machine learning | — | 3 | 58 | 32% |
 | [PointController.kt](../src/jvmMain/kotlin/afield/simulation/physics/PointController.kt) | Simulation | — | 3 | 45 | 17% |
 | [SemanticSearchManager.kt](../src/jvmMain/kotlin/afield/ai/retrieval/SemanticSearchManager.kt) | Data | — | 3 | 34 | 0% |
-| [ComputeModule.kt](../src/jvmMain/kotlin/afield/graphics/render/ComputeModule.kt) | Graphics | — | 3 | 28 | 5% |
 | [Window.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/Window.kt) | Graphics | — | 3 | 28 | 6% |
+| [ComputeModule.kt](../src/jvmMain/kotlin/afield/graphics/render/ComputeModule.kt) | Graphics | — | 3 | 27 | 12% |
 | [MeshModule.kt](../src/jvmMain/kotlin/afield/graphics/render/MeshModule.kt) | Graphics | — | 3 | 27 | 5% |
 | [JSONLineServer.kt](../src/jvmMain/kotlin/afield/io/process/JSONLineServer.kt) | Data | — | 3 | 27 | 3% |
 | [CeresExpression.kt](../src/jvmMain/kotlin/afield/math/optimization/ceres/CeresExpression.kt) | Solvers | — | 3 | 25 | 57% |
@@ -689,8 +690,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RtpMidiCodec.kt](../src/jvmMain/kotlin/afield/io/midi/rtp/RtpMidiCodec.kt) | Networking | — | 0 | 9 | 43% |
 | [RectSLStudyRender.kt](../src/jvmMain/kotlin/afield/lang/rectsl/study/RectSLStudyRender.kt) | Languages | — | 0 | 9 | 64% |
 | [GlslValue.kt](../src/jvmMain/kotlin/afield/lang/stacksl/cpu/GlslValue.kt) | Languages | — | 0 | 9 | 52% |
-| [StreamDiffusionSession.kt](../src/jvmMain/kotlin/afield/media/video/diffusion/StreamDiffusionSession.kt) | Video | — | 0 | 9 | 18% |
-| [OpticalFlow.kt](../src/jvmMain/kotlin/afield/media/vision/OpticalFlow.kt) | Imaging | — | 0 | 9 | 25% |
+| [StreamDiffusionSession.kt](../src/jvmMain/kotlin/afield/media/video/diffusion/StreamDiffusionSession.kt) | Video | — | 0 | 9 | 25% |
+| [HardwareOpticalFlow.kt](../src/jvmMain/kotlin/afield/media/vision/HardwareOpticalFlow.kt) | Imaging | — | 0 | 9 | 30% |
 | [ReactiveRuns.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/ReactiveRuns.kt) | Workspace | — | 0 | 9 | 65% |
 | [decorations.kt](../src/jvmMain/kotlin/afield/ui/output/decorations.kt) | Visualization | — | 0 | 9 | 71% |
 | [AiBoxConversation.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiBoxConversation.kt) | Machine learning | — | 0 | 8 | 33% |

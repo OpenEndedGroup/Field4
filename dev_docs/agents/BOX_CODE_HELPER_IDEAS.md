@@ -28,6 +28,70 @@ the transcript that showed each pattern is in brackets. New proposals go under *
 
 ## Approved
 
+- **Approved 2026-10-16:** arrange captured interaction-net stages with
+  `showInteractionStages(stage("Before", beforeLines, beforeSummary), ...)`, reusing
+  the existing overview renderer. Keep rewriting, scheduling and snapshot capture explicit
+  in examples; later mutations must not alter earlier snapshots. Verify all five captures.
+  [interaction_nets_examples; first-sweep decision 12/12]
+- **Approved 2026-10-16:** `bestTimeMs(repetitions = 5, warmup = 2) { ... }` performs
+  untimed warmups and returns the shortest measured duration in milliseconds. Preserve
+  explicit repetition/warmup counts and ordinary exception propagation. Verify call counts
+  and minimum selection without asserting wall-clock performance.
+  [imaging_vector_kernels; first-sweep decision 11/12]
+- **Approved with adjustment 2026-10-16:** `someFline.grid(bounds, nx, ny)` appends
+  disconnected grid lines, like `rect`, and returns the FLine for chaining. `nx` and `ny`
+  count cells (therefore `nx + 1` vertical and `ny + 1` horizontal lines). Styling stays on
+  the caller's FLine. Replaces the proposed standalone `samplingGridFLine` factory.
+  [spatial_geometry_examples; first-sweep decision 10/12]
+- **Approved 2026-10-16:** public midpoint slice sampling, illustrated as
+  `solid.sampleSlices(n) { z, section -> ... }`. Sample evenly spaced layer midpoints,
+  close each native section after its callback (including exceptions), and collect callback
+  results. Keep integration math explicit; document that native sections cannot escape
+  their callback for later use. Verify heights, areas, contours and native cleanup.
+  [chain_ceres_manifold_contours; first-sweep decision 9/12]
+- **Approved 2026-10-16; implementation reserved for house-machine agents:** move
+  versioned ToolPool note storage, identity validation and pagination into typed library
+  methods. Marc will take this back to the house-machine agents; do not implement it in
+  this readability pass. Method names remain illustrative.
+  [tool-pool/tools.kt; first-sweep decision 8/12]
+- **Approved 2026-10-16:** opt into run-owned OSC handlers with
+  `osc(port).on(address, runOwned = true) { message -> ... }`. Stop, rerun and retirement
+  release that registration by identity, so old cleanup cannot remove a replacement.
+  Omitting the option preserves existing persistent behavior; the shared server stays open.
+  This syntax is agreed for now; reuse existing run ownership machinery.
+  [osc; first-sweep decision 7/12]
+- **Approved 2026-10-16:** consolidate Field Audio submit/watch/await/inspect plumbing
+  using the shared async operation mechanism from decision 5. Reuse existing rendered-audio
+  analysis cancellation/connection cleanup where applicable; keep the requested operation
+  explicit. This is an application of decision 5, not an independent ownership mechanism.
+  Concrete helper spelling remains subject to the decision-5 API rehearsal.
+  [audio_ai_spectral_embeddings, audio_ai_corpus_microscope; first-sweep decision 6/12]
+- **Approved 2026-10-16:** a shared run-owned adapter/convention for long-running async
+  client/server operations, initially exercised by Loris and the audio AI examples. Publish
+  progress/results only while the originating run is current; report failures through its
+  box; request supported worker cancellation on stop/rerun. Treat stale-output suppression
+  and actual worker cancellation separately. Preserve reusable clients and cached results;
+  operation ownership must not imply closing a shared client or deleting cached work.
+  Marc expects this pattern to grow beyond audio AI. Rehearse concrete API syntax before
+  applying it across examples.
+  [loris_partial_explorer, audio AI examples; first-sweep decision 5/12]
+- **Approved with adjustment 2026-10-16:** `syphonClient(name)` reuses the open client
+  cached under that name; create and cache a client only when none exists or the previous
+  client has been closed. This replaces the proposed allocate-on-every-call/run-ownership
+  change. Automatic close-on-rerun was not approved by this decision. Verify same-name
+  identity, recreation after close and concurrent lookup/creation.
+  [syphon_bridge; first-sweep decision 4/12]
+- **Approved 2026-10-16:** add `wav(normalizePeak = ...)` on `FaustPatternRender`, encoding
+  its existing samples through the existing stereo WAV encoder. Keep normalization explicit
+  and preserve the original level when omitted.
+  [faust_polyphony; first-sweep decision 3/12]
+- **Approved 2026-10-16:** expose the existing `WallSpec.worldToClip()` operation publicly
+  for RectSL live rendering. Preserve centered and top-left origin semantics.
+  [rectsl_gallery; first-sweep decision 2/12]
+- **Approved 2026-10-16:** return a public callable interpolant type from `smoothTo` and
+  `inertialTo`, exposing the existing `startAt` operation without casts. Preserve `q()` use,
+  explicit restart/Alt-Enter behavior and uniform-binding compatibility.
+  [interpolants_examples; first-sweep decision 1/12]
 - `x.f3` (and siblings) for `"%.3f".format(x)` in templates. [statistics_examples, mesh_geometry_examples]
 - `frame` available inside `frames { }`. [frames_lifecycle, simdverlet_world]
 - `uint` push members accepting an `Int` lambda: `{ L }` for `{ L.toUInt() }`. [spin_glass, pattern_particles]
