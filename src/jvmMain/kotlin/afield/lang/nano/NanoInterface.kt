@@ -384,6 +384,9 @@ class NanoExecution(val inside: Box) : BoxExecution {
                 result.errors.forEach { e ->
                     inside.error(e.message, line = executeLine + e.line - 1, property = "code")
                 }
+                result.errors.firstOrNull()?.let { e ->
+                    LastRunNotes.record(inside, "code", code, executeLine, emptyList(), stoppedAt = e.line, stopReason = e.message)
+                }
             }
             is NanoAssembler.AssemblyDebugResult.Ok -> {
                 clearErrorStatus(reply, originSession)
@@ -401,7 +404,10 @@ class NanoExecution(val inside: Box) : BoxExecution {
                     vm.onError(msg, pc)
                 }
                 val memoryBefore = loadProgramIntoVm(freshVm, program)
-                val steps = freshVm.run(program)
+                val trace = freshVm.runTracingLines(program, assembly.pcToLine)
+                val steps = trace.steps
+                LastRunNotes.record(inside, "code", code, executeLine, nanoLineNotes(assembly.pcToLine, trace),
+                    stoppedAt = runtimeError?.let { assembly.pcToLine.getOrNull(freshVm.pc) }, stopReason = runtimeError)
                 inside.nanoMemoryBefore = memoryBefore
                 inside.nanoMemoryAfter = freshVm.ram.toList()
                 val html = freshVm
@@ -563,6 +569,52 @@ var Box.nanoLaunchDelayMs by Inheritance<Number?>()
 var Box.nanoMemoryInit by Inheritance<Any?>()
 var Box.nanoMemoryBefore by Delegation<List<Int>?>()
 var Box.nanoMemoryAfter by Delegation<List<Int>?>()
+
+/** What each source line of a Nano run did: how often it ran, the registers after it last did, what it output. */
+internal class NanoLineTrace(val steps: Int, val ranAt: Map<Int, Int>, val registersAfter: Map<Int, IntArray>, val outputAt: Map<Int, List<Int>>)
+
+/**
+ * [NanoVM.run], one instruction at a time so that each can be traced to its source line through
+ * [pcToLine] (the assembler's source map, one 1-based line per emitted byte).
+ */
+internal fun NanoVM.runTracingLines(program: ByteArray, pcToLine: IntArray): NanoLineTrace {
+    val ranAt = HashMap<Int, Int>()
+    val registersAfter = HashMap<Int, IntArray>()
+    val outputAt = HashMap<Int, MutableList<Int>>()
+    var line = 0
+    val prior = onOutput
+    onOutput = { value ->
+        outputAt.getOrPut(line) { mutableListOf() } += value and 0xFF
+        prior(value)
+    }
+    var steps = 0
+    try {
+        while (program.isNotEmpty() && !halted && steps < maxSteps) {
+            line = pcToLine.getOrElse(pc) { 0 }
+            if (!stepOnce(program).executed) break
+            steps++
+            ranAt.merge(line, 1, Int::plus)
+            registersAfter[line] = reg.copyOf()
+        }
+    } finally {
+        onOutput = prior
+    }
+    return NanoLineTrace(steps, ranAt, registersAfter, outputAt)
+}
+
+/** A run's line notes: each instruction line says how many times it ran and what followed; one that never ran says so. */
+internal fun nanoLineNotes(pcToLine: IntArray, trace: NanoLineTrace): List<LastRunNotes.Produced> =
+    pcToLine.filter { it > 0 }.distinct().sorted().map { line ->
+        val count = trace.ranAt[line] ?: 0
+        val caption = if (count == 0) "never ran" else buildString {
+            append(if (count == 1) "ran once" else "ran $count times")
+            trace.registersAfter[line]?.let { regs -> append(", then ").append(regs.withIndex().joinToString(" ") { (i, v) -> "r$i=$v" }) }
+            trace.outputAt[line]?.takeIf { it.isNotEmpty() }?.let { out ->
+                append(", output ").append(out.take(16).joinToString(" ")).append(if (out.size > 16) " …" else "")
+            }
+        }
+        LastRunNotes.Produced(line, line, caption)
+    }
 
 @RunsAt(early)
 fun installNano() {

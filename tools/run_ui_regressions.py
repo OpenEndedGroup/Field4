@@ -3854,6 +3854,18 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="kotlin-line-notes",
+            description="A Kotlin box's run leaves a line note on each top-level val or var, with its value.",
+            commands=[
+                "new-box --name KotlinLineNotes",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/kotlin-line-notes.kt")]),
+                "new-box --name KotlinLineNotesCheck",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/kotlin-line-notes-check.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/kotlin-line-notes.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="stacksl-slot-colour",
             description="A string assigned to a box's stack.auto slot is coloured as StackSL without a #stacksl header, and stays coloured while it is edited.",
             commands=[
