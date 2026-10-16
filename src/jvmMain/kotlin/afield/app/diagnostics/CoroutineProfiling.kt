@@ -271,7 +271,8 @@ internal class CoroutineCapture(
     }
 
     /** Sets [lane]'s state, e.g. "moved threads" for a scope that ended on another thread. */
-    @Synchronized fun markLane(lane: Int, state: String) {
+    @Synchronized
+    fun markLane(lane: Int, state: String) {
         if (lane in lanes.indices) lanes[lane] = lanes[lane].copy(state = state)
     }
 
