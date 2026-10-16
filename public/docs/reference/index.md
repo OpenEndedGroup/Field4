@@ -627,7 +627,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**32058 public symbols across 1457 source files**, 16035 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**32061 public symbols across 1457 source files**, 16048 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -640,7 +640,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 12 | 125 | 41 (32%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 40 | 1935 | 1395 (72%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 289 | 6970 | 3445 (49%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 289 | 6973 | 3458 (49%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 42 | 742 | 373 (50%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
@@ -1092,12 +1092,12 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>graphics/<wbr></small> [FLineGeometryExamples.kt](examples.md#flinegeometryexamples-kt) | Examples | 34 | 34 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineGeometrySmile.kt](graphics.md#flinegeometrysmile-kt) | Graphics | 3 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>graphics/<wbr></small> [FLineHitInspectorFigure.kt](examples.md#flinehitinspectorfigure-kt) | Examples | 7 | 5 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineHyperbezier.kt](graphics.md#flinehyperbezier-kt) | Graphics | 23 | 22 |  | [FLine examples (Field graphics)](../fline_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineHyperbezier.kt](graphics.md#flinehyperbezier-kt) | Graphics | 23 | 22 | Fits ordinary cubics to `Hyperbezier` curves, so that family is usable everywhere an `FLine` already accepts a cubic. | [FLine examples (Field graphics)](../fline_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [FLineInspect.kt](graphics.md#flineinspect-kt) | Graphics | 3 | 3 | Make a figure answerable: `inspect` draws FLines the way `lines` does and then *names* whatever you click on, in the figure's own coordinates. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineInstructionTrajectories.kt](graphics.md#flineinstructiontrajectories-kt) | Graphics | 16 | 9 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>graphics/<wbr></small> [FLineInstructionTrajectoryTrackerSmokeTest.kt](examples.md#flineinstructiontrajectorytrackersmoketest-kt) | Examples · internal | 3 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineInterpolation.kt](graphics.md#flineinterpolation-kt) | Graphics | 62 | 18 |  | [FLine examples (Field graphics)](../fline_examples.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineMeasure.kt](graphics.md#flinemeasure-kt) | Graphics | 26 | 16 |  | [FLine examples (Field graphics)](../fline_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineMeasure.kt](graphics.md#flinemeasure-kt) | Graphics | 29 | 29 | Measuring, locating, trimming and crossing an `FLine`. | [FLine examples (Field graphics)](../fline_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineSampling.kt](graphics.md#flinesampling-kt) | Graphics | 21 | 15 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr>java2d/<wbr></small> [FLinesAndJavaShapes.kt](graphics.md#flinesandjavashapes-kt) | Graphics | 7 | 6 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [FLineSerialization.kt](graphics.md#flineserialization-kt) | Graphics | 4 | 0 |  |  |
@@ -1223,7 +1223,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Hrtf.kt](audio.md#hrtf-kt) | Audio | 4 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>steamaudio/<wbr></small> [HrtfProbe.kt](examples.md#hrtfprobe-kt) | Examples | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [HtcEyeTracker.kt](graphics.md#htceyetracker-kt) | Graphics | 0 | 0 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [Hyperbezier.kt](graphics.md#hyperbezier-kt) | Graphics | 16 | 15 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [Hyperbezier.kt](graphics.md#hyperbezier-kt) | Graphics | 16 | 15 | The hyperbezier curve family, ported from Raph Levien's hyperbezier (linebender.org/blog/hyperbezier/, August 2026); `fitHyperbezierCubics` is what draws one into an `FLine`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [IdeChatHelpers.kt](machine-learning.md#idechathelpers-kt) | Machine learning | 7 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr></small> [Image.kt](graphics.md#image-kt) | Graphics | 21 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [ImageLayouts.kt](graphics.md#imagelayouts-kt) | Graphics | 4 | 3 |  |  |
