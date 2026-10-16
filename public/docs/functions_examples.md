@@ -3805,10 +3805,9 @@ Useful term forms:
 | `op=saw` | Matches the current node’s operation exactly. It does not select an incoming parameter merely named `saw`. |
 | `role=frequency` | Matches a node reached through a frequency parameter edge. This selects the use of a node within its parent. |
 | `edge=frequency` | Selects the incoming frequency edge. `edge` is an alias for `role`. |
-| `param=frequency` | Selects the incoming frequency parameter. `param` is an alias for `role`, not the `param` node class. |
 | `parameter=frequency` | Selects the same edge as `role=frequency`. Use whichever spelling makes the rule easier to read. |
-| `parent=sin` | Matches when the immediate parent operation is `sin`. Use a path with `**` to match more distant ancestry. |
-| `under=sin` | Uses the same immediate-parent check as `parent=sin`. It does not mean any ancestor at any depth. |
+| `parent=sin` | Matches when the immediate parent operation is `sin`. |
+| `under=sin` | Matches anywhere below a `sin`, at any depth. |
 | `name=lead` | Matches the function’s public `name`. Give a function a name when it needs a stable target independent of its operation. |
 | `tag=number` | Requires membership in the node’s tag set. This avoids the broader operation-or-role interpretation of a bare term. |
 | `depth=2` | Matches occurrences two edges below the root. The root is depth zero. |

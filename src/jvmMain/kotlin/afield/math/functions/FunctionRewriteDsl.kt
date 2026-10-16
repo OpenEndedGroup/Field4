@@ -740,8 +740,13 @@ private fun tokenMatches(token: String, context: FnGraphCopyContext): Boolean {
     return when (key) {
         "op" -> context.op.equals(value, ignoreCase = true)
         "name" -> context.name?.equals(value, ignoreCase = true) == true
-        "role", "edge", "param", "parameter" -> context.role?.equals(value, ignoreCase = true) == true
-        "parent", "under" -> context.parentOp?.equals(value, ignoreCase = true) == true
+        "role", "edge", "parameter" -> context.role?.equals(value, ignoreCase = true) == true
+        "param" -> throw IllegalArgumentException(
+            "rewrite selector 'param=$value': write role=$value for the incoming parameter (bare param is the parameter node class)"
+        )
+        "parent" -> context.parentOp?.equals(value, ignoreCase = true) == true
+        // Any ancestor, at any depth; `parent=` is the immediate one.
+        "under" -> context.ancestors.any { it.node.op.equals(value, ignoreCase = true) }
         "tag" -> context.node.tags.any { it.equals(value, ignoreCase = true) }
         "depth" -> context.depth == value.toIntOrNull()
         else -> false
@@ -941,7 +946,8 @@ private fun elementPredicateMatches(predicate: String, element: FnGraphPathEleme
 private fun elementValue(key: String, element: FnGraphPathElement, depth: Int): Any? =
     when (key) {
         "op" -> element.op
-        "role", "edge", "param", "parameter" -> element.role
+        "role", "edge", "parameter" -> element.role
+        "param" -> throw IllegalArgumentException("rewrite selector '[param=…]': write [role=…] for the incoming parameter")
         "name" -> element.name
         "depth" -> depth
         "index" -> element.index
