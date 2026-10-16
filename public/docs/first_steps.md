@@ -33,9 +33,11 @@ ui.pause(1200)
 1. Select **First steps · a moving drawing** to open its code.
 2. Press **alt/option-Up** to launch it. Open the output disclosure below
    the box if the drawing is collapsed. Fine blue-white curves ripple and twist together.
-3. Change `var petals = 5` to `var petals = 8`, then press **alt/option-Up** again. The shape changes;
-   `println(petals)` prints the new value beside the code. Editing alone runs nothing; launching does.
-4. Press **alt/option-Down** to stop. The drawing freezes.
+3. While it runs, change the 5 in `petals = 5` (the second line) to 8, keep the cursor on that line
+   and press **alt/option-Enter**. That runs only this line, and the running drawing picks up eight
+   petals without restarting. Editing alone runs nothing; running the line does.
+4. Press **alt/option-Up** to launch the whole box again: it starts over, still with eight petals,
+   and `println(petals)` prints 8 beside the code. Press **alt/option-Down** to stop. The drawing freezes.
 5. Wait for autosave (about five seconds), close the document tab, and reopen your copy from
    Welcome. The edited code is still there, but the drawing is not moving: opening a document
    does not restart its animations. Launch it again to bring it back.
@@ -52,10 +54,10 @@ The fine-line motion takes inspiration from [Étienne Jacob’s animation galler
 
 ## See it happen
 
-The recording below runs the same steps in Field: launch, change five petals to eight, launch
-again, and stop.
+The recording below runs the same steps in Field: launch, change five petals to eight and run that
+line while the drawing moves, launch again, and stop.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1200x760" clip="0,0,1200,720" hide-toasts=true video="assets/first_steps/first-look.mp4" macro-file="../../dev_docs/agents/transcripts/docs_capture/first_steps.yaml" capture-box="first_steps_drawing" fps="10" padding="0" wait="0" timeout="180" embed=true hidden=true name="first-look" alt="Field's real editor launches a cyan moving FLine drawing, changes its petal count from five to eight, relaunches it, and shows the value eight inline before stopping the animation."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1200x760" clip="0,0,1200,720" hide-toasts=true video="assets/first_steps/first-look.mp4" macro-file="../../dev_docs/agents/transcripts/docs_capture/first_steps.yaml" capture-box="first_steps_drawing" fps="10" padding="0" wait="0" timeout="180" embed=true hidden=true name="first-look" alt="Field's real editor launches a cyan moving FLine drawing, changes its petal count from five to eight and runs that one line with Alt+Enter while the drawing keeps moving, relaunches it, and shows the value eight inline before stopping the animation."}
 ui.eval("document.getElementById('docs-first-welcome')?.remove(); return true")
 ui.openEditor("first_steps_drawing")
 ui.eval("""
@@ -80,8 +82,9 @@ ui.eval("""
     const api = host.__disclosureAPI
     for (const id of api.ids()) { api.open(id); api.setSize(id, 350, 350) }
     const editor = window.globalEditor
-    const match = editor.getModel().findMatches("var petals = 5", false, false, false, null, true)[0]
-    if (!match) throw new Error("the shipped five-petal code was not loaded")
+    const match = editor.getModel().findMatches("\npetals = 5 ", false, false, false, null, true)[0]
+    if (!match) throw new Error("the shipped five-petal assignment was not loaded")
+    match.range = {startLineNumber: match.range.endLineNumber, endLineNumber: match.range.endLineNumber, endColumn: "petals = 5".length + 1}
     editor.setSelection({startLineNumber:match.range.startLineNumber, startColumn:match.range.endColumn-1, endLineNumber:match.range.endLineNumber, endColumn:match.range.endColumn})
     editor.focus()
     return true
@@ -90,10 +93,12 @@ ui.pause(2800)
 ui.typeSlowly("8", 160)
 ui.press("Escape")
 ui.pause(700)
+ui.press("Alt+Enter")
+ui.pause(3500)
 ui.press("Alt+ArrowUp")
 ui.pause(3500)
 ui.eval("""
-    if (!window.globalEditor.getModel().getValue().includes("var petals = 8")) throw new Error("the editor did not retain the edit")
+    if (!window.globalEditor.getModel().getValue().includes("\npetals = 8 ")) throw new Error("the editor did not retain the edit")
     const outputs = [...document.querySelectorAll('.tick_text, .execution_output .inner_output')]
     if (!outputs.some(e => e.textContent.trim() === '8')) throw new Error("the real inline value eight did not appear")
     return true

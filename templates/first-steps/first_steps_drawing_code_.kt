@@ -1,5 +1,6 @@
 // Launch: Alt+Up. Stop: Alt+Down. On a Mac, Alt is Option.
-var petals = 5 // Change 5 to 8, then launch again.
+var petals = 5
+petals = 5 // Change this 5 to 8, then press Alt+Enter on this line while the drawing runs.
 println(petals) // Field shows this value beside the code.
 var phase = 0.0
 
