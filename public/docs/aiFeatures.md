@@ -478,9 +478,8 @@ Two optional interfaces, both worth implementing:
 - `CarriesToolImages`: pictures. Both agent loops send them as real images:
   OpenAI and OpenRouter as a message following the tool output, Anthropic as
   image blocks inside the tool result itself. This is how a tool lets a model
-  *look* at what it just did. The exception is a tool called over the MCP
-  backdoor: that reply is JSON, so it carries the numbers and not the picture. Put anything the model must not miss in the
-  result as well as in the image.
+  *look* at what it just did. A tool called over the MCP bridge returns them too, as MCP image
+  content beside the JSON result (up to eight per call).
 
 ```diffstatic {data-lang=kotlin}
 data class RoomReport(
