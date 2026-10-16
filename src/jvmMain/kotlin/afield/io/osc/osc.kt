@@ -185,14 +185,34 @@ internal class BraceExpandingSelector(pattern: String) : MessageSelector {
     override fun matches(messageEvent: OSCMessageEvent): Boolean = selectors.any { it.matches(messageEvent) }
 }
 
+/** Throw, naming [localPort], when something on this machine already has it bound for UDP. */
+internal fun requireOscPortFree(localPort: Int) {
+    val probe = java.net.DatagramSocket(null as java.net.SocketAddress?)
+    try {
+        probe.reuseAddress = false
+        probe.bind(InetSocketAddress(localPort))
+    } catch (e: java.net.BindException) {
+        throw IllegalStateException(
+            "OSC port $localPort is already in use by another program (TouchOSC Bridge, Max, another Field?). " +
+                "Messages sent there would go to it, not here. Find it with `lsof -nP -iUDP:$localPort`, " +
+                "or listen on another port.",
+            e,
+        )
+    } finally {
+        probe.close()
+    }
+}
+
 /**
  * Bind a receiving OSC port on every interface at [localPort], with the two JavaOSC 0.9 decoding
  * defects above corrected. Listeners are added afterwards through `dispatcher.addListener`.
  *
- * JavaOSC sets `SO_REUSEADDR`, so this does not fail when another program already holds the port:
- * both sockets bind, and a program bound to `127.0.0.1` specifically takes the datagrams sent there.
+ * JavaOSC sets `SO_REUSEADDR`, under which binding a port another program already holds succeeds
+ * and the other program (bound to `127.0.0.1`, say) quietly keeps the datagrams. So the port is
+ * probed first with a plain bind, and a held port is refused by name.
  */
 internal fun openOscPortIn(localPort: Int): OSCPortIn {
+    requireOscPortFree(localPort)
     val parsers = OSCSerializerAndParserBuilder().setUsingDefaultHandlers(false)
     for ((id, handler) in Activator.createParserTypes()) {
         parsers.registerArgumentHandler(if (id == 'b') AdvancingBlobArgumentHandler() else handler, id)
@@ -261,15 +281,29 @@ class OscServer(
      * registered for that pattern. If the handler's lambda or its generator throws, the exception is
      * shown as an error on the box that called `on` (and printed to the console); the generator is
      * dropped and the handler stays registered for the next message.
+     *
+     * The handler belongs to that box the way any keyed registration does: stopping or re-running
+     * the box leaves it in place (a re-run that calls `on` again replaces it), and deleting the box
+     * or closing its document removes it.
      */
     fun on(pattern: String, handler: (Message) -> Generator<Message, *>) {
-        handlers[pattern] = Registration(handler, Box.context.get())
+        val owner = Box.context.get()
+        val previous = handlers.put(pattern, Registration(handler, owner))
+        // One release per (box, pattern), not one per re-run: a re-run replaces the handler in place.
+        if (owner != null && previous?.owner !== owner) {
+            owner.runScopes.parent.own(afield.runtime.lifecycle.ReleasePolicy.KEYED) {
+                handlers.computeIfPresent(pattern) { _, current -> if (current.owner === owner) null else current }
+            }
+        }
         ensureRegistered(pattern)
     }
 
     fun remove(pattern: String) {
         handlers.remove(pattern)
     }
+
+    /** Whether a handler is registered for exactly [pattern]. */
+    fun hasHandler(pattern: String): Boolean = handlers.containsKey(pattern)
 
     private fun ensureRegistered(pattern: String) {
         if (registered.putIfAbsent(pattern, true) != null) return
@@ -434,9 +468,29 @@ class OscClient(
     }
 
     /**
+     * Send [messages] as one bundle, for the receiver to act on at [atMillis] (wall-clock
+     * `System.currentTimeMillis()` time), or at once when it is null.
+     *
+     * ```kotlin
+     * oscClient("127.0.0.1", 57120).sendBundle(listOf(OSCMessage("/note", [60])), atMillis = System.currentTimeMillis() + 500)
+     * ```
+     */
+    fun sendBundle(messages: List<OSCMessage>, atMillis: Long? = null) {
+        send(com.illposed.osc.OSCBundle(messages, atMillis?.let(::oscTimeTag) ?: com.illposed.osc.argument.OSCTimeTag64.IMMEDIATE))
+    }
+
+    /** One message, in a bundle timetagged [millis] from now — [sendBundle] for the common case. */
+    fun sendIn(millis: Long, address: String, vararg arguments: Any?) {
+        sendBundle(listOf(OSCMessage(address, arguments.toList())), System.currentTimeMillis() + millis)
+    }
+
+    /**
      * Send a pre-built OSC message.
      */
-    fun send(message: OSCMessage) {
+    fun send(message: OSCMessage) = send(message as com.illposed.osc.OSCPacket)
+
+    /** Send a pre-built OSC message or bundle. */
+    fun send(message: com.illposed.osc.OSCPacket) {
         val out = try {
             ensurePort()
         } catch (t: Throwable) {
@@ -446,7 +500,7 @@ class OscClient(
         if (!out.isConnected) connect()
         try {
             if (debug) {
-                println("OSC -> ${message.address} = ${message.arguments.joinToString(", ")}")
+                println("OSC -> " + if (message is OSCMessage) "${message.address} = ${message.arguments.joinToString(", ")}" else "$message")
             }
             out.send(message)
         } catch (t: Throwable) {
@@ -458,6 +512,17 @@ class OscClient(
         try { port?.close() } catch (_: Throwable) { }
         port = null
     }
+}
+
+/**
+ * The OSC timetag for wall-clock time [atMillis]: NTP seconds since 1900 in the high 32 bits, the
+ * fraction of a second in the low 32. Built from the numbers directly because JavaOSC's own
+ * conversion from a `Date` counts from an epoch an hour away from the true one.
+ */
+fun oscTimeTag(atMillis: Long): com.illposed.osc.argument.OSCTimeTag64 {
+    val seconds = Math.floorDiv(atMillis, 1000L) + 2_208_988_800L
+    val fraction = (Math.floorMod(atMillis, 1000L) shl 32) / 1000L
+    return com.illposed.osc.argument.OSCTimeTag64.valueOf((seconds shl 32) or fraction)
 }
 
 private data class OscEntry(val server: OscServer, val job: Job)

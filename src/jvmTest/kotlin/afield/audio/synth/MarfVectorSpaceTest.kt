@@ -27,6 +27,26 @@ class MarfVectorSpaceTest {
 
     // ── the space laws ────────────────────────────────────────────────────────────────────
 
+    /** The hazard itself: arithmetic written with the in-place members. */
+    private object InPlaceVector3f : MarfSpace<Vector3f> {
+        override val zero: Vector3f get() = Vector3f(0f, 0f, 0f)
+        override fun add(a: Vector3f, b: Vector3f): Vector3f = a.add(b)
+        override fun sub(a: Vector3f, b: Vector3f): Vector3f = a.sub(b)
+        override fun scale(a: Vector3f, k: Double): Vector3f = a.mul(k.toFloat())
+        override fun label(value: Vector3f): String = "(${value.x}, ${value.y}, ${value.z})"
+    }
+
+    @Test
+    fun `a space that writes into its arguments is refused when the bank is built`() {
+        val refusal = kotlin.test.assertFailsWith<IllegalArgumentException> {
+            marfBankIn(InPlaceVector3f, stageTo(v3(1.0, 2.0, 3.0)), stageTo(v3(5.0, 6.0, 7.0)))
+        }
+        assertTrue("InPlaceVector3f" in refusal.message.orEmpty(), refusal.message)
+        // The shipped space builds the same bank.
+        marfBankIn(MarfVector3f, stageTo(v3(1.0, 2.0, 3.0)), stageTo(v3(5.0, 6.0, 7.0)))
+    }
+
+
     @Test
     fun `every space lerps exactly to its endpoints`() {
         assertEquals(2.0, MarfDoubles.lerp(2.0, 7.0, 0.0))

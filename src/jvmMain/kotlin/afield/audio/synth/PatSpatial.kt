@@ -1036,10 +1036,19 @@ class PatSpatialBank internal constructor(
 
     private val frameCounter = AtomicLong(0L)
 
+    /**
+     * Until this says ready the bank plays silence and leaves the ring alone. A consumer attached
+     * before the render thread has warmed up would otherwise drain a ring the render cannot yet
+     * keep full; set by [patSpatial] to the room's [PatSpatialRoom.ready].
+     */
+    @Volatile
+    internal var isReady: () -> Boolean = { true }
+
     /** Frames the audio thread has pulled. */
     val frame: Long get() = frameCounter.get()
 
     override fun generateStereo(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (!isReady()) return
         ring.readInto(outL, outR, numFrames)
         if (masterGain != 1.0) {
             val g = masterGain.toFloat()
@@ -1110,10 +1119,9 @@ class PatSpatialLaunch internal constructor(
      * hundred milliseconds each and a box should not sit on the main thread for it. A test, or a
      * capture, does want to wait.
      *
-     * **Wait for this before handing the launch to an audio engine.** Ready means the ring has
-     * filled to [PatSpatialRoom.targetFillFrames] once, which is both the prefill and the render
-     * loop's warmup; a consumer attached earlier drains a ring that the still-interpreted render
-     * path cannot keep up with.
+     * Ready means the ring has filled to [PatSpatialRoom.targetFillFrames] once, which is both the
+     * prefill and the render loop's warmup. A consumer attached earlier does no harm: the bank plays
+     * silence until then rather than draining the ring.
      */
     fun awaitReady(timeoutMs: Long = 20_000L): Boolean {
         val deadline = System.nanoTime() + timeoutMs * 1_000_000L
@@ -1138,6 +1146,8 @@ class PatSpatialLaunch internal constructor(
      */
     fun advanceOffline(frames: Int) {
         require(frames >= 0) { "frames must be >= 0, got $frames" }
+        // The bank is silent until the room is ready, so an offline pull before then would record silence.
+        if (frames > 0) awaitReady()
         var left = frames
         while (left > 0) {
             val n = minOf(OFFLINE_BLOCK, left)
@@ -1248,6 +1258,7 @@ fun patSpatial(
         prescanCycles = prescanCycles,
         listenerPoseAt = listenerPoseAt,
     )
+    bank.isReady = { room.ready }
     room.start()
     return PatSpatialLaunch(bank, room)
 }

@@ -465,7 +465,37 @@ fun marfDuration(cycles: PatQ): PatQ = if (cycles < MARF_MIN_DURATION) MARF_MIN_
  * hardware. Two readers over one bank are two voices reading one score.
  */
 class MarfBank<T>(val stages: List<MarfStage<T>>, val space: MarfSpace<T>) {
-    init { require(stages.isNotEmpty()) { "a bank needs at least one stage" } }
+    init {
+        require(stages.isNotEmpty()) { "a bank needs at least one stage" }
+        refuseMutatingSpace()
+    }
+
+    /**
+     * A stage target is read once per stage for as long as a reader runs, so a [space] whose
+     * arithmetic writes into its arguments (an in-place `add` on a mutable vector, say) rewrites the
+     * bank's material rather than giving one wrong frame. Exercise each operation once on the
+     * targets and refuse the bank, naming the space, if any target's [MarfSpace.label] changed.
+     */
+    private fun refuseMutatingSpace() {
+        val a = stages[0].target
+        val b = stages[if (stages.size > 1) 1 else 0].target
+        val before = stages.map { space.label(it.target) }
+        val ops = listOf<Pair<String, () -> Unit>>(
+            "lerp" to { space.lerp(a, b, 0.5) },
+            "add" to { space.add(a, b) },
+            "sub" to { space.sub(b, a) },
+            "scale" to { space.scale(a, 2.0) },
+        )
+        for ((name, op) in ops) {
+            op()
+            val after = stages.map { space.label(it.target) }
+            require(after == before) {
+                "MarfSpace ${space::class.simpleName ?: space} changed a stage target in `$name` " +
+                    "(${before.zip(after).first { (x, y) -> x != y }.let { (x, y) -> "$x became $y" }}); " +
+                    "its arithmetic must return new values, e.g. a.add(b, Vector3f()) rather than a.add(b)"
+            }
+        }
+    }
 
     val size: Int get() = stages.size
 

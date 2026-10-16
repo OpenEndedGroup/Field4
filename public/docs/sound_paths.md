@@ -151,9 +151,7 @@ Of the ten paths that make samples, `sonic-pi` is the only one that does not sha
 wrapper can make it: it is a different process, and no sample ever enters this one.
 
 `dough-engine` reaches `render` through a wrapper: `class DoughAudioSink` is a `StereoNode` in the
-same file as `DoughEngine`, and `parkDough` registers `audio(sink)` with the engine. It renders in
-whole 128-frame blocks and copies out only what was asked for, so it drops samples at any engine
-buffer size that is not a multiple of 128. The default is 512.
+same file as `DoughEngine`, and `parkDough` registers `audio(sink)` with the engine.
 
 Getting a pattern onto `render` is the general case, because a pattern has to be *queried* over an
 arc and there is no "next 128 frames" to ask one for. The answer is a scheduler in two halves: a

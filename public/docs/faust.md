@@ -91,20 +91,16 @@ slider back to its default. Each Faust declaration becomes:
 |---|---|
 | `hslider`, `vslider`, `nentry` | a slider over the declared range |
 | `checkbox` | a checkbox |
-| `button` | a checkbox marked `(hold)` — see below |
+| `button` | a button, down while you hold it |
 | `hbargraph`, `vbargraph` | nothing; read it with `launch.meter("level")` |
 | `hgroup`, `vgroup`, `tgroup` | a qualified label, `filter/cutoff` |
 | `[unit:Hz]` | appended to the label |
+| `[scale:log]`, `[scale:exp]` | a logarithmic or exponential slider over the same range |
 
-Three of those differ from Faust:
-
-* A Faust `button` is momentary, but Field's checkbox stays on until you click it again. From code,
-  `launch.press("gate")` is a true momentary press: the press and the release both reach the DSP, in
-  order, even inside one audio block.
-* `hbargraph` and `vbargraph` are outputs, so they are not in the control group;
-  `launch.meter("level")` reads the latest value, updated once per audio block.
-* `[scale:log]` keeps its range but the slider moves linearly, because Field's slider has no log
-  setting. The scale is available as `FaustControl.scale`.
+One of those differs from Faust: `hbargraph` and `vbargraph` are outputs, so they are not in the
+control group; `launch.meter("level")` reads the latest value, updated once per audio block. From
+code, `launch.press("gate")` presses a button: the press and the release both reach the DSP, in
+order, even inside one audio block.
 
 This voice has a `gate` button; the code presses it for a quarter of a second and changes
 the frequency:

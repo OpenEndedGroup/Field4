@@ -547,10 +547,8 @@ fun testDough() {
      * the thread that will render it. Nothing in the tree constructs one; [PatSpatialRoom] is the
      * realtime path that runs, and it builds its engines inside its own render thread.
      *
-     * Rendering is in whole [DoughEngine.BLOCK_SIZE] blocks. A request that is not a multiple of 128
-     * frames renders a final whole block and copies only the frames still wanted, dropping the rest,
-     * which is a gap in the sound rather than a delay in it. [FieldAudioEngine]'s default 512-frame
-     * buffer is a multiple of 128 and loses nothing.
+     * Rendering is in whole [DoughEngine.BLOCK_SIZE] blocks, and the frames of a block a request does
+     * not use are kept for the next one, so any buffer size is lossless.
      */
     class DoughAudioSink(
       wasmPath: Path,
@@ -577,15 +575,24 @@ fun testDough() {
       override fun generateStereo(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext) {
         drainPendingCommands()
 
+        // Dough renders whole 128-frame blocks; what a request does not use is kept for the next
+        // one, so a buffer size that is not a multiple of 128 loses nothing.
         var rendered = 0
         while (rendered < numFrames) {
-          dough.renderBlock(blockL, blockR)
-          val count = min(DoughEngine.BLOCK_SIZE, numFrames - rendered)
-          System.arraycopy(blockL, 0, outL, rendered, count)
-          System.arraycopy(blockR, 0, outR, rendered, count)
+          if (blockPos == DoughEngine.BLOCK_SIZE) {
+            dough.renderBlock(blockL, blockR)
+            blockPos = 0
+          }
+          val count = min(DoughEngine.BLOCK_SIZE - blockPos, numFrames - rendered)
+          System.arraycopy(blockL, blockPos, outL, rendered, count)
+          System.arraycopy(blockR, blockPos, outR, rendered, count)
+          blockPos += count
           rendered += count
         }
       }
+
+      /** How far into [blockL]/[blockR] the next request starts; a full block means render a new one. */
+      private var blockPos = DoughEngine.BLOCK_SIZE
 
       private fun drainPendingCommands() {
         var consumed = 0

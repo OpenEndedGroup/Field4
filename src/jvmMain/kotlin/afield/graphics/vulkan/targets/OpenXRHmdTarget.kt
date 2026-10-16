@@ -226,10 +226,23 @@ class OpenXRHmdTarget(
      * Returns false if views are not initialized yet.
      * The position is the average of all eye positions, and the orientation
      * is taken from the first eye (OpenXR typically reports identical orientation per-eye).
+     *
+     * Safe from any thread: each frame publishes the whole pose as one snapshot, so a reader on a
+     * timer never sees one frame's position with the next frame's orientation.
      */
     fun headPose(outPosition: Vec3 = Vec3(), outOrientation: Quat = Quat()): Boolean {
-        if (eyeStates.isEmpty()) return false
+        val pose = headPoseSnapshot ?: return false
+        outPosition.set(pose[0], pose[1], pose[2])
+        outOrientation.set(pose[3], pose[4], pose[5], pose[6])
+        return true
+    }
 
+    /** `px py pz qx qy qz qw`, replaced whole once per located frame; null until the first one. */
+    @Volatile
+    private var headPoseSnapshot: FloatArray? = null
+
+    private fun publishHeadPose() {
+        if (eyeStates.isEmpty()) return
         var px = 0f
         var py = 0f
         var pz = 0f
@@ -239,11 +252,8 @@ class OpenXRHmdTarget(
             pz += s.pz
         }
         val inv = 1f / eyeStates.size.toFloat()
-        outPosition.set(px * inv, py * inv, pz * inv)
-
         val s0 = eyeStates[0]
-        outOrientation.set(s0.qx, s0.qy, s0.qz, s0.qw)
-        return true
+        headPoseSnapshot = floatArrayOf(px * inv, py * inv, pz * inv, s0.qx, s0.qy, s0.qz, s0.qw)
     }
 
     // -------------------------------------------------------------------------
@@ -1087,6 +1097,7 @@ class OpenXRHmdTarget(
             computeViewMatrix(s, eyeViewMatrices[i])
             computeProjectionMatrix(s, nearF, farF, eyeProjMatrices[i])
         }
+        publishHeadPose()
     }
 
     private fun computeViewMatrix(state: EyeViewState, out: Matrix4f) {
