@@ -1078,9 +1078,7 @@ any compute module.
 A failed reload is invisible in the window — the image carries on from where it was — which
 is the same guarantee the material-shader path gives.
 
-The swap takes effect a frame after it is requested: `reloadIntegrator` replaces the module, and the
-next frame is what notices the new pipeline and discards accumulation. So waiting on a
-sample count immediately after a reload is satisfied by the count the **old** integrator
-left behind. Wait for `samples` to fall first, or for `lastResetReason` to change.
+A successful reload sets `samples` back to 0 at once, so waiting on a sample count afterwards waits
+for the new integrator's samples.
 
 The opaque path tracer can also feed [Ray Reconstruction](path_traced_reconstruction.md), with raw and progressive views retained.
