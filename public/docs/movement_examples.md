@@ -255,11 +255,6 @@ behind, then overtakes: peak rate 2.48 rad/s at frame 14 against 2.04 at frame 9
 and a slightly earlier arrival, because two springs on half a half-life each
 settle faster than one on the whole.
 
-!!! warning "`springAngle` reports its answer near the goal"
-    The returned number can jump by 2π on the step where the short way crosses
-    ±π, even though the angle does not. Feed it to `cos`/`sin` or a rotation and
-    that is invisible. Compare it against a previous value, as the plot above has
-    to, and take the difference through `wrapAngle` first.
 
 ## A character following a moving target
 

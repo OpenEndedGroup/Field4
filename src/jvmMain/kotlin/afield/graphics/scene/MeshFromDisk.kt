@@ -289,7 +289,7 @@ fun Box.showMesh(
     caption: String? = null,
     title: String? = File(path).name,
     renderer: MeshRenderer = MeshRenderer.GPU,
-    height: Int = 430,
+    height: Int? = null,
 ) {
     showMesh(meshFromAnyFile(path), channel, view, caption, title, renderer, height)
 }
@@ -305,7 +305,7 @@ fun Box.showMesh(
     caption: String? = null,
     title: String? = file.name,
     renderer: MeshRenderer = MeshRenderer.GPU,
-    height: Int = 430,
+    height: Int? = null,
 ) {
     showMesh(meshFromAnyFile(file.path), channel, view, caption, title, renderer, height)
 }

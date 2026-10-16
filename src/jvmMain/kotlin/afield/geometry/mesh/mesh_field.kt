@@ -637,8 +637,9 @@ enum class MeshRenderer {
  * `renderer = MeshRenderer.CPU` for the static rasterized figure this used to produce. Both paths are
  * AWT-free and safe inside a live box.
  *
- * @param height iframe height in pixels. Ignored by [MeshRenderer.CPU], which takes its size from
- * [view]'s `width` and `height` instead.
+ * @param height iframe height in pixels on the Three.js path. Left out, it is [view]'s `height` when a
+ * view was given and 430 otherwise, so a figure comes out the same shape on either renderer. Ignored
+ * by [MeshRenderer.CPU], which takes its size from [view]'s `width` and `height`.
  */
 fun Box.showMesh(
     mesh: TriMesh,
@@ -647,7 +648,7 @@ fun Box.showMesh(
     caption: String? = null,
     title: String? = null,
     renderer: MeshRenderer = MeshRenderer.GPU,
-    height: Int = 430,
+    height: Int? = null,
 ) {
     when (renderer) {
         MeshRenderer.CPU -> display(channel, mesh.toFigureHtml(view, caption, title))
@@ -655,7 +656,7 @@ fun Box.showMesh(
             subject = mesh,
             channel = channel,
             name = "mesh-$channel",
-            height = height,
+            height = height ?: if (view == MeshView()) 430 else view.height,
             view = view,
             title = title,
             caption = caption,

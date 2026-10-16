@@ -219,6 +219,30 @@ class SimdVerlet(
         constraintEdits.remove(name)
     }
 
+    /** Set once this simulation has reported a non-finite position, so it says so once. */
+    @Volatile
+    var diverged: Boolean = false
+        private set
+
+    /**
+     * A run whose positions go non-finite draws nothing at all, which looks like a quiet stop. Say so,
+     * once: on the running box's output and the `warning,physics` log channel. Nothing is clamped.
+     */
+    private fun reportDivergence(dt: Float, iterations: Int) {
+        if (diverged) return
+        val n = state.size
+        for (i in 0 until n) {
+            if (state.x[i].isFinite() && state.y[i].isFinite() && state.z[i].isFinite()) continue
+            diverged = true
+            val message = "SimdVerlet diverged: particle $i is no longer finite (dt=$dt, iterations=$iterations). " +
+                "A stiffness × iterations × dt² product well past 1, or a force that grows with distance, blows up; " +
+                "lower the stiffness or dt, or raise the damping."
+            afield.app.diagnostics.logging.lprintln("warning,physics", message)
+            afield.document.graph.Box.context.get()?.println(message)
+            return
+        }
+    }
+
     /**
      * The two post-integration stages, in their fixed order: every [positionProjections] pass,
      * then every [constraintEdits] pass. Both [step] overloads end here.
@@ -312,11 +336,29 @@ class SimdVerlet(
         state.resize(newSize, zeroNew)
     }
 
+    /** The index ranges of the cloths added to this simulation, by name; see [queueRemove]. */
+    internal val clothRanges = ArrayList<Pair<String, IntRange>>()
+
+    /**
+     * A removal compacts and renumbers the particles above it, which would leave a cloth's contiguous
+     * index range pointing at the wrong particles. So a removal inside or below a cloth is refused;
+     * remove particles above every cloth, or add the cloth last.
+     */
+    private fun refuseRemovalUnderCloth(lowest: Int) {
+        val hit = clothRanges.firstOrNull { (_, range) -> lowest <= range.last } ?: return
+        throw IllegalArgumentException(
+            "removing particle $lowest would renumber cloth '${hit.first}' (particles ${hit.second.first}..${hit.second.last}); " +
+                "only particles above every cloth can be removed"
+        )
+    }
+
     fun queueRemove(index: Int) {
+        refuseRemovalUnderCloth(index)
         state.queueRemove(index)
     }
 
     fun queueRemoveRange(start: Int, count: Int) {
+        if (count > 0) refuseRemovalUnderCloth(start)
         state.queueRemoveRange(start, count)
     }
 
@@ -360,6 +402,13 @@ class SimdVerlet(
         constraints: DirectedConstraints3? = this.constraints,
         accumulateForces: ((state: State3, dt: Float) -> Unit)? = null
     ) {
+        // With no 3-slot set, a published 4-slot one (what Cloth builds) is the set to solve; skipping
+        // it would let the sheet fall apart with no error.
+        val published4 = constraints4
+        if (constraints == null && published4 != null) {
+            step(dt, damping, gravity, iterations, published4, accumulateForces)
+            return
+        }
         state.applyQueuedRemovalsSwap(constraints)
         zero3(state)
 
@@ -396,6 +445,7 @@ class SimdVerlet(
 
         integrateVerlet3(state, dt = dt, damping = damping)
         runPostIntegration(dt)
+        reportDivergence(dt, iterations)
     }
 
     /** 4-slot-constraint variant of [step]; see that overload for the force-accumulation contract. */
@@ -443,6 +493,7 @@ class SimdVerlet(
 
         integrateVerlet3(state, dt = dt, damping = damping)
         runPostIntegration(dt)
+        reportDivergence(dt, iterations)
     }
 
     /**
