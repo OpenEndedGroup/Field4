@@ -1,0 +1,569 @@
+group	disposition	bodies	findings	summary
+dev_docs/SLIDER_EXAMPLES.kt	revise	1	1	The three slider sections are intentionally copyable demonstrations; preserve the RGB rows and commented animation sketch, but correct the source pointer in the header.
+dev_docs/agents/artifacts/datalog_aggregate_proofs/aggregate_proofs.yaml	revise	2	1	Both aggregate proof bodies and full artifact context read. Real Datalog queries/why/whyNot are clear; one code comment narrates historical failure instead of explaining intent.
+dev_docs/agents/artifacts/petri_state_graph_bound/state_graph_bound_demo	revise	4	1	All four Petri state-graph artifact bodies read. Actual full/reduced searches and explicit dense-graph override distinguish calculation from drawing policy.
+dev_docs/agents/artifacts/rectsl_soft_raster/bias_demo	keep	1	0	Keep the explicit soft-raster bias and differentiable fit study.
+dev_docs/agents/artifacts/tessellate_facing/multi_plane_fill_demo	revise	1	1	Complete multi-plane artifact body read in encoded metadata context. Geometry/winding and measured grouped versus single-plane comparison are real; historical framing could be clearer.
+dev_docs/agents/demos/alife_evolution	revise	4	1	Evolution lessons make controls, evaluation budgets, record holders and map quality explicit; one lineage label contradicts the explanation.
+dev_docs/agents/demos/alife_script	revise	4	1	Update the obsolete steering-scope warning.
+dev_docs/agents/demos/alife_walls	keep	4	0	Keep swept collision, route-versus-seek and local field drives.
+dev_docs/agents/demos/browse_embeds	keep	5	0	Keep the embedded browser/tree/log studies.
+dev_docs/agents/demos/certified_envelope	keep	6	0	The six bodies compare sampled envelopes with certified bounds, show opaque-lambda refusal and preserve arithmetic ordering for a bit-level comparison.
+dev_docs/agents/demos/chart_clip	keep	5	0	Keep the deliberate clipped/unclipped chart regression document.
+dev_docs/agents/demos/chart_primitive	revise	5	1	Keep chart helpers and authored DataFrame rows; simplify history in chart setup comments.
+dev_docs/agents/demos/completion_rank_at_scale	revise	3	2	The three bodies expose real corpus/category measurements and preserve REPL-specific type choices, but repeated compressed-file reads do not close their readers and the classification introduction carries stale historical narration.
+dev_docs/agents/demos/computed_ray_geometry	keep	1	0	Keep the computed-geometry control box.
+dev_docs/agents/demos/confluence_grid	revise	2	2	Confluence-grid implementation is rich but its canonical-pose and final-landing claims exceed what the code establishes.
+dev_docs/agents/demos/direct_lighting	revise	1	1	Direct-lighting example and DirectLightingDemo.close implementation read. It precloses on rerun but never registers close when stopped.
+dev_docs/agents/demos/flow_grain	revise	25	4	Read all 15 assigned bodies and ten supplemental shader stages omitted by the suffix inventory. Use typed inherited resource exports and simplify the renderer alias. Preserve explicit stage stop-detachment and identity guards: normal keyed module ownership has different stop semantics.
+dev_docs/agents/demos/frame_history_reprojection	revise	14	5	Read all 14 bodies including both bundle/chain versions, five generated preamble variants, contextual README snippets and the workspace example. Typed inherited properties and once-owned setup are appropriate. Revise an obsolete prop-import workaround and excessive historical comments, reconcile the runnable transcript with its evolved sidecars, and investigate chain/camera behavior on a second launch. Runtime results cited in existing prose were not reproduced by this review.
+dev_docs/agents/demos/function_conversation	keep	1	0	Single function-conversation starter body read; zero channels and one-hour domain make the blank starting assumption explicit.
+dev_docs/agents/demos/function_conversation_example	keep	9	0	Read the independent verification harness, final composition, blank composition and all complete revision deltas. Historical checked sources are evidence of the recorded conversation and should retain exact bytes. The active composition exposes named units, event IDs and local clocks clearly; preserve its compiler-workaround binding.
+dev_docs/agents/demos/gp_drawing	revise	4	1	All four GP drawing bodies and actual sidecars read. Conditioning/field/periodic-loop cases show different posterior structures; manual frame rectangles repeat an existing helper.
+dev_docs/agents/demos/gp_instruments	revise	4	1	All four GP instrument bodies read with sidecar context. Actual preference/optimization results are displayed; shared rosette and curve drawing repeat first-point path branches.
+dev_docs/agents/demos/gpu_probe_bench	keep	6	0	The six bodies make GPU readiness, deliberate timeout, independent CPU comparison and renderer topology explicit. The probe API already removes manual barriers and guessed waits.
+dev_docs/agents/demos/gpu_shader_learning	revise	1	1	The GPU training view already has explicit end cleanup and editable UI controls; split dense state-update lines so training, view selection and parameter sampling can be edited independently.
+dev_docs/agents/demos/interaction_nets_lambda	keep	4	0	Lambda-net lessons expose the real normalizer, independent substitution oracle and stage-by-stage reduction.
+dev_docs/agents/demos/keyframe_key_discovery	keep	4	0	Key discovery regression lessons use real key writers, corruption and attached scopes to expose browser classifications.
+dev_docs/agents/demos/learned_from_module	revise	3	1	All three learning demo bodies read. Teacher is actual editable GPU shader, capture and external training are bounded/user-triggered; lifecycle cleanup needs exact learning-view instance.
+dev_docs/agents/demos/learned_shader	revise	4	1	All four refreshed packet bodies read, including newly recognized material.frag/material.vert. Example and material session show contrasting cleanup quality.
+dev_docs/agents/demos/logging_layer	revise	9	3	Read all nine distinct bodies and all twelve occurrence contexts. The sidecars correctly import the existing withSink extension, but three build.yaml bodies omit it; replaying the authored builder loses that fix. Preserve the tables, exact mute/channel comparisons, scoped sink ownership and finally-unsubscribe example.
+dev_docs/agents/demos/marf_demo	revise	5	1	Use existing path startup in the three MARF drawings.
+dev_docs/agents/demos/midi_clip	revise	5	1	All five MIDI demo bodies read, including generated workspace hello and embedded fallback live-route code. File roundtrip and audible/render distinction are explicit.
+dev_docs/agents/demos/neural_reconstruction	revise	1	2	Replace raw shader-property casts with the inherited shader API and explicitly close the attached reconstruction view when its controlling run stops.
+dev_docs/agents/demos/opendlssnr	revise	9	2	NR demo variants mostly use exact owner snapshots, but the older image example and still-image reload affordance need alignment.
+dev_docs/agents/demos/optical_flow	revise	1	1	Expand optical-flow frame updates into readable grouped assignments.
+dev_docs/agents/demos/optical_flow_pingpong	revise	5	1	All five refreshed optical-flow pingpong bodies read, including source/display GLSL. Strong exact-instance cleanup and retained provider comments are useful conventions to preserve.
+dev_docs/agents/demos/path_traced_reconstruction	keep	1	0	Keep the ordered reconstruction example.
+dev_docs/agents/demos/path_tracer_instrument	revise	7	2	Seven bodies use inherited tracer/log properties and existing instruments correctly; shorten historical comments and repair navigation to the convergence and swap boxes.
+dev_docs/agents/demos/path_tracing_emitters	keep	6	0	Keep the estimator comparison and separate GPU verification.
+dev_docs/agents/demos/path_tracing_medium	keep	7	0	All seven bodies and copy contexts read: workspace hello, medium controls, two renderer variants, full scene and real GPU check driver.
+dev_docs/agents/demos/pattern_condense	revise	3	1	All three distinct condense demo bodies and source copies read. Search validates actual parsed events; randomized controls and true audio roundtrip are explicitly generated.
+dev_docs/agents/demos/ray_reconstruction	revise	1	1	The controls and typed lab property expose the right comparison, but dense assignment groups need expansion and cleanup ownership deserves a replay check.
+dev_docs/agents/demos/read_only_session	revise	2	1	Keep the persistence assignment and the read-only walkthrough; replace the dated implementation-history comment with present behavior.
+dev_docs/agents/demos/reconstruction_plumbing	revise	3	2	The three sidecars exactly match the reviewed reconstruction transcript bodies. They need the same semantic shader layout and motion-contract comments.
+dev_docs/agents/demos/rr_plumbing	revise	3	1	Explain the shader guide conversion conventions at the conversion site.
+dev_docs/agents/demos/skinned_characters	revise	15	4	All 15 distinct bodies read, including generated preambles and exact shader copies. Main issue is repair-history commentary obscuring useful current explanations; also one concrete shader coordinate-space naming problem.
+dev_docs/agents/demos/solidsl_inverse	revise	4	1	The four bodies make parameter addresses, controlled recovery and refusal modes concrete. The target caption asserts pixel identity without measuring rendered pixels.
+dev_docs/agents/demos/stackauto_conversation	revise	4	3	All four bodies and the persisted renderer-parent graph were read. Keep the inherited renderer and shader-slot interaction; simplify the generated push binding and expose the centroid calculation clearly.
+dev_docs/agents/demos/stackauto_conversation_polytope	keep	6	0	Editable polytope geometry and StackSL slots are readable; distinguish authored code from generated graphics bindings.
+dev_docs/agents/light_infrastructure/VERIFY_RENDER.kt	keep	1	0	Keep the source-grounded reset/render timing verifier.
+dev_docs/agents/tool-pool/bounds.kt	keep	1	0	Complete bounds tool body read. Small aiTool specimen combines validation, measurement and embedded positive/negative tests.
+dev_docs/agents/tool-pool/tools.kt	revise	1	2	Read the complete provider and README plus aiTool and ToolPool implementations. Retain exact local provider-source hashing and stable provider ownership; replace the ambient Box.context lookup, expand dense actions/card assembly, and consider moving durable versioned notes into ToolPool.
+dev_docs/agents/transcripts/afield_four_traditional_triangle.yaml	keep	3	0	All three distinct bodies and create/execute copies read. Revised triangle already demonstrates the approved mesh-in-module idiom and useful clip-space comments.
+dev_docs/agents/transcripts/ai4_chat_archive.yaml	keep	4	0	Keep the archive reader and lens viewer examples.
+dev_docs/agents/transcripts/ai4_iframe_hello.yaml	keep	1	0	Keep the explicit iframe display followed by the opt-in tool registration.
+dev_docs/agents/transcripts/ai4_paint_studio.yaml	revise	2	3	Paint studio has useful small tool adapters and persistent conversation state, but duplicates spline construction and needs input/effect contracts tightened.
+dev_docs/agents/transcripts/ai_tool_demo.yaml	keep	2	0	Keep the annotated two-box tool extension demonstration.
+dev_docs/agents/transcripts/alife_evolution.yaml	keep	4	0	Keep search control arms, archive measurements and generic-engine example.
+dev_docs/agents/transcripts/alife_script.yaml	keep	3	0	Three deterministic agent-script lessons clearly separate per-agent programs, coordinated site work and named phases.
+dev_docs/agents/transcripts/alife_walls.yaml	keep	3	0	Keep swept collision, route-versus-seek and local field drives.
+dev_docs/agents/transcripts/alife_worked_example.yaml	revise	20	2	Twenty ALife bodies pair static diagnostics with real animated evolutions, explicit controls and stable display ranges; one boundary-evidence claim needs narrowing.
+dev_docs/agents/transcripts/aperture_playground.yaml	revise	17	4	Read all 17 distinct bodies across 22 occurrences, including all graphics stages and the final wiring/execute order. Preserve the explicit render passes and energy-band math; revise redundant context/property ceremony and stale control comments. These are source-reading findings, not a graphics run verdict.
+dev_docs/agents/transcripts/arclength_spacing_demo.yaml	revise	2	1	Both arclength comparison bodies read in full. Explicit by-parameter baseline and real byDashing/cursor metrics are deliberate algorithm contrast.
+dev_docs/agents/transcripts/audio_ai_analysis.yaml	revise	3	1	Own live audio analysis subscriptions and guard stale dashboard updates.
+dev_docs/agents/transcripts/audio_ai_codec.yaml	keep	1	0	One codec artifact visualization body read with manifest-loading context. It uses committed measured data rather than fabricated capture values.
+dev_docs/agents/transcripts/audio_ai_corpus_microscope.yaml	keep	2	0	Keep the corpus job pipeline with its visible retrieval weights.
+dev_docs/agents/transcripts/audio_ai_gesture_board.yaml	revise	2	1	Bind candidate completion to the current box run.
+dev_docs/agents/transcripts/audio_ai_muscriptor.yaml	revise	3	1	All three MuScriptor bodies read with operation context. Real committed preview and live transcription are separate; nested futures/dropwatch lack complete error/lifecycle propagation.
+dev_docs/agents/transcripts/audio_ai_spectral_embeddings.yaml	revise	3	1	Consolidate repeated durable-analysis tracking as a helper proposal.
+dev_docs/agents/transcripts/audio_ai_speech_embeddings.yaml	revise	3	2	All three speech-embedding bodies and archive/live contexts read. Local projection controls and fixed seed are visible; raw trackedSpeech watch lacks caller ownership.
+dev_docs/agents/transcripts/audio_ai_underfit_mancini.yaml	revise	2	1	Expose the Underfit source path as an explicit prerequisite.
+dev_docs/agents/transcripts/audio_render_analysis.yaml	keep	5	0	All five render-analysis bodies read, including Faust and Ruby strings. analyzeRenderedAudio source inspected: it owns failure/cancel fanout cleanup, so do not duplicate raw-watch leak claim.
+dev_docs/agents/transcripts/autodiff_worked_example.yaml	revise	5	2	Five numerical/geometry examples expose comparisons and optimizer controls well. Hand-built marker circles and box outlines can use established FLine helpers.
+dev_docs/agents/transcripts/box_layout_demo.yaml	keep	9	0	Keep all nine comment-only bodies: the transcript deliberately supplies graph nodes for layout rather than executable data processing.
+dev_docs/agents/transcripts/browse_embeds.yaml	keep	4	0	All four browsing bodies read. They intentionally include cycles, mixed map keys, large lazy lists, live mutable state and grouped log events.
+dev_docs/agents/transcripts/ceres_free_variables.yaml	revise	2	1	Ceres free-variable lessons expose real residuals and independent closed-form checks; backend discovery silently discards actionable loader failures.
+dev_docs/agents/transcripts/certified_envelope.yaml	keep	5	0	Keep the sampled-versus-certified envelope and explicit formula proof.
+dev_docs/agents/transcripts/chain_scene_to_light.yaml	keep	3	0	Keep the scene-to-light sender, receiver and measurement boxes.
+dev_docs/agents/transcripts/chart_clip.yaml	revise	4	1	All four chart clipping bodies read. Tests compare actual geometry bounds and intentionally unclipped output; comments overuse historical bug narration.
+dev_docs/agents/transcripts/chart_primitive.yaml	revise	4	1	All four chart bodies read. DataFrame rows, picking and drawn expectations are concrete public API examples; some comments narrate implementation history.
+dev_docs/agents/transcripts/close_node_demo.yaml	keep	2	0	Keep the deliberately explicit Close-node regression comparisons.
+dev_docs/agents/transcripts/cloth_simdverlet_start.yaml	keep	1	0	Keep the cloth starting point and its solver explanation.
+dev_docs/agents/transcripts/completion_rank_at_scale.yaml	revise	3	1	Report subprocess failure in the completion-ranking experiment.
+dev_docs/agents/transcripts/computed_ray_geometry.yaml	revise	3	2	All three bodies and duplicate launch context read. Cluster compute shader is deliberately editable but extremely compressed and lacks range-field explanation.
+dev_docs/agents/transcripts/confluence_grid.yaml	revise	1	3	Keep the educational reduction/physics structure, but freeze the actual landed geometry, verify it rather than only target coordinates, refresh stale runtime comments, and expose the advertised tempo controls.
+dev_docs/agents/transcripts/control_surface_laws.yaml	revise	3	2	All three control-law bodies read. Concrete numeric law comparison, button release gestures and meter sampler distinguish control behavior.
+dev_docs/agents/transcripts/csound_demo.yaml	revise	5	2	All five refreshed Kotlin bodies read plus Csound orchestra/language-root context. Live channel/MIDI examples and offline measured/table examples are distinct.
+dev_docs/agents/transcripts/dataframe_typed_columns.yaml	keep	4	0	Read all four DataFrame bodies and execution context. The row pairs, compiler-plugin explanations and named-schema fragment boundary are clear and intentional; preserve them.
+dev_docs/agents/transcripts/direct_lighting.yaml	revise	2	1	Read both distinct bodies and all three occurrences with renderer/scene launch graph. Keep the optional RTXDI fallback and frame-boundary mutation; remove duplicated control defaults that can disagree with the editable variables.
+dev_docs/agents/transcripts/dmx_lighting_demo.yaml	keep	4	0	Keep the Art-Net/sACN roundtrip examples.
+dev_docs/agents/transcripts/docs_capture/bookmarks_panel.yaml	revise	3	1	Bookmark fixture has purposeful output/no-output cases, but its placeholder rendering uses a gradient contrary to the project design instruction.
+dev_docs/agents/transcripts/docs_capture/completion_category_headers.yaml	keep	2	0	Two intentionally incomplete prefixes drive completion UI; they are not runnable examples.
+dev_docs/agents/transcripts/docs_capture/context_why_graph.yaml	keep	5	0	All five bodies and parent ordering read. The example intentionally contrasts inherited speed resolution with an ordinary non-prop gear variable.
+dev_docs/agents/transcripts/docs_capture/field_audio_absent_service.yaml	keep	1	0	Keep the absent-service transport diagnostic with real rendered metadata.
+dev_docs/agents/transcripts/docs_capture/first_graphics.yaml	revise	4	1	All four bodies re-read in this capture transcript and checked against source YAML; they match the shipped first-graphics lesson reviewed in calibration.
+dev_docs/agents/transcripts/docs_capture/first_graphics_native.yaml	revise	4	1	Renderer topology and independently editable mesh are sound; replace inactive matrix shader scaffolding with actual coordinate-space guidance.
+dev_docs/agents/transcripts/docs_capture/first_steps.yaml	revise	1	1	First drawing is clear and rerunnable; replace manual first-vertex branch with existing breakNext helper.
+dev_docs/agents/transcripts/docs_capture/gesture_smooth_take.yaml	keep	1	0	Whole gesture smoothing fixture read with capture launch context. Seeded shaky take, bake/smooth/replay gestures and shared lane time are coherent.
+dev_docs/agents/transcripts/docs_capture/go_jobs_badge.yaml	keep	1	0	Counting job is deliberately a cancellable go example for the jobs badge.
+dev_docs/agents/transcripts/docs_capture/gpu_state_flat_fbm.yaml	revise	6	1	Avoid reversed-edge smoothstep in the particle opacity shader.
+dev_docs/agents/transcripts/docs_capture/inspector_search.yaml	keep	1	0	Small inspector fixture read in full; nested map/data classes intentionally provide named search paths.
+dev_docs/agents/transcripts/docs_capture/keybindings_inspect.yaml	keep	1	0	The capture driver intentionally resets the shared watcher and displays resolved bindings with an explicit missing-binding role.
+dev_docs/agents/transcripts/docs_capture/keyframe_custom_types.yaml	keep	1	0	Keep the three custom interpolants and authored time/value/type key rows.
+dev_docs/agents/transcripts/docs_capture/keyframe_editing.yaml	keep	1	0	Keep the persistent keyframe curve, output meter and monotonic playback loop used by the editing capture.
+dev_docs/agents/transcripts/docs_capture/keyframe_tidy_take.yaml	keep	1	0	Baked-key capture fixture read; seeded random and explicit four-second playback are appropriate for reproducible curve editing.
+dev_docs/agents/transcripts/docs_capture/keyframe_two_lanes.yaml	keep	1	0	Two-lane keyframe/pad capture body and launch context read; data and playback are compact and clear.
+dev_docs/agents/transcripts/docs_capture/launch_fragment.yaml	keep	1	0	Keep the fragment-launch capture fixture.
+dev_docs/agents/transcripts/docs_capture/particle_video_view.yaml	keep	1	0	Viewer fixture directly loads committed particle-video data at a named initial time.
+dev_docs/agents/transcripts/docs_capture/pd_send_from_kotlin.yaml	keep	1	0	Kotlin sender intentionally addresses a Pure Data child by name.
+dev_docs/agents/transcripts/docs_capture/phone_sequencer.yaml	keep	1	0	Sequencer control fixture read with mobile capture context; it demonstrates editable arrays and visual playheads rather than synthesizing audio.
+dev_docs/agents/transcripts/docs_capture/photo_plaque.yaml	revise	1	1	Retain the topology/three-view study; remove implementation-history wording.
+dev_docs/agents/transcripts/docs_capture/reactive_props_down.yaml	keep	4	0	Four bodies read; two are edit-search substrings, not runnable Kotlin. Tempo→Beat graph and intended cascade are explicit.
+dev_docs/agents/transcripts/docs_capture/reactive_props_layer.yaml	keep	4	0	Short dependency graph fixtures intentionally mix reactive bpm and ordinary inherited key.
+dev_docs/agents/transcripts/docs_capture/reactive_props_slider.yaml	keep	2	0	The fixture separates publishing gain from the reactive meter that reads it.
+dev_docs/agents/transcripts/docs_capture/reactive_props_up.yaml	keep	2	0	Keep the reactive-property dependency demonstration.
+dev_docs/agents/transcripts/docs_capture/remote_ar_kotlin_plane.yaml	keep	2	0	RemoteAR capture head and KotlinJS child provide explicit light and plane setup with a runtime breadcrumb.
+dev_docs/agents/transcripts/docs_capture/slider_gestures.yaml	revise	1	1	Replace the teaching slider callback raw-property write with a typed property.
+dev_docs/agents/transcripts/docs_capture/spatial_navigation_overlay.yaml	keep	4	0	Four small box bodies anchor a spatial-navigation fixture; spatial relationships are their teaching context.
+dev_docs/agents/transcripts/docs_capture/threejs_editable_fill_pixels.yaml	keep	4	0	Keep the explicit editable-versus-static triangulation fixtures.
+dev_docs/agents/transcripts/docs_capture/underfit_mancini_board.yaml	keep	1	0	Keep the genuine archived-output capture adapter.
+dev_docs/agents/transcripts/drawing_notation.yaml	keep	6	0	All six notation bodies teach concrete draw/read/listen gestures with concise lifecycle and coordinate explanations. The source API supports their replacement and stop semantics.
+dev_docs/agents/transcripts/drawn_morph.yaml	revise	5	1	Use the existing rectangle helper for square morph dots.
+dev_docs/agents/transcripts/drawn_paint.yaml	revise	6	1	Six complete paint studies retain readable pressure/material explanations and availability fallback. The translated-stroke helper repeats the manual conversion seen in the companion page.
+dev_docs/agents/transcripts/drawn_score.yaml	keep	5	0	Keep the drawn-score interpretation workflow.
+dev_docs/agents/transcripts/dynamic_graph_systems_examples.yaml	keep	6	0	All six bodies and their execution context read. Fixed simulation dt, fixed scales, independent mutable states and launch-only animations are clear. JitterProcess implementation is deterministic in state.time and point index, so no random-control defect is established.
+dev_docs/agents/transcripts/external_browser_surface_linux_smoke.yaml	keep	2	0	Keep the real dma-buf ownership smoke and its explicit phases.
+dev_docs/agents/transcripts/external_browser_surface_macos_smoke.yaml	revise	2	1	Both bodies and renderer-to-smoke launch order were read. The native test deliberately exposes transport details; close the surface when setup fails before the Frames cleanup exists.
+dev_docs/agents/transcripts/faust_polyphony.yaml	revise	6	3	Read all six full Faust bodies and the transcript setup/replay context. Keep the independent offline render path, one-oscillator chord proof, silent-gap check and explicit steal control. Correct two measurement explanations that currently overstate what the reported values establish.
+dev_docs/agents/transcripts/faust_voice.yaml	keep	5	0	Keep the Faust controls, diagram, offline waveform, interface and error examples.
+dev_docs/agents/transcripts/field_ui_browser_texture.yaml	keep	4	0	All four bodies plus duplicate launch copies read, including full JS readiness/input-probe sequence. It exercises actual Field UI→browser→input→bridge behavior.
+dev_docs/agents/transcripts/fieldcv_webcam.yaml	revise	9	1	Clear the overlay mesh when no tracked segments remain.
+dev_docs/agents/transcripts/fieldml_afield_four_demo.yaml	keep	1	0	Keep the explicit Kotlin bridge scaffold.
+dev_docs/agents/transcripts/fieldml_frames_demo.yaml	revise	1	1	Refreshed assigned body is Kotlin renderer only; non-Kotlin FieldML program excluded by corrected inventory. Renderer comments have stale two-reason claim.
+dev_docs/agents/transcripts/fieldml_macro_module_demo.yaml	revise	1	1	Canonical renderer setup; shorten migration history before setup.
+dev_docs/agents/transcripts/fieldml_mesh_demo.yaml	keep	1	0	Keep the Kotlin renderer scaffold; the adjoining FieldML box explains why this setup remains in Kotlin and inherits its renderer through the connected root.
+dev_docs/agents/transcripts/fline_exact_booleans.yaml	revise	2	2	Both comparison boxes and their execution context were read. Replace manually constructed circles and the first-node branch with existing FLine helpers while preserving the authored shape curves and comparative rendering.
+dev_docs/agents/transcripts/fline_hit_records.yaml	keep	1	0	The explicit oblique panels make hit coordinates teachable; retain the construction and inspect call.
+dev_docs/agents/transcripts/fline_measure.yaml	revise	5	1	The five measurement demonstrations use the normal geometry APIs and explain their units and orientation. Replace the helix sample first-point branch with the existing point-to-FLine helper.
+dev_docs/agents/transcripts/flow_grain.yaml	revise	25	5	The bounded fluid pipeline has useful buffer contracts, frame-boundary ownership and explicit stop cleanup. Improve shader mathematical layout, dependency diagnostics and shared setup without hiding dispatch or the editable stages.
+dev_docs/agents/transcripts/fn_differentiable_fit_demo.yaml	keep	2	0	Both stored and inline execution bodies read. fitBest example makes target/seed and reason for restarts explicit; inline copy intentionally omits explanatory comments only.
+dev_docs/agents/transcripts/fn_rewrite_kotlin_boxes.yaml	revise	4	1	All four distinct bodies and stored/inline copy contexts read. Working topology-owned compiler host and deliberately unsafe self-box route are contrasting diagnostic examples.
+dev_docs/agents/transcripts/four_morton_quadtree.yaml	keep	3	0	All three Morton bodies and embedded shaders read. Explicit fp32 point data, staged quadtree construction and live cut threshold carry the lesson well.
+dev_docs/agents/transcripts/four_pass_chain.yaml	revise	3	1	All three pass-chain bodies read with renderer→scene→chain graph. Live setPush controls are deliberately outside once setup.
+dev_docs/agents/transcripts/four_simulation_chain.yaml	revise	4	2	All four bodies and graph/launch context read. Preserve typed inherited renderer/bundle, replacement pass chains and live setters; correct a concrete flood-round comment and hand off stale description edit instructions.
+dev_docs/agents/transcripts/four_summary_pyramid.yaml	keep	3	0	Three boxes distinguish persistent renderer/bundle setup from replaceable pass declarations and expose useful live summary controls at the end.
+dev_docs/agents/transcripts/frame_history_reprojection.yaml	revise	4	1	Four boxes explain temporal history and genuine per-object motion, but the chain body buries controls under repeated history-heavy camera discussion.
+dev_docs/agents/transcripts/frames_lifecycle.yaml	keep	4	0	All four bodies explain lifecycle and output throttling clearly. Keep the run-owned animation, explicit clock gates and cleanup ordering; retain the per-launch notes list until the already-approved bounded append helper is implemented.
+dev_docs/agents/transcripts/geometry_from_disk.yaml	revise	3	1	Free PLY loader buffers after converting the diagnostic model.
+dev_docs/agents/transcripts/gesture_paint_replay.yaml	revise	2	1	Both gesture-paint bodies read with source context. Input pressure/tilt/time comparison is concrete and first canvas uses scoped close; second relies on successful whole map/display before cleanup.
+dev_docs/agents/transcripts/gesture_to_keyframes.yaml	keep	1	0	Keep the gesture-to-lanes workflow.
+dev_docs/agents/transcripts/gp_drawing.yaml	revise	3	1	Use FLine.rect for the two fixed plot frames.
+dev_docs/agents/transcripts/gp_instruments.yaml	revise	3	2	Three GP bodies provide clear optimization/preference instruments; replace manual first-point branches with existing FLine support and correct the dial count.
+dev_docs/agents/transcripts/gpu_probe_bench.yaml	keep	4	0	GPU probe bench teaches fixture ownership, sentinel waits, barriers and quantitative claims through real shader execution paths.
+dev_docs/agents/transcripts/gpu_shader_learning.yaml	revise	4	1	All four bodies including teacher shaders and launch duplicates read. GPU training sees actual shader pixels and source digest resets model after edits.
+dev_docs/agents/transcripts/gpu_state.yaml	revise	6	1	GPU state example clearly distinguishes four buffer ownership patterns and synchronized ping-pong; fragment alpha uses reversed smoothstep edges.
+dev_docs/agents/transcripts/graphics_renderer_launch.yaml	keep	1	0	One distinct renderer body occurs twice in create and inline launch; both copies and context read.
+dev_docs/agents/transcripts/hello_display.yaml	keep	1	0	Keep the minimal transcript hello output.
+dev_docs/agents/transcripts/hello_display_capture.yaml	keep	1	0	Minimal markdown output is appropriate as a capture smoke fixture.
+dev_docs/agents/transcripts/imaging_cv_examples.yaml	keep	6	0	Six CPU imaging lessons combine real large-image pipelines with known synthetic truth and geometric outputs.
+dev_docs/agents/transcripts/imaging_vector_kernels.yaml	revise	3	1	Keep the independent image comparisons and reproducible inputs; make the timing interpretation depend on the measurements and consider consolidating the three identical timing closures.
+dev_docs/agents/transcripts/imaging_visualizers_demo.yaml	revise	10	1	All ten imaging bodies read. Synthetic fixtures are explicitly teaching inputs and each detector/visualizer computes real results.
+dev_docs/agents/transcripts/imgui_vr_panel.yaml	revise	2	1	Both bodies and renderer-parent launch order read. The demo wrapper intentionally hides a full RTT/stereo pipeline behind a small interactive entry point.
+dev_docs/agents/transcripts/inertial_movement.yaml	revise	3	2	Bound the inertial comparison histories and reuse FLine startup.
+dev_docs/agents/transcripts/interaction_nets_lambda.yaml	revise	3	1	Three lambda-net experiments expose independent oracle checks and concrete edit gestures. Reduction-stage presentation repeats the snapshot-strip helper pattern from the interaction-net page.
+dev_docs/agents/transcripts/iosurface_ring_roundtrip_smoke.yaml	revise	2	1	Both IOSurface smoke bodies read with context. Real native encode/color/readback and imported browser release are deliberate assertions.
+dev_docs/agents/transcripts/keyframe_autosweep.yaml	keep	4	0	Autosweep transcript builds a persistent editable scene, guarded starter looks, real still/clip capture and archive analysis.
+dev_docs/agents/transcripts/keyframe_code_blend.yaml	keep	5	0	Keep the five-part blend demonstration: it exposes runtime/static refusal, compares actual endpoint rasters and invokes generated Kotlin from a separate idle box. Record the approved Key convenience as a follow-up.
+dev_docs/agents/transcripts/keyframe_editor.yaml	keep	4	0	All four bodies offer focused keyframe editing examples with explicit editing gestures, preserved authored key rows and normal persistent editor reuse.
+dev_docs/agents/transcripts/keyframe_key_discovery.yaml	keep	3	0	Key discovery regression lessons use real key writers, corruption and attached scopes to expose browser classifications.
+dev_docs/agents/transcripts/keyframer_worked_example.yaml	revise	4	1	Four detailed keyframer studies expose targets, camera comparison, persistence and emitted code. The bindings/values table still warns of a bug that capture's current implementation fixes.
+dev_docs/agents/transcripts/kolakoski_euclid.yaml	keep	3	0	Three rhythmic examples separate density, hierarchical subdivision and a saved canvas player with concrete render outputs.
+dev_docs/agents/transcripts/kratos_flow_playground.yaml	revise	1	1	Snapshot solve settings for Kratos result rendering.
+dev_docs/agents/transcripts/kratos_parameter_study.yaml	revise	1	4	Read the full study UI and actual KratosStudy/Session/frames/output APIs. Preserve one worker and explicit frame polling, but verify callback cancellation uses a real throw, move the winner field solve off the frame coroutine, finish progress per action, and correct the target-change cache claim.
+dev_docs/agents/transcripts/kratos_structural_playground.yaml	revise	1	3	The structural experiment is well annotated, but result invalidation/redraw and worker-opening ownership prevent trustworthy interactive reruns.
+dev_docs/agents/transcripts/kratos_thermal_playground.yaml	revise	1	1	Whole thermal playground body read with units/install/source context. Worker acquisition/finally accounts for cancellation during open; result publication is revision-aware.
+dev_docs/agents/transcripts/learned_boids.yaml	keep	4	0	Four-box learned-boids comparison correctly separates cached GPU allocation, retraining and live settings.
+dev_docs/agents/transcripts/learned_from_module.yaml	revise	4	3	Read all four bodies and six occurrences, including both exact code copies and renderer-to-scene connection. Preserve real GPU capture and child-process cleanup, but use reflected state assignment and make old-run cleanup refer to its own view.
+dev_docs/agents/transcripts/learned_shader.yaml	keep	5	0	Keep the learned-material ownership and shader-edit workflow.
+dev_docs/agents/transcripts/letter_interpolation.yaml	revise	3	1	Shorten interpolation narration to the current sweep intent.
+dev_docs/agents/transcripts/letter_interpolation_panels.yaml	revise	3	1	All three letter interpolation bodies read. Shared source/seed/normalization and alignment are well justified; glyph prerequisite error handling calls non-throwing box error.
+dev_docs/agents/transcripts/life3d_manifold_path_trace.yaml	revise	2	1	Scope the native Life3D census solids across intermediate failures.
+dev_docs/agents/transcripts/linalg_thumbnails_demo.yaml	keep	4	0	Keep these four thumbnail expressions.
+dev_docs/agents/transcripts/logging_layer.yaml	revise	6	1	Six logging studies clearly separate channel matchers and scope sink cleanup. The nested-block example collects every global event into an unsynchronized ArrayList while other threads can log.
+dev_docs/agents/transcripts/loris_partial_explorer.yaml	revise	5	2	Five asynchronous Loris bodies explain useful operations, but no future or completion callback is owned by a box run; expose the whirlpool controls with units.
+dev_docs/agents/transcripts/lua_demo.yaml	keep	1	0	Both Kotlin bodies are short, purposeful cross-language diagnostics; the raw code read is introspection of another box, not normal application state.
+dev_docs/agents/transcripts/manifold_solids.yaml	revise	2	2	Two solid studies explain native scope ownership and shaded-versus-topological meshes. The bracket fallback comment wrongly calls a simplified unbored SDF the same shape, and a parser-workaround paragraph distracts from the optional dependency.
+dev_docs/agents/transcripts/marf_demo.yaml	revise	4	1	Use the existing first-point FLine idiom in the sampled MARF plots.
+dev_docs/agents/transcripts/marf_field_clocks.yaml	revise	3	3	The three bodies make clock refusals and independent address/duration grids concrete. Use the existing path-start helper and correct comments that describe an earlier result or a dashed style the code does not draw.
+dev_docs/agents/transcripts/mega_texture_wall.yaml	keep	3	0	Keep the staged mega-texture wall and explicit cache diagnostics.
+dev_docs/agents/transcripts/mesh_geometry_examples.yaml	revise	7	5	Read all seven mesh bodies and the transcript execution context. Keep the CPU geometry demonstrations, aligned comparison data and final-expression visualizer gesture. Reuse an existing FLine path idiom, correct specific comment/label overclaims and consolidate the previously approved measurement helpers as follow-up work. No execution or capture was performed; numeric and visual claims remain checks for the edit pass.
+dev_docs/agents/transcripts/mesh_repair_demo.yaml	revise	2	1	Keep repair diagnostics, but scope native solids against failures.
+dev_docs/agents/transcripts/midi_clip.yaml	revise	4	1	Correct the MIDI duration comment to match eight beats per cycle.
+dev_docs/agents/transcripts/morpho_circuit_search.yaml	keep	3	0	Keep the comparable-budget Morpho search study.
+dev_docs/agents/transcripts/mqtt_demo.yaml	keep	4	0	Keep the MQTT sensor/listen/plot/retained progression.
+dev_docs/agents/transcripts/neural_particles.yaml	revise	3	1	Remove the stale prop import-workaround explanation.
+dev_docs/agents/transcripts/neural_reconstruction.yaml	revise	4	4	Renderer topology and typed lab publication are sound. The editable shader workflow loses accepted edits whenever it creates a new mode, uses unnecessary raw property casts, and leaves target ownership outside the run lifecycle.
+dev_docs/agents/transcripts/onnx_webcam_live.yaml	keep	1	0	Keep the one-frame webcam perception study.
+dev_docs/agents/transcripts/open_dlss_nr.yaml	keep	5	0	Keep the ink study, live controls and GPU capture loop.
+dev_docs/agents/transcripts/open_dlss_nr_cubes.yaml	keep	5	0	Keep the editable cube study and recorder.
+dev_docs/agents/transcripts/openxr_eye_intersection.yaml	keep	4	0	Four renderer/shader/scene bodies explicitly distinguish local, world and clip coordinates and label desktop preview without inventing eye tracking.
+dev_docs/agents/transcripts/optical_flow.yaml	revise	2	1	Both distinct optical-flow bodies and duplicate launch copies read. Main concern is cleanup using a mutable inherited property instead of the resource created by this launch.
+dev_docs/agents/transcripts/optical_flow_pingpong.yaml	keep	6	0	Keep the explicit ring-history/optical-flow example.
+dev_docs/agents/transcripts/orca_duet.yaml	keep	1	0	Retain the ORCA grids and explicit two-way musical feedback; they are the meaningful authored data and logic.
+dev_docs/agents/transcripts/orca_hello.yaml	keep	1	0	Single ORCA body read with transcript context; grid, note routing and AI4 tools form a concise playable entry point.
+dev_docs/agents/transcripts/orca_jam.yaml	keep	1	0	ORCA jam body and context read; channel sound choices are grouped and grid is intentionally sparse for conversational editing.
+dev_docs/agents/transcripts/oscquery_demo.yaml	keep	6	0	All six OSCQuery bodies teach the normal publishing, controls, remote, mirror, LFO and discovery surfaces with explicit run order and no avoidable setup ceremony.
+dev_docs/agents/transcripts/paint_canvas.yaml	revise	3	1	All three paint bodies read. Availability wrapper is legitimate optional-native path, but its body is unindented and creative flow controls are buried.
+dev_docs/agents/transcripts/particle_video.yaml	keep	3	0	All three bodies plus transcript operation choices read. Portable reader runs automatically; optional tracking box is deliberately not launched by the transcript.
+dev_docs/agents/transcripts/particle_video_reader.yaml	keep	1	0	Keep the two-call reader/viewer example with its visible scrub start and drawing size parameters.
+dev_docs/agents/transcripts/pat_fn_graph_fit.yaml	revise	5	1	Correct the permutation example comment to match the actual seed.
+dev_docs/agents/transcripts/path_traced_reconstruction.yaml	revise	2	1	Both bodies and duplicate encoded launch copies read. Physically grounded scene and explicit trace→guides→NGX order are good; cleanup uses mutable lab.
+dev_docs/agents/transcripts/path_tracer_instrument.yaml	revise	6	1	All six path-tracer instrument bodies read. Rich real instrumentation and typed reload outcomes are useful, but extensive last-night implementation diary overwhelms simple API.
+dev_docs/agents/transcripts/path_tracing_camera.yaml	keep	2	0	Keep the camera study and its editable tracer assignments.
+dev_docs/agents/transcripts/path_tracing_emitters.yaml	keep	2	0	Keep the bounded-budget emitter-sampling comparison.
+dev_docs/agents/transcripts/path_tracing_glass.yaml	keep	2	0	Renderer and path-tracing study bodies read with their launch graph. Named scene owns tracer while the coroutine only awaits a real convergence threshold.
+dev_docs/agents/transcripts/path_tracing_gltf.yaml	keep	2	0	Keep the bounded glTF path-tracing study after mechanical formatting.
+dev_docs/agents/transcripts/path_tracing_hidden_environment.yaml	keep	2	0	Typed inherited renderer and named tracer replacement support reruns; capture coroutine correctly describes its limited ownership.
+dev_docs/agents/transcripts/path_tracing_material_shader_check.yaml	keep	3	0	Keep the explicit material reload verification fixture.
+dev_docs/agents/transcripts/path_tracing_materials.yaml	keep	2	0	Compact renderer parent plus one named path-tracing study; capture readiness is already distinguished from scene ownership.
+dev_docs/agents/transcripts/path_tracing_medium.yaml	keep	2	0	Read both bodies and complete launch graph. The medium example uses inherited renderer, a replaceable named tracer, and detailed comments about medium bounds and accumulation reset; retain its deliberate density-cycle teaching structure.
+dev_docs/agents/transcripts/pattern_condense.yaml	keep	3	0	Three finite demonstrations already expose editable inputs, use computed evidence, and keep rolls, tables and audio on distinct channels. Preserve the independent generator checks in the random-mask box.
+dev_docs/agents/transcripts/pattern_language_composition.yaml	keep	8	0	Keep the pattern composition and real rendered A/B examples.
+dev_docs/agents/transcripts/pattern_particles.yaml	revise	7	2	Read all seven bodies and the complete renderer→audio→compute→draw launch graph. Inherited properties and offline audio ownership are explained well. Improve shader member comment placement and expose a real gain reset gesture; approved uint and numeric-format work remain follow-ups, not new helper requests.
+dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml	revise	7	1	All seven rewrite bodies and fourteen stored/execution occurrences read in full context. Varied rule kinds and parent-only ambient declaration are purposeful.
+dev_docs/agents/transcripts/petri_sound.yaml	keep	7	0	Seven independent Petri-net sound lessons progress from offline loops to an explicitly gated live player.
+dev_docs/agents/transcripts/petri_sparks.yaml	revise	5	1	Keep the typed Petri graph and direct buffer-driven shader; document the coupled particle allocation and shader constants before inviting edits.
+dev_docs/agents/transcripts/petri_state_space.yaml	keep	6	0	All six bodies teach the intended distinction between policy simulation, exact reachability, budget exhaustion, coverability and deadlock-only reduction. Preserve the explicit net construction and explanatory counterexamples.
+dev_docs/agents/transcripts/petri_state_space_sculpture.yaml	keep	2	0	Keep the explicit Petri graph-to-sculpture pipeline.
+dev_docs/agents/transcripts/petri_tala_layout.yaml	keep	3	0	Three self-contained layouts compare FORCE and optional TALA with honest cache-cleared timing and a visible fallback explanation.
+dev_docs/agents/transcripts/photo_mount_path_trace.yaml	keep	2	0	Keep the native photo mount path tracer study.
+dev_docs/agents/transcripts/photo_to_solid_chain.yaml	keep	4	0	Keep the photo-depth-relief-solid chain.
+dev_docs/agents/transcripts/physics_manifold_path_trace.yaml	revise	2	1	Both renderer and physics→solid→trace bodies read. Four creative knobs atop explicit stages, coordinate flip and native scope are effective; escaped net closes only on success path.
+dev_docs/agents/transcripts/pitch_transcription_roundtrip.yaml	keep	5	0	Keep finite sound-to-notation experiments and failure cases.
+dev_docs/agents/transcripts/point_matching.yaml	keep	3	0	Keep the matched/unmatched point-transfer comparison.
+dev_docs/agents/transcripts/polytope_canonical_gallery.yaml	keep	1	0	Whole canonical gallery body read. Expression control, diagnostics, side-by-side gauge and face interaction are clear.
+dev_docs/agents/transcripts/polytope_conway_demo.yaml	keep	1	0	Keep topology-first selective kis and provenance inspection.
+dev_docs/agents/transcripts/polytope_conway_gallery.yaml	revise	4	2	Conway gallery exposes topology, embeddings and scalar deployment; two advertised edits need empty/abstract handling.
+dev_docs/agents/transcripts/polytope_holes_and_chains.yaml	revise	3	1	Geometry lessons show real hole topology, winding and Conway chaining; the plate knob should exclude a zero-size ring.
+dev_docs/agents/transcripts/polytope_layer_stack_path_trace.yaml	keep	2	0	Keep the explicit polytope slicing and path-tracing pipeline.
+dev_docs/agents/transcripts/polytope_manifold_path_trace.yaml	revise	2	1	The three-stage topology/Boolean/render chain is well explained and uses typed properties and native scopes. Close the escaped Manifold result around CPU extraction so render setup failure cannot retain it.
+dev_docs/agents/transcripts/polytope_path_trace_lineage.yaml	revise	2	1	The lineage/material chain is clear and the connected renderer parent is explicit. Expose convergence and render controls before the topology so the main creative edits are easy to find.
+dev_docs/agents/transcripts/popup_prior_inspect.yaml	keep	1	0	Whole prior-inspection transcript read; source-derived score table, invariant and diagnostic limits are clear.
+dev_docs/agents/transcripts/profiling_timeline.yaml	keep	5	0	Keep the profiler workloads and latched-capture acceptance checks.
+dev_docs/agents/transcripts/pure_data_demo.yaml	keep	4	0	Four Kotlin bodies demonstrate distinct Pd value, offline render, effect and line-send workflows; preserve patch rows, last-expression launch handles and explicit message-edit gestures.
+dev_docs/agents/transcripts/ray_reconstruction.yaml	keep	2	0	Keep the explicit ray-reconstruction controls and owned close path.
+dev_docs/agents/transcripts/read_only_session.yaml	keep	2	0	Keep the read-only verification fixture and persistent counter.
+dev_docs/agents/transcripts/reconstruction_plumbing.yaml	revise	4	2	Four bodies demonstrate producer/consumer reconstruction and rerun cleanup. The compressed GLSL needs semantic layout and comments at the jitter/motion contract boundaries.
+dev_docs/agents/transcripts/recstl_playground.yaml	revise	2	1	The two-body renderer/playground graph and fragment dependency are explicit, but once.fragment caches a generated material shader and prevents material-program edits from taking effect on a normal rerun.
+dev_docs/agents/transcripts/rectsl_dataviz.yaml	revise	2	1	Both bodies and renderer graph read; embedded RectSL data rows and authored fragment boundary inspected. Main issue: comment promises shader edits live but once seeds only missing shader properties.
+dev_docs/agents/transcripts/rectsl_glsl_sdf.yaml	keep	2	0	Keep the staged RectSL-to-GLSL demonstration.
+dev_docs/agents/transcripts/rectsl_heading_fit.yaml	keep	4	0	Keep the sampler/lowered/quadrant-loss comparison and fitted heading proof.
+dev_docs/agents/transcripts/rectsl_inverse_animation.yaml	keep	2	0	Keep the two inverse-animation demonstrations.
+dev_docs/agents/transcripts/rectsl_musicality.yaml	keep	2	0	Keep the musical RectSL program and staged shader setup.
+dev_docs/agents/transcripts/rectsl_plot_axes.yaml	keep	2	0	Keep the shared-domain RectSL plotting study.
+dev_docs/agents/transcripts/rectsl_sdf_live.yaml	keep	2	0	Both bodies and renderer dependency read. Explicit Module(parameters) is justified because shader strings are generated in the same fragment, not moduleHere properties.
+dev_docs/agents/transcripts/rectsl_spacetime_path_trace.yaml	keep	2	0	RectSL-to-spacetime study makes sampling, boundary closure and native geometry measurable before path tracing.
+dev_docs/agents/transcripts/remotear_scene_motion.yaml	revise	1	1	Remove internal roadmap numbering from the scene section comments.
+dev_docs/agents/transcripts/remotear_start.yaml	keep	1	0	Minimal KotlinJS lifecycle example makes replacement and cleanup explicit.
+dev_docs/agents/transcripts/rewrite_strategies_demo.yaml	keep	9	0	All nine rule/strategy bodies pair a minimal transform with a concrete expected result; their create and execute copies are intentionally exact duplicates.
+dev_docs/agents/transcripts/rr_plumbing.yaml	revise	4	1	Make reconstruction guide conversion readable and explicit about units.
+dev_docs/agents/transcripts/rtp_midi_demo.yaml	revise	3	1	All three MIDI boxes read; same-port sharing is confirmed in RtpMidiBox API, so peer reuse is intentional.
+dev_docs/agents/transcripts/shared_types_demo.yaml	keep	4	0	Keep the four-box shared-type demonstration.
+dev_docs/agents/transcripts/simdverlet_world.yaml	keep	4	0	All four scenes use the intended explicit physics API, lifecycle-owned loop result and coordinate explanations. The top-view adapter is an already-approved API follow-up, not a new defect or proposal.
+dev_docs/agents/transcripts/simulation_clock.yaml	revise	3	4	All three bodies demonstrate structured simulation ownership correctly. The main teaching body needs readable coroutine and SVG layout plus intent comments; its raw cleanup publication can use a typed property, while the separate assertion body is justified introspection.
+dev_docs/agents/transcripts/skinned_characters.yaml	revise	10	2	Make the editable crowd count safe for one instance and remove obsolete renderer prose.
+dev_docs/agents/transcripts/skinned_volume_path_trace.yaml	keep	2	0	Both renderer and posed-solid-trace bodies read with graph context. Actual skinning→Manifold→mesh→pathtrace pipeline preserves native scopes and explains coordinates.
+dev_docs/agents/transcripts/slideshow_guide.yaml	revise	3	1	Publish slideshow counters through typed properties and explain the existing fragment.
+dev_docs/agents/transcripts/smpte_timecode.yaml	keep	4	0	Keep the noisy timecode roundtrips and external-clock simulation.
+dev_docs/agents/transcripts/solidcraft_intro.yaml	keep	1	0	Keep the explicit native-availability and before/after CAD comparison.
+dev_docs/agents/transcripts/solidsl_gallery.yaml	keep	3	0	Three SolidSL studies expose geometry controls before evaluation, distinguish independent cross-checks from shared-field consistency, and explain exact versus marched paths.
+dev_docs/agents/transcripts/solidsl_inverse.yaml	revise	3	1	SolidSL inverse study makes structural binding, gradient checks, recovered geometry and refusal cases concrete.
+dev_docs/agents/transcripts/solidsl_notation.yaml	revise	2	1	Both bodies expose useful shape controls and distinguish symbolic queries from native meshing. Correct the bore-radius editing instruction; its claimed bore intersection does not follow from the authored dimensions.
+dev_docs/agents/transcripts/sonicpi_pattern_demo.yaml	keep	3	0	All three Sonic Pi bodies read with context. Source lowering, owned playback and live per-event scheduling are intentionally different routes.
+dev_docs/agents/transcripts/sorting_networks.yaml	revise	4	1	Four sorting studies expose topology/disorder/annealing controls. The styled panel helper manually builds an existing rectangle primitive.
+dev_docs/agents/transcripts/sound_path_map.yaml	keep	2	0	Both sound-path bodies read; one reports source registry, one renders a real offline comparison.
+dev_docs/agents/transcripts/sound_render_path.yaml	revise	5	1	All five sound-render path boxes read with comparison context. Explicit synth/sample/fallback cases are educational; one cross-reference points at the wrong numbered boxes.
+dev_docs/agents/transcripts/spatial_geometry_examples.yaml	revise	7	2	Seven spatial lessons compare real topology, weighted boundaries, contour edge cases and clustering, with a few overstrong structural/metric explanations.
+dev_docs/agents/transcripts/spectral_examples.yaml	keep	5	0	All five spectral bodies read in full, including FFT/STFT/Mel/resonator/filter paths. Synthetic chirp+tones are explicit test inputs and results computed.
+dev_docs/agents/transcripts/spin_glass.yaml	revise	8	2	Read all eight Kotlin/GLSL bodies plus graph and launch order. Existing generated push bindings and barriers are deliberate. Add the even-size contract and distinguish buffer rebuilds from live controls; retain the three already-approved helper follow-ups.
+dev_docs/agents/transcripts/splat_sequence_streaming.yaml	revise	1	1	Whole splat streaming body read. Top creative controls, coordinate/color conventions and fragment playhead gestures are unusually explicit.
+dev_docs/agents/transcripts/stacksl_evolve_studio.yaml	keep	1	0	Keep the compact evolution studio entry point.
+dev_docs/agents/transcripts/stacksl_fit_demo.yaml	revise	3	1	Correct decimal precision wording in the source-roundtrip explanation.
+dev_docs/agents/transcripts/stacksl_gallery.yaml	revise	7	1	All seven distinct gallery bodies and occurrence context read; repeated copies intentionally share source but each slot/program/property stays its own box.
+dev_docs/agents/transcripts/staged_project.yaml	revise	5	1	Staged-project tutorial exposes authority, guarded edits, measured builds, a qualified rule and seeded corpus; corpus worker lacks run cancellation ownership.
+dev_docs/agents/transcripts/statistics_examples.yaml	revise	5	2	All five bodies read. Statistical checks are deliberately independent and should stay explicit. Correct a sine-cycle label and distinguish xi threshold crossing from the dCor-specific null threshold; several helper reductions are already approved but absent in current source.
+dev_docs/agents/transcripts/stipple_sheet.yaml	revise	1	1	Use the existing FLine path-start idiom for each warped lattice row.
+dev_docs/agents/transcripts/stippling.yaml	keep	2	0	Keep the two stippling approaches and editing hints.
+dev_docs/agents/transcripts/streaming_diffusion.yaml	keep	3	0	All three streaming diffusion bodies read with renderer graph. Actual availability path, clock-delta animation and pending reset controls are explicit.
+dev_docs/agents/transcripts/studies_rings.yaml	revise	3	1	All three study bodies read. Raw persisted text initialization is a normal source property, but local rings name also denotes study handle, making a direct prop rewrite need care.
+dev_docs/agents/transcripts/syphon_bridge.yaml	revise	3	1	Retain the three-part Syphon example, but make native client lifetime follow its launched box before teaching repeated receive launches.
+dev_docs/agents/transcripts/syphon_gpu.yaml	keep	6	0	All six distinct bodies, shared vertex occurrence and graph context read. GPU publish/receive show real format/orientation contracts.
+dev_docs/agents/transcripts/syphon_zero_copy_receive_smoke.yaml	revise	4	1	All four smoke bodies read. Real native producer changes size, shader samples exact texels and CPU readback validates actual colors/copy counters.
+dev_docs/agents/transcripts/three_inspector_wall.yaml	keep	1	0	Keep the explicit inspector wall and editing gestures.
+dev_docs/agents/transcripts/threebox.yaml	revise	6	2	The graph uses typed inherited buffer publication and generated bindings, but the compute dispatch truncates 100000 particles to 99968 writes; GLSL expressions also hide the transformation in long repeated indexing.
+dev_docs/agents/transcripts/tone_synth_sequence.yaml	keep	2	0	Keep the Tone.js lifecycle example.
+dev_docs/agents/transcripts/two_box_context.yaml	keep	2	0	The smallest parent/child typed-property example already teaches the intended Field idiom.
+dev_docs/agents/transcripts/typography_worked_example.yaml	revise	8	2	Read all eight bodies and launch/replay context. The contour, raster/vector, mesh and SDF cross-checks explain the APIs well. Make kinetic text output cadence explicit for live use and remove an overbroad kerning claim. Preserve logical font choice for portable typography comparisons.
+dev_docs/agents/transcripts/vision_geometry_animated.yaml	keep	1	0	The KotlinJS body clearly contrasts per-frame geometry rebuilding with uniform animation; preserve the small worked helix.
+dev_docs/agents/transcripts/vision_geometry_desk_preview.yaml	keep	2	0	Both JVM preview bodies and all embedded head KotlinJS code read. Real compiler/Node execution and inverted-winding counterexample are explicit.
+dev_docs/agents/transcripts/vision_geometry_heightfield.yaml	revise	1	1	Entire head heightfield body and paired shader context read. Clear geometry units/winding; normal comment miscounts height evaluations.
+dev_docs/agents/transcripts/vision_geometry_shapes.yaml	keep	1	0	Shape tour clearly stages geometry and frame uniforms under KotlinJS head lifecycle callbacks.
+dev_docs/agents/transcripts/vision_metal_cube.yaml	keep	1	0	JVM visionMetal publication body and launch context read; this explicitly teaches built-in geometry rather than KotlinJS-generated geometry.
+dev_docs/agents/transcripts/visionos_start.yaml	keep	1	0	Head KotlinJS body and full paired MSL property read. Clear comments explain launch versus shader-only hot reload.
+dev_docs/agents/transcripts/viz_showheatmap.yaml	revise	4	1	Keep all four direct visualization examples; remove the historical aside from the spectrogram comment.
+dev_docs/agents/transcripts/wfc_worked_example.yaml	revise	8	1	Read all eight finite WFC bodies and transcript execution context. Preserve intentionally pure helpers and typed compiler workarounds; expand the dense trace-pixel drawing statements so socket symmetry is visible. No lifecycle changes needed.
+dev_docs/agents/transcripts/youtube_kaleidoscope.yaml	keep	2	0	Both renderer and kaleidoscope bodies read, including embedded Chromium script. Readiness/playback/audible states are explicitly separated.
+dev_docs/agents/transcripts/youtube_mouse_keyboard_browser.yaml	keep	2	0	Both desktop browser bodies read with launch graph; direct window input and upload ownership are clearly separated.
+dev_docs/agents/transcripts/youtube_vr_browser.yaml	revise	2	1	Both browser VR bodies read with renderer and native-platform context. Pipeline/input dependencies are clear; preamble import comment is stale relative to known fixed behavior.
+dev_docs/ai/ai4_sees_its_output_demo.yaml	keep	7	0	Keep the intentionally broken visual-evaluation fixtures.
+dev_docs/ai/in_field_agent_demo.yaml	keep	2	0	Both agent-goal bodies read with transcript description; scripted tool execution and live provider path are explicitly distinguished.
+dev_docs/assets/headless_browser/headless_browser_table.yaml	revise	1	1	Complete headless-browser fixture and full capture metadata read. Real delayed DOM row and numeric extraction are explicit; process closes in finally after successful constructor.
+dev_docs/assets/splat_cpu_raster/splat_cpu_raster.yaml	keep	1	0	Keep the CPU splat editing workflow and explicit fallback.
+dev_docs/assets/stacksl_volumetric_noise/stacksl_volumetric_noise.yaml	revise	1	2	CPU reference noise comparison is concrete, but the curl-density explanation and workload estimates need correction.
+dev_docs/graphics/slug-prototype/code.kt	revise	1	1	Explain the existing fragment boundary before editable Slug rendering.
+dev_docs/kotlinjs_live_test.yaml	revise	2	1	Rename the ring sum variable to match its calculation.
+dev_docs/nesting_edge_demo	revise	4	1	Keep the deliberate graph diagnostic escape hatch, but guarantee restoration.
+dev_docs/spatial_pointer_demo.yaml	keep	2	0	Both spatial pointer bodies and graphless CPU scene context read. Manual model duplicated for independent slider and click examples, with consistent camera inverse and named parts.
+dev_docs/viz_demo.kt	keep	1	0	Keep the value visualizer type-coverage study.
+optional/kratos/examples/cuboids.kt	keep	1	0	Keep the asynchronous Kratos cuboid study.
+optional/streamdiffusion/examples/capture-motion.kt	revise	1	1	Check every capture future before declaring the motion comparison complete.
+optional/streamdiffusion/examples/spinning.kt	keep	1	0	Keep stable renderer/demo captures and owned streaming teardown.
+optional/transport-flow/examples/stipple_sheet.kt	revise	1	1	Whole stipple-sheet example read; controls expose transport/movie/integration separately and canonical coordinates preserve identity.
+public/docs/afield_four_graphics.md	revise	57	4	All 57 bodies read, including partial stage excerpts and templates. Fix the streamer initializer syntax and compute dispatch coverage; improve fragment prerequisite comments. Keep declared capacity underestimation in Slang example because prose explicitly teaches automatic resizing.
+public/docs/agent_transcripts.md	keep	7	0	All seven assigned bodies and their fence neighborhoods read; each is a hidden macro-capture comment, not executable teaching code.
+public/docs/ai4_chat_archive.md	keep	5	0	Keep the archive API tutorial fragments.
+public/docs/ai4_experiments.md	revise	1	1	The fence is an intentionally abbreviated tool definition, but cross-box paint access teaches unchecked property casts where a typed convention would help.
+public/docs/ai4_live_iframe.md	keep	1	0	Keep the direct iframe opt-in example.
+public/docs/ai4_long_builds.md	revise	1	1	The long-build example matches its sixty-billion-sample purpose; cancellation needs a smaller checkpoint than an entire billion-point batch.
+public/docs/ai4_painting.md	keep	3	0	Keep the three contextual painting-extension excerpts.
+public/docs/aiFeatures.md	keep	10	0	Keep the contextual AI tool, extension and state examples.
+public/docs/alife_examples.md	revise	28	2	All 28 bodies read. Seeded controls, fixed color ranges and step schedules are unusually explicit and should be preserved; localized control layout and selection-intent comments would improve editing.
+public/docs/animation_time_model.md	revise	20	1	All 20 bodies read: user loops, geometry capture, timing traces, generators and intentionally abbreviated scheduler excerpts. Replace manually drawn rectangle/disc with existing shape helpers, preserving polygon segmentation if appearance requires it. Keep captured-clock frame semantics and explicit cancellation demonstrations.
+public/docs/aperture_playground.md	keep	1	0	Assigned body is one hidden native-capture driver comment. Full page explains renderer and resource execution order.
+public/docs/ar_reference.md	keep	3	0	Kotlin launcher, iframe alternative and KotlinJS scene have distinct roles and useful lighting setup.
+public/docs/assets/ai4_chat_archive/demo	keep	4	0	Keep the archive reader and lens viewer examples.
+public/docs/assets/ai_tool_demo	revise	2	1	Preserve existing geometry search roots in the tool tutorial.
+public/docs/assets/brief_house_demo	keep	1	0	Keep the weighted-constraint plan experiment.
+public/docs/assets/canonical_graphics	revise	103	6	All 103 distinct canonical graphics bodies were read, including generated preambles; authored samples need portability, dispatch and shader-contract repairs.
+public/docs/assets/dmx_lighting_demo	keep	4	0	All four DMX sidecars read; actual Art-Net/sACN loopback and virtual fixtures are clearly separated from external hardware.
+public/docs/assets/evolve/variety-evolution.operations.yaml	keep	1	0	Keep the deterministic novelty search example.
+public/docs/assets/fieldml_frames_demo	keep	1	0	Keep the explicit Kotlin bridge scaffold.
+public/docs/assets/fieldml_macro_module_demo	revise	1	1	Refreshed group has one Kotlin renderer scaffold body; FieldML siblings are out of target language. Setup clear but comments narrate dated bridge implementation history.
+public/docs/assets/fieldml_mesh_demo	keep	1	0	Keep the minimal renderer scaffold adjacent to FieldML.
+public/docs/assets/fline_examples	revise	38	2	The 38 FLine bodies are readable demonstrations, but repeated absolute screenshot tails and a hand-built target circle add avoidable ceremony.
+public/docs/assets/four_in_output_areas/rtt-view_fragment_.glsl	keep	1	0	Keep the small output-area diagnostic shader.
+public/docs/assets/four_in_output_areas/rtt-view_vertex_.glsl	revise	1	1	Whole RTT vertex body read with the four_in_output_areas page bindings. Matrix push names and reused finalColor offset are compact but surprising.
+public/docs/assets/function_conversation/FunctionStudyTools.kt	keep	1	0	Keep this library-source attachment as implementation context, not box idiom debt.
+public/docs/assets/function_conversation/final.kt	keep	1	0	The single saved composition exposes all timing and pulse controls up front, names stable event identities, and retains the study's requirement/assumption record as intentional metadata.
+public/docs/assets/functions/chebyshev-waveshaper.operations.yaml	keep	2	0	Both bodies show the existing first-class Chebyshev transform through explicit comparable plots, with a separate variable-order sweep and noise input.
+public/docs/assets/functions/waveshape-transforms.operations.yaml	keep	1	0	Single waveshape transfer-curve body read with operation context. Distinct transfer plots and a composed chain clearly teach value-domain transforms.
+public/docs/assets/functions/waveshaper-family-evolvable.operations.yaml	keep	1	0	Keep the waveshaper transfer and rewrite comparison.
+public/docs/assets/mesh_repair_demo	keep	3	0	Keep the mesh diagnosis/repair demonstration.
+public/docs/assets/mqtt_demo	keep	4	0	All four MQTT sidecars read; clear separation of simulated publishers, subscription, history plot and retained configuration.
+public/docs/assets/opendlssnr/OpenDlssNrStudy.kt	revise	1	1	Public editable native-NR study has clear resource ownership structure but dense setup and a stale-instance screen removal risk.
+public/docs/assets/opendlssnr/compare.frag	revise	1	1	Document the packed comparison dimensions beside their push declaration.
+public/docs/assets/opendlssnr/cubes-record.kt	keep	1	0	Recorder preserves scene time and uses frame-by-frame asynchronous GPU capture with finally cleanup; parent study owns animation restoration.
+public/docs/assets/opendlssnr/cubes.frag	revise	1	1	Expand the dense fragment shader and identify its lighting spaces.
+public/docs/assets/opendlssnr/cubes.kt	keep	1	0	Keep the explicit own-property reads pending the mechanical pass.
+public/docs/assets/opendlssnr/cubes.vert	revise	1	1	The vertex shader generates an entire temporal test scene, but packed push vectors and compressed motion/projection code hide the coordinate and temporal contracts.
+public/docs/assets/opendlssnr/example.kt	revise	1	1	The image study already uses typed publication, controls and a frames finally block, but it repeats renderer lookup despite the documented parent renderer contract.
+public/docs/assets/opendlssnr/open_dlss_nr.yaml	revise	5	2	Five bodies provide a real editable GPU study and asynchronous recording; teach normal inherited shader properties and explain the shader interface.
+public/docs/assets/opendlssnr/open_dlss_nr_cubes.yaml	revise	5	2	Five bodies provide editable neural-cube shaders, live grade controls and bounded recording. Raw shader-property reads and densely packed shader math obscure normal Field APIs and coordinate stages.
+public/docs/assets/opendlssnr/record.kt	revise	1	1	Recording script and study animate/time state source read. Capture sequencing is explicit but it fails to restore the prior animation toggle.
+public/docs/assets/opendlssnr/study.frag	keep	1	0	Keep the shader stages and intent comments; expand dense mathematical expressions mechanically.
+public/docs/assets/opendlssnr/study.kt	keep	1	0	Keep the own-box shader reload and captured study ownership.
+public/docs/assets/opendlssnr/study.vert	revise	1	1	Add one coordinate explanation for the full-screen triangle.
+public/docs/assets/oscquery_demo	keep	6	0	All six published sidecars exactly match the reviewed OSCQuery transcript bodies, and retain the same clear setup and lifecycle conventions.
+public/docs/assets/rectsl_conversation/RectSLStudyTools.kt	keep	1	0	Packaged RectSL study-tool implementation is readable as schema/adapter code, with explicit focus and revision guards.
+public/docs/assets/rectsl_gallery	revise	41	2	Read all 41 distinct bodies. Embedded RectSL programs are well grouped, but repeated Kotlin rendering scaffolding contains two obsolete forms; a supported wall projection would reduce repetition.
+public/docs/assets/rtp_midi_demo	keep	3	0	Retain the local network round trip with explicit ports, note durations and callback examples.
+public/docs/assets/solidsl_gallery	revise	4	4	Read the one-line AGENTS example and all three complete SolidSL lesson sidecars. Preserve their symbolic shape controls, exact-versus-marched distinction and generated GLSL demonstration. Hoist field lowering out of the dense sampler, teach the existing native scope, and qualify what the comparison actually measures.
+public/docs/assets/sonicpi_pattern_demo	keep	3	0	Keep the three Sonic Pi pattern paths.
+public/docs/assets/stackauto_conversation/StackAutoStudyTools.kt	keep	1	0	This linked source asset defines the study tool protocol and adapter, rather than a runnable box. Its verbose schemas carry tool behavior and evidence requirements.
+public/docs/assets/stackauto_conversation/polytope/final-code.kt	keep	1	0	The final polytope code preserves explicit topology-derived triangle fans and independently editable StackSL slots; no source-grounded behavior fix is established by this review.
+public/docs/assets/stacksl_conversation/StackSLStudyTools.kt	keep	1	0	The single complete packaged library source was read. This is a published implementation reference, not a box script. Keep library startup registration, strongly typed request schema and adapter code; do not apply implicit-box shortening or per-run teardown to it.
+public/docs/assets/stacksl_cpu_demo	revise	2	1	Correct the feedback iteration comment while preserving the real CPU shader path.
+public/docs/assets/stacksl_fit_demo	revise	3	1	Three CPU StackSL fit examples show literal wires, optimization and the emitted-source round trip with real rendered differences.
+public/docs/assets/stacksl_gallery	keep	7	0	Keep shared StackSL host shaders and explicit feedback lifetime.
+public/docs/assets/stacksl_surrogate_demo	revise	3	2	The three controlled surrogate experiments expose seed/target settings and display actual CPU renders. Two comments carry conversation history or describe output that the code does not print.
+public/docs/assets/stipple_transport/stipple_sheet.kt	revise	1	1	Use the existing FLine path-start helper for warped lattice rows.
+public/docs/assets/three_mesh_pick_demo	revise	2	1	Trim historical narration from the mesh measurement instructions.
+public/docs/assets/three_output_gallery	keep	5	0	Five saved scene lessons explain shared WebGL viewports, renderer differences and winding with real computed geometry.
+public/docs/assets/transcripts/document_history_setup.yaml	revise	1	1	Correct the capture setup comment to match the saved code.
+public/docs/assets/transcripts/drawn_score_hero_setup.yaml	keep	1	0	Three-line drawing-layer hero setup read with capture context; semantic coordinate conversion is correctly explicit.
+public/docs/assets/transcripts/funfeatures_tour_setup.yaml	revise	2	1	Small UI fixture is fine, but its ring comment calls scalar angles points.
+public/docs/assets/transcripts/greeter_macro.yaml	keep	1	0	Keep the single println body used to populate the greeter macro palette capture.
+public/docs/assets/transcripts/layers_setup.yaml	keep	1	0	Keep the single layers-panel invocation.
+public/docs/assets/transcripts/qualified_sources_approval.yaml	revise	1	1	Full approval capture body, embedded Kotlin rule and capture description read. Human approval remains an actual pending-proposal step, but raw background thread outlives box run.
+public/docs/assets/transcripts/stackauto_numbers_setup.yaml	keep	3	0	All three bodies read with renderer-parent capture setup. Fullscreen triangle shader and StackSL slot binding are explicit.
+public/docs/audio_ai_analysis.md	revise	1	1	Complete asynchronous analysis fence read and FieldAudioClient.watch implementation inspected. Multi-job progress is useful, but returned WebSocket handles are dropped.
+public/docs/audio_ai_codec.md	keep	1	0	Keep the hidden static microscope capture that loads real committed reconstruction artifacts through CodecVisualization.
+public/docs/audio_ai_corpus_microscope.md	revise	3	2	All three bodies read with corpus indexing/query context. Archive preview is concrete data loading; query example lacks an established nancy binding and progress watchers need lifecycle ownership.
+public/docs/audio_ai_gesture_board.md	keep	2	0	The typed board and request are readable as a sketch followed by generation; retain curve-point rows as authored data.
+public/docs/audio_ai_muscriptor.md	revise	3	2	The futures chain avoids blocking and names transcription options clearly, but the follow-on notes snippet uses a result that the preceding code keeps only inside a callback. Ongoing callbacks also need a stop/rerun ownership check.
+public/docs/audio_ai_spectral_embeddings.md	revise	2	2	Both spectral bodies and page context were read. Keep real cached artifact projection and explicit ambiguity handling. Consolidate the already-identified durable-analysis adapter and bind asynchronous work to the current run.
+public/docs/audio_ai_speech_embeddings.md	revise	2	1	Own speech-analysis progress subscriptions and completion publication.
+public/docs/audio_ai_underfit_mancini.md	keep	1	0	Only assigned body is a hidden capture-driver comment; page context names the archive transcript and retained GPU media.
+public/docs/audio_render_analysis.md	keep	5	0	Keep the render-and-analyse page sketches and real archived captures.
+public/docs/autodiff_examples.md	revise	6	1	Autodiff lessons retain genuine independent gradient checks and solver comparisons; drawing scaffolding can use existing shape helpers.
+public/docs/automating_field.md	keep	1	0	One-line println embedded in YAML is deliberately the smallest transcript payload.
+public/docs/boolean_network_music_examples.md	keep	9	0	Keep deterministic Boolean-network note scheduling.
+public/docs/boolean_networks_examples.md	revise	4	1	Use existing FLine rectangle and first-point helpers in plot scaffolding.
+public/docs/box_output.md	keep	4	0	Keep the output-channel examples.
+public/docs/capture_limits.md	keep	1	0	Capture probe intentionally uses known dimensions and a unique completion breadcrumb.
+public/docs/chain_ca_sound.md	keep	7	0	Keep the checked cellular-automaton rhythm derivations.
+public/docs/chain_ceres_manifold_contours.md	keep	4	0	Keep the source: all four bodies use explicit geometry experiments, scoped native ownership and well placed mathematical commentary. A slice visitor is an optional API consolidation, not a required rewrite.
+public/docs/chain_drawn_morph.md	revise	8	1	All eight morph page bodies read. Notation source→resampling→matching→spread→pitch pipeline is explicit, with real measured travel and offline audio.
+public/docs/chain_drawn_paint.md	revise	8	1	Eight paint/notation bodies explain their material and pressure choices well. The lower helper manually rebuilds a translated mark and the meadow action construction is difficult to scan.
+public/docs/chain_drawn_score.md	keep	7	0	Keep the score-reading page examples.
+public/docs/chain_fn_sound_roundtrip.md	keep	6	0	The six bodies explain the per-sample versus per-block bridge clearly and keep the analysis and viewer setup separate. No source revision is warranted from this review.
+public/docs/chain_lambda_sound.md	keep	7	0	Keep the checked lambda-reduction sound derivations.
+public/docs/chain_life3d_render.md	keep	3	0	Keep the occupancy/Manifold census and spacing sweep.
+public/docs/chain_pattern_particles.md	revise	9	1	All nine page bodies read with audio/render/capture context. Good separation of offline wave analysis and live inherited band snapshots; repeated visual gain should be a named editable value.
+public/docs/chain_petri_sculpture.md	keep	4	0	Keep explicit Petri reduction and sculpture mapping sketches.
+public/docs/chain_petri_sparks.md	keep	7	0	All seven Petri chain bodies read with graph, sound and particle encoding context. Good separation of symbolic timing and shader motion.
+public/docs/chain_photo_to_solid.md	keep	4	0	The body demonstrates a deliberate refusal and the valid relief alternative; remaining bodies delegate actual captures to transcripts.
+public/docs/chain_physics_render.md	keep	5	0	Focused pipeline excerpts retain explicit cloth placement and existing bulk solid/mesh bridge helpers.
+public/docs/chain_polytope_render.md	keep	5	0	Keep topology-lineage materials and the scoped shell measurement.
+public/docs/chain_rectsl_spacetime.md	keep	3	0	Read all three bodies, their runner directives and surrounding page. The first body is intentionally a comment linked to a macro-file capture; the second is a schematic sampling bridge and the third is the real computed readout. Preserve that distinction and the real geometry measurements.
+public/docs/chain_scene_to_light.md	revise	5	2	The scene/network/aliasing examples make their coordinate and averaging choices clear. The one-shot transport example should fail visibly if its bounded receive wait expires.
+public/docs/chain_skinned_volume.md	keep	3	0	All three skinning-volume bodies read. Real posed mesh→Manifold volume and independent signedVolume are measured rather than fixed capture strings.
+public/docs/chart.md	revise	8	1	Make the final DataFrame chart call use the frame declared in its example.
+public/docs/colors_examples.md	revise	2	2	Palette examples are well scoped; use existing rectangle and first-point helpers to keep geometry ceremony out of color teaching.
+public/docs/completion_ranking.md	keep	4	0	All four completion-ranking bodies read in source context. Class excerpt and Ramp ellipses are intentional reference sketches; computed table is actual runtime introspection.
+public/docs/computed_ray_geometry.md	keep	3	0	Keep the cluster-geometry shader and integration excerpts.
+public/docs/csound.md	revise	4	2	Csound examples explain both data directions well; callback registration needs ownership and offline measurement prose exceeds shown computation.
+public/docs/dataframe.md	revise	7	1	Seven bodies retain the authored tabular rows and clear typing/rendering examples; add an in-code explanation of the existing schema-generation fragment boundary.
+public/docs/datalog.md	revise	8	1	The eight bodies are coherent incremental Datalog lessons with self-contained data and deliberate detached graph fixtures. Make label-generation failure visible in the final graph figure.
+public/docs/diff-player.md	revise	6	1	Keep an inner frame yield in both after examples of trigger drawing.
+public/docs/direct_lighting.md	revise	2	1	The light experiment is readable, but its initial snippet omits lifecycle cleanup and delegates it to prose.
+public/docs/dmx_lighting.md	keep	12	0	Keep the DMX progression from channels to mapped fixtures.
+public/docs/document_on_disk.md	keep	2	0	These are quoted persistence implementation excerpts, not executable box programs.
+public/docs/dough_dsp_sound.md	keep	7	0	All seven distinct bodies and six audio-driver copies read. Each graph is built fresh and rendered offline for measured visual/audio comparison.
+public/docs/drawing_and_notation.md	keep	8	0	Keep the notation read/write/react/score examples.
+public/docs/dynamic_graph_systems_examples.md	revise	6	1	Dynamic graph lessons show topology, decay, hysteresis, moving metrics, growth ablation and static snapshots; common reinforcement-budget claim is inaccurate.
+public/docs/fabricate_renderer.md	keep	24	0	The 24 bodies serve as a renderer API tour and parameter fragments, with capture-harness context supplied by the page. Scene setup, material edits and post-effect stages remain easy to identify.
+public/docs/faust.md	keep	8	0	Retain the concise Faust examples, their control declarations and final launch expressions; the invalid oscillator is intentional diagnostics teaching.
+public/docs/field_audio_ai.md	revise	2	1	Both asynchronous generation examples read with service prerequisites and request semantics. Creative controls are visible, but completion callbacks have no visible rerun ownership.
+public/docs/field_probes.md	revise	17	5	Read all seventeen bodies plus full page context. Several fences are intentional API sketches, but the chained probe example loses its handle, stats alternatives conflate nullable and blocking reads, the complete-looking final box lacks its producer shader context, and particle dispatch truncates the advertised count. Keep behavior concerns distinct from math/layout cleanup.
+public/docs/files_and_paths.md	keep	10	0	All ten file-management excerpts read with page contexts. Small examples deliberately cover aliases, creation, roots, globs and executable registrations.
+public/docs/first_steps.md	keep	1	0	Keep the hidden runner comment: native setup is delegated explicitly to first_graphics_native.yaml.
+public/docs/fline_examples.md	revise	105	3	All 105 bodies read, including API signature sketches. Reuse drawing helpers in incidental setup while retaining explicit paths where path construction itself is the subject.
+public/docs/flow_grain.md	revise	4	1	The tile and include sketches are clear; the object-history sketch should show the camera capture required to make its allow gate true.
+public/docs/flow_matching.md	revise	7	1	All seven bodies connect model fitting, paired transport and measured error clearly. Two line-building helpers should use the existing FLine data API instead of hand-written first-point branches; preserve all diffstatic controls and fold boundaries.
+public/docs/fn_intervals.md	keep	3	0	All three real interval-analysis bodies read with page context. Narrow-bump example and table distinguish sampled values from certified bounds/refusals.
+public/docs/forth_examples.md	keep	1	0	Explicit reverse stack pops and stack effect document the Forth-to-Kotlin bridge clearly.
+public/docs/four_in_output_areas.md	keep	1	0	Keep the explicit small RTT mesh example.
+public/docs/funFeatures.md	keep	18	0	Keep the feature sampler and explicit timeline controller.
+public/docs/function_conversation.md	keep	8	0	All eight bodies read. Keep the recorded starter, revision excerpts and final pure composition: named timing controls, stable event identities and separate background/event clocks make edits inspectable. The long choices list intentionally preserves superseded decisions, as the surrounding source explains.
+public/docs/functions_domains.md	keep	8	0	Keep the explicit finite/unbounded domain comparison.
+public/docs/functions_examples.md	revise	246	4	All 246 function bodies were read: concise API catalog and richer figures mostly work as teaching units, with repeated drawing scaffolding and several misleading/unused demonstration values.
+public/docs/gaussian_process_optimization.md	revise	5	2	All five GP optimization page bodies read with continuation/reference contexts; matching demo copies independently read earlier.
+public/docs/gaussian_processes.md	revise	19	1	All 19 bodies read. Keep explicit posterior/sampled-path semantics, shared color scales and coordinate flips. Replace repeated first-point path branching with the existing breakNext helper; retain covariance math as a useful explanation rather than inventing a new GP API.
+public/docs/geometry_from_disk.md	revise	9	1	Nine bodies use established mesh loaders, diagnosis and output helpers; qualify the File constructor in the final AI-tools snippet.
+public/docs/geometry_review.md	keep	2	0	Keep the review-surface creation and inbox read fragments.
+public/docs/gpu_schema.md	revise	9	1	All nine bodies are useful incremental schema examples. Keep the generated GLSL expansion and reflected bindings; improve the particle data rows mechanically while preserving their one-particle-per-row grouping.
+public/docs/gpu_shader_learning.md	keep	3	0	Keep the teacher shader and the two integration sketches.
+public/docs/gpu_state.md	keep	11	0	Keep explicit memory-access and ping-pong teaching fragments.
+public/docs/graph_connectivity_examples.md	revise	6	1	Reuse FLine path-start helper for the A-star route.
+public/docs/graph_query.md	keep	8	0	Keep the graph query and parameter-group examples.
+public/docs/imaging_examples.md	keep	7	0	Keep the image-processing pipeline examples.
+public/docs/interaction_nets_examples.md	revise	5	1	Five explicit reduction examples preserve meaningful before/middle/after states, but repeat the same framed comparison geometry and overview assembly.
+public/docs/interactive_guides.md	revise	5	2	All five slideshow bodies read with actual line-target/callback context. Box aliases are mostly unnecessary, but removing lines must rebase authored code highlights.
+public/docs/interpolants_examples.md	revise	7	4	All seven bodies read, including both duration-diff states and every folded legend. Keep the deterministic uneven clock, explicit retarget/restart comparison and authored colour rows. Replace repeated first-point branches with the existing FLine helper, share the duration control, and correct the linear-position comment. Two helper follow-ups are distinguished below.
+public/docs/keybindings.md	keep	1	0	Keep the live keybinding table example.
+public/docs/keyframe_autosweep.md	keep	2	0	Complete autosweep example separates the editable ten-lane scene, saved-key fixtures, sweep and archive display.
+public/docs/keyframe_editor.md	keep	11	0	Keep the keyframe editor API progression.
+public/docs/keyframer_examples.md	revise	16	2	Keyframe page covers values, typed lanes, uniforms, camera poses, persistence and code blending; shared temporary fixture deletion needs isolation.
+public/docs/kits.md	revise	6	1	All six excerpts read with kit/source/asset and runtime-identity context. Most are concise; roomRules parsing should use the normal typed property convention.
+public/docs/klecks.md	revise	2	1	Both painting snippets read with the complete page; concise setup and submitted-image access use the intended Klecks handle.
+public/docs/kotlin_in_the_head.md	keep	6	0	All six snippets read in head-profile contexts despite generic Kotlin fence labels. Lifecycle reference and remoteAR/Tone/visionmetal programs are distinct from JVM boxes.
+public/docs/kotlin_overview.md	revise	27	1	All twenty-seven Kotlin overview bodies read with fence neighborhoods. Syntax teaching intentionally uses explicit types, commented invalid cases and verbose equivalent forms.
+public/docs/learned_shader.md	keep	9	0	All nine excerpts and source neighborhoods read. Distinct teacher capture, training, learned output and editable material phases are well separated.
+public/docs/linear_algebra.md	keep	31	0	Keep all 31 small algebra illustrations.
+public/docs/logging.md	keep	7	0	Keep the concrete logging probes.
+public/docs/loris.md	revise	11	1	Guard Loris async outputs against obsolete runs.
+public/docs/manifold.md	revise	10	1	Manifold page teaches real native solids/sections, measurements, topology and resource scope; parallel equality claim exceeds its checks.
+public/docs/marf.md	revise	10	1	All ten MARF bodies and page neighborhoods read. Stages, patterned clocks, shared-bank readers and vector-valued paths are well compared; path builder repeats old first-point branching.
+public/docs/mesh_examples.md	revise	9	2	Mesh examples are organized around computed diagnostics, with two misleading marcher comments and an existing FLine construction idiom to consider.
+public/docs/mobile_controllers.md	keep	1	0	The sequencer snippet exposes its creative values, named control handles and time-based playheads clearly.
+public/docs/morpho_examples.md	revise	7	1	Remove unused growth windows and correct their misleading comment.
+public/docs/morpho_search.md	revise	3	1	All three Morpho search bodies read. Real compiler budgets, common seeds, generalization widths and explicit reference genome make search conclusions auditable.
+public/docs/movement_examples.md	revise	7	2	Correct the angle trace unit label and reuse path startup.
+public/docs/mqtt.md	keep	8	0	Keep the compact MQTT examples.
+public/docs/neural_particles.md	keep	13	0	All thirteen neural-particle bodies read with reference/pseudocode/capture contexts. Real export/particle APIs, correspondence diagram and learned-rule sketch are distinct.
+public/docs/neural_reconstruction.md	revise	2	1	Replace manual reconstruction disposal guidance with owned lifetime setup.
+public/docs/onnx.md	revise	5	1	Runnable ONNX image examples are well explained; the illustrative worker sketch should include its teardown contract.
+public/docs/open_dlss_nr.md	revise	14	4	All fourteen bodies read, including four complete shader stages, both full studies, renderer, recorder and abbreviated integration excerpts. Keep explicit graph setup, captured renderer/study ownership and finally cleanup. Revise raw shader reads, controls that duplicate their own initial values, and cube-shader readability. A fixed fragment camera position disagrees with the orbiting vertex camera and needs runtime confirmation.
+public/docs/optical_flow.md	keep	6	0	Keep the staged optical flow API sketches and explicit producer synchronization.
+public/docs/orca.md	revise	8	1	All eight bodies and page contexts read, including embedded JS operator patch. Live grid interplay is explicit; selected callback-registration snippets can accumulate listeners.
+public/docs/osc.md	keep	9	0	All nine bodies teach the actual OSC/TUIO behavior, including the intentionally persistent global handler lifetime. Preserve that caveat and the explicit lifecycle demonstration; optional owned registration is an API proposal.
+public/docs/oscquery.md	revise	8	1	The eight bodies use the intended OSCQuery ownership and control APIs. The discovery loop replaces its own output repeatedly, so only the final discovered service remains visible.
+public/docs/output_panel_sizing.md	keep	1	0	Keep the contrasting output-width capture scaffold.
+public/docs/output_requests.md	keep	1	0	Binding registration is intentionally minimal; surrounding prose supplies iframe ID handoff, ordering and lifecycle.
+public/docs/paint_canvas.md	revise	11	1	Eleven compact material demonstrations explain loading, wet/dry order and tool state. Two rectangular region constructions can use existing FLine helpers.
+public/docs/paint_gestures.md	revise	7	1	Use existing breakNext in the two spiral-oval builders.
+public/docs/paint_sweeps.md	revise	26	3	The 26 standalone folded examples expose each sweep correctly. Read the complete shared setup and every complete body delta; differences are the sweep values, settings and output paths. Improve the shared close discipline, multi-statement gesture layout and stale width comment without hiding each experiment behind another API.
+public/docs/particle_video.md	keep	3	0	Three compact examples introduce playback, queries and owned asynchronous tracking in their page context.
+public/docs/pat_spatial.md	keep	7	0	All seven bodies and their page contexts read. Four playable spatial examples plus three real audio-renderer markers cover direct sound, grouping, visualization and moving head.
+public/docs/patchy.md	keep	1	0	The Patchy box clearly connects a persistent painting session to typed AI tools and tests its own rectangle tool through the same named arguments.
+public/docs/path_traced_reconstruction.md	keep	3	0	These are scoped adapter and material-hook sketches, with ownership and scheduling prerequisites explained by surrounding prose.
+public/docs/path_tracing.md	keep	30	0	Path-tracing page uses short contextual API sketches and complete studies, plus real shader extension points.
+public/docs/pattern_language.md	keep	45	0	All 45 distinct bodies and 47 occurrence contexts are appropriate for this broad pattern-language page: tiny notation examples, generated preview calls, finite query/fit demonstrations, and a final return-value responder.
+public/docs/pattern_rewrite.md	keep	19	0	Read all 19 bodies and surrounding explanation. These are explicitly source-rewrite demonstrations, with illustrative unresolved names and multiple alternative strategy lines, rather than standalone runnable boxes.
+public/docs/petri_nets.md	keep	15	0	Petri page covers notation, patterns, invariants, policy versus reachability and live interaction with explicit computed evidence.
+public/docs/physics.md	keep	6	0	Six cloth experiments make solver scaling, instability, curvature and hidden miswiring measurable with matched initial sheets.
+public/docs/polytope_examples.md	revise	25	2	All 25 bodies read, including folded render helpers and the final illustrative last-expression list. The topology/realization distinction and real refusal examples are clear. Correct the hero comment that promises neutral seam colors although the implementation blends them; escape computed error text in markdown tables.
+public/docs/pressure_membranes.md	revise	1	1	The complete octahedron example is small, but the topology/material-coordinate construction needs one intent comment.
+public/docs/profiling_timeline.md	keep	5	0	Keep the profiling examples and concrete allocation line.
+public/docs/projection_examples.md	keep	4	0	Four complete numerical experiments expose their datasets and comparisons, explain the costly/ambiguous mathematical steps, and keep plotting folded away.
+public/docs/puppet_browser.md	revise	9	1	Demonstrate listener removal for repeatable browser event inspection.
+public/docs/pure_data.md	keep	9	0	Keep the Pure Data playback, message, control and offline examples.
+public/docs/python_cv.md	revise	2	2	Keep the typed shared camera and documented coordinate transform; correct empty-overlay behavior and use the existing mesh-in-module form.
+public/docs/qualified_sources.md	revise	5	1	Five bodies clearly demonstrate qualified rules and frozen fixtures; the proposal example starts an unmanaged waiting thread that should follow the box lifecycle.
+public/docs/ray_reconstruction.md	keep	1	0	Adapter snippet is a renderer integration sketch with essential outside-pass scheduling context.
+public/docs/ray_tracing_examples.md	keep	20	0	Ray tracing page clearly separates ABI sketches, incremental setup and complete harness-driven GPU captures.
+public/docs/reactive_properties.md	revise	6	1	Typed up/down properties and explicit supplier/read examples teach the right semantics; remove one unnecessary explicit box receiver.
+public/docs/reconstruction_plumbing.md	keep	9	0	All nine reconstruction excerpts read with page sequencing. They are connected pipeline pieces, not standalone boxes; producer order, jitter spaces and native size choice are explicit.
+public/docs/rectsl_cheatsheet.md	revise	5	1	All five Kotlin/GLSL bodies read with emission and SDF-use context. Generated GLSL excerpt intentionally elides tracks; one AA comment overstates fixed-width smoothing.
+public/docs/rectsl_conversation.md	keep	1	0	Keep the focused RectSL tool bridge.
+public/docs/rectsl_examples.md	keep	4	0	Keep the four contextual RectSL sketches.
+public/docs/rectsl_inverse_animation.md	keep	5	0	Keep the inverse-animation page examples.
+public/docs/rtp_midi.md	revise	6	1	The network/session API snippets are clear; the sending example should teach cancellable timing and note cleanup.
+public/docs/running_code.md	keep	19	0	Keep the macro/lifecycle reference examples and authored fragment markers.
+public/docs/slug_paths.md	keep	1	0	Single Slug API excerpt read with full lesson context and linked full example; dependency and ownership belong to the surrounding page.
+public/docs/smpte_timecode.md	keep	6	0	All six timecode bodies read with page context. Arithmetic, LTC distortion/decoding and MTC/clock routes are distinct real examples.
+public/docs/solid_notation.md	revise	18	1	All 18 bodies read, including signature/pseudocode and deliberately abbreviated output comments. Normal SolidExpr APIs teach backend/refusal and fitting clearly. Use scoped SolidBuild cleanup in runnable examples so failed conversion or rendering cannot bypass close.
+public/docs/solidcraft.md	keep	2	0	Optional native CAD use has explicit lifetime and shows measurements, welded display mesh and export separately.
+public/docs/sonic_pi.md	keep	11	0	Keep the Sonic Pi code and intentional asynchronous-error example.
+public/docs/sorting_networks_examples.md	revise	4	1	Retain the four sorting-network demonstrations and their authored configuration rows; use the existing rectangle helper in the topology panel.
+public/docs/sound.md	keep	5	0	Keep the event schedule and rendered audio comparison snippets.
+public/docs/sound_paths.md	keep	4	0	Keep signatures and commented audio-path sketches as explanatory fragments.
+public/docs/spatial_geometry_examples.md	revise	14	3	All 14 bodies read. Strong mathematical intent and fixed-window explanations; localized scaffolding simplification, layout cleanup and one stale fold label are warranted.
+public/docs/spectral_examples.md	revise	7	1	Use phase-integrated chirp in the streaming spectral example.
+public/docs/stackauto_conversation.md	keep	5	0	Keep the StackAuto slot excerpts and polygon-radius change.
+public/docs/stacksl_conversation.md	keep	1	0	Document-scoped tool extension snippet and surrounding registration explanation read; raw focused-property read is justified introspection here.
+public/docs/stacksl_evolve.md	keep	7	0	All seven StackSL evolution bodies read. Concrete budgeted examples distinguish blind search, watchmaker, literal fitting and score comparisons.
+public/docs/stacksl_examples.md	keep	11	0	The eleven bodies deliberately mix schematic GLSL signatures, low-level compiler use and a complete renderer-connected stack.auto setup; their surrounding context explains the dependencies.
+public/docs/stacksl_intervals.md	keep	4	0	All four bodies, embedded GLSL branch programs and capture contexts read. Real interval bounds are queried; generated tables retain refusal cases rather than inventing results.
+public/docs/state_estimation_examples.md	keep	6	0	State-estimation examples expose UKF models, latent velocity and a particle hypothesis bank without hiding the model assumptions.
+public/docs/statistics_examples.md	revise	6	2	Statistics page clearly separates empirical evidence and independent checks, but rolling xi uses a dCor-specific null threshold and a sine label has the wrong cycle count.
+public/docs/stipple_transport.md	keep	1	0	Short transport API sketch clearly separates transport time from movie time and keeps canonical particles.
+public/docs/streaming_diffusion.md	keep	3	0	All three diffusion excerpts read with surrounding hardware/support and ownership prose. Third is a provider skeleton, not a complete program.
+public/docs/studies.md	revise	13	1	Study page shows concrete revision/build contracts, but ordinary editable source setup repeatedly falls back to raw properties.
+public/docs/subharmonic_sound.md	keep	23	0	Keep offline tracker comparisons and shared tracked-phase analysis.
+public/docs/syphon.md	keep	4	0	Keep the four concise Syphon API illustrations.
+public/docs/tetgen.md	revise	6	1	TetGen examples preserve real source-surface diagnostics and solver comparisons, but obsolete manual chart clipping hides the convergence lesson.
+public/docs/three_output.md	keep	15	0	Fifteen scene examples cover meshes, lines, grids, turntables, inspections and renderer comparisons with readable domain helpers.
+public/docs/typography_examples.md	revise	10	1	Typography page uses contour, metric and topology comparisons effectively; ring drawing repeats an existing point-to-FLine idiom.
+public/docs/vision.md	keep	2	0	Both page bodies read with their specific contexts: headset KotlinJS geometry/uniform program and JVM pose-report call.
+public/docs/vision_geometry.md	keep	9	0	Nine bodies form a coherent Live Metal geometry progression with explicit units, topology and normals; retain the authored geometry math and distinguish headset source from JVM preview excerpts.
+public/docs/visualizers.md	revise	40	4	Read all 40 distinct fences, including symbolic API sketches, runnable capture fences, inline loops, controls, service-backed audio continuations and offline synth snapshots. Revise one existing-helper opportunity, raw-property teaching, mixed-preview refresh, and one dense timeline layout. Do not treat schematic prerequisites or static figures as tested behavior.
+public/docs/watercolor.md	revise	10	1	Replace repeated hand-built rectangle paths with the existing helper.
+public/docs/wfc_examples.md	revise	13	2	All 13 bodies read. The examples explain learned IDs, reset/pinning, contradiction and pixel-preserving rendering well. Revise the animation to make output cadence explicit and fix HTML line breaks embedded inside a literal report fence; preserve compiler-workaround types and authored rows.
+public/docs/why.md	keep	3	0	Keep the captured canvas caption and context explanation snippets.
+python/fieldcv/examples/shared_memory.yaml	revise	6	2	Six currently inventoried bodies plus the Python producer and language-root context read. Duplicated execution copies and Kotlin camera/overlay GPU consumers form a shared-memory example.
+python/fieldcv/examples/webcam_demo.yaml	revise	9	2	Read all nine distinct Kotlin/GLSL bodies, including the shared vertex body at both occurrences, plus the Python publisher and full renderer graph. The overlay leaves previous geometry visible when all detector channels become empty.
+src/jvmMain/resources/emptry_fragment.glsl	revise	1	1	Whole fragment resource read; short texture sample is retained, with a targeted comment needed for the nonstandard coordinate swap.
+src/jvmMain/resources/empty_vertex.glsl	keep	1	0	Whole default vertex shader read; small transform/UV stage is clear enough to retain.
+src/jvmMain/resources/nano_compute.glsl	revise	1	2	Nano compute VM is systematically organized by ISA, packing and flags; output capacity and byte-offset documentation need attention.
+src/jvmMain/resources/plain_fragment.glsl	revise	1	1	Tiny texture shader is readable except for an unexplained nonstandard coordinate swap.
+src/jvmMain/resources/plain_vertex.glsl	keep	1	0	Keep this small vertex shader; mechanical GLSL layout can normalize braces.
+templates/WORKSPACE_AGENTS.md	keep	1	0	One embedded macro-created println body read in full workspace guide context. It is a minimal launch/save example.
+templates/advanced_remote	needs-context	6	4	All seven bodies read. GLSL simplifications are concrete, but the L-system body is JavaScript stored as .kt with unclear runtime metadata; resolve classification before a Kotlin edit pass.
+templates/first-graphics	revise	4	2	Read both Kotlin and both GLSL bodies and metadata graph. This first graphics lesson has a sound renderer parent and simple attribute triangle; inconsistent indentation and an unused transform scaffold obscure the actual path. Existing moduleHere mesh construction can shorten the ceremony after preserving useful shader links.
+templates/first-steps	revise	1	3	The single first-steps body has a clear launch/edit workflow and readable ribbon geometry. Use the existing path-start helper and remove an obsolete Boolean tail from the Unit-valued loop; expose animation speed without changing its frame-based meaning.
+templates/h2-explorer-examples	revise	8	2	The adapters are demonstrated with short runnable bodies, but the FLine lesson asks readers to inspect a Close row that its path never creates.
+templates/remote	keep	1	0	Comment-only root explains the served RemoteJS head and conditional external asset mapping.
+templates/timeSlider	revise	2	1	Correct the exported property comment; keep explicit timeline crossing sets.
