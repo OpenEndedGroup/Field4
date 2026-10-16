@@ -535,10 +535,9 @@ shared set too.
 **`cloth.step(...)` steps the whole simulation.** It is a convenience for the common case where the
 cloth *is* the simulation. With other systems in the same `SimdVerlet`, drive it yourself.
 
-**A cloth is a contiguous index range and does not survive removals below it.** Its particles are
-`[base, base + count)`, and both the slots and the curvature sweep are written in those terms.
-`applyQueuedRemovalsSwap` compacts and renumbers. Appending particles after a cloth is fine; deleting
-particles from underneath one is not.
+**A cloth is a contiguous index range.** Its particles are `[base, base + count)`, and both the
+slots and the curvature sweep are written in those terms. Appending particles after a cloth is fine;
+`queueRemove` refuses a particle inside or below one, since removing it would renumber the cloth.
 
 Dragging goes through `grabNearest`, which installs a **PID position controller** on the nearest
 particle rather than teleporting it. The difference matters: a teleport moves one particle out of the

@@ -7,6 +7,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 
 /**
  * Covers [Cloth] — the grid wiring it puts into a [SimdVerlet.DirectedConstraints4], the
@@ -351,5 +352,15 @@ class ClothTest {
         sim.state.x[4] = Float.NaN
         sim.step(1f / 60f, 0.99f, -9.8f, 4)
         assertTrue(sim.diverged)
+    }
+
+    @Test
+    fun removingAParticleBelowAClothIsRefused() {
+        val sim = simWith(3)
+        val cloth = sim.addCloth(width = 3, height = 3, spacing = 0.2f)
+        sim.addZeroed(2)
+        assertFailsWith<IllegalArgumentException> { sim.queueRemove(1) }
+        assertFailsWith<IllegalArgumentException> { sim.queueRemoveRange(cloth.base + 2, 1) }
+        sim.queueRemove(cloth.end)      // above the cloth: fine
     }
 }

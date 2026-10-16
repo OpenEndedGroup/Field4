@@ -542,6 +542,7 @@ class Cloth private constructor(
                 name = name ?: "cloth@$base",
                 curvatureStrength = curvatureStrength
             )
+            sim.clothRanges += cloth.name to (base until base + width * height)
 
             if (curvatureStrength != 0f && width >= 3 && height >= 3) {
                 cloth.enableCurvature()

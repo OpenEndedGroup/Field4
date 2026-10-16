@@ -335,11 +335,29 @@ class SimdVerlet(
         state.resize(newSize, zeroNew)
     }
 
+    /** The index ranges of the cloths added to this simulation, by name; see [queueRemove]. */
+    internal val clothRanges = ArrayList<Pair<String, IntRange>>()
+
+    /**
+     * A removal compacts and renumbers the particles above it, which would leave a cloth's contiguous
+     * index range pointing at the wrong particles. So a removal inside or below a cloth is refused;
+     * remove particles above every cloth, or add the cloth last.
+     */
+    private fun refuseRemovalUnderCloth(lowest: Int) {
+        val hit = clothRanges.firstOrNull { (_, range) -> lowest <= range.last } ?: return
+        throw IllegalArgumentException(
+            "removing particle $lowest would renumber cloth '${hit.first}' (particles ${hit.second.first}..${hit.second.last}); " +
+                "only particles above every cloth can be removed"
+        )
+    }
+
     fun queueRemove(index: Int) {
+        refuseRemovalUnderCloth(index)
         state.queueRemove(index)
     }
 
     fun queueRemoveRange(start: Int, count: Int) {
+        if (count > 0) refuseRemovalUnderCloth(start)
         state.queueRemoveRange(start, count)
     }
 
