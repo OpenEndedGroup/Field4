@@ -74,9 +74,7 @@ class ImGuiVrPanelDemo(
     private val panelDistance = 1.5f
 
     fun build() {
-        // Eyes at the origin looking down +Z, up = +Y. With this pose the camera-right vector is +X,
-        // so world +X maps to screen-right and the ImGui text reads correctly (looking down -Z instead
-        // mirrors +X to screen-left, which flips the panel horizontally). The panel sits at z = +distance.
+        // Eyes at the origin looking down +Z, up = +Y. The panel sits at z = +distance and faces them.
         sbs.stereoCamera.base.at.set(0f, 0f, 0f)
         sbs.stereoCamera.base.target.set(0f, 0f, 1f)
 
@@ -137,10 +135,10 @@ class ImGuiVrPanelDemo(
         val uvs = floatArrayOf(0f, 0f, 0f, 1f, 1f, 1f, 1f, 0f)
         val indices = intArrayOf(0, 1, 2, 0, 2, 3)
 
-        // Place the panel `panelDistance` in front of the eyes, upright (+x right, +y up). Rebinding it
-        // to a hand later is just another place(handPos, handRight, handUp) call each frame.
+        // Place the panel `panelDistance` in front of the eyes, facing them and upright: faceToward reads
+        // correctly from wherever the eye is. Rebinding it to a hand is a place(...) call each frame.
         panel = ImGuiPanel(imgui, halfW, halfH)
-        panel.place(Vector3f(0f, 0f, panelDistance), Vector3f(1f, 0f, 0f), Vector3f(0f, 1f, 0f))
+        panel.faceToward(Vector3f(0f, 0f, panelDistance), Vector3f(0f, 0f, 0f))
 
         val sampler = TextureSampler(renderer, mipLevels = 4, anisotropyEnable = true)
 

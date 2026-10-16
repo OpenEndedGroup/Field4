@@ -205,11 +205,12 @@ its shape when the definition has not run yet (it comes later in the box, or you
 because Field compiles the saved source instead. See [Your own key types](keyframe_editor.md#your-own-key-types)
 for what the lambda can use.
 
-!!! warning "Don't call a saved block from its own box's code"
-    Compiling a saved block in its box runs that box's code again — which calls the block again.
-    Call a block that came from a file from another box, a frame loop or a control callback. A block
-    made by `sourceBlock` in this run already has its lambda and is safe to call at once. (Field
-    stops the loop after one repeat, with an error saying so.)
+!!! warning "Call a saved block from a frame loop, a callback or another box"
+    A block that came from a file compiles its saved source in its own box, and doing that while the
+    box's code is running would run that code again. So it is an error: calling such a block from its
+    own box's code stops with a message naming the box, before anything runs twice. Call it from a
+    frame loop or a control callback, after the code has finished, or from another box. A block made by
+    `sourceBlock` in this run already has its lambda and is safe to call at once.
 
 ---
 
