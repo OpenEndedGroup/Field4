@@ -344,9 +344,9 @@ rather than a stiffener.
 ### Divergence at the high end
 
 At a high enough product the solve does what explicit integration does: the correction overshoots,
-the overshoot is corrected harder, and the run stops being a number. There is no automatic clamp and
-nothing prints a warning: a diverging run simply goes quiet, because a `NaN` coordinate draws
-nothing.
+the overshoot is corrected harder, and the run stops being a number. Nothing is clamped. The first
+step that leaves a coordinate non-finite prints a warning in the box's output naming the step size
+and iteration count, and `sim.diverged` turns true.
 
 The strain trace carries plenty of warning before the `NaN` arrives, for anyone who is watching it.
 

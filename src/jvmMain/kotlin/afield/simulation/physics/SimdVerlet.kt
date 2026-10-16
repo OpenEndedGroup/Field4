@@ -223,6 +223,29 @@ class SimdVerlet(
      * The two post-integration stages, in their fixed order: every [positionProjections] pass,
      * then every [constraintEdits] pass. Both [step] overloads end here.
      */
+    /** Set once this simulation has reported a non-finite position, so it says so once. */
+    @Volatile var diverged: Boolean = false
+        private set
+
+    /**
+     * A run whose positions go non-finite draws nothing at all, which looks like a quiet stop. Say so,
+     * once: on the running box's output and the `warning,physics` log channel. Nothing is clamped.
+     */
+    private fun reportDivergence(dt: Float, iterations: Int) {
+        if (diverged) return
+        val n = state.size
+        for (i in 0 until n) {
+            if (state.x[i].isFinite() && state.y[i].isFinite() && state.z[i].isFinite()) continue
+            diverged = true
+            val message = "SimdVerlet diverged: particle $i is no longer finite (dt=$dt, iterations=$iterations). " +
+                "A stiffness × iterations × dt² product well past 1, or a force that grows with distance, blows up; " +
+                "lower the stiffness or dt, or raise the damping."
+            afield.app.diagnostics.logging.lprintln("warning,physics", message)
+            afield.document.graph.Box.context.get()?.println(message)
+            return
+        }
+    }
+
     private fun runPostIntegration(dt: Float) {
         if (positionProjections.isNotEmpty()) {
             for (projection in positionProjections.values) {
@@ -403,6 +426,7 @@ class SimdVerlet(
 
         integrateVerlet3(state, dt = dt, damping = damping)
         runPostIntegration(dt)
+        reportDivergence(dt, iterations)
     }
 
     /** 4-slot-constraint variant of [step]; see that overload for the force-accumulation contract. */
@@ -450,6 +474,7 @@ class SimdVerlet(
 
         integrateVerlet3(state, dt = dt, damping = damping)
         runPostIntegration(dt)
+        reportDivergence(dt, iterations)
     }
 
     /**

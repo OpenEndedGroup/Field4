@@ -341,4 +341,15 @@ class ClothTest {
         assertEquals(named.x, implicit.x); assertEquals(named.y, implicit.y); assertEquals(named.z, implicit.z)
     }
 
+
+    @Test
+    fun aDivergingRunSaysSoOnce() {
+        val sim = SimdVerlet(SimdVerlet.State3.empty())
+        sim.addCloth(width = 3, height = 3, spacing = 0.2f)
+        repeat(3) { sim.step(1f / 60f, 0.99f, -9.8f, 4) }
+        assertFalse(sim.diverged)
+        sim.state.x[4] = Float.NaN
+        sim.step(1f / 60f, 0.99f, -9.8f, 4)
+        assertTrue(sim.diverged)
+    }
 }
