@@ -294,11 +294,12 @@ This box reads the table from the handler lambdas and displays it from the box i
 short sleep. That works because the lambdas run on the receive thread, independently of the box.
 A generator would not get its first pass until the box had finished running.
 
-## Handlers outlive the box
+## Handlers outlive a stop
 
-Handlers belong to the server, and the server belongs to the port, not to any box. Stopping a box,
-running it again, or closing its document leaves every handler it registered in place, still
-calling the code it was registered with.
+The server belongs to the port, not to any box, and a handler belongs to the box that registered it
+the way any keyed registration does. Stopping the box or running it again leaves its handlers in
+place, still calling the code they were registered with; deleting the box or closing its document
+removes them.
 
 <!--
 FIELD_TEST

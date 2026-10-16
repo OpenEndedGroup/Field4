@@ -261,15 +261,29 @@ class OscServer(
      * registered for that pattern. If the handler's lambda or its generator throws, the exception is
      * shown as an error on the box that called `on` (and printed to the console); the generator is
      * dropped and the handler stays registered for the next message.
+     *
+     * The handler belongs to that box the way any keyed registration does: stopping or re-running
+     * the box leaves it in place (a re-run that calls `on` again replaces it), and deleting the box
+     * or closing its document removes it.
      */
     fun on(pattern: String, handler: (Message) -> Generator<Message, *>) {
-        handlers[pattern] = Registration(handler, Box.context.get())
+        val owner = Box.context.get()
+        val previous = handlers.put(pattern, Registration(handler, owner))
+        // One release per (box, pattern), not one per re-run: a re-run replaces the handler in place.
+        if (owner != null && previous?.owner !== owner) {
+            owner.runScopes.parent.own(afield.runtime.lifecycle.ReleasePolicy.KEYED) {
+                handlers.computeIfPresent(pattern) { _, current -> if (current.owner === owner) null else current }
+            }
+        }
         ensureRegistered(pattern)
     }
 
     fun remove(pattern: String) {
         handlers.remove(pattern)
     }
+
+    /** Whether a handler is registered for exactly [pattern]. */
+    fun hasHandler(pattern: String): Boolean = handlers.containsKey(pattern)
 
     private fun ensureRegistered(pattern: String) {
         if (registered.putIfAbsent(pattern, true) != null) return
