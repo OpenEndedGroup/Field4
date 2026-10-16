@@ -87,9 +87,9 @@ merely by opening the document.
 
 TAEHV is the decoder for this integration. `useTensorRT = true` is the default;
 the first run may build engines. To use the Torch decoder path instead, set
-`useTensorRT = false` in the configuration. Check
-`view.session.capabilities.optBoolean("tensorrt_active")` to see whether an engine
-actually executed; requesting TensorRT does not establish that it is active.
+`useTensorRT = false` in the configuration. `view.session.tensorRtActive` says whether an
+engine actually executed, and `view.session.status` notes it when TensorRT was requested and is not
+running.
 
 ## Process your own rendered texture
 

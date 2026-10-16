@@ -37,6 +37,19 @@ class StreamDiffusionSession internal constructor(
     @Volatile var status = "Starting worker"; private set
     @Volatile var capabilities = JSONObject(); private set
     @Volatile var lastStats = JSONObject(); private set
+
+    /**
+     * Whether a TensorRT engine actually executed, as the worker reports it; null until it says.
+     * Asking for TensorRT ([StreamDiffusionConfig.useTensorRT]) does not make it active, so when
+     * it was asked for and is not, [status] says so.
+     */
+    val tensorRtActive: Boolean? get() = capabilities.opt("tensorrt_active") as? Boolean
+
+    private fun noteTensorRt() {
+        if (config.useTensorRT && tensorRtActive == false && "TensorRT" !in status) {
+            status = "$status — TensorRT requested but not active; running without it"
+        }
+    }
     @Volatile private var process: Process? = null
     private val sessionDir = run {
         val support = StreamDiffusionSupport.probe(renderer, config)
@@ -113,7 +126,7 @@ class StreamDiffusionSession internal constructor(
         when (event.getString("event")) {
             "listening" -> listening.countDown()
             "status" -> status = event.getString("message")
-            "ready" -> { capabilities = event; status = "Ready"; ready = true; imported.countDown() }
+            "ready" -> { capabilities = event; status = "Ready"; noteTensorRt(); ready = true; imported.countDown() }
             "input_free" -> {
                 val i = event.getInt("slot")
                 check(i in inputs.indices && event.getLong("value") == inputs[i].value + 1)
@@ -126,7 +139,7 @@ class StreamDiffusionSession internal constructor(
                 check(r.slot in outputs.indices && results.size < outputs.size)
                 results.add(r)
             }
-            "reset" -> { capabilities = event; status = "Ready (generation ${event.getLong("generation")})" }
+            "reset" -> { capabilities = event; status = "Ready (generation ${event.getLong("generation")})"; noteTensorRt() }
             "stats" -> { lastStats = event; capabilities = event }
             "error" -> { fail(event.getString("message")); imported.countDown(); listening.countDown() }
         }
