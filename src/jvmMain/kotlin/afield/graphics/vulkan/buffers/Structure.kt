@@ -41,6 +41,16 @@ interface WritesToBuffer {
 
 class MissingRefException(override val message: String) : Exception(message)
 
+/**
+ * The message for a shader member that has nothing bound when a dispatch or draw needs it. It is
+ * not a missing buffer: nothing has been assigned to the member yet, and the usual reason is a
+ * binding written inside `loop {}`, which takes effect a frame after the first dispatch.
+ */
+fun unassignedMemberMessage(member: Any?): String =
+    "shader member `$member` has not been assigned yet, so this dispatch would read a null GPU reference. " +
+        "Bindings set inside loop {} take effect a frame late; assign it once at the top level of the box."
+
+
 fun <T : Structure> HasBuffer.asStructure(structure: T, members: List<Introspected.Member>): T {
     structure.setMembers(members)
     structure.proxyTo(this)

@@ -547,7 +547,7 @@ class RayTracingModule(val parameters: Parameters) : Renderable {
                 val target = (uniforms[name] as Module.Uniform).buffer
                 structure.proxying = target
                 structure.writeIfStale(target, command) {
-                    throw MissingRefException("risk of GPU null ref `$it`")
+                    throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
                 }
                 target.clean(false, command)
             }
@@ -892,7 +892,7 @@ class RayTracingDispatch(var width: Int, var height: Int = 1, var depth: Int = 1
             try {
                 pushConstantBuffer.clear()
                 push.writeToBuffer(pushConstantBuffer, cmd) {
-                    throw MissingRefException("risk of GPU null ref `$it`")
+                    throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
                 }
             } catch (e: Exception) {
                 inside.parameters.errorHandler(e.message ?: "ray tracing push constant error", e)

@@ -131,12 +131,8 @@ println(lists.transparent.map { it.node.name })
 println(lists.shadowCasters.map { it.node.name })
 ```
 
-For moving transparent objects, call:
-
-```diffstatic {data-lang=kotlin}
-bundle.sceneGraph.advance(1f / 60f)
-bundle.sortTransparentMeshes()
-```
+Once the bundle is attached, it re-sorts transparent meshes for the camera every frame, so moving
+transparent objects stay in order without a call.
 
 ## Render planning
 
@@ -428,7 +424,7 @@ expect:
 
 The scene graph carries a Three.js-style light list: one shadow-casting directional key light, plus point and spot lights up to `bundle.maxLights`, which is 64, all evaluated in the deferred lighting pass. It can also draw the loaded environment map as the scene background instead of a flat colour.
 
-Lights are pure scene state; `bundle.syncLights()` uploads them to the lighting pass (call it after changing lights, or once per frame if they move — the same explicit-sync idiom as `sortTransparentMeshes()`). The first shadow-casting directional light becomes the key light that drives the shadow map, or the first directional light of any kind if none of them cast shadows; every other light is shaded without shadows, and `syncLights()` takes only the first `maxLights` of them. `bundle.showEnvironmentBackground()` turns the equirect environment into the backdrop.
+Lights are pure scene state; an attached bundle uploads them to the lighting pass on the next frame after any change (`bundle.syncLights()` does it at once). The first shadow-casting directional light becomes the key light that drives the shadow map, or the first directional light of any kind if none of them cast shadows; every other light is shaded without shadows, and `syncLights()` takes only the first `maxLights` of them. `bundle.showEnvironmentBackground()` turns the equirect environment into the backdrop.
 
 ```diffstatic {data-lang=kotlin}
 val bundle = StandardRenderer.build(
@@ -527,7 +523,7 @@ expect:
 
 Deferred lighting runs in HDR, so raw output clips bright highlights to white. Tone mapping compresses HDR into a displayable range, and bloom bleeds the brightest regions into a soft glow.
 
-`bundle.setToneMapping(...)` appends a tone-map pass that always runs last (options: `NONE`, `REINHARD`, `FILMIC`, `ACES`, `AGX`, plus an `exposure` multiplier). `bundle.addBloom(...)` inserts a bright-pass, separable blur, and additive composite ahead of the tone-map pass, so bloom accumulates on HDR values before they are compressed. Both modify the post stack, so re-attach the frame graph afterwards.
+`bundle.setToneMapping(...)` appends a tone-map pass that always runs last (options: `NONE`, `REINHARD`, `FILMIC`, `ACES`, `AGX`, plus an `exposure` multiplier). `bundle.addBloom(...)` inserts a bright-pass, separable blur, and additive composite ahead of the tone-map pass, so bloom accumulates on HDR values before they are compressed. Both modify the post stack, and a bundle already attached to a renderer picks the change up itself.
 
 ```diffstatic {data-lang=kotlin}
 bundle.addBloom(threshold = 1.0f, intensity = 0.85f, radius = 3.2f)
@@ -563,7 +559,7 @@ expect:
 
 The GLTF path uses the existing Assimp-backed loader, then imports mesh instances into the Fabricate scene graph. Opaque meshes go to the g-buffer/shadow pair. Alpha materials go to the blended transparency pass.
 
-The example below loads the Khronos ToyCar sample: three mesh/material buckets, 77k vertices, 326k indices, and texture slots for base/diffuse, normal, emissive, packed occlusion/roughness/metalness, and clearcoat inputs. The `StandardRenderer` material bridge consumes base-color textures, UVs, glTF tangent frames, alpha/transmission classification, metalness, roughness, tangent-space normal maps, packed metal/roughness maps, occlusion, emissive maps, clearcoat factors/maps, shadows, AO, and equirectangular image-based lighting from float EXR environments with GGX-prefiltered radiance mips. The headlamp lens ridges depend on the normal map being sampled in the model's tangent basis. It does not yet handle texture transforms, physical transmission/refraction, sheen, BRDF LUT integration, cubemap PMREM, or clearcoat roughness/normal texture variants.
+The example below loads the Khronos ToyCar sample: three mesh/material buckets, 77k vertices, 326k indices, and texture slots for base/diffuse, normal, emissive, packed occlusion/roughness/metalness, and clearcoat inputs. The `StandardRenderer` material bridge consumes base-color textures, UVs, glTF tangent frames, alpha/transmission classification, metalness, roughness, tangent-space normal maps, packed metal/roughness maps, occlusion, emissive maps, clearcoat factors/maps, shadows, AO, and equirectangular image-based lighting from float EXR environments with GGX-prefiltered radiance mips. The headlamp lens ridges depend on the normal map being sampled in the model's tangent basis. It does not yet handle texture transforms, physical transmission/refraction, sheen, BRDF LUT integration, cubemap PMREM, or clearcoat roughness/normal texture variants. `registerGltf` logs which of a file's glTF extensions it did not evaluate; for ToyCar that is the texture transform, transmission and sheen.
 
 ??? aside "Comparing the ToyCar capture with three.js"
     The reference for this capture is Don McCurdy's glTF Viewer with the same ToyCar model and Venice Sunset environment, used for exposure, contrast, fabric detail, and material readability. Its baseline settings are:

@@ -810,9 +810,9 @@ object StackSLSmokeTest {
         )
 
         require(result.ok) { result.diagnostics.joinToString("\n") }
-        require("pc.foo * vec4(0.5)" in result.glsl) { result.glsl }
-        require("+ pc.inData.p[idx].posvel.Z" in result.glsl) { result.glsl }
-        require("+ pc.bar" in result.glsl) { result.glsl }
+        require("host_asVec4(pc.foo) * vec4(0.5)" in result.glsl) { result.glsl }
+        require("+ host_asVec4(pc.inData.p[idx].posvel.Z)" in result.glsl) { result.glsl }
+        require("+ host_asVec4(pc.bar)" in result.glsl) { result.glsl }
         require(Regex("""pc\.foo = _host_v\d+;""").containsMatchIn(result.glsl)) { result.glsl }
         require(Regex("""pc\.inData\.p\[idx]\.posvel\.Z = _host_v\d+;""").containsMatchIn(result.glsl)) { result.glsl }
     }

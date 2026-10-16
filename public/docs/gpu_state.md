@@ -163,12 +163,9 @@ That is what makes the ping-pong work at all: nothing re-binds the buffers per f
 binding *is* the question "which one is it this frame", asked afresh at every dispatch.
 
 It is also why these lines belong exactly where they are: at the top level of the box, run once, and
-**not** inside a `loop {}`. A binding set inside the frame loop lands a frame late, and the
-diagnostic for the gap is easy to misread: a dispatch in that window throws
-`MissingRefException("risk of GPU null ref …")` naming the member
-(`src/jvmMain/kotlin/afield/graphics/render/ComputeMesh.kt:368#risk of GPU null ref`), which reads like a
-missing buffer and is really an assignment that has not happened yet. Set them once, outside; they
-stay live because they were lambdas from the start.
+**not** inside a `loop {}`. A binding set inside the frame loop lands a frame late, and a dispatch in
+that window throws `MissingRefException` saying the member has not been assigned yet. Set them once,
+outside; they stay live because they were lambdas from the start.
 
 `sim.dt = { 1f / 60f }` is a fixed timestep rather than a measured one. A spring network's stability
 is a function of `dt`, so feeding it the real frame interval means a hitch in the renderer becomes an
@@ -260,10 +257,8 @@ simModule.force = """
 """
 ```
 
-A `stack.auto` slot is a property of the compiled shader; the mesh only carries push constants.
-`sim.force = …` is a receiver-type mismatch naming both `ModulePointer` overloads, which is a
-confusing way to learn that distinction and easy to hit, because everything else in this box is set on
-the mesh.
+A `stack.auto` slot is a property of the compiled shader, so it is set on the module; the mesh only
+carries push constants, and `sim.force = …` fails with a note saying so.
 
 Changing that string and hitting run costs nothing. Field lowers the StackSL to GLSL, patches this
 module's pipeline on a background thread, and leaves the old binding in place if the new one does not
@@ -331,13 +326,10 @@ worse tool than saying so. You can also ask before you bind: `stackAutoShaderRep
 (`src/jvmMain/kotlin/afield/graphics/shader/shaders.kt:545#fun stackAutoShaderReport`) is pure, needs no device,
 and returns the same object.
 
-One more, and it is easy to misdiagnose. The program above never reads the push block, because the
-clock reaches it on `input.w`; the moment you want anything else from it — the force gain, a mouse
-position — the syntax is `?pc.knobs y`, and that external read is typed as a `vec4`
-(`src/jvmMain/kotlin/afield/lang/stacksl/StackSL.kt:2735#private fun parseExternalRead`). Pointing it at a
-`float` member is a swizzle error out of glslang rather than a StackSL diagnostic, so a spare `vec4`
-of knobs (clock in `.x`, gain in `.y`) is the shape that works, and it is also the shape that lets
-you add a knob without touching the shader.
+The program above never reads the push block, because the clock reaches it on `input.w`; for
+anything else from it (the force gain, a mouse position) the syntax is `?pc.knobs y`. An external read
+of any member type works, a `float` or `vec2` widened to a `vec4` the way a swizzle would, and a
+spare `vec4` of knobs (clock in `.x`, gain in `.y`) lets you add a knob without touching the shader.
 
 ---
 
@@ -396,13 +388,14 @@ Three boxes appear and a window opens. The knobs worth turning, in the order the
 - **`sim.knobs`**, whose `.x` is the clock the noise walks through and `.y` the force gain. Both are
   lambdas, so both are live.
 
-To replay it from a script without the browser, run the transcript through the backdoor:
+??? aside "Agents: replaying the transcript"
+    To replay it from a script without the browser, run the transcript through the backdoor:
 
-```diffstatic {data-lang=bash}
-python3 tools/field_backdoor.py --port 9483 --graphics-context \
-  --command "transcript write gpustate --file dev_docs/agents/transcripts/gpu_state.yaml" \
-  --command "transcript run gpustate"
-```
+    ```diffstatic {data-lang=bash}
+    uv run --project . --group backdoor python tools/field_backdoor.py --port 9483 --graphics-context \
+      --command "transcript write gpustate --file dev_docs/agents/transcripts/gpu_state.yaml" \
+      --command "transcript run gpustate"
+    ```
 
 The example's [README](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/assets/gpu_state/README.md) lists every knob and what each one does to the picture.
 

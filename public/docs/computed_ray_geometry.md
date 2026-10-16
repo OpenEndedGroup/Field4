@@ -136,7 +136,7 @@ A build records GPU input validation, conversion to Vulkan's cluster records, cl
 
 The builder owns fixed-capacity storage, scratch, sanitized geometry and record buffers. It borrows your producer buffers. Static geometry needs one explicit build; retain its BLAS and skip later calls. Rebuild after position or topology changes, and rebuild the TLAS when bounds change. Recreate the builder to increase capacity. Every build rebuilds all clusters; template instantiation, compaction, LOD streaming and selective cluster reuse are not supported.
 
-Everything runs on Field's graphics queue, with dependencies between producer, converter, cluster build, BLAS build and tracing. Stop/close defers destruction through Field's normal retirement mechanism. A GPU-written 64-byte instance buffer can also be passed to `AccelerationStructure.buildTopLevel()`; synchronize its producer before that call. Use a fresh TLAS owner: the first GPU-buffer build fixes its instance count and flags. Transform/address edits within those records are supported; recreate the TLAS and defer retiring the old one if its count or flags must change.
+Everything runs on Field's graphics queue, with dependencies between producer, converter, cluster build, BLAS build and tracing. Stop/close defers destruction through Field's normal retirement mechanism. A GPU-written 64-byte instance buffer can also be passed to `AccelerationStructure.buildTopLevel()`; synchronize its producer before that call. Its first build fixes the instance count and flags; later builds may edit transforms and addresses within those records, and one that changes the count or flags is refused with a message saying to use a new TLAS.
 
 ## Cost on the RTX 4090
 

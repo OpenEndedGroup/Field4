@@ -183,6 +183,24 @@ object StandardRenderer {
 			val postStack: FabricatePostStack = FabricatePostStack(transparentComposite)
 		) {
 		/**
+		 * The targets [attachTo] attached this bundle to, with the graph each one got. A post-stack
+		 * edit after attaching ([setToneMapping], [addBloom], [addShaderEffect]) re-attaches to each,
+		 * so the edit takes effect without the caller attaching again.
+		 */
+		internal val attachedGraphs = LinkedHashMap<RenderTarget, FabricateFrameGraph>()
+
+		init {
+			postStack.changeListeners += {
+				synchronized(attachedGraphs) {
+					attachedGraphs.entries.forEach { entry ->
+						entry.value.detachFrom(entry.key)
+						entry.setValue(frameGraph().also { it.attachTo(entry.key) })
+					}
+				}
+			}
+		}
+
+		/**
 		 * GPU-side buffer of extra (non-key) lights consumed by the deferred lighting pass. Populated by
 		 * [syncLights]; capacity is [maxLights]. The primary shadow-casting directional light does not
 		 * live here — it stays in the built-in `LightData` uniform so it can drive the shadow map.
@@ -337,10 +355,40 @@ object StandardRenderer {
 			 * [FabricateFrameGraph].
 			 */
 			fun attachTo(renderer: Renderer, windowIndex: Int = 0): RenderTarget =
-				frameGraph().attachTo(renderer, windowIndex)
+				remembering(frameGraph()) { it.attachTo(renderer, windowIndex) }
 
 			fun attachTo(renderer: Renderer, window: Window): RenderTarget =
-				frameGraph().attachTo(renderer, window)
+				remembering(frameGraph()) { it.attachTo(renderer, window) }
+
+			private fun remembering(graph: FabricateFrameGraph, attach: (FabricateFrameGraph) -> RenderTarget): RenderTarget {
+				val target = attach(graph)
+				synchronized(attachedGraphs) { attachedGraphs[target] = graph }
+				installAutoSync()
+				return target
+			}
+
+			@Volatile private var autoSyncInstalled = false
+
+			/**
+			 * Once attached, keep lights and transparent order current without the caller's help: each
+			 * frame, re-upload the lights when anything about them changed, and re-sort the transparent
+			 * meshes for the camera. The explicit [syncLights] and [sortTransparentMeshes] still work.
+			 * The hook holds the bundle weakly and ends itself once the bundle is gone or detached.
+			 */
+			private fun installAutoSync() {
+				if (autoSyncInstalled) return
+				autoSyncInstalled = true
+				val ref = java.lang.ref.WeakReference(this)
+				val key = "std-renderer-auto-sync-${System.identityHashCode(this)}"
+				afield.runtime.lifecycle.Runloop.runLoop.preRun[key] = sequence {
+					// The step is a separate call so no strong reference to the bundle survives a yield.
+					var lastLights: String? = ""
+					while (true) {
+						lastLights = standardRendererAutoSyncStep(ref, lastLights) ?: break
+						yield(null)
+					}
+				}
+			}
 
 			/** Present the anti-aliased lighting RTT to the swapchain with optional grading and viewport. */
 			fun present(
@@ -2706,4 +2754,14 @@ fun postEffectTargetParameters(
 	clearColor = vec(0f, 0f, 0f, 1f)
 	debugName = "prefab-post-$name"
 	rtt()
+}
+
+/** One frame of [StandardRenderer.Bundle]'s auto-sync; the lights' state after it, or null when the hook should end. Top level so the hook captures no bundle. */
+internal fun standardRendererAutoSyncStep(ref: java.lang.ref.WeakReference<StandardRenderer.Bundle>, lastLights: String?): String? {
+	val bundle = ref.get() ?: return null
+	if (synchronized(bundle.attachedGraphs) { bundle.attachedGraphs.isEmpty() }) return null
+	val lights = bundle.sceneGraph.lights.toString()
+	if (lights != lastLights) runCatching { bundle.syncLights() }
+	runCatching { bundle.sortTransparentMeshes() }
+	return lights
 }

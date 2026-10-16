@@ -1,5 +1,6 @@
 package afield.graphics.scene.fabricated
 
+import kotlinx.serialization.json.jsonObject
 import afield.graphics.scene.GltfSupport
 import afield.document.context.fromContext
 import afield.graphics.scene.sample
@@ -650,8 +651,40 @@ fun StandardRenderer.Bundle.registerGltf(
     namePrefix: String = "gltf",
     config: GltfSupport.GltfLoadConfig = GltfSupport.GltfLoadConfig(),
     renderer: afield.graphics.vulkan.Renderer = fromContext()
-): FabricateRegisteredGltf =
-    registerGltf(GltfSupport.loadGltfBasic(path, config), namePrefix, renderer)
+): FabricateRegisteredGltf {
+    reportIgnoredGltfExtensions(path)
+    return registerGltf(GltfSupport.loadGltfBasic(path, config), namePrefix, renderer)
+}
+
+/** glTF extensions whose data the StandardRenderer material bridge reads. */
+private val STANDARD_RENDERER_GLTF_EXTENSIONS = setOf("KHR_materials_clearcoat", "KHR_materials_emissive_strength")
+
+/**
+ * Say, once per import, which of a file's `extensionsUsed` the StandardRenderer does not evaluate
+ * (texture transforms, sheen, physical transmission…), so a model that looks plainer than it should
+ * is explained in the log rather than left to look like a loader bug.
+ */
+internal fun reportIgnoredGltfExtensions(path: String) {
+    val json = runCatching {
+        val file = java.io.File(path)
+        val text = if (file.extension.equals("glb", ignoreCase = true)) {
+            val bytes = file.readBytes()
+            val buffer = java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+            String(bytes, 20, buffer.getInt(12), Charsets.UTF_8)
+        } else file.readText()
+        kotlinx.serialization.json.Json.parseToJsonElement(text).jsonObject
+    }.getOrNull() ?: return
+    val used = (json["extensionsUsed"] as? kotlinx.serialization.json.JsonArray)
+        ?.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }.orEmpty()
+    val ignored = used.filter { it !in STANDARD_RENDERER_GLTF_EXTENSIONS }
+    if (ignored.isNotEmpty()) {
+        afield.app.diagnostics.logging.lprintln(
+            "warning,gltf",
+            "${java.io.File(path).name} uses glTF extensions the StandardRenderer does not evaluate: " +
+                ignored.joinToString(", ") + "; those parts of its materials fall back to the base material",
+        )
+    }
+}
 
 fun StandardRenderer.Bundle.registerGltf(
     model: GltfSupport.GltfModel,

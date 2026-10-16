@@ -107,6 +107,11 @@ class FabricateFrameGraph private constructor(
         return target
     }
 
+    /** Remove from [target] every pass this graph put there. */
+    internal fun detachFrom(target: RenderTarget) {
+        attachedNames.remove(target)?.forEach { target.preTargets.remove(it) }
+    }
+
     companion object {
         const val PASS_GBUFFER = "std-gbuffer"
         const val PASS_SHADOW = "std-shadow"
