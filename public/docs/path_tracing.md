@@ -541,7 +541,7 @@ Material shadeMaterial(Material material, PathTraceSurface surface) {
 
 The templates supply types, buffer declarations and the integrator. The middle is
 ordinary Field shader source: edit it, link the compute property, include shared
-box properties with `{% include "paint.compute" %}` (box name plus property), and use the normal **Reload Compute
+box properties with `{% property "paint.compute" %}` (box name plus property), and use the normal **Reload Compute
 Shader** / **Update Compute Shader** actions. Failed compilation keeps the last
 working pipeline. Successful shader replacement resets accumulation automatically.
 

@@ -6,7 +6,7 @@ description: >
   compute box (checkerboard / red-black Monte Carlo over Ising spins with random
   +/-J or Gaussian bonds, cosine simulated annealing, in-place buffer_reference
   buffers published as props), a "measure" compute box (probes vec2(spin, energy)
-  for every site with {% include "fieldProbe" %} so the stats card's x-mean is the
+  for every site with {% property "fieldProbe" %} so the stats card's x-mean is the
   magnetization and the y-mean is the energy per spin), and a "lattice view" draw
   box (a fullscreen triangle whose fragment shader reads the shared spins buffer
   and colours each cell). Requires a GPU/Vulkan window (like threebox.yaml).
@@ -250,7 +250,7 @@ operations:
               float field;
           } pc;
 
-          {% include "fieldProbe" %}
+          {% property "fieldProbe" %}
 
           void main() {
               uint L = pc.L;

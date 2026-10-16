@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap
 // Features:
 // - {{ expr }} interpolation
 // - {% if expr %} ... {% else %} ... {% endif %} with nesting
-// - {% include "path" %} (requires include resolver)
+// - {% property "name" %} (requires include resolver; {% include "name" %} is a deprecated alias)
 // - Dynamic, runtime resolver chaining with dot-path fallback rules
 // - Good runtime errors with line/col, line snippet, and a resolution trace
 //
@@ -243,10 +243,11 @@ private class Parser(
                         }
                     }
                 }
-                raw.startsWith("include ") -> {
-                    val includeExpr = raw.removePrefix("include ").trim()
+                // `property` is the spelling; `include` is its deprecated alias, kept so saved documents compile.
+                raw.startsWith("property ") || raw.startsWith("include ") -> {
+                    val includeExpr = raw.substringAfter(' ').trim()
                     if (includeExpr.isBlank()) {
-                        throw TemplateException("Missing include path at ${loc.format()}.")
+                        throw TemplateException("Missing property name at ${loc.format()}.")
                     }
                     nodes += IncludeNode(includeExpr, loc)
                 }

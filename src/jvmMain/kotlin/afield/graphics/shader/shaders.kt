@@ -199,7 +199,7 @@ import afield.ui.output.FieldMarkdown
  * `MacroNotExpandedException` if actually called, because `MacroRegistry` is expected to rewrite it
  * into the real `_moduleHere`-family call.
  *
- * Before compilation every stage goes through [preprocess], which resolves `{% include %}` template
+ * Before compilation every stage goes through [preprocess], which resolves `{% property %}` template
  * tags against other boxes' shader properties (with cycle detection and `#line` fixups) and against
  * built-in includes such as the field probe, field stats and quantile warp. Registered include roots —
  * [registerShaderFilesystemIncludeRoot] for a directory, [registerLygiaIncludeRoot] /
@@ -1193,8 +1193,8 @@ private val shaderIncludeRoots = ConcurrentHashMap<String, ShaderIncludeRootReso
  * but an embedded `/` throws, as does an empty name.
  *
  * The trap worth knowing: roots are honoured by the `#include` path (resolved by shaderc while
- * compiling) but **not** by the template engine's `{% include "…" %}` tag, which only knows about
- * built-in includes and `box.property` references. A `{% include "lygia/math/const.glsl" %}` fails
+ * compiling) but **not** by the template engine's `{% property "…" %}` tag, which only knows about
+ * built-in includes and `box.property` references. A `{% property "lygia/math/const.glsl" %}` fails
  * with "no box named …" no matter what you have registered here.
  */
 fun registerShaderIncludeRoot(root: String, resolver: ShaderIncludeRootResolver) {
@@ -2443,7 +2443,7 @@ private fun preprocess(
  * `moduleHere`-family macro.
  *
  * Three expansions happen here, all resolved against [inside] and its ancestors: `{{ slot }}` template
- * expressions (from [Box.shaderTemplate] and the global registry), `{% include "box.property" %}` tags
+ * expressions (from [Box.shaderTemplate] and the global registry), `{% property "box.property" %}` tags
  * (recursively preprocessed, cycle-detected, and fitted with `#line` directives so error line numbers
  * still point at your text), and `{{ stack.auto.name }}` slots compiled from StackSL. Built-in
  * includes — `fieldProbe`, `fieldStats`, `quantileWarp` — resolve here too, and asking for `fieldStats`
@@ -2451,7 +2451,7 @@ private fun preprocess(
  *
  * Two things this overload cannot do, because it has no notion of a previous stage or a
  * registered root: `{% copyPC %}` throws (there is no prior stage to copy a push-constant block from),
- * and `{% include "someRoot/file.glsl" %}` fails as "no box named …" — registered include roots are
+ * and `{% property "someRoot/file.glsl" %}` fails as "no box named …" — registered include roots are
  * only reachable from a real `#include` during compilation, not from the template tag.
  *
  * Failures throw rather than being reported onto the box; the reload path catches them for you, a

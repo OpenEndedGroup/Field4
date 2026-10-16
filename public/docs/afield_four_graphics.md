@@ -437,7 +437,7 @@ layout(local_size_x = 64) in;
 layout(std430, buffer_reference) buffer inData { vec4 a[]; };
 layout(std430, buffer_reference) buffer outData { vec4 a[]; };
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 layout(push_constant) uniform dat {
     inData inData;
@@ -456,7 +456,7 @@ void main() {
 }
 ```
 
-`{% include "fieldProbe" %}` is Field's shader templating pulling in the probe preamble; see [Field probes](field_probes.md). Templating in general is [Shader templating](#shader-templating) below.
+`{% property "fieldProbe" %}` is Field's shader templating pulling in the probe preamble; see [Field probes](field_probes.md). Templating in general is [Shader templating](#shader-templating) below.
 
 The draw box is a **child of the compute box**, and that is the only reason `outputPositions` resolves:
 
@@ -1013,12 +1013,12 @@ void main()
 
 ## Shader includes
 
-Shader properties are templated before they reach the compiler, and `{% include "name" %}` pulls in another property by name. `5. included` shares its attribute and push-constant declarations with a sibling box:
+Shader properties are templated before they reach the compiler, and `{% property "name" %}` pulls in another property by name. `5. included` shares its attribute and push-constant declarations with a sibling box:
 
 ```diffstatic {data-lang=glsl}
 #version 450
 
-{% include "vertex_included" %}
+{% property "vertex_included" %}
 
 layout (location = 0) out vec4 fcol;
 
@@ -1064,7 +1064,7 @@ void main()
 }
 ```
 
-Note that `#include` here is the C-style directive handled by the shader compiler's include resolver, while `{% include %}` above is Field's own templating over box properties: two different mechanisms that happen to share a name. This example needs a Lygia checkout on disk, which is why it carries no figure.
+This example needs a Lygia checkout on disk, which is why it carries no figure.
 
 ## Shader templating
 
@@ -1213,7 +1213,7 @@ Two things are required. `#extension GL_EXT_debug_printf : enable` has to be the
 
 ## Debugging: texture probes
 
-The other debugging tool goes the other way: instead of printing text, it samples a value out of a running shader and draws it. `fieldProbeHere()` creates the probe and `{% include "fieldProbe" %}` brings the shader side in:
+The other debugging tool goes the other way: instead of printing text, it samples a value out of a running shader and draws it. `fieldProbeHere()` creates the probe and `{% property "fieldProbe" %}` brings the shader side in:
 
 ```diffstatic {data-lang=kotlin}
 prop<LoadedTexture>(bbc) = LoadedTexture("bbc.jpg")
@@ -1257,7 +1257,7 @@ m.set(4*n, 2*n) {
 ```diffstatic {data-lang=glsl}
 #version 450
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 // …
 
@@ -1514,7 +1514,7 @@ layout(push_constant) uniform Push {
     int seed;
 } push;
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 layout(location = 0) out vec4 outColor;
 

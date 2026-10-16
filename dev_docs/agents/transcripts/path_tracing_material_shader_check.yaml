@@ -23,7 +23,7 @@ operations:
       properties:
         compute: |
           {{ pathTracing.preamble }}
-          {% include "editable-material-check.pathTracePaint" %}
+          {% property "editable-material-check.pathTracePaint" %}
           {{ pathTracing.integrator }}
         pathTracePaint: |
           layout(push_constant) uniform PaintPC { float gain; } pc;
