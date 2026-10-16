@@ -55,8 +55,11 @@ body {
     text-rendering: optimizeLegibility;
 }
 
-p { font-size: 0.75rem; 
-    text-align: justify;
+p { font-size: 0.75rem;
+    /* Ragged right: justified lines stretched word gaps wherever an unbreakable inline code span wrapped. */
+    text-align: left;
+    hyphens: auto;
+    text-wrap: pretty;
 }
 
 .md-header__ellipsis {

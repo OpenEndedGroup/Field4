@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-207 source file(s), 669 public symbol(s), 293 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+208 source file(s), 671 public symbol(s), 294 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1762,6 +1762,20 @@ Step two of the neural-particle pilot: that a buffer of particles integrated on 
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L192) |  |
 | [<code class="highlight"><span class="k">var</span> <span class="n">running</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L196) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L198) |  |
+
+## OpenDlssNrTeardownSmoke.kt { #opendlssnrteardownsmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/OpenDlssNrTeardownSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/)
+
+### OpenDlssNrTeardownSmoke { #opendlssnrteardownsmoke-kt-opendlssnrteardownsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">OpenDlssNrTeardownSmoke</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/#L34)
+
+The renderer goes away while an [`OpenDlssNrStudy`](graphics.md#opendlssnrstudy-kt-opendlssnrstudy) is still open on it, which is what quitting or disposing the graphics context does to a box that was never stopped. The study is closed by the renderer, before its device, and the box's own later close is harmless. Without the native library the study runs in source mode, so this needs a GPU but not NVIDIA.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/#L36) |  |
 
 ## PlyLoaderTest.kt { #plyloadertest-kt }
 

@@ -231,7 +231,7 @@ void main()
 
 Because the uniform block is named `view`, the Kotlin side writes `module.view.p` and `module.view.m`. The module owns this resource because the block is declared at descriptor set/binding scope, not as a per-mesh push constant.
 
-`moduleHere()` generates a Kotlin class per uniform block, named by capitalising the block's name. Name a block after something the box already uses (a block called `camera` would generate a `Camera` class) and that class hides the import: `Camera()` would then build the generated class, and `camera.at` would fail to resolve.
+`moduleHere()` generates a Kotlin class per uniform block, named by capitalising the block's name. When that name is already a type the box imports, the class gets `Block` on the end instead: a block called `camera` generates `CameraBlock`, so `Camera()` is still Field's camera.
 
 ## Camera as push constants
 

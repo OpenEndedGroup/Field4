@@ -113,6 +113,9 @@ import afield.app.protocol.SourceCardResult
 import afield.app.protocol.SourceFileResponse
 import afield.app.protocol.StringUpdate
 import afield.app.protocol.SymbolContextRequest
+import afield.app.protocol.StackSLRegion
+import afield.app.protocol.StackSLRegionsRequest
+import afield.app.protocol.StackSLRegionsResponse
 import afield.app.protocol.Vec2Update
 import afield.app.protocol._send
 import afield.app.protocol.computeIfAbsent
@@ -3043,6 +3046,23 @@ class Server {
                 GlobalScope.launch(Dispatchers.Default) {
                     val result = box.ke.describeSymbolContext(box, exec)
                     reply(Message("symbol-context").payload(result))
+                }
+
+                Handled.yes
+            })
+
+            // Which strings of a box's code are StackSL: `#stacksl` ones and those assigned to its
+            // `stack.auto` slots. The editor colours them; only the server knows the slots.
+            handlers["stacksl-regions"] = mutableSetOf({ message, reply ->
+                val request = Json.decodeFromJsonElement<StackSLRegionsRequest>(message.payload!!)
+                val box = box(request.uid)
+
+                GlobalScope.launch(Dispatchers.Default) {
+                    val regions = runCatching {
+                        afield.lang.stacksl.study.EmbeddedStackSL.regions(request.code, afield.lang.stacksl.study.EmbeddedStackSL.slots(box))
+                            .map { StackSLRegion(it.bodyStart, it.bodyEnd, it.slot) }
+                    }.getOrDefault(emptyList())
+                    reply(Message("stacksl-regions").payload(StackSLRegionsResponse(regions)))
                 }
 
                 Handled.yes

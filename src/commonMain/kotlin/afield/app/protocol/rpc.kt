@@ -538,6 +538,17 @@ data class SourceFileResponse(
     val code: String = ""
 )
 
+/** The StackSL strings in [code], the text of box [uid]'s `code` as the editor shows it. */
+@Serializable
+data class StackSLRegionsRequest(val uid: String, val code: String)
+
+/** One StackSL string: its body as offsets of the request's code, and the `stack.auto` slot it is assigned to. */
+@Serializable
+data class StackSLRegion(val bodyStart: Int, val bodyEnd: Int, val slot: String? = null)
+
+@Serializable
+data class StackSLRegionsResponse(val regions: List<StackSLRegion>)
+
 @Serializable
 data class SymbolContextRequest(
     val uid: String,

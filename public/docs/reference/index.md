@@ -627,21 +627,21 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**32006 public symbols across 1449 source files**, 15985 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**32015 public symbols across 1451 source files**, 15994 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 207 | 669 | 293 (43%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 208 | 671 | 294 (43%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 16 | 155 | 49 (31%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 203 | 156 (76%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 12 | 125 | 41 (32%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 40 | 1935 | 1395 (72%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 289 | 6962 | 3439 (49%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
-| [Renderers](renderers.md) | 42 | 741 | 371 (50%) | Turning a scene into pixels on a Vulkan device. |
+| [Graphics](graphics.md) | 289 | 6964 | 3441 (49%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Renderers](renderers.md) | 42 | 742 | 373 (50%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 42 | 985 | 526 (53%) | Making a shape behave. |
@@ -654,8 +654,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1313 | 718 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2092 | 1010 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 21 | 571 | 385 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 120 | 3070 | 1380 (44%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 209 | 2974 | 1033 (34%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Languages](languages.md) | 120 | 3071 | 1381 (44%) | Field's small languages, from the host side. |
+| [Workspace](workspace.md) | 210 | 2977 | 1036 (34%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 91 | 2195 | 666 (30%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 
@@ -788,7 +788,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BoxCodeFormat.kt](examples.md#boxcodeformat-kt) | Examples | 3 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>graph/<wbr></small> [Boxes.kt](workspace.md#boxes-kt) | Workspace | 79 | 19 |  | [Keyboard shortcuts](../keybindings.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BoxImportCensus.kt](examples.md#boximportcensus-kt) | Examples | 2 | 1 |  |  |
-| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [boxImports.kt](workspace.md#boximports-kt) | Workspace · internal | 13 | 9 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [boxImports.kt](workspace.md#boximports-kt) | Workspace · internal | 14 | 10 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>layout/<wbr></small> [BoxLayout.kt](visualization.md#boxlayout-kt) | Visualization | 3 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [BoxOutputCapture.kt](machine-learning.md#boxoutputcapture-kt) | Machine learning | 21 | 9 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [BoxOutputChannelGuard.kt](workspace.md#boxoutputchannelguard-kt) | Workspace · internal | 6 | 3 |  |  |
@@ -1030,7 +1030,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [FabricateRenderPlan.kt](renderers.md#fabricaterenderplan-kt) | Renderers | 21 | 2 | Render queue data structures and the `FabricateScenePlanner` that builds them from a `FabricateScene`. | [Fabricate Renderer](../fabricate_renderer.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [FabricateRenderPlanTestMain.kt](renderers.md#fabricaterenderplantestmain-kt) | Renderers · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [FabricateReprojectionDemo.kt](examples.md#fabricatereprojectiondemo-kt) | Examples | 2 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [FabricateScene.kt](renderers.md#fabricatescene-kt) | Renderers | 127 | 5 | The scene graph: nodes, transforms, materials, lights, animation playback, and the glTF import that fills them. | [Fabricate Renderer](../fabricate_renderer.md), [Geometry from disk](../geometry_from_disk.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [FabricateScene.kt](renderers.md#fabricatescene-kt) | Renderers | 128 | 7 | The scene graph: nodes, transforms, materials, lights, animation playback, and the glTF import that fills them. | [Fabricate Renderer](../fabricate_renderer.md), [Geometry from disk](../geometry_from_disk.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [FabricateSceneGraphTestMain.kt](renderers.md#fabricatescenegraphtestmain-kt) | Renderers · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [FabricateSceneTestMain.kt](renderers.md#fabricatescenetestmain-kt) | Renderers · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [FabricateShaderBoxes.kt](renderers.md#fabricateshaderboxes-kt) | Renderers | 4 | 4 | Expose Fabricate's built-in shaders the same way user-authored shaders work: each pass becomes an editable box with `vertex`/`fragment` GLSL tabs, live introspection, and `alt r` hot reload. | [Fabricate Renderer](../fabricate_renderer.md) |
@@ -1215,7 +1215,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>history/<wbr></small> [HistoryMetrics.kt](workspace.md#historymetrics-kt) | Workspace · internal | 9 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>history/<wbr></small> [HistoryScreenshotCapture.kt](workspace.md#historyscreenshotcapture-kt) | Workspace · internal | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>core/<wbr></small> [HostBridge.kt](languages.md#hostbridge-kt) | Languages | 29 | 29 | How a FieldML box calls Kotlin: `hostCall`, `hostNew` and `hostGet` all arrive here, and so does a `.field` read on a host value. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>type/<wbr></small> [HostTypes.kt](languages.md#hosttypes-kt) | Languages | 30 | 18 | The reflection behind FieldML's host types: what a `THost` names, and what can therefore be said at type-check time about a member's type, a resolved overload's result, the parameter slots a call's arguments land in, and the members a receiver actually has. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>type/<wbr></small> [HostTypes.kt](languages.md#hosttypes-kt) | Languages | 31 | 19 | The reflection behind FieldML's host types: what a `THost` names, and what can therefore be said at type-check time about a member's type, a resolved overload's result, the parameter slots a call's arguments land in, and the members a receiver actually has. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Hrtf.kt](audio.md#hrtf-kt) | Audio | 4 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>steamaudio/<wbr></small> [HrtfProbe.kt](examples.md#hrtfprobe-kt) | Examples | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [HtcEyeTracker.kt](graphics.md#htceyetracker-kt) | Graphics | 0 | 0 |  |  |
@@ -1304,6 +1304,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [KotlinJsRemoteLifecycleSmokeTest.kt](examples.md#kotlinjsremotelifecyclesmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [KotlinJsSourcePreparationSmokeTest.kt](examples.md#kotlinjssourcepreparationsmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [KotlinJsToneSurfaceSmokeTest.kt](examples.md#kotlinjstonesurfacesmoketest-kt) | Examples · internal | 2 | 1 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [KotlinLineNotes.kt](workspace.md#kotlinlinenotes-kt) | Workspace · internal | 2 | 2 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [KotlinScriptEngine.kt](workspace.md#kotlinscriptengine-kt) | Workspace · internal | 91 | 23 |  | [Running code in a box](../running_code.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [KotlinSourceIndex.kt](workspace.md#kotlinsourceindex-kt) | Workspace · internal | 32 | 4 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [KotlinSourcePartition.kt](workspace.md#kotlinsourcepartition-kt) | Workspace · internal | 9 | 9 |  |  |
@@ -1504,8 +1505,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrNative.kt](internal.md#opendlssnrnative-kt) | Internal · internal | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrPass.kt](graphics.md#opendlssnrpass-kt) | Graphics | 18 | 6 |  | [Neural image rendering with OpenDLSS-NR](../open_dlss_nr.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrSmokeTest.kt](graphics.md#opendlssnrsmoketest-kt) | Graphics · internal | 2 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrStudy.kt](graphics.md#opendlssnrstudy-kt) | Graphics | 19 | 4 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrStudy.kt](graphics.md#opendlssnrstudy-kt) | Graphics | 20 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrSupport.kt](graphics.md#opendlssnrsupport-kt) | Graphics | 3 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [OpenDlssNrTeardownSmoke.kt](examples.md#opendlssnrteardownsmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrTemporalSmoke.kt](internal.md#opendlssnrtemporalsmoke-kt) | Internal · internal | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [OpenXREyeTracking.kt](graphics.md#openxreyetracking-kt) | Graphics | 30 | 10 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [OpenXRHmdTarget.kt](graphics.md#openxrhmdtarget-kt) | Graphics | 45 | 17 |  |  |
@@ -1828,7 +1830,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [SimdVerletTinyExample.kt](examples.md#simdverlettinyexample-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr></small> [SimdVerletWind.kt](simulation.md#simdverletwind-kt) | Simulation | 32 | 15 | Wind for `SimdVerlet`: per-particle drag, per-quad cloth aerodynamics, and the reproducible gust field both of them sample. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr>fabricated/<wbr></small> [simpleGaussianSplatSupport.kt](renderers.md#simplegaussiansplatsupport-kt) | Renderers | 5 | 5 | A Gaussian-splat shader pair seeded into a box as editable starter source, so the splat shader is live Field code rather than source hidden inside `GaussianSplatRenderer`. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [simpleGLTFSupport.kt](graphics.md#simplegltfsupport-kt) | Graphics | 21 | 1 |  | [Geometry from disk](../geometry_from_disk.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [simpleGLTFSupport.kt](graphics.md#simplegltfsupport-kt) | Graphics | 22 | 2 |  | [Geometry from disk](../geometry_from_disk.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [simplePLYSupport.kt](graphics.md#simpleplysupport-kt) | Graphics | 15 | 2 |  | [Geometry from disk](../geometry_from_disk.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>engine/<wbr></small> [SimpleSpatialAudio.kt](audio.md#simplespatialaudio-kt) | Audio | 109 | 26 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Simulation.kt](audio.md#simulation-kt) | Audio | 76 | 72 |  |  |

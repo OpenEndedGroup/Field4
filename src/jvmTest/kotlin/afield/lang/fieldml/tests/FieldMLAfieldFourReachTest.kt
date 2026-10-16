@@ -216,30 +216,24 @@ class FieldMLAfieldFourReachTest {
     }
 
     @Test
-    fun theOverloadThatThreeboxActuallyWritesRunsButDoesNotTypeItsCallback() {
+    fun theOverloadThatThreeboxActuallyWritesRunsAndTypesItsCallback() {
         // `start(renderer::run)` is the threebox statement, and it is worth being exact about which
-        // part of it is now reachable and which is not.
+        // part of it is reachable.
         //
-        // The suspend type is no longer the obstacle. What is left is an **overload tie** with
-        // nothing to do with coroutines: `start` is declared twice, over `suspend Frames.() -> Unit`
-        // and over `suspend () -> Unit` (stdlib.kt:516, :527). To reflection both are `start` taking
-        // one functional-interface parameter and a FieldML closure scores the same against both.
-        //
-        // Two consequences, and they pull in opposite directions, which is why both are pinned here.
-        //
-        // The *result* is still known: both overloads return `Frames`, and `resolve` reports a type
-        // when every candidate agrees on one, ambiguous or not. But the *parameter slot* is not:
-        // `parametersOf` returns no claim when the tied candidates have different signatures — the
-        // right answer, and the reason a misspelling inside this particular callback is a run-time
-        // failure rather than a compile error. That is the ordinary untyped-callback hole, not a new
-        // one.
+        // The suspend type is no longer the obstacle, and neither is the **overload tie**: `start`
+        // is declared twice, over `suspend Frames.() -> Unit` and over `suspend () -> Unit`. To
+        // reflection both take one functional-interface parameter and a FieldML closure scores the
+        // same against both. The tie is broken by the closure's own arity, the same way on both
+        // sides: `FieldMLHostBridge.choose` prefers the overload whose callback is handed as many
+        // arguments as the closure takes, and `FieldMLHostTypes.parametersOf` claims that overload's
+        // slot. So `fun f -> …` gets the `Frames` one, typed, and a misspelling is a type error.
         val phased = """(hostClass "afield.runtime.lifecycle.PhasedKt")"""
         val stdlib = """(hostClass "afield.runtime.execution.Stdlib_executionKt")"""
 
         assertEquals("Frames", typeOf("""hostStaticCall "start" (fun f -> f) $stdlib"""))
         assertTrue(
-            FieldMLCompiler.compile("""hostStaticCall "start" (fun f -> f |> hostGet "frameNumbr") $stdlib""").successful,
-            "the tied overload set must not claim a parameter type it cannot know",
+            !FieldMLCompiler.compile("""hostStaticCall "start" (fun f -> f |> hostGet "frameNumbr") $stdlib""").successful,
+            "start's one-parameter callback is the Frames overload's, so a typo is a type error",
         )
         // And where there is only one declaration, the same misspelling is caught where it is written.
         assertTrue(
@@ -250,10 +244,8 @@ class FieldMLAfieldFourReachTest {
         assertEquals("Frames", typeOf("""hostStaticCall "loop" (fun f -> 0) $phased"""))
         assertEquals("Frames", typeOf("""hostStaticCall "forever" (fun f -> true) $phased"""))
 
-        // The other direction: the tie does not stop it *running*, because the adapter is
-        // arity-tolerant in both directions. Whichever `start` reflection happens to pick, the proxy
-        // drops the continuation and then either curries the `Frames` in or, with nothing left, feeds
-        // the `Unit` a zero-argument functional interface gets — and `fun ignored -> …` accepts both.
+        // And it runs: the bridge picks the same overload, drops the continuation and curries the
+        // `Frames` in, which `fun ignored -> …` accepts as readily as the `Unit` of the other one.
         val ran = AtomicInteger()
         val box = Box("fieldml-four-start")
         box.setPropertyRaw("ran", ran, false)
@@ -266,7 +258,7 @@ class FieldMLAfieldFourReachTest {
             box = box,
         )
         runBlocking { frames.body() }
-        assertEquals(1, ran.get(), "start's body should have run exactly once, whichever overload won")
+        assertEquals(1, ran.get(), "start's body should have run exactly once")
     }
 
     @Test

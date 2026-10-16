@@ -2992,6 +2992,8 @@ class KotlinExecution : BoxExecution {
 
                     }
                     executionSucceeded = true
+                    // What its declarations came to, for the editor's line notes.
+                    afield.runtime.kotlin.KotlinLineNotes.record(box, property, sourceText, ln)
                 } else {
                     lprintln("error,execution", "execution finished with errors")
                     finishTelemetry("execute-error")

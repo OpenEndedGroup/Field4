@@ -7,15 +7,14 @@ The .end block handles cancellation; finally also handles a normal return.
 */
 val started = AnimationClock.nowSeconds()
 val runFor = 8.0
-val notes = mutableListOf<String>()
 var nextDraw = 0.0
 
 val show: (String) -> Unit = { headline -> markdown("main", headline.md) }
 
-// Keep cleanup in its own channel so a new launch's readout leaves it visible.
+// Keep a bounded cleanup history across launches. Old cleanup cannot overwrite a
+// newer run's cleanup; the live readout uses a separate channel.
 val note: (String) -> Unit = { line ->
-    notes += line
-    markdown("cleanup", notes.joinToString("\n\n") { "{ok:${it.md}}" })
+    markdownAppend("cleanup", "{ok:${line.md}}", maxEntries = 12)
 }
 
 frames {
@@ -23,7 +22,7 @@ frames {
         var elapsed = AnimationClock.nowSeconds() - started
         while (elapsed < runFor) {
             if (elapsed >= nextDraw) {
-                show("running - %.1f s of %.0f, frame %,d".format(elapsed, runFor, frameNumber))
+                show("running - ${elapsed.f1} s of ${runFor.f0}, frame ${"%,d".format(frameNumber)}")
                 nextDraw = elapsed + 0.1
             }
             frame()
