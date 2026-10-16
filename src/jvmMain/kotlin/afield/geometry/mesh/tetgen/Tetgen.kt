@@ -59,7 +59,9 @@ object Tetgen {
      *   cost; below about 1.1 the refinement can fail to terminate.
      * @param targetEdgeLength the element size to aim for, in the surface's own units. Translated
      *   to TetGen's volume bound as the volume of a regular tetrahedron of that edge. `null` lets
-     *   TetGen choose, which follows the surface's own triangle sizes.
+     *   TetGen choose, which follows the surface's own triangle sizes. TetGen keeps every input
+     *   triangle, so a length coarser than the surface's median edge cannot take effect, and this
+     *   logs a warning on `warning,tetgen` when asked for one.
      * @param preserveSurface forbid Steiner points on the boundary (TetGen's `-Y`). Helps a finely
      *   tessellated convex surface, and hurts a boolean result badly — 109 poor elements against 1
      *   on the measured body. Off unless you have measured your own case.
@@ -82,8 +84,37 @@ object Tetgen {
         // A regular tetrahedron of edge h has volume h^3/(6*sqrt 2); that is how "about this size"
         // is spelled to TetGen, which only takes a volume bound.
         val maxVolume = targetEdgeLength?.let { it * it * it / (6.0 * Math.sqrt(2.0)) } ?: 0.0
+        // TetGen keeps every input triangle, so a size coarser than the surface's own edges does
+        // nothing. Say so rather than let the argument be silently ignored.
+        if (targetEdgeLength != null) {
+            val surfaceEdge = medianEdgeLength(surface)
+            if (targetEdgeLength > surfaceEdge) {
+                afield.app.diagnostics.logging.lprintln(
+                    "warning,tetgen",
+                    "Tetgen.tetrahedralize: targetEdgeLength ${"%.4g".format(targetEdgeLength)} is coarser than the " +
+                        "surface's own median edge (${"%.4g".format(surfaceEdge)}); TetGen keeps every input " +
+                        "triangle, so elements near the surface will be about that size instead. Coarsen the " +
+                        "surface first (e.g. TriMesh.decimate) for larger elements.",
+                )
+            }
+        }
         val linear = TetgenNative.tetrahedralize(surface, quality, maxVolume, preserveSurface)
         return if (order == 2) linear.quadratic() else linear
+    }
+
+    /** The median edge length of [surface]'s triangles, each edge counted once per triangle. */
+    internal fun medianEdgeLength(surface: TriMesh): Double {
+        val p = surface.positions
+        val idx = surface.indices
+        val lengths = DoubleArray(idx.size) { k ->
+            val a = idx[k]; val b = idx[if (k % 3 == 2) k - 2 else k + 1]
+            val dx = (p[3 * a] - p[3 * b]).toDouble()
+            val dy = (p[3 * a + 1] - p[3 * b + 1]).toDouble()
+            val dz = (p[3 * a + 2] - p[3 * b + 2]).toDouble()
+            Math.sqrt(dx * dx + dy * dy + dz * dz)
+        }
+        lengths.sort()
+        return lengths[lengths.size / 2]
     }
 }
 

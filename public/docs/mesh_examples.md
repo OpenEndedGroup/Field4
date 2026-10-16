@@ -1,5 +1,7 @@
 # Meshes and 3D geometry
 
+<!-- capture-sources: src/jvmMain/kotlin/afield/geometry/mesh/ src/jvmMain/kotlin/afield/graphics/three/Three.kt -->
+
 Drawing in three dimensions is one thing. An [`FLine`](fline_examples.md) has a `z`, the renderer
 takes triangles, the [ray tracer](ray_tracing_examples.md) intersects analytic solids. **Computing
 with a surface** is another. Ask a mesh whether it is closed, subdivide it, smooth it without
@@ -566,10 +568,6 @@ parameter or an SDF expression, and run it again. To start from boxes that alrea
     The gallery test fails if a generator stops being watertight, if a marched sphere's volume error
     stops falling with resolution, if a decimation misses its budget, if Gauss–Bonnet stops matching
     2πχ, or if the Voronoi cells stop tiling their clip box.
-
-    Neither kind of figure refreshes itself when `mesh_*.kt` changes: the runner's capture digest
-    (`RUNNER_DIGEST_SOURCE_FILES` in `public/docs_hooks.py`) covers no stdlib source, so use
-    `FIELD_DOCS_RUNNER_MODE=always`, and re-run `mesh.gallery` for the committed PNGs.
 
 ## Reference
 

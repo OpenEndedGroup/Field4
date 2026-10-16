@@ -1041,14 +1041,17 @@ class RunnerState:
         # Construction alone must not boot Field before power/display are checked.
         atexit.register(self.close)
 
-    def source_refs_digest(self, code: str) -> str:
-        """Digest of the stdlib source this fence's code text reaches. `""` when it reaches none."""
+    def source_refs_digest(self, code: str, page_path: Path | None = None) -> str:
+        """Digest of the stdlib source this fence's code text reaches, plus whatever its page declares
+        with `<!-- capture-sources: ... -->`. `""` when it reaches none."""
+        extra = () if page_path is None or self.source_refs_mode == "off" else page_capture_sources(self.repo_root, page_path)
         return compute_source_refs_digest(
             repo_root=self.repo_root,
             code=code,
             symbol_index=self.source_symbol_index,
             file_digest_cache=self._source_file_digests,
             mode=self.source_refs_mode,
+            extra_files=extra,
         )
 
     def handle_capture_error(
@@ -2403,7 +2406,7 @@ class RunnerState:
         video_path.parent.mkdir(parents=True, exist_ok=True)
         cache_allowed = self.runner_mode != "always"
         scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
-        source_refs = self.source_refs_digest(code)
+        source_refs = self.source_refs_digest(code, page_path)
         cache_metadata = compute_cache_metadata(
             code=code,
             options=video_options,
@@ -2569,7 +2572,7 @@ class RunnerState:
         )
 
         cache_allowed = self.runner_mode != "always"
-        source_refs = self.source_refs_digest(generated_code)
+        source_refs = self.source_refs_digest(generated_code, page_path)
         cache_metadata = compute_cache_metadata(
             code=generated_code,
             options=options,
@@ -2707,7 +2710,7 @@ class RunnerState:
 
         cache_allowed = self.runner_mode != "always"
         scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
-        source_refs = self.source_refs_digest(code)
+        source_refs = self.source_refs_digest(code, page_path)
         cache_metadata = compute_cache_metadata(
             code=code, options=options, page_path=page_path, block_index=block_index,
             runner_source_digest=self.runner_source_digest,
@@ -2836,7 +2839,7 @@ class RunnerState:
         screenshot_path.parent.mkdir(parents=True, exist_ok=True)
         cache_allowed = self.runner_mode != "always"
         scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
-        source_refs = self.source_refs_digest(code)
+        source_refs = self.source_refs_digest(code, page_path)
         cache_metadata = compute_cache_metadata(
             code=code,
             options=options,
@@ -4030,6 +4033,32 @@ def fence_source_files(
     return tuple(sorted(reached))
 
 
+CAPTURE_SOURCES_RE = re.compile(r"<!--\s*capture-sources:\s*(?P<paths>.*?)-->", re.S)
+
+
+def page_capture_sources(repo_root: Path, page_path: Path) -> tuple[str, ...]:
+    """Source files a page declares its captures depend on, beyond the ones its fences name.
+
+    A page writes `<!-- capture-sources: src/.../contours.kt src/.../mesh/ -->` (whitespace-separated,
+    repo-relative; a trailing `/` means every `.kt` under that directory). The per-fence digest only
+    sees the files whose symbols a fence's code names directly, so a helper reached through another
+    call, or a bridge in a different package, needs saying here for an incremental build to notice it.
+    """
+    try:
+        text = page_path.read_text(encoding="utf-8")
+    except OSError:
+        return ()
+    files: set[str] = set()
+    for match in CAPTURE_SOURCES_RE.finditer(text):
+        for entry in match.group("paths").split():
+            target = repo_root / entry
+            if entry.endswith("/") and target.is_dir():
+                files.update(str(path.relative_to(repo_root)) for path in target.rglob("*.kt"))
+            else:
+                files.add(entry)
+    return tuple(sorted(files))
+
+
 def compute_source_refs_digest(
     *,
     repo_root: Path,
@@ -4037,6 +4066,7 @@ def compute_source_refs_digest(
     symbol_index: dict[str, tuple[str, ...]],
     file_digest_cache: dict[str, str] | None = None,
     mode: str = "direct",
+    extra_files: tuple[str, ...] = (),
 ) -> str:
     """Hash the contents of every source file this fence reaches.
 
@@ -4044,7 +4074,7 @@ def compute_source_refs_digest(
     the key out of the digest payload entirely so such a fence hashes exactly as it did before this
     existed.
     """
-    files = fence_source_files(code=code, symbol_index=symbol_index, mode=mode)
+    files = tuple(sorted(set(fence_source_files(code=code, symbol_index=symbol_index, mode=mode)) | set(extra_files)))
     if not files:
         return ""
     cache = file_digest_cache if file_digest_cache is not None else {}
