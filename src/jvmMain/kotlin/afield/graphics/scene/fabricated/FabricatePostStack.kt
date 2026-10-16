@@ -29,6 +29,11 @@ class FabricatePostStack(
 ) {
     private val graph = FabricatePassGraph<FabricatePostEffect>()
 
+    /** Called after every edit, so whatever has the stack attached can re-attach it. */
+    internal val changeListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+
+    private fun changed() = changeListeners.forEach { it() }
+
     init {
         initial.forEach { effect -> append(effect) }
     }
@@ -41,26 +46,30 @@ class FabricatePostStack(
 
     fun append(effect: FabricatePostEffect): FabricatePostStack {
         graph.addLast(effect.name, effect)
+        changed()
         return this
     }
 
     fun insertBefore(effect: FabricatePostEffect, before: String): FabricatePostStack {
         graph.insertBefore(effect.name, before, effect)
+        changed()
         return this
     }
 
     fun insertAfter(effect: FabricatePostEffect, after: String): FabricatePostStack {
         graph.insertAfter(effect.name, after, effect)
+        changed()
         return this
     }
 
     fun replace(name: String, effect: FabricatePostEffect): FabricatePostStack {
         require(name == effect.name) { "replacement effect name '${effect.name}' must match '$name'" }
         graph.replace(name, effect)
+        changed()
         return this
     }
 
-    fun remove(name: String): FabricatePostEffect? = graph.remove(name)
+    fun remove(name: String): FabricatePostEffect? = graph.remove(name)?.also { changed() }
 
     fun output(): RenderToTexture = effects().lastOrNull()?.target ?: input
 }

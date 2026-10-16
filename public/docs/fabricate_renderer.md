@@ -527,7 +527,7 @@ expect:
 
 Deferred lighting runs in HDR, so raw output clips bright highlights to white. Tone mapping compresses HDR into a displayable range, and bloom bleeds the brightest regions into a soft glow.
 
-`bundle.setToneMapping(...)` appends a tone-map pass that always runs last (options: `NONE`, `REINHARD`, `FILMIC`, `ACES`, `AGX`, plus an `exposure` multiplier). `bundle.addBloom(...)` inserts a bright-pass, separable blur, and additive composite ahead of the tone-map pass, so bloom accumulates on HDR values before they are compressed. Both modify the post stack, so re-attach the frame graph afterwards.
+`bundle.setToneMapping(...)` appends a tone-map pass that always runs last (options: `NONE`, `REINHARD`, `FILMIC`, `ACES`, `AGX`, plus an `exposure` multiplier). `bundle.addBloom(...)` inserts a bright-pass, separable blur, and additive composite ahead of the tone-map pass, so bloom accumulates on HDR values before they are compressed. Both modify the post stack, and a bundle already attached to a renderer picks the change up itself.
 
 ```diffstatic {data-lang=kotlin}
 bundle.addBloom(threshold = 1.0f, intensity = 0.85f, radius = 3.2f)

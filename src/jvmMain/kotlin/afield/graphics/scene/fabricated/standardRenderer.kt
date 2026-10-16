@@ -183,6 +183,24 @@ object StandardRenderer {
 			val postStack: FabricatePostStack = FabricatePostStack(transparentComposite)
 		) {
 		/**
+		 * The targets [attachTo] attached this bundle to, with the graph each one got. A post-stack
+		 * edit after attaching ([setToneMapping], [addBloom], [addShaderEffect]) re-attaches to each,
+		 * so the edit takes effect without the caller attaching again.
+		 */
+		private val attachedGraphs = LinkedHashMap<RenderTarget, FabricateFrameGraph>()
+
+		init {
+			postStack.changeListeners += {
+				synchronized(attachedGraphs) {
+					attachedGraphs.entries.forEach { entry ->
+						entry.value.detachFrom(entry.key)
+						entry.setValue(frameGraph().also { it.attachTo(entry.key) })
+					}
+				}
+			}
+		}
+
+		/**
 		 * GPU-side buffer of extra (non-key) lights consumed by the deferred lighting pass. Populated by
 		 * [syncLights]; capacity is [maxLights]. The primary shadow-casting directional light does not
 		 * live here — it stays in the built-in `LightData` uniform so it can drive the shadow map.
@@ -337,10 +355,16 @@ object StandardRenderer {
 			 * [FabricateFrameGraph].
 			 */
 			fun attachTo(renderer: Renderer, windowIndex: Int = 0): RenderTarget =
-				frameGraph().attachTo(renderer, windowIndex)
+				remembering(frameGraph()) { it.attachTo(renderer, windowIndex) }
 
 			fun attachTo(renderer: Renderer, window: Window): RenderTarget =
-				frameGraph().attachTo(renderer, window)
+				remembering(frameGraph()) { it.attachTo(renderer, window) }
+
+			private fun remembering(graph: FabricateFrameGraph, attach: (FabricateFrameGraph) -> RenderTarget): RenderTarget {
+				val target = attach(graph)
+				synchronized(attachedGraphs) { attachedGraphs[target] = graph }
+				return target
+			}
 
 			/** Present the anti-aliased lighting RTT to the swapchain with optional grading and viewport. */
 			fun present(
