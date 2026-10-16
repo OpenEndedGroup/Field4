@@ -45,47 +45,70 @@ operations:
             size = 14400.vec4s
             zeroInit()
         }.buffer
-        @exported var flowA = grid()
-        @exported var flowB = grid()
-        @exported var advected = grid()
-        @exported var divergence = grid()
-        @exported var pressureA = grid()
-        @exported var pressureB = grid()
-        @exported var particleA = defaultBuffer {
+        propDown<FrameBufferGroup>(flowA)
+        flowA = grid()
+        propDown<FrameBufferGroup>(flowB)
+        flowB = grid()
+        propDown<FrameBufferGroup>(advected)
+        advected = grid()
+        propDown<FrameBufferGroup>(divergence)
+        divergence = grid()
+        propDown<FrameBufferGroup>(pressureA)
+        pressureA = grid()
+        propDown<FrameBufferGroup>(pressureB)
+        pressureB = grid()
+        propDown<FrameBufferGroup>(particleA)
+        particleA = defaultBuffer {
             size = 32000.vec4s
             zeroInit()
         }.buffer
-        @exported var particleB = defaultBuffer {
+        propDown<FrameBufferGroup>(particleB)
+        particleB = defaultBuffer {
             size = 32000.vec4s
             zeroInit()
         }.buffer
-        @exported var tileHeaders = defaultBuffer {
+        propDown<FrameBufferGroup>(tileHeaders)
+        tileHeaders = defaultBuffer {
             perFrame = true
             size = 25.vec4s
         }.buffer
-        @exported var cameraHistory = defaultBuffer {
+        propDown<FrameBufferGroup>(cameraHistory)
+        cameraHistory = defaultBuffer {
             perFrame = true
             size = 17.vec4s
         }.buffer
-        @exported var itemHistory = defaultBuffer {
+        propDown<FrameBufferGroup>(itemHistory)
+        itemHistory = defaultBuffer {
             perFrame = true
             size = 3.vec4s
         }.buffer
-        @exported var resetFlow = SimulationReset()
-        @exported var force = EffectiveParameter("Force", 2.5, 0.0, 12.0, "world/s²", "Vortex impulse")
-        @exported var grainCell = EffectiveParameter("Grain cell", .018, .006, .12, "world", "Fixed world noise scale")
-        @exported var strokeTime = EffectiveParameter("Stroke time", .15, .01, .6, "s", "Noise integration interval")
-        @exported var flowLook = vec(.018, .15, .45, 0) // Grain cell, integration seconds, gain, debug view.
-        @exported var flowClock = vec(0, 1.0/60, 0, 0) // Time, fixed step, reset generation, reserved.
-        @exported var flowEmitter = vec(0, 0, 2.5, 0) // World position and force strength.
-        @exported var flowSimulation = ComputeTarget(render)
-        @exported var flowStep = java.util.concurrent.atomic.AtomicLong()
-        @exported var travel = java.util.concurrent.atomic.AtomicBoolean(false) // Move across tile boundaries and exercise zoom history.
-        @exported var flowWidth = EffectiveParameter("View half-height", 8.0, 3.0, 10.0, "world") // Visible vertical half-width in world units.
+        propDown<SimulationReset>(resetFlow)
+        resetFlow = SimulationReset()
+        propDown<EffectiveParameter>(force)
+        force = EffectiveParameter("Force", 2.5, 0.0, 12.0, "world/s²", "Vortex impulse")
+        propDown<EffectiveParameter>(grainCell)
+        grainCell = EffectiveParameter("Grain cell", .018, .006, .12, "world", "Fixed world noise scale")
+        propDown<EffectiveParameter>(strokeTime)
+        strokeTime = EffectiveParameter("Stroke time", .15, .01, .6, "s", "Noise integration interval")
+        propDown<afield.math.linalg.Vec4>(flowLook)
+        flowLook = vec(.018, .15, .45, 0) // Grain cell, integration seconds, gain, debug view.
+        propDown<afield.math.linalg.Vec4>(flowClock)
+        flowClock = vec(0, 1.0/60, 0, 0) // Time, fixed step, reset generation, reserved.
+        propDown<afield.math.linalg.Vec4>(flowEmitter)
+        flowEmitter = vec(0, 0, 2.5, 0) // World position and force strength.
+        propDown<ComputeTarget>(flowSimulation)
+        flowSimulation = ComputeTarget(render)
+        propDown<java.util.concurrent.atomic.AtomicLong>(flowStep)
+        flowStep = java.util.concurrent.atomic.AtomicLong()
+        propDown<java.util.concurrent.atomic.AtomicBoolean>(travel)
+        travel = java.util.concurrent.atomic.AtomicBoolean(false) // Move across tile boundaries and exercise zoom history.
+        propDown<EffectiveParameter>(flowWidth)
+        flowWidth = EffectiveParameter("View half-height", 8.0, 3.0, 10.0, "world") // Visible vertical half-width in world units.
         
         // A color surface and a correspondence attachment. The latter stores previous UV,
         // validity, and coverage; it is a sampling coordinate, not a velocity in pixels/s.
-        @exported var flowSurface = RenderToTexture {
+        propDown<RenderToTexture>(flowSurface)
+        flowSurface = RenderToTexture {
             width = 960
             height = 720
             colorAttachments = 2
@@ -119,19 +142,6 @@ operations:
         import kotlin.math.*
         
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-        val cameraHistory = fromContextWithNameOrNull<FrameBufferGroup>("cameraHistory")!!
-        val itemHistory = fromContextWithNameOrNull<FrameBufferGroup>("itemHistory")!!
-        val flowLook = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowLook")!!
-        val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
-        val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
-        val force = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("force")!!
-        val grainCell = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("grainCell")!!
-        val strokeTime = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("strokeTime")!!
-        val flowWidth = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("flowWidth")!!
-        val resetFlow = fromContextWithNameOrNull<afield.runtime.lifecycle.SimulationReset>("resetFlow")!!
-        val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
-        val travel = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")!!
         
         val pool = TileResidency(5, 5, 4f)
         val layout = TileAtlasLayout(pool, 24)
@@ -288,15 +298,6 @@ operations:
         import afield.graphics.render.computeTask
         
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
-        val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!
-        val advected = fromContextWithNameOrNull<FrameBufferGroup>("advected")!!
-        val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
-        val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-        val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
-        val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
-        val flowSimulation = fromContextWithNameOrNull<afield.graphics.vulkan.targets.ComputeTarget>("flowSimulation")!!
-        val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
         
         var module = computeModuleHere {}
         
@@ -356,13 +357,6 @@ operations:
         import afield.graphics.render.computeTask
         
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val advected = fromContextWithNameOrNull<FrameBufferGroup>("advected")!!
-        val divergence = fromContextWithNameOrNull<FrameBufferGroup>("divergence")!!
-        val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
-        val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-        val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
-        val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
-        val flowSimulation = fromContextWithNameOrNull<afield.graphics.vulkan.targets.ComputeTarget>("flowSimulation")!!
         
         var module = computeModuleHere {}
         
@@ -414,13 +408,6 @@ operations:
         import afield.graphics.render.computeTask
         
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val divergence = fromContextWithNameOrNull<FrameBufferGroup>("divergence")!!
-        val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
-        val pressureB = fromContextWithNameOrNull<FrameBufferGroup>("pressureB")!!
-        val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-        val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
-        val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
-        val flowSimulation = fromContextWithNameOrNull<afield.graphics.vulkan.targets.ComputeTarget>("flowSimulation")!!
         
         var module = computeModuleHere {}
         
@@ -475,15 +462,6 @@ operations:
         import afield.graphics.render.computeTask
         
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
-        val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!
-        val advected = fromContextWithNameOrNull<FrameBufferGroup>("advected")!!
-        val pressureA = fromContextWithNameOrNull<FrameBufferGroup>("pressureA")!!
-        val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-        val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
-        val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
-        val flowSimulation = fromContextWithNameOrNull<afield.graphics.vulkan.targets.ComputeTarget>("flowSimulation")!!
-        val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
         
         var module = computeModuleHere {}
         
@@ -542,15 +520,6 @@ operations:
         import afield.graphics.render.computeTask
         
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
-        val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!
-        val particleA = fromContextWithNameOrNull<FrameBufferGroup>("particleA")!!
-        val particleB = fromContextWithNameOrNull<FrameBufferGroup>("particleB")!!
-        val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-        val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
-        val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
-        val flowSimulation = fromContextWithNameOrNull<afield.graphics.vulkan.targets.ComputeTarget>("flowSimulation")!!
-        val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
         
         var module = computeModuleHere {}
         
@@ -614,15 +583,6 @@ operations:
         import afield.document.context.fromContextWithNameOrNull
         
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
-        val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!
-        val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-        val cameraHistory = fromContextWithNameOrNull<FrameBufferGroup>("cameraHistory")!!
-        val itemHistory = fromContextWithNameOrNull<FrameBufferGroup>("itemHistory")!!
-        val flowLook = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowLook")!!
-        val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
-        val flowSurface = fromContextWithNameOrNull<RenderToTexture>("flowSurface")!!
-        val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
         
         var module = moduleHere {
             flowSurface.apply()
@@ -730,8 +690,6 @@ operations:
         import afield.document.context.fromContextWithNameOrNull
         
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val flowLook = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowLook")!!
-        val flowSurface = fromContextWithNameOrNull<RenderToTexture>("flowSurface")!!
         
         // The color and motion attachment are both available to future postprocessing boxes.
         var module = moduleHere {
@@ -784,10 +742,6 @@ operations:
         import afield.document.context.fromContextWithNameOrNull
         
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val particleA = fromContextWithNameOrNull<FrameBufferGroup>("particleA")!!
-        val particleB = fromContextWithNameOrNull<FrameBufferGroup>("particleB")!!
-        val cameraHistory = fromContextWithNameOrNull<FrameBufferGroup>("cameraHistory")!!
-        val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
         
         var module = moduleHere { depthTest = false
             depthWrite = false
@@ -853,12 +807,6 @@ operations:
         import afield.document.context.fromContextWithNameOrNull
         
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val flowLook = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowLook")!!
-        val force = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("force")!!
-        val grainCell = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("grainCell")!!
-        val strokeTime = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("strokeTime")!!
-        val flowWidth = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("flowWidth")!!
-        val travel = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")!!
         
         // Edit and execute this box. The shader receives the effective values; all values
         // and bounds remain inspectable through Field's ordinary object viewer.
@@ -882,7 +830,6 @@ operations:
         import afield.document.context.fromContextWithNameOrNull
         
         // Dependencies are explicit graph exports; resources stay in their parent box.
-        val resetFlow = fromContextWithNameOrNull<afield.runtime.lifecycle.SimulationReset>("resetFlow")!!
         
         // Ordinary execution queues a reset; the existing renderer consumes it once at its boundary.
         println("Reset requested: ${resetFlow.request()}")

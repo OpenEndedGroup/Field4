@@ -522,7 +522,8 @@ object ReactiveRuns {
      * when no other box still waiting to rerun can reach it through recorded flows, so a diamond's
      * bottom runs once, after both sides. A reader is waiting while its last read of the value (and
      * its last run) began before the change; a box that ran or read since is up to date. Each box
-     * reruns at most [MAX_RUNS_PER_CASCADE] times per cascade, which is what stops a cycle.
+     * reruns at most [MAX_RUNS_PER_CASCADE] times per cascade, which is what stops a cycle. Readers
+     * with no order between them rerun in the order their last runs started.
      */
     internal object Downstream {
         private val pending = ConcurrentLinkedQueue<Change>()
@@ -620,7 +621,11 @@ object ReactiveRuns {
                     out.merge(reader, c.seq, ::minOf)
                 }
             }
-            return out.entries.sortedBy { it.value }.associate { it.key to it.value }
+            // Readers rerun in the order they last ran (pickNext still puts a reader after any waiting
+            // box that feeds it): a set of passes launched in pipeline order, whose modules dispatch in
+            // the order they were added, keeps that order. Then by the earliest change each missed.
+            return out.entries.sortedWith(compareBy({ lastRunStart[it.key.id] ?: Long.MAX_VALUE }, { it.value }))
+                .associate { it.key to it.value }
         }
 
         /** The first waiting reader that no other waiting reader can reach through recorded flows. */

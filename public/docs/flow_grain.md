@@ -31,8 +31,8 @@ lighting and artistic parameters remain in the graph.
 | Profile | Launch a repeatable reset, warm-up and 180-frame camera path, then inspect the existing profiling timeline. |
 
 Use Field's normal **Stop Box** and **Launch Box** controls. Stop the renderer to stop
-rendering; stop a stage to remove it from the pipeline. Relaunch stages in their numbered
-order after rebuilding the resources box. Shader reloads preserve the resources.
+rendering; stop a stage to remove it from the pipeline. Relaunching the resources box relaunches the
+stages that use its resources, in their numbered order. Shader reloads preserve the resources.
 
 Stopping a stage detaches its work so you can edit and relaunch it. Closing the document's
 last session also closes its native renderer, which waits for the device and then releases
