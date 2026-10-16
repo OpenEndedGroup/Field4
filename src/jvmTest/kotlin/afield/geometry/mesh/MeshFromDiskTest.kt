@@ -414,7 +414,8 @@ class MeshFromDiskTest {
         // A correction the audit made to its own first draft: copy(normals = null) does NOT drop them.
         val ball = icosphereMesh(2).withColor(0.4, 0.6, 0.9)
         assertTrue(ball.hasNormals && ball.hasColors)
-        assertTrue(ball.copy(normals = null).hasNormals, "null means 'unchanged' in copy(), not 'drop'")
+        assertTrue(!ball.copy(normals = null).hasNormals, "null in copy() drops the attribute")
+        assertTrue(ball.copy(positions = ball.positions).hasNormals, "an attribute not passed is kept")
         assertTrue(!ball.withoutAttributes().hasNormals, "withoutAttributes is the one that drops")
         assertTrue(!ball.withoutAttributes().hasColors)
         assertEquals(ball.triangleCount, ball.withoutAttributes().triangleCount)
