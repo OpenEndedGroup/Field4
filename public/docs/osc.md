@@ -129,9 +129,10 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/fader.png" alt="a launched box's outputs: in the main channel, an amber bar drawn inside a grey track, its length following the fader; in the value channel, the line /1/fader1 = and the value it last received" capture="box" execution="launch" wait="3" wait-output=true wait-output-kind=display wait-output-channel="main" embed=true trim=true name="osc-fader" w="760" h="140"}
 :::static
-var level = 0f   // the fader, as last received
+// Stop/rerun removes this handler; the cached OSC server stays available.
+var level = 0f // the fader, as last received
 
-osc(57308).on("/1/fader1") { m ->
+osc(57308).on("/1/fader1", runOwned = true) { m ->
     gather<OscServer.Message> { level = (m.arguments[0] as Number).toFloat() }
 }
 
@@ -154,7 +155,7 @@ animate {
         color = vec(0.91, 0.69, 0.29, 1.0)
     }
     lines(track, bar, channel = "main")
-    markdown("value", "/1/fader1 = ${"%.2f".format(level)}")
+    markdown("value", "/1/fader1 = ${level.f2}")
 }
 ```
 
@@ -199,19 +200,23 @@ val sent = listOf<Any?>(1, 0.5f, 0.5, 2L, true, "text", null, byteArrayOf(1, 2, 
 
 server.on("/types") { m ->
     val tags = m.event.message.info.argumentTypeTags
-    val rows = m.arguments.indices.joinToString("\n") { i ->
-        val out = sent[i]?.javaClass?.simpleName ?: "null"
-        val back = m.arguments[i]?.javaClass?.simpleName ?: "null"
-        "| $out | `${tags[i]}` | $back |"
-    }
+    val rows =
+        m.arguments.indices.joinToString("\n") { i ->
+            val out = sent[i]?.javaClass?.simpleName ?: "null"
+            val back = m.arguments[i]?.javaClass?.simpleName ?: "null"
+            "| $out | `${tags[i]}` | $back |"
+        }
     gather<OscServer.Message> {
-        markdown("main", """
+        markdown(
+            "main",
+            """
             | sent as | OSC tag | arrives as |
             |---|---|---|
             $rows
 
             the Int after the blob arrives as **${m.arguments.last()}**
-        """)
+        """,
+        )
     }
 }
 
@@ -259,13 +264,20 @@ expect:
 :::static
 val server = osc(57304)
 server.debug = false
-val patterns = ["/fader/1", "/fader/*", "/fader/?", "/fader/[1-3]",
-                      "/fader/{1,2}", "/fader/{1,10}", "//volume"]
+val patterns = [
+    "/fader/1",
+    "/fader/*",
+    "/fader/?",
+    "/fader/[1-3]",
+    "/fader/{1,2}",
+    "/fader/{1,10}",
+    "//volume",
+]
 val hits = java.util.concurrent.ConcurrentHashMap<String, MutableList<String>>()
 
 for (p in patterns) server.on(p) { m ->
     hits.computeIfAbsent(m.address) { java.util.Collections.synchronizedList(mutableListOf()) } += p
-    gather<OscServer.Message> { }
+    gather<OscServer.Message> {}
 }
 
 val addresses = ["/fader/1", "/fader/2", "/fader/10", "/mixer/strip/volume"]
@@ -274,13 +286,17 @@ for (a in addresses) out.send(a, 1f)
 Thread.sleep(300)
 
 fun fired(a: String) = patterns.filter { it in (hits[a] ?: emptyList<String>()) }
-markdown("main", """
+markdown(
+    "main",
+    """
     | address | count | patterns that fired |
     |---|---|---|
     ${addresses.joinToString("\n") { a ->
         "| `$a` | ${fired(a).size} of ${patterns.size} | ${fired(a).joinToString(" ") { "`$it`" }} |"
     }}
-""", width = 860)
+""",
+    width = 860,
+)
 ```
 
 `*` matches any run of characters within one part of the address, `?` one character, `[1-3]` one
@@ -320,16 +336,26 @@ val fired = java.util.Collections.synchronizedList(mutableListOf<String>())
 val out = oscClient("127.0.0.1", 57305)
 fun sendBoth(): List<String> {
     fired.clear()
-    out.send("/old"); out.send("/new")
+    out.send("/old")
+    out.send("/new")
     Thread.sleep(200)
     return fired.sorted()
 }
 
 // what this box registered before its code was edited ...
-server.on("/old") { _ -> fired += "/old"; gather<OscServer.Message> { } }
-server.on("/new") { _ -> fired += "/new"; gather<OscServer.Message> { } }
+server.on("/old") { _ ->
+    fired += "/old"
+    gather<OscServer.Message> {}
+}
+server.on("/new") { _ ->
+    fired += "/new"
+    gather<OscServer.Message> {}
+}
 // ... and what the edited code registers: /new again, and no /old
-server.on("/new") { _ -> fired += "/new (edited)"; gather<OscServer.Message> { } }
+server.on("/new") { _ ->
+    fired += "/new (edited)"
+    gather<OscServer.Message> {}
+}
 val beforeRemove = sendBoth()
 
 server.remove("/old")
@@ -338,12 +364,15 @@ val afterRemove = sendBoth()
 server.close()
 val fresh = osc(57305)
 
-markdown("main", """
+markdown(
+    "main",
+    """
     - before any removal: `${beforeRemove.joinToString(", ", "[", "]")}` fire
     - after `remove("/old")`: `${afterRemove.joinToString(", ", "[", "]")}` fires
     - after `close()`, `osc(57305)` is a new server: **${fresh !== server}**,
       listening: **${fresh.isListening}**
-""")
+""",
+)
 fresh.close()
 ```
 
@@ -410,7 +439,7 @@ val arrivals = java.util.Collections.synchronizedList(mutableListOf<String>())
 val t0 = System.currentTimeMillis()
 server.on("/when") { m ->
     arrivals += "${m.arguments[0]} arrived after **${System.currentTimeMillis() - t0} ms**"
-    gather<OscServer.Message> { }
+    gather<OscServer.Message> {}
 }
 
 val out = oscClient("127.0.0.1", 57306)
@@ -457,10 +486,11 @@ import java.net.InetSocketAddress
 val rows = java.util.Collections.synchronizedList(mutableListOf<String>())
 fun ids(cursors: List<TuioReceiver.TuioCursor>) = cursors.joinToString(" ") { "${it.sessionId}" }
 
-val tuio = TuioReceiver(57307) { f ->
-    val alive = f.cursors.joinToString(" ") { "${it.sessionId} (${it.x}, ${it.y})" }
-    rows += "| ${f.fseq} | ${ids(f.cursorAdded)} | ${ids(f.cursorUpdated)} | ${ids(f.cursorRemoved)} | $alive |"
-}
+val tuio =
+    TuioReceiver(57307) { f ->
+        val alive = f.cursors.joinToString(" ") { "${it.sessionId} (${it.x}, ${it.y})" }
+        rows += "| ${f.fseq} | ${ids(f.cursorAdded)} | ${ids(f.cursorUpdated)} | ${ids(f.cursorRemoved)} | $alive |"
+    }
 tuio.start()
 
 // a stand-in tracker: the four frames a two-finger touch produces, as TUIO 1.1 bundles
@@ -479,11 +509,14 @@ Thread.sleep(300)
 tracker.close()
 tuio.close()
 
-markdown("main", """
+markdown(
+    "main",
+    """
     | fseq | added | updated | removed | alive after |
     |---|---|---|---|---|
     ${rows.joinToString("\n")}
-""")
+""",
+)
 ```
 
 A TUIO frame is an `alive` message listing every session id still present, a `set` message for each

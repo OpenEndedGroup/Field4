@@ -81,12 +81,37 @@
     "bc7141d7966c-02": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "fbfacf99f495-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_4/README.md"
+    },
+    "fbfacf99f495-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_4/README.md"
+    },
+    "fbfacf99f495-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_4/README.md"
+    },
+    "295f4a39bd7e-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_4/README.md"
+    },
+    "66e56f9df08a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_4/README.md"
+    },
+    "66e56f9df08a-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_4/README.md"
     }
   },
   "batches": [
     "../box_code_adoption_batch_1/README.md",
     "../box_code_adoption_batch_2/README.md",
-    "../box_code_adoption_batch_3/README.md"
+    "../box_code_adoption_batch_3/README.md",
+    "../box_code_adoption_batch_4/README.md"
   ],
-  "next": "Remaining helper families: Faust render/measurement, run-owned OSC, midpoint solid slices, RectSL projection/gallery, named Syphon reuse; then remaining source findings, including spatial documentation. Audit collection literals explicitly in every batch."
+  "next": "Continue source findings: comment corrections, GLSL intent/layout, collection literals, code smells and remaining helper adoption. Full corpus coverage remains open."
 }

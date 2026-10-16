@@ -1,0 +1,1 @@
+The live fader on public/docs/osc.md now uses on(..., runOwned = true). Explain opt-in stop/rerun ownership beside that example; qualify the later 'Handlers outlive a stop' section as the default persistent registration behavior. Other examples intentionally retain that default. Real checks prove stop removes the opt-in handler while the port's shared server remains listening.

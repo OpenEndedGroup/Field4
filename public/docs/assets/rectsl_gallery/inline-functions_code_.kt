@@ -1,20 +1,20 @@
-// RectSL example: inline-functions
-//
-// This program uses a `{{ ... }}` Kotlin escape, so it is compiled with a
-// *dedicated* Kotlin engine rather than this box's own engine — the box engine is
-// busy running this code and a nested compile on it would re-enter and deadlock.
-// See the "RectSL examples" docs page for the escape mechanism.
+/*
+RectSL example: inline-functions
 
+This program uses a `{{ ... }}` Kotlin escape, so it is compiled with a
+*dedicated* Kotlin engine rather than this box's own engine — the box engine is
+busy running this code and a nested compile on it would re-enter and deadlock.
+See the "RectSL examples" docs page for the escape mechanism.
+*/
+
+import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 import afield.lang.rectsl.compileRectSL
 import afield.lang.rectsl.rectMaterialShaderCode
+import afield.lang.rectsl.worldToClip
 import afield.lang.rectsl.writeFrameToMesh
-import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
-import afield.graphics.render.Mesh
-import afield.graphics.render.Module
-import afield.graphics.render.parameters
-import afield.graphics.render.pointer
 
-val rectsl = """
+val rectsl =
+    """
 #rectsl
 ->wall 22 8 meters
 ->duration 3
@@ -35,28 +35,36 @@ val rectsl = """
 """
 
 val engine = afield.runtime.kotlin.KotlinInterface2(filePrefix = "INLINE_FN_VIEW_")
-val program = compileRectSL(rectsl, engine = engine).program!!
-val shader  = rectMaterialShaderCode(program)
+// The dedicated compiler belongs to this run, including stop and rerun cleanup.
+RunScope.current()?.own { engine.dispose() }
+val program = compileRectSL(rectsl, engine = engine).program
+val shader = rectMaterialShaderCode(program)
 check(shader.ok) { shader.diagnostics.joinToString("\n") }
 
-// Built directly, not with `moduleHere { }`: that takes its shaders from this box's
-// `vertex`/`fragment` properties and ignores the ones assigned in its block, and this
-// fragment shader is regenerated from the program's materials on every run.
-val module = Module(parameters(renderer) {
-    name = "rectsl"
-    vertex = RECT_ANIMATION_VERTEX_SHADER
-    fragment = shader.exampleFragmentShader
-    blend = true
-    depthTest = false
-    primitiveType = triangles
-}).pointer()
+/*
+Built directly, not with `moduleHere { }`: that takes its shaders from this box's
+`vertex`/`fragment` properties and ignores the ones assigned in its block, and this
+fragment shader is regenerated from the program's materials on every run.
+*/
+val module =
+    Module(
+            parameters(renderer) {
+                name = "rectsl"
+                vertex = RECT_ANIMATION_VERTEX_SHADER
+                fragment = shader.exampleFragmentShader
+                blend = true
+                depthTest = false
+                primitiveType = triangles
+            },
+        )
+        .pointer()
 val m = Mesh(renderer, module)
 module += "scene" to m
 renderer += "rectsl" to module
 
 val ww = program.wall.width.toFloat()
 val wh = program.wall.height.toFloat()
-m.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
+m.push["worldToClip"] = program.wall.worldToClip()
 m.push["wallWidth"] = ww
 m.push["wallHeight"] = wh
 
@@ -65,5 +73,4 @@ loop {
     m.push["time"] = t.toFloat()
     program.writeFrameToMesh(t % program.duration, m)
     t += 1.0 / 60.0
-    true
 }
