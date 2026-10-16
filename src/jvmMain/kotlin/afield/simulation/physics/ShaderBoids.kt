@@ -303,14 +303,8 @@ class ShaderBoids(
         }
     }
 
-    /**
-     * Installs the grid and then this rule into [into], in that order.
-     *
-     * The grid has to be rebuilt from the current positions *before* the rule reads it, and both
-     * live in the same `others` map, which is ordered — so this is one call rather than two, so
-     * that the ordering cannot be got wrong by a caller.
-     */
-    @Volatile private var warnedRadius = false
+    @Volatile
+    private var warnedRadius = false
 
     /**
      * [BoidSettings.radius], held to the grid's cell size. [install] refuses a radius that does not
@@ -331,6 +325,13 @@ class ShaderBoids(
         return grid.cellSize
     }
 
+    /**
+     * Installs the grid and then this rule into [into], in that order.
+     *
+     * The grid has to be rebuilt from the current positions *before* the rule reads it, and both
+     * live in the same `others` map, which is ordered — so this is one call rather than two, so
+     * that the ordering cannot be got wrong by a caller.
+     */
     fun install(into: MutableMap<String, Target>) {
         require(settings.radius <= grid.cellSize + 1e-6f) {
             "a radius of ${settings.radius} does not fit a cell of ${grid.cellSize}; " +
