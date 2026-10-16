@@ -273,7 +273,9 @@ showSignals(
 
 ![springAngle turning the short way where a plain spring goes the long way, and a double spring removing the flick](assets/movement_examples/angle_short_way.png)
 
-The top panel is the wrapping. The bottom panel is the other angle function:
+The top panel is the wrapping. Both curves are absolute angles in radians, the `springAngle` one
+unwrapped: it climbs from 3 through π and settles at about 3.28, which is −3 plus 2π, while the plain
+spring falls all the way to −3. The bottom panel is the other angle function:
 `doubleSpringAngle` runs two `springAngle`s in series, each on half the half-life,
 and the visible one chases the intermediate one rather than the goal. Its rate
 starts at 0.05 rad/s where the single spring's is already at 0.45, so the turn
