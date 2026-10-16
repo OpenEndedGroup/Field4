@@ -199,28 +199,11 @@ Composition-specific choices stay in the contributor: what a lane means, when it
 whether a zero retires a resource, and how the names are versioned. Field only supplies composition,
 typed boundaries, interpolation and persistence.
 
-??? aside "The module-pointer target overloads can only address one member per block"
+Besides a `Structure`, a scope can target a member of a live module's uniform block:
+`target(module, "key@block.member")`, with `ComputeModulePointer` and `MeshModulePointer` forms. These
+need a live renderer, so every fence on this page uses the plain `Structure` form.
 
-    Besides a `Structure`, a scope can target a live module's uniform structures:
-    `target(module: ModulePointer, name)` and its `ComputeModulePointer` / `MeshModulePointer`
-    siblings (`animation/keyframes/keyframer.kt:902#fun target(module: ModulePointer, name: String) =`, `:906`, `:910`). All three need a live renderer. Every
-    fence on this page uses the plain `Structure` form instead.
-
-    Each is a one-line wrapper over the lazily-resolved `target(name) { … }`
-    (`animation/keyframes/keyframer.kt:784#fun target(name: String, structure: () -> Structure?) {`), and they pass the *same*
-    `@`-suffixed string to two different lookups: it selects the structure, via
-    `module.current.liveUniformStructures[…]`, **and** it is the member name bound inside that
-    structure. That map is keyed by the **uniform block's name**
-    (`Module.kt:580#vi.ubos.forEach { liveUniformStructures[it.name] =` for a graphics module, `ComputeModule.kt:163#ci.ubos.forEach  { liveUniformStructures[it.name] =` for a compute one), while the
-    members inside it are the block's *fields*. So the key can only address a member whose name
-    equals the block's own name, not an arbitrary field within the block, and not the independent
-    structure-and-property pair the `@` qualifier gives a plain `Structure` target.
-
-    The working way to keyframe a module's uniform is therefore the plain `Structure` overload
-    against `module.<block>`, which resolves to that same live structure
-    (`Module.kt:238#return ModuleRebuild.access(inside, property.name, inside.current.liveUniformStructures[property.name] ?:`). The next section drives a uniform that way, on a GPU.
-
-??? aside "`capture()` reads either kind of property, and writes back a binding"
+??? aside "`capture()` reads and writes back either kind of property"
 
     A `Structure` can hold a property two ways: `structure.bind("radius") { 4f }` installs a
     binding, and `structure["radius"] = 4f` stores a value (and removes any binding). `capture()`
@@ -228,10 +211,8 @@ typed boundaries, interpolation and persistence.
     (`Structure.kt:188#operator fun <T> get(property: String) =`) and the buffer writer (`Structure.kt:360`) use. Either kind snapshots,
     including a child `Structure`, whose bindings live in the *root's* map under a dotted path.
 
-    The write side is not symmetric. Applying a key always goes through `Structure.bind`, so a
-    value-held property comes back as a constant binding with the old `values` entry shadowed
-    underneath. Every reader in the engine agrees on the binding; the shadowing shows up only if you
-    inspect `structure.values` yourself.
+    Applying a key writes each property back the kind it was: a value as a value, a binding as a
+    binding.
 
 ## The same thing, driving a live GPU uniform
 
@@ -625,10 +606,7 @@ for free, with no look-at constraint anywhere in the loop.
     `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16#class Camera(val renderer: Renderer = fromContext()) {`), which resolves a renderer from
     the box context. So the *registration* is one of the eleven declarations no unit test reaches
     (the full list is in [`dev_docs/KEYFRAMER_COVERAGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/KEYFRAMER_COVERAGE.md)); the pose arithmetic
-    above, which is all of the behaviour, is tested. Note also that the target accepts a
-    `CameraPose` or a bare `DualQuaternionf` and **silently ignores any other type**
-    (`keyframer.kt:790#fun camera(camera: Camera, keyName: String = "camera") {` dispatches on a `when` with no `else`). A `Vector3f` "camera
-    position" key will appear to apply and do nothing.
+    above, which is all of the behaviour, is tested.
 
 ## Saving: every save is history
 
@@ -888,7 +866,8 @@ defeating the exact round trip `updateCode` exists for. Those bodies get the esc
 instead.
 
 `copyUpdateCodeToClipboard()` is the same string, put on the system clipboard. That one goes
-through AWT: it throws on a headless JVM, and it replaces whatever the user had copied.
+through AWT and replaces whatever the user had copied; on a headless JVM it logs a warning and
+only returns the string.
 
 ## Blending two programs, not just two numbers
 

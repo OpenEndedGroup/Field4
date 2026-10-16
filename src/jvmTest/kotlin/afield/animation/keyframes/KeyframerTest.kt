@@ -213,21 +213,33 @@ class KeyframerTest {
     }
 
     @Test
-    fun captureRoundTripsAValueHeldPropertyAsABinding() {
-        // The read side is symmetric; the write side is not. Applying a key always binds, so a
-        // value-held property comes back as a constant binding with the old value shadowed under it.
+    fun captureRoundTripsAValueHeldPropertyAsAValue() {
+        // Capture reads either kind; apply writes back the kind it found, so nothing is shadowed.
+        val scope = KeyframeScope()
+        val structure = Structure()
+        structure["gain"] = 2.0f
+        structure.bind("width") { 1.0f }
+        scope.target("gain", structure)
+        scope.target("width", structure)
+
+        val key = scope.capture()
+        key["gain"] = 3.0f
+        key["width"] = 4.0f
+        key()
+
+        assertEquals(3.0f, structure.values["gain"], "a value-held property comes back as a value")
+        assertEquals(null, structure.bindings["gain"], "…with no binding over it")
+        assertEquals(4.0f, structure.bindings["width"]?.invoke(), "a bound property comes back as a binding")
+    }
+
+    @Test
+    fun copyUpdateCodeReturnsTheCodeWithoutAClipboard() {
         val scope = KeyframeScope()
         val structure = Structure()
         structure["gain"] = 2.0f
         scope.target("gain", structure)
-
-        val key = scope.capture()
-        key["gain"] = 3.0f
-        key()
-
-        assertEquals(3.0f, structure.get<Float>("gain"), "the new value is what the structure reads")
-        assertEquals(3.0f, structure.bindings["gain"]?.invoke(), "…as a binding")
-        assertEquals(2.0f, structure.values["gain"], "…shadowing the value that was there")
+        val code = scope.capture().copyUpdateCodeToClipboard("k")
+        assert(code.contains("gain")) { code }
     }
 
     @Test

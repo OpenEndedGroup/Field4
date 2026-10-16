@@ -192,7 +192,7 @@ class SmileMdsTest {
     }
 
     /**
-     * `proportion` is normalised over the **retained** components only, so it always sums to 1.
+     * `retainedShare` (formerly `proportion`) is normalised over the **retained** components only, so it always sums to 1.
      *
      * Smile runs `MathEx.unitize1` over the `d` eigenvalues it kept, not over the whole spectrum
      * (`MDS.java`, `fit`). That makes it useless as an "how much did I keep" measure — two dimensions
@@ -206,8 +206,21 @@ class SmileMdsTest {
         val distances = Array(20) { a -> DoubleArray(20) { b -> abs(points[a] - points[b]) } }
         listOf(2, 5, 15).forEach { dimensions ->
             val projection = smileMdsDistances(distances, dimensions = dimensions)
-            assertEquals(dimensions, projection.proportion.size)
-            assertEquals(1.0, projection.proportion.sum(), 1e-12, "dimensions = $dimensions")
+            assertEquals(dimensions, projection.retainedShare.size)
+            assertEquals(1.0, projection.retainedShare.sum(), 1e-12, "dimensions = $dimensions")
         }
+    }
+
+    @Test
+    fun stressFallsAsDimensionsAreAddedAndIsZeroForAnExactFit() {
+        val points = Array(12) { doubleArrayOf(kotlin.math.cos(it * 0.9) * 3.0, it * 0.4, kotlin.math.sin(it * 1.3)) }
+        val distances = Array(12) { a -> DoubleArray(12) { b ->
+            kotlin.math.sqrt(points[a].indices.sumOf { (points[a][it] - points[b][it]).let { d -> d * d } })
+        } }
+        val exact = smileMdsDistances(distances, dimensions = 3, positiveCorrection = false)
+        assertEquals(0.0, exact.stress1, 1e-9)
+        assertEquals(1.0, exact.distanceCorrelation, 1e-9)
+        val plane = smileMdsDistances(distances, dimensions = 2, positiveCorrection = false)
+        assert(plane.stress1 > 1e-3) { "a 3-D configuration squeezed into 2 must lose something: ${plane.stress1}" }
     }
 }

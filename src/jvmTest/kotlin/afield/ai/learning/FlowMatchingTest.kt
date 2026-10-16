@@ -114,6 +114,15 @@ class FlowMatchingTest {
     }
 
     @Test
+    fun momentumWithRmsPropIsRefused() {
+        val target = List(8) { Vec3(it.toFloat(), 0f, 0f) }
+        val refusal = kotlin.test.assertFailsWith<IllegalArgumentException> {
+            flowMatch(target, options = quickOptions(seed = 1).copy(momentum = 0.9, rho = 0.9))
+        }
+        kotlin.test.assertTrue("diverges" in refusal.message.orEmpty(), refusal.message)
+    }
+
+    @Test
     fun vectorMlpBuildsTheArchitectureItWasAskedFor() {
         val net = VectorMLP(inputs = 3, outputs = 2, hidden = intArrayOf(8, 5), activation = "tanh")
         // 3->8, 8->5, 5->2, each layer carrying a bias per neuron.

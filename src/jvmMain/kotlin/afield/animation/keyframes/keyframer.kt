@@ -150,7 +150,7 @@ import afield.ui.visualization.CellRole
  * keys absent from an older file, optionally per schema version.
  *
  * Keys render themselves as HTML for box output ([KeyDiff], `diffHtml`), and
- * `copyUpdateCodeToClipboard` emits pasteable Kotlin — that one goes through the AWT clipboard.
+ * `copyUpdateCodeToClipboard` emits pasteable Kotlin — that one goes through the AWT clipboard, and on a headless JVM it logs and just returns the string.
  */
 
 /**
@@ -724,7 +724,13 @@ class KeyframeScope(val schemaVersion: Int = 0) {
          */
         fun copyUpdateCodeToClipboard(keyName: String = "key", apply: Boolean = true): String {
             val code = updateCode(keyName, apply)
-            Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(code), null)
+            // A headless JVM has no clipboard; hand the code back and say so rather than throw.
+            runCatching { Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(code), null) }
+                .onFailure {
+                    afield.app.diagnostics.logging.lprintln(
+                        "warning,keyframer", "no system clipboard (${it.javaClass.simpleName}); the update code is returned instead"
+                    )
+                }
             return code
         }
 
@@ -747,14 +753,27 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         if (value is SourceBackedBlock<*>) value else ({ value })
 
     /**
+     * Put a key's value back the way the property held it: a property that held a plain value gets the
+     * value again (`structure[name] = v`), and one that held a binding, or a live block, gets a binding.
+     * Capture and apply are then symmetric, with nothing left shadowed underneath.
+     */
+    private fun writeKeyValue(structure: Structure?, property: String, value: Any?) {
+        if (structure == null) return
+        if (value != null && value !is SourceBackedBlock<*> && structure.bindingFor(property) == null) {
+            structure[property] = value
+        } else {
+            structure.bind(property, bindingForValue(value))
+        }
+    }
+
+    /**
      * Read one property off a structure the way everything else in the engine reads it — the binding if
      * there is one, otherwise the plain value, which is the same precedence `Structure.get` and the
      * buffer writer use. A `SourceBackedBlock` binding is handed back as the block itself rather than
      * invoked, because a key stores the live callable.
      *
-     * Note the asymmetry with writing: a key applies through `Structure.bind`, so capturing a
-     * value-held property and putting it back converts it to a (constant) binding. Both read
-     * identically everywhere, but the old `values` entry is left behind, shadowed.
+     * Writing is symmetric: [writeKeyValue] puts a value-held property back as a value and a bound one
+     * back as a binding.
      */
     private fun readProperty(structure: Structure?, property: String): Any? {
         val binding = structure?.bindingFor(property) ?: return structure?.valueFor(property)
@@ -770,6 +789,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
             Target(
                 resolve = { structure },
                 bind = { value -> structure.bind(propertyName, value) },
+                set = { value -> writeKeyValue(structure, propertyName, value) },
                 get = { readProperty(structure, propertyName) }
             )
         }
@@ -798,6 +818,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         dynamicTargets[name] = Target(
             resolve = structure,
             bind = { value -> structure()?.bind(propertyName, value) },
+            set = { value -> writeKeyValue(structure(), propertyName, value) },
             get = { readProperty(structure(), propertyName) }
         )
         targets.remove(name)
@@ -907,20 +928,38 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * Register a key against one of a graphics module's live uniform structures, resolved through the
      * pointer each time so it survives a shader reload.
      *
-     * [name] is both the key name and — after the last `@` — the name of the uniform structure to look
-     * up in `module.current.liveUniformStructures`. Note that this addresses the *structure*, not a
-     * field inside it.
+     * [name] is the key name, and after the last `@` it is `block.member`: the uniform block to look up
+     * in `module.current.liveUniformStructures` and the member inside it. A slot with no `.` uses the
+     * same name for both.
      */
     fun target(module: ModulePointer, name: String) =
-        target(name) { module.current.liveUniformStructures[targetPropertyName(name)] }
+        uniformTarget(name) { module.current.liveUniformStructures[it] }
 
     /** [target] for a compute module's live uniform structures. */
     fun target(module: ComputeModulePointer, name: String) =
-        target(name) { module.current.liveUniformStructures[targetPropertyName(name)] }
+        uniformTarget(name) { module.current.liveUniformStructures[it] }
 
     /** [target] for a mesh-shader module's live uniform structures. */
     fun target(module: MeshModulePointer, name: String) =
-        target(name) { module.current.liveUniformStructures[targetPropertyName(name)] }
+        uniformTarget(name) { module.current.liveUniformStructures[it] }
+
+    /**
+     * A key on one member of a module's uniform block. The part of [name] after the last `@` is
+     * `block.member`, so `"tint@params.color"` keys `color` in the block `params`; a slot with no `.`
+     * names a block and its member alike, as before.
+     */
+    private fun uniformTarget(name: String, structureFor: (block: String) -> Structure?) {
+        val slot = targetPropertyName(name)
+        val block = slot.substringBefore('.')
+        val member = slot.substringAfter('.', slot)
+        dynamicTargets[name] = Target(
+            resolve = { structureFor(block) },
+            bind = { value -> structureFor(block)?.bind(member, value) },
+            set = { value -> writeKeyValue(structureFor(block), member, value) },
+            get = { readProperty(structureFor(block), member) }
+        )
+        targets.remove(name)
+    }
 
     /**
      * Register a key against a `stack.auto.<name>` **shader-source** slot, so that the StackSL a module
@@ -1000,8 +1039,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * move rather than a separate position and target lerp.
      *
      * A raw `DualQuaternionf` value is accepted too and keeps the camera's *current* distance to target
-     * as the focus. Any other type is ignored without complaint, so a `Vector3f` "camera position" key
-     * will appear to apply and do nothing.
+     * as the focus. Any other type is not applied, and says so on the `error,keyframer` log channel.
      */
     fun camera(camera: Camera, keyName: String = "camera") {
         dynamicTargets[keyName] = Target(
@@ -1010,6 +1048,11 @@ class KeyframeScope(val schemaVersion: Int = 0) {
                 when (value) {
                     is CameraPose -> camera.applyPose(value)
                     is DualQuaternionf -> camera.applyPose(CameraPose(value, camera.distanceToTarget()))
+                    else -> afield.app.diagnostics.logging.lprintln(
+                        "error,keyframer",
+                        "camera key '$keyName' holds ${if (value == null) "null" else value::class.qualifiedName}; " +
+                            "a camera target applies a CameraPose or a DualQuaternionf, so nothing was applied"
+                    )
                 }
             },
             get = { camera.pose() }
@@ -1077,7 +1120,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      *
      * A structure property is read binding-first and then by value — the same precedence `Structure.get`
      * and the buffer writer use — so `structure["radius"] = 4f` snapshots just as well as
-     * `structure.bind("radius") { 4f }`. Applying the key puts it back as a binding either way.
+     * `structure.bind("radius") { 4f }`. Applying the key writes each back the way it was held: a value as a value, a binding as a binding.
      *
      * Values are taken as they are, not copied, so a mutable `Vector3f` in a key is still the vector the
      * structure is bound to; keep the key across frames only if you also stopped mutating that vector

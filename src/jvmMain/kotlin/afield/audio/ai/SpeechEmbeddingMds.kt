@@ -320,7 +320,7 @@ fun SpeechEmbeddingFrames.mds(
         wavlmLayer = wavlmLayer,
         distance = distance,
         scores = projection.scores,
-        proportion = projection.proportion,
+        proportion = projection.retainedShare,
     )
 }
 
