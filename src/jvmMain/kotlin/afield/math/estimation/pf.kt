@@ -85,6 +85,10 @@ import kotlin.random.Random
 
 typealias Matrix = Array<DoubleArray>
 
+/** A square [Matrix] with [values] down the diagonal and zeros elsewhere — the usual covariance. */
+fun diag(vararg values: Double): Matrix =
+    Array(values.size) { r -> DoubleArray(values.size) { c -> if (r == c) values[r] else 0.0 } }
+
 /**
  * The three sigma-point tuning constants of the unscented transform, plus the numerical fudge factor.
  *
