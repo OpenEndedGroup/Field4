@@ -7,9 +7,9 @@
  * its own synthesiser, and still has the notation, so the reference is the audio's cause rather than
  * a reading of it. Every number in [PatTranscriptionCorpus] is a comparison against that.
  *
- * [referenceOf] therefore mirrors `patRenderStereo` (`PatSoundDocs.kt:785-797`) line for line rather
- * than reimplementing the schedule: same `events(PatArc(ZERO, of(cycles)))`, same sort, same
- * `arc.start · secondsPerCycle`, same `(startSec · sampleRate).toInt()` truncation, and no
+ * [referenceOf] therefore mirrors [patSynthNotesForArc], which `patRenderStereo` schedules through,
+ * rather than reimplementing the schedule: same events, same sort, same
+ * `arc.start · secondsPerCycle`, same `Math.round` onto frames for the start and the hold, and no
  * `hasOnset` filter, because the renderer has none either. A reference computed from what the schedule
  * *ought* to be would be measuring this file's understanding of the renderer instead of the detector.
  *
@@ -411,8 +411,8 @@ object PatTranscriptionCorpus {
                 val arcSec = (event.arc.end - event.arc.start).toDouble() * secondsPerCycle
                 val hold = arcSec * case.voice.sustain.coerceIn(0.0, 1.0)
                 PatRefNote(
-                    startSample = (startSec * sampleRate).toInt(),
-                    endSample = ((startSec + hold) * sampleRate).toInt(),
+                    startSample = Math.round(startSec * sampleRate).toInt(),
+                    endSample = (Math.round(startSec * sampleRate) + Math.round(hold * sampleRate)).toInt(),
                     midi = midi
                 )
             }

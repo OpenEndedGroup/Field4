@@ -378,7 +378,7 @@ object PatTranscriptionGallery {
             name = "opposite-failures",
             title = "the two onset criteria fail in opposite directions",
             subtitle = "top: a flat-envelope Dough render an energy detector cannot segment. bottom: repeated " +
-                "pitches a pitch detector cannot segment. Neither criterion is the better one.",
+                "pitches, where half the onsets have no pitch change to cut on.",
             build = { results, legato ->
                 listOf(
                     panelOf(
@@ -389,7 +389,7 @@ object PatTranscriptionGallery {
                     panelOf(
                         results.named("repeated-pitch"),
                         "each pitch struck twice, so half\nthe onsets have no pitch change.\n" +
-                            "Energy 0.13, pitch 0.81, merged 0.88."
+                            "Energy 0.00, pitch 0.88, merged 0.88."
                     )
                 )
             }
@@ -502,8 +502,10 @@ object PatTranscriptionGallery {
                 "${legato.energyTally.recall} / ${legato.pitchMatch.recall}"
         }
         val repeated = results.named("repeated-pitch")
-        check(repeated.mergedTally.recall > repeated.pitchTally.recall) {
-            "the merge caption claims merged beats pitch on repeats; measured " +
+        // On the PatSynthBank render the pitch detector finds the repeated starts at the re-attack
+        // dip, so the merge ties pitch here (0.88 each) rather than beating it.
+        check(repeated.mergedTally.recall >= repeated.pitchTally.recall && repeated.pitchTally.recall >= 0.80) {
+            "the merge caption claims merged 0.88 and pitch 0.88 on repeats; measured " +
                 "${repeated.mergedTally.recall} vs ${repeated.pitchTally.recall}"
         }
         check(results.named("chord-triad").transcription.notes.isEmpty()) {
