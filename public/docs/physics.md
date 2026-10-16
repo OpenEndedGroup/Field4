@@ -536,9 +536,8 @@ Three things about that shape are contracts rather than conveniences.
 **One constraint set per simulation, not per cloth.** The solver walks `0 until state.size` and
 indexes the slot arrays by *particle* index, so a set cannot cover only part of a simulation. A cloth
 adopts `sim.constraints4` if there already is one and otherwise publishes the one it creates. Two
-cloths in one simulation therefore share a single set. If you drive the simulation yourself rather
-than through `cloth.step(...)`, you must pass it: `sim.step(dt, damping, gravity, iterations,
-sim.constraints4)`. The no-constraints overload solves nothing, and the sheet falls apart with no error.
+cloths in one simulation therefore share a single set. `sim.step(dt, damping, gravity, iterations)` solves that
+shared set too.
 
 **`cloth.step(...)` steps the whole simulation.** It is a convenience for the common case where the
 cloth *is* the simulation. With other systems in the same `SimdVerlet`, drive it yourself.

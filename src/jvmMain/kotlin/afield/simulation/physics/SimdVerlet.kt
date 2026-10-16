@@ -360,6 +360,13 @@ class SimdVerlet(
         constraints: DirectedConstraints3? = this.constraints,
         accumulateForces: ((state: State3, dt: Float) -> Unit)? = null
     ) {
+        // With no 3-slot set, a published 4-slot one (what Cloth builds) is the set to solve; skipping
+        // it would let the sheet fall apart with no error.
+        val published4 = constraints4
+        if (constraints == null && published4 != null) {
+            step(dt, damping, gravity, iterations, published4, accumulateForces)
+            return
+        }
         state.applyQueuedRemovalsSwap(constraints)
         zero3(state)
 

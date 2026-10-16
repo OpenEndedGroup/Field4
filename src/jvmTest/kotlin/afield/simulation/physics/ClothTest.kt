@@ -1,5 +1,7 @@
 package afield.simulation.physics
 
+import afield.math.linalg.Vec3
+
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -321,4 +323,22 @@ class ClothTest {
         // The particles are still there; remove() deliberately doesn't renumber the simulation.
         assertEquals(9, sim.size)
     }
+
+    @Test
+    fun aClothSteppedThroughTheSimSolvesItsPublishedConstraints() {
+        // sim.step without naming a constraint set solves the cloth's published one, exactly as
+        // naming sim.constraints4 does.
+        fun run(explicit: Boolean): Vec3 {
+            val sim = SimdVerlet(SimdVerlet.State3.empty())
+            val cloth = sim.addCloth(width = 6, height = 6, spacing = 0.2f, pinned = { _, r -> r == 0 })
+            repeat(60) {
+                if (explicit) sim.step(1f / 60f, 0.99f, -9.8f, 16, sim.constraints4) else sim.step(1f / 60f, 0.99f, -9.8f, 16)
+            }
+            return cloth.position(3, 5)
+        }
+        val implicit = run(false)
+        val named = run(true)
+        assertEquals(named.x, implicit.x); assertEquals(named.y, implicit.y); assertEquals(named.z, implicit.z)
+    }
+
 }
