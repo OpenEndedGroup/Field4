@@ -231,4 +231,18 @@ class KitsTest {
         File(dir, "kit.json").writeText("""{"schema": "field.kit.v1", "name": "x", "revision": "r", "launchOrder": ["walls"], "roles": {}}""")
         assertFailsWith<IllegalArgumentException> { Kits.read(dir) }
     }
+
+    @Test fun aCopiedStartingPointLaunchesItsRolesInLaunchOrderOnceOnFirstOpen() {
+        val (doc, kitDir) = onKit()
+        File(kitDir, "kit.json").let { f ->
+            val m = mapper.readValue(f, Map::class.java).toMutableMap(); m["launchOrder"] = listOf("plan", "rules")
+            f.writeText(mapper.writeValueAsString(m))
+        }
+        record(doc.dir, kitDir)
+        assertEquals(emptyList(), KitFirstOpen.rolesToLaunch(doc.dir, doc.boxes), "no marker, nothing to launch")
+        File(doc.dir, KitFirstOpen.MARKER).writeText("")
+        assertEquals(listOf(doc.plan, doc.rules), KitFirstOpen.rolesToLaunch(doc.dir, doc.boxes))
+        assertFalse(File(doc.dir, KitFirstOpen.MARKER).exists(), "the marker is consumed")
+        assertEquals(emptyList(), KitFirstOpen.rolesToLaunch(doc.dir, doc.boxes), "a second open launches nothing")
+    }
 }

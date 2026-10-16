@@ -163,6 +163,15 @@ class ListLiteralTests(unittest.TestCase):
         finally:
             f.close()
 
+    def test_a_listing_copied_from_recorded_source_keeps_its_spelling(self):
+        page = ("<!-- study-source:final -->\n```kotlin\nval xs = listOf(1, 2)\n```\n<!-- /study-source:final -->\n"
+                "```kotlin\nval ys = listOf(3, 4)\n```\n")
+        f = Fixture({self.PATH: page})
+        try:
+            self.assertEqual([(x.line, x.rule) for x in idioms.process(self.PATH, f.root, fix=False)], [(7, "list-literal")])
+        finally:
+            f.close()
+
     def test_explicit_collection_audit_checks_and_fixes_selected_transcripts(self):
         code = "operations:\n  - create:\n      box: test\n      code: |\n        val xs = listOf(1, 2)\n"
         f = Fixture({TRANSCRIPT: code})

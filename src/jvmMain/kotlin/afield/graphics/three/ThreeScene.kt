@@ -335,10 +335,18 @@ data class ThreeCameraSpec(
     val yawDegrees: Double = 28.0,
     /** Lift above the horizon, in degrees. Positive looks down on the geometry. */
     val pitchDegrees: Double = 18.0,
-    /** Eye distance in multiples of the bounding-sphere radius. */
+    /**
+     * Eye distance in multiples of the bounding-sphere radius, as the rasterizer ([MeshView]) uses it. The
+     * Three.js viewer fits the shape to the view instead and ignores it; its framing is [padding].
+     */
     val distance: Double = 2.7,
     /** Vertical field of view in degrees. */
     val fieldOfViewDegrees: Double = 40.0,
+    /**
+     * The Three.js viewer's fit margin around the shape's on-screen outline: `1.0` touches the edges, the
+     * default `1.06` leaves a little air. The rasterizer ignores it.
+     */
+    val padding: Double = 1.06,
 )
 
 /**

@@ -333,6 +333,7 @@ fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<Stri
         },
         channel = channel,
         name = "gallery-$channel",
+        padding = 1.02,
         columns = columns,
         height = rows * (cell * 0.84).toInt(),
         cellWidth = cell,
@@ -392,6 +393,7 @@ fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<Stri
         },
         channel = channel,
         name = "gallery-$channel",
+        padding = 1.02,
         columns = columns,
         height = rows * (cell * 0.84).toInt(),
         cellWidth = cell,
@@ -467,6 +469,7 @@ three(
     channel = "gyro3d",
     name = "gyro",
     view = MeshView(wireframe = false, width = 860, height = 560, distance = 2.4),
+    padding = 1.02,
     facts = false,
 )
 // The count behind the flatness: 24 faces sharing only 6 distinct outward normals.
@@ -523,6 +526,7 @@ fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<Stri
         },
         channel = channel,
         name = "gallery-$channel",
+        padding = 1.02,
         columns = columns,
         height = rows * (cell * 0.84).toInt(),
         cellWidth = cell,
@@ -801,6 +805,7 @@ three(
     channel = "field3d",
     name = "field",
     view = MeshView(wireframe = false, width = 820, height = 560, distance = 2.3, yawDegrees = 0.0, pitchDegrees = 6.0),
+    padding = 1.02,
     facts = false,
 )
 markdown(
@@ -895,6 +900,7 @@ threeGrid(
     height = 340,
     cellWidth = 400,
     view = MeshView(wireframe = false, distance = 2.5),
+    padding = 1.02,
 )
 // A Table for the diagnostics — the numeric columns right-align themselves and each carries its
 // own format — inside a markdown card that holds the solver's summary as prose.
@@ -996,6 +1002,7 @@ threeGrid(
     height = 380,
     cellWidth = 430,
     view = MeshView(wireframe = false, distance = 3.2),
+    padding = 1.26,
 )
 val sci = { v: Any? -> "%.3e".format(v) }
 fun row(label: String, d: CanonicalDiagnostics) = [
@@ -1102,6 +1109,7 @@ threeGrid(
     height = 340,
     cellWidth = 380,
     view = MeshView(wireframe = false, distance = 3.2),
+    padding = 1.26,
 )
 val sci = { v: Any? -> "%.3e".format(v) }
 fun row(label: String, p: PolyhedralObject): List<Any?> {
@@ -1192,6 +1200,7 @@ threeGrid(
     height = 330,
     cellWidth = 380,
     view = MeshView(wireframe = false, distance = 3.2),
+    padding = 1.26,
 )
 val dev = recovered.polyhedron.symmetryDeviation()
 val spectralOnly = spectral.canonicalDiagnostics()
@@ -1621,7 +1630,7 @@ val cells =
                     " · ${plate.triangulate().triangleCount} triangles",
         )
     }
-threeGrid(cells, channel = "plates", name = "plates", columns = 2, height = 260, view = view)
+threeGrid(cells, channel = "plates", name = "plates", columns = 2, height = 260, view = view, padding = 1.02)
 ```
 
 ![Two wireframe renders side by side. The left plate, built with addFaceHole, is a square annulus — a square frame with an empty square window at its centre, triangulated into eight triangles around the rim, reported as 8 vertices, 8 edges and 2 rings. The right plate is the identical outline with the ring dropped: a solid filled square of 2 triangles, 4 vertices, 4 edges and 1 ring](assets/polytope_examples/face_hole_counterfactual.png)
