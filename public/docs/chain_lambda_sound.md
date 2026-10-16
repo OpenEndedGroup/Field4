@@ -104,15 +104,6 @@ available at once involve disjoint pairs of agents, so firing one cannot destroy
 strongly confluent system that terminates reaches its normal form in the same number of steps down
 every path.
 
-??? aside "Why the page measures the counts instead of citing Lafont"
-
-    The fan labelling in the λ front end is wrong on some terms, so confluence is not guaranteed
-    here. `LambdaSoundDocs.CONFLUENCE_PROBES` runs four terms with heavy sharing under all four
-    schedulers: a duplicated abstraction that loses a copy to its eraser, an answer the readback
-    cannot walk, a readback with an occurrence outside its binder's body, and a term whose readback
-    depends on scoping binder names. Each takes the same number of reactions under every order.
-    Three of the four answers are wrong, and each of those three reports that it is.
-
 ## What the scheduler does change
 
 Because the order differs, the β-steps land in different places, and `patCondense` can return a
@@ -200,7 +191,7 @@ interaction net cannot simply drop a wire.
 ## Where each piece is documented
 
 * [Interaction Nets examples](interaction_nets_examples.md) for the agents, the rule book, the
-  `Reducer` and the λ front end, and for what the sharing gets wrong and on which shapes.
+  `Reducer` and the λ front end, and for the rare untyped terms the readback cannot read.
 * [Patterns & Rhythm](pattern_language.md) for the event model and the mini-notation, and
   [`PAT_CONDENSE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/PAT_CONDENSE.md)
   for the condenser, the bounds it searches under and what it refuses.

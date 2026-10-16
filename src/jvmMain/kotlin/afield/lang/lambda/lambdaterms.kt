@@ -528,12 +528,14 @@ object LambdaTerms {
         val freeNames = ArrayList<String>()
         var fans = 0
         var erasers = 0
-        var label = 0
+        var delimiters = 0
         var placed = 0
 
         val built = net {
             // A binder's uses collect here while its body is compiled; shadowing works by save-and-restore.
             val scope = HashMap<String, MutableList<Port>>()
+            // The parameters of the abstractions enclosing the term being built, innermost last.
+            val enclosing = ArrayList<String>()
 
             fun spot(depth: Int): Vec2 {
                 placed += 1
@@ -546,9 +548,8 @@ object LambdaTerms {
                 var from = source
                 var at = depth
                 while (remaining.size > 1) {
-                    label += 1
                     fans += 1
-                    val fan = node(Lambda.DUP, at = spot(at), state = Lambda.fan(label))
+                    val fan = node(Lambda.DUP, at = spot(at), state = Lambda.fan(0))
                     connect(from, fan.principal)
                     connect(fan.aux(0), remaining[0])
                     from = fan.aux(1)
@@ -567,6 +568,17 @@ object LambdaTerms {
             fun build(t: Term, up: Port, depth: Int) {
                 when (t) {
                     is Term.Var -> {
+                        // Lambdascope: one level-0 scope delimiter for every abstraction between the occurrence
+                        // and its binder (every enclosing one, for a free variable), inner port toward the use.
+                        val bound = enclosing.lastIndexOf(t.name)
+                        val crossed = if (bound >= 0) enclosing.size - 1 - bound else enclosing.size
+                        var up = up
+                        repeat(crossed) {
+                            delimiters += 1
+                            val scopeDelimiter = node(Lambda.DELIM, at = spot(depth), state = Lambda.fan(0))
+                            connect(up, scopeDelimiter.aux(0))
+                            up = scopeDelimiter.principal
+                        }
                         val uses = scope[t.name]
                         if (uses != null) {
                             // A bound occurrence contributes a loose end; its binder wires it up on the way out.
@@ -587,7 +599,9 @@ object LambdaTerms {
                         val lam = node(Lambda.LAM, at = spot(depth), state = NodeState(energy = 1.2))
                         connect(up, lam.principal)
                         val shadowed = scope.put(t.param, ArrayList())
+                        enclosing += t.param
                         build(t.body, lam.aux(1), depth + 1)
+                        enclosing.removeAt(enclosing.lastIndex)
                         val uses = scope.remove(t.param) ?: ArrayList()
                         if (shadowed != null) scope[t.param] = shadowed
                         spread(lam.aux(0), uses, depth + 1)
@@ -732,15 +746,16 @@ object LambdaTerms {
         fuel: IntArray,
         path: MutableSet<String>,
         fans: ArrayDeque<Pair<Double, Int>>,
-        depthLeft: Int
+        depthLeft: Int,
+        scopes: Scopes = Scopes(),
     ): Term {
         if (fuel[0]-- <= 0 || depthLeft <= 0) return Term.Var("…")
         val peer = net.connected(from) ?: return Term.Var("·")
-        val here = peer.id + "|" + fans.joinToString(",") { "${it.first}/${it.second}" }
+        val here = peer.id + "|" + fans.joinToString(",") { "${it.first}/${it.second}" } + "|" + scopes.key()
         if (!path.add(here)) return Term.Var("∞")
         try {
             val node = peer.node
-            fun on(port: Port): Term = walk(net, port, binders, next, frees, fuel, path, fans, depthLeft - 1)
+            fun on(port: Port): Term = walk(net, port, binders, next, frees, fuel, path, fans, depthLeft - 1, scopes)
             return when {
                 node.type == Lambda.LAM && peer.index == 0 -> {
                     val name = binderName(next[0]++)
@@ -758,9 +773,14 @@ object LambdaTerms {
                     // body — which a net that is a term cannot contain.
                     val binder = node.aux(0).id
                     val shadowed = binders.put(binder, name)
+                    // Inside the body, a fan from outside would have passed this abstraction and gone a level up:
+                    // the body is a new scope at level 0.
+                    val saved = scopes.save()
+                    scopes.enter(0.0)
                     try {
                         Term.Lam(name, on(node.aux(1)))
                     } finally {
+                        scopes.restore(saved)
                         if (shadowed == null) binders.remove(binder) else binders[binder] = shadowed
                     }
                 }
@@ -769,7 +789,7 @@ object LambdaTerms {
                 // An open bracket: the thing at this term position is copy `branch` of whatever the fan's principal
                 // points at, so remember which copy and go and read it.
                 node.type == Lambda.DUP && peer.index != 0 -> {
-                    val entry = Lambda.fanLabelOf(node) to (peer.index - 1)
+                    val entry = scopes.tokenAt(Lambda.levelOf(node)) to (peer.index - 1)
                     fans.addLast(entry)
                     try {
                         on(node.principal)
@@ -781,17 +801,33 @@ object LambdaTerms {
                 // stack is where it is; a label that does not match the top of the stack means the reduction left a
                 // fan standing that the term's shape cannot account for, and that is `⋈` rather than a guess.
                 node.type == Lambda.DUP -> {
-                    val top = fans.lastOrNull()
-                    if (top == null || top.first != Lambda.fanLabelOf(node)) {
+                    // The most recent pending choice at this fan's level: fans at other levels commute past it.
+                    val level = Lambda.levelOf(node)
+                    val token = scopes.tokenAt(level)
+                    val at = fans.indexOfLast { it.first == token }
+                    if (at < 0) {
                         Term.Var("⋈")
                     } else {
-                        fans.removeLast()
+                        val entry = fans.removeAt(at)
                         try {
-                            on(node.aux(top.second))
+                            on(node.aux(entry.second))
                         } finally {
-                            fans.addLast(top)
+                            fans.add(at, entry)
                         }
                     }
+                }
+                // A scope delimiter is not a node of the term: walk through it, inward from its principal and
+                // outward from its inner port.
+                // Inward, a fan at or above the delimiter's level would go up one; outward, one above it comes down.
+                node.type == Lambda.DELIM && peer.index == 0 -> {
+                    val saved = scopes.save()
+                    scopes.enter(Lambda.levelOf(node))
+                    try { on(node.aux(0)) } finally { scopes.restore(saved) }
+                }
+                node.type == Lambda.DELIM -> {
+                    val saved = scopes.save()
+                    scopes.leave(Lambda.levelOf(node))
+                    try { on(node.principal) } finally { scopes.restore(saved) }
                 }
                 node.type == Lambda.VAR || node.type == Lambda.CONST -> Term.Var(frees[node.id] ?: node.id)
                 node.type == Lambda.ERASE -> Term.Var("⊥")
@@ -800,6 +836,39 @@ object LambdaTerms {
         } finally {
             path.remove(here)
         }
+    }
+
+    /**
+     * The scopes open at a point of the [readback] walk, which is what a fan's level means there: a fan at level
+     * *n* belongs to the *n*-th scope, innermost first. Lambdascope numbers scopes rather than naming them, and a
+     * level changes as a fan moves (past an abstraction, or a delimiter at or below its own level, it goes one up),
+     * so two fans are halves of one duplication when their levels name the **same scope**, not when they are equal.
+     *
+     * The walk keeps that list as tokens. Entering an abstraction's body opens a scope at 0; entering through a
+     * level-*d* delimiter opens one at *d*; leaving through one closes the scope at *d* and keeps it, and the next
+     * scope entered is that one again — a beta's two delimiters are one scope, seen from the body and from the
+     * argument. A pending fan choice records the token its fan's level named, and is matched by token.
+     */
+    internal class Scopes(
+        private val open: ArrayList<Int> = ArrayList<Int>().apply { repeat(256) { add(it) } },
+        private val left: ArrayList<Pair<Int, Int>> = ArrayList(),
+        private var next: Int = 256,
+    ) {
+        fun tokenAt(level: Double): Double = level.toInt().let { if (it in open.indices) open[it] else -1 - it }.toDouble()
+        fun enter(level: Double) {
+            val at = left.indexOfLast { it.first == level.toInt() }
+            val token = if (at >= 0) left.removeAt(at).second else next++
+            open.add(level.toInt().coerceIn(0, open.size), token)
+        }
+        fun leave(level: Double) {
+            val at = level.toInt()
+            if (at in open.indices) left += at to open.removeAt(at)
+        }
+        fun save(): Triple<List<Int>, List<Pair<Int, Int>>, Int> = Triple(open.toList(), left.toList(), next)
+        fun restore(saved: Triple<List<Int>, List<Pair<Int, Int>>, Int>) {
+            open.clear(); open.addAll(saved.first); left.clear(); left.addAll(saved.second)
+        }
+        fun key(): String = open.take(12).joinToString(",") + "/" + left.joinToString(",")
     }
 
     private fun binderName(i: Int): String = if (i < 26) ('a' + i).toString() else "v$i"

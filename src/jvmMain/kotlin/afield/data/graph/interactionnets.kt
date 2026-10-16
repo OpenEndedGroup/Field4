@@ -2596,39 +2596,91 @@ object Lambda {
         ).evolved(energyBias = 0.05)
 
     /**
-     * The rule book for this vocabulary: linear beta reduction, plus recursive [DUP] and [ERASE] against both atoms and
-     * structure.
+     * A scope delimiter, Lambdascope's one extra agent: principal port outward, toward the context the scope
+     * sits in, and `aux(0)` inward. Beta puts one on the result and one on the argument; [LambdaTerms.compile]
+     * puts one on a variable occurrence for every abstraction between it and its binder.
+     */
+    val DELIM = Types.agent("DELIM", 1)
+
+    /** The level of a [DUP] or [DELIM] (its [FAN_LABEL] scalar, 0 when absent). */
+    fun levelOf(node: Node): Double = fanLabelOf(node)
+
+    /**
+     * The level a copy of [mover] carries once it has passed [passed], Lambdascope's one level rule: a fan or
+     * delimiter moving past an abstraction, or past a delimiter whose level is not above its own, goes one level
+     * up. Anything else keeps its level.
+     */
+    private fun levelAfterPassing(mover: Node, passed: Node): Double {
+        val level = levelOf(mover)
+        if (mover.type != DUP && mover.type != DELIM) return level
+        return when {
+            passed.type == LAM -> level + 1
+            passed.type == DELIM && levelOf(passed) <= level -> level + 1
+            else -> level
+        }
+    }
+
+    /**
+     * Commutation of the pair: a copy of each node for every auxiliary port of the other, crossed, each fan or
+     * delimiter copy at the level [levelAfterPassing] gives it. The one shape every Lambdascope interaction that
+     * is not beta or annihilation takes.
+     */
+    private fun RewriteBuilder.commute(ctx: PairContext, kind: String) {
+        val a = ctx.first
+        val b = ctx.second
+        fun stateFor(ordinal: Int, mover: Node, passed: Node, branch: Int, parts: Int) =
+            ctx.stateCopy(ordinal).split(parts = maxOf(parts, 1), branch = branch.coerceIn(0, maxOf(parts, 1) - 1),
+                attenuation = 0.85, hueSpread = 0.05, phaseSpread = 0.12, ageDelta = 1.0).apply {
+                if (mover.type == DUP || mover.type == DELIM) scalars[FAN_LABEL] = levelAfterPassing(mover, passed)
+            }
+        val aCopies = List(b.type.auxPorts) { k ->
+            node("a$k", a.type, at = vec(-26.0 + 52.0 * k, -30.0), state = stateFor(0, a, b, k, b.type.auxPorts),
+                impulse = ctx.branchImpulse(k))
+        }
+        val bCopies = List(a.type.auxPorts) { j ->
+            node("b$j", b.type, at = vec(-26.0 + 52.0 * j, 30.0), state = stateFor(1, b, a, j, a.type.auxPorts),
+                impulse = ctx.branchImpulse(j))
+        }
+        aCopies.forEachIndexed { k, copy -> reconnect(principal(copy), 1, k) }
+        bCopies.forEachIndexed { j, copy -> reconnect(principal(copy), 0, j) }
+        for (k in aCopies.indices) for (j in bCopies.indices) aux(aCopies[k], j) to aux(bCopies[j], k)
+        emit(kind, magnitude = ctx.pairEnergy, data = mapOf("level" to levelOf(a), "otherLevel" to levelOf(b), "energy" to ctx.pairEnergy))
+    }
+
+    /** Two agents of one kind and level cancel: each pair of matching auxiliary wires is spliced through. */
+    private fun RewriteBuilder.annihilate(ctx: PairContext, kind: String) {
+        for (i in 0 until ctx.first.type.auxPorts) passthrough(ctx.auxPeer(0, i), ctx.auxPeer(1, i))
+        emit(kind, magnitude = ctx.pairEnergy, data = mapOf("level" to levelOf(ctx.first), "energy" to ctx.pairEnergy))
+    }
+
+    /**
+     * The rule book: Lambdascope (van Oostrom, van de Looij and Zwitserlood, *Lambdascope: another optimal
+     * implementation of the lambda-calculus*, 2004), so sharing is optimal and correct on every term, with the
+     * energies as art direction.
      *
-     * A fresh book each call, so it is cheap to keep one in a `val` and cheap to build a variant from. Every rule also
-     * emits an event — the whole vocabulary is `"beta"`, `"erase"`, `"prune"`, `"duplicate"`, `"branch"` and
-     * `"annihilate"` — and splits or attenuates node energy as it goes, which is what
-     * makes a reduction visibly decay rather than merely rewire — so the energies here are art direction, not semantics.
+     * - **Beta** (`APP` meets `LAM`) wires the body to the result and the argument to the binder, each through a
+     *   level-0 [DELIM]: the scope the reduction opened.
+     * - **Annihilation**: two [DUP]s or two [DELIM]s of the same level cancel; two [ERASE]s vanish.
+     * - **Commutation**: everything else that meets copies each node past the other, and a fan or delimiter that
+     *   passes an abstraction, or a delimiter at or below its own level, goes up a level ([levelAfterPassing]).
+     * - A delimiter meeting an atom (a free variable, a constant, the root or an eraser) simply goes.
      *
-     * `fan-fan` is the one rule that is not a fixed template: it reads [FAN_LABEL] off both nodes and **annihilates**
-     * two fans from the same duplication or **commutes** two from different ones. One rule rather than two, because
-     * [RuleBook.findMatch] takes the first signature that matches and a second `(DUP, DUP)` rule would never fire; the
-     * event it emits — `"annihilate"` or `"branch"` — is what tells the two cases apart in a log.
-     *
-     * With `fan-fan` present, and with the [Reducer] chasing wires through a vanished pair, this book has every rule a
-     * closed λ-term's reduction needs. It is still not *optimal* reduction in Lamping's sense — there are no brackets or
-     * croissants, so the sharing is correct but not maximal — and the energies remain art direction.
+     * Every rule emits an event, and the vocabulary is `"beta"`, `"erase"`, `"prune"`, `"duplicate"`, `"branch"`,
+     * `"annihilate"`, `"scope"` (a delimiter moving) and `"unscope"` (a delimiter closing or leaving).
      */
     fun rules(): RuleBook = rules {
-        // Linear beta: APP(fun,arg) ⟂ LAM(binder,body)
-        autoRule("beta-linear", APP, LAM) { ctx ->
-            ext(1, 1) to ext(0, 0) // lambda body becomes the result in the application's context
-            ext(1, 0) to ext(0, 1) // binder is connected to the application argument
-            emit(
-                "beta",
-                magnitude = ctx.pairEnergy,
-                data = mapOf(
-                    "energy" to ctx.pairEnergy,
-                    "age" to ctx.blendedState().age
-                )
-            )
+        // Beta: APP(fun, arg) meets LAM(binder, body). The body becomes the result, the argument the binder,
+        // each inside a fresh scope.
+        rule("beta-linear", APP, LAM) { ctx ->
+            val result = node("scopeResult", DELIM, at = vec(-20.0, -18.0), state = ctx.stateCopy(0).apply { scalars[FAN_LABEL] = 0.0 })
+            val argument = node("scopeArgument", DELIM, at = vec(20.0, 18.0), state = ctx.stateCopy(1).apply { scalars[FAN_LABEL] = 0.0 })
+            reconnect(principal(result), 0, 0)
+            reconnect(aux(result, 0), 1, 1)
+            reconnect(principal(argument), 0, 1)
+            reconnect(aux(argument, 0), 1, 0)
+            emit("beta", magnitude = ctx.pairEnergy, data = mapOf("energy" to ctx.pairEnergy, "age" to ctx.blendedState().age))
         }
 
-        // ERASE against atoms: delete both sides and reconnect nothing.
         autoRule("erase-var", ERASE, VAR) { ctx ->
             emit("erase", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
@@ -2638,15 +2690,9 @@ object Lambda {
         autoRule("erase-root", ERASE, ROOT) { ctx ->
             emit("erase", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
-
-        // Two sinks facing each other. Reachable the moment a binder is erased and the body it bound was
-        // erased too — `(\x. \y. y) k` gets there in three steps — and without this the net is stuck with a
-        // redex nothing covers, which looks exactly like a normal form until you count the nodes.
         autoRule("erase-erase", ERASE, ERASE) { ctx ->
             emit("annihilate", magnitude = ctx.pairEnergy, data = mapOf("energy" to ctx.pairEnergy))
         }
-
-        // ERASE against structure: recursively erase each auxiliary subtree.
         autoRule("erase-app", ERASE, APP) { ctx ->
             val eFun = node(
                 "ef",
@@ -2704,8 +2750,6 @@ object Lambda {
             principal(eRight) to ext(1, 1)
             emit("prune", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
-
-        // DUP against atoms: materialize two copies, one for each duplicate demand.
         autoRule("dup-var", DUP, VAR) { ctx ->
             val v1 = node(
                 "v1",
@@ -2763,8 +2807,6 @@ object Lambda {
             principal(r2) to ext(0, 1)
             emit("duplicate", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
-
-        // DUP against structure: create two copies of the node and recursive DUPs for each field.
         autoRule("dup-app", DUP, APP) { ctx ->
             val appL = node(
                 "appL",
@@ -2808,126 +2850,25 @@ object Lambda {
             emit("branch", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
 
-        autoRule("dup-lam", DUP, LAM) { ctx ->
-            val lamL = node(
-                "lamL",
-                LAM,
-                at = vec(-34.0, 8.0),
-                state = ctx.structuralEcho(1, 0),
-                impulse = ctx.branchImpulse(0)
-            )
-            val lamR = node(
-                "lamR",
-                LAM,
-                at = vec(34.0, 8.0),
-                state = ctx.structuralEcho(1, 1),
-                impulse = ctx.branchImpulse(1)
-            )
-            val dBinder = node(
-                "dBinder",
-                DUP,
-                at = vec(-22.0, -34.0),
-                state = ctx.operatorTrace(0, 0),
-                impulse = Vec2(ctx.axis).mul((-ctx.radius * 0.35).toFloat())
-            )
-            val dBody = node(
-                "dBody",
-                DUP,
-                at = vec(22.0, -34.0),
-                state = ctx.operatorTrace(0, 1),
-                impulse = Vec2(ctx.axis).mul((ctx.radius * 0.35).toFloat())
-            )
+        // A fan copying an abstraction: the copies of the fan inside it go up a level.
+        rule("dup-lam", DUP, LAM) { ctx -> commute(ctx, "branch") }
 
-            principal(lamL) to ext(0, 0)
-            principal(lamR) to ext(0, 1)
-
-            principal(dBinder) to ext(1, 0)
-            principal(dBody) to ext(1, 1)
-
-            aux(dBinder, 0) to aux(lamL, 0)
-            aux(dBinder, 1) to aux(lamR, 0)
-            aux(dBody, 0) to aux(lamL, 1)
-            aux(dBody, 1) to aux(lamR, 1)
-            emit("branch", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
-        }
-
-        // Fan against fan: the rule this vocabulary was missing, and the one that makes a duplicated
-        // abstraction reduce rather than deadlock. `dup-lam` leaves a fan-in on the binder of the two copies
-        // it makes; the fan-out that was already there, handing the binder to each of the body's uses of it,
-        // is now facing it principal to principal. Whether they cancel or copy each other is the whole
-        // question, and [FAN_LABEL] is the answer: same duplication, or two different ones.
-        //
-        // Written with the `rule` escape hatch rather than `autoRule` because the two cases produce different
-        // shapes, and as one rule rather than two because `RuleBook.findMatch` takes the first matching
-        // signature — a second (DUP, DUP) rule could never fire. The emitted event names the branch taken.
+        // Fan meets fan: one duplication's two halves (same level) cancel; two different ones copy each other.
         rule("fan-fan", DUP, DUP) { ctx ->
-            val firstLabel = fanLabelOf(ctx.first)
-            val secondLabel = fanLabelOf(ctx.second)
-            if (firstLabel == secondLabel) {
-                // Two halves of one duplication. Copy *i* of the fan-out is copy *i* of the fan-in, so the
-                // two fans cancel and each matching pair of copy wires is spliced straight through.
-                passthrough(ctx.auxPeer(0, 0), ctx.auxPeer(1, 0))
-                passthrough(ctx.auxPeer(0, 1), ctx.auxPeer(1, 1))
-                emit(
-                    "annihilate",
-                    magnitude = ctx.pairEnergy,
-                    data = mapOf("label" to firstLabel, "energy" to ctx.pairEnergy)
-                )
-            } else {
-                // Two different duplications, so each has to be applied to the other: four fans, keeping
-                // their own labels, wired in the same 2x2 crossing `dup-app` and `dup-lam` use —
-                // firstCopy[j].aux(i) to secondCopy[i].aux(j).
-                val firstCopies = List(2) { j ->
-                    node(
-                        "fanA$j",
-                        DUP,
-                        at = vec(if (j == 0) -26.0 else 26.0, -32.0),
-                        state = ctx.operatorTrace(0, j),
-                        impulse = Vec2(ctx.axis).mul(((if (j == 0) -1 else 1) * ctx.radius * 0.35).toFloat())
-                    )
-                }
-                val secondCopies = List(2) { i ->
-                    node(
-                        "fanB$i",
-                        DUP,
-                        at = vec(if (i == 0) -26.0 else 26.0, 32.0),
-                        state = ctx.structuralEcho(1, i),
-                        impulse = ctx.branchImpulse(i)
-                    )
-                }
-                for (i in 0..1) reconnect(principal(secondCopies[i]), 0, i)
-                for (j in 0..1) reconnect(principal(firstCopies[j]), 1, j)
-                for (i in 0..1) {
-                    for (j in 0..1) aux(firstCopies[j], i) to aux(secondCopies[i], j)
-                }
-                emit(
-                    "branch",
-                    magnitude = ctx.pairEnergy,
-                    data = mapOf("label" to firstLabel, "otherLabel" to secondLabel, "energy" to ctx.pairEnergy)
-                )
-            }
+            if (levelOf(ctx.first) == levelOf(ctx.second)) annihilate(ctx, "annihilate") else commute(ctx, "branch")
         }
 
-        // A modest custom rule example remains available as the escape hatch. Note that it never fires:
-        // `erase-dup` above covers the same unordered pair of types and was declared first.
-        rule("dup-erase-annihilate", DUP, ERASE) { ctx ->
-            val e0 = node(
-                "e0",
-                ERASE,
-                at = vec(-16.0, 0.0),
-                state = ctx.decayOf(0, 0),
-                impulse = ctx.branchImpulse(0)
-            )
-            val e1 = node(
-                "e1",
-                ERASE,
-                at = vec(16.0, 0.0),
-                state = ctx.decayOf(0, 1),
-                impulse = ctx.branchImpulse(1)
-            )
-            reconnect(principal(e0), 0, 0)
-            reconnect(principal(e1), 0, 1)
-            emit("annihilate", magnitude = ctx.pairEnergy, data = mapOf("energy" to ctx.pairEnergy))
+        // Scope delimiters.
+        rule("delim-delim", DELIM, DELIM) { ctx ->
+            if (levelOf(ctx.first) == levelOf(ctx.second)) annihilate(ctx, "unscope") else commute(ctx, "scope")
+        }
+        rule("delim-app", DELIM, APP) { ctx -> commute(ctx, "scope") }
+        rule("delim-lam", DELIM, LAM) { ctx -> commute(ctx, "scope") }
+        rule("delim-dup", DELIM, DUP) { ctx -> commute(ctx, "scope") }
+        // An eraser, free variable, constant or the root at a delimiter's principal: the delimiter goes, and the
+        // atom takes its inner port.
+        for (atom in listOf(ERASE, VAR, CONST, ROOT)) {
+            rule("delim-${atom.name.lowercase()}", DELIM, atom) { ctx -> commute(ctx, "unscope") }
         }
     }
 

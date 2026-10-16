@@ -3,7 +3,7 @@
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`interactionnets.kt`](reference/visualization.md#interactionnets-kt). To normalise terms, draw a reduction and check the reducer against an ordinary evaluator in
 Field, open the [interaction_nets_lambda](agent_transcripts.md#interaction_nets_lambda) starting point.*
 
-An interaction net is a graph you compute with by rewriting it. Each node is an agent with one *principal* port and some auxiliaries; wherever two principal ports are wired to each other you have an active pair, and a rule says what that pair becomes. `Lambda` is a ready-made vocabulary of agents — `APP`, `LAM`, `DUP`, `ERASE`, `VAR`, `ROOT`, `CONST` — and `Lambda.rules()` is a rule book covering it.
+An interaction net is a graph you compute with by rewriting it. Each node is an agent with one *principal* port and some auxiliaries; wherever two principal ports are wired to each other you have an active pair, and a rule says what that pair becomes. `Lambda` is a ready-made vocabulary of agents — `APP`, `LAM`, `DUP`, `DELIM`, `ERASE`, `VAR`, `ROOT`, `CONST` — and `Lambda.rules()` is a rule book covering it.
 
 Build a net with `net { }`, wiring ports with `to`; call `relax` to let the force-directed layout settle; and hand it to `Reducer(Lambda.rules())`, whose `stepDetailed` fires one reaction and returns what changed. Draw it with `toFLines`, or summarise it as a card with `summaryHtml`. The single-step examples below each show three cards over a before-and-after drawing; [Reference](#reference) lists the whole API.
 
@@ -23,9 +23,9 @@ For the test terms in `LambdaTerms.corpus()`, the order in which active pairs ar
 
 ## When the answer is wrong
 
-The reducer gives the right answer for simply-typed closed terms. For some untyped terms, such as ones that apply a term to itself or duplicate a function that discards its argument, it can read back a wrong answer. (It is not Lamping's optimal reduction, which needs extra bookkeeping agents to handle these cases.)
+The rule book is Lambdascope (van Oostrom, van de Looij and Zwitserlood): optimal reduction, with a `DUP` and a `DELIM` (a scope delimiter) carrying a level, so sharing is correct on every term. It gives the same answer as substitution on the corpus and on every simply-typed term tried. On a small share of untyped terms, about one in a hundred, `readback` cannot work out which copy a shared part of the answer is, and leaves a `⋈` mark where it is.
 
-A wrong answer carries a mark. `LambdaTerms.marksOf` returns the marks `readback` left in a result: an empty list means the net read back as an ordinary term, and anything else means the reducer could not give a trustworthy answer. A `?` mark means a variable was found outside the body of its binder, so the net no longer describes a term.
+An answer that could not be read back carries a mark. `LambdaTerms.marksOf` returns the marks `readback` left in a result: an empty list means the net read back as an ordinary term, and anything else means the reducer could not give a trustworthy answer. A `?` mark means a variable was found outside the body of its binder, so the net no longer describes a term.
 
 `Run.finished` answers a different question: whether the reduction stopped because nothing was left to fire. Check both: a finished run with marks is still not an answer you should trust.
 
@@ -480,13 +480,13 @@ Looking at it:
 | --- | --- |
 | `LambdaTerms.parse(source)` | Parses `\x. x x` or `λx. x x` into a lambda term. Multiple binders are shorthand and application associates to the left. |
 | `LambdaTerms.format(term)` | Prints a term with only the parentheses required to parse back to the same structure. Use it to make reduced terms readable. |
-| `LambdaTerms.compile(term)` | Builds a `CompiledTerm` containing a net with one root. Multiply used variables get fan trees; unused binders get erasure agents. |
-| `LambdaTerms.readback(compiled)` | Reconstructs a lambda term from a compiled net. Fan choices are tracked during traversal so shared structure can be read back. |
+| `LambdaTerms.compile(term)` | Builds a `CompiledTerm` containing a net with one root. Multiply used variables get fan trees, unused binders get erasure agents, and a variable gets a scope delimiter for each abstraction between it and its binder. |
+| `LambdaTerms.readback(compiled)` | Reconstructs a lambda term from a net. Fan choices and the scopes the walk is in are tracked during traversal, so shared structure can be read back. |
 | `LambdaTerms.normalise(term, order, maxSteps, relaxIterations)` | Compiles, reduces and reads back a term with a step limit. Layout is disabled by the default `relaxIterations = 0` for headless computation. |
 | `LambdaTerms.referenceNormalOrder(term)` | Reduces by ordinary substitution with normal order. Use this independent oracle to check the interaction-net result. |
 | `LambdaTerms.alphaEquivalent(a, b)` / `.deBruijnKey(term)` | Compares terms while ignoring bound-variable names, or produces the canonical key used for that comparison. Use the key to inspect a disagreement. |
 | `LambdaTerms.corpus()` | Returns the 25 named closed test terms. They are the shared input set used to compare the reducer with the substitution oracle. |
-| `Lambda.fan(label)` / `Lambda.fanLabelOf(node)` | Constructs a labelled duplication agent or reads its label. An unlabelled duplication agent has label zero. |
+| `Lambda.fan(level)` / `Lambda.levelOf(node)` | A `NodeState` for a duplication (or `DELIM`) agent at a level, or the level of one. Without a level it is zero. Two agents of one kind and level annihilate; otherwise they copy each other. |
 | `Reducer(rules, order, layout, relaxIterations)` | Configures reduction and optional force-directed layout together. Set `relaxIterations = 0` to avoid quadratic layout work in a headless run. |
 
 </div>
