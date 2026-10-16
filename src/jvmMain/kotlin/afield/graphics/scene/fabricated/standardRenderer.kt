@@ -187,7 +187,7 @@ object StandardRenderer {
 		 * edit after attaching ([setToneMapping], [addBloom], [addShaderEffect]) re-attaches to each,
 		 * so the edit takes effect without the caller attaching again.
 		 */
-		private val attachedGraphs = LinkedHashMap<RenderTarget, FabricateFrameGraph>()
+		internal val attachedGraphs = LinkedHashMap<RenderTarget, FabricateFrameGraph>()
 
 		init {
 			postStack.changeListeners += {
@@ -363,7 +363,31 @@ object StandardRenderer {
 			private fun remembering(graph: FabricateFrameGraph, attach: (FabricateFrameGraph) -> RenderTarget): RenderTarget {
 				val target = attach(graph)
 				synchronized(attachedGraphs) { attachedGraphs[target] = graph }
+				installAutoSync()
 				return target
+			}
+
+			@Volatile private var autoSyncInstalled = false
+
+			/**
+			 * Once attached, keep lights and transparent order current without the caller's help: each
+			 * frame, re-upload the lights when anything about them changed, and re-sort the transparent
+			 * meshes for the camera. The explicit [syncLights] and [sortTransparentMeshes] still work.
+			 * The hook holds the bundle weakly and ends itself once the bundle is gone or detached.
+			 */
+			private fun installAutoSync() {
+				if (autoSyncInstalled) return
+				autoSyncInstalled = true
+				val ref = java.lang.ref.WeakReference(this)
+				val key = "std-renderer-auto-sync-${System.identityHashCode(this)}"
+				afield.runtime.lifecycle.Runloop.runLoop.preRun[key] = sequence {
+					// The step is a separate call so no strong reference to the bundle survives a yield.
+					var lastLights: String? = ""
+					while (true) {
+						lastLights = standardRendererAutoSyncStep(ref, lastLights) ?: break
+						yield(null)
+					}
+				}
 			}
 
 			/** Present the anti-aliased lighting RTT to the swapchain with optional grading and viewport. */
@@ -2730,4 +2754,14 @@ fun postEffectTargetParameters(
 	clearColor = vec(0f, 0f, 0f, 1f)
 	debugName = "prefab-post-$name"
 	rtt()
+}
+
+/** One frame of [StandardRenderer.Bundle]'s auto-sync; the lights' state after it, or null when the hook should end. Top level so the hook captures no bundle. */
+internal fun standardRendererAutoSyncStep(ref: java.lang.ref.WeakReference<StandardRenderer.Bundle>, lastLights: String?): String? {
+	val bundle = ref.get() ?: return null
+	if (synchronized(bundle.attachedGraphs) { bundle.attachedGraphs.isEmpty() }) return null
+	val lights = bundle.sceneGraph.lights.toString()
+	if (lights != lastLights) runCatching { bundle.syncLights() }
+	runCatching { bundle.sortTransparentMeshes() }
+	return lights
 }

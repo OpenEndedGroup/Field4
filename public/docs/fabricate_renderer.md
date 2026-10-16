@@ -131,12 +131,8 @@ println(lists.transparent.map { it.node.name })
 println(lists.shadowCasters.map { it.node.name })
 ```
 
-For moving transparent objects, call:
-
-```diffstatic {data-lang=kotlin}
-bundle.sceneGraph.advance(1f / 60f)
-bundle.sortTransparentMeshes()
-```
+Once the bundle is attached, it re-sorts transparent meshes for the camera every frame, so moving
+transparent objects stay in order without a call.
 
 ## Render planning
 
@@ -428,7 +424,7 @@ expect:
 
 The scene graph carries a Three.js-style light list: one shadow-casting directional key light, plus point and spot lights up to `bundle.maxLights`, which is 64, all evaluated in the deferred lighting pass. It can also draw the loaded environment map as the scene background instead of a flat colour.
 
-Lights are pure scene state; `bundle.syncLights()` uploads them to the lighting pass (call it after changing lights, or once per frame if they move — the same explicit-sync idiom as `sortTransparentMeshes()`). The first shadow-casting directional light becomes the key light that drives the shadow map, or the first directional light of any kind if none of them cast shadows; every other light is shaded without shadows, and `syncLights()` takes only the first `maxLights` of them. `bundle.showEnvironmentBackground()` turns the equirect environment into the backdrop.
+Lights are pure scene state; an attached bundle uploads them to the lighting pass on the next frame after any change (`bundle.syncLights()` does it at once). The first shadow-casting directional light becomes the key light that drives the shadow map, or the first directional light of any kind if none of them cast shadows; every other light is shaded without shadows, and `syncLights()` takes only the first `maxLights` of them. `bundle.showEnvironmentBackground()` turns the equirect environment into the backdrop.
 
 ```diffstatic {data-lang=kotlin}
 val bundle = StandardRenderer.build(
