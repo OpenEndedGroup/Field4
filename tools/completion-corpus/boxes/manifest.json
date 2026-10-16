@@ -613,6 +613,8 @@
   {"doc": "spatial_geometry_examples", "box": "spatial_delaunay", "codeSha256": "e31fab9e509ea345", "codeLines": 71, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "spatial_geometry_examples", "box": "spatial_iso_sweep", "codeSha256": "5f1b42a896993688", "codeLines": 50, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "spatial_geometry_examples", "box": "spatial_marching", "codeSha256": "6ebbbfb376338fe1", "codeLines": 72, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "spectral_examples", "box": "spectral_distribution_events", "codeSha256": "7ebdca8a266156c0", "codeLines": 26, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "spectral_examples", "box": "spectral_filter_chains", "codeSha256": "a17fc3b7b1d8d45c", "codeLines": 30, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "spectral_examples", "box": "spectral_mel", "codeSha256": "52ec898eaa9dce90", "codeLines": 27, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "spectral_examples", "box": "spectral_one_spectrum", "codeSha256": "1b5ab0f160d37888", "codeLines": 32, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "spectral_examples", "box": "spectral_resonator", "codeSha256": "a0b969c6799e36be", "codeLines": 41, "receivers": ["afield.document.graph.Box"], "preamble": ""},
