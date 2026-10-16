@@ -1144,9 +1144,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ParamPath` | class | `src/jvmMain/kotlin/afield/audio/synth/ParamQuery.kt:110` |
 | `ParamSet` | class | `src/jvmMain/kotlin/afield/audio/synth/ParamQuery.kt:163` |
 | `ParamSetScope` | class | `src/jvmMain/kotlin/afield/audio/synth/ParamQuery.kt:325` |
-| `SonicPiLogMessage` | class | `src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt:928` |
-| `SonicPiError` | class | `src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt:942` |
-| `SonicPiVersion` | class | `src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt:970` |
+| `SonicPiLogMessage` | class | `src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt:969` |
+| `SonicPiError` | class | `src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt:983` |
+| `SonicPiVersion` | class | `src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt:1011` |
 | `PatParseFrame` | class | `src/jvmMain/kotlin/afield/audio/synth/TidalPatterns.kt:309` |
 | `PatParseContext` | class | `src/jvmMain/kotlin/afield/audio/synth/TidalPatterns.kt:322` |
 | `PatSourceSpan` | class | `src/jvmMain/kotlin/afield/audio/synth/TidalPatterns.kt:334` |
