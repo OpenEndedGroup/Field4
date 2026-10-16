@@ -1,0 +1,16 @@
+{
+  "id" : "r6-47a28af6de3b",
+  "parent" : "r5-e63307b6d523",
+  "description" : "Half-speed variant C: halve every time rate and preserve all other parameters",
+  "created" : "2026-10-16T10:01:45.882436Z",
+  "sourceHash" : "47a28af6de3b1c63dea924cf7213d9e216add7bd587ab29aaa1e08e8dc88a9e3",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : true,
+    "nonFiniteFraction" : 0.0,
+    "words" : 206,
+    "knobs" : 96,
+    "stages" : 25
+  }
+}

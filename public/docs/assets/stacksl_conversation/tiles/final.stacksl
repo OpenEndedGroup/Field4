@@ -1,49 +1,34 @@
-# Still zellige: all geometry and glaze depend only on position.
-# Fold a point into one of ten mirrored wedges.
-: wedge
-  polar >pol
-  <pol y 0.314159265 + 0.628318531 mod 0.314159265 - abs
-  <pol x swap vec2 cart
-;
-# Ten-point star with the same tip and valley radii as the original.
-: star
-  wedge dup x swap y 1.707717 * + 0.465 - 1.707717 dup * 1 + sqrt /
-;
-# Ten-sided central white medallion.
-: medallion
-  wedge x
-;
-# Four by four repeating rosettes.
-uv 4 * >grid
-<grid fract 0.5 - >q
-<q star >edge
-<q wedge >fold
-<q medallion 0.132 - >hub
-# Alternating terracotta facets, cream ground, tiny deep-green corner diamonds.
-[0.92,0.84,0.68,1] >ivory
-[0.48,0.135,0.065,1] [0.62,0.205,0.105,1]
-<q polar y 0.314159265 + 0.628318531 / floor 2 mod mix >cobalt
-<ivory <cobalt -0.0015 0.0015 <edge smoothstep 1- mix
-<ivory -0.0015 0.0015 <hub smoothstep 1- mix
->ceramic
-# A small deep-green diamond sits at each junction of four repeats.
-<q abs 0.5 swap - x+y 0.105 - 0.707107 * >goldedge
-<ceramic [0.012,0.095,0.045,1] -0.0015 0.0015 <goldedge smoothstep 1- mix
->ceramic
-# Deep-green centre jewel, deliberately much smaller than the terracotta petals.
-<q abs x+y 0.045 - 0.707107 * >jewel
-<ceramic [0.012,0.095,0.045,1] -0.0015 0.0015 <jewel smoothstep 1- mix
->ceramic
-# Grout follows star edges, hub, centre jewels and the ten petal divisions.
-<edge abs <hub abs min <goldedge abs min <jewel abs min >joint
-<fold x 0.309016994 * <fold y 0.951056516 * - abs
-<hub 0.004 > * <hub 0.004 <= 1 * +
-<joint min >joint
-# Straight background joints end at the rosette and corner diamonds.
-<q abs dup x swap y max 0.5 swap -
-<edge 0.006 > * <edge 0.006 <= 1 * +
-<joint min >joint
-# Subtle static glaze variation; dark, narrow recessed mortar.
-<ceramic uv 95 * noise 0.045 * 0.955 + *
->glaze
-[0.024,0.028,0.035,1] <glaze 0.007 0.009 <joint smoothstep mix
+# (asked) Still zellige-like tiles: eight-fold cobalt and white rosettes,
+# a little saffron, and thin dark grout. No time-dependent words.
+# (chosen) Four repeats, square/diamond eight-point stars, ivory inset stars.
+: squaremax >point <point abs x <point abs y max ;
+: starfield >point
+<point y <point x atan2 0.6283185307179586 / 0.5 + fract 0.5 - abs 0.6283185307179586 * >angle
+0.3141592653589793 <angle - sin 0.765366865 * <angle sin +
+0.23651136821647611 / <point length * 0.707106781 * ;
+
+# Repeating coordinates; the two squares make an eight-point silhouette.
+uv 4 * fract 0.5 - >tile
+<tile starfield >star
+<star 0.303 - >edge
+
+# Cobalt stars in an ivory ground.
+[0.48,0.13,0.065,1] [0.91,0.82,0.65,1] -0.002 0.002 <edge smoothstep mix >color
+
+# Fine charcoal grout on the perimeter of every star.
+<color [0.012,0.018,0.023,1] 0.012 0.015 <edge abs smoothstep 1 swap - mix >color
+
+# A smaller white star forms the center of each rosette.
+<color [0.91,0.82,0.65,1] 0.127 0.130 <star smoothstep 1 swap - mix >color
+<color [0.012,0.018,0.023,1] 0.004 0.007 <star 0.129 - abs smoothstep 1 swap - mix >color
+
+# Small saffron octagons at the center, framed with dark grout.
+<tile abs x <tile abs y max <tile abs x <tile abs y + 0.707107 * max >octagon
+<color [0.012,0.018,0.023,1] 0.067 0.070 <octagon smoothstep 1 swap - mix >color
+<color [0.015,0.095,0.045,1] 0.058 0.061 <octagon smoothstep 1 swap - mix >color
+
+# Small cobalt diamonds join the four white interstitial tiles.
+<tile abs x <tile abs y + >corner
+<color [0.012,0.018,0.023,1] 0.848 0.853 <corner smoothstep mix >color
+<color [0.48,0.13,0.065,1] 0.863 0.868 <corner smoothstep mix >color
+<color

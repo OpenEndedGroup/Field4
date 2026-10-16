@@ -1,0 +1,16 @@
+{
+  "id" : "r3-89349350ef01",
+  "parent" : "r2-182508f78d66",
+  "description" : "Force the static hills to exact black without altering any pixel above the hill line",
+  "created" : "2026-10-16T09:59:34.019062Z",
+  "sourceHash" : "89349350ef01ab8cf36f4115970b012ea0c914ec01ec5c33e15898b197353850",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : true,
+    "nonFiniteFraction" : 0.0,
+    "words" : 196,
+    "knobs" : 94,
+    "stages" : 24
+  }
+}

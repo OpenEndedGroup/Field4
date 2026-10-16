@@ -168,6 +168,10 @@ async def _inspect(client, study: Study) -> dict:
     raise RuntimeError(f"{study.inspect_tool} failed: " + json.dumps(last)[:1000])
 
 
+DONE = ("Finished AI conversation", "Reply ready in the chat.")
+FAILED = ("AI general failed", "AI work stopped before finishing", "Stopped. Details are in the chat.", "AI4 setup")
+
+
 async def record_turn(study: Study, document: Path, label: str, prompt: str, port: int, timeout: float) -> dict:
     """Send one AI4 turn to [study]'s box in [document] and keep the evidence; see the module docs."""
     fb = _backdoor()
@@ -199,8 +203,9 @@ async def record_turn(study: Study, document: Path, label: str, prompt: str, por
             if notices and notices[-1] != last_notice:
                 last_notice = notices[-1]
                 print(last_notice[:240], flush=True)
-            if any("Finished AI conversation" in n or "AI general failed" in n or "AI4 setup" in n for n in notices):
-                status = "completed" if any("Finished AI conversation" in n for n in notices) else "failed"
+            # AI4's end-of-turn notices; the first of each pair is the older wording.
+            if any(m in n for n in notices for m in DONE + FAILED):
+                status = "completed" if any(m in n for n in notices for m in DONE) else "failed"
                 break
         events = client.events_since(seq)
         panels = [e.get("payload", {}) for e in events if e.get("name") == "set-output" and e.get("payload", {}).get("channel") == "ai-chat"]

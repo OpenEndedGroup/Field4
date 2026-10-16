@@ -1,0 +1,18 @@
+{
+  "against" : "r2-fafd8168ed0f",
+  "liveSourceHash" : "fafd8168ed0fa1a03a67f58c0e2eed3f8407823937ff271646445a69a1703dae",
+  "adopted" : null,
+  "variants" : [ {
+    "label" : "6 points",
+    "note" : "6-point straight-edged stars; same outer radius, inset proportions, palette and spacing.",
+    "file" : "6_points.stacksl"
+  }, {
+    "label" : "10 points",
+    "note" : "10-point straight-edged stars; same outer radius, inset proportions, palette and spacing.",
+    "file" : "10_points.stacksl"
+  }, {
+    "label" : "12 points",
+    "note" : "12-point straight-edged stars; same outer radius, inset proportions, palette and spacing.",
+    "file" : "12_points.stacksl"
+  } ]
+}

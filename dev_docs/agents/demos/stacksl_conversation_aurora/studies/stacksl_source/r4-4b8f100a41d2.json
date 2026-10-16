@@ -1,0 +1,16 @@
+{
+  "id" : "r4-4b8f100a41d2",
+  "parent" : "r3-89349350ef01",
+  "description" : "Dissolve the mountain-like aurora cutoff into open sky with a broad smooth lower fade",
+  "created" : "2026-10-16T10:00:18.165534Z",
+  "sourceHash" : "4b8f100a41d2a7d9e3bb86e38acf5355a20a4ef14f67600f62acfd8a8f743efc",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : true,
+    "nonFiniteFraction" : 0.0,
+    "words" : 196,
+    "knobs" : 94,
+    "stages" : 24
+  }
+}
