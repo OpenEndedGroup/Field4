@@ -126,7 +126,7 @@ palette
 
 ```diffstatic {data-lang=stacksl}
 : warp
-  uv 6.0 * time + sin
+  drop uv 6.0 * time + sin
   0.35 *
   uv +
 ;
@@ -512,7 +512,7 @@ Definitions are written with `: name ... ;`. Inside StackSL, a definition behave
 
 ```diffstatic {data-lang=stacksl}
 : warp
-  uv 8.0 * time + sin
+  drop uv 8.0 * time + sin
   0.18 *
   uv +
 ;
