@@ -12,10 +12,19 @@ import afield.runtime.lifecycle.rem
 
 import afield.document.graph.intro
 import kotlin.test.Test
+import kotlin.test.assertTrue
 import kotlin.test.assertEquals
 
 /** [analyzeBoxImports] and [formatBoxImports], against a small intro of their own. */
 class BoxImportsTest {
+
+    @Test
+    fun remoteHeadKeepsImportsThatOnlyTheJvmIntroProvides() {
+        val code = "// {{ visionmetal }}\nimport kotlin.math.cos\nval sample = cos(0.0)\n"
+        val formatted = formatBoxKotlin(code, useK2 = false)
+        assertTrue(formatted.contains("import kotlin.math.cos"))
+        assertEquals(formatted, formatBoxKotlin(formatted, useK2 = false))
+    }
     private val intro = "import afield.*\nimport afield.stdlib.*\nimport afield.stdlib.Vec2\n"
 
     private fun verdicts(code: String, evidence: K2ImportEvidence? = null, candidates: (String) -> Collection<String> = { emptyList() }) =

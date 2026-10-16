@@ -153,6 +153,86 @@
     "e6ef02e482cb-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_5/README.md"
+    },
+    "0126e7e793b5-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "013ba1fa3c91-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "032cda1ce14b-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "11428fab3472-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "17619d9b3487-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "272ce62186f6-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "28bad5b5095d-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "3a0b51470071-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "4620ce43d259-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "551f75ddb8a1-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "6d4ced47bdb0-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "7f23e1187aa1-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "c1345019b329-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "cf60e95a215d-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "d88828b4b527-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "db8df547c711-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "db8df547c711-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "e78ad0ff5144-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "e78ad0ff5144-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "eedfb551e7c1-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_6/README.md"
     }
   },
   "batches": [
@@ -160,7 +240,8 @@
     "../box_code_adoption_batch_2/README.md",
     "../box_code_adoption_batch_3/README.md",
     "../box_code_adoption_batch_4/README.md",
-    "../box_code_adoption_batch_5/README.md"
+    "../box_code_adoption_batch_5/README.md",
+    "../box_code_adoption_batch_6/README.md"
   ],
   "next": "Continue source findings: comment corrections, GLSL intent/layout, collection literals, code smells and remaining helper adoption. Full corpus coverage remains open."
 }

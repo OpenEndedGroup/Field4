@@ -14,7 +14,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Demo comment corrections](../box_code_adoption_batch_5/README.md) | Twelve more findings addressed; source/API checks, unchanged shader tokens and real executable comparisons. |
 
-[Machine checkpoint](checkpoint.json): **35 of 405 findings addressed**, one implemented with
+| [Transcript comments and collection style](../box_code_adoption_batch_6/README.md) | Twenty more findings addressed; 17-transcript compile/replay and formatter regression tests pass. |
+
+[Machine checkpoint](checkpoint.json): **55 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
