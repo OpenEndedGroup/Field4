@@ -346,7 +346,6 @@ take.
 | refused | closable? | why |
 | --- | --- | --- |
 | `mod` | yes | Kotlin's `%` on doubles is the exact remainder, and rebuilding it from `floor` gives a different answer for very large quotients. A `mod` of two constants still works. |
-| `bounce-*` easings | yes | possible with the clamped-ramp sum, not written yet. |
 | the pattern tracks | no | a pattern is interpreted, not an expression of fixed shape. |
 
 Division by a varying value and `smoothstep` with varying edges do lower, with a guard against
