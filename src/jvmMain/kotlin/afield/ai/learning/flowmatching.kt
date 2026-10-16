@@ -460,7 +460,7 @@ data class FlowMatchOptions(
      */
     val finalLearningRate: Double? = 3e-4,
     /**
-     * Momentum, or 0 to disable. **Leave this at 0 unless [rho] is also 0.**
+     * Momentum, or 0 to disable. **[flowMatch] refuses it unless [rho] is 0.**
      *
      * Smile applies momentum on top of the RMSProp-normalised gradient *without* the `(1 - β)` factor
      * that Adam uses, so switching it on multiplies the effective step by about `1/(1 - momentum)` —
@@ -547,6 +547,11 @@ fun flowMatch(
     require(options.batch > 0) { "flowMatch needs a batch of at least one, got ${options.batch}" }
     require(options.timeFeatures >= 0) { "timeFeatures cannot be negative, got ${options.timeFeatures}" }
     require(options.jitter >= 0.0) { "jitter cannot be negative, got ${options.jitter}" }
+    require(!(options.momentum > 0.0 && options.rho > 0.0)) {
+        "momentum = ${options.momentum} with rho = ${options.rho} diverges: Smile adds momentum to the RMSProp-normalised " +
+            "gradient without Adam's (1 - beta) factor, which multiplies the step by about 1/(1 - momentum). " +
+            "Set rho = 0.0 to use momentum, or momentum = 0.0 to keep RMSProp"
+    }
 
     require(options.coupling != FlowCoupling.PAIRED || from != null) {
         "PAIRED coupling needs a from cloud to pair the target with"
