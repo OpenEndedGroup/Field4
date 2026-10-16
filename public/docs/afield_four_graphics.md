@@ -1209,7 +1209,7 @@ void main()
 }
 ```
 
-Two things are required. `#extension GL_EXT_debug_printf : enable` has to be there, and printing needs validation layers switched on (`Options.validation`); without them the call compiles and silently does nothing. And the guard matters: `debugPrintfEXT` with no condition in a shader running over a million invocations will flood the log and stall the frame. The guard here (`gl_VertexIndex == 0`) prints once per draw, for the first vertex.
+Two things are required. `#extension GL_EXT_debug_printf : enable` has to be there, and printing needs the validation layer (`Options.validate`, on by default, or `Options.shaderDebugPrintf`); a shader that calls `debugPrintfEXT` with both off gets a warning in the log, since it would print nothing. And the guard matters: `debugPrintfEXT` with no condition in a shader running over a million invocations will flood the log and stall the frame. The guard here (`gl_VertexIndex == 0`) prints once per draw, for the first vertex.
 
 ## Debugging: texture probes
 
