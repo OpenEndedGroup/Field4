@@ -49,11 +49,44 @@
     "3b06cede4fe6-01": {
       "status": "implemented; fresh-service verification pending",
       "evidence": "../box_code_adoption_batch_2/README.md"
+    },
+    "0abf058ae10d-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "0abf058ae10d-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "0abf058ae10d-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "0abf058ae10d-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "bb71d7b005b0-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "293b7bec8185-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "bc7141d7966c-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
+    },
+    "bc7141d7966c-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_3/README.md"
     }
   },
   "batches": [
     "../box_code_adoption_batch_1/README.md",
-    "../box_code_adoption_batch_2/README.md"
+    "../box_code_adoption_batch_2/README.md",
+    "../box_code_adoption_batch_3/README.md"
   ],
-  "next": "Remaining approved-helper families, then remaining source findings; audit collection literals explicitly in every batch."
+  "next": "Remaining helper families: Faust render/measurement, run-owned OSC, midpoint solid slices, RectSL projection/gallery, named Syphon reuse; then remaining source findings, including spatial documentation. Audit collection literals explicitly in every batch."
 }

@@ -55,8 +55,6 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/beta_bridge.png" alt="an output panel named overview, laid out as three stat cards over a geometry strip. 'BEFORE BETA' reads 6 nodes, 5 edges, 1 active pair, total energy 5.90, mean age 0.00, over a node table of lam LAM 1.40, arg CONST 1.10, body VAR 1.00, binder VAR 0.90, app APP 0.80 and '+1 more nodes not shown', with the one active pair lam:LAM to app:APP. 'REWRITE' reads rule beta-linear, swapped yes, pair energy 2.20, removed lam and app, created none, 'beta @ 2.20'. 'AFTER BETA' reads 4 nodes, 2 edges, 2 active pairs, total energy 3.70, mean age 1.00, over arg, body, binder and root, with the pairs body:VAR to root:ROOT and binder:VAR to arg:CONST. Below, 'BEFORE / REWRITE / AFTER GEOMETRY' draws the net twice with an arrow between: on the left six coloured discs strung along a branching chain with the purple applicator in the middle; on the right, against a red-brown ground, the applicator and the lambda are gone and the four survivors stand as two separate two-node links" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-beta-bridge" w="1240" padding="12"}
 :::static
-import afield.app.protocol.Rect
-
 val reducer = Reducer(Lambda.rules())
 val net = net {
     val root = node(Lambda.ROOT, id = "root", at = vec(-180.0, -80.0), state = NodeState(energy = 0.7))
@@ -74,37 +72,17 @@ val net = net {
 }
 
 net.relax(20)
-val beforeLines = net.toFLines()
-val beforeSummary = net.summaryHtml("Before beta", maxNodes = 5)
+// Capture before rewriting; later relaxation must not move this stage.
+val before = stage("Before beta", net.toFLines(), net.summaryHtml("Before beta", maxNodes = 5))
 val detail = reducer.stepDetailed(net)!!
 net.relax(28)
-val afterLines = net.toFLines()
-val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
-val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
-val comparisonLines = [
-    beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
-    afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
-    arrow(
-        beforeFrame.right + 34.0, 170.0,
-        afterFrame.x - 34.0, 170.0,
-        color = vec(0.92, 0.90, 0.84, 0.95),
-        thickness = 2.0
-    ),
-] +
-    beforeLines.fitInto(beforeFrame, padding = 26.0) +
-    afterLines.fitInto(afterFrame, padding = 26.0)
-
-showInteractionOverview(
-    graphicLines = comparisonLines,
-    cards = [
-        beforeSummary,
-        detail.summaryHtml("Rewrite"),
-        net.summaryHtml("After beta", maxNodes = 5)
-    ],
+val after = stage("After beta", net.toFLines(), net.summaryHtml("After beta", maxNodes = 5))
+showInteractionStages(
+    before,
+    after,
+    cards = [detail.summaryHtml("Rewrite")],
     channel = "overview",
     graphicTitle = "Before / rewrite / after geometry",
-    graphicWidth = 1040.0,
-    graphicHeight = 340.0
 )
 
 println("interaction beta bridge ready")
@@ -133,8 +111,6 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/energy_scheduler.png" alt="the same three-card overview layout. 'BEFORE SCHEDULER STEP' reads 8 nodes, 6 edges, 2 active pairs, total energy 4.90, mean age 0.00, over constHigh CONST 1.80, dupHigh DUP 1.20, dupLow DUP 0.60, constLow CONST 0.50, highL ROOT 0.20 and '+3 more nodes not shown', and lists both pairs: dupLow:DUP to constLow:CONST and dupHigh:DUP to constHigh:CONST. 'SELECTED PAIR' reads rule dup-const, swapped no, pair energy 3.00, removed dupHigh and constHigh, created const_0 and const_1, 'duplicate @ 1.80' -- so of the two available pairs the scheduler took the more energetic one, not the first. 'AFTER ONE STEP' reads 8 nodes, 5 edges, 3 active pairs, total energy 3.52, mean age 1.00, with the untouched dupLow pair still there and the two new consts each wired to a root. The geometry strip shows two three-armed clusters before, and after them one cluster left alone with two small two-node links floating beside it" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-energy-scheduler" w="1240" padding="12"}
 :::static
-import afield.app.protocol.Rect
-
 val reducer = Reducer(Lambda.rules(), order = ActivationOrder.HIGHEST_PAIR_ENERGY)
 val net = net {
     val lowL = node(Lambda.ROOT, id = "lowL", at = vec(-320.0, -40.0), state = NodeState(energy = 0.2))
@@ -145,7 +121,8 @@ val net = net {
     val highL = node(Lambda.ROOT, id = "highL", at = vec(80.0, -40.0), state = NodeState(energy = 0.2))
     val highR = node(Lambda.ROOT, id = "highR", at = vec(80.0, 50.0), state = NodeState(energy = 0.2))
     val dupHigh = node(Lambda.DUP, id = "dupHigh", at = vec(220.0, 0.0), state = NodeState(energy = 1.2))
-    val constHigh = node(Lambda.CONST, id = "constHigh", at = vec(340.0, 0.0), state = NodeState(energy = 1.8, hue = 0.14))
+    val constHigh =
+        node(Lambda.CONST, id = "constHigh", at = vec(340.0, 0.0), state = NodeState(energy = 1.8, hue = 0.14))
 
     dupLow.principal to constLow.principal
     dupLow.aux(0) to lowL.principal
@@ -157,37 +134,17 @@ val net = net {
 }
 
 net.relax(20)
-val beforeLines = net.toFLines()
-val beforeSummary = net.summaryHtml("Before scheduler step", maxNodes = 5)
+// Capture before rewriting; later relaxation must not move this stage.
+val before = stage("Before scheduler step", net.toFLines(), net.summaryHtml("Before scheduler step", maxNodes = 5))
 val detail = reducer.stepDetailed(net)!!
 net.relax(28)
-val afterLines = net.toFLines()
-val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
-val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
-val comparisonLines = [
-    beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
-    afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
-    arrow(
-        beforeFrame.right + 34.0, 170.0,
-        afterFrame.x - 34.0, 170.0,
-        color = vec(0.92, 0.90, 0.84, 0.95),
-        thickness = 2.0
-    ),
-] +
-    beforeLines.fitInto(beforeFrame, padding = 26.0) +
-    afterLines.fitInto(afterFrame, padding = 26.0)
-
-showInteractionOverview(
-    graphicLines = comparisonLines,
-    cards = [
-        beforeSummary,
-        detail.summaryHtml("Selected pair"),
-        net.summaryHtml("After one step", maxNodes = 5)
-    ],
+val after = stage("After one step", net.toFLines(), net.summaryHtml("After one step", maxNodes = 5))
+showInteractionStages(
+    before,
+    after,
+    cards = [detail.summaryHtml("Selected pair")],
     channel = "overview",
     graphicTitle = "Before / rewrite / after geometry",
-    graphicWidth = 1040.0,
-    graphicHeight = 340.0
 )
 
 println("interaction scheduler ready")
@@ -216,43 +173,21 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/duplication.png" alt="the same three-card overview layout. 'BEFORE DUPLICATION' reads 4 nodes, 3 edges, 1 active pair, total energy 4.80, mean age 0.00, over k CONST 1.80, dup DUP 1.40, rootL ROOT 0.80, rootR ROOT 0.80, with the pair dup:DUP to k:CONST. 'DUPLICATE EVENT' reads rule dup-const, swapped no, pair energy 3.20, removed dup and k, created const_0 and const_1, 'duplicate @ 1.80'. 'AFTER DUPLICATION' reads 4 nodes again but 2 edges, 2 active pairs, total energy 3.22, mean age 1.00, over const_0 and const_1 both CONST 0.81 and the two unchanged roots, paired const_0 to rootL and const_1 to rootR. The geometry strip makes the shape of it plain: before, two mint roots and an orange duplicator fanning into one yellow constant; after, on a red-brown ground, two identical mint-to-yellow links sitting apart" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-duplication" w="1240" padding="12"}
 :::static
-import afield.app.protocol.Rect
-
 val reducer = Reducer(Lambda.rules(), order = ActivationOrder.HIGHEST_PAIR_ENERGY)
 val net = Lambda.duplicatedConstantDemo()
 
 net.relax(20)
-val beforeLines = net.toFLines()
-val beforeSummary = net.summaryHtml("Before duplication", maxNodes = 5)
+// Capture before rewriting; later relaxation must not move this stage.
+val before = stage("Before duplication", net.toFLines(), net.summaryHtml("Before duplication", maxNodes = 5))
 val detail = reducer.stepDetailed(net)!!
 net.relax(28)
-val afterLines = net.toFLines()
-val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
-val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
-val comparisonLines = [
-    beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
-    afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
-    arrow(
-        beforeFrame.right + 34.0, 170.0,
-        afterFrame.x - 34.0, 170.0,
-        color = vec(0.92, 0.90, 0.84, 0.95),
-        thickness = 2.0
-    ),
-] +
-    beforeLines.fitInto(beforeFrame, padding = 26.0) +
-    afterLines.fitInto(afterFrame, padding = 26.0)
-
-showInteractionOverview(
-    graphicLines = comparisonLines,
-    cards = [
-        beforeSummary,
-        detail.summaryHtml("Duplicate event"),
-        net.summaryHtml("After duplication", maxNodes = 5)
-    ],
+val after = stage("After duplication", net.toFLines(), net.summaryHtml("After duplication", maxNodes = 5))
+showInteractionStages(
+    before,
+    after,
+    cards = [detail.summaryHtml("Duplicate event")],
     channel = "overview",
     graphicTitle = "Before / rewrite / after geometry",
-    graphicWidth = 1040.0,
-    graphicHeight = 340.0
 )
 
 println("interaction duplication ready")
@@ -281,43 +216,21 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/erase.png" alt="the same three-card overview layout. 'BEFORE ERASE' reads 4 nodes, 3 edges, 1 active pair, total energy 4.00, mean age 0.00, over app APP 1.25, f CONST 1.10, erase ERASE 0.90, x VAR 0.75, with the pair erase:ERASE to app:APP. 'PRUNE STEP' reads rule erase-app, swapped no, pair energy 2.15, removed erase and app, created erase_0 and erase_1, 'prune @ 1.25' -- so erasing one node does not shrink the net, it pushes two fresh erasers down the applicator's other two ports. 'AFTER ERASE STEP' reads 4 nodes, 2 edges, 2 active pairs, total energy 2.64, mean age 1.00, pairing erase_0 to f:CONST and erase_1 to x:VAR. The geometry strip shows a salmon eraser joined to a blue applicator that fans out to a yellow and a cyan node; afterwards, on a red-brown ground, two salmon erasers sit each on its own former port" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-erase" w="1240" padding="12"}
 :::static
-import afield.app.protocol.Rect
-
 val reducer = Reducer(Lambda.rules())
 val net = Lambda.eraseApplicationDemo()
 
 net.relax(20)
-val beforeLines = net.toFLines()
-val beforeSummary = net.summaryHtml("Before erase", maxNodes = 5)
+// Capture before rewriting; later relaxation must not move this stage.
+val before = stage("Before erase", net.toFLines(), net.summaryHtml("Before erase", maxNodes = 5))
 val detail = reducer.stepDetailed(net)!!
 net.relax(28)
-val afterLines = net.toFLines()
-val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
-val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
-val comparisonLines = [
-    beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
-    afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
-    arrow(
-        beforeFrame.right + 34.0, 170.0,
-        afterFrame.x - 34.0, 170.0,
-        color = vec(0.92, 0.90, 0.84, 0.95),
-        thickness = 2.0
-    ),
-] +
-    beforeLines.fitInto(beforeFrame, padding = 26.0) +
-    afterLines.fitInto(afterFrame, padding = 26.0)
-
-showInteractionOverview(
-    graphicLines = comparisonLines,
-    cards = [
-        beforeSummary,
-        detail.summaryHtml("Prune step"),
-        net.summaryHtml("After erase step", maxNodes = 5)
-    ],
+val after = stage("After erase step", net.toFLines(), net.summaryHtml("After erase step", maxNodes = 5))
+showInteractionStages(
+    before,
+    after,
+    cards = [detail.summaryHtml("Prune step")],
     channel = "overview",
     graphicTitle = "Before / rewrite / after geometry",
-    graphicWidth = 1040.0,
-    graphicHeight = 340.0
 )
 
 println("interaction erase ready")
@@ -348,8 +261,6 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/multi_step.png" alt="the overview layout again, this time with four stat cards. 'BEFORE: LABELS 1 AND 2' reads 6 nodes, 5 edges, 1 active pair, total energy 6.00, mean age 0.00, over four CONSTs c1 to c4 and two DUPs fanA and fanB, all at energy 1.00, with the single pair fanA:DUP to fanB:DUP. 'FAN-FAN, COMMUTING BRANCH' reads rule fan-fan, swapped no, pair energy 2.00, removed fanA and fanB, created dup_0 through dup_3, 'branch @ 2.00' -- two differently labelled fans do not annihilate, they cross and become four. 'AFTER FAN-FAN' reads 8 nodes, 8 edges, 4 active pairs, total energy 5.72, mean age 1.00, with each new dup facing one of c1 to c4. 'FIXED POINT AFTER 4 MORE STEPS' reads 8 nodes but only 4 edges, 4 active pairs, total energy 3.60, mean age 5.00, and every node is now a CONST at 0.45, paired const to const. Below, 'TWO FANS, ONE COMMUTE, FOUR DUPLICATIONS' draws three stages with arrows between: a symmetric bow-tie of two orange fans between four yellow constants; then a wider tangle of four fans; then, on a green ground, four separate two-node links" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-multi-step" w="1240" padding="12"}
 :::static
-import afield.app.protocol.Rect
-
 val reducer = Reducer(Lambda.rules())
 val subject = net {
     val fanA = node(Lambda.DUP, id = "fanA", at = vec(-80.0, 0.0), state = Lambda.fan(1))
@@ -367,56 +278,31 @@ val subject = net {
 }
 
 subject.relax(20)
-val beforeLines = subject.toFLines()
-val beforeSummary = subject.summaryHtml("Before: labels 1 and 2", maxNodes = 6)
+// Capture before rewriting; later relaxation must not move this stage.
+val before =
+    stage("Before: labels 1 and 2", subject.toFLines(), subject.summaryHtml("Before: labels 1 and 2", maxNodes = 6))
 
 // One step, so the commuting branch can be shown on its own.
 val branch = reducer.stepDetailed(subject)!!
 subject.relax(24)
-val middleLines = subject.toFLines()
-val middleSummary = subject.summaryHtml("After fan-fan", maxNodes = 8)
+val middle = stage("After fan-fan", subject.toFLines(), subject.summaryHtml("After fan-fan", maxNodes = 8))
 
 // The rest of the way. This is the part a single stepDetailed cannot reach.
 val rest = reducer.reduceDetailed(subject, maxSteps = 32)
 subject.relax(28)
-val afterLines = subject.toFLines()
+val after =
+    stage("Fixed point", subject.toFLines(), subject.summaryHtml("Fixed point after $rest more steps", maxNodes = 8))
 
-val firstFrame = Rect(28.0, 54.0, 296.0, 232.0)
-val middleFrame = Rect(372.0, 54.0, 296.0, 232.0)
-val lastFrame = Rect(716.0, 54.0, 296.0, 232.0)
-val comparisonLines = [
-    firstFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
-    middleFrame.toFLine(filled = true, color = vec(0.16, 0.13, 0.08, 0.54)),
-    lastFrame.toFLine(filled = true, color = vec(0.08, 0.17, 0.12, 0.54)),
-    arrow(
-        firstFrame.right + 12.0, 170.0,
-        middleFrame.x - 12.0, 170.0,
-        color = vec(0.92, 0.90, 0.84, 0.95),
-        thickness = 2.0
-    ),
-    arrow(
-        middleFrame.right + 12.0, 170.0,
-        lastFrame.x - 12.0, 170.0,
-        color = vec(0.92, 0.90, 0.84, 0.95),
-        thickness = 2.0
-    ),
-] +
-    beforeLines.fitInto(firstFrame, padding = 22.0) +
-    middleLines.fitInto(middleFrame, padding = 22.0) +
-    afterLines.fitInto(lastFrame, padding = 22.0)
-
-showInteractionOverview(
-    graphicLines = comparisonLines,
-    cards = [
-        beforeSummary,
-        branch.summaryHtml("fan-fan, commuting branch"),
-        middleSummary,
-        subject.summaryHtml("Fixed point after $rest more steps", maxNodes = 8)
-    ],
+showInteractionStages(
+    before,
+    middle,
+    after,
+    cards = [branch.summaryHtml("fan-fan, commuting branch")],
     channel = "overview",
     graphicTitle = "Two fans, one commute, four duplications",
-    graphicWidth = 1040.0,
-    graphicHeight = 340.0
+    stageWidth = 296.0,
+    gap = 48.0,
+    padding = 22.0,
 )
 
 println("interaction multi-step ready: 1 + $rest reactions, ${subject.nodes.size} agents left")
