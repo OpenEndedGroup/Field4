@@ -80,6 +80,7 @@ async def capture(port, workspace):
             # The viewer was drawn when the document opened, before this browser attached; an
             # observation of the whole domain draws it again.
             result = await c.ai_tool_call(name="ObserveFunctionStudy", arguments={}, timeout=180, focus_box=BOX)
+            if "result" not in result: raise SystemExit(f"{name}: ObserveFunctionStudy returned {json.dumps(result)[:1500]}")
             print(name, "revision", result["result"]["revision"], flush=True)
             if output == "saved-chat.png":
                 await evaluate(f"window.openAiChatForBox('{BOX}', 'code'); true")

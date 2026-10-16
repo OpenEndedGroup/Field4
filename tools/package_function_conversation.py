@@ -71,10 +71,14 @@ def source_blocks() -> dict[str, str]:
     }
 
 
+RESPONSE_MODEL = re.compile(r"response provider=(\w+) requestedModel=([\w.-]+) responseModel=ResponsesModel\{string=([\w.-]+)\}")
+
+
 def recorded_chat() -> bytes:
     """Restore original UI turns, not a newly written summary or simulated conversation."""
     folder = EXAMPLE / "conversations"
     turns = []
+    models: set[tuple[str, str, str]] = set()
     for label in RECORDED_TURNS:
         record = json.loads((folder / (label + ".json")).read_text())
         text = (folder / (label + ".md")).read_text().split("\n\n", 1)[1]
@@ -90,7 +94,14 @@ def recorded_chat() -> bytes:
 
         # Data URLs make the imported chat portable to another workspace or a copied box.
         turns.append(re.sub(r"\]\((images/[^)]+\.png)\)", image, text).strip())
-    return ("\n\n".join(turns) + "\n").encode()
+        models.update(RESPONSE_MODEL.findall(json.dumps(record)))
+    # The turns predate per-response model records; the run's logs name one model, which the chat
+    # states once, as the run's, rather than writing it into any turn.
+    assert len(models) == 1, f"the recorded run names {sorted(models)}, not one model"
+    provider, requested, response = next(iter(models))
+    header = "<<run-model:" + json.dumps({"provider": provider, "requestedModel": requested, "responseModel": response},
+                                         separators=(",", ":")) + ">>\n"
+    return (header + "\n\n".join(turns) + "\n").encode()
 
 
 def reader(name: str, source: str) -> bytes:

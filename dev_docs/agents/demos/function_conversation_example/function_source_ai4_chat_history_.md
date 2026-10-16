@@ -1,3 +1,4 @@
+<<run-model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
 <<you>>
 We are experimenting with talking a multivariate Functions.kt function into existence. Use the document-defined function study tools. Start by reading guides/working.md with DocumentGuideReadRequest and inspecting InspectFunctionStudy. The source box is function_source. Use EditFunctionStudy for candidate transactions (complete Kotlin source, expected revision and live source hash); this compiles and checks before activation. Do not edit this box via generic edit tools. All tool names and StudyComposition/StudyEvent API contracts are in the guide. Keep the Kotlin readable and self-contained.
 

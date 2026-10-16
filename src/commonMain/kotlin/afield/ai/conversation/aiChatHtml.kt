@@ -354,8 +354,12 @@ fun aiChatHistoryHtml(history: String?, toolFamilies: AiChatToolFamilies?): Stri
             } else if (turn.role == "ai" || turn.role == "summary") {
                 // A lens block (it cites the chat it summarizes) is labelled as one; its record names the model.
                 val lens = turn.model == null && turn.sources.isNotEmpty()
-                val label = turn.model?.label() ?: if (lens) "Lens" else "Model not recorded"
-                val title = turn.model?.description()
+                val label = turn.model?.label()?.let { if (turn.modelFromRun) "$it (from the run's record)" else it }
+                    ?: if (lens) "Lens" else "Model not recorded"
+                val title = turn.model?.let { m ->
+                    if (turn.modelFromRun) "This entry predates per-response model records; the run it belongs to is recorded as ${m.requestedModel} on ${m.provider}."
+                    else m.description()
+                }
                     ?: if (lens) "Written as a lens over a longer chat; it stands for ${turn.sources.joinToString(", ")}."
                     else "This older chat entry did not record its provider or model."
                 "<div class=\"ai-chat-model\" title=\"${escapeHtml(title)}\">${escapeHtml(label)}</div>"
