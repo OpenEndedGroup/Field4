@@ -2538,32 +2538,24 @@ object Lambda {
     val CONST = Types.agent("CONST", 0)
 
     /**
-     * The [NodeState.scalars] key a fan's label lives under.
-     *
-     * A [DUP] plays two roles in a λ-net — the *fan-out* that hands a shared subterm to each of its users, and the
-     * *fan-in* that `dup-lam` leaves on a duplicated abstraction's binder to gather the copies back up — and the only
-     * thing that tells one meeting from another is whether the two fans came from the same duplication. That is the
-     * label. [LambdaTerms.compile] mints a fresh one per fan it builds, and every rule that copies a fan copies its
-     * state, so the label is inherited for free.
+     * The [NodeState.scalars] key a [DUP]'s or [DELIM]'s Lambdascope **level** lives under (the name is older than
+     * the levels). Two agents of one kind meet and cancel when their levels are equal, and copy each other when they
+     * differ; see [rules]. [LambdaTerms.compile] builds every fan and delimiter at level 0, and the rules raise levels
+     * as agents move.
      */
     const val FAN_LABEL: String = "fanLabel"
 
-    /**
-     * The fan label on a node, or **0.0** for a [DUP] built without one.
-     *
-     * That default is deliberate: the hand-wired demos in this file and any net you build with a bare
-     * `node(DUP)` all carry label 0, so two of them annihilate rather than commuting forever.
-     */
+    /** A node's level, or **0.0** for one built without one, so two bare `node(DUP)`s annihilate. */
     fun fanLabelOf(node: Node): Double = node.state.scalars[FAN_LABEL] ?: 0.0
 
     /**
-     * A [NodeState] for a labelled fan — `node(DUP, state = Lambda.fan(3))`.
+     * A [NodeState] for a fan (or a delimiter) at [level] — `node(DUP, state = Lambda.fan(3))`.
      *
-     * Only the label matters to the rules; [energy] is here because every other state in this vocabulary carries one
-     * and the renderer reads it.
+     * Only the level matters to the rules; [energy] is here because every other state in this vocabulary carries
+     * one and the renderer reads it.
      */
-    fun fan(label: Int, energy: Double = 1.0): NodeState =
-        NodeState(energy = energy, scalars = linkedMapOf(FAN_LABEL to label.toDouble()))
+    fun fan(level: Int, energy: Double = 1.0): NodeState =
+        NodeState(energy = energy, scalars = linkedMapOf(FAN_LABEL to level.toDouble()))
 
     private fun PairContext.structuralEcho(nodeOrdinal: Int, branch: Int, attenuation: Double = 0.9): NodeState =
         stateCopy(nodeOrdinal).split(

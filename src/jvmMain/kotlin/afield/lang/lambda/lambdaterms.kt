@@ -146,12 +146,12 @@ sealed interface Term {
  *
  * ### What this gets right, and what it does not
  *
- * The sharing is *correct* but not *maximal*. [compile] mints a distinct [Lambda.FAN_LABEL] for every fan it builds
- * and `Lambda.rules()`'s `fan-fan` annihilates equal labels and commutes different ones, which is enough for the
- * duplications this compiler produces to cross each other without confusing one another's copies. It is not Lamping's
- * optimal reduction: there are no brackets or croissants, so nothing here bounds how many times a fan may be copied.
- * Do not read [Run.steps] as an optimal step count, and see `dev_docs/INTERACTION_NETS_LAMBDA.md` for what was
- * actually measured.
+ * The sharing is Lambdascope's (van Oostrom, van de Looij and Zwitserlood, 2004): optimal and correct. Fans and
+ * scope delimiters carry levels, and `Lambda.rules()` annihilates two of one kind and level and commutes the rest,
+ * raising a level as it passes an abstraction or a delimiter at or below it. Against [referenceNormalOrder], the
+ * corpus, the four `LambdaSoundDocs.CONFLUENCE_PROBES` and every generated simply-typed term agree; on some untyped
+ * terms [readback] cannot place a fan and marks it `⋈` (see `dev_docs/INTERACTION_NETS_LAMBDA.md`). [Run.steps]
+ * counts every reaction, delimiter moves included, so it is not a count of β-steps.
  *
  * An open term compiles too: each *occurrence* of a free variable becomes its own [Lambda.VAR] agent, deliberately
  * unshared, carrying its name's index in its state ([FREE_VARIABLE]). `dup-var` copies that state into the fresh
@@ -516,8 +516,8 @@ object LambdaTerms {
      *
      * The interesting case is a variable, because an interaction net has no notion of a wire that forks. A binder used
      * *once* is a single wire from `LAM.aux(0)` to the use. Used *n* times it is a right-nested tree of `n - 1`
-     * [Lambda.DUP] fans, each carrying **its own fresh [Lambda.FAN_LABEL]** — distinct labels rather than one per
-     * binder, so that no two fans of the same tree START OUT able to meet and wrongly annihilate. Reduction does not preserve that: copying a fan copies its label. Never used, it is a
+     * level-0 [Lambda.DUP] fans. On its way to the binder, an occurrence passes a level-0 [Lambda.DELIM] for every
+     * abstraction between the two (every enclosing one, for a free variable): Lambdascope's scopes. Never used, it is a
      * [Lambda.ERASE]: the binder still has to go somewhere, and an interaction net may not simply drop a wire.
      *
      * Positions are seeded by syntactic depth so the net is legible before any [Net.relax] has run. That matters for a
@@ -636,14 +636,14 @@ object LambdaTerms {
      * Binders are given fresh names (`a`, `b`, … then `v26`), so a readback is only ever [alphaEquivalent] to the term
      * you put in.
      *
-     * The part that is not a plain tree walk is the fans, and it is the reason [Lambda.FAN_LABEL] exists. A normal
-     * form can still carry them — `mul two three` reduces to a net with three fans standing — and a fan is not a
-     * node of the term, it is a *bracket* on the path through it. So the walk carries a **stack of fan choices**.
-     * Arriving at a fan from its auxiliary *i* means "the thing here is copy *i* of what the fan's principal points
-     * at": push `(label, i)` and keep going through the principal. Arriving at a fan's *principal* is the matching
-     * close bracket: pop, and if the label agrees, descend into that branch. Without the stack the second case has no
-     * answer at all — which copy of a shared subterm a term position means is not local information — and a reduction
-     * that left any fan standing reads back as `⋈`.
+     * The part that is not a plain tree walk is the fans. A normal form can still carry them, and a fan is not a node
+     * of the term, it is a *bracket* on the path through it. So the walk carries a **stack of fan choices**. Arriving
+     * at a fan from its auxiliary *i* means "the thing here is copy *i* of what the fan's principal points at": push
+     * the choice and keep going through the principal. Arriving at a fan's *principal* is the matching close bracket:
+     * take the most recent choice made at a fan of the same duplication, and descend into that branch. Which fans are
+     * one duplication is what Lambdascope's levels say, read through [Scopes]: a level names a scope, and the walk
+     * keeps the scopes it is in as it passes abstractions and delimiters. With no such choice pending the answer is
+     * `⋈`; on some untyped terms the walk's scope bookkeeping is not enough and that happens.
      *
      * What it will not do is invent structure that is not there, and the six marks it can leave instead are all
      * things to fail a test over rather than paper over:
