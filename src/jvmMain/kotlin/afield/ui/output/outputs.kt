@@ -1701,12 +1701,12 @@ internal fun getButtonCallback(controlId: String): ((Boolean) -> Unit)? = button
  * one event and this control has two, so `sliders.js` wires `pointerdown`/`pointerup` — plus the window
  * listeners that stop a pointer released elsewhere from leaving the button held down.
  */
-private fun buildButtonHtml(controlId: String, label: String): String {
+internal fun buildButtonHtml(controlId: String, label: String, hit: String = "hold"): String {
     val escaped = label.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     return """
         <div class="field-control field-button" data-control-id="$controlId">
             <span class="field-label">$escaped</span>
-            <button type="button" class="field-button-hit" id="$controlId" aria-pressed="false">hold</button>
+            <button type="button" class="field-button-hit" id="$controlId" aria-pressed="false">$hit</button>
         </div>
     """.trimIndent()
 }
