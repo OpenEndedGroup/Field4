@@ -19,78 +19,33 @@ The loud ones tell you what to fix. This page is mostly about the other two.
 
 ---
 
-## Silent: a capture that reported success and showed nothing
+## Refused: a box whose output never appeared
 
-Captures that request open outputs reject missing content and unsettled layout. Without that
-check, `screenshot-box` returns a picture of nothing with `ok: true`. The two captures below were
-taken without it, to show what that looks like.
-
-Here are two runs of the **same box** with the **same command**. One variable changes: whether a
-browser client was attached at the moment the box ran.
-
-```diffstatic {data-lang=kotlin}
-display("<div style='width:360px;height:200px;background:#2f5fd0'>capture limits probe</div>")
-displayOpen("output")
-println("PROBE-DONE")
-```
-
-Run it with no client attached, attach one afterwards, then photograph it:
-
-![a 48 by 48 pixel image: a sliver of empty canvas, which is the whole of what the capture returned](assets/capture_limits/no_client.png)
-
-That is the figure, reproduced at its real size. The capture reported:
+`screenshot-box` opens a box's outputs before it shoots, and requires visible, populated content
+and settled geometry. A box with nothing to show fails with `ok: false` and says so, rather than
+returning a picture of its collapsed handle:
 
 ```diffstatic {data-lang=json}
-{ "ok": true, "kind": "box",
-  "clip":     { "x": 23.0, "y": 286.0, "w": 24.0,  "h": 24.0  },
-  "viewport": { "x": 0.0,  "y": 0.0,   "w": 2200.0, "h": 2800.0 } }
+{ "ok": false, "kind": "box",
+  "message": "output has no visible content or its layout did not settle; attach the browser before running the box, or use --no-open-outputs for an intentional handle-only capture" }
 ```
 
-Run the same box with the client already attached and everything else identical:
+A box that was run before the browser attached is still captured: its retained output panels are
+replayed to the page, and the reply's `captureWarnings` says that anything that was not a retained
+panel never reached it.
 
-![the probe's blue output panel, 360 by 200 logical pixels, captioned "capture limits probe", with its output disclosure tab visible above it](assets/capture_limits/client_up.png)
+`displayOpen(channel)` does not open a panel itself: it sends an `output-control` message to a
+client (`afield/ui/output/outputs.kt`), so with no client connected the panel is only created when
+one attaches and the retained output is replayed.
 
-```diffstatic {data-lang=json}
-{ "ok": true, "kind": "box",
-  "clip":     { "x": 23.0, "y": 290.0, "w": 396.0, "h": 258.0 },
-  "viewport": { "x": 0.0,  "y": 0.0,   "w": 2200.0, "h": 2800.0 } }
-```
-
-Both replies say `ok: true`. The **clip** tells them apart. Check it even with the readiness
-checks on, because automation cannot know which picture you intended.
-
-### Why it happens
-
-`displayOpen(channel)` does not open a panel. It sends an `output-control` message *to a client*
-(`afield/outputs.kt`). With no client connected there is nobody to receive it, so the panel is never
-created, and the box collapses to its handle.
-
-The capture then clips to whatever the box's element measures on the page
-(`getBoundingClientRect`, in the prep script inside `afield/docs/screenshot.kt`). A collapsed box
-measures 24 × 24 logical pixels, and at this display's 2× scale that is a 48 × 48 PNG.
-
-So do not look for "48 × 48". **The clip is the box's own rectangle**, so its size is whatever that
-particular box collapsed to, times the device pixel ratio; `dev_docs/path_tracer_instrument.md`
-records a 40 × 40 one. What to watch for is a clip much smaller than the output you were expecting.
-
-### How the capture rejects it
-
-`screenshot-box` opens outputs by default (`--open-outputs` is the default in
-`tools/field_backdoor.py`; `--no-open-outputs` turns it off), and the prep script waits for
-anything that declares itself busy, such as a "loading waveform" badge, before shooting.
-
-An output area that was never populated does not declare itself busy, so box and targeted window
-captures also open the disclosures first, then require visible, populated content, loaded images
-and iframes, and stable geometry within the preparation deadline. If the layout wait expires, the
-capture fails rather than photographing a box handle. Animation inside a fixed-size output is
-still allowed, since the check is on geometry, not on whether the pixels stop moving.
+### Handle-only captures
 
 There is no minimum image size; tiny valid outputs are allowed. For an intentional box-handle
 capture use `--no-open-outputs`. For an editor-only window capture, omit `--open-outputs`.
 
-### What to do instead
+### Attach before running
 
-Attach the client *before* the box runs, so the panel exists when `displayOpen` fires:
+For DOM that is not a retained panel, attach the client *before* the box runs:
 
 ```diffstatic {data-lang=bash}
 python3 tools/field_backdoor.py --port <port> --with-playwright \
@@ -99,8 +54,8 @@ python3 tools/field_backdoor.py --port <port> --with-playwright \
   --command "screenshot-box <uid> out.png"
 ```
 
-Or open the document in a browser first. And whichever you do, **read the `clip` in the reply**. It
-is the one field that separates a good capture from a plausible one.
+Or open the document in a browser first. Either way, read `captureWarnings` and the `clip` in
+the reply.
 
 ---
 
@@ -128,7 +83,7 @@ own swapchain image straight to a file. It needs no screen recording permission,
 the window, and works headless.
 
 One budget, 15 seconds by default, covers renderer readiness, settling *and* the copy; it is not
-a fresh allowance per stage (`afield/docs/doc.kt`). When it expires you get "Timed out waiting for
+a fresh allowance per stage (`afield/tools/docs/doc.kt`). When it expires you get "Timed out waiting for
 native renderer" and no information about which stage ate it.
 
 Here is how per-frame work on one scene affects this path:
@@ -167,7 +122,7 @@ docs fence that asks for `capture="native-window"` together with `video=` is acc
 to the browser recorder, and silently records the wrong window
 (`dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`). No published page does this today.
 
-A native-window recorder **does** exist: `Window.raiseAndRecord`, in `afield/docs/doc.kt`, raises
+A native-window recorder **does** exist: `Window.raiseAndRecord`, in `afield/tools/docs/doc.kt`, raises
 the GLFW window and records its rectangle with macOS `screencapture`. Its only caller is the
 `render_clip` comment command in the same file, which neither the backdoor nor the docs fence
 harness reaches.
@@ -218,18 +173,18 @@ Some practical points:
 
 ---
 
-## Where each limit is written down
+??? aside "Agents: where each limit is written down"
 
-| limit | recorded in |
-|---|---|
-| outputs closed with no client → a box-handle-sized capture, `ok: true` | `dev_docs/MARF_DEMO.md`, `dev_docs/OUTPUT_PANEL_SIZING.md`, `dev_docs/path_tracer_instrument.md` |
-| stale selection blurs a box capture; repeats are flaky | `dev_docs/chart_primitive.md` |
-| neighbouring panels inside the clip | `dev_docs/chart_bad_separation.md` |
-| box capture pans and drops the selection | [Moving around the canvas](moving_around_the_canvas.md#what-the-overlay-draws) |
-| per-frame vertex re-upload and property read time out the native capture | `dev_docs/SKINNED_CHARACTERS.md`, `dev_docs/GPU_SKINNING.md` |
-| `applyToMesh` throws from a `main` | `dev_docs/GPU_SKINNING.md` |
-| no native-window video on any agent-facing path | `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`, [Pattern → particles](chain_pattern_particles.md) |
-| `screencapture` needs permission; the swapchain copy does not | `dev_docs/imgui_vr_panel.md` |
-| a static capture cannot click | `dev_docs/three_inspector.md` |
-| captures with a build prerequisite, and host-gated captures | `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`, `dev_docs/NVFLOW_BINDINGS.md` |
-| a capture that can no longer be recreated, and must not be faked | `dev_docs/docs_capture_staleness.md` |
+    | limit | recorded in |
+    |---|---|
+    | outputs closed with no client → a box-handle-sized capture, `ok: true` | `dev_docs/MARF_DEMO.md`, `dev_docs/OUTPUT_PANEL_SIZING.md`, `dev_docs/path_tracer_instrument.md` |
+    | stale selection blurs a box capture; repeats are flaky | `dev_docs/chart_primitive.md` |
+    | neighbouring panels inside the clip | `dev_docs/chart_bad_separation.md` |
+    | box capture pans and drops the selection | [Moving around the canvas](moving_around_the_canvas.md#what-the-overlay-draws) |
+    | per-frame vertex re-upload and property read time out the native capture | `dev_docs/SKINNED_CHARACTERS.md`, `dev_docs/GPU_SKINNING.md` |
+    | `applyToMesh` throws from a `main` | `dev_docs/GPU_SKINNING.md` |
+    | no native-window video on any agent-facing path | `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`, [Pattern → particles](chain_pattern_particles.md) |
+    | `screencapture` needs permission; the swapchain copy does not | `dev_docs/imgui_vr_panel.md` |
+    | a static capture cannot click | `dev_docs/three_inspector.md` |
+    | captures with a build prerequisite, and host-gated captures | `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`, `dev_docs/NVFLOW_BINDINGS.md` |
+    | a capture that can no longer be recreated, and must not be faked | `dev_docs/docs_capture_staleness.md` |

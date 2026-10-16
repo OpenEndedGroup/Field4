@@ -70,6 +70,10 @@ class PathTracedReconstruction(val tracer: PathTracingRenderer,
         val previous=renderer.renderList.preTargets[name]
         require(previous==null || previous===this || previous is PathTracedReconstruction)
         if(previous is PathTracedReconstruction && previous!==this)previous.close()
+        // A tracer from pathTracingHere(...) arrives with its own standalone passes scheduled. This
+        // renders it, so those come off the lists here; left on, the tracer would dispatch twice.
+        renderer.computeList.others.remove(tracer.name, tracer)
+        renderer.renderList.preTargets.remove("${tracer.name}-output")
         renderer.renderList.preTargets[name]=this;renderer.renderList.modules[name]=present.pointer()
         return this
     }

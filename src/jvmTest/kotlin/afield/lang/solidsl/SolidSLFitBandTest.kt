@@ -60,6 +60,28 @@ class SolidSLFitBandTest {
     }
 
     @Test
+    fun `a child swallowed by its sibling is reported dead because it never moved`() {
+        // A cube wholly inside a bar is never the nearest surface, so Union's min gives it no
+        // gradient anywhere the descent goes, and its parameter comes back bit-identical.
+        val truth = sphere(0.62) + cylinder(2.20, 0.28)
+        val target = truth.sampleField(count = 600, seed = 17)
+        val model = (cuboid(1.0) + cylinder(1.0, 1.0).turned(y = 1.0)).parameterize {
+            param("cubeSize") { it.node == "Cuboid" }
+            param("barHeight") { it.node == "Cylinder" && it.field == "height" }
+            param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+            param("barTilt") { it.node == "Rotate" && it.field == "y" }
+        }.orThrow()
+        val seed = doubleArrayOf(0.40, 1.60, 0.55, 25.0)
+        val fit = model.fitParameters(
+            target, seed, SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 300, learningRate = 0.015),
+        )
+        println(fit.report())
+        assertEquals(0.40, fit.values[0], "premise: the cube never moves")
+        assertTrue("cubeSize" in fit.deadParameters, "named dead: ${fit.deadParameters}")
+        assertTrue("barRadius" !in fit.deadParameters, "a parameter that moved is not: ${fit.deadParameters}")
+    }
+
+    @Test
     fun `a band no positive number is refused`() {
         val target = sphere(0.8).sampleField(count = 50, seed = 3)
         for (bad in listOf(0.0, -0.1)) {

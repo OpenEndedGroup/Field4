@@ -135,7 +135,21 @@ object ShaderSPIRVUtils {
         )
     }
 
+    @Volatile private var warnedPrintfWithoutLayer = false
+
     fun compileShader(source: ShaderCompileSource, shaderKind: ShaderKind): SPIRV {
+        // debugPrintfEXT is implemented by the validation layer: with neither validation nor shader
+        // printf on, the call compiles and prints nothing. Say so once rather than leave it silent.
+        if (!warnedPrintfWithoutLayer && !(Options.validate || Options.shaderDebugPrintf) &&
+            source.sourceText.contains("debugPrintfEXT")
+        ) {
+            warnedPrintfWithoutLayer = true
+            afield.app.diagnostics.logging.lprintln(
+                "warning,shader",
+                "${source.sourceName} calls debugPrintfEXT, but neither Options.validate nor " +
+                    "Options.shaderDebugPrintf (-Dafield.four.shaderDebugPrintf=true) is on, so it will print nothing",
+            )
+        }
         val compiler = Shaderc.shaderc_compiler_initialize()
 
         if (compiler == MemoryUtil.NULL) {

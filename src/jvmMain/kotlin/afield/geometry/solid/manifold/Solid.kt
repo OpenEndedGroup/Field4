@@ -1072,38 +1072,28 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
          * ([afield.geometry.mesh.sdfSphere] and friends) is `negative inside`, so pass one through
          * [levelSetOf] instead of negating by hand.
          *
-         * # [field] is called from Manifold's thread pool
+         * # Always sequential
          *
-         * That is where the speed comes from — measured on a unit sphere at `edgeLength = 0.04`,
-         * 465k samples: **82 ms across 10 threads, against 151 ms sequential**. In exchange, [field]
-         * must be thread-safe. If it is not (it accumulates into a shared array, it reuses a scratch
-         * [Vec3], it touches a `Box`), pass `parallel = false` and take the 1.84×.
+         * Manifold can also march with [field] called from its own thread pool, about twice as fast
+         * on a cheap field, but that path does not return the same mesh twice: one field marched four
+         * times came back with 5376, 5376, 5374 and 5376 triangles and 47 or 48 components, where the
+         * sequential path returned the same mesh to the last digit every time. Field only uses the
+         * sequential path, so [field] need not be thread-safe.
          *
          * An exception thrown by [field] cannot unwind through Manifold's C++ frames, so it is caught,
          * the sample reads as far-outside, and the exception is rethrown from this call.
-         *
-         * # `parallel = true` is not reproducible
-         *
-         * The same field marched four times at `edgeLength = 0.7` came back with 5376, 5376, 5374
-         * and 5376 triangles, volumes differing in the third decimal place, and **47 or 48**
-         * connected components. `parallel = false` on the identical field returned 5374 triangles,
-         * 48 components and a volume identical to the last digit every time. So a figure or a test
-         * that publishes a count off a level set wants the sequential path, and the speedup above is
-         * for when the output goes to a screen rather than into a number somebody reads.
          *
          * @param bounds the window to march; a shape touching the wall comes out cut off there.
          * @param edgeLength target triangle edge length. Cost grows as its cube — halving it is 8x.
          * @param level the iso-level to extract.
          * @param tolerance simplify the output to within this of the true level set; `-1.0` leaves it
          *   at full marching resolution.
-         * @param parallel let Manifold call [field] from many threads at once.
          */
         fun levelSet(
             bounds: AxisAlignedBoundingBox3D,
             edgeLength: Double,
             level: Double = 0.0,
             tolerance: Double = -1.0,
-            parallel: Boolean = true,
             field: (Double, Double, Double) -> Double,
         ): Solid {
             require(edgeLength > 0.0) { "edgeLength must be positive, got $edgeLength" }
@@ -1120,7 +1110,7 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
                 )
                 try {
                     val out = wrap(
-                        if (parallel) ManifoldNative.levelSet else ManifoldNative.levelSetSeq,
+                        ManifoldNative.levelSetSeq,
                         stub,
                         box,
                         edgeLength,
@@ -1144,12 +1134,6 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
          * val body = sdfSmoothUnion(sdfSphere(0.8), sdfBox(vec(1.4, 0.25, 0.25)), k = 0.25)
          * val solid = Solid.levelSetOf(body, boundsAround(radius = 1.6), edgeLength = 0.02)
          * ```
-         *
-         * `parallel` defaults to **false** here, deliberately and unlike [levelSet]: a
-         * [afield.geometry.mesh.ScalarField3D] takes a [Vec3], `Vec3` is mutable, and every combinator in
-         * that family is free to reuse the one it is handed. Calling such a field from ten threads is
-         * the aliasing bug the mesh family's whole design avoids. Pass `parallel = true` only for a
-         * field you know allocates per call.
          */
         fun levelSetOf(
             field: (Vec3) -> Float,
@@ -1157,12 +1141,11 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
             edgeLength: Double,
             level: Double = 0.0,
             tolerance: Double = -1.0,
-            parallel: Boolean = false,
         ): Solid {
-            val probe = ThreadLocal.withInitial { Vec3() }
-            return levelSet(bounds, edgeLength, -level, tolerance, parallel) { x, y, z ->
+            val probe = Vec3()
+            return levelSet(bounds, edgeLength, -level, tolerance) { x, y, z ->
                 // Negated: Field's SDFs are negative inside, Manifold's level sets positive inside.
-                -field(probe.get().set(x.toFloat(), y.toFloat(), z.toFloat())).toDouble()
+                -field(probe.set(x.toFloat(), y.toFloat(), z.toFloat())).toDouble()
             }
         }
 
@@ -1333,7 +1316,12 @@ internal class NativeRelease(val handle: MemorySegment, private val kind: Kind) 
  * of things it could *not* do. The older [afield.geometry.mesh.repaired] is still there and still fine for a
  * mesh whose only problem is an unwelded seam; it does not fill holes.
  *
- * @param check throw on an invalid mesh instead of returning a [Solid] that quietly has no volume.
+ * An inside-out mesh — closed and consistently wound, but inward — is a legal manifold to Manifold,
+ * with a negative volume, and the next boolean would compute its complement. The check refuses that
+ * too; a hollow shell, whose inner wall is wound inward on purpose, has a positive total and passes.
+ *
+ * @param check throw on an invalid or inside-out mesh instead of returning a [Solid] that quietly has
+ *   no volume, or a negative one.
  * @param weldTolerance weld coincident vertices first. `null` (the default) does not weld, because
  *   welding a mesh that did not need it is not free; pass `1e-6` for anything that came off disk.
  */
@@ -1355,7 +1343,20 @@ fun TriMesh.toSolid(check: Boolean = true, weldTolerance: Double? = null): Solid
         try {
             val solid = Solid.wrap(ManifoldNative.ofMeshGL, mesh)
             val status = solid.status
-            if (!check || !status.isError) return solid
+            if (!check) return solid
+            if (!status.isError) {
+                // Manifold accepts a closed surface wound inward and reports a negative volume, after
+                // which every boolean computes the complement of what was meant. A hollow shell's inner
+                // wall is wound inward on purpose, so only a negative TOTAL is refused.
+                val volume = solid.volume
+                if (volume >= 0.0) return solid
+                solid.close()
+                throw IllegalStateException(
+                    "this TriMesh is wound inside out: Manifold accepts it, with volume ${"%.4g".format(volume)}, " +
+                        "and the next boolean would compute the complement. TriMesh.fixWinding() flips it " +
+                        "(or reverse every triangle); toSolid(check = false) takes it as it is.",
+                )
+            }
             // Manifold can only say *that* it refused. Field can say why, so it does: the diagnosis
             // names the actual defect — which loops are open and how big, which edges have too many
             // faces — instead of the old message's list of things the reader might try.
@@ -1373,9 +1374,12 @@ fun TriMesh.toSolid(check: Boolean = true, weldTolerance: Double? = null): Solid
     }
 }
 
-/** `true` when Manifold agrees this mesh is a closed solid — the cheap pre-flight for [toSolid]. */
+/**
+ * `true` when Manifold agrees this mesh is a closed solid and it is not inside out (a negative total
+ * volume) — the cheap pre-flight for [toSolid], and false exactly when `toSolid()` would throw.
+ */
 fun TriMesh.isValidSolid(): Boolean =
-    runCatching { toSolid(check = false).use { !it.status.isError } }.getOrDefault(false)
+    runCatching { toSolid(check = false).use { !it.status.isError && it.volume >= 0.0 } }.getOrDefault(false)
 
 /**
  * How far apart two solids' volumes are, relative to the larger — the assertion a geometry test

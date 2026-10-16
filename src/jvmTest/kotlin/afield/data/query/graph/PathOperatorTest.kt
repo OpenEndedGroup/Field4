@@ -154,9 +154,11 @@ class PathOperatorTest {
     }
 
     @Test
-    fun dividingByAStringNoLongerFailsToCompile() {
-        // The cost of the notation, pinned deliberately: this used to be a compile error and
-        // is now an empty query. Reflection stops at String, so there is nothing to find.
-        assertTrue(("a" / "b").isEmpty)
+    fun aStringTypedAsAnyStillQueriesAsAnEmptySet() {
+        // `"a" / "b"` written out is refused at compile time (String.div is deprecated at ERROR).
+        // A string that reaches `/` typed as Any goes through the general overload, and reflection
+        // stops at String, so there is nothing to find.
+        val leaf: Any = "a"
+        assertTrue((leaf / "b").isEmpty)
     }
 }

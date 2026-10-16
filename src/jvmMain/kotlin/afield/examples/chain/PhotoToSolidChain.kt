@@ -223,9 +223,6 @@ object PhotoToSolidChain {
      * The same plaque as [Img.toReliefMesh] builds, but marched out of a field instead — the
      * independent second construction the volume agreement is checked against.
      *
-     * `parallel = false` on purpose for the volume agreement, and [reproducibilityCensus] measures
-     * whether that caution is warranted on *this* field rather than repeating the recorded claim.
-     *
      * @param floor the plane the solid is cut off at. `-BASE` is the plaque. Raise it and the plaque
      *   erodes into islands — only the parts of the photograph nearer than [floor] survive — which is
      *   the knob that turns one component into dozens without changing anything else.
@@ -234,7 +231,6 @@ object PhotoToSolidChain {
         depth: Img,
         footprintZ: Double,
         edgeLength: Double,
-        parallel: Boolean,
         floor: Double = -BASE,
     ): Solid {
         val halfX = WIDTH / 2
@@ -246,7 +242,7 @@ object PhotoToSolidChain {
         )
         // Positive inside, which is Manifold's convention for a level set: below the relief surface,
         // above the floor, and inside the footprint, all at once.
-        return Solid.levelSet(bounds, edgeLength, parallel = parallel) { x, y, z ->
+        return Solid.levelSet(bounds, edgeLength) { x, y, z ->
             val u = ((x / WIDTH) + 0.5).coerceIn(0.0, 1.0)
             val v = ((z / footprintZ) + 0.5).coerceIn(0.0, 1.0)
             val px = (u * (depth.width - 1)).toInt().coerceIn(0, depth.width - 1)
@@ -258,65 +254,6 @@ object PhotoToSolidChain {
             )
         }
     }
-
-    /**
-     * [runs] runs of [Solid.levelSet] each way, reported as the number of *distinct* answers.
-     *
-     * The recorded claim is that `parallel = true` is not reproducible and `parallel = false` is
-     * identical to the last digit — first seen on a field that marched to 46, 47 or 48 components.
-     * This re-runs it on a depth map, at several [floor]s, because a component count near a
-     * threshold is the obvious candidate for what actually varies: the number is the *last* thing a
-     * marcher decides, and the volume is a sum that does not care what order it was added in.
-     */
-    fun reproducibilityCensus(
-        depth: Img,
-        footprintZ: Double,
-        edgeLength: Double,
-        floor: Double,
-        runs: Int = 8,
-    ): Census {
-        fun census(parallel: Boolean): List<String> = (1..runs).map {
-            Solid.scope {
-                val s = marchedPlaque(depth, footprintZ, edgeLength, parallel, floor)
-                "tri=${s.triangleCount} parts=${s.decompose().size} vol=%.12f".format(s.volume)
-            }
-        }
-        val par = census(true)
-        val seq = census(false)
-        val result = Census(floor, edgeLength, runs, par.toSet(), seq.toSet(), partsOf(seq.first()))
-        println("  floor=%+.2f edgeLength=%.4f, %d component(s)".format(floor, edgeLength, result.parts))
-        println("    parallel=true : $runs runs, ${result.parallel.size} distinct")
-        result.parallel.forEach { println("        $it") }
-        println("    parallel=false: $runs runs, ${result.sequential.size} distinct")
-        result.sequential.forEach { println("        $it") }
-        return result
-    }
-
-    /**
-     * One row of the reproducibility table: how many *distinct* answers each path gave.
-     *
-     * The answer is the triple `(triangleCount, componentCount, volume to twelve places)`, so two
-     * runs count as the same answer only if they agree on all three. A weaker key — the volume
-     * rounded, say — would report reproducibility that is not there.
-     */
-    data class Census(
-        val floor: Double,
-        val edgeLength: Double,
-        val runs: Int,
-        val parallel: Set<String>,
-        val sequential: Set<String>,
-        /** Components the sequential path found, which is the one that agrees with itself. */
-        val parts: Int,
-    ) {
-        /** `"5/8"` — distinct answers over runs, for the `parallel = true` path. */
-        fun parallelRatio(): String = "${parallel.size}/$runs"
-
-        /** `"1/8"` — the same for `parallel = false`. */
-        fun sequentialRatio(): String = "${sequential.size}/$runs"
-    }
-
-    private fun partsOf(answer: String): Int =
-        Regex("parts=(\\d+)").find(answer)?.groupValues?.get(1)?.toInt() ?: -1
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -379,7 +316,7 @@ object PhotoToSolidChain {
             // a fudge: a level set resolves the surface to about its edge length, and the relief's
             // slope times that edge length is the volume a cell can be wrong by.
             val edgeLength = WIDTH / grid
-            val marched = marchedPlaque(small, footprintZ, edgeLength, parallel = false)
+            val marched = marchedPlaque(small, footprintZ, edgeLength)
             val agreement = abs(marched.volume - solid.volume) / solid.volume
             check(
                 "an independently marched plaque has the same volume",
@@ -462,37 +399,6 @@ object PhotoToSolidChain {
                 File(out, "$label.png").writeBytes(mesh.renderPng(MeshView(width = 900, height = 620), label))
             }
             println("  figures in ${out.path}: relief.png, frame.png, ${stl.name}")
-        }
-
-        // The recorded claim was first seen on a field that marched to 46, 47 or 48 components, so
-        // testing it needs that regime and not just this photograph's one solid block. `floor` is
-        // the knob: raise it and only the nearest parts of the picture survive, as islands. The
-        // sharp (unblurred) map fragments far harder than the blurred one, so scan both and then
-        // spend the runs where the component count is actually high.
-        val sharp = depth.resize(small.width, small.height)
-        val edge = WIDTH / 64.0
-        println("levelSet component scan, one run each, to find the fragmented regime:")
-        val regimes = mutableListOf<Triple<String, Img, Double>>()
-        for ((label, field) in listOf("blurred" to small, "sharp" to sharp)) {
-            for (floor in listOf(-BASE, 0.02, 0.06, 0.10, 0.14, 0.18)) {
-                val parts = Solid.scope { marchedPlaque(field, footprintZ, edge, false, floor).decompose().size }
-                println("  %-7s floor=%+.2f → %d component(s)".format(label, floor, parts))
-                if (parts >= 2) regimes.add(Triple("$label floor=%+.2f".format(floor), field, floor))
-            }
-        }
-
-        // Always include the un-eroded plaque, which is one solid block, alongside the fragmented
-        // regimes. Comparing the two is the whole point: if the block reproduces and the fragments
-        // do not, then "parallel is not reproducible" is a statement about the *field* and not about
-        // the flag, and that is a different thing to have to remember.
-        println("levelSet reproducibility, 8 runs each way:")
-        val chosen = listOf(Triple("the plaque itself (one block)", small, -BASE)) + regimes.takeLast(2)
-        val verdicts = chosen.map { (label, field, floor) ->
-            label to reproducibilityCensus(field, footprintZ, edge, floor)
-        }
-        verdicts.forEach { (label, c) ->
-            println("  %-30s → parallel %s distinct, sequential %s distinct, %d component(s)"
-                .format(label, c.parallelRatio(), c.sequentialRatio(), c.parts))
         }
 
         if (failures == 0) println("photo-to-solid chain passed") else {

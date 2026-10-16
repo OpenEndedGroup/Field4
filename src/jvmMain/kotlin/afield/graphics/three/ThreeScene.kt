@@ -443,6 +443,12 @@ data class ThreePanel(
      * panel must frame the *same* bounds or the shape appears to breathe as it rotates.
      */
     val bounds: ThreeBounds? = null,
+    /**
+     * Frame [bounds] itself rather than the panel's geometry. The viewer normally fits the camera to
+     * the mesh's own points, which is what a contact sheet wants; a size comparison wants every
+     * panel framed at one scale, so `threeGrid(sharedScale = true)` sets this.
+     */
+    val fitBounds: Boolean = false,
 )
 
 /**

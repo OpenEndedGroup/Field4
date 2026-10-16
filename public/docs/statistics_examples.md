@@ -4,8 +4,8 @@
 [Math](reference/math.md) and [Data](reference/data.md).*
 
 You have two streams of numbers and want to know whether they are related. Field's tools for that
-live in `afield/stdlib/stats.kt`, `afield/stdlib/correlations.kt` and
-`afield/stdlib/quantilewarp.kt`, and this page works through all three. Each dependence coefficient
+live in `afield/math/statistics/stats.kt`, `afield/math/statistics/correlations.kt` and
+`afield/math/statistics/quantilewarp.kt` (package `afield.math.statistics`), and this page works through all three. Each dependence coefficient
 answers a slightly different version of the question, so the page shows which one to use for which
 kind of relationship.
 
@@ -78,11 +78,9 @@ markdown("read this off the card", "{muted:$note}", width = 620)
 
 ![A cyan-on-black summary-stats card for a right-skewed signal: thirteen metrics, a histogram and a series plot](assets/statistics_examples/summary_card.png)
 
-Read the card's labels carefully, because two of them are inconsistent and the inconsistency is in
-the source rather than the rendering. `stddev` and `variance` are the **sample** (divide by n−1)
-forms; `skew` and `kurtosis(ex)` are the **population** (divide by n) forms, with no bias
-correction (`stats.kt:67#[skewness] and [kurtosisExcess] are only ever the **population** forms`).
-Both conventions are defensible; having both on one card is a trap. If you are comparing against
+Each label on the card names its convention: `stddev (n−1)` and `variance (n−1)` are the
+**sample** forms, `skew (pop.)` and `kurtosis(ex, pop.)` the **population** forms, with no bias
+correction. If you are comparing against
 another tool, the mapping onto NumPy and SciPy is exact: `q1`/`median`/`q3` are
 `numpy.percentile`'s default linear interpolation, `mad` is `median(|y − median(y)|)` unscaled,
 `sampleStdDev` is `numpy.std(ddof=1)`, and `skewness`/`kurtosisExcess` are `scipy.stats.skew` and
@@ -302,7 +300,10 @@ looking, then use something else to describe what you found.
     on this page is a tie-free case. Every other coefficient here refuses a constant outright:
     `pearson`, `spearman` and `kendallTauB` return NaN, and `distanceCorrelation` returns 0.0.
 
-    **Recorded xi values on tied `x` from before 2026-07-30 are wrong**, not merely different:
+
+??? aside "Agents: xi values recorded before 2026-07-30"
+
+    Recorded xi values on tied `x` from before 2026-07-30 are wrong, not merely different:
     x-ties then broke by input index, which scored how nearly `y` was a function of the order the
     samples arrived in. [`dev_docs/stdlib_behaviour_changes.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/stdlib_behaviour_changes.md) owns that history and the
     `chatterjeeXi` KDoc points at it.

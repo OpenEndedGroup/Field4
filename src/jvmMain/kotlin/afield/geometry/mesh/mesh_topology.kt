@@ -348,20 +348,38 @@ class MeshTopology(val mesh: TriMesh) {
     }
 }
 
-/** Build (and do not cache) this mesh's [MeshTopology]. Hold on to the result if you will ask twice. */
+/**
+ * Build (and do not cache) this mesh's [MeshTopology]. Hold on to the result if you will ask twice.
+ *
+ * This reads the **indices** as they are: two vertices at one position are two vertices. The
+ * one-question helpers below ([isWatertight], [genus] and the rest) measure the surface instead.
+ */
 fun TriMesh.topology(): MeshTopology = MeshTopology(this)
 
-/** True when this mesh is a closed manifold surface — see [MeshTopology.isWatertight]. */
-fun TriMesh.isWatertight(): Boolean = topology().isWatertight
+/**
+ * The topology of the surface rather than of its vertex numbering. A mesh carrying normals, UVs or
+ * colours may split a vertex wherever those differ — `toTriMesh(normals = true)` does at every hard
+ * edge — and read raw, every such seam is a line of holes and the genus is wrong. So an attributed
+ * mesh has exactly coincident positions welded first. A bare mesh is read as it is, so an unwelded
+ * triangle soup still reports its open edges. Figure footers (`showMesh`, `toFigureHtml`) use this too.
+ */
+fun TriMesh.surfaceTopology(): MeshTopology =
+    if (normals != null || uvs != null || colors != null) weld(0.0).topology() else topology()
 
-/** True when this mesh is a manifold surface — see [MeshTopology.isManifold]. */
-fun TriMesh.isManifold(): Boolean = topology().isManifold
+/** True when this mesh is a closed manifold surface — see [MeshTopology.isWatertight] and [surfaceTopology]. */
+fun TriMesh.isWatertight(): Boolean = surfaceTopology().isWatertight
 
-/** `V - E + F` — see [MeshTopology.eulerCharacteristic]. */
-fun TriMesh.eulerCharacteristic(): Int = topology().eulerCharacteristic
+/** True when this mesh is a manifold surface — see [MeshTopology.isManifold] and [surfaceTopology]. */
+fun TriMesh.isManifold(): Boolean = surfaceTopology().isManifold
 
-/** Number of handles, or `null` when the mesh is not an orientable manifold — see [MeshTopology.genus]. */
-fun TriMesh.genus(): Int? = topology().genus
+/** `V - E + F` — see [MeshTopology.eulerCharacteristic] and [surfaceTopology]. */
+fun TriMesh.eulerCharacteristic(): Int = surfaceTopology().eulerCharacteristic
+
+/**
+ * Number of handles, or `null` when the mesh is not an orientable manifold — see [MeshTopology.genus].
+ * A split-normal mesh is welded by position first, so it reports the genus of its surface.
+ */
+fun TriMesh.genus(): Int? = surfaceTopology().genus
 
 /** Each open border as an [afield.geometry.path.FLine]-ready ring of vertex indices. */
 fun TriMesh.boundaryLoops(): List<List<Int>> = topology().boundaryLoops

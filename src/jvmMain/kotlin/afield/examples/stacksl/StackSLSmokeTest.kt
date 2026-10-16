@@ -74,7 +74,7 @@ object StackSLSmokeTest {
         val result = StackSLCompiler.compile(
             """
             : warp
-              uv 8 * time + sin
+              drop uv 8 * time + sin
               fbm palette saturate
             ;
 
@@ -316,7 +316,7 @@ object StackSLSmokeTest {
             : ring
               0-> 0.982 *
               p length 0.42 0.035 pulse 0.08 *
-              +
+              + nip
             ;
 
             drop
@@ -839,13 +839,11 @@ object StackSLSmokeTest {
             input half
         """.trimIndent()
 
+        // Since 2026-10-16 the compiler refuses it outright, naming the definition and the fix.
         val bad = stackAutoShaderReport(unbalanced, "noiseForce")
-        require(bad.compiled) { "the unbalanced program should still compile; that is the whole problem" }
+        require(!bad.compiled) { "an unbalanced called definition is a compile error: $bad" }
         require(!bad.quiet) { "an unbalanced definition must not be reported as clean: $bad" }
-        require(bad.problems.size == 1) { "expected exactly one problem, got ${bad.problems}" }
-        require("`half`" in bad.problems[0]) { "the problem should name the definition: ${bad.problems[0]}" }
-        require("2 values" in bad.problems[0]) { "the problem should state the depth: ${bad.problems[0]}" }
-        require(">mark" in bad.problems[0]) { "the problem should name the fix: ${bad.problems[0]}" }
+        require(bad.problems.any { "half" in it && ">mark" in it }) { "the problem should name the definition and the fix: ${bad.problems}" }
         // And it renders, because an output area is where this is actually read.
         require("problem" in bad.toHTML()) { bad.toHTML() }
 

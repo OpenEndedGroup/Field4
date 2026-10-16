@@ -1,5 +1,7 @@
 # Meshes and 3D geometry
 
+<!-- capture-sources: src/jvmMain/kotlin/afield/geometry/mesh/ src/jvmMain/kotlin/afield/graphics/three/Three.kt -->
+
 Drawing in three dimensions is one thing. An [`FLine`](fline_examples.md) has a `z`, the renderer
 takes triangles, the [ray tracer](ray_tracing_examples.md) intersects analytic solids. **Computing
 with a surface** is another. Ask a mesh whether it is closed, subdivide it, smooth it without
@@ -131,11 +133,10 @@ tiled into viewports rather than one iframe per panel. See [Field's 3D
 output](three_output.md#one-webgl-context-several-panels). Pass `renderer = MeshRenderer.CPU` for a
 static rasterized sheet instead.
 
-Its panels carry a label and no fact line. The counts, extent, χ, genus and volume that the
-single-mesh `showMesh` and the inline card print are not there, because `showMeshGrid` calls
-`threeGrid` with `facts` left off. To get them under every panel, call `threeGrid(..., facts = true)`
-directly, or hand it `ThreeMeshPanel(label, mesh, facts = "…")` cells with a sentence of your own;
-[polytope_examples.md](polytope_examples.md) does the latter throughout.
+Each panel carries its label and the same fact line `showMesh` prints: counts, extent, χ, genus and
+volume (`facts = false` leaves it off). For a sentence of your own under each cell, hand `threeGrid`
+`ThreeMeshPanel(label, mesh, facts = "…")` cells; [polytope_examples.md](polytope_examples.md) does
+that throughout.
 
 The primitives are `sdfSphere`, `sdfBox`, `sdfRoundBox`, `sdfTorus`, `sdfPlane`, `sdfCylinder`,
 `sdfCapsule`, `sdfGyroid` and `sdfMetaballs`. The combinators are `sdfUnion`, `sdfIntersect`,
@@ -280,16 +281,14 @@ showMeshGrid(
     "taubinSmooth(30) — volume held" to taubin,
     columns = 3,
     cellWidth = 290,
+    // One scale for every panel, so the deflated ball looks deflated.
+    sharedScale = true,
 )
 :::endfold
 ```
 
-![An icosahedron and its first and third Loop subdivisions, then a lumpy noisy ball and the same ball smoothed by 30 Laplacian and 30 Taubin iterations; the last two panels are both smooth round balls at the same apparent size, headed "laplacianSmooth(30) — deflated" and "taubinSmooth(30) — volume held"](assets/mesh_examples/process.png)
+![An icosahedron and its first and third Loop subdivisions, then a lumpy noisy ball and the same ball smoothed by 30 Laplacian and 30 Taubin iterations; the last two panels are both smooth round balls, the Laplacian one visibly smaller, headed "laplacianSmooth(30) — deflated" and "taubinSmooth(30) — volume held"](assets/mesh_examples/process.png)
 
-The picture will not settle the two smoothed balls for you: **look at the printed volumes, not at the
-panels.** Each panel of a `showMeshGrid` frames its own bounds and zoom-to-fits, so the Laplacian
-ball's 20% smaller extent is normalised straight back out and the two come out the same apparent
-size.
 The noisy input encloses **2.1293** across an extent of 1.701. Thirty Laplacian iterations at λ = 0.6
 leave **1.1509** across 1.301: it has thrown away **46% of the volume**. Thirty Taubin iterations of
 the same λ, with μ = −0.63, leave **2.1840** across 1.631, within about 3% of the clean ball this
@@ -557,7 +556,7 @@ parameter or an SDF expression, and run it again. To start from boxes that alrea
 **mesh_geometry_examples** from Starting points on the welcome screen, or
 [open it here](offline.html?file=assets/agent_transcripts/mesh_geometry_examples/metadata.edn).
 
-??? aside "Where the pictures come from"
+??? aside "Agents: where the pictures come from"
     The images under the runnable examples are each box's own output, drawn by the Three.js viewer
     `showMeshGrid` uses, and the docs build executes them. The `assets/mesh_gallery/` figures are
     committed captures from the `mesh.gallery` FIELD_TEST
@@ -569,10 +568,6 @@ parameter or an SDF expression, and run it again. To start from boxes that alrea
     The gallery test fails if a generator stops being watertight, if a marched sphere's volume error
     stops falling with resolution, if a decimation misses its budget, if Gauss–Bonnet stops matching
     2πχ, or if the Voronoi cells stop tiling their clip box.
-
-    Neither kind of figure refreshes itself when `mesh_*.kt` changes: the runner's capture digest
-    (`RUNNER_DIGEST_SOURCE_FILES` in `public/docs_hooks.py`) covers no stdlib source, so use
-    `FIELD_DOCS_RUNNER_MODE=always`, and re-run `mesh.gallery` for the committed PNGs.
 
 ## Reference
 
@@ -703,7 +698,7 @@ Define a solid by a scalar field and extract its surface with marching cubes.
 | `fun ScalarField3D.normalAt(p: Vec3, h: Number = 1e-3): Vec3` | The unit outward normal of this field's iso-surface at `p` — `gradient`, normalised. [API](reference/graphics.md#mesh-sdf-kt). |
 | `fun marchingCubes(field: ScalarField3D, bounds: AxisAlignedBoundingBox3D, nx: Int, ny: Int, nz: Int, iso: Double = 0.0, positiveOutside: Boolean = true, vertexNormals: Boolean = true): TriMesh` | `marchingCubes` with the cell count given per axis, when the shape wants an anisotropic grid. [API](reference/graphics.md#mesh-sdf-kt). |
 | `fun ScalarField3D.march(bounds: AxisAlignedBoundingBox3D = boundsAround(), resolution: Int = 48, iso: Double = 0.0, positiveOutside: Boolean = true): TriMesh` | `marchingCubes` as a method on the field, for `sdfSphere(1.0).march(...)`-style chains. [API](reference/graphics.md#mesh-sdf-kt). |
-| `fun Img.asHeightSdf(scale: Number = 0.25, bounds: AxisAlignedBoundingBox3D = boundsAround()): ScalarField3D` | An [`Img`](reference/imaging.md#imaging-kt-img) as a 3D field, one z-slice per… no — this is the *2D* bridge: the image's value at `(x, z)`, independent of `y`, minus `y`. Marching it gives the same surface `Img.toHeightfieldMesh` builds directly, which is a useful cross-check and occasionally a useful modelling primitive (you can subtract a heightfield from a solid). [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun Img.asHeightSdf(scale: Number = 0.25, bounds: AxisAlignedBoundingBox3D = boundsAround()): ScalarField3D` | The image as a 3D height field: the image's value at `(x, z)` minus `y`, the same for every `y`. Marching it gives the same surface `Img.toHeightfieldMesh` builds directly, which is a useful cross-check and occasionally a useful modelling primitive (you can subtract a heightfield from a solid). [API](reference/graphics.md#mesh-sdf-kt). |
 
 </div>
 
@@ -829,6 +824,6 @@ Developer notes, including the measurements behind the Voronoi fix:
 `dev_docs/MESH_GEOMETRY.md`.
 
 Reading a mesh *in* from PLY, glTF or GLB: [Geometry from disk](geometry_from_disk.md), over
-`afield/four/modules/MeshFromDisk.kt`.
+`afield/graphics/scene/MeshFromDisk.kt`.
 
 Build a scene with meshes, lines and points using [`three { … }`](three_output.md#your-first-three-scene). Use [geometry review](geometry_review.md) to select a visible feature and return its coordinates, note and images to Field.

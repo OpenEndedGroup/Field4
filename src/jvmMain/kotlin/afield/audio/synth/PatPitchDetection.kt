@@ -46,6 +46,7 @@
 
 package afield.audio.synth
 
+import kotlin.math.roundToInt
 import kotlin.math.abs
 import kotlin.math.ln
 import kotlin.math.max
@@ -102,6 +103,9 @@ const val PAT_PITCH_MIN_SEMITONES: Double = 0.5
  *   pitch the estimate is centred `(tauMax − tau) / 2` samples earlier than this. `FnSoundDocs`
  *   measures that on a rendered glide; see `chain_fn_sound_roundtrip.md`.
  * @param confidence `1 − d'(tau)`, so 1.0 is a perfectly periodic frame and 0.0 is noise.
+ * @param measuredCenterSample the centre of the `window + tau` samples the difference function
+ *   actually compared at the chosen lag: the instant the estimate is about. Read a pitch track
+ *   against time with this, not [centerSample].
  */
 data class PatF0Frame(
     val startSample: Int,
@@ -111,7 +115,8 @@ data class PatF0Frame(
     val midi: Double,
     val confidence: Double,
     val rms: Double,
-    val voiced: Boolean
+    val voiced: Boolean,
+    val measuredCenterSample: Int = centerSample,
 )
 
 /** MIDI note number of a frequency, as a real number. Inverse of [patMidiToHz]. */
@@ -220,7 +225,8 @@ fun patF0Frames(
             midi = patHzToMidi(hz),
             confidence = (1.0 - dp[best]).coerceIn(0.0, 1.0),
             rms = rms,
-            voiced = false
+            voiced = false,
+            measuredCenterSample = start + ((window + (if (refined > 0.0) refined else tauMax.toDouble()) - 1.0) / 2.0).roundToInt(),
         )
     }
 

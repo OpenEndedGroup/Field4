@@ -24,7 +24,11 @@ data class CoroutineProfileLane(
     val firstMs: Double,
     val lastMs: Double,
     val label: String = "",
-    val kind: String = "resume"
+    val kind: String = "resume",
+    /** The box property whose source was launched; [revision] fingerprints that source. */
+    val property: String = "code",
+    /** The fingerprint of [property] as it is now, at export; differs from [revision] once edited. */
+    val currentRevision: String = "",
 )
 
 /** One scheduled continuation, ending when it returns/yields/suspends; gaps are not CPU work. */

@@ -306,6 +306,8 @@ private fun slotFragment(collection: KeyframeCollection, summary: SlotSummary): 
 /** A one-line rendering of a saved value, for tooltips and the code preview. */
 private fun shortValue(v: KValue): String = when (v) {
     is KValue.Num -> formatSlotNumber(v.value)
+    is KValue.LongValue -> v.value.toString()
+    is KValue.Bool -> v.value.toString()
     is KValue.Vec2 -> "vec(${formatSlotNumber(v.x.toDouble())}, ${formatSlotNumber(v.y.toDouble())})"
     is KValue.Vec3 -> "vec(${formatSlotNumber(v.x.toDouble())}, ${formatSlotNumber(v.y.toDouble())}, ${formatSlotNumber(v.z.toDouble())})"
     is KValue.Vec4 -> "vec(${formatSlotNumber(v.x.toDouble())}, ${formatSlotNumber(v.y.toDouble())}, ${formatSlotNumber(v.z.toDouble())}, ${formatSlotNumber(v.w.toDouble())})"

@@ -91,7 +91,13 @@ data class TrackFitResult(
      * that case is indistinguishable from a fit where everything moved, which is the one way this
      * fitter could mislead.
      */
-    val stuckParameters: Set<String> = emptySet()
+    val stuckParameters: Set<String> = emptySet(),
+    /**
+     * True when the descent stopped because the residual stopped changing, false when it ran out of
+     * iterations still moving. A fit that did not converge is not finished: give it more iterations,
+     * or a larger `lr`, before trusting [parameters].
+     */
+    val converged: Boolean = true,
 ) {
     /** True when the fit ended strictly closer to the targets than it started. */
     val improved: Boolean get() = finalResidual < initialResidual
@@ -112,7 +118,9 @@ data class TrackFitResult(
  *
  * @param over the time window the lowering must be valid on. Defaults to the span the targets
  *        themselves cover, widened to include 0, which is what a scene's clock looks like.
- * @param iterations Adam steps. Bounded, like every other fitter here.
+ * @param iterations the most Adam steps to take. The descent stops earlier once the residual has
+ *        stopped changing, and [TrackFitResult.converged] says which happened; the default bound is
+ *        large enough for a parameter to travel tens of units at the default [lr].
  * @param lr Adam learning rate. The default is `fitGradient`'s.
  * @throws RectLangException when the track does not lower, has nothing to solve for, or has only
  *         parameters whose exact derivative is zero at every target — see the refusal in the body,
@@ -121,7 +129,7 @@ data class TrackFitResult(
 fun Track<Double>.fitParameters(
     targets: List<TrackFitTarget>,
     over: Functions.Domain = defaultFitWindow(targets),
-    iterations: Int = 300,
+    iterations: Int = 5000,
     lr: Double = 0.05,
     beta1: Double = 0.9,
     beta2: Double = 0.999,
@@ -219,6 +227,7 @@ fun Track<Double>.fitParameters(
     // share one moment estimate as well as one gradient.
     val m = DoubleArray(names.size)
     val v = DoubleArray(names.size)
+    var converged = iterations == 0 || startResidual <= 1e-12
 
     for (iteration in 1..iterations) {
         // The *squared* weighted mean is what is descended; the sqrt in `residual` is a positive
@@ -240,6 +249,10 @@ fun Track<Double>.fitParameters(
         val stepResidual = residual(seed.applyParameters(theta))
         residuals += stepResidual
         steps += TrackFitStep(iteration, stepResidual)
+        if (settled(residuals, startResidual)) {
+            converged = true
+            break
+        }
     }
 
     val fittedFn = seed.applyParameters(theta)
@@ -253,9 +266,24 @@ fun Track<Double>.fitParameters(
         steps = steps,
         fitted = substituteParameters(solved),
         fittedFn = fittedFn,
-        stuckParameters = stuck
+        stuckParameters = stuck,
+        converged = converged || settled(residuals, startResidual),
     )
 }
+
+/**
+ * Whether a descent has settled: the residual is essentially zero, or has moved by less than a
+ * millionth of a millionth of where it started across the last [SETTLE_WINDOW] steps.
+ */
+private fun settled(residuals: List<Double>, start: Double): Boolean {
+    val last = residuals.last()
+    if (last <= 1e-12 * maxOf(1.0, start)) return true
+    if (residuals.size <= SETTLE_WINDOW) return false
+    val before = residuals[residuals.size - 1 - SETTLE_WINDOW]
+    return kotlin.math.abs(before - last) <= 1e-12 * maxOf(start, 1e-12)
+}
+
+private const val SETTLE_WINDOW = 50
 
 /**
  * The window a fit lowers over when the caller does not say: the targets' own span, widened to

@@ -18,8 +18,8 @@ from then on runs as Python. The setting is saved with the document.
 
 Two things follow:
 
-- **The root itself is not Python.** Python code typed into the root box is compiled as Kotlin, and
-  fails.
+- **The root itself is not Python.** Its own code is Kotlin; Python goes in the boxes under it, and
+  a compile error in the root says so.
 - **A cell can have other parents.** A box runs as Python as long as *any* of its parents is a Python
   root, so a cell connected under both the document root and a Python root is Python.
 
@@ -190,8 +190,8 @@ Field looks for an interpreter in this order, and uses the first one that has `l
 
 1. `-Dafield.python.venv=…` / `-Dafield.python.executable=…`
 2. `FIELD_PYTHON_VENV` / `FIELD_PYTHON_EXECUTABLE`
-3. whatever `/welcome` last saved, in `~/.afield/python.properties`
-4. `VIRTUAL_ENV`, then `CONDA_PREFIX`
+3. `VIRTUAL_ENV`, then `CONDA_PREFIX`, so an environment active in the shell that started Field wins
+4. whatever `/welcome` last saved, in `~/.afield/python.properties`
 5. `python3`, then `python`, on `PATH`
 
 The `/welcome` panel has an **Install JEP** button. It installs pip if needed, then runs
@@ -223,13 +223,10 @@ CFLAGS="-isysroot $(xcrun --show-sdk-path)" .venv/bin/python3 -m pip install 'je
 export FIELD_PYTHON_VENV="$PWD/.venv"
 ```
 
-Install the `jep` version that matches the jar Field ships (`libs/jep-4.3.1.jar`). JEP does not
-check that its native library and jar come from the same release.
+Install the `jep` version that matches the jar Field ships (`libs/jep-4.3.1.jar`); Field refuses an
+interpreter whose `jep` is a different release, and says which two versions it found.
 
-Activating a venv may not be enough to switch interpreters: the one saved by `/welcome` ranks above
-`VIRTUAL_ENV`. Set `FIELD_PYTHON_VENV` or `FIELD_PYTHON_EXECUTABLE` to be sure.
-
-??? aside "How this page's pictures are made"
+??? aside "Agents: how this page's pictures are made"
 
     The docs build runs each Python block in a real Field, as a child of a Python root. Each declares
     `jep` (and `python:numpy` / `python:plotly.graph_objects`) in `requires`; a recapture without them

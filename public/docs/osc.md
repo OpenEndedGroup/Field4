@@ -49,8 +49,7 @@ generator rather than a plain function.
 The last line sends the message that the handler receives. `oscClient(host, port)` is cached by host
 and port in the same way as `osc`, and opens its socket on the first `send`.
 
-`osc()` with no argument listens on 9000. So does Field's own OSC editor (below), when it is
-enabled, which is a reason to give your boxes a different port.
+`osc()` with no argument listens on 9000.
 
 ## Where handler code runs
 
@@ -294,11 +293,12 @@ This box reads the table from the handler lambdas and displays it from the box i
 short sleep. That works because the lambdas run on the receive thread, independently of the box.
 A generator would not get its first pass until the box had finished running.
 
-## Handlers outlive the box
+## Handlers outlive a stop
 
-Handlers belong to the server, and the server belongs to the port, not to any box. Stopping a box,
-running it again, or closing its document leaves every handler it registered in place, still
-calling the code it was registered with.
+The server belongs to the port, not to any box, and a handler belongs to the box that registered it
+the way any keyed registration does. Stopping the box or running it again leaves its handlers in
+place, still calling the code they were registered with; deleting the box or closing its document
+removes them.
 
 <!--
 FIELD_TEST
@@ -359,16 +359,8 @@ share one slot, and whichever ran last owns it. Give each box its own addresses,
 new one. That makes `close()` the reset when a document's handlers have got into a state you can no
 longer reason about: close the server, then run the boxes that should be listening again.
 
-!!! warning "`osc(port)` succeeds even when another program already has the port"
-    JavaOSC opens its sockets with `SO_REUSEADDR`, so binding a port that TouchOSC Bridge, Max or a
-    second Field already holds succeeds, and `isListening` says `true`. Measured on macOS: a
-    program bound to `127.0.0.1` on that port goes on receiving everything sent to `127.0.0.1`, and
-    the Field box receives nothing, with no error anywhere. When a handler never fires, look for
-    another listener first:
-
-    ```diffstatic {data-lang=bash}
-    lsof -nP -iUDP:57301
-    ```
+`osc(port)` refuses a port another program (TouchOSC Bridge, Max, a second Field) already has, and
+the error names the port.
 
 ## Sending
 
@@ -388,9 +380,6 @@ A failed send, to a host name that does not resolve for instance, prints `OSC se
 console Field was started from and does not throw, so a box that sends every frame keeps running
 while a peer is away. UDP gives no acknowledgement, so nothing tells you that a
 peer is not listening. Send to an address that a peer echoes, or watch the peer's own log.
-
-`OscClient` sends single messages. To send a bundle, build one with JavaOSC, as the next section
-does.
 
 ## Bundles and timetags
 
@@ -413,12 +402,7 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/bundles.png" alt="two lines in the main output channel: stamped immediate arrived after a few milliseconds; stamped 500 ms ahead arrived after roughly 500 ms" wait="2" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="osc-bundles" w="760" h="120"}
 :::static
-import com.illposed.osc.OSCBundle
 import com.illposed.osc.OSCMessage
-import com.illposed.osc.OSCPacket
-import com.illposed.osc.argument.OSCTimeTag64
-import com.illposed.osc.transport.OSCPortOutBuilder
-import java.net.InetSocketAddress
 
 val server = osc(57306)
 server.debug = false
@@ -429,27 +413,19 @@ server.on("/when") { m ->
     gather<OscServer.Message> { }
 }
 
-// a timetag counts seconds since 1900 in its high 32 bits, fractions of a second in its low 32
-fun timetagIn(ms: Long): OSCTimeTag64 {
-    val at = System.currentTimeMillis() + ms
-    val seconds = at / 1000 + 2_208_988_800L
-    return OSCTimeTag64.valueOf((seconds shl 32) or (((at % 1000) shl 32) / 1000))
-}
-
-val out = OSCPortOutBuilder().setRemoteSocketAddress(InetSocketAddress("127.0.0.1", 57306)).build()
-out.send(OSCBundle(listOf<OSCPacket>(OSCMessage("/when", ["stamped 500 ms ahead"])), timetagIn(500)))
-out.send(OSCBundle(listOf<OSCPacket>(OSCMessage("/when", ["stamped immediate"])), OSCTimeTag64.IMMEDIATE))
+val out = oscClient("127.0.0.1", 57306)
+out.sendIn(500, "/when", "stamped 500 ms ahead")
+out.sendBundle([OSCMessage("/when", ["stamped immediate"])])
 Thread.sleep(900)
-out.close()
 
 markdown("main", arrivals.joinToString("\n") { "- $it" })
 ```
 
 The bundle stamped 500 ms ahead was sent first and arrived second, about 500 ms later. The timing is
 as good as the two machines' clocks agree, which on one computer means within a millisecond or two,
-and across a network means whatever NTP has made of them. `timetagIn` builds the timetag from raw
-NTP seconds on purpose: JavaOSC's own conversion from a `Date` counts from an epoch an hour away from
-the true one.
+and across a network means whatever NTP has made of them. `sendIn(ms, address, …)` sends one
+message stamped that far ahead; `sendBundle(messages, atMillis)` sends several stamped for one
+wall-clock time, or for at once when `atMillis` is left out.
 
 ## TUIO: touches and tagged objects
 
@@ -571,9 +547,7 @@ Separately from anything a box does, Field can listen for OSC itself and use it 
 (`/field/float` by default) replaces the number under the editor's cursor with the message's last
 numeric argument and, after a short pause, runs the box being edited again, so a physical fader can
 scrub a constant in your code. The *launch* and *stop* addresses (`/field/launch`, `/field/stop`)
-launch and stop the box being edited. The default port is 9000,
-the same as `osc()`'s default, so a box that listens on 9000 shares that port with the editor;
-give your boxes another one.
+launch and stop the box being edited. It listens on 9001 by default, one up from `osc()`'s 9000.
 
 See also: [Mobile controllers](mobile_controllers.md) for building a control surface in Field
 itself, [OSCQuery](oscquery.md), and [Sonic Pi](sonic_pi.md).

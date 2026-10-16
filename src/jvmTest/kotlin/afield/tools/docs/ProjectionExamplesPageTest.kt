@@ -14,6 +14,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
@@ -159,8 +160,9 @@ class ProjectionExamplesPageTest {
             val (r, stress) = agreement(distances, planeDistances(fit.coordinates))
             ledger.claim(page, "$label 2-D r", "%.4f", r)
             ledger.claim(page, "$label 2-D stress-1", "%.4f", stress)
-            // `proportion` sums to 1 whatever is retained — the trap the page names.
-            ledger.claim(page, "$label proportion sum", "%.4f", fit.proportion.sum())
+            // The fields the page prints are the same figures computed by hand here.
+            assertEquals(stress, fit.stress1, 1e-9, "$label stress1")
+            assertEquals(r, fit.distanceCorrelation, 1e-9, "$label distanceCorrelation")
         }
         listOf(3, 4).forEach { dimensions ->
             val fit = smileMdsDistances(distances, dimensions = dimensions)

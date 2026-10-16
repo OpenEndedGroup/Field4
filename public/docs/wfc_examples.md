@@ -1459,13 +1459,8 @@ of room, and `possibilityCountImg` shows you which cells were over-constrained f
 Magenta in a wave frame is a cell whose possibility set has been emptied.
 
 **Names and shapes that bite inside a Field box.** Every snippet on this page runs in one, and none
-of these four is WFC-specific:
+of these two is WFC-specific:
 
-- A **local `fun` nested inside a lambda** trips a K2 codegen assertion
-  (`IrFunctionImpl has no callableId`). Declare helpers at the top level of the box.
-- A **named function that touches the box's implicit `Box` receiver** — and `println` does — cannot be
-  code-generated either (`No mapping for symbol: SCRIPT_IMPLICIT_RECEIVER`). Keep helpers pure and
-  return a value, or declare them as `fun Box.foo()`.
 - **A box's scope is crowded.** `h`, `sky` and `error` all resolve to something Field already defines
   ahead of a script-local `val` of the same name once you are inside a lambda with its own receiver.
   `outW`/`outH`/`skyPattern` are not paranoia, and `throw` beats `error(...)`.
@@ -1478,13 +1473,15 @@ of these four is WFC-specific:
 
 Everything above as a Field document you can open and edit:
 [**wfc_worked_example**](offline.html?file=assets/agent_transcripts/wfc_worked_example/metadata.edn)
-(six connected boxes, one per section, each of which runs on its own). The transcript that builds it,
-`dev_docs/agents/transcripts/wfc_worked_example.yaml`, is executed on every build.
+(six connected boxes, one per section, each of which runs on its own).
 
-`afield.examples.stdlib.WfcGallery` (`stdlib.wfc.gallery`) renders the figures, and asserts for every
-grid that every adjacent pair is an allowed pair, that the adjacency relation is symmetric, and that
-the output is not degenerate. On the terrain figures it also asserts that the set of terrain edges in
-the output is a subset of the set in the source.
+??? aside "Agents: how this page's figures are checked"
+    The transcript that builds the demo, `dev_docs/agents/transcripts/wfc_worked_example.yaml`, is executed on every build.
 
-Three further checks hold particular claims about the terrain to account; they are listed in
-`dev_docs/WFC_GALLERY.md`.
+    `afield.examples.stdlib.WfcGallery` (`stdlib.wfc.gallery`) renders the figures, and asserts for every
+    grid that every adjacent pair is an allowed pair, that the adjacency relation is symmetric, and that
+    the output is not degenerate. On the terrain figures it also asserts that the set of terrain edges in
+    the output is a subset of the set in the source.
+
+    Three further checks hold particular claims about the terrain to account; they are listed in
+    `dev_docs/WFC_GALLERY.md`.

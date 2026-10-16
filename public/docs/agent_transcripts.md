@@ -34,18 +34,10 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 The source corpus lives in the repository at `dev_docs/agents/transcripts/`, with a companion
 `README.md` covering the op vocabulary, capture commands, and the graphics-topology rule.
 
-### Two things to know before you edit one
-
-Some transcripts ship a `build.yaml` beside the saved document, and the script says, in its own
-words, that re-running it rebuilds that document. Most still do. Two do not: `logging_layer` and
-`frame_history_reprojection` were edited in Field afterwards and re-saved with the build script left
-behind — five boxes between them, and `logging_layer`'s older code has lost an import and no longer
-compiles. **Take the document as the truth for those two.** `tools/test_demo_build_scripts.py` holds
-the rest to it, and lists the known-stale boxes explicitly so an exception cannot outlive its reason.
-
-**Do not hand-edit a `metadata.edn`.** `AgentDemoDriftGuard` requires it to be byte-for-byte what
-Field's own EDN codec writes, so an edit that looks right comes back modified from the next
-regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or change it in Field.
+??? aside "Agents: editing a saved document"
+    **Do not hand-edit a `metadata.edn`.** `AgentDemoDriftGuard` requires it to be byte-for-byte what
+    Field's own EDN codec writes, so an edit that looks right comes back modified from the next
+    regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or change it in Field.
 
 ## How CI checks them
 
@@ -65,12 +57,15 @@ the box's `// {{ marker }}` selects.
 
 None of the three proves a picture is *right*; that is what the docs captures and the gallery
 FIELD_TESTs are for. What all three prove is that the code in these files still compiles and runs
-against today's stdlib. A second guard, `checkAgentTranscripts`, materializes every transcript into
-a document and compares it byte-for-byte against the committed starting points, so the copy the
-welcome screen opens is the one the yaml produces today.
+against today's stdlib. A separate check makes sure the copy the welcome screen opens is the one
+the yaml produces today.
 
 The saved documents under `dev_docs/agents/demos/` each have a transcript here too, so their box
 Kotlin is compiled on every build.
+
+??? aside "Agents: the starting-point guard"
+    `checkAgentTranscripts` materializes every transcript into a document and compares it
+    byte-for-byte against the committed starting points.
 
 ??? aside "Why the demos are registered here"
     Box code goes through the K2 REPL against a different import set from `jvmMain`, so no Gradle
@@ -164,6 +159,17 @@ Code locate and two seconds of quarter frames driving a `TimecodeClock`, and a c
 in audio-sized blocks. See [SMPTE Timecode](smpte_timecode.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/smpte_timecode/metadata.edn)
+
+### matrix_profile
+
+**Motifs, discords and contrast**, in four pure-CPU boxes on `afield.math.matrixprofile`: a random
+walk with a wiggle hidden three times, found by `matrixProfile(...).motifs()`; a pulse train with one
+malformed beat, found by `discords()`; four noisy channels with a gesture in two of them, found with its channels by
+`multiMatrixProfile`; and two sets of examples where only one has a step, found by
+`contrastProfile(...).platos()`. Each box makes its own signal from a fixed seed, so swap in yours.
+See [Motifs, Discords and Contrast](matrix_profile.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/matrix_profile/metadata.edn)
 
 ### ai4_chat_archive
 
@@ -1535,11 +1541,7 @@ Manifold and Field's own divergence-theorem sum agree on to the last digit despi
 *Boolean* checks inclusion–exclusion, `vol(A ∪ B) + vol(A ∩ B) = vol(A) + vol(B)`, rather than
 checking that the union got bigger, and shows the frame's genus going 1 → 0 as the plaque plugs its
 window. *Levelset* marches the same depth field as an independent second construction of the same
-solid — the two agree to about one marching cell — and then puts a recorded claim back on the bench:
-eight runs each way, in three regimes, of `Solid.levelSet`. `parallel = false` returns one distinct
-answer in eight on every row, every time; `parallel = true` never does, and at one floor it returns
-the wrong component count on all eight runs rather than a noisy one. That figure is recaptured on
-every docs build and its last column reads differently each time, which is the claim itself. Every picture is `TriMesh.renderPng`
+solid — the two agree to about one marching cell. Every picture is `TriMesh.renderPng`
 — a CPU rasteriser, AWT-free through `PngEncoder` — so there is no Window and no Renderer.
 
 ![Three renders of the same pale wireframed relief plaque on a dark background: from above, where the room reads as a shallow basin with a raised near edge and raised side walls; from three-quarters, where the flat base slab shows under the relief; and edge-on along the rim, where the slab and the vertical skirt joining it to the surface are clearest](assets/chain_photo_to_solid/plaque.png)
@@ -2165,7 +2167,7 @@ importable from Python, and `fig.show()` landing in the box. The root stays Kotl
 swaps the execution of a root's **children**, never of the root; its `mainLanguage` property is what
 makes the four boxes below Python. This one has a prerequisite the
 other scenes do not — Field must have found an interpreter with JEP's native library in it *before it
-started*, or the four cells stay Kotlin and fail to compile. `public/docs/python.md` has the recipe.
+started*, or the four cells stay Kotlin and fail to compile. [Python in Field](python.md) has the recipe.
 
 `DemoTranscriptExecSmokeTest` compiles the Kotlin root and **skips the four Python cells**, because
 they are not Kotlin, so CI checks one box of five. Run against a real interpreter, the cells print
@@ -2587,7 +2589,7 @@ shaders are box properties with `{{ mega.all }}` interpolated into them, so the 
 and the LOD policy are all editable with `alt/option-r` rather than buried in Kotlin. Flip
 `showResidentLevel` in the fragment shader to watch residency directly: red is the base level, green
 is a full source frame, and flying at the wall turns it green ahead of you. The library is
-`afield/four/texture/mega/`, reached from a box through `megaTextureHere { folder(…) }`.
+`afield/graphics/texture/mega/`, reached from a box through `megaTextureHere { folder(…) }`.
 
 Needs a graphics parent, so replay `graphics_renderer_launch` first, and point the `folder(…)` line
 at images of your own — which together are why this one ships no starting point.
@@ -2600,7 +2602,7 @@ to exist; the whole `GpuProbe` idiom on one screen; the pressure-projection chai
 actually runs — divergence, twelve Jacobi sweeps, project — graded cell by cell against a closed
 form written in Kotlin; and a deliberate half-dispatch, so a reader can watch the sentinel fire and
 read what it says. Every assertion prints the measured value beside the floor it is compared
-against. The library is `afield/four/util/GpuProbe.kt` and the design notes are in the repository at `dev_docs/GPU_PROBE.md`.
+against. The library is `afield/graphics/vulkan/util/GpuProbe.kt` and the design notes are in the repository at `dev_docs/GPU_PROBE.md`.
 
 Registered `COMPILE_ONLY` — box 1 opens a window — so what CI holds is that all four box bodies
 still compile against Field's real K2 import set. The numbers are asserted separately, by the

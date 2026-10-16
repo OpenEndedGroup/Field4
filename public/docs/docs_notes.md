@@ -216,7 +216,7 @@ uv run python tools/docs_notes.py memory --page sound.md "the second example is 
 - **Each agent is limited to a set of tools.** Claude may read and edit files, run the notes
   command, and run read-only `git` and `grep`. Codex runs in its `workspace-write` sandbox.
 
-??? aside "Where the parts live"
+??? aside "Agents: where the parts live"
 
     The panel is `src/commonMain/resources/docsAnnotations.js`, the store and its routes are
     `src/jvmMain/kotlin/afield/app/server/docsAnnotations.kt`, and everything on this page that

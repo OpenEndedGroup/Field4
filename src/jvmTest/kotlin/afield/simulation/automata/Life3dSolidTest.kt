@@ -105,24 +105,30 @@ class Life3dSolidTest {
     }
 
     /**
-     * The trap the page carries a callout about: a radius-one blur over filaments and isolated cells
-     * never reaches an iso of 0.5, so the surface comes back empty from both marchers with no error.
+     * A radius-one blur over filaments and isolated cells never reaches an iso of 0.5. It used to
+     * march to an empty surface with no error; asDensityField now steps the radius down instead.
      */
     @Test
-    fun `a radius-one blur marches this volume to nothing and radius zero does not`() {
+    fun `a sparse volume never blurs to an empty surface`() {
         val volume = pageVolume()
         val blurred = volume.asDensityField(smoothRadius = 1, iso = 0.5)
         val raw = volume.asDensityField(smoothRadius = 0, iso = 0.5)
         val bounds = volume.marchBounds()
-        assertEquals(
-            0,
-            marchingCubes(blurred, bounds, resolution = 110, positiveOutside = false).triangleCount,
-            "a radius-one blur is expected to leave nothing above the iso for this rule",
-        )
-        assertTrue(
-            marchingCubes(raw, bounds, resolution = 110, positiveOutside = false).triangleCount > 1000,
-            "the raw occupancy should march to a real surface",
-        )
+        val fromBlurred = marchingCubes(blurred, bounds, resolution = 110, positiveOutside = false).triangleCount
+        val fromRaw = marchingCubes(raw, bounds, resolution = 110, positiveOutside = false).triangleCount
+        assertTrue(fromRaw > 1000, "the raw occupancy should march to a real surface")
+        assertEquals(fromRaw, fromBlurred, "a blur that reaches no voxel should fall back to the raw occupancy")
+    }
+
+    @Test
+    fun `a dense volume keeps its blur`() {
+        val volume = IntVolume(12, 12, 12, IntArray(12 * 12 * 12))
+        for (z in 2 until 10) for (y in 2 until 10) for (x in 2 until 10) volume[x, y, z] = 1
+        val bounds = volume.marchBounds()
+        val blurred = marchingCubes(volume.asDensityField(smoothRadius = 1), bounds, resolution = 48, positiveOutside = false)
+        val raw = marchingCubes(volume.asDensityField(smoothRadius = 0), bounds, resolution = 48, positiveOutside = false)
+        assertTrue(blurred.triangleCount > 0)
+        assertTrue(blurred.triangleCount != raw.triangleCount, "a cube of live cells should still be blurred")
     }
 
     @Test
@@ -134,7 +140,7 @@ class Life3dSolidTest {
         val volume = pageVolume()
         val field = volume.asDensityField(smoothRadius = 0, iso = 0.5)
         Solid.scope {
-            val whole = Solid.levelSet(volume.marchBounds(), edgeLength = 0.7, parallel = false) { x, y, z ->
+            val whole = Solid.levelSet(volume.marchBounds(), edgeLength = 0.7) { x, y, z ->
                 field(vec(x, y, z)).toDouble()
             }
             val parts = whole.decompose()
@@ -154,7 +160,7 @@ class Life3dSolidTest {
     }
 
     @Test
-    fun `the sequential level set is reproducible where the parallel one is not`() {
+    fun `the level set returns the same mesh every time`() {
         if (!ManifoldLibrary.isAvailable) {
             println("Life3dSolidTest: skipping the Manifold half — ${ManifoldLibrary.describe()}")
             return
@@ -162,29 +168,17 @@ class Life3dSolidTest {
         val volume = pageVolume()
         val field = volume.asDensityField(smoothRadius = 0, iso = 0.5)
         val bounds = volume.marchBounds()
-        fun march(parallel: Boolean): Triple<Long, Int, Double> = Solid.scope {
-            val s = Solid.levelSet(bounds, edgeLength = 0.7, parallel = parallel) { x, y, z ->
+        fun march(): Triple<Long, Int, Double> = Solid.scope {
+            val s = Solid.levelSet(bounds, edgeLength = 0.7) { x, y, z ->
                 field(vec(x, y, z)).toDouble()
             }
             Triple(s.triangleCount, s.decompose().size, s.volume)
         }
 
-        val sequential = (1..3).map { march(parallel = false) }
-        assertEquals(
-            1, sequential.distinct().size,
-            "parallel = false is expected to return the same mesh every time, got $sequential",
-        )
-
-        // The other direction is a statement about a library we do not control, so it is asserted
-        // only as far as it can be: whatever the parallel path returns has to be the same *shape* of
-        // answer. That it sometimes differs run to run is recorded in Solid.levelSet's KDoc and
-        // measured on the page; a test that demanded it differ would fail on a one-core machine.
-        val parallel = march(parallel = true)
-        assertTrue(parallel.first > 0, "the parallel path returned no triangles")
-        assertTrue(
-            abs(parallel.third - sequential.first().third) < 1.0,
-            "the two paths should agree on volume to within a unit: $parallel against ${sequential.first()}",
-        )
+        // Triangle count, component count and volume to the last digit: Manifold's parallel marcher
+        // varied in all three on this field, which is why levelSet no longer offers it.
+        val runs = (1..4).map { march() }
+        assertEquals(1, runs.distinct().size, "levelSet is expected to return the same mesh every time, got $runs")
     }
 
     /** The page's third claim: both the count and the volume move with the sampling spacing. */
@@ -198,7 +192,7 @@ class Life3dSolidTest {
         val field = volume.asDensityField(smoothRadius = 0, iso = 0.5)
         val bounds = volume.marchBounds()
         fun at(edge: Double): Pair<Int, Double> = Solid.scope {
-            val s = Solid.levelSet(bounds, edgeLength = edge, parallel = false) { x, y, z ->
+            val s = Solid.levelSet(bounds, edgeLength = edge) { x, y, z ->
                 field(vec(x, y, z)).toDouble()
             }
             s.decompose().size to s.volume

@@ -50,10 +50,6 @@ expect:
 A box is evaluated one top-level form at a time, so each line of output is placed beside the form
 that was running when it was printed.
 
-`print` without a newline is buffered until the next newline or the end of the run, so a bare
-`(print …)` is attributed to whichever form was running when it finally flushed, which is usually
-but not always its own.
-
 ## A box that prints nothing shows its last value
 
 When a box prints nothing, the value of its last form appears beside it instead:
@@ -116,12 +112,13 @@ methods on a class named after a file, and default arguments, which Clojure has 
 | --- | --- |
 | `(box)` | Returns the `Box` this code is running in. |
 | `(display v)`, `(display channel v)` | Renders a value in an output panel using Field’s value renderer. Supply a channel name to update that output independently. |
-| `(lines ls :w 700 :h 350 :fit true)` | Draws the supplied `FLine` collection in a 700 × 350 output. `:fit true` fits the drawing to the view. |
+| `(lines ls :w 700 :h 350 :fit true)` | Draws the supplied `FLine` collection (or a single `FLine`) in a 700 × 350 output panel named `lines`. `:fit true` fits the drawing to the view; `:channel "name"` draws into a different panel. |
 | `(polyline [[x y] …])` | Builds an `FLine` through the points in sequence. |
-| `(color line r g b a)`, `(thickness line w)` | Sets line colour or stroke thickness and returns the line, so `->` threads. |
+| `(color line r g b a)`, `(color line [r g b a])`, `(thickness line w)` | Sets line colour (RGBA, 0 to 1) or stroke thickness in pixels and returns the line, so `->` threads. |
 | `(animate f)` | Builds a per-frame animation around `f`. Return the animation from the box to launch it. |
 | `(frame)`, `(end)` | Inside an animation body: reads the current frame number, or stops now. |
-| `(prop "name")`, `(prop! "name" v)` | Reads or writes a property of this box. |
+| `(prop "name")`, `(prop! "name" v)` | Reads or writes a property of this box. `prop!` returns the value it wrote. |
+| `(prop b "name")`, `(prop! b "name" v)` | The same, for another box `b`, such as one from `(.getParents (box))`. |
 
 </div>
 
@@ -236,7 +233,7 @@ expect:
   outputContains:
     - "frame "
 -->
-```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/animate.png" capture="box" execution="launch" open-outputs=true trim=true wait="4" wait-output=true wait-output-kind="display" timeout="300" embed=true name="clojure-animate" w="780" h="80" alt="A launched Clojure box with two output panels: one reading a frame number in the hundreds, the other a pale blue travelling sine wave."}
+```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/animate.png" capture="box" execution="launch" open-outputs=true trim=true wait="4" wait-output=true wait-output-kind="display" timeout="300" embed=true name="clojure-animate" w="780" h="80" alt="A launched Clojure box with two output panels: one reading the current frame number, the other a pale blue travelling sine wave."}
 :::static
 ;; Returning an animation is what launches it.
 (def n 160)
@@ -293,10 +290,32 @@ Anything a box writes to `*err*` appears the same way, as an error against the l
 That is how Clojure's own warnings reach you, such as the one for shadowing a `clojure.core` name
 with a `def`.
 
-A syntax error is reported, with its line and column, before anything is evaluated. Other mistakes
-(an unresolvable symbol, a macro that throws, a call with the wrong number of arguments) show up only
-when the form runs, so a Clojure box has no equivalent of the red underline a Kotlin box gets before
-it runs.
+A syntax error, such as an unclosed parenthesis, is reported with its line and column before
+anything is evaluated, so none of the box runs. Other mistakes (an unresolvable symbol, a macro that
+throws, a call with the wrong number of arguments) show up only when the form runs, after the forms
+above it have run. A Clojure box therefore has no equivalent of the red underline a Kotlin box gets
+before it runs. The message names the problem first and the place second, for example
+`Unable to resolve symbol: no-such-function in this context — Syntax error compiling at (3:1).`:
+
+<!--
+FIELD_TEST
+id: docs.clojure.unresolved
+runner: backdoor-box
+tags: [docs, clojure, inline-output]
+timeoutSec: 120
+waitSec: 1.5
+expect:
+  allowExecutionErrors: true
+  outputContains:
+    - "before"
+    - "Unable to resolve symbol: no-such-function"
+-->
+```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/unresolved.png" capture="editor" outputs="inline" expect-error=true wait="4" padding="10" timeout="240" embed=true name="clojure-unresolved" w="900" h="220" alt="A three-line Clojure box. Line 1 shows the chip before. Line 3 carries the error Unable to resolve symbol: no-such-function in this context, followed by where it was compiled."}
+:::static
+(println "before")
+
+(no-such-function 3)
+```
 
 ## The editor knows the language
 
@@ -337,8 +356,6 @@ ui.pause(1400)
 Each row carries its argument vector, and the panel on the right shows the docstring. `spline` under
 LOCAL is the `let` binding two lines up, and `spiral` under VALUES is a var an earlier box on this
 page defined in the shared namespace.
-
-If Compliment is not on the classpath, a Clojure box still runs and the popup is simply empty.
 
 The editor also shows what each form evaluated to the last time the box ran: rest the cursor on a
 form and the note beside it shows the value in bold with its type, how long ago that was, and

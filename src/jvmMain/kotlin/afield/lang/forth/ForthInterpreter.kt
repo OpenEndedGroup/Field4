@@ -358,6 +358,24 @@ class ForthInterpreter {
     // Dictionary: word name (lowercase) -> compiled word
     val dictionary = LinkedHashMap<String, ForthWord>()
 
+    /** What each name meant before a `:`, `variable` or `constant` replaced it, so `forget` can put it back. */
+    private val shadowed = HashMap<String, ArrayDeque<ForthWord>>()
+
+    /**
+     * Install [word] under [name], remembering what it replaces. Replacing a builtin is allowed (it is
+     * how a program tunes a word) but never silent: it is announced on [onOutput].
+     */
+    private fun defineUserWord(name: String, word: ForthWord, line: Int) {
+        val previous = dictionary[name]
+        if (previous != null) {
+            shadowed.getOrPut(name) { ArrayDeque() }.addLast(previous)
+            if (previous is ForthWord.Builtin || previous is ForthWord.Lambda) {
+                onOutput("warning: line $line redefines the builtin '$name'; `forget $name` restores it\n")
+            }
+        }
+        dictionary[name] = word
+    }
+
     // Variables storage
     val variables = HashMap<String, Any?>()
 
@@ -603,7 +621,7 @@ class ForthInterpreter {
                         j++
                     }
                     if (j >= tokens.size) throw ForthError("Missing ';' for '$name'", line)
-                    dictionary[name] = ForthWord.Compiled(name, body.toList(), line)
+                    defineUserWord(name, ForthWord.Compiled(name, body.toList(), line), line)
                     j + 1
                 }
 
@@ -611,14 +629,14 @@ class ForthInterpreter {
                     if (i + 1 >= tokens.size) throw ForthError("Expected variable name", line)
                     val name = tokens[i + 1].text.lowercase()
                     if (!variables.containsKey(name)) variables[name] = 0.0
-                    dictionary[name] = ForthWord.Variable(name)
+                    defineUserWord(name, ForthWord.Variable(name), line)
                     i + 2
                 }
 
                 lw == "constant" -> {
                     if (i + 1 >= tokens.size) throw ForthError("Expected constant name", line)
                     val name = tokens[i + 1].text.lowercase()
-                    dictionary[name] = ForthWord.Constant(name, pop())
+                    defineUserWord(name, ForthWord.Constant(name, pop()), line)
                     i + 2
                 }
 
@@ -1010,8 +1028,10 @@ class ForthInterpreter {
         if (fw is ForthWord.Builtin || fw is ForthWord.Lambda) {
             throw ForthError("forget: '$name' is host-defined and cannot be forgotten", line)
         }
-        dictionary.remove(key)
-        if (fw is ForthWord.Variable) variables.remove(fw.name)
+        // Forgetting a word brings back whatever it replaced, a builtin included.
+        val previous = shadowed[key]?.removeLastOrNull()
+        if (previous != null) dictionary[key] = previous else dictionary.remove(key)
+        if (fw is ForthWord.Variable && previous !is ForthWord.Variable) variables.remove(fw.name)
     }
 
     // -------------------------------------------------------------------------
@@ -1404,7 +1424,7 @@ class ForthInterpreter {
         builtin("see", "( -- ) Immediate-style: `see name` prints a word definition") {
             throw ForthError("see must be followed by a word name")
         }
-        builtin("forget", "( -- ) Immediate-style: `forget name` removes a user-defined word") {
+        builtin("forget", "( -- ) Immediate-style: `forget name` removes a user-defined word, restoring what it replaced") {
             throw ForthError("forget must be followed by a word name")
         }
         builtin("recurse", "( ... -- ... ) Re-run the current word") {

@@ -465,17 +465,24 @@ class SlideShowInstance(
                 else -> slideshowId // Default to slideshow ID
             }
             
-            sendToHostDocument(hostBox, Message("show-slide-note").payload(
-                ShowSlideNote(
-                    html = processedHtml,
-                    uid = step.noteAnchorBox?.id ?: hostBox.id,
-                    persistent = step.persistent,
-                    animated = step.animated,
-                    annotations = step.annotations,
-                    slideshowId = if (step.withChat) chatId else "",
-                    slideNumber = if (step.withChat) index else -1
-                )
-            ))
+            fun note(html: String, animated: Boolean) = ShowSlideNote(
+                html = html,
+                uid = step.noteAnchorBox?.id ?: hostBox.id,
+                persistent = step.persistent,
+                animated = animated,
+                annotations = step.annotations,
+                slideshowId = if (step.withChat) chatId else "",
+                slideNumber = if (step.withChat) index else -1
+            )
+            sendToHostDocument(hostBox, Message("show-slide-note").payload(note(processedHtml, step.animated)))
+            // A variable the running code is still declaring is not visible to templates until that
+            // code has finished. Look again once it has, and redraw the note if a slot filled in.
+            afield.runtime.lifecycle.inMain {
+                repeat(3) { kotlinx.coroutines.yield() }
+                if (currentStepIndex != index) return@inMain
+                val again = processTemplates(step.noteHtml)
+                if (again != processedHtml) sendToHostDocument(hostBox, Message("show-slide-note").payload(note(again, false)))
+            }
         } else {
             sendToHostDocument(hostBox, Message("hide-slide-note").payload(HideSlideNote()))
         }

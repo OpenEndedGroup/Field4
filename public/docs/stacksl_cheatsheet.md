@@ -1,6 +1,6 @@
 # StackSL cheatsheet
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`stacksl.kt`](reference/graphics.md#stackslbox-kt). Start from [what's already in the box](reference/index.md).*
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`StackSL.kt`](reference/languages.md#stacksl-kt) for the compiler and [`StackSLBox.kt`](reference/graphics.md#stackslbox-kt) for the box helpers. Start from [what's already in the box](reference/index.md).*
 
 <div class="stacksl-reference" markdown>
 
@@ -495,11 +495,11 @@ Colour offsets and contrast changes look more even in OKLab: convert with `rgb2o
 
 Define reusable words with `: name ... ;`. A call consumes one input value, runs the definition with that value as its local stack/input, then pushes the result.
 
-**A definition must therefore be net zero on the stack: consume its input, leave its result.** It is not an error: an unbalanced definition compiles, the surplus is pruned, and everything downstream silently takes the wrong operand. Open a definition with `>name`, which *moves* the top, and not `=name`, which *copies* it:
+A definition must therefore be net zero on the stack: consume its input, leave its result. A called definition that is not is a compile error naming it. Open a definition with `>name`, which *moves* the top, and not `=name`, which *copies* it:
 
 ```diffstatic {data-lang=stacksl}
 : half  >v  <v 0.5 *  ;      # right: consumes one, leaves one
-: half  =v  <v 0.5 *  ;      # wrong: leaves its input under its result, so every call pushes two
+: half  =v  <v 0.5 *  ;      # refused: leaves its input under its result, so every call pushes two
 ```
 
 `stack.auto` reports this. A slot whose program has an unbalanced definition, or any warning at all, writes a card into the box's `stack.auto` output channel and closes it again once the program is clean. Ask directly with `stackAutoShaderReport("…", "slotName")`, which returns a `StackAutoReport` carrying `problems`, `warnings` and `notes` and renders itself as HTML for `display()`.
@@ -578,8 +578,7 @@ Local marks name a stack value inside the current root program or definition. Th
 
 </div>
 
-A mark cannot be called `x`, `y`, `z` or `w`: `>x` is already the word that replaces one lane of a
-value, so `>x <x` reads a mark that was never made.
+A mark cannot be called `x`, `y`, `z` or `w`, and the compiler says so when you try.
 
 <div data-code-lang="stacksl" markdown>
 

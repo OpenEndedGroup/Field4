@@ -7,23 +7,15 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 
 /**
- * TetGen writes files into the **process's current working directory** when it refuses a
- * self-intersecting surface, and neither the `Q` (quiet) switch nor `TETLIBRARY` stops it.
+ * Refusing a self-intersecting surface must leave the process's working directory as it was.
  *
- * Found on 2026-09-09 while measuring `public/docs/tetgen.md`: two `tetgen-tmpfile_skipped.node` /
- * `.face` files appeared at the root of a git worktree after a test run, holding the 16 vertices of
- * the two interpenetrating cubes that failed. In a live Field session the working directory is
- * wherever the server was launched from — the repository, or somebody's home directory.
+ * Stock TetGen dumps `tetgen-tmpfile_skipped.node` / `.face` into the cwd at that point, and neither
+ * the `Q` (quiet) switch nor `TETLIBRARY` stops it; in a live Field session the cwd is wherever the
+ * server was launched from. `tools/build_tetgen_native.py` compiles the dump out of the pinned
+ * source under `TETLIBRARY`, and this pins that it stays out.
  *
- * This is a *characterization* test. It does not assert that the behaviour is acceptable; it pins
- * what actually happens so that a future TetGen bump, or a fix in `field_tetgen.cpp`, is a visible
- * change rather than a silent one. It also cleans up, which is the only reason a run of the suite
- * does not leave the two files behind.
- *
- * The obvious fix — `chdir` into a temporary directory around the call — is *not* obviously right:
- * the working directory is process-global and Field's runloop, the docs runner and a user's own box
- * all share it, so a mesh running on a background thread would move everyone else's relative paths
- * for the duration. Recorded rather than fixed, deliberately.
+ * `chdir` into a temporary directory around the call would have been wrong: the working directory
+ * is process-global, and Field's runloop, the docs runner and a user's own box all share it.
  */
 class TetgenWorkingDirectoryLitterTest {
 
@@ -39,7 +31,7 @@ class TetgenWorkingDirectoryLitterTest {
             1, 5, 6, 1, 6, 2, 2, 6, 7, 2, 7, 3, 3, 7, 4, 3, 4, 0)
     }
 
-    @Test fun aSelfIntersectingSurfaceLeavesTwoFilesInTheWorkingDirectory() {
+    @Test fun aSelfIntersectingSurfaceLeavesTheWorkingDirectoryClean() {
         if (!TetgenLibrary.isAvailable || !ManifoldLibrary.isAvailable) {
             println("SKIPPED: ${TetgenLibrary.describe()}")
             return
@@ -59,13 +51,7 @@ class TetgenWorkingDirectoryLitterTest {
             "this input is meant to reach TetGen's own fatal path: ${failure.message}")
 
         val left = litter.filter { File(here, it).exists() }
-        println("after a self-intersection refusal, TetGen left: $left in $here")
-        // Not asserted as *required* — a TetGen version that stopped doing this would be an
-        // improvement and must not fail the suite. Asserted only that we know which it was.
-        println(if (left.size == 2) "  (the documented behaviour, unchanged)"
-                else "  (TetGen's behaviour has changed — update public/docs/tetgen.md)")
-
         litter.forEach { File(here, it).delete() }
-        assertTrue(litter.none { File(here, it).exists() }, "the cleanup must actually clean up")
+        assertTrue(left.isEmpty(), "TetGen wrote $left into $here; is the native library built from the patched source?")
     }
 }

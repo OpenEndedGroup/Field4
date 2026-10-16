@@ -425,6 +425,8 @@ object LoadingTracker {
         notify("finished loading \u2014 press <b>?</b> for help", "setup")
         updateEmptyDocumentWelcome()
         send(Message("replay-output-areas"))
+        // The start-up report can arrive before the server has the document; say it again now.
+        sendViewportsToServer()
     }
 
     fun isFinished(): Boolean = finished
@@ -1677,6 +1679,14 @@ private fun openAllOutputDisclosures(outputArea: HTMLElement) {
     }
 }
 
+/** Whether [frame] states its own height: an inline pixel height, a `height` attribute, or one it reported. */
+private fun declaresIframeHeight(frame: HTMLElement): Boolean {
+    val inline = frame.style.height.trim().lowercase()
+    if (inline.endsWith("px") && (inline.removeSuffix("px").toDoubleOrNull() ?: 0.0) > 0.0) return true
+    if ((frame.getAttribute("height")?.trim()?.toDoubleOrNull() ?: 0.0) > 0.0) return true
+    return dataAttributePixelsOrZero(frame, "data-afield-intrinsic-height") > 0.0
+}
+
 private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
     outputArea.style.maxHeight = "none"
     val maxDisclosureHeight = max(680.0, min(1400.0, window.innerHeight.toDouble() * 0.82))
@@ -1685,6 +1695,10 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
         .forEach { content ->
             content.style.maxHeight = "none"
             content.style.setProperty("overflow", "visible")
+            // A panel whose frames all state their height is sized by the panel sizer exactly as the
+            // reader sees it in Field; flooring or padding it here would make the figure disagree.
+            val frames = content.querySelectorAll("iframe").asList().mapNotNull { it as? HTMLElement }
+            if (frames.isNotEmpty() && frames.all(::declaresIframeHeight)) return@forEach
             val scrollHeight = (content.scrollHeight as? Number)?.toDouble() ?: 0.0
             val childHeights = content.children.asList()
                 .mapNotNull { child ->
@@ -1729,13 +1743,14 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
 // that loop from the outside: the box chases the panel it just widened, and a `.h2` docs figure grew
 // until it hit the window-width cap. A fill frame is as wide as it is told to be; only content with
 // a width of its own gets to move the box.
+/**
+ * Whether [element] is an iframe that fills its panel's width: `outputareas2.js`'s own test, so the
+ * panel sizer and the screenshot preparation can never disagree. No output area has been built when
+ * it is missing, so there is no iframe to ask about.
+ */
 private fun isFillWidthIframe(element: Element): Boolean {
-    if (element.tagName.uppercase() != "IFRAME") return false
-    if ((element.getAttribute("data-afield-autosize") ?: "").trim().lowercase() != "off") return false
-    val html = element as? HTMLElement ?: return false
-    if (dataAttributePixelsOrZero(html, "data-afield-intrinsic-width") > 0.0) return false
-    val inline = html.style.width.trim().lowercase()
-    return inline.isEmpty() || inline == "auto" || inline.endsWith("%")
+    val test = window.asDynamic().fieldIsFillWidthIframe ?: return false
+    return test(element) == true
 }
 
 private fun containsFillWidthIframe(element: Element): Boolean =
@@ -2342,16 +2357,7 @@ private fun applyViewportTranslation(
     updateBackgroundGrid(mainTranslation[0], mainTranslation[1], panning = panning)
 
     if (syncServer) {
-        // `viewport` keeps its meaning from before panes: the main pane's translation from its own
-        // corner and its size, so the world it shows at zoom 1 is (-x, -y, w, h). Unsplit the
-        // corner is the window's and nothing changed.
-        val main = CanvasCamera.main
-        val r = main.rect
-        send(
-            Message("set-viewport").payload(
-                Set_rect(uid = "root", property = "viewport", value = Rect(main.tx - r.x, main.ty - r.y, r.w, r.h))
-            )
-        )
+        sendViewportsToServer()
     }
 
     drawingLayerViewportChanged()
@@ -2360,6 +2366,25 @@ private fun applyViewportTranslation(
     if (refreshSpatial && spatialNavActive) {
         refreshSpatialNavTargets()
     }
+}
+
+/**
+ * Tell the server what the canvas shows. `viewport` keeps its meaning from before panes and zoom:
+ * the main pane shows the world rect `(-x, -y, w, h)`, now in world units at any zoom. `viewports`
+ * is every pane's visible world rect `(x, y, w, h)`, in pane order, the main (bottom-right) pane last.
+ */
+internal fun sendViewportsToServer() {
+    val v = CanvasCamera.main.visibleWorldRect()
+    send(
+        Message("set-viewport").payload(
+            Set_rect(uid = "root", property = "viewport", value = Rect(-v.x, -v.y, v.w, v.h))
+        )
+    )
+    send(
+        Message("set-viewports").payload(
+            Set_rects(CanvasCamera.panes.map { Set_rect(uid = "root", property = "viewports", value = it.visibleWorldRect()) })
+        )
+    )
 }
 
 /** Moves the main pane's camera, for callers outside this file (bookmark restore). */
@@ -2682,6 +2707,29 @@ private fun releaseCanvasDragLatch() {
     if (!canvasDragLatched) return
     canvasDragLatched = false
     updateCanvasPanLatchClass()
+}
+
+/** Whether some element from [target] up to and including [area] can still scroll by (dx, dy). */
+private fun canScrollWithin(target: HTMLElement, area: HTMLElement, dx: Double, dy: Double): Boolean {
+    var node: HTMLElement? = target
+    while (node != null) {
+        val style = window.getComputedStyle(node)
+        val scrollsY = style.overflowY == "auto" || style.overflowY == "scroll"
+        val scrollsX = style.overflowX == "auto" || style.overflowX == "scroll"
+        if (scrollsY && dy != 0.0) {
+            val top = node.scrollTop
+            val max = node.scrollHeight - node.clientHeight
+            if ((dy < 0 && top > 0) || (dy > 0 && top < max - 1)) return true
+        }
+        if (scrollsX && dx != 0.0) {
+            val left = node.scrollLeft
+            val max = node.scrollWidth - node.clientWidth
+            if ((dx < 0 && left > 0) || (dx > 0 && left < max - 1)) return true
+        }
+        if (node == area) break
+        node = node.parentElement as? HTMLElement
+    }
+    return false
 }
 
 private fun installCanvasPanLatch() {
@@ -6954,9 +7002,12 @@ suspend fun main() {
 
     mainViewport.onwheel = onwheel@{ event ->
 
-        // todo, should read "has outputArea_content as parent"
+        // Over an output panel the wheel belongs to the panel only if something there takes it: its
+        // content handled the event, or an element between the target and the panel can still
+        // scroll that way. Otherwise a panel that fills the window would trap pan and zoom.
         val target = event.target as? HTMLElement
-        if (target != null && target.asDynamic().closest(".outputArea") != null) {
+        val area = target?.closest(".outputArea") as? HTMLElement
+        if (area != null && (event.defaultPrevented || (!(event.ctrlKey || event.metaKey) && canScrollWithin(target, area, event.deltaX, event.deltaY)))) {
             return@onwheel null
         }
 
@@ -7737,15 +7788,7 @@ suspend fun main() {
         true
     }
 
-    send(
-        Message("set-viewport").payload(
-            Set_rect(
-                uid = "root",
-                property = "viewport",
-                Rect(0.0, 0.0, CanvasCamera.main.rect.w, CanvasCamera.main.rect.h)
-            )
-        )
-    )
+    sendViewportsToServer()
 
     registerMouseBug()
 

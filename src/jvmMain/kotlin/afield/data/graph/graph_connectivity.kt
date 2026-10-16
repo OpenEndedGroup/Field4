@@ -12,8 +12,7 @@
  *
  * JTS-backed (2D only): full Delaunay triangulation ([vec2DelaunayGraph], [vec2DelaunayTriangles]),
  * Urquhart ([vec2UrquhartGraph], a real Urquhart graph built by removing the longest edge of each
- * Delaunay triangle — the 3D [vec3UrquhartGraph] is an MST approximation because Field only wires
- * 2D Delaunay), Voronoi diagram/dual ([vec2VoronoiDiagram], [vec2VoronoiDualGraph]) and convex
+ * Delaunay triangle; there is no 3D one, because Field has no 3D Delaunay of a point set), Voronoi diagram/dual ([vec2VoronoiDiagram], [vec2VoronoiDualGraph]) and convex
  * hull ([vec2ConvexHull], [vec2ConvexHullGraph], [vec2HullProjectionGraph]).
  *
  * Traversal / analysis: BFS/DFS/A* path search, [GraphEdgeVisitState] greedy walks and
@@ -1367,16 +1366,20 @@ fun vec2UrquhartGraph(
 }
 
 /**
- * Compute an Urquhart Graph for 3D points.
- *
- * A full 3D Urquhart graph would require removing longest edges from a
- * 3D Delaunay tetrahedralization. Field currently only has 2D Delaunay
- * support wired in via JTS, so this remains an MST approximation.
+ * Not an Urquhart graph: a 3D one would remove the longest edges of a 3D Delaunay tetrahedralization of
+ * the points, and Field has no 3D Delaunay of a point set, so this returned the minimum spanning tree
+ * under the wrong name. Deprecated at ERROR level so a call says so at compile time; use
+ * [vec3MinimumSpanningTree] for what it computed.
  *
  * @param points List of 3D points
  * @param options Graph connectivity options
  * @return PointGraph with Urquhart graph edges
  */
+@Deprecated(
+    "Not an Urquhart graph: Field has no 3D Delaunay of a point set, so this was the minimum spanning tree",
+    ReplaceWith("vec3MinimumSpanningTree(points, options)"),
+    level = DeprecationLevel.ERROR,
+)
 fun vec3UrquhartGraph(
     points: List<Vec3>,
     options: GraphConnectivityOptions = GraphConnectivityOptions()

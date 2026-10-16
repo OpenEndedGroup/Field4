@@ -169,11 +169,9 @@ holes, so it rescues far fewer broken meshes than `repairToSolid()`. A repaired 
 solid, but not always the shape you started with; [geometry from disk](geometry_from_disk.md) shows
 the difference.
 
-**Manifold accepts an inside-out mesh.** A closed, consistently-but-inwardly wound surface is a
-legal manifold that reports a *negative* volume — so `status` is `NO_ERROR`, and the next boolean
-computes the complement of what you meant. `isValidSolid()` cannot catch that; `diagnose()` reports
-it as `INVERTED_ORIENTATION`, and `repairToSolid()`'s second winding pass fixes it. Manifold likewise
-accepts zero-area triangles, pinch vertices, and disjoint components — whose volumes it sums.
+`toSolid()` also refuses an inside-out mesh, one closed and consistently wound but inward, which
+Manifold itself would accept with a negative volume; `fixWinding()` flips it. Zero-area triangles,
+pinch vertices and disjoint components pass, and the volumes of disjoint pieces add up.
 
 `NON_FINITE_VERTEX` is a NaN in the positions, usually a degenerate normal upstream.
 `repairToSolid()` refuses that one outright rather than repairing around it — dropping the affected
@@ -269,7 +267,7 @@ hole.
 ## Solids from a field
 
 `Solid.levelSet` takes a Kotlin lambda of `x, y, z` and marches it into a solid. Manifold calls the
-lambda itself, from its own thread pool.
+lambda itself, once per sample, from the calling thread.
 
 The difference from Field's own [`marchingCubes`](mesh_examples.md) is not resolution or speed, it is
 the guarantee: whatever the field did (a sheet thinner than the grid, a surface that touches itself, a
@@ -299,25 +297,17 @@ fun field(x: Double, y: Double, z: Double): Double {
 
 val bounds = boundsOf(vec(-32.0, -32.0, -10.0), vec(32.0, 32.0, 10.0))
 
-// `parallel = true` lets Manifold call `field` from its own TBB workers — measured below. The
-// lambda must be thread-safe in exchange; pass false for one that is not.
 val t0 = System.nanoTime()
-val solid = Solid.levelSet(bounds, edgeLength = 1.1, parallel = true, field = ::field)
-val parallelMs = (System.nanoTime() - t0) / 1e6
+val solid = Solid.levelSet(bounds, edgeLength = 1.1, field = ::field)
+val marchMs = (System.nanoTime() - t0) / 1e6
 
-val t1 = System.nanoTime()
-val sequential = Solid.levelSet(bounds, edgeLength = 1.1, parallel = false, field = ::field)
-val sequentialMs = (System.nanoTime() - t1) / 1e6
-:::fold prove the two agree, then draw it
-println("parallel   ${"%.0f".format(parallelMs)} ms")
-println("sequential ${"%.0f".format(sequentialMs)} ms   " +
-    "(${"%.2f".format(sequentialMs / parallelMs)}x)")
-println()
-// Identical inputs must give a bit-identical mesh, or the parallel path is racing. This is the
-// real test of the upcall contract, and it is asserted in ManifoldTest too.
-println("same triangle count: ${solid.triangleCount == sequential.triangleCount} " +
+// The same field marched again: identical inputs give a bit-identical mesh.
+val again = Solid.levelSet(bounds, edgeLength = 1.1, field = ::field)
+:::fold check it is reproducible, then draw it
+println("level set ${"%.0f".format(marchMs)} ms")
+println("same triangle count twice: ${solid.triangleCount == again.triangleCount} " +
     "(${solid.triangleCount})")
-println("same volume to the last bit: ${solid.volume == sequential.volume}")
+println("same volume to the last bit: ${solid.volume == again.volume}")
 println()
 println("status ${solid.status}, genus ${solid.genus}, volume ${"%.1f".format(solid.volume)} mm³")
 // And Field's own topology code, which shares nothing with Manifold, agrees it is closed.
@@ -330,20 +320,14 @@ showMesh(
     caption = "${solid.triangleCount} triangles · genus ${solid.genus} · guaranteed closed",
     view = MeshView(yawDegrees = 24.0, pitchDegrees = 52.0, width = 720, height = 440),
 )
-sequential.close()
+again.close()
 solid.close()
 ```
 
-With `parallel = true` (the default for a plain lambda) the lambda runs on several native threads at
-once, which roughly halves the time for a finely sampled sphere. That has two consequences:
-
-- **An exception cannot escape.** There are C++ frames between the lambda and the caller; unwinding
-  through them is undefined, and FFM's response to an escaping exception is to abort the VM. So the
-  bridge catches it, returns a far-outside sentinel, and `levelSet` rethrows once the native call is
-  over: you get an `IllegalStateException` with your own exception as its cause.
-- **Your lambda must be thread-safe.** `Solid.levelSetOf`, which takes one of Field's own
-  `ScalarField3D`s, therefore defaults to `parallel = false`: a `ScalarField3D` takes a *mutable*
-  `Vec3` and the combinators in that family are free to reuse it.
+An exception thrown by the lambda cannot escape. There are C++ frames between the lambda and the
+caller; unwinding through them is undefined, and FFM's response to an escaping exception is to abort the VM. So the bridge catches it, returns a
+far-outside sentinel, and `levelSet` rethrows once the native call is over: you get an
+`IllegalStateException` with your own exception as its cause.
 
 `Solid.warped { }` is the same mechanism for moving every vertex: a bend, a twist, a taper. It does
 **not** re-mesh, so put `refined()` in front of it or a 12-triangle cube's eight corners move and
@@ -441,24 +425,18 @@ coming **out** narrows Manifold's internal doubles to precisely the precision `T
 
 ### Two meshes from `toTriMesh`
 
-`toTriMesh(normals = true)` is what you want for a picture and *not* what you want for a measurement,
-because a vertex on a hard edge needs a different normal per face and therefore cannot be shared:
+`toTriMesh(normals = true)` is the form for a picture, because a vertex on a hard edge needs a
+different normal per face and therefore cannot be shared:
 
-| Conversion | vertices | `isWatertight()` | `signedVolume()` |
-|---|---|---|---|
-| `cube.toTriMesh()` | 8 | `true` | `8.0` |
-| `cube.toTriMesh(normals = true)` | **24** | **`false`** | `8.0` |
+| Conversion | vertices | `topology().isWatertight` | `isWatertight()` | `signedVolume()` |
+|---|---|---|---|---|
+| `cube.toTriMesh()` | 8 | `true` | `true` | `8.0` |
+| `cube.toTriMesh(normals = true)` | **24** | **`false`** | `true` | `8.0` |
 
-Identical geometry, different *index* topology — and Field's `isWatertight()` and `genus()` read
-indices. A crease-split mesh therefore reports the wrong genus and looks exactly like a broken bridge.
-Ask for the plain form when you are measuring, the shaded form when you are drawing, and `weld()` if
-you need to put a shaded one back together.
-
-The figures above use the plain form, and the reason applies to your own: `showMesh` prints its own
-topology footer, so handing it a crease-split mesh puts *"χ=−4 genus 0 · open (42 boundary loop(s))"*
-on the line immediately above a caption reading *"genus 5 · guaranteed closed"*. Both lines are true —
-of different meshes. Field's own `withVertexNormals()` splits at creases too, so this is a property
-of crease normals rather than of this binding.
+`isWatertight()`, `genus()` and `showMesh`'s footer weld a mesh that carries normals by position
+before measuring, so both forms report the same surface. `topology()` reads the indices as they are,
+and `toSolid` needs the plain form: Manifold refuses a crease-split mesh. Ask for the plain form when
+the mesh goes back into Manifold, and `weld()` a shaded one if you need to.
 
 ## Lifetime
 

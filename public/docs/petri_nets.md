@@ -580,7 +580,8 @@ the fewest crossings.
 TALA needs a helper program, `native/field-d2-layout`, written in Go, which Field does not build or
 ship. Without it `PetriLayout.TALA` falls back to `FORCE`, so a document that asks for TALA still
 opens, and `D2Layout.available` tells you which one you got. When a box asks for TALA and the
-helper is missing, Field prints the command that builds it.
+helper is missing, Field prints the command that builds it, and a helper built while Field is
+running is used from the next draw.
 
 ---
 
@@ -589,10 +590,9 @@ helper is missing, Field prints the command that builds it.
 - **Invariants only see token counts.** Read and inhibitor arcs don't change token counts, so the
   invariants can't see them. `net.report()` says so when a net uses them and suggests
   `stateSpace()`, which does see them.
-- **Loop detection compares colours by name.** Two different patterns both print as
-  `PatPattern(...)`, so to the loop detector swapping one section for another looks like nothing
-  happening. `stateSpace()` compares colours exactly, so a net that makes a new colour on every
-  firing runs out of search budget there instead.
+- **A net that makes a new colour on every firing has no loop.** Loop detection and `stateSpace()`
+  both compare colours by equality, so such a net never repeats a marking, and `stateSpace()` runs
+  out of search budget.
 - **The editor checks spelling, not behaviour.** The editor marks `@1/0` as a bad duration and
   `=> wobble` as an unknown combinator as you type. It can't tell that a transition will never
   fire; the Kotlin parser reports that when the box runs.
@@ -659,8 +659,8 @@ Three limits bound what it will answer:
   on it.
 - **A colour-dependent net is not reduced.** The closure reasons about arcs, and a guard or an
   `enabledIf` is an arbitrary predicate no arc analysis can see, so `stateSpace(reduction = STUBBORN)`
-  on such a net returns an unreduced (and therefore still `exact`) graph, with no complaint and with
-  `graph.reduction == PetriReduction.NONE` saying so.
+  on such a net returns an unreduced (and therefore still `exact`) graph, and `graph.caveats` and
+  `report()` say so.
 
 ??? aside "How the reduction is checked"
     A differential test runs both searches over generated nets and compares the set of reachable

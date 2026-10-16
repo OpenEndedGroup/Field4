@@ -363,9 +363,9 @@ internal class Ai4RuntimeToolProviders(
                     success = summary.enabled,
                     kind = "summary",
                     message = if (summary.enabled) {
-                        "Code-use telemetry is enabled; snippets=${summary.snippets}, failures available via kind=failures."
+                        "Local code-use history is enabled; snippets=${summary.snippets}, failures available via kind=failures."
                     } else {
-                        summary.message.ifBlank { "Code-use telemetry is disabled." }
+                        summary.message.ifBlank { "Local code-use history is disabled." }
                     },
                     summary = summary
                 )

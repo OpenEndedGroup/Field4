@@ -130,7 +130,7 @@ not: on frame one the shader reads `prevState`, and on frame one exactly half th
 `stateB`, which nobody has written. Whatever the allocator handed you (commonly zeroes) is what
 frame one integrates from.
 
-Run the example with `listOf(stateA)` in that loop and the picture survives it. Every particle spends
+Run the example with `[stateA]` in that loop and the picture survives it. Every particle spends
 frame one at the origin, the restoring force in this scene pulls each one back to its anchor, and
 after that the two runs are not merely similar, they are on the same trajectory
 ([`GPU_STATE_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/GPU_STATE_MEASUREMENTS.md)

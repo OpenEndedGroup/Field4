@@ -2762,9 +2762,7 @@ fun Box.syncToProperty(
 
 /** A control's write into its property; a `propDown` property reruns its readers, as a delegate write would. */
 private fun Box.writeSyncedProperty(propertyName: String, value: Any) {
-    val old = getPropertyRaw(propertyName)
     setPropertyRaw(propertyName, value, doResync = true)
-    afield.runtime.lifecycle.ReactiveRuns.noteRawWrite(this, propertyName, old, value)
 }
 
 private fun markPersistent(propertyName: String) {

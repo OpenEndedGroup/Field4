@@ -127,12 +127,9 @@ enum class SmileMdsDistance {
  * [coordinates] remains in the same row order as the input vectors. [scores] are the retained
  * eigenvalues, largest first.
  *
- * [proportion] is those same eigenvalues divided by *their own* L1 norm, which is what Smile's
- * `MathEx.unitize1` does to them, so it **always sums to 1** and says nothing about how much of the
- * structure survived the projection: two dimensions of a twenty-point matrix and fifteen dimensions
- * of the same matrix both report 1.0. Read it as "how the kept components divide up between
- * themselves". For "how much did I lose", compare the projected distances against the input ones —
- * `public/docs/projection_examples.md` does that with a stress figure.
+ * [stress1] and [distanceCorrelation] say how much of the structure survived: they compare the
+ * projected distances against the input ones. [retainedShare] (formerly `proportion`) is only how
+ * the kept eigenvalues divide up between themselves, and always sums to 1.
  *
  * The complete pairwise distance matrix is intentionally not retained.
  */
@@ -151,11 +148,11 @@ data class SmileMdsProjection(
      */
     val scores: DoubleArray,
     /**
-     * [scores] normalised over themselves, so this sums to 1 whatever fraction of the structure was
-     * kept. It says how the retained components divide up between each other and nothing about how
-     * much was thrown away.
+     * [scores] normalised over themselves (Smile's `MathEx.unitize1`), so this sums to 1 whatever
+     * fraction of the structure was kept. It says how the retained components divide up between each
+     * other and nothing about how much was thrown away; [stress1] says that.
      */
-    val proportion: DoubleArray,
+    val retainedShare: DoubleArray,
     /** Which dissimilarity [smileMds] built the projection from, echoed back so a plot can be labelled from the result alone. */
     val distance: SmileMdsDistance,
     /**
@@ -164,7 +161,20 @@ data class SmileMdsProjection(
      * comparable when they agree on it.
      */
     val positiveCorrection: Boolean,
-)
+    /**
+     * Kruskal's stress-1 between the input dissimilarities and the distances between rows of
+     * [coordinates], at the scale that minimises it (classical MDS does not promise the projection
+     * is in the input's units). 0 is a perfect fit; above about 0.2 is usually called poor. Measured
+     * against the dissimilarities as given, before any `positiveCorrection` constant.
+     */
+    val stress1: Double,
+    /** Pearson correlation between the input dissimilarities and the projected distances, over every pair. */
+    val distanceCorrelation: Double,
+) {
+    /** The old name of [retainedShare], which read as explained variance and is not. */
+    @Deprecated("Sums to 1 whatever is kept; use stress1 for fit quality", ReplaceWith("retainedShare"))
+    val proportion: DoubleArray get() = retainedShare
+}
 
 /** A reproducible t-SNE result produced by Smile from Field-owned vectors. */
 data class SmileTsneProjection(
@@ -222,11 +232,11 @@ data class SmileMdsProximityProjection(
      */
     val scores: DoubleArray,
     /**
-     * [scores] normalised over themselves, so this sums to 1 whatever fraction of the structure was
-     * kept. For how much a two-dimensional picture actually lost, compare its distances against the
-     * matrix you supplied; `public/docs/projection_examples.md` does that with a stress figure.
+     * [scores] normalised over themselves (Smile's `MathEx.unitize1`), so this sums to 1 whatever
+     * fraction of the structure was kept. It says how the retained components divide up between each
+     * other and nothing about how much was thrown away; [stress1] says that.
      */
-    val proportion: DoubleArray,
+    val retainedShare: DoubleArray,
     /**
      * Whatever you passed to [smileMdsDistances], carried through untouched. Nothing in the fit reads
      * it: it is here so a box holding several projections can tell which matrix each came from.
@@ -238,7 +248,20 @@ data class SmileMdsProximityProjection(
      * usually needs this on before classical MDS has more than a couple of usable dimensions.
      */
     val positiveCorrection: Boolean,
-)
+    /**
+     * Kruskal's stress-1 between the input dissimilarities and the distances between rows of
+     * [coordinates], at the scale that minimises it (classical MDS does not promise the projection
+     * is in the input's units). 0 is a perfect fit; above about 0.2 is usually called poor. Measured
+     * against the dissimilarities as given, before any `positiveCorrection` constant.
+     */
+    val stress1: Double,
+    /** Pearson correlation between the input dissimilarities and the projected distances, over every pair. */
+    val distanceCorrelation: Double,
+) {
+    /** The old name of [retainedShare], which read as explained variance and is not. */
+    @Deprecated("Sums to 1 whatever is kept; use stress1 for fit quality", ReplaceWith("retainedShare"))
+    val proportion: DoubleArray get() = retainedShare
+}
 
 /** Exact t-SNE over a caller-supplied symmetric dissimilarity matrix. */
 data class SmileTsneProximityProjection(
@@ -348,9 +371,11 @@ fun smileMds(
     return SmileMdsProjection(
         coordinates = model.coordinates,
         scores = model.scores,
-        proportion = model.proportion,
+        retainedShare = model.proportion,
         distance = distance,
         positiveCorrection = positiveCorrection,
+        stress1 = model.stress1(proximity),
+        distanceCorrelation = model.distanceCorrelation(proximity),
     )
 }
 
@@ -367,6 +392,7 @@ fun smileMdsDistances(
     val model = fitClassicalMds(distances, dimensions, positiveCorrection)
     return SmileMdsProximityProjection(
         model.coordinates, model.scores, model.proportion, label, positiveCorrection,
+        model.stress1(distances), model.distanceCorrelation(distances),
     )
 }
 
@@ -523,7 +549,47 @@ private class ClassicalMdsFit(
     val coordinates: Array<DoubleArray>,
     val scores: DoubleArray,
     val proportion: DoubleArray,
-)
+) {
+    /** Every pair `a > b`: the input dissimilarity and the distance between the two rows of [coordinates]. */
+    private fun pairs(proximity: Array<DoubleArray>): Pair<DoubleArray, DoubleArray> {
+        val n = proximity.size
+        val input = DoubleArray(n * (n - 1) / 2)
+        val output = DoubleArray(input.size)
+        var k = 0
+        for (a in 0 until n) for (b in 0 until a) {
+            var squared = 0.0
+            for (c in coordinates[a].indices) {
+                val delta = coordinates[a][c] - coordinates[b][c]
+                squared += delta * delta
+            }
+            input[k] = proximity[a][b]
+            output[k] = sqrt(squared)
+            k++
+        }
+        return input to output
+    }
+
+    fun stress1(proximity: Array<DoubleArray>): Double {
+        val (input, output) = pairs(proximity)
+        val outSquared = output.sumOf { it * it }
+        val inSquared = input.sumOf { it * it }
+        if (inSquared == 0.0) return 0.0
+        val scale = if (outSquared > 0.0) input.indices.sumOf { input[it] * output[it] } / outSquared else 0.0
+        return sqrt(input.indices.sumOf { (input[it] - scale * output[it]).let { d -> d * d } } / inSquared)
+    }
+
+    fun distanceCorrelation(proximity: Array<DoubleArray>): Double {
+        val (input, output) = pairs(proximity)
+        val mi = input.average()
+        val mo = output.average()
+        var sxy = 0.0; var sxx = 0.0; var syy = 0.0
+        for (k in input.indices) {
+            val x = input[k] - mi; val y = output[k] - mo
+            sxy += x * y; sxx += x * x; syy += y * y
+        }
+        return if (sxx > 0.0 && syy > 0.0) sxy / sqrt(sxx * syy) else Double.NaN
+    }
+}
 
 /**
  * Whether Smile's ARPACK binding can be initialised in this process.

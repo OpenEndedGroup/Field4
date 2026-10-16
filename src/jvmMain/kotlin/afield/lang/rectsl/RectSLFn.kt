@@ -394,8 +394,10 @@ internal fun trackConstantValue(
  *   outside the active span, so those branches are the common path. [Functions.Fn.floor] turns them
  *   into arithmetic: see `withExactEndpoints` below.
  *
- * What is left out is `bounce-*`: four parabolic arcs, each join needing its own ramp. Expressible
- * with the same machinery, not yet expressed.
+ * - `bounce-*` is four parabolic arcs, continuous at every join, so it is the clamped-ramp fold
+ *   with four segments: each arc evaluated at `u` clamped into its own span, minus that arc's value
+ *   at the start of its span. Before a span the clamp pins the arc to its start and the bracket is
+ *   exactly zero; past it the bracket is that arc's whole rise. See `bounceOut` below.
  */
 internal val RECTSL_EASING_FNS: Map<String, TrackFnUnary> = buildMap {
 
@@ -457,6 +459,35 @@ internal val RECTSL_EASING_FNS: Map<String, TrackFnUnary> = buildMap {
             val first = (1.0 - (1.0 - a * a).pow(fnLeaf(0.5))) * 0.5
             val second = (1.0 - (1.0 - s) * (1.0 - s)).pow(fnLeaf(0.5)) * 0.5
             first + second
+        }
+    }
+
+    // Penner's bounce, transcribed from Functions.bounceOut: four arcs n·(t - c)² + k over the spans
+    // [0, 1/d), [1/d, 2/d), [2/d, 2.5/d), [2.5/d, 1], continuous where they meet.
+    fun bounceOut(u: Functions.Fn): Functions.Fn = with(Functions) {
+        val n = 7.5625
+        val d = 2.75
+        val joins = listOf(0.0, 1.0 / d, 2.0 / d, 2.5 / d, 1.0)
+        val centres = listOf(0.0, 1.5 / d, 2.25 / d, 2.625 / d)
+        val lifts = listOf(0.0, 0.75, 0.9375, 0.984375)
+        fun arc(k: Int, t: Functions.Fn): Functions.Fn = (t - centres[k]).let { it * it * n + lifts[k] }
+        var total: Functions.Fn = fnLeaf(0.0)
+        for (k in 0 until 4) {
+            val lo = joins[k]
+            val hi = joins[k + 1]
+            val inSpan = fnClamp01((u - lo) * (1.0 / (hi - lo))) * (hi - lo) + lo
+            total = if (k == 0) arc(0, inSpan) else total + (arc(k, inSpan) - arc(k, fnLeaf(lo)))
+        }
+        total
+    }
+
+    put("bounce-out") { u -> bounceOut(u) }
+    put("bounce-in") { u -> with(Functions) { 1.0 - bounceOut(1.0 - u) } }
+    put("bounce-in-out") { u ->
+        with(Functions) {
+            // Continuous at the halfway point (both halves give 0.5), so the same fold: the second
+            // term is exactly zero on the first half and the first is exactly 0.5 on the second.
+            (1.0 - bounceOut(1.0 - lower(u))) * 0.5 + bounceOut(upper(u)) * 0.5
         }
     }
 
@@ -1216,7 +1247,7 @@ private fun lowerTcbSymbolic(
  * and [freeParameterIndices] can read the mapping back out. Prefixed so a track called "x" cannot
  * collide with a leaf some other part of the library happened to name "x".
  */
-internal const val FREE_PARAM_GRAPH_PREFIX: String = "rectsl.param:"
+internal const val FREE_PARAM_GRAPH_PREFIX: String = afield.math.functions.FN_FREE_PARAMETER_PREFIX
 
 /**
  * Which θ index each named free parameter ended up at, for the graph [fn].

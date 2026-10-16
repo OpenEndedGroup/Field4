@@ -96,35 +96,26 @@ object LambdaSoundDocs {
     )
 
     /**
-     * The whole event vocabulary [Lambda.rules] declares, in the order this file maps to pitch.
-     *
-     * Not copied from the KDoc and hoped for: [assertTheVocabularyIsWhatItSays] reduces every term
-     * in [LambdaTerms.corpus] under every order and asserts the kinds it saw against this list,
-     * both ways round — see [KINDS_UNREACHABLE_ON_CLOSED_TERMS] for the half that is never reached.
+     * The whole event vocabulary [Lambda.rules] declares. Every kind a reduction emits must be one
+     * of these; [assertTheVocabularyIsWhatItSays] checks it.
      */
     val EVENT_KINDS: List<String> = listOf("beta", "duplicate", "branch", "prune", "erase", "annihilate")
 
     /**
-     * The two kinds no closed term can ever produce, and the reason.
+     * The kinds a closed term emits, in the order this file maps to pitch.
      *
-     * `duplicate` is emitted only by `dup-var`, `dup-const` and `dup-root`, and `erase` only by
-     * `erase-var`, `erase-const` and `erase-root`. All six need a nullary atom — a free `VAR`, a
-     * `CONST`, or the `ROOT` — to be the *non*-principal side of a meeting, and a closed term
-     * compiled by [LambdaTerms.compile] has no free `VAR`, no `CONST` at all, and exactly one
-     * `ROOT` whose principal port faces the answer rather than a fan or an eraser.
-     *
-     * So two of the six musical degrees are silent on every term in the corpus. Named here rather
-     * than discovered by a reader who counts the pitches in the figure, and asserted in
-     * [assertTheVocabularyIsWhatItSays] so that a rule-book change that reaches them fails a test
-     * rather than quietly widening the tune.
+     * `duplicate` and `erase` are missing on purpose: they come only from rules where a nullary atom
+     * (a free `VAR`, a `CONST`, or the `ROOT`) is the non-principal side, and a term compiled by
+     * [LambdaTerms.compile] has none of those in that position. [assertTheVocabularyIsWhatItSays]
+     * checks that the corpus reaches exactly these.
      */
-    val KINDS_UNREACHABLE_ON_CLOSED_TERMS: Set<String> = setOf("duplicate", "erase")
+    val SOUNDING_KINDS: List<String> = listOf("beta", "branch", "prune", "annihilate")
 
-    /** MIDI note per [EVENT_KINDS] index: a minor pentatonic off A2, so the rule sequence is a tune. */
-    val KIND_NOTES: List<Int> = listOf(45, 48, 50, 52, 55, 57)
+    /** MIDI note per [SOUNDING_KINDS] index: four degrees of a minor pentatonic off A2. */
+    val KIND_NOTES: List<Int> = listOf(45, 50, 52, 57)
 
-    /** The MIDI note a rewrite of this kind plays, or the root for a kind the vocabulary does not have. */
-    fun noteOf(kind: String): Int = KIND_NOTES[EVENT_KINDS.indexOf(kind).coerceAtLeast(0)]
+    /** The MIDI note a rewrite of this kind plays, or the root for a kind that does not sound. */
+    fun noteOf(kind: String): Int = KIND_NOTES[SOUNDING_KINDS.indexOf(kind).coerceAtLeast(0)]
 
     /**
      * The named terms this page reduces, as source text, taken from [LambdaTerms.corpus] **by name**
@@ -150,9 +141,8 @@ object LambdaSoundDocs {
     /**
      * One reaction, as the recorder saw it — the unit of the time series this page plots and plays.
      *
-     * [activePairs] is counted **after** the reaction and includes pairs no rule covers, which is
-     * why [reduciblePairs] is a separate number rather than the same one: a normal form still has
-     * an active pair in it (see [Trace.trailingActivePairs]).
+     * [activePairs] is counted **after** the reaction and includes pairs no rule covers (the `ROOT`
+     * facing the answer), which is why [reduciblePairs] is a separate number.
      */
     class Beat(
         /** 1-based reaction index. */
@@ -213,14 +203,8 @@ object LambdaSoundDocs {
         /** Agents left standing. */
         val remainingNodes: Int get() = net.nodes.size
 
-        /**
-         * Active pairs in the *final* net.
-         *
-         * Not zero, and that is the point: `ROOT` faces the normal form principal to principal and
-         * no rule covers `ROOT ⟂ LAM`. A normal form here is "no rule matches", not "nothing is
-         * touching".
-         */
-        val trailingActivePairs: Int get() = net.activePairs().size
+        /** Pairs a rule still covers in the *final* net: zero, when the reduction finished. */
+        val trailingReduciblePairs: Int get() = net.reduciblePairs(Lambda.rules()).size
 
         /** One slot per reaction, true where the reaction was a β. The bar this page condenses. */
         val betaMask: List<Boolean> get() = beats.map { it.rule == "beta-linear" }
@@ -351,9 +335,8 @@ object LambdaSoundDocs {
     /**
      * [EVENT_KINDS] is the rule book's vocabulary, checked against the rule book.
      *
-     * Both directions. Every kind seen must be in the list, or the melody has a note it cannot
-     * name; and every kind in the list must be seen somewhere in [TERMS], or the list is carrying a
-     * kind this page never plays and the pitch mapping is wider than the data.
+     * Both directions. Every kind seen must be in [EVENT_KINDS], and the kinds seen must be exactly
+     * [SOUNDING_KINDS], or the pitch mapping is narrower or wider than the data.
      */
     fun assertTheVocabularyIsWhatItSays(traces: List<Trace>): Set<String> {
         val seen = LinkedHashSet<String>()
@@ -369,10 +352,9 @@ object LambdaSoundDocs {
                 }
             }
         }
-        check(seen == EVENT_KINDS.toSet() - KINDS_UNREACHABLE_ON_CLOSED_TERMS) {
-            "the reachable half of the vocabulary changed: saw $seen, expected " +
-                "${EVENT_KINDS.toSet() - KINDS_UNREACHABLE_ON_CLOSED_TERMS}. If a closed term now reaches " +
-                "a `duplicate` or an `erase`, KINDS_UNREACHABLE_ON_CLOSED_TERMS' reasoning is wrong"
+        check(seen == SOUNDING_KINDS.toSet()) {
+            "the kinds a closed term emits changed: saw $seen, expected ${SOUNDING_KINDS.toSet()}; " +
+                "SOUNDING_KINDS and its pitches need to follow"
         }
         return seen
     }
@@ -583,11 +565,8 @@ object LambdaSoundDocs {
                 t.beats.forEachIndexed { i, beat ->
                     check(t.melody[i] == noteOf(beat.kind)) { "note $i does not match its reaction's kind" }
                 }
-                // Two of the six degrees are unreachable on a closed term, so the tune uses four.
                 val used = t.melody.distinct().sorted()
-                check(used.none { it == noteOf("duplicate") || it == noteOf("erase") }) {
-                    "a closed term reached a degree KINDS_UNREACHABLE_ON_CLOSED_TERMS says it cannot: $used"
-                }
+                check(used.all { it in KIND_NOTES }) { "the melody left the four degrees: $used" }
                 val onsets = PatSoundDocs.onsetPeaks(audio.mono, threshold = 0.05)
                 check(onsets.size >= t.steps) { "expected at least ${t.steps} notes, found ${onsets.size}" }
                 println("    $used are the MIDI notes it uses, of $KIND_NOTES")
@@ -719,19 +698,15 @@ object LambdaSoundDocs {
 
         val kinds = assertTheVocabularyIsWhatItSays(all)
         println(
-            "event kinds seen: $kinds — $KINDS_UNREACHABLE_ON_CLOSED_TERMS are unreachable on closed terms",
+            "event kinds seen: $kinds",
         )
 
-        // A normal form still has an active pair in it, and no scheduler makes that go away.
+        // Every reduction ends in a normal form: no rule matches anywhere.
         all.forEach { t ->
-            check(t.trailingActivePairs >= 1) {
-                "${t.name}/${t.order.name} ended with no active pair at all, which the ROOT should prevent"
+            check(t.trailingReduciblePairs == 0 && t.net.isNormal(Lambda.rules())) {
+                "${t.name}/${t.order.name} stopped with ${t.trailingReduciblePairs} pair(s) a rule still covers"
             }
         }
-        println(
-            "trailing active pairs (ROOT against the answer): " +
-                all.map { it.trailingActivePairs }.distinct().sorted(),
-        )
 
         println()
         println("the four terms this page draws:")

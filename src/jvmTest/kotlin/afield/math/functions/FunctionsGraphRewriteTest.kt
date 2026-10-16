@@ -269,6 +269,20 @@ class FunctionsGraphRewriteTest {
     }
 
     @Test
+    fun underMeansAnyAncestorAndParamEqualsIsRefused() = with(Functions) {
+        // sin -> (frequency) multiply -> saw: saw is two levels below sin.
+        val f = sin(frequency = saw(0.25) * 0.5)
+        val viaUnder = f.previewRewrite("op=saw under=sin => op=triangle")
+        assertTrue(viaUnder.function.graphMatches { it.op == "triangle" }.isNotEmpty(), viaUnder.summary())
+        val viaParent = f.previewRewrite("op=saw parent=sin => op=triangle")
+        assertTrue(viaParent.function.graphMatches { it.op == "triangle" }.isEmpty(), "parent= is the immediate parent only")
+        val refused = kotlin.runCatching { f.previewRewrite("param=frequency => *= 2") }
+        assertTrue(refused.exceptionOrNull()?.message?.contains("role=frequency") == true ||
+            refused.getOrNull()?.summary()?.contains("role=frequency") == true, refused.toString())
+        Unit
+    }
+
+    @Test
     fun previewReportsMatchesChangesAndUnmatchedRulesForAgents() = with(Functions) {
         val preview = (saw(0.25) * 0.5).previewRewrite(
             """

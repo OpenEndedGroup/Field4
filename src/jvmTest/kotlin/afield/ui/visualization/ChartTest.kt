@@ -47,6 +47,18 @@ import kotlin.test.assertTrue
  */
 class ChartTest {
 
+    // ── the committed gallery ─────────────────────────────────────────────────────
+
+    @Test
+    fun `the chart page's committed figures are what the chart code draws`() {
+        val dir = java.io.File("public/docs/assets/chart_gallery")
+        val stale = afield.examples.visualization.ChartGallery.staleCommittedFigures(dir)
+        assertTrue(stale.isEmpty(),
+            "chart.md's figures are stale; regenerate with " +
+                "CHART_GALLERY_DIR=public/docs/assets/chart_gallery python3 tools/run_field_tests.py --id visualization.chart-gallery\n" +
+                stale.joinToString("\n"))
+    }
+
     // ── ticks ─────────────────────────────────────────────────────────────────────
 
     @Test

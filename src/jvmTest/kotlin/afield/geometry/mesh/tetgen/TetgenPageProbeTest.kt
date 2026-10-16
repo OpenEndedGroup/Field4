@@ -131,13 +131,6 @@ class TetgenPageProbeTest {
             floatArrayOf(0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f),
             intArrayOf(0, 1, 2, 0, 2, 1, 0, 1, 3, 0, 3, 1)))
 
-        // TetGen dumps the facets it skipped into the working directory on the self-intersection
-        // path. See TetgenWorkingDirectoryLitterTest; without this the suite leaves them in the
-        // repository root.
-        val here = java.io.File(".").absoluteFile.parentFile
-        listOf("tetgen-tmpfile_skipped.node", "tetgen-tmpfile_skipped.face")
-            .forEach { java.io.File(here, it).delete() }
-
         assertEquals(
             setOf(
                 "five faces of a cube",
@@ -189,7 +182,7 @@ class TetgenPageProbeTest {
         for ((name, distance) in listOf<Pair<String, (Double, Double, Double) -> Double>>(
             "box   " to ::boxDistance, "sphere" to ::sphereDistance)) {
             for (h in listOf(0.4, 0.2, 0.1, 0.05)) {
-                Solid.levelSet(bounds, edgeLength = h, parallel = true,
+                Solid.levelSet(bounds, edgeLength = h,
                     field = { x, y, z -> -distance(x, y, z) }).use { marched ->
                     val m = marched.toTriMesh()
                     var worst = 0.0

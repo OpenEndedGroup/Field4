@@ -610,10 +610,11 @@ val cases = listOf<Pair<String, ElementSelector>>(
         (ElementSelectors.vertexDegree(4) and !ElementSelectors.provenanceRole("face-apex")),
 )
 
-// Two receivers that behave differently: on a PolyhedralObject there is no lineage to consult,
-// so the provenance selectors match nothing. On a transform result they can see it.
+// Two receivers that behave differently: a PolyhedralObject has no lineage to consult, so a
+// provenance selector refuses there. A transform result can see it.
 val rows = cases.joinToString("\n") { (label, s) ->
-    "| `$label` | ${kisCube.polyhedron.selectElements(s).size} | ${kisCube.selectElements(s).size} |"
+    val bare = runCatching { kisCube.polyhedron.selectElements(s).size }.fold({ "$it" }, { "refused" })
+    "| `$label` | $bare | ${kisCube.selectElements(s).size} |"
 }
 markdown("selectors", """
 #### `cube().kis()` — 14 vertices, 36 edges, 24 triangles
@@ -626,15 +627,14 @@ The two columns differ exactly where a selector needs lineage.
 """, width = 940)
 ```
 
-![A table of eight selectors evaluated against a kis-ed cube on both a PolyhedralObject and a PolytopeTransformResult. Rank, face-degree and vertex-degree selectors give identical counts in both columns, while the two provenanceRole selectors match nothing on the bare object and match six face apexes and eight original vertices on the transform result. The final composed row differs the other way, matching six on the bare object and none on the transform result](assets/polytope_examples/selectors.png)
+![A table of eight selectors evaluated against a kis-ed cube on both a PolyhedralObject and a PolytopeTransformResult. Rank, face-degree and vertex-degree selectors give identical counts in both columns, while the provenanceRole rows, including the composed last one, read refused on the bare object and match six face apexes, eight original vertices and none on the transform result](assets/polytope_examples/selectors.png)
 
 That difference follows from what a selector runs against: a bare `PolyhedralObject` has no
 transform history to have a role in, and a transform result does.
 
-In the last row, `vertexDegree(4)` matches the six apexes kis raised. On the bare object
-`provenanceRole(...)` matches nothing, so its negation matches everything and the combined selector
-still finds all six; the transform result correctly finds none. Use negated provenance selectors
-only on a transform result.
+In the last row, `vertexDegree(4)` matches the six apexes kis raised, and the transform result
+correctly finds none once they are excluded by role. On the bare object every provenance row is
+refused rather than answered.
 
 ## Deployed parameters: a scalar field over the selected elements
 

@@ -1309,7 +1309,7 @@ The shape is exact and the arithmetic is not quite, in a way you can plan around
 On a GPU the sampler works in `double` and the shader in `float`, so expect the
 two to part company at about `1e-6` of a wall unit.
 
-??? aside "What the build checks"
+??? aside "Agents: what the build checks"
     The emitted geometry is checked against the CPU sampler to `1e-9` across the
     whole gallery, every gallery scene is compiled through shaderc as part of the
     build, and the GPU agreement guard is `1e-5`. `dev_docs/RECTSL_SDF_AGREEMENT.md`

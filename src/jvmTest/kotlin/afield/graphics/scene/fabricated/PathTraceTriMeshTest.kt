@@ -188,6 +188,18 @@ class PathTraceTriMeshTest {
     }
 
     @Test
+    fun `a zero-area triangle appended directly is skipped and counted, not fatal`() {
+        val (scene, material) = sceneWithOneMaterial()
+        val a = Vector3f(0f, 0f, 0f)
+        scene.triangle(a, Vector3f(1f, 0f, 0f), Vector3f(2f, 0f, 0f), material)
+        scene.triangle(a, Vector3f(Float.NaN, 0f, 0f), Vector3f(0f, 1f, 0f), material)
+        scene.triangle(a, Vector3f(1f, 0f, 0f), Vector3f(0f, 1f, 0f), material, na = Vector3f(0f, 0f, 0f))
+        assertEquals(1, scene.triangles.size)
+        assertEquals(2, scene.degenerateCount)
+        assertEquals(1f, scene.triangles[0].n[0].length(), 1e-6f, "a zero-length normal falls back to the face normal")
+    }
+
+    @Test
     fun `a material the scene does not have is refused rather than defaulted`() {
         val (scene, material) = sceneWithOneMaterial()
         assertFailsWith<IllegalArgumentException> {

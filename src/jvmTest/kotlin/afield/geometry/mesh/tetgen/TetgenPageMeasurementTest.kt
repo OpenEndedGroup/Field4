@@ -179,7 +179,7 @@ class TetgenPageMeasurementTest {
             val bounds = afield.geometry.mesh.boundsOf(
                 afield.math.linalg.vec(-1.6, -2.1, -2.6), afield.math.linalg.vec(1.6, 2.1, 2.6))
             for (h in listOf(0.4, 0.2, 0.1, 0.05)) {
-                Solid.levelSet(bounds, edgeLength = h, parallel = true, field = ::boxField).use { marched ->
+                Solid.levelSet(bounds, edgeLength = h, field = ::boxField).use { marched ->
                     val m = marched.toTriMesh()
                     // How far the marched surface's vertices sit from the true box surface.
                     var worst = 0.0

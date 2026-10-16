@@ -337,7 +337,7 @@ Define reusable words with `: name ... ;`. A call consumes one input value, runs
 
 ```stacksl
 : half  >v  <v 0.5 *  ;      # right: consumes one, leaves one
-: half  =v  <v 0.5 *  ;      # wrong: leaves its input under its result, so every call pushes two
+: half  =v  <v 0.5 *  ;      # refused: leaves its input under its result, so every call pushes two
 ```
 
 ```stacksl

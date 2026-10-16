@@ -40,7 +40,7 @@ Watch the same polylines over a dimmed source to check the endpoints against the
 
 ## Scrub recorded tracks
 
-The second Starting point box loads a small, representative subset of the same trajectories. It
+The starting point's second box loads a small, representative subset of the same trajectories. It
 keeps every sample of each selected identity, so time, births, retirement and colors are preserved.
 Move **movie time**, adjust **history (frames)** and **line width**, or switch **identity colors**
 to inspect motion independently of the source's changing tint. Lines are the default; **points**
@@ -98,7 +98,7 @@ If you already have a compatible environment, set `FIELD_PARTICLE_TRACKER_PYTHON
 executable before starting Field. The tracker is optional: Field startup and normal builds do not
 install these packages or fetch weights.
 
-The third Starting point box runs the long job in a coroutine, then opens the complete recorded
+The starting point's third box runs the long job in a coroutine, then opens the complete recorded
 result. Change the input filename and particle count for your own movie:
 
 ```diffstatic {data-lang=kotlin}

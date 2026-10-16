@@ -314,7 +314,7 @@ Every form above sums correctly. `kkC` (kis applied twice to the cube) is a poly
 [Polytopes & the Conway Algebra](polytope_examples.md) uses it as its counter-example. The Ceres
 solver, `relaxWithCeres`, does reach a canonical form. This box tries both and slices each result.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/kkc.png" wait="14" capture="box" open-outputs="true" w="1240" h="820" padding="16" timeout="360" name="chain-contours-kkc" requires="ceres,manifold" alt="A three-row table of the kkC embeddings and a convergence plot. The plot has two traces against layer count: kkC as built climbing to 1.00000, and relaxWithCeres() flattening out at 0.90029 and staying there" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/kkc.png" wait="14" capture="box" open-outputs="true" w="1240" h="820" padding="16" timeout="360" name="chain-contours-kkc" requires="ceres,manifold" alt="A three-row table of the kkC embeddings, with what canonicalDiagnostics() says of each, and a convergence plot. The plot has two traces against layer count: kkC as built climbing to 1.00000, and relaxWithCeres() flattening out at 0.90029 and staying there" embed=true}
 :::static
 import afield.geometry.solid.manifold.FillRule
 import afield.geometry.solid.manifold.Solid
@@ -370,12 +370,16 @@ val sweeps = mutableListOf<Pair<String, List<Number>>>()
 Solid.scope {
     for ((label, p) in ["kkC as built" to seed, "canonicalize()" to iterated, "relaxWithCeres()" to solved]) {
         val d = p.canonicalDiagnostics()
+        val verdict = when {
+            d.isEmbedded -> "a solid"
+            d.signedVolume <= 0.0 -> "inside out"
+            else -> "${d.selfIntersectingFacePairs} face pairs cross"
+        }
         val bare = solidOf(p)
-        // A non-positive signed volume is not a printable body, and scaling it onto the bed
-        // would mirror it into looking like one. So it is reported rather than rescued.
-        if (bare.volume <= 0.0) {
-            rows += [label, "%.3e".format(d.tangencyRadiusSpread), "${bare.status}", bare.genus,
-                "%.4f".format(bare.volume), "—", "—", "inside out"]
+        // Scaling an inside-out body onto the bed would mirror it into looking like one.
+        if (d.signedVolume <= 0.0) {
+            rows += [label, "%.3e".format(d.tangencyRadiusSpread), verdict, "${bare.status}", bare.genus,
+                "%.4f".format(bare.volume), "—", "—", "—"]
             continue
         }
         val solid = onTheBed(bare)
@@ -383,7 +387,7 @@ Solid.scope {
         val (disagreeing, over) = overlap(solid)
         sweeps += label to sweep
         rows += [
-            label, "%.3e".format(d.tangencyRadiusSpread), "${bare.status}", bare.genus,
+            label, "%.3e".format(d.tangencyRadiusSpread), verdict, "${bare.status}", bare.genus,
             "%.4f".format(bare.volume), "%.5f".format(sweep.last()),
             "$disagreeing / 192, %.6f".format(over),
             "%.5f".format(1.0 - 2.0 * over),
@@ -393,7 +397,7 @@ Solid.scope {
 }
 
 markdown("kkc", Table([
-    "embedding", "tangency spread", "Manifold status", "genus", "signed volume",
+    "embedding", "tangency spread", "canonicalDiagnostics()", "Manifold status", "genus", "signed volume",
     "Σ area·h/n at 768 layers", "layers where POSITIVE ≠ EVEN_ODD, overlap", "1 − 2·overlap",
 ]).rows(rows).h, width = 1180)
 showSignals(
@@ -407,12 +411,13 @@ showSignals(
 
 In the middle row, `canonicalize()` turns `kkC` inside out: its signed volume goes negative.
 Manifold still reports `NO_ERROR` and genus 0, because a surface that passes through itself can
-still be a valid manifold as far as `status` is concerned. A negative volume is reason enough to
-refuse the result, so the box does.
+still be a valid manifold as far as `status` is concerned. `canonicalDiagnostics()` reports the
+negative `signedVolume`, so `isEmbedded` is false and the box does not slice it.
 
 In the bottom row, `relaxWithCeres(RelaxationPlan.canonicalConditions())` converges in a few
-milliseconds and returns a positive volume, `NO_ERROR` and genus 0. Every canonical diagnostic
-reports success, but the layer stack does not agree:
+milliseconds to a positive volume with every canonical condition met, and `canonicalDiagnostics()`
+still says it is not a solid: `selfIntersectingFacePairs` counts the faces that pass through each
+other. The layer stack agrees:
 
 * The Riemann sum levels off below 1 and stays there as the layers get thinner. A sum that is short
   only because the layers are coarse keeps climbing, as `kkC` as built does in the same plot.
@@ -420,10 +425,9 @@ reports success, but the layer stack does not agree:
   this page they agree on every layer.
 * The overlap the fill rules imply accounts exactly for the missing volume.
 
-So the surface passes through itself. `volume` integrates over the boundary and counts the
-overlapping region twice; the slicer resolves each layer into a region and counts it once. The
-`riemann` and `overlap` lines in the box are a self-intersection test you can run on any solid,
-which the canonical diagnostics do not include.
+`volume` integrates over the boundary and counts the overlapping region twice; the slicer resolves
+each layer into a region and counts it once. The `riemann` and `overlap` lines in the box are the
+same test done with slices, and they work on any solid, not only a polytope.
 
 !!! note "A Boolean will not find the crossings for you"
 

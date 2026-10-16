@@ -136,8 +136,6 @@ class Frames {
     }
 }
 
-class EndedException : Throwable()
-
 /**
  * Lowest-level [Frames] builder: the body runs once and is responsible for calling
  * [Frames.frame] itself to advance/suspend frames (e.g. `while (frame()) { ... }`).
@@ -237,11 +235,17 @@ fun Box.launchFrames(
     val previousAtEndFinish = frames.onAtEndFinish
     val previousShouldCancelAtEnd = frames.shouldCancelAtEnd
 
+    // `a + b` forwards up to three end phases (both children and the parent) to these hooks. Count
+    // them, so the box reports "ending" once per stop and the fence is restored when the last ends.
+    val activeEndPhases = java.util.concurrent.ConcurrentHashMap.newKeySet<Job>()
+
     frames.onAtEndStart = onAtEndStart@{ endJob ->
         // The end phase registers against the epoch *now*, not `launchEpoch`: stop bumps the epoch
         // and it is stop's cancellation that creates this job. See Box.registerEndPhaseJob.
         if (!box.registerEndPhaseJob(endJob)) return@onAtEndStart
         previousAtEndStart(endJob)
+        val first = synchronized(activeEndPhases) { activeEndPhases.isEmpty().also { activeEndPhases.add(endJob) } }
+        if (!first) return@onAtEndStart
         val endingGeneration = box.runGeneration[strand] ?: generation
         frames.shouldCancelAtEnd = {
             previousShouldCancelAtEnd() || box.runGeneration[strand] != endingGeneration
@@ -258,8 +262,9 @@ fun Box.launchFrames(
     }
     frames.onAtEndFinish = { endJob ->
         previousAtEndFinish(endJob)
-        frames.shouldCancelAtEnd = previousShouldCancelAtEnd
         box.jobs.remove(endJob)
+        val last = synchronized(activeEndPhases) { activeEndPhases.remove(endJob) && activeEndPhases.isEmpty() }
+        if (last) frames.shouldCancelAtEnd = previousShouldCancelAtEnd
     }
 
     val launchJob = inMain(Box.boxContextElement(box) + ProfileOrigin(box, strand)) {
@@ -323,11 +328,9 @@ fun Box.launchFrames(
  * wrong — both parents would drive the same `a.body()` and share its `frameNumber` — so this narrows
  * nothing, but it is now wrong in a second way.
  *
- * One rough edge is left, and it is a reporting one. Up to three end phases (both children and the
- * parent) now forward to the same `onAtEndStart`/`onAtEndFinish` pair, so the box may report
- * `"ending"` more than once, and the first end phase to *finish* restores the parent's
- * `shouldCancelAtEnd` while the others are still winding down. Neither weakens the stop: every end
- * job is in [Box.jobs], which is the route `stopTrackedJobs` uses.
+ * Up to three end phases (both children and the parent) forward to the same
+ * `onAtEndStart`/`onAtEndFinish` pair. The launcher counts them, so the box reports `"ending"` once
+ * per stop and restores `shouldCancelAtEnd` only when the last of them has finished.
  */
 operator fun Frames.plus(other: Frames): Frames {
     val left = this

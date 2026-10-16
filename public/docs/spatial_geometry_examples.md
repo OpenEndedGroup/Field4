@@ -1,5 +1,7 @@
 # Points into structure — Voronoi, Apollonius, contours and clusters
 
+<!-- capture-sources: src/jvmMain/kotlin/afield/geometry/path/contours.kt src/jvmMain/kotlin/afield/geometry/spatial/ -->
+
 *Every public declaration used below is listed, with its KDoc, in the codebase reference:
 [Graphics](reference/graphics.md) and [Data](reference/data.md).*
 
@@ -1219,19 +1221,12 @@ bridge does its own repair.
 
 </div>
 
-??? aside "How these figures are captured"
+??? aside "Agents: how these figures are captured"
     The numbers the figures above carry are asserted in
     `src/jvmTest/kotlin/afield/geometry/spatial/SpatialGeometryTest.kt`, including the Apollonius circle
     centres and the marcher's negation invariant, with a control arm confirming that a
     strict-sign-change marcher fails the exact-iso case. The 3D closure-failure counts are pinned
     with `<=` in `VoronoiFaceTopologyTest.kt`, so they can improve but not regress.
-
-    A `diffstatic_runner` fence is re-executed only when the build decides its capture is out of
-    date, and that decision comes from a fixed digest list (`RUNNER_DIGEST_SOURCE_FILES` in
-    `public/docs_hooks.py`) which covers the runner's own machinery and no stdlib source at all. So
-    editing `contours.kt` leaves every digest unchanged and an incremental build is a cache hit.
-    These figures were generated with `FIELD_DOCS_RUNNER_MODE=always`, which forces them;
-    `dev_docs/docs_capture_staleness.md` has the rest.
 
 ## Reference
 
@@ -1402,5 +1397,6 @@ Convert graphs, cells or clusters into Field drawings and interactive views.
 
 </div>
 
-Source: `src/jvmMain/kotlin/afield/geometry/path/contours.kt`, `dirichlet.kt`, `voronoi.kt`,
-`clustering.kt`, `spatial_field.kt`, and the JTS-backed corner of `graph_connectivity.kt`.
+Source: `src/jvmMain/kotlin/afield/geometry/path/contours.kt`,
+`afield/geometry/spatial/voronoi.kt` and `spatial_field.kt`, `afield/math/statistics/dirichlet.kt`
+and `clustering.kt`, and the JTS-backed corner of `afield/data/graph/graph_connectivity.kt`.

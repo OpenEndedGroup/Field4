@@ -46,9 +46,9 @@ expect:
  * dir as `args[0]` (or set `VISION_GEOMETRY_PREVIEW_DIR`) to regenerate the committed docs captures
  * under `dev_docs/assets/vision_geometry_preview/`.
  *
- * When regenerating, render to a **temp dir and copy the files in afterwards**. Writing them
- * straight into the working tree while `run_field_tests.py`'s Field server is watching it takes the
- * jvm-main child down mid-run (exit 130), for no reason the output ever explains.
+ * It always renders into a private temp dir and copies the finished files to the requested dir at
+ * the end, because writing them one by one into a working tree that `run_field_tests.py`'s Field
+ * server is watching takes the jvm-main child down mid-run (exit 130).
  */
 object VisionGeometryPreviewGallery {
 
@@ -488,11 +488,11 @@ object VisionGeometryPreviewGallery {
         System.setProperty("java.awt.headless", "true")
         val repoRoot = locateRepoRoot()
         val transcripts = File(repoRoot, "dev_docs/agents/transcripts")
-        val outDir = File(
-            args.getOrNull(0) ?: System.getenv("VISION_GEOMETRY_PREVIEW_DIR")
-                ?: File(System.getProperty("java.io.tmpdir"), "vision-geometry-preview").path,
-        )
-        outDir.mkdirs()
+        val requested = (args.getOrNull(0) ?: System.getenv("VISION_GEOMETRY_PREVIEW_DIR"))?.let(::File)
+        // Render into a private staging dir and copy the finished files to [requested] at the end:
+        // writing images one by one into a working tree a Field server is watching takes this
+        // process down mid-run, so the committed asset folder is only touched once, all at once.
+        val outDir = kotlin.io.path.createTempDirectory("vision-geometry-preview").toFile()
         println("VisionGeometryPreviewGallery: repo = ${repoRoot.absolutePath}")
         println("VisionGeometryPreviewGallery: out  = ${outDir.absolutePath}")
 
@@ -619,7 +619,12 @@ object VisionGeometryPreviewGallery {
             failures.forEach { System.err.println("  - $it") }
             exitProcess(1)
         }
-        println("vision geometry preview gallery rendered to ${outDir.absolutePath} ($rendered image(s))")
+        if (requested != null) {
+            requested.mkdirs()
+            outDir.copyRecursively(requested, overwrite = true)
+            outDir.deleteRecursively()
+        }
+        println("vision geometry preview gallery rendered to ${(requested ?: outDir).absolutePath} ($rendered image(s))")
     }
 
     /**

@@ -57,6 +57,31 @@ class CachedTest {
         return v
     }
 
+    /** Loads [RecompiledProbe] afresh, the way each compile of a box makes its declared classes anew. */
+    private fun freshProbeClass(): Class<*> {
+        val name = RecompiledProbe::class.java.name
+        val bytes = RecompiledProbe::class.java.getResourceAsStream("/" + name.replace('.', '/') + ".class")!!.readBytes()
+        val loader = object : ClassLoader(RecompiledProbe::class.java.classLoader) {
+            override fun loadClass(n: String, resolve: Boolean): Class<*> =
+                if (n == name) findLoadedClass(n) ?: defineClass(n, bytes, 0, bytes.size) else super.loadClass(n, resolve)
+        }
+        return loader.loadClass(name)
+    }
+
+    @Test
+    fun aRecompiledBoxLocalClassClosesTheStaleValueAndSaysSo() {
+        val box = Box("cached-recompiled")
+        val printed = mutableListOf<String>()
+        box.output.proxy = { m, _, _ -> printed += m.toString() }
+        val first = freshProbeClass()
+        val second = freshProbeClass()
+        val a = run(box) { @Suppress("UNCHECKED_CAST") BoxCache.lookup(box, first.kotlin as kotlin.reflect.KClass<Any>, emptyList()) { first.getDeclaredConstructor().newInstance() as Any } }
+        run(box) { @Suppress("UNCHECKED_CAST") BoxCache.lookup(box, second.kotlin as kotlin.reflect.KClass<Any>, emptyList()) { second.getDeclaredConstructor().newInstance() as Any } }
+        assertEquals(1, first.getMethod("getCloses").invoke(a), "the previous compile's value is closed at once")
+        assertEquals(1, BoxCache.size(box))
+        kotlin.test.assertTrue(printed.any { "declared in this box's code" in it }, "and the box is told why: $printed")
+    }
+
     @Test
     fun sameKeysReturnTheCachedValueAcrossReRuns() {
         val box = Box("cached-same")
@@ -112,4 +137,10 @@ class CachedTest {
         assertEquals(0, BoxCache.size(box))
         assertFalse(run(box) { box.cached<View>("r") { View("r") } } === plain, "and the next ask makes a fresh one")
     }
+}
+
+/** Stand-in for a class declared in a box's own code; see [CachedTest.freshProbeClass]. */
+class RecompiledProbe : AutoCloseable {
+    var closes = 0
+    override fun close() { closes++ }
 }

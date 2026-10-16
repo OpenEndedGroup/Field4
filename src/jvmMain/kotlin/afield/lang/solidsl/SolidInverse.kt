@@ -503,7 +503,10 @@ data class SolidFit(
     /** The whole descent, for a loss curve or a convergence reason. */
     val run: OptimizeRun,
     /**
-     * Parameters whose gradient was **exactly zero** at [start] — the ones that could not have moved.
+     * Parameters whose gradient was **exactly zero** at [start], or that the whole descent left
+     * exactly where they began — the ones that could not, or did not, move. The second catches a
+     * child that is never the nearest surface anywhere: a cube wholly inside a bar is invisible to
+     * the loss, and its parameter comes back bit-identical to the seed.
      *
      * See the note on [afield.lang.solidsl.SolidFit] about what causes it. This is reported rather than
      * thrown on, because a legitimately-dead parameter is a fine thing to have in a vector (a fit
@@ -547,7 +550,7 @@ data class SolidFit(
         appendLine("  rms distance   ${"%.6e".format(sqrt(max(0.0, initialLoss)))}  ->  ${"%.6e".format(rmsError)}")
         appendLine("  improvement    ${"%.4g".format(improvementFactor)}x")
         if (deadParameters.isNotEmpty()) {
-            appendLine("  DEAD (zero gradient at the start): ${deadParameters.joinToString(", ")}")
+            appendLine("  DEAD (zero gradient at the start, or never moved): ${deadParameters.joinToString(", ")}")
         }
         append("  fitted         $fitted")
     }
@@ -611,6 +614,7 @@ fun SolidTemplate.fitParameters(
 
     val run = minimizeWithGradient(start, options.toOptimizeOptions(), valueAndGradient)
     val end = valueAndGradient(run.x)
+    val stuck = neverMoved(start, run).map { names[it] }
 
     return SolidFit(
         template = this,
@@ -620,6 +624,11 @@ fun SolidTemplate.fitParameters(
         loss = end.value,
         fitted = withValues(run.x),
         run = run,
-        deadParameters = dead,
+        deadParameters = names.filter { it in dead || it in stuck },
     )
 }
+
+/** Parameters the descent never moved off their seed: every recorded iterate holds [start] exactly. */
+internal fun neverMoved(start: DoubleArray, run: OptimizeRun): List<Int> =
+    if (run.iterations == 0) emptyList() else start.indices.filter { i -> run.trajectory.all { it[i] == start[i] } && run.x[i] == start[i] }
+

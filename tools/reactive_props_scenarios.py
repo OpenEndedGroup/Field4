@@ -453,7 +453,7 @@ def up_rerun_held_during_pull(s: Scenario):
     target = f'thisBox.named("{s.p("B")}")'
     s.code("A", "propUp<Int>(a)\na = 2")
     s.run("T", "var fired = false\nframes { while (frame()) { if (!fired && " + go + '.getPropertyRaw("go") == true) {\n'
-               "fired = true\nval t = " + target + "\nafield.thisSessionInfo.set(t.inside)\n"
+               "fired = true\nval t = " + target + "\nafield.app.server.thisSessionInfo.set(t.inside)\n"
                'afield.app.protocol.handle(afield.app.protocol.Message("execute-all").payload(afield.app.protocol.Execute(t.id, "code", 0, t.getPropertyRaw("code") as String, false)))\n'
                "} } }", launch=True)
     s.clear()
@@ -566,7 +566,7 @@ def down_reader_pulls_up(s: Scenario):
     s.run("A", "propDown<Int>(x)\nx = 1")
     s.run("C", "propUp<Int>(y)\ny = 7")
     s.run("B", "setPropertyRaw(\"result\", x + y)")
-    s.ctl(f'thisBox.named("{s.p("C")}").removePropertyRaw("y")\nafield.ReactiveRuns.clearEvents()')
+    s.ctl(f'thisBox.named("{s.p("C")}").removePropertyRaw("y")\nafield.runtime.lifecycle.ReactiveRuns.clearEvents()')
     s.run("A", "propDown<Int>(x)\nx = 2")
     s.sleep(4.0)
     s.check('''

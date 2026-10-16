@@ -501,7 +501,7 @@ fun Profile.extruded(
     slices: Int = 0,
 ): SolidExpr = SolidExpr.Extrude(this, height.toDouble(), twistDegrees.toDouble(), scaleTop.toDouble(), slices)
 
-/** Revolved about **Y**; the profile must lie at `x >= 0`. See [SolidExpr.Revolve]. */
+/** Revolved about **Z** (the profile's `y` becomes `z`); the profile must lie at `x >= 0`. See [SolidExpr.Revolve]. */
 fun Profile.revolved(degrees: Number = 360.0, segments: Int = 0): SolidExpr =
     SolidExpr.Revolve(this, degrees.toDouble(), segments)
 

@@ -718,7 +718,7 @@ on the welcome screen's starting points) is this page as a document: `rings` def
 two boxes under it, `change it` and `try things`, drive its verbs. Open it and run the three boxes
 in order.
 
-??? aside "Tests and design notes"
+??? aside "Agents: tests and design notes"
     `study.document.registrar` (`src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt`)
     drives all ten verbs on a document's study through the same tool registry an agent calls, with
     no model. The design notes are in `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`, under "Studies: one

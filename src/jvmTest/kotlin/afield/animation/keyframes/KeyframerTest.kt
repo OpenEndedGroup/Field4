@@ -213,21 +213,33 @@ class KeyframerTest {
     }
 
     @Test
-    fun captureRoundTripsAValueHeldPropertyAsABinding() {
-        // The read side is symmetric; the write side is not. Applying a key always binds, so a
-        // value-held property comes back as a constant binding with the old value shadowed under it.
+    fun captureRoundTripsAValueHeldPropertyAsAValue() {
+        // Capture reads either kind; apply writes back the kind it found, so nothing is shadowed.
+        val scope = KeyframeScope()
+        val structure = Structure()
+        structure["gain"] = 2.0f
+        structure.bind("width") { 1.0f }
+        scope.target("gain", structure)
+        scope.target("width", structure)
+
+        val key = scope.capture()
+        key["gain"] = 3.0f
+        key["width"] = 4.0f
+        key()
+
+        assertEquals(3.0f, structure.values["gain"], "a value-held property comes back as a value")
+        assertEquals(null, structure.bindings["gain"], "…with no binding over it")
+        assertEquals(4.0f, structure.bindings["width"]?.invoke(), "a bound property comes back as a binding")
+    }
+
+    @Test
+    fun copyUpdateCodeReturnsTheCodeWithoutAClipboard() {
         val scope = KeyframeScope()
         val structure = Structure()
         structure["gain"] = 2.0f
         scope.target("gain", structure)
-
-        val key = scope.capture()
-        key["gain"] = 3.0f
-        key()
-
-        assertEquals(3.0f, structure.get<Float>("gain"), "the new value is what the structure reads")
-        assertEquals(3.0f, structure.bindings["gain"]?.invoke(), "…as a binding")
-        assertEquals(2.0f, structure.values["gain"], "…shadowing the value that was there")
+        val code = scope.capture().copyUpdateCodeToClipboard("k")
+        assert(code.contains("gain")) { code }
     }
 
     @Test
@@ -542,7 +554,7 @@ class KeyframerTest {
     }
 
     @Test
-    fun aFloatPairStaysFloatAndAnyOtherNumericPairBecomesDouble() {
+    fun aNumericLaneKeepsItsOwnKind() {
         val scope = KeyframeScope()
 
         val floats = scope.interpolate(
@@ -553,14 +565,14 @@ class KeyframerTest {
         assertTrue(floats is Float, "Float + Float stays Float")
         assertEquals(0.5f, floats)
 
-        // Two Int keyframes yield a Double — which an Int uniform will not accept.
+        // Two Int keyframes stay an Int, rounded, so an Int uniform still accepts the blend.
         val ints = scope.interpolate(
             scope.Key(mutableMapOf("v" to 0)),
             scope.Key(mutableMapOf("v" to 10)),
             0.5
         )["v"]
-        assertTrue(ints is Double, "Int + Int becomes Double, not Int")
-        assertEquals(5.0, ints)
+        assertTrue(ints is Int, "Int + Int stays Int")
+        assertEquals(5, ints)
 
         // Mixed Float/Double is Double too.
         val mixed = scope.interpolate(
@@ -858,29 +870,28 @@ class KeyframerTest {
 
         samples.zip(kinds).forEach { (value, kind) ->
             val kv = KValue.fromAny(value)
-            assertTrue(kv is KValue.Num, "$value is a Num")
-            assertEquals(kind, kv.kind)
-            val back = kv.toAny()
+            if (kind == NumKind.LONG) assertTrue(kv is KValue.LongValue, "a Long is stored exactly")
+            else {
+                assertTrue(kv is KValue.Num, "$value is a Num")
+                assertEquals(kind, kv.kind)
+            }
+            val back = kv!!.toAny()
             assertEquals(value::class, back::class, "$value round-trips to its own type")
             assertEquals(value, back)
         }
     }
 
     @Test
-    fun aLongBeyondTwoToTheFiftyThreeDoesNotSurviveTheRoundTrip() {
-        // Every number is stored on the wire as a Double, so the mantissa runs out.
-        val safe = (1L shl 53) - 1L
-        assertEquals(safe, KValue.fromAny(safe)!!.toAny(), "just under 2^53 is exact")
-
-        val lossy = (1L shl 53) + 1L
-        assertNotEquals(lossy, KValue.fromAny(lossy)!!.toAny(), "just over 2^53 is not")
+    fun aLongBeyondTwoToTheFiftyThreeSurvivesTheRoundTrip() {
+        val big = (1L shl 53) + 1L
+        assertEquals(big, KValue.fromAny(big)!!.toAny(), "a Long is stored exactly, not as a Double")
     }
 
     @Test
     fun fromAnyReturnsNullForNullAndForAnythingOutsideTheUnion() {
         assertNull(KValue.fromAny(null))
-        assertNull(KValue.fromAny(true), "a Boolean is outside the union")
-        assertNull(KValue.fromAny(listOf(1, 2, 3)), "so is a list")
+        assertEquals(true, KValue.fromAny(true)!!.toAny(), "a Boolean is in the union")
+        assertNull(KValue.fromAny(listOf(1, 2, 3)), "a list is not")
         assertNull(KValue.fromAny(mapOf("a" to 1)))
         assertNull(KValue.fromAny(Any()))
 
@@ -993,7 +1004,7 @@ class KeyframerTest {
     }
 
     @Test
-    fun unsupportedValuesAndNullsAreDroppedFromASavedKeyInSilence() {
+    fun aSavedKeyKeepsBooleansAndLeavesOutNullsAndLists() {
         val dir = tempDir()
         val scope = KeyframeScope()
         val key = scope.Key(
@@ -1009,8 +1020,9 @@ class KeyframerTest {
         scope.saveKey(path, key)
         val loaded = scope.loadKey(path)
 
-        assertEquals(setOf("kept"), loaded.values.keys, "three of the four entries were dropped")
-        assertEquals(4, key.values.size, "…and nothing warned; the in-memory key is untouched")
+        assertEquals(setOf("kept", "aBoolean"), loaded.values.keys, "a Boolean is kept; the null and the list are not")
+        assertEquals(true, loaded["aBoolean"])
+        assertEquals(4, key.values.size, "the in-memory key is untouched")
     }
 
     @Test

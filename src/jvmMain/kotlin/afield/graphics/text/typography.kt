@@ -333,8 +333,9 @@ object Typefaces {
      * The fix is `java.awt.headless=true`, and it has to be set **before AWT initialises**: headless
      * AWT does not route the font manager through the main thread at all. That is why every jvm-main
      * gallery in the tree starts with `System.setProperty("java.awt.headless", "true")` and why they
-     * never saw this, and why setting it from here — after a box has already touched `BufferedImage`
-     * or Skiko — is far too late to matter.
+     * never saw this. This sets it too, under `-XstartOnFirstThread` when nobody chose a value
+     * ([headlessUnderFirstThread]), which works when reading an outline is the JVM's first AWT use and
+     * is too late after a box has already touched `BufferedImage` or Skiko.
      *
      * So this throws rather than blocks, and the message names the fix. `imaging_field.kt:417`'s rule
      * is that a stdlib call every box might make must not be able to take the process down; a hang
@@ -350,6 +351,7 @@ object Typefaces {
         if (warmed) return
         synchronized(this) {
             if (warmed) return
+            headlessUnderFirstThread()
             // One real glyph outline: that is what loads libfontmanager and the platform's font
             // engine. Deliberately NOT GraphicsEnvironment — the family list is a separate, heavier
             // hazard, and only [available] needs it.
@@ -359,6 +361,20 @@ object Typefaces {
             }
             warmed = true
         }
+    }
+
+    /**
+     * Under macOS `-XstartOnFirstThread` a non-headless AWT font manager waits on a run loop nobody
+     * pumps, so set `java.awt.headless=true` here when the caller has not chosen either way. It only
+     * takes effect if no AWT class has initialised yet, which is the usual case for a JVM whose first
+     * AWT use is reading an outline; if it is too late, [warm]'s timeout still names the flag.
+     */
+    private fun headlessUnderFirstThread() {
+        if (System.getProperty("java.awt.headless") != null) return
+        if (!System.getProperty("os.name").orEmpty().startsWith("Mac")) return
+        // The macOS launcher marks a -XstartOnFirstThread process with this variable.
+        if (System.getenv("JAVA_STARTED_ON_FIRST_THREAD_${ProcessHandle.current().pid()}") != "1") return
+        System.setProperty("java.awt.headless", "true")
     }
 
     private fun stallMessage(what: String) =

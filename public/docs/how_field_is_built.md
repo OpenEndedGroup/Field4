@@ -178,7 +178,7 @@ The details that make it pleasant to use:
   from the oldest branch on the current `main` until the one responsible bounces alone, with the
   failing test's message attached ("found by bisecting a red batch of 8"). The other seven land.
 - **A bounce explains itself.** `land.py mine` lists every attempt to land the current branch;
-  `land.py huh` and `land.py bouncy` hand the queue's logs to Claude and come back with a
+  `land.py huh` and `land.py bouncy` hand the queue's logs to [an agent](landing_queue.md#which-agent) and come back with a
   diagnosis and a fix to paste into the branch's session.
 - **It does not fight you.** A branch that touches a file you have uncommitted changes to waits
   instead of bouncing; a build that goes silent for 30 minutes is killed and retried once.

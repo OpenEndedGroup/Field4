@@ -422,4 +422,15 @@ class RectSLFitTest {
         assertEquals(-8.0, fit.parameters.getValue("bias"), 1e-2)
         assertTrue(abs(fit.fitted.sample(3.0) - 4.0) < 1e-2)
     }
+
+    @Test
+    fun fitGradientRefusesATrackWithFreeParameters() {
+        val track = BinaryDoubleTrack(ramp(1.0), param("gain", 1.0), TrackOp2.MUL)
+        val seed = assertNotNull(track.toFn(Functions.Domain(0.0, 1.0)).valueOrNull())
+        val target = ramp(1.0).toFn(Functions.Domain(0.0, 1.0)).valueOrNull()!!
+        val refusal = kotlin.test.assertFailsWith<IllegalArgumentException> {
+            fitGradient(target = target, seed = seed, domain = Functions.Domain(0.0, 1.0), iterations = 1)
+        }
+        assertTrue("fitParameters" in refusal.message.orEmpty(), refusal.message)
+    }
 }

@@ -50,7 +50,7 @@ class PhasedPageCoverageTest {
         val pagePath: Path = Path.of("public/docs/animation_time_model.md")
 
         /**
-         * Owners whose declared members the page must list. `EndedException` is deliberately
+         * Owners whose declared members the page must list.
          * absent: it is a bare `Throwable` subclass with no members of its own, and it is listed
          * on the page as a type rather than as a table of members.
          */
@@ -69,7 +69,7 @@ class PhasedPageCoverageTest {
          * Reflection cannot enumerate "classes declared in one source file", so this is the one
          * hand-kept list here — kept honest by [everyDeclaredTypeStillExists].
          */
-        val TYPES = listOf("Frames", "EndedException", "Framer", "GeneratorScope", "Generator")
+        val TYPES = listOf("Frames", "Framer", "GeneratorScope", "Generator")
 
         /**
          * Members inherited or generated rather than written in `Phased.kt`. `Companion` is the

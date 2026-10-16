@@ -57,30 +57,23 @@ import kotlin.io.path.exists
  * **leading** argument, which is why [invokeStruct] exists and why those calls look different from
  * the rest.
  *
- * **3. Upcalls — the interesting one.** `manifold_level_set` takes a `double (*)(double, double,
- * double, void*)` and marches it into a mesh; `manifold_warp` takes a `ManifoldVec3 (*)(double,
+ * **3. Upcalls — the interesting one.** `manifold_level_set_seq` takes a `double (*)(double,
+ * double, double, void*)` and marches it into a mesh; `manifold_warp` takes a `ManifoldVec3 (*)(double,
  * double, double, void*)`. [upcallSdf] and [upcallWarp] turn a Kotlin lambda into a function pointer
  * for the duration of one call.
  *
- * The reason that is more than a curiosity: Manifold is built with its parallel (TBB) backend, so
- * **it calls the lambda from its own C++ thread pool**. Measured on this machine, a unit sphere at
- * `edgeLength = 0.04` (465k samples, 40536 triangles out):
- *
- * | | wall clock | threads that entered the JVM |
- * |---|---|---|
- * | `manifold_level_set` | 82 ms | 10 |
- * | `manifold_level_set_seq` | 151 ms | 1 |
- *
- * 1.84×, from a Kotlin closure being invoked concurrently by nine threads the JVM never created.
- * That works because FFM attaches a foreign thread on entry — but it means two things this file has
- * to handle rather than hope about, and both are in [SdfBridge]:
+ * Manifold is built with its parallel (TBB) backend, so `manifold_warp` **calls the lambda from its
+ * own C++ thread pool**, which works because FFM attaches a foreign thread on entry. The level set
+ * uses the sequential entry point only: the parallel `manifold_level_set` is about twice as fast but
+ * does not return the same mesh twice (see [Solid.levelSet]). Two things the bridges handle rather
+ * than hope about:
  *
  *  - **An exception must not escape.** There are C++ frames between the lambda and the caller;
  *    unwinding through them is undefined, and FFM's default for an escaping exception is to abort
  *    the VM. So the bridge catches [Throwable], remembers the first one, returns a finite sentinel,
  *    and [Solid.levelSet] rethrows after the native call returns.
- *  - **The lambda must be thread-safe.** It is documented as such at every entry point that takes
- *    one, and [Solid.levelSet] offers `parallel = false` for a closure that is not.
+ *  - **A warp lambda must be thread-safe.** It is documented as such at every entry point that
+ *    takes one.
  */
 internal object ManifoldNative {
 
@@ -254,14 +247,6 @@ internal object ManifoldNative {
     }
     val revolve: MethodHandle by lazy {
         handle("manifold_revolve", FunctionDescriptor.of(ADDRESS, ADDRESS, ADDRESS, JAVA_INT, JAVA_DOUBLE))
-    }
-    val levelSet: MethodHandle by lazy {
-        handle(
-            "manifold_level_set",
-            FunctionDescriptor.of(
-                ADDRESS, ADDRESS, ADDRESS, ADDRESS, JAVA_DOUBLE, JAVA_DOUBLE, JAVA_DOUBLE, ADDRESS,
-            ),
-        )
     }
     val levelSetSeq: MethodHandle by lazy {
         handle(

@@ -412,7 +412,11 @@ class MeshCoreTest {
     fun weldTurnsATriangleSoupBackIntoAClosedMesh() {
         val soup = icosphereMesh(2).flatShaded()
         assertEquals(soup.triangleCount * 3, soup.vertexCount, "flatShaded shares nothing")
-        assertTrue(!soup.isWatertight(), "an unwelded soup is not watertight")
+        assertTrue(!soup.topology().isWatertight, "read by its indices, an unwelded soup is not watertight")
+        // The one-question helpers measure the surface: a flat-shaded mesh carries normals, so its
+        // coincident corners are attribute seams and are welded before measuring.
+        assertTrue(soup.isWatertight(), "a split-normal mesh is measured as its surface")
+        assertEquals(0, soup.genus())
         val welded = soup.weld(1e-5)
         assertClosedGenus(welded, 0, "welded soup")
         assertEquals(icosphereMesh(2).vertexCount, welded.vertexCount)

@@ -177,11 +177,11 @@ into the same drawing as the rest of your geometry, under one transform. `toHTML
 
 Labels are glyph outlines. On a machine with no fonts, the chart is drawn without labels.
 
-If you add text of your own as FLines, use `TextLayout.toFLines()`, one line per contour, and move
-it with `FLine.transform`. A single filled `toFLine()`, or moving each `node.to` alone, garbles the
-letters.
+Text of your own goes in as `TextLayout.toFLines()` (one line per glyph) or `toFLine()` (one for
+the whole string). Move it with `FLine.transform`, which carries each curve's control points with its
+end points.
 
-??? aside "Where the pictures come from"
+??? aside "Agents: where the pictures come from"
 
     The figures on this page are committed captures from the `visualization.chart-gallery`
     FIELD_TEST: `Chart.toFLines()` → Skia's `outputTo` on a raster surface → PNG, with no AWT, no GPU
@@ -191,7 +191,7 @@ letters.
     CHART_GALLERY_DIR=public/docs/assets/chart_gallery python3 tools/run_field_tests.py --id visualization.chart-gallery
     ```
 
-    The docs runner does not rebuild them, so re-run that command after a change. What the gallery
+    `ChartTest` fails while the committed figures differ from what the chart code draws. What the gallery
     asserts is in [`dev_docs/chart_primitive.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/chart_primitive.md);
     the clipping before/after pairs are in
     [`dev_docs/chart_clip_and_note.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/chart_clip_and_note.md). Dots are twelve-sided polygons rather than `pointed` nodes

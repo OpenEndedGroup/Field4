@@ -142,14 +142,15 @@ import afield.ui.visualization.CellRole
  * numbers — see [KeyframeScope.codeBlend] and `keyframeCodeBlend.kt`.
  *
  * Persistence goes through the [KValue] serial union, so only the types [KValue.fromAny] recognises
- * survive a save — numbers, vec2/3/4, quaternion, dual quaternion, camera pose, string, StackSL
- * source and source-backed block; anything else is silently dropped. Every `saveKey` also writes a
+ * survive a save — numbers (a `Long` exactly), Booleans, vec2/3/4, quaternion, dual quaternion,
+ * camera pose, string, StackSL source and source-backed block; anything else is left out and reported
+ * on `error,keyframer`. Every `saveKey` also writes a
  * numbered copy into a `<file>.versions` directory with a manifest, which
  * [KeyframeScope.keyVersions] lists and [KeyframeScope.loadLatestKey] follows. [KeyframeScope.missingKey] supplies defaults for
  * keys absent from an older file, optionally per schema version.
  *
  * Keys render themselves as HTML for box output ([KeyDiff], `diffHtml`), and
- * `copyUpdateCodeToClipboard` emits pasteable Kotlin — that one goes through the AWT clipboard.
+ * `copyUpdateCodeToClipboard` emits pasteable Kotlin — that one goes through the AWT clipboard, and on a headless JVM it logs and just returns the string.
  */
 
 /**
@@ -177,15 +178,23 @@ private const val CODE_BLEND_CACHE_LIMIT = 64
  * dual quaternion, camera pose, string, StackSL source and source-backed block. A key in memory holds
  * plain Kotlin values; this is the serial union they are converted to on the way to disk and back.
  *
- * The set is closed and failure is quiet: [fromAny] returns null for anything it does not recognise
- * and `saveKey` simply drops that entry, so a key that captured, say, a `Boolean` or a list will load
- * back one value short with no warning anywhere.
+ * The set is closed: [fromAny] returns null for anything else (a null, a list), and `saveKey` then
+ * reports each such entry on the `error,keyframer` log channel rather than writing it. `Long` and
+ * `Boolean` are stored exactly.
  */
 @Serializable
 sealed interface KValue {
     /** Any Kotlin number, kept as a `Double` with the [NumKind] needed to restore its original type. */
     @Serializable @SerialName("num")
     data class Num(val kind: NumKind, val value: Double) : KValue
+
+    /** A `Long`, exactly: a `Double` would lose it past 2^53. */
+    @Serializable @SerialName("long")
+    data class LongValue(val value: Long) : KValue
+
+    /** A `Boolean`. */
+    @Serializable @SerialName("bool")
+    data class Bool(val value: Boolean) : KValue
 
     /** A `Vector2f`, component by component. */
     @Serializable @SerialName("vec2")
@@ -264,6 +273,8 @@ sealed interface KValue {
      * [SourceBlock] becomes a `SourceBackedBlock` that has not compiled anything yet.
      */
     fun toAny(): Any = when (this) {
+        is LongValue -> value
+        is Bool -> value
         is Num -> when (kind) {
             NumKind.BYTE -> value.toInt().toByte()
             NumKind.SHORT -> value.toInt().toShort()
@@ -305,7 +316,8 @@ sealed interface KValue {
             is Byte -> Num(NumKind.BYTE, v.toDouble())
             is Short -> Num(NumKind.SHORT, v.toDouble())
             is Int -> Num(NumKind.INT, v.toDouble())
-            is Long -> Num(NumKind.LONG, v.toDouble())
+            is Long -> LongValue(v)
+            is Boolean -> Bool(v)
             is Float -> Num(NumKind.FLOAT, v.toDouble())
             is Double -> Num(NumKind.DOUBLE, v)
             is Number -> Num(NumKind.DOUBLE, v.toDouble())
@@ -712,7 +724,13 @@ class KeyframeScope(val schemaVersion: Int = 0) {
          */
         fun copyUpdateCodeToClipboard(keyName: String = "key", apply: Boolean = true): String {
             val code = updateCode(keyName, apply)
-            Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(code), null)
+            // A headless JVM has no clipboard; hand the code back and say so rather than throw.
+            runCatching { Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(code), null) }
+                .onFailure {
+                    afield.app.diagnostics.logging.lprintln(
+                        "warning,keyframer", "no system clipboard (${it.javaClass.simpleName}); the update code is returned instead"
+                    )
+                }
             return code
         }
 
@@ -735,14 +753,27 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         if (value is SourceBackedBlock<*>) value else ({ value })
 
     /**
+     * Put a key's value back the way the property held it: a property that held a plain value gets the
+     * value again (`structure[name] = v`), and one that held a binding, or a live block, gets a binding.
+     * Capture and apply are then symmetric, with nothing left shadowed underneath.
+     */
+    private fun writeKeyValue(structure: Structure?, property: String, value: Any?) {
+        if (structure == null) return
+        if (value != null && value !is SourceBackedBlock<*> && structure.bindingFor(property) == null) {
+            structure[property] = value
+        } else {
+            structure.bind(property, bindingForValue(value))
+        }
+    }
+
+    /**
      * Read one property off a structure the way everything else in the engine reads it — the binding if
      * there is one, otherwise the plain value, which is the same precedence `Structure.get` and the
      * buffer writer use. A `SourceBackedBlock` binding is handed back as the block itself rather than
      * invoked, because a key stores the live callable.
      *
-     * Note the asymmetry with writing: a key applies through `Structure.bind`, so capturing a
-     * value-held property and putting it back converts it to a (constant) binding. Both read
-     * identically everywhere, but the old `values` entry is left behind, shadowed.
+     * Writing is symmetric: [writeKeyValue] puts a value-held property back as a value and a bound one
+     * back as a binding.
      */
     private fun readProperty(structure: Structure?, property: String): Any? {
         val binding = structure?.bindingFor(property) ?: return structure?.valueFor(property)
@@ -758,6 +789,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
             Target(
                 resolve = { structure },
                 bind = { value -> structure.bind(propertyName, value) },
+                set = { value -> writeKeyValue(structure, propertyName, value) },
                 get = { readProperty(structure, propertyName) }
             )
         }
@@ -786,6 +818,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         dynamicTargets[name] = Target(
             resolve = structure,
             bind = { value -> structure()?.bind(propertyName, value) },
+            set = { value -> writeKeyValue(structure(), propertyName, value) },
             get = { readProperty(structure(), propertyName) }
         )
         targets.remove(name)
@@ -895,20 +928,38 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * Register a key against one of a graphics module's live uniform structures, resolved through the
      * pointer each time so it survives a shader reload.
      *
-     * [name] is both the key name and — after the last `@` — the name of the uniform structure to look
-     * up in `module.current.liveUniformStructures`. Note that this addresses the *structure*, not a
-     * field inside it.
+     * [name] is the key name, and after the last `@` it is `block.member`: the uniform block to look up
+     * in `module.current.liveUniformStructures` and the member inside it. A slot with no `.` uses the
+     * same name for both.
      */
     fun target(module: ModulePointer, name: String) =
-        target(name) { module.current.liveUniformStructures[targetPropertyName(name)] }
+        uniformTarget(name) { module.current.liveUniformStructures[it] }
 
     /** [target] for a compute module's live uniform structures. */
     fun target(module: ComputeModulePointer, name: String) =
-        target(name) { module.current.liveUniformStructures[targetPropertyName(name)] }
+        uniformTarget(name) { module.current.liveUniformStructures[it] }
 
     /** [target] for a mesh-shader module's live uniform structures. */
     fun target(module: MeshModulePointer, name: String) =
-        target(name) { module.current.liveUniformStructures[targetPropertyName(name)] }
+        uniformTarget(name) { module.current.liveUniformStructures[it] }
+
+    /**
+     * A key on one member of a module's uniform block. The part of [name] after the last `@` is
+     * `block.member`, so `"tint@params.color"` keys `color` in the block `params`; a slot with no `.`
+     * names a block and its member alike, as before.
+     */
+    private fun uniformTarget(name: String, structureFor: (block: String) -> Structure?) {
+        val slot = targetPropertyName(name)
+        val block = slot.substringBefore('.')
+        val member = slot.substringAfter('.', slot)
+        dynamicTargets[name] = Target(
+            resolve = { structureFor(block) },
+            bind = { value -> structureFor(block)?.bind(member, value) },
+            set = { value -> writeKeyValue(structureFor(block), member, value) },
+            get = { readProperty(structureFor(block), member) }
+        )
+        targets.remove(name)
+    }
 
     /**
      * Register a key against a `stack.auto.<name>` **shader-source** slot, so that the StackSL a module
@@ -988,8 +1039,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * move rather than a separate position and target lerp.
      *
      * A raw `DualQuaternionf` value is accepted too and keeps the camera's *current* distance to target
-     * as the focus. Any other type is ignored without complaint, so a `Vector3f` "camera position" key
-     * will appear to apply and do nothing.
+     * as the focus. Any other type is not applied, and says so on the `error,keyframer` log channel.
      */
     fun camera(camera: Camera, keyName: String = "camera") {
         dynamicTargets[keyName] = Target(
@@ -998,6 +1048,11 @@ class KeyframeScope(val schemaVersion: Int = 0) {
                 when (value) {
                     is CameraPose -> camera.applyPose(value)
                     is DualQuaternionf -> camera.applyPose(CameraPose(value, camera.distanceToTarget()))
+                    else -> afield.app.diagnostics.logging.lprintln(
+                        "error,keyframer",
+                        "camera key '$keyName' holds ${if (value == null) "null" else value::class.qualifiedName}; " +
+                            "a camera target applies a CameraPose or a DualQuaternionf, so nothing was applied"
+                    )
                 }
             },
             get = { camera.pose() }
@@ -1065,7 +1120,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      *
      * A structure property is read binding-first and then by value — the same precedence `Structure.get`
      * and the buffer writer use — so `structure["radius"] = 4f` snapshots just as well as
-     * `structure.bind("radius") { 4f }`. Applying the key puts it back as a binding either way.
+     * `structure.bind("radius") { 4f }`. Applying the key writes each back the way it was held: a value as a value, a binding as a binding.
      *
      * Values are taken as they are, not copied, so a mutable `Vector3f` in a key is still the vector the
      * structure is bound to; keep the key across frames only if you also stopped mutating that vector
@@ -1113,9 +1168,12 @@ class KeyframeScope(val schemaVersion: Int = 0) {
             val interpolated: Any = when {
                 va is Number && vb is Number -> {
                     val v = lerp(va.toDouble(), vb.toDouble(), tEffective)
+                    // The lane keeps its own numeric kind, so an Int uniform still gets an Int.
                     when {
-                        va is Float && vb is Float -> v.toFloat()
-                        va is Double && vb is Double -> v
+                        va is Int && vb is Int -> Math.round(v).toInt()
+                        va is Long && vb is Long -> Math.round(v)
+                        va is Double || vb is Double -> v
+                        va is Float || vb is Float -> v.toFloat()
                         else -> v
                     }
                 }
@@ -1199,7 +1257,14 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         KeyDTO(
             schemaVersion = schemaVersion,
             values.mapNotNull { (k, v) ->
-                val kv = KValue.fromAny(v) ?: return@mapNotNull null // drops null/unsupported
+                val kv = KValue.fromAny(v)
+                if (kv == null) {
+                    afield.app.diagnostics.logging.lprintln(
+                        "error,keyframer",
+                        "keyframe value '$k' was not saved: ${if (v == null) "null" else v::class.qualifiedName} is not a type a key can store"
+                    )
+                    return@mapNotNull null
+                }
                 k to kv
             }.toMap()
         )
@@ -1226,7 +1291,8 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * `Files.writeString(path, scope.encodeKeyJson(key))` produces a file [loadKey] reads and
      * [KeyframeCollection] browses.
      *
-     * Drops exactly what [saveKey] drops — nulls and types [KValue.fromAny] does not recognise.
+     * Leaves out exactly what [saveKey] leaves out — nulls and types [KValue.fromAny] does not
+     * recognise — and reports each on `error,keyframer`.
      */
     fun encodeKeyJson(key: Key): String = json.encodeToString(key.toDTO())
 
@@ -1241,8 +1307,9 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * document backup. See [keyVersions] for what a damaged manifest costs, which is notes, not
      * snapshots.
      *
-     * Only values [KValue.fromAny] recognises are written. Nulls and unsupported types are dropped in
-     * silence, and a `SourceBackedBlock` is written as its box id plus source text, not as a live lambda.
+     * Only values [KValue.fromAny] recognises are written; each null or unsupported value is reported on
+     * `error,keyframer`. A `SourceBackedBlock` is written as its box id plus source text, not as a live
+     * lambda.
      */
     fun saveKey(path: Path, key: Key, note: String? = null) {
         path.parent?.createDirectories()
