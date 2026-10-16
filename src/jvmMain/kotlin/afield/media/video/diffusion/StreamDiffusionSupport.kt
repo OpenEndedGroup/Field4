@@ -10,9 +10,17 @@ import java.io.File
 /** Availability without creating GPU allocations, starting Python, or loading model weights. */
 data class StreamDiffusionSupport(val available: Boolean, val reason: String) {
     companion object {
-        /** No default model download or machine-specific installation path. */
+        /**
+         * The backend root: `FIELD_STREAMDIFFUSION_ROOT`, or else the path written in [rootFile],
+         * which is read on every call so a running Field picks up a newly installed backend. No
+         * default model download or machine-specific installation path.
+         */
         fun configuredRoot(): File? = System.getenv("FIELD_STREAMDIFFUSION_ROOT")
             ?.takeIf { it.isNotBlank() }?.let(::File)
+            ?: runCatching { rootFile.takeIf { it.isFile }?.readText()?.trim()?.takeIf { it.isNotEmpty() }?.let(::File) }.getOrNull()
+
+        /** `~/.afield/streamdiffusion-root.txt`: one line, the backend's installation directory. */
+        val rootFile: File get() = File(System.getProperty("user.home"), ".afield/streamdiffusion-root.txt")
 
         fun probe(renderer: Renderer, config: StreamDiffusionConfig? = null): StreamDiffusionSupport {
             fun missing(message: String) = StreamDiffusionSupport(false, message)
@@ -45,7 +53,7 @@ data class StreamDiffusionSupport(val available: Boolean, val reason: String) {
             }
             if (hardware != null) return missing(hardware)
             val installation = config ?: configuredRoot()?.let { StreamDiffusionConfig(it) }
-                ?: return missing("Set FIELD_STREAMDIFFUSION_ROOT to your StreamDiffusionV2 installation before starting Field, or supply StreamDiffusionConfig(root = File(...)).")
+                ?: return missing("Set FIELD_STREAMDIFFUSION_ROOT to your StreamDiffusionV2 installation before starting Field, write its path into ~/.afield/streamdiffusion-root.txt, or supply StreamDiffusionConfig(root = File(...)).")
             if (!installation.root.isDirectory || !installation.python.canExecute())
                 return missing("The backend root or Python environment is missing: ${installation.root}. Follow the streaming diffusion setup guide.")
             if (!installation.worker.isFile) return missing("The Field worker is missing: ${installation.worker}. Run Field from its checkout with optional/streamdiffusion installed.")

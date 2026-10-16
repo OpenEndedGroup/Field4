@@ -81,8 +81,8 @@ export FIELD_STREAMDIFFUSION_ROOT=/path/to/sd2
 
 Run Field from its checkout. An existing compatible backend can be reused: install
 `optional/streamdiffusion/requirements.txt` into its environment and set the same
-variable. If Field is already running, replace the curves box's `root` expression
-with `java.io.File("/path/to/sd2")` and run the box again. Nothing is downloaded
+variable. If Field is already running, write the path into
+`~/.afield/streamdiffusion-root.txt` instead and run the box again. Nothing is downloaded
 merely by opening the document.
 
 TAEHV is the decoder for this integration. `useTensorRT = true` is the default;
