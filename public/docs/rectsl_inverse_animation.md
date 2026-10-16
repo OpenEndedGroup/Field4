@@ -8,7 +8,7 @@ The box below asks a rect to pass through three points at three given times. Its
 circle with six unknown numbers (an amplitude, a phase and a centre on each axis), and
 `fitParameters` solves for them. The box draws the figure beside it.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-fit-box.png" alt="an output panel labelled figure holding three stacked strips on a dark grid. The first, TARGET 3 WAYPOINTS, shows three empty white squares: upper left, upper right, and one below centre. The second, SEED WORST MISS 7.72M, adds a blurred orange blob sitting near the middle and touching none of them. The third, FITTED WORST MISS 4.7E-15M, replaces it with a trail of teal squares sweeping in an arc from the upper left, down through the bottom centre and back up to the upper right, passing through all three white squares on the way" wait="9.0" capture="box" open-outputs="true" w="1020" h="1080" padding="14" name="inverse-animation-fit-box" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-fit-box.png" alt="an output panel labelled figure holding three stacked strips on a dark grid. The first, TARGET 3 WAYPOINTS, shows three empty white squares: upper left, upper right, and one below centre. The second, SEED WORST MISS 7.72M, adds a blurred orange blob sitting near the middle and touching none of them. The third, FITTED WORST MISS 5.3E-12M, replaces it with a trail of teal squares sweeping in an arc from the upper left, down through the bottom centre and back up to the upper right, passing through all three white squares on the way" wait="9.0" capture="box" open-outputs="true" w="1020" h="1080" padding="14" name="inverse-animation-fit-box" embed=true}
 import afield.lang.rectsl.*
 
 val duration = 4.0
@@ -101,18 +101,13 @@ track, with its scale and offset left for the fitter:
 Until you fit it, a `free-param` is just its current value, so a scene with unknowns in it plays and
 renders exactly as written.
 
-From Kotlin, any track with `FreeParamTrack` leaves in it can be solved with `fitParameters`. The box
-below builds the same sweep track and fits it twice, once with the defaults and once with more
-iterations. The defaults are `iterations = 300` and `lr = 0.05`, and each step moves a parameter by
-about `lr`, so a `bias` that has to travel from 0 to −8 cannot get there in 300 steps. The default
-call stops with a residual near 0.1: much better than where it started, and still not solved. With
-2000 iterations it lands on the exact answer.
+From Kotlin, any track with `FreeParamTrack` leaves in it can be solved with `fitParameters`. It
+steps until the residual stops changing, up to `iterations = 5000` at `lr = 0.05`, and `converged`
+says whether it got there before the bound; when it is false, give it more iterations or a larger
+`lr` before trusting `parameters`. The box below builds the same sweep track and fits it with the
+defaults.
 
-!!! note "Check the residual"
-    A fit that returns has not necessarily converged. Read `finalResidual` before trusting the
-    parameters.
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-api.png" alt="an output panel labelled fit, holding two blocks of results for the same track. At the default 300 iterations the solved gain is 3.8945617454461527 and the bias -7.738554034635415, taking the residual from 3.605551275463989 down to 0.11693799822760528. At 2000 iterations the gain is 3.999999999999997 and the bias -7.999999999999994, and the residual is 2.8951074449790722E-15. The last line prints the fitted IR with those numbers substituted in" wait="5.0" capture="box" open-outputs="true" w="1000" h="360" padding="14" name="inverse-animation-api" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-api.png" alt="an output panel labelled fit, listing the solved gain and bias for the track, the residual before and after, whether the descent converged and in how many steps, and the fitted IR with the solved numbers substituted in" wait="5.0" capture="box" open-outputs="true" w="1000" h="360" padding="14" name="inverse-animation-api" embed=true}
 import afield.lang.rectsl.*
 
 // A sweep that follows the clock, times gain, plus bias: the same track as the scene below.
@@ -128,20 +123,15 @@ val track = BinaryDoubleTrack(
 
 val targets = [TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0)]
 
-val quick = track.fitParameters(targets)                      // iterations = 300, lr = 0.05
-val patient = track.fitParameters(targets, iterations = 2000)
+val fit = track.fitParameters(targets)
 
 markdown("fit", """
     ~~~
-                         default (300 iterations)
-    fit.parameters       ${quick.parameters}
-    fit.initialResidual  ${quick.initialResidual}
-    fit.finalResidual    ${quick.finalResidual}
-
-                         iterations = 2000
-    fit.parameters       ${patient.parameters}
-    fit.finalResidual    ${patient.finalResidual}
-    fit.fitted           ${patient.fitted.describe()}
+    fit.parameters       ${fit.parameters}
+    fit.initialResidual  ${fit.initialResidual}
+    fit.finalResidual    ${fit.finalResidual}
+    fit.converged        ${fit.converged} after ${fit.steps.size} steps
+    fit.fitted           ${fit.fitted.describe()}
     ~~~
 """.trimIndent())
 ```
@@ -152,7 +142,7 @@ authored band is what you get without fitting (`gain=1.0, bias=0.0`): the marker
 span and misses both waypoints. The solved band lands on `gain=4.0, bias=-8.0`, the exact answer for
 `t·gain + bias` through both waypoints.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-free-param.png" alt="an output panel labelled before / after, with two strips, and a fit panel below. The authored strip, in orange and headed gain 1.0, bias 0.0, worst miss 5.00M, holds a short bar that reaches the right-hand white waypoint square and leaves the left one untouched. The solved strip, in teal and headed gain 3.999999999999997, bias -7.999999999999994, worst miss 3.1E-15M, holds a long stepped bar spanning the strip and passing through both squares. Beneath them the text lists the IR before and after, the free parameters, and a residual falling from 3.605551275463989 to 2.8951074449790722E-15, with x at 1.0 and x at 3.0 landing on -4 and 4 to fifteen decimal places" wait="7.0" capture="box" open-outputs="true" w="1020" h="1240" padding="14" name="inverse-animation-free-param" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-free-param.png" alt="an output panel labelled before / after, with two strips, and a fit panel below. The authored strip, in orange and headed gain 1.0, bias 0.0, worst miss 5.00M, holds a short bar that reaches the right-hand white waypoint square and leaves the left one untouched. The solved strip, in teal and headed gain 3.999999999996897, bias -7.999999999992307, worst miss 4.6E-12M, holds a long stepped bar spanning the strip and passing through both squares. Beneath them the text lists the IR before and after, the free parameters, and a residual falling from 3.605551275463989 to 3.4409616317511194E-12, with x at 1.0 and x at 3.0 landing on -4 and 4 to eleven decimal places" wait="7.0" capture="box" open-outputs="true" w="1020" h="1240" padding="14" name="inverse-animation-free-param" embed=true}
 import afield.lang.rectsl.*
 
 // `free-param` marks a number to be solved for. Until it is, every backend reads it as the
