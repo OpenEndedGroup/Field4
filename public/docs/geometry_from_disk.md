@@ -1,5 +1,7 @@
 # Geometry from disk
 
+<!-- capture-sources: src/jvmMain/kotlin/afield/graphics/scene/MeshFromDisk.kt src/jvmMain/kotlin/afield/geometry/mesh/mesh_io.kt -->
+
 You have a mesh file, and you want to see it in Field and then compute with it. For every format,
 that is one line:
 
@@ -618,14 +620,6 @@ negative volume. `fixWinding()` is the fix.
     the page's counts describe a different car. The counts are pinned in
     `src/jvmTest/kotlin/afield/geometry/mesh/MeshFromDiskTest.kt`, and `MeshIoTest.kt` covers the reader
     behaviour they rest on.
-
-??? aside "Agents: forcing these captures to re-run"
-
-    A fence is re-executed only when the build decides its capture is stale, from a digest over the runner
-    machinery plus the **stdlib** source files the fence's code names. `MeshFromDisk.kt` is in
-    `afield.graphics.scene`, not `afield.geometry.mesh`, so editing *it* does not invalidate these captures on its own.
-    Force them with `FIELD_DOCS_RUNNER_MODE=always` after changing the bridges.
-    [`mesh_examples.md`](mesh_examples.md) carries the same caveat.
 
 ## Trying it yourself
 
