@@ -627,7 +627,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**31941 public symbols across 1443 source files**, 15929 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**31943 public symbols across 1443 source files**, 15931 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -649,7 +649,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ALife](alife.md) | 12 | 656 | 453 (69%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 610 | 404 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 5 | 349 | 199 (57%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 48 | 1436 | 975 (67%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 48 | 1438 | 977 (67%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 42 | 1505 | 736 (48%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1313 | 718 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2091 | 1009 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
@@ -1319,7 +1319,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [LambdaPropertyOracleTest.kt](examples.md#lambdapropertyoracletest-kt) | Examples | 5 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [LambdaSoundDocs.kt](patterns.md#lambdasounddocs-kt) | Patterns | 31 | 29 | A λ-term's *reduction* as a rhythm — the schedule, not the answer. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [LambdaTermGenerator.kt](examples.md#lambdatermgenerator-kt) | Examples | 11 | 11 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>lambda/<wbr></small> [lambdaterms.kt](visualization.md#lambdaterms-kt) | Visualization | 30 | 30 | λ-terms as a front end to the interaction nets in `interactionnets.kt`: text in, a reduced net out, a term back. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>lambda/<wbr></small> [lambdaterms.kt](visualization.md#lambdaterms-kt) | Visualization | 31 | 31 | λ-terms as a front end to the interaction nets in `interactionnets.kt`: text in, a reduced net out, a term back. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [LambdaTermsSmokeTest.kt](examples.md#lambdatermssmoketest-kt) | Examples · internal | 3 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>languages/<wbr></small> [LanguageRoots.kt](workspace.md#languageroots-kt) | Workspace | 4 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr></small> [LanguageRuntimeSupport.kt](workspace.md#languageruntimesupport-kt) | Workspace | 3 | 0 |  |  |
@@ -1615,7 +1615,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>petri/<wbr></small> [PetriNotation.kt](visualization.md#petrinotation-kt) | Visualization | 20 | 9 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>petri/<wbr></small> [PetriSmokeTest.kt](simulation.md#petrismoketest-kt) | Simulation · internal | 3 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [PetriSparksDocs.kt](audio.md#petrisparksdocs-kt) | Audio | 9 | 7 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>petri/<wbr></small> [PetriStateSpace.kt](visualization.md#petristatespace-kt) | Visualization | 74 | 56 |  | [Petri nets](../petri_nets.md), [A Deadlock, Sculpted and Traced](../chain_petri_sculpture.md), [Petri notation cheatsheet](../petri_cheatsheet.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>petri/<wbr></small> [PetriStateSpace.kt](visualization.md#petristatespace-kt) | Visualization | 75 | 57 |  | [Petri nets](../petri_nets.md), [A Deadlock, Sculpted and Traced](../chain_petri_sculpture.md), [Petri notation cheatsheet](../petri_cheatsheet.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>petri/<wbr></small> [PetriTalaComparison.kt](examples.md#petritalacomparison-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>petri/<wbr></small> [PetriVisual.kt](visualization.md#petrivisual-kt) | Visualization | 35 | 29 |  | [Petri nets](../petri_nets.md), [Petri notation cheatsheet](../petri_cheatsheet.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>estimation/<wbr></small> [pf.kt](math.md#pf-kt) | Math | 39 | 30 | An unscented Kalman filter, and a particle filter whose particles each carry one. | [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
