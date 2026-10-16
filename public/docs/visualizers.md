@@ -1139,7 +1139,7 @@ Pass `polar = true` to draw any of the three around a circle. A step sequence is
 - On a polar `matrix`, rows are rings (row 0 is the outermost) and columns are sectors running clockwise from twelve o'clock. The playhead lights a whole sector.
 - On a polar `rangeSlider`, the track is the whole circle, and `min` and `max` meet at the top. The band runs clockwise from `start` to `endInclusive` and may wrap through the top. Drag inside it to turn the whole band.
 
-A wrapped band has `start > endInclusive`, which Kotlin's own `in` reads as an empty range, so test it with `arcContains`. On a dial a range means an arc, so use it for values that are already circular: a phase, a hue, a window into a loop.
+On a dial a range means an arc, and `value in band` follows it. Use it for values that are already circular: a phase, a hue, a window into a loop.
 
 <!--
 FIELD_TEST
@@ -1170,7 +1170,7 @@ controlGroup("dial", columns = 3) {
     grid = matrix("pattern", rows = 4, columns = 16, states = 4, initialValue = pattern, polar = true) { pattern = it }
     range = rangeSlider("band", min = 20.0, max = 2000.0, initialValue = band, polar = true) {
         band = it
-        print(it.arcContains(100.0))
+        print(100.0 in it)
     }
 }
 
