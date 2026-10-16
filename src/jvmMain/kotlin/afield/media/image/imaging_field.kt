@@ -306,12 +306,21 @@ fun Img.isoContourFLines(iso: Double, cells: Int = max(width, height), z: Number
  *
  * @param name colormap name; see [Colormaps.names]
  * @param lo/[hi] the sample values that map to the ends of the ramp; `null` uses the image's own
- *   min/max, which is almost always what you want for a response image
+ *   min/max, which is almost always what you want for a response image. A constant image's own
+ *   range is widened to include 0, so it is drawn by its value rather than always at the bottom.
  */
 fun Img.colormap(name: String = "viridis", lo: Float? = null, hi: Float? = null): Img {
     require(channels == 1) { "colormap expects a 1-channel image; call .luma() or .channel(c) first" }
-    val l = lo ?: min()
-    val h = hi ?: max()
+    var l = lo ?: min()
+    var h = hi ?: max()
+    // An auto range over a constant image collapses to one value, which would put every pixel at the
+    // bottom of the ramp whatever that value is. Widen it to include 0, so a field constant at 1 reads
+    // as the top of the map and one constant at 0 as the bottom.
+    if ((lo == null || hi == null) && h - l < 1e-12f) {
+        val v = l
+        l = kotlin.math.min(0f, v)
+        h = kotlin.math.max(0f, v).let { if (it - l < 1e-12f) l + 1f else it }
+    }
     val d = if (h - l < 1e-12f) 1f else h - l
     // Precompute a 256-entry LUT rather than interpolating the stops per pixel.
     val lut = Array(256) { Colormaps.sample(name, it / 255.0) }

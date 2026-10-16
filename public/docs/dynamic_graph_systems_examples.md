@@ -351,7 +351,7 @@ pipeline beside the same pipeline without `DirectedTipGrowthProcess`. Most of th
 early, so the clip uses a geometric step schedule (`ramp`) to slow the start down and speed up the
 end.
 
-```diffstatic_runner {data-lang=kotlin video="assets/dynamic_graph_systems_examples/morphogenesis.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="13" fps="20" timeout="360" w="1060" name="dgs-morphogenesis-video" alt="a ring of points growing into a branching filamentous structure while its graph is continually rebuilt, beside a control arm with tip growth switched off in which the ring stays a ring"}
+```diffstatic_runner {data-lang=kotlin video="assets/dynamic_graph_systems_examples/morphogenesis.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="360" w="1060" name="dgs-morphogenesis-video" alt="a ring of points growing into a branching filamentous structure while its graph is continually rebuilt, beside a control arm with tip growth switched off in which the ring stays a ring"}
 :::static
 // The full pipeline: diffuse a resource along the edges and climb its gradient, relax the springs,
 // grow tips where the incident edges pull coherently, merge what has collided, smooth, jitter.
@@ -436,12 +436,6 @@ With tip growth, the ring grows into branching filaments. The edge count jumps a
 crowd into the ring's footprint, then falls as the springs push them apart, leaving the branching
 skeleton. Without tip growth the ring stays a ring, and loses a few points as the springs pull
 neighbours together and `MergeClosePointsProcess` merges them.
-
-??? aside "Why the morphogenesis clip records for longer than it runs"
-    [`animateEvolution`](reference/alife.md#alife-animate-kt) with a geometric `ramp` makes the last
-    frames' step batches the largest, so the recorder falls furthest behind at the end. The clip
-    records for `duration = 13` against `seconds = 10` so that it reaches the settled result; at
-    `duration = 11` the take stopped before the final step.
 
 ## Snapshots and the `minWeight` cut
 

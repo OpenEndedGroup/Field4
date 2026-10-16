@@ -71,9 +71,7 @@ or a custom `descendInto`, call `graphPaths` and pass a `GraphWalkOptions`.
     `/` is defined on `Any?`, but ordinary division is untouched: a member `div`
     always beats an extension, so numbers, vectors, quaternions and signals keep
     their own arithmetic, and `kotlin.io.path`'s `path / "sub"` still joins a
-    path. The one new case is a `String` on the right: `"a" / "b"` type-checks and
-    returns an empty `PathSet`, so a mistyped `/` shows up a step later than a
-    compile error would.
+    path.
 
 ## Patterns and predicates
 

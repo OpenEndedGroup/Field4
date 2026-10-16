@@ -334,10 +334,6 @@ structure in between, and the spanning tree leaves only the backbone.
 
 ![a coiled space curve in the Three.js viewer, the cloud spiralling in on itself from a narrow tail to a wide open loop. A bright green spanning tree follows the coil; orange Gabriel edges cross between neighbouring turns like the rungs of a twisted ladder; the 4-NN edges are faint enough to read only as haze. The viewer's counter reads 769 lines, 0 triangles, 170 points](assets/graph_connectivity_examples/three_graph_families.png)
 
-There is no 3D Urquhart graph, because Field has no 3D Delaunay triangulation
-to remove edges from. `vec3UrquhartGraph(...)` returns the spanning tree
-instead.
-
 ## Paths: covering a graph and finding a route
 
 A graph becomes more useful once you ask it to do something. This example builds

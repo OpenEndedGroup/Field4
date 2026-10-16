@@ -1581,7 +1581,7 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="definitions" role="properties"]
-{"id" "definitions" "index" 20 "name" "definitions" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "definitions" "_tombstone" false "frame" #afield/rect [1480.0 300.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "definitions_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "definitions_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "definitions_stackSL_.stacksl" "lines" 11 "characters" 93 "sha256" "8b3615cceddf98ed0cf4107733a1acb92f7b1b19e34bcedce2f7c5389e2b3efb"} {"name" "vertex" "language" "glsl" "path" "definitions_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "definitions" "index" 20 "name" "definitions" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "definitions" "_tombstone" false "frame" #afield/rect [1480.0 300.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "definitions_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "definitions_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "definitions_stackSL_.stacksl" "lines" 11 "characters" 98 "sha256" "38791744841ffeac30cefae6ab289780f8269a2136d7920fb5e00a0a7326a8ce"} {"name" "vertex" "language" "glsl" "path" "definitions_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="definitions" name="code" path="definitions_code_.kt"]
@@ -1629,7 +1629,7 @@ void main() {
 
 ```stacksl [field-property box="definitions" name="stackSL" path="definitions_stackSL_.stacksl"]
 : warp
-  uv 6.0 * time + sin
+  drop uv 6.0 * time + sin
   0.35 *
   uv +
 ;
