@@ -37,8 +37,9 @@ class ImGuiPanel(
     )
 
     /**
-     * Orient the panel at [position] with the given [right] and [up] axes; the front-facing normal is
-     * `right × up`, so place the viewer on the +normal side to read it. [right] and [up] need not be
+     * Orient the panel at [position] with the given [right] and [up] axes, which are the panel's left-to-
+     * right and bottom-to-top as its reader sees them. The text reads correctly from the side `right × up`
+     * points away from; [faceToward] works that out from where the eye is. [right] and [up] need not be
      * unit length or exactly orthogonal — they are re-orthonormalized (up is rebuilt as normal × right).
      */
     fun place(position: Vector3f, right: Vector3f, up: Vector3f): Matrix4f {
