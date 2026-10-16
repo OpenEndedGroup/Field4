@@ -578,8 +578,7 @@ Local marks name a stack value inside the current root program or definition. Th
 
 </div>
 
-A mark cannot be called `x`, `y`, `z` or `w`: `>x` is already the word that replaces one lane of a
-value, so `>x <x` reads a mark that was never made.
+A mark cannot be called `x`, `y`, `z` or `w`, and the compiler says so when you try.
 
 <div data-code-lang="stacksl" markdown>
 
