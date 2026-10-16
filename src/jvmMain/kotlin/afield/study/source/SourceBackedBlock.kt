@@ -83,6 +83,16 @@ class SourceBackedBlockSelfBoxReentry(box: Box, source: String) : IllegalStateEx
 )
 
 /**
+ * A saved block asked to hydrate on its own box's engine while that box's body is running. Evaluating it
+ * there would run the body again, so it is an error, raised before anything runs twice.
+ */
+class SourceBackedBlockDuringOwnBody(box: Box, source: String) : IllegalStateException(
+    "This saved block (source '${source.take(80).replace('\n', ' ')}') belongs to box '${box.name}', whose " +
+        "code is running now, and hydrating it there would run that code again. Invoke it from a frame loop " +
+        "or a control callback, after the box's code has finished, or from another box."
+)
+
+/**
  * A callable block that keeps the Kotlin source used to create it.
  *
  * The `sourceBlock { ... }` macro creates these with both a live lambda and the
@@ -131,6 +141,8 @@ class SourceBackedBlock<out T>(
         val box = sourceBackedBlockBox(boxId)
             ?: throw IllegalStateException("Cannot hydrate source-backed block; box '$boxId' is not loaded.")
 
+        // Refuse to hydrate on this box's engine while its own body is running: it would run the body again.
+        if (afield.runtime.execution.BoxBodyRun.isRunning(boxId)) throw SourceBackedBlockDuringOwnBody(box, source)
         // Refuse the second hydration for this box on this thread — see [SourceBackedBlockSelfBoxReentry].
         // Logged as well as thrown: the throw lands inside a *re-entrant* run of the box body, and
         // whatever instantiates the snippet chain absorbs it without reporting, so the throw alone is
