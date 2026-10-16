@@ -144,9 +144,6 @@ object PatMiniNotation {
                     id = "two-steps",
                     source = "bd sd",
                     gloss = "Two steps, half a cycle each.",
-                    note = "Colour is per instrument throughout this page: `bd` is always this blue, " +
-                        "`sd` always this orange. The colours are the drum map, so two bars that " +
-                        "look different sound different."
                 ),
                 Example(
                     id = "four-steps",
@@ -328,9 +325,8 @@ object PatMiniNotation {
                     gloss = "`|` picks **one** of the alternatives per cycle at random — where `<>` " +
                         "cycles through them in order.",
                     note = "The brackets are only for show here — a whole string is a group like any " +
-                        "other, so bare `bd|sd|cp` parses to exactly this. (It did not until " +
-                        "September 2026: `|` was reachable only from inside a `[…]`, and the bare " +
-                        "form was a parse error.) Deterministic in the same way `?` is, so this " +
+                        "other, so bare `bd|sd|cp` parses to exactly this. Deterministic in the " +
+                        "same way `?` is, so this " +
                         "figure is not a different picture every time the docs build runs.",
                     verify = { events ->
                         check(events.size == 4) { "[bd|sd|cp] should sound once a cycle, sounded ${events.size}" }
@@ -398,12 +394,9 @@ object PatMiniNotation {
                     gloss = "Euclidean: spread three onsets as evenly as eight slots allow. Three " +
                         "against eight is `x..x..x.` — gaps of 3, 3 and 2, the tresillo.",
                     note = "This is Tidal's spelling, bead for bead, and so is every other " +
-                        "`(pulses, steps)` pair. It was not always: until September 2026 Field's " +
-                        "`bjorklund` stopped one pairing late and returned a *rotation* of this figure " +
-                        "for a little over half of all inputs — the same necklace, equally even, " +
-                        "starting on a different bead. `bd(3,8)` came out `x..x.x..`. A rotation is a " +
-                        "different groove against the downbeat, which is the whole reason a shared " +
-                        "notation has to agree on one.",
+                        "`(pulses, steps)` pair. That matters because a rotation of the same figure " +
+                        "is a different groove against the downbeat, so a shared notation has to " +
+                        "agree on one.",
                     verify = { events ->
                         val slots = events.filter { qFloor(it.arc.start) == 0L }
                             .map { (it.arc.start * PatQ.of(8)).toDouble() }
