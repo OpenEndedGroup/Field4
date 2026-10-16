@@ -90,16 +90,12 @@ document in your workspace that is on the kit from the start:
 `publish` refuses a document that differs from its kit, or one with a build running. Run it again
 with `--replace` to publish a newer version; the previous one is kept in `~/.afield/templates/.replaced/`.
 
-A document opened from a starting point has not run yet. `activate` runs its roles in launch order:
+The first time a document made from the starting point opens, Field runs its roles in the kit's launch order, so it starts
+working without a separate command. After that it runs only what `autorun` asks for, like any
+document. To run a document's roles in launch order again later, use `activate`:
 
 ```diffstatic {data-lang=bash}
 uv run --project . --group backdoor python tools/field_kit.py activate ~/kits/level-kit --document level-kit
-```
-
-```diffstatic {data-lang=text}
-level-kit: running kit level-kit b1595510 in launch order
-  launched rules
-  launched plan
 ```
 
 ## Change the kit

@@ -1162,7 +1162,7 @@ internal fun relaunchRendererDependents(
 }
 
 /** Launch [boxes] as one ordered batch, the way `launch-batch` does, each on its default property. */
-private fun launchBoxesInOrder(boxes: List<Box>) {
+internal fun launchBoxesInOrder(boxes: List<Box>) {
     val reply: (Message) -> Unit = { send(it) }
     val requests = boxes.map { box ->
         val property = (box.getPropertyRaw("default_property") as? String)?.ifBlank { null } ?: "code"
@@ -2073,4 +2073,21 @@ fun installAgentBackdoorHandlers() {
         }
         Handled.yes
     })
+}
+
+/** Launch a kit starting point's roles the first time its copy opens ([afield.document.workspace.KitFirstOpen]). */
+internal fun installKitFirstOpen() {
+    documentReadyHooks += { info ->
+        val roles = afield.document.workspace.KitFirstOpen.rolesToLaunch(java.io.File(info.filename), info.boxes.values)
+        if (roles.isNotEmpty()) kotlinx.coroutines.GlobalScope.launch {
+            // As autorun does: wait for the boxes to come online first.
+            var attempts = 0
+            while (roles.any { it.offline } && attempts < 100) {
+                kotlinx.coroutines.delay(100)
+                attempts++
+            }
+            lprintln("info,kits", "first open of ${info.documentName}: launching kit roles " + roles.joinToString { it.name.ifBlank { it.id } })
+            launchBoxesInOrder(roles)
+        }
+    }
 }

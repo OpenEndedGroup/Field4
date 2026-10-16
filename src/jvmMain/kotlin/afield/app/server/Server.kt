@@ -3932,6 +3932,7 @@ class Server {
 
             registerTemplate(home)
             persistWorkspacePath(home)
+            installKitFirstOpen()
 
             val preferredPort = System.getenv("PORT")?.trim()?.toIntOrNull() ?: 9092
             val portFallbackCount =
