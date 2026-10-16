@@ -1,30 +1,27 @@
 name: arclength_spacing_demo
 description: >
-  Loadable before/after demo of the arc-length flattening fix (2026-07-31). Two pure-compute boxes,
-  no Window and no Renderer — both draw into their own output with showPlaneGrid, which goes through
+  Arc-length spacing on cubics, shown against plain parameter spacing. Two pure-compute boxes, no
+  Window and no Renderer — both draw into their own output with showPlaneGrid, which goes through
   drawToSVG -> display and so needs no AWT and no GPU.
 
-  The defect: PathFlattener built the arc-length table for every FLinesAndJavaShapes.Cursor by
-  bisecting each cubic only while `flatnessFor` — the control points' distance from the CHORD —
-  exceeded the tolerance. A leaf of that recursion becomes a Mapping whose distance advances
-  linearly in t, so a leaf is only acceptable when the cubic is straight AND evenly parameterised,
-  and flatness cannot see the second condition. A cubic with its control points sitting exactly on
-  the chord scores exactly 0.0, no tolerance can beat that, the recursion stopped at ONE leaf, and
-  every arc-length operation on that curve silently degenerated to plain parameter interpolation.
-  On the 500-unit collinear cubic below, "the point at half the arc length" came out 161 units — a
-  third of the whole curve — from where it belonged.
+  Arc-length operations (byDashing, ticks, "the point at half the length") use a table built by
+  bisecting each cubic until it is both flat — its control points near the chord — and evenly
+  parameterised, so that distance advances linearly in t within each piece. The second test is the
+  parameter-skew term: a cubic whose control points sit on the chord but bunched toward one end is
+  perfectly flat and still badly skewed, and only skew makes the bisection split it. The history of
+  the criterion is in dev_docs/arc_length_spacing.md.
 
   Both boxes compute BOTH spacings live and side by side, so nothing here is a stored picture:
 
     1. arclength_dashes — the same two curves dashed twice. The left column marches t in equal
-       steps and joins each dash's ends with a straight chord, which is exactly what a one-leaf
-       mapping produced; the right column is today's byDashing. The captions carry the measured
-       shortest and longest dash. On the collinear curve the old spacing ranges 8..54 units for a
-       requested 22; the new one is 22.0 everywhere.
+       steps and joins each dash's ends with a straight chord, which is what a table with one piece
+       per curve would give; the right column is byDashing. The captions carry the measured
+       shortest and longest dash. On the collinear curve parameter spacing ranges 8..54 units for a
+       requested 22; arc-length spacing is 22.0 everywhere.
     2. arclength_ticks — tick marks at 24 equal steps of parameter (left) versus 24 equal steps of
-       arc length (right), plus, printed as the box's return value, the live proof of the mechanism:
-       for the collinear cubic the OLD flatness metric reads 0.000 while the new parameter-skew
-       term reads 161.250, which is why one metric stopped at a single leaf and the other does not.
+       arc length (right), plus, printed as the box's return value, the two terms of the criterion for the
+       collinear cubic: flatness reads 0.000 and parameter skew 161.250, which is why it is skew that
+       splits that curve.
 
   Replay this file into a fresh Field with the agent backdoor (field_run_transcript) and look at the
   two boxes: the right-hand panels are evenly spaced, the left-hand ones bunch up. Then edit a

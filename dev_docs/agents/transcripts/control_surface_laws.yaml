@@ -3,10 +3,11 @@ description: >
   Loadable demo of the three affordances Field's control surface gained: a slider **law**, a
   **momentary button**, and a read-only **meter** (afield/ControlLaw.kt, ControlGroupBuilder in
   afield/outputs.kt, src/commonMain/resources/controlLaws.js).
-    1. a law for the travel — four sliders over the same four decades, one per law. Drag `cutoff`:
-       1 kHz sits at 57% of the track under a logarithmic law and at 4.9% under a linear one, so the
-       bottom two octaves stop being one pixel wide. Compare it with the linear slider directly below,
-       which has exactly the same range.
+    1. a law for the travel — four sliders, one per law. The two `cutoff` sliders share one range,
+       20–20000 Hz (three decades): 1 kHz sits at 57% of the track under the logarithmic law and at
+       4.9% under the linear one directly below it, so the bottom octaves stop being one pixel wide.
+       `attack` (0–2 s, an exponential taper that accepts a zero minimum) and `pan` (−1 to 1, bipolar
+       about its centre) each have a range of their own.
     2. hold, don't latch    — a momentary button beside a checkbox, so the difference is visible rather
        than described. The button posts `true` on the way down and `false` on the way up; the checkbox
        latches. Press the button and drag off it before letting go: it still releases, because the

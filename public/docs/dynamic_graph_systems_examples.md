@@ -26,8 +26,10 @@ Three things work differently from a static graph:
 ## Six ways to propose an edge
 
 Field has six `DynamicGraphSystem`s, and they differ in what an edge *means*. The example runs all
-six over the same disc of points, for the same number of frames, with the same reinforcement and the
-same ceiling, so every difference between the panels comes from the system.
+six over the same disc of points, for the same number of frames and under the same edge-weight
+ceiling. Reinforcement is not shared: routing reinforces by 1.0, the other update laws by 4.0, and
+the alpha-event system per unit area, so compare the panels by the shape of their edges rather than
+their total weight.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dynamic_graph_systems_examples/six_systems.png" wait="14.0" capture="box" open-outputs="true" padding="20"}
 :::static
