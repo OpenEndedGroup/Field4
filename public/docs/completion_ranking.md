@@ -367,9 +367,6 @@ In rough order of how often each turns out to be the answer:
 4. **You are past row 80.** The popup renders at most 80 rows of however many the server sent.
 5. **Recency is outvoting the prior.** That is the intended order. It is also per-browser-profile,
    which is why a colleague's popup and yours can legitimately disagree.
-6. **The category weights predate the server's category vocabulary.** Most of the categories the
-   Kotlin side sends score nothing at all. That is a known defect; a characterization test pins the
-   current behaviour so that fixing it shows up as a change.
 
 ## Where this lives
 
