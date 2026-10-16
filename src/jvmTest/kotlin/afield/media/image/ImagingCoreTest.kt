@@ -677,4 +677,12 @@ class ImagingCoreTest {
             "a global threshold was expected to misclassify some of the 9 probes, but it got all of them right"
         )
     }
+
+    @Test
+    fun aConstantFieldIsColouredByItsValueNotDrawnAtTheBottom() {
+        val ones = Img(4, 4, 1, FloatArray(16) { 1f }).colormap("grayscale")
+        val zeros = Img(4, 4, 1, FloatArray(16) { 0f }).colormap("grayscale")
+        kotlin.test.assertTrue(ones.data[0] > 0.9f, "constant 1 is the top of the ramp, got ${ones.data[0]}")
+        kotlin.test.assertTrue(zeros.data[0] < 0.1f, "constant 0 is the bottom, got ${zeros.data[0]}")
+    }
 }
