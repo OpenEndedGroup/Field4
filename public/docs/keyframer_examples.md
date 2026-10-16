@@ -199,26 +199,9 @@ Composition-specific choices stay in the contributor: what a lane means, when it
 whether a zero retires a resource, and how the names are versioned. Field only supplies composition,
 typed boundaries, interpolation and persistence.
 
-??? aside "The module-pointer target overloads can only address one member per block"
-
-    Besides a `Structure`, a scope can target a live module's uniform structures:
-    `target(module: ModulePointer, name)` and its `ComputeModulePointer` / `MeshModulePointer`
-    siblings (`animation/keyframes/keyframer.kt:902#fun target(module: ModulePointer, name: String) =`, `:906`, `:910`). All three need a live renderer. Every
-    fence on this page uses the plain `Structure` form instead.
-
-    Each is a one-line wrapper over the lazily-resolved `target(name) { … }`
-    (`animation/keyframes/keyframer.kt:784#fun target(name: String, structure: () -> Structure?) {`), and they pass the *same*
-    `@`-suffixed string to two different lookups: it selects the structure, via
-    `module.current.liveUniformStructures[…]`, **and** it is the member name bound inside that
-    structure. That map is keyed by the **uniform block's name**
-    (`Module.kt:580#vi.ubos.forEach { liveUniformStructures[it.name] =` for a graphics module, `ComputeModule.kt:163#ci.ubos.forEach  { liveUniformStructures[it.name] =` for a compute one), while the
-    members inside it are the block's *fields*. So the key can only address a member whose name
-    equals the block's own name, not an arbitrary field within the block, and not the independent
-    structure-and-property pair the `@` qualifier gives a plain `Structure` target.
-
-    The working way to keyframe a module's uniform is therefore the plain `Structure` overload
-    against `module.<block>`, which resolves to that same live structure
-    (`Module.kt:238#return ModuleRebuild.access(inside, property.name, inside.current.liveUniformStructures[property.name] ?:`). The next section drives a uniform that way, on a GPU.
+Besides a `Structure`, a scope can target a member of a live module's uniform block:
+`target(module, "key@block.member")`, with `ComputeModulePointer` and `MeshModulePointer` forms. These
+need a live renderer, so every fence on this page uses the plain `Structure` form.
 
 ??? aside "`capture()` reads either kind of property, and writes back a binding"
 

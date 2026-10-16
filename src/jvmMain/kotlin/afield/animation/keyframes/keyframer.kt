@@ -907,20 +907,37 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * Register a key against one of a graphics module's live uniform structures, resolved through the
      * pointer each time so it survives a shader reload.
      *
-     * [name] is both the key name and — after the last `@` — the name of the uniform structure to look
-     * up in `module.current.liveUniformStructures`. Note that this addresses the *structure*, not a
-     * field inside it.
+     * [name] is the key name, and after the last `@` it is `block.member`: the uniform block to look up
+     * in `module.current.liveUniformStructures` and the member inside it. A slot with no `.` uses the
+     * same name for both.
      */
     fun target(module: ModulePointer, name: String) =
-        target(name) { module.current.liveUniformStructures[targetPropertyName(name)] }
+        uniformTarget(name) { module.current.liveUniformStructures[it] }
 
     /** [target] for a compute module's live uniform structures. */
     fun target(module: ComputeModulePointer, name: String) =
-        target(name) { module.current.liveUniformStructures[targetPropertyName(name)] }
+        uniformTarget(name) { module.current.liveUniformStructures[it] }
 
     /** [target] for a mesh-shader module's live uniform structures. */
     fun target(module: MeshModulePointer, name: String) =
-        target(name) { module.current.liveUniformStructures[targetPropertyName(name)] }
+        uniformTarget(name) { module.current.liveUniformStructures[it] }
+
+    /**
+     * A key on one member of a module's uniform block. The part of [name] after the last `@` is
+     * `block.member`, so `"tint@params.color"` keys `color` in the block `params`; a slot with no `.`
+     * names a block and its member alike, as before.
+     */
+    private fun uniformTarget(name: String, structureFor: (block: String) -> Structure?) {
+        val slot = targetPropertyName(name)
+        val block = slot.substringBefore('.')
+        val member = slot.substringAfter('.', slot)
+        dynamicTargets[name] = Target(
+            resolve = { structureFor(block) },
+            bind = { value -> structureFor(block)?.bind(member, value) },
+            get = { readProperty(structureFor(block), member) }
+        )
+        targets.remove(name)
+    }
 
     /**
      * Register a key against a `stack.auto.<name>` **shader-source** slot, so that the StackSL a module
