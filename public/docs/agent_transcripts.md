@@ -945,10 +945,9 @@ independent definition of the same thing*, written out longhand in the box. *pyr
 decimation against blur-then-throw-away, and prints the max elementwise difference so you can see the
 only disagreement is float summation order. *boxBlur* times the running-sum implementation against
 `convolveSeparable(boxKernel1D)`, which shares no code with it, and then prints the two blocks
-together, at radius 2 and at radius 24, because read together they say something the O(1)-beats-O(k)
-story gets wrong: at radius 2 the *kernel* is faster, and only past a crossover of a few pixels does
-the running sum win. A running sum is serial by nature; five taps of separable convolution vectorize
-freely. *bilateral* has no cheap reference, so it probes 3 px either side of a disc boundary at
+at radius 2 and at `comparisonRadius` (24), with how each cost grew and which was faster at radius 2
+in that run. The answer depends on the machine: a running sum is serial by nature, while five taps of
+separable convolution vectorize freely, so at small radii the kernel can win. *bilateral* has no cheap reference, so it probes 3 px either side of a disc boundary at
 `y = 210`, about one `sigmaSpace`, chosen because probing 30 px out would show a preserved step and
 prove nothing, then prints the noise left in a flat patch. The absolute milliseconds here are not the
 published benchmark (that is `:tools:imaging-bench` against OpenCV); what these boxes show is the

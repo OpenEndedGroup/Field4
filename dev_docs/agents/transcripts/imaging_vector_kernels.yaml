@@ -1,42 +1,32 @@
 name: imaging_vector_kernels
 description: >
-  Loadable demo of the 2026-07-27 imaging performance work: the operators that were rebuilt on the
-  vector-kernel layer in afield.stdlib/imaging_simd.kt, each timed IN THE BOX against a slower
-  definition of the same operation that is still reachable from public API — so you see the speed
-  and the sameness of the answer at once, on your machine, not in a table someone else measured.
+  The imaging operators built on the vector-kernel layer (afield/media/image/imaging_simd.kt), each
+  timed in the box with bestTimeMs against a slower definition of the same operation that is still
+  public API, so you see the speed and the sameness of the answer together, on your machine.
 
   Three pure-compute boxes, no Window and no Renderer:
-    1. pyrDown   — the fused half-scale filter against the naive "blur the whole image, then throw
-                   three quarters of it away" version, written out longhand. Same picture (max abs
-                   difference printed, ~1e-7 float summation order), a fraction of the time, because
-                   the decimation is now fused into both passes and the horizontal one runs
-                   polyphase so the reads stay unit-stride.
-    2. boxBlur   — the O(1)-per-pixel running sum against convolveSeparable(boxKernel1D(r)), which
-                   computes the same mean the O(k) way. Two independent implementations, so the
-                   printed max difference is a real correctness check and not a tautology. The
-                   speed-up came from turning the vertical pass inside out: it now advances a whole
-                   row of accumulators at a time instead of walking down one column.
-                   This box also reports the thing the "O(1) beats O(k)" story gets wrong — at
-                   radius 2 the kernel is the *faster* of the two, because a running sum is serial
-                   by nature while a handful of taps vectorize freely. It prints both radii so you
-                   can see where the crossover is rather than take the asymptote on faith.
-    3. bilateral — no cheap public reference exists for this one, so it is timed on its own and
-                   shown next to a plain Gaussian of the same spatial sigma. The point is visible
-                   rather than numeric: both blur the flat regions, only the bilateral keeps the
-                   edges. Its cost used to be 169 Math.exp calls per pixel; the range weight is now
-                   a 4096-entry table read with linear interpolation.
+    1. pyrDown   — the fused half-scale filter against "blur the whole image, then drop three
+                   quarters of it", written out longhand. Same picture (the max abs difference is
+                   printed, ~1e-7 from float summation order) in a fraction of the time.
+    2. boxBlur   — the running sum, constant work per pixel, against convolveSeparable(boxKernel1D(r)),
+                   which visits every tap. They share no code, so the printed max difference is a
+                   real check. The box times both at radius r and at comparisonRadius (24), prints how
+                   each cost grew, and says which was faster at radius r in this run: a short kernel
+                   vectorizes across taps while a running sum is serial, so the winner at small radii
+                   depends on the machine. Change r or comparisonRadius and re-run to see where it
+                   turns over for you.
+    3. bilateral — no cheap public reference exists, so it is timed on its own beside a plain
+                   Gaussian of the same spatial sigma. Both blur the flat regions; only the bilateral
+                   keeps the edges.
 
-  Timings are best-of-N with a warm-up, and N and the image size are small on purpose so a replay
-  finishes in seconds. Best-of-N rather than the mean because this is a laptop: the minimum is the
-  least-contended sample, and the run that produced these numbers was sharing the machine.
-  Absolute ms here are NOT the published benchmark — that is :tools:imaging-bench against OpenCV,
-  and tools/imaging-bench/results-1920x1080.txt. What this demo shows is the ratio to the slower
-  definition, which is what the change actually did.
+  Timings are bestTimeMs(repetitions, warmup): the best of N after a warm-up, with a small N and
+  image so a replay finishes in seconds. The minimum is the least-contended sample on a shared
+  machine. Absolute milliseconds vary between machines and runs; the ratio to the slower
+  definition is the measurement. The published comparison against OpenCV is :tools:imaging-bench.
 
-  Replay this file into a fresh Field with the agent backdoor (field_run_transcript) to see all
-  three on screen, then change a sigma or a radius and re-run a box to watch it update live. Each
-  `execute` op omits inline code, so it runs the box's stored `code` property. Executed end-to-end
-  by examples.demo-transcript.exec.
+  Replay this file into a fresh Field (field_run_transcript) to see all three, then change a sigma
+  or a radius and re-run a box. Each `execute` op omits inline code, so it runs the box's stored
+  `code`. Executed end-to-end by examples.demo-transcript.exec.
 operations:
   - create:
       box: imaging_perf_pyrdown
@@ -90,8 +80,8 @@ operations:
 
           showImgGrid(
               "source ${src.width}x${src.height}" to src,
-              "pyrDown($sigma) -> ${fused.width}x${fused.height}" to fused,
-              "naive blur-then-subsample" to naive,
+              "pyrDown -> ${fused.width}x${fused.height}" to fused,
+              "blur, then subsample" to naive,
               "|fused - naive|, x2000" to fused.zip(naive) { a, b -> kotlin.math.abs(a - b) * 2000f },
               columns = 2,
               cellSide = 300,
@@ -147,7 +137,7 @@ operations:
           showImgGrid(
               "source ${src.width}x${src.height}" to src,
               "boxBlur($r)" to running,
-              "convolveSeparable(boxKernel1D($r))" to kernelled,
+              "box kernel, r = $r" to kernelled,
               "boxBlur($comparisonRadius)" to src.boxBlur(comparisonRadius),
               columns = 2,
               cellSide = 300,
@@ -212,8 +202,8 @@ operations:
           showImgGrid(
               "clean" to clean,
               "+ uniform noise" to noisy,
-              "bilateral($sigmaSpace, $sigmaRange) — edges kept" to bil,
-              "gaussianBlur($sigmaSpace) — edges gone too" to gauss,
+              "bilateral — edges kept" to bil,
+              "gaussianBlur — edges lost" to gauss,
               columns = 2,
               cellSide = 300,
           )
