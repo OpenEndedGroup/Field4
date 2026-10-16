@@ -424,8 +424,9 @@ others it accepts, though some of them still deserve a look.
 | `UNREFERENCED_VERTEX` | informational | vertices no triangle uses |
 
 The dangerous *suspicious* row is `INVERTED_ORIENTATION`: an inside-out closed mesh is a legal
-manifold, and Manifold hands back a **negative volume** without throwing. The boolean you do next
-computes the complement of what you meant.
+manifold, and Manifold hands back a **negative volume** without throwing, after which a boolean
+computes the complement of what you meant. `toSolid()` refuses it for that reason (pass
+`check = false` to take it anyway); `fixWinding()` flips it.
 
 `UNWALKABLE_BOUNDARY` usually means inconsistent winding rather than anything exotic. Tracing a
 boundary into a ring follows directed half-edges, so a wrongly wound patch breaks the trace and an

@@ -1316,7 +1316,12 @@ internal class NativeRelease(val handle: MemorySegment, private val kind: Kind) 
  * of things it could *not* do. The older [afield.geometry.mesh.repaired] is still there and still fine for a
  * mesh whose only problem is an unwelded seam; it does not fill holes.
  *
- * @param check throw on an invalid mesh instead of returning a [Solid] that quietly has no volume.
+ * An inside-out mesh — closed and consistently wound, but inward — is a legal manifold to Manifold,
+ * with a negative volume, and the next boolean would compute its complement. The check refuses that
+ * too; a hollow shell, whose inner wall is wound inward on purpose, has a positive total and passes.
+ *
+ * @param check throw on an invalid or inside-out mesh instead of returning a [Solid] that quietly has
+ *   no volume, or a negative one.
  * @param weldTolerance weld coincident vertices first. `null` (the default) does not weld, because
  *   welding a mesh that did not need it is not free; pass `1e-6` for anything that came off disk.
  */
@@ -1338,7 +1343,20 @@ fun TriMesh.toSolid(check: Boolean = true, weldTolerance: Double? = null): Solid
         try {
             val solid = Solid.wrap(ManifoldNative.ofMeshGL, mesh)
             val status = solid.status
-            if (!check || !status.isError) return solid
+            if (!check) return solid
+            if (!status.isError) {
+                // Manifold accepts a closed surface wound inward and reports a negative volume, after
+                // which every boolean computes the complement of what was meant. A hollow shell's inner
+                // wall is wound inward on purpose, so only a negative TOTAL is refused.
+                val volume = solid.volume
+                if (volume >= 0.0) return solid
+                solid.close()
+                throw IllegalStateException(
+                    "this TriMesh is wound inside out: Manifold accepts it, with volume ${"%.4g".format(volume)}, " +
+                        "and the next boolean would compute the complement. TriMesh.fixWinding() flips it " +
+                        "(or reverse every triangle); toSolid(check = false) takes it as it is.",
+                )
+            }
             // Manifold can only say *that* it refused. Field can say why, so it does: the diagnosis
             // names the actual defect — which loops are open and how big, which edges have too many
             // faces — instead of the old message's list of things the reader might try.
@@ -1356,9 +1374,12 @@ fun TriMesh.toSolid(check: Boolean = true, weldTolerance: Double? = null): Solid
     }
 }
 
-/** `true` when Manifold agrees this mesh is a closed solid — the cheap pre-flight for [toSolid]. */
+/**
+ * `true` when Manifold agrees this mesh is a closed solid and it is not inside out (a negative total
+ * volume) — the cheap pre-flight for [toSolid], and false exactly when `toSolid()` would throw.
+ */
 fun TriMesh.isValidSolid(): Boolean =
-    runCatching { toSolid(check = false).use { !it.status.isError } }.getOrDefault(false)
+    runCatching { toSolid(check = false).use { !it.status.isError && it.volume >= 0.0 } }.getOrDefault(false)
 
 /**
  * How far apart two solids' volumes are, relative to the larger — the assertion a geometry test

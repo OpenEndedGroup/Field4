@@ -95,7 +95,8 @@ import kotlin.math.sqrt
  *  - **Zero-area triangles are fine.** Manifold accepts them and the volume is unchanged.
  *  - **An inside-out mesh is fine, and that is the dangerous one.** Manifold accepts a consistently
  *    but inwardly wound closed surface and reports a **negative volume** — so the boolean you do next
- *    silently computes the wrong thing rather than throwing. That is
+ *    silently computes the wrong thing rather than throwing (`toSolid()` refuses it on Manifold's
+ *    behalf when the total comes out negative). That is
  *    [MeshDefectKind.INVERTED_ORIENTATION], and it is the reason this file reports severity
  *    [MeshDefectSeverity.SUSPICIOUS] at all instead of just a pass/fail.
  *

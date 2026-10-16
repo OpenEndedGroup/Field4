@@ -308,10 +308,22 @@ class MeshRepairTest {
      *
      * This is here so that the claim "the new code was necessary" is a measurement rather than an
      * assertion in a commit message. The denominator is the meshes in [table] that **Manifold
-     * actually rejects** — not the whole table, because four of the damaged inputs (an inverted
-     * winding, zero-area triangles, two disjoint components and a NaN-free pristine mesh) are
-     * accepted unchanged, and counting those as "repairs" would inflate both numbers.
+     * actually rejects** (and `isValidSolid()`, which since 2026-10-16 also rejects an inside-out
+     * mesh) — not the whole table, because three of the damaged inputs (zero-area triangles, two
+     * disjoint components and a NaN-free pristine mesh) are accepted unchanged, and counting those
+     * as "repairs" would inflate both numbers.
      */
+    @Test
+    fun toSolidRefusesAnInsideOutMeshThatManifoldAccepts() {
+        if (!manifold()) return
+        val inverted = MeshDamage.invertWinding(ico)
+        val refusal = kotlin.test.assertFailsWith<IllegalStateException> { inverted.toSolid() }
+        assertTrue("inside out" in refusal.message.orEmpty(), refusal.message)
+        assertTrue(!inverted.isValidSolid(), "the pre-flight agrees with toSolid()")
+        inverted.toSolid(check = false).use { assertTrue(it.volume < 0.0, "unchecked, Manifold's own verdict stands") }
+        assertTrue(inverted.fixWinding().isValidSolid(), "the remedy the message names works")
+    }
+
     @Test
     fun baselineWhatRepairedAlreadyFixes() {
         if (!manifold()) return

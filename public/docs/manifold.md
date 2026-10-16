@@ -169,11 +169,9 @@ holes, so it rescues far fewer broken meshes than `repairToSolid()`. A repaired 
 solid, but not always the shape you started with; [geometry from disk](geometry_from_disk.md) shows
 the difference.
 
-**Manifold accepts an inside-out mesh.** A closed, consistently-but-inwardly wound surface is a
-legal manifold that reports a *negative* volume — so `status` is `NO_ERROR`, and the next boolean
-computes the complement of what you meant. `isValidSolid()` cannot catch that; `diagnose()` reports
-it as `INVERTED_ORIENTATION`, and `repairToSolid()`'s second winding pass fixes it. Manifold likewise
-accepts zero-area triangles, pinch vertices, and disjoint components — whose volumes it sums.
+`toSolid()` also refuses an inside-out mesh, one closed and consistently wound but inward, which
+Manifold itself would accept with a negative volume; `fixWinding()` flips it. Zero-area triangles,
+pinch vertices and disjoint components pass, and the volumes of disjoint pieces add up.
 
 `NON_FINITE_VERTEX` is a NaN in the positions, usually a degenerate normal upstream.
 `repairToSolid()` refuses that one outright rather than repairing around it — dropping the affected
