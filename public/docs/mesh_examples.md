@@ -75,12 +75,12 @@ assemble. A `ScalarField3D` is a type alias for
 val ball = sdfSphere(0.8)
 val bar = sdfBox(vec(2.2, 0.34, 0.34))
 val sharp = sdfUnion(ball, bar)
-val soft = sdfSmoothUnion(ball, bar, k = 0.3)              // the k is the fillet radius
+val soft = sdfSmoothUnion(ball, bar, k = 0.3) // the k is the fillet radius
 val drilled = sdfSmoothSubtract(soft, sdfCylinder(0.28, 4.0), k = 0.1)
 val twisted = sdfBox(vec(1.2, 1.8, 0.4)).twisted(0.35)
 
-// marchingCubes samples the field once per grid corner and shares one vertex per crossed grid
-// edge, so the surface it emits is closed rather than a triangle soup.
+// marchingCubes samples each grid corner and shares one vertex per crossed grid edge.
+// The result is indexed; closure also requires the surface to stay inside the sampling bounds.
 val window = boundsAround(radius = 1.35)
 val sharpMesh = marchingCubes(sharp, window, 72)
 val softMesh = marchingCubes(soft, window, 72)
@@ -96,8 +96,13 @@ val cutaway = marchingCubes(sdfIntersect(shell, sdfPlane(vec(0, 0, -1), 0.0)), w
 // A fillet only ever ADDS material, so the smooth union must enclose more than the sharp one.
 // That is a property you can assert rather than eyeball.
 println("sharp union  volume %.5f".format(sharpMesh.signedVolume()))
-println("smooth union volume %.5f  (the fillet adds %.5f)".format(
-    softMesh.signedVolume(), softMesh.signedVolume() - sharpMesh.signedVolume()))
+println(
+    "smooth union volume %.5f  (the fillet adds %.5f)"
+        .format(
+            softMesh.signedVolume(),
+            softMesh.signedVolume() - sharpMesh.signedVolume(),
+        ),
+)
 println("drilled      ${drilledMesh.summary()}")
 println("twisted      ${twistedMesh.summary()}")
 println("closed shell ${closedShell.summary()}")
@@ -167,9 +172,17 @@ println("resolution   tris    volume     relative error")
 for (resolution in [12, 24, 48, 64]) {
     val m = marchingCubes(sdfSphere(1.0), boundsAround(radius = 1.4), resolution)
     val error = abs(m.signedVolume() - exact) / exact
-    println("%10d %7d %10.6f %14.5f   watertight=%s chi=%d".format(
-        resolution, m.triangleCount, m.signedVolume(), error,
-        m.isWatertight(), m.eulerCharacteristic()))
+    println(
+        "%10d %7d %10.6f %14.5f   watertight=%s chi=%d"
+            .format(
+                resolution,
+                m.triangleCount,
+                m.signedVolume(),
+                error,
+                m.isWatertight(),
+                m.eulerCharacteristic(),
+            ),
+    )
 }
 println("the analytic answer is 4/3 pi = $exact")
 
@@ -177,14 +190,17 @@ println("the analytic answer is 4/3 pi = $exact")
 // topology layer telling you something a picture cannot: the two look identical from outside.
 val drilled = marchingCubes(
     sdfSubtract(sdfSphere(1.0), sdfCylinder(0.3, 4.0)),
-    boundsAround(radius = 1.3), 64,
+    boundsAround(radius = 1.3),
+    64,
 )
 println()
 println("drilled sphere: ${drilled.summary()}")
 
-// A gyroid is a triply-periodic minimal surface: one sheet with many handles, so chi goes strongly
-// negative. The marcher does not mind that the gyroid is not a distance function at all — it only
-// ever looks at signs.
+/*
+A gyroid is a triply-periodic minimal surface: one sheet with many handles, so chi goes strongly
+negative. A scalar field need not be a distance function: signs classify corners,
+while the sampled values locate interpolated edge crossings.
+*/
 val gyroid = marchingCubes(sdfGyroid(4.0, 0.3), boundsAround(radius = 1.0), 56)
 println("gyroid: ${gyroid.summary()}")
 :::fold draw the coarse and fine spheres beside the two harder shapes
@@ -249,20 +265,32 @@ for (round in 1..3) {
     control = control.loopSubdivide(1)
     rounds.add(control)
     val v = control.signedVolume()
-    println("%5d %6d %10.5f %9.5f   chi=%d".format(
-        round, control.triangleCount, v, v - previous, control.eulerCharacteristic()))
+    println(
+        "%5d %6d %10.5f %9.5f   chi=%d"
+            .format(
+                round,
+                control.triangleCount,
+                v,
+                v - previous,
+                control.eulerCharacteristic(),
+            ),
+    )
     previous = v
 }
+
 :::endfold
 
 // Now the smoothing comparison. Same input, same iteration count, same lambda — the only
 // difference is Taubin's second, inflating pass.
 val rng = java.util.Random(7)
 val clean = icosphereMesh(3, 0.8)
-val noisy = clean.transformed { p ->
-    val s = 1f + (rng.nextFloat() - 0.5f) * 0.18f          // 18% radial noise
-    vec(p.x * s, p.y * s, p.z * s)
-}.withVertexNormals()
+val noisy =
+    clean
+        .transformed { p ->
+            val s = 1f + (rng.nextFloat() - 0.5f) * 0.18f // 18% radial noise
+            vec(p.x * s, p.y * s, p.z * s)
+        }
+        .withVertexNormals()
 val laplacian = noisy.laplacianSmooth(iterations = 30, lambda = 0.6)
 val taubin = noisy.taubinSmooth(iterations = 30, lambda = 0.6, mu = -0.63)
 :::fold print the four volumes — this is the whole point — and draw the six meshes
@@ -318,7 +346,7 @@ symmetrically, so a decimation cannot look good by having simply shrunk inside t
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/decimate.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
 :::static
-val detailed = icosphereMesh(4, 0.8)          // 5120 triangles
+val detailed = icosphereMesh(4, 0.8) // 5120 triangles
 println("start: ${detailed.summary()}")
 println()
 println("target    got   deviation   min angle   watertight")
@@ -328,9 +356,16 @@ for (target in [2000, 600, 150]) {
     val small = detailed.decimate(target)
     // Symmetric: the largest distance either mesh's vertices sit from the other's surface.
     val deviation = maxDeviation(detailed, small)
-    println("%6d %6d %11.5f %11.1f   %s".format(
-        target, small.triangleCount, deviation,
-        small.quality().minAngleDegrees, small.isWatertight()))
+    println(
+        "%6d %6d %11.5f %11.1f   %s"
+            .format(
+                target,
+                small.triangleCount,
+                deviation,
+                small.quality().minAngleDegrees,
+                small.isWatertight(),
+            ),
+    )
     budgets.add("decimate($target) — deviation ${"%.4f".format(deviation)}" to small)
 }
 :::fold draw the original beside the three budgets
@@ -419,12 +454,16 @@ println("tube along an FLine: ${coil.summary()}")
 // A coarse torus, so there really are creases to keep. On a fine one the crease set is empty,
 // which is the correct answer and a dull demonstration.
 val ring = torusMesh(14, 8, 0.6, 0.22)
-println("torus: ${ring.toFLines(MeshLines.EDGES).size} edges, " +
-    "${ring.toFLines(MeshLines.CREASES, creaseAngleDegrees = 30.0).size} creases at 30 degrees, " +
-    "${ring.toFLines(MeshLines.NORMALS).size} normals")
+println(
+    "torus: ${ring.toFLines(MeshLines.EDGES).size} edges, " +
+        "${ring.toFLines(MeshLines.CREASES, creaseAngleDegrees = 30.0).size} creases at 30 degrees, " +
+        "${ring.toFLines(MeshLines.NORMALS).size} normals",
+)
 val patch = planeMesh(6, 6, 1.2, 1.2)
-println("plane patch: ${patch.toFLines(MeshLines.BOUNDARY).size} boundary loop(s), " +
-    "${patch.toFLines(MeshLines.BOUNDARY).firstOrNull()?.nodes?.size} nodes around it")
+println(
+    "plane patch: ${patch.toFLines(MeshLines.BOUNDARY).size} boundary loop(s), " +
+        "${patch.toFLines(MeshLines.BOUNDARY).firstOrNull()?.nodes?.size} nodes around it",
+)
 
 // OBJ keeps the indices; STL is soup and needs a weld. Both must recover the volume exactly.
 val source = icosphereMesh(3, 0.7)
@@ -432,10 +471,18 @@ val viaObj = objToTriMesh(source.toObj("ball"))
 val viaStl = stlToTriMesh(source.toStlBinary())
 println()
 println("source     ${source.vertexCount} verts  volume %.6f".format(source.signedVolume()))
-println("via OBJ    ${viaObj.vertexCount} verts  volume %.6f  watertight ${viaObj.isWatertight()}".format(
-    viaObj.signedVolume()))
-println("via STL    ${viaStl.vertexCount} verts  volume %.6f  watertight ${viaStl.isWatertight()}".format(
-    viaStl.signedVolume()))
+println(
+    "via OBJ    ${viaObj.vertexCount} verts  volume %.6f  watertight ${viaObj.isWatertight()}"
+        .format(
+            viaObj.signedVolume(),
+        ),
+)
+println(
+    "via STL    ${viaStl.vertexCount} verts  volume %.6f  watertight ${viaStl.isWatertight()}"
+        .format(
+            viaStl.signedVolume(),
+        ),
+)
 println("STL welded ${viaStl.weld(1e-5).vertexCount} verts  watertight ${viaStl.weld(1e-5).isWatertight()}")
 :::fold draw the coil beside the coarse torus and the STL round trip
 showMeshGrid(
@@ -475,7 +522,7 @@ a test.
 ```diffstatic {data-lang=kotlin}
 val k = mesh.gaussianCurvature()
 val areas = mesh.mixedVertexAreas()
-val total = (0 until mesh.vertexCount).sumOf { k[it] * areas[it] }   // == 2 * PI * chi
+val total = (0 until mesh.vertexCount).sumOf { k[it] * areas[it] } // == 2 * PI * chi
 ```
 
 `bvh()` builds a bounding-volume hierarchy and turns every useful query from O(*n*) into O(log *n*):

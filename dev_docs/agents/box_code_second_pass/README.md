@@ -16,7 +16,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Transcript comments and collection style](../box_code_adoption_batch_6/README.md) | Twenty more findings addressed; 17-transcript compile/replay and formatter regression tests pass. |
 
-[Machine checkpoint](checkpoint.json): **55 of 405 findings addressed**, one implemented with
+| [Documentation code explanations and layout](../box_code_adoption_batch_7/README.md) | Sixteen more findings addressed; 407 Kotlin states and four GLSL states mechanically checked. |
+
+[Machine checkpoint](checkpoint.json): **71 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.

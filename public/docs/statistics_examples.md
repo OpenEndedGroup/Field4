@@ -55,21 +55,24 @@ val signal = (0 until 500).map { exp(0.6 * rng.nextGaussian()) }
 
 val buf = SummaryStatsBuffer(maxSize = 500)
 buf.addAll(signal)
-buf.add(Double.NaN)                   // dropped, and counted, at `add` time
-buf.add(Double.POSITIVE_INFINITY)     // likewise: `values` never holds a non-finite number
+buf.add(Double.NaN) // dropped, and counted, at `add` time
+buf.add(Double.POSITIVE_INFINITY) // likewise: `values` never holds a non-finite number
 
 val s = buf.snapshot()
 
-// Three things the card reports that are easy to misread, pinned here as arithmetic:
-//  - MAD is the *median absolute deviation from the median*, unscaled. For a normal sample it is
-//    about 0.6745 sigma, not sigma; here the signal is skewed, so it is smaller than the IQR/2.
-//  - `range` is max - min, which for a skewed signal is dominated by the single largest sample.
-//  - `cv` is sampleStdDev / mean, so it is meaningless the moment the mean crosses zero.
+/*
+Three things the card reports that are easy to misread, pinned here as arithmetic:
+ - MAD is the *median absolute deviation from the median*, unscaled. For a normal sample it is
+   about 0.6745 sigma, not sigma; here the signal is skewed, so it is smaller than the IQR/2.
+ - `range` is max - min, which for a skewed signal is dominated by the single largest sample.
+ - `cv` is sampleStdDev / mean, so it is meaningless the moment the mean crosses zero.
+*/
 val madOverIqr = s.mad / s.iqr
-val note = "n=${s.count}, dropped=${s.droppedCount}; " +
-    "median=${"%.3f".format(s.median)}  mean=${"%.3f".format(s.mean)} (mean > median: right-skewed); " +
-    "MAD=${"%.3f".format(s.mad)} = ${"%.3f".format(madOverIqr)} x IQR; " +
-    "skew=${"%.3f".format(s.skewness)}  excess kurtosis=${"%.3f".format(s.kurtosisExcess)}"
+val note =
+    "n=${s.count}, dropped=${s.droppedCount}; " +
+        "median=${"%.3f".format(s.median)}  mean=${"%.3f".format(s.mean)} (mean > median: right-skewed); " +
+        "MAD=${"%.3f".format(s.mad)} = ${"%.3f".format(madOverIqr)} x IQR; " +
+        "skew=${"%.3f".format(s.skewness)}  excess kurtosis=${"%.3f".format(s.kurtosisExcess)}"
 :::fold render the card
 display("card", buf.summaryHtml(widthPx = 620, chartHeightPx = 150, decimals = 3))
 markdown("read this off the card", "{muted:$note}", width = 620)
@@ -115,19 +118,22 @@ val skewed = (0 until 500).map { exp(0.6 * rng.nextGaussian()) }
 
 // Two clean modes, 4 apart, each with sd 0.4 — the case the rule handles worst.
 val rng2 = java.util.Random(23)
-val bimodal = (0 until 500).map { if (it % 2 == 0) -2.0 + 0.4 * rng2.nextGaussian() else 2.0 + 0.4 * rng2.nextGaussian() }
+val bimodal =
+    (0 until 500).map { if (it % 2 == 0) -2.0 + 0.4 * rng2.nextGaussian() else 2.0 + 0.4 * rng2.nextGaussian() }
 
-// Re-derive the three candidate widths from the public stats and predict the bin count.
-// This shares `quantileSorted` with the implementation, so it checks the *rule selection and the
-// rounding* — not the quantiles themselves. Those are checked against SciPy in jvmTest instead.
+/*
+Re-derive the three candidate widths from the public stats and predict the bin count.
+This shares `quantileSorted` with the implementation, so it checks the *rule selection and the
+rounding* — not the quantiles themselves. Those are checked against SciPy in jvmTest instead.
+*/
 fun explain(name: String, values: List<Double>): String {
     val s = buildSummaryStats(values)
     val n = s.count
     val range = s.max - s.min
     val cubeRootN = n.toDouble().pow(-1.0 / 3.0)
-    val hFd = 2.0 * s.iqr * cubeRootN                                   // Freedman-Diaconis
-    val hScott = 3.5 * s.sampleStdDev * cubeRootN                       // Scott
-    val kSturges = ceil(ln(n.toDouble()) / ln(2.0) + 1.0).toInt()       // Sturges
+    val hFd = 2.0 * s.iqr * cubeRootN // Freedman-Diaconis
+    val hScott = 3.5 * s.sampleStdDev * cubeRootN // Scott
+    val kSturges = ceil(ln(n.toDouble()) / ln(2.0) + 1.0).toInt() // Sturges
     val hSturges = range / kSturges
     val winner = minOf(hFd, hScott, hSturges)
     val which = when (winner) {
@@ -147,15 +153,33 @@ val skewedNote = explain("skewed", skewed)
 val bimodalNote = explain("bimodal", bimodal)
 :::fold draw both histograms
 val svgs = [
-    histogramToSvg(buildHistogram(skewed), widthPx = 470, heightPx = 270, padTop = 26, title = "exp(0.6 g), n=500", decimals = 3),
-    histogramToSvg(buildHistogram(bimodal), widthPx = 470, heightPx = 270, padTop = 26, title = "two modes at -2 and +2, n=500", decimals = 3),
+    histogramToSvg(
+        buildHistogram(skewed),
+        widthPx = 470,
+        heightPx = 270,
+        padTop = 26,
+        title = "exp(0.6 g), n=500",
+        decimals = 3,
+    ),
+    histogramToSvg(
+        buildHistogram(bimodal),
+        widthPx = 470,
+        heightPx = 270,
+        padTop = 26,
+        title = "two modes at -2 and +2, n=500",
+        decimals = 3,
+    ),
 ]
 showRow("histograms", svgs)
-markdown("the rule, re-derived", """
+markdown(
+    "the rule, re-derived",
+    """
     {muted:$skewedNote}
 
     {muted:$bimodalNote}
-""", width = 960)
+""",
+    width = 960,
+)
 :::endfold
 ```
 
@@ -183,15 +207,15 @@ prints every coefficient under each:
 :::static
 val n = 400
 val rng = java.util.Random(7)
-val x = DoubleArray(n) { it / (n - 1.0) * 2.0 - 1.0 }          // an even sweep of -1..1
-val noise = DoubleArray(n) { rng.nextGaussian() }              // ONE noise draw, reused, so the
-                                                               // "independent" panel is literally
-                                                               // the noise the others are built on
+val x = DoubleArray(n) { it / (n - 1.0) * 2.0 - 1.0 } // an even sweep of -1..1
+val noise = DoubleArray(n) { rng.nextGaussian() } // ONE noise draw, reused, so the
+// "independent" panel is literally
+// the noise the others are built on
 val cases = [
     "linear" to DoubleArray(n) { 0.8 * x[it] + 0.25 * noise[it] },
     "monotone, curved" to DoubleArray(n) { exp(3.0 * x[it]) },
     "parabola" to DoubleArray(n) { x[it] * x[it] },
-    "sine, 1.5 cycles" to DoubleArray(n) { sin(3.0 * PI * x[it]) },
+    "sine, 3 cycles" to DoubleArray(n) { sin(3.0 * PI * x[it]) },
     "same mean, growing spread" to DoubleArray(n) { (0.05 + abs(x[it])) * noise[it] },
     "independent" to DoubleArray(n) { noise[it] },
 ]
@@ -205,13 +229,16 @@ fun coefficients(y: DoubleArray): String {
         "dCor=${d.format(StatsDependence.distanceCorrelation(x, y))}   " +
         "MIC~=${d.format(StatsDependence.micTicNaive(x, y).mic)}"
 }
+
 :::fold draw the six panels
-// Each panel is min-max rescaled into the unit square so the six share one window; SVG y grows
-// downward, so flip it to read the shapes the way the formulas are written.
-//
-// Two columns because three panels this wide do not fit the capture, and the panels are worth
-// more here than a third column would be. A caption longer than `cellWidth` now wraps inside the
-// card instead of widening it out of frame — that used to cost you a whole column.
+/*
+Each panel is min-max rescaled into the unit square so the six share one window; SVG y grows
+downward, so flip it to read the shapes the way the formulas are written.
+
+Two columns because three panels this wide do not fit the capture, and the panels are worth
+more here than a third column would be. A caption longer than `cellWidth` now wraps inside the
+card instead of widening it out of frame — that used to cost you a whole column.
+*/
 val window = Rect(0.0, 0.0, 1.0, 1.0)
 val frame = window.toFLine(color = vec(0.35, 0.44, 0.56, 0.5), thickness = 1.0)
 
@@ -227,7 +254,13 @@ val panels = cases.map { (name, y) ->
     "$name\n${coefficients(y)}" to [frame, cloud]
 }
 
-showPlaneGrid(*panels.toTypedArray(), columns = 2, cellWidth = 430, cellHeight = 262, window = window)
+showPlaneGrid(
+    *panels.toTypedArray(),
+    columns = 2,
+    cellWidth = 430,
+    cellHeight = 262,
+    window = window,
+)
 :::endfold
 ```
 
@@ -325,7 +358,7 @@ val n = 400
 val x = DoubleArray(n) { it / (n - 1.0) * 2.0 - 1.0 }
 val rng = java.util.Random(7)
 val noise = DoubleArray(n) { rng.nextGaussian() }
-val y = DoubleArray(n) { (0.05 + abs(x[it])) * noise[it] }     // the growing-spread panel again
+val y = DoubleArray(n) { (0.05 + abs(x[it])) * noise[it] } // the growing-spread panel again
 
 val observedDcor = StatsDependence.distanceCorrelation(x, y)
 val observedXi = StatsDependence.xi(x, y)
@@ -353,9 +386,14 @@ val sizes = [25, 50, 100, 150, 200, 300, 400]
 val thresholds = sizes.map { m ->
     val r2 = java.util.Random(1234)
     val k = 150
-    val v = DoubleArray(k) {
-        StatsDependence.distanceCorrelation(DoubleArray(m) { r2.nextGaussian() }, DoubleArray(m) { r2.nextGaussian() })
-    }.sortedArray()
+    val v =
+        DoubleArray(k) {
+                StatsDependence.distanceCorrelation(
+                    DoubleArray(m) { r2.nextGaussian() },
+                    DoubleArray(m) { r2.nextGaussian() },
+                )
+            }
+            .sortedArray()
     v[(k * 0.95).toInt()]
 }
 val fitted = sizes.map { 2.5 / sqrt(it.toDouble()) }
@@ -385,7 +423,9 @@ showSignals(
     xTitle = "1 / sqrt(n)   (n=400 left, n=25 right)",
     yTitle = "dCor",
 )
-markdown("verdict", """
+markdown(
+    "verdict",
+    """
     {muted:observed dCor = ${"%.4f".format(observedDcor)}; null mean ${"%.4f".format(nullDcor.average())},
     95th pct ${"%.4f".format(p95)}, max ${"%.4f".format(sortedD.last())};
     re-pairings reaching the observed value: $exceed / $reps}
@@ -396,7 +436,9 @@ markdown("verdict", """
 
     {muted:null 95th pct vs n (measured / 2.5-over-root-n):
     ${sizes.indices.joinToString(" · ") { "n=${sizes[it]} ${"%.3f".format(thresholds[it])}/${"%.3f".format(fitted[it])}" }}}
-""", width = 900)
+""",
+    width = 900,
+)
 :::endfold
 ```
 
@@ -448,7 +490,7 @@ for (i in 0 until total) {
     val yv = if (i < change) rng.nextGaussian() else xv * xv - 1.0 + 0.15 * rng.nextGaussian()
     xs += xv
     ys += yv
-    dSeries += dcor.push(xv, yv) ?: 0.0        // the first push always returns null
+    dSeries += dcor.push(xv, yv) ?: 0.0 // the first push always returns null
     xiSeries += xiRoll.push(xv, yv) ?: 0.0
     // There is no RollingPearson, so take the batch one over the same window for comparison.
     val lo = maxOf(0, xs.size - w)
@@ -461,9 +503,14 @@ for (i in 0 until total) {
 // window size, measured the same way as the previous section.
 val r2 = java.util.Random(1234)
 val k = 300
-val threshold = DoubleArray(k) {
-    StatsDependence.distanceCorrelation(DoubleArray(w) { r2.nextGaussian() }, DoubleArray(w) { r2.nextGaussian() })
-}.sortedArray()[(k * 0.95).toInt()]
+val threshold =
+    DoubleArray(k) {
+            StatsDependence.distanceCorrelation(
+                DoubleArray(w) { r2.nextGaussian() },
+                DoubleArray(w) { r2.nextGaussian() },
+            )
+        }
+        .sortedArray()[(k * 0.95).toInt()]
 
 // The incremental sums are not an approximation. Cross-check the last window against the O(w^2)
 // batch call, which materialises two full w x w distance matrices to get the same answer.
@@ -486,7 +533,9 @@ showSignals(
 )
 // The two windows are the same three coefficients measured twice, so they read as a table.
 // The pipes in `|r|` are escaped, or they would split the cell they sit in.
-markdown("numbers", """
+markdown(
+    "numbers",
+    """
     | window | dCor | xi | \|r\| |
     |--------|------|----|-------|
     | window-full to the change (i=$w..${change - 1}) | ${"%.3f".format(dSeries.subList(w, change).average())} | ${"%.3f".format(xiSeries.subList(w, change).average())} | ${"%.3f".format(absR.subList(w, change).average())} |
@@ -496,7 +545,9 @@ markdown("numbers", """
     by xi at +${firstXi!! - change}}
 
     {muted:incremental vs batch on the final window: |difference| = $agreement}
-""", width = 900)
+""",
+    width = 900,
+)
 :::endfold
 ```
 
@@ -541,19 +592,21 @@ right.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/quantile_warp.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="820" padding="16"}
 :::static
 val rng = java.util.Random(5)
-val fit = DoubleArray(4000) { exp(rng.nextGaussian()) }        // log-normal: violently right-skewed
-val held = DoubleArray(4000) { exp(rng.nextGaussian()) }       // a second, disjoint draw
+val fit = DoubleArray(4000) { exp(rng.nextGaussian()) } // log-normal: violently right-skewed
+val held = DoubleArray(4000) { exp(rng.nextGaussian()) } // a second, disjoint draw
 
-val warp = AdaptiveQuantileWarp()                              // target: UnitNormal, 8 knots
+val warp = AdaptiveQuantileWarp() // target: UnitNormal, 8 knots
 val state = warp.update(fit)
 
 val warped = held.map { state.evaluate(it) }
 val before = buildSummaryStats(held.toList())
 val after = buildSummaryStats(warped)
 
-// An independent oracle for the 8-knot fit: the *exact* warp onto a unit normal is
-// Phi^-1(Fhat(v)), the inverse normal CDF of the empirical CDF of the fitting sample. Nothing in
-// `quantilewarp.kt` computes that, so comparing against it tests the PCHIP interpolation itself.
+/*
+An independent oracle for the 8-knot fit: the *exact* warp onto a unit normal is
+Phi^-1(Fhat(v)), the inverse normal CDF of the empirical CDF of the fitting sample. Nothing in
+`quantilewarp.kt` computes that, so comparing against it tests the PCHIP interpolation itself.
+*/
 val sortedFit = fit.sortedArray()
 fun empiricalCdf(v: Double): Double {
     var lo = 0
@@ -582,17 +635,27 @@ showSignals(
 )
 val svgs = [
     histogramToSvg(
-        buildHistogram(held.toList()), widthPx = 460, heightPx = 250, padTop = 26, decimals = 2,
+        buildHistogram(held.toList()),
+        widthPx = 460,
+        heightPx = 250,
+        padTop = 26,
+        decimals = 2,
         title = "held-out input: skew ${"%.1f".format(before.skewness)}",
     ),
     histogramToSvg(
-        buildHistogram(warped), widthPx = 460, heightPx = 250, padTop = 26, decimals = 2,
+        buildHistogram(warped),
+        widthPx = 460,
+        heightPx = 250,
+        padTop = 26,
+        decimals = 2,
         title = "after the warp: skew ${"%.3f".format(after.skewness)}",
     ),
 ]
 showRow("distributions", svgs)
 // before/after over the same four moments: a table says it in a quarter of the characters.
-markdown("numbers", """
+markdown(
+    "numbers",
+    """
     | held-out | mean | sd | skew | excess kurtosis |
     |----------|------|----|------|-----------------|
     | before | ${"%.3f".format(before.mean)} | ${"%.3f".format(before.sampleStdDev)} | ${"%.3f".format(before.skewness)} | ${"%.1f".format(before.kurtosisExcess)} |
@@ -603,7 +666,9 @@ markdown("numbers", """
     {muted:target knots: ${state.targetKnots.joinToString { "%.3f".format(it) }}}
 
     {muted:worst |PCHIP - exact| over the 2nd..98th percentile: ${"%.4f".format(worst)}}
-""", width = 900)
+""",
+    width = 900,
+)
 :::endfold
 ```
 

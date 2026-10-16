@@ -233,6 +233,70 @@
     "eedfb551e7c1-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_6/README.md"
+    },
+    "0138746883aa-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "021f373e6bf8-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "05cfe9d79f8c-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "12a95c86b5aa-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "170fca19e6cf-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "17291ebbeb49-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "22b6fafe7412-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "2f08a46f3b63-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "3321d8acc458-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "3ce0ef5aa3ce-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "42e191350b0b-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "91a9cbd293cd-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "a10737de4739-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "a10737de4739-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "bdd9a7752234-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
+    },
+    "e70830985ea4-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_7/README.md"
     }
   },
   "batches": [
@@ -241,7 +305,8 @@
     "../box_code_adoption_batch_3/README.md",
     "../box_code_adoption_batch_4/README.md",
     "../box_code_adoption_batch_5/README.md",
-    "../box_code_adoption_batch_6/README.md"
+    "../box_code_adoption_batch_6/README.md",
+    "../box_code_adoption_batch_7/README.md"
   ],
-  "next": "Continue source findings: comment corrections, GLSL intent/layout, collection literals, code smells and remaining helper adoption. Full corpus coverage remains open."
+  "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups."
 }
