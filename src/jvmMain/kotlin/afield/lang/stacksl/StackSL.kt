@@ -671,7 +671,10 @@ private class FunctionCompiler(
         val requestedAll = arityVariant?.all == true
 
         parseExternalRead(raw)?.let {
-            push(leaf(it, token, "external GLSL read"))
+            // Whatever the host member's GLSL type, the stack holds vec4s: an overloaded helper
+            // widens a float, vec2, vec3 or int the way a swizzle would, and passes a vec4 through.
+            requiredHelpers += "asVec4"
+            push(leaf("${options.prefix}_asVec4($it)", token, "external GLSL read"))
             return
         }
 
@@ -3259,6 +3262,15 @@ private val bareSwizzleReservedWords = setOf("ryb")
 private fun helperSource(prefix: String, helpers: Set<String>): String {
     if (helpers.isEmpty()) return ""
     return buildString {
+        if ("asVec4" in helpers) {
+            appendLine("vec4 ${prefix}_asVec4(vec4 v) { return v; }")
+            appendLine("vec4 ${prefix}_asVec4(vec3 v) { return vec4(v, 1.0); }")
+            appendLine("vec4 ${prefix}_asVec4(vec2 v) { return vec4(v, 0.0, 1.0); }")
+            appendLine("vec4 ${prefix}_asVec4(float v) { return vec4(v); }")
+            appendLine("vec4 ${prefix}_asVec4(int v) { return vec4(float(v)); }")
+            appendLine("vec4 ${prefix}_asVec4(uint v) { return vec4(float(v)); }")
+            appendLine()
+        }
         if ("softClamp01" in helpers) {
             appendLine("vec4 ${prefix}_softClamp01(vec4 x) {")
             appendLine("    vec4 k = vec4(5.0);")

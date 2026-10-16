@@ -326,13 +326,10 @@ worse tool than saying so. You can also ask before you bind: `stackAutoShaderRep
 (`src/jvmMain/kotlin/afield/graphics/shader/shaders.kt:545#fun stackAutoShaderReport`) is pure, needs no device,
 and returns the same object.
 
-One more, and it is easy to misdiagnose. The program above never reads the push block, because the
-clock reaches it on `input.w`; the moment you want anything else from it — the force gain, a mouse
-position — the syntax is `?pc.knobs y`, and that external read is typed as a `vec4`
-(`src/jvmMain/kotlin/afield/lang/stacksl/StackSL.kt:2735#private fun parseExternalRead`). Pointing it at a
-`float` member is a swizzle error out of glslang rather than a StackSL diagnostic, so a spare `vec4`
-of knobs (clock in `.x`, gain in `.y`) is the shape that works, and it is also the shape that lets
-you add a knob without touching the shader.
+The program above never reads the push block, because the clock reaches it on `input.w`; for
+anything else from it (the force gain, a mouse position) the syntax is `?pc.knobs y`. An external read
+of any member type works, a `float` or `vec2` widened to a `vec4` the way a swizzle would, and a
+spare `vec4` of knobs (clock in `.x`, gain in `.y`) lets you add a knob without touching the shader.
 
 ---
 
