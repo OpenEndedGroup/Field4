@@ -166,7 +166,10 @@ def _compiled_transcript(path: str) -> bool:
 
 def _completion_input(path: str) -> bool:
     return (
-        _under(path, "public/docs/assets/agent_transcripts")
+        # Authored transcripts regenerate the starting-point boxes harvested below. Select
+        # both generators up front, before those generated changes exist in the diff.
+        _compiled_transcript(path)
+        or _under(path, "public/docs/assets/agent_transcripts")
         or _under(path, "templates")
         or _under(path, "tools/completion-corpus/boxes")
         or _under(path, "src/jvmMain/kotlin/afield/runtime/macros")
