@@ -640,6 +640,26 @@ class ManifoldTest {
     }
 
     @Test
+    fun `revolveMesh with axis Z makes the solid Section revolved makes`() {
+        if (!requireManifold()) return
+        val profile = listOf(Vec2(1f, 0f), Vec2(2f, 0f), Vec2(2f, 3f), Vec2(1f, 3f))
+        val mesh = afield.geometry.mesh.revolveMesh(
+            profile + profile.first(), segments = 256, axis = afield.geometry.mesh.RevolveAxis.Z,
+        )
+        mesh.toSolid(weldTolerance = 1e-6).use { lathe ->
+            Section.ofPolygon(profile).use { section ->
+                section.revolved(segments = 256).use { tube ->
+                    assertEquals(tube.volume, lathe.volume, 1e-6 * tube.volume + 1e-3, "same tube, same volume")
+                    for (axis in 0..2) {
+                        assertEquals(tube.bounds.min[axis].toDouble(), lathe.bounds.min[axis].toDouble(), 1e-3)
+                        assertEquals(tube.bounds.max[axis].toDouble(), lathe.bounds.max[axis].toDouble(), 1e-3)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun `slice and project return real cross sections`() {
         if (!requireManifold()) return
         // The C API returns ManifoldPolygons* from both of these, not ManifoldCrossSection*. Getting

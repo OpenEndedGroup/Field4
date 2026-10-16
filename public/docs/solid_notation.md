@@ -771,25 +771,13 @@ Primitives are centred on the origin. Everything else follows Manifold's convent
 
 - `cylinder` runs along **Z**.
 - `Profile.extruded(h)` runs from `z = 0` to `z = h` — *not* centred, because `Section.extruded` is not.
-- `Profile.revolved()` turns about **Z**, profile at `x ≥ 0`, counter-clockwise from `+X`.
+- `Profile.revolved()` turns about **Z**, profile at `x ≥ 0`, counter-clockwise from `+X`. The mesh
+  lathe `revolveMesh` defaults to Y; pass `axis = RevolveAxis.Z` to get the same solid from it.
 - `turned(x, y, z)` is in **degrees**, applied X then Y then Z.
 
 There is no `Torus` node:
 `torus(R, r)` is a function that builds `Profile.circle(r).translated(R, 0).revolved()`, which is
 what a torus is.
-
-!!! warning "Two lathes, ninety degrees apart"
-
-    Field has two of these and they do not agree. Check which one you have before you port a
-    profile between them.
-
-    | | axis | profile |
-    |---|---|---|
-    | `afield.geometry.mesh.revolveMesh` | **Y** | `(radius, y)` |
-    | `afield.geometry.solid.manifold.Section.revolved`, and therefore `Profile.revolved` | **Z** | `(radius, z)` |
-
-    Porting a profile one way or the other means swapping its `y` and `z`, or rotating the result.
-    `Profile.revolved` takes no axis argument, because Manifold's revolve has none.
 
 ## Open this {#open-this}
 
