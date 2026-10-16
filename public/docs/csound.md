@@ -131,9 +131,6 @@ Rest the cursor on a line to see its note:
 - on a line that declares or uses a channel (`chn_k`, `chnget`, `chnset`, `invalue`, `outvalue`),
   the channel's value in the playing Csound, read live.
 
-The event count comes from the score text, so events sent later with alt/option-Enter or from Kotlin are
-not counted.
-
 With the cursor on `instr Pluck`, the note at the editor's foot counts the score's events for it:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" clip-selector=".monaco-editor-container" screenshot="assets/csound/line-note-instr.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/csound_line_notes.yaml" capture-box="csound_doc_pluck" padding="10" wait="0" timeout="120" embed=true hidden=true name="csound-line-note-instr" alt="The Pluck .csd in Field's editor with the cursor on line 5, instr Pluck. At the editor's foot the line note reads instr Pluck: 3 events in the score, and under it, lines 15, 16, 17."}

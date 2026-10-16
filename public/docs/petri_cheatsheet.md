@@ -177,6 +177,5 @@ The Kotlin calls that build, play and analyse a net.
 | `live.play(cps = 2.0) { … }` | plays a live net in a box, on the beat |
 | `box.showPetriNet(net, layout = …)` | `AUTO` (the default), `RING`, `FORCE`, `LAYERED`, `TALA` |
 | `PetriLayout.TALA` | d2's diagram engine, via the optional `native/field-d2-layout`; draws with `FORCE` when it is absent |
-| `clearPetriLayoutCache()` | re-solve, after building that helper under a running Field |
 
 </div>

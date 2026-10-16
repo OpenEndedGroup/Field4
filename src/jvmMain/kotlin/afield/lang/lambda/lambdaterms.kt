@@ -153,10 +153,10 @@ sealed interface Term {
  * Do not read [Run.steps] as an optimal step count, and see `dev_docs/INTERACTION_NETS_LAMBDA.md` for what was
  * actually measured.
  *
- * Closed terms are the contract. An open term compiles — each *occurrence* of a free variable becomes its own
- * [Lambda.VAR] agent, deliberately unshared, and [CompiledTerm.freeVariables] remembers which name each one came from
- * — but `dup-var` builds fresh agents with fresh ids when it copies one, so a free variable that gets duplicated
- * reads back as an agent id rather than as its name. [corpus] is closed throughout, and asserts that it is.
+ * An open term compiles too: each *occurrence* of a free variable becomes its own [Lambda.VAR] agent, deliberately
+ * unshared, carrying its name's index in its state ([FREE_VARIABLE]). `dup-var` copies that state into the fresh
+ * agents it builds, so a duplicated free variable still reads back by name. [corpus] is closed throughout, and
+ * asserts that it is.
  */
 object LambdaTerms {
 
@@ -498,7 +498,9 @@ object LambdaTerms {
         /** How many labelled fans were built — the term's sharing structure as one number. */
         val fans: Int,
         /** How many `ERASE` agents were built — one per binder whose variable is never used. */
-        val erasers: Int
+        val erasers: Int,
+        /** The free variables' names, in first-seen order; a `VAR` agent's [FREE_VARIABLE] indexes this. */
+        val freeNames: List<String> = emptyList(),
     ) {
         /** The `ROOT` agent holding the answer. */
         val root: Node get() = net.node(ROOT_ID)
@@ -523,6 +525,7 @@ object LambdaTerms {
      */
     fun compile(term: Term): CompiledTerm {
         val frees = LinkedHashMap<String, String>()
+        val freeNames = ArrayList<String>()
         var fans = 0
         var erasers = 0
         var label = 0
@@ -569,7 +572,12 @@ object LambdaTerms {
                             // A bound occurrence contributes a loose end; its binder wires it up on the way out.
                             uses += up
                         } else {
-                            val free = node(Lambda.VAR, at = spot(depth), state = NodeState(energy = 0.8))
+                            val index = freeNames.indexOf(t.name).takeIf { it >= 0 }
+                                ?: freeNames.size.also { freeNames += t.name }
+                            val free = node(
+                                Lambda.VAR, at = spot(depth),
+                                state = NodeState(energy = 0.8, scalars = linkedMapOf(FREE_VARIABLE to index.toDouble())),
+                            )
                             frees[free.id] = t.name
                             connect(up, free.principal)
                         }
@@ -598,7 +606,7 @@ object LambdaTerms {
             build(term, root.principal, 0)
         }
 
-        return CompiledTerm(built, frees, fans, erasers)
+        return CompiledTerm(built, frees, fans, erasers, freeNames)
     }
 
     /** [compile], on source text — `compile("\\x. x x")`. */
@@ -667,9 +675,22 @@ object LambdaTerms {
         )
     }
 
-    /** [readback], on what [compile] returned — so the free-variable names come along by themselves. */
-    fun readback(compiled: CompiledTerm, maxNodes: Int = 200_000, maxDepth: Int = 3_000): Term =
-        readback(compiled.net, compiled.freeVariables, maxNodes, maxDepth)
+    /**
+     * [readback], on what [compile] returned — so the free-variable names come along by themselves, including on
+     * the copies `dup-var` made of one, which carry its [FREE_VARIABLE] index rather than an id the map knows.
+     */
+    fun readback(compiled: CompiledTerm, maxNodes: Int = 200_000, maxDepth: Int = 3_000): Term {
+        val names = HashMap(compiled.freeVariables)
+        for (node in compiled.net.nodes) {
+            if (node.type != Lambda.VAR || node.id in names) continue
+            val index = node.state.scalars[FREE_VARIABLE]?.toInt() ?: continue
+            compiled.freeNames.getOrNull(index)?.let { names[node.id] = it }
+        }
+        return readback(compiled.net, names, maxNodes, maxDepth)
+    }
+
+    /** The [NodeState.scalars] key a free variable's [CompiledTerm.freeNames] index lives under. */
+    const val FREE_VARIABLE: String = "freeVariable"
 
     /** The five single-glyph marks of [readback]'s table. `?`*id* is the sixth and is matched by prefix. */
     val MARKS: Set<String> = setOf("⊥", "·", "⋈", "∞", "…")

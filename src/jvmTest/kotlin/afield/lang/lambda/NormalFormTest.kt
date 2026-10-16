@@ -20,4 +20,12 @@ class NormalFormTest {
         assertEquals(0, compiled.net.reduciblePairs(rules).size)
         assertTrue(compiled.net.activePairs().isNotEmpty(), "ROOT ⟂ LAM is an active pair no rule covers")
     }
+
+    @Test
+    fun `a duplicated free variable reads back by its name`() {
+        // `x` is used twice, so its fan copies the free `y` with dup-var: the copies are fresh agents.
+        val run = LambdaTerms.normalise("(\\x. x x) y")
+        assertTrue(run.finished)
+        assertEquals("y y", run.result.toString().replace("(", "").replace(")", "").trim(), run.result.toString())
+    }
 }

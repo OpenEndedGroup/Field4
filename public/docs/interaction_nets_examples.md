@@ -17,7 +17,7 @@ Every node also carries an energy, and every rule splits or reduces the energy o
 
 Those are the five stages of `(λx. x x) (λy. y)`, a small term that uses every kind of agent. Left to right: the compiled net, 6 agents (ROOT, two APP, two LAM, one DUP — the fan for `x`, which is used twice); after `beta-linear`, 4; after `dup-lam`, 6, with two fans facing each other; after a second `beta-linear`, 4; and after `fan-fan` cancels the matched pair, 2 agents holding `λa. a`. Each panel is scaled to fit its own box, so compare the agent counts rather than the sizes of the drawings.
 
-`normalise` expects a closed term: a free variable that gets duplicated reads back as an agent id rather than as its name. A term with no normal form never finishes reducing, so `normalise` takes a `maxSteps` and leaves `Run.finished` false when it runs out. `Run.steps` counts every reaction, fan meetings and erasures included, so it is larger than the number of β-steps.
+A term with no normal form never finishes reducing, so `normalise` takes a `maxSteps` and leaves `Run.finished` false when it runs out. `Run.steps` counts every reaction, fan meetings and erasures included, so it is larger than the number of β-steps.
 
 For the test terms in `LambdaTerms.corpus()`, the order in which active pairs are chosen changes neither the result nor the amount of work: under every `ActivationOrder` each term takes the same number of reactions and fires the same rules. [A λ-term you can hear](chain_lambda_sound.md) measures and draws this.
 
