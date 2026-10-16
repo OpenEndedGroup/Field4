@@ -393,13 +393,14 @@ Three boxes appear and a window opens. The knobs worth turning, in the order the
 - **`sim.knobs`**, whose `.x` is the clock the noise walks through and `.y` the force gain. Both are
   lambdas, so both are live.
 
-To replay it from a script without the browser, run the transcript through the backdoor:
+??? aside "Agents: replaying the transcript"
+    To replay it from a script without the browser, run the transcript through the backdoor:
 
-```diffstatic {data-lang=bash}
-python3 tools/field_backdoor.py --port 9483 --graphics-context \
-  --command "transcript write gpustate --file dev_docs/agents/transcripts/gpu_state.yaml" \
-  --command "transcript run gpustate"
-```
+    ```diffstatic {data-lang=bash}
+    uv run --project . --group backdoor python tools/field_backdoor.py --port 9483 --graphics-context \
+      --command "transcript write gpustate --file dev_docs/agents/transcripts/gpu_state.yaml" \
+      --command "transcript run gpustate"
+    ```
 
 The example's [README](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/assets/gpu_state/README.md) lists every knob and what each one does to the picture.
 
