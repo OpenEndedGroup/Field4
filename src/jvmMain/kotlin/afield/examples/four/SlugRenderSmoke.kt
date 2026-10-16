@@ -110,11 +110,14 @@ object SlugRenderSmoke {
             val replaced = read()
             near(alpha(replaced, 32, 64), 0f)
             near(alpha(replaced, 104, 64), 0.5f)
-            module.current.meshes.clear()
+            // Closed while its mesh is still bound: the mesh draws nothing, and nothing throws.
             data.close(); data.close()
-            check(runCatching { data.getBuffer() }.isFailure)
+            val closed = read()
+            check(closed.indices.none { it % 4 == 3 && closed[it] > 0.001f }) { "A closed SlugBuffer still drew coverage" }
+            check(runCatching { data.replace(replacement) }.isFailure) { "a closed SlugBuffer must refuse replace" }
+            module.current.meshes.clear()
             repeat(40) { frame() }
-            println("Slug rendering PASSED: hole, edges, alpha, scale, replacement, close")
+            println("Slug rendering PASSED: hole, edges, alpha, scale, replacement, close before or after the mesh")
         } finally { renderer.cleanup(); window.cleanup() }
         exitProcess(0)
     }
