@@ -2381,6 +2381,7 @@ class KotlinExecution : BoxExecution {
         resetLaunchSetupState(inside)
 
         val normalizedCode = normalizedLaunchCode(execute)
+        afield.app.diagnostics.ProfileOrigin.launched(inside, strand, execute.property, inside.properties[execute.property] as? String ?: normalizedCode)
         val pendingLaunchMode = PENDING_LAUNCH_MODE
         val launchMode = ACTIVE_LAUNCH_MODE
         val pendingWatermark = inside.runGeneration.incrementAndGet(strand)

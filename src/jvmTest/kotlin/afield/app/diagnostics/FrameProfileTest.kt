@@ -29,6 +29,24 @@ class FrameProfileTest {
         return ProfileOrigin(box)
     }
 
+    @Test fun aScopeThatEndsOnAnotherThreadIsMarkedNotMisattributed() {
+        val origin=origin()
+        val context=origin+Job()
+        CoroutineProfiles.request(origin.document,CoroutineProfileRequest("start",3.0))
+        try {
+            CoroutineProfiles.resume(context, Runnable {
+                // What a scope looks like if its work moved threads: it begins here and ends there.
+                val token = CoroutineProfiles.beginScope(null, "hop")
+                val other = Thread { CoroutineProfiles.endMeasurement(token) }
+                other.start(); other.join()
+            })
+            val s=CoroutineProfiles.request(origin.document,CoroutineProfileRequest("stop"))
+            assertEquals("moved threads", s.lanes.single { it.label=="hop" }.state)
+        } finally {
+            CoroutineProfiles.request(origin.document,CoroutineProfileRequest("stop"))
+        }
+    }
+
     @Test fun nestedScopesAndSimulationChildrenKeepSelfAccountingAndNames() {
         val origin=origin()
         val context=origin+Job()

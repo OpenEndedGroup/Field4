@@ -709,9 +709,6 @@ Three rules matter once a figure mixes computed values into the prose:
 
 Beyond GitHub-flavoured markdown there are two additions: `:::row … :::end`, splitting columns on a `---` line, for the before/after shape markdown cannot spell; and `{role:text}` spans — `accent`, `muted`, `dim`, `ok`, `warn`, `bad` — so a callout never needs a hex literal. Neither applies inside code, so a `:::row` or a `{warn:…}` shown *as* an example stays as written. The figure above uses both: the before/after row, and the `ok`, `warn` and `muted` spans on its status line.
 
-??? aside "Agents: why the example closes its row with `:::end`"
-    A bare `:::` also closes a row in a live box, but on a docs page the runner treats a line that is exactly `:::` as one of its own fence-section markers — the same family as the `:::static` at the top of every runnable example — and strips it out of the code before running it. The row then never closes, and swallows the rest of the card in the built page only.
-
 You do not need `trimIndent()`; the text is dedented for you, and unlike `trimIndent` it survives having a multi-line value interpolated into it. `width` pins the card's width; without it the card is as wide as its widest unbreakable line.
 
 ### Trees and columns
@@ -1142,7 +1139,7 @@ Pass `polar = true` to draw any of the three around a circle. A step sequence is
 - On a polar `matrix`, rows are rings (row 0 is the outermost) and columns are sectors running clockwise from twelve o'clock. The playhead lights a whole sector.
 - On a polar `rangeSlider`, the track is the whole circle, and `min` and `max` meet at the top. The band runs clockwise from `start` to `endInclusive` and may wrap through the top. Drag inside it to turn the whole band.
 
-A wrapped band has `start > endInclusive`, which Kotlin's own `in` reads as an empty range, so test it with `arcContains`. On a dial a range means an arc, so use it for values that are already circular: a phase, a hue, a window into a loop.
+On a dial a range means an arc, and `value in band` follows it. Use it for values that are already circular: a phase, a hue, a window into a loop.
 
 <!--
 FIELD_TEST
@@ -1173,7 +1170,7 @@ controlGroup("dial", columns = 3) {
     grid = matrix("pattern", rows = 4, columns = 16, states = 4, initialValue = pattern, polar = true) { pattern = it }
     range = rangeSlider("band", min = 20.0, max = 2000.0, initialValue = band, polar = true) {
         band = it
-        print(it.arcContains(100.0))
+        print(100.0 in it)
     }
 }
 

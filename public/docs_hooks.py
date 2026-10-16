@@ -3705,8 +3705,28 @@ def extract_effective_code(*, lines: list[str], fence_name: str, page_path: Path
 
 def extract_static_code(*, lines: list[str]) -> str:
     code_lines = [line.rstrip("\r\n") for line in lines]
-    # Drop section AND fold markers; keep the code inside a fold region (it must run).
-    filtered = [line for line in code_lines if not is_marker_line(line.strip())]
+    # Drop section AND fold markers; keep the code inside a fold region (it must run). A bare `:::`
+    # is a marker only while a fold is open (it closes it); anywhere else it is the box's own code,
+    # such as a markdown table row closed with `:::`, and runs as it would in a live box.
+    filtered: list[str] = []
+    fold_open = False
+    for line in code_lines:
+        stripped = line.strip()
+        if stripped == ":::":
+            if fold_open:
+                fold_open = False
+                continue
+            filtered.append(line)
+            continue
+        if stripped == ":::fold" or stripped.startswith(":::fold "):
+            fold_open = True
+            continue
+        if stripped == ":::endfold":
+            fold_open = False
+            continue
+        if is_marker_line(stripped):
+            continue
+        filtered.append(line)
     return normalize_code_lines(filtered)
 
 

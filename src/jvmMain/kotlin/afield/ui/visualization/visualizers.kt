@@ -392,9 +392,9 @@ private fun <C> ControlGroupBuilder.matrixControl(
  *
  * With [polar] the track is a whole circle, `min` and `max` meet at the top, and the interval runs
  * clockwise from `start` to `endInclusive` — so it can wrap through the top. A wrapped interval has
- * `start > endInclusive` and covers `start..max` plus `min..endInclusive`; test membership with
- * [arcContains], since Kotlin's own `in` reads such a range as empty. Use it for things that are
- * already circular: phase, hue, a window into a loop.
+ * `start > endInclusive` and covers `start..max` plus `min..endInclusive`; the polar slider hands
+ * back an [ArcRange], so `value in band` answers for the arc. Use it for things that are already
+ * circular: phase, hue, a window into a loop.
  *
  * ```kotlin
  * var band = 200.0..2000.0
@@ -430,7 +430,7 @@ fun ControlGroupBuilder.rangeSlider(
     }
     return withPlayhead(arrayControl(
         "range", label, 2, initialValue, sanitize,
-        { it[0]..it[1] }, { listOf(it.start, it.endInclusive) }, { id, values ->
+        { if (polar) ArcRange(it[0], it[1]) else it[0]..it[1] }, { listOf(it.start, it.endInclusive) }, { id, values ->
             controlShell(
                 "range", id, label,
                 """data-min="$min" data-max="$max" data-step="$step" data-values="${encodeValues(values)}"${polarAttribute(polar)}""",
@@ -477,6 +477,22 @@ fun ControlGroupBuilder.menu(
             </div>
         """.trimIndent()
     }, { onUpdate(it, options[it]) }) { it.copy(options = options) }
+}
+
+/**
+ * An interval on a circle, as a polar [rangeSlider] reports it: clockwise from [start] to
+ * [endInclusive], wrapping through the top when `start > endInclusive`. `value in arc` and
+ * [isEmpty] follow the arc, where an ordinary `1700.0..400.0` would read as empty.
+ */
+class ArcRange(override val start: Double, override val endInclusive: Double) : ClosedFloatingPointRange<Double> {
+    override fun lessThanOrEquals(a: Double, b: Double): Boolean = a <= b
+    override fun contains(value: Double): Boolean =
+        if (start <= endInclusive) value in start..endInclusive else value >= start || value <= endInclusive
+    override fun isEmpty(): Boolean = start.isNaN() || endInclusive.isNaN()
+    override fun equals(other: Any?): Boolean =
+        other is ArcRange && other.start == start && other.endInclusive == endInclusive
+    override fun hashCode(): Int = 31 * start.hashCode() + endInclusive.hashCode()
+    override fun toString(): String = "$start..$endInclusive (arc)"
 }
 
 /**

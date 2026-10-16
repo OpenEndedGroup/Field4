@@ -116,8 +116,8 @@ These are application intervals, not GPU presentation measurements. If your upda
 already skips repeated renderer frames, place `beginFrame()` after that guard so each
 record corresponds to one actual update.
 
-`measure` and `profileScope("name") { … }` label synchronous work. Do not suspend or move
-threads inside these scopes. Standard `launch(CoroutineName("Orbit")) { … }` labels child
+`measure` and `profileScope("name") { … }` label synchronous work: a suspension inside one does
+not compile, and a scope that ends on another thread is marked "moved threads". Standard `launch(CoroutineName("Orbit")) { … }` labels child
 lanes, including children dispatched by `SimulationClock`. A selected lane reports
 inclusive costs. All-lane totals and the overview use self costs, subtracting measured
 children so nested scopes are counted once. Parent bars still enclose child work.
@@ -236,10 +236,9 @@ background compilation and renderer execution, are outside the exact resume coun
 Optional JVM stacks cover their sampled CPU/allocation activity. GPU timings are in the
 renderer profiler; this panel does not show them.
 
-The source revision is a fingerprint of the box's `code` property captured with its
-launch context. The source button opens **current** code; it does not restore the
-captured revision. Use **Hot code** for sampled source lines. Alternate-property launches are
-identified by their strand, but the fingerprint still refers to the `code` property.
+The source revision is a fingerprint of the property that was launched, taken at launch. The
+source button opens that property as it is now, and the detail says when it has been edited
+since the capture. Use **Hot code** for sampled source lines.
 
 ## Capture limits
 
@@ -624,7 +623,7 @@ reports overwritten history.
 `budget.measure("Collision") { … }` and `profileScope("name") { … }` bracket synchronous
 stages. Inclusive costs contain nested children; self costs subtract them. All-lane sums
 use self costs, while selecting one lane shows its inclusive cost. Adding inclusive parent
-and child values would double-count work. Do not suspend or change threads inside a scope.
+and child values would double-count work.
 Frame totals and scope totals are different populations and must not be added together.
 
 GC collection counts and collector time cover the whole JVM over the capture. With stacks
