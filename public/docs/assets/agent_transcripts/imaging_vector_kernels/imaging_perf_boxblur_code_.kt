@@ -35,7 +35,7 @@ val tKernelBig = bestTimeMs(repetitions = 3, warmup = 2) {
 showImgGrid(
     "source ${src.width}x${src.height}" to src,
     "boxBlur($r)" to running,
-    "convolveSeparable(boxKernel1D($r))" to kernelled,
+    "box kernel, r = $r" to kernelled,
     "boxBlur($comparisonRadius)" to src.boxBlur(comparisonRadius),
     columns = 2,
     cellSide = 300,
