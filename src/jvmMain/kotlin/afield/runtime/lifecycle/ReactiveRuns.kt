@@ -522,7 +522,8 @@ object ReactiveRuns {
      * when no other box still waiting to rerun can reach it through recorded flows, so a diamond's
      * bottom runs once, after both sides. A reader is waiting while its last read of the value (and
      * its last run) began before the change; a box that ran or read since is up to date. Each box
-     * reruns at most [MAX_RUNS_PER_CASCADE] times per cascade, which is what stops a cycle.
+     * reruns at most [MAX_RUNS_PER_CASCADE] times per cascade, which is what stops a cycle. Readers
+     * with no order between them rerun in the order their last runs started.
      */
     internal object Downstream {
         private val pending = ConcurrentLinkedQueue<Change>()
@@ -596,11 +597,13 @@ object ReactiveRuns {
             while ((isRunning(box) || isBlocked(box)) && System.currentTimeMillis() < deadline) delay(5)
         }
 
+        /** Relaunches [box] on the strand it is running on (its first, if several), else `default`. */
         private fun launchQueued(box: Box) {
             val source = box.getPropertyRaw("code") as? String ?: ""
-            val execute = Execute(box.id, "launch", 1, source, false, strand = "default")
-            FlightRecorder.recordLaunchEntrypoint("propDown.cascade", box, execute, strand = "default")
-            box.ke.launchAll(box, execute, source, "default", documentReply(box))
+            val strand = box.currentRunningStates.keys.firstOrNull { !it.startsWith("__") } ?: "default"
+            val execute = Execute(box.id, "launch", 1, source, false, strand = strand)
+            FlightRecorder.recordLaunchEntrypoint("propDown.cascade", box, execute, strand = strand)
+            box.ke.launchAll(box, execute, source, strand, documentReply(box))
         }
 
         /** Each reader still to rerun, with the earliest change it has not seen. */
@@ -620,7 +623,11 @@ object ReactiveRuns {
                     out.merge(reader, c.seq, ::minOf)
                 }
             }
-            return out.entries.sortedBy { it.value }.associate { it.key to it.value }
+            // Readers rerun in the order they last ran (pickNext still puts a reader after any waiting
+            // box that feeds it): a set of passes launched in pipeline order, whose modules dispatch in
+            // the order they were added, keeps that order. Then by the earliest change each missed.
+            return out.entries.sortedWith(compareBy({ lastRunStart[it.key.id] ?: Long.MAX_VALUE }, { it.value }))
+                .associate { it.key to it.value }
         }
 
         /** The first waiting reader that no other waiting reader can reach through recorded flows. */

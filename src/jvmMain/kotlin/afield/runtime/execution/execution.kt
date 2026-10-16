@@ -1587,9 +1587,14 @@ class KotlinExecution : BoxExecution {
                 clearPendingLaunch(request)
             }
 
+            var reactiveStarted = false
             try {
                 if (!box.isLaunchEpochCurrent(request.launchEpoch)) return
 
+                // As executeInBox does: propUp pulls and propDown cascades need to know this box is
+                // running, and in what order boxes last ran.
+                ReactiveRuns.runStarted(box, "launch")
+                reactiveStarted = true
                 withContext(request.runScope.element) {
                 Box.withBoxContext(box) {
                     box.resetStdlibRandom()
@@ -1780,6 +1785,7 @@ class KotlinExecution : BoxExecution {
                 box.runScopes.supersede(request.runScope)
                 clearPendingOnce()
                 trace.finish(executionSucceeded && box.isLaunchEpochCurrent(request.launchEpoch))
+                if (reactiveStarted) ReactiveRuns.runFinished(box, executionSucceeded && box.isLaunchEpochCurrent(request.launchEpoch), "launch")
             }
         }
 

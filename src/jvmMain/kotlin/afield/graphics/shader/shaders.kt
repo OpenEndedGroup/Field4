@@ -954,6 +954,33 @@ private fun liveStackAutoShaderFunctionFor(box: Box, target: StackAutoShaderTarg
     return block + glsl
 }
 
+private val stackAutoSlotLine = Regex("""^[ \t]*\{\{\s*stack\.auto\.[^}]*\}\}[ \t]*$""")
+private val pushConstantBlockEnd = Regex("""layout\s*\(\s*push_constant[^)]*\)\s*uniform\s+\w+\s*\{[^}]*\}[^;]*;""")
+
+/**
+ * [source] with any `{{ stack.auto.x }}` slot line that sits above the push-constant block moved to
+ * just below it. The slot's generated function may read the block (`?pc.knobs`), so it has to come
+ * after it; written above, glslang used to report `'pc' : undeclared identifier` inside generated code.
+ * `#line` keeps the lines after the moved slot numbered as written.
+ */
+internal fun stackAutoSlotsAfterPushConstants(source: String): String {
+    val block = pushConstantBlockEnd.find(source) ?: return source
+    val lines = source.split("\n")
+    val blockStartLine = source.substring(0, block.range.first).count { it == '\n' }
+    val blockEndLine = source.substring(0, block.range.last).count { it == '\n' }
+    val moved = (0 until blockStartLine).filter { stackAutoSlotLine.matches(lines[it]) }
+    if (moved.isEmpty()) return source
+    val out = ArrayList<String>(lines.size + moved.size * 2)
+    lines.forEachIndexed { index, line ->
+        out += if (index in moved) "" else line
+        if (index == blockEndLine) {
+            moved.forEach { out += lines[it].trim() }
+            out += "#line ${index + 2}"
+        }
+    }
+    return out.joinToString("\n")
+}
+
 private fun stackAutoTemplateResolverFor(box: Box, emitted: MutableMap<String, StackAutoShaderTarget>, kind: ShaderKind? = null): Resolver =
     Resolver { key ->
         fun resolveTarget(raw: String): String {
@@ -2404,7 +2431,7 @@ private fun preprocess(
     }
 
     return runShaderTemplate(
-        sourceWithCopiedPushConstants,
+        stackAutoSlotsAfterPushConstants(sourceWithCopiedPushConstants),
         listOf(stackAutoTemplateResolverFor(inside, stackAutoEmitted, kind)) + getShaderTemplateResolverForBox(inside),
         includeResolver
     )

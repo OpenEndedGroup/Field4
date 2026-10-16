@@ -108,6 +108,25 @@ class StackAutoNumbersTest {
     }
 
     @Test
+    fun aSlotWrittenAboveThePushBlockCanStillReadIt() {
+        // The slot line sits above the push-constant block and the program reads ?pc.knobs; the
+        // generated function is placed after the block, so it compiles.
+        val above = """
+            #version 450
+            layout(location = 0) in vec2 fragUV;
+            layout(location = 0) out vec4 outColor;
+            {{ stack.auto.program }}
+            layout(push_constant) uniform PC { vec4 knobs; } pc;
+            void main() { outColor = vec4(program(vec4(fragUV, 0.0, 0.0)).rgb, 1.0); }
+        """.trimIndent()
+        val box = Box("stack_auto_above_pc_test")
+        box.stackAutoShaderSources["program"] = "uv ?pc.knobs +"
+        val glsl = preprocess(box, above, ShaderKind.FRAGMENT_SHADER)
+        assertTrue(glsl.indexOf("} pc;") < glsl.indexOf("vec4 program("), glsl)
+        assertTrue(Introspection(glsl, ShaderKind.FRAGMENT_SHADER).valid, "the expanded shader compiles:\n$glsl")
+    }
+
+    @Test
     fun theBlockIsTheSameForABlankSlotAndABoundOne() {
         // So binding a program to a slot that started blank still updates the pipeline in place.
         assertEquals(blockOf(expand("")), blockOf(expand("uv 4.0 * fbm palette saturate")))

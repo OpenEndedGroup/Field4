@@ -177,12 +177,21 @@ class PathTraceScene {
             // transmissive emitter is shaded on the glass path; both keep weight zero, which leaves
             // the BSDF-hit arm at MIS weight one and the estimate unchanged.
             fun visible(m: PathTraceMaterial) = m.alphaMode == PathTraceMaterial.AlphaMode.OPAQUE && !m.transmission
+            // Each texture's mean RGB, for weighting a textured emitter by what it actually emits.
+            val textureMeans = textures.map { t ->
+                val sum = DoubleArray(3)
+                for (i in 0 until t.width * t.height) for (c in 0..2) sum[c] += t.pixels[4 * i + c]
+                DoubleArray(3) { sum[it] / (t.width * t.height) }
+            }
             fun area(t: Triangle) = 0.5 * Vector3f(t.p[1]).sub(t.p[0]).cross(Vector3f(t.p[2]).sub(t.p[0])).length()
             // Emitted power: area times emitted luminance, doubled when both faces radiate.
             fun power(t: Triangle): Double {
                 val m = materials[t.material]
                 if (!visible(m)) return 0.0
-                val luminance = 0.2126 * m.emissionRed + 0.7152 * m.emissionGreen + 0.0722 * m.emissionBlue
+                // The shader multiplies the factor by the emission texture, so weight by its mean too.
+                val texture = textureMeans.getOrNull(m.emissionTexture)
+                val luminance = if (texture == null) 0.2126 * m.emissionRed + 0.7152 * m.emissionGreen + 0.0722 * m.emissionBlue
+                    else 0.2126 * m.emissionRed * texture[0] + 0.7152 * m.emissionGreen * texture[1] + 0.0722 * m.emissionBlue * texture[2]
                 return luminance * area(t) * (if (m.doubleSided) 2.0 else 1.0)
             }
             val ids = triangles.indices.filter { power(triangles[it]) > 0.0 }

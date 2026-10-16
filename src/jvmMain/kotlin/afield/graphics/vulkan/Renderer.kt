@@ -1215,6 +1215,18 @@ class Renderer(
             }
         }
 
+        // Options.profiling can change on a running renderer: follow it at the frame boundary. A
+        // retired profiler's query pools go through the deferred cleanup, after in-flight frames.
+        windowContexts.forEach { ctx ->
+            val current = ctx.profilerState
+            if (Options.profiling && current == null) {
+                ctx.profilerState = createProfilerState(ctx.fences.size)
+            } else if (!Options.profiling && current != null) {
+                ctx.profilerState = null
+                cleanup += Runnable { current.profiler.destroy() }
+            }
+        }
+
         // Drain ready frames (no stalls) per window.
         windowContexts.forEach { ctx ->
             val ps = ctx.profilerState ?: return@forEach
@@ -1738,8 +1750,8 @@ class Renderer(
         val opts = ProfilingOptions(
             enabled = true,
             timestamps = true,
-            pipelineStats = Options.isWindows,
-            perfCounters = Options.isWindows
+            pipelineStats = Options.isWindows && device.pipelineStatisticsQueryEnabled,
+            perfCounters = Options.isWindows && device.performanceQueryEnabled
         )
         val profiler = GpuProfiler(
             device = device.vkDevice,

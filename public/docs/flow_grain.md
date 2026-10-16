@@ -31,8 +31,8 @@ lighting and artistic parameters remain in the graph.
 | Profile | Launch a repeatable reset, warm-up and 180-frame camera path, then inspect the existing profiling timeline. |
 
 Use Field's normal **Stop Box** and **Launch Box** controls. Stop the renderer to stop
-rendering; stop a stage to remove it from the pipeline. Relaunch stages in their numbered
-order after rebuilding the resources box. Shader reloads preserve the resources.
+rendering; stop a stage to remove it from the pipeline. Relaunching the resources box relaunches the
+stages that use its resources, in their numbered order. Shader reloads preserve the resources.
 
 Stopping a stage detaches its work so you can edit and relaunch it. Closing the document's
 last session also closes its native renderer, which waits for the device and then releases
@@ -161,9 +161,10 @@ existing object viewer, and shader push constants read the effective values.
 
 The profile box uses `frameProfile`, named scopes and `CoroutineProfiles`, and captures
 CPU and allocations only; GPU pass timings stay in the renderer profiler. To get GPU
-queries too, set `Options.profiling = true` in the renderer box and relaunch the numbered
-graph. The setting is read at startup, so switching it on always costs you a restart, and
-which pipeline statistics you get back varies by device.
+queries too, set `Options.profiling = true` from any box: the running renderer starts its
+GPU timestamp queries on the next frame, and stops them when it is set back to `false`.
+Pipeline statistics are collected only on Windows, where the device supports them;
+Windows performance counters still need the setting on before the renderer starts.
 
 What each instrument measures, and what it is fair to compare, is in
 [Profiling](profiling_timeline.md), in its [Holding a frame budget](profiling_timeline.md#holding-a-frame-budget) part.
