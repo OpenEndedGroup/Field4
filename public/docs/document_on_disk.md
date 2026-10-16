@@ -291,10 +291,6 @@ a persistent pattern.
 (`examples.saving.sidecar-property-registration`) checks that across the whole registry, then drives a save
 through `toTransfer` and asserts that a property in neither list leaves no sidecar and no EDN key.
 
-`remote_js` looks like a sidecar-backed property but is not one: it is the name of the RemoteJS/WebXR
-language root box in `templates/remote/metadata.json`. The Javascript in that template lives in the
-root's children, under `code` and `customization`, and no `*_remote_js_.js` sidecar is ever written.
-
 The root box is excluded from the sidecar branch by id, so the root's `metadata` property stays
 inline in `metadata.edn` — that is the property
 `src/jvmMain/kotlin/afield/document/persistence/saving.kt:1056#fun updateRootMetadata(directory: String, metadata: String): Boolean`
