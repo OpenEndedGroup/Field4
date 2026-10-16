@@ -788,14 +788,38 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         )
 
         /**
+         * Names a document's own `:persistentProperties` header adds to [ioPersistentProperties], keyed by
+         * the document's canonical directory. Kept per document so that opening one document cannot change
+         * what another saves: these names used to be added to the global set, where they stayed until the
+         * process exited. Template scans, history versions and workspace listings read headers too, and
+         * they no longer leak into every open document.
+         */
+        private val documentPersistentProperties = ConcurrentHashMap<String, Set<String>>()
+
+        private fun documentKey(directory: String): String =
+            runCatching { java.io.File(directory).canonicalPath }.getOrElse { java.io.File(directory).absolutePath }
+
+        /** Record [names] from the header of the document in [directory]; adds to what is already recorded. */
+        fun recordDocumentPersistentProperties(directory: String, names: Collection<String>) {
+            if (names.isEmpty()) return
+            documentPersistentProperties.merge(documentKey(directory), names.toSet()) { old, new -> old + new }
+        }
+
+        /** The names a save into [directory] persists: [ioPersistentProperties] plus that document's own. */
+        fun persistentPropertiesFor(directory: String?): Set<String> {
+            val global = LinkedHashSet(ioPersistentProperties)
+            if (directory == null) return global
+            return global + documentPersistentProperties[documentKey(directory)].orEmpty()
+        }
+
+        /**
          * Properties that never reach disk, whatever [ioPersistentProperties] says.
          *
          * This is a deny-list rather than a deletion from [ioPersistentProperties] for one
-         * concrete reason: `SavingContext.mergePersistentProperties` does
-         * `Box.ioPersistentProperties.addAll(...)` with the list stored in every `metadata.edn`
-         * it loads. Every document written before this change carries `".*_editorState"` in
-         * that list, so removing the entry from the initialiser above would last exactly until
-         * the first document load put it straight back. A deny-list applied at the write filter
+         * concrete reason: `SavingContext.mergePersistentProperties` records the list stored in
+         * every `metadata.edn` it loads ([recordDocumentPersistentProperties]). Every document
+         * written before this change carries `".*_editorState"` in that list, so removing the
+         * entry from the initialiser above would last exactly until that document was loaded. A deny-list applied at the write filter
          * cannot be undone that way.
          *
          * `<property>_editorState` is Monaco view state — cursor line and column, scroll offset,

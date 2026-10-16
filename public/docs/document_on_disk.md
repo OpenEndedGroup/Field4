@@ -248,9 +248,9 @@ a longer fence rather than escaped
 code property is lifted out as narrative prose above the fence
 (`src/jvmMain/kotlin/afield/document/persistence/saving.kt:860#private fun extractLeadingNarrative(property: String, language: String, text: String): ExtractedNarrative?`).
 
-## The persistent-property list is sticky, and process-global
+## Which properties a document saves
 
-`Box.ioPersistentProperties` is a `mutableSetOf`, not a `val` of constants, and three things add to
+`Box.ioPersistentProperties` is a `mutableSetOf`, not a `val` of constants, and two things add to
 it while Field runs. Each small language adds its own root markers when it installs — Nano's
 `isNanoRoot`, `nanoLaunchDelayMs` and `nanoMemoryInit` in one call at
 `src/jvmMain/kotlin/afield/lang/nano/NanoInterface.kt:502#Box.ioPersistentProperties.addAll(setOf("isNanoRoot", "nanoLaunchDelayMs", "nanoMemoryInit"))`,
@@ -258,24 +258,21 @@ and the other language roots the same way. `Box.syncToProperty`, the helper that
 output-panel control to a box property, marks that property persistable in each of its five type
 branches
 (`src/jvmMain/kotlin/afield/ui/output/outputs.kt:2465#fun Box.syncToProperty(propertyName: String, initialValue: Any`).
-And **loading any document merges that document's own list into the global set**:
-
-```diffstatic {data-lang=kotlin}
-// Merge the saved properties with the current global set
-Box.ioPersistentProperties.addAll(propsList)
-```
-
-`src/jvmMain/kotlin/afield/document/persistence/saving.kt:1215#Box.ioPersistentProperties.addAll(propsList)`, reached from
-`readEdnTransfers` on every open. The set is on the `Box` companion, so it is per *process*, not per
-document: open a document whose header lists a property name, and every other document open in that
-Field will persist that name too, until the process exits. Nothing removes a name.
+A document's own header counts too, but only for that document. Loading one records its
+`:persistentProperties` list against the document's folder
+(`src/jvmMain/kotlin/afield/document/persistence/saving.kt:1329#Box.recordDocumentPersistentProperties(directory, propsList)`),
+and a save writes the global set plus that document's names
+(`src/jvmMain/kotlin/afield/document/graph/Boxes.kt:809#fun persistentPropertiesFor(directory: String?): Set<String>`).
+A property one document's header lists keeps being saved in that document, even before any code in
+this session has declared it, and opening it does not change what any other document saves.
+Inserting a template or pasting boxes brings their header's names into the receiving document.
 
 That is why the list in a saved header is usually longer than the one declared in
 `src/jvmMain/kotlin/afield/document/graph/Boxes.kt:428#var ioPersistentProperties = mutableSetOf(`. Most of the
 extra names are language-root markers registered by the first mechanism above (the `is…Root` flags,
-`mainLanguage`, Nano's configuration properties); the rest entered the set in some earlier session
-and have been carried in the header ever since. A saved header records what that process had
-learned, not a fixed declaration.
+`mainLanguage`, Nano's configuration properties); the rest were declared in an earlier session and
+have been carried in that document's header ever since. The names the first two mechanisms add are
+still process-wide: they are declarations by code, not by a document.
 
 ## What `metadata.edn` is mostly made of
 

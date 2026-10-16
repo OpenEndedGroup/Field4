@@ -395,10 +395,19 @@ fun templating() {
 
         val loadedBoxes = exec.value.flatMap { templateName ->
             // Try local templates first
+            // A template's header names become the receiving document's, so its boxes keep saving them.
+            fun cloneTemplate(path: String): Set<afield.document.graph.Box> =
+                SavingContext().cloneInto(path).also {
+                    afield.document.graph.Box.recordDocumentPersistentProperties(
+                        si.filename,
+                        // `load` records a standalone `.edn` template's header against its folder
+                        afield.document.graph.Box.persistentPropertiesFor(
+                            File(path).let { if (it.isFile) it.absoluteFile.parent else it.path }))
+                }
             val boxes = if (templatesHome.contains(templateName)) {
-                SavingContext().cloneInto(resolveTemplatePath("$home/templates", templateName))
+                cloneTemplate(resolveTemplatePath("$home/templates", templateName))
             } else if (templatesApp.contains(templateName)) {
-                SavingContext().cloneInto(resolveTemplatePath("$app/templates", templateName))
+                cloneTemplate(resolveTemplatePath("$app/templates", templateName))
             } else {
                 // Try remote templates
                 var boxes = emptySet<afield.document.graph.Box>()
