@@ -47,9 +47,24 @@ import kotlin.coroutines.CoroutineContext
 
 /** Immutable source reference captured at launch, inherited by child coroutines. No hashing when off. */
 class ProfileOrigin(val box: Box, val strand: String = "code") : AbstractCoroutineContextElement(Key) {
-    companion object Key : CoroutineContext.Key<ProfileOrigin>
+    companion object Key : CoroutineContext.Key<ProfileOrigin> {
+        private val launched = java.util.concurrent.ConcurrentHashMap<String, Pair<String, String>>()
+
+        /** [box]'s [strand] was launched from [property], whose text was [source]; see [ProfileOrigin.source]. */
+        fun launched(box: Box, strand: String, property: String, source: String) {
+            launched[box.id + "\u0000" + strand] = property to source
+        }
+
+        /** The SHA-256 prefix a lane's revision is. */
+        fun fingerprint(source: String): String =
+            MessageDigest.getInstance("SHA-256").digest(source.toByteArray()).take(6).joinToString("") { "%02x".format(it) }
+    }
     val document: String = box.profilingDocument()
-    val source: String = box.properties["code"] as? String ?: ""
+    private val launch = launched[box.id + "\u0000" + strand]
+    /** The property this strand was launched from: `code` unless an alternate property was launched. */
+    val property: String = launch?.first ?: "code"
+    /** The source that was launched, captured with the launch, not the property's text now. */
+    val source: String = launch?.second ?: (box.properties["code"] as? String ?: "")
 }
 
 /**
@@ -185,6 +200,8 @@ internal class CoroutineCapture(
     private val jobs = IdentityHashMap<Job, Int>()
     private val origins = IdentityHashMap<ProfileOrigin, Int>()
     private val lanes = ArrayList<CoroutineProfileLane>()
+    /** Each lane's box, so an export can fingerprint the launched property as it is now. */
+    private val laneBoxes = HashMap<Int, Box>()
     private val named = IdentityHashMap<ProfileOrigin, MutableMap<Pair<String, String>, Int>>()
     private val frameRecords = ProfileFrames()
     private val gcBefore = ProfileCounters.gc()
@@ -226,8 +243,9 @@ internal class CoroutineCapture(
         if (lanes.size >= maximumLanes) { rejected++; return -1 }
         val id = lanes.size
         stackCapture?.register(origin)
-        val hash = MessageDigest.getInstance("SHA-256").digest(origin.source.toByteArray()).take(6).joinToString("") { "%02x".format(it) }
-        lanes += CoroutineProfileLane(id, origin.box.id, origin.box.name, origin.strand, hash, "observed", (now-startNs)/1e6, (now-startNs)/1e6, label = label.take(120))
+        val hash = ProfileOrigin.fingerprint(origin.source)
+        lanes += CoroutineProfileLane(id, origin.box.id, origin.box.name, origin.strand, hash, "observed", (now-startNs)/1e6, (now-startNs)/1e6, label = label.take(120), property = origin.property)
+        laneBoxes[id] = origin.box
         lastEnds[id] = now
         if (job != null) jobs[job] = id else origins[origin] = id
         return id
@@ -240,9 +258,10 @@ internal class CoroutineCapture(
             if (lanes.size >= maximumLanes) { rejected++; return -1 }
             val id = lanes.size
             stackCapture?.register(origin)
-            val hash = MessageDigest.getInstance("SHA-256").digest(origin.source.toByteArray()).take(6).joinToString("") { "%02x".format(it) }
+            val hash = ProfileOrigin.fingerprint(origin.source)
             lanes += CoroutineProfileLane(id, origin.box.id, origin.box.name, origin.strand, hash,
-                "observed", (now-startNs)/1e6, (now-startNs)/1e6, name, kind)
+                "observed", (now-startNs)/1e6, (now-startNs)/1e6, name, kind, property = origin.property)
+            laneBoxes[id] = origin.box
             lastEnds[id] = now
             id
         }
@@ -311,7 +330,10 @@ internal class CoroutineCapture(
         val snapshot = CoroutineProfileSnapshot(captureId = id, recording = recording,
             elapsedMs = ((if (recording) now else stopNs)-startNs)/1e6,
             durationMs = (deadlineNs-startNs)/1e6, oldestSequence = oldest, nextSequence = sequence,
-            droppedSpans = oldest+rejected, lanes = lanes.map { it.copy(lastMs = (lastEnds[it.id]-startNs)/1e6) }, spans = records,
+            droppedSpans = oldest+rejected, lanes = lanes.map { lane ->
+                val now = laneBoxes[lane.id]?.properties?.get(lane.property) as? String
+                lane.copy(lastMs = (lastEnds[lane.id]-startNs)/1e6, currentRevision = now?.let(ProfileOrigin::fingerprint) ?: "")
+            }, spans = records,
             frameRecords = frameRecords.snapshot(frameAfter, startNs), nextFrameSequence = frameRecords.sequence,
             oldestFrameSequence = frameRecords.oldest, gcCollections = gc.first-gcBefore.first,
             gcCollectionMs = gc.second-gcBefore.second)

@@ -236,10 +236,9 @@ background compilation and renderer execution, are outside the exact resume coun
 Optional JVM stacks cover their sampled CPU/allocation activity. GPU timings are in the
 renderer profiler; this panel does not show them.
 
-The source revision is a fingerprint of the box's `code` property captured with its
-launch context. The source button opens **current** code; it does not restore the
-captured revision. Use **Hot code** for sampled source lines. Alternate-property launches are
-identified by their strand, but the fingerprint still refers to the `code` property.
+The source revision is a fingerprint of the property that was launched, taken at launch. The
+source button opens that property as it is now, and the detail says when it has been edited
+since the capture. Use **Hot code** for sampled source lines.
 
 ## Capture limits
 
