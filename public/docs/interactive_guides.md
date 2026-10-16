@@ -142,7 +142,6 @@ var clickCount = 3
 var userChoice = "Balanced Mode"
 val version = "1.0.0"
 val host = thisBox
-//%-
 
 println("interactive guide ready")
 
@@ -191,7 +190,7 @@ runBlocking {
 }
 ```
 
-A template value can come from `this.properties[...]`, from a Kotlin variable the box has already run, or from the shared template helpers the slideshow runtime exposes. A variable becomes visible to templates once the code declaring it has finished running, so the [`//%-` line](running_code.md#the-fragment-break) after the declarations matters here: it runs `version`, `clickCount` and `userChoice` as their own fragment before `show.start()` renders the first note. Without it the first note shows those slots empty.
+A template value can come from `this.properties[...]`, from a Kotlin variable the box has already run, or from the shared template helpers the slideshow runtime exposes.
 
 When a callback changes state, call `show.goToStep(show.currentStepIndex)` to rerender the current step immediately. That updates `{{clickCount}}` and `{{userChoice}}` without leaving the slide.
 
