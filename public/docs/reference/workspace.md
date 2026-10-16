@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-210 source file(s), 2978 public symbol(s), 1037 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+211 source file(s), 2981 public symbol(s), 1040 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -4338,6 +4338,21 @@ Measures the two things completion quality actually rests on, over a corpus of R
 [<code class="highlight"><span class="k">annotation</span> <span class="k">class</span> <span class="nf">CommonMembers</span><span class="p">(</span><span class="k">vararg</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/util_completion/#L60)
 
 The handful of members that answer "what do you actually do with one of these", in the order a person reaches for them — a **ranking prior** for the completion popup, declared where the type is.
+
+## BoxBodyRun.kt { #boxbodyrun-kt }
+
+`src/jvmMain/kotlin/afield/runtime/execution/BoxBodyRun.kt` — [read the source](source/jvmMain/afield/runtime/execution/BoxBodyRun/)
+
+### BoxBodyRun { #boxbodyrun-kt-boxbodyrun }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">BoxBodyRun</span></code>](source/jvmMain/afield/runtime/execution/BoxBodyRun/#L12)
+
+Which boxes' bodies are executing right now: set by execution around a box's run or launch, and not by its frame loop or callbacks, which run after the body has returned.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">during</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span></code>](source/jvmMain/afield/runtime/execution/BoxBodyRun/#L16) | Run `block` as the body of `box`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">isRunning</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/execution/BoxBodyRun/#L25) | Whether the box with `id` is running its body (rather than a frame loop or a callback). |
 
 ## ExecutionVerdict.kt { #executionverdict-kt }
 
