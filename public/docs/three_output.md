@@ -448,13 +448,9 @@ Every entry in the `showMesh` family takes a `renderer`, and the default is the 
 
 </div>
 
-Two size knobs that are easy to confuse:
-
-* `MeshView.width` / `MeshView.height` size the **raster** on the CPU path, and on the GPU path
-  `view.width` becomes the iframe's width in pixels;
-* `showMesh`'s own `height` parameter, default `430`, sizes the **iframe**, and `MeshView.height` is
-  ignored on that path. To get a GPU figure the same shape as a CPU one, pass `height = view.height`
-  explicitly.
+`MeshView.width` and `MeshView.height` size the figure on both paths: the raster on the CPU path,
+the iframe on the GPU path. Pass `height` to `showMesh` only to make the Three.js iframe a different
+height from the view.
 
 Give the width in pixels. The output panel sizes itself from the iframe's pixel width, and a
 percentage leaves the panel at whatever width it already had. That suits an FLine viewer filling
