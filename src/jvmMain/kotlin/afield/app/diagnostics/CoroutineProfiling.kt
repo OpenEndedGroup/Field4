@@ -128,8 +128,11 @@ object CoroutineProfiles {
 
     @PublishedApi internal fun endMeasurement(token: ProfileMeasurement?) {
         if (token == null) return
-        val allocated = ProfileCounters.delta(ProfileCounters.allocated(), token.allocated)
-        val cpu = ProfileCounters.delta(ProfileCounters.cpu(), token.cpu)
+        // Per-thread counters read on another thread mean nothing; say so instead of mis-attributing.
+        val moved = Thread.currentThread().threadId() != token.thread
+        if (moved) token.capture.markLane(token.lane, "moved threads")
+        val allocated = if (moved) -1 else ProfileCounters.delta(ProfileCounters.allocated(), token.allocated)
+        val cpu = if (moved) -1 else ProfileCounters.delta(ProfileCounters.cpu(), token.cpu)
         val end = System.nanoTime()
         val wall = end - token.start
         measuring.set(token.parent)
@@ -265,6 +268,11 @@ internal class CoroutineCapture(
             lastEnds[id] = now
             id
         }
+    }
+
+    /** Sets [lane]'s state, e.g. "moved threads" for a scope that ended on another thread. */
+    @Synchronized fun markLane(lane: Int, state: String) {
+        if (lane in lanes.indices) lanes[lane] = lanes[lane].copy(state = state)
     }
 
     @Synchronized fun beginScope(origin: ProfileOrigin, name: String, now: Long): Int {
