@@ -519,7 +519,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                     val target = (uniforms[name] as Uniform).buffer
                     structure.proxying = target
                     structure.writeIfStale(target, command) {
-                        throw MissingRefException("risk of GPU null ref `$it`")
+                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
                     }
                     target.clean(false, command)
                 }

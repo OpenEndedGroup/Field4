@@ -163,12 +163,9 @@ That is what makes the ping-pong work at all: nothing re-binds the buffers per f
 binding *is* the question "which one is it this frame", asked afresh at every dispatch.
 
 It is also why these lines belong exactly where they are: at the top level of the box, run once, and
-**not** inside a `loop {}`. A binding set inside the frame loop lands a frame late, and the
-diagnostic for the gap is easy to misread: a dispatch in that window throws
-`MissingRefException("risk of GPU null ref …")` naming the member
-(`src/jvmMain/kotlin/afield/graphics/render/ComputeMesh.kt:368#risk of GPU null ref`), which reads like a
-missing buffer and is really an assignment that has not happened yet. Set them once, outside; they
-stay live because they were lambdas from the start.
+**not** inside a `loop {}`. A binding set inside the frame loop lands a frame late, and a dispatch in
+that window throws `MissingRefException` saying the member has not been assigned yet. Set them once,
+outside; they stay live because they were lambdas from the start.
 
 `sim.dt = { 1f / 60f }` is a fixed timestep rather than a measured one. A spring network's stability
 is a function of `dt`, so feeding it the real frame interval means a hitch in the renderer becomes an
