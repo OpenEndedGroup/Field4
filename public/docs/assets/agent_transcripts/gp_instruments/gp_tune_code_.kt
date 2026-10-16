@@ -19,9 +19,8 @@ repeat(30) { opt.step { misfit(it) } }
 
 fun draw(pts: List<Pair<Double, Double>>, dx: Double, colour: Vec4, width: Double) =
     FLine().also { f ->
-        pts.forEachIndexed { i, (x, y) ->
-            if (i == 0) f.moveTo(dx + 100 * x, -100 * y) else f.lineTo(dx + 100 * x, -100 * y)
-        }
+        f.breakNext()
+        pts.forEach { (x, y) -> f.lineTo(dx + 100 * x, -100 * y) }
         f.color = colour
         f.thickness = width
     }

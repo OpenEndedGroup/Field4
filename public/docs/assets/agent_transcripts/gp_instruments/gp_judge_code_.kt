@@ -7,12 +7,13 @@ own colour, so shape and colour can both be compared.
 fun rosette(p: Map<String, Double>, dx: Double) =
     FLine().also { f ->
         val petals = p["petals"]!!.roundToInt()
+        f.breakNext()
         for (i in 0..600) {
             val t = 2 * PI * i / 600
             val r = 1 + p["depth"]!! * cos(petals * t) + 0.15 * p["depth"]!! * cos(2 * petals * t + 3 * p["curl"]!!)
             val x = dx + 90 * r * cos(t + p["curl"]!! * sin(petals * t) * 0.3)
             val y = -90 * r * sin(t + p["curl"]!! * sin(petals * t) * 0.3)
-            if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+            f.lineTo(x, y)
         }
         f.color = okhsl(p["hue"]!!, 0.8, 0.55, 1.0)
         f.thickness = 2.0

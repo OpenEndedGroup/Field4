@@ -6966,7 +6966,7 @@ than a point sprite), `seg`, and `fitInto`, which scales and centres a list of l
 
 `src/jvmMain/kotlin/afield/graphics/render/StandardDrawing.kt` — [read the source](source/jvmMain/afield/graphics/render/StandardDrawing/)
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Three.js scenes with `three { … }`](../three_output.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Three.js scenes with `three { … }`](../three_output.md)
 
 ### Top-level functions { #standarddrawing-kt-functions }
 
