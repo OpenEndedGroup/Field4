@@ -967,13 +967,9 @@ Produces a flat function that evaluates to `0.5` everywhere in the default domai
 val f = constant(0.5)
 ```
 
-`0.5.c` is the same value as a *parameter signal*: a constant over `Domain.ALL`, so it does not shrink the domain of anything it is combined with. `c(0.5)` and `constant(0.5)` carry the default `0.0..1.0`, and domains intersect, so `sin(frequency = c(2.0))` clips the oscillator to `0.0..1.0` where `sin(frequency = 2.0.c)` (or plain `2.0`) leaves it unbounded. Use `c(...)` when the constant is a signal in its own right and `.c` when it is a knob.
-
-```diffstatic {data-lang=kotlin}
-val knob = 0.5.c                          // Domain.ALL
-val wobble = sin(frequency = 2.0.c)       // still unbounded
-val clipped = sin(frequency = c(2.0))     // domain is now 0.0..1.0
-```
+`0.5.c` is the same value over `Domain.ALL`. As a parameter they behave the same, since a constant
+never narrows the function it configures: `sin(frequency = c(2.0))` and `sin(frequency = 2.0.c)` are
+both unbounded.
 
 **Creative**
 
