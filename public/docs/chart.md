@@ -177,9 +177,9 @@ into the same drawing as the rest of your geometry, under one transform. `toHTML
 
 Labels are glyph outlines. On a machine with no fonts, the chart is drawn without labels.
 
-If you add text of your own as FLines, use `TextLayout.toFLines()`, one line per contour, and move
-it with `FLine.transform`. A single filled `toFLine()`, or moving each `node.to` alone, garbles the
-letters.
+Text of your own goes in as `TextLayout.toFLines()` (one line per glyph) or `toFLine()` (one for
+the whole string). Move it with `FLine.transform`, which carries each curve's control points with its
+end points.
 
 ??? aside "Agents: where the pictures come from"
 
