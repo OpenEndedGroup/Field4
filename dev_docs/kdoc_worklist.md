@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 15907 of 31914 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 15910 of 31922 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2306 undocumented entry points** (types, top-level functions and values) and 13034 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2306 undocumented entry points** (types, top-level functions and values) and 13036 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -95,7 +95,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DlssReconstruction.kt](../src/jvmMain/kotlin/afield/media/reconstruction/DlssReconstruction.kt) | Imaging | reconstruction_plumbing, neural_reconstruction, ray_reconstruction | 1 | 10 | 26% |
 | [pf.kt](../src/jvmMain/kotlin/afield/math/estimation/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
 | [GpFit.kt](../src/jvmMain/kotlin/afield/math/gp/GpFit.kt) | Math | gaussian_processes | 1 | 7 | 33% |
-| [CoroutineProfiling.kt](../src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt) | Workspace | profiling_timeline | 1 | 5 | 25% |
+| [CoroutineProfiling.kt](../src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt) | Workspace | profiling_timeline | 1 | 4 | 44% |
 | [PetriVisual.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriVisual.kt) | Visualization | petri_nets, petri_cheatsheet | 1 | 4 | 82% |
 | [scratch.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/scratch.kt) | Internal | running_code, why | 1 | 1 | 50% |
 | [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/ui/visualization/ValueVisualizer.kt) | Visualization | visualizers, agent_transcripts, dataframe | 1 | 1 | 80% |
@@ -226,6 +226,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Patch.kt](../src/jvmMain/kotlin/afield/io/dmx/Patch.kt) | Lighting | dmx_lighting, chain_scene_to_light | 0 | 5 | 80% |
 | [OscQueryBox.kt](../src/jvmMain/kotlin/afield/io/osc/query/OscQueryBox.kt) | Networking | oscquery | 0 | 5 | 80% |
 | [charts.kt](../src/jvmMain/kotlin/afield/ui/visualization/charts.kt) | Visualization | chart, tetgen | 0 | 5 | 91% |
+| [visualizers.kt](../src/jvmMain/kotlin/afield/ui/visualization/visualizers.kt) | Visualization | visualizers, mobile_controllers | 0 | 5 | 80% |
 | [Clip.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/Clip.kt) | Machine learning | onnx | 0 | 4 | 84% |
 | [FaustBox.kt](../src/jvmMain/kotlin/afield/audio/synth/FaustBox.kt) | Synthesis | faust | 0 | 4 | 73% |
 | [SubharmonicSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/SubharmonicSoundDocs.kt) | Synthesis | subharmonic_sound | 0 | 4 | 86% |
@@ -246,7 +247,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [autodiff_optimize.kt](../src/jvmMain/kotlin/afield/math/autodiff/autodiff_optimize.kt) | Math | autodiff_examples | 0 | 2 | 94% |
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 2 | 84% |
 | [GpSmile.kt](../src/jvmMain/kotlin/afield/math/gp/GpSmile.kt) | Math | gaussian_processes | 0 | 2 | 60% |
-| [visualizers.kt](../src/jvmMain/kotlin/afield/ui/visualization/visualizers.kt) | Visualization | visualizers, mobile_controllers | 0 | 2 | 93% |
 | [keyframer.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframer.kt) | Graphics | keyframer_examples, interpolants_examples | 0 | 1 | 98% |
 | [FnSignal.kt](../src/jvmMain/kotlin/afield/audio/synth/FnSignal.kt) | Synthesis | chain_fn_sound_roundtrip | 0 | 1 | 66% |
 | [NotationPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/NotationPatterns.kt) | Patterns | chain_drawn_score, chain_drawn_morph | 0 | 1 | 71% |

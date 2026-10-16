@@ -627,7 +627,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**31914 public symbols across 1443 source files**, 15907 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**31922 public symbols across 1443 source files**, 15910 of them (49%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -649,13 +649,13 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ALife](alife.md) | 12 | 656 | 453 (69%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 610 | 404 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 5 | 349 | 199 (57%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 48 | 1429 | 974 (68%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 48 | 1436 | 975 (67%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 42 | 1504 | 735 (48%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1313 | 718 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2086 | 1004 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 120 | 3060 | 1377 (45%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 209 | 2973 | 1030 (34%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 209 | 2974 | 1032 (34%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 91 | 2192 | 665 (30%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
 ## Every file
@@ -889,7 +889,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [CopiedExternalBrowserSurface.kt](imaging.md#copiedexternalbrowsersurface-kt) | Imaging | 8 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [copy.kt](workspace.md#copy-kt) | Workspace | 3 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>core/<wbr></small> [Core.kt](languages.md#core-kt) | Languages | 76 | 2 | The tree FieldML actually evaluates: the typed tree with its source positions dropped and its multi-parameter lambdas curried into one-parameter `CLam` nodes. | [FieldML stage by stage](../fieldml_stages.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>diagnostics/<wbr></small> [CoroutineProfiling.kt](workspace.md#coroutineprofiling-kt) | Workspace | 8 | 2 |  | [Profiling](../profiling_timeline.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>diagnostics/<wbr></small> [CoroutineProfiling.kt](workspace.md#coroutineprofiling-kt) | Workspace | 9 | 4 |  | [Profiling](../profiling_timeline.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>ai/<wbr></small> [CorpusMicroscope.kt](audio-ai.md#corpusmicroscope-kt) | Audio AI | 1 | 1 | The audition surface for a corpus nearest-neighbour query: the query window and every window the search returned, as players on one shared relative timeline. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>ai/<wbr></small> [CorpusOperations.kt](audio-ai.md#corpusoperations-kt) | Audio AI | 9 | 9 | Multi-scale corpus operations: segment a source into overlapping windows, embed each window with grouped audio descriptors, and retrieve neighbours by weighted distance. | [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>statistics/<wbr></small> [correlations.kt](math.md#correlations-kt) | Math | 18 | 18 | Measures of statistical dependence between two equal-length `DoubleArray`s, batch and rolling. | [Values over time: interpolants & keyframes](../interpolants_examples.md), [Measuring dependence between two signals](../statistics_examples.md) |
@@ -2078,7 +2078,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [VisionPoseStereoSourceSmokeTest.kt](examples.md#visionposestereosourcesmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [VisionPoseUplinkSmokeTest.kt](examples.md#visionposeuplinksmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Visualizers.kt](synthesis.md#visualizers-kt) | Synthesis | 52 | 3 | How to look at the audio. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [visualizers.kt](visualization.md#visualizers-kt) | Visualization | 33 | 31 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md), [Field from your phone](../mobile_controllers.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [visualizers.kt](visualization.md#visualizers-kt) | Visualization | 40 | 32 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md), [Field from your phone](../mobile_controllers.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>buffers/<wbr></small> [vma.kt](graphics.md#vma-kt) | Graphics | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>models/<wbr></small> [VoiceTranscriber.kt](machine-learning.md#voicetranscriber-kt) | Machine learning | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr></small> [VolumetricNoise.kt](languages.md#volumetricnoise-kt) | Languages | 45 | 26 | StackSL's volumetric noise family: `noise3`, `fbm3`, `fbmd3`, `warp3`, `curl3`, `worley3`, `noise4`, `fbm4` — eight words that work as true 3D and 4D fields. |  |
