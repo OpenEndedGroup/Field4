@@ -246,10 +246,13 @@ than either endpoint, because a circle is the shortest closed curve there is.
     differently, because `t = 1` meaning "B's weights read in A's coordinates" is a different field
     from B and would look exactly like an interesting result.
 
-    **The same initialisation.** Train both with the same `seed`; nothing checks this for you.
-    Hidden units are exchangeable, so two runs from different random starts represent similar
-    functions through different permutations of the same machinery, and averaging across a
-    permutation should produce nothing.
+    **The seed matters less than you would expect.** Hidden units are exchangeable, so two runs
+    from different random starts could represent similar functions through different permutations
+    of the same machinery, and averaging across a permutation would produce nothing. For letters
+    trained with `PAIRED` coupling from a shared source, it does not happen: midpoints of fields
+    trained from different seeds are as tidy as those from one seed, because the two training
+    problems are nearly the same problem. `blendWith` does not check seeds. For a wider network,
+    harder targets or another coupling, train both with the same `seed` to be safe.
 
 The `letter_interpolation` transcript sweeps `t` slowly and continuously, forty seconds there and
 back, and `letter_interpolation_panels` is the still above. Both need letters that are a **single
@@ -312,28 +315,18 @@ something like it, install once rather than once per module.
 
 ```diffstatic {data-lang=kotlin}
 val written = ShaderBoids(grid, count = 12_000) {
-    radius = 2f / 64f
-    separation = 0.02f; separationRadiusFraction = 0.25f
-    alignment = 3.0f; cohesion = 200f
-    maxSpeed = 0.25f
     containment = 1.5f; containmentRadius = 0.44f   // a soft wall, applied after the rule
     driverStrength = -0.9f                          // negative: flee the driver
 }
 written.installDrawInto()                           // defaults to renderer.renderList
 ```
 
-!!! warning "The textbook weights do not flock, and the defaults are the textbook weights"
-
-    `0.02 / 1.2 / 0.8` is what every boids tutorial gives, and at this density it produces an
-    evenly spaced gas rather than a flock. The weights are **not scale-free**: separation *sums*
-    over neighbours while alignment and cohesion take *means*, so their relative strength depends
-    on the density and the interaction radius. In this scene (57 neighbours a boid, separation
-    summing terms of about 137, cohesion averaging an offset of about 0.003) the textbook
-    numbers put separation 27x above alignment and 4600x above cohesion.
-
-    So expect to retune all three whenever you change `radius` or the particle count, and tune them
-    by bringing the three *terms* to the same order, not by adjusting the weights until it looks
-    right.
+The default weights flock at this density and `radius = 2f / 64f`. They are far from the textbook
+`0.02 / 1.2 / 0.8`, which gives an evenly spaced gas here, because separation *sums* over
+neighbours while alignment and cohesion take *means*. In this scene a boid has about 57
+neighbours, and the textbook numbers put separation 27x above alignment and 4600x above cohesion.
+If you change `radius` or the particle count, retune all three. Bring the three *terms* to the
+same order rather than adjusting the weights until it looks right.
 
 `separationRadiusFraction` is the other dial that decides the shape. One radius for all three terms
 cannot clump: separation wants to be short-range while alignment and cohesion want the whole
@@ -496,11 +489,11 @@ about it**, so two flocks side by side still differ only in their rule. No retra
 
 | Setting | Default | Effect |
 | --- | --- | --- |
-| `radius` | 0.06 | Sets the neighbour interaction radius in simulation coordinates. It must not exceed the spatial grid’s cell size, or the query would miss neighbours. |
-| `separation`, `alignment`, `cohesion` | 0.02, 1.2, 0.8 | Weights repulsion, velocity matching and attraction to neighbours’ centre respectively. Their balance depends on density; the defaults alone need not produce distinct flocks. |
-| `separationRadiusFraction` | 1 | Sets separation’s reach as a fraction of `radius`. Values below one let longer-range cohesion gather clumps without equally long-range repulsion. |
+| `radius` | 2/64 | Sets the neighbour interaction radius in simulation coordinates. It must not exceed the spatial grid’s cell size, or the query would miss neighbours. |
+| `separation`, `alignment`, `cohesion` | 0.02, 3, 200 | Weights repulsion, velocity matching and attraction to neighbours’ centre respectively. The defaults flock at about 12,000 boids over a unit square at the default `radius`; their balance depends on density, so retune them if you change either. |
+| `separationRadiusFraction` | 0.25 | Sets separation’s reach as a fraction of `radius`. Values below one let longer-range cohesion gather clumps without equally long-range repulsion. |
 | `minSeparationFraction` | 0.05 | Floors pair distance in the separation denominator at this fraction of `radius`. This keeps coincident or nearly coincident neighbours from producing unbounded force. |
-| `maxSpeed` | 0.35 | Caps speed after acceleration is applied. This keeps one strong interaction from sending a particle arbitrarily far in the next step. |
+| `maxSpeed` | 0.25 | Caps speed after acceleration is applied. This keeps one strong interaction from sending a particle arbitrarily far in the next step. |
 | `dt` | 1/60 | Sets the fixed integration time step. Set zero to calculate accelerations without moving the particles. |
 | `containment`, `containmentRadius`, `containmentCenter` | 0, 0.8, origin | Adds a soft restoring force outside a circle centred on `containmentCenter`. Strength zero disables it; the radius sets where the force begins. |
 | `driverStrength`, `driverRadius` | 0, 0.25 | Controls the moving driver’s force and influence radius. Positive strength attracts and negative strength repels; zero disables the driver. |
