@@ -672,6 +672,11 @@ fun Box.showMesh(
  * "ball" from the source ([LabelsArgumentsFromSource]); `"a torus" to ring` still sets one by hand.
  *
  * @param columns meshes per row.
+ * @param facts print each mesh's fact line (counts, extent, χ, genus, volume) under its panel, as
+ *   [showMesh] does. On by default for the same reason.
+ * @param sharedScale frame every panel at the scale of the largest mesh, so sizes can be compared by
+ *   eye; by default each panel zoom-to-fits its own mesh. Both apply to the GPU renderer; the CPU one
+ *   always prints the facts and frames each panel itself.
  */
 @LabelsArgumentsFromSource
 fun Box.showMeshGrid(
@@ -681,6 +686,8 @@ fun Box.showMeshGrid(
     cellWidth: Int = 380,
     view: MeshView = MeshView(),
     renderer: MeshRenderer = MeshRenderer.GPU,
+    facts: Boolean = true,
+    sharedScale: Boolean = false,
 ) {
     require(panels.isNotEmpty()) { "showMeshGrid needs at least one panel" }
     if (renderer == MeshRenderer.GPU) {
@@ -694,7 +701,9 @@ fun Box.showMeshGrid(
             height = (rows * cellWidth * 0.75).toInt().coerceAtLeast(200),
             columns = columns,
             view = view,
+            facts = facts,
             cellWidth = cellWidth,
+            sharedScale = sharedScale,
         )
         return
     }

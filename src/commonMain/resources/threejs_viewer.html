@@ -6521,9 +6521,11 @@ function applyScenePanels(payload) {
         const vp = panelViewport(index, panels.length);
         const cam = new THREE.PerspectiveCamera(45, vp.h > 0 ? vp.w / vp.h : 1, 0.01, 10000);
         const bounds = p.bounds || payload.bounds;
-        if (bounds) applyCameraSpec(cam, p.camera || {}, bounds, true, fitPointsForPanel(index));
+        // fitBounds: frame the bounds as given (a shared scale), not this panel's own geometry.
+        const fitPoints = p.fitBounds ? null : fitPointsForPanel(index);
+        if (bounds) applyCameraSpec(cam, p.camera || {}, bounds, true, fitPoints);
         panelState.cameras.push({
-            camera: cam, spec: p.camera || {}, bounds: bounds, fitPoints: fitPointsForPanel(index)
+            camera: cam, spec: p.camera || {}, bounds: bounds, fitPoints: fitPoints
         });
     });
 

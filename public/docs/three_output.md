@@ -388,9 +388,9 @@ threeGrid(
 Each panel has its own camera, and carries the fact line `TriMesh.threeFacts()` computes, the
 same line `toFigureHtml` writes under a rasterized figure.
 
-`facts = true` is **off by default**, and `showMeshGrid` does not turn it on. If you want the numbers
-under each panel, either call `threeGrid` directly as above, or use the `List<ThreeMeshPanel>`
-overload, for a gallery that has something specific to say about each cell:
+`showMeshGrid` prints the fact line by default and forwards `facts` to `threeGrid`; `threeGrid`
+called directly leaves it off unless asked, as above. For a gallery that has something specific to
+say about each cell, use the `List<ThreeMeshPanel>` overload:
 
 ```diffstatic {data-lang=kotlin}
 threeGrid(

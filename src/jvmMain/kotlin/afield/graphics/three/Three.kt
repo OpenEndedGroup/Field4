@@ -318,8 +318,11 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         facts: String? = null,
         camera: ThreeCameraSpec? = null,
         bounds: ThreeBounds? = null,
+        fitBounds: Boolean = false,
     ) {
-        panels += ThreePanel(camera = camera, title = title, caption = caption, facts = facts, bounds = bounds)
+        panels += ThreePanel(
+            camera = camera, title = title, caption = caption, facts = facts, bounds = bounds, fitBounds = fitBounds,
+        )
     }
 
     /** Panels per row. */
@@ -640,7 +643,9 @@ fun Box.threeTurntable(
 }
 
 /**
- * Several meshes side by side, each in its own panel and each framing its own bounds.
+ * Several meshes side by side, each in its own panel and each framing its own bounds — unless
+ * [sharedScale], when every panel frames a box the size of the largest, so a smaller mesh *looks*
+ * smaller. Use that whenever the panels are there to compare sizes.
  *
  * The replacement for `showMeshGrid` and for the galleries in `polytope_examples.md`. One WebGL
  * context however many panels there are — see [ThreePanel].
@@ -654,6 +659,7 @@ fun Box.threeGrid(
     view: MeshView = MeshView(),
     facts: Boolean = false,
     cellWidth: Int = view.width,
+    sharedScale: Boolean = false,
 ): ThreeGeometryViewState = threeGrid(
     panels = panels.map { (label, m) ->
         ThreeMeshPanel(label, m, facts = if (facts) m.threeFacts() else null)
@@ -664,9 +670,22 @@ fun Box.threeGrid(
     columns = columns,
     view = view,
     cellWidth = cellWidth,
+    sharedScale = sharedScale,
 )
 
-/** [threeGrid] with a caller-supplied fact line per cell. */
+/**
+ * Each of [bounds] re-centred on itself but grown to the largest extent of any of them on every
+ * axis, so panels that zoom-to-fit their bounds all end up at one scale.
+ */
+internal fun sharedScaleBounds(bounds: List<ThreeBounds>): List<ThreeBounds> {
+    val half = FloatArray(3) { axis -> bounds.maxOf { (it.max[axis] - it.min[axis]) / 2f } }
+    return bounds.map { b ->
+        val centre = FloatArray(3) { (b.min[it] + b.max[it]) / 2f }
+        ThreeBounds(FloatArray(3) { centre[it] - half[it] }, FloatArray(3) { centre[it] + half[it] })
+    }
+}
+
+/** [threeGrid] with a caller-supplied fact line per cell, and [sharedScale] as in the other overload. */
 fun Box.threeGrid(
     panels: List<ThreeMeshPanel>,
     channel: String = "main",
@@ -675,8 +694,11 @@ fun Box.threeGrid(
     columns: Int = 2,
     view: MeshView = MeshView(),
     cellWidth: Int = view.width,
+    sharedScale: Boolean = false,
 ): ThreeGeometryViewState {
     require(panels.isNotEmpty()) { "threeGrid needs at least one panel" }
+    val bounds = panels.map { it.mesh.toThreeBounds() }
+    val framed = if (!sharedScale) bounds else sharedScaleBounds(bounds)
     return three(
         channel = channel,
         name = name,
@@ -696,7 +718,8 @@ fun Box.threeGrid(
             panel(
                 title = cell.label,
                 camera = view.toThreeCameraSpec(),
-                bounds = cell.mesh.toThreeBounds(),
+                bounds = framed[index],
+                fitBounds = sharedScale,
                 facts = cell.facts,
                 caption = cell.caption,
             )
