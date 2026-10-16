@@ -234,9 +234,8 @@ layout(push_constant) uniform dat {
 {{ stack.auto.force }}
 ```
 
-The ordering matters. The generated function lands exactly where the slot line is, and a program is
-free to read a push member with `?pc.knobs`, so a slot above the block produces `'pc' : undeclared
-identifier` at a line number inside code you did not write. Until Kotlin binds it the slot is the
+A program is free to read a push member with `?pc.knobs`, so the generated function is placed after
+the push-constant block even if the slot line is written above it. Until Kotlin binds it the slot is the
 fallback `vec4 force(vec4 force_in) { return vec4(0.0); }`, so an unbound slot still compiles and the
 field simply sits still.
 
