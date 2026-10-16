@@ -34,11 +34,6 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 The source corpus lives in the repository at `dev_docs/agents/transcripts/`, with a companion
 `README.md` covering the op vocabulary, capture commands, and the graphics-topology rule.
 
-??? aside "Agents: editing a saved document"
-    **Do not hand-edit a `metadata.edn`.** `AgentDemoDriftGuard` requires it to be byte-for-byte what
-    Field's own EDN codec writes, so an edit that looks right comes back modified from the next
-    regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or change it in Field.
-
 ## How CI checks them
 
 <!-- transcript-index: totals -->

@@ -56,6 +56,17 @@ object AgentDemoDriftGuard {
 
         val saving = SavingContext()
         if (write) {
+            // `--write` copies each loose sidecar over its inline copy, so an edit made inside
+            // metadata.edn would be thrown away without a word. Refuse when metadata.edn has changed
+            // against git and the sidecar it now disagrees with has not: that is a hand edit.
+            val lost = demos.flatMap { demo -> handEditedInlines(root, demo, saving) }
+            if (lost.isNotEmpty()) {
+                System.err.println("AgentDemoDriftGuard: refusing to regenerate over edits made in metadata.edn:")
+                lost.forEach { System.err.println("  - $it") }
+                System.err.println("Make the edit in the named sidecar (or in Field), restore metadata.edn " +
+                    "(git checkout -- <demo>/metadata.edn), then regenerate.")
+                exitProcess(1)
+            }
             demos.forEach { demo ->
                 val refreshed = saving.refreshInlineFilesFromDisk(demo.absolutePath)
                 println("[regenerate] ${demo.name}: ${refreshed.size} inline file(s)")
@@ -89,7 +100,8 @@ object AgentDemoDriftGuard {
                     val at = (0 until maxOf(inlineLines.size, looseLines.size))
                         .firstOrNull { inlineLines.getOrNull(it) != looseLines.getOrNull(it) } ?: 0
                     problems += "${demo.name}/${snapshot.boxId}.${snapshot.property}: ${snapshot.path} " +
-                        "differs from metadata.edn at line ${at + 1}\n" +
+                        "differs from metadata.edn at line ${at + 1} — the sidecar is the copy to edit; " +
+                        "regenerating copies it into metadata.edn\n" +
                         "      metadata: ${inlineLines.getOrNull(at)}\n" +
                         "      loose:    ${looseLines.getOrNull(at)}"
                 }
@@ -121,6 +133,28 @@ object AgentDemoDriftGuard {
         }
         val scope = if (demos.size == all.size) "" else " of ${all.size}"
         println("AgentDemoDriftGuard ok — ${demos.size}$scope document(s), $inlineFiles inline file(s)")
+    }
+
+    /**
+     * Inline copies in [demo]'s metadata.edn that disagree with their sidecar when metadata.edn differs
+     * from git HEAD and the sidecar does not. Outside a git checkout nothing is reported.
+     */
+    private fun handEditedInlines(root: File, demo: File, saving: SavingContext): List<String> {
+        fun changed(file: File): Boolean? = runCatching {
+            val rel = file.relativeTo(root).path
+            val p = ProcessBuilder("git", "diff", "--quiet", "HEAD", "--", rel).directory(root)
+                .redirectErrorStream(true).start()
+            p.inputStream.readAllBytes()
+            when (p.waitFor()) { 0 -> false; 1 -> true; else -> null }
+        }.getOrNull()
+        val metadata = File(demo, SavingContext.METADATA_EDN)
+        if (changed(metadata) != true) return emptyList()
+        return saving.readInlineFileSnapshots(demo.absolutePath).mapNotNull { snapshot ->
+            val sidecar = File(demo, snapshot.path)
+            if (!sidecar.isFile || sidecar.readText() == snapshot.inline) return@mapNotNull null
+            if (changed(sidecar) != false) return@mapNotNull null
+            "${demo.name}/${snapshot.boxId}.${snapshot.property}: edit ${demo.name}/${snapshot.path}, not metadata.edn"
+        }
     }
 
     /** A metadata.edn is one long line, so a difference is only legible as a window around it. */
