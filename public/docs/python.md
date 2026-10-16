@@ -18,8 +18,8 @@ from then on runs as Python. The setting is saved with the document.
 
 Two things follow:
 
-- **The root itself is not Python.** Python code typed into the root box is compiled as Kotlin, and
-  fails.
+- **The root itself is not Python.** Its own code is Kotlin; Python goes in the boxes under it, and
+  a compile error in the root says so.
 - **A cell can have other parents.** A box runs as Python as long as *any* of its parents is a Python
   root, so a cell connected under both the document root and a Python root is Python.
 
