@@ -229,6 +229,13 @@ private fun <T> withClojureIO(
     }
 }
 
+/** Flush the bound `*out*` and `*err*`, so what a form printed is delivered before the next one starts. */
+internal fun flushClojureIO() {
+    for (name in listOf("*out*", "*err*")) {
+        runCatching { ((Clojure.`var`("clojure.core", name) as Var).deref() as? java.io.Writer)?.flush() }
+    }
+}
+
 /**
  * Extract line/column from Clojure's nested exceptions if present, and the message that says what
  * went wrong.
@@ -421,9 +428,8 @@ class ClojureHost(private val defaultNs: String = "user") {
      *
      * [onStdout] and [onStderr] are handed the text *and the line of the form that was running when
      * it was written*, which is the whole reason this is a read-eval loop rather than one
-     * `load-string` call. Text printed without a newline is buffered by [StreamingWriter] until the
-     * next newline or the end of the run, so a bare `(print …)` is attributed to whichever form was
-     * running when it finally flushed — usually, but not always, its own. [onForm] is the same line
+     * `load-string` call. `*out*` and `*err*` are flushed after every form, so a bare `(print …)`
+     * with no newline is still attributed to its own form. [onForm] is the same line
      * announced *before* the form runs, for a caller that needs it during evaluation rather than
      * after: [ClojureInterface.animate] reads it to remember where a launch was written.
      *
@@ -467,8 +473,12 @@ class ClojureHost(private val defaultNs: String = "user") {
                         try {
                             last = evalFn.invoke(read.form)
                         } catch (t: Throwable) {
+                            flushClojureIO()
                             return@withClojureIO EvalResult.Err(atLine(extractCompilerError(t), read.line))
                         }
+                        // Text this form printed without a newline belongs to this form, so it goes out
+                        // now, while activeLine still says so, rather than with the next form's output.
+                        flushClojureIO()
                         onFormValue?.let { record -> runCatching { record(read.line, read.endLine, last, noteForm(prStr, last)) } }
                     }
                     if (executeIfFn && last is IFn) {

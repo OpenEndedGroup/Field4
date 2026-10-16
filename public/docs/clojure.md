@@ -50,10 +50,6 @@ expect:
 A box is evaluated one top-level form at a time, so each line of output is placed beside the form
 that was running when it was printed.
 
-`print` without a newline is buffered until the next newline or the end of the run, so a bare
-`(print …)` is attributed to whichever form was running when it finally flushed, which is usually
-but not always its own.
-
 ## A box that prints nothing shows its last value
 
 When a box prints nothing, the value of its last form appears beside it instead:

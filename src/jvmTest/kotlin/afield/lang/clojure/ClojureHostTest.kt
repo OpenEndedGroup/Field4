@@ -295,4 +295,11 @@ class ClojureHostTest {
         while (dir != null && !java.io.File(dir, "settings.gradle.kts").exists()) dir = dir.parentFile
         return dir ?: error("no settings.gradle.kts above ${java.io.File(".").absolutePath}")
     }
+
+    @Test
+    fun printWithoutANewlineIsAttributedToItsOwnForm() {
+        val run = Run(host(), "(print \"a\")\n(println \"b\")")
+        run.ok
+        kotlin.test.assertEquals(listOf("a" to 1, "b" to 2), run.out.filter { it.first.isNotEmpty() }, run.out.toString())
+    }
 }
