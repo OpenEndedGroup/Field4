@@ -47,9 +47,10 @@ fun BufferParameters.asTriangle(): Triangle =
     buffer.asTriangle()
 /*end*/
 /*start*/
-/*compute-structure-type:Node:Node*/
-class Node(
-    members: List<Introspected.Member> = NodeLayoutMembers(),
+/*compute-structure-type:Node:NodeBlock*/
+// GLSL block `Node` is NodeBlock here: Node would hide afield.data.graph.Node.
+class NodeBlock(
+    members: List<Introspected.Member> = NodeBlockLayoutMembers(),
     baseOffset: Int = 0,
     pathPrefix: String = "",
     root: Structure? = null
@@ -59,17 +60,17 @@ class Node(
     var hi by Structure.FromStructure<afield.math.linalg.Vector4f>()
     var data by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
-fun NodeByteSize(): Long = 48L
-fun NodeLayoutMembers(): List<Introspected.Member> =
+fun NodeBlockByteSize(): Long = 48L
+fun NodeBlockLayoutMembers(): List<Introspected.Member> =
     listOf(
         Introspected.Member("lo", 0, PrimitiveType.vec4.left(), 0, false),
         Introspected.Member("hi", 16, PrimitiveType.vec4.left(), 0, false),
         Introspected.Member("data", 32, PrimitiveType.vec4.left(), 0, false),
     )
-fun HasBuffer.asNode(): Node =
-    asStructure(Node(), NodeLayoutMembers())
-fun BufferParameters.asNode(): Node =
-    buffer.asNode()
+fun HasBuffer.asNodeBlock(): NodeBlock =
+    asStructure(NodeBlock(), NodeBlockLayoutMembers())
+fun BufferParameters.asNodeBlock(): NodeBlock =
+    buffer.asNodeBlock()
 /*end*/
 /*start*/
 /*compute-structure-type:Material:Material*/

@@ -1,0 +1,16 @@
+{
+  "id" : "r2-182508f78d66",
+  "parent" : "r1-4d2baeb1ffda",
+  "description" : "A green and violet aurora curtain rippling slowly over a dark hill line",
+  "created" : "2026-10-16T09:58:57.235091Z",
+  "sourceHash" : "182508f78d66e694088d6d70a5e56833057b1b7cc1737d6e1f3963c6f45a84cb",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : true,
+    "nonFiniteFraction" : 0.0,
+    "words" : 192,
+    "knobs" : 94,
+    "stages" : 23
+  }
+}

@@ -225,6 +225,10 @@ fun k2ImportEvidence(code: String, timeoutMs: Long = 10_000L): K2ImportEvidence?
  * when the code-use sidecar answers, by name alone when it does not), then format with ktfmt.
  */
 fun formatBoxKotlin(code: String, useK2: Boolean = true): String {
+    // Remote heads compile without the JVM box intro; its implicit imports cannot justify removal.
+    if (runCatching { afield.lang.remotejs.KotlinJsHeadProfiles.resolve(code).explicit }.getOrDefault(false)) {
+        return formatKotlinCode(code)
+    }
     val evidence = if (useK2) k2ImportEvidence(code) else null
     return formatKotlinCode(formatBoxImports(code, analyzeBoxImports(code, resolution = evidence)))
 }

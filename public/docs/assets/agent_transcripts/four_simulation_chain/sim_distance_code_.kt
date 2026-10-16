@@ -58,17 +58,17 @@ val insetFragment =
 // Declared every run, like the fluid: `addPassChain` replaces by name. Nothing here is
 // persistent, so the whole field simply re-floods from scratch on the next frame.
 sdf = bundle.addPassChain(
-    listOf(
+    [
         FabricatePassSpec(
             name = "mask",
             fragment = maskFragment,
             size = FabricatePassSize.Absolute(256, 256),
             source = FabricatePassChain.CHAIN_INPUT,
         ),
-    ) +
+    ] +
         FabricatePassLibrary.jumpFloodDistance(
             /*
-            Seed, nine flood rounds at halving stride, JFA+1, then the distance — and
+            Seed, flood rounds at halving stride, JFA+1, then the distance — and
             `signed`, which seeds the *boundary* rather than the interior, so one flood
             gives a field that is negative inside and positive out.
             */
@@ -89,7 +89,7 @@ sdf = bundle.addPassChain(
             // sampling the 256x256 field. That combination is the whole point of the layer.
             size = FabricatePassSize.MatchSource,
             source = FabricatePassChain.CHAIN_INPUT,
-            extraInputs = listOf(FabricatePassInput("bandsTex", "sdf-bands")),
+            extraInputs = [FabricatePassInput("bandsTex", "sdf-bands")],
         ),
     printReport = true,
 )

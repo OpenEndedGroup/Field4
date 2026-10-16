@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-207 source file(s), 669 public symbol(s), 293 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+209 source file(s), 673 public symbol(s), 295 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1597,12 +1597,12 @@ Standalone, runnable end-to-end demo of "ImGui as an in-VR panel".
 | [<code class="highlight"><span class="k">var</span> <span class="n">hitActive</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L64) |  |
 | [<code class="highlight"><span class="k">var</span> <span class="n">lastHitWorld</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="o">?</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L66) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L76) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">aimControllerAtPanelCentre</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L192) | Aim the mock controller straight at the panel centre (for headless/deterministic runs). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L197) | Release ImGui/Vulkan resources owned by the demo (caller still cleans renderer + window). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">runInteractive</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L223) | Interactive desktop loop: mouse drives the mock controller ray. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">runCapture</span><span class="p">(</span><span class="n">outputPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L239) | Verification loop: aim the mock controller straight at the panel centre, render a warm-up of frames, then grab the *live macOS window* with `screencapture` (the same tool doc.kt uses for Field 4 window shots). We deliberately avoid the Vulkan swapchain readback here because that path is Y-flipped for our blitted content; screencapture records exactly what is on screen. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">runCaptureGpu</span><span class="p">(</span><span class="n">outputPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L272) | Headless verification capture: aim at the panel centre, render a warm-up of frames, then read the swapchain back to a PNG with `Renderer.captureWindowToFile` (a Vulkan transfer-source copy — unlike `screencapture` it needs no Screen-Recording permission and works over SSH/CI). The captured pixels are the blitted side-by-side packed image, preserving the orientation presented by the swapchain. |
-| [<code class="highlight"><span class="k">var</span> <span class="n">running</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L325) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">aimControllerAtPanelCentre</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L190) | Aim the mock controller straight at the panel centre (for headless/deterministic runs). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L195) | Release ImGui/Vulkan resources owned by the demo (caller still cleans renderer + window). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">runInteractive</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L221) | Interactive desktop loop: mouse drives the mock controller ray. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">runCapture</span><span class="p">(</span><span class="n">outputPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L237) | Verification loop: aim the mock controller straight at the panel centre, render a warm-up of frames, then grab the *live macOS window* with `screencapture` (the same tool doc.kt uses for Field 4 window shots). We deliberately avoid the Vulkan swapchain readback here because that path is Y-flipped for our blitted content; screencapture records exactly what is on screen. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">runCaptureGpu</span><span class="p">(</span><span class="n">outputPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L270) | Headless verification capture: aim at the panel centre, render a warm-up of frames, then read the swapchain back to a PNG with `Renderer.captureWindowToFile` (a Vulkan transfer-source copy — unlike `screencapture` it needs no Screen-Recording permission and works over SSH/CI). The captured pixels are the blitted side-by-side packed image, preserving the orientation presented by the swapchain. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">running</span></code>](source/jvmMain/afield/examples/four/ImGuiVrPanelDemo/#L323) |  |
 
 ## ImGuiVrPanelSmokeTest.kt { #imguivrpanelsmoketest-kt }
 
@@ -1662,6 +1662,20 @@ The three lifetimes behind the live-frame crash in `dev_docs/renderer_teardown_o
 | Declaration | Summary |
 | --- | --- |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/LiveFrameBufferLifetimeSmoke/#L46) |  |
+
+## LiveProfilingSwitchSmoke.kt { #liveprofilingswitchsmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/LiveProfilingSwitchSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/LiveProfilingSwitchSmoke/)
+
+### LiveProfilingSwitchSmoke { #liveprofilingswitchsmoke-kt-liveprofilingswitchsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">LiveProfilingSwitchSmoke</span></code>](source/jvmMain/afield/examples/four/LiveProfilingSwitchSmoke/#L29)
+
+`Options.profiling` switched on and off on a running renderer: the GPU queries follow it, no restart.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/LiveProfilingSwitchSmoke/#L31) |  |
 
 ## NeuralFieldParitySmoke.kt { #neuralfieldparitysmoke-kt }
 
@@ -1762,6 +1776,20 @@ Step two of the neural-particle pilot: that a buffer of particles integrated on 
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L192) |  |
 | [<code class="highlight"><span class="k">var</span> <span class="n">running</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L196) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L198) |  |
+
+## OpenDlssNrTeardownSmoke.kt { #opendlssnrteardownsmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/OpenDlssNrTeardownSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/)
+
+### OpenDlssNrTeardownSmoke { #opendlssnrteardownsmoke-kt-opendlssnrteardownsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">OpenDlssNrTeardownSmoke</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/#L34)
+
+The renderer goes away while an [`OpenDlssNrStudy`](graphics.md#opendlssnrstudy-kt-opendlssnrstudy) is still open on it, which is what quitting or disposing the graphics context does to a box that was never stopped. The study is closed by the renderer, before its device, and the box's own later close is harmless. Without the native library the study runs in source mode, so this needs a GPU but not NVIDIA.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/#L36) |  |
 
 ## PlyLoaderTest.kt { #plyloadertest-kt }
 
@@ -1906,56 +1934,56 @@ The CPU-only reproducibility floor behind the `evolve` walkthrough in `public/do
 
 ### FnRewriteKotlinLiveBoxProbe { #fnrewritekotlinliveboxprobe-kt-fnrewritekotlinliveboxprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">FnRewriteKotlinLiveBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L45)
+[<code class="highlight"><span class="k">object</span> <span class="nc">FnRewriteKotlinLiveBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L48)
 
 Runs one `rewriteKotlin` spec inside a live box, headlessly, in seconds.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">verifiedNegativeCache</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L67) | Called only after the live compiler rejection, repair and invalidation assertions pass. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">tick</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L73) | Called by the box body, once per entry. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L189) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">mode</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L197) | The two modes share this whole harness, and the *only* difference between them is which box's engine the `@{...}` snippet is compiled in. Mode is a parameter and not an environment variable because `run_field_tests.py` drives the entrypoint through a Field server it starts itself, so the caller's environment never reaches this JVM. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">verifiedNegativeCache</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L70) | Called only after the live compiler rejection, repair and invalidation assertions pass. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">tick</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L76) | Called by the box body, once per entry. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L192) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">mode</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L200) | The two modes share this whole harness, and the *only* difference between them is which box's engine the `@{...}` snippet is compiled in. Mode is a parameter and not an environment variable because `run_field_tests.py` drives the entrypoint through a Field server it starts itself, so the caller's environment never reaches this JVM. |
 
 ### FnRewriteKotlinTwoBoxProbe { #fnrewritekotlinliveboxprobe-kt-fnrewritekotlintwoboxprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">FnRewriteKotlinTwoBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L398)
+[<code class="highlight"><span class="k">object</span> <span class="nc">FnRewriteKotlinTwoBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L405)
 
 The same spec as [`FnRewriteKotlinLiveBoxProbe`](examples.md#fnrewritekotlinliveboxprobe-kt-fnrewritekotlinliveboxprobe), compiled in a **second, idle** box instead of the running one — the positive control, and the pair that makes the one-box failure mean something.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L400) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L407) |  |
 
 ### FnRewriteKotlinFailureCacheProbe { #fnrewritekotlinliveboxprobe-kt-fnrewritekotlinfailurecacheprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">FnRewriteKotlinFailureCacheProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L417)
+[<code class="highlight"><span class="k">object</span> <span class="nc">FnRewriteKotlinFailureCacheProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L424)
 
 Verify negative caching and explicit recovery against a real idle box's Kotlin compiler.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L419) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L426) |  |
 
 ### SourceBackedBlockSelfBoxProbe { #fnrewritekotlinliveboxprobe-kt-sourcebackedblockselfboxprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">SourceBackedBlockSelfBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L441)
+[<code class="highlight"><span class="k">object</span> <span class="nc">SourceBackedBlockSelfBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L451)
 
 [`afield.study.source.SourceBackedBlock`](internal.md#sourcebackedblock-kt-sourcebackedblock)'s own route into the self-box trap, measured rather than inferred.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L443) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L453) |  |
 
 ### SourceBackedBlockTwoBoxProbe { #fnrewritekotlinliveboxprobe-kt-sourcebackedblocktwoboxprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">SourceBackedBlockTwoBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L461)
+[<code class="highlight"><span class="k">object</span> <span class="nc">SourceBackedBlockTwoBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L471)
 
 The same block hydrated in an idle parent box — the positive control for the one above.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L463) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L473) |  |
 
 ## FunctionsPlotGallery.kt { #functionsplotgallery-kt }
 
@@ -2629,10 +2657,10 @@ The property harness that turns `dev_docs/INTERACTION_NETS_LAMBDA.md`'s "measure
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">runTests</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/examples/stdlib/LambdaPropertyOracleTest/#L116) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/LambdaPropertyOracleTest/#L154) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">marksIn</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="nc">Term</span><span class="p">)</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/examples/stdlib/LambdaPropertyOracleTest/#L404) | Every mark in `term`, which is `LambdaTerms.marksOf` and no longer a second copy of it. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">shrink</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="nc">Term</span><span class="p">,</span> <span class="n">rounds</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">400</span><span class="p">,</span> <span class="n">stillFails</span><span class="p">:</span> <span class="p">(</span><span class="nc">Term</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Term</span></code>](source/jvmMain/afield/examples/stdlib/LambdaPropertyOracleTest/#L757) | The smallest closed term this can reach that still satisfies `stillFails`, by greedy descent. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">runTests</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/examples/stdlib/LambdaPropertyOracleTest/#L117) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/stdlib/LambdaPropertyOracleTest/#L155) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">marksIn</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="nc">Term</span><span class="p">)</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/examples/stdlib/LambdaPropertyOracleTest/#L405) | Every mark in `term`, which is `LambdaTerms.marksOf` and no longer a second copy of it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">shrink</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="nc">Term</span><span class="p">,</span> <span class="n">rounds</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">400</span><span class="p">,</span> <span class="n">stillFails</span><span class="p">:</span> <span class="p">(</span><span class="nc">Term</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Term</span></code>](source/jvmMain/afield/examples/stdlib/LambdaPropertyOracleTest/#L763) | The smallest closed term this can reach that still satisfies `stillFails`, by greedy descent. |
 
 ## LambdaTermGenerator.kt { #lambdatermgenerator-kt }
 

@@ -1,0 +1,134 @@
+[
+  {
+    "path": "dev_docs/agents/transcripts/arclength_spacing_demo.yaml",
+    "finding": "032cda1ce14b-01",
+    "old": "// The mechanism, live. `flatness` is the OLD subdivision criterion: the distance of the\n          // control points from the chord. `skew` is the term added on 2026-07-31: the distance\n          // between the curve's mid-PARAMETER point B(0.5) and the chord's mid-POINT. Neither\n          // subsumes the other, which is why the criterion takes the larger of the two.",
+    "new": "// Flatness measures control-point distance from the chord; skew measures the distance\n          // between B(0.5) and the chord midpoint. Use the larger: either test can miss a curve\n          // that the other detects."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/chart_clip.yaml",
+    "finding": "28bad5b5095d-01",
+    "old": "// One word different from box 1, and it is the behaviour that shipped sharp_edge.png.",
+    "new": "// Set clip = false to compare the same corner without clipping at the plot bounds."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/chart_primitive.yaml",
+    "finding": "d88828b4b527-01",
+    "old": "// The ticks are not this box's problem, and they are not the renderer's either:\n          // `niceTicks` is one public copy of Heckbert's algorithm that five files each had\n          // privately. The plot frame it landed on is readable too.",
+    "new": "// Query readable axis ticks and plot bounds when placing your own annotations."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/chart_primitive.yaml",
+    "finding": "d88828b4b527-01",
+    "old": "// Bar and point marks set `onClick`, `hoverColor` and `label`, which is exactly what\n          // `Box.lines` looks for when it decides between the interactive SVG renderer and Skia's\n          // (someSkiko.kt:37). So hovering and clicking work on a chart nobody configured \u2014\n          // by construction rather than by wiring.",
+    "new": "// Bar and point marks carry labels, hover colors and click handlers.\n          // These make the chart interactive through the normal lines renderer."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/control_surface_laws.yaml",
+    "finding": "c1345019b329-01",
+    "old": "// Four sliders over the same four decades, one per law. Click this box, open the output\n          // disclosure, and drag them.",
+    "new": "// Four sliders demonstrate logarithmic, linear, exponential and bipolar laws.\n          // The cutoff pair spans three decades, 20\u201320000 Hz. Open the output and drag them."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/docs_capture/photo_plaque.yaml",
+    "finding": "eedfb551e7c1-01",
+    "old": "// toReliefMesh is the hop that did not exist until this page: toHeightfieldMesh returns a\n        // *disc* \u2014 one boundary loop, chi = 1 \u2014 and Manifold refuses an open sheet.",
+    "new": "// toReliefMesh closes the heightfield into a watertight plaque.\n        // toHeightfieldMesh alone is an open disc: one boundary loop, chi = 1."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/flow_grain.yaml",
+    "finding": "4620ce43d259-02",
+    "old": "Visible vertical half-width in world units.",
+    "new": "Visible vertical half-height in world units."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/four_simulation_chain.yaml",
+    "finding": "013ba1fa3c91-01",
+    "old": "Seed, nine flood rounds at halving stride, JFA+1, then the distance \u2014 and",
+    "new": "Seed, flood rounds at halving stride, JFA+1, then the distance \u2014 and"
+  },
+  {
+    "path": "dev_docs/agents/transcripts/gp_instruments.yaml",
+    "finding": "11428fab3472-02",
+    "old": "// A rosette with three dials. You do not say what you want; you only say which of two you",
+    "new": "// A rosette with four dials: petals, depth, curl and hue. Say which of two you"
+  },
+  {
+    "path": "dev_docs/agents/transcripts/imaging_visualizers_demo.yaml",
+    "finding": "272ce62186f6-01",
+    "old": "// The old behaviour: one NaN poisoned min()/max(), normalized() produced an all-NaN\n          // image, the PNG quantiser turned NaN into 0, and the thumbnail went silently black.",
+    "new": "// Inspect the magenta patch and isolated infinity beside the finite gradient."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/kratos_parameter_study.yaml",
+    "finding": "cf60e95a215d-03",
+    "old": "// A new target is a different question, so it needs a fresh study \u2014 but the\n                      // solves are the same solves, so nothing is thrown away that could be reused.",
+    "new": "// Changing the target creates a fresh study cache; the worker and\n                      // background domain are reused."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/letter_interpolation.yaml",
+    "finding": "0126e7e793b5-01",
+    "old": "// A plain triangle wave -- constant speed, every value of t given the same\n                  // time. An earlier version cubed this about the centre to linger at t = 0.5,\n                  // on the assumption that the middle was the interesting part. Captured frame\n                  // by frame it is not: t = 0.5 is a clean closed ring, the tidiest and least\n                  // ambiguous form in the whole sweep, and the shapes worth watching are the\n                  // buckling ones either side of it at roughly 0.2-0.3 and 0.7-0.9. Easing\n                  // towards the centre parks on the dullest frame. Slow everywhere beats clever.",
+    "new": "// A constant-speed triangle wave gives every interpolation value equal time,\n                  // including the buckling shapes on either side of the clean middle ring."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/manifold_solids.yaml",
+    "finding": "db8df547c711-01",
+    "old": "// A fallback rather than a blank box: build the same shape with Field's own marching\n              // cubes, so what Manifold adds shows by its absence. This mesh is watertight but NOT\n              // a manifold you could subtract from.",
+    "new": "// A simplified marching-cubes illustration: a box blended with one cylinder.\n              // It does not reproduce the native model's bored bosses, slot and chamfer."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/manifold_solids.yaml",
+    "finding": "db8df547c711-02",
+    "old": "// Deliberately no fenced code block in this string. A triple-backtick run anywhere in a\n              // box's code \u2014 including in a comment like this one \u2014 makes the materialized document.md\n              // wrap that property in a FOUR-backtick fence, and the completion corpus's document\n              // parser only reads three, so the box silently drops out of tools/completion-corpus.\n              // Inline code costs nothing and keeps it in.",
+    "new": "// Install the optional native dependency, then re-run this box."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/marf_field_clocks.yaml",
+    "finding": "e78ad0ff5144-02",
+    "old": "// Dashed verticals are the stage boundaries the step grid laid out.",
+    "new": "// Vertical lines mark stage boundaries from the step grid."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/marf_field_clocks.yaml",
+    "finding": "e78ad0ff5144-03",
+    "old": "// All ten spellings, all three clocks, side by side. `operations.yaml` in the\n          // marf_demo document records these being tried one after another about five seconds\n          // apart. Read the STAGES column: eight of the ten are one of three sequences.",
+    "new": "// Compare ten spellings under all three clocks. Read STAGES to see which\n          // spellings produce the same sequence."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/sound_render_path.yaml",
+    "finding": "7f23e1187aa1-01",
+    "old": "// audio device. Play box 1 and box 2 back to back: that difference is the whole point.",
+    "new": "// audio device. Compare the synth and Dirt audio boxes to hear the two render paths."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/sound_render_path.yaml",
+    "finding": "7f23e1187aa1-01",
+    "old": "// No library on this machine? You will hear box 1 again, and describe() will say so and",
+    "new": "// No library on this machine? The synth fallback plays, and describe() will say so and"
+  },
+  {
+    "path": "dev_docs/agents/transcripts/stacksl_fit_demo.yaml",
+    "finding": "551f75ddb8a1-01",
+    "old": "// The one lossy step in the trip is the printing: `%.8f` is eight significant decimals and\n              // binary32 needs nine to round-trip in general, so a fitted value can land one ulp away in the\n              // source. Both outcomes have been seen and both are fine: `StackSLFitFigureTest`'s 64x64 fit\n              // round-trips at exactly 0, and this box at 48x48 measured 5.96e-08, which is one ulp of a\n              // Float near 1. That is why the guard allows 1e-4 rather than demanding zero.",
+    "new": "// Printing with %.8f keeps eight decimal places, not eight significant digits.\n              // Its round-trip error depends on magnitude: a fitted Float may change in source.\n              // This 48x48 example previously measured 5.96e-08; the 1e-4 guard checks the actual\n              // error above instead of requiring an exact zero."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/stacksl_gallery.yaml",
+    "finding": "6d4ced47bdb0-01",
+    "old": "// The fragment reads the program's time from `pc.params.x`. It advances per frame\n          // drawn, at the rate this box's docs clip is rendered at (1/24 s of clip time every\n          // two frames), so the trails are as long as in the clip at any window frame rate.",
+    "new": "// pc.params.x advances per rendered frame. Edit the scale below to change its rate;\n          // a faster window frame rate also advances more program time per wall-clock second."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/vision_geometry_heightfield.yaml",
+    "finding": "3a0b51470071-01",
+    "old": "// The surface, as a plain function. Sampling it three times per vertex is what\n                  // gives us a normal without any calculus.",
+    "new": "// The center sample gives the surface position. Four neighboring samples\n                  // estimate its two slopes for a numerical normal."
+  },
+  {
+    "path": "dev_docs/agents/transcripts/viz_showheatmap.yaml",
+    "finding": "17619d9b3487-01",
+    "old": "// dB-like view. This is exactly the shape the spectral docs hand-rolled by hand before.",
+    "new": "// dB-like view."
+  }
+]

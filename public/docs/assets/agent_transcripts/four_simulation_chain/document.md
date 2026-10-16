@@ -40,14 +40,13 @@ From `code`
 `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
 
 ```edn [field-box id="sim_bundle" role="properties"]
-{"id" "sim_bundle" "index" 1 "name" "bundle" "parents" ["root" "sim_renderer"] "children" ["sim_fluid" "sim_distance"] "properties" {"children" #{#afield/box "sim_fluid" #afield/box "sim_distance"} "parents" #{#afield/box "root" #afield/box "sim_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_bundle_code_.kt" "lines" 30 "characters" 1062 "sha256" "de2d1898d730c7db4290abf17eb9b0989e92b874f6438fc88667bc358b4b6486"}]}
+{"id" "sim_bundle" "index" 1 "name" "bundle" "parents" ["root" "sim_renderer"] "children" ["sim_fluid" "sim_distance"] "properties" {"children" #{#afield/box "sim_fluid" #afield/box "sim_distance"} "parents" #{#afield/box "root" #afield/box "sim_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_bundle_code_.kt" "lines" 29 "characters" 1027 "sha256" "4d2c19b9e4b143624a6d3998f8067dc866de6a79fdb174527a9b24977ff05eac"}]}
 ```
 
 ```kotlin [field-property box="sim_bundle" name="code" path="sim_bundle_code_.kt"]
 // `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
 import afield.graphics.scene.fabricated.StandardRenderer
 import afield.graphics.scene.fabricated.applyScenePlan
-import afield.math.linalg.Vector3f
 
 prop<StandardRenderer.Bundle>(bundle)
 
@@ -81,7 +80,7 @@ println("bundle ready: ${bundle.postStack.names()}")
 <!-- field-box id="sim_distance" index="2" -->
 
 ```edn [field-box id="sim_distance" role="properties"]
-{"id" "sim_distance" "index" 2 "name" "distance field" "parents" ["root" "sim_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sim_bundle"} "name" "distance field" "_tombstone" false "frame" #afield/rect [1060.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_distance_code_.kt" "lines" 109 "characters" 4159 "sha256" "c762d88807e5669d295f580217f3af11f648623ffe3137dcacfa124c80f339a0"}]}
+{"id" "sim_distance" "index" 2 "name" "distance field" "parents" ["root" "sim_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sim_bundle"} "name" "distance field" "_tombstone" false "frame" #afield/rect [1060.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_distance_code_.kt" "lines" 109 "characters" 4142 "sha256" "7d0196795c4ab0d29a0e821afaf0af4b9c953b176a725f880a4495a611392741"}]}
 ```
 
 ```kotlin [field-property box="sim_distance" name="code" path="sim_distance_code_.kt"]
@@ -145,17 +144,17 @@ val insetFragment =
 // Declared every run, like the fluid: `addPassChain` replaces by name. Nothing here is
 // persistent, so the whole field simply re-floods from scratch on the next frame.
 sdf = bundle.addPassChain(
-    listOf(
+    [
         FabricatePassSpec(
             name = "mask",
             fragment = maskFragment,
             size = FabricatePassSize.Absolute(256, 256),
             source = FabricatePassChain.CHAIN_INPUT,
         ),
-    ) +
+    ] +
         FabricatePassLibrary.jumpFloodDistance(
             /*
-            Seed, nine flood rounds at halving stride, JFA+1, then the distance — and
+            Seed, flood rounds at halving stride, JFA+1, then the distance — and
             `signed`, which seeds the *boundary* rather than the interior, so one flood
             gives a field that is negative inside and positive out.
             */
@@ -176,7 +175,7 @@ sdf = bundle.addPassChain(
             // sampling the 256x256 field. That combination is the whole point of the layer.
             size = FabricatePassSize.MatchSource,
             source = FabricatePassChain.CHAIN_INPUT,
-            extraInputs = listOf(FabricatePassInput("bandsTex", "sdf-bands")),
+            extraInputs = [FabricatePassInput("bandsTex", "sdf-bands")],
         ),
     printReport = true,
 )
@@ -201,15 +200,13 @@ println("distance field: ${sdf.names().size} passes, output ${sdf.output.width} 
 <!-- field-box id="sim_fluid" index="3" -->
 
 ```edn [field-box id="sim_fluid" role="properties"]
-{"id" "sim_fluid" "index" 3 "name" "fluid" "parents" ["root" "sim_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sim_bundle"} "name" "fluid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_fluid_code_.kt" "lines" 93 "characters" 3746 "sha256" "95cc81287546d8cf0f3d2401b5bc92aee6b13dbf0750ae8f2e9938ab91f82254"}]}
+{"id" "sim_fluid" "index" 3 "name" "fluid" "parents" ["root" "sim_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sim_bundle"} "name" "fluid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sim_fluid_code_.kt" "lines" 91 "characters" 3653 "sha256" "316abbcac0841809391811db8ff2d49f3dd49050fe4d6fa31af17b8fef10d334"}]}
 ```
 
 ```kotlin [field-property box="sim_fluid" name="code" path="sim_fluid_code_.kt"]
 import afield.graphics.scene.fabricated.FabricatePassChain
 import afield.graphics.scene.fabricated.FabricatePassLibrary
 import afield.graphics.scene.fabricated.addPassChain
-import afield.graphics.vulkan.util.MouseEvent
-import afield.graphics.vulkan.util.MouseEvents
 
 prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(fluid)
 

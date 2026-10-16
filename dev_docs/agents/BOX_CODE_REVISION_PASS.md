@@ -41,6 +41,12 @@ the limits of the current census and the verification needed before a larger pas
 The [second rehearsal](box_code_revision_batch_2/README.md) applies existing drawing helpers,
 revises lifecycle and fragment comments, and records a formatter repair discovered by replay.
 
+The [first helper-adoption batch](box_code_adoption_batch_1/README.md) starts the editing sweep
+after helper implementation: four representative transcripts with native graphics, lifecycle,
+mesh and Loris verification. Its checkpoint lists completed and deferred work explicitly.
+The [second-pass checkpoint](box_code_second_pass/README.md) tracks addressed finding IDs and
+remaining work as further batches land.
+
 ## Imports
 
 A box is compiled with `intro` (`Boxes.kt`) prepended, so most imports agents write add nothing.
@@ -89,6 +95,12 @@ fragment, and see the result soon? In particular:
   variable while the loop keeps the old one. Preserve these reset points, and identify which
   lines can change a running example without rebuilding its setup. Judge an edit by the time
   to find the creative value, get feedback and rerun confidently; line count is only a clue.
+- **Collection literals.** House style uses `[a, b, c]` where a collection literal can express
+  the intended type, including list arguments, loop inputs and chained collection operations.
+  Prefer it to `listOf(...)`; check inference/overloads in the actual box compiler. Keep a factory
+  when its type, mutability or construction behavior is part of the example.
+  Run `uv run python tools/check_box_idioms.py --collection-literals --paths <edited files>`
+  for every batch; the ordinary landing default still excludes this deferred corpus debt.
 - **Terse.** We are trying to convince the user that this is code they can a) discover, b) bear
   to type and c) bear to change. Ceremony counts against it: explicit types the context already
   supplies, defensive lookups of things that are inherited, null checks with nothing to recover

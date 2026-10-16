@@ -25,9 +25,8 @@ module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
 target += "fullscreen" to module
 
-// The fragment reads the program's time from `pc.params.x`. It advances per frame
-// drawn, at the rate this box's docs clip is rendered at (1/24 s of clip time every
-// two frames), so the trails are as long as in the clip at any window frame rate.
+// pc.params.x advances per rendered frame. Edit the scale below to change its rate;
+// a faster window frame rate also advances more program time per wall-clock second.
 val first = renderer.frameCounter
 m.params = { vec((renderer.frameCounter - first) * 1.667 / 48, 0.0, 0.0, 0.0) }
 

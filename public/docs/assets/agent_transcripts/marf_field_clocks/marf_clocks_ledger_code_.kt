@@ -1,22 +1,31 @@
-// All ten spellings, all three clocks, side by side. `operations.yaml` in the
-// marf_demo document records these being tried one after another about five seconds
-// apart. Read the STAGES column: eight of the ten are one of three sequences.
+// Compare ten spellings under all three clocks. Read STAGES to see which
+// spellings produce the same sequence.
 displayClearAll()
 displayOpen("ledger")
 
 val bank = marfValues(0, 1, 2, 3, 4)
-val spellings = listOf(
-    "<0 3>", "<0 3> 1", "1 <0 3>", "<0 3>*2", "<0 3>!2",
-    "<0 3>, 1", "<0 3> 1*8", "<0 3> 1 2", "<0 3> <0 4>", "3 <0 3>"
-)
+val spellings = [
+    "<0 3>",
+    "<0 3> 1",
+    "1 <0 3>",
+    "<0 3>*2",
+    "<0 3>!2",
+    "<0 3>, 1",
+    "<0 3> 1*8",
+    "<0 3> 1 2",
+    "<0 3> <0 4>",
+    "3 <0 3>",
+]
 
 val cell: (String, MarfFieldClock) -> String = { spec, clock ->
     runCatching {
-        bank.read(pat(spec).nums(), fields = clock, name = "l")
-            .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
-            .take(8)
-            .joinToString("") { s -> s.address.toInt().toString() }
-    }.fold({ seq -> "`$seq`" }, { _ -> "_refused_" })
+            bank
+                .read(pat(spec).nums(), fields = clock, name = "l")
+                .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
+                .take(8)
+                .joinToString("") { s -> s.address.toInt().toString() }
+        }
+        .fold({ seq -> "`$seq`" }, { _ -> "_refused_" })
 }
 
 val table = StringBuilder()
@@ -31,15 +40,23 @@ spellings.forEach { spec ->
 
 val stagesDistinct = spellings.mapNotNull { spec ->
     runCatching {
-        bank.read(pat(spec).nums(), fields = MarfFieldClock.STAGES, name = "l")
-            .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8))).take(8).map { s -> s.address }
-    }.getOrNull()
+        bank
+            .read(pat(spec).nums(), fields = MarfFieldClock.STAGES, name = "l")
+            .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
+            .take(8)
+            .map { s -> s.address }
+    }
+        .getOrNull()
 }
 val stepsDistinct = spellings.mapNotNull { spec ->
     runCatching {
-        bank.read(pat(spec).nums(), fields = MarfFieldClock.STEPS, name = "l")
-            .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8))).take(8).map { s -> s.address }
-    }.getOrNull()
+        bank
+            .read(pat(spec).nums(), fields = MarfFieldClock.STEPS, name = "l")
+            .stagesIn(PatArc(PatQ.ZERO, PatQ.of(8)))
+            .take(8)
+            .map { s -> s.address }
+    }
+        .getOrNull()
 }
 table.append("\n")
 table.append("`STAGES` now accepts ${stagesDistinct.size} of the ten and reads ")

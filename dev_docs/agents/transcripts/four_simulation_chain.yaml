@@ -72,7 +72,7 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
-          
+
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -95,14 +95,13 @@ operations:
           // `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
           import afield.graphics.scene.fabricated.StandardRenderer
           import afield.graphics.scene.fabricated.applyScenePlan
-          import afield.math.linalg.Vector3f
-          
+
           prop<StandardRenderer.Bundle>(bundle)
-          
+
           /*
           `renderer` is the parent box's `prop<Renderer>`, visible here through the preamble —
           there is nothing to fetch with `fromContext()`.
-          
+
           This one *is* a `once`, unlike the chain boxes below, and for a reason rather than out
           of habit: `StandardRenderer.build` has no replace-in-place path, so re-running it would
           strand the bundle every chain in the document is appended to.
@@ -132,25 +131,23 @@ operations:
           import afield.graphics.scene.fabricated.FabricatePassChain
           import afield.graphics.scene.fabricated.FabricatePassLibrary
           import afield.graphics.scene.fabricated.addPassChain
-          import afield.graphics.vulkan.util.MouseEvent
-          import afield.graphics.vulkan.util.MouseEvents
-          
+
           prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(fluid)
-          
+
           // The knobs. A new `resolution` starts an empty fluid; the rest keep the one you painted.
           val resolution = 256
           val iterations = 20 // Jacobi pressure sweeps: fewer leaves divergence, and dye piles up
           val dyeDissipation = 0.99f
           val vorticity = 24f // 0f smears; higher puts back the curl advection loses
           val dragGain = 30 // how hard a drag pushes, per pixel moved
-          
+
           /*
           Twenty-seven passes, declared every run. `addPassChain` replaces passes of the same
           name, and reuses a target whose shape has not changed — so editing a shader or a number
           and hitting run remakes the chain without dropping the fluid, while changing
           `resolution` gives you a new, empty one. That is why there is no `once` here: wrapping
           the declaration in one would mean a resolution you edited never took effect.
-          
+
           `renderer` and `bundle` come from the parent boxes' `prop<>`s through the preamble, so
           there is nothing to fetch.
           */
@@ -182,10 +179,10 @@ operations:
           // The frame graph has to re-sync before the new passes are scheduled.
           bundle.attachTo(renderer)
           bundle.present(renderer = renderer)
-          
+
           /*
           ── painting ──
-          
+
           A lambda *binds*: the supplier is re-read every time the push buffer is written, so
           these three lambdas are the whole animation and the drag handler below only moves a `var`.
           `fluid[name]` sets every pass that declares `name`, which is why one assignment reaches
@@ -195,13 +192,13 @@ operations:
           var paintAt = vec(0.5, 0.5)
           var paintPush = vec(0, 0)
           var paintMass = 0f
-          
+
           fluid["splatCenter"] = { paintAt }
           fluid["splatVelocity"] = { paintPush }
           fluid["splatMass"] = { paintMass }
           fluid["splatColor"] = vec(0.35, 0.8, 1.0)
           fluid["splatRadius"] = 0.04f
-          
+
           /*
           Handlers are held by name, so re-running replaces them rather than stacking a second
           copy — no `once` needed here either. `onUp` names its parameter type because it is
@@ -220,7 +217,7 @@ operations:
               paintMass = 0f
               true
           }
-          
+
           println("drag in the window to paint. state fields: ${fluid.stateNames()}")
   # 4. the distance transform: a mask, a flood, and bands you can read.
   - create:
@@ -235,9 +232,9 @@ operations:
           import afield.graphics.scene.fabricated.FabricatePassSize
           import afield.graphics.scene.fabricated.FabricatePassSpec
           import afield.graphics.scene.fabricated.addPassChain
-          
+
           prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(sdf)
-          
+
           // The mask: a disc and a bar, in every channel. A chain head that synthesises its own
           // input is self-contained however the chains before it ended up looking.
           val maskFragment =
@@ -250,7 +247,7 @@ operations:
                   float bar;
               } push;
               layout(location = 0) out vec4 outColor;
-          
+
               void main() {
                   float disc = length(vUv - push.centre) <= push.radius ? 1.0 : 0.0;
                   float bar = (abs(vUv.y - 0.78) < push.bar && vUv.x > 0.2 && vUv.x < 0.8) ? 1.0 : 0.0;
@@ -258,7 +255,7 @@ operations:
                   outColor = vec4(m, m, m, m);
               }
           """
-          
+
           /*
           The inset. Two chains in one post stack run in series, so whichever is appended last
           owns the screen — append this one after the fluid and the fluid simply disappears. This
@@ -274,7 +271,7 @@ operations:
               layout(set = 0, binding = 0) uniform sampler2D sourceTex;
               layout(set = 0, binding = 1) uniform sampler2D bandsTex;
               layout(location = 0) out vec4 outColor;
-          
+
               void main() {
                   vec4 under = texture(sourceTex, vUv);
                   if (vUv.x > 0.5 && vUv.y < 0.5) {
@@ -285,21 +282,21 @@ operations:
                   }
               }
           """
-          
+
           // Declared every run, like the fluid: `addPassChain` replaces by name. Nothing here is
           // persistent, so the whole field simply re-floods from scratch on the next frame.
           sdf = bundle.addPassChain(
-              listOf(
+              [
                   FabricatePassSpec(
                       name = "mask",
                       fragment = maskFragment,
                       size = FabricatePassSize.Absolute(256, 256),
                       source = FabricatePassChain.CHAIN_INPUT,
                   ),
-              ) +
+              ] +
                   FabricatePassLibrary.jumpFloodDistance(
                       /*
-                      Seed, nine flood rounds at halving stride, JFA+1, then the distance — and
+                      Seed, flood rounds at halving stride, JFA+1, then the distance — and
                       `signed`, which seeds the *boundary* rather than the interior, so one flood
                       gives a field that is negative inside and positive out.
                       */
@@ -320,13 +317,13 @@ operations:
                       // sampling the 256x256 field. That combination is the whole point of the layer.
                       size = FabricatePassSize.MatchSource,
                       source = FabricatePassChain.CHAIN_INPUT,
-                      extraInputs = listOf(FabricatePassInput("bandsTex", "sdf-bands")),
+                      extraInputs = [FabricatePassInput("bandsTex", "sdf-bands")],
                   ),
               printReport = true,
           )
           bundle.attachTo(renderer)
           bundle.present(renderer = renderer)
-          
+
           /*
           ── live knobs. Move the shape and the whole field re-floods, from scratch, every frame.
              `sdf[name]` reaches every pass that declares `name`; a lambda would bind a supplier
@@ -336,7 +333,7 @@ operations:
           sdf["radius"] = 0.16f
           sdf["bar"] = 0.02f
           sdf["spacing"] = 0.03f
-          
+
           println("distance field: ${sdf.names().size} passes, output ${sdf.output.width} across")
   - connect: { parent: sim_renderer, child: sim_bundle }
   - connect: { parent: sim_bundle, child: sim_fluid }

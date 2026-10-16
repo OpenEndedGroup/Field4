@@ -7,12 +7,15 @@ Field boxes can use [Kotlin DataFrame](https://kotlin.github.io/dataframe/) with
 import org.jetbrains.kotlinx.dataframe.api.*
 
 val people = dataFrameOf("name", "age")(
-    "Alice", 15,
-    "Bob", 30,
-    "Cara", 45,
+    "Alice",
+    15,
+    "Bob",
+    30,
+    "Cara",
+    45,
 )
 
-people.age            // resolves. Not people["age"], not a cast, not a generated file.
+people.age // resolves. Not people["age"], not a cast, not a generated file.
 ```
 
 `people.age` is not a string lookup and not something you generated ahead of time. The plugin reads the `dataFrameOf("name", "age")(...)` call at compile time, works out the schema it produces, and gives the expression a type whose members are its columns. There is no `@DataSchema` in your project, no build step, and nothing on disk to keep in sync.
@@ -30,16 +33,17 @@ Within one execution, a chain of calls just works. Every step re-types the frame
 import org.jetbrains.kotlinx.dataframe.api.*
 
 val people = dataFrameOf("name", "age")(
-    "Alice", 15,
-    "Bob", 30,
-    "Cara", 45,
+    "Alice",
+    15,
+    "Bob",
+    30,
+    "Cara",
+    45,
 )
 
 // `age` inside the lambda resolves against the *input* schema.
 // `decade` afterwards resolves against the schema `add` RETURNS.
-val adults = people
-    .filter { age >= 18 }
-    .add("decade") { age / 10 }
+val adults = people.filter { age >= 18 }.add("decade") { age / 10 }
 
 println("names:  " + people.name.toList())
 println("kept:   " + adults.name.toList())
@@ -89,15 +93,22 @@ A `@DataSchema interface` shared between boxes with [`sharedTypes(...)`](referen
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val people = dataFrameOf("name", "age")(
-    "Alice", 15,
-    "Bob", 30,
-    "Cara", 45,
-).typed("People")
+val people =
+    dataFrameOf("name", "age")(
+            "Alice",
+            15,
+            "Bob",
+            30,
+            "Cara",
+            45,
+        )
+        .typed("People")
 
-// …and this appears in the box's preamble:
-// @org.jetbrains.kotlinx.dataframe.annotations.DataSchema
-// interface People { val `name`: kotlin.String; val `age`: kotlin.Int }
+/*
+…and this appears in the box's preamble:
+@org.jetbrains.kotlinx.dataframe.annotations.DataSchema
+interface People { val `name`: kotlin.String; val `age`: kotlin.Int }
+*/
 ```
 
 From then on `People` is an ordinary source declaration in that box, so `people.cast<People>().age` resolves in every later execution.
@@ -125,12 +136,18 @@ Flat value columns get their real element type. A column group or frame column w
 :::static
 import org.jetbrains.kotlinx.dataframe.api.*
 
-val people = dataFrameOf("name", "age")(
-    "Alice", 15,
-    "Bob", 30,
-    "Cara", 45,
-).typed("Peach")
+val people =
+    dataFrameOf("name", "age")(
+            "Alice",
+            15,
+            "Bob",
+            30,
+            "Cara",
+            45,
+        )
+        .typed("Peach")
 
+// Run the first fragment to publish Peach into the preamble before compiling the cast.
 //%-
 val p = people.cast<Peach>()
 println("ages:   " + p.age.toList())
@@ -157,16 +174,24 @@ A DataFrame renders through [the value visualizer](visualizers.md#the-value-visu
 import org.jetbrains.kotlinx.dataframe.api.*
 
 val people = dataFrameOf("name", "city", "age")(
-    "Alice", "Berlin", 15,
-    "Bob", "Berlin", 30,
-    "Cara", "Lisbon", 45,
-    "Dev", "Lisbon", 22,
+    "Alice",
+    "Berlin",
+    15,
+    "Bob",
+    "Berlin",
+    30,
+    "Cara",
+    "Lisbon",
+    45,
+    "Dev",
+    "Lisbon",
+    22,
 )
 
-display("frame", people.h)                    // a Table, plus a shape line
-display("column", people.columns()[2].h)      // one column, plus its element type
-display("row", people[0].h)                   // label/value facts
-display("grouped", people.groupBy("city").h)  // how many groups, keyed by what
+display("frame", people.h) // a Table, plus a shape line
+display("column", people.columns()[2].h) // one column, plus its element type
+display("row", people[0].h) // label/value facts
+display("grouped", people.groupBy("city").h) // how many groups, keyed by what
 ```
 
 All four are drawn with the same `table()` and `facts()` that draw every other table in Field.
@@ -185,8 +210,10 @@ val big = dataFrameOf("i")(*Array(200_000) { it })
 
 val compact = big.h
 display("head", compact)
-display("cost", ("the compact form of a " + big.rowsCount() + "-row frame is " +
-    compact.length + " characters").h)
+display(
+    "cost",
+    ("the compact form of a " + big.rowsCount() + "-row frame is " + compact.length + " characters").h,
+)
 ```
 
 ??? aside "Agents: the test behind this"
@@ -204,16 +231,18 @@ display("cost", ("the compact form of a " + big.rowsCount() + "-row frame is " +
 :::static
 import org.jetbrains.kotlinx.dataframe.api.*
 
-// 15,000 rows, and nothing below pages them: `.h2` hands the whole FRAME to the
-// explorer, which asks for the window it is showing and for nothing else. A spread
-// argument is one the plugin cannot statically interpret, so this frame is
-// schema-less — what is on show here is the rendering, not the typing.
+/*
+15,000 rows, and nothing below pages them: `.h2` hands the whole FRAME to the
+explorer, which asks for the window it is showing and for nothing else. A spread
+argument is one the plugin cannot statically interpret, so this frame is
+schema-less — what is on show here is the rendering, not the typing.
+*/
 val n = 15_000
 val big = dataFrameOf("i", "sq")(
     *Array<Any?>(n * 2) { k ->
         val r = k / 2
         if (k % 2 == 0) r else r.toLong() * r
-    }
+    },
 )
 
 display("scroller", big.h2)

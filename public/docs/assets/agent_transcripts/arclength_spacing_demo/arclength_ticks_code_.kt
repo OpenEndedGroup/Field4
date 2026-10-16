@@ -21,9 +21,11 @@ val ticks = { line: FLine, byArcLength: Boolean ->
         val f = i.toFloat() / steps
         if (byArcLength) c.setD(total * f) else c.setT(span * f)
         val p = c.position()
-        // normal2D() is the tangent rotated 90 degrees and is NOT normalised — its
-        // magnitude is |B'(t)|, which is in the hundreds here — so normalise it or the
-        // ticks come out as a fan hundreds of units long.
+        /*
+        normal2D() is the tangent rotated 90 degrees and is NOT normalised — its
+        magnitude is |B'(t)|, which is in the hundreds here — so normalise it or the
+        ticks come out as a fan hundreds of units long.
+        */
         val n = c.normal2D()
         val len = kotlin.math.hypot(n?.x ?: 0f, n?.y ?: 1f).coerceAtLeast(1e-6f)
         val nx = (n?.x ?: 0f) / len
@@ -35,10 +37,14 @@ val ticks = { line: FLine, byArcLength: Boolean ->
                 .apply {
                     thickness = 2.0
                     color = if (byArcLength) vec(0.35, 0.95, 0.6, 1.0) else vec(1.0, 0.45, 0.35, 1.0)
-                }
+                },
         )
     }
-    out + line.apply { thickness = 1.0; color = vec(0.55, 0.55, 0.65, 1.0) }
+    out +
+        line.apply {
+            thickness = 1.0
+            color = vec(0.55, 0.55, 0.65, 1.0)
+        }
 }
 
 // The gap between consecutive tick positions, as a max/median ratio. 1.0 is perfect.
@@ -46,11 +52,12 @@ val evenness = { line: FLine, byArcLength: Boolean ->
     val c = line.cursor()
     val total = c.lengthD()
     val span = (line.nodes.size - 1).toFloat()
-    val pts = (0..steps).map { i ->
-        val f = i.toFloat() / steps
-        if (byArcLength) c.setD(total * f) else c.setT(span * f)
-        c.position()
-    }
+    val pts =
+        (0..steps).map { i ->
+            val f = i.toFloat() / steps
+            if (byArcLength) c.setD(total * f) else c.setT(span * f)
+            c.position()
+        }
     val gaps = (1..steps).map { pts[it].distance(pts[it - 1]).toDouble() }.sorted()
     gaps.last() / gaps[gaps.size / 2]
 }
@@ -65,10 +72,11 @@ showPlaneGrid(
     cellHeight = 220,
 )
 
-// The mechanism, live. `flatness` is the OLD subdivision criterion: the distance of the
-// control points from the chord. `skew` is the term added on 2026-07-31: the distance
-// between the curve's mid-PARAMETER point B(0.5) and the chord's mid-POINT. Neither
-// subsumes the other, which is why the criterion takes the larger of the two.
+/*
+Flatness measures control-point distance from the chord; skew measures the distance
+between B(0.5) and the chord midpoint. Use the larger: either test can miss a curve
+that the other detects.
+*/
 val report = { name: String, line: FLine ->
     val n = line.nodes[1] as FLine.CubicTo
     val a = line.nodes[0].to
@@ -88,9 +96,10 @@ val report = { name: String, line: FLine ->
     "%-22s flatness %8.3f   skew %8.3f   leaves %5d".format(name, flatness, skew, leaves)
 }
 
-listOf(
-    report("S-curve", bent),
-    report("collinear", straight),
-    "",
-    "flatness alone stops at one leaf whenever it reads 0.000, and no tolerance can beat 0.",
-).joinToString("\n")
+[
+        report("S-curve", bent),
+        report("collinear", straight),
+        "",
+        "flatness alone stops at one leaf whenever it reads 0.000, and no tolerance can beat 0.",
+    ]
+    .joinToString("\n")

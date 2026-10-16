@@ -18,7 +18,7 @@ val show: (Int, Double) -> Unit = { n, elapsed ->
         """
         ### frame ${"%,d".format(n)}
 
-        {muted:$rate · ${"%.1f".format(elapsed)} s elapsed}
+        {muted:$rate · ${elapsed.f1} s elapsed}
 
         {muted:this launch's colour is $swatch}
         """,

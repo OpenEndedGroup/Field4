@@ -4,9 +4,9 @@ import org.lwjgl.vulkan.VK10.*
 
 // Screen composite. B and G in the paint box control this shared vector.
 val controls = fromContextWithNameOrNull<afield.math.linalg.Vec4>("apertureControl")!!
-val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
-val medium = fromContextWithNameOrNull<RenderToTexture>("paintMedium")!!
-val broad = fromContextWithNameOrNull<RenderToTexture>("paintBroad")!!
+val source = paintSource
+val medium = paintMedium
+val broad = paintBroad
 var module = moduleHere {
     textures("paintSource" to source, "paintMedium" to medium, "paintBroad" to broad)
     depthTest = false

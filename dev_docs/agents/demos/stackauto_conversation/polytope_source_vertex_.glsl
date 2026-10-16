@@ -7,10 +7,14 @@ layout(location = 0) out vec3 vN;
 layout(location = 1) out vec3 vLocal;
 layout(location = 2) flat out float vId;
 layout(location = 3) out float vAway;
-layout(push_constant) uniform matrices { mat4 p; mat4 m; vec4 params; } pc;
+layout(push_constant) uniform matrices {
+    mat4 p;
+    mat4 m;
+    vec4 params;
+} pc;
 
 // explode(vec4(face centre xyz, time)): .x pushes the face out along its normal,
-// .y shrinks it about its own centre (0 keeps it whole, 1 shrinks it to a point).
+// .y shrinks about the face centre: 0 keeps it whole; values >= 0.95 leave 5% size.
 {{ stack.auto.explode }}
 
 void main() {

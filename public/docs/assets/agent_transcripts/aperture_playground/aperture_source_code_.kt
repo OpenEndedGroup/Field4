@@ -1,11 +1,10 @@
 import afield.graphics.vulkan.targets.RenderToTexture
-import afield.document.context.fromContextWithNameOrNull
 import org.lwjgl.vulkan.VK10.*
 
 // Full-resolution RGBA16F source. RGBA hold light at radii 0, 4, 10, 24 px.
 // Alpha is the fourth light band, so every intermediate filter must use blend=false.
-// Re-run the downstream boxes after changing the dimensions.
-prop<RenderToTexture>(paintSource)
+// propDown: re-running this box with new dimensions re-runs the passes that read paintSource.
+propDown<RenderToTexture>(paintSource)
 thisBox.paintSource = RenderToTexture {
     width = window.width
     height = window.height
