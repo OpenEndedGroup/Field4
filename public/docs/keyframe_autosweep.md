@@ -291,12 +291,6 @@ approaches zero, including under extrapolation, where some weights *are* negativ
     every fill in the manifest; `FILL_FROM_ANCHOR`, `INTERSECT` and `REQUIRE_ALL` are the
     alternatives, and `REQUIRE_ALL` reports how many keys it excluded.
 
-    **Numeric type.** `interpolate` returns `Double` unless *both* sides were `Float`, so an `Int`
-    lane comes back as a `Double` an `Int` uniform will refuse. `preserveNumericKind` rounds each
-    lane back to the anchor's type — rounded, but *not* clamped, because an extrapolated blend can
-    put an `Int` lane outside the range its `intTarget` declares and the clamp belongs in the target,
-    on apply. The key then records the point actually visited and still reproduces the render.
-
 ## Blending past the saved keys
 
 An extrapolated look is the one nobody would have authored: past the end of every key you saved rather

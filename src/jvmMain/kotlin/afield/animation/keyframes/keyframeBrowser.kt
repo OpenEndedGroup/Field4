@@ -747,6 +747,8 @@ data class SlotSummary(
 
 private fun kValueKind(v: KValue): String = when (v) {
     is KValue.Num -> "num"
+    is KValue.LongValue -> "long"
+    is KValue.Bool -> "bool"
     is KValue.Vec2 -> "vec2"
     is KValue.Vec3 -> "vec3"
     is KValue.Vec4 -> "vec4"

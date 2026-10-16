@@ -635,10 +635,10 @@ for free, with no look-at constraint anywhere in the loop.
 `saveKey` writes pretty JSON, and every single time also appends a numbered copy to a
 `<file>.versions` directory with a manifest. Saving is always additive; nothing prunes it.
 
-What survives the trip is a closed set. `KValue.fromAny` recognises numbers, `vec2`/`3`/`4`,
-quaternion, dual quaternion, camera pose, string, StackSL source and source-backed block. Anything
-else (a `Boolean`, a list, a null) is **dropped in silence**, and the key loads back one value short
-with no warning anywhere.
+What survives the trip is a closed set. `KValue.fromAny` recognises numbers, Booleans,
+`vec2`/`3`/`4`, quaternion, dual quaternion, camera pose, string, StackSL source and source-backed
+block. Anything else (a list, a null) is left out, and each one is reported on the
+`error,keyframer` log channel.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/persistence.png" wait="3.0" capture="box" open-outputs="true" w="960" h="760" padding="16"}
 :::static
@@ -666,9 +666,9 @@ scope.saveKey(path, scope.Key(mutableMapOf(
 // A third save that also carries values the union cannot represent.
 val lossy = scope.Key(mutableMapOf(
     "gain" to 0.90f,
-    "enabled" to true,          // a Boolean is outside the union
-    "taps" to [1, 2, 3],  // so is a list
-    "absent" to null            // and a null is dropped too
+    "enabled" to true,          // a Boolean is kept
+    "taps" to [1, 2, 3],  // a list is not
+    "absent" to null            // and neither is a null
 ))
 scope.saveKey(path, lossy, note = "with unsupported values")
 
@@ -708,7 +708,7 @@ markdown("persist", """
 
     kept: **$kept**
 
-    dropped in silence: {bad:**${droppedNames.joinToString(", ")}**}
+    left out, and logged: {bad:**${droppedNames.joinToString(", ")}**}
 
     #### version 0, reloaded into a scope that has since grown a 'wet' parameter (${migrated.values.size} values)
 
@@ -724,11 +724,7 @@ ${java.nio.file.Files.readString(dir.resolve("look.json.versions").resolve("0000
 :::endfold
 ```
 
-![Four panels: a three-row version history numbered 0 to 2 with notes; a line reading kept gain and dropped absent, enabled, taps; a reloaded key showing gain, pos, voice plus the filled-in wet and mode defaults; and the pretty-printed JSON of version zero](assets/keyframer_examples/persistence.png)
-
-**The drop is silent and total.** The third save went in with four names and came back with one. No
-exception, no log line, no marker in the file. If you keyframe a `Boolean` you will simply never see
-it again.
+![Four panels: a three-row version history numbered 0 to 2 with notes; a line reading kept enabled and gain, and left out absent and taps; a reloaded key showing gain, pos, voice plus the filled-in wet and mode defaults; and the pretty-printed JSON of version zero](assets/keyframer_examples/persistence.png)
 
 **`missingKey` is how a scope outgrows its own files.** Version 0 was written before `wet` existed;
 loading it into a scope that declares `missingKey("wet", 0.5f)` fills the gap. The schema-qualified
@@ -743,10 +739,8 @@ number goes over the wire as a `Double`. The round trip is still exact: `"kind":
 alongside, and `KValue.toAny` uses it to narrow the value back to a `Float`, recovering `0.2f`
 precisely.
 
-The `Double` wire format does lose information in two cases, though. A `Long` past 2^53 has more
-mantissa than a `Double` can hold and comes back changed. And any `Number` that is *not* one of the
-six `NumKind`s, such as a `BigDecimal` or a `BigInteger`, is stored as a plain `DOUBLE` and comes
-back a `Double`: even where the value survives, the **type** does not.
+A `Long` is stored exactly, as its own `"type": "long"`. A `Number` that is none of the six kinds,
+such as a `BigDecimal`, is stored as a `DOUBLE` and comes back a `Double`.
 
 ### Version history on disk
 
@@ -853,7 +847,7 @@ import afield.math.linalg.Vector3f
 import afield.math.linalg.Quaternionf
 
 val scope = KeyframeScope()
-val key = scope.Key(mutableMapOf(
+val key = scope.Key(mutableMapOf<String, Any?>(
     "gain" to 0.65f,           // a Float, and the 'f' suffix matters
     "steps" to 12,
     "seed" to 99L,
@@ -863,7 +857,7 @@ val key = scope.Key(mutableMapOf(
     // A source block whose body mentions a '$'. Emitting this as a Kotlin *raw* string would
     // have let the '$' interpolate at paste time; it now falls back to an escaped literal.
     "block" to SourceBackedBlock<Any?>("box-1", "val total = 2\nprintln(\"sum: \$total\")"),
-    "notes" to ["unsupported", "on purpose"]
+    "notes" to listOf<String>("unsupported", "on purpose")   // typed: a bare [..] has no element type here
 ))
 
 :::fold render the generated update code
