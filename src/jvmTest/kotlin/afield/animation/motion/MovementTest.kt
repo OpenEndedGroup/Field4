@@ -297,4 +297,20 @@ class MovementTest {
         assertEquals(1f, character.rotation, 0f)
         assertEquals(0f, character.angularVelocity, 0f)
     }
+
+    @Test
+    fun springAngleStaysContinuousAcrossPi() {
+        // From just below +π toward just above -π: the short way runs onward through π.
+        var x = 3.0f
+        var v = 0.0f
+        var previous = x
+        repeat(120) {
+            val step = Springs.springAngle(x, v, -3.0f, 0.2f, 1f / 60f)
+            assertTrue(kotlin.math.abs(step.x - previous) < 0.5f, "jumped from $previous to ${step.x}")
+            previous = step.x
+            x = step.x
+            v = step.v
+        }
+        assertTrue(kotlin.math.abs(Springs.wrapAngle(x - -3.0f)) < 1e-2f, "settled at the goal, got $x")
+    }
 }
