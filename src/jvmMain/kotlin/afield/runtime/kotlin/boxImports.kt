@@ -148,6 +148,19 @@ private fun disambiguates(imp: BoxImport, introStars: Set<String>, otherCandidat
     return otherCandidates(name).any { fqn -> fqn != imp.path && fqn.substringBeforeLast('.', "") in introStars }
 }
 
+/**
+ * The type a box already sees under the simple name [name] through [introText]'s imports, as a
+ * fully qualified name, or null when there is none: what a class generated with that name (a shader
+ * block's, say) would hide.
+ */
+fun introProvidedType(name: String, introText: String = intro): String? {
+    val imports = boxImports(introText)
+    imports.firstOrNull { !it.star && it.name == name }?.let { return it.path }
+    val stars = imports.filter { it.star }.map { it.pkg }.toSet()
+    // A star import brings in a package's top-level classes, not the classes nested in them.
+    return classpathCandidates(name).firstOrNull { '$' !in it && it.substringBeforeLast('.', "") in stars }
+}
+
 private fun classpathCandidates(name: String): Collection<String> =
     try { ImportResolution.index()[name].orEmpty() } catch (t: Throwable) { emptyList() }
 
