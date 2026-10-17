@@ -80,8 +80,8 @@ frames {
             cut = false
         }
         if (reload) {
-            val vertexSource = thisBox.getPropertyRaw("vertex") as String
-            val fragmentSource = thisBox.getPropertyRaw("fragment") as String
+            val vertexSource = requireNotNull(vertex) { "Missing vertex shader on this box or its parents" }
+            val fragmentSource = requireNotNull(fragment) { "Missing fragment shader on this box or its parents" }
             lab.reload(vertexSource, fragmentSource).onFailure { println("Keeping working shaders: ${it.message}") }
             reload = false
         }

@@ -1,6 +1,8 @@
-// The same target and two identical interpolants. The only difference is the `startAt`
-// line: restarting a blend throws away the speed it had, which is what any one-shot ease
-// does every time you re-aim it. Left alone, `inertialTo` re-solves and keeps that speed.
+/*
+The same target and two identical interpolants. The only difference is the `startAt`
+line: restarting a blend throws away the speed it had, which is what any one-shot ease
+does every time you re-aim it. Left alone, `inertialTo` re-solves and keeps that speed.
+*/
 var goal = 0.0
 val carried = inertialTo<Double>(time = 0.4) { goal }
 val restarted = inertialTo<Double>(time = 0.4) { goal }

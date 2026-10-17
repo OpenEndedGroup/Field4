@@ -1,9 +1,9 @@
 fun star(cx: Double, cy: Double) = fline {
+    breakNext()
     for (i in 0 until 10) {
         val r = if (i % 2 == 0) 70.0 else 32.0
         val a = kotlin.math.PI * i / 5
-        if (i == 0) moveTo(cx + r * kotlin.math.cos(a), cy + r * kotlin.math.sin(a))
-        else lineTo(cx + r * kotlin.math.cos(a), cy + r * kotlin.math.sin(a))
+        lineTo(cx + r * kotlin.math.cos(a), cy + r * kotlin.math.sin(a))
     }
     close()
 }
@@ -15,28 +15,26 @@ fun sCurve(x: Double, y: Double) = fline {
     lineTo(x + 215, y + 55)
 }
 
-fun dots(f: FLine, c: Vec4) = f.nodes.mapNotNull { it.toOrNull }.map { p ->
-    fline {
-        moveTo(p.x + 2.0, p.y)
-        cubicTo(p.x + 2.0, p.y + 1.1, p.x + 1.1, p.y + 2.0, p.x, p.y + 2.0)
-        cubicTo(p.x - 1.1, p.y + 2.0, p.x - 2.0, p.y + 1.1, p.x - 2.0, p.y)
-        cubicTo(p.x - 2.0, p.y - 1.1, p.x - 1.1, p.y - 2.0, p.x, p.y - 2.0)
-        cubicTo(p.x + 1.1, p.y - 2.0, p.x + 2.0, p.y - 1.1, p.x + 2.0, p.y)
-        filled = true
-        stroked = false
-        color = c
-    }
-}
+fun dots(f: FLine, c: Vec4) =
+    f.nodes
+        .mapNotNull { it.toOrNull }
+        .map { p ->
+            FLine().circle(p.x, p.y, 2.0).apply {
+                filled = true
+                stroked = false
+                color = c
+            }
+        }
 
 val out = mutableListOf<FLine>()
 for (col in 0..1) {
     val x = 30.0 + col * 280
-    val shapes = listOf(star(x + 110, 100.0), sCurve(x, 270.0))
+    val shapes = [star(x + 110, 100.0), sCurve(x, 270.0)]
     for (s in shapes) {
         s.thickness = 1.0
         s.color = vec(1.0, 1.0, 1.0, 0.6)
         out.add(s)
-        for (d in listOf(12.0, -12.0)) {
+        for (d in [12.0, -12.0]) {
             val o = if (col == 0) s.byOffsetting(d.toFloat()) else s.byOffsettingExact(d.toFloat())
             o.thickness = 1.5
             o.color = if (col == 0) vec(1.0, 0.55, 0.35, 1.0) else vec(0.4, 0.9, 1.0, 1.0)

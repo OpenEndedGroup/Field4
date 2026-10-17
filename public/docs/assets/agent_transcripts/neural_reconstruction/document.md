@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="neural_reconstruction" index="1" -->
 
 ```edn [field-box id="neural_reconstruction" role="properties"]
-{"id" "neural_reconstruction" "index" 1 "name" "neural reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "neural_reconstruction_code_.kt" "lines" 90 "characters" 3318 "sha256" "7b64f0fa4162834b3c95b9841ec5b19514e7403353c57908a0121afea6f24897"} {"name" "vertex" "language" "glsl" "path" "neural_reconstruction_vertex_.glsl" "lines" 74 "characters" 3104 "sha256" "f8a0170eee872ff2345d1a7b997aca7e64e59ec99b10417924f8c539d938fb15"} {"name" "fragment" "language" "glsl" "path" "neural_reconstruction_fragment_.glsl" "lines" 51 "characters" 2264 "sha256" "68b3587e130c556bd773908cf0e4efaefc4e3738b7fda72d8afc5007ecc2dbc4"}]}
+{"id" "neural_reconstruction" "index" 1 "name" "neural reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "neural_reconstruction_code_.kt" "lines" 90 "characters" 3390 "sha256" "5964ecc783d50ee6dd50e2318f8a7964fe8c5410e9a73001f788ea67b4d81834"} {"name" "vertex" "language" "glsl" "path" "neural_reconstruction_vertex_.glsl" "lines" 74 "characters" 3104 "sha256" "f8a0170eee872ff2345d1a7b997aca7e64e59ec99b10417924f8c539d938fb15"} {"name" "fragment" "language" "glsl" "path" "neural_reconstruction_fragment_.glsl" "lines" 51 "characters" 2264 "sha256" "68b3587e130c556bd773908cf0e4efaefc4e3738b7fda72d8afc5007ecc2dbc4"}]}
 ```
 
 ```kotlin [field-property box="neural_reconstruction" name="code" path="neural_reconstruction_code_.kt"]
@@ -124,8 +124,8 @@ frames {
             cut = false
         }
         if (reload) {
-            val vertexSource = thisBox.getPropertyRaw("vertex") as String
-            val fragmentSource = thisBox.getPropertyRaw("fragment") as String
+            val vertexSource = requireNotNull(vertex) { "Missing vertex shader on this box or its parents" }
+            val fragmentSource = requireNotNull(fragment) { "Missing fragment shader on this box or its parents" }
             lab.reload(vertexSource, fragmentSource).onFailure { println("Keeping working shaders: ${it.message}") }
             reload = false
         }
