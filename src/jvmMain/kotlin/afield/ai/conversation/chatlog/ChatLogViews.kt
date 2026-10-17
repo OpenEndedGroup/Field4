@@ -10,10 +10,12 @@ import java.time.format.DateTimeFormatter
 /**
  * # What an agent reads of a chat
  *
- * Text views of a [ChatTree] for AI4 agents that write lenses ([ChatlogTools]). Every view names blocks by
+ * Text views of a [ChatTree] for AI4 agents that write lenses ([registerChatlogTools]). Every view names blocks by
  * address, so what the agent reads is what it cites. Tool activity reads as round lines in the panel's own
  * words ([AiChatRound]); images read as their captions and `ai4img:` references, never as bytes.
  */
+
+/** The outline and read views of a [ChatTree], as text an agent can cite by block address. */
 object ChatLogViews {
     private val time = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault())
 
