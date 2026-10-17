@@ -74,7 +74,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Native painting and SolidSL ownership](../box_code_adoption_batch_35/README.md) | Four more findings addressed; exact paint pixels, real multi-canvas/native build closure on success and injected failures; 46 Kotlin states mechanically formatted. |
 
-[Machine checkpoint](checkpoint.json): **271 of 405 findings addressed**, one implemented with
+| [Disk buffers and repaired-solid ownership](../box_code_adoption_batch_36/README.md) | Two more findings addressed; real loaders repeated, exact PLY geometry, native cleanup and saved-document preservation verified. |
+
+[Machine checkpoint](checkpoint.json): **273 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
