@@ -161,9 +161,13 @@ animate {
 
 `level` is written by the generator and read by `animate`, both on the main thread, so the value the
 bar draws is always one the handler finished writing. Delete the stand-in, the lines that mention
-`phone` and `t`, and point a real control surface at port 57308 to drive it by hand. Stopping the box
-stops the animation but not the handler, which goes on writing to the stopped run's `level` until the
-box runs again and registers its replacement.
+`phone` and `t`, and point a real control surface at port 57308 to drive it by hand.
+
+`runOwned = true` ties the handler to this run of the box: stopping the box removes it along with the
+animation, and running the box again registers a fresh one, so no stopped run's `level` keeps being
+written. The server on port 57308 keeps listening either way, because it belongs to the port. Without
+`runOwned`, a handler stays registered across stops, which is what the rest of this page's examples
+use; [Handlers outlive a stop](#handlers-outlive-a-stop) explains that default.
 
 `server.debug = false` turns off the line `OSC: /step = …` that every server prints for every
 message it receives. That line goes to the console Field was started from, not to the box, so it is
@@ -311,9 +315,9 @@ A generator would not get its first pass until the box had finished running.
 
 ## Handlers outlive a stop
 
-The server belongs to the port, not to any box, and a handler belongs to the box that registered it
-the way any keyed registration does. Stopping the box or running it again leaves its handlers in
-place, still calling the code they were registered with; deleting the box or closing its document
+This is the default, for a handler registered without `runOwned = true`. The server belongs to the
+port, not to any box, and a handler belongs to the box that registered it the way any keyed
+registration does. Stopping the box or running it again leaves its handlers in place, still calling the code they were registered with; deleting the box or closing its document
 removes them.
 
 <!--

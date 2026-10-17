@@ -6252,7 +6252,7 @@ What a model gets back — and, separately, what it gets to see.
 
 `src/jvmMain/kotlin/afield/graphics/render/Mesh.kt` — [read the source](source/jvmMain/afield/graphics/render/Mesh/)
 
-**Used in:** [Field Probes: instrumenting shaders](../field_probes.md), [FieldML's JVM bridge](../fieldml_host_bridge.md), [Computer vision in Python](../python_cv.md)
+**Used in:** [Field 4 Graphics](../afield_four_graphics.md), [Field Probes: instrumenting shaders](../field_probes.md), [FieldML's JVM bridge](../fieldml_host_bridge.md)
 
 ### Top-level functions { #mesh-kt-src-jvmmain-kotlin-afield-graphics-render-functions }
 
@@ -6966,7 +6966,7 @@ than a point sprite), `seg`, and `fitInto`, which scales and centres a list of l
 
 `src/jvmMain/kotlin/afield/graphics/render/StandardDrawing.kt` — [read the source](source/jvmMain/afield/graphics/render/StandardDrawing/)
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Three.js scenes with `three { … }`](../three_output.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Three.js scenes with `three { … }`](../three_output.md)
 
 ### Top-level functions { #standarddrawing-kt-functions }
 

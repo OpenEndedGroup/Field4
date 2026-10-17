@@ -32,8 +32,8 @@ val flatOf: (Img) -> Float = { img -> img.crop(430, 340, 120, 100).stdDev() }
 showImgGrid(
     "clean" to clean,
     "+ uniform noise" to noisy,
-    "bilateral($sigmaSpace, $sigmaRange) — edges kept" to bil,
-    "gaussianBlur($sigmaSpace) — edges gone too" to gauss,
+    "bilateral — edges kept" to bil,
+    "gaussianBlur — edges lost" to gauss,
     columns = 2,
     cellSide = 300,
 )

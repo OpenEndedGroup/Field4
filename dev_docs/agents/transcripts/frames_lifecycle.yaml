@@ -27,6 +27,10 @@ description: >
 
        The middle one is the contrast worth seeing: a cancellation is the only route into
        `atEnd`, so `.end { }` means "cancelled", not "finished". `finally` runs either way.
+       Its lines go to a separate `cleanup` channel with `markdownAppend(..., maxEntries = 12)`,
+       so each launch adds to the history instead of replacing it: an old run's cleanup lines
+       stay put until newer runs push them out, the live countdown in `main` never overwrites
+       them, and only the last twelve entries are kept.
        (`afield.runtime.lifecycle.FramesSemanticsTest.boxStopStillRunsTheEndBlock`,
        `theRealLaunchPathRunsAMultiFrameEndBlockOnStop` and `reRunningTheBoxStillRunsTheEndBlock`
        pin all three rows.)

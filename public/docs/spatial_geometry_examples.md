@@ -539,16 +539,7 @@ fun perimeter(loop: List<Vec2>): Double {
 // One helper: the sampling grid as faint lines, so you can SEE which samples the level set runs
 // through. That is the whole subject of this figure.
 fun gridLines(x0: Double, x1: Double, y0: Double, y1: Double, nx: Int, ny: Int) = fline {
-    for (i in 0..nx) {
-        val x = x0 + (x1 - x0) * i / nx
-        moveTo(x, y0)
-        lineTo(x, y1)
-    }
-    for (j in 0..ny) {
-        val y = y0 + (y1 - y0) * j / ny
-        moveTo(x0, y)
-        lineTo(x1, y)
-    }
+    grid(Rect(x0, y0, x1 - x0, y1 - y0), nx, ny)
     color = vec(0.34, 0.42, 0.54, 0.55)
     thickness = 0.8
 }
@@ -719,11 +710,7 @@ val cutColor = vec(0.6, 1.0, 0.72, 0.95)
 fun cellFigure(v: List<Double>, cuts: List<List<Vec2>>): List<FLine> {
     val out = ArrayList<FLine>()
     out += fline {
-        moveTo(0.0, 0.0)
-        lineTo(1.0, 0.0)
-        lineTo(1.0, 1.0)
-        lineTo(0.0, 1.0)
-        lineTo(0.0, 0.0)
+        rect(0.0, 0.0, 1.0, 1.0)
         color = vec(0.34, 0.42, 0.54, 0.7)
         thickness = 1.0
     }
@@ -749,16 +736,7 @@ fun cellFigure(v: List<Double>, cuts: List<List<Vec2>>): List<FLine> {
 }
 
 fun gridLines(x0: Double, x1: Double, y0: Double, y1: Double, n: Int) = fline {
-    for (i in 0..n) {
-        val x = x0 + (x1 - x0) * i / n
-        moveTo(x, y0)
-        lineTo(x, y1)
-    }
-    for (j in 0..n) {
-        val y = y0 + (y1 - y0) * j / n
-        moveTo(x0, y)
-        lineTo(x1, y)
-    }
+    grid(Rect(x0, y0, x1 - x0, y1 - y0), n, n)
     color = vec(0.34, 0.42, 0.54, 0.45)
     thickness = 0.7
 }

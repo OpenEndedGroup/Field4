@@ -273,7 +273,9 @@ showSignals(
 
 ![springAngle turning the short way where a plain spring goes the long way, and a double spring removing the flick](assets/movement_examples/angle_short_way.png)
 
-The top panel is the wrapping. The bottom panel is the other angle function:
+The top panel is the wrapping. Both curves are absolute angles in radians, the `springAngle` one
+unwrapped: it climbs from 3 through π and settles at about 3.28, which is −3 plus 2π, while the plain
+spring falls all the way to −3. The bottom panel is the other angle function:
 `doubleSpringAngle` runs two `springAngle`s in series, each on half the half-life,
 and the visible one chases the intermediate one rather than the goal. Its rate
 starts at 0.05 rad/s where the single spring's is already at 0.45, so the turn
@@ -344,16 +346,18 @@ for (i in 0 until frames) {
 }
 
 val targetPath = fline {
+    breakNext()
     for (i in 0..600) {
         val p = target(i / 600.0 * period)
-        if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
+        lineTo(p.x, p.y)
     }
     color = vec(1, 1, 1, 0.22)
     thickness = 1.6
 }
 
 val walked = fline {
-    path.forEachIndexed { i, p -> if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) }
+    breakNext()
+    path.forEach { p -> lineTo(p.x, p.y) }
     color = vec(0.48, 0.85, 1.0, 0.95)
     thickness = 2.6
 }
@@ -509,7 +513,8 @@ for ((_, params, rgba) in runs) {
     }
 
     drawn += fline {
-        trace.forEachIndexed { i, p -> if (i == 0) moveTo(sx(p.x), sy(p.y)) else lineTo(sx(p.x), sy(p.y)) }
+        breakNext()
+        trace.forEach { p -> lineTo(sx(p.x), sy(p.y)) }
         color = rgba
         thickness = 2.6
     }

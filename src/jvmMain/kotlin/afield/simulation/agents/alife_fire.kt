@@ -116,8 +116,11 @@ data class ShaderForestFireSettings(
     var height: Int = 1024,
     /** Format of all three textures. */
     var format: Int = VK_FORMAT_R16G16B16A16_SFLOAT,
-    /** Clear colour of every texture on the first frame. */
-    var clearColor: Vec4 = vec(0, 0, 0, 1),
+    /**
+     * Clear colour of every texture. Transparent black, because alpha is not opacity here: it is the
+     * fourth kind of fire, and an opaque clear would light all of it at once.
+     */
+    var clearColor: Vec4 = vec(0, 0, 0, 0),
     /** The fraction of texels that are trees. Below about 0.4 fire stops crossing the gaps. */
     var treeDensity: Float = 0.72f,
     /** Size in texels of the coarse cells the forest is hashed on, so trees grow in clumps. */
@@ -195,9 +198,10 @@ class ShaderForestFireSystem(
     private val fireInputSampler = TextureSampler(renderer, 1, false)
     private val stateSampler = TextureSampler(renderer, 1, false)
     private val inkSampler = TextureSampler(renderer, 1, false)
-    private var clearFireInputRequested = false
-    private var clearStateRequested = false
-    private var clearInkRequested = false
+    // the first frame starts from nothing, whatever the targets were cleared to
+    private var clearFireInputRequested = true
+    private var clearStateRequested = true
+    private var clearInkRequested = true
     private var frame = 0L
 
     init {

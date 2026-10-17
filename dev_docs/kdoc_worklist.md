@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 16035 of 32058 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 16154 of 32178 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2306 undocumented entry points** (types, top-level functions and values) and 13046 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2306 undocumented entry points** (types, top-level functions and values) and 13047 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -74,7 +74,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SonicPi.kt](../src/jvmMain/kotlin/afield/audio/synth/SonicPi.kt) | Audio | sonic_pi | 3 | 46 | 34% |
 | [SpectralEmbeddingProjection.kt](../src/jvmMain/kotlin/afield/audio/ai/SpectralEmbeddingProjection.kt) | Audio AI | audio_ai_spectral_embeddings, visualizers | 3 | 29 | 21% |
 | [SlideShow.kt](../src/jvmMain/kotlin/afield/ui/slides/SlideShow.kt) | Visualization | interactive_guides | 3 | 25 | 53% |
-| [Mesh.kt](../src/jvmMain/kotlin/afield/graphics/render/Mesh.kt) | Graphics | field_probes, fieldml_host_bridge, python_cv | 3 | 20 | 14% |
+| [Mesh.kt](../src/jvmMain/kotlin/afield/graphics/render/Mesh.kt) | Graphics | afield_four_graphics, field_probes, fieldml_host_bridge | 3 | 20 | 14% |
 | [saving.kt](../src/jvmMain/kotlin/afield/document/persistence/saving.kt) | Workspace | document_on_disk | 3 | 19 | 31% |
 | [FLineGaussianProcess.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineGaussianProcess.kt) | Graphics | gaussian_processes | 3 | 16 | 45% |
 | [Runloop.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt) | Workspace | profiling_timeline, animation_time_model | 3 | 14 | 10% |
@@ -966,6 +966,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DocumentStudySmokeTest.kt](../src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [RectslBoxToolsSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/ai/RectslBoxToolsSmokeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [PhotoToSolidChain.kt](../src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt) | Examples | — | 0 | 1 | 88% |
+| [AlifeShaderSystemsSmoke.kt](../src/jvmMain/kotlin/afield/examples/four/AlifeShaderSystemsSmoke.kt) | Examples | — | 0 | 1 | 50% |
 | [FabricatePassChainDemo.kt](../src/jvmMain/kotlin/afield/examples/four/FabricatePassChainDemo.kt) | Examples | — | 0 | 1 | 50% |
 | [FabricateQuadtreeChainDemo.kt](../src/jvmMain/kotlin/afield/examples/four/FabricateQuadtreeChainDemo.kt) | Examples | — | 0 | 1 | 50% |
 | [FabricateReprojectionDemo.kt](../src/jvmMain/kotlin/afield/examples/four/FabricateReprojectionDemo.kt) | Examples | — | 0 | 1 | 50% |

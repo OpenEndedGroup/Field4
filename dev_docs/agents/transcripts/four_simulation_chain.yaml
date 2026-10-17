@@ -4,14 +4,11 @@ description: |
   and a jump flood distance transform of a shape you move around. Four boxes — a renderer, a bundle,
   and one declaration each.
 
-  These are the companion to [four_pass_chain](#four_pass_chain), and they exist because that one
-  could not express them. A pass chain used to be strictly feed-forward over one frame — the planner
-  says so in as many words, *"a chain may only read backwards"* — and a fluid's velocity field this
-  frame is a function of the velocity field **last** frame. No ordering of passes within a frame
-  produces that.
-
-  So a pass may now declare itself `persistent`: its target becomes a ping-pong pair, and any pass
-  can bind a sampler to its *previous* frame. In the fluid box, `fluid-advect` is the **first** pass
+  These are the companion to [four_pass_chain](#four_pass_chain). Within one frame a chain may only
+  read backwards — a pass reads passes declared before it — but a fluid's velocity this frame is a
+  function of its velocity **last** frame. A pass that declares itself `persistent` covers that: its
+  target becomes a ping-pong pair, and any pass can bind a sampler to its *previous* frame, which
+  already exists when the frame starts. In the fluid box, `fluid-advect` is the **first** pass
   in the list and it reads `fluid-velocity`, which is the second to last — a reference pointing
   forwards, and exactly as legal as any other read of a value that already exists when the frame
   starts.

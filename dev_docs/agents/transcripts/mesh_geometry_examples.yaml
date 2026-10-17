@@ -1,6 +1,6 @@
 name: mesh_geometry_examples
 description: >
-  Loadable demo of the stdlib CPU triangle-mesh / 3D-geometry family (afield.stdlib/mesh.kt,
+  Loadable demo of the CPU triangle-mesh / 3D-geometry family (afield/geometry/mesh: mesh.kt,
   mesh_topology.kt, mesh_generate.kt, mesh_sdf.kt, mesh_process.kt, mesh_measure.kt, mesh_io.kt,
   mesh_field.kt). Six pure-compute boxes, no Window and no Renderer — each one builds real TriMesh
   pipelines and rasterises the result into its own output with showMesh / showMeshGrid (which go
@@ -14,7 +14,7 @@ description: >
     3. modelling    — smooth union, subtraction, shell and twist, then the same solid cut open by a
                       half-space so the wall thickness is visible.
     4. process      — Loop subdivision (chi preserved exactly), Laplacian versus Taubin smoothing
-                      (one shrinks, one does not — the volumes are printed), and QEM decimation to
+                      (Laplacian deflates, Taubin reduces the shrinkage — the volumes are printed), and QEM decimation to
                       a triangle budget with the deviation from the original printed.
     5. measure      — Gaussian and mean curvature on a torus, coloured through the RectSL colormap
                       tables; Gauss-Bonnet checked against 2 pi chi; a BVH answering a ray, a

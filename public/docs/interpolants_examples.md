@@ -68,7 +68,7 @@ showSignals(
     "steps = 60" to b.toList(),
     "steps = 160 (glacial)" to c.toList(),
     channel = "main",
-    title = "smoothTo re-aiming at a moving target — steps sets the responsiveness",
+    title = "smoothTo following a moving target",
     xTitle = "evaluation",
 )
 ```

@@ -1,0 +1,54 @@
+{
+  "baseline": "989d5f72e",
+  "findingIds": [
+    "6cfe9b59212d-01",
+    "38cc11f4aec9-01",
+    "60cbfe1ce06d-01",
+    "11428fab3472-01",
+    "bdd9a7752234-01",
+    "f1cd34c20563-01",
+    "1e41294cbe22-01",
+    "1e41294cbe22-02",
+    "be7d487fe213-01",
+    "f662b987785f-01",
+    "71f5ce4fdf67-01",
+    "e78ad0ff5144-01",
+    "6f64454544dc-01",
+    "2a5118786b1d-01",
+    "35626c97e953-01",
+    "420156cf2bfc-01",
+    "3ce0ef5aa3ce-02",
+    "086fc56aee74-01",
+    "91a9cbd293cd-01",
+    "91a9cbd293cd-03"
+  ],
+  "upstreamLoggingCommit": "c7c58915d",
+  "compileReplayTranscripts": 5,
+  "formattedDocumentationStates": 62,
+  "geometry": {
+    "gp_tune": {
+      "original": "b558a467d54c96df42a864ad463ea5dfa797b041c1ecd42dd62e6aeaed02c647",
+      "revised": "b558a467d54c96df42a864ad463ea5dfa797b041c1ecd42dd62e6aeaed02c647"
+    },
+    "gp_duel": {
+      "original": "180256f2dab6e67fc452683c9b06855d4fc9b258a091f91d3f04de147a0ea181",
+      "revised": "180256f2dab6e67fc452683c9b06855d4fc9b258a091f91d3f04de147a0ea181"
+    },
+    "gp_judge": {
+      "original": "50fca66bc139e24316cb954e25fc2e65cd4201682a9173e8a75e8671fb5bf1d8",
+      "revised": "50fca66bc139e24316cb954e25fc2e65cd4201682a9173e8a75e8671fb5bf1d8"
+    }
+  },
+  "ribbon": {
+    "original": "96b900c73d2e0f3e707d4e0249ff467e9249cc6b254c2451b557602a58f89938",
+    "revised": "96b900c73d2e0f3e707d4e0249ff467e9249cc6b254c2451b557602a58f89938"
+  },
+  "gridMaxEndpointError": 0.0,
+  "captureScope": "private Field/browser 9700",
+  "captureFiles": [
+    "revised_gp_tune.png",
+    "revised_gp_duel.png",
+    "revised_gp_judge.png",
+    "first_steps.png"
+  ]
+}

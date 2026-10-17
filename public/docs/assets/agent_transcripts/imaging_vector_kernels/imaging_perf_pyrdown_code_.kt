@@ -44,8 +44,8 @@ for (i in fused.data.indices) worst = maxOf(worst, kotlin.math.abs(fused.data[i]
 
 showImgGrid(
     "source ${src.width}x${src.height}" to src,
-    "pyrDown($sigma) -> ${fused.width}x${fused.height}" to fused,
-    "naive blur-then-subsample" to naive,
+    "pyrDown -> ${fused.width}x${fused.height}" to fused,
+    "blur, then subsample" to naive,
     "|fused - naive|, x2000" to fused.zip(naive) { a, b -> kotlin.math.abs(a - b) * 2000f },
     columns = 2,
     cellSide = 300,
