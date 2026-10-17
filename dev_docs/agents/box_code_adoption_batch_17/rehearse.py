@@ -1,6 +1,6 @@
 """Reuse the path comparison harness; cover empty inputs, rotated marks and circle tolerances."""
 from pathlib import Path
-import importlib.util,json,asyncio,yaml,re,sys
+import importlib.util,json,asyncio,yaml,re,sys,os
 R=Path(__file__).resolve().parents[3];H=Path(__file__).resolve().parent
 s=importlib.util.spec_from_file_location('reuse14',H.parent/'box_code_adoption_batch_14/rehearse.py');old=importlib.util.module_from_spec(s);s.loader.exec_module(old);m=old.m;m.OUT=R/'build/box-code-revision/adoption-17/runtime';m.OUT.mkdir(parents=True,exist_ok=True)
 rows=json.loads((H/'changes.json').read_text());sources={r['path']:(r['before'],(R/r['path']).read_text()) for r in rows}
@@ -10,6 +10,8 @@ def codes(path,label):
  s=importlib.util.spec_from_file_location('states17',H.parent/'box_code_adoption_batch_7/format_docs.py');d=importlib.util.module_from_spec(s);s.loader.exec_module(d);return [text[a:b] for a,b in d.sections(text)]
 def fn(path,label,name):return old.function(next(c for c in codes(path,label) if 'fun '+name+'(' in c),name)
 async def main():
+ if library:=os.environ.get('AFIELD_PAINT_LIBRARY'):
+  await m.program('configure_paint', 'System.setProperty("afield.paint.library", '+json.dumps(str(Path(library).resolve()))+')')
  results=[]
  for name,path,function,call,setup in [
   ('oval','public/docs/paint_gestures.md','oval','oval(300.0,250.0,120.0,170.0)',''),
@@ -53,11 +55,8 @@ lines(lower(rotated,40.0))
  await m.program('rotated_mark',code,channel='lines',capture=True);results.append({'helper':'mark_translation','rotatedWorldEndpointsVerified':True})
  # Run the actual paint areas body: the ordinary global rect builds a Rect, so use FLine.rect explicitly.
  code=next(c for c in codes('public/docs/paint_canvas.md',1) if 'canvas.work(FLine().rect' in c)
- verdict=m.OUT/'paint_areas.json';saved=m.OUT/'paint_areas.yaml'
- retained=verdict.exists() and saved.exists() and yaml.safe_load(saved.read_text())['operations'][0]['create']['properties']['code']==code+'\n'
- if retained and 'paint wrapper is not built' in verdict.read_text():
-  results.append({'box':'paint_areas','compiled':True,'nativeRender':'unavailable: paint wrapper is not built; exact failed execution retained'})
- else:await m.program('paint_areas',code)
+ await m.program('paint_areas',code,channel='main',capture=True)
+ results.append({'box':'paint_areas','nativeRender':True,'capturedRealOutput':True})
  # The contour lesson must retain its exact nodes and hole styles.
  values=[]
  for i,label in enumerate(['original','revised']):

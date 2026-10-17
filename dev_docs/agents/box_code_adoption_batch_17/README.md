@@ -27,10 +27,13 @@ The typography lesson's actual rings have identical node fingerprints before and
 
 An actual notation stroke rotated by pi/2 then translated has its expected vertical world endpoints,
 which the previous raw-point translation discarded. Its real SVG output was captured. The full
-paint-area body compiles, then cannot render because this private JVM has no built native paint
-wrapper. That failed execution is retained once with an explicit unavailable-render record; it is
-not reported as a native paint pass. Painting simulation behavior is not newly accepted by this
-batch. Existing captures are not replaced by synthetic output.
+paint-area body initially failed because the private JVM searched only its worktree's empty native
+build directory. The machine already had the library in the primary checkout. Selecting it through
+the documented afield.paint.library override makes the actual work/stipple/outline example run and
+render successfully (engine 5). Its real output was captured and visually inspected. See the
+[corrected native evidence](native-paint-recheck/README.md). The original failed execution remains
+in the first evidence archive as history; it is not a current availability limitation. The harness
+now runs the paint case instead of retaining an old unavailable verdict.
 
 Harness repairs are also retained: extraction originally stopped at the first lambda in dots,
 and typography fold directives had to be removed before execution. Matching successful independent
