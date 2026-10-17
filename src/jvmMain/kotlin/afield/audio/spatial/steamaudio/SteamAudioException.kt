@@ -1,5 +1,10 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * How Steam Audio failures reach Kotlin: a native status code becomes a [SteamAudioError], and
+ * anything other than success is thrown as a [SteamAudioException] carrying it.
+ */
+
 import afield.audio.spatial.steamaudio.raw.Phonon
 
 /**
