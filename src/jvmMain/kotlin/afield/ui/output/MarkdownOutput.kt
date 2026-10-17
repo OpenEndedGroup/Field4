@@ -37,6 +37,14 @@ import org.intellij.markdown.html.HtmlGenerator
 import org.intellij.markdown.parser.MarkdownParser
 
 /**
+ * Markdown output for box output areas: [markdown] renders GitHub-flavoured markdown, with raw HTML,
+ * side-by-side `:::row` columns and `{role:text}` spans, into a styled card using Field's design
+ * tokens. [FieldMarkdown] holds the renderer and its full syntax; [md] and [mdEscape] escape a value
+ * for interpolation.
+ */
+
+
+/**
  * Markdown for output areas — the compact way to put a *figure* in a box's output pane.
  *
  * The alternative, and what this replaces, is building the HTML by hand: a card `<div>` with a
