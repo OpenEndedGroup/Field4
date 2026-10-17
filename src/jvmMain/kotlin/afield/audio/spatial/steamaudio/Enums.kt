@@ -1,6 +1,12 @@
 package afield.audio.spatial.steamaudio
 
 /**
+ * Kotlin enumerations mirroring Steam Audio's C enums (log levels, scene types, HRTF and
+ * reflection options, baking variations and the rest), each carrying the native value that
+ * crosses the FFM boundary. The bit-flag sets are value classes over an Int, not enums.
+ */
+
+/**
  * Common shape for the plain (non-flag) Steam Audio enumerations.
  *
  * The `value` is the underlying C enumerator, which is what crosses the FFM boundary.
