@@ -97,12 +97,14 @@ client.assetByFilename(sourcePattern).thenCompose { source ->
         tempoDetection = MuscriptorTempoDetection.BEST_EFFORT,
         requestedBy = "field:my-document/transcription",
     )).thenCompose { accepted ->
+        :::fold job status, progress and completion
         display("job", fieldAudioJobStatusHtml(accepted))
         client.watch(accepted.jobId,
             onEvent = { event -> display("job", fieldAudioJobStatusHtml(accepted, event)) },
             onError = { error -> display("stream", error.message ?: error.toString()) },
         )
         client.awaitAnalysis(accepted)
+        :::endfold
     }
 }.thenAccept { result ->
     display("score", analysisVisualizationHtml(
