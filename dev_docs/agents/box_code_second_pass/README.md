@@ -26,7 +26,11 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Graphics dispatch, inheritance and streaming](../box_code_adoption_batch_11/README.md) | Five more findings addressed; actual GPU boundary readbacks, particle captures, native streamer decoding and buffer-adapter regression checks pass. |
 
-[Machine checkpoint](checkpoint.json): **116 of 405 findings addressed**, one implemented with
+| [Tutorial explanations and current refusals](../box_code_adoption_batch_12/README.md) | Fifteen more findings addressed; 65 Kotlin bodies, 18 shader properties, 33 collection literals, eight transcript routes and saved-feedback fallback verified. |
+
+| [Reconstruction shader contracts](../box_code_adoption_batch_13/README.md) | Eleven more findings addressed; 14 compiled/validated shader occurrences, 15 Kotlin bodies, three transcripts and 16 import/reconstruction contract tests pass. |
+
+[Machine checkpoint](checkpoint.json): **142 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
