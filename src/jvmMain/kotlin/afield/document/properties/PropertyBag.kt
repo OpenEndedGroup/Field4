@@ -1,5 +1,13 @@
 package afield.document.properties
 
+/**
+ * The thread-safe, insertion-ordered map that holds every [Box]'s properties.
+ *
+ * [PropertyBag] below explains the guarantees: single-key operations are serialised, and `keys`,
+ * `values` and `entries` iterate snapshots that write removals through to the live map. The view
+ * behaviour is pinned by `PropertyBagViewTest`.
+ */
+
 import afield.app.server.Server
 import afield.data.table.div
 import afield.data.table.get
