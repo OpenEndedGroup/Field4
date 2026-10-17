@@ -15,12 +15,18 @@ import afield.study.ui.numbers
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
-// The tools an AI4 conversation gets when it is opened on the code of a box whose shaders have
-// `{{ stack.auto.<slot> }}` slots with programs bound. Each works on one slot's study
-// (StackAutoStudies), inside the box's own shader: the end result is what the tools show.
+/**
+ * The tools an AI4 conversation gets when it is opened on the code of a box whose shaders have
+ * `{{ stack.auto.<slot> }}` slots with programs bound.
+ *
+ * Each works on one slot's study (see [StackAutoStudies]), inside the box's own shader: the end
+ * result is what the tools show.
+ */
 
+/** How to work on a stack.auto slot, or the StackSL words guide's entries matching a search term. */
 @JsonClassDescription("Read how to work on a stack.auto slot: StackSL inside someone's own shader. Call it once, before your first edit in a conversation; with search, look a word up in the StackSL words guide instead.")
 data class StackAutoSlotGuide(
+    /** A word or phrase to look up in the StackSL words guide; empty returns how to work on a slot. */
     @JsonPropertyDescription("A word or phrase to look up in the StackSL words guide; empty returns how to work on a slot") val search: String = ""
 )
 

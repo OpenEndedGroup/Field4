@@ -627,7 +627,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**32178 public symbols across 1460 source files**, 16154 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**32178 public symbols across 1460 source files**, 16160 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -654,7 +654,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1313 | 718 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2092 | 1010 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 120 | 3071 | 1381 (44%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 120 | 3071 | 1387 (45%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 212 | 2984 | 1043 (34%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 92 | 2203 | 674 (30%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
@@ -1734,7 +1734,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>rectsl/<wbr>study/<wbr></small> [RectSLStudy.kt](languages.md#rectslstudy-kt) | Languages | 50 | 39 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>rectsl/<wbr></small> [RectSLStudyGpuSmoke.kt](examples.md#rectslstudygpusmoke-kt) | Examples · internal | 3 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>rectsl/<wbr>study/<wbr></small> [RectSLStudyRender.kt](languages.md#rectslstudyrender-kt) | Languages | 25 | 16 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>rectsl/<wbr>study/<wbr></small> [RectSLStudyTools.kt](languages.md#rectslstudytools-kt) | Languages | 41 | 7 |  | [Talking a scene into existence](../rectsl_conversation.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>rectsl/<wbr>study/<wbr></small> [RectSLStudyTools.kt](languages.md#rectslstudytools-kt) | Languages | 41 | 9 | The tools an AI4 conversation gets when it is opened on a RectSL scene's `rectSL` property. | [Talking a scene into existence](../rectsl_conversation.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>rectsl/<wbr>study/<wbr></small> [RectSLStudyViewer.kt](languages.md#rectslstudyviewer-kt) | Languages | 9 | 6 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>rectsl/<wbr></small> [RectSLVocabulary.kt](languages.md#rectslvocabulary-kt) | Languages | 3 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>rectsl/<wbr>study/<wbr></small> [RectSLWindowLinks.kt](languages.md#rectslwindowlinks-kt) | Languages | 6 | 6 |  |  |
@@ -1921,7 +1921,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [StackAutoCard.kt](languages.md#stackautocard-kt) | Languages | 5 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr></small> [stackAutoNumbers.kt](graphics.md#stackautonumbers-kt) | Graphics | 24 | 24 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [StackAutoStudy.kt](languages.md#stackautostudy-kt) | Languages | 25 | 23 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [StackAutoStudyTools.kt](languages.md#stackautostudytools-kt) | Languages | 30 | 5 |  | [Talking to the StackSL in your shader](../stackauto_conversation.md), [StackSL examples](../stacksl_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [StackAutoStudyTools.kt](languages.md#stackautostudytools-kt) | Languages | 30 | 7 | The tools an AI4 conversation gets when it is opened on the code of a box whose shaders have `{{ stack.auto.<slot> }}` slots with programs bound. | [Talking to the StackSL in your shader](../stackauto_conversation.md), [StackSL examples](../stacksl_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr></small> [StackSL.kt](languages.md#stacksl-kt) | Languages | 71 | 11 | StackSL — a concatenative shading language that compiles to GLSL, in one file with no runtime. | [StackSL examples](../stacksl_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr></small> [StackSLBox.kt](graphics.md#stackslbox-kt) | Graphics | 19 | 19 | Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on the GPU sample by sample. | [StackSL cheatsheet](../stacksl_cheatsheet.md), [StackSL examples](../stacksl_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>cpu/<wbr></small> [StackSLCpu.kt](languages.md#stackslcpu-kt) | Languages | 16 | 15 | StackSL's CPU backend: the same GLSL a GPU would run, evaluated one pixel at a time on the JVM, so a StackSL program can be rendered, unit-tested, diffed and documented with no graphics context at all. |  |
@@ -1942,7 +1942,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [StackSLStudy.kt](languages.md#stackslstudy-kt) | Languages | 46 | 38 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stacksl/<wbr></small> [StackSLStudyGpuSmoke.kt](examples.md#stackslstudygpusmoke-kt) | Examples · internal | 3 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [StackSLStudyShader.kt](languages.md#stackslstudyshader-kt) | Languages | 40 | 39 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [StackSLStudyTools.kt](languages.md#stackslstudytools-kt) | Languages | 38 | 6 |  | [Talking a shader into existence](../stacksl_conversation.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [StackSLStudyTools.kt](languages.md#stackslstudytools-kt) | Languages | 38 | 8 | The tools an AI4 conversation gets when it is opened on a StackSL program's `stackSL` property. | [Talking a shader into existence](../stacksl_conversation.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>study/<wbr></small> [StackSLStudyViewer.kt](languages.md#stackslstudyviewer-kt) | Languages | 8 | 4 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr></small> [StackSLVocabulary.kt](languages.md#stackslvocabulary-kt) | Languages | 6 | 6 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>evolution/<wbr></small> [StackSLWatchmaker.kt](search.md#stackslwatchmaker-kt) | Search | 65 | 24 |  |  |
