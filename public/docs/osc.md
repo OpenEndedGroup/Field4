@@ -12,6 +12,8 @@ what arrived, so each example runs as it is, with no other program.
 
 ## Receiving a message
 
+This box listens on a port, sends itself one message, and shows what arrived.
+
 <!--
 FIELD_TEST
 id: docs.osc.receive
@@ -39,7 +41,9 @@ oscClient("127.0.0.1", 57301).send("/fader/1", 0.75f)
 
 `osc(57301)` binds UDP port 57301 on every network interface and starts listening. A phone on the
 same network reaches it at the computer's address. The server is cached by port, so running the box
-again hands back the same socket rather than trying to bind a second one.
+again hands back the same socket rather than trying to bind a second one. If another program
+(TouchOSC Bridge, Max, a second Field) already has the port, `osc(port)` fails with an error that
+names it.
 
 `on(pattern) { m -> … }` registers a handler for an address pattern. `m.address` is the address the
 message was sent to, and `m.arguments` is its argument list. The handler returns a generator, and
@@ -181,6 +185,9 @@ registers the handler again, clears that memory.
 
 ## What arrives: argument types
 
+This box sends one message carrying one argument of each Kotlin type and tabulates how each one
+travels and what it arrives as.
+
 <!--
 FIELD_TEST
 id: docs.osc.types
@@ -316,9 +323,9 @@ A generator would not get its first pass until the box had finished running.
 ## Handlers outlive a stop
 
 This is the default, for a handler registered without `runOwned = true`. The server belongs to the
-port, not to any box, and a handler belongs to the box that registered it the way any keyed
-registration does. Stopping the box or running it again leaves its handlers in place, still calling the code they were registered with; deleting the box or closing its document
-removes them.
+port, not to any box, and each handler belongs to the box that registered it. Stopping the box or
+running it again leaves its handlers in place, still calling the code they were registered with.
+Deleting the box or closing its document removes them.
 
 <!--
 FIELD_TEST
@@ -392,9 +399,6 @@ share one slot, and whichever ran last owns it. Give each box its own addresses,
 new one. That makes `close()` the reset when a document's handlers have got into a state you can no
 longer reason about: close the server, then run the boxes that should be listening again.
 
-`osc(port)` refuses a port another program (TouchOSC Bridge, Max, a second Field) already has, and
-the error names the port.
-
 ## Sending
 
 `oscClient(host, port).send(address, arguments…)` sends one message. The client is cached by host and
@@ -418,8 +422,8 @@ peer is not listening. Send to an address that a peer echoes, or watch the peer'
 
 A bundle is a group of messages with a timetag, the time at which the receiver should act on them.
 Controllers such as TouchOSC and SuperCollider's `sendBundle` send them. Field unpacks a bundle and
-runs each message's handlers as if the messages had arrived one by one, in order, and it holds a
-bundle whose timetag is in the future until that time.
+runs each message's handlers as if the messages had arrived one by one, in order. A bundle whose
+timetag is in the future waits until that time.
 
 <!--
 FIELD_TEST
@@ -535,9 +539,8 @@ Three things to know when using it from a box:
 
 - **The listener runs on the receive thread**, like an OSC handler's lambda. Copy what you need into
   your own state there, and draw from it on the main thread.
-- **Starting a receiver closes the receiver previously started on its port.** A box can build a new
-  `TuioReceiver` every time it runs. Without that, the old receiver would stay bound and, on macOS,
-  go on receiving every frame for code that had been replaced.
+- **Starting a receiver closes the receiver previously started on its port**, so a box can build a
+  new `TuioReceiver` every time it runs.
 - **Each profile's `fseq` produces a frame.** A tracker that sends both cursors and objects produces
   two frames per tracker frame, each carrying the full state of both.
 

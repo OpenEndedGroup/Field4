@@ -121,8 +121,9 @@ A, in that order, each once.
 - **Cycles fail.** If A's read pulls B and B's read needs A, the read fails and the message names
   the cycle.
 
-While a pull runs, other boxes' `frames {}` loops and a native graphics window keep advancing. A supplier that blocks the thread (`Thread.sleep`, a busy loop)
-blocks everything for as long as it blocks.
+While a pull runs, other boxes' `frames {}` loops and a native graphics window keep advancing.
+A supplier that blocks the thread (`Thread.sleep`, a busy loop) blocks everything for as long as it
+blocks.
 
 `propUpDown` is both: a missing value runs its supplier, and a changed one reruns its readers.
 `rootPropUp`, `rootPropDown` and `rootPropUpDown` do the same for a document-wide `rootProp` slot,
@@ -156,8 +157,7 @@ box: after the Tempo example it shows Tempo's run, `changed Tempo.bpm by Tempo`,
 Beat's second run; after the Plot example, `pull Scale for Plot.scale` with Scale's whole run
 inside Plot's.
 
-To ask *where* a value came from rather than what ran, use [`why`](why.md). The palette's **Toggle
-Dependency Layer** draws the recorded reads on the canvas.
+To ask *where* a value came from rather than what ran, use [`why`](why.md).
 
 ## See also
 
@@ -166,4 +166,5 @@ Dependency Layer** draws the recorded reads on the canvas.
 - [Why does this value resolve here?](why.md): which box supplied a value, and which it shadowed.
 - [Controls and `syncToProperty`](visualizers.md).
 - [Box output](box_output.md): `display` and output channels.
-- The design notes, with every guard and known limit: `dev_docs/PROPERTY_DEPENDENCIES.md`.
+- The design notes, with every guard and known limit:
+  [PROPERTY_DEPENDENCIES.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/PROPERTY_DEPENDENCIES.md).

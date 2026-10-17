@@ -234,8 +234,8 @@ layout(push_constant) uniform dat {
 {{ stack.auto.force }}
 ```
 
-A program is free to read a push member with `?pc.knobs`, so the generated function is placed after
-the push-constant block even if the slot line is written above it. Until Kotlin binds it the slot is the
+Field places the generated function after the push-constant block even if the slot line is written
+above it, so a program can read a push member with `?pc.knobs`. Until Kotlin binds it the slot is the
 fallback `vec4 force(vec4 force_in) { return vec4(0.0); }`, so an unbound slot still compiles and the
 field simply sits still.
 
@@ -263,7 +263,7 @@ Changing that string and hitting run costs nothing. Field lowers the StackSL to 
 module's pipeline on a background thread, and leaves the old binding in place if the new one does not
 compile. No shader reload, no dropped frame, and a typo cannot take the field down.
 
-Three things in that program repay a second look.
+Three details of that program matter.
 
 **`fbm4`, and not `fbm`.** StackSL's plain `fbm` is two-dimensional. It lowers to `fbm(vec2)` over
 `coord.xy + coord.zw * 0.07`, so a single call fed a 3D position gives you a field in *(x, y)* with
@@ -289,8 +289,8 @@ one 2D `fbm` and nothing else, and no other line changed anywhere:
 ```
 
 A scalar `fbm` broadcast to all three components is the same push on every axis, so every particle
-moves along the same diagonal, by an amount that varies in only two of the three. The disc does not
-become a noisier disc; it collapses into folded sheets with hard creases where the shear reverses, and
+moves along the same diagonal, by an amount that varies in only two of the three. Instead of a
+noisier disc you get folded sheets with hard creases where the shear reverses, and
 the whole thing is dragged bodily off-centre. The drag comes from a bias, which is the next point.
 
 **Nothing in the program corrects a bias.** `fbm`'s five octave amplitudes sum to 0.96875 rather than
@@ -320,8 +320,7 @@ problem: definition `vfield` ends with 2 values on the stack, not 1 — it must 
          after an unbalanced definition takes the wrong operand.
 ```
 
-Reporting only: the slot still binds, because a program is usually mid-edit and refusing would be a
-worse tool than saying so. You can also ask before you bind: `stackAutoShaderReport(program, "force")`
+The report does not stop the bind: the slot still binds, because a program is usually mid-edit. You can also ask before you bind: `stackAutoShaderReport(program, "force")`
 (`src/jvmMain/kotlin/afield/graphics/shader/shaders.kt:545#fun stackAutoShaderReport`) is pure, needs no device,
 and returns the same object.
 
