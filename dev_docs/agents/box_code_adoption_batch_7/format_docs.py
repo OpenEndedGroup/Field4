@@ -24,6 +24,9 @@ def main():
                 folds.append(m[0]);return f'/* BOX_CODE_FOLD_{len(folds)-1} */'
             code=re.sub(r'^[ \t]*:::(?:fold[^\n]*|endfold|)[ \t]*$',carry,text[start:end],flags=re.M)
             path=OUT/f'{Path(page).stem}_{i}_code_.kt';path.write_text(code);extracted.append((page,start,end,path,folds))
+    if not extracted:
+        print('0 Kotlin states; no formatter invoked')
+        return
     subprocess.run([str(ROOT/'gradlew'),'formatBoxCode','--args=--imports '+' '.join(str(x[3]) for x in extracted)],cwd=ROOT,check=True)
     changed=[]
     for page in pages:

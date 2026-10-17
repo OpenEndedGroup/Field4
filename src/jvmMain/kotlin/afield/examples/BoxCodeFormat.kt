@@ -23,7 +23,7 @@ object BoxCodeFormat {
     private var imports = false
     private var k2 = false
 
-    private val BLOCK_KEY = Regex("""^(\s*)(?:-\s+)?(\w+):\s*\|[-+]?\s*$""")
+    private val BLOCK_KEY = Regex("""^(\s*)(?:-\s+)?(["']?)(\w+)\2:\s*\|[-+]?\s*$""")
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -71,7 +71,7 @@ object BoxCodeFormat {
             if (block.isEmpty()) { out += lines.subList(end, i); continue }
             val indent = block.filter(String::isNotBlank).minOf(::indentOf)
             val body = block.joinToString("\n") { if (it.isBlank()) "" else it.substring(indent) }
-            val formatted = formatOrNull(key.groupValues[2], body, "$label:${start + 1}")
+            val formatted = formatOrNull(key.groupValues[3], body, "$label:${start + 1}")
             if (formatted == null) {
                 out += block
             } else {

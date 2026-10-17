@@ -10,8 +10,6 @@ A Boolean network is a set of nodes that are each on or off, plus a rule that co
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/toggle_state_space.png" wait="1.0" capture="box"}
 :::static
-import afield.geometry.path.FLine
-
 val net = toggleNetwork()
 val attrs = net.findAttractors()
 
@@ -19,16 +17,13 @@ val attrs = net.findAttractors()
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
 fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
-    moveTo(x, y)
-    lineTo(x + w, y)
-    lineTo(x + w, y + h)
-    lineTo(x, y + h)
-    close()
+    rect(x, y, w, h)
     filled = true
     stroked = true
     thickness = 1.0
     this.color = color
 }
+
 :::endfold
 
 lines(
@@ -41,7 +36,7 @@ lines(
     channel = "boolean-toggle",
     w = 1060.0,
     h = 520.0,
-    fitToSize = true
+    fitToSize = true,
 )
 ```
 
@@ -55,8 +50,6 @@ The left image tells you what depends on what; the right image tells you what th
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/segment_basins.png" wait="1.0" capture="box"}
 :::static
-import afield.geometry.path.FLine
-
 val net = segmentPolarityNetwork()
 val attrs = net.findAttractors().sortedByDescending { it.basin.size }
 val largest = attrs.first()
@@ -69,16 +62,13 @@ val shown = attrs.take(2)
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
 fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
-    moveTo(x, y)
-    lineTo(x + w, y)
-    lineTo(x + w, y + h)
-    lineTo(x, y + h)
-    close()
+    rect(x, y, w, h)
     filled = true
     stroked = true
     thickness = 1.0
     this.color = color
 }
+
 :::endfold
 
 lines(
@@ -93,7 +83,7 @@ lines(
     channel = "boolean-segment",
     w = 1360.0,
     h = 520.0,
-    fitToSize = true
+    fitToSize = true,
 )
 ```
 
@@ -107,60 +97,67 @@ The two networks above were hand-made. This one asks a population question inste
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/kauffman_sweep.png" wait="1.0" capture="box"}
 :::static
-import afield.geometry.path.FLine
-
 data class SweepRow(val k: Int, val attractors: Double, val period: Double, val fixed: Double)
 
-val rows = (1..5).map { k ->
-    val runs = (0 until 18).map { seed ->
-        val attrs = kauffmanNetwork(n = 8, k = k, seed = seed.toLong()).findAttractors()
-        Triple(
-            attrs.size.toDouble(),
-            if (attrs.isEmpty()) 0.0 else attrs.map { it.period.toDouble() }.average(),
-            attrs.count { it.period == 1 }.toDouble(),
+val rows =
+    (1..5).map { k ->
+        val runs =
+            (0 until 18).map { seed ->
+                val attrs = kauffmanNetwork(n = 8, k = k, seed = seed.toLong()).findAttractors()
+                Triple(
+                    attrs.size.toDouble(),
+                    if (attrs.isEmpty()) 0.0 else attrs.map { it.period.toDouble() }.average(),
+                    attrs.count { it.period == 1 }.toDouble(),
+                )
+            }
+        SweepRow(
+            k = k,
+            attractors = runs.map { it.first }.average(),
+            period = runs.map { it.second }.average(),
+            fixed = runs.map { it.third }.average(),
         )
     }
-    SweepRow(
-        k = k,
-        attractors = runs.map { it.first }.average(),
-        period = runs.map { it.second }.average(),
-        fixed = runs.map { it.third }.average(),
-    )
-}
 
 :::fold plot helpers: shared y scale, axes and grid, polylines, square markers
-val maxY = [
-    rows.maxOf { it.attractors },
-    rows.maxOf { it.period },
-    rows.maxOf { it.fixed }
-].max() + 0.5
+val maxY =
+    [
+            rows.maxOf { it.attractors },
+            rows.maxOf { it.period },
+            rows.maxOf { it.fixed },
+        ]
+        .max() + 0.5
 
 fun guides() = [
     fline {
-        moveTo(80, 580); lineTo(1100, 580)
-        moveTo(80, 120); lineTo(80, 580)
+        moveTo(80, 580)
+        lineTo(1100, 580)
+        moveTo(80, 120)
+        lineTo(80, 580)
         color = vec(1, 1, 1, 0.22)
         thickness = 1.1
     },
     fline {
         for (i in 0..8) {
             val y = 580.0 - i / 8.0 * 430.0
-            moveTo(80, y); lineTo(1100, y)
+            moveTo(80, y)
+            lineTo(1100, y)
         }
         for (i in rows.indices) {
             val x = 80.0 + i.toDouble() / (rows.size - 1).coerceAtLeast(1).toDouble() * 1020.0
-            moveTo(x, 120.0); lineTo(x, 580.0)
+            moveTo(x, 120.0)
+            lineTo(x, 580.0)
         }
         color = vec(1, 1, 1, 0.08)
         thickness = 1.0
-    }
+    },
 ]
 
 fun curve(values: List<Double>, color: Vec4, thickness: Double): FLine = fline {
+    breakNext()
     values.forEachIndexed { i, value ->
         val x = 80.0 + i.toDouble() / (values.size - 1).coerceAtLeast(1).toDouble() * 1020.0
         val y = 580.0 - value / maxY * 430.0
-        if (i == 0) moveTo(x, y) else lineTo(x, y)
+        lineTo(x, y)
     }
     this.color = color
     this.thickness = thickness
@@ -172,29 +169,27 @@ fun markers(values: List<Double>, color: Vec4, size: Double): FLine = fline {
     values.forEachIndexed { i, value ->
         val x = 80.0 + i.toDouble() / (values.size - 1).coerceAtLeast(1).toDouble() * 1020.0
         val y = 580.0 - value / maxY * 430.0
-        moveTo(x - size, y - size)
-        lineTo(x + size, y - size)
-        lineTo(x + size, y + size)
-        lineTo(x - size, y + size)
-        close()
+        rect(x - size, y - size, 2 * size, 2 * size)
     }
     this.color = color
 }
+
 :::endfold
 
 lines(
-    guides() + [
-        curve(rows.map { it.attractors }, vec(0.56, 0.92, 1.0, 0.95), 3.0),
-        curve(rows.map { it.period }, vec(1.0, 0.74, 0.38, 0.92), 3.0),
-        curve(rows.map { it.fixed }, vec(0.58, 1.0, 0.68, 0.92), 3.0),
-        markers(rows.map { it.attractors }, vec(0.56, 0.92, 1.0, 0.95), 5.0),
-        markers(rows.map { it.period }, vec(1.0, 0.74, 0.38, 0.92), 5.0),
-        markers(rows.map { it.fixed }, vec(0.58, 1.0, 0.68, 0.92), 5.0),
-    ],
+    guides() +
+        [
+            curve(rows.map { it.attractors }, vec(0.56, 0.92, 1.0, 0.95), 3.0),
+            curve(rows.map { it.period }, vec(1.0, 0.74, 0.38, 0.92), 3.0),
+            curve(rows.map { it.fixed }, vec(0.58, 1.0, 0.68, 0.92), 3.0),
+            markers(rows.map { it.attractors }, vec(0.56, 0.92, 1.0, 0.95), 5.0),
+            markers(rows.map { it.period }, vec(1.0, 0.74, 0.38, 0.92), 5.0),
+            markers(rows.map { it.fixed }, vec(0.58, 1.0, 0.68, 0.92), 5.0),
+        ],
     channel = "boolean-kauffman",
     w = 1180.0,
     h = 660.0,
-    fitToSize = true
+    fitToSize = true,
 )
 ```
 
@@ -208,54 +203,50 @@ A limit cycle repeats on a fixed period, so it is already a rhythm. You can trea
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/rhythm_cycles.png" wait="1.0" capture="box"}
 :::static
-import afield.geometry.path.FLine
-
 data class RhythmCandidate(val seed: Int, val net: BooleanNetwork, val attr: Attractor, val score: Double)
 
 fun activity(attr: Attractor, net: BooleanNetwork): Double =
     attr.cycle.sumOf { state -> state.count { it } }.toDouble() / (attr.period * net.size).toDouble()
 
 val candidate =
-    (0..240).mapNotNull { seed ->
-        val net = kauffmanNetwork(n = 5, k = 2, seed = seed.toLong())
-        net.findAttractors()
-            .filter { it.period in 5..10 }
-            .map { attr ->
-                val density = activity(attr, net)
-                val periodScore = 1.0 - kotlin.math.abs(attr.period - 8) / 8.0
-                val densityScore = 1.0 - kotlin.math.abs(density - 0.42)
-                val basinScore = attr.basin.size.toDouble() / (1 shl net.size).toDouble()
-                RhythmCandidate(seed, net, attr, periodScore * 1.6 + densityScore * 1.2 + basinScore)
-            }
-            .maxByOrNull { it.score }
-    }.maxByOrNull { it.score }!!
+    (0..240)
+        .mapNotNull { seed ->
+            val net = kauffmanNetwork(n = 5, k = 2, seed = seed.toLong())
+            net.findAttractors()
+                .filter { it.period in 5..10 }
+                .map { attr ->
+                    val density = activity(attr, net)
+                    val periodScore = 1.0 - kotlin.math.abs(attr.period - 8) / 8.0
+                    val densityScore = 1.0 - kotlin.math.abs(density - 0.42)
+                    val basinScore = attr.basin.size.toDouble() / (1 shl net.size).toDouble()
+                    RhythmCandidate(seed, net, attr, periodScore * 1.6 + densityScore * 1.2 + basinScore)
+                }
+                .maxByOrNull { it.score }
+        }
+        .maxByOrNull { it.score }!!
 
 val natural = candidate.attr.repeatedCycle(16)
-val gated =
-    natural.mapIndexed { step, state ->
-        booleanArrayOf(
-            state[0] && step % 4 == 0,
-            state[1] && step % 4 == 2,
-            state[2] && step % 2 == 0,
-            state[3] && (step % 8 == 4 || step % 8 == 12),
-            state[4] && (step % 4 == 1 || step % 4 == 3),
-        )
-    }
+val gated = natural.mapIndexed { step, state ->
+    booleanArrayOf(
+        state[0] && step % 4 == 0,
+        state[1] && step % 4 == 2,
+        state[2] && step % 2 == 0,
+        state[3] && (step % 8 == 4 || step % 8 == 12),
+        state[4] && (step % 4 == 1 || step % 4 == 3),
+    )
+}
 
 :::fold helpers: offset a drawing, fill a background panel
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
 fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
-    moveTo(x, y)
-    lineTo(x + w, y)
-    lineTo(x + w, y + h)
-    lineTo(x, y + h)
-    close()
+    rect(x, y, w, h)
     filled = true
     stroked = true
     thickness = 1.0
     this.color = color
 }
+
 :::endfold
 
 lines(
@@ -265,12 +256,20 @@ lines(
         panel(860.0, 40.0, 470.0, 420.0, vec(0.16, 0.11, 0.08, 0.54)),
     ] +
         shift(candidate.net.drawNetworkGraph(radius = 96.0, nodeR = 17.0), 76.0, 118.0) +
-        shift(drawRhythmGrid(natural, cellW = 21.0, cellH = 22.0, stepGap = 5.0, laneGap = 9.0, accentEvery = 4), 390.0, 150.0) +
-        shift(drawRhythmGrid(gated, cellW = 21.0, cellH = 22.0, stepGap = 5.0, laneGap = 9.0, accentEvery = 4), 900.0, 150.0),
+        shift(
+            drawRhythmGrid(natural, cellW = 21.0, cellH = 22.0, stepGap = 5.0, laneGap = 9.0, accentEvery = 4),
+            390.0,
+            150.0,
+        ) +
+        shift(
+            drawRhythmGrid(gated, cellW = 21.0, cellH = 22.0, stepGap = 5.0, laneGap = 9.0, accentEvery = 4),
+            900.0,
+            150.0,
+        ),
     channel = "boolean-rhythm",
     w = 1380.0,
     h = 520.0,
-    fitToSize = true
+    fitToSize = true,
 )
 ```
 

@@ -23,10 +23,12 @@ operations:
           // Two strokes, drawn from code into the document's drawing: a circle named "from" and a
           // heart named "to". Running it again replaces them.
           notation { morphShapes() }
-          // To morph two strokes you drew yourself (Alt+D, P), delete the line above and use:
-          //   val mine = notation.strokes.filter { it.handDrawn }.takeLast(2)
-          //   notation.edit(mine[0]) { name = "from" }
-          //   notation.edit(mine[1]) { name = "to" }
+          /*
+          To morph two strokes you drew yourself (Alt+D, P), delete the line above and use:
+            val mine = notation.strokes.filter { it.handDrawn }.takeLast(2)
+            notation.edit(mine[0]) { name = "from" }
+            notation.edit(mine[1]) { name = "to" }
+          */
           println(notation.strokes.map { "${it.label}: ${it.points.size} points" })
   - create:
       box: dm_paired
@@ -39,15 +41,21 @@ operations:
           val to = notation.named("to")!!.points.resampleByLength(240, closed = true)
           val match = matchPoints(from, to)
           val partner = match.reorder(to)
-          val cx = from.sumOf { it.x.toDouble() } / from.size; val cy = from.sumOf { it.y.toDouble() } / from.size
+          val cx = from.sumOf { it.x.toDouble() } / from.size
+          val cy = from.sumOf { it.y.toDouble() } / from.size
           fun chord(a: Vec2, b: Vec2, dx: Double) = FLine().moveTo(a.x + dx, a.y).lineTo(b.x + dx, b.y).also {
               it.thickness = 0.8
               it.color = okhsl(atan2(a.y - cy, a.x - cx) * 180 / PI + 360, 0.85, 0.6, 0.9)
           }
           // Left: the matching. Right: point i of one stroke to point i of the other.
-          lines(from.indices.map { chord(from[it], partner[it], -220.0) } + from.indices.map { chord(from[it], to[it], 220.0) },
-              w = 760.0, h = 380.0, fitToSize = true)
-          val byIndex = from.indices.sumOf { (from[it].x - to[it].x).toDouble().pow(2) + (from[it].y - to[it].y).toDouble().pow(2) }
+          lines(
+              from.indices.map { chord(from[it], partner[it], -220.0) } + from.indices.map { chord(from[it], to[it], 220.0) },
+              w = 760.0,
+              h = 380.0,
+              fitToSize = true,
+          )
+          val byIndex =
+              from.indices.sumOf { (from[it].x - to[it].x).toDouble().pow(2) + (from[it].y - to[it].y).toDouble().pow(2) }
           println("squared travel: matched %.0f, by list index %.0f".format(match.squaredCost, byIndex))
   - create:
       box: dm_morph
@@ -59,17 +67,27 @@ operations:
           val from = notation.named("from")!!.points.resampleByLength(240, closed = true)
           val to = notation.named("to")!!.points.resampleByLength(240, closed = true)
           val partner = matchPoints(from, to).reorder(to)
-          val cx = from.sumOf { it.x.toDouble() } / from.size; val cy = from.sumOf { it.y.toDouble() } / from.size
-          fun dot(p: Vec2, dx: Double, dy: Double, colour: Vec4) = FLine().also { f ->
-              val x = (p.x - cx) * 0.5 + dx; val y = (p.y - cy) * 0.5 + dy
-              f.moveTo(x - 2, y - 2).lineTo(x + 2, y - 2).lineTo(x + 2, y + 2).lineTo(x - 2, y + 2).lineTo(x - 2, y - 2)
-              f.color = colour; f.filled = true; f.stroked = false
-          }
-          val steps = listOf(0.0, 0.25, 0.5, 0.75, 1.0)
-          lines(steps.indices.flatMap { s ->
-              morphBetween(from, partner, steps[s]).map { dot(it, s * 200.0, 0.0, vec(0.1, 0.45, 0.85, 1.0)) } +
-                  morphBetween(from, to, steps[s]).map { dot(it, s * 200.0, 200.0, vec(0.88, 0.2, 0.2, 1.0)) }
-          }, w = 1000.0, h = 400.0, fitToSize = true)
+          val cx = from.sumOf { it.x.toDouble() } / from.size
+          val cy = from.sumOf { it.y.toDouble() } / from.size
+          fun dot(p: Vec2, dx: Double, dy: Double, colour: Vec4) =
+              FLine().also { f ->
+                  val x = (p.x - cx) * 0.5 + dx
+                  val y = (p.y - cy) * 0.5 + dy
+                  f.rect(x - 2, y - 2, 4, 4)
+                  f.color = colour
+                  f.filled = true
+                  f.stroked = false
+              }
+          val steps = [0.0, 0.25, 0.5, 0.75, 1.0]
+          lines(
+              steps.indices.flatMap { s ->
+                  morphBetween(from, partner, steps[s]).map { dot(it, s * 200.0, 0.0, vec(0.1, 0.45, 0.85, 1.0)) } +
+                      morphBetween(from, to, steps[s]).map { dot(it, s * 200.0, 200.0, vec(0.88, 0.2, 0.2, 1.0)) }
+              },
+              w = 1000.0,
+              h = 400.0,
+              fitToSize = true,
+          )
   - create:
       box: dm_spread
       name: spread
@@ -84,7 +102,11 @@ operations:
           showSignals(
               "matched" to ts.map { spreadOf(morphBetween(from, partner, it)) },
               "by list index" to ts.map { spreadOf(morphBetween(from, to, it)) },
-              x = ts, title = "how big the cloud is, through the morph", xTitle = "t", yTitle = "spread", channel = "spread",
+              x = ts,
+              title = "how big the cloud is, through the morph",
+              xTitle = "t",
+              yTitle = "spread",
+              channel = "spread",
           )
   - create:
       box: dm_play
@@ -97,11 +119,11 @@ operations:
           val from = notation.named("from")!!.points.resampleByLength(240, closed = true)
           val to = notation.named("to")!!.points.resampleByLength(240, closed = true)
           val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.6)
-          for ((label, partner) in listOf("matched" to matchPoints(from, to).reorder(to), "by list index" to to)) {
+          for ((label, partner) in ["matched" to matchPoints(from, to).reorder(to), "by list index" to to]) {
               val notes = mutableListOf<TimedNote>()
               val spread0 = spreadOf(from)
               for (k in 0 until 32) {
-                  val t = if (k < 16) k / 15.0 else (31 - k) / 15.0   // out to the heart, then back
+                  val t = if (k < 16) k / 15.0 else (31 - k) / 15.0 // out to the heart, then back
                   val midi = 72 + 12 * log2(spreadOf(morphBetween(from, partner, t)) / spread0)
                   notes += TimedNote(k * 0.25, k * 0.25 + 0.25, midi)
               }
