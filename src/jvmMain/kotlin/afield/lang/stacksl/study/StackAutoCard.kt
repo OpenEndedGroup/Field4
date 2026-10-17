@@ -19,6 +19,15 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 /**
+ * Sliders under a box for the numbers in its `stack.auto` slots, redrawing the box's own shader
+ * without a recompile.
+ *
+ * [StackAutoCard] writes each slider to the slot's uniform block, can keep the numbers back into the
+ * box's `code`, and shows the slot either in its host shader or alone on the study frame.
+ * [installStackAutoCard] registers it.
+ */
+
+/**
  * The numbers of a box's `stack.auto` slots, as sliders under the box: turn one and the box's own
  * shader — the whole of it, in its own window — redraws with it, because a slider writes the slot's
  * uniform block ([StackAutoNumbers]) and nothing is recompiled.

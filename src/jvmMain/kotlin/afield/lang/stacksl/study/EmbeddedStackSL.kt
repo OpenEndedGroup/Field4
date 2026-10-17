@@ -12,6 +12,14 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
+ * Editor help for StackSL written as a string inside a Kotlin box: completion with the StackSL
+ * vocabulary, and each line's stage as a line note.
+ *
+ * [EmbeddedStackSL] finds those strings by a leading `#stacksl` line or by assignment to one of the
+ * box's `stack.auto` slots, as the text is typed.
+ */
+
+/**
  * StackSL written inside a Kotlin box's `code`: where it is, and the editor's help for it there — the
  * StackSL vocabulary when completion opens inside it, and each line's stage as a line note.
  *
