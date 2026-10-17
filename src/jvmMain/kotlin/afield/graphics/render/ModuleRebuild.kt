@@ -12,14 +12,15 @@ import java.util.concurrent.CopyOnWriteArrayList
  * **Order.** The generic carry-over (`ReloadCarryOver.finish`) runs first and is authoritative: it has
  * already moved every value and binding that still fits the new reflection, and dropped (and reported)
  * the rest. Only then are [hooks] called, with a [Rebuild] saying which new structures were carried and
- * from which old one. A hook fills in what the generic carry could not know — a `stack.auto` numbers
- * block with no old counterpart is seeded from its slot — and must not re-apply what it carried: before
- * 2026-09-29 the `stack.auto` hook copied every old value and binding again after the generic carry,
- * resurrecting bindings the carry had dropped as retyped and re-setting values it had refused. Both
- * steps run in [ReloadCarryOver.finishAndNotify], the one place the order is written down.
+ * from which old one. A hook fills in what the generic carry could not know (a `stack.auto` numbers
+ * block with no old counterpart is seeded from its slot) and must not re-apply what was carried, or
+ * it would restore bindings the carry dropped as retyped and values it refused. Both steps run in
+ * [ReloadCarryOver.finishAndNotify].
  *
  * An in-place pipeline update keeps its structures and does not come here.
  */
+
+/** The registry of rebuild hooks, called after the generic carry-over on every full shader reload. */
 object ModuleRebuild {
     /**
      * One rebuild: the [pointer] (a `ModulePointer`, `ComputeModulePointer`, `MeshModulePointer` or

@@ -25,16 +25,18 @@ expect:
     - "fused pack tests PASSED"
 */
 /**
- * Holds [GaussianSplatRenderer.packInto] — the fused compressed-file-to-GPU-layout path — against
+ * Tests [GaussianSplatRenderer.packInto] — the fused compressed-file-to-GPU-layout path — against
  * [GaussianSplatRenderer.pack] over the [PlyFloatTable], which is the same computation the slow way.
  *
- * The two are *not* bit-identical on purpose. The compressed format stores colour as linear 0..1 and
+ * The two are not bit-identical. The compressed format stores colour as linear 0..1 and
  * opacity post-sigmoid, which is exactly what the shader consumes, so the fused path skips the
  * `f_dc = (c - 0.5) / SH_C0` and logit round trips that the table path performs and undoes. Every
  * other quantity — position, scale, rotation, covariance — is computed by the same expressions in
  * the same order and to the same spelling, so the tolerances below are tight enough that a swapped
  * field or a wrong bit shift cannot pass.
  */
+
+/** The cases behind the `four.splat-fused-pack.smoke` test; `main` runs them all. */
 object SplatFusedPackTest {
 
     private val testDir = File(System.getProperty("java.io.tmpdir"), "splat_fused_test")
