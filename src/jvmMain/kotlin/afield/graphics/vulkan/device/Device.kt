@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.device
 
+/**
+ * The logical Vulkan device: [Device] wraps a [PhysicalDevice] and enables the extensions and features the renderer uses.
+ *
+ * It also reports optional capabilities such as ray tracing limits and Metal object export, and offers [Device.calibratedHostGpuTimeNS] for lining GPU timestamps up with host time.
+ */
+
 import afield.graphics.vulkan.util.OS
 import afield.graphics.vulkan.util.OSType
 import afield.graphics.vulkan.util.Options

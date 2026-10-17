@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.device
 
+/**
+ * GPU-side profiling for the Vulkan renderer: per-frame query pools for timestamps, pipeline statistics and, where the driver offers VK_KHR_performance_query, performance counters.
+ *
+ * [ProfilingOptions] switches each kind on and sizes its pool; [GpuProfiler] owns one set of pools per frame in flight and hands out query slots as commands are recorded.
+ */
+
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRPerformanceQuery.*
