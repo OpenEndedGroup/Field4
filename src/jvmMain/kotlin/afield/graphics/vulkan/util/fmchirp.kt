@@ -2,6 +2,12 @@
 
 package afield.graphics.vulkan.util
 
+/**
+ * FM chirp curves: an eight-parameter family of 0..1 remapping curves, packed as half floats, that evaluate the same way in Kotlin and in GLSL.
+ *
+ * [FMChirpCurves] holds the parameter type, evaluation, sampling, measures such as roughness and foldover, and least-squares fitting to target points. [FM_CHIRP_GLSL] is the matching shader source, registered as the `fmchirp` shader template by [registerFMChirpShaderTemplate]; [registerFMChirpVisualizers] gives the parameter type an HTML summary when it is printed in a box.
+ */
+
 import afield.runtime.lifecycle.RunsAt
 import afield.runtime.lifecycle.newRoot
 import afield.ui.visualization.registerValuePrinter
