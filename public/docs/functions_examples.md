@@ -2528,6 +2528,61 @@ with(Functions) {
 ```
 
 
+#### rbfField: radial basis functions in two dimensions
+
+`rbfField` fits a surface through values scattered over a plane, the 2D counterpart of `rbf`, with the
+same `RbfKernels`. Give it a list of `point to value` pairs and call the result like a function, at a
+`Vec2` or at `x, y`. It is top level rather than inside `Functions`, because what it returns is a
+surface, not a curve.
+
+**Simple**
+
+Fits a surface through four samples and evaluates it between them.
+
+```diffstatic {data-lang=kotlin}
+val field = rbfField([vec(0, 0) to 0.0, vec(1, 0) to 1.0, vec(0, 1) to 1.0, vec(1, 1) to 0.0])
+val middle = field(0.5, 0.5)
+```
+
+**Creative**
+
+Sixty samples of a function over a 2 × 2 square, the surface fitted through them, and ten times the
+difference between the two:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/rbffield.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-rbffield" alt="three square heat maps in blue and red: the function, two warm and two cool lobes; the fit, which looks the same; and ten times the error, pale everywhere inside and stronger at the edges and corners, where the fit is extrapolating"}
+// 60 samples of a function scattered over a 2 × 2 square, and the surface rbfField fits through them
+val rnd = java.util.Random(3)
+fun f(x: Double, y: Double) = sin(3 * x) * cos(2 * y) + 0.3 * x
+val samples = List(60) {
+    val p = vec(rnd.nextDouble() * 2, rnd.nextDouble() * 2)
+    p to f(p.x.toDouble(), p.y.toDouble())
+}
+val field = rbfField(samples)
+
+// how well each sample is predicted by the other 59: the way to compare kernels
+println("leave-one-out RMSE, thin plate: " + "%.4f".format(field.leaveOneOutRmse()))
+println("leave-one-out RMSE, gaussian(2): " + "%.4f".format(rbfField(samples, RbfKernels.gaussian(2.0)).leaveOneOutRmse()))
+
+fun image(g: (Double, Double) -> Double) = Img(200, 200, 1, FloatArray(200 * 200) {
+    g((it % 200) / 100.0, (it / 200) / 100.0).toFloat()
+})
+showImg(montage([
+    "the function" to image(::f).colormap("coolwarm", -1.4f, 1.4f),
+    "the fit" to image { x, y -> field(x, y) }.colormap("coolwarm", -1.4f, 1.4f),
+    "error x 10" to image { x, y -> 10 * (field(x, y) - f(x, y)) }.colormap("coolwarm", -1.4f, 1.4f)
+], columns = 3, cellSide = 260))
+```
+
+The thin-plate kernel is the default because it has no shape parameter to get wrong. With it the field
+also fits a plane alongside the kernels (`trend = true`), so a tilted plane through the samples comes
+back exactly and the kernels only describe the departures from it. A kernel with a width, like
+`RbfKernels.gaussian(2.0)`, can do better when the width suits the data, and `leaveOneOutRmse()` is how
+to tell: it is how far each sample is from what the other 59 predict there, computed without
+refitting. Here the gaussian's 0.043 beats the thin plate's 0.100. `smoothing` stops the surface
+passing exactly through the samples, for noisy data, and `RbfField(dimension)` with `add` and
+`removeAt` builds one sample at a time, in any number of dimensions.
+
+
 ### Timeline, granular, and stream filters
 
 #### spliceWindow

@@ -164,6 +164,8 @@ nav:
     # trains is incidental to what the page is for.
     - Point Sets & Shape:
       - Placing Things by Distance (MDS, t-SNE): projection_examples.md
+      # Before flow matching, whose minibatch coupling is the exact assignment this page opens with.
+      - Optimal Transport: optimal_transport.md
       - Flow Matching: flow_matching.md
       - Stipple Transport: stipple_transport.md
     - Colour & Images:
