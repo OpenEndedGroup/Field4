@@ -42,7 +42,13 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Flow resets and shader probes](../box_code_adoption_batch_19/README.md) | Twelve findings addressed; GPU count/canary/statistics checks, reset outcomes, temporal validity and actual docs recaptures verified. |
 
-[Machine checkpoint](checkpoint.json): **203 of 405 findings addressed**, one implemented with
+| [Editable frame updates and current imports](../box_code_adoption_batch_20/README.md) | Seven more findings addressed; full graph compilation, exact phase schedule and saved-source refresh verified. |
+
+| [Bounded histories and safe reruns](../box_code_adoption_batch_21/README.md) | Four more findings addressed; real reader reruns/descriptor checks, invalid inputs, launched histories and browser gate callbacks verified. |
+
+| [Exact view ownership on Stop](../box_code_adoption_batch_22/README.md) | Three more findings addressed; native rendering, reruns, exact-resource closure and restored renderer attachments verified. |
+
+[Machine checkpoint](checkpoint.json): **217 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.

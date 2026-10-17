@@ -90,8 +90,7 @@ import afield.graphics.render.lighting.*
 
 val study = DirectLightingDemo(renderer, 1280, 720)
 study.lighting.samples = 32
-study.lighting.mode = if (study.visibility.available)
-    DirectLighting.Mode.RAY_QUERY else DirectLighting.Mode.UNSHADOWED
+study.lighting.mode = if (study.visibility.available) DirectLighting.Mode.RAY_QUERY else DirectLighting.Mode.UNSHADOWED
 frames {
     var t = 0.0
     while (true) {
@@ -100,9 +99,10 @@ frames {
         frame()
     }
 }
+    .end { study.close() }
 ```
 
-Re-running the box replaces the study: a new `DirectLightingDemo` closes the one the same box made before.
+Stopping the box closes its study. Re-running the box replaces the study: a new `DirectLightingDemo` closes the one the same box made before.
 The camera lives at `study.bundle.scene.camera`. Call `study.moveObject(index, matrix)` to
 move one of its opaque objects and update both raster geometry and shadow visibility.
 The resolution belongs to the study; resizing the native window scales its presentation.
