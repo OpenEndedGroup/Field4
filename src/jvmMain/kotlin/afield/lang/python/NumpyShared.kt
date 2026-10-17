@@ -1,3 +1,11 @@
+/**
+ * Shared memory between Python boxes and Kotlin boxes: images and line sets that numpy writes in
+ * place and Kotlin reads without copying through a serializer.
+ *
+ * [NumpyShared] hands out named [SharedImage] and [SharedLines] buffers; the `fieldcv` package in
+ * `python/` is the Python side. `NumpySharedTest` covers the publish/consume handoff.
+ */
+
 package afield.lang.python
 
 import afield.graphics.vulkan.Renderer
