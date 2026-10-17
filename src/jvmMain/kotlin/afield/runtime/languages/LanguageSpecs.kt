@@ -1,11 +1,29 @@
 package afield.runtime.languages
 
+/**
+ * The text conventions of the languages a box property can hold: each [LanguageSpec] says how to wrap
+ * a property's source before it is compiled and how to unwrap it again.
+ *
+ * Kotlin box code is wrapped by [wrapScript] into a `fun SCRIPT()` block between preamble and
+ * postamble markers, keeping leading `import` and `@file` lines above it, and [unwrapScriptLenient]
+ * takes it back out. GLSL specs normalise the preamble to `#version 450` followed by the source's
+ * `#extension` lines; the ray-tracing stages use `#version 460` and always add `GL_EXT_ray_tracing`.
+ * Slang specs only trim trailing whitespace.
+ *
+ * [glslSpecForProperty] and [shaderSpecForProperty] map a property name to its spec, case-insensitively:
+ * `vertex`, `fragment`, `mesh`, `task`, `compute` and the ray-tracing stages (`raygen`, `miss`,
+ * `closesthit`, `anyhit`, `intersection`, `callable`) are GLSL, and the same names with an `_s` suffix,
+ * plus `vertex_fragment`, are Slang. [NANO_ASM] is the spec for the Nano assembly language.
+ */
+
+/** A language's name and the pair of functions that wrap its source for compiling and unwrap it again. */
 data class LanguageSpec(
     val name: String,
     val wrap: (String) -> String,
     val unwrap: (String) -> String
 )
 
+/** Thrown when a model's output still carries a reply marker such as `<help>` or `<cursor>`, so it is refused rather than applied. */
 class MalformedAI(message: String) : RuntimeException(message)
 
 private fun normalizeGlslPreamble(code: String): String {
