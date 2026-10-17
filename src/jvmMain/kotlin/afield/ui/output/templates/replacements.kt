@@ -14,8 +14,16 @@ import afield.audio.synth.*
 import afield.graphics.vulkan.*
 import afield.media.stream.*
 import afield.media.video.*
+
+/**
+ * A small `{{placeholder}}` templating system: [filter] replaces each placeholder from [knownValues] or [templates], and an unknown one becomes empty text.
+ */
+
 // a micro templating system
 
+/**
+ * Template functions by placeholder name; each receives the placeholder and the whole text.
+ */
 val templates = mutableMapOf<String, (String, String) -> String>()
 val knownValues = mutableMapOf<String, String>()
 
