@@ -35,6 +35,15 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
+ * Shows a Field 4 render target live in a box's output area in the Field Electron app, sharing GPU
+ * surfaces with Electron instead of reading pixels back.
+ *
+ * [ElectronRTTView] is the entry point: render into its [ElectronRTTView.rtt] and `display` its
+ * [ElectronRTTView.html]. Works on macOS and on Linux under native Wayland; outside Electron the
+ * widget says it needs the app.
+ */
+
+/**
  * A Field 4 render target drawn straight into a box's output area in the Field Electron app.
  *
  * No readback and no encode: Electron allocates a ring of IOSurfaces, keeps each imported in

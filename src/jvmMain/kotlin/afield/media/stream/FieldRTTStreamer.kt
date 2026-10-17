@@ -18,6 +18,14 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 /**
+ * Streams a Field 4 render target to the visionOS app as video (HEVC by default), through the `field-encode`
+ * helper.
+ *
+ * [FieldRTTStreamer] owns a ring of shared surfaces that a box renders into; each frame is handed
+ * to the encoder once the GPU has finished it. Works on macOS (VideoToolbox) and Linux (NVENC).
+ */
+
+/**
  * Streams an IOSurface-backed RTT off the GPU to the visionOS receiver via the `field-encode`
  * co-process (the *producer* seam from `dev_docs/vision_frontend.md`).
  *
