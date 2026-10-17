@@ -46,7 +46,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Bounded histories and safe reruns](../box_code_adoption_batch_21/README.md) | Four more findings addressed; real reader reruns/descriptor checks, invalid inputs, launched histories and browser gate callbacks verified. |
 
-[Machine checkpoint](checkpoint.json): **214 of 405 findings addressed**, one implemented with
+| [Exact view ownership on Stop](../box_code_adoption_batch_22/README.md) | Three more findings addressed; native rendering, reruns, exact-resource closure and restored renderer attachments verified. |
+
+[Machine checkpoint](checkpoint.json): **217 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
