@@ -37,30 +37,37 @@ import kotlin.math.sign
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/*
+/**
  * The key types every keyframe editor offers beyond its five built-in ones: the easing family,
  * splines that look past the segment to the keys either side, shapes, and shaped noise. Each is a
- * [KeySegment] lambda like the ones a box defines with interpolant(...), evaluated in Kotlin and
- * drawn by the editor from samples.
+ * [KeySegment] lambda like the ones a box defines with `interpolant(...)`, evaluated in Kotlin and
+ * drawn by the editor from samples of the segment.
  */
 
 /** One entry in the library: the name a key stores, where it sits in the menu, and its shape. */
 class KeyTypeEntry internal constructor(
+    /** The name a key stores to select this type, as `ease.sine.in` or `shape.smoothstep`. */
     val name: String,
+    /** How the type reads in the menu, as `sine in` or `smoothstep`. */
     val label: String,
+    /** The menu section the type sits in: `Ease`, `Spline`, `Shape` or `Noise`. */
     val group: String,
-    /** For the easing table: the family (a row) and the direction (a column). */
+    /** For the easing table: the family, which is a row. Null for every other group. */
     val family: String? = null,
+    /** For the easing table: the direction, which is a column. One of `in`, `out` and `in-out`. */
     val variant: String? = null,
+    /** The shape itself: a [KeySegment] lambda returning the curve's value inside the segment. */
     val shape: KeySegment.() -> Double,
 )
 
 object KeyTypeLibrary {
 
+    /** Every type in the library, built once: the easings first, then splines, shapes and noise. */
     val entries: List<KeyTypeEntry> by lazy { build() }
 
     private val byName: Map<String, KeyTypeEntry> by lazy { entries.associateBy { it.name } }
 
+    /** The entry a key of type [name] uses, or null if no library type is called that. */
     fun named(name: String): KeyTypeEntry? = byName[name]
 
     private fun build(): List<KeyTypeEntry> = buildList {

@@ -32,8 +32,9 @@ import afield.math.linalg.Vector2f
 import kotlin.math.abs
 import kotlin.math.max
 
-/*
- * Gesture takes <-> keyframe lanes.
+/**
+ * Gesture takes and keyframe lanes, in both directions: `bakeGesture` turns a take recorded on a
+ * pad into two editable lanes, and `lanesToTake` renders lanes back into a take a pad accepts.
  *
  * A take recorded by `gesture(...)` is a run of (t, x, y) samples that `GestureHandle.at` joins with
  * straight lines. Baking keeps the fewest of those samples that stay within a tolerance of the

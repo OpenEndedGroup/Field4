@@ -31,17 +31,19 @@ import afield.study.source.hydratingBoxes
 import afield.study.source.sourceBackedBlockBox
 import kotlin.script.experimental.api.ResultValue
 
-/*
- * Custom key types for the keyframe editor (`keyframes(...)`, afield/math/keyframes.kt): a named
- * segment shape written as a Kotlin lambda.
+/**
+ * Custom key types for the keyframe editor that `keyframes(...)` opens: a named segment shape,
+ * written as a Kotlin lambda.
  *
- *     interpolant("overshoot") { v0 + (v1 - v0) * (1 + 2.7 * (u - 1).pow(3) + 1.7 * (u - 1).pow(2)) }
+ * ```kotlin
+ * interpolant("overshoot") { v0 + (v1 - v0) * (1 + 2.7 * (u - 1).pow(3) + 1.7 * (u - 1).pow(2)) }
+ * ```
  *
  * The name becomes a key type, offered in the key menu, and a key of that type shapes the segment
- * that leaves it. The `interpolant` macro (macro_interpolant below) keeps the lambda's source next
- * to the live lambda; the source is saved with the box, in `keyframeInterpolants`, so a curve keeps
- * its shape when the definition is not (yet) run — the box defines it after calling keyframes, or
- * the definition was deleted — by compiling the saved source again.
+ * that leaves it. The `interpolant` macro (`macro_interpolant`) keeps the lambda's source beside
+ * the live lambda and saves it with the box, in its `keyframeInterpolants` property. Compiling
+ * that source again is what keeps a curve's shape while the definition has not run: when the box
+ * defines the type only after it calls `keyframes`, and when the definition has been deleted.
  */
 
 /**
@@ -84,8 +86,14 @@ class KeySegment internal constructor(
 
 /** A named key type: its lambda, and the Kotlin source it was written as. */
 class KeyInterpolant internal constructor(
+    /** The name a key stores to select this type. */
     val name: String,
+    /** The box that defined it, and the box its source is compiled back into. Empty for a library type. */
     val boxId: String,
+    /**
+     * The lambda's Kotlin source, saved with the box. Empty when there is none to save: a library
+     * type, or a definition the `interpolant` macro did not rewrite.
+     */
     val source: String,
     @Volatile private var block: (KeySegment.() -> Double)?,
     /** Where the type sits in the key menu; [KeyTypeLibrary] entries say, a box's own are "This box". */
