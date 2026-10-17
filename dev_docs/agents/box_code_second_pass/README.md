@@ -50,7 +50,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [FLine and animation path helpers](../box_code_adoption_batch_23/README.md) | Four more findings addressed; 125 states inspected, all 73 runnable bodies compiled, geometry comparisons and four forced docs captures verified. |
 
-[Machine checkpoint](checkpoint.json): **221 of 405 findings addressed**, one implemented with
+| [Current teaching-code comments](../box_code_adoption_batch_24/README.md) | Nine more findings addressed; unchanged executable-token proof, Kotlin/GLSL formatting and actual path-table/mesh-viewer checks verified. |
+
+[Machine checkpoint](checkpoint.json): **230 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
