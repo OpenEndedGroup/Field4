@@ -9,7 +9,6 @@ varying vec3 vNormal;
 varying vec3 pos;
 varying vec2 vUv;
 
-
 uniform sampler2D map;
 // this is the declaration for a texture map called 'map
 //uniform sampler2D map;
@@ -22,7 +21,7 @@ void main()
 
     // in Javascript we'd call this 'vec'
     // but here we have to say vec4
-    // this is our translucent red
+    // Start opaque; the sampled texture RGB below replaces this base color.
     gl_FragColor = vec4(1,0,0,1);
 
     vec4 texcol = texture2D(map, vUv);
