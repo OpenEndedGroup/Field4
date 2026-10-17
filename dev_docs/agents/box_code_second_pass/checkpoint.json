@@ -885,6 +885,22 @@
     "0ba0a3800939-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_22/README.md"
+    },
+    "e775919b0ba4-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_23/README.md"
+    },
+    "e775919b0ba4-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_23/README.md"
+    },
+    "e775919b0ba4-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_23/README.md"
+    },
+    "48cc48dbfc2e-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_23/README.md"
     }
   },
   "batches": [
