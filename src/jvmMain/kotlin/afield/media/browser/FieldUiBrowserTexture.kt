@@ -22,6 +22,14 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 /**
+ * A live web page as a Field texture: a hidden Electron window renders offscreen and its paints
+ * become an [ExternalBrowserSurface] a shader can sample.
+ *
+ * [FieldUiBrowserTexture] is the full [PuppetBrowser], so the same object takes navigation, input
+ * and JavaScript. On macOS the frames move GPU-side as IOSurfaces, with no bitmap readback.
+ */
+
+/**
  * A live offscreen Chromium view exposed as an ordinary stable Field texture.
  *
  * The producer is a second, hidden Electron window. On macOS its paint callback transfers the
