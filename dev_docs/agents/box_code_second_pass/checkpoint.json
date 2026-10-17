@@ -937,6 +937,22 @@
     "875122303a20-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_24/README.md"
+    },
+    "02b566216ca7-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_25/README.md"
+    },
+    "25f85b04108e-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_25/README.md"
+    },
+    "559c80d8da0a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_25/README.md"
+    },
+    "e70830985ea4-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_25/README.md"
     }
   },
   "batches": [

@@ -97,7 +97,7 @@ The first example is as small as it can be: vertex data is written directly into
 
 The first triangle put `pos` and `col` directly into the mesh's vertex buffers. Sometimes you want a buffer that is visible as an ordinary named resource in the shader: perhaps the geometry changes every frame, perhaps a compute shader fills it, or perhaps several draws share it. This example uses the simplest version of that pattern: write a few positions into a `defaultBuffer`, bind that buffer to a reflected push-constant member, and draw vertices by index.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/01-buffer-triangles.png" alt="three triangles drawn from one vertex buffer against black. On the left a solid crimson one shading to near-black at its base. On the right a large one interpolating from red at its apex through olive to green along its bottom edge, overlapping a second crimson triangle whose upper corner shows through it in yellow-olive where the two cross" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-buffer-triangles" source-box="assets/canonical_graphics/af0946dd-f25d-4355-984d-f0d24a43ee12" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/01-buffer-triangles.png" alt="three triangles against black: a bronze triangle on the left, a magenta-to-green triangle in the middle, and a blue-grey triangle on the right with a lighter overlapping region" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-buffer-triangles" source-box="assets/canonical_graphics/af0946dd-f25d-4355-984d-f0d24a43ee12" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 var module = moduleHere { primitiveType = triangles }
 var m = Mesh()
 module += m named "someMesh"
@@ -150,7 +150,8 @@ layout(push_constant) uniform matrices {
 layout(location=0) out vec4 localColor;
 
 float wrap(int a, int b) {
-    return (a % b) / (b - 1);
+    // Divide as floats so the ramp includes intermediate channel values.
+    return float(a % b) / float(b - 1);
 }
 
 void main()
@@ -1221,7 +1222,7 @@ void main()
 
 Vulkan can print from inside a shader. Enable the extension, guard the call so it does not fire for every invocation, and the message arrives through the validation layer:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/06-printf.png" alt="one right triangle against black, this time with its right angle at the top left and its hypotenuse falling to the bottom right. It shades from bright red along the top edge to near-black at the bottom. The picture is incidental here: the output the section is about is the printf text the validation layer reports, not anything in the window" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-printf" source-box="assets/canonical_graphics/81f27655-7d32-4a4d-b73d-1b5d368efaa7" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/06-printf.png" alt="one bronze-shaded right triangle against black, with its right angle at the top left; this section also demonstrates guarded vertex debug output" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-printf" source-box="assets/canonical_graphics/81f27655-7d32-4a4d-b73d-1b5d368efaa7" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 var module = moduleHere { primitiveType = triangles }
 
 var m = Mesh()
@@ -1668,10 +1669,12 @@ void main() {
 `ShaderLatticeBoltzmannSystem` is a two-dimensional fluid. Every texel is a lattice site holding nine numbers, how much fluid there is moving in each of nine directions: still, the four neighbours, the four diagonals. A step moves each of those one site along its direction, then relaxes each site toward the equilibrium for its own density and velocity, and a population that runs into a solid site bounces back where it came from. Density and velocity are never stored; they are sums over the nine. This box builds one as a wind tunnel, wind blowing left to right across a lattice that wraps:
 
 ```diffstatic {data-lang=kotlin}
-// A lattice Boltzmann fluid in a wind tunnel: a wind blows left to right and the
-// lattice wraps, so what leaves on the right comes back on the left.
-// On its own it is uniform wind and shows nothing; the box beneath this one puts
-// something in its way.
+/*
+A lattice Boltzmann fluid in a wind tunnel: a wind blows left to right and the
+lattice wraps, so what leaves on the right comes back on the left.
+On its own it is uniform wind and shows nothing; the box beneath this one puts
+something in its way.
+*/
 prop<ShaderLatticeBoltzmannSystem>(lbm) = ShaderLatticeBoltzmannSystem() {
     width = 800
     height = 480
@@ -1694,9 +1697,11 @@ lbm.installInto()
 A wind through an empty tunnel is uniform and shows nothing, so a second box beneath this one puts something in its way. It draws into the fluid's control texture, where red is solid, green and blue a push, and alpha a dye source that also holds the wind steady. `controlsParameters` gives the module additive blending, and the controls are carried from frame to frame, so what the shader writes is a drawing that stays until `clearControls()` erases it:
 
 ```diffstatic {data-lang=kotlin}
-// Draws into the fluid's control texture: a solid disc, walls top and bottom, and
-// stripes of dye released at the left edge. The controls persist from frame to
-// frame, so clear them first or a re-run leaves the old drawing behind.
+/*
+Draws into the fluid's control texture: a solid disc, walls top and bottom, and
+stripes of dye released at the left edge. The controls persist from frame to
+frame, so clear them first or a re-run leaves the old drawing behind.
+*/
 lbm.clearControls()
 
 var module = moduleHere(lbm.controlsParameters("cylinder"))
@@ -1740,12 +1745,14 @@ The box's `fragment` tab holds one step of the method, all nine populations writ
 `ShaderForestFireSystem` spreads fire through a forest. Each texel is a tree or bare ground, decided once from a hash of its position, and each tree is ready to burn, burning, or recovering. A ready tree catches from a burning neighbour, by chance: each burning neighbour gets one try per frame with probability `spreadProbability`, half by default. A tree burns for a few frames, then cannot burn again until it has recovered. Because trees recover, the fire never runs out of fuel, and a front can be followed by another one through the same trees. There are four kinds of fire, one per colour channel, and they compete: a tree that catches one kind is not available to the others until it has recovered. This box builds a forest the shape of the window:
 
 ```diffstatic {data-lang=kotlin}
-// A forest fire: a fixed scatter of trees, and four kinds of fire (red, green, blue,
-// magenta) that compete for them. Burnt trees recover, so a fire front can be
-// followed by another. Nothing burns until something is lit; the box beneath this
-// one lights it.
-// The forest is 768 trees high and as wide as the window's shape needs, so it fills
-// the window without being stretched.
+/*
+A forest fire: a fixed scatter of trees, and four kinds of fire (red, green, blue,
+magenta) that compete for them. Burnt trees recover, so a fire front can be
+followed by another. Nothing burns until something is lit; the box beneath this
+one lights it.
+The forest is 768 trees high and as wide as the window's shape needs, so it fills
+the window without being stretched.
+*/
 val treesHigh = 768
 prop<ShaderForestFireSystem>(fire) = ShaderForestFireSystem() {
     height = treesHigh
@@ -1760,9 +1767,11 @@ fire.installInto()
 Nothing burns until something is lit. The box beneath it draws into the fire's ignition texture, one kind of fire per channel; `fireInputParameters` makes the drawing additive, so writing 1 into a channel lights that kind there. This one lights two points, red and green, and keeps them lit:
 
 ```diffstatic {data-lang=kotlin}
-// Draws into the fire's ignition texture: two points that burn for ever, one red
-// and one green. Each relights its neighbourhood as soon as the trees recover, so
-// each sends out a train of rings, and where the trains meet one kind takes over.
+/*
+Draws into the fire's ignition texture: two points that burn for ever, one red
+and one green. Each relights its neighbourhood as soon as the trees recover, so
+each sends out a train of rings, and where the trains meet one kind takes over.
+*/
 fire.clearFireInput()
 fire.clearState()
 

@@ -52,7 +52,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Current teaching-code comments](../box_code_adoption_batch_24/README.md) | Nine more findings addressed; unchanged executable-token proof, Kotlin/GLSL formatting and actual path-table/mesh-viewer checks verified. |
 
-[Machine checkpoint](checkpoint.json): **230 of 405 findings addressed**, one implemented with
+| [Correct color, chirp and null-reference math](../box_code_adoption_batch_25/README.md) | Four more findings addressed; 99 GPU ramp values, real FFT windows, 200 held-out null windows and forced docs captures verified. |
+
+[Machine checkpoint](checkpoint.json): **234 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.

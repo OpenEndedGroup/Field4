@@ -1,0 +1,41 @@
+{
+  "baseline": "6ef67f560",
+  "sources": [
+    {
+      "path": "public/docs/afield_four_graphics.md",
+      "kotlinBodies": 33,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/65bd0587-dbfa-451a-8f6a-e003ff3d1abf_vertex_.glsl",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/af0946dd-f25d-4355-984d-f0d24a43ee12_vertex_.glsl",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/81f27655-7d32-4a4d-b73d-1b5d368efaa7_vertex_.glsl",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/spectral_examples.md",
+      "kotlinBodies": 7,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/statistics_examples.md",
+      "kotlinBodies": 6,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

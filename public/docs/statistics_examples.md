@@ -492,27 +492,33 @@ for (i in 0 until total) {
     val yv = if (i < change) rng.nextGaussian() else xv * xv - 1.0 + 0.15 * rng.nextGaussian()
     xs += xv
     ys += yv
-    dSeries += dcor.push(xv, yv) ?: 0.0 // the first push always returns null
-    xiSeries += xiRoll.push(xv, yv) ?: 0.0
+    val distanceValue = dcor.push(xv, yv)
+    val xiValue = xiRoll.push(xv, yv)
+    // Compare with the w-sample null only once a complete window has arrived.
+    val fullWindow = xs.size >= w
+    dSeries += if (fullWindow) requireNotNull(distanceValue) else Double.NaN
+    xiSeries += if (fullWindow) requireNotNull(xiValue) else Double.NaN
     // There is no RollingPearson, so take the batch one over the same window for comparison.
     val lo = maxOf(0, xs.size - w)
     val bx = xs.subList(lo, xs.size).toDoubleArray()
     val by = ys.subList(lo, ys.size).toDoubleArray()
-    absR += if (bx.size >= 2) abs(StatsDependence.pearson(bx, by)) else 0.0
+    absR += if (fullWindow) abs(StatsDependence.pearson(bx, by)) else Double.NaN
 }
 
-// The threshold that makes the traces readable: the 95th percentile of the dCor null at THIS
-// window size, measured the same way as the previous section.
+// Calibrate each statistic against its own null distribution at this window size.
+// These are pointwise reference levels, not a multiple-testing-adjusted change detector.
 val r2 = java.util.Random(1234)
 val k = 300
-val threshold =
-    DoubleArray(k) {
-            StatsDependence.distanceCorrelation(
-                DoubleArray(w) { r2.nextGaussian() },
-                DoubleArray(w) { r2.nextGaussian() },
-            )
-        }
-        .sortedArray()[(k * 0.95).toInt()]
+val dNull = DoubleArray(k)
+val xiNull = DoubleArray(k)
+repeat(k) { i ->
+    val nx = DoubleArray(w) { r2.nextGaussian() }
+    val ny = DoubleArray(w) { r2.nextGaussian() }
+    dNull[i] = StatsDependence.distanceCorrelation(nx, ny)
+    xiNull[i] = StatsDependence.chatterjeeXi(nx, ny)
+}
+val threshold = dNull.sortedArray()[(k * 0.95).toInt()]
+val xiThreshold = xiNull.sortedArray()[(k * 0.95).toInt()]
 
 // The incremental sums are not an approximation. Cross-check the last window against the O(w^2)
 // batch call, which materialises two full w x w distance matrices to get the same answer.
@@ -520,13 +526,16 @@ val batchLast = StatsDependence.distanceCorrelation(xs.takeLast(w).toDoubleArray
 val agreement = abs(dSeries.last() - batchLast)
 
 val firstD = (change until total).firstOrNull { dSeries[it] > threshold }
-val firstXi = (change until total).firstOrNull { xiSeries[it] > threshold }
+val firstXi = (change until total).firstOrNull { xiSeries[it] > xiThreshold }
+val dCrossing = firstD?.let { "+${it - change} samples" } ?: "not crossed"
+val xiCrossing = firstXi?.let { "+${it - change} samples" } ?: "not crossed"
 :::fold the traces
 showSignals(
     "rolling dCor" to dSeries,
     "rolling xi" to xiSeries,
     "rolling |pearson|" to absR,
     "dCor null 95th pct at w=$w" to List(total) { threshold },
+    "xi null 95th pct at w=$w" to List(total) { xiThreshold },
     channel = "traces",
     title = "Three rolling coefficients across one regime change (window $w)",
     xTitle = "sample",
@@ -543,8 +552,8 @@ markdown(
     | window-full to the change (i=$w..${change - 1}) | ${"%.3f".format(dSeries.subList(w, change).average())} | ${"%.3f".format(xiSeries.subList(w, change).average())} | ${"%.3f".format(absR.subList(w, change).average())} |
     | settled after the change (i=${change + w}..${total - 1}) | ${"%.3f".format(dSeries.subList(change + w, total).average())} | ${"%.3f".format(xiSeries.subList(change + w, total).average())} | ${"%.3f".format(absR.subList(change + w, total).average())} |
 
-    {muted:threshold ${"%.3f".format(threshold)} first crossed by dCor at +${firstD!! - change} samples,
-    by xi at +${firstXi!! - change}}
+    {muted:dCor null 95th pct ${"%.3f".format(threshold)}: $dCrossing.
+    xi null 95th pct ${"%.3f".format(xiThreshold)}: $xiCrossing.}
 
     {muted:incremental vs batch on the final window: |difference| = $agreement}
 """,
@@ -553,7 +562,7 @@ markdown(
 :::endfold
 ```
 
-![Three rolling coefficients across a regime change: dCor and xi both climb clear of the null threshold and stay there, while rolling absolute Pearson swings across the same band before and after](assets/statistics_examples/rolling_regime.png)
+![Three rolling coefficients across a regime change: dCor and xi rise against their separately calibrated pointwise null reference levels, while rolling absolute Pearson swings across the same band before and after](assets/statistics_examples/rolling_regime.png)
 
 The measured numbers, from the run above:
 
@@ -563,14 +572,13 @@ The measured numbers, from the run above:
 | rolling xi | −0.034 | **0.731** |
 | rolling &#124;pearson&#124; | 0.133 | 0.230 |
 
-Both dependence measures cross the w=80 null threshold of 0.262 after the change and stay above it;
-neither does before. Rolling `|pearson|` moves too (its mean goes from 0.133 to 0.230), but look at
-the green trace rather than the average: it was already swinging up to 0.3 *before* the change,
-because `|r|` on an 80-sample window of two independent Gaussians is nowhere near zero, and after the
-change it spends most of its time back down at 0.1–0.2 with occasional excursions. It never
-separates. For a relationship that is *exact*, that is a coin-flip of a detector. And the two
-dependence measures do not agree about *when*: dCor first crosses the threshold **23 samples** after
-the change, xi **48**. Distance correlation reacts sooner; xi ends up higher.
+Each dependence measure is compared with its **own** null distribution at w=80. The
+pointwise 95th-percentile levels describe independent Gaussian windows, and the figure reports
+the first crossings for this seeded recording. Overlapping windows are correlated; these are
+not multiple-testing-adjusted change alarms, and their first crossings do not establish a
+general latency winner. Both settled dependence averages rise clearly after the change.
+Rolling `|pearson|` still swings across much the same range before and after it: a small-window
+absolute correlation has a positive noise floor, so reading it against zero would mislead.
 
 The last line of that figure cross-checks two different algorithms.
 `RollingDistanceCorrelation` never rebuilds a distance matrix (it only adds to and subtracts from
