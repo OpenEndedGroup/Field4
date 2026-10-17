@@ -1,6 +1,10 @@
 package afield.lang.lua
 
 /**
+ * The signatures and one-line descriptions that completion shows for Lua names, held to a live LuaJIT by `LuaCatalogTest`.
+ */
+
+/**
  * What completion says about a Lua name: its signature and one line on what it does.
  *
  * Two catalogs, both resources beside the prelude: `lua-stdlib.txt` for the Lua 5.1 library and

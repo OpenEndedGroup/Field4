@@ -13,6 +13,12 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 /**
+ * The LuaJIT state behind a Lua box: [LuaState] opens a `lua_State`, runs chunks under `lua_pcall`, and marshals values between Lua and Kotlin.
+ *
+ * `LuaStateTest` exercises it against a live LuaJIT.
+ */
+
+/**
  * One LuaJIT `lua_State`: open, evaluate, marshal values both ways, let Lua call Kotlin, close.
  *
  * Values cross as plain data. Lua `nil`, booleans, numbers and strings become `null`, [Boolean],
