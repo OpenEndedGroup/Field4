@@ -47,6 +47,7 @@ import java.util.concurrent.CompletableFuture
 val client = FieldAudioClient()
 display("all jobs", fieldAudioJobMonitor(heightPixels = 330))
 
+:::fold durable job tracking
 fun tracked(label: String, operation: ModelOperation): CompletableFuture<AnalysisResult> =
     client.submit(operation).thenCompose { accepted ->
         display("$label job", fieldAudioJobStatusHtml(accepted))
@@ -55,6 +56,7 @@ fun tracked(label: String, operation: ModelOperation): CompletableFuture<Analysi
         }
         client.awaitAnalysis(accepted)
     }
+:::endfold
 
 val lookups = ["*Nancy*", "*Candlestick Park*"].map { client.assetByFilename(it) }
 CompletableFuture.allOf(*lookups.toTypedArray()).thenCompose {

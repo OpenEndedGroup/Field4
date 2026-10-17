@@ -61,16 +61,19 @@ and monitors one durable analysis job, downloads the artifact, and compares thre
 the first ten seconds. Every panel shares the source player's cursor in both directions.
 
 ```diffstatic {data-lang=kotlin}
+:::fold imports
 import afield.document.graph.Box
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
+:::endfold
 
 val client = FieldAudioClient()
 val local = Path.of(System.getProperty("user.home"), "Downloads", "near_drowning.wav")
 val sync = "near-drowning-spectral"
 display("all jobs", fieldAudioJobMonitor(heightPixels = 340))
 
+:::fold durable job tracking
 fun Box.trackedSpectral(request: ModelOperation): CompletableFuture<AnalysisResult> =
     client.submit(request).thenCompose { accepted ->
         display("spectral job", fieldAudioJobStatusHtml(accepted))
@@ -79,13 +82,16 @@ fun Box.trackedSpectral(request: ModelOperation): CompletableFuture<AnalysisResu
         }
         client.awaitAnalysis(accepted)
     }
+:::endfold
 
 client.assetsByFilename("near_drowning.wav").thenCompose { matches ->
+    :::fold find or import the recording
     when {
         matches.size == 1 -> CompletableFuture.completedFuture(matches.single())
         matches.isEmpty() && Files.isRegularFile(local) -> client.importWav(local)
         else -> CompletableFuture.failedFuture(IllegalStateException("cannot resolve $local"))
     }
+    :::endfold
 }.thenCompose { source ->
     val audio = source.representations.firstOrNull { it.role == "canonical_project" }
         ?: source.representations.first { it.mediaType in setOf("audio/wav", "audio/x-wav") }
