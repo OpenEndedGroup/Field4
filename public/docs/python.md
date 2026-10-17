@@ -83,6 +83,63 @@ newline is treated as an in-place update. If it looks like a `tqdm` bar, Field s
 with that percentage; otherwise it shows a bar labelled with the text. Either way you see progress
 while the loop runs, not one long string at the end.
 
+### An error is marked on the line that raised it
+
+When a cell raises, the red marker goes on the line that raised, as it does in a Kotlin box. If the
+error happened inside a function the cell defined, the marker is on the line inside that function;
+if it happened inside a library, the marker is on the cell's line that called into the library.
+
+```diffstatic_runner {data-lang=python screenshot="assets/python/error_line.png" capture="editor" outputs="inline" wait="4" padding="10" w="900" h="320" timeout="240" requires="jep" expect-error="true" embed=true name="python-error-line" alt="A Python box whose error marker sits on line 6, the division inside mean, with ZeroDivisionError: division by zero beside it."}
+:::static
+# The marker lands on line 6, inside mean(), where the division failed --
+# not on line 1, and not on the call on line 8.
+readings = []
+
+def mean(values):
+    return sum(values) / len(values)
+
+mean(readings)
+```
+
+A syntax error is marked on the line Python reports for it.
+
+### Sliders and checkboxes
+
+`slider` and `checkbox` draw the same controls a Kotlin box's `slider(...)` and `checkbox(...)`
+draw ([Controls](visualizers.md#controls-sliders-toggles-colors-text-and-xy-pads)), in the box's
+`controls` channel. Write them as decorators: the function runs each time the control changes, with
+the new value, and its `print` and `display` go to this box.
+
+```diffstatic_runner {data-lang=python screenshot="assets/python/controls.png" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" wait-output-channel="controls" wait="4" padding="20" w="900" h="360" timeout="240" requires="jep" embed=true name="python-controls" alt="A Python box with a frequency slider at 3.0 and an unticked square wave checkbox in its controls panel, and the text sine at 3.0 Hz in its main panel."}
+:::static
+state = {"freq": 3.0, "square": False}
+
+def redraw():
+    wave = "square" if state["square"] else "sine"
+    display("main", f"<b>{wave}</b> at {state['freq']:.1f} Hz")
+
+@slider("frequency", min=1, max=10, step=0.1, value=3.0)
+def on_freq(v):
+    state["freq"] = v
+    redraw()
+
+@checkbox("square wave")
+def on_square(checked):
+    state["square"] = checked
+    redraw()
+
+redraw()
+```
+
+`slider(label, on_change, min=0, max=1, step=0.01, value=None, channel="controls")` and
+`checkbox(label, on_change, value=False, channel="controls")` also take the callback as an
+argument. A cell's controls appear together when it finishes, one group per channel, like a Kotlin
+`controlGroup { ... }`. Running the cell again keeps any value you moved a control to, and calls its
+function with that value. An exception in a callback goes to the box's error output.
+
+`display` takes Kotlin's form too: `display("main", "<b>bold</b>")`, a channel name and a string of
+HTML, shows the HTML in that channel. Any other call is IPython's `display(obj, channel="main")`.
+
 ### A figure that opens a browser gets embedded instead
 
 Plotting libraries end `fig.show()` by asking the operating system to open a web browser. In Field,

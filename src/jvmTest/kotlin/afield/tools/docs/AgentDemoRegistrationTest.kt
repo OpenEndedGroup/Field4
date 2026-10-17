@@ -141,6 +141,7 @@ class AgentDemoRegistrationTest {
             "path_tracing_emitters",
             "path_tracing_medium",
             "pattern_condense",
+            "python_box_parity",
             "python_cells",
             "read_only_session",
             "skinned_characters",

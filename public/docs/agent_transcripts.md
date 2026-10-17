@@ -2172,6 +2172,19 @@ reach `java.lang.System` from Python. The last cell's `fig.show()` needs a brows
 
 [Open ↗](offline.html?file=assets/agent_transcripts/python_cells/metadata.edn)
 
+### python_box_parity
+
+**Python boxes doing what Kotlin boxes do: errors on the right line, and live controls.** Three boxes:
+a Kotlin language root and two Python cells under it. Run the first cell and the red error marker sits
+on line 6, inside `mean`, where the division by zero happened. The second draws a slider and a checkbox
+whose callbacks are Python functions; moving either runs the function, and its `display(...)` updates
+the box. Same prerequisite as `python_cells`: Field must have found a Python with JEP before it started.
+
+`DemoTranscriptExecSmokeTest` compiles the Kotlin root and skips the two Python cells, so CI checks one
+box of three. [Python in Field](python.md) shows both cells' output.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/python_box_parity/metadata.edn)
+
 ### fieldcv_webcam
 
 **Your webcam through fieldcv, drawn by the GPU from shared memory.** Eight boxes: a render window; a
