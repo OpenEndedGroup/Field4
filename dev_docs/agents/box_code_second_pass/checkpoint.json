@@ -696,6 +696,27 @@
     "3df952fba729-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_15/README.md"
+    },
+    "fcc9169b9383-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_16/README.md"
+    },
+    "fcc9169b9383-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_16/README.md"
+    },
+    "fcc9169b9383-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_16/README.md"
+    },
+    "a68fc49a83f9-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_16/README.md"
+    },
+    "cbee25659232-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_16/README.md",
+      "resolution": "Explicit Box receiver retained: bare named resolves a script-value reference; actual compile/replay demonstrates the distinction."
     }
   },
   "batches": [

@@ -105,6 +105,7 @@ runs += 1
 propUp<Double>(scale)
 prop<Int>(runs, 0)
 val s = scale
+// Use the box graph lookup; bare named() selects a script-value reference here.
 val ran = thisBox.named("Scale").runs
 display("main", "<p>scale = $s (Scale has run $ran time)</p>")
 ```
