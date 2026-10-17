@@ -2,33 +2,25 @@ package afield.lang.stacksl.cpu
 
 import java.io.File
 
-// ---------------------------------------------------------------------------------------------
-// The oracle: 31 committed StackSL programs, the committed fragment template beside each one,
-// and 31 committed 512x512 PNGs that a real GPU produced.
-//
-// `public/docs/assets/stacksl_gallery/` holds, per gallery entry `<name>`:
-//   <name>_stackSL_.stacksl    the program (editable Field content, not a literal in any .kt)
-//   <name>_fragment_.glsl      the fragment shader, with the literal `{{ stack.auto.program }}`
-//   <name>_metadata_.yaml      docOrder / animate / timeSpeed / feedback
-// and `public/docs/assets/stacksl/stacksl-<name>.png` is what the GPU drew for it.
-//
-// Two things about this oracle are better than they look and one is worse.
-//
-// BETTER: the fragment file is the *template*, not a dump of expanded GLSL, so a CPU render that
-// reads it is forced back through the live `StackSLCompiler`. A stale dump would have let the two
-// backends agree with each other while both disagreed with today's emitter.
-//
-// BETTER: 29 of the 31 templates are byte-identical (`fragmentTemplate(1.75f)` in
-// `StackSLGalleryHarness`); the other 2 are the feedback template. So the render convention is
-// pinned by the files rather than by this code.
-//
-// WORSE: the ground truth is 8-bit. The harness renders into `VK_FORMAT_R8G8B8A8_SRGB`, the
-// window's encoding, so the GPU's answer is known to one sRGB level, and the harness's `main()`
-// clamps to [0,1] first, so any disagreement smaller than half a level is invisible and any claim
-// of "bit-exact" would be unfalsifiable. Everything below is therefore measured in 8-bit sRGB
-// levels — the CPU side is encoded the same way ([galleryArgb]) — and "exact" means "quantises
-// to the same byte".
-// ---------------------------------------------------------------------------------------------
+/**
+ * Compares StackSL's CPU renderer against the GPU: 31 committed gallery programs, each with its
+ * fragment template and the 512x512 PNG a real GPU drew for it.
+ *
+ * `public/docs/assets/stacksl_gallery/` holds, per gallery entry `<name>`, the program
+ * (`<name>_stackSL_.stacksl`), its fragment shader with the literal `{{ stack.auto.program }}` slot
+ * (`<name>_fragment_.glsl`), and its `docOrder` / `animate` / `timeSpeed` / `feedback` settings
+ * (`<name>_metadata_.yaml`). `public/docs/assets/stacksl/stacksl-<name>.png` is the GPU's still.
+ *
+ * The fragment file is a template, not expanded GLSL, so a CPU render that reads it goes through the
+ * live `StackSLCompiler`, and both backends are compared against today's emitter. 29 of the 31
+ * templates are byte-identical (`fragmentTemplate(1.75f)` in `StackSLGalleryHarness`); the other 2
+ * are the feedback template.
+ *
+ * The ground truth is 8-bit. The harness renders into `VK_FORMAT_R8G8B8A8_SRGB` and clamps to
+ * `[0,1]` first, so the GPU's answer is known to one sRGB level. Agreement is therefore measured in
+ * 8-bit sRGB levels, with the CPU side encoded the same way ([StackSLCpuGallery.galleryArgb]), and
+ * "exact" means "quantises to the same byte".
+ */
 
 /** One gallery entry as it exists on disk. */
 class GalleryEntry(

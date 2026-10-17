@@ -1,5 +1,14 @@
 package afield.lang.stacksl
 
+/**
+ * The words of a small language as an editor offers them: names, stack effects and descriptions read
+ * from the language's generated words guide, served as completions.
+ *
+ * [vocabularyFromGuide] reads the guide's tables, [vocabularyCompletion] offers the words at a cursor,
+ * and [StackSLVocabulary] is StackSL's own list. `StackSLVocabularyCoverageTest` and
+ * `LanguageVocabularyTest` cover it.
+ */
+
 import afield.app.protocol.Completion
 import afield.app.protocol.Metadata
 
