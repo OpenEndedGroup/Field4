@@ -2076,6 +2076,7 @@ fun installAgentBackdoorHandlers() {
 }
 
 /** Launch a kit starting point's roles the first time its copy opens ([afield.document.workspace.KitFirstOpen]). */
+@OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
 internal fun installKitFirstOpen() {
     documentReadyHooks += { info ->
         val roles = afield.document.workspace.KitFirstOpen.rolesToLaunch(java.io.File(info.filename), info.boxes.values)

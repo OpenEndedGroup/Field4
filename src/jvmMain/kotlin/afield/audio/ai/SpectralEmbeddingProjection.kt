@@ -274,7 +274,7 @@ fun SpectralEmbeddingFrames.mds(
         val model = smileMdsDistances(
             melDistanceMatrix(), dimensions, distance.label, positiveCorrection,
         )
-        spectralProjection(model.coordinates, distance, "MDS", model.scores, model.proportion)
+        spectralProjection(model.coordinates, distance, "MDS", model.scores, model.retainedShare)
     } else {
         val model = smileMds(
             vectors,
@@ -282,7 +282,7 @@ fun SpectralEmbeddingFrames.mds(
             if (distance.name.endsWith("COSINE")) SmileMdsDistance.COSINE else SmileMdsDistance.EUCLIDEAN,
             positiveCorrection,
         )
-        spectralProjection(model.coordinates, distance, "MDS", model.scores, model.proportion)
+        spectralProjection(model.coordinates, distance, "MDS", model.scores, model.retainedShare)
     }
 }
 
