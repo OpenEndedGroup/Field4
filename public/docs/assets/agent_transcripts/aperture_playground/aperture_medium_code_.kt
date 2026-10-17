@@ -1,14 +1,13 @@
-import afield.graphics.vulkan.targets.RenderToTexture
 import org.lwjgl.vulkan.VK10.*
 
 val source = paintSource
 propDown<RenderToTexture>(paintMedium) = RenderToTexture {
-    width = (source.width/2).coerceAtLeast(1)
-    height = (source.height/2).coerceAtLeast(1)
+    width = (source.width / 2).coerceAtLeast(1)
+    height = (source.height / 2).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
     clearFirst = true
-    clearColor = vec(0,0,0,0)
+    clearColor = vec(0, 0, 0, 0)
     debugName = "paintMedium"
 }
 paintMedium.setDefaultSampler(anisotropyEnable = false)
@@ -28,4 +27,4 @@ paintMedium += "filter" to module
 renderer.renderList.preTargets["paintMedium"] = paintMedium
 
 // x/y stretch the aperture; z changes its rim softness; w is gain.
-mesh.aperture = { vec(1.0,1.0,1.0,1.0) }
+mesh.aperture = { vec(1.0, 1.0, 1.0, 1.0) }

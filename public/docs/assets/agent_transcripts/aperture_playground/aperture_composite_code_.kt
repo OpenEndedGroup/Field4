@@ -1,8 +1,7 @@
-import afield.graphics.vulkan.targets.RenderToTexture
-import afield.document.context.fromContextWithNameOrNull
 import org.lwjgl.vulkan.VK10.*
 
-// Screen composite. B and G in the paint box control this shared vector.
+// Screen composite: apertureControl.x is gain; y selects the display mode.
+// Edit and rerun controls.set below to update the vector read by the push supplier.
 val controls = fromContextWithNameOrNull<afield.math.linalg.Vec4>("apertureControl")!!
 val source = paintSource
 val medium = paintMedium
@@ -25,4 +24,4 @@ renderer.renderList += "paint-composite" to module
 println("paint composite ready")
 
 // y: 0 aperture, 1 sharp, 2 radius guide. Edit here and re-execute.
-controls.set(1.0f,0.0f,0.0f,0.0f)
+controls.set(1.0f, 0.0f, 0.0f, 0.0f)
