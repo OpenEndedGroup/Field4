@@ -87,7 +87,7 @@ Field API names and GLSL features scanned out of the sources above — the rever
 - `PushConstants` — 5c. some more templating
 - `QuantileWarpConfig` — 6b. debugging / mapping - Texture probe example
 - `registerLygiaIncludeRoot` — 5. lygia
-- `RenderToTexture` — 5. Bluring, 5. RTT, 5. draw blur, 5. draw rtt, 5. kernel, 6. RTT- draw rtt
+- `RenderToTexture` — 5. Bluring, 5. RTT, 5. draw blur, 5. draw rtt, 5. kernel, 6. RTT - sending, 6. RTT- draw rtt
 - `Resolver` — 5b. some templating, 5c. some more templating
 - `ShaderBmlSystem` — 9. bml traffic, 9b. bml probe
 - `ShaderDlaSystem` — 8. dla

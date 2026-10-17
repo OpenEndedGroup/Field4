@@ -460,6 +460,26 @@
     "ba6b1a9fc12f-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_10/README.md"
+    },
+    "02b566216ca7-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_11/README.md"
+    },
+    "02b566216ca7-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_11/README.md"
+    },
+    "25f85b04108e-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_11/README.md"
+    },
+    "25f85b04108e-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_11/README.md"
+    },
+    "25f85b04108e-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_11/README.md"
     }
   },
   "batches": [

@@ -24,7 +24,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Shader contracts and comment-safe formatting](../box_code_adoption_batch_10/README.md) | Nine more findings addressed; seven formatter regressions, five actual programs, three compiled shaders, four document refreshes and remote transcript compilation pass. |
 
-[Machine checkpoint](checkpoint.json): **111 of 405 findings addressed**, one implemented with
+| [Graphics dispatch, inheritance and streaming](../box_code_adoption_batch_11/README.md) | Five more findings addressed; actual GPU boundary readbacks, particle captures, native streamer decoding and buffer-adapter regression checks pass. |
+
+[Machine checkpoint](checkpoint.json): **116 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.

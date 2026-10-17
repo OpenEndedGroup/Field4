@@ -228,7 +228,12 @@ open class Structure(
         return true
     }
 
-    var proxying: FrameBufferGroup? = null
+    /** Legacy group binding, sharing the backing buffer used by mapping and nested structures. */
+    var proxying: FrameBufferGroup?
+        get() = rootStructure().proxyBuffer as? FrameBufferGroup
+        set(value) {
+            rootStructure().proxyBuffer = value
+        }
     private var proxyBuffer: HasBuffer? = null
 
     private fun rootStructure(): Structure = root?.rootStructure() ?: this
@@ -377,7 +382,6 @@ open class Structure(
      */
     fun proxyTo(p: HasBuffer): Structure {
         rootStructure().proxyBuffer = p
-        if (p is FrameBufferGroup) rootStructure().proxying = p
         return this
     }
 
