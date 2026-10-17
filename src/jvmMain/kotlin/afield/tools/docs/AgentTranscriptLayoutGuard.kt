@@ -353,7 +353,10 @@ object AgentTranscriptLayoutGuard {
         if (!edn.isFile) return emptyList()
         val text = edn.readText()
         val relative = "${dir.name}/metadata.edn"
-        val idRe = Regex("""\"id\"\s+\"([^\"]+)\"""")
+        // A box entry is `{"id" "…" "properties" {…}}`. Requiring the `"properties"` key keeps nested
+        // maps that also carry an `"id"` (a box's persisted `_controlGroupValues`, one per slider
+        // or checkbox) from being read as frameless boxes.
+        val idRe = Regex("""\"id\"\s+\"([^\"]+)\"\s+\"properties\"""")
         val frameRe = Regex("""\"frame\"\s+#afield/rect\s+\[([^\]]+)\]""")
         val ids = idRe.findAll(text).toList()
         val result = mutableListOf<Frame>()
