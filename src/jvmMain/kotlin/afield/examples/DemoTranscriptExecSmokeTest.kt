@@ -632,6 +632,9 @@ object DemoTranscriptExecSmokeTest {
         "path_tracer_instrument",
         "path_tracing_emitters",
         "path_tracing_medium",
+        // Clojure box parity: its Kotlin root is compiled; the three Clojure boxes are a guest
+        // language and skipped. ClojureFieldCoreTest and ClojureHostTest run the Clojure half.
+        "clojure_box_parity",
         "python_box_parity",
         "python_cells",
         // fieldcv: the Python cells need JEP plus the optional cv group, and a camera; the Kotlin
