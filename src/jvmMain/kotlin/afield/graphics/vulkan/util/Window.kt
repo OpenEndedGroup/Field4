@@ -1,3 +1,12 @@
+/**
+ * The GLFW window a Vulkan renderer draws into, with its input listeners and a framebuffer-to-PNG capture.
+ *
+ * [Window] creates a client-API-less GLFW window (decorated, or borderless when fullscreen),
+ * tracks its size and the [Renderer] attached to it, and routes key, character, cursor, mouse
+ * button, scroll and focus events to listeners. [Window.saveFramebufferToTempFile] writes the
+ * framebuffer to a PNG; [openWindowsSnapshot] lists the windows currently open.
+ */
+
 package afield.graphics.vulkan.util
 
 import afield.app.protocol.Rect

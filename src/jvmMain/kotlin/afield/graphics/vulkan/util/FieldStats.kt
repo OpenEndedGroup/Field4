@@ -1,3 +1,14 @@
+/**
+ * Computes streaming statistics of shader values on the GPU and reads the results back to box code.
+ *
+ * [ShaderFieldStats] owns a partial buffer and a result buffer (default bindings
+ * [FIELD_STATS_DEFAULT_PARTIAL_BINDING] and [FIELD_STATS_DEFAULT_RESULT_BINDING]) for a shader
+ * that includes `fieldStats`. Each channel reduces to a [FieldScalarStatsSnapshot], whose
+ * [FieldScalarStatsSnapshot.quantile] and [FieldScalarStatsSnapshot.cdf] read a fixed-size
+ * centroid sketch; [ShaderFieldStats.scalar] and [ShaderFieldStats.state] give per-channel and
+ * per-slot handles with `read()` and `latest()`.
+ */
+
 package afield.graphics.vulkan.util
 
 import afield.document.graph.Box
