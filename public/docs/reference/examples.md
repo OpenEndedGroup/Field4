@@ -1797,13 +1797,13 @@ Step two of the neural-particle pilot: that a buffer of particles integrated on 
 
 ### OpenDlssNrTeardownSmoke { #opendlssnrteardownsmoke-kt-opendlssnrteardownsmoke }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">OpenDlssNrTeardownSmoke</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/#L34)
+[<code class="highlight"><span class="k">object</span> <span class="nc">OpenDlssNrTeardownSmoke</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/#L41)
 
 The renderer goes away while an [`OpenDlssNrStudy`](graphics.md#opendlssnrstudy-kt-opendlssnrstudy) is still open on it, which is what quitting or disposing the graphics context does to a box that was never stopped. The study is closed by the renderer, before its device, and the box's own later close is harmless. Without the native library the study runs in source mode, so this needs a GPU but not NVIDIA.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/#L36) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrTeardownSmoke/#L43) |  |
 
 ## PlyLoaderTest.kt { #plyloadertest-kt }
 

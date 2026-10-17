@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="reconstruction_plumbing" index="1" -->
 
 ```edn [field-box id="reconstruction_plumbing" role="properties"]
-{"id" "reconstruction_plumbing" "index" 1 "name" "reconstruction plumbing" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "reconstruction plumbing" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "reconstruction_plumbing_code_.kt" "lines" 125 "characters" 4730 "sha256" "68faa9fe099773b93c92b8c3495b1072e47a41eb3b57c65ecb882c2363ac54d6"} {"name" "vertex" "language" "glsl" "path" "reconstruction_plumbing_vertex_.glsl" "lines" 74 "characters" 3104 "sha256" "f8a0170eee872ff2345d1a7b997aca7e64e59ec99b10417924f8c539d938fb15"} {"name" "fragment" "language" "glsl" "path" "reconstruction_plumbing_fragment_.glsl" "lines" 51 "characters" 2264 "sha256" "68b3587e130c556bd773908cf0e4efaefc4e3738b7fda72d8afc5007ecc2dbc4"}]}
+{"id" "reconstruction_plumbing" "index" 1 "name" "reconstruction plumbing" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "reconstruction plumbing" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "reconstruction_plumbing_code_.kt" "lines" 124 "characters" 4759 "sha256" "9dee1947da787d3d771efc2b5dd7ef48ec807eefdcdec12ec812d956c101c57b"} {"name" "vertex" "language" "glsl" "path" "reconstruction_plumbing_vertex_.glsl" "lines" 74 "characters" 3104 "sha256" "f8a0170eee872ff2345d1a7b997aca7e64e59ec99b10417924f8c539d938fb15"} {"name" "fragment" "language" "glsl" "path" "reconstruction_plumbing_fragment_.glsl" "lines" 51 "characters" 2264 "sha256" "68b3587e130c556bd773908cf0e4efaefc4e3738b7fda72d8afc5007ecc2dbc4"}]}
 ```
 
 ```kotlin [field-property box="reconstruction_plumbing" name="code" path="reconstruction_plumbing_code_.kt"]
@@ -103,11 +103,10 @@ val pass = object : Target {
         mesh.push["times"] = vec(time, previousTime, 0, 0)
         mesh.push["settings"] = vec(0, 1, 0, 0)
 
-        // Record producer, then consumer, on this same command buffer.
-        source.render(command, index)
-        if (!bypass)
-            neural?.evaluate(
-                command,
+        // Evaluation owns source rendering; bypass records just the source.
+        if (bypass || neural == null) source.render(command, index)
+        else neural.evaluate(
+                command, index, source,
                 ReconstructionInputs(source.imageViewArray[0], source.imageViewArray[1], source.imageViewArray[2]),
                 ReconstructionFrame(frameIndex, jitter, revision = revision),
             )
