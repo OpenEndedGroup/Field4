@@ -70,7 +70,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Typed studies and kit sources](../box_code_adoption_batch_33/README.md) | Three more findings addressed; saved/reopened sources, inherited handles, real kit migration/refusal and ten standalone docs states verified. |
 
-[Machine checkpoint](checkpoint.json): **263 of 405 findings addressed**, one implemented with
+| [Runnable charts, escaped tables and search ordering](../box_code_adoption_batch_34/README.md) | Four more findings addressed; fresh-box chart/search-root execution, real parser/refusals and unsolved search verified; 45 states mechanically formatted. |
+
+[Machine checkpoint](checkpoint.json): **267 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
