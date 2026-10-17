@@ -1,5 +1,12 @@
 package afield.graphics.scene.fabricated
 
+/** New chains append; replacements keep the input before their first existing pass. */
+internal fun <T> inputBeforeReplacement(
+    entries: List<Pair<String, T>>,
+    replacing: Set<String>,
+    initialInput: T
+): T = entries.takeWhile { (name, _) -> name !in replacing }.lastOrNull()?.second ?: initialInput
+
 /**
  * The ordered, name-keyed map both of this package's pass collections are built on.
  *

@@ -1,0 +1,41 @@
+{
+  "baseline": "aca07741a",
+  "sources": [
+    {
+      "path": "dev_docs/agents/demos/frame_history_reprojection/rp_renderer_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/frame_history_reprojection/rp_bundle_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/frame_history_reprojection/rp_chain_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/frame_history_reprojection/rp_modes_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 1,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/frame_history_reprojection/build.yaml",
+      "kotlinBodies": 4,
+      "collectionConversions": 1,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/frame_history_reprojection.yaml",
+      "kotlinBodies": 4,
+      "collectionConversions": 1,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

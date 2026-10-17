@@ -80,7 +80,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Visible Functions results and drawing helpers](../box_code_adoption_batch_38/README.md) | Three more findings addressed; identical sampled curves, real derived markers/path, 247 formatting states and 15 genuine docs figures verified. |
 
-[Machine checkpoint](checkpoint.json): **278 of 405 findings addressed**, one implemented with
+| [Rerunnable reprojection and stable motion](../box_code_adoption_batch_39/README.md) | Five more findings addressed; real native modes, assignment controls, 900 bounded poses and fresh saved-document reruns verified. |
+
+[Machine checkpoint](checkpoint.json): **283 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
