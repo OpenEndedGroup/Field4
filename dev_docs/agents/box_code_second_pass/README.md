@@ -62,7 +62,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Typed saved fluid sources](../box_code_adoption_batch_29/README.md) | Three more findings addressed; actual native advection attachment, Stop/rerun and parent replacement target ownership verified. |
 
-[Machine checkpoint](checkpoint.json): **248 of 405 findings addressed**, one implemented with
+| [SolidSL measurements and native ownership](../box_code_adoption_batch_30/README.md) | Five more findings addressed; actual native handles close on both exits, exact/fallback viewers and inverse fit captions verified. |
+
+[Machine checkpoint](checkpoint.json): **253 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.

@@ -1009,6 +1009,26 @@
     "5e4f699ab6f2-03": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_29/README.md"
+    },
+    "a387a211bbe3-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_30/README.md"
+    },
+    "a387a211bbe3-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_30/README.md"
+    },
+    "a387a211bbe3-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_30/README.md"
+    },
+    "a387a211bbe3-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_30/README.md"
+    },
+    "86c50b0f047a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_30/README.md"
     }
   },
   "batches": [
@@ -1040,7 +1060,8 @@
     "../box_code_adoption_batch_26/README.md",
     "../box_code_adoption_batch_27/README.md",
     "../box_code_adoption_batch_28/README.md",
-    "../box_code_adoption_batch_29/README.md"
+    "../box_code_adoption_batch_29/README.md",
+    "../box_code_adoption_batch_30/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups."
 }
