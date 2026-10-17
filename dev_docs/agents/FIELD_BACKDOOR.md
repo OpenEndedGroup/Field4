@@ -315,6 +315,17 @@ EOF
 The process reads stdin once and reuses it if multiple commands name
 `--file -`.
 
+A `--value` (and `set`'s literal value) is sent as written: `\n` stays a backslash and an `n`,
+which is what keeps `println(\"a\nb\")` working. For a short multi-line snippet on one line,
+add `--value-escapes`, which decodes `\n`, `\t`, `\r` and `\\` first (write `\\\\n` in a
+double-quoted command for a Kotlin string's own `\n`):
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
+  --command 'new-box --name Lines' \
+  --command 'run @last --value-escapes --value "val a = 2\nprintln(a * 21)"'
+```
+
 An empty `output`/`peer-output` packet with `kind=error` and `line=-1` is Field's
 wire representation for *clearing* an editor error. The backdoor tracks it as state
 removal: it is neither returned as ordinary output nor allowed to abort `wait-output`
