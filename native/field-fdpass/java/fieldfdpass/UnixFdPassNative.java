@@ -2,7 +2,7 @@ package fieldfdpass;
 
 // Deliberately outside the afield.* Kotlin multiplatform module and compiled as a standalone jar
 // (see native/field-fdpass/CMakeLists.txt), loaded at runtime via a fresh URLClassLoader from
-// afield.four.texture.UnixFdPass — never placed on Field4's normal jvmMain classpath.
+// afield.graphics.texture.UnixFdPass — never placed on Field4's normal jvmMain classpath.
 //
 // Why: a class declaring a JNI `native` method, if referenced (even just loaded, not called)
 // from any code path Field4's box/REPL execution touches, breaks that execution with a confusing

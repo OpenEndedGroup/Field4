@@ -2,9 +2,9 @@
 
 The user-facing layer palette and shortcuts are documented in `public/docs/funFeatures.md`. Runtime
 semantics are colocated with `setVisibleLayers`, `setActiveLayer`, and `isBoxVisible` in
-`src/jsMain/kotlin/afield/Main.kt`, the matching handlers in
-`src/jvmMain/kotlin/afield/Server.kt`, and the `Box.layers` / `Box.layerFrames` properties in
-`src/jvmMain/kotlin/afield/Boxes.kt`.
+`src/jsMain/kotlin/afield/app/client/Main.kt`, the matching handlers in
+`src/jvmMain/kotlin/afield/app/server/Server.kt`, and the `Box.layers` / `Box.layerFrames` properties in
+`src/jvmMain/kotlin/afield/document/graph/Boxes.kt`.
 
 There is currently no named layer case in `tools/run_ui_regressions.py`; that is a coverage gap.
 Until one is added, verify in a disposable document:

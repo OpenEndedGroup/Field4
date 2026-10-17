@@ -23,7 +23,7 @@ Two populations, and the second is the reason this exists:
 
 MEASURED 2026-09-25 (sixtieth firing), and it is why the split is worth drawing: **every
 one of the eight worst-scoring overviews in the tree is queued, not published**, and six
-of the eight are in `afield.solidsl` -- the package `solid_notation.md` is written about,
+of the eight are in `afield.lang.solidsl` -- the package `solid_notation.md` is written about,
 and the package whose page produced Marc's original 2026-09-13 complaint. `SolidField.kt`
 carried `Total, and never a refusal`; his quote that night was "### The reading is total;
 the *parameterisation* is where the refusals live". Same author, same week, same shape,

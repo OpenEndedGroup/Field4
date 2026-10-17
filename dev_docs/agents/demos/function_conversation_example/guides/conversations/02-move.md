@@ -28,7 +28,7 @@ Planning tool use
 Next tool: `EditFunctionStudy`
 <<progress>>
 Using EditFunctionStudy
-{"description":"Move selected e3 40 seconds later; preserve all internal timing, other events and absolute-time background. Supersede even spacing for e3 only.","expectedRevision":"r3-66fd67f6fe7c","expectedSourceHash":"66fd67f6fe7cd2f7ebe0547d6d89386fc1fa418b54c419ea3fd590536ce5de19","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitud...
+{"description":"Move selected e3 40 seconds later; preserve all internal timing, other events and absolute-time background. Supersede even spacing for e3 only.","expectedRevision":"r3-66fd67f6fe7c","expectedSourceHash":"66fd67f6fe7cd2f7ebe0547d6d89386fc1fa418b54c419ea3fd590536ce5de19","source":"import afield.math.functions.Functions\nimport afield.math.functions.StudyComposition\nimport afield.math.functions.StudyEvent\nimport afield.math.functions.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitud...
 <<progress>>
 EditFunctionStudy finished
 r4-f7f9ef4f2f47 Compiled, checked and activated images=0

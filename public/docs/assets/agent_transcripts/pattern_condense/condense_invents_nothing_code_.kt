@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 import kotlin.random.Random
 
 // 2 - Invent nothing.

@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="dmx-sacn-matrix" index="0" -->
 
 ```edn [field-box id="dmx-sacn-matrix" role="properties"]
-{"id" "dmx-sacn-matrix" "index" 0 "name" "4. sACN: an image on an RGBW matrix (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4. sACN: an image on an RGBW matrix (launch)" "_tombstone" false "frame" #afield/rect [1200.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dmx-sacn-matrix_code_.kt" "lines" 35 "characters" 1411 "sha256" "8bc844dcde7399110bf0110a680845aea51d13f8b9a0ec71887360f88f50565b"}]}
+{"id" "dmx-sacn-matrix" "index" 0 "name" "4. sACN: an image on an RGBW matrix (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4. sACN: an image on an RGBW matrix (launch)" "_tombstone" false "frame" #afield/rect [1200.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dmx-sacn-matrix_code_.kt" "lines" 35 "characters" 1414 "sha256" "20528880aa64a679daa52484bc498fd454107fc480c43f84ca8d098aada3439f"}]}
 ```
 
 ```kotlin [field-property box="dmx-sacn-matrix" name="code" path="dmx-sacn-matrix_code_.kt"]
-import afield.dmx.*
+import afield.io.dmx.*
 
 // sACN (E1.31) out and back in, in one box: an image shown on a 16 x 8 matrix of RGBW fixtures.
 // 128 RGBW fixtures x 4 slots fill universe 10 exactly; the matrix is wired serpentine, as most are.
@@ -57,11 +57,11 @@ loop {
 <!-- field-box id="dmx-artpoll" index="1" -->
 
 ```edn [field-box id="dmx-artpoll" role="properties"]
-{"id" "dmx-artpoll" "index" 1 "name" "3. ArtPoll: who is out there (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. ArtPoll: who is out there (run)" "_tombstone" false "frame" #afield/rect [580.0 520.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dmx-artpoll_code_.kt" "lines" 5 "characters" 252 "sha256" "5cf705a258567244b234d1ce80b1b7c80fdc5652d030d39eb229513f9b432f7e"}]}
+{"id" "dmx-artpoll" "index" 1 "name" "3. ArtPoll: who is out there (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. ArtPoll: who is out there (run)" "_tombstone" false "frame" #afield/rect [580.0 520.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dmx-artpoll_code_.kt" "lines" 5 "characters" 255 "sha256" "f3bd791f443b5a7663b2a88144e9710c188defb46d9ec2a5323583c7876023a1"}]}
 ```
 
 ```kotlin [field-property box="dmx-artpoll" name="code" path="dmx-artpoll_code_.kt"]
-import afield.dmx.*
+import afield.io.dmx.*
 
 // Art-Net discovery: send one ArtPoll and list every node that answers within a second.
 // With the receiver box running, Field itself answers. Try "255.255.255.255" on a real network.
@@ -73,11 +73,11 @@ artPoll("127.0.0.1").forEach { println(it) }
 <!-- field-box id="dmx-receiver" index="2" -->
 
 ```edn [field-box id="dmx-receiver" role="properties"]
-{"id" "dmx-receiver" "index" 2 "name" "1. Art-Net receiver: Field as a node (launch first)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Art-Net receiver: Field as a node (launch first)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dmx-receiver_code_.kt" "lines" 16 "characters" 502 "sha256" "e10d6519662e87240cab94f3c0d888b2d3cab5847caee90e4ce441328e18006f"}]}
+{"id" "dmx-receiver" "index" 2 "name" "1. Art-Net receiver: Field as a node (launch first)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Art-Net receiver: Field as a node (launch first)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dmx-receiver_code_.kt" "lines" 16 "characters" 505 "sha256" "d56f2ed8595b422b59bad16da9c00e015baf26a4d1dc7da06968a4e5817da639"}]}
 ```
 
 ```kotlin [field-property box="dmx-receiver" name="code" path="dmx-receiver_code_.kt"]
-import afield.dmx.*
+import afield.io.dmx.*
 
 // Field as an Art-Net node: listen on UDP 6454, merge what arrives (HTP), answer ArtPoll.
 // Launch this first, then launch the sender. Stopping this box closes the socket.
@@ -100,11 +100,11 @@ loop {
 <!-- field-box id="dmx-sender" index="3" -->
 
 ```edn [field-box id="dmx-sender" role="properties"]
-{"id" "dmx-sender" "index" 3 "name" "2. Pixel mapper: 200 px on a curve (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Pixel mapper: 200 px on a curve (launch)" "_tombstone" false "frame" #afield/rect [580.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dmx-sender_code_.kt" "lines" 24 "characters" 864 "sha256" "da10a6339b3259cb15f1224af3cea5c2335d8a5b86f1b3b1861ae224ce5ee4b4"}]}
+{"id" "dmx-sender" "index" 3 "name" "2. Pixel mapper: 200 px on a curve (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Pixel mapper: 200 px on a curve (launch)" "_tombstone" false "frame" #afield/rect [580.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dmx-sender_code_.kt" "lines" 24 "characters" 867 "sha256" "14c11139b6150fac4acf541a8af3d354d4247685979770797a2fd25587d94011"}]}
 ```
 
 ```kotlin [field-property box="dmx-sender" name="code" path="dmx-sender_code_.kt"]
-import afield.dmx.*
+import afield.io.dmx.*
 
 // 200 RGB pixels of LED tape stuck along a curve. 170 fit in universe 1 (510 slots);
 // the patch rolls the other 30 into universe 2 by itself.

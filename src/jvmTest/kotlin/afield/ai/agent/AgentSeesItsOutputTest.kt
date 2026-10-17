@@ -1,13 +1,13 @@
 package afield.ai.agent
 
-import afield.Box
-import afield.SessionInformation
-import afield.ai.core.CarriesToolImages
-import afield.ai.core.ScriptedLlmBridge
-import afield.ai.core.ToolExecutionContext
-import afield.ai.core.buildDynamicInstructions
-import afield.ai.core.InstructionMode
-import afield.ai.core.KOTLIN_SCRIPT
+import afield.document.graph.Box
+import afield.app.server.SessionInformation
+import afield.ai.tools.CarriesToolImages
+import afield.ai.models.ScriptedLlmBridge
+import afield.ai.tools.ToolExecutionContext
+import afield.ai.conversation.buildDynamicInstructions
+import afield.ai.conversation.InstructionMode
+import afield.runtime.languages.KOTLIN_SCRIPT
 import afield.ai.agent.InFieldAgentHarnessTest.Companion.picture
 import afield.ai.agent.InFieldAgentHarnessTest.Companion.visualTable
 import java.nio.file.Files
@@ -71,7 +71,7 @@ class AgentSeesItsOutputTest {
         assertTrue(images.single().caption.contains("a sun"))
         assertTrue(view.dominantColours.first().startsWith("#0b1a4a"), view.dominantColours.toString())
         // The picture is not in the JSON the model reads as text; its facts are.
-        val json = afield.ai.core.aiToolMapper.writeValueAsString(view)
+        val json = afield.ai.tools.aiToolMapper.writeValueAsString(view)
         assertFalse(json.contains("base64"))
         assertTrue(json.contains("\"imageAttached\":true"))
 
@@ -178,8 +178,8 @@ class AgentSeesItsOutputTest {
         root.inside = info
         val tools = FieldGraphTools(info, host)
         val uid = tools.newBox(NewBoxRequest("Answer", code = "println(1)")).uid
-        fun resolve(raw: String) = afield.ai.core.resolveBackdoorFileRef(info, docRef, raw, "code")
-        val canonical = afield.ai.core.FileRef(docRef, uid, "code")
+        fun resolve(raw: String) = afield.ai.tools.resolveBackdoorFileRef(info, docRef, raw, "code")
+        val canonical = afield.ai.models.FileRef(docRef, uid, "code")
         // Premise: the canonical spelling resolved before this change too.
         assertEquals(canonical, resolve("afield://$docRef/$uid/code"))
         // The guesses from the 2026-09-29/30 tool logs, every one of which used to fail.
@@ -314,7 +314,7 @@ class AgentSeesItsOutputTest {
         val file = generateSequence(java.io.File("").absoluteFile) { it.parentFile }
             .map { java.io.File(it, "dev_docs/ai/evidence/ai4_sees_its_output_2026-09-30.json") }.firstOrNull { it.isFile }
         assertNotNull(file, "evidence summary")
-        val runs = afield.ai.core.aiToolMapper.readTree(file).get("runs")
+        val runs = afield.ai.tools.aiToolMapper.readTree(file).get("runs")
         fun run(k: String) = runs.get(k)
         fun sum(k: String, field: String) = run(k).get("tasks").sumOf { it.get(field).asInt() }
         // Premise: every ten-task condition passed everything, so the comparison is of cost, not of success.

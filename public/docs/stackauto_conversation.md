@@ -18,6 +18,11 @@ That is the recorded document running in Field, two cycles of its window capture
 is the same kind of conversation as [Talking a shader into existence](stacksl_conversation.md), with
 the StackSL living inside your own graphics code instead of in a window of its own.
 
+??? aside "Agents: listing spelling"
+    Kotlin listings on this page use Field’s current `[…]` spelling for single-line
+    list constructors. Saved conversations, source revisions and downloadable documents
+    keep their recorded spelling; the listings were re-rendered, not re-run.
+
 ## Two slots in one box
 
 The box `polytope_source` builds the mesh in Kotlin and draws it with its own `vertex` and `fragment`
@@ -26,7 +31,7 @@ shaders. The vertex shader asks one slot where each face goes:
 <!-- stackauto-study-source:starter-vertex -->
 ```diffstatic {data-lang=glsl}
 // explode(vec4(face centre xyz, time)): .x pushes the face out along its normal,
-// .y shrinks it about its own centre (0 keeps it whole, 1 shrinks it to a point).
+// .y shrinks about the face centre: 0 keeps it whole; values >= 0.95 leave 5% size.
 {{ stack.auto.explode }}
 
 void main() {
@@ -393,7 +398,7 @@ max
 ## The tools
 
 A box whose code binds a slot has these in its AI4 chat, from
-[`afield.stacksl.study`](assets/stackauto_conversation/StackAutoStudyTools.kt):
+[`afield.lang.stacksl.study`](assets/stackauto_conversation/StackAutoStudyTools.kt):
 
 | Tool | What it does |
 | --- | --- |
@@ -451,8 +456,6 @@ polytope box's AI4 chat. Opening the chat does not call a model.
   only rebind the slots.
 - A sheet is sampled in real time: its frames are as far apart as the window was when they were read
   back, and each is labelled with when it was taken.
-- On macOS the shader is translated to Metal, and a function named like one of Metal's types (`decay`,
-  `array`) will not build there. A slot with such a name is refused before it is compiled.
 
 ??? aside "How this page was recorded and checked"
 

@@ -1,11 +1,11 @@
 package afield.examples.rectsl
 
-import afield.rectsl.*
+import afield.lang.rectsl.*
 
 import java.io.File
 import java.nio.file.Files
 import kotlin.io.path.writeText
-import afield.util.NodeTool
+import afield.media.image.util.NodeTool
 
 /*
 FIELD_TEST
@@ -105,7 +105,7 @@ object RectSLEditorExtensionWorkout {
         if (extension.id !== "rectsl") throw new Error("wrong extension id " + extension.id);
 
         const text = `
-        import afield.rectsl.*
+        import afield.lang.rectsl.*
         val program = ${"\"\"\""}
         #rectsl
         ->wall 4 4 meters

@@ -1,11 +1,10 @@
-import afield.four.targets.RenderToTexture
-import afield.four.modules.fromContextWithNameOrNull
+import afield.graphics.vulkan.targets.RenderToTexture
 import org.lwjgl.vulkan.VK10.*
 
 // Full-resolution RGBA16F source. RGBA hold light at radii 0, 4, 10, 24 px.
 // Alpha is the fourth light band, so every intermediate filter must use blend=false.
-// Re-run the downstream boxes after changing the dimensions.
-prop<RenderToTexture>(paintSource)
+// propDown: re-running this box with new dimensions re-runs the passes that read paintSource.
+propDown<RenderToTexture>(paintSource)
 thisBox.paintSource = RenderToTexture {
     width = window.width
     height = window.height
@@ -17,7 +16,7 @@ thisBox.paintSource = RenderToTexture {
 }
 thisBox.paintSource.setDefaultSampler(anisotropyEnable = false)
 renderer.renderList.preTargets["paint-source"] = thisBox.paintSource
-prop<afield.stdlib.Vec4>(apertureControl)
+prop<afield.math.linalg.Vec4>(apertureControl)
 thisBox.apertureControl = vec(1.5,0,0,0)
 println("paint source RTT ready: ${thisBox.paintSource.width}x${thisBox.paintSource.height}")
 

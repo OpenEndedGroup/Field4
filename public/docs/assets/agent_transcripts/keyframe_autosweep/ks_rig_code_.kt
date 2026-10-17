@@ -1,19 +1,19 @@
 // The half you would replace with your own sketch. Everything below the scene is the
 // contract a sweep needs: named lanes with a getter and a setter, and nothing else in the
 // document writing them.
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.stdlib.KeyframeCollection
-import afield.stdlib.KeyframeScope
-import afield.stdlib.keyFilesMatching
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.path
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
+import afield.animation.keyframes.KeyframeCollection
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.keyFilesMatching
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
+import afield.document.workspace.path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 
 prop<StandardRenderer.Bundle>(bundle)
-prop<afield.stdlib.KeyframeScope>(keys)
+prop<afield.animation.keyframes.KeyframeScope>(keys)
 
 val r: Renderer = fromContext()
 val dim = 512

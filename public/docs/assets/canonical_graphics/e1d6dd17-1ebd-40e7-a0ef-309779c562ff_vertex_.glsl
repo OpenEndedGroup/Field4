@@ -1,6 +1,6 @@
 #version 450
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 layout (location = 0) in vec3 pos;
 layout (location = 1) in vec2 tc;

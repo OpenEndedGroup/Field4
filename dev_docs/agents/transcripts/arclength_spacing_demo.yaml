@@ -1,30 +1,27 @@
 name: arclength_spacing_demo
 description: >
-  Loadable before/after demo of the arc-length flattening fix (2026-07-31). Two pure-compute boxes,
-  no Window and no Renderer — both draw into their own output with showPlaneGrid, which goes through
+  Arc-length spacing on cubics, shown against plain parameter spacing. Two pure-compute boxes, no
+  Window and no Renderer — both draw into their own output with showPlaneGrid, which goes through
   drawToSVG -> display and so needs no AWT and no GPU.
 
-  The defect: PathFlattener built the arc-length table for every FLinesAndJavaShapes.Cursor by
-  bisecting each cubic only while `flatnessFor` — the control points' distance from the CHORD —
-  exceeded the tolerance. A leaf of that recursion becomes a Mapping whose distance advances
-  linearly in t, so a leaf is only acceptable when the cubic is straight AND evenly parameterised,
-  and flatness cannot see the second condition. A cubic with its control points sitting exactly on
-  the chord scores exactly 0.0, no tolerance can beat that, the recursion stopped at ONE leaf, and
-  every arc-length operation on that curve silently degenerated to plain parameter interpolation.
-  On the 500-unit collinear cubic below, "the point at half the arc length" came out 161 units — a
-  third of the whole curve — from where it belonged.
+  Arc-length operations (byDashing, ticks, "the point at half the length") use a table built by
+  bisecting each cubic until it is both flat — its control points near the chord — and evenly
+  parameterised, so that distance advances linearly in t within each piece. The second test is the
+  parameter-skew term: a cubic whose control points sit on the chord but bunched toward one end is
+  perfectly flat and still badly skewed, and only skew makes the bisection split it. The history of
+  the criterion is in dev_docs/arc_length_spacing.md.
 
   Both boxes compute BOTH spacings live and side by side, so nothing here is a stored picture:
 
     1. arclength_dashes — the same two curves dashed twice. The left column marches t in equal
-       steps and joins each dash's ends with a straight chord, which is exactly what a one-leaf
-       mapping produced; the right column is today's byDashing. The captions carry the measured
-       shortest and longest dash. On the collinear curve the old spacing ranges 8..54 units for a
-       requested 22; the new one is 22.0 everywhere.
+       steps and joins each dash's ends with a straight chord, which is what a table with one piece
+       per curve would give; the right column is byDashing. The captions carry the measured
+       shortest and longest dash. On the collinear curve parameter spacing ranges 8..54 units for a
+       requested 22; arc-length spacing is 22.0 everywhere.
     2. arclength_ticks — tick marks at 24 equal steps of parameter (left) versus 24 equal steps of
-       arc length (right), plus, printed as the box's return value, the live proof of the mechanism:
-       for the collinear cubic the OLD flatness metric reads 0.000 while the new parameter-skew
-       term reads 161.250, which is why one metric stopped at a single leaf and the other does not.
+       arc length (right), plus, printed as the box's return value, the two terms of the criterion for the
+       collinear cubic: flatness reads 0.000 and parameter skew 161.250, which is why it is skew that
+       splits that curve.
 
   Replay this file into a fresh Field with the agent backdoor (field_run_transcript) and look at the
   two boxes: the right-hand panels are evenly spaced, the left-hand ones bunch up. Then edit a
@@ -38,11 +35,13 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 410.0, h: 100.0 }
       properties:
         code: |
-          // Two curves. `bent` is an ordinary S-shaped cubic — its control points are far off the
-          // chord, so the old flatness criterion always subdivided it and its spacing was already
-          // fine. `straight` has its control points exactly ON the chord but bunched at the far
-          // end: geometrically a straight line, parameterised so that t = 0.5 is 82% of the way
-          // along. Its flatness is exactly 0.0, so no tolerance could ever force a subdivision.
+          /*
+          Two curves. `bent` is an ordinary S-shaped cubic — its control points are far off the
+          chord, so the old flatness criterion always subdivided it and its spacing was already
+          fine. `straight` has its control points exactly ON the chord but bunched at the far
+          end: geometrically a straight line, parameterised so that t = 0.5 is 82% of the way
+          along. Its flatness is exactly 0.0, so no tolerance could ever force a subdivision.
+          */
           val bent = fline {
               moveTo(20, 40)
               cubicTo(90, 200, 330, -80, 400, 90)
@@ -56,9 +55,11 @@ operations:
           val dash = 22f
           val gap = 13f
 
-          // What a one-leaf mapping produced: t marched in equal steps, each dash a straight chord
-          // between its two ends. Reproduced explicitly rather than remembered, so the comparison
-          // is computed here and now on both sides.
+          /*
+          What a one-leaf mapping produced: t marched in equal steps, each dash a straight chord
+          between its two ends. Reproduced explicitly rather than remembered, so the comparison
+          is computed here and now on both sides.
+          */
           val byParameter = { line: FLine ->
               val c = line.cursor()
               val span = (line.nodes.size - 1).toFloat()
@@ -94,8 +95,7 @@ operations:
           // whatever length is left over at the end of the curve.
           val spread = { dashes: List<FLine> ->
               val lengths = dashes.dropLast(1).map(drawnLength).filter { it > 0.0 }
-              if (lengths.isEmpty()) "no dashes"
-              else "asked $dash, drew %.1f .. %.1f".format(lengths.min(), lengths.max())
+              if (lengths.isEmpty()) "no dashes" else "asked $dash, drew %.1f .. %.1f".format(lengths.min(), lengths.max())
           }
 
           val bentOld = paint(byParameter(bent))
@@ -143,9 +143,11 @@ operations:
                   val f = i.toFloat() / steps
                   if (byArcLength) c.setD(total * f) else c.setT(span * f)
                   val p = c.position()
-                  // normal2D() is the tangent rotated 90 degrees and is NOT normalised — its
-                  // magnitude is |B'(t)|, which is in the hundreds here — so normalise it or the
-                  // ticks come out as a fan hundreds of units long.
+                  /*
+                  normal2D() is the tangent rotated 90 degrees and is NOT normalised — its
+                  magnitude is |B'(t)|, which is in the hundreds here — so normalise it or the
+                  ticks come out as a fan hundreds of units long.
+                  */
                   val n = c.normal2D()
                   val len = kotlin.math.hypot(n?.x ?: 0f, n?.y ?: 1f).coerceAtLeast(1e-6f)
                   val nx = (n?.x ?: 0f) / len
@@ -157,10 +159,14 @@ operations:
                           .apply {
                               thickness = 2.0
                               color = if (byArcLength) vec(0.35, 0.95, 0.6, 1.0) else vec(1.0, 0.45, 0.35, 1.0)
-                          }
+                          },
                   )
               }
-              out + line.apply { thickness = 1.0; color = vec(0.55, 0.55, 0.65, 1.0) }
+              out +
+                  line.apply {
+                      thickness = 1.0
+                      color = vec(0.55, 0.55, 0.65, 1.0)
+                  }
           }
 
           // The gap between consecutive tick positions, as a max/median ratio. 1.0 is perfect.
@@ -168,11 +174,12 @@ operations:
               val c = line.cursor()
               val total = c.lengthD()
               val span = (line.nodes.size - 1).toFloat()
-              val pts = (0..steps).map { i ->
-                  val f = i.toFloat() / steps
-                  if (byArcLength) c.setD(total * f) else c.setT(span * f)
-                  c.position()
-              }
+              val pts =
+                  (0..steps).map { i ->
+                      val f = i.toFloat() / steps
+                      if (byArcLength) c.setD(total * f) else c.setT(span * f)
+                      c.position()
+                  }
               val gaps = (1..steps).map { pts[it].distance(pts[it - 1]).toDouble() }.sorted()
               gaps.last() / gaps[gaps.size / 2]
           }
@@ -187,16 +194,17 @@ operations:
               cellHeight = 220,
           )
 
-          // The mechanism, live. `flatness` is the OLD subdivision criterion: the distance of the
-          // control points from the chord. `skew` is the term added on 2026-07-31: the distance
-          // between the curve's mid-PARAMETER point B(0.5) and the chord's mid-POINT. Neither
-          // subsumes the other, which is why the criterion takes the larger of the two.
+          /*
+          Flatness measures control-point distance from the chord; skew measures the distance
+          between B(0.5) and the chord midpoint. Use the larger: either test can miss a curve
+          that the other detects.
+          */
           val report = { name: String, line: FLine ->
               val n = line.nodes[1] as FLine.CubicTo
               val a = line.nodes[0].to
               val b = n.to
               val ptSeg = { p: Vec3 ->
-                  field.graphics.FLinesAndJavaShapes.ptSegDistSq3(a.x, a.y, a.z, b.x, b.y, b.z, p.x, p.y, p.z)
+                  afield.geometry.path.java2d.FLinesAndJavaShapes.ptSegDistSq3(a.x, a.y, a.z, b.x, b.y, b.z, p.x, p.y, p.z)
               }
               val flatness = kotlin.math.sqrt(maxOf(ptSeg(n.c1), ptSeg(n.c2)))
               val mid = vec(
@@ -206,16 +214,17 @@ operations:
               )
               val chordMid = vec(0.5 * (a.x + b.x), 0.5 * (a.y + b.y), 0.5 * (a.z + b.z))
               val skew = mid.distance(chordMid)
-              val leaves = afield.graphics.PathFlattener(line, 0.01f).mappings.size
+              val leaves = afield.geometry.path.PathFlattener(line, 0.01f).mappings.size
               "%-22s flatness %8.3f   skew %8.3f   leaves %5d".format(name, flatness, skew, leaves)
           }
 
-          listOf(
-              report("S-curve", bent),
-              report("collinear", straight),
-              "",
-              "flatness alone stops at one leaf whenever it reads 0.000, and no tolerance can beat 0.",
-          ).joinToString("\n")
+          [
+                  report("S-curve", bent),
+                  report("collinear", straight),
+                  "",
+                  "flatness alone stops at one leaf whenever it reads 0.000, and no tolerance can beat 0.",
+              ]
+              .joinToString("\n")
   - execute:
       box: arclength_dashes
   - execute:

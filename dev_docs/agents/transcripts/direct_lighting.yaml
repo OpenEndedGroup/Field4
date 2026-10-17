@@ -12,20 +12,20 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.four.util.Options
-
+        import afield.graphics.vulkan.util.Options
+        
         prop<Window>(window)
         prop<Renderer>(renderer)
-
+        
         Options.enableVR = false
         Options.enableHDR = false
         Options.profiling = false
-
+        
         once.renderer {
             window = Window("Field")
             Renderer(window)
         }
-
+        
         println("agent graphics renderer ready")
         start(renderer::run)
 - launch:
@@ -34,20 +34,20 @@ operations:
     type: code
     strand: renderer
     code: |
-      import afield.four.util.Options
-
+      import afield.graphics.vulkan.util.Options
+      
       prop<Window>(window)
       prop<Renderer>(renderer)
-
+      
       Options.enableVR = false
       Options.enableHDR = false
       Options.profiling = false
-
+      
       once.renderer {
           window = Window("Field")
           Renderer(window)
       }
-
+      
       println("agent graphics renderer ready")
       start(renderer::run)
 - wait:
@@ -62,21 +62,21 @@ operations:
       h: 90.0
     properties:
       code: |
-        import afield.controlGroup
-        import afield.displayOpen
-        import afield.four.lighting.*
-        import afield.four.fabricated.rtxdiSettings
-        import afield.stdlib.linalg.Vector3f
+        import afield.ui.output.controlGroup
+        import afield.ui.output.displayOpen
+        import afield.graphics.render.lighting.*
+        import afield.graphics.scene.fabricated.rtxdiSettings
+        import afield.math.linalg.Vector3f
         import kotlin.math.*
-        import afield.four.modules.fromContextWithNameOrNull
-        import afield.four.util.keyCamera
-
+        import afield.document.context.fromContextWithNameOrNull
+        import afield.graphics.vulkan.util.keyCamera
+        
         prop<DirectLightingDemo>(lab)
         // Re-executing this box replaces the experiment at a frame boundary.
         fromContextWithNameOrNull<DirectLightingDemo>("lab")?.close()
         lab = DirectLightingDemo(renderer, 1280, 720)
         var cameraControl by keyCamera(renderer, lab.bundle.scene.camera)
-
+        
         val restir = lab.bundle.rtxdiSettings()
         val sdkReady = lab.visibility.available && runCatching {
             lab.lighting.enableRtxdi(RtxdiProgram.load(), restir).getOrThrow()

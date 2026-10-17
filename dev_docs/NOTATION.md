@@ -12,7 +12,7 @@ written from three places that run at three different speeds:
 
 | Layer | Runs | Direction | For |
 | --- | --- | --- | --- |
-| **Scene API** (`afield.notation`) | JVM, in box code | read + write | querying what was drawn, drawing from code, relating marks to boxes |
+| **Scene API** (`afield.ui.notation.notation`) | JVM, in box code | read + write | querying what was drawn, drawing from code, relating marks to boxes |
 | **Reactions** (`onNotation`, `onStroke`) | JVM, when the scene changes | drawing → code | treating a gesture, an arrow, a scribble as input |
 | **Live scripts** (`// {{ notation }}` Kotlin/JS) | in the page, every frame | both, locally | animation, hit-testing, custom tools — anything that must not round-trip |
 

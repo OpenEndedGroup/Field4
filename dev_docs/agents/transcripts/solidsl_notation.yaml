@@ -1,6 +1,6 @@
 name: solidsl_notation
 description: >
-  Two editable boxes for `afield.solidsl`, the notation in which a solid is a value rather than a
+  Two editable boxes for `afield.lang.solidsl`, the notation in which a solid is a value rather than a
   closure. The first builds a small part — a bored plate with a blended boss — and asks the
   expression about itself before anything is meshed: how many nodes it has, what the simplifier can
   remove from symbolic bounds alone, and which subtrees have no exact CSG form and why. Then it
@@ -18,13 +18,13 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 480.0, h: 100.0 }
       properties:
         code: |
-          import afield.solidsl.*
-          import afield.manifold.ManifoldLibrary
-          import afield.stdlib.MeshView
-          import afield.stdlib.genus
-          import afield.stdlib.isWatertight
-          import afield.stdlib.signedVolume
-
+          import afield.lang.solidsl.*
+          import afield.geometry.solid.manifold.ManifoldLibrary
+          import afield.geometry.mesh.MeshView
+          import afield.geometry.mesh.genus
+          import afield.geometry.mesh.isWatertight
+          import afield.geometry.mesh.signedVolume
+          
           // ---- the three parameters to change ----------------------------------------------
           val boreRadius = 0.30   // Push toward 0.55 and the four bores break into each other and
                                   // into the plate edge — watch `genus` change rather than the
@@ -34,7 +34,7 @@ operations:
                                   // and a union has an exact CSG form.
           val quality = 96        // Segments on the round primitives.
           // -----------------------------------------------------------------------------------
-
+          
           val plate = cuboid(3.2, 2.2, 0.42)
           val bores = unionOf(
               listOf(-1.1 to -0.7, 1.1 to -0.7, -1.1 to 0.7, 1.1 to 0.7).map { (x, y) ->
@@ -47,9 +47,9 @@ operations:
               k = blend,
           )
           val part = (plate - bores) + boss
-
+          
           run {
-
+          
           // ---- what the expression knows about itself, before anything is meshed ------------
           // None of this samples the shape. It is all structural, which is the thing a closure
           // cannot offer: `(Vec3) -> Float` can be asked for a value at a point and nothing else.
@@ -58,7 +58,7 @@ operations:
           println("bounds           ${part.bounds()}")
           println("simplifier       ${part.simplificationReport()}")
           println()
-
+          
           println("---- what has no exact CSG form, and why ----")
           val refusals = part.allRefusals()
           if (refusals.isEmpty()) {
@@ -71,9 +71,9 @@ operations:
               }
           }
           println()
-
+          
           val q = SolidQuality(segments = quality, edgeLengthFraction = 1.0 / 80.0)
-
+          
           if (!ManifoldLibrary.isAvailable) {
               // The fallback when Manifold is missing: the field lowering alone. Everything above
               // still ran, because none of it needed Manifold — the structural answers are free.
@@ -89,20 +89,20 @@ operations:
               )
               return@run
           }
-
+          
           // ---- the hybrid build: march the SMALLEST subtree that needs it -------------------
           val build = part.buildSolid(q)
           println("---- the hybrid build ----")
           println(build.report())
           println()
-
+          
           // Field's own topology, which shares no code with Manifold's.
           val mesh = build.solid.toTriMesh()
           println("watertight       ${mesh.isWatertight()}")
           println("volume           ${"%.6f".format(mesh.signedVolume())}")
           println("genus            ${mesh.genus()}")
           println("status           ${build.solid.status} — closed however the field behaved")
-
+          
           showMesh(
               build.solid.toTriMesh(normals = true),
               title = "exact where it can be, marched where it cannot",
@@ -111,7 +111,7 @@ operations:
               view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 720, height = 470),
           )
           build.close()
-
+          
           }
   - create:
       box: solidsl_shader
@@ -119,13 +119,13 @@ operations:
       frame: { x: 80.0, y: 700.0, w: 480.0, h: 100.0 }
       properties:
         code: |
-          import afield.solidsl.*
-
+          import afield.lang.solidsl.*
+          
           // ---- change the twist and re-run: the shader changes with it ----------------------
           val twist = 140.0       // Degrees over the column's height.
           val blend = 0.18
           // -----------------------------------------------------------------------------------
-
+          
           // This box needs no Manifold, no GPU and no window. Lowering to GLSL is a tree walk, so
           // it is the cheapest possible check that the emitter still tracks the language.
           val column = Profile.star(6, 0.85, 0.42)
@@ -133,9 +133,9 @@ operations:
               .at(0.0, 0.0, -1.2)
           val plate = cuboid(3.6, 3.6, 0.5).at(0.0, 0.0, -1.35)
           val scene = smoothUnion(column, plate, k = blend) - cylinder(4.0, 0.28, segments = 64)
-
+          
           val emitted = scene.toGlsl()
-
+          
           println("---- the expression, as a distance function ----")
           println("function         ${emitted.functionName}")
           println("statements       ${emitted.statementCount}")
@@ -147,7 +147,7 @@ operations:
               emitted.notes.forEach { println("  - $it") }
           }
           println()
-
+          
           // The emitted code is scalar single-assignment on purpose: no vec3 locals, no swizzles,
           // no loops. Any driver re-vectorises it in the first pass, and the small grammar is what
           // lets the test suite parse the shader BACK and run it against the Kotlin field.
@@ -155,7 +155,7 @@ operations:
           println(emitted.glsl.lines().take(20).joinToString("\n"))
           println("    ...")
           println()
-
+          
           // ---- the simplifier, which only exists because the shape is a value ---------------
           val wasteful = differenceOf(
               listOf(scene) + (0 until 40).map {
@@ -166,7 +166,7 @@ operations:
           println(wasteful.simplificationReport())
           println("Disjointness is decided from symbolic bounds. Nothing was sampled and nothing built.")
           println()
-
+          
           // The rule that is genuinely strange, and worth trying in the box above too: a blend of
           // radius zero IS a union, and a union has an exact CSG form where a smooth blend never
           // will. So simplifying can move an expression off the level-set fallback onto the exact

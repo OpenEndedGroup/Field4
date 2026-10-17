@@ -263,8 +263,8 @@ smoothing coefficient per frequency, so high resonators settle faster than low o
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/resonator_bank.png" wait="2.5" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.four.audio.resonate
-import afield.four.audio.resonatorAlphaHeuristics
+import afield.audio.engine.resonate
+import afield.audio.engine.resonatorAlphaHeuristics
 
 // --- same rising chirp (300 -> 3000 Hz) + two tones (700, 1800 Hz), as a Float signal ---
 val sampleRate = 8000f
@@ -385,17 +385,15 @@ other per-sample filter in the toolkit.
 - **Features** — `SpectralFeatures.centroid / spread / rolloff / flux / flatness / rms / energy`.
 - **Mel** — `Mel.hzToMel`, `Mel.melToHz`, and a triangular `Mel.filterBank(...)` for perceptual /
   log-frequency band energies.
-- **Resonator bank** (`afield.four.audio`) — `resonate(...)` / `ResonatorBank` for a fixed complex
+- **Resonator bank** (`afield.audio.engine`) — `resonate(...)` / `ResonatorBank` for a fixed complex
   filterbank at frequencies you choose, `trackingResonate(...)` / `TrackingResonatorBank` for
   resonators that lock onto and follow moving partials, with `resonatorAlphaHeuristics(...)` for
   per-frequency time constants.
 
 ## Open the examples as a document
 
-The five frequency-domain examples, from [One spectrum](#one-spectrum) on, are also a starting
-point: open [`spectral_examples`](agent_transcripts.md#spectral_examples) from the welcome screen
+Every example on this page is also a starting point: open [`spectral_examples`](agent_transcripts.md#spectral_examples) from the welcome screen
 and each box computes and draws its own figure with no other setup.
 
 Then edit the signal, or swap `WindowType.HANN` for `HAMMING` / `BLACKMAN`, and re-run a box to
-watch its figure change. The two time-domain examples at the top of the page are not in that
-document; paste either fence into a box to run it.
+watch its figure change.

@@ -1,6 +1,6 @@
 # Depth and CLIP: neural vision in a box
 
-`afield.onnx` binds two pretrained vision models. Depth Anything V2 Small reads one photograph and
+`afield.ai.inference.onnx` binds two pretrained vision models. Depth Anything V2 Small reads one photograph and
 predicts how far away everything in it is; CLIP embeds images and text into a shared 512-dimensional
 space, so a picture can be scored against a written prompt with no training and no label set.
 
@@ -12,7 +12,7 @@ webcam frame in one box.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/onnx/overview.png" wait="30" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.onnx.*
+import afield.ai.inference.onnx.*
 :::fold load a photograph that ships with Field, and pack it as the RGBA8 bytes both models read
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -98,7 +98,7 @@ Field) at two input sizes, and shows both depth maps beside the source.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/onnx/depth.png" wait="12" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.onnx.*
+import afield.ai.inference.onnx.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -106,7 +106,7 @@ import java.nio.ByteOrder
 val photo = imgFromFile("public/docs/assets/vision/fline-viewer.jpg", 3).scaleBy(0.45)
 
 // Both models want tightly packed RGBA8, and an Img is interleaved floats in 0..1 — so this is the
-// whole adapter. Nothing in afield.onnx knows about Img; it asks for bytes and a size.
+// whole adapter. Nothing in afield.ai.inference.onnx knows about Img; it asks for bytes and a size.
 fun toRgba8(img: Img): ByteBuffer {
     val out = ByteBuffer.allocateDirect(img.width * img.height * 4).order(ByteOrder.nativeOrder())
     for (p in 0 until img.pixelCount) {
@@ -244,7 +244,7 @@ projection head has to be reimplemented here.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/onnx/clip.png" wait="30" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.onnx.*
+import afield.ai.inference.onnx.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -396,7 +396,7 @@ So depth alone costs about 99 MB and CLIP costs about 608<!--derive: 254.1+351.7
 `OnnxModel.isPresent` is a cheap boolean if you want to branch on it. `Clip.TOKENIZER` is fetched
 the same way.
 
-`afield.onnx` needs nothing but network access on first run: the ONNX Runtime native library ships
+`afield.ai.inference.onnx` needs nothing but network access on first run: the ONNX Runtime native library ships
 inside the JNI jar.
 
 ## CoreML, fp16 and thread pinning
@@ -463,9 +463,10 @@ The opening snippet, the depth figure and the CLIP figure run as shown. The sess
 and the worker sketch are not run: the worker needs a Vulkan device and a webcam, so treat it as a
 starting point to finish rather than code to paste.
 
-??? aside "Snippet coverage"
+??? aside "Agents: snippet coverage"
     `StreamingTexture(...)` and `recordUpload(...)` are the only calls on this page that nothing in
     the repository exercises. [`dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md) has the block-by-block census.
+
 ## Reference
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
@@ -499,7 +500,7 @@ starting point to finish rather than code to paste.
 
 - [Imaging and computer vision](imaging_examples.md) — `Img`, and everything you would do to a depth
   map once you have one: colour maps, gradients, thresholds, contours.
-- [afield.four graphics](afield_four_graphics.md) — `StreamingTexture` and the Vulkan side of getting
+- [Field 4 graphics](afield_four_graphics.md) — `StreamingTexture` and the Vulkan side of getting
   an `R16_SFLOAT` map onto the GPU.
 - [`onnx_webcam_live`](agent_transcripts.md#onnx_webcam_live): a starting point running both models
   on one webcam frame in a single box.

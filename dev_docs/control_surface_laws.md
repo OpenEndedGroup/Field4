@@ -14,7 +14,7 @@ needs, and today's Faust merge put them in writing as "known gaps" — but they 
 
 ## The law
 
-`ControlLaw` (`src/jvmMain/kotlin/afield/ControlLaw.kt`), four cases:
+`ControlLaw` (`src/jvmMain/kotlin/afield/ui/controls/ControlLaw.kt`), four cases:
 
 | law | `valueAt(t)` | domain | for |
 |---|---|---|---|

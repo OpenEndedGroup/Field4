@@ -1,7 +1,7 @@
 // Everything below is inferred. Put the caret inside a lambda body and ask for
 // completion, or misspell a member, and the box answers from the JVM signature
 // the callback is going to satisfy.
-let Img = hostClass "afield.stdlib.Img"
+let Img = hostClass "afield.media.image.Img"
 
 // `x` and `y` are Ints because Function2's type arguments say so, so `x * 4 + y`
 // is integer arithmetic and `toFloat` is needed to leave it.

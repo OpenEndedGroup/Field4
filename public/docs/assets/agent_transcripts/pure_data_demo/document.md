@@ -17,12 +17,12 @@ From `code`
 This root stays Kotlin; its `mainLanguage` makes the three boxes under it Pd.
 
 ```edn [field-box id="pd_root" role="properties"]
-{"id" "pd_root" "index" 0 "name" "status — children of this box are Pure Data" "parents" ["root"] "children" ["pd_drone" "pd_roundtrip" "pd_typo"] "properties" {"children" #{#afield/box "pd_drone" #afield/box "pd_roundtrip" #afield/box "pd_typo"} "parents" #{#afield/box "root"} "name" "status — children of this box are Pure Data" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 80.0] "mainLanguage" "pd"} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_root_code_.kt" "lines" 2 "characters" 121 "sha256" "225cb8d070cdaaecc976f8980c972eae66cae6eb7985e2de238b00eb77b9ded9"}]}
+{"id" "pd_root" "index" 0 "name" "status — children of this box are Pure Data" "parents" ["root"] "children" ["pd_drone" "pd_roundtrip" "pd_typo"] "properties" {"children" #{#afield/box "pd_drone" #afield/box "pd_roundtrip" #afield/box "pd_typo"} "parents" #{#afield/box "root"} "name" "status — children of this box are Pure Data" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 80.0] "mainLanguage" "pd"} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_root_code_.kt" "lines" 2 "characters" 127 "sha256" "d20588955f5ee5de822f2f54c329da2f0f0776febbd749ed498826f615458de2"}]}
 ```
 
 ```kotlin [field-property box="pd_root" name="code" path="pd_root_code_.kt"]
 // This root stays Kotlin; its `mainLanguage` makes the three boxes under it Pd.
-println(afield.pd.PdLibrary.describe())
+println(afield.audio.pd.PdLibrary.describe())
 ```
 
 ## 2. typo
@@ -152,7 +152,7 @@ From `code`
 No audio device: render one second, measure it, read back what Pd recorded.
 
 ```edn [field-box id="pd_offline" role="properties"]
-{"id" "pd_offline" "index" 4 "name" "offline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_offline_code_.kt" "lines" 27 "characters" 1077 "sha256" "6927c2dd0731ca1d5c1f7c99074ee14698dd80229353f28052b858a44315eb69"}]}
+{"id" "pd_offline" "index" 4 "name" "offline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_offline_code_.kt" "lines" 27 "characters" 1089 "sha256" "8e2c9361d01f6fd2ddc0140e938d230469fdb4a250aa141abddc23d1c76b0351"}]}
 ```
 
 ```kotlin [field-property box="pd_offline" name="code" path="pd_offline_code_.kt"]
@@ -171,7 +171,7 @@ val text = """
 #X connect 1 0 3 0;
 #X connect 4 0 3 0;
 """
-val pd = afield.pd.PdInstance(sampleRate = 48000)
+val pd = afield.audio.pd.PdInstance(sampleRate = 48000)
 pd.openPatchText(text)
 // Not `val (left, _) = …`: a top-level `_` in a destructuring never completes in a box.
 val (left, right) = pd.renderOffline(1.0)
@@ -182,7 +182,7 @@ val ups = (1 until left.size).count { left[it - 1] < 0f && left[it] >= 0f }
 val peak = left.maxOf { abs(it) }
 println("$ups upward zero crossings in 1 s, peak ${"%.4f".format(peak)}, channels equal: ${left.contentEquals(right)}")
 showSignals("tabwrite~ scope" to scope.toList(), channel = "scope", title = "[table scope], recorded by Pd")
-lines(afield.pd.PdPatchGraph.parse(text).toFLines(), channel = "patch", w = 420.0, h = 200.0, fitToSize = true)
+lines(afield.audio.pd.PdPatchGraph.parse(text).toFLines(), channel = "patch", w = 420.0, h = 200.0, fitToSize = true)
 ```
 
 ## 6. drone

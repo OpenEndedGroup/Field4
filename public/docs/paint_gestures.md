@@ -18,7 +18,7 @@ it further.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_gestures/speed.png" alt="four wavy horizontal brushstrokes of dark brown on cream paper. The top three go left to right at increasing speed: the first is dark at its start and runs out into separate streaks of bristle well before its end; the second is solid for longer and fades more gradually; the third, the fastest, is the most even and stays dark nearly to its end, with a slightly beaded edge. The fourth goes right to left, dark and blunt at its right-hand start and fading to the left" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="speed" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 val canvas = PaintCanvas(900, aspect = 1.5, groundColor = rgb(0.97, 0.96, 0.92), sizeMm = 200.0, seed = 2)
 val umber = rgb(0.25, 0.15, 0.1)
@@ -72,7 +72,7 @@ only its tips touch, and it runs out sooner.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_gestures/gestures.png" alt="seven brown brushstrokes on cream paper in four rows. Top left, a short fast stroke that starts as a full, blunt mark and tapers off to a thin point where the brush left the paper. Top right, a slower stroke over the same distance that thins gradually and fades into streaks. Second row, a long horizontal stroke, dark in its left half, with a dark ring halfway along where it paused, and much paler after it. Third row, a long ribbon that is full width at its left end, narrows to a thin twisted line in the middle where the flat brush was edge-on, and opens out to full width again with visible bristle lines at its right end. Bottom row, two short strokes: the left, from an upright filbert, fades quickly into a light, ridged texture; the right, laid over, is solid and even to its end" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="gestures" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 fun line(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().moveTo(x0, y0).lineTo(x1, y1)
 val canvas = PaintCanvas(900, aspect = 1.5, groundColor = rgb(0.97, 0.96, 0.92), sizeMm = 200.0, seed = 3)
@@ -111,7 +111,7 @@ seconds of hair touched each pixel during the last stroke, and `contactMapPng()`
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_gestures/hairs.png" alt="a side view of a brush's hairs drawn as thin pale lines above a horizontal blue-grey line for the canvas. The hairs start together at the top left, where the ferrule holds them, and curve down and back to the left, their lower parts lying flat along the canvas line behind the brush, fanning out a little at their tips" wait="10" timeout="120" capture="box" open-outputs="true" padding="20" requires="paint" name="hairs" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 val canvas = PaintCanvas(600, aspect = 2.0, groundColor = rgb(0.97, 0.96, 0.92), sizeMm = 100.0, seed = 3)
 val brush = canvas.dynamicBrush(BrushKind.Round, 80.0, hairs = 24).load(rgb(0.25, 0.15, 0.1))
@@ -163,7 +163,7 @@ the fresh brush lays a full band.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_gestures/set.png" alt="two horizontal dark brown strokes from flat brushes on cream paper. The upper one, from a fresh brush, is an even band with fine bristle lines along it. The lower one, from the brush that was scrubbed, is only a thin line, dark at its start and fading towards its end" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="set" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 fun line(x0: Double, y0: Double, x1: Double, y1: Double) = FLine().moveTo(x0, y0).lineTo(x1, y1)
 val umber = rgb(0.25, 0.15, 0.1)
@@ -196,7 +196,7 @@ and nearly dry:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_gestures/water.png" alt="three horizontal brown-grey watercolour strokes on rough white paper. The top, from a full brush, is a dark, flooded wash with irregular blooms and pale gaps at its edges where the water pooled and dried. The middle, a quarter full, is a paler band mottled with darker patches in the hollows and small white flecks. The bottom, nearly dry, is broken into scattered small specks and short streaks along the stroke's direction, with white paper between them" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="water" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 val sheet = PaintCanvas.paper(700, aspect = 2.5, paper = Paper.Rough, sizeMm = 150.0, seed = 5)
 for ((i, fill) in [1.0, 0.25, 0.08].withIndex()) {
@@ -223,7 +223,7 @@ middles, so their outer edge is painted last, as the brush runs out.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_gestures/elegy.png" alt="a wide abstract painting in black on an off-white canvas: three tall vertical slabs of black alternating with two large black ovals squeezed between them, like an elegy. The black is dense but shows its brush tracks, curving round inside the ovals. Each slab ends at the bottom in a fringe of dry, streaked bristle marks where the brush lifted off, and each oval's last turn trails away to the right in loose grey streaks of hair" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="elegy" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 // two metres of canvas, primed off-white
 val canvas = PaintCanvas(1200, aspect = 2.1, groundColor = rgb(0.93, 0.9, 0.83), sizeMm = 2000.0, seed = 11)
@@ -263,7 +263,7 @@ no longer covers, and breaks into a cellular veil over the ground while the edge
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_gestures/elegy_thinned.png" alt="the same composition of three black slabs and two ovals on off-white, but the black has broken into a pale, cellular film: the slabs are mottled grey and cream with darker bands, and the ovals are rings of dark curving streaks with cream showing between them. Edges stay dark and crisp, and the slab ends still finish in dark streaked fringes" wait="20" timeout="600" capture="box" open-outputs="true" padding="20" requires="paint" name="elegy_thinned" embed=true}
 :::static
-import afield.paint.*
+import afield.graphics.paint.*
 
 // two metres of canvas, primed off-white
 val canvas = PaintCanvas(1200, aspect = 2.1, groundColor = rgb(0.93, 0.9, 0.83), sizeMm = 2000.0, seed = 11)

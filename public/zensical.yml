@@ -92,7 +92,7 @@ nav:
     # that explain what that past is; nothing about the split was deliberate.
     - Your History with Field: history_overview.md
     - Document History: document_history.md
-    - Inline History (History Lens): history_lens.md
+    - Code History: history_lens.md
     - The Semantic Index: semantic_index.md
     # One page in three parts, merged on 2026-10-01 from three: the panel's controls
     # (profiling_timeline.md, the filename that survives), Simulation time (was simulation_clock.md)
@@ -152,6 +152,8 @@ nav:
       # which already called itself that page's frequency-domain companion. The filename stays
       # spectral_examples.md so its inbound links and transcript keep working.
       - Signal Examples: spectral_examples.md
+      # After the signal toolkit: the matrix profile asks what in a signal repeats and what is unique.
+      - "Motifs & Discords: the Matrix Profile": matrix_profile.md
     # Two pages whose input is an unordered set of points rather than a series or a function, and
     # which were each a one-page group of their own ("Distances & Projections", "Clouds &
     # Deformations") until they were put together here. Not under "Time & Signals": the input to a
@@ -282,7 +284,7 @@ nav:
   # nobody reads as a disclaimer, which is the whole argument for retiring the staging area.
   - Graphics, GPU & Headsets:
     - Rendering & GPU:
-      - afield.four Graphics: afield_four_graphics.md
+      - Field 4 Graphics: afield_four_graphics.md
       # Straight after the graphics contract: a render target from that page, drawn into a box's
       # output area instead of a window. Electron-only, which the page says up front.
       - Graphics in an Output Area: four_in_output_areas.md
@@ -399,8 +401,13 @@ nav:
       - Audio AI: reference/audio-ai.md
       - Languages: reference/languages.md
       - Workspace: reference/workspace.md
+      - Execution: reference/execution.md
       - Machine learning: reference/machine-learning.md
+      - Networking: reference/networking.md
       - Video: reference/video.md
+      - Lighting: reference/lighting.md
+      - Examples: reference/examples.md
+      - Internal: reference/internal.md
     # Directly under Reference since its hand-written companion, linear_algebra.md, moved to the
     # head of "Drawing From Data": this page is generated (tools/linalg-generator), so it stays.
     - Generated Vector API: linear_algebra_api.md

@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory" "isClojureRoot" "isDatalogRoot" "isForthRoot" "isFieldMLRoot" "isMorphoRoot" "isNanoRoot" "nanoLaunchDelayMs" "nanoMemoryInit" "isKotlinJsRoot" "mainLanguage" "spreadsheet"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "isCsoundRoot" "isPdRoot" "isDatalogRoot" "isClojureRoot" "isFieldMLRoot" "isForthRoot" "isLuaRoot" "isMorphoRoot" "isNanoRoot" "nanoLaunchDelayMs" "nanoMemoryInit" "isKotlinJsRoot" "aiStudy" "mainLanguage" "spreadsheet"]}
 ```
 
 ## 1. root
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="root" index="0" -->
 
 ```edn [field-box id="root" role="properties"]
-{"id" "root" "index" 0 "name" "root" "parents" ["metaroot"] "children" ["870b3111-5179-4b74-8e71-06aec8dc8536" "aff1dff8-9c85-4fc1-9c9a-de7cae2ce37b"] "properties" {"children" #{#afield/box "870b3111-5179-4b74-8e71-06aec8dc8536" #afield/box "aff1dff8-9c85-4fc1-9c9a-de7cae2ce37b"} "parents" #{#afield/box "metaroot"} "name" "root" "nested" #{}} "blockProperties" []}
+{"id" "root" "index" 0 "name" "root" "parents" [] "children" ["870b3111-5179-4b74-8e71-06aec8dc8536" "aff1dff8-9c85-4fc1-9c9a-de7cae2ce37b"] "properties" {"children" #{#afield/box "870b3111-5179-4b74-8e71-06aec8dc8536" #afield/box "aff1dff8-9c85-4fc1-9c9a-de7cae2ce37b"} "parents" #{} "name" "root" "nested" #{}} "blockProperties" []}
 ```
 
 ## 2. A saved{} counter
@@ -30,24 +30,26 @@ Run it in a READ-ONLY session and it climbs within the run and then forgets: the
 write is refused, and `~/.afield/logs/save_reload.log` says so with a
 `write-refused-read-only` line naming this property.
 
-Before 2026-09-07 the read-only case wrote the file anyway — including on the very
-first *read*, because with no file yet `saved {}` computes the default and writes it.
+With no file yet, the first read computes the default. Read-only mode leaves
+that default unwritten too. The assignment below updates the live count.
 
 ```edn [field-box id="aff1dff8-9c85-4fc1-9c9a-de7cae2ce37b" role="properties"]
-{"id" "aff1dff8-9c85-4fc1-9c9a-de7cae2ce37b" "index" 1 "name" "A saved{} counter" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A saved{} counter" "frame" #afield/rect [60.0 190.0 430.0 90.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aff1dff8-9c85-4fc1-9c9a-de7cae2ce37b_code_.kt" "lines" 14 "characters" 727 "sha256" "79c83eed9cbdc86858b30a73a42228e135a8df5ccd5288055ef6e47b6936abb3"}]}
+{"id" "aff1dff8-9c85-4fc1-9c9a-de7cae2ce37b" "index" 1 "name" "A saved{} counter" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A saved{} counter" "frame" #afield/rect [60.0 240.0 530.0 140.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aff1dff8-9c85-4fc1-9c9a-de7cae2ce37b_code_.kt" "lines" 16 "characters" 686 "sha256" "9bdb7bcbc3aea132f4c27e9ef73e9bdd363aa66336e4bf019d3491b9d7bfc63c"}]}
 ```
 
 ```kotlin [field-property box="aff1dff8-9c85-4fc1-9c9a-de7cae2ce37b" name="code" path="aff1dff8-9c85-4fc1-9c9a-de7cae2ce37b_code_.kt"]
-// `saved {}` is per-box persistence: assign to it and it is on disk, read it next
-// session and it is still there. The file is <document dir>/<box id>/runs.json.
-//
-// Run this box a few times in a NORMAL session and the count climbs across restarts.
-// Run it in a READ-ONLY session and it climbs within the run and then forgets: the
-// write is refused, and `~/.afield/logs/save_reload.log` says so with a
-// `write-refused-read-only` line naming this property.
-//
-// Before 2026-09-07 the read-only case wrote the file anyway — including on the very
-// first *read*, because with no file yet `saved {}` computes the default and writes it.
+/*
+`saved {}` is per-box persistence: assign to it and it is on disk, read it next
+session and it is still there. The file is <document dir>/<box id>/runs.json.
+
+Run this box a few times in a NORMAL session and the count climbs across restarts.
+Run it in a READ-ONLY session and it climbs within the run and then forgets: the
+write is refused, and `~/.afield/logs/save_reload.log` says so with a
+`write-refused-read-only` line naming this property.
+
+With no file yet, the first read computes the default. Read-only mode leaves
+that default unwritten too. The assignment below updates the live count.
+*/
 var runs by saved { 0 }
 
 runs = runs + 1
@@ -114,4 +116,3 @@ Nothing in this document needs a GPU, a network, or any setup.
 // Nothing in this document needs a GPU, a network, or any setup.
 println("open me with --read-only and read the pill at the top of the window")
 ```
-

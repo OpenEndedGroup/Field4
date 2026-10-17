@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export LPIPS (AlexNet backbone) to ONNX for `afield.onnx.Lpips`, and verify it.
+"""Export LPIPS (AlexNet backbone) to ONNX for `afield.ai.inference.onnx.Lpips`, and verify it.
 
 LPIPS is Zhang et al., "The Unreasonable Effectiveness of Deep Features as a Perceptual Metric"
 (CVPR 2018), from https://github.com/richzhang/PerceptualSimilarity (BSD-2-Clause). The `lpips`
@@ -9,7 +9,7 @@ package on PyPI is that repository's release; it ships the learned linear-layer 
 
 No prebuilt AlexNet LPIPS ONNX file could be found from a source worth trusting, so Field builds
 its own, once per machine, with this script. Run it through uv with pinned packages; it writes
-into the ONNX model cache `afield.onnx.OnnxModel` reads (`~/.afield/onnx/models`, or
+into the ONNX model cache `afield.ai.inference.onnx.OnnxModel` reads (`~/.afield/onnx/models`, or
 `AFIELD_ONNX_CACHE_ROOT`):
 
     uv run --no-project --python 3.12 \\
@@ -19,10 +19,10 @@ into the ONNX model cache `afield.onnx.OnnxModel` reads (`~/.afield/onnx/models`
 
 With those versions the export is byte-reproducible: two runs on 2026-10-07 both produced
 9,901,042 bytes with sha256 6b99961b1b2b5a2c475d74fcaed30e26151833c06db4fdd48e81468b70ff35c3, and
-the ONNX graph agreed with PyTorch LPIPS to 1.2e-7 over the twelve test pairs. `afield.onnx.Lpips`
+the ONNX graph agreed with PyTorch LPIPS to 1.2e-7 over the twelve test pairs. `afield.ai.inference.onnx.Lpips`
 pins that digest.
 
-`afield.onnx.Lpips` runs exactly that command itself when the model is missing.
+`afield.ai.inference.onnx.Lpips` runs exactly that command itself when the model is missing.
 
 The graph takes two float32 NCHW images in 0..1 — `candidate` of batch N and `reference` of
 batch N or 1 — and returns `distance` of shape [N]: the LPIPS v0.1 distance, spatially averaged,
@@ -54,7 +54,7 @@ with its pools reading at ONNX Runtime's argmax. Both the raw and the pinned num
 On 2026-10-07 `stripes-vs-checker@32` had 48 such ties (float64 gap 0), a raw relative difference
 of 0.42 and a pinned one of 4.1e-7; across all fourteen pairs the decisive relative error was at
 most 5.4e-6. Two exports produced the same 9,915,616 bytes, sha256
-8f9569d2fabe9f68cc5fc0e6d071d88347832ff2733589e725d840df53986e7c, which `afield.onnx.Lpips` pins.
+8f9569d2fabe9f68cc5fc0e6d071d88347832ff2733589e725d840df53986e7c, which `afield.ai.inference.onnx.Lpips` pins.
 """
 
 from __future__ import annotations

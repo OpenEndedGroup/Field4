@@ -87,8 +87,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIELD_SH = REPO_ROOT / "field.sh"
 FIELD_PS1 = REPO_ROOT / "field.ps1"
-SERVER_KT = REPO_ROOT / "src" / "jvmMain" / "kotlin" / "afield" / "Server.kt"
-SAVING_KT = REPO_ROOT / "src" / "jvmMain" / "kotlin" / "afield" / "saving.kt"
+SERVER_KT = REPO_ROOT / "src" / "jvmMain" / "kotlin" / "afield" / "app" / "server" / "Server.kt"
+SAVING_KT = REPO_ROOT / "src" / "jvmMain" / "kotlin" / "afield" / "document" / "persistence" / "saving.kt"
 
 # The shells `field.sh` has to satisfy. `#!/bin/sh` names the first; AGENTS.md and README.md hand
 # the command to humans, whose interactive shell is bash or zsh on the machines this ships to; dash

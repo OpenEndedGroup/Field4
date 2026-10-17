@@ -17,12 +17,12 @@ operations:
           //
           // Read the table below against the program above it. Wire #0 is the `3.0` you can see; wires
           // #1..#16 are the four `vec4` operands of `palette`. Nothing here invented syntax for a parameter.
-
-          import afield.stacksl.cpu.StackSLCpu
-          import afield.stacksl.cpu.StackSLWires
-
+          
+          import afield.lang.stacksl.cpu.StackSLCpu
+          import afield.lang.stacksl.cpu.StackSLWires
+          
           run {
-
+          
               val program = """
                   uv 3.0 * fbm
                   0.5 0.5 0.5 1 vec4
@@ -31,11 +31,11 @@ operations:
                   0.0 0.33 0.67 1 vec4
                   palette
               """.trimIndent()
-
+          
               println("The StackSL program:")
               println(program.prependIndent("    "))
               println()
-
+          
               val wired = StackSLWires.lift(program)
               println("${wired.wires.size} wires, ${wired.literalWires.size} of them literal-backed:")
               println("    idx  token   at      initial  note")
@@ -50,7 +50,7 @@ operations:
                       )
                   )
               }
-
+          
               // The distinction that matters for writing a fitted value BACK into the source: a wire noted
               // "number" stands for a literal a human typed, so it has a token to replace. A wire noted
               // "optional default ..." is a default the emitter supplied for a word that was given no
@@ -61,14 +61,14 @@ operations:
               println(wired.glsl.lines().take(4).joinToString("\n").prependIndent("    "))
               println("    ... then ${wired.glsl.lines().size - 4} more lines, with no array anywhere:")
               println("    " + (if (wired.glsl.contains("${wired.prefix}_wires")) "FAILED" else "ok"))
-
+          
               // And it renders, on the CPU, with no GPU and no window.
               val started = System.nanoTime()
               val raster = StackSLCpu.renderStill(program, dim = 220)
               println()
               println("rendered ${raster.width}x${raster.height} in %.2fs".format((System.nanoTime() - started) / 1e9))
               display(raster.toPngBytes())
-
+          
               // Try it: change the `3.0`, or any of the twelve palette numbers, and run again. Then look at
               // the table — the token and the column move with your edit, because they are read off the
               // compiler's own record of where it found each number.
@@ -93,16 +93,16 @@ operations:
           // pixel depends on a parameter through coverage.
           //
           // The gradient flows through the emitted GLSL itself, interpreted node by node on
-          // `afield.stdlib`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
-
-          import afield.stacksl.cpu.CpuRaster
-          import afield.stacksl.cpu.StackSLCpu
-          import afield.stacksl.cpu.StackSLFit
-          import afield.util.PngEncoder
+          // `afield.math.autodiff`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
+          
+          import afield.lang.stacksl.cpu.CpuRaster
+          import afield.lang.stacksl.cpu.StackSLCpu
+          import afield.lang.stacksl.cpu.StackSLFit
+          import afield.media.image.util.PngEncoder
           import kotlin.math.abs
-
+          
           run {
-
+          
               val seedProgram = """
                   uv 3.0 * fbm
                   0.5 0.5 0.5 1 vec4
@@ -111,7 +111,7 @@ operations:
                   0.0 0.33 0.67 1 vec4
                   palette
               """.trimIndent()
-
+          
               val targetProgram = """
                   uv 3.0 * fbm
                   0.62 0.41 0.35 1 vec4
@@ -120,22 +120,22 @@ operations:
                   0.12 0.55 0.88 1 vec4
                   palette
               """.trimIndent()
-
+          
               val template = StackSLCpu.stillTemplate()
               val dim = 64
-
+          
               // 64 square is sized from the measured cost, not from optimism: this interpreter does about
               // 1.3e4 pixel-shader invocations per second per core and 4.4e4 across ten, so one forward
               // image pass is a tenth of a second and eighty gradient steps are a handful.
               val target = StackSLCpu.renderProgram(targetProgram, template, dim, dim)
-
+          
               val started = System.nanoTime()
               val result = StackSLFit.fit(
                   seedProgram, target, template,
                   dim = dim, iterations = 80, learningRate = 0.05
               )
               val seconds = (System.nanoTime() - started) / 1e9
-
+          
               println("${result.wired.wires.size} wires, ${result.fittedIndices.size} fitted")
               println(
                   "loss %.4e -> %.4e (%.0fx) in 80 Adam steps, ${dim}x$dim, %.1fs"
@@ -144,11 +144,11 @@ operations:
               println()
               println("what moved:")
               result.report().forEach { println("    $it") }
-
+          
               // The four alpha wires do not move, and that is correct: the `w` component of a `palette`
               // operand never reaches RGB, so its gradient is exactly zero. A fit cannot invent a reason to
               // change a parameter the image does not depend on.
-
+          
               val seed = result.loss.render(result.seedWires)
               val fitted = result.loss.render(result.fittedWires)
               val residual = CpuRaster(
@@ -157,7 +157,7 @@ operations:
                       if (i % 4 == 3) 1f else (abs(fitted.rgba[i] - target.rgba[i]) * 8f).coerceIn(0f, 1f)
                   }
               )
-
+          
               var sum = 0.0
               var count = 0
               for (i in 0 until dim * dim) for (ch in 0 until 3) {
@@ -167,7 +167,7 @@ operations:
               println()
               println("fitted vs target: %.5f mean absolute error per RGB sample over $count samples".format(sum / count))
               println("panels: target | seed | fitted | residual x8")
-
+          
               // Stitch the four panels into one strip at 3x, nearest-neighbour, with a gutter.
               val scale = 3
               val panel = dim * scale
@@ -182,11 +182,11 @@ operations:
                   }
               }
               display(PngEncoder.encode(strip, width, panel))
-
+          
               println()
               println("the fitted program, which is a program:")
               println(result.fittedProgram.prependIndent("    "))
-
+          
               // The residual is the panel that decides this, not the loss number. A sum-of-squares objective
               // rewards colour and luminance statistics, so a fit can drive the loss a long way down while
               // producing an image that does not resemble the target at all. Here the residual is nearly
@@ -210,14 +210,14 @@ operations:
           // The number to watch is the last one: the maximum per-channel difference between the re-emitted
           // program's render and the fitted wire vector's render. If the literal rewriting were wrong — a
           // column off by one, a token mismatched — it would not be small, it would be a different picture.
-
-          import afield.stacksl.cpu.StackSLCpu
-          import afield.stacksl.cpu.StackSLFit
-          import afield.util.PngEncoder
+          
+          import afield.lang.stacksl.cpu.StackSLCpu
+          import afield.lang.stacksl.cpu.StackSLFit
+          import afield.media.image.util.PngEncoder
           import kotlin.math.abs
-
+          
           run {
-
+          
               val seedProgram = """
                   uv 3.0 * fbm
                   0.5 0.5 0.5 1 vec4
@@ -226,7 +226,7 @@ operations:
                   0.0 0.33 0.67 1 vec4
                   palette
               """.trimIndent()
-
+          
               val targetProgram = """
                   uv 3.0 * fbm
                   0.62 0.41 0.35 1 vec4
@@ -235,38 +235,38 @@ operations:
                   0.12 0.55 0.88 1 vec4
                   palette
               """.trimIndent()
-
+          
               val template = StackSLCpu.stillTemplate()
-
+          
               // 48 square and 40 steps, because this box is about the round trip and not about the fit — the
               // box next door does the careful version at 64 with 80 steps.
               val dim = 48
               val target = StackSLCpu.renderProgram(targetProgram, template, dim, dim)
               val result = StackSLFit.fit(seedProgram, target, template, dim = dim, iterations = 40, learningRate = 0.06)
               println("fitted at ${dim}x$dim: loss %.4e -> %.4e".format(result.seedLoss, result.fittedLoss))
-
+          
               // Same wire vector, two routes to an image.
               val viaWires = result.loss.render(result.fittedWires)
               val viaSource = StackSLCpu.renderProgram(result.fittedProgram, template, dim, dim)
-
+          
               var worst = 0.0
               for (i in 0 until dim * dim) for (ch in 0 until 3) {
                   val d = abs(viaWires.rgba[i * 4 + ch] - viaSource.rgba[i * 4 + ch]).toDouble()
                   if (d > worst) worst = d
               }
-
+          
               println()
               println("paste this into a stackSL box and a GPU will draw it:")
               println(result.fittedProgram.prependIndent("    "))
               println()
-
+          
               // Render the re-emitted program big, through the ordinary compiler, with no wires involved.
               val started = System.nanoTime()
               val big = StackSLCpu.renderStill(result.fittedProgram, dim = 256)
               println("re-emitted program rendered at 256x256 in %.1fs".format((System.nanoTime() - started) / 1e9))
               println("round trip, max per-channel difference over ${dim * dim * 3} samples: %.3e".format(worst))
               display(big.toPngBytes())
-
+          
               // A side-by-side of the two routes at fit resolution, 4x, so the claim above is visible and
               // not only printed.
               val scale = 4
@@ -283,12 +283,11 @@ operations:
               }
               println("panels: rendered from the fitted WIRES | rendered from the re-emitted SOURCE")
               display(PngEncoder.encode(strip, width, panel))
-
-              // The one lossy step in the trip is the printing: `%.8f` is eight significant decimals and
-              // binary32 needs nine to round-trip in general, so a fitted value can land one ulp away in the
-              // source. Both outcomes have been seen and both are fine: `StackSLFitFigureTest`'s 64x64 fit
-              // round-trips at exactly 0, and this box at 48x48 measured 5.96e-08, which is one ulp of a
-              // Float near 1. That is why the guard allows 1e-4 rather than demanding zero.
+          
+              // Printing with %.8f keeps eight decimal places, not eight significant digits.
+              // Its round-trip error depends on magnitude: a fitted Float may change in source.
+              // This 48x48 example previously measured 5.96e-08; the 1e-4 guard checks the actual
+              // error above instead of requiring an exact zero.
           }
   - launch: { box: stacksl-wires, property: code }
   - launch: { box: stacksl-fit, property: code }

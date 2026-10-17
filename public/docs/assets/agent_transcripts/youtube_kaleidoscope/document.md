@@ -11,12 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="youtube_kaleidoscope_renderer" index="0" -->
 
 ```edn [field-box id="youtube_kaleidoscope_renderer" role="properties"]
-{"id" "youtube_kaleidoscope_renderer" "index" 0 "name" "kaleidoscope window + renderer" "parents" ["root"] "children" ["youtube_kaleidoscope_shards"] "properties" {"children" #{#afield/box "youtube_kaleidoscope_shards"} "parents" #{#afield/box "root"} "name" "kaleidoscope window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_renderer_code_.kt" "lines" 20 "characters" 413 "sha256" "ae8da01dbefffad6a227699abea07ce979c78353ee3638622e4b7d399ef603cd"}]}
+{"id" "youtube_kaleidoscope_renderer" "index" 0 "name" "kaleidoscope window + renderer" "parents" ["root"] "children" ["youtube_kaleidoscope_shards"] "properties" {"children" #{#afield/box "youtube_kaleidoscope_shards"} "parents" #{#afield/box "root"} "name" "kaleidoscope window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_renderer_code_.kt" "lines" 20 "characters" 437 "sha256" "d5ed34ad58159938ae0055263d9cec00e142d9fc75d72c105767f9d65d8ca4fe"}]}
 ```
 
 ```kotlin [field-property box="youtube_kaleidoscope_renderer" name="code" path="youtube_kaleidoscope_renderer_code_.kt"]
-import afield.Rect
-import afield.four.util.Options
+import afield.app.protocol.Rect
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -42,17 +42,17 @@ start(renderer::run)
 <!-- field-box id="youtube_kaleidoscope_shards" index="1" -->
 
 ```edn [field-box id="youtube_kaleidoscope_shards" role="properties"]
-{"id" "youtube_kaleidoscope_shards" "index" 1 "name" "YouTube — 224 Vulkan shards" "parents" ["root" "youtube_kaleidoscope_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_kaleidoscope_renderer"} "name" "YouTube — 224 Vulkan shards" "_tombstone" false "frame" #afield/rect [430.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_shards_code_.kt" "lines" 102 "characters" 3905 "sha256" "dbac69b1bb401758d5be07d83bee568631bffc837f55aee4ded8d2a152a65c94"}]}
+{"id" "youtube_kaleidoscope_shards" "index" 1 "name" "YouTube — 224 Vulkan shards" "parents" ["root" "youtube_kaleidoscope_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_kaleidoscope_renderer"} "name" "YouTube — 224 Vulkan shards" "_tombstone" false "frame" #afield/rect [430.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_shards_code_.kt" "lines" 102 "characters" 3919 "sha256" "953a39f9a3c6d2fec3b89b01972b9788a56664fe72d633d42a3ea70d9317a288"}]}
 ```
 
 ```kotlin [field-property box="youtube_kaleidoscope_shards" name="code" path="youtube_kaleidoscope_shards_code_.kt"]
-import afield.four.Target
-import afield.four.browser.FieldUiBrowserTexture
-import afield.four.browser.PuppetBrowserKaleidoscope
+import afield.graphics.vulkan.Target
+import afield.media.browser.FieldUiBrowserTexture
+import afield.media.browser.PuppetBrowserKaleidoscope
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
-prop<afield.four.browser.PuppetBrowser>(browserControl)
+prop<afield.media.browser.PuppetBrowser>(browserControl)
 
 val browser = FieldUiBrowserTexture(
     renderer = renderer,

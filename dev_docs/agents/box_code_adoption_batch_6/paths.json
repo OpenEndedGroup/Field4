@@ -1,0 +1,22 @@
+[
+  "dev_docs/agents/transcripts/arclength_spacing_demo.yaml",
+  "dev_docs/agents/transcripts/chart_clip.yaml",
+  "dev_docs/agents/transcripts/chart_primitive.yaml",
+  "dev_docs/agents/transcripts/control_surface_laws.yaml",
+  "dev_docs/agents/transcripts/docs_capture/photo_plaque.yaml",
+  "dev_docs/agents/transcripts/flow_grain.yaml",
+  "dev_docs/agents/transcripts/four_simulation_chain.yaml",
+  "dev_docs/agents/transcripts/gp_instruments.yaml",
+  "dev_docs/agents/transcripts/imaging_visualizers_demo.yaml",
+  "dev_docs/agents/transcripts/kratos_parameter_study.yaml",
+  "dev_docs/agents/transcripts/letter_interpolation.yaml",
+  "dev_docs/agents/transcripts/manifold_solids.yaml",
+  "dev_docs/agents/transcripts/marf_field_clocks.yaml",
+  "dev_docs/agents/transcripts/sound_render_path.yaml",
+  "dev_docs/agents/transcripts/stacksl_fit_demo.yaml",
+  "dev_docs/agents/transcripts/stacksl_gallery.yaml",
+  "dev_docs/agents/transcripts/vision_geometry_heightfield.yaml",
+  "dev_docs/agents/transcripts/viz_showheatmap.yaml",
+  "src/jvmMain/kotlin/afield/runtime/kotlin/boxImports.kt",
+  "src/jvmTest/kotlin/afield/runtime/kotlin/BoxImportsTest.kt"
+]

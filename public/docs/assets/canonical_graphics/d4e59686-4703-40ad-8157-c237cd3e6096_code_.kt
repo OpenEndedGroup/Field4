@@ -1,4 +1,4 @@
-import afield.four.examples.VirtualTexturingDemo
+import afield.examples.four.VirtualTexturingDemo
 
 val camera = Camera()
 camera.at = vec(-10,2,0)

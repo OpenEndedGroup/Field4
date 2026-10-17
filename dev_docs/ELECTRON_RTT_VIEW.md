@@ -1,6 +1,6 @@
 # Electron RTT view (spike)
 
-An afield.four `RenderToTexture` drawn straight into a box's output area in the Field Electron app,
+A Field 4 `RenderToTexture` drawn straight into a box's output area in the Field Electron app,
 with no readback and no encode. macOS (KosmicKrisp) and Linux native Wayland (verified on NVIDIA).
 
 ```kotlin
@@ -57,7 +57,7 @@ slots in flight and skipped the copy.
 - **Errors.** A failed `sendSharedTexture` never frees its slot.
 - **Electron only.** The HTTP mirror and external browsers show a "needs the Field Electron app"
   label instead. Docs captures go through Electron itself (`capture-profile="macos-electron"`,
-  `afield.docs.ElectronCaptureBrowser`). That needed two `electron/main.js` changes. With remote
+  `afield.tools.docs.ElectronCaptureBrowser`). That needed two `electron/main.js` changes. With remote
   debugging on, the window's own unused `webContents` loads `about:blank`, because otherwise it has
   no renderer and Playwright's `connectOverCDP` waits forever on it. The capture Electron also gets
   its own profile (`FIELD_ELECTRON_USER_DATA`), because the user's per-host zoom had made the capture
@@ -139,6 +139,6 @@ macOS 85–120 fps figure. Electron capture now resolves the Linux executable as
 Evidence and the retained real screenshot are linked from the public page.
 
 The reproducible probe is `tools/electron_dmabuf_probe/README.md` and
-`afield.four.stream.LinuxElectronImportProbe`. Electron's versioned import implementation accepts
+`afield.media.stream.LinuxElectronImportProbe`. Electron's versioned import implementation accepts
 the decimal modifier string and duplicates the plane FDs:
 [Electron 44.5.1 import source](https://github.com/electron/electron/blob/v44.5.1/shell/common/api/electron_api_shared_texture.cc).

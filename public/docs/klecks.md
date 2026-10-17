@@ -20,8 +20,8 @@ val png: ByteArray? = painting.pngBytes()
 val layeredPsd: ByteArray? = painting.psdBytes()
 ```
 
-Those values update after Submit. Unsaved brush strokes remain in the open Klecks panel and will
-be lost if the box is run again or the page closes. Each PSD and PNG is limited to about 24 MB;
+Those values update after Submit. Strokes not yet submitted are kept in the browser, so running the
+box again or reopening the page brings them back until you Submit. Each PSD and PNG is limited to about 24 MB;
 the panel reports a save error if either exceeds that limit. The image data is stored with the
 box as document sidecars, and Field's normal document save writes it to disk.
 

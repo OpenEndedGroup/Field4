@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["gpu_shader_learning"] "properties" {"children" #{#afield/box "gpu_shader_learning"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 17 "characters" 321 "sha256" "79dab431bdab018f5a13ebcb55d1eaf22c276161949fb54c70dbe0d69aa149fa"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["gpu_shader_learning"] "properties" {"children" #{#afield/box "gpu_shader_learning"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 17 "characters" 332 "sha256" "f6d44c51bceafe38b76c3155a6a00e129dbebbff1c01db27a846eea5bd4da524"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -39,14 +39,14 @@ start(renderer::run)
 <!-- field-box id="gpu_shader_learning" index="1" -->
 
 ```edn [field-box id="gpu_shader_learning" role="properties"]
-{"id" "gpu_shader_learning" "index" 1 "name" "gpu shader learning" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "gpu shader learning" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_shader_learning_code_.kt" "lines" 63 "characters" 2918 "sha256" "4c061ddc05366c00beba68d05fd5e0c43cce1474452175b1008945403f45ac3b"} {"name" "vertex" "language" "glsl" "path" "gpu_shader_learning_vertex_.glsl" "lines" 5 "characters" 119 "sha256" "f5f928935456f7b96462d2257491aa9db6746aea0bb37e84df323e8399a26dc9"} {"name" "fragment" "language" "glsl" "path" "gpu_shader_learning_fragment_.glsl" "lines" 16 "characters" 687 "sha256" "a0e56c4a78f4ac918a03ff4647fec40d26360c47d3b31a881190e1305d02d860"}]}
+{"id" "gpu_shader_learning" "index" 1 "name" "gpu shader learning" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "gpu shader learning" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_shader_learning_code_.kt" "lines" 63 "characters" 2955 "sha256" "e8cc54477181772e9b48df0354dcd9b6c0f8c7bc27d4142fcdc7f43bc37e12a4"} {"name" "vertex" "language" "glsl" "path" "gpu_shader_learning_vertex_.glsl" "lines" 5 "characters" 119 "sha256" "f5f928935456f7b96462d2257491aa9db6746aea0bb37e84df323e8399a26dc9"} {"name" "fragment" "language" "glsl" "path" "gpu_shader_learning_fragment_.glsl" "lines" 16 "characters" 687 "sha256" "a0e56c4a78f4ac918a03ff4647fec40d26360c47d3b31a881190e1305d02d860"}]}
 ```
 
 ```kotlin [field-property box="gpu_shader_learning" name="code" path="gpu_shader_learning_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.neural.*
-import afield.four.modules.fromContextWithNameOrNull
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.shader.learning.*
+import afield.document.context.fromContextWithNameOrNull
 import org.lwjgl.vulkan.VK13.*
 import java.io.File
 

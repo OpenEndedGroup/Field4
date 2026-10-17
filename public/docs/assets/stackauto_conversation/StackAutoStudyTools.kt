@@ -1,17 +1,17 @@
-package afield.stacksl.study
+package afield.lang.stacksl.study
 
-import afield.Box
-import afield.RunsAt
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.ToolExecutionContext
-import afield.plugins
-import afield.stdlib.StudySourceEdit
-import afield.stdlib.LiveStudy
-import afield.stdlib.StudyReport
-import afield.stdlib.StudyRequest
-import afield.stdlib.StudyToolClasses
-import afield.stdlib.registerStudyTools
-import afield.stdlib.numbers
+import afield.document.graph.Box
+import afield.runtime.lifecycle.RunsAt
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.ToolExecutionContext
+import afield.runtime.lifecycle.plugins
+import afield.math.functions.StudySourceEdit
+import afield.study.source.LiveStudy
+import afield.study.evidence.StudyReport
+import afield.study.source.StudyRequest
+import afield.study.source.StudyToolClasses
+import afield.study.source.registerStudyTools
+import afield.study.ui.numbers
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
@@ -42,7 +42,7 @@ data class PatchStackAutoSlot(override val slot: String = "", override val expec
     @JsonPropertyDescription("How many moments the sheet holds, 2..9, evenly spaced across over") val moments: Int = 4) : StackAutoSlotRequest, StudyRequest.Patch
 
 /** One number to turn: knob index from Inspect, and its new value. */
-data class StackAutoNumberEdit(override val knob: Int, override val value: Double) : afield.stdlib.NumberEdit
+data class StackAutoNumberEdit(override val knob: Int, override val value: Double) : afield.study.ui.NumberEdit
 
 @JsonClassDescription("Turn a slot's numbers live, through its uniform block — no recompile — and see the host shader with them. They stay turned but unkept unless keep is true, which writes them into the program as a new revision (then expectedRevision and expectedSourceHash are needed). Use it to try values; keep what the person likes.")
 data class SetStackAutoNumbers(override val slot: String = "", override val numbers: List<StackAutoNumberEdit>, val keep: Boolean = false,
@@ -81,7 +81,7 @@ data class AdoptStackAutoVariant(override val slot: String = "", override val ex
 interface StackAutoSlotRequest { val slot: String }
 
 /** The [StackAutoSlotGuide] tool's answer. */
-data class StackAutoGuideText(val text: String) : afield.ai.core.SummarisesForToolLog {
+data class StackAutoGuideText(val text: String) : afield.ai.tools.SummarisesForToolLog {
     override fun toolLogSummary(): String = "guide ${text.length} chars"
 }
 
@@ -117,7 +117,7 @@ private val onASlotBox: (ToolExecutionContext) -> Boolean = { ctx ->
     ctx.focus?.let { it.property == "code" && StackAutoStudies.slots(it.box).isNotEmpty() } == true
 }
 
-private val LIBRARY = "afield.stacksl.study.stackauto"
+private val LIBRARY = "afield.lang.stacksl.study.stackauto"
 
 private fun box(ctx: ToolExecutionContext): Box =
     ctx.focus?.box ?: throw IllegalStateException("stack.auto slot tools work on the box whose chat is open")

@@ -1,0 +1,553 @@
+{
+  "baseline": "72cdc6dcc",
+  "branch": "codex/box-code-helper-adoption-3",
+  "sources": {
+    "public/docs/interpolants_examples.md": {
+      "original": "dab2187ee315ef94f912904a8f2ef31249e6d7292e55b8896b978eb3a5ee890f",
+      "revised": "11da1efdb5d996324de9810113206cd2c4225c0fda3b3ad7abed38d41a31418f"
+    },
+    "public/docs/interaction_nets_examples.md": {
+      "original": "f343ac3301c9fbb91509f2688d5d2c5e45d6be2e6c6faa030c1d786e89c44d28",
+      "revised": "caf4bd1c323b3e1930bf2b60bda401c0ddd111fb8ce095884952974b2e3714b4"
+    },
+    "dev_docs/agents/transcripts/imaging_vector_kernels.yaml": {
+      "original": "479f9d2171d076ee5b88fb6c9798b2eb9485a0c05ac85bda2f7e291eadb91c59",
+      "revised": "dd72a704841dcfd59251634715a7331e4f28e981b7d2d14283d81c3dec4f103b"
+    },
+    "dev_docs/agents/transcripts/spatial_geometry_examples.yaml": {
+      "original": "f400a45e238df64b75a300579f1a0c3179a74a0a284b2c20e26caa65451464f1",
+      "revised": "22d4f67322db997f1cccd8d6dd7357a7270e8a4861c4d2a79b2164ac0d593e31"
+    }
+  },
+  "addressedFindings": [
+    "0abf058ae10d-01",
+    "0abf058ae10d-02",
+    "0abf058ae10d-03",
+    "0abf058ae10d-04",
+    "bb71d7b005b0-01",
+    "293b7bec8185-01",
+    "bc7141d7966c-01",
+    "bc7141d7966c-02"
+  ],
+  "nonCodeStructurePreserved": true,
+  "fragmentMarkersPreserved": true,
+  "runtimeVerdicts": [
+    {
+      "name": "duration_08",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "duration_08_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_imaging_perf_bilateral",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_imaging_perf_boxblur",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_imaging_perf_pyrdown",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_interaction_0",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_interaction_1",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_interaction_2",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_interaction_3",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_interaction_4",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_interpolants_0",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_interpolants_1",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_interpolants_2",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_interpolants_3",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_interpolants_4",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_interpolants_5",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_interpolants_6",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_interpolants_7",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_spatial_apollonius",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_spatial_apollonius_sweep",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_spatial_apollonius_sweep_launch",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_spatial_apollonius_sweep_stop",
+      "commands": 3,
+      "ok": true
+    },
+    {
+      "name": "original_spatial_clustering",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_spatial_contours",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_spatial_delaunay",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_spatial_iso_sweep",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_spatial_iso_sweep_launch",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "original_spatial_iso_sweep_stop",
+      "commands": 3,
+      "ok": true
+    },
+    {
+      "name": "original_spatial_marching",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "radius_24",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "radius_24_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_imaging_perf_bilateral",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_imaging_perf_bilateral_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_imaging_perf_boxblur",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_imaging_perf_boxblur_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_imaging_perf_pyrdown",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_imaging_perf_pyrdown_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interaction_0",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interaction_0_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interaction_1",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interaction_1_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interaction_2",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interaction_2_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interaction_3",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interaction_3_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interaction_4",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interaction_4_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_0",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_0_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_1",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_1_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_2",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_2_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_3",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_3_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_4",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_4_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_5",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_5_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_6",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_6_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_7",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_interpolants_7_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_apollonius",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_apollonius_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_apollonius_sweep",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_apollonius_sweep_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_apollonius_sweep_launch",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_apollonius_sweep_stop",
+      "commands": 3,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_clustering",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_clustering_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_contours",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_contours_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_delaunay",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_delaunay_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_iso_sweep",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_iso_sweep_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_iso_sweep_launch",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_iso_sweep_stop",
+      "commands": 3,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_marching",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "revised_spatial_marching_capture",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "sweep_rerun",
+      "commands": 2,
+      "ok": true
+    },
+    {
+      "name": "sweep_rerun_cleanup",
+      "commands": 5,
+      "ok": true
+    },
+    {
+      "name": "sweep_rerun_launch",
+      "commands": 2,
+      "ok": true
+    }
+  ],
+  "successfulBatches": 84,
+  "successfulCommands": 175,
+  "captures": {
+    "duration_08.png": "68363c10d98e40ee21100af243c2e6eb4095df414a3f69fd34df65526d80b675",
+    "radius_24.png": "0f83e4f134ca1d3fa46bfc05263fd37a1a5536230369b9da51c4832c7062e162",
+    "revised_imaging_perf_bilateral.png": "3ce3b82c3e40c0b06e31db1cfa0e8c8459efee52614949631b80fd4a3f383121",
+    "revised_imaging_perf_boxblur.png": "d74618937f88360a3ff3e594de1ca4c871dda490959bd5172e882f00881cf114",
+    "revised_imaging_perf_pyrdown.png": "72f4b8d45a0bd7848eb7112e786196cb07487e1d83095aab394809b9aa100dbf",
+    "revised_interaction_0.png": "d233e1e4275fdfe7e90e01599ad71bfa7540bab12acb4da874880a4aac8e42f3",
+    "revised_interaction_1.png": "a19177d5e88b57d73da440268f9e2a065ceb3bfdd23396fb617660678c61543f",
+    "revised_interaction_2.png": "9300043689f3bd2d628702d80fd777311ece72d5ec108f593bce6b6f5d59d91b",
+    "revised_interaction_3.png": "8d54d503dcae14e6f83933397be8655a45ff41ad17cfa20f07ab503cf485a61b",
+    "revised_interaction_4.png": "ab3727bd6f90f04ab70a613e57533ac2bc74c4ad0a1aa654d5cd05ca739b49c6",
+    "revised_interpolants_0.png": "5292136a1e9c64a0a6972d89bf5dd12e2837465d2abb64d685b9bc9677c66e57",
+    "revised_interpolants_1.png": "59de0174a637e55591cae984a4abd4060deb5a8270eb849cbc175124cffa527a",
+    "revised_interpolants_2.png": "e8b2fe02ea41e58b6dbcc2e1895731209cb97efd341ba19307e05d4e3ecfd10e",
+    "revised_interpolants_3.png": "ee5b8c3b1d3c6d1a28c9297d3155072affeb9718a0b85a8fd246baf50e11343f",
+    "revised_interpolants_4.png": "4825d7ca51800ac52d566f1c09bfa2d297a729691d8fd76bdb117e4933a3d0c4",
+    "revised_interpolants_5.png": "093a504e374cae60bdd42e007a6e8ee46529a4c09e12c842185041c0caab3f40",
+    "revised_interpolants_6.png": "7f941930808db5f17fef183f89e1750324f703340a536caf7915fab5c1abbe28",
+    "revised_interpolants_7.png": "1ea99cada5d2953449317be2c62df7d03fe615ead0d811d41f145932f3e45fb2",
+    "revised_spatial_apollonius.png": "f49b125e95f3dcf65f3ef5af9b3b77dff216b3365c10ac2644a0a124f38c97e7",
+    "revised_spatial_apollonius_sweep.png": "f435c068c501e395fa90092ccf45c63a0b4ef7bc0509122589490c4576cd25b8",
+    "revised_spatial_clustering.png": "d89d554f2a2e3356a73c56949edd69f84917147d1764c0570ac6e0a74bd61682",
+    "revised_spatial_contours.png": "1da1f2838380daf434e24a882ee29e0f1154a8e22066ab80678a74ff98e3ed28",
+    "revised_spatial_delaunay.png": "1dcdc3e6a1458837aba389beaba4e9791cca9cbde6201f7e43b521b9278a96a7",
+    "revised_spatial_iso_sweep.png": "9a6675072d4dfcf3ee9d6af36e11556ce9caf0ee6cb9463799e2e739e3d28b75",
+    "revised_spatial_marching.png": "01e953fe5028318fb80e0baf0c0c7c31224275e69b3cb5e2cafb7e58525f05e5"
+  },
+  "retainedDiagnostics": [
+    "original_interaction_0.failure.json",
+    "original_interpolants_4.failure.json",
+    "original_interpolants_5.failure.json",
+    "original_spatial_apollonius_sweep_stop.failure.json"
+  ],
+  "largeVerdictStrings": "Length and SHA-256; exact programs and genuine PNG files retained separately.",
+  "equivalence": {
+    "original": {
+      "interpolants_0": "5c7ace6727350ff7c7d6de8c56ca25b0bca8b2f983c6f4b4e5e743df58b5e40b",
+      "interpolants_1": "5ee1348a0a5813aa6396e4a0263140ac9237c31846cf4d7b18aff768d9c29858",
+      "interpolants_2": "189e40b78a7d1c88469451fa8cb5715aa9f2a2374266dac0e02cd7dc38fc2d54",
+      "interpolants_3": "d2149b194afa8ff0a8beb51e1701cadaa7def47cda7c492ce398f677642fca6d",
+      "interpolants_4": "fc438139235a5a08f142efb92935f51b0d9aed6cb63a0b4d27f8c295f15c3364",
+      "interpolants_5": "3905eb64e17c40a8885842a92ea386641777924e8335e2ce275388b4948c94cc",
+      "interpolants_6": "993676c667dcd05569fbcdf995566b4ed006fdfdb7a8b618d5d15c9588b24180",
+      "interpolants_7": "6aeba0c50714ae8b48dee55ec16d655932bb6f3be1d3fc8066b41ecb7effe3b0",
+      "interaction_0": "f7411c823eecbd49298c028c4b6c5e42d2a8a0f3258b3185809b485fedecbb25",
+      "interaction_1": "ae5273cfaa08d09b3178b61e4b22e277a58b8bd8f9b53aba75b0f2cd019daedf",
+      "interaction_2": "9a6fc23a7e3726c51c848e45597dc80d2f08c2fde7ed706a2b1a78c219e9a143",
+      "interaction_3": "fc3e6be04875943950b8e6106eead4d0767e2b9a0741fc6435e0e746a26f97ff",
+      "interaction_4": "85010070c4b11a5aa9d44cb0cb2e3d5c5877a04fc71adae40fed7754dc875e41",
+      "imaging_perf_pyrdown": "5b858f960917843310693521ee04bde90e971e3e744870dd6bcb00794d7f31a6",
+      "imaging_perf_boxblur": "9b687814ddc2f5550a43db2aec217344e0118c61d4492ac2f03cef2715855365",
+      "imaging_perf_bilateral": "c72f8f20a7ce3b40139a0ca3935c289299be2aaaa7dcc1c3bff50b2f2393b858",
+      "spatial_delaunay": "6a865035e818b6b7719ea3a4987f4b3ac8804ff3fe4dcd4461709a3ac9193500",
+      "spatial_apollonius": "523470bec07a0f8430609243494927e78fabcc731c820d8a3fd66621dfc5f564",
+      "spatial_contours": "c78f7ebfd5454ea88f121984375f5b960131a4b2b3a84d45500ede90db734809",
+      "spatial_marching": "86ae50895502b6f0dfad22fb43797190aea565fc649bb1ad96fddd91131ed708",
+      "spatial_clustering": "96069a43337bf8fa167241fe986b0d85a1a808b1c92d752bc0a52b8e3ce40948",
+      "spatial_apollonius_sweep": null,
+      "spatial_iso_sweep": null
+    },
+    "revised": {
+      "interpolants_0": "5c7ace6727350ff7c7d6de8c56ca25b0bca8b2f983c6f4b4e5e743df58b5e40b",
+      "interpolants_1": "5ee1348a0a5813aa6396e4a0263140ac9237c31846cf4d7b18aff768d9c29858",
+      "interpolants_2": "189e40b78a7d1c88469451fa8cb5715aa9f2a2374266dac0e02cd7dc38fc2d54",
+      "interpolants_3": "d2149b194afa8ff0a8beb51e1701cadaa7def47cda7c492ce398f677642fca6d",
+      "interpolants_4": "fc438139235a5a08f142efb92935f51b0d9aed6cb63a0b4d27f8c295f15c3364",
+      "interpolants_5": "3905eb64e17c40a8885842a92ea386641777924e8335e2ce275388b4948c94cc",
+      "interpolants_6": "993676c667dcd05569fbcdf995566b4ed006fdfdb7a8b618d5d15c9588b24180",
+      "interpolants_7": "6aeba0c50714ae8b48dee55ec16d655932bb6f3be1d3fc8066b41ecb7effe3b0",
+      "interaction_0": "f7411c823eecbd49298c028c4b6c5e42d2a8a0f3258b3185809b485fedecbb25",
+      "interaction_1": "ae5273cfaa08d09b3178b61e4b22e277a58b8bd8f9b53aba75b0f2cd019daedf",
+      "interaction_2": "9a6fc23a7e3726c51c848e45597dc80d2f08c2fde7ed706a2b1a78c219e9a143",
+      "interaction_3": "fc3e6be04875943950b8e6106eead4d0767e2b9a0741fc6435e0e746a26f97ff",
+      "interaction_4": "85010070c4b11a5aa9d44cb0cb2e3d5c5877a04fc71adae40fed7754dc875e41",
+      "imaging_perf_pyrdown": "5b858f960917843310693521ee04bde90e971e3e744870dd6bcb00794d7f31a6",
+      "imaging_perf_boxblur": "9b687814ddc2f5550a43db2aec217344e0118c61d4492ac2f03cef2715855365",
+      "imaging_perf_bilateral": "c72f8f20a7ce3b40139a0ca3935c289299be2aaaa7dcc1c3bff50b2f2393b858",
+      "spatial_delaunay": "6a865035e818b6b7719ea3a4987f4b3ac8804ff3fe4dcd4461709a3ac9193500",
+      "spatial_apollonius": "523470bec07a0f8430609243494927e78fabcc731c820d8a3fd66621dfc5f564",
+      "spatial_contours": "c78f7ebfd5454ea88f121984375f5b960131a4b2b3a84d45500ede90db734809",
+      "spatial_marching": "86ae50895502b6f0dfad22fb43797190aea565fc649bb1ad96fddd91131ed708",
+      "spatial_clustering": "96069a43337bf8fa167241fe986b0d85a1a808b1c92d752bc0a52b8e3ce40948",
+      "spatial_apollonius_sweep": null,
+      "spatial_iso_sweep": null
+    },
+    "identical": true
+  },
+  "limits": [
+    "Original interpolant states 4 and 5 needed the two recorded collection-overload compilation repairs.",
+    "Random correlation examples compare dimensions/finite results, not exact random samples.",
+    "Animated sweeps compare live output and lifecycle, not wall-clock-identical frames.",
+    "Timing figures are observations from this machine, not performance thresholds.",
+    "Screenshots are genuine separate headless-browser captures, not public docs replacements.",
+    "No GLSL properties occur in these four source groups."
+  ]
+}

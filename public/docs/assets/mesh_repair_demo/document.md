@@ -31,14 +31,14 @@ Repair it, cut it, and be told what could not be done.
 ```kotlin [field-property box="mesh-repair-fix" name="code" path="mesh-repair-fix_code_.kt"]
 // Repair it, cut it, and be told what could not be done.
 
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.manifold.toSolid
-import afield.stdlib.TriMesh
-import afield.stdlib.defectFLines
-import afield.stdlib.icosphereMesh
-import afield.stdlib.repairToSolid
-import afield.stdlib.signedVolume
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
+import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.defectFLines
+import afield.geometry.mesh.icosphereMesh
+import afield.geometry.mesh.repairToSolid
+import afield.geometry.mesh.signedVolume
 
 run {
 
@@ -117,12 +117,12 @@ box compiles at all, the Field running it has that code.
 // point — diagnose() and showMeshDiagnosis exist only where mesh_repair.kt does, so if this
 // box compiles at all, the Field running it has that code.
 
-import afield.manifold.ManifoldLibrary
-import afield.manifold.isValidSolid
-import afield.stdlib.TriMesh
-import afield.stdlib.diagnose
-import afield.stdlib.icosphereMesh
-import afield.stdlib.showMeshDiagnosis
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.isValidSolid
+import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.diagnose
+import afield.geometry.mesh.icosphereMesh
+import afield.geometry.mesh.showMeshDiagnosis
 
 run {
 

@@ -8,18 +8,18 @@ still a closed solid, which is what you need to make a part.
 
 Coincident faces, near-degenerate triangles and features below the floating-point noise floor are
 what make that hard. [Manifold](https://github.com/elalish/manifold) is a library that handles them,
-and `afield.manifold` makes it available in a box as `Solid` (3D) and `Section` (2D). Both carry
+and `afield.geometry.solid.manifold` makes it available in a box as `Solid` (3D) and `Section` (2D). Both carry
 KDoc, and the [manifold_solids](agent_transcripts.md) starting point has the examples below ready to
 run. This plate with four bores drilled through it is typical:
 
 ```diffstatic {data-lang=kotlin}
 val plate = Solid.cube(60.0, 40.0, 8.0, center = true)
-val bore  = Solid.cylinder(30.0, 3.0, segments = 64, center = true)
-val part  = plate - Solid.union((0..3).map { bore.translated(it * 15.0 - 22.5, 0.0, 0.0) })
+val bore = Solid.cylinder(30.0, 3.0, segments = 64, center = true)
+val part = plate - Solid.union((0..3).map { bore.translated(it * 15.0 - 22.5, 0.0, 0.0) })
 
-part.volume        // 18296.674 — measured, not estimated
-part.genus         // 4 — you can count the holes
-part.status        // NO_ERROR — and it says so when it is not
+part.volume // 18296.674 — measured, not estimated
+part.genus // 4 — you can count the holes
+part.status // NO_ERROR — and it says so when it is not
 part.triangleCount // 1052
 display(part.toTriMesh())
 ```
@@ -56,7 +56,7 @@ folding `+` (Manifold plans the whole batch instead of nesting *n−1* operation
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/booleans.png" alt="an output panel headed 'Four bored bosses and a rounded slot, from eleven Booleans', holding a flat-shaded grey triangle mesh of a rectangular plate seen in perspective. A large rectangular window is cut through the middle, a rounded boss stands at each of the four corners with a cylindrical bore through it, and a rounded slot runs along one side. The corner header reads 3312 tri; the footer reads 1648 verts, 3312 tris, extent 60.000 x 40.000 x 14.000, chi=-8 genus 5, watertight, volume 15420.9314, and beneath it 'genus 5 - 3312 triangles - every step guaranteed closed'" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold" name="booleans" embed=true}
 :::static
-import afield.manifold.*
+import afield.geometry.solid.manifold.*
 
 val part = Solid.scope {
     val plate = Solid.cube(60.0, 40.0, 8.0, center = true)
@@ -72,10 +72,11 @@ val part = Solid.scope {
 
     // A slot with properly rounded ends: that is a 2D offset, extruded. There is no correct way to
     // get those end caps by moving points around.
-    val slot = Section.square(26.0, 9.0, center = true)
-        .offset(4.5, JoinType.ROUND, circularSegments = 64)
-        .extruded(30.0)
-        .translated(0.0, 0.0, -15.0)
+    val slot =
+        Section.square(26.0, 9.0, center = true)
+            .offset(4.5, JoinType.ROUND, circularSegments = 64)
+            .extruded(30.0)
+            .translated(0.0, 0.0, -15.0)
 
     Solid.union([plate] + bosses) - Solid.union(bores + slot)
 }
@@ -89,20 +90,28 @@ println("genus   ${part.genus}   — four bores and the slot")
 println("status  ${part.status}")
 println()
 println("Field's own mesh family, which shares no code with Manifold, on the same surface:")
-println("  watertight ${mesh.isWatertight()},  genus ${mesh.genus()},  " +
-    "volume ${"%.3f".format(mesh.signedVolume())}")
+println(
+    "  watertight ${mesh.isWatertight()},  genus ${mesh.genus()},  " + "volume ${"%.3f".format(mesh.signedVolume())}",
+)
 
 // A clearance check. This is the number a drawing would call out, and `minGap` is how you get it.
 val nearestBore = Solid.cylinder(30.0, 3.0, segments = 64, center = true).translated(-20.0, -12.0, 0.0)
-val slotSolid = Section.square(26.0, 9.0, center = true)
-    .offset(4.5, JoinType.ROUND, circularSegments = 64).extruded(30.0).translated(0.0, 0.0, -15.0)
+val slotSolid =
+    Section.square(26.0, 9.0, center = true)
+        .offset(4.5, JoinType.ROUND, circularSegments = 64)
+        .extruded(30.0)
+        .translated(0.0, 0.0, -15.0)
 println()
-println("wall between the slot and the nearest bore: " +
-    "${"%.3f".format(slotSolid.minGap(nearestBore, searchLength = 30.0))} mm")
+println(
+    "wall between the slot and the nearest bore: " +
+        "${"%.3f".format(slotSolid.minGap(nearestBore, searchLength = 30.0))} mm",
+)
 
-// The plain mesh, not the shaded one: showMesh prints its own topology footer, and a crease-split
-// mesh would make that footer read "open (42 boundary loops)" directly under a caption claiming the
-// solid is closed. Both statements would be true of different meshes, which is worse than either.
+/*
+The plain mesh, not the shaded one: showMesh prints its own topology footer, and a crease-split
+mesh would make that footer read "open (42 boundary loops)" directly under a caption claiming the
+solid is closed. Both statements would be true of different meshes, which is worse than either.
+*/
 showMesh(
     mesh,
     title = "Four bored bosses and a rounded slot, from eleven Booleans",
@@ -145,7 +154,7 @@ mesh: 8 vertices, 10 triangles, chi=1, 1 component(s)
      fix: TriMesh.fillHoles() — flat holes fill cleanly; a non-planar loop gets a flat cap over a wavy rim.
 ```
 
-Two calls, both in `afield.stdlib`, both documented at length under
+Two calls, both in `afield.geometry.mesh`, both documented at length under
 [geometry from disk](geometry_from_disk.md):
 
 <div class="field-data-table" markdown>
@@ -169,11 +178,9 @@ holes, so it rescues far fewer broken meshes than `repairToSolid()`. A repaired 
 solid, but not always the shape you started with; [geometry from disk](geometry_from_disk.md) shows
 the difference.
 
-**Manifold accepts an inside-out mesh.** A closed, consistently-but-inwardly wound surface is a
-legal manifold that reports a *negative* volume — so `status` is `NO_ERROR`, and the next boolean
-computes the complement of what you meant. `isValidSolid()` cannot catch that; `diagnose()` reports
-it as `INVERTED_ORIENTATION`, and `repairToSolid()`'s second winding pass fixes it. Manifold likewise
-accepts zero-area triangles, pinch vertices, and disjoint components — whose volumes it sums.
+`toSolid()` also refuses an inside-out mesh, one closed and consistently wound but inward, which
+Manifold itself would accept with a negative volume; `fixWinding()` flips it. Zero-area triangles,
+pinch vertices and disjoint components pass, and the volumes of disjoint pieces add up.
 
 `NON_FINITE_VERTEX` is a NaN in the positions, usually a degenerate normal upstream.
 `repairToSolid()` refuses that one outright rather than repairing around it — dropping the affected
@@ -195,14 +202,15 @@ stroke that is a *shape* rather than a rendering hint.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/offsets.png" alt="six cards in two rows of three. Each of the first four draws the same white source outline - a rectangle with a notch bitten out of its right edge and a ring near its left end - with a blue curve offset 2.5 outside it, and differs only in how that blue curve turns the outside corners: 'offset +2.5 with SQUARE', area 1354.0098 and 78 vertices; 'offset +2.5 with ROUND', area 1352.3844 and 264 vertices; 'offset +2.5 with MITER', area 1360.4438 and 72 vertices; 'offset +2.5 with BEVEL', area 1341.6938 and 78 vertices. The fifth, 'a 3mm wall, following every corner', fills the band between the outline and outline.offset(-3.0) in solid orange and reads 494.1382 mm-squared in 3 contours. The sixth, 'an opening - offset(-2.5) then offset(+2.5)', is captioned 'the corners do not come back sharp' and picks out in green the arcs where four corners and the notch have been rounded off by the round trip" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold" name="offsets" embed=true}
 :::static
-import afield.manifold.*
+import afield.geometry.solid.manifold.*
 
 // A plate with a hole and a notch — concave and convex corners, so the join types have somewhere
 // to show themselves.
 val outline = Solid.scope {
-    (Section.square(40.0, 26.0, center = true)
-        - Section.circle(5.0, segments = 64).translated(-11.0, 0.0)
-        - Section.square(10.0, 8.0, center = true).translated(20.0, 0.0)).copy()
+    (Section.square(40.0, 26.0, center = true) -
+            Section.circle(5.0, segments = 64).translated(-11.0, 0.0) -
+            Section.square(10.0, 8.0, center = true).translated(20.0, 0.0))
+        .copy()
 }
 
 // Each join type on the same shape, and the areas they come out at.
@@ -212,47 +220,61 @@ val joins = JoinType.entries.map { it to outline.offset(2.5, it, circularSegment
 val wall = outline - outline.offset(-3.0, JoinType.ROUND, circularSegments = 128)
 
 // And an opening on the real outline, so the corner rounding is visible rather than only measured.
-val opened2 = outline.offset(-2.5, JoinType.ROUND, circularSegments = 128)
-    .offset(2.5, JoinType.ROUND, circularSegments = 128)
+val opened2 =
+    outline.offset(-2.5, JoinType.ROUND, circularSegments = 128).offset(2.5, JoinType.ROUND, circularSegments = 128)
 :::fold the numbers, then draw them
 println("outline area ${"%.4f".format(outline.area)}, ${outline.contourCount} contours")
 joins.forEach { (join, grown) ->
-    println("  offset +2.5 ${join.name.padEnd(6)} -> area ${"%.4f".format(grown.area)}, " +
-        "${grown.vertexCount} verts")
+    println(
+        "  offset +2.5 ${join.name.padEnd(6)} -> area ${"%.4f".format(grown.area)}, " + "${grown.vertexCount} verts",
+    )
 }
 println()
 println("a 3mm wall is ${"%.4f".format(wall.area)} mm², in ${wall.contourCount} contours")
 
-// A closing (dilate then erode) is EXACTLY the identity on a convex region — the two offsets are
-// true inverses where nothing was rounded away. An opening (erode then dilate) is not, and the
-// difference is precisely the corners the erosion cut off.
+/*
+A closing (dilate then erode) is EXACTLY the identity on a convex region — the two offsets are
+true inverses where nothing was rounded away. An opening (erode then dilate) is not, and the
+difference is precisely the corners the erosion cut off.
+*/
 val square = Section.square(2.0, 2.0, center = true)
-val closed = square.offset(0.5, JoinType.ROUND, circularSegments = 512)
-    .offset(-0.5, JoinType.ROUND, circularSegments = 512)
-val opened = square.offset(-0.5, JoinType.ROUND, circularSegments = 512)
-    .offset(0.5, JoinType.ROUND, circularSegments = 512)
+val closed =
+    square.offset(0.5, JoinType.ROUND, circularSegments = 512).offset(-0.5, JoinType.ROUND, circularSegments = 512)
+val opened =
+    square.offset(-0.5, JoinType.ROUND, circularSegments = 512).offset(0.5, JoinType.ROUND, circularSegments = 512)
 println()
 println("closing a 2x2 square: ${"%.6f".format(closed.area)} (the identity, 4.0)")
-println("opening it:           ${"%.6f".format(opened.area)} (4 - (4-pi)/4 = " +
-    "${"%.6f".format(4.0 - (4.0 - Math.PI) * 0.25)})")
+println(
+    "opening it:           ${"%.6f".format(opened.area)} (4 - (4-pi)/4 = " +
+        "${"%.6f".format(4.0 - (4.0 - Math.PI) * 0.25)})",
+)
 
-fun white() = outline.toFLines().onEach { it.color = vec(1.0, 1.0, 1.0, 0.95); it.thickness = 2.2 }
+fun white() = outline.toFLines().onEach {
+    it.color = vec(1.0, 1.0, 1.0, 0.95)
+    it.thickness = 2.2
+}
 
 showPlaneGrid(
-    *joins.map { (join, grown) ->
-        "offset +2.5 with ${join.name}\narea ${"%.4f".format(grown.area)}, ${grown.vertexCount} vertices" to
-            (grown.toFLines().onEach {
-                it.color = vec(0.45, 0.85, 1.0, 0.9); it.thickness = 1.8
-            } + white())
-    }.toTypedArray(),
+    *joins
+        .map { (join, grown) ->
+            "offset +2.5 with ${join.name}\narea ${"%.4f".format(grown.area)}, ${grown.vertexCount} vertices" to
+                (grown.toFLines().onEach {
+                    it.color = vec(0.45, 0.85, 1.0, 0.9)
+                    it.thickness = 1.8
+                } + white())
+        }
+        .toTypedArray(),
     "a 3mm wall, following every corner\noutline - outline.offset(-3.0)\n" +
         "${"%.4f".format(wall.area)} mm² in ${wall.contourCount} contours" to
         (wall.toFLines().onEach {
-            it.color = vec(1.0, 0.72, 0.35, 0.85); it.filled = true; it.stroked = false
+            it.color = vec(1.0, 0.72, 0.35, 0.85)
+            it.filled = true
+            it.stroked = false
         } + white()),
     "an opening — offset(-2.5) then offset(+2.5)\nthe corners do not come back sharp" to
         (opened2.toFLines().onEach {
-            it.color = vec(0.7, 1.0, 0.6, 0.9); it.thickness = 1.8
+            it.color = vec(0.7, 1.0, 0.6, 0.9)
+            it.thickness = 1.8
         } + white()),
     columns = 3,
     cellWidth = 330,
@@ -269,7 +291,7 @@ hole.
 ## Solids from a field
 
 `Solid.levelSet` takes a Kotlin lambda of `x, y, z` and marches it into a solid. Manifold calls the
-lambda itself, from its own thread pool.
+lambda itself, once per sample, from the calling thread.
 
 The difference from Field's own [`marchingCubes`](mesh_examples.md) is not resolution or speed, it is
 the guarantee: whatever the field did (a sheet thinner than the grid, a surface that touches itself, a
@@ -278,17 +300,14 @@ can immediately subtract from.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/levelset.png" alt="an output panel headed 'A gyroid-thickened torus, marched from a Kotlin function', holding a grey triangulated ring lying at an angle, its hole still open in the middle. The surface is not a smooth tube: it rises and falls in deep rounded lobes all the way round, the gyroid showing through as thickening and thinning rather than as a pattern on the surface. The triangles are fine and even enough to read as a mesh. The footer reads 14869 verts, 29738 tris, extent 59.498 x 59.498 x 15.870, chi=0 genus 1, watertight, volume 17750.1245" wait="8" capture="box" open-outputs="true" padding="20" requires="manifold" name="levelset" embed=true}
 :::static
-import afield.manifold.*
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.hypot
-import kotlin.math.sin
-import kotlin.math.sqrt
+import afield.geometry.solid.manifold.*
 
-// A gyroid-thickened torus: a shape that only really exists as a function, and exactly the sort of
-// field where plain marching cubes produces a soup wherever the surface nearly touches itself.
-// Positive inside, which is Manifold's convention (Field's own sdf* family is negative inside —
-// Solid.levelSetOf flips the sign for you).
+/*
+A gyroid-thickened torus: a shape that only really exists as a function, and exactly the sort of
+field where plain marching cubes produces a soup wherever the surface nearly touches itself.
+Positive inside, which is Manifold's convention (Field's own sdf* family is negative inside —
+Solid.levelSetOf flips the sign for you).
+*/
 fun field(x: Double, y: Double, z: Double): Double {
     val q = hypot(x, y) - 22.0
     val tube = 8.0 - sqrt(q * q + z * z)
@@ -299,25 +318,19 @@ fun field(x: Double, y: Double, z: Double): Double {
 
 val bounds = boundsOf(vec(-32.0, -32.0, -10.0), vec(32.0, 32.0, 10.0))
 
-// `parallel = true` lets Manifold call `field` from its own TBB workers — measured below. The
-// lambda must be thread-safe in exchange; pass false for one that is not.
 val t0 = System.nanoTime()
-val solid = Solid.levelSet(bounds, edgeLength = 1.1, parallel = true, field = ::field)
-val parallelMs = (System.nanoTime() - t0) / 1e6
+val solid = Solid.levelSet(bounds, edgeLength = 1.1, field = ::field)
+val marchMs = (System.nanoTime() - t0) / 1e6
 
-val t1 = System.nanoTime()
-val sequential = Solid.levelSet(bounds, edgeLength = 1.1, parallel = false, field = ::field)
-val sequentialMs = (System.nanoTime() - t1) / 1e6
-:::fold prove the two agree, then draw it
-println("parallel   ${"%.0f".format(parallelMs)} ms")
-println("sequential ${"%.0f".format(sequentialMs)} ms   " +
-    "(${"%.2f".format(sequentialMs / parallelMs)}x)")
-println()
-// Identical inputs must give a bit-identical mesh, or the parallel path is racing. This is the
-// real test of the upcall contract, and it is asserted in ManifoldTest too.
-println("same triangle count: ${solid.triangleCount == sequential.triangleCount} " +
-    "(${solid.triangleCount})")
-println("same volume to the last bit: ${solid.volume == sequential.volume}")
+// March the same field again and compare triangle count and volume below.
+// These aggregate checks do not establish identical vertex/index arrays.
+val again = Solid.levelSet(bounds, edgeLength = 1.1, field = ::field)
+:::fold check it is reproducible, then draw it
+println("level set ${"%.0f".format(marchMs)} ms")
+println(
+    "same triangle count twice: ${solid.triangleCount == again.triangleCount} " + "(${solid.triangleCount})",
+)
+println("same volume to the last bit: ${solid.volume == again.volume}")
 println()
 println("status ${solid.status}, genus ${solid.genus}, volume ${"%.1f".format(solid.volume)} mm³")
 // And Field's own topology code, which shares nothing with Manifold, agrees it is closed.
@@ -330,20 +343,14 @@ showMesh(
     caption = "${solid.triangleCount} triangles · genus ${solid.genus} · guaranteed closed",
     view = MeshView(yawDegrees = 24.0, pitchDegrees = 52.0, width = 720, height = 440),
 )
-sequential.close()
+again.close()
 solid.close()
 ```
 
-With `parallel = true` (the default for a plain lambda) the lambda runs on several native threads at
-once, which roughly halves the time for a finely sampled sphere. That has two consequences:
-
-- **An exception cannot escape.** There are C++ frames between the lambda and the caller; unwinding
-  through them is undefined, and FFM's response to an escaping exception is to abort the VM. So the
-  bridge catches it, returns a far-outside sentinel, and `levelSet` rethrows once the native call is
-  over: you get an `IllegalStateException` with your own exception as its cause.
-- **Your lambda must be thread-safe.** `Solid.levelSetOf`, which takes one of Field's own
-  `ScalarField3D`s, therefore defaults to `parallel = false`: a `ScalarField3D` takes a *mutable*
-  `Vec3` and the combinators in that family are free to reuse it.
+An exception thrown by the lambda cannot escape. There are C++ frames between the lambda and the
+caller; unwinding through them is undefined, and FFM's response to an escaping exception is to abort the VM. So the bridge catches it, returns a
+far-outside sentinel, and `levelSet` rethrows once the native call is over: you get an
+`IllegalStateException` with your own exception as its cause.
 
 `Solid.warped { }` is the same mechanism for moving every vertex: a bend, a twist, a taper. It does
 **not** re-mesh, so put `refined()` in front of it or a 12-triangle cube's eight corners move and
@@ -356,8 +363,7 @@ Each layer is a `Section`, so it offsets, which is how a layer outline becomes a
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/slices.png" alt="three cards, each a plan view of the same part: an outer circle, a concentric bore, and twelve radial spokes between them, the six webs read end-on. The first, '11 layers superimposed in plan', is drawn in blue and captioned 'blue = each slice's outline'; because the webs exist only in the middle band, the spokes are drawn by fewer layers than the two circles are. The second, 'the same layers offset inward by 0.6mm', is the same figure in orange, captioned 'orange = where the nozzle centre may go', with every corner arrived at as an arc. The third, 'both together', superimposes the two, and the orange sits a constant step into the material everywhere: inside the outer circle, outside the bore, and outside each spoke, with its corners rounded where the blue ones are sharp" wait="6" capture="box" open-outputs="true" padding="20" requires="manifold" name="slices" embed=true}
 :::static
-import afield.graphics.FLine
-import afield.manifold.*
+import afield.geometry.solid.manifold.*
 
 // A part with internal structure, so the slices have something to say.
 val part = Solid.scope {
@@ -366,10 +372,12 @@ val part = Solid.scope {
     val webs = (0 until 6).map {
         Solid.cube(30.0, 3.0, 40.0, center = true).rotated(0.0, 0.0, it * 30.0)
     }
-    ((body - bore) - Solid.union(webs).let { w ->
-        // Keep the webs only in the middle band, so the top and bottom slices differ from the rest.
-        w and Solid.cylinder(14.0, 20.0, segments = 64, center = true)
-    }).copy()
+    ((body - bore) -
+            Solid.union(webs).let { w ->
+                // Keep the webs only in the middle band, so the top and bottom slices differ from the rest.
+                w and Solid.cylinder(14.0, 20.0, segments = 64, center = true)
+            })
+        .copy()
 }
 
 val nozzle = 1.2
@@ -381,11 +389,16 @@ for (i in 0 until 11) {
     Solid.scope {
         val layer = part.slice(z)
         contours += layer.contourCount.toInt()
-        outlines += layer.toFLines(z = z).onEach {
-            it.color = vec(0.55, 0.78, 0.95, 0.5); it.thickness = 1.0
-        }
-        paths += layer.offset(-nozzle / 2, JoinType.ROUND, circularSegments = 32)
-            .toFLines(z = z).onEach { it.color = vec(1.0, 0.72, 0.35, 0.9); it.thickness = 1.7 }
+        outlines +=
+            layer.toFLines(z = z).onEach {
+                it.color = vec(0.55, 0.78, 0.95, 0.5)
+                it.thickness = 1.0
+            }
+        paths +=
+            layer.offset(-nozzle / 2, JoinType.ROUND, circularSegments = 32).toFLines(z = z).onEach {
+                it.color = vec(1.0, 0.72, 0.35, 0.9)
+                it.thickness = 1.7
+            }
         Unit
     }
 }
@@ -402,9 +415,11 @@ part.slice(0.0).use { mid ->
     println("the mid slice alone is ${"%.2f".format(mid.area)} mm² in ${mid.contourCount} contours")
 }
 
-// These are plan views: all 11 layers superimposed, since showPlaneGrid projects to 2D. The webs
-// only exist in the middle band, so the 6 layers outside it contribute the plain annulus you can
-// see through the spokes.
+/*
+These are plan views: all 11 layers superimposed, since showPlaneGrid projects to 2D. The webs
+only exist in the middle band, so the 6 layers outside it contribute the plain annulus you can
+see through the spokes.
+*/
 showPlaneGrid(
     "11 layers superimposed in plan\nblue = each slice's outline" to outlines,
     "the same layers offset inward by ${nozzle / 2}mm\norange = where the nozzle centre may go" to paths,
@@ -422,12 +437,12 @@ Manifold does not replace Field's mesh family; a `Solid` converts to and from a 
 ```diffstatic {data-lang=kotlin}
 // In: a TriMesh from anywhere — a generator, a file, a march, a scan.
 val scan = triMeshFromObj(File("scan.obj")).toSolid(weldTolerance = 1e-6)
-val trimmed = scan.trimByPlane(0.0, 0.0, 1.0, 0.0)      // keep the half the normal points at
+val trimmed = scan.trimByPlane(0.0, 0.0, 1.0, 0.0) // keep the half the normal points at
 
 // Out: back into everything Field already does with a mesh.
 val mesh = trimmed.toTriMesh()
-display(mesh)                                            // the inline mesh card
-display(mesh.toFLines())                                 // as a wireframe FLine
+display(mesh) // the inline mesh card
+display(mesh.toFLines()) // as a wireframe FLine
 mesh.loopSubdivide().saveStl(File("part.stl"))
 
 // And 2D, from anything you drew — here a type outline, swollen by a true offset.
@@ -441,24 +456,18 @@ coming **out** narrows Manifold's internal doubles to precisely the precision `T
 
 ### Two meshes from `toTriMesh`
 
-`toTriMesh(normals = true)` is what you want for a picture and *not* what you want for a measurement,
-because a vertex on a hard edge needs a different normal per face and therefore cannot be shared:
+`toTriMesh(normals = true)` is the form for a picture, because a vertex on a hard edge needs a
+different normal per face and therefore cannot be shared:
 
-| Conversion | vertices | `isWatertight()` | `signedVolume()` |
-|---|---|---|---|
-| `cube.toTriMesh()` | 8 | `true` | `8.0` |
-| `cube.toTriMesh(normals = true)` | **24** | **`false`** | `8.0` |
+| Conversion | vertices | `topology().isWatertight` | `isWatertight()` | `signedVolume()` |
+|---|---|---|---|---|
+| `cube.toTriMesh()` | 8 | `true` | `true` | `8.0` |
+| `cube.toTriMesh(normals = true)` | **24** | **`false`** | `true` | `8.0` |
 
-Identical geometry, different *index* topology — and Field's `isWatertight()` and `genus()` read
-indices. A crease-split mesh therefore reports the wrong genus and looks exactly like a broken bridge.
-Ask for the plain form when you are measuring, the shaded form when you are drawing, and `weld()` if
-you need to put a shaded one back together.
-
-The figures above use the plain form, and the reason applies to your own: `showMesh` prints its own
-topology footer, so handing it a crease-split mesh puts *"χ=−4 genus 0 · open (42 boundary loop(s))"*
-on the line immediately above a caption reading *"genus 5 · guaranteed closed"*. Both lines are true —
-of different meshes. Field's own `withVertexNormals()` splits at creases too, so this is a property
-of crease normals rather than of this binding.
+`isWatertight()`, `genus()` and `showMesh`'s footer weld a mesh that carries normals by position
+before measuring, so both forms report the same surface. `topology()` reads the indices as they are,
+and `toSolid` needs the plain form: Manifold refuses a crease-split mesh. Ask for the plain form when
+the mesh goes back into Manifold, and `weld()` a shaded one if you need to.
 
 ## Lifetime
 
@@ -474,7 +483,7 @@ and keeps whatever came back, including solids nested in a returned `List` or `P
 val part = Solid.scope {
     val body = Solid.cube(2.0, 2.0, 1.0, center = true)
     val bore = Solid.cylinder(4.0, 0.3, center = true)
-    body - bore                      // kept; body and bore are released here
+    body - bore // kept; body and bore are released here
 }
 ```
 
@@ -517,8 +526,8 @@ lie in the same plane. `planarContacts(a, b)` finds those patches without being 
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.manifold.*
-import afield.stdlib.planning.Point3D
+import afield.geometry.path.planning.Point3D
+import afield.geometry.solid.manifold.*
 
 val area = Solid.scope {
     val a = Solid.cube(10.0).toPlanarMesh()
@@ -544,11 +553,13 @@ the requested distance of its finite chord, returning a polyline including both 
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.stdlib.planning.*
+import afield.geometry.path.planning.*
 
 val curve = CubicBezier3D(
-    Point3D(10.0, 0.0, 0.0), Point3D(10.0, 5.5, 0.0),
-    Point3D(5.5, 10.0, 0.0), Point3D(0.0, 10.0, 0.0)
+    Point3D(10.0, 0.0, 0.0),
+    Point3D(10.0, 5.5, 0.0),
+    Point3D(5.5, 10.0, 0.0),
+    Point3D(0.0, 10.0, 0.0),
 )
 val polyline = curve.flatten(maximumDeviation = 0.01)
 val radiusBound = curve.minimumRadiusBound(minimum = 9.0)
@@ -563,7 +574,7 @@ interval certification; the polyline error bound does not prove containment in a
 
 ## Internals: how the binding is built
 
-`afield.manifold` binds Manifold through Java's foreign-function interface (FFM, "Panama"), with no
+`afield.geometry.solid.manifold` binds Manifold through Java's foreign-function interface (FFM, "Panama"), with no
 C++ of its own. Manifold ships a **C** binding library beside its C++ one (`libmanifoldc`, from
 `manifoldc.h`), and Homebrew's bottle contains it. That is what makes this binding small, and it is
 the whole argument for FFM over JNI, because the alternative needs a compiled shim per platform and

@@ -20,17 +20,17 @@ VS-Code-style two-keystroke chords (`cmd+k cmd+s`) as a real feature.
 
 The page is accurate today; the limit is in code, and it is deliberately refused:
 
-- `src/commonMain/kotlin/keybindings.kt`, `KeySpec.parseDetailed`: a spec with two keys returns
+- `src/commonMain/kotlin/afield/app/settings/keybindings.kt`, `KeySpec.parseDetailed`: a spec with two keys returns
   `null` with the reason "a shortcut is one key with modifiers — Field has no two-keystroke chords".
   `KeyChord` is one key plus three modifier booleans; there is no sequence type.
-- `src/jvmMain/kotlin/afield/UserKeybindingsManager.kt`: the generated file header and the
+- `src/jvmMain/kotlin/afield/app/settings/UserKeybindingsManager.kt`: the generated file header and the
   rejection path (search "two-keystroke chord") explain and log the refusal; tests pin it in
-  `src/jvmTest/kotlin/afield/KeySpecTest.kt` and `UserKeybindingsManagerTest.kt`.
-- `src/jsMain/kotlin/afield/KeybindingsClient.kt`: one spec becomes both a Monaco keybinding
+  `src/jvmTest/kotlin/afield/app/settings/KeySpecTest.kt` and `UserKeybindingsManagerTest.kt`.
+- `src/jsMain/kotlin/afield/app/editor/KeybindingsClient.kt`: one spec becomes both a Monaco keybinding
   (`monacoBinding` → a single `KeyMod|KeyCode` int) and the canvas test (`matchesChord` against one
   `KeyboardEvent`). Both halves assume one event.
 - Multi-taps (`Esc Esc`, `Shift Shift`) are a separate hard-wired mechanism in
-  `src/jsMain/kotlin/afield/doubletap.kt`, not the binding grammar.
+  `src/jsMain/kotlin/doubletap.kt`, not the binding grammar.
 
 ## Proposed approach
 

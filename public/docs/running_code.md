@@ -21,7 +21,7 @@ one, or when a child box cannot see a value its parent set.
 
 For a friendly tour of `connect` / `prop` / `once` in use, rather than in mechanism, read the
 [Feature Overview](funFeatures.md); for the graphics-box API on top of all this, see
-[afield.four Graphics](afield_four_graphics.md). This page is the layer underneath both.
+[Field 4 Graphics](afield_four_graphics.md). This page is the layer underneath both.
 
 ---
 
@@ -133,7 +133,7 @@ ui.eval("""
 
 When you run a box, Field does **not** hand your text straight to the Kotlin compiler. It:
 
-1. splits the code into **fragments** (on `//%-` lines),
+1. splits the code into **fragments** (on `//%-` lines, and before a `moduleHere` that follows a shader seed),
 2. **macro-expands** each fragment (rewriting some calls and injecting generated glue),
 3. prepends a **preamble** gathered from the box *and its parents* in the graph,
 4. compiles and evaluates the fragment,
@@ -205,11 +205,12 @@ its shape when the definition has not run yet (it comes later in the box, or you
 because Field compiles the saved source instead. See [Your own key types](keyframe_editor.md#your-own-key-types)
 for what the lambda can use.
 
-!!! warning "Don't call a saved block from its own box's code"
-    Compiling a saved block in its box runs that box's code again — which calls the block again.
-    Call a block that came from a file from another box, a frame loop or a control callback. A block
-    made by `sourceBlock` in this run already has its lambda and is safe to call at once. (Field
-    stops the loop after one repeat, with an error saying so.)
+!!! warning "Call a saved block from a frame loop, a callback or another box"
+    A block that came from a file compiles its saved source in its own box, and doing that while the
+    box's code is running would run that code again. So it is an error: calling such a block from its
+    own box's code stops with a message naming the box, before anything runs twice. Call it from a
+    frame loop or a control callback, after the code has finished, or from another box. A block made by
+    `sourceBlock` in this run already has its lambda and is safe to call at once.
 
 ---
 
@@ -282,9 +283,6 @@ One run may ask for several values of one type under different keys — one view
 loop — and keeps them all. Two calls with the *same* type and keys share one value; add a key such as
 `"left"` to keep them apart. `cached` needs no `prop` first, and its value is not visible to child
 boxes: return it into a `prop` if children should see it.
-
-`T` should be a library type. A class declared in the box's own code is a new class each time the
-box compiles, so a `cached` of it never finds the previous value.
 
 ### `aside`: code an ordinary run skips
 
@@ -423,7 +421,7 @@ That makes `@rootExported`/`@metarootExported` the tidy way to define a helper o
 
 ## Generated GLSL accessors: `moduleHere { }`
 
-A shader box's GLSL is also the **contract that shapes the box's Kotlin API**. `moduleHere { }` is a macro: at expansion it introspects the box's vertex/fragment (or compute) shaders and generates typed Kotlin accessors into the preamble, then rewrites itself to the real runtime builder. (The [afield.four Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
+A shader box's GLSL is also the **contract that shapes the box's Kotlin API**. `moduleHere { }` is a macro: at expansion it introspects the box's vertex/fragment (or compute) shaders and generates typed Kotlin accessors into the preamble, then rewrites itself to the real runtime builder. (The [Field 4 Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
 
 For a vertex shader with `layout(location = 0) in vec3 pos;` and a push-constant block, expansion generates lines like:
 
@@ -435,7 +433,7 @@ val Mesh.pos by FromInput()
 // (generated MappedStructure with a FloatBuffer per input + an IntBuffer `tri`)
 
 // per push-constant / UBO member — typed, two ways to reach it:
-var Mesh.worldToClip by Mesh.BoundFromStructure<afield.stdlib.linalg.Matrix4f>()
+var Mesh.worldToClip by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>()
 // ...or the untyped map form, which needs no generated accessor:
 //   m.push["worldToClip"] = ...
 ```
@@ -444,7 +442,7 @@ A GLSL `struct` (or a `buffer_reference` buffer) becomes a generated Kotlin clas
 
 ```diffstatic {data-lang=kotlin}
 class Params(/* layout members */) : Structure(/* ... */) {
-    var resolution_time_samples by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var resolution_time_samples by Structure.FromStructure<afield.math.linalg.Vector4f>()
     val P: Params get() = childStructure("P") { m, b, p, r -> Params(m, b, p, r) }   // nested
 }
 fun ParamsByteSize(): Long = 464L
@@ -460,7 +458,7 @@ once.vertex { RECT_ANIMATION_VERTEX_SHADER }
 once.fragment { myMaterial.exampleFragmentShader }
 ```
 
-`once.vertex` runs at *runtime*, though, and `moduleHere` reads the property at *expansion time*. Getting that order right is what the next section is about.
+`once.vertex` runs at *runtime* and `moduleHere` reads the property at *expansion time*, so Field starts a new fragment before a top-level `moduleHere` that follows a `once.vertex` or `once.fragment`, as if you had written the `//%-` described next.
 
 ---
 
@@ -476,27 +474,12 @@ useThe(a)
 
 Fragments are **partially-editable chunks**, and they run in order with **expand → compile → evaluate interleaved per fragment**: fragment N+1 is macro-expanded only *after* fragment N has finished running. Between fragments, the preamble/setup blocks are re-run too.
 
-That ordering matters because macro expansion is not pure (see **Macros** above): sometimes a later fragment's macro needs a value an earlier fragment set at runtime. The usual case is seeding a shader for `moduleHere`:
+That ordering matters because macro expansion is not pure (see **Macros** above): a later
+fragment's macro can read state an earlier fragment set at runtime. Seeding a shader before
+`moduleHere` is the common case, and Field inserts that break for you; the DataFrame case below
+needs it written.
 
-```diffstatic {data-lang=kotlin}
-once.vertex   { RECT_ANIMATION_VERTEX_SHADER }
-once.fragment { myMaterial.exampleFragmentShader }
-
-//%-
-
-val module = moduleHere {           // reads the box's vertex/fragment PROPERTIES
-    blend = true
-    depthTest = false
-    primitiveType = triangles
-}
-```
-
-What happens in each case:
-
-- **Without** the `//%-`, both are one compilation unit. All of its macros expand first, then it runs. So `moduleHere` expands — reading the box's shaders, finding none, seeding the **default `in vec3 pos`** shader and generating accessors for *that* — *before* `once.vertex` has ever run. The result: the module uses the wrong shader (and, for RectSL, the mesh's vertex attributes won't match the shader's inputs).
-- **With** the `//%-`, fragment 1 runs first: `once.vertex`/`once.fragment` set the box's real shader source. Then fragment 2 is expanded, and `moduleHere` now sees the shader you supplied and generates the correct accessors and module.
-
-So `//%-` is how you set some state and then run a macro that reads it. A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
+A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
 
 The preamble and setup blocks also re-run between fragments, so a fragment that *writes* to the box's preamble at runtime has published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
 
@@ -512,5 +495,5 @@ The preamble and setup blocks also re-run between fragments, so a fragment that 
 - The **preamble** is the shared glue layer: a box's effective preamble is gathered from itself plus its ancestors' `import` and ` /**/`-tagged lines — which is how typed accessors from `prop`/`@exported` reach child boxes. `moduleHere`'s generated shader accessors are *not* tagged, so they stay in the box whose shader declared them.
 - **Property inheritance** resolves values by walking *up the box graph*, so **connecting boxes** (topology) decides what a box can see — the reason a graphics box must be a child of its renderer.
 
-See also: [Feature Overview](funFeatures.md) (user-level `prop`/`connect`/`once`), [afield.four Graphics](afield_four_graphics.md) (graphics API), [StackSL Examples](stacksl_examples.md) (`stack.auto`), [RectSL Examples](rectsl_examples.md), [Why Does This Value Resolve Here?](why.md) (which box a
+See also: [Feature Overview](funFeatures.md) (user-level `prop`/`connect`/`once`), [Field 4 Graphics](afield_four_graphics.md) (graphics API), [StackSL Examples](stacksl_examples.md) (`stack.auto`), [RectSL Examples](rectsl_examples.md), [Why Does This Value Resolve Here?](why.md) (which box a
 value came from), and the [Kotlin Overview](kotlin_overview.md).

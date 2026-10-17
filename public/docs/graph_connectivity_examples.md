@@ -18,8 +18,6 @@ fence below asks all three of the same cloud.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/smile_neighbors_examples/query_edges.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
-import afield.graphics.FLine
-
 val points = List(220) {
     vec(80.0 + random() * 900.0, 70.0 + random() * 550.0)
 }
@@ -63,12 +61,12 @@ lines(
         edgeSet(kApprox, vec(0.55, 1.0, 0.66, 0.35), 1.2),
         edgeSet(kExact, vec(0.56, 0.86, 1.0, 0.95), 2.2),
         edgeSet(radius, vec(1.0, 0.62, 0.36, 0.45), 1.5),
-        queryDot
+        queryDot,
     ],
     channel = "neighbors-query",
     w = 1120.0,
     h = 720.0,
-    fitToSize = true
+    fitToSize = true,
 )
 ```
 
@@ -89,38 +87,52 @@ options, and keeps the query, the point cloud and the drawing as they were.
 
 ```diff_runner {data-lang=kotlin screenshot="assets/smile_neighbors_examples/lsh_tuning.png" wait="1.0" capture="box"}
 :::before
-import afield.graphics.FLine
-
 val points = List(260) { vec(50.0 + random() * 1000.0, 50.0 + random() * 600.0) }
 val q = vec(550.0, 330.0)
 val index = vec2NN(points, mode = VecNNMode.APPROXIMATE)
 val nn = index.kNearest(q, 14)
 
 val edges = fline {
-    nn.forEach { n -> moveTo(q.x, q.y); lineTo(n.point.x, n.point.y) }
+    nn.forEach { n ->
+        moveTo(q.x, q.y)
+        lineTo(n.point.x, n.point.y)
+    }
     color = vec(0.62, 0.9, 1.0, 0.95)
     thickness = 2.0
 }
-val dots = fline { points.forEach { p -> moveTo(p.x, p.y) }; pointed = true; pointSize = 2.4; stroked = false; color = vec(1,1,1,0.65) }
+val dots = fline {
+    points.forEach { p -> moveTo(p.x, p.y) }
+    pointed = true
+    pointSize = 2.4
+    stroked = false
+    color = vec(1, 1, 1, 0.65)
+}
 lines([dots, edges], channel = "neighbors-lsh", w = 1120.0, h = 720.0, fitToSize = true)
 :::after
-import afield.graphics.FLine
-
 val points = List(260) { vec(50.0 + random() * 1000.0, 50.0 + random() * 600.0) }
 val q = vec(550.0, 330.0)
 val index = vec2NN(
     points,
     mode = VecNNMode.APPROXIMATE,
-    options = VecNNBuildOptions(lshBucketWidth = 0.75, lshProjectionCount = 14, lshUniversalHashSize = 20011)
+    options = VecNNBuildOptions(lshBucketWidth = 0.75, lshProjectionCount = 14, lshUniversalHashSize = 20011),
 )
 val nn = index.kNearest(q, 14)
 
 val edges = fline {
-    nn.forEach { n -> moveTo(q.x, q.y); lineTo(n.point.x, n.point.y) }
+    nn.forEach { n ->
+        moveTo(q.x, q.y)
+        lineTo(n.point.x, n.point.y)
+    }
     color = vec(0.56, 1.0, 0.68, 0.95)
     thickness = 2.4
 }
-val dots = fline { points.forEach { p -> moveTo(p.x, p.y) }; pointed = true; pointSize = 2.4; stroked = false; color = vec(1,1,1,0.65) }
+val dots = fline {
+    points.forEach { p -> moveTo(p.x, p.y) }
+    pointed = true
+    pointSize = 2.4
+    stroked = false
+    color = vec(1, 1, 1, 0.65)
+}
 lines([dots, edges], channel = "neighbors-lsh", w = 1120.0, h = 720.0, fitToSize = true)
 ```
 
@@ -141,13 +153,12 @@ removed. The example draws all five over the same cloud.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/geometric_families.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
-import afield.graphics.FLine
-
-val points = List(140) { i ->
-    val a = i / 140.0 * PI * 2.0
-    val r = 180.0 + 95.0 * sin(a * 3.0)
-    vec(560.0 + cos(a) * r + (-24.0 + random() * 48.0), 360.0 + sin(a) * r * 0.65 + (-18.0 + random() * 36.0))
-}
+val points =
+    List(140) { i ->
+        val a = i / 140.0 * PI * 2.0
+        val r = 180.0 + 95.0 * sin(a * 3.0)
+        vec(560.0 + cos(a) * r + (-24.0 + random() * 48.0), 360.0 + sin(a) * r * 0.65 + (-18.0 + random() * 36.0))
+    }
 
 val delaunay = vec2DelaunayGraph(points)
 val gabriel = vec2GabrielGraph(points)
@@ -181,12 +192,12 @@ lines(
         graphLine(urquhart, vec(0.92, 0.55, 1.0, 0.5), 1.45),
         graphLine(rng, vec(1.0, 0.7, 0.32, 0.55), 1.6),
         graphLine(mst, vec(0.56, 1.0, 0.67, 0.95), 2.6),
-        cloud
+        cloud,
     ],
     channel = "graph-families",
     w = 1180.0,
     h = 760.0,
-    fitToSize = true
+    fitToSize = true,
 )
 ```
 
@@ -215,8 +226,6 @@ draws both graphs over three clusters.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/orthant_vs_knn.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
-import afield.graphics.FLine
-
 val centers = [vec(250.0, 550.0), vec(600.0, 250.0), vec(950.0, 520.0)]
 val points = centers.flatMap { c ->
     List(40) {
@@ -252,12 +261,12 @@ lines(
     [
         graphLine(orthant, vec(0.56, 1.0, 0.67, 0.8), 1.4),
         graphLine(knn, vec(1.0, 0.7, 0.32, 0.9), 2.2),
-        cloud
+        cloud,
     ],
     channel = "orthant-vs-knn",
     w = 1180.0,
     h = 760.0,
-    fitToSize = true
+    fitToSize = true,
 )
 ```
 
@@ -281,17 +290,15 @@ example draws three graph families over a coiled 3D cloud.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/three_graph_families.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
-import afield.graphics.FLine
-import afield.graphics.threeLines
-
-val points = List(170) { i ->
-    val t = i / 170.0 * PI * 7.0
-    val radius = 95.0 + 34.0 * sin(t * 0.72)
-    val x = cos(t) * radius + cos(t * 2.4) * 22.0
-    val y = sin(t * 1.08) * 118.0 + sin(t * 0.31) * 28.0
-    val z = -230.0 + i * 2.8 + cos(t * 1.6) * 44.0
-    vec(x, y, z)
-}
+val points =
+    List(170) { i ->
+        val t = i / 170.0 * PI * 7.0
+        val radius = 95.0 + 34.0 * sin(t * 0.72)
+        val x = cos(t) * radius + cos(t * 2.4) * 22.0
+        val y = sin(t * 1.08) * 118.0 + sin(t * 0.31) * 28.0
+        val z = -230.0 + i * 2.8 + cos(t * 1.6) * 44.0
+        vec(x, y, z)
+    }
 
 val knn = vec3KnnGraph(points, k = 4)
 val gabriel = vec3GabrielGraph(points)
@@ -321,11 +328,11 @@ threeLines(
         graphLine3(knn, vec(0.52, 0.7, 0.95, 0.18), 1.0),
         graphLine3(gabriel, vec(0.96, 0.64, 0.28, 0.5), 1.6),
         graphLine3(mst, vec(0.58, 1.0, 0.68, 0.96), 3.1),
-        cloud
+        cloud,
     ],
     channel = "graph-3d-families",
     height = 500,
-    editable = false
+    editable = false,
 )
 ```
 
@@ -333,10 +340,6 @@ The faint 4-NN graph shows every local neighbourhood, Gabriel shows a cleaner
 structure in between, and the spanning tree leaves only the backbone.
 
 ![a coiled space curve in the Three.js viewer, the cloud spiralling in on itself from a narrow tail to a wide open loop. A bright green spanning tree follows the coil; orange Gabriel edges cross between neighbouring turns like the rungs of a twisted ladder; the 4-NN edges are faint enough to read only as haze. The viewer's counter reads 769 lines, 0 triangles, 170 points](assets/graph_connectivity_examples/three_graph_families.png)
-
-There is no 3D Urquhart graph, because Field has no 3D Delaunay triangulation
-to remove edges from. `vec3UrquhartGraph(...)` returns the spanning tree
-instead.
 
 ## Paths: covering a graph and finding a route
 
@@ -347,8 +350,6 @@ faded in the background.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/path_cover_astar.png" wait="1.0" capture="box"}
 :::static
-import afield.graphics.FLine
-
 val points = List(110) { vec(80.0 + random() * 940.0, 80.0 + random() * 560.0) }
 val base = vec2KnnGraph(points, k = 4)
 
@@ -358,28 +359,36 @@ val goal = points.indices.last
 val path = vec2AStarPath(base, points, start = anchor, goal = goal)
 
 fun edgeLine(graph: PointGraph, c: Vec4, t: Double): FLine = fline {
-    graph.edges.forEach { e -> moveTo(points[e.i].x, points[e.i].y); lineTo(points[e.j].x, points[e.j].y) }
+    graph.edges.forEach { e ->
+        moveTo(points[e.i].x, points[e.i].y)
+        lineTo(points[e.j].x, points[e.j].y)
+    }
     color = c
     thickness = t
 }
 
 val baseLine = edgeLine(base, vec(0.62, 0.7, 0.8, 0.25), 1.0)
 
-val coverLines = cover.paths.mapIndexed { i, p ->
-    val hue = (i % 12) / 12.0
-    val c = okhsv(hue, 0.82, 0.96, 0.92)
-    fline {
-        p.edges.forEach { e -> moveTo(points[e.i].x, points[e.i].y); lineTo(points[e.j].x, points[e.j].y) }
-        color = c
-        thickness = 2.3
+val coverLines =
+    cover.paths.mapIndexed { i, p ->
+        val hue = (i % 12) / 12.0
+        val c = okhsv(hue, 0.82, 0.96, 0.92)
+        fline {
+            p.edges.forEach { e ->
+                moveTo(points[e.i].x, points[e.i].y)
+                lineTo(points[e.j].x, points[e.j].y)
+            }
+            color = c
+            thickness = 2.3
+        }
     }
-}
 
 val aStar = path?.let { p ->
     fline {
-        p.nodes.forEachIndexed { idx, node ->
+        breakNext()
+        p.nodes.forEach { node ->
             val pt = points[node]
-            if (idx == 0) moveTo(pt.x, pt.y) else lineTo(pt.x, pt.y)
+            lineTo(pt.x, pt.y)
         }
         color = vec(1.0, 0.96, 0.36, 1.0)
         thickness = 4.2
@@ -391,7 +400,7 @@ val dots = fline {
     pointed = true
     pointSize = 3.0
     stroked = false
-    color = vec(1,1,1,0.75)
+    color = vec(1, 1, 1, 0.75)
 }
 
 val out = mutableListOf<FLine>()

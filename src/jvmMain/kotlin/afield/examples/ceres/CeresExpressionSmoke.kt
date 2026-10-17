@@ -1,20 +1,20 @@
 package afield.examples.ceres
 
-import afield.stdlib.ceres.CachedCeresSolvers
-import afield.stdlib.ceres.CeresExpr
-import afield.stdlib.ceres.CeresExprVec
-import afield.stdlib.ceres.CeresLinearSolver
-import afield.stdlib.ceres.CeresProgram
-import afield.stdlib.ceres.FfmCeresBackend
-import afield.stdlib.ceres.PointCloud
-import afield.stdlib.ceres.RobustLoss
-import afield.stdlib.ceres.SolveOptions
-import afield.stdlib.ceres.SolveRequest
-import afield.stdlib.ceres.Vec3
-import afield.stdlib.ceres.buildCeresProgram
-import afield.stdlib.ceres.c
-import afield.stdlib.ceres.reciprocal
-import afield.stdlib.ceres.sqrt
+import afield.math.optimization.ceres.CachedCeresSolvers
+import afield.math.optimization.ceres.CeresExpr
+import afield.math.optimization.ceres.CeresExprVec
+import afield.math.optimization.ceres.CeresLinearSolver
+import afield.math.optimization.ceres.CeresProgram
+import afield.math.optimization.ceres.FfmCeresBackend
+import afield.math.optimization.ceres.PointCloud
+import afield.math.optimization.ceres.RobustLoss
+import afield.math.optimization.ceres.SolveOptions
+import afield.math.optimization.ceres.SolveRequest
+import afield.math.optimization.ceres.Vec3
+import afield.math.optimization.ceres.buildCeresProgram
+import afield.math.optimization.ceres.c
+import afield.math.optimization.ceres.reciprocal
+import afield.math.optimization.ceres.sqrt
 import kotlin.math.abs
 import kotlin.math.sqrt as ksqrt
 
@@ -131,7 +131,7 @@ fun main() {
             listOf(d - 1.0.c, d * d - 2.0.c, reciprocal(d))
         }
     }
-    val compiled = (shared.constraints.first() as afield.stdlib.ceres.CeresExpressionResidual).compile()
+    val compiled = (shared.constraints.first() as afield.math.optimization.ceres.CeresExpressionResidual).compile()
     val sqrtCount = (0 until compiled.instructionCount).count {
         compiled.code[4 * it] == 7 // ExprOp.SQRT
     }

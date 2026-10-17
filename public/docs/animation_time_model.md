@@ -60,9 +60,7 @@ val stopAfter = 4.5
 // clock, not against frameNumber, so it means the same thing live and under capture.
 fun dotX(elapsed: Double) = 110.0 + 760.0 * (0.5 - 0.5 * kotlin.math.cos(elapsed * 0.9))
 
-// A lambda, not a named `fun`: a named function that captures the script's implicit Box receiver —
-// which `lines(...)` needs, since it is a Box extension — is something K2 cannot currently codegen.
-val draw: (Double, Int, Boolean) -> Unit = { elapsed, frames, stopped ->
+fun draw(elapsed: Double, frames: Int, stopped: Boolean) {
     val accent = if (stopped) vec(1.0, 0.28, 0.30, 1.0) else vec(0.48, 0.85, 1.0, 1.0)
     val quiet = if (stopped) vec(1.0, 0.28, 0.30, 0.55) else vec(0.55, 0.62, 0.72, 0.7)
     val track = fline {
@@ -304,7 +302,7 @@ clock too, which is why the drag here is driven by the step count and not by `no
 
 ```diffstatic_runner {data-lang=kotlin video="assets/animation_time_model/cloth_loop.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="960" h="120" embed=true name="animation-cloth-loop" alt="a wireframe cloth of 20 by 10 particles hanging from five red pins along its top edge, drawn as cyan constraint segments with pale dots at the particles and short green velocity whiskers; an invisible hand drags its bottom-right corner in a slow loop, and the sheet stretches, swings and folds after it while the caption counts frames upward"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 // The physics system. State3 is the SoA particle store; the simulation owns it and grows it as
 // things are added, so it starts empty.
@@ -587,7 +585,7 @@ write an animation.
 
 ### The Runloop
 
-`Runloop.start()`, in [`src/jvmMain/kotlin/afield/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Runloop.kt), is the whole scheduler:
+`Runloop.start()`, in [`src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt), is the whole scheduler:
 
 ```diffstatic {data-lang=kotlin}
 while (true) {
@@ -631,7 +629,7 @@ as the value of your box. `ReturnValueRegistry.registerFramesReturnValue` sees a
 dispatches `frames.body()` onto `Runloop.runLoop.main` inside `Box.withBoxContext(box)`, registers
 the coroutine in `box.jobs`, and starts reporting `is-running` for the box.
 
-None of the builders is syntax or a rewrite. `animate` is three lines in `stdlib.kt`:
+None of the builders is syntax or a rewrite. `animate` is three lines in `stdlib_execution.kt`:
 
 ```diffstatic {data-lang=kotlin}
 fun animate(block: suspend Frames.() -> Unit): Frames = eachFrame(block)
@@ -746,8 +744,8 @@ One frame per pump throughout: the frame *rate* is the Runloop's, never the buil
     so a child is fenced exactly as the parent is and a re-run stops each child in its own right
     rather than only via the parent's `finally`.
 
-    One rough edge is left, and it is cosmetic: all three end phases of `(a.end + b.end).end` route
-    through the same hook pair, so the box can report `"ending"` more than once for one stop.
+    All three end phases of `(a.end + b.end).end` route through the same hook pair, and the launcher
+    counts them, so the box reports `"ending"` once per stop.
     [`dev_docs/frames_stop_end_phase.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/frames_stop_end_phase.md) records the rest.
 
 ### How a stop reaches the body
@@ -863,8 +861,11 @@ exception does not go through that path, and neither does one that simply return
 
 When both are present and a cancellation arrives, `.end { }` runs before the body's `finally`:
 `frame()` calls it from inside its own `catch`, before rethrowing, so the cancellation has not yet
-unwound the body. `FramesSemanticsTest.theEndBlockRunsBeforeTheBodysOwnFinally` holds that order in
-place.
+unwound the body.
+
+??? aside "Agents: what pins this order"
+    `FramesSemanticsTest.theEndBlockRunsBeforeTheBodysOwnFinally` holds the `.end { }`-before-`finally`
+    order in place; change the two together.
 
 When `atEnd` does run, `frame()` re-enters through `withContext(NonCancellable)` on a fresh `Job`
 that inherits the dispatcher and the box context, so the end block still gets frames and can still
@@ -906,7 +907,6 @@ Every public name in `Phased.kt`, grouped by what it is for.
 | Name | What it is |
 | --- | --- |
 | `type Frames` | A frame-based animation: a suspend `body`, a `frameNumber`, and the hooks a launcher installs on it. |
-| `type EndedException` | A bare `Throwable` subclass declared alongside `Frames`. Nothing in the tree throws or catches it. |
 | `type Framer` | The `CoroutineDispatcher` whose queue-drain *is* the frame boundary. `Runloop.runLoop.main` is one. |
 | `type GeneratorScope` | The receiver inside `generator { }` — it exists to provide `yield`. |
 | `type Generator` | A pull-driven coroutine: `start()`, then `next(input)` per step. |
@@ -941,9 +941,9 @@ Every public name in `Phased.kt`, grouped by what it is for.
 | `frames` | The lowest level: the body runs once and calls `frame()` itself. |
 | `eachFrame` | Advance, then run the body, while `frame()` returns true. `animate { }` is an alias for this. |
 | `loop` | Run the body, then advance — unless the body advanced already. |
-| `forever` | `loop`, but the body returns a `Boolean` and `false` ends it. No callers in the tree. |
+| `forever` | `loop`, but the body returns a `Boolean` and `false` ends it. |
 | `Frames.end` | Chain a cleanup block onto `atEnd`. Written `.end { }`, and distinct from the `end()` member. |
-| `Frames.plus` | Run two frame programs in parallel under one parent, forwarding the parent's stop fences to both children. No callers in the tree. |
+| `Frames.plus` | Run two frame programs in parallel under one parent, forwarding the parent's stop fences to both children. |
 | `Box.launchFrames` | Launch a `Frames` on the Runloop against a box, without returning it. Two overloads. |
 | `then` | Sequence two plain suspend lambdas into one. |
 
@@ -987,17 +987,16 @@ Every public name in `Phased.kt`, grouped by what it is for.
 
 | what | file |
 | --- | --- |
-| `Frames`, the builders, `Framer`, the generator layer | [`src/jvmMain/kotlin/afield/Phased.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Phased.kt) |
-| the Runloop and `AnimationClock` | [`src/jvmMain/kotlin/afield/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Runloop.kt) |
-| `animate`, `start` | [`src/jvmMain/kotlin/afield/stdlib/stdlib.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/stdlib.kt) — listed in [Workspace](reference/workspace.md) |
-| what happens when a box returns a `Frames` | [`src/jvmMain/kotlin/afield/ReturnValueRegistry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/ReturnValueRegistry.kt) |
-| stop, generations and launch epochs | [`src/jvmMain/kotlin/afield/Boxes.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/Boxes.kt) |
-| the non-coroutine per-frame layers | [`src/jvmMain/kotlin/afield/four/util/MapOfSequences.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/four/util/MapOfSequences.kt) |
-| the behaviour on this page, as tests | [`src/jvmTest/kotlin/afield/FramesSemanticsTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/FramesSemanticsTest.kt) |
+| `Frames`, the builders, `Framer`, the generator layer | [`src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt) |
+| the Runloop and `AnimationClock` | [`src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/lifecycle/Runloop.kt) |
+| `animate`, `start` | [`src/jvmMain/kotlin/afield/runtime/execution/stdlib_execution.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/execution/stdlib_execution.kt) — listed in [Workspace](reference/workspace.md#stdlib-execution-kt) |
+| what happens when a box returns a `Frames` | [`src/jvmMain/kotlin/afield/runtime/execution/ReturnValueRegistry.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/runtime/execution/ReturnValueRegistry.kt) |
+| stop, generations and launch epochs | [`src/jvmMain/kotlin/afield/document/graph/Boxes.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/document/graph/Boxes.kt) |
+| the non-coroutine per-frame layers | [`src/jvmMain/kotlin/afield/graphics/vulkan/util/MapOfSequences.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/graphics/vulkan/util/MapOfSequences.kt) |
+| the behaviour on this page, as tests | [`src/jvmTest/kotlin/afield/runtime/lifecycle/FramesSemanticsTest.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmTest/kotlin/afield/runtime/lifecycle/FramesSemanticsTest.kt) |
 
-`Phased.kt` is not part of the [codebase reference](reference/index.md): that is generated from
-`afield.stdlib`, `afield.visualization` and `afield.four.synth`, and `Phased.kt` sits in `afield`
-itself, one layer below. This page is its reference instead.
+The [codebase reference](reference/index.md) lists every declaration in `Phased.kt` under
+[Workspace](reference/workspace.md#phased-kt); this page explains how they fit together.
 
 To see it running, open the [`frames_lifecycle`](agent_transcripts.md#frames_lifecycle) starting
 point from the welcome screen. Its four boxes start, stop, re-run and clean up a frame loop.

@@ -1,9 +1,9 @@
 package afield.examples.rectsl
 
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.RectLangVm
-import afield.rectsl.SampledRect
-import afield.rectsl.SceneProgram
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.RectLangVm
+import afield.lang.rectsl.SampledRect
+import afield.lang.rectsl.SceneProgram
 import kotlin.math.abs
 
 /*
@@ -504,7 +504,7 @@ object RectSLMusicWorkout {
         val live = visibleAt(program, 0.5)
         // Compared against the language's own mask rather than a transcribed string: the point of
         // the mutator is that the layout and the rhythm are the same figure.
-        val expected = afield.four.synth.kolakoskiMask(16)
+        val expected = afield.audio.synth.kolakoskiMask(16)
         val slots = live.map { Math.round((it.center.x / 1.5) + 7.5).toInt() }.sorted()
         require(slots == expected.indices.filter { expected[it] }) {
             "->kolakoski kept $slots; the word's onsets are ${expected.indices.filter { expected[it] }}"

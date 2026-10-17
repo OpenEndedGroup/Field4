@@ -1,7 +1,7 @@
 name: drawn_paint
 description: >
   Drawn strokes become paint: six boxes that draw pen strokes with pressure on the document's
-  drawing, read them back with notation, and paint them with afield.paint.PaintCanvas.
+  drawing, read them back with notation, and paint them with afield.graphics.paint.PaintCanvas.
 
   `strokes` draws three strokes (a wave pressed hardest in the middle, a sweep that lifts off, a
   loop that bears down at its end) and plots the pen pressure along each. `paint` paints every
@@ -48,8 +48,8 @@ operations:
       frame: { x: 1750.0, y: 900.0, w: 190.0, h: 60.0 }
       properties:
         code: |
-          import afield.paint.*
-
+          import afield.graphics.paint.*
+          
           run {
           if (!PaintCanvas.isAvailable) {
               markdown(PaintLibrary.describe())
@@ -80,8 +80,8 @@ operations:
       frame: { x: 1750.0, y: 2100.0, w: 190.0, h: 60.0 }
       properties:
         code: |
-          import afield.paint.*
-
+          import afield.graphics.paint.*
+          
           run {
           if (!PaintCanvas.isAvailable) {
               markdown(PaintLibrary.describe())
@@ -123,8 +123,8 @@ operations:
       frame: { x: 1750.0, y: 2700.0, w: 190.0, h: 60.0 }
       properties:
         code: |
-          import afield.paint.*
-
+          import afield.graphics.paint.*
+          
           run {
           if (!PaintCanvas.isAvailable) {
               markdown(PaintLibrary.describe())
@@ -158,9 +158,9 @@ operations:
       frame: { x: 1750.0, y: 3200.0, w: 190.0, h: 60.0 }
       properties:
         code: |
-          import afield.paint.*
+          import afield.graphics.paint.*
           import kotlin.random.Random
-
+          
           run {
           if (!PaintCanvas.isAvailable) {
               markdown(PaintLibrary.describe())
@@ -199,14 +199,14 @@ operations:
                       name = "poppy $i", pressure = { 0.5 + 0.5 * sin(PI * it) })
               }
           }
-
+          
           val canvas = PaintCanvas(1200, aspect = 1.6, ground = PaintGround.OilRedGround, view = region)
           val strokes = notation.strokes.filter { it.bounds.intersects(region) }
           fun named(p: String) = strokes.filter { it.label?.startsWith(p) == true }
           fun depth(s: Mark) = ((s.start!!.y - Y - 540) / 460).coerceIn(0.0, 1.0)   // 0 at the horizon, 1 at the front
           fun paint(s: Mark, b: PaintBrush, p: Double = 1.0, shake: Double = 1.0) =
               canvas.stroke(s.toFLine(), b, pressure = p..p, swell = s.pressuresAlong(32), shake = shake)
-
+          
           val sky = canvas.brush(BrushKind.Filbert, width = 60.0)
           named("sky").forEachIndexed { i, s ->
               val t = i / 17.0   // cobalt at the top, warming to Naples yellow and a little rose at the horizon
@@ -239,8 +239,8 @@ operations:
       frame: { x: 1750.0, y: 4200.0, w: 190.0, h: 60.0 }
       properties:
         code: |
-          import afield.paint.*
-
+          import afield.graphics.paint.*
+          
           run {
           if (!PaintCanvas.isAvailable) {
               markdown(PaintLibrary.describe())

@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // The same program, rendered offline and plotted. Nothing here touches the audio engine,
 // so this box runs on a machine with no sound card.

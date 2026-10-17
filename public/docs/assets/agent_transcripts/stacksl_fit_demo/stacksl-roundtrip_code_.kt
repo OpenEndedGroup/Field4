@@ -10,9 +10,9 @@
 // program's render and the fitted wire vector's render. If the literal rewriting were wrong — a
 // column off by one, a token mismatched — it would not be small, it would be a different picture.
 
-import afield.stacksl.cpu.StackSLCpu
-import afield.stacksl.cpu.StackSLFit
-import afield.util.PngEncoder
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLFit
+import afield.media.image.util.PngEncoder
 import kotlin.math.abs
 
 run {
@@ -83,9 +83,8 @@ run {
     println("panels: rendered from the fitted WIRES | rendered from the re-emitted SOURCE")
     display(PngEncoder.encode(strip, width, panel))
 
-    // The one lossy step in the trip is the printing: `%.8f` is eight significant decimals and
-    // binary32 needs nine to round-trip in general, so a fitted value can land one ulp away in the
-    // source. Both outcomes have been seen and both are fine: `StackSLFitFigureTest`'s 64x64 fit
-    // round-trips at exactly 0, and this box at 48x48 measured 5.96e-08, which is one ulp of a
-    // Float near 1. That is why the guard allows 1e-4 rather than demanding zero.
+    // Printing with %.8f keeps eight decimal places, not eight significant digits.
+    // Its round-trip error depends on magnitude: a fitted Float may change in source.
+    // This 48x48 example previously measured 5.96e-08; the 1e-4 guard checks the actual
+    // error above instead of requiring an exact zero.
 }

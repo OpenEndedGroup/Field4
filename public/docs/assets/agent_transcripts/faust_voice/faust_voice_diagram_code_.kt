@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // Faust is a language about signal flow, and the block diagram *is* the signal flow. This
 // comes out of the embedded compiler, so there is no `faust -svg` and no command line.

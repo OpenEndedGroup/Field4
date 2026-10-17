@@ -1,0 +1,35 @@
+# (asked) Night sky, dark hills, slowly rippling green-to-violet aurora, faint stars.
+# (chosen) Fine vertical folds, soft upper veil, and perfectly still, pure-black hills.
+uv x >ux
+uv y >uy
+# Midnight blue sky, slightly brighter near the horizon.
+[0.0015,0.003,0.012,0] [0.004,0.013,0.025,0] <uy 1 swap - mix >sky
+# The curtain's lower edge undulates slowly across the sky.
+<ux 7 * 0.12t + sin 0.065 *
+<ux 17 * 0.08t - sin 0.022 * + 0.43 + >edge
+<uy <edge - >height
+# Broad atmospheric lower fade: no mountain-like cutoff beneath the curtain.
+-0.28 0.06 <height smoothstep
+<height 0.04 0.44 ramp 1 swap - * >veil
+# Broad hanging drapes, with a gentle sway that grows toward the hem.
+<ux 38 * <ux 8 * 0.07t + sin 1.4 * +
+<uy 1 swap - dup * 0.11t sin * 1.3 * +
+sin 0.5 * 0.5 + 1.4 pow 0.82 * 0.18 + >folds
+<ux 9 * 0.07t - sin 0.25 * 0.75 + >strength
+# Emerald lower curtain grades into a violet upper veil.
+[0.012,0.48,0.13,0] [0.17,0.018,0.32,0] <height 0.05 0.32 ramp mix
+<veil * <folds * <strength * 0.65 * <sky + >night
+# A few fixed, faint stars, softened to tiny pinpoints.
+uv [0.12,0.82,0,0] - length 0 0.002 pulse
+uv [0.29,0.91,0,0] - length 0 0.0016 pulse +
+uv [0.76,0.88,0,0] - length 0 0.002 pulse +
+uv [0.91,0.69,0,0] - length 0 0.0017 pulse +
+uv [0.56,0.94,0,0] - length 0 0.0018 pulse +
+uv [0.07,0.58,0,0] - length 0 0.0017 pulse +
+[0.18,0.22,0.29,0] * <night + >lit
+# An unlit rolling hill line occludes both sky and aurora.
+<ux 6 * 0.4 + sin 0.045 *
+<ux 15 * sin 0.014 * + 0.17 + >hill
+<lit [0.0003,0.0007,0.0012,0] <uy <hill - -0.002 0.002 ramp 1 swap - mix
+# Hard occlusion below the static horizon; sky above remains untouched.
+<hill <uy step *

@@ -7,7 +7,7 @@ Sometimes the data is not a signal and not a table. It is a **set of things** pl
 each pair of them: how far apart those two are. Twenty words and an edit distance. A hundred and
 sixty samples along a curve and the number of hops between them. A thousand mel frames and a
 Wasserstein distance. There is nothing to plot, because the things have no coordinates, which is the
-whole problem, and it is what [`smile_mds.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/smile_mds.kt) is for. Give it the distances and it
+whole problem, and it is what [`smile_mds.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/statistics/smile_mds.kt) is for. Give it the distances and it
 invents coordinates that reproduce them as closely as two dimensions allow.
 
 Two of the functions take vectors and compute the distances for you, which is what the
@@ -31,7 +31,7 @@ measure between two things. Both examples below build their own matrix.
 
 | what you have | what to call | what comes back |
 |---|---|---|
-| equal-length vectors, and you want cosine or Euclidean distance computed for you | `smileMds` (`smile_mds.kt:88#fun smileMds(`) | `SmileMdsProjection` — `coordinates`, `scores`, `proportion` |
+| equal-length vectors, and you want cosine or Euclidean distance computed for you | `smileMds` (`smile_mds.kt:88#fun smileMds(`) | `SmileMdsProjection` — `coordinates`, `scores`, `stress1`, `distanceCorrelation` |
 | **a symmetric distance matrix you built yourself** | `smileMdsDistances` (`smile_mds.kt:159#fun smileMdsDistances(`) | `SmileMdsProximityProjection` — the same three, plus the `label` you passed |
 | vectors, but you care about local neighbourhoods rather than global geometry | `smileTsne` (`smile_mds.kt:180#fun smileTsne(`) | `SmileTsneProjection` — `coordinates`, `cost`, `seed` |
 | **your own matrix, t-SNE** | `smileTsneDistances` (`smile_mds.kt:240#fun smileTsneDistances(`) | `SmileTsneProximityProjection` |
@@ -58,7 +58,7 @@ anywhere; a word is not a point in any space until this call gives it one.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/projection_examples/edit_distance_words.png" wait="2.0" capture="box" open-outputs="true" w="980" h="720" padding="16"}
 :::static
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 import space.kscience.plotly.models.TextPosition
@@ -71,7 +71,7 @@ val families = [
 ]
 val words = families.flatten()
 
-// Ordinary Levenshtein, in the fence rather than from the stdlib: `afield.brief.editDistance`
+// Ordinary Levenshtein, in the fence rather than from the stdlib: `afield.lang.brief.editDistance`
 // exists but is `internal`, and naming a doc-local helper after a stdlib symbol would put a false
 // "Used in" back-reference in the generated reference.
 val wordEditDistance = { a: String, b: String ->
@@ -93,10 +93,7 @@ val distances = Array(words.size) { a ->
 }
 val projection = smileMdsDistances(distances, dimensions = 2, label = "levenshtein")
 
-// What the picture cost. The plane distances are compared against the input ones two ways: a
-// correlation, and Kruskal's stress-1 at the scale that minimises it (classical MDS does not
-// promise the plane is in the same units as the input, so an unscaled stress would measure the
-// units rather than the fit).
+// The plane distances used by the neighbour count below.
 val plane = Array(words.size) { a ->
     DoubleArray(words.size) { b ->
         val dx = projection.coordinates[a][0] - projection.coordinates[b][0]
@@ -104,15 +101,6 @@ val plane = Array(words.size) { a ->
         sqrt(dx * dx + dy * dy)
     }
 }
-val pairsIn = ArrayList<Double>()
-val pairsOut = ArrayList<Double>()
-for (a in words.indices) for (b in 0 until a) { pairsIn += distances[a][b]; pairsOut += plane[a][b] }
-val r = StatsDependence.pearson(pairsIn.toDoubleArray(), pairsOut.toDoubleArray())
-val scale = pairsIn.indices.sumOf { pairsIn[it] * pairsOut[it] } / pairsIn.indices.sumOf { pairsOut[it] * pairsOut[it] }
-val stress = sqrt(
-    pairsIn.indices.sumOf { (pairsIn[it] - scale * pairsOut[it]).let { d -> d * d } } /
-        pairsIn.indices.sumOf { pairsIn[it] * pairsIn[it] }
-)
 
 // The claim the picture makes, as a count rather than an impression: does each word's nearest
 // neighbour still come from its own family?
@@ -133,9 +121,9 @@ for (a in words.indices) for (b in 0 until a) {
 }
 println("input edit distance: within-family mean ${"%.3f".format(within.average())}, " +
     "between-family mean ${"%.3f".format(between.average())} (smallest between-family ${between.min()})")
-println("retained eigenvalues ${projection.scores.joinToString { "%.3f".format(it) }}, " +
-    "proportion ${projection.proportion.joinToString { "%.4f".format(it) }} (sums to ${projection.proportion.sum()})")
-println("plane vs input: r = ${"%.4f".format(r)}, stress-1 = ${"%.4f".format(stress)}")
+println("retained eigenvalues ${projection.scores.joinToString { "%.3f".format(it) }}")
+println("plane vs input: r = ${"%.4f".format(projection.distanceCorrelation)}, " +
+    "stress-1 = ${"%.4f".format(projection.stress1)}")
 println("nearest neighbour in own family: ${ownFamily(distances)}/20 by edit distance, " +
     "${ownFamily(plane)}/20 in the plane; lost: $lost")
 :::fold draw the twenty words
@@ -179,17 +167,13 @@ a margin of one, and one is what two dimensions cannot hold: in the plane its ne
 input. Those are the two clumps that touch in the figure above, and they touch for a reason you can
 read off the distance matrix before you draw anything.
 
-The fit itself: the plane distances correlate with the edit distances at **r = 0.8475**, with a
+The fit itself, which the projection reports as `distanceCorrelation` and `stress1` (Kruskal's
+stress-1 at the scale that minimises it, since classical MDS does not promise the plane is in the
+input's units): the plane distances correlate with the edit distances at **r = 0.8475**, with a
 stress-1 of **0.2780**. Stress-1 above 0.2 is usually called poor, so that is a poor fit, and it is
 what squeezing a nineteen-dimensional structure into two costs. Ask for more dimensions and it
 improves the way you would expect: `dimensions = 3` gives r = 0.9258 and stress 0.1547,
 `dimensions = 4` gives 0.9500 and 0.1146. Nothing forces you to draw all the dimensions you fit.
-
-And `proportion` sums to **1.0000** here, which is not the reassurance it looks like. It is the retained eigenvalues divided
-by *their own* L1 norm (`smile_mds.kt:454#val norm = proportion.sumOf { abs(it) }`), so it sums to 1
-whether you kept 2 components or 15. It tells you how the components you kept divide up between
-themselves and nothing whatever about how much you threw away. The stress figure above is the number
-that answers that, and you have to compute it yourself.
 
 ## A graph distance: hop count on a KNN spiral
 
@@ -204,7 +188,7 @@ and a good projection recovers a coordinate that rises steadily with it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/projection_examples/graph_hops_spiral.png" wait="2.0" capture="box" open-outputs="true" w="1000" h="760" padding="16"}
 :::static
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 
@@ -259,8 +243,8 @@ println("graph: ${graph.edges.size} edges, worst |i - j| over an edge = ${graph.
 println("coordinate 1 vs position along the spiral, Spearman rho:")
 println("  from hop counts        ${"%.4f".format(StatsDependence.spearman(t, geodesicAxis))}")
 println("  from straight-line d   ${"%.4f".format(StatsDependence.spearman(t, straightAxis))}")
-println("proportion: hops ${geodesic.proportion.joinToString { "%.4f".format(it) }}, " +
-    "straight-line ${straight.proportion.joinToString { "%.4f".format(it) }}")
+println("stress-1 against each fit's own matrix: hops ${"%.4f".format(geodesic.stress1)}, " +
+    "straight-line ${"%.4f".format(straight.stress1)}")
 :::fold the spiral and the two recovered coordinates
 val normalise = { values: DoubleArray ->
     val lo = values.min(); val span = (values.max() - lo).takeIf { it > 1e-12 } ?: 1.0
@@ -333,7 +317,7 @@ clusters 0 and 1, and either projection keeps that or it does not.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/projection_examples/mds_versus_tsne.png" wait="10.0" capture="box" open-outputs="true" w="1020" h="900" padding="16"}
 :::static
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 
@@ -545,21 +529,8 @@ spectra.forEach { (result, refusal) ->
 // And what it costs in the plane, which is the part that is easy to guess wrong.
 [false, true].forEach { correction ->
     val fit = smileMdsDistances(distances, dimensions = 2, positiveCorrection = correction)
-    val pairsIn = ArrayList<Double>(); val pairsOut = ArrayList<Double>()
-    for (a in words.indices) for (b in 0 until a) {
-        pairsIn += distances[a][b]
-        val dx = fit.coordinates[a][0] - fit.coordinates[b][0]
-        val dy = fit.coordinates[a][1] - fit.coordinates[b][1]
-        pairsOut += sqrt(dx * dx + dy * dy)
-    }
-    val scale = pairsIn.indices.sumOf { pairsIn[it] * pairsOut[it] } / pairsIn.indices.sumOf { pairsOut[it] * pairsOut[it] }
-    val stress = sqrt(
-        pairsIn.indices.sumOf { (pairsIn[it] - scale * pairsOut[it]).let { d -> d * d } } /
-            pairsIn.indices.sumOf { pairsIn[it] * pairsIn[it] }
-    )
     println("two dimensions, positiveCorrection = $correction: " +
-        "r = ${"%.4f".format(StatsDependence.pearson(pairsIn.toDoubleArray(), pairsOut.toDoubleArray()))}, " +
-        "stress-1 = ${"%.4f".format(stress)}")
+        "r = ${"%.4f".format(fit.distanceCorrelation)}, stress-1 = ${"%.4f".format(fit.stress1)}")
 }
 :::fold the two spectra
 showSignals(
@@ -608,9 +579,6 @@ tenth eigenvalue" is a worse first experience than losing 0.015 of a correlation
   the data has structure gives a column of zeros, which is correct. Asking for more than an
   uncorrected non-Euclidean matrix can support raises `IllegalArgumentException`
   (`smile_mds.kt:440#val floor = -1e-9 * max(1.0, abs(values[retained.first()]))`).
-- **`proportion` always sums to 1.** See the first fence. It is not an explained-variance figure.
-- **t-SNE logs every tenth iteration to slf4j at INFO**, which is ~75 lines per fit. Harmless, and
-  loud if you are watching a log.
 - **t-SNE needs at least four rows and a perplexity below the row count**, and its axes carry no
   meaning at all: not units, not order, not orientation. Only the neighbourhoods do.
 

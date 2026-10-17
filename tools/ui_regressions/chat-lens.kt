@@ -1,4 +1,4 @@
-import afield.chatlog.*
+import afield.ai.conversation.chatlog.*
 import java.io.File
 import java.nio.file.Files
 import java.security.MessageDigest

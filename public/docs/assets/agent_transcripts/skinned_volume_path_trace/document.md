@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["skinned_volume_trace"] "properties" {"children" #{#afield/box "skinned_volume_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 221 "sha256" "f23e4958c4740029324481f504f3e4dcd8c32d101d0c44f45a77d7efdf714fdd"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["skinned_volume_trace"] "properties" {"children" #{#afield/box "skinned_volume_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 232 "sha256" "a0a9a1bc4225c286d1df6cd336ea6dfc119800926b087f9d0a35cf778992af75"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,24 +31,24 @@ start(renderer::run)
 <!-- field-box id="skinned_volume_trace" index="1" -->
 
 ```edn [field-box id="skinned_volume_trace" role="properties"]
-{"id" "skinned_volume_trace" "index" 1 "name" "a twisted limb, skinned two ways, weighed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a twisted limb, skinned two ways, weighed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "skinned_volume_trace_code_.kt" "lines" 84 "characters" 3501 "sha256" "8042018d8511e9290b664716107beb7bb4ab83526249586c09989bc39041b345"}]}
+{"id" "skinned_volume_trace" "index" 1 "name" "a twisted limb, skinned two ways, weighed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a twisted limb, skinned two ways, weighed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "skinned_volume_trace_code_.kt" "lines" 84 "characters" 3596 "sha256" "0e208ce75aac8a0359247a23b080c86e20454da3d76177b868249da306038d30"}]}
 ```
 
 ```kotlin [field-property box="skinned_volume_trace" name="code" path="skinned_volume_trace_code_.kt"]
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.modules.CappedTwistFixture
-import afield.four.modules.GltfSkinning.SkinningMethod
-import afield.four.modules.GltfSkinning.SkinningOptions
-import afield.four.modules.skinnedGltfToTriMesh
-import afield.four.util.Camera
-import afield.manifold.ManifoldLibrary
-import afield.manifold.toSolid
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.scene.CappedTwistFixture
+import afield.graphics.scene.GltfSkinning.SkinningMethod
+import afield.graphics.scene.GltfSkinning.SkinningOptions
+import afield.graphics.scene.skinnedGltfToTriMesh
+import afield.graphics.vulkan.util.Camera
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.toSolid
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)

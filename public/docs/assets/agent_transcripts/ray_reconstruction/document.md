@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["ray_reconstruction"] "properties" {"children" #{#afield/box "ray_reconstruction"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 289 "sha256" "48b4c5aeec967fc6ec5dc83b23de5c1e6e911c61acc39c811a8d1eac77f6020a"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["ray_reconstruction"] "properties" {"children" #{#afield/box "ray_reconstruction"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 300 "sha256" "ed9c90e9909e15814bcf04d30e27c778e23b8bdb27e200771a092e766fb4a29b"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -38,14 +38,14 @@ start(renderer::run)
 <!-- field-box id="ray_reconstruction" index="1" -->
 
 ```edn [field-box id="ray_reconstruction" role="properties"]
-{"id" "ray_reconstruction" "index" 1 "name" "ray reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "ray reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ray_reconstruction_code_.kt" "lines" 29 "characters" 1142 "sha256" "175752270f3c54c42370544cf349c8a51f44ae71bd1e893726b8a82a7de09e9f"}]}
+{"id" "ray_reconstruction" "index" 1 "name" "ray reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "ray reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ray_reconstruction_code_.kt" "lines" 29 "characters" 1167 "sha256" "47700ed23707990df28e5e7139ecf1ab989574eb10f06cd7e7605cc9f6a0f165"}]}
 ```
 
 ```kotlin [field-property box="ray_reconstruction" name="code" path="ray_reconstruction_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.reconstruction.*
-import afield.four.modules.fromContextWithNameOrNull
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.media.reconstruction.*
+import afield.document.context.fromContextWithNameOrNull
 
 prop<RayReconstructionDemo>(lab)
 fromContextWithNameOrNull<RayReconstructionDemo>("lab")?.close()

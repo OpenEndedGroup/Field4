@@ -1,10 +1,13 @@
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
-import afield.four.fabricated.PathTracingRenderer
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
+import afield.graphics.scene.fabricated.PathTracingRenderer
 var Box.tracer by Inheritance<PathTracingRenderer>() /**/
 val Once.tracer by Onceing<PathTracingRenderer>() /**/
 val Why.tracer by Whying() /**/
@@ -17,14 +20,14 @@ class Triangle(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var a by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var b by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var c by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var na by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var nb by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var nc by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var uv by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var color by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var a by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var b by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var c by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var na by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var nb by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var nc by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var uv by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var color by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun TriangleByteSize(): Long = 208L
 fun TriangleLayoutMembers(): List<Introspected.Member> =
@@ -44,29 +47,30 @@ fun BufferParameters.asTriangle(): Triangle =
     buffer.asTriangle()
 /*end*/
 /*start*/
-/*compute-structure-type:Node:Node*/
-class Node(
-    members: List<Introspected.Member> = NodeLayoutMembers(),
+/*compute-structure-type:Node:NodeBlock*/
+// GLSL block `Node` is NodeBlock here: Node would hide afield.data.graph.Node.
+class NodeBlock(
+    members: List<Introspected.Member> = NodeBlockLayoutMembers(),
     baseOffset: Int = 0,
     pathPrefix: String = "",
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var lo by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var hi by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var data by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var lo by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var hi by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var data by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
-fun NodeByteSize(): Long = 48L
-fun NodeLayoutMembers(): List<Introspected.Member> =
+fun NodeBlockByteSize(): Long = 48L
+fun NodeBlockLayoutMembers(): List<Introspected.Member> =
     listOf(
         Introspected.Member("lo", 0, PrimitiveType.vec4.left(), 0, false),
         Introspected.Member("hi", 16, PrimitiveType.vec4.left(), 0, false),
         Introspected.Member("data", 32, PrimitiveType.vec4.left(), 0, false),
     )
-fun HasBuffer.asNode(): Node =
-    asStructure(Node(), NodeLayoutMembers())
-fun BufferParameters.asNode(): Node =
-    buffer.asNode()
+fun HasBuffer.asNodeBlock(): NodeBlock =
+    asStructure(NodeBlock(), NodeBlockLayoutMembers())
+fun BufferParameters.asNodeBlock(): NodeBlock =
+    buffer.asNodeBlock()
 /*end*/
 /*start*/
 /*compute-structure-type:Material:Material*/
@@ -77,13 +81,13 @@ class Material(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var base by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var emission by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var optical by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var absorption by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var maps by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var coverage by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var textureParams by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var base by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var emission by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var optical by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var absorption by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var maps by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var coverage by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var textureParams by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun MaterialByteSize(): Long = 112L
 fun MaterialLayoutMembers(): List<Introspected.Member> =
@@ -110,10 +114,10 @@ class HistoryPixel(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var value by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var position by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var normal by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var albedoCount by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var value by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var position by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var normal by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var albedoCount by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun HistoryPixelByteSize(): Long = 64L
 fun HistoryPixelLayoutMembers(): List<Introspected.Member> =
@@ -137,12 +141,12 @@ class FramePixel(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var radiance by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var positionDepth by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var normalRoughness by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var diffuse by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var specular by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var motion by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var radiance by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var positionDepth by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var normalRoughness by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var diffuse by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var specular by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var motion by Structure.FromStructure<afield.math.linalg.Vector4f>()
 }
 fun FramePixelByteSize(): Long = 96L
 fun FramePixelLayoutMembers(): List<Introspected.Member> =
@@ -384,18 +388,18 @@ class SceneBuffers(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var triangles by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-    var nodes by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-    var materials by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-    var accumulation by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-    var distribution by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-    var directions by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-    var textures by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-    var historyRead by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-    var historyWrite by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-    var emitterTable by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-    var emitterLookup by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-    var frameOutput by Structure.FromStructure<afield.four.buffers.HasBuffer>()
+    var triangles by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+    var nodes by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+    var materials by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+    var accumulation by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+    var distribution by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+    var directions by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+    var textures by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+    var historyRead by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+    var historyWrite by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+    var emitterTable by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+    var emitterLookup by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+    var frameOutput by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 }
 fun SceneBuffersByteSize(): Long = 96L
 fun SceneBuffersLayoutMembers(): List<Introspected.Member> =
@@ -427,30 +431,30 @@ class Frame(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var origin by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var right by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var up by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var forward by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var image by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // width, height, first sample index, samples per dispatch
-    var scene by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // node count, environment width, environment height, max bounces
-    var lighting by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // environment intensity, yaw radians, ray epsilon, show environment background
-    var background by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // premultiplied linear RGBA for primary misses
-    var sampling by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // indirect clamp, pixel jitter width, aperture radius, focus-plane distance
-    var temporal by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // -1 disabled, 0 reset, 1 stationary, 2 reproject; sequence index; history cap; reserved
-    var previousOrigin by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var previousRight by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var previousUp by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var previousForward by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-    var historyPolicy by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // motion sensitivity, roughness sensitivity, maximum defocus radius in pixels, reserved
-    var fog by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // linear RGB, density per world unit
-    var fogOptions by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // clear start distance, fog background misses, reserved, reserved
-    var emitters by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // sampled emissive-triangle count (zero disables direct emitter sampling), reserved
-    var medium by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // single-scattering albedo RGB, extinction per world unit in w (zero disables)
-    var mediumOptions by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // Henyey-Greenstein g, bounded flag, reserved, reserved
-    var mediumLow by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // bounds minimum when bounded, w unused
-    var mediumHigh by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // bounds maximum when bounded, w unused
-    var reconstruction by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // projection jitter in input pixels, near, far
-    var frameOutputEnabled by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // enabled, reset (no previous camera), reserved
+    var origin by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var right by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var up by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var forward by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var image by Structure.FromStructure<afield.math.linalg.Vector4f>() // width, height, first sample index, samples per dispatch
+    var scene by Structure.FromStructure<afield.math.linalg.Vector4f>() // node count, environment width, environment height, max bounces
+    var lighting by Structure.FromStructure<afield.math.linalg.Vector4f>() // environment intensity, yaw radians, ray epsilon, show environment background
+    var background by Structure.FromStructure<afield.math.linalg.Vector4f>() // premultiplied linear RGBA for primary misses
+    var sampling by Structure.FromStructure<afield.math.linalg.Vector4f>() // indirect clamp, pixel jitter width, aperture radius, focus-plane distance
+    var temporal by Structure.FromStructure<afield.math.linalg.Vector4f>() // -1 disabled, 0 reset, 1 stationary, 2 reproject; sequence index; history cap; reserved
+    var previousOrigin by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var previousRight by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var previousUp by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var previousForward by Structure.FromStructure<afield.math.linalg.Vector4f>()
+    var historyPolicy by Structure.FromStructure<afield.math.linalg.Vector4f>() // motion sensitivity, roughness sensitivity, maximum defocus radius in pixels, reserved
+    var fog by Structure.FromStructure<afield.math.linalg.Vector4f>() // linear RGB, density per world unit
+    var fogOptions by Structure.FromStructure<afield.math.linalg.Vector4f>() // clear start distance, fog background misses, reserved, reserved
+    var emitters by Structure.FromStructure<afield.math.linalg.Vector4f>() // sampled emissive-triangle count (zero disables direct emitter sampling), reserved
+    var medium by Structure.FromStructure<afield.math.linalg.Vector4f>() // single-scattering albedo RGB, extinction per world unit in w (zero disables)
+    var mediumOptions by Structure.FromStructure<afield.math.linalg.Vector4f>() // Henyey-Greenstein g, bounded flag, reserved, reserved
+    var mediumLow by Structure.FromStructure<afield.math.linalg.Vector4f>() // bounds minimum when bounded, w unused
+    var mediumHigh by Structure.FromStructure<afield.math.linalg.Vector4f>() // bounds maximum when bounded, w unused
+    var reconstruction by Structure.FromStructure<afield.math.linalg.Vector4f>() // projection jitter in input pixels, near, far
+    var frameOutputEnabled by Structure.FromStructure<afield.math.linalg.Vector4f>() // enabled, reset (no previous camera), reserved
 }
 fun FrameByteSize(): Long = 384L
 fun FrameLayoutMembers(): List<Introspected.Member> =
@@ -486,43 +490,43 @@ fun BufferParameters.asFrame(): Frame =
     buffer.asFrame()
 /*end*/
 /*compute-ubo:SceneBuffers*/ val ComputeModulePointer.SceneBuffers by ComputeMesh.FromUniform()
-/*compute-ubo-member:SceneBuffers:triangles*/ var Structure.triangles by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-/*compute-ubo-member:SceneBuffers:nodes*/ var Structure.nodes by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-/*compute-ubo-member:SceneBuffers:materials*/ var Structure.materials by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-/*compute-ubo-member:SceneBuffers:accumulation*/ var Structure.accumulation by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-/*compute-ubo-member:SceneBuffers:distribution*/ var Structure.distribution by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-/*compute-ubo-member:SceneBuffers:directions*/ var Structure.directions by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-/*compute-ubo-member:SceneBuffers:textures*/ var Structure.textures by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-/*compute-ubo-member:SceneBuffers:historyRead*/ var Structure.historyRead by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-/*compute-ubo-member:SceneBuffers:historyWrite*/ var Structure.historyWrite by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-/*compute-ubo-member:SceneBuffers:emitterTable*/ var Structure.emitterTable by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-/*compute-ubo-member:SceneBuffers:emitterLookup*/ var Structure.emitterLookup by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-/*compute-ubo-member:SceneBuffers:frameOutput*/ var Structure.frameOutput by Structure.FromStructure<afield.four.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:triangles*/ var Structure.triangles by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:nodes*/ var Structure.nodes by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:materials*/ var Structure.materials by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:accumulation*/ var Structure.accumulation by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:distribution*/ var Structure.distribution by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:directions*/ var Structure.directions by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:textures*/ var Structure.textures by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:historyRead*/ var Structure.historyRead by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:historyWrite*/ var Structure.historyWrite by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:emitterTable*/ var Structure.emitterTable by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:emitterLookup*/ var Structure.emitterLookup by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:frameOutput*/ var Structure.frameOutput by Structure.FromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-ubo:Frame*/ val ComputeModulePointer.Frame by ComputeMesh.FromUniform()
-/*compute-ubo-member:Frame:origin*/ var Structure.origin by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-/*compute-ubo-member:Frame:right*/ var Structure.right by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-/*compute-ubo-member:Frame:up*/ var Structure.up by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-/*compute-ubo-member:Frame:forward*/ var Structure.forward by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-/*compute-ubo-member:Frame:image*/ var Structure.image by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // width, height, first sample index, samples per dispatch
-/*compute-ubo-member:Frame:scene*/ var Structure.scene by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // node count, environment width, environment height, max bounces
-/*compute-ubo-member:Frame:lighting*/ var Structure.lighting by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // environment intensity, yaw radians, ray epsilon, show environment background
-/*compute-ubo-member:Frame:background*/ var Structure.background by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // premultiplied linear RGBA for primary misses
-/*compute-ubo-member:Frame:sampling*/ var Structure.sampling by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // indirect clamp, pixel jitter width, aperture radius, focus-plane distance
-/*compute-ubo-member:Frame:temporal*/ var Structure.temporal by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // -1 disabled, 0 reset, 1 stationary, 2 reproject; sequence index; history cap; reserved
-/*compute-ubo-member:Frame:previousOrigin*/ var Structure.previousOrigin by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-/*compute-ubo-member:Frame:previousRight*/ var Structure.previousRight by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-/*compute-ubo-member:Frame:previousUp*/ var Structure.previousUp by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-/*compute-ubo-member:Frame:previousForward*/ var Structure.previousForward by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
-/*compute-ubo-member:Frame:historyPolicy*/ var Structure.historyPolicy by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // motion sensitivity, roughness sensitivity, maximum defocus radius in pixels, reserved
-/*compute-ubo-member:Frame:fog*/ var Structure.fog by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // linear RGB, density per world unit
-/*compute-ubo-member:Frame:fogOptions*/ var Structure.fogOptions by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // clear start distance, fog background misses, reserved, reserved
-/*compute-ubo-member:Frame:emitters*/ var Structure.emitters by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // sampled emissive-triangle count (zero disables direct emitter sampling), reserved
-/*compute-ubo-member:Frame:medium*/ var Structure.medium by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // single-scattering albedo RGB, extinction per world unit in w (zero disables)
-/*compute-ubo-member:Frame:mediumOptions*/ var Structure.mediumOptions by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // Henyey-Greenstein g, bounded flag, reserved, reserved
-/*compute-ubo-member:Frame:mediumLow*/ var Structure.mediumLow by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // bounds minimum when bounded, w unused
-/*compute-ubo-member:Frame:mediumHigh*/ var Structure.mediumHigh by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // bounds maximum when bounded, w unused
-/*compute-ubo-member:Frame:reconstruction*/ var Structure.reconstruction by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // projection jitter in input pixels, near, far
-/*compute-ubo-member:Frame:frameOutputEnabled*/ var Structure.frameOutputEnabled by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // enabled, reset (no previous camera), reserved
+/*compute-ubo-member:Frame:origin*/ var Structure.origin by Structure.FromStructure<afield.math.linalg.Vector4f>()
+/*compute-ubo-member:Frame:right*/ var Structure.right by Structure.FromStructure<afield.math.linalg.Vector4f>()
+/*compute-ubo-member:Frame:up*/ var Structure.up by Structure.FromStructure<afield.math.linalg.Vector4f>()
+/*compute-ubo-member:Frame:forward*/ var Structure.forward by Structure.FromStructure<afield.math.linalg.Vector4f>()
+/*compute-ubo-member:Frame:image*/ var Structure.image by Structure.FromStructure<afield.math.linalg.Vector4f>() // width, height, first sample index, samples per dispatch
+/*compute-ubo-member:Frame:scene*/ var Structure.scene by Structure.FromStructure<afield.math.linalg.Vector4f>() // node count, environment width, environment height, max bounces
+/*compute-ubo-member:Frame:lighting*/ var Structure.lighting by Structure.FromStructure<afield.math.linalg.Vector4f>() // environment intensity, yaw radians, ray epsilon, show environment background
+/*compute-ubo-member:Frame:background*/ var Structure.background by Structure.FromStructure<afield.math.linalg.Vector4f>() // premultiplied linear RGBA for primary misses
+/*compute-ubo-member:Frame:sampling*/ var Structure.sampling by Structure.FromStructure<afield.math.linalg.Vector4f>() // indirect clamp, pixel jitter width, aperture radius, focus-plane distance
+/*compute-ubo-member:Frame:temporal*/ var Structure.temporal by Structure.FromStructure<afield.math.linalg.Vector4f>() // -1 disabled, 0 reset, 1 stationary, 2 reproject; sequence index; history cap; reserved
+/*compute-ubo-member:Frame:previousOrigin*/ var Structure.previousOrigin by Structure.FromStructure<afield.math.linalg.Vector4f>()
+/*compute-ubo-member:Frame:previousRight*/ var Structure.previousRight by Structure.FromStructure<afield.math.linalg.Vector4f>()
+/*compute-ubo-member:Frame:previousUp*/ var Structure.previousUp by Structure.FromStructure<afield.math.linalg.Vector4f>()
+/*compute-ubo-member:Frame:previousForward*/ var Structure.previousForward by Structure.FromStructure<afield.math.linalg.Vector4f>()
+/*compute-ubo-member:Frame:historyPolicy*/ var Structure.historyPolicy by Structure.FromStructure<afield.math.linalg.Vector4f>() // motion sensitivity, roughness sensitivity, maximum defocus radius in pixels, reserved
+/*compute-ubo-member:Frame:fog*/ var Structure.fog by Structure.FromStructure<afield.math.linalg.Vector4f>() // linear RGB, density per world unit
+/*compute-ubo-member:Frame:fogOptions*/ var Structure.fogOptions by Structure.FromStructure<afield.math.linalg.Vector4f>() // clear start distance, fog background misses, reserved, reserved
+/*compute-ubo-member:Frame:emitters*/ var Structure.emitters by Structure.FromStructure<afield.math.linalg.Vector4f>() // sampled emissive-triangle count (zero disables direct emitter sampling), reserved
+/*compute-ubo-member:Frame:medium*/ var Structure.medium by Structure.FromStructure<afield.math.linalg.Vector4f>() // single-scattering albedo RGB, extinction per world unit in w (zero disables)
+/*compute-ubo-member:Frame:mediumOptions*/ var Structure.mediumOptions by Structure.FromStructure<afield.math.linalg.Vector4f>() // Henyey-Greenstein g, bounded flag, reserved, reserved
+/*compute-ubo-member:Frame:mediumLow*/ var Structure.mediumLow by Structure.FromStructure<afield.math.linalg.Vector4f>() // bounds minimum when bounded, w unused
+/*compute-ubo-member:Frame:mediumHigh*/ var Structure.mediumHigh by Structure.FromStructure<afield.math.linalg.Vector4f>() // bounds maximum when bounded, w unused
+/*compute-ubo-member:Frame:reconstruction*/ var Structure.reconstruction by Structure.FromStructure<afield.math.linalg.Vector4f>() // projection jitter in input pixels, near, far
+/*compute-ubo-member:Frame:frameOutputEnabled*/ var Structure.frameOutputEnabled by Structure.FromStructure<afield.math.linalg.Vector4f>() // enabled, reset (no previous camera), reserved
 var Box.window by Inheritance<Window>() /*from:path_trace_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:path_trace_renderer*/ /**/
 val Why.window by Whying() /*from:path_trace_renderer*/ /**/

@@ -1,4 +1,4 @@
-import afield.petri.*
+import afield.simulation.petri.*
 
 // Five philosophers, five forks, everybody left-handed. Whether this wedges depends on
 // the order the grabs happen in, which is precisely what running it once cannot tell you.

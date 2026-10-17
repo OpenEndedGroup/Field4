@@ -19,10 +19,11 @@ operations:
       frame: { x: 60.0, y: 60.0, w: 557.6, h: 136.0 }
       properties:
         code: |
-          import afield.ai.core.LogDispatcher
-          import afield.ai.core.LogEvent
-          import afield.ai.core.LogSink
-          import afield.logger.lprintln
+          import afield.ai.diagnostics.LogDispatcher
+          import afield.ai.diagnostics.LogEvent
+          import afield.ai.diagnostics.LogSink
+          import afield.ai.diagnostics.withSink
+          import afield.app.diagnostics.logging.lprintln
 
           // A channel is a comma-separated list of tags. Not a level, not a logger name, and
           // not a hierarchy — "error,mypage,disk" is three flat tags.
@@ -33,6 +34,9 @@ operations:
           val seen = mutableListOf<LogEvent>()
           val probe = LogSink { e -> if ("mypage" in e.channel) seen += e }
 
+          // withSink attaches and detaches around the block, on any exit. That is not a
+          // convenience: the sink list outlives your box, and LogDispatcher.log wraps every sink
+          // in runCatching — so a sink leaked by an early return throws silently, forever.
           LogDispatcher.withSink(probe) {
               lprintln("info,mypage", "a plain line")
               lprintln("warning,mypage", "something to look at")
@@ -48,7 +52,7 @@ operations:
       frame: { x: 700.0, y: 60.0, w: 545.9, h: 136.0 }
       properties:
         code: |
-          import afield.ai.core.ConsoleMute
+          import afield.ai.diagnostics.ConsoleMute
 
           // The first of the three matchers, and the strictest: isMuted is
           //
@@ -75,8 +79,8 @@ operations:
       frame: { x: 60.0, y: 226.0, w: 569.3, h: 136.0 }
       properties:
         code: |
-          import afield.logger.lprintln
-          import afield.server.LogStream
+          import afield.app.diagnostics.logging.lprintln
+          import afield.app.server.LogStream
 
           // The third matcher, and the loosest. LogStream is the sink behind the log widget, and
           // its filter asks channel.contains(tag, ignoreCase = true) — a substring, not a tag.
@@ -123,10 +127,11 @@ operations:
       frame: { x: 700.0, y: 226.0, w: 600.0, h: 136.0 }
       properties:
         code: |
-          import afield.ai.core.ConsoleMute
-          import afield.ai.core.LogDispatcher
-          import afield.ai.core.LogSink
-          import afield.logger.lprintln
+          import afield.ai.diagnostics.ConsoleMute
+          import afield.ai.diagnostics.LogDispatcher
+          import afield.ai.diagnostics.LogSink
+          import afield.ai.diagnostics.withSink
+          import afield.app.diagnostics.logging.lprintln
 
           // Muting does not drop the event. Both console sinks check the mute set and return
           // early; no other sink checks it at all. So a muted line is still in the log widget,
@@ -155,11 +160,12 @@ operations:
       frame: { x: 60.0, y: 392.0, w: 557.6, h: 136.0 }
       properties:
         code: |
-          import afield.ai.core.LogDispatcher
-          import afield.ai.core.LogEvent
-          import afield.ai.core.LogSink
-          import afield.logger.lblock
-          import afield.logger.lprintln
+          import afield.ai.diagnostics.LogDispatcher
+          import afield.ai.diagnostics.LogEvent
+          import afield.ai.diagnostics.LogSink
+          import afield.ai.diagnostics.withSink
+          import afield.app.diagnostics.logging.lblock
+          import afield.app.diagnostics.logging.lprintln
 
           // lblock brackets a scope with a BEGIN and an END event sharing a blockId, so a
           // consumer can fold what is between them.
@@ -208,8 +214,8 @@ operations:
       frame: { x: 700.0, y: 392.0, w: 475.6, h: 136.0 }
       properties:
         code: |
-          import afield.logger.StatsHeatmap
-          import afield.logger.formatMillis
+          import afield.app.diagnostics.logging.StatsHeatmap
+          import afield.app.diagnostics.logging.formatMillis
 
           // A channel that reports a number every frame gets coloured by whether each value rose
           // or fell since that channel last reported the same key. The contract is only a string

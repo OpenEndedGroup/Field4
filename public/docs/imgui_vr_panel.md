@@ -73,10 +73,9 @@ misses the panel, the pointer is parked off-screen so nothing hovers.
 
 ## If you build your own
 
-!!! note "The camera has to look down +Z"
-    With that orientation world-right maps to screen-right and the ImGui text reads correctly; look
-    the other way and the whole panel comes out mirrored left-to-right. The demo sets this up for
-    you.
+Put the panel in the scene with `panel.faceToward(position, eye)`: it turns the panel to face the
+eye, upright, so the text reads correctly whichever way the camera looks. The demo places its panel
+this way.
 
 The developer-facing writeup (the `ImGuiPanel` helper API, the render-graph wiring, and the
 capture gotchas) lives in [`dev_docs/imgui_vr_panel.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/imgui_vr_panel.md).

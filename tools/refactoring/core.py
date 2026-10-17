@@ -20,7 +20,7 @@ from .containers import ContainerError, extract, issue, patch
 
 VERSION = 1
 EXCLUDED = {'.git', '.gradle', '.kotlin', '.venv', 'node_modules', 'build', 'backups', 'backup', '.backups', 'thumbnails', '.field-backdoor', '.agent-scratch'}
-HISTORY = {'transcript.edn', 'history_metrics.edn'}
+HISTORY = {'transcript.edn', 'history_metrics.edn', 'versions.edn'}
 TEXT = {'.kt', '.kts', '.java', '.md', '.yaml', '.yml', '.edn', '.json', '.py', '.js', '.sh', '.html', '.xml', '.toml', '.properties'}
 PROPERTIES = {'code', 'preamble', 'sharedTypes'}
 MAX_BYTES = 16 * 1024 * 1024
@@ -342,6 +342,13 @@ def discover(root: Path, repo=False) -> tuple[list[str], list[dict]]:
             retained.append(issue('symlink', rel, retained=True))
             continue
         if target.is_file():
+            # AppleDouble resource forks are binary metadata, even when their suffix is .kt/.edn.
+            if p.name.startswith('._'):
+                with target.open('rb') as stream:
+                    apple_double = stream.read(4) == b'\x00\x05\x16\x07'
+                if apple_double:
+                    retained.append(issue('appledouble-metadata', rel, retained=True))
+                    continue
             files.append(rel)
     return files, retained
 

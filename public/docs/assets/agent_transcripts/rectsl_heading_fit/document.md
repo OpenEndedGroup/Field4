@@ -11,12 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rectsl_heading_solve" index="0" -->
 
 ```edn [field-box id="rectsl_heading_solve" role="properties"]
-{"id" "rectsl_heading_solve" "index" 0 "name" "solve for where it points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "solve for where it points" "_tombstone" false "frame" #afield/rect [80.0 900.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_solve_code_.kt" "lines" 36 "characters" 1514 "sha256" "55e3a2f64e7505156ade465481dc65a8c99a5f8526e4f8c86d55e375237242ff"}]}
+{"id" "rectsl_heading_solve" "index" 0 "name" "solve for where it points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "solve for where it points" "_tombstone" false "frame" #afield/rect [80.0 900.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_solve_code_.kt" "lines" 36 "characters" 1527 "sha256" "f0afad30560a270633670a23cb22fc6d79704b982988f411a52ac3ffa3bc54a3"}]}
 ```
 
 ```kotlin [field-property box="rectsl_heading_solve" name="code" path="rectsl_heading_solve_code_.kt"]
-import afield.rectsl.*
-import afield.stdlib.Functions
+import afield.lang.rectsl.*
+import afield.math.functions.Functions
 import kotlin.math.PI
 
 // A dart running right at unit speed while climbing at an unknown rate. Its heading is
@@ -58,13 +58,13 @@ val agreement = heading.gradientAgreement(
 <!-- field-box id="rectsl_heading_lowering" index="1" -->
 
 ```edn [field-box id="rectsl_heading_lowering" role="properties"]
-{"id" "rectsl_heading_lowering" "index" 1 "name" "a heading, and the half turn it avoids" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a heading, and the half turn it avoids" "_tombstone" false "frame" #afield/rect [80.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_lowering_code_.kt" "lines" 68 "characters" 2459 "sha256" "93420a63b42fce305570e4f6a7b3ae929a159792d40e52071664aabbedcbe5e5"}]}
+{"id" "rectsl_heading_lowering" "index" 1 "name" "a heading, and the half turn it avoids" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a heading, and the half turn it avoids" "_tombstone" false "frame" #afield/rect [80.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_lowering_code_.kt" "lines" 68 "characters" 2525 "sha256" "f28779eba2e7fd6a7bddc7eb20e0271c6a9999225bd9dd9677f3c097c35e3cb7"}]}
 ```
 
 ```kotlin [field-property box="rectsl_heading_lowering" name="code" path="rectsl_heading_lowering_code_.kt"]
-import afield.rectsl.*
-import afield.stdlib.Functions
-import afield.stdlib.extractParameters
+import afield.lang.rectsl.*
+import afield.math.functions.Functions
+import afield.math.functions.extractParameters
 import java.util.Base64
 import kotlin.math.PI
 import kotlin.math.atan
@@ -103,15 +103,15 @@ val halfTurns = strobe.count {
 val png = RectSLFitFigure.render(
     bands = listOf(
         RectSLFitFigure.Band(
-            "sampler", x, y, afield.Color4(0.86, 0.88, 0.91),
+            "sampler", x, y, afield.graphics.color.Color4(0.86, 0.88, 0.91),
             note = "headingtrack.sample", rotation = heading::sample
         ),
         RectSLFitFigure.Band(
-            "lowered", x, y, afield.Color4(0.29, 0.83, 0.7),
+            "lowered", x, y, afield.graphics.color.Color4(0.29, 0.83, 0.7),
             note = "fn err %.0e".format(worst), rotation = lowered::eval
         ),
         RectSLFitFigure.Band(
-            "atan only", x, y, afield.Color4(1.0, 0.42, 0.28),
+            "atan only", x, y, afield.graphics.color.Color4(1.0, 0.42, 0.28),
             note = "$halfTurns half turns", rotation = quadrantLess
         )
     ),

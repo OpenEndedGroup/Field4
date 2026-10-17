@@ -14,8 +14,8 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.synth.*
-
+          import afield.audio.synth.*
+          
           display("guide", """
           <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.55 system-ui,sans-serif">
             <h2 style="margin:0 0 8px;color:#7fcbd7">notation → sound → notation</h2>
@@ -36,7 +36,7 @@ operations:
             note name genuinely does not exist — a measurement 0.1 cents out flips it a semitone.</p>
           </section>
           """.trimIndent())
-
+          
           display("resolution", """
               the analysis window is 2·(sampleRate/minHz) of frame plus one longest lag,
               so the register you admit sets the shortest note you can resolve:
@@ -44,25 +44,24 @@ operations:
                 minHz 261 Hz (a treble line)    → ${patPitchFrameSpan(PatSoundDocs.SR, 261.0)} samples = ${"%.1f".format(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 261.0) / PatSoundDocs.SR)} ms
               That ratio is what box 4 is about.
           """.trimIndent())
-
   - create:
       box: pitch_roundtrip_clean
       name: 2 · notate → render → hear it back
       frame: { x: 520.0, y: 40.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.synth.*
-
+          import afield.audio.synth.*
+          
           // The notation, and the ground truth Field already owns because it wrote it.
           val notation = "60 62 64 65 67 69 71 72"
           val cycles = 2
           val cps = 1.0
           val sustain = 0.85
           val voice = patVoice(sustain = sustain, decay = 0.03)
-
+          
           val audio = patRenderStereo(pat(notation), cycles, cps, voice).mono
           val reference = patReferenceNotes(notation, cycles, cps, sustain = sustain)
-
+          
           // One call: transcribe, score against the notation, draw both on one axis.
           val heard = showPatTranscriptionOf(
               audio,
@@ -72,21 +71,20 @@ operations:
               maxHz = patMidiToHz(73.0),
               label = "notated against recovered",
           )
-
+          
           display("authored", "pat(\"$notation\") × $cycles cycles at cps $cps")
           display("recovered", "pat(\"${heard.miniNotation}\") at cps ${"%.3f".format(heard.cps)}")
           display("pitch error", heard.notes
               .joinToString("\n") { "MIDI ${it.midi}  ${"%+.1f".format(it.centsOffset)} cents  conf ${"%.2f".format(it.confidence)}" })
           display("summary", heard.describe())
-
   - create:
       box: pitch_roundtrip_legato
       name: 3 · a line with no attacks in it
       frame: { x: 40.0, y: 190.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.synth.*
-
+          import afield.audio.synth.*
+          
           // One oscillator, continuous phase, stepped frequency. The amplitude never moves, so the RMS
           // envelope is flat and there is no attack anywhere except the entry from silence.
           //
@@ -100,7 +98,7 @@ operations:
           val audio = doughRenderMono(
               patSteppedSine(steps, stepSeconds), (steps.size * stepSeconds).toFloat(), sr
           )
-
+          
           val reference = steps.mapIndexed { i, midi ->
               PatRefNote(
                   startSample = (i * stepSeconds * sr).toInt(),
@@ -111,11 +109,11 @@ operations:
           val scheduled = reference.map { it.startSample }
           val tolerance = (0.030 * sr).toInt()
           val frames = patF0Frames(audio, sr, minHz = patMidiToHz(59.0), maxHz = patMidiToHz(73.0))
-
+          
           val energy = patDetectOnsetSamples(audio, sr, stepSeconds)
           val pitch = patDetectPitchChangeSamples(audio, sr, stepSeconds, frames)
           val merged = patDetectNoteOnsets(audio, sr, stepSeconds, frames)
-
+          
           display("the counterfactual", """
               eight notes, one continuous tone, flat envelope:
                 ${patTallyOnsets(energy, scheduled, tolerance).describe("energy  (amplitude envelope)")}
@@ -123,7 +121,7 @@ operations:
                 ${patTallyOnsets(merged, scheduled, tolerance).describe("merged  (the union)        ")}
               The energy detector is not misconfigured. The evidence it consumes is not in this signal.
           """.trimIndent())
-
+          
           showPatTranscriptionOf(
               audio,
               sampleRate = sr,
@@ -133,15 +131,14 @@ operations:
               maxHz = patMidiToHz(73.0),
               label = "legato, no attacks — 48 kHz Dough render",
           )
-
   - create:
       box: pitch_roundtrip_register
       name: 4 · POKE THIS — the register is the whole lever
       frame: { x: 520.0, y: 190.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.synth.*
-
+          import afield.audio.synth.*
+          
           // Sixteen notes in half a second: 31 ms each.
           val notation = "60 62 64 65 67 69 71 72 72 71 69 67 65 64 62 60"
           val cycles = 2
@@ -151,7 +148,7 @@ operations:
               pat(notation), cycles, cps, patVoice(sustain = sustain, decay = 0.01)
           ).mono
           val reference = patReferenceNotes(notation, cycles, cps, sustain = sustain)
-
+          
           // ─── CHANGE THIS ONE LINE ────────────────────────────────────────────────────────────
           // The analysis window is derived from minHz, because YIN needs a frame at least twice the
           // longest period it is asked to consider. So the lowest pitch you admit sets the shortest
@@ -167,7 +164,7 @@ operations:
           // just reporting silence. The audio does not change. Only what the detector was promised.
           val minHz = patMidiToHz(59.0)
           // ─────────────────────────────────────────────────────────────────────────────────────
-
+          
           val window = patPitchFrameSpan(PatSoundDocs.SR, minHz)
           val heard = showPatTranscriptionOf(
               audio,
@@ -177,22 +174,21 @@ operations:
               maxHz = patMidiToHz(73.0),
               label = "31 ms notes, minHz = ${"%.0f".format(minHz)} Hz",
           )
-
+          
           display("resolution", """
               minHz ${"%.1f".format(minHz)} Hz → analysis window $window samples (${"%.1f".format(1000.0 * window / PatSoundDocs.SR)} ms)
               the notes are ${"%.1f".format(1000.0 / cps / 16)} ms long
           """.trimIndent())
           display("verdict", heard.diagnosis.describe())
           display("recovered", "pat(\"${heard.miniNotation}\")")
-
   - create:
       box: pitch_roundtrip_refusal
       name: 5 · a chord, refused rather than guessed at
       frame: { x: 40.0, y: 340.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.synth.*
-
+          import afield.audio.synth.*
+          
           // Three simultaneous pitches. A monophonic detector's correct output here is a stated
           // inability, not the loudest note. `~` is the only thing mini-notation can say for a span
           // that sounded and was not named, so the refusal lives in the warnings and the verdict.
@@ -203,7 +199,7 @@ operations:
           val audio = patRenderStereo(
               pat(notation), cycles, cps, patVoice(sustain = sustain, decay = 0.03)
           ).mono
-
+          
           val heard = showPatTranscriptionOf(
               audio,
               reference = patReferenceNotes(notation, cycles, cps, sustain = sustain),
@@ -212,7 +208,7 @@ operations:
               maxHz = patMidiToHz(73.0),
               label = "a triad — outlines with nothing in them",
           )
-
+          
           display("named", "${heard.notes.size} notes  ·  pat(\"${heard.miniNotation}\")")
           display("verdict", heard.diagnosis.describe())
           display("warnings", heard.warnings.joinToString("\n\n"))

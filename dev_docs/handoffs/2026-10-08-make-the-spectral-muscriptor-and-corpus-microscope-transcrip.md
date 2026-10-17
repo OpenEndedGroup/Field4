@@ -8,7 +8,7 @@
 Extends handoff ee38c55f to three more Audio AI pages: `audio_ai_spectral_embeddings.md`,
 `audio_ai_muscriptor.md`, `audio_ai_corpus_microscope.md`.
 
-- Each page's fences import `afield.stdlib.noir.audioai.*` (and `afield.stdlib.AudioVisualizer*`);
+- Each page's fences import `afield.audio.ai.*` (and `afield.ui.visualization.AudioVisualizer*`);
   rule 7 says no `afield.stdlib.*` imports. Make the names resolve in a box without them, edit the
   fences, and recapture.
 - Each page used to end by telling the reader to "load the `audio_ai_*` operation transcript". The

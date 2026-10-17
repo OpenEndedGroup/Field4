@@ -1,8 +1,8 @@
-import afield.four.modules.CpuSkinner
-import afield.four.modules.DualQuaternionSkinning
-import afield.four.modules.GltfSkinning
-import afield.four.modules.RiggedFixture
-import afield.stdlib.linalg.Matrix4f
+import afield.graphics.scene.CpuSkinner
+import afield.graphics.scene.DualQuaternionSkinning
+import afield.graphics.scene.GltfSkinning
+import afield.graphics.scene.RiggedFixture
+import afield.math.linalg.Matrix4f
 
 // The candy wrapper: one rig, one pose, two ways of averaging the joints.
 //

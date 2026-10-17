@@ -117,7 +117,7 @@ thisBox.properties["levelPlan"] = plan
 aiTool("level.inspect") {
     describe("Read the level: rooms [x, y, w, h], doors [x, y, side] (side e or s opens to the east or south neighbour), the spawn [x, y] " +
         "and loot [x, y, path budget], with the revision to quote to level.edit. Changes nothing.")
-    effects(afield.ai.core.ToolEffect.READ_DOCUMENT)
+    effects(afield.ai.tools.ToolEffect.READ_DOCUMENT)
     action { mapOf("revision" to plan.currentId(), "level" to json.readTree(plan.revision().source),
         "editedOutsideTools" to (plan.liveSource() != plan.revision().source)) }
 }
@@ -126,7 +126,7 @@ aiTool("level.edit") {
         "{op: removeRoom|removeDoor|removeLoot, id} removes one; {op: spawn, at: [x, y]} moves the spawn. Quote the revision from level.inspect. " +
         "An edit that leaves rooms overlapping, a door not between two rooms, or the spawn or loot outside a room is refused and changes nothing. " +
         "Every build of the level goes stale; rebuild it.")
-    effects(afield.ai.core.ToolEffect.MUTATE_DOCUMENT)
+    effects(afield.ai.tools.ToolEffect.MUTATE_DOCUMENT)
     val expectedRevision by param<String>("revision from level.inspect")
     val operations by param<List<Map<String, Any?>>>("the operations")
     val description by param<String>("what the edit is for", default = "")

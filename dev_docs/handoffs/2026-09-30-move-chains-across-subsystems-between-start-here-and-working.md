@@ -59,7 +59,7 @@ Alternatives:
 - Should all 13 chains move, or only a curated few?
 - Should the section keep its title, "Chains Across Subsystems"?
 - The chain pages open assuming the reader knows the subsystems they cross (e.g. this page names
-  `afield.stdlib.polytope`, `afield.manifold` and `afield.four.fabricated` in its first paragraph).
+  `afield.geometry.polytope`, `afield.geometry.solid.manifold` and `afield.graphics.scene.fabricated` in its first paragraph).
   Right after the Tour, should each page's intro point back to the pages that introduce those
   subsystems?
 

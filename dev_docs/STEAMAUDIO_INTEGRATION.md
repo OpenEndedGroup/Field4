@@ -1,4 +1,4 @@
-# Using `afield.four.audio.steamaudio` from Field
+# Using `afield.audio.spatial.steamaudio` from Field
 
 What you need to wire the bindings into a 2D game or into Field itself. The reasoning behind the
 numbers is in [STEAMAUDIO.md](STEAMAUDIO.md), and every claim here was measured rather than
@@ -271,7 +271,7 @@ heap.
 
 ```bash
 ./gradlew fetchSteamAudioNatives      # unpack + verify this host's libphonon; needed once
-./gradlew jvmTest --tests 'afield.four.audio.steamaudio.*'
+./gradlew jvmTest --tests 'afield.audio.engine.steamaudio.*'
 ./gradlew caveDemo                    # reverberant space, dynamic planes, live reflections
 ./gradlew pathingDemo                 # sound routing around a corner through a doorway
 ./gradlew orbitDemo                   # a source flying around the head

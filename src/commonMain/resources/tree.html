@@ -8,7 +8,7 @@
       The `tree(...)` embed (afield/outputs.kt -> /tree, protocol in afield/server/browsing.kt).
       Entries arrive as [name, id, kind, type, summary, flag, path]; kind lets a row draw its twisty
       without opening the child, and a directory longer than one page ends in a "more" row. path is
-      the row's afield.graphquery address from the root ("" when none reaches it): `p` copies it, and
+      the row's afield.data.query.graph address from the root ("" when none reaches it): `p` copies it, and
       a filter containing / * or | is run server-side as graphPaths(...) (op "query").
       Colours come from field.css tokens so the embed matches the panel it sits in.
     -->

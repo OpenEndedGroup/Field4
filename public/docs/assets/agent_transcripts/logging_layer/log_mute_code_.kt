@@ -1,4 +1,4 @@
-import afield.ai.core.ConsoleMute
+import afield.ai.diagnostics.ConsoleMute
 
 // The first of the three matchers, and the strictest: isMuted is
 //

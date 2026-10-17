@@ -123,6 +123,22 @@ This file is about what goes on a page and how it reads.
    (`stackauto_conversation.md` and `tools/package_stackauto_conversation.py`), and a guard can pin
    an anchor (`#sonicpi_pattern_demo` on `agent_transcripts.md`).
 
+## What a page should not have to say
+
+25. **A sharp edge the page has to warn about is a bug: fix it, do not document it.** If a
+   paragraph exists only to explain an exception, a stale file, a workaround, a name that
+   misleads, or "these two still do not…", the fix belongs in the code, data or tool, and the page
+   then says nothing about it. A prose pass files a `code` handoff for each one, quoting the
+   paragraph, and leaves the paragraph in place until the fix lands. The handoff says what to fix
+   and that the paragraph is deleted in the same change (Marc, 2026-10-15: `agent_transcripts.md`
+   documented two build scripts that no longer rebuilt their documents, and a test that listed
+   them as known-stale "so an exception cannot outlive its reason").
+26. **Material written for agents goes in an agents' aside.** Sometimes a page does need to tell an
+   agent something a reader does not need: which guard pins a file, what not to hand-edit, which
+   tool regenerates it. Put it in a collapsed `??? aside "Agents: <topic>"`, its title starting
+   with `Agents:`, never in the body text. If the agent-facing note describes a hazard that a
+   tool could prevent, it is also rule 25.
+
 ## Turning these into checks
 
 `AGENTS.md` asks that every "do not" name the tool change that would retire it. These are the

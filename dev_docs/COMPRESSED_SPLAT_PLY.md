@@ -4,7 +4,7 @@ Reading a quantized Gaussian-splat PLY — the output of
 [splat-transform](https://github.com/playcanvas/splat-transform), which SuperSplat and the
 PlayCanvas engine also read — as if it were the float-per-property PLY a 3DGS trainer emits.
 
-Reader: [`CompressedSplatPly.kt`](../src/jvmMain/kotlin/afield/four/modules/CompressedSplatPly.kt).
+Reader: [`CompressedSplatPly.kt`](../src/jvmMain/kotlin/afield/graphics/scene/CompressedSplatPly.kt).
 Normative source: splat-transform's `src/lib/writers/compressed-chunk.ts` (the packing) and
 `src/lib/readers/decompress-ply.ts` (the unpacking). Both are short; read them before changing
 anything here.
@@ -162,7 +162,7 @@ GPU reads it as a coalesced pass-through.
 
 ## Playback: sequence and transport
 
-[`SplatSequence`](../src/jvmMain/kotlin/afield/four/fabricated/SplatSequence.kt) is a directory of
+[`SplatSequence`](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/SplatSequence.kt) is a directory of
 frames read in **any order**, because scrubbing jumps around; frames are held in a bounded
 most-recently-used cache so a shot longer than memory still works. `peakWindowSplats(window)` gives
 the capacity a streaming cloud needs — the true peak over any `window` consecutive frames, which on a
@@ -200,7 +200,7 @@ python3 tools/run_field_tests.py --id four.ply-loader.smoke
 
 Test 9 decodes hand-authored bit patterns against values computed by hand. Test 10 round-trips 600
 splats across three chunks (the last partial) through
-[`CompressedSplatPlyFixture`](../src/jvmMain/kotlin/afield/four/modules/CompressedSplatPlyFixture.kt),
+[`CompressedSplatPlyFixture`](../src/jvmMain/kotlin/afield/graphics/scene/CompressedSplatPlyFixture.kt),
 which is a transcription of splat-transform's encoder so that the reader is checked against the
 format rather than against a second copy of its own beliefs. Test 11 covers the 12-property chunk
 variant, Test 12 that detection is by schema and that every wrong turn is loud.
@@ -218,7 +218,7 @@ that as the *only* path is that it left the pipeline unfalsifiable in the way th
 above check numbers, and every assertion in them would still pass if the shader drew the cloud
 mirrored, inside out, or with red and blue swapped. Seeing a splat required a GPU and a window.
 
-[`SplatRaster`](../src/jvmMain/kotlin/afield/four/modules/SplatRaster.kt) rasterizes a cloud on the
+[`SplatRaster`](../src/jvmMain/kotlin/afield/graphics/render/SplatRaster.kt) rasterizes a cloud on the
 CPU into PNG bytes. It is a line-by-line transcription of `splatVertexShader` and
 `splatFragmentShader` — the view-space covariance congruence, the projective Jacobian, the 0.3 screen
 dilation, the eigen-decomposition into an oriented 3σ quad, the `minScreenRadius`/`maxScreenRadius`
@@ -254,7 +254,7 @@ against 80.656 and 54.922 derived on paper from the perspective matrix.
 
 ### Contact sheets
 
-[`SplatContactSheet`](../src/jvmMain/kotlin/afield/four/modules/SplatContactSheet.kt) tiles N frames
+[`SplatContactSheet`](../src/jvmMain/kotlin/afield/graphics/render/SplatContactSheet.kt) tiles N frames
 of a `SplatSequence` into one image, frame numbers drawn from a 3×5 bitmap rather than
 `java.awt.Font`. `SplatSequence` and `SplatTransport` scrub beautifully, but scrubbing is a *serial*
 instrument and the questions a fresh capture raises are parallel: which frames are empty, where does
@@ -269,7 +269,7 @@ radius 1.04 where the view needs 0.46 vertically.
 
 ### Editing: `SplatCloud`
 
-[`SplatCloud`](../src/jvmMain/kotlin/afield/four/modules/SplatCloudEdit.kt) is a fourth
+[`SplatCloud`](../src/jvmMain/kotlin/afield/graphics/render/SplatCloudEdit.kt) is a fourth
 representation and it needed justifying. `PlyFloatTable` is the file's conventions — log scales, logit
 opacity, SH-DC colour — right for a reader and hostile to a person, since the number that halves a
 splat's width is not `0.5` but a subtraction of `ln 2`. `RawSplats` is deliberately undecoded. The

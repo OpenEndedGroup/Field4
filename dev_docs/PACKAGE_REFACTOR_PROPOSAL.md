@@ -9,7 +9,7 @@ The package cutover and K2 binding-equivalence layer are not implemented.
 
 The current JVM source tree has 1,413 Kotlin files declaring 116 packages, with 43 immediate
 children of `afield`. Of those files, 167 declare `afield.stdlib`, 142 declare `afield`, and 107
-declare `afield.four.synth`. These are counts of files with package declarations, excluding generated
+declare `afield.audio.synth`. These are counts of files with package declarations, excluding generated
 build output, not counts of public declarations. Some runtime probes and tests live in these roots.
 
 52 JVM files have a package that disagrees with their directory. For example, files under
@@ -35,7 +35,7 @@ there if that materially simplifies distribution. The default script imports sup
 | --- | --- | --- |
 | `afield.document` | `graph`, `properties`, `context`, `persistence`, `workspace`, `history` | `Box`, properties/inheritance/context resolution, saving/EDN, workspace helpers |
 | `afield.runtime` | `execution`, `kotlin`, `completion`, `macros`, `lifecycle` | execution, Kotlin engines/parser, completion, shared types, run scopes/runloop, macro expansion |
-| `afield.app` | `server`, `protocol`, `client`, `editor`, `canvas`, `settings`, `diagnostics` | server/RPC transport, browser UI, launch/settings, logs/profiling |
+| `afield.app.server.app` | `server`, `protocol`, `client`, `editor`, `canvas`, `settings`, `diagnostics` | server/RPC transport, browser UI, launch/settings, logs/profiling |
 | `afield.ui` | `output`, `controls`, `notation`, `slides`, `visualization` | box-facing outputs/widgets, notation, slideshow, charts/tables/value visualizers |
 | `afield.math` | `linalg`, `functions`, `autodiff`, `statistics`, `optimization`, `gp` | numerical `stdlib`, function graphs, Ceres, existing `math.gp` |
 | `afield.geometry` | `path`, `mesh`, `solid`, `polytope`, `spatial` | FLine geometry, mesh helpers, Manifold, polytopes, tessellation/TetGen geometry |
@@ -62,7 +62,7 @@ needs a coherent body of code. Most normal imports should have two to four compo
   public domain APIs, not one package; audio is independent of the Vulkan renderer.
 - Separate geometry from rendering. `FLine` belongs in `geometry.path`; SVG/Vulkan display adapters
   belong with their renderers or UI. Three and Vulkan can consume the same geometry.
-- Keep recognizable language names. `afield.ml` currently contains FieldML compiler code, so it
+- Keep recognizable language names. `afield.lang.fieldml` currently contains FieldML compiler code, so it
   becomes `afield.lang.fieldml`, not a machine-learning package. Audio languages stay with audio
   when their primary public contract is an audio engine; the runtime language registry can register
   them without moving their implementations into `lang`.

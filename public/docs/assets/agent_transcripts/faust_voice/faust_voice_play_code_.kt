@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // A Faust program, playing. Click this box and the sliders below appear — they are the
 // program's own hslider declarations, not something written here. Move `cutoff` while it

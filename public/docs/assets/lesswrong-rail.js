@@ -149,27 +149,58 @@
     });
   }
 
+  /* The rows are laid out by flexbox, so each heading's dot sits where its row starts, not at its
+     linear position in the article: rows have a content height, and short sections are padded to
+     `minSegment`. On a page with many headings that drift is large, so the fill and the viewport
+     window are drawn through the same mapping the dots use — piecewise linear between each
+     heading's document Y and its row's offset in the rail. */
+  function documentYToRailRatio(y) {
+    const railHeight = rowsContainer ? rowsContainer.clientHeight : 0;
+    const articleTop = articleBounds.top;
+    const articleBottom = articleBounds.top + articleBounds.height;
+    if (!railHeight || !headingItems.length) {
+      return clamp((y - articleTop) / articleBounds.height, 0, 1);
+    }
+
+    const anchors = [{ doc: articleTop, rail: 0 }];
+    headingItems.forEach((item) => {
+      const last = anchors[anchors.length - 1];
+      const doc = clamp(item.top, last.doc, articleBottom);
+      const rail = clamp(item.row.offsetTop / railHeight, last.rail, 1);
+      anchors.push({ doc, rail });
+    });
+    anchors.push({ doc: articleBottom, rail: 1 });
+
+    if (y <= articleTop) return 0;
+    if (y >= articleBottom) return 1;
+    for (let i = 1; i < anchors.length; i += 1) {
+      const a = anchors[i - 1];
+      const b = anchors[i];
+      if (y <= b.doc) {
+        const span = b.doc - a.doc;
+        const t = span > 0 ? (y - a.doc) / span : 1;
+        return a.rail + t * (b.rail - a.rail);
+      }
+    }
+    return 1;
+  }
+
   function updateProgress() {
     if (!railRoot || !progressFill || !progressViewport) return;
 
-    const viewportHeight = window.innerHeight;
     const headerHeight = getHeaderHeight();
-    /* Track how far the bottom of the visible viewport has scrolled through the article */
-    const viewportBottom = window.scrollY + viewportHeight;
-    const articleBottom = articleBounds.top + articleBounds.height;
-    const rawFillRatio = (viewportBottom - articleBounds.top) / articleBounds.height;
-    const fillRatio = clamp(rawFillRatio, 0, 1);
-    const viewportRatio = clamp(viewportHeight / articleBounds.height, 0.04, 1);
+    const visibleTop = window.scrollY + headerHeight;
+    const visibleBottom = window.scrollY + window.innerHeight;
 
-    const fillPercent = fillRatio * 100;
-    const viewportPercent = viewportRatio * 100;
-    /* Viewport window spans from top-of-visible to bottom-of-visible within the article */
-    const topRatio = clamp((window.scrollY + headerHeight - articleBounds.top) / articleBounds.height, 0, 1);
-    const topPercent = topRatio * 100;
+    /* Fill tracks how far the bottom of the visible viewport has scrolled through the article */
+    const fillRatio = documentYToRailRatio(visibleBottom);
+    const topRatio = documentYToRailRatio(visibleTop);
+    const minViewport = 0.04;
+    const viewportRatio = Math.max(minViewport, fillRatio - topRatio);
 
-    progressFill.style.height = `${fillPercent}%`;
-    progressViewport.style.height = `${viewportPercent}%`;
-    progressViewport.style.top = `${clamp(topPercent, 0, 100 - viewportPercent)}%`;
+    progressFill.style.height = `${fillRatio * 100}%`;
+    progressViewport.style.height = `${viewportRatio * 100}%`;
+    progressViewport.style.top = `${clamp(topRatio, 0, 1 - viewportRatio) * 100}%`;
   }
 
   function updateActiveHeading() {

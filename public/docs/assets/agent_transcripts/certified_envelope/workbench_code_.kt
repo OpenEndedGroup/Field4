@@ -1,10 +1,10 @@
-import afield.stdlib.Functions
-import afield.stdlib.FnIntervals
-import afield.stdlib.StudyEvent
-import afield.stdlib.certifiedEquals
-import afield.stdlib.certifiedNeverBelow
-import afield.stdlib.certifiedNeverExceeds
-import afield.stdlib.certifiedRange
+import afield.math.functions.Functions
+import afield.math.functions.FnIntervals
+import afield.math.functions.StudyEvent
+import afield.math.functions.certifiedEquals
+import afield.math.functions.certifiedNeverBelow
+import afield.math.functions.certifiedNeverExceeds
+import afield.math.functions.certifiedRange
 import kotlin.math.PI
 
 // The function workbench's worked example (public/docs/assets/function_conversation/final.kt),

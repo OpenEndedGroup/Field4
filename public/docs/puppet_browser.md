@@ -50,16 +50,15 @@ The copy exists so that Chromium can reuse its buffer; it happens on the GPU. No
 encoded frame or pixel array travels between Electron and the shader. The resident image is imported as sRGB, so ordinary page
 colour survives the trip into the renderer correctly.
 
-On macOS the transferred object is an IOSurface sent through a Mach port and imported by MoltenVK.
-The Windows receiver imports a duplicated D3D11 NT handle; the Linux receiver imports dma-buf file
-descriptors and their DRM modifier layout. The macOS producer-to-renderer path is the currently
-live-tested implementation. Windows and Linux retain their compile-reviewed receivers while their
-Electron handle-transfer bridges and native validation are completed.
+On macOS the transferred object is an IOSurface sent through a Mach port. MoltenVK backs a Vulkan
+image with it; KosmicKrisp, the default driver on recent Apple silicon, maps its pages as a buffer
+and copies them into an image on the GPU. On Windows and Linux the GPU transfer is refused with a
+message, and `cpuBitmapFallback = true` reads frames back instead.
 
 ## The other half: `PuppetBrowser`
 
 The texture comes with a control plane. `FieldUiBrowserTexture` implements
-`PuppetBrowser` (`src/jvmMain/kotlin/afield/four/browser/PuppetBrowser.kt`),
+`PuppetBrowser` (`src/jvmMain/kotlin/afield/media/browser/PuppetBrowser.kt`),
 so a neighbouring Field box can keep the browser as a property and operate it without reaching for
 a desktop or exposing an Electron window.
 
@@ -164,7 +163,7 @@ keyboard and CDP paths remain available for every other site.
 Everything in the table above is about the *tab*, not about its pixels, and none of it needs a
 Vulkan image view, a window or a GPU.
 `PuppetBrowserControl`, in the same file, is the control plane on its own, and
-`HeadlessPuppetBrowser` (`src/jvmMain/kotlin/afield/four/browser/HeadlessPuppetBrowser.kt`)
+`HeadlessPuppetBrowser` (`src/jvmMain/kotlin/afield/media/browser/HeadlessPuppetBrowser.kt`)
 implements it with no renderer, no Vulkan surface, no native handle bridge and no readback socket.
 The Electron producer has a third frame mode in which the paints are dropped at the source.
 
@@ -220,7 +219,7 @@ wants: labels down one and values down another.
 
 ## How desktop events land on the page
 
-`PuppetBrowserWindowInput` (`src/jvmMain/kotlin/afield/four/browser/PuppetBrowserInteraction.kt`)
+`PuppetBrowserWindowInput` (`src/jvmMain/kotlin/afield/media/browser/PuppetBrowserInteraction.kt`)
 turns Field window events into Chromium input:
 
 1. the panel's aspect-correct viewport hit-tests the native cursor;

@@ -1,4 +1,4 @@
-import afield.paint.*
+import afield.graphics.paint.*
 
 run {
 if (!PaintCanvas.isAvailable) {

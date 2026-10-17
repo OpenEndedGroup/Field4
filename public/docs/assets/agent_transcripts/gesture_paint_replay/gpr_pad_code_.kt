@@ -1,4 +1,4 @@
-import afield.paint.*
+import afield.graphics.paint.*
 
 var p = Vector2f(0f, 0f)
 lateinit var pad: GestureHandle

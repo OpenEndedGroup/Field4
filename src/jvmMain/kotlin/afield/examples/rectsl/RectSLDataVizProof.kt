@@ -1,11 +1,11 @@
 package afield.examples.rectsl
 
-import afield.Color4
-import afield.Colormaps
-import afield.rectsl.PaintSpec
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.SampledRect
-import afield.rectsl.SceneProgram
+import afield.graphics.color.Color4
+import afield.graphics.color.Colormaps
+import afield.lang.rectsl.PaintSpec
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.SampledRect
+import afield.lang.rectsl.SceneProgram
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Font

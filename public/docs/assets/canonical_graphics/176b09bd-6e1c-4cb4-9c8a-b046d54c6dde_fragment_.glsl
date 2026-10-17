@@ -9,7 +9,7 @@ layout(push_constant) uniform Push {
     int seed;
 } push;
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 layout(location = 0) out vec4 outColor;
 

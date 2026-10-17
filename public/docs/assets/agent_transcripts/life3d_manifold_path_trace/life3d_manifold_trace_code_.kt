@@ -1,20 +1,20 @@
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.util.Camera
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.stdlib.IntVolume
-import afield.stdlib.LIFE3D_BLOB
-import afield.stdlib.asDensityField
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.marchBounds
-import afield.stdlib.step
-import afield.stdlib.toMesh
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.vulkan.util.Camera
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.simulation.automata.IntVolume
+import afield.simulation.automata.LIFE3D_BLOB
+import afield.simulation.automata.asDensityField
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.math.linalg.Vector3f
+import afield.simulation.automata.marchBounds
+import afield.simulation.automata.step
+import afield.simulation.automata.toMesh
 import java.io.File
 import kotlin.random.Random
 
@@ -46,9 +46,8 @@ val populations = mutableListOf(volume.population())
 repeat(generations) { volume = volume.step(LIFE3D_BLOB); populations += volume.population() }
 println("LIFE3D_BLOB populations: ${populations.joinToString(" -> ")}")
 
-// smoothRadius = 0 marches the raw occupancy. A radius-1 blur is the usual choice and is
-// the wrong one here: this rule leaves filaments and isolated cells, and a 27-voxel
-// average over those never reaches an iso of 0.5, so the surface comes back empty.
+// smoothRadius = 0 marches the raw occupancy, which is why the clusters are faceted at
+// the voxel scale: this rule leaves filaments and isolated cells that a blur would erase.
 val field = volume.asDensityField(smoothRadius = 0, iso = iso)
 val bounds = volume.marchBounds()
 
@@ -59,31 +58,14 @@ println("Field's marchingCubes: ${marched.triangleCount} triangles, " +
 
 // Manifold's convention is positive inside, which is what asDensityField already gives, so
 // this is levelSet rather than levelSetOf: the latter negates for Field's SDF family.
-// A fresh Vec3 per sample, because `field` is called from Manifold's own worker threads.
-//
-// parallel = false, and that is the whole reason the census below is a number worth
-// printing: the parallel path is faster and not reproducible. The two runs underneath say
-// so rather than the comment doing it alone.
-fun march(parallel: Boolean): Pair<Solid, Double> {
-    val t0 = System.nanoTime()
-    val solid = Solid.levelSet(bounds, edgeLength = edgeLength, parallel = parallel) { x, y, z ->
-        field(vec(x, y, z)).toDouble()
-    }
-    return solid to (System.nanoTime() - t0) / 1e6
+val t0 = System.nanoTime()
+val whole = Solid.levelSet(bounds, edgeLength = edgeLength) { x, y, z ->
+    field(vec(x, y, z)).toDouble()
 }
-
-val (whole, sequentialMs) = march(parallel = false)
+val levelSetMs = (System.nanoTime() - t0) / 1e6
 println("Manifold's levelSet:   ${whole.triangleCount} triangles, status ${whole.status}, " +
     "genus ${whole.genus}, volume ${"%.4f".format(whole.volume)}, " +
-    "${"%.0f".format(sequentialMs)} ms sequential")
-repeat(2) { attempt ->
-    val (parallelSolid, ms) = march(parallel = true)
-    val components = Solid.scope { parallelSolid.decompose().size }
-    println("  the same field with parallel = true, run ${attempt + 1}: " +
-        "${parallelSolid.triangleCount} triangles, ${components} components, " +
-        "volume ${"%.4f".format(parallelSolid.volume)}, ${"%.0f".format(ms)} ms")
-    parallelSolid.close()
-}
+    "${"%.0f".format(levelSetMs)} ms")
 
 // ---- stage three: the census ---------------------------------------------------
 // The two genus numbers disagree, and the reason is components rather than holes: Field's
@@ -110,7 +92,7 @@ val floor = scene.material(PathTraceMaterial.plastic(0.30f, 0.31f, 0.33f, 0.5f))
 // Centre the volume on the origin and scale it into view: the field is in voxels.
 val centre = Vector3f(n / 2f, n / 2f, n / 2f)
 val scale = 2.4f / n
-val placement = afield.stdlib.linalg.Matrix4f()
+val placement = afield.math.linalg.Matrix4f()
     .scale(scale, scale, scale)
     .translate(-centre.x, -centre.y, -centre.z)
 

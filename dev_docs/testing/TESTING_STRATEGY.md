@@ -294,7 +294,7 @@ therefore a docs-only edit cannot inherit a stale JVM-test result.
 ### Tests must not write into the working tree
 
 A test renders into a temp directory and inspects it there. `proofDir()` and
-`docsAssetDir()` in `src/jvmTest/kotlin/afield/TestProofDir.kt` are how; their KDoc
+`docsAssetDir()` in `src/jvmTest/kotlin/afield/tools/docs/TestProofDir.kt` are how; their KDoc
 carries the history.
 
 `checkTestTreeWrites` enforces it. Every `Test` task depends on

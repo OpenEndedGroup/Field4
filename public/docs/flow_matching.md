@@ -483,10 +483,6 @@ steps help, and the ring's radial spread drops from 9.2 to 3.6.
 per step at the default batch, so 6000 steps is about half a second. `hidden` defaults to two layers
 of 64 units, and widening it helps much less than training longer.
 
-`momentum` should stay at zero unless `rho` is also zero. Smile applies momentum on top of the
-RMSProp-normalised gradient without the `(1 - β)` factor Adam uses, so enabling both multiplies the
-effective step by about ten and the run diverges.
-
 `FlowMatchField.losses` records every step, so a loss still falling at the end means the run was cut
 short.
 

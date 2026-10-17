@@ -9,4 +9,4 @@
 //   StackSLTarget.of("logo", imgFromFile("/path/to/logo.png"))
 val evolution = stackSLEvolution(StackSLTargets.rings(32))
 stackSLEvolveStudio(evolution)
-display("ai-chat", afield.ai.core.AiBoxConversation.read(thisBox))
+display("ai-chat", afield.ai.conversation.AiBoxConversation.read(thisBox))

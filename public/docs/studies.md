@@ -9,7 +9,7 @@ pictures. The four conversation pages ([a function](function_conversation.md),
 AI4 tools. This page is the layer underneath them: the ten verbs every study shares, and how a
 document's own box becomes a study with the same tools.
 
-Everything here is `afield.stdlib`: `LiveStudy` and `registerStudyTools` in `LiveStudy.kt`,
+Everything here is in `afield.study.source`: `LiveStudy` and `registerStudyTools` in `LiveStudy.kt`,
 `SourceFramesStudy` in `SourceFramesStudy.kt`.
 
 ## The ten verbs
@@ -77,7 +77,7 @@ val rings = sourceFramesStudy("rings", studyFrames("rings, drawn on the CPU") { 
         val i = (y * w + x) * 4
         px[i] = v * warmth + ink * (1 - v); px[i + 1] = v * 0.5f + ink * (1 - v); px[i + 2] = v * (1 - warmth) + ink * (1 - v); px[i + 3] = 1f
     }
-    afield.stacksl.cpu.CpuRaster(w, h, px)
+    afield.lang.stacksl.cpu.CpuRaster(w, h, px)
 })
 
 val tools = registerStudyTools("Rings", rings, about = "The source is three numbers: ring count, ink brightness, warmth 0..1.")
@@ -96,12 +96,8 @@ rather than as text; the numbers beside it (mean luma, clipping, detail, palette
 frames) come back in the report's facts. The study keeps its revisions in the document, under
 `studies/<box id>/rings`, and the sheet is saved there too.
 
-!!! note "Saving the property"
-    A property is written to the document on save only if its name is in
-    `Box.ioPersistentProperties`, and a name you make up, such as `rings`, is not. The study's
-    revisions are files under `studies/` and survive, but the box's own text does not unless you add
-    the name: `Box.ioPersistentProperties.add("rings")`. The starting point below does this in its
-    first box.
+`sourceFramesStudy("rings", …)` registers `rings` as a saved property, so the box's text is written
+to the document along with the study's revisions under `studies/`.
 
 ## Changing it
 
@@ -136,7 +132,7 @@ val rings = sourceFramesStudy("rings", studyFrames("rings, drawn on the CPU") { 
         val i = (y * w + x) * 4
         px[i] = v * warmth + ink * (1 - v); px[i + 1] = v * 0.5f + ink * (1 - v); px[i + 2] = v * (1 - warmth) + ink * (1 - v); px[i + 3] = 1f
     }
-    afield.stacksl.cpu.CpuRaster(w, h, px)
+    afield.lang.stacksl.cpu.CpuRaster(w, h, px)
 })
 
 val first = rings.edit(StudyCall.Edit("empty", rings.inspect(StudyCall.Inspect()).facts["liveSourceHash"] as String, "7 rings 0.05 ink 0.8 warmth", "seven warm rings"))
@@ -188,7 +184,7 @@ val rings = sourceFramesStudy("rings", studyFrames("rings, drawn on the CPU") { 
         val i = (y * w + x) * 4
         px[i] = v * warmth + ink * (1 - v); px[i + 1] = v * 0.5f + ink * (1 - v); px[i + 2] = v * (1 - warmth) + ink * (1 - v); px[i + 3] = 1f
     }
-    afield.stacksl.cpu.CpuRaster(w, h, px)
+    afield.lang.stacksl.cpu.CpuRaster(w, h, px)
 })
 
 val first = rings.edit(StudyCall.Edit("empty", rings.inspect(StudyCall.Inspect()).facts["liveSourceHash"] as String, "7 rings 0.05 ink 0.8 warmth", "seven warm rings"))
@@ -718,7 +714,7 @@ on the welcome screen's starting points) is this page as a document: `rings` def
 two boxes under it, `change it` and `try things`, drive its verbs. Open it and run the three boxes
 in order.
 
-??? aside "Tests and design notes"
+??? aside "Agents: tests and design notes"
     `study.document.registrar` (`src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt`)
     drives all ten verbs on a document's study through the same tool registry an agent calls, with
     no model. The design notes are in `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`, under "Studies: one

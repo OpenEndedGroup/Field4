@@ -5,7 +5,7 @@ This exists so that "should `CATEGORY_WEIGHT` learn the server's category vocabu
 running it rather than by arguing about it — and so that the answer recorded in
 `dev_docs/completion_rank_at_scale.md` can be re-checked by anyone in ten seconds.
 
-    ./gradlew jvmTest --tests 'afield.FieldSuggestPresentationTest'   # writes the spec, once
+    ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'   # writes the spec, once
     python3 tools/rank_weight_lab.py                                  # the recorded experiments
     python3 tools/rank_weight_lab.py --set math=24,audio=24 --universal -40
 
@@ -29,7 +29,9 @@ import sys
 import tempfile
 from pathlib import Path
 
-# The client's own eleven buckets, unchanged — the left column of `CATEGORY_WEIGHT` as shipped.
+# The client's own eleven buckets — `CATEGORY_WEIGHT` before it learned the server vocabulary.
+# Every experiment REPLACES the shipped table with BASE + its extras, so R0 is the old ranker and R2
+# is what `fieldSuggest.js` ships since 2026-10-16 (extended there to the whole server vocabulary).
 BASE = [("local", 28), ("graphics", 26), ("functions", 22), ("values", 20), ("types", 18),
         ("shader", 16), ("metadata", 14), ("imports", 10), ("snippets", 8), ("ai", 6), ("other", 0)]
 
@@ -103,7 +105,7 @@ def main() -> int:
     workspace = Path(args.workspace).resolve()
     spec = workspace / args.spec
     if not spec.exists():
-        sys.exit(f"{spec} is missing — run `./gradlew jvmTest --tests 'afield.FieldSuggestPresentationTest'` "
+        sys.exit(f"{spec} is missing — run `./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'` "
                  "once to have the test drop it")
 
     if args.set or args.universal is not None:

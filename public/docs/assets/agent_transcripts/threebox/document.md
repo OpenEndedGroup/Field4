@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="tb_renderer" index="0" -->
 
 ```edn [field-box id="tb_renderer" role="properties"]
-{"id" "tb_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["tb_compute"] "properties" {"children" #{#afield/box "tb_compute"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tb_renderer_code_.kt" "lines" 11 "characters" 255 "sha256" "cce6bf0ac8d8e5636e37d3a3298738dd70f5c6e6086bc4a0a02ac4f3a33650aa"}]}
+{"id" "tb_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["tb_compute"] "properties" {"children" #{#afield/box "tb_compute"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tb_renderer_code_.kt" "lines" 11 "characters" 266 "sha256" "93f966e8792950c56252d1bbacac93a357c34c29b928062d570684d94393c978"}]}
 ```
 
 ```kotlin [field-property box="tb_renderer" name="code" path="tb_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="tb_compute" index="1" -->
 
 ```edn [field-box id="tb_compute" role="properties"]
-{"id" "tb_compute" "index" 1 "name" "compute particles" "parents" ["root" "tb_renderer"] "children" ["tb_draw"] "properties" {"children" #{#afield/box "tb_draw"} "parents" #{#afield/box "root" #afield/box "tb_renderer"} "name" "compute particles" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "tb_compute_compute_.glsl" "lines" 19 "characters" 827 "sha256" "9c82bf06b67873abd0d572107d848171860960c70d20ff7c1bea18029da0b0b7"} {"name" "code" "language" "kotlin" "path" "tb_compute_code_.kt" "lines" 25 "characters" 1127 "sha256" "11b1082659d88972a7b42fc5a292b50be5893a3be76d7f0f73b0ce45f2ed296d"}]}
+{"id" "tb_compute" "index" 1 "name" "compute particles" "parents" ["root" "tb_renderer"] "children" ["tb_draw"] "properties" {"children" #{#afield/box "tb_draw"} "parents" #{#afield/box "root" #afield/box "tb_renderer"} "name" "compute particles" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "tb_compute_compute_.glsl" "lines" 19 "characters" 828 "sha256" "1e1db9697ab4a882ab7940df21dd05281b0738b8f5f8b0eeef3ab08041e87dab"} {"name" "code" "language" "kotlin" "path" "tb_compute_code_.kt" "lines" 25 "characters" 1127 "sha256" "11b1082659d88972a7b42fc5a292b50be5893a3be76d7f0f73b0ce45f2ed296d"}]}
 ```
 
 ```glsl [field-property box="tb_compute" name="compute" path="tb_compute_compute_.glsl"]
@@ -47,7 +47,7 @@ layout(push_constant) uniform dat {
     outData outData;
     float something;
 } pc;
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 void main() {
     uint idx = gl_GlobalInvocationID.x;
     pc.outData.a[idx].x = pc.inData.a[idx].x*cos(pc.something*pc.inData.a[idx].z) + pc.inData.a[idx].y*sin(pc.something*pc.inData.a[idx].w);

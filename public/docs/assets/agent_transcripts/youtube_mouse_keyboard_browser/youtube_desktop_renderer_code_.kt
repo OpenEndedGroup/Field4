@@ -1,5 +1,5 @@
-import afield.Rect
-import afield.four.util.Options
+import afield.app.protocol.Rect
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)

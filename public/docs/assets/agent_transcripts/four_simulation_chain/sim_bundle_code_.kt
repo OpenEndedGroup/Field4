@@ -1,7 +1,6 @@
-// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.stdlib.linalg.Vector3f
+// `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
 
 prop<StandardRenderer.Bundle>(bundle)
 

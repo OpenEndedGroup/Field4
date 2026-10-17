@@ -1,32 +1,33 @@
-// 2 / The classification fix and the prior, live, on a receiver you choose.
-//
-// Last night's fix made a candidate's category come from WHERE IT IS DECLARED rather than from its bare
-// name, because `scale` is declared in 42 categorised files in this tree, `close` in 21, `copy` in 16.
-// This box calls the real thing -- `KotlinSourceIndex.getCompletionCategoryForSymbol`, with the real
-// `declaredIn` the sidecar recorded -- and puts the real `CommonMemberPrior.rankOf` next to it.
-//
-// What you should notice is that for `afield.graphics.FLine` the index says NOTHING (`declines`), and
-// that is the fix working: FLine.kt carries no `@file:CompletionCategory`, so rather than borrowing the
-// category of an unrelated namesake -- which is how `FLine.moveTo` came to be filed under **Math** and
-// rendered in a foreign section -- it declines, and the popup's category comes one step later in
-// `KotlinCompletionSupport.inferCompletionCategory`, from the *package* `afield.graphics` -> Graphics.
-// That last step is `internal`, so a box cannot call it; the corpus measurement in
-// FieldSuggestPresentationTest can, and its numbers are quoted at the bottom.
-//
-// Change RECEIVER and re-run: `java.lang.Math` is a type nobody here can annotate -- no prior, and the
-// index declines rather than borrowing -- which is exactly the population the deferred decision was
-// about. `afield.stdlib.TriMesh` is another Field type.
+/*
+2 / The classification fix and the prior, live, on a receiver you choose.
 
-import afield.CommonMemberPrior
-import afield.ai.KotlinSourceIndex
+A candidate's category comes from its declaration container, so names shared by
+unrelated types do not borrow each other's categories. Compare that result with
+CommonMemberPrior.rankOf for the chosen receiver.
+
+What you should notice is that for `afield.geometry.path.FLine` the index says NOTHING (`declines`), and
+this is expected: FLine.kt carries no `@file:CompletionCategory`, so rather than borrowing the
+category of an unrelated namesake -- which is how `FLine.moveTo` came to be filed under **Math** and
+rendered in a foreign section -- it declines, and the popup's category comes one step later in
+`KotlinCompletionSupport.inferCompletionCategory`, from the *package* `afield.geometry.path` -> Graphics.
+That last step is `internal`, so a box cannot call it; the corpus measurement in
+FieldSuggestPresentationTest can, and its numbers are quoted at the bottom.
+
+Change RECEIVER and re-run: `java.lang.Math` is a type nobody here can annotate -- no prior, and the
+index declines rather than borrowing -- which is exactly the population the deferred decision was
+about. `afield.geometry.mesh.TriMesh` is another Field type.
+*/
+
 import java.io.File
 import java.util.zip.GZIPInputStream
 
-val RECEIVER = "afield.graphics.FLine"
+val RECEIVER = "afield.geometry.path.FLine"
 
-// Field's working directory is the checkout it was started from; walk up to its root.
-// Spelled with explicit types on purpose: in the REPL a `generateSequence(...).firstOrNull { } ?: error(...)`
-// chain infers `Any` here, and the first `File(repo, ...)` below then fails to resolve a constructor.
+/*
+Field's working directory is the checkout it was started from; walk up to its root.
+Spelled with explicit types on purpose: in the REPL a `generateSequence(...).firstOrNull { } ?: error(...)`
+chain infers `Any` here, and the first `File(repo, ...)` below then fails to resolve a constructor.
+*/
 fun findRepoRoot(): File {
     var at: File? = File(".").absoluteFile
     while (at != null) {
@@ -43,20 +44,22 @@ val repo: File = findRepoRoot()
 val gz = File(repo, "src/jvmTest/resources/fieldSuggest/rank-corpus.tsv.gz")
 val lines = GZIPInputStream(gz.inputStream()).bufferedReader().readLines()
 val rows = lines.filter { it.startsWith("R\t") }.map { it.split('\t').drop(1) }
-val case = lines.filter { it.startsWith("C\t") }.map { it.split('\t').drop(1) }
-    .first { it[2] == RECEIVER && it[1] == "bare" }
+val case =
+    lines.filter { it.startsWith("C\t") }.map { it.split('\t').drop(1) }.first { it[2] == RECEIVER && it[1] == "bare" }
 
 // text, displayText, tail, icon, declaredIn, proximity
 val shown = case[5].split(',').map { rows[it.toInt()] }
 val classified = shown.map { r ->
-    val fromIndex = KotlinSourceIndex
-        .getCompletionCategoryForSymbol(symbolName = r[0], declaredIn = r[4].ifBlank { null })
+    val fromIndex =
+        KotlinSourceIndex.getCompletionCategoryForSymbol(symbolName = r[0], declaredIn = r[4].ifBlank { null })
     Triple(r, fromIndex, CommonMemberPrior.rankOf(RECEIVER, r[0]))
 }
 
-// The rows with a prior first: a prior is the only thing that moves a member up the popup, and
-// it would be invisible in a slice of an alphabetical list (FLine's eight declared members all
-// sort past the `by…` family).
+/*
+The rows with a prior first: a prior is the only thing that moves a member up the popup, and
+it would be invisible in a slice of an alphabetical list (FLine's eight declared members all
+sort past the `by…` family).
+*/
 val ordered = classified.sortedWith(compareBy({ if (it.third > 0) 0 else 1 }, { it.third }))
 
 // The last expression is what the box shows in its output panel.
@@ -66,9 +69,11 @@ val report = buildString {
     appendLine()
     appendLine("  ${"member".padEnd(24)}${"index says".padEnd(14)}prior  score  proximity  declaredIn")
     for ((r, fromIndex, prior) in ordered.take(20)) {
-        appendLine("  ${r[0].take(23).padEnd(24)}${(fromIndex ?: "declines").padEnd(14)}" +
-            "${prior.toString().padStart(5)}  ${CommonMemberPrior.scoreOf(prior).toString().padStart(5)}" +
-            "  ${r[5].ifBlank { "-" }.padEnd(10)} ${r[4]}")
+        appendLine(
+            "  ${r[0].take(23).padEnd(24)}${(fromIndex ?: "declines").padEnd(14)}" +
+                "${prior.toString().padStart(5)}  ${CommonMemberPrior.scoreOf(prior).toString().padStart(5)}" +
+                "  ${r[5].ifBlank { "-" }.padEnd(10)} ${r[4]}",
+        )
     }
     appendLine("  ... ${ordered.size - 20} more")
     appendLine()

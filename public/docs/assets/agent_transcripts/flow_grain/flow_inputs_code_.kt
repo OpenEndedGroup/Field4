@@ -1,23 +1,6 @@
-import afield.four.modules.fromContextWithNameOrNull
-import afield.four.flow.TileAtlasLayout
-import afield.four.targets.*
-import afield.stdlib.TileResidency
-import kotlin.math.*
+import afield.simulation.flow.TileAtlasLayout
 
 // Dependencies are explicit graph exports; resources stay in their parent box.
-val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-val cameraHistory = fromContextWithNameOrNull<FrameBufferGroup>("cameraHistory")!!
-val itemHistory = fromContextWithNameOrNull<FrameBufferGroup>("itemHistory")!!
-val flowLook = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowLook")!!
-val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
-val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
-val force = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("force")!!
-val grainCell = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("grainCell")!!
-val strokeTime = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("strokeTime")!!
-val flowWidth = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("flowWidth")!!
-val resetFlow = fromContextWithNameOrNull<afield.SimulationReset>("resetFlow")!!
-val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
-val travel = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")!!
 
 val pool = TileResidency(5, 5, 4f)
 val layout = TileAtlasLayout(pool, 24)
@@ -25,7 +8,7 @@ val camera = FrameHistory()
 val items = MotionItems()
 val pose = MotionPose()
 val itemData = FloatArray(12)
-val matrix = afield.stdlib.linalg.Matrix4f()
+val matrix = afield.math.linalg.Matrix4f()
 val key = "flow-frame-inputs"
 var ticks = 0L
 var resetEpoch = 1
@@ -56,15 +39,32 @@ frames {
                 val height = flowWidth.effective * if (travel.get()) 1.0 + .18 * sin(time * .25) else 1.0
                 val width = height * window.width / window.height.toDouble()
                 matrix.set(
-                    (1.0/width).toFloat(), 0f, 0f, 0f,
-                    0f, (1.0/height).toFloat(), 0f, 0f,
-                    0f, 0f, -1f, 0f,
-                    (-pan/width).toFloat(), 0f, 0f, 1f
+                    (1.0 / width).toFloat(),
+                    0f,
+                    0f,
+                    0f,
+                    0f,
+                    (1.0 / height).toFloat(),
+                    0f,
+                    0f,
+                    0f,
+                    0f,
+                    -1f,
+                    0f,
+                    (-pan / width).toFloat(),
+                    0f,
+                    0f,
+                    1f,
                 )
                 camera.capture(serial, matrix, 960, 720, resetFlow.epoch)
                 cameraHistory.mapAndWrite { put(camera.packed) }
-                flowClock.set(time.toFloat(), 1f/60, resetEpoch.toFloat(), 0f)
-                flowEmitter.set((pan + cos(time*.7)*2).toFloat(), sin(time*.9).toFloat(), force.effective.toFloat(), 0f)
+                flowClock.set(time.toFloat(), 1f / 60, resetEpoch.toFloat(), 0f)
+                flowEmitter.set(
+                    (pan + cos(time * .7) * 2).toFloat(),
+                    sin(time * .9).toFloat(),
+                    force.effective.toFloat(),
+                    0f,
+                )
                 flowLook.x = grainCell.effective.toFloat()
                 flowLook.y = strokeTime.effective.toFloat()
             }
@@ -88,7 +88,9 @@ frames {
         while (frame()) {
             if (renderer.frameCounter - report >= 120) {
                 report = renderer.frameCounter
-                println("render=$report step=$ticks tiles=${pool.capacity} relocations=${pool.relocations} reset=${resetFlow.completed} history=${camera.available}")
+                println(
+                    "render=$report step=$ticks tiles=${pool.capacity} relocations=${pool.relocations} reset=${resetFlow.completed} history=${camera.available}",
+                )
             }
         }
     } finally {

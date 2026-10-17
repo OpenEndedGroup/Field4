@@ -44,7 +44,7 @@ logs(...) streams Field's log into a panel; this one only shows the "demo" chann
 Type in its find box (or press /) to narrow it; scroll up and new rows wait behind "↓ N new".
 
 ```edn [field-box id="logs_box" role="properties"]
-{"id" "logs_box" "index" 1 "name" "4 - logs(): one channel, with find" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - logs(): one channel, with find" "_tombstone" false "frame" #afield/rect [620.0 760.0 440.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "logs_box_code_.kt" "lines" 9 "characters" 671 "sha256" "ee6d8968bbc4d334b84352dd18221b796b6d924be66eab69b0f27d347e262826"}]}
+{"id" "logs_box" "index" 1 "name" "4 - logs(): one channel, with find" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - logs(): one channel, with find" "_tombstone" false "frame" #afield/rect [620.0 760.0 440.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "logs_box_code_.kt" "lines" 9 "characters" 720 "sha256" "4fd9cda0a92c77f217ce139c35f9caf239b13888e77c1e13a4ba68dcc638d440"}]}
 ```
 
 ```kotlin [field-property box="logs_box" name="code" path="logs_box_code_.kt"]
@@ -52,11 +52,11 @@ Type in its find box (or press /) to narrow it; scroll up and new rows wait behi
 // Type in its find box (or press /) to narrow it; scroll up and new rows wait behind "↓ N new".
 logs("logs") { channel("demo") }
 
-val log = afield.ai.core.LogDispatcher
-log.log(afield.ai.core.LogEvent("demo", "starting a job", blockId = "job (1)", boundary = afield.ai.core.BlockBoundary.BEGIN))
-for (i in 1..3) log.log(afield.ai.core.LogEvent("demo", "step $i of 3", blockId = "job (1)"))
-log.log(afield.ai.core.LogEvent("demo", "done", blockId = "job (1)", boundary = afield.ai.core.BlockBoundary.END))
-log.log(afield.ai.core.LogEvent("demo warning", "a warning row is coloured"))
+val log = afield.ai.diagnostics.LogDispatcher
+log.log(afield.ai.diagnostics.LogEvent("demo", "starting a job", blockId = "job (1)", boundary = afield.ai.diagnostics.BlockBoundary.BEGIN))
+for (i in 1..3) log.log(afield.ai.diagnostics.LogEvent("demo", "step $i of 3", blockId = "job (1)"))
+log.log(afield.ai.diagnostics.LogEvent("demo", "done", blockId = "job (1)", boundary = afield.ai.diagnostics.BlockBoundary.END))
+log.log(afield.ai.diagnostics.LogEvent("demo warning", "a warning row is coloured"))
 ```
 
 ## 3. 3 - a tree that follows the value

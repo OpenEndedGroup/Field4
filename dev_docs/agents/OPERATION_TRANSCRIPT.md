@@ -222,7 +222,7 @@ is memoised per session so every op sees the same instance.
 `connect` is a **direct back-end graph mutation** (`parent.connect(child)`), not a
 front-end RPC. `parent` accepts `parent`/`from`/`source`/`box`; `child` accepts
 `child`/`to`/`target`. This is the transcript equivalent of selecting the parent and
-pressing `g` in the UI. For `afield.four`, a graphics example box must be connected
+pressing `g` in the UI. For Field 4, a graphics example box must be connected
 **beneath** the renderer box before it launches, so it inherits the `Renderer` context.
 
 ### execute vs launch
@@ -383,14 +383,14 @@ regenerated preamble both survive.
   bites you, both fixed by adding the `connect` op *before* you `launch`:
   - A helper that takes its context implicitly (`computeModuleHere {}`, `meshModuleHere {}`,
     `rayTracingModuleHere {}` — these call `fromContext<Renderer>()` under the hood) fails
-    with `` must pass in a value for context parameter afield.four.Renderer `` if the box
+    with `` must pass in a value for context parameter afield.graphics.vulkan.Renderer `` if the box
     isn't connected under a renderer yet.
   - Code that reads a bare name a parent declared with `prop<T>(name)` (e.g. `renderer`
     itself, or `outputPositions`) fails with a plain `` Unresolved reference 'renderer' ``
     (or whatever the name is) for the same reason — the preamble that would inject that
     accessor is only regenerated/propagated once the connection exists.
   Fix: `connect: { parent: <renderer-box>, child: <this-box> }` before the `launch`, per
-  [Worked example B](#worked-example-b--afieldfour-vulkan-renderer--compute--draw). Don't
+  [Worked example B](#worked-example-b--vulkan-graphics-renderer--compute--draw). Don't
   assume a `fromContext()`-based helper "does the wiring for you" just because it looks
   automatic from the call site — it still walks the box graph, so the graph has to be
   built first.
@@ -439,7 +439,7 @@ that is how Field properties work: a `prop<T>(name)` in a parent injects the acc
 and the value propagates to children via the regenerated preamble. Deleting a preamble
 is never fatal; it is regenerated the next time the box runs.
 
-## Worked example B — afield.four Vulkan (renderer + compute + draw)
+## Worked example B — Field 4 graphics (renderer + compute + draw)
 
 The capstone: one transcript builds a three-box native graphics system on a blank
 canvas — a **renderer** box that owns the `Window`/`Renderer` and pumps the loop, a

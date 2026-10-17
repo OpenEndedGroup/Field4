@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="gpr_dimensions" index="0" -->
 
 ```edn [field-box id="gpr_dimensions" role="properties"]
-{"id" "gpr_dimensions" "index" 0 "name" "what the pad drops" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what the pad drops" "_tombstone" false "frame" #afield/rect [1160.0 30.0 260.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpr_dimensions_code_.kt" "lines" 36 "characters" 1703 "sha256" "e633efe28427dde4678e42aee1f12a3273e92bc0126ab3775d022798c9001028"}]}
+{"id" "gpr_dimensions" "index" 0 "name" "what the pad drops" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what the pad drops" "_tombstone" false "frame" #afield/rect [1160.0 30.0 260.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpr_dimensions_code_.kt" "lines" 36 "characters" 1712 "sha256" "cf8e38bff107b87241ddcd01b90e88a88bf13749fb79105f59cc4d764bc0c917"}]}
 ```
 
 ```kotlin [field-property box="gpr_dimensions" name="code" path="gpr_dimensions_code_.kt"]
-import afield.paint.*
+import afield.graphics.paint.*
 
 run {
 if (!PaintCanvas.isAvailable) {
@@ -58,11 +58,11 @@ markdown("ways", ways.mapIndexed { i, (name, _) -> "${i + 1}. $name" }.joinToStr
 <!-- field-box id="gpr_pad" index="1" -->
 
 ```edn [field-box id="gpr_pad" role="properties"]
-{"id" "gpr_pad" "index" 1 "name" "pad to paint" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pad to paint" "_tombstone" false "frame" #afield/rect [40.0 30.0 260.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpr_pad_code_.kt" "lines" 48 "characters" 2153 "sha256" "792ae093521f97681a4468ec9834380efc3189a733bf89a9cf848b48e5367d97"}]}
+{"id" "gpr_pad" "index" 1 "name" "pad to paint" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pad to paint" "_tombstone" false "frame" #afield/rect [40.0 30.0 260.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpr_pad_code_.kt" "lines" 48 "characters" 2162 "sha256" "deb1eaaf260f9da927ffddba42c11e4b70aae617038d57f065c78ecc80eefe73"}]}
 ```
 
 ```kotlin [field-property box="gpr_pad" name="code" path="gpr_pad_code_.kt"]
-import afield.paint.*
+import afield.graphics.paint.*
 
 var p = Vector2f(0f, 0f)
 lateinit var pad: GestureHandle

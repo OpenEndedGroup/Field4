@@ -1,6 +1,6 @@
 package afield.examples
 
-import afield.four.physics.SimdVerlet
+import afield.simulation.physics.SimdVerlet
 import kotlin.math.sqrt
 
 /**

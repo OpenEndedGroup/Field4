@@ -200,7 +200,7 @@ A custom SVG, canvas or embedded editor can use Field's review inbox without pub
 Three.js scene. Register a named surface on its source box:
 
 ```diffstatic {data-lang=kotlin}
-import afield.graphics.geometryReviewSurface
+import afield.ui.visualization.geometryReviewSurface
 
 val review = geometryReviewSurface("plan", revision = designDigest)
 ```

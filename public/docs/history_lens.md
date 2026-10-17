@@ -1,11 +1,11 @@
-# Inline History: the History Lens
+# Code History
 
-The **History Lens** shows what one line or selection of code said in earlier saves, in the editor, under the line itself. To take the whole document back to an earlier version, use [document history](document_history.md) instead.
+**Code History** shows what one line or selection of code said in earlier saves, in the editor, under the line itself. To take the whole document back to an earlier version, use [document history](document_history.md) instead.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1440x900" clip-selector="#docs-history-lens-crop" screenshot="assets/history_lens/history-lens-open.png" transcript="assets/transcripts/document_history_setup.yaml" document="docs-history-lens-figure" fresh-document=true padding="8" wait="0" timeout="150" embed=true hidden=true name="history-lens-open" alt="The editor for the box sketch with the History Lens open beneath the line that sets radius: the lens header reads history with a version label, box count, size and age, Rollback Property, Box and Document buttons sit at its right, and its rows list the earlier values of that line, radius 80.0, 64.0 and 40.0, with the changed number highlighted"}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1440x900" clip-selector="#docs-history-lens-crop" screenshot="assets/history_lens/history-lens-open.png" transcript="assets/transcripts/document_history_setup.yaml" document="docs-history-lens-figure" fresh-document=true padding="8" wait="0" timeout="150" embed=true hidden=true name="history-lens-open" alt="The editor for the box sketch with Code History open beneath the line that sets radius: the lens header reads history with a version label, box count, size and age, Rollback Property, Box and Document buttons sit at its right, and its rows list the earlier values of that line, radius 80.0, 64.0 and 40.0, with the changed number highlighted"}
 // Three saved versions of the sketch box's code, as on the document history page: the setup
 // transcript holds the first, and two edits through the editor, each left for the 5 s autosave,
-// add the others. Then the cursor goes to the radius line and the lens is opened from its editor
+// add the others. Then the cursor goes to the radius line and Code History is opened from its editor
 // action, the same one the right-click menu runs.
 val uid = ui.eval("""
     const b = [...document.querySelectorAll(".box")].find(b => (b.textContent || "").includes("sketch"))
@@ -58,7 +58,7 @@ for (i in 0 until 80) {
     """.trimIndent()).toString()
     if ((Regex("rows=(\\d+)").find(rows)?.groupValues?.get(1)?.toInt() ?: 0) >= 3) break
 }
-check((Regex("rows=(\\d+)").find(rows)?.groupValues?.get(1)?.toInt() ?: 0) >= 3) { "the History Lens never listed three values of the radius line: " + rows }
+check((Regex("rows=(\\d+)").find(rows)?.groupValues?.get(1)?.toInt() ?: 0) >= 3) { "Code History never listed three values of the radius line: " + rows }
 ui.pause(800)
 // Mark the editor's top, down to the bottom of the lens, so the capture is the code and the lens.
 ui.eval("""
@@ -76,17 +76,17 @@ ui.moveMouse(5.0, 5.0, 2)
 ui.pause(300)
 ```
 
-Above, the lens is open under the line that sets `radius`, listing the values that line had in earlier saves.
+Above, Code History is open under the line that sets `radius`, listing the values that line had in earlier saves.
 
 ## Open it
 
-Select the box, put your cursor on a line of its code (or select a range), **right-click**, and choose **Show History Lens for Line / Selection** from the editor context menu.
+Select the box, put your cursor on a line of its code (or select a range), **right-click**, and choose **Show Code History for Line / Selection** from the editor context menu.
 
-The lens opens as a small zone directly beneath your selection. There is no keyboard shortcut for it.
+Code History opens as a small zone directly beneath your selection. Its shortcut is `alt+shift+h`.
 
 ## What it shows
 
-The lens follows the selected line or range back through the saved versions, even as lines above
+It follows the selected line or range back through the saved versions, even as lines above
 it are added or removed. It lists each version where the line changed, and the oldest value it
 had. Saves that left it alone are skipped.
 
@@ -103,26 +103,13 @@ Step through the versions with the ‹ › arrows, or click a row; the editor la
 
 ## How it relates to the history panel
 
-The History Lens and the [document history panel](document_history.md) read the same saved versions. They differ in how much of the document they work on:
+Code History and the [document history panel](document_history.md) read the same saved versions. They differ in how much of the document they work on:
 
 - **History panel** — whole document, its own view, restore or cherry-pick whole boxes.
-- **History Lens** — one line or selection, inline in the editor, lift a single past value back.
+- **Code History** — one line or selection, inline in the editor, lift a single past value back.
 
-Reach for the lens when the question is "what did *this* used to be?" and for the panel when the question is "what did the *document* used to be?".
+Reach for Code History when the question is "what did *this* used to be?" and for the panel when the question is "what did the *document* used to be?".
 
-## A different "history" in the editor
+## Not the `history()` visualizer
 
-Field has a second inline visual also called `history`, and the two are easy to confuse.
-
-The **`history()` visualizer** (`m.history(value)`) draws a live chart of the last N *runtime* values of an expression, printed inline next to the code that produced it. It tracks a value while your code runs, rather than your source across saves. It is covered with its siblings `histogram()` and `stats()` on the [Visualizers & Controls](visualizers.md) page.
-
-<div class="field-data-table" markdown>
-
-| Property | History Lens | `history()` visualizer |
-| --- | --- | --- |
-| What it tracks | your source code across saved versions | a numeric value across runtime iterations |
-| Backed by | saved document backups | a rolling in-memory buffer |
-| Opened by | right-click → *Show History Lens* | calling `m.history(x)` in running code |
-| Survives a restart? | yes — it is on disk | no — it is live only |
-
-</div>
+The `history()` visualizer is a different tool: `m.history(value)` charts an expression's recent *runtime* values next to your code, and is covered on [Visualizers & Controls](visualizers.md).

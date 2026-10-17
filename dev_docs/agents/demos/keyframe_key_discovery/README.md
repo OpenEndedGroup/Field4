@@ -59,4 +59,4 @@ The loose `*_code_.kt` files are what Field loads; `metadata.edn` carries portab
 the same text, and `./gradlew checkAgentDemos` fails if the two ever disagree.
 
 The written-up version is [`dev_docs/keyframe_key_discovery.md`](../../../keyframe_key_discovery.md).
-Companion tests: `afield.stdlib.KeyframeBrowserTest`, `afield.server.KeyframeBrowserProtocolTest`.
+Companion tests: `afield.animation.keyframes.KeyframeBrowserTest`, `afield.app.server.KeyframeBrowserProtocolTest`.

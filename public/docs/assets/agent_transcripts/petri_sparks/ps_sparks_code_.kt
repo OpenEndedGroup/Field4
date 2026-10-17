@@ -1,5 +1,5 @@
-import afield.four.synth.PatArc
-import afield.four.synth.PatQ
+import afield.audio.synth.PatArc
+import afield.audio.synth.PatQ
 import org.lwjgl.vulkan.VK10.*
 
 val cps = 0.5     // cycles a second; the net's grid is an eighth of a cycle

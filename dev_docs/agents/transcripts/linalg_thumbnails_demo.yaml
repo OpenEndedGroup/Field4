@@ -40,28 +40,26 @@ operations:
       frame: { x: 80.0, y: 240.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          afield.stdlib.linalg.Matrix3f().set(1f, 0.5f, -0.5f, 0.25f, -1f, 0.75f, 0f, 0.1f, 2f)
+          afield.math.linalg.Matrix3f().set(1f, 0.5f, -0.5f, 0.25f, -1f, 0.75f, 0f, 0.1f, 2f)
   - execute:
       box: linalg_mat3
       property: code
       type: fragment
       code: |
-        afield.stdlib.linalg.Matrix3f().set(1f, 0.5f, -0.5f, 0.25f, -1f, 0.75f, 0f, 0.1f, 2f)
-
+        afield.math.linalg.Matrix3f().set(1f, 0.5f, -0.5f, 0.25f, -1f, 0.75f, 0f, 0.1f, 2f)
   - create:
       box: linalg_mat4
       name: mat4 translation heatmap
       frame: { x: 420.0, y: 240.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          afield.stdlib.linalg.Matrix4f().translation(3f, 4f, 5f)
+          afield.math.linalg.Matrix4f().translation(3f, 4f, 5f)
   - execute:
       box: linalg_mat4
       property: code
       type: fragment
       code: |
-        afield.stdlib.linalg.Matrix4f().translation(3f, 4f, 5f)
-
+        afield.math.linalg.Matrix4f().translation(3f, 4f, 5f)
   - await:
       wait: pending
   - wait:

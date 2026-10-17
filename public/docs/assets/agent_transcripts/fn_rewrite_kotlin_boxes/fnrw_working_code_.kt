@@ -1,7 +1,7 @@
 // WORKS. `rewriteFn` names the box to compile the `@{...}` snippets in, and that box is
 // idle, so hydrating there replays nothing. One pass, and the sampled signal really moves.
-import afield.stdlib.Functions
-import afield.stdlib.rewriteFn
+import afield.math.functions.Functions
+import afield.math.functions.rewriteFn
 
 val spec = listOf(
     "#fnrewrite",

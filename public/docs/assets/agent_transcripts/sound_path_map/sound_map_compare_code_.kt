@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // One buffer, three paths. The dry beat is a real kick, snare and closed hat from Tidal's
 // Dirt-Samples, mixed offline by patRenderStereoDirt. Then it is lowpassed at 900 Hz twice:

@@ -1,21 +1,21 @@
 package afield.examples.four
 
-import afield.Box
-import afield.four.Renderer
-import afield.four.TexturePreviewCache
-import afield.four.fabricated.FabricateBuiltChain
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.FabricatePassSize
-import afield.four.fabricated.FabricatePassSpec
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.addPassChain
-import afield.four.fabricated.applyScenePlan
-import afield.four.targets.RenderToTexture
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.stdlib.linalg.Vector2f
-import afield.stdlib.linalg.Vector3f
+import afield.document.graph.Box
+import afield.graphics.vulkan.Renderer
+import afield.graphics.render.TexturePreviewCache
+import afield.graphics.scene.fabricated.FabricateBuiltChain
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.FabricatePassSize
+import afield.graphics.scene.fabricated.FabricatePassSpec
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.addPassChain
+import afield.graphics.scene.fabricated.applyScenePlan
+import afield.graphics.vulkan.targets.RenderToTexture
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.math.linalg.Vector2f
+import afield.math.linalg.Vector3f
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 import java.io.File
 import java.util.Base64
@@ -81,7 +81,7 @@ expect:
  * tools/run_field_tests.py --id four.simulation-chain.smoke --args=--keep
  * ```
  *
- * Needs a GPU and a window: `afield.four` has no headless mode, so offscreen targets still need a
+ * Needs a GPU and a window: Field 4 has no headless mode, so offscreen targets still need a
  * `Window` for the device to exist.
  */
 object FabricateSimulationChainDemo {

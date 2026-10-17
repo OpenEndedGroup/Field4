@@ -14,7 +14,7 @@ operations:
       h: 115.0
     properties:
       code: |
-        import afield.four.util.Options
+        import afield.graphics.vulkan.util.Options
         prop<Window>(window)
         prop<Renderer>(renderer)
         Options.enableHDR = false
@@ -33,14 +33,13 @@ operations:
       h: 115.0
     properties:
       code: |
-        import afield.four.targets.RenderToTexture
-        import afield.four.modules.fromContextWithNameOrNull
+        import afield.graphics.vulkan.targets.RenderToTexture
         import org.lwjgl.vulkan.VK10.*
-
+        
         // Full-resolution RGBA16F source. RGBA hold light at radii 0, 4, 10, 24 px.
         // Alpha is the fourth light band, so every intermediate filter must use blend=false.
-        // Re-run the downstream boxes after changing the dimensions.
-        prop<RenderToTexture>(paintSource)
+        // propDown: re-running this box with new dimensions re-runs the passes that read paintSource.
+        propDown<RenderToTexture>(paintSource)
         thisBox.paintSource = RenderToTexture {
             width = window.width
             height = window.height
@@ -52,10 +51,10 @@ operations:
         }
         thisBox.paintSource.setDefaultSampler(anisotropyEnable = false)
         renderer.renderList.preTargets["paint-source"] = thisBox.paintSource
-        prop<afield.stdlib.Vec4>(apertureControl)
+        prop<afield.math.linalg.Vec4>(apertureControl)
         thisBox.apertureControl = vec(1.5,0,0,0)
         println("paint source RTT ready: ${thisBox.paintSource.width}x${thisBox.paintSource.height}")
-
+        
         var module = moduleHere {
             paintSource.apply()
             blend = false
@@ -69,7 +68,7 @@ operations:
         // x = defocus radius in framebuffer pixels, y = energy, z = sprite radius, w = guide mix.
         mesh.look = { vec(24.0,1.0,0.0,0.0) }
         mesh.size = { vec(paintSource.width,paintSource.height,0,0) }
-
+        
         // Nest the two editable reduction helpers without hiding their shaders.
         thisBox.frame = Rect(360.0,70.0,260.0,270.0)
         thisBox.inside.boxes.getValue("aperture_half").nestedIn = thisBox
@@ -119,12 +118,11 @@ operations:
       h: 115.0
     properties:
       code: |
-        import afield.four.targets.RenderToTexture
-        import afield.four.modules.fromContextWithNameOrNull
+        import afield.graphics.vulkan.targets.RenderToTexture
         import org.lwjgl.vulkan.VK10.*
-
-        val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
-        prop<RenderToTexture>(paintHalf) = RenderToTexture {
+        
+        val source = paintSource
+        propDown<RenderToTexture>(paintHalf) = RenderToTexture {
             width = (source.width/2).coerceAtLeast(1)
             height = (source.height/2).coerceAtLeast(1)
             format = VK_FORMAT_R16G16B16A16_SFLOAT
@@ -134,7 +132,7 @@ operations:
             debugName = "paintHalf"
         }
         paintHalf.setDefaultSampler(anisotropyEnable = false)
-        val input = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
+        val input = paintSource
         var module = moduleHere {
             textures("paintSource" to input)
             paintHalf.apply()
@@ -179,12 +177,11 @@ operations:
       h: 115.0
     properties:
       code: |
-        import afield.four.targets.RenderToTexture
-        import afield.four.modules.fromContextWithNameOrNull
+        import afield.graphics.vulkan.targets.RenderToTexture
         import org.lwjgl.vulkan.VK10.*
-
-        val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
-        prop<RenderToTexture>(paintQuarter) = RenderToTexture {
+        
+        val source = paintSource
+        propDown<RenderToTexture>(paintQuarter) = RenderToTexture {
             width = (source.width/4).coerceAtLeast(1)
             height = (source.height/4).coerceAtLeast(1)
             format = VK_FORMAT_R16G16B16A16_SFLOAT
@@ -194,7 +191,7 @@ operations:
             debugName = "paintQuarter"
         }
         paintQuarter.setDefaultSampler(anisotropyEnable = false)
-        val input = fromContextWithNameOrNull<RenderToTexture>("paintHalf")!!
+        val input = paintHalf
         var module = moduleHere {
             textures("paintHalf" to input)
             paintQuarter.apply()
@@ -239,12 +236,11 @@ operations:
       h: 115.0
     properties:
       code: |
-        import afield.four.targets.RenderToTexture
-        import afield.four.modules.fromContextWithNameOrNull
+        import afield.graphics.vulkan.targets.RenderToTexture
         import org.lwjgl.vulkan.VK10.*
-
-        val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
-        prop<RenderToTexture>(paintMedium) = RenderToTexture {
+        
+        val source = paintSource
+        propDown<RenderToTexture>(paintMedium) = RenderToTexture {
             width = (source.width/2).coerceAtLeast(1)
             height = (source.height/2).coerceAtLeast(1)
             format = VK_FORMAT_R16G16B16A16_SFLOAT
@@ -254,7 +250,7 @@ operations:
             debugName = "paintMedium"
         }
         paintMedium.setDefaultSampler(anisotropyEnable = false)
-        val input = fromContextWithNameOrNull<RenderToTexture>("paintHalf")!!
+        val input = paintHalf
         var module = moduleHere {
             textures("paintHalf" to input)
             paintMedium.apply()
@@ -268,7 +264,7 @@ operations:
         paintMedium += "filter" to module
         // Ordered before the screen pass, after the parent texture's producer.
         renderer.renderList.preTargets["paintMedium"] = paintMedium
-
+        
         // x/y stretch the aperture; z changes its rim softness; w is gain.
         mesh.aperture = { vec(1.0,1.0,1.0,1.0) }
       vertex: |
@@ -318,12 +314,11 @@ operations:
       h: 115.0
     properties:
       code: |
-        import afield.four.targets.RenderToTexture
-        import afield.four.modules.fromContextWithNameOrNull
+        import afield.graphics.vulkan.targets.RenderToTexture
         import org.lwjgl.vulkan.VK10.*
-
-        val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
-        prop<RenderToTexture>(paintBroad) = RenderToTexture {
+        
+        val source = paintSource
+        propDown<RenderToTexture>(paintBroad) = RenderToTexture {
             width = (source.width/4).coerceAtLeast(1)
             height = (source.height/4).coerceAtLeast(1)
             format = VK_FORMAT_R16G16B16A16_SFLOAT
@@ -333,7 +328,7 @@ operations:
             debugName = "paintBroad"
         }
         paintBroad.setDefaultSampler(anisotropyEnable = false)
-        val input = fromContextWithNameOrNull<RenderToTexture>("paintQuarter")!!
+        val input = paintQuarter
         var module = moduleHere {
             textures("paintQuarter" to input)
             paintBroad.apply()
@@ -347,7 +342,7 @@ operations:
         paintBroad += "filter" to module
         // Ordered before the screen pass, after the parent texture's producer.
         renderer.renderList.preTargets["paintBroad"] = paintBroad
-
+        
         // x/y stretch the aperture; z changes its rim softness; w is gain.
         mesh.aperture = { vec(1.0,1.0,1.0,1.0) }
       vertex: |
@@ -395,15 +390,15 @@ operations:
       h: 115.0
     properties:
       code: |
-        import afield.four.targets.RenderToTexture
-        import afield.four.modules.fromContextWithNameOrNull
+        import afield.graphics.vulkan.targets.RenderToTexture
+        import afield.document.context.fromContextWithNameOrNull
         import org.lwjgl.vulkan.VK10.*
-
+        
         // Screen composite. B and G in the paint box control this shared vector.
-        val controls = fromContextWithNameOrNull<afield.stdlib.Vec4>("apertureControl")!!
-        val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
-        val medium = fromContextWithNameOrNull<RenderToTexture>("paintMedium")!!
-        val broad = fromContextWithNameOrNull<RenderToTexture>("paintBroad")!!
+        val controls = fromContextWithNameOrNull<afield.math.linalg.Vec4>("apertureControl")!!
+        val source = paintSource
+        val medium = paintMedium
+        val broad = paintBroad
         var module = moduleHere {
             textures("paintSource" to source, "paintMedium" to medium, "paintBroad" to broad)
             depthTest = false
@@ -420,7 +415,7 @@ operations:
         mesh.displayControl = { controls }
         renderer.renderList += "paint-composite" to module
         println("paint composite ready")
-
+        
         // y: 0 aperture, 1 sharp, 2 radius guide. Edit here and re-execute.
         controls.set(1.0f,0.0f,0.0f,0.0f)
       vertex: |

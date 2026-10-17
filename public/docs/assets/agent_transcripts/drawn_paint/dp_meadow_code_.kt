@@ -1,4 +1,4 @@
-import afield.paint.*
+import afield.graphics.paint.*
 import kotlin.random.Random
 
 run {

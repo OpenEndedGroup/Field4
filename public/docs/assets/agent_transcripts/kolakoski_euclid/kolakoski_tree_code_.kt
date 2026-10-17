@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // 2 - Kolakoski branches, Euclid places, and the levels are pulse levels.
 //
@@ -74,7 +74,7 @@ showPatRollOf(
 val dirt = showDirtAudio(music, cycles = 8, cps = 1.0, channel = "audio")   // real samples, not patVoice
 val audio = dirt.audio
 val wav = "kolakoski-tree-${slots}-${a}${b}-d$depth.wav".file
-afield.four.audio.WavFloatArrayWriter.writeStereo16(wav, audio.left, audio.right, PatSoundDocs.SR, 0.9f)
+afield.audio.engine.WavFloatArrayWriter.writeStereo16(wav, audio.left, audio.right, PatSoundDocs.SR, 0.9f)
 println("wrote $wav — samples: ${dirt.usedSamples}, matched ${dirt.matched}, synth fallback ${dirt.unmatched}")
 
 markdown("main", """

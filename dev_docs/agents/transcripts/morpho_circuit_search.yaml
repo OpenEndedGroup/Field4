@@ -48,8 +48,8 @@ operations:
       frame: { x: 60.0, y: 60.0, w: 600.0, h: 100.0 }
       properties:
         code: |
-          import afield.morpho.*
-
+          import afield.lang.morpho.*
+          
           // The whole layer in four lines: a problem is an oracle plus a width family plus a
           // grammar, and a driver turns a budget into a program. Nothing about addition is supplied
           // except `sum, c_out = a + b + c_in`; the parts list is morpho's own eight standard cells,
@@ -60,7 +60,7 @@ operations:
           println("palette: " + MorphoPalette.standard.luts.joinToString { it.name })
           println("input space at 1 bit: ${problem.spec.inputSpace(1)} vectors, " +
               "exhaustive = ${problem.spec.isExhaustiveAt(1)}")
-
+          
           // Same generator, same seed, same budget. One unit of budget is one invocation of
           // morpho's compiler, which is the only resource all three spend at comparable rates.
           val runs = listOf(
@@ -69,14 +69,14 @@ operations:
               MorphoSearch.evolve(problem.spec, problem.generator, budget, seed = 2),
           )
           runs.forEach { println(it.summary()) }
-
+          
           // What was actually found, in MorphoHDL. This is paste-into-a-morpho-box text.
           runs.firstOrNull { it.solved }?.best?.let { winner ->
               println()
               println(winner.genome.phenotype().cells[0].render())
               println("cost: ${winner.fitness.cost}")
           }
-
+          
           // The control arm IS the figure: cyan is random sampling, orange the hill climb, green
           // the population. A dropped tick marks the invocation at which a run first became exactly
           // correct, because at this scale a curve that reaches zero and one that reaches 0.004
@@ -86,28 +86,27 @@ operations:
                   morphoRunCaption(runs) to morphoConvergenceFLines(runs),
               columns = 1, cellWidth = 700, cellHeight = 420, window = morphoPlotWindow()
           )
-
   - create:
       box: morpho_search_recursion
       name: A recursion, found — reducing a bus to one bit, then drawn at three widths
       frame: { x: 60.0, y: 520.0, w: 590.0, h: 100.0 }
       properties:
         code: |
-          import afield.morpho.*
-
+          import afield.lang.morpho.*
+          
           // y = (x != 0). The reason this is the interesting target and bitwise XOR is not: morpho
           // sizes a LUT cell to its widest operand and broadcasts the narrow ones, so there is no
           // gate and no combination of gates that turns eight wires into one. The only way down is
           // SPLIT, which means every correct answer is divide-and-conquer by construction.
           val problem = MorphoProblems.orReduce()
           println(problem)
-
+          
           val runs = listOf(
               MorphoSearch.random(problem.spec, problem.generator, 6000, seed = 2),
               MorphoSearch.evolve(problem.spec, problem.generator, 6000, seed = 2, mu = 24, lambda = 40),
           )
           runs.forEach { println(it.summary()) }
-
+          
           // Cheapest correct design across both runs; if a seed happens not to solve it, fall back
           // to the closest thing found rather than throwing -- this is a demo, not an assertion.
           val correct = runs.mapNotNull { it.best }.filter { it.fitness.correct }
@@ -115,7 +114,7 @@ operations:
           println()
           println(if (correct.isEmpty()) "(nothing exactly correct this run; showing the best found)" else "")
           println(best.genome.phenotype().cells[0].render())
-
+          
           // Selected at 2, 3 and 5 -- an ODD family on purpose. SPLIT gives equal halves exactly
           // when the width is even, so a family of powers of two never shows the search a cell
           // whose two halves differ, and it will happily return a design that is silently wrong at
@@ -125,7 +124,7 @@ operations:
               val f = MorphoSearch.generalization(best.genome, problem.spec, listOf(w))
               println("  at %2d bits: %s".format(w, f))
           }
-
+          
           // The Pareto front over every correct design the two runs produced. It is small and it is
           // not empty: a reduction can be a shallow wide tree or a deep cheap one, and the search
           // finds both ends. The staircase is drawn as a step function on purpose -- there is no
@@ -135,7 +134,7 @@ operations:
           println("Pareto front (gates, depth) at %d bits: %s".format(
               problem.spec.widths.max(),
               runs.flatMap { it.front }.joinToString(", ") { "(${it.gates}, ${it.depth})" }))
-
+          
           // And the circuits themselves, through the same MorphoFLines the rest of the page uses.
           // One source, three signatures, three different circuits: that is the language's whole
           // conceit and it now applies to a design nobody wrote.
@@ -148,7 +147,7 @@ operations:
           }
           showPlaneGrid(*panels.toTypedArray(), columns = 3, cellWidth = 300, cellHeight = 300,
               window = morphoUnitWindow())
-
+          
           showPlaneGrid(
               "or-reduce — best-so-far bit error vs compiler invocations (log x)\n" +
                   morphoRunCaption(runs) to morphoConvergenceFLines(runs),
@@ -159,15 +158,14 @@ operations:
                   morphoParetoFLines(found),
               channel = "cost", columns = 2, cellWidth = 430, cellHeight = 380, window = morphoPlotWindow()
           )
-
   - create:
       box: morpho_search_adder
       name: The recursive adder is not found — and the target is provably in the space
       frame: { x: 60.0, y: 1020.0, w: 590.0, h: 100.0 }
       properties:
         code: |
-          import afield.morpho.*
-
+          import afield.lang.morpho.*
+          
           // The result this branch set out to get, and did not. Reported because the alternative is
           // to quietly not mention it.
           val free = MorphoProblems.recursiveAdder()
@@ -181,7 +179,7 @@ operations:
                   label = "evolution, SPLITs given"),
           )
           runs.forEach { println(it.summary()) }
-
+          
           // A negative result is only worth printing if the thing not found was findable. Here is
           // the ripple skeleton, written by hand in exactly the grammar the generator emits, scored
           // by exactly the evaluator the search used.
@@ -206,13 +204,13 @@ operations:
           println("  scored at 2/4/8: " + MorphoEvaluator(free.spec).evaluate(target.render(), target.rootName))
           println("  at 16 bits:      " + MorphoSearch.generalization(target, free.spec, listOf(16)))
           println("  at 32 bits:      " + MorphoSearch.generalization(target, free.spec, listOf(32)))
-
+          
           // What the humans cost, through the same evaluator rather than quoted from a paper.
           val references = listOf("ripple_adder", "brent_kung_adder").mapNotNull { design ->
               free.reference(design).cost?.let { MorphoCostPoint(design, it.gates, it.depth, reference = true) }
           }
           references.forEach { println("  reference ${it.label}: ${it.gates} gates, depth ${it.depth}") }
-
+          
           // Left: four flat tails, none of which reaches zero. Right: the cost plane for an 8-bit
           // adder, occupied entirely by the two designs a person wrote. The empty half of that
           // panel is the finding.
@@ -226,7 +224,6 @@ operations:
                   morphoParetoFLines(found + references),
               columns = 2, cellWidth = 430, cellHeight = 400, window = morphoPlotWindow()
           )
-
   - execute:
       box: morpho_search_control
   - execute:

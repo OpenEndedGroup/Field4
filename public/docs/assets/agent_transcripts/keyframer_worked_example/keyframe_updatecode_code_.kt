@@ -3,11 +3,11 @@ The last step of the loop closes it: Key.updateCode() emits the snapshot as past
 Kotlin, so a state you arrived at by fiddling becomes a diff you can commit. Every
 literal is chosen so the paste round-trips as the same TYPE, not merely the same number.
 */
-import afield.stdlib.KeyframeScope
-import afield.stdlib.SourceBackedBlock
-import afield.stdlib.linalg.Quaternionf
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.stackSLString
+import afield.animation.keyframes.KeyframeScope
+import afield.study.source.SourceBackedBlock
+import afield.math.linalg.Quaternionf
+import afield.math.linalg.Vector3f
+import afield.animation.keyframes.stackSLString
 
 val scope = KeyframeScope()
 val key = scope.Key(

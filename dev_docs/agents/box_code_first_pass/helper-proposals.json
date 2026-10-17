@@ -1,0 +1,674 @@
+{
+  "approved-markdown-append-bounded": [
+    {
+      "group": "dev_docs/agents/transcripts/frames_lifecycle.yaml",
+      "proposal": {
+        "helper_key": "approved-markdown-append-bounded",
+        "status": "already-approved-follow-up",
+        "title": "Implement bounded markdownAppend before revising cleanup accumulation",
+        "rationale": "The approved helper would remove notes-list and joinToString ceremony while retaining cleanup visibility; this is the same existing proposal, not a new one.",
+        "before": "val notes = mutableListOf<String>(); notes += line; markdown(\"cleanup\", notes.joinToString(\"\\n\\n\") { \"{ok:${it.md}}\" })",
+        "after": "markdownAppend(\"cleanup\", \"{ok:${line.md}}\") // bounded by the approved helper policy",
+        "evidence": [
+          {
+            "path": "dev_docs/agents/transcripts/frames_lifecycle.yaml",
+            "body": 4,
+            "occurrence": "dev_docs/agents/transcripts/frames_lifecycle.yaml#yaml/operations/3/create/properties/code",
+            "line": 264
+          }
+        ],
+        "existing_or_declined_check": "BOX_CODE_HELPER_IDEAS.md Approved explicitly names this follow-up and cancellation/rerun ordering. Search of afield and inspection of ui/output/MarkdownOutput.kt found no markdownAppend implementation.",
+        "verification": "Before replacement, launch, stop, normal completion and immediate rerun; confirm end/finally order and that old-run cleanup cannot erase new-run output. Verify bounded trimming."
+      }
+    }
+  ],
+  "approved-mesh-measurement-helpers": [
+    {
+      "group": "dev_docs/agents/transcripts/mesh_geometry_examples.yaml",
+      "proposal": {
+        "helper_key": "approved-mesh-measurement-helpers",
+        "status": "already-approved-follow-up",
+        "title": "Apply the approved measurement and seeded-point helpers when implemented",
+        "rationale": "Bodies 1 and 5 repeat measured-versus-analytic output; body 5 manually integrates curvature with vertex areas; body 6 constructs a seeded uniform point cloud. These are already the patterns Marc approved for mesh_geometry_examples, not fresh API proposals.",
+        "before": "println(\"... %.5f ... %.5f\".format(measured, analytic)); for (v in 0 until m.vertexCount) total += k[v] * areas[v]; val sites = List(48) { vec(rand.nextFloat() * 1.6 - 0.8, ...) }",
+        "after": "Use approved compare(label, measured, analytic), m.integrate(k), and randomPoints(48, seed = 31, bounds = ...) once their exact contracts preserve the demonstration; use approved numeric formatting only where fixed table columns are not required.",
+        "evidence": [
+          {
+            "path": "dev_docs/agents/transcripts/mesh_geometry_examples.yaml",
+            "bodies": [
+              1,
+              5,
+              6
+            ],
+            "occurrence_ids": [
+              "dev_docs/agents/transcripts/mesh_geometry_examples.yaml#yaml/operations/0/create/properties/code",
+              "dev_docs/agents/transcripts/mesh_geometry_examples.yaml#yaml/operations/4/create/properties/code",
+              "dev_docs/agents/transcripts/mesh_geometry_examples.yaml#yaml/operations/5/create/properties/code"
+            ]
+          }
+        ],
+        "existing_or_declined_check": "BOX_CODE_HELPER_IDEAS.md Approved explicitly lists compare, mesh.integrate, randomPoints and x.f3 for this family. Source search in geometry/mesh found no corresponding helper declarations, so treat this as pending implementation/discovery and compile-check before use. Existing FLine helpers are handled in a finding. Automatic labels exist but explicit educational labels should stay. No declined proposal is repeated.",
+        "verification": "Confirm final helper signatures and numeric semantics; preserve vertex-area weighting, fixed-width table formatting and the seeded distribution. Compare printed answers/topology and capture each affected output grid after replay."
+      }
+    }
+  ],
+  "approved.bind-push": [
+    {
+      "group": "dev_docs/agents/transcripts/spin_glass.yaml",
+      "proposal": {
+        "helper_key": "approved.bind-push",
+        "title": "Approved follow-up: bindPush(m1, m2) and uint Int lambdas",
+        "rationale": "This exact pattern is already approved in BOX_CODE_HELPER_IDEAS.md; carry it as an implementation follow-up, not a fresh API request.",
+        "before": "for (m in listOf(even, odd)) { m.L = { L.toUInt() }; ... }",
+        "after": "Use the approved bindPush convenience with Int-returning uint bindings once its actual API is available",
+        "evidence": [
+          "dev_docs/agents/transcripts/spin_glass.yaml Update body 3 lines 207-224; measure body 5 line 297; view body 8 line 375"
+        ],
+        "existing_or_declined_check": "Checked approved list and current graphics render source. These conveniences are approved but no matching public function declarations were found; use actual implemented signatures before editing. Automatic dispatch from local_size_x remains declined.",
+        "verification": "Compile generated push-property macros and all actual shaders; compare real native lattice/probe output and barrier order before/after the approved implementation."
+      }
+    }
+  ],
+  "approved.compute-barrier": [
+    {
+      "group": "dev_docs/agents/transcripts/spin_glass.yaml",
+      "proposal": {
+        "helper_key": "approved.compute-barrier",
+        "title": "Approved follow-up: computeBarrier()",
+        "rationale": "This exact pattern is already approved in BOX_CODE_HELPER_IDEAS.md; carry it as an implementation follow-up, not a fresh API request.",
+        "before": "computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }",
+        "after": "computeBarrier() after the approved helper is implemented",
+        "evidence": [
+          "dev_docs/agents/transcripts/spin_glass.yaml Update body 3 lines 201/203; measure body 5 line 287"
+        ],
+        "existing_or_declined_check": "Checked approved list and current graphics render source. These conveniences are approved but no matching public function declarations were found; use actual implemented signatures before editing. Automatic dispatch from local_size_x remains declined.",
+        "verification": "Compile generated push-property macros and all actual shaders; compare real native lattice/probe output and barrier order before/after the approved implementation."
+      }
+    }
+  ],
+  "approved.fullscreen-triangle": [
+    {
+      "group": "dev_docs/agents/transcripts/learned_from_module.yaml",
+      "proposal": {
+        "helper_key": "approved.fullscreen-triangle",
+        "title": "Approved follow-up: fullscreenTriangle()",
+        "rationale": "The teacher box repeats Mesh allocation, resize(3, 0), reflection and named attachment for a vertex-index full-screen pass.",
+        "before": "val mesh = Mesh(renderer, teacher); mesh.resize(3,0,teacher); teacher += \"fullscreen\" to mesh",
+        "after": "val mesh = fullscreenTriangle(...) // exact approved API after implementation",
+        "evidence": [
+          "dev_docs/agents/transcripts/learned_from_module.yaml body 2, create code line 31 and exact launch copy line 48; body 3 vertex shader"
+        ],
+        "existing_or_declined_check": "fullscreenTriangle() is already approved in BOX_CODE_HELPER_IDEAS with spin_glass. No corresponding public function found in current source; do not invent a signature or apply before implementation. Automatic m.set sizing remains declined and is not requested.",
+        "verification": "Implement/confirm the approved helper, then compile the reflected state binding and compare a real teacher render and GPU dataset capture."
+      }
+    },
+    {
+      "group": "dev_docs/agents/transcripts/spin_glass.yaml",
+      "proposal": {
+        "helper_key": "approved.fullscreen-triangle",
+        "title": "Approved follow-up: fullscreenTriangle()",
+        "rationale": "This exact pattern is already approved in BOX_CODE_HELPER_IDEAS.md; carry it as an implementation follow-up, not a fresh API request.",
+        "before": "Mesh(); module += \"grid\" to m; m.set(3, 0) {}",
+        "after": "Replace the repeated vertex-index triangle setup with the approved helper once implemented",
+        "evidence": [
+          "dev_docs/agents/transcripts/spin_glass.yaml View body 8 lines 367-380 and vertex body 6"
+        ],
+        "existing_or_declined_check": "Checked approved list and current graphics render source. These conveniences are approved but no matching public function declarations were found; use actual implemented signatures before editing. Automatic dispatch from local_size_x remains declined.",
+        "verification": "Compile generated push-property macros and all actual shaders; compare real native lattice/probe output and barrier order before/after the approved implementation."
+      }
+    }
+  ],
+  "approved.numeric-format-properties": [
+    {
+      "group": "dev_docs/agents/transcripts/gp_instruments.yaml",
+      "proposal": {
+        "helper_key": "fixed-precision-number-properties",
+        "status": "approved-follow-up",
+        "title": "Use the approved numeric fixed-precision properties when available",
+        "rationale": "The instrument repeatedly formats values with %.3f/%.2f; helper ideas already approved x.f3 and siblings. This is follow-up evidence, not a new approval request.",
+        "before": "opt.best!!.parameters.mapValues { \"%.3f\".format(it.value) }",
+        "after": "opt.best!!.parameters.mapValues { it.value.f3 } once the approved public helper is implemented; preserve alignment and scientific notation in the surrounding report.",
+        "evidence": [
+          {
+            "path": "dev_docs/agents/transcripts/gp_instruments.yaml",
+            "bodies": [
+              1,
+              2,
+              3
+            ],
+            "occurrence": "body 1 parameter/early-misfit formatting; bodies 2/3 preference parameter formatting"
+          }
+        ],
+        "existing_or_declined_check": "BOX_CODE_HELPER_IDEAS.md Approved lists x.f3 and siblings. Source search found only private Double.f3() in audio/synth/Sequencing.kt, not a public property usable by these boxes. Do not introduce new formatter helpers in this source-only pass.",
+        "verification": "Implement/verify approved public properties with locale and precision behavior, then compile/replay teaching examples and compare displayed text."
+      }
+    },
+    {
+      "group": "dev_docs/agents/transcripts/kratos_parameter_study.yaml",
+      "proposal": {
+        "helper_key": "approved.numeric-format-properties",
+        "title": "Approved follow-up: .fN numeric templates",
+        "rationale": "The best-design/status templates repeat %.0f/%.2f/%.3f/%.4f formatting around physical quantities. The numeric formatting shortcut family is already approved.",
+        "before": "\"%.3f\".format(design.armEnd), \"%.4f\".format(probe), \"%.2f\".format(target)",
+        "after": "Use the approved .fN properties where their actual implemented precision and null handling match; preserve m, W/(m K), K and ms units.",
+        "evidence": [
+          "dev_docs/agents/transcripts/kratos_parameter_study.yaml body 1 lines 173-177 and 198"
+        ],
+        "existing_or_declined_check": "BOX_CODE_HELPER_IDEAS.md approves x.f3 and siblings. This is an already-approved implementation/reuse follow-up, not a new helper request; verify the available public properties before changing teaching code.",
+        "verification": "Compile the actual template expressions and render best-design/status cards with real solver values; confirm precision, null fallback, NaN display and units match."
+      }
+    },
+    {
+      "group": "dev_docs/agents/transcripts/pattern_particles.yaml",
+      "proposal": {
+        "helper_key": "approved.numeric-format-properties",
+        "title": "Approved follow-up: short numeric formatting in templates",
+        "rationale": "The draw status currently repeats a format string inside joinToString; the approved f3 convention is the intended replacement once available.",
+        "before": "bandEnergy.joinToString(\", \") { \"%.3f\".format(it) }",
+        "after": "bandEnergy.joinToString(\", \") { it.f3 }",
+        "evidence": [
+          {
+            "path": "dev_docs/agents/transcripts/pattern_particles.yaml",
+            "body": 7,
+            "line": 281,
+            "occurrence": "dev_docs/agents/transcripts/pattern_particles.yaml#yaml/operations/3/create/properties/code"
+          }
+        ],
+        "existing_or_declined_check": "Already approved x.f3 and siblings; no new formatting helper proposal.",
+        "verification": "Confirm f3 resolves in box intro and matches existing formatting, compile/replay the transcript and inspect the printed values."
+      }
+    },
+    {
+      "group": "public/docs/chain_rectsl_spacetime.md",
+      "proposal": {
+        "helper_key": "approved.numeric-format-properties",
+        "title": "Approved follow-up: short numeric formatting in templates",
+        "rationale": "Both manifold table rows repeat %.3f formatting; the approved f3 convention would remove this noise once implemented.",
+        "before": "${\"%.3f\".format(cutSolid.volume)} and ${\"%.3f\".format(closedSolid.volume)}",
+        "after": "${cutSolid.volume.f3} and ${closedSolid.volume.f3} // after approved API exists",
+        "evidence": [
+          "public/docs/chain_rectsl_spacetime.md body 3, lines 155 and 157"
+        ],
+        "existing_or_declined_check": "Already approved in BOX_CODE_HELPER_IDEAS. Current source search found only a private unrelated Double.f3() in Sequencing, not a public box .f3 property; this is a deferred approved follow-up, not a new helper or immediate rewrite.",
+        "verification": "Verify public box intro resolution and matching formatting before changing templates; regenerate the actual readout capture."
+      }
+    }
+  ],
+  "approved.uint-push-int-lambda": [
+    {
+      "group": "dev_docs/agents/transcripts/pattern_particles.yaml",
+      "proposal": {
+        "helper_key": "approved.uint-push-int-lambda",
+        "title": "Approved follow-up: Int lambda for uint push members",
+        "rationale": "Already approved in BOX_CODE_HELPER_IDEAS.md; the current count conversion and UInt-only comment can disappear only after implementation is verified.",
+        "before": "step.count = { N.toUInt() } // a uint push member needs a UInt-returning lambda",
+        "after": "step.count = { N }",
+        "evidence": [
+          {
+            "path": "dev_docs/agents/transcripts/pattern_particles.yaml",
+            "body": 4,
+            "line": 178,
+            "occurrence": "dev_docs/agents/transcripts/pattern_particles.yaml#yaml/operations/2/create/properties/code"
+          }
+        ],
+        "existing_or_declined_check": "Approved entry explicitly names pattern_particles. Not a new proposal. Current Introspection.kt still spells uint as UInt; do not assert the relaxed setter exists without compile evidence.",
+        "verification": "Implement/check the approved generated setter support, then compile and run count reflection for this real compute shader."
+      }
+    }
+  ],
+  "best-time-ms": [
+    {
+      "group": "dev_docs/agents/transcripts/imaging_vector_kernels.yaml",
+      "proposal": {
+        "helper_key": "best-time-ms",
+        "title": "A warmed minimum-time helper for small box comparisons",
+        "rationale": "The same eleven-line bestMs closure is repeated in three independent boxes, before the actual image operations. A small explicit helper removes timing ceremony while preserving the workload and sample policy.",
+        "before": "val bestMs: (Int, () -> Unit) -> Double = { reps, block -> /* two warmups, nanoTime, minimum */ }; val tFused = bestMs(5) { src.pyrDown(sigma) }",
+        "after": "val tFused = bestTimeMs(repetitions = 5, warmup = 2) { src.pyrDown(sigma) }",
+        "evidence": [
+          {
+            "path": "dev_docs/agents/transcripts/imaging_vector_kernels.yaml",
+            "occurrence": "dev_docs/agents/transcripts/imaging_vector_kernels.yaml#yaml/operations/0/create/properties/code",
+            "body": 1
+          },
+          {
+            "path": "dev_docs/agents/transcripts/imaging_vector_kernels.yaml",
+            "occurrence": "dev_docs/agents/transcripts/imaging_vector_kernels.yaml#yaml/operations/1/create/properties/code",
+            "body": 2
+          },
+          {
+            "path": "dev_docs/agents/transcripts/imaging_vector_kernels.yaml",
+            "occurrence": "dev_docs/agents/transcripts/imaging_vector_kernels.yaml#yaml/operations/2/create/properties/code",
+            "body": 3
+          }
+        ],
+        "existing_or_declined_check": "New proposal. BOX_CODE_HELPER_IDEAS.md has no timing-helper approval or rejection. Source search found diagnostics-specific logTiming/timingStats and private benchmarks, not a public warmed minimum timer; reuse kotlin.system timing primitives in implementation.",
+        "verification": "Verify exact warmup/repetition call counts, minimum selection and exception propagation with a controllable clock or workload; replay the three CPU boxes and compare outputs without a wall-clock performance assertion."
+      }
+    }
+  ],
+  "box-owned-osc-handler": [
+    {
+      "group": "public/docs/osc.md",
+      "proposal": {
+        "helper_key": "box-owned-osc-handler",
+        "title": "Optional box-owned OSC handler registration",
+        "status": "new-proposal",
+        "rationale": "Cached servers and clients are useful across edits, but global address slots retain callbacks from retired boxes. Repeated receiving examples must explain manual removal/reset because no opt-in box ownership wrapper exists in osc.kt.",
+        "before": "osc(port).on(address) { message -> gather<OscServer.Message> { /* main-thread work */ } }",
+        "after": "Illustrative API: oscOn(port, address) { message -> /* main-thread work */ }; registration belongs to the box run, with an explicit persistent option for shared service code.",
+        "evidence": [
+          {
+            "path": "public/docs/osc.md",
+            "occurrences": [
+              "public/docs/osc.md#fence:29",
+              "public/docs/osc.md#fence:73",
+              "public/docs/osc.md#fence:131",
+              "public/docs/osc.md#fence:315"
+            ],
+            "bodies": [
+              1,
+              2,
+              3,
+              6
+            ]
+          },
+          {
+            "path": "src/jvmMain/kotlin/afield/io/osc/osc.kt",
+            "detail": "OscServers cache by port; on replaces a pattern slot but returns Unit; remove removes by pattern, without registration identity."
+          }
+        ],
+        "existing_or_declined_check": "Read BOX_CODE_HELPER_IDEAS.md Already in Field, Approved and Declined; no OSC handler ownership helper listed. osc.kt offers on/remove/close and captures owner only for diagnostics. Reuse RunScope policy machinery; preserve the documented global server API.",
+        "verification": "Loopback tests must cover rerun, stop, retirement and two boxes replacing the same address: releasing the older registration must not remove the newer one. Test generator cancellation, main-thread dispatch and intentional persistent listeners; do not close a shared cached socket when releasing one handler."
+      }
+    }
+  ],
+  "existing-logdispatcher-with-sink": [
+    {
+      "group": "dev_docs/agents/demos/logging_layer",
+      "proposal": {
+        "helper_key": "existing-logdispatcher-with-sink",
+        "title": "Reuse the existing scoped logging sink with its explicit extension import",
+        "rationale": "Existing helper reuse; not a new API proposal. Three sidecars already show the safe form while their builder bodies omit the import.",
+        "before": "import afield.ai.diagnostics.LogDispatcher\nLogDispatcher.withSink(probe) { /* emit */ }",
+        "after": "import afield.ai.diagnostics.withSink\nLogDispatcher.withSink(probe) { /* emit */ }",
+        "evidence": [
+          "dev_docs/agents/demos/logging_layer/build.yaml bodies 1, 4 and 5; log_channels, log_mute_is_console_only and log_blocks sidecar bodies 8, 9 and 7",
+          "src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:101: top-level inline extension with finally removal"
+        ],
+        "existing_or_declined_check": "Already implemented in Logging.kt; checked the helper register and declined list. No declined dispatch or auto-attachment proposal applies.",
+        "verification": "Normal-box compilation and a two-run sink-count check; preserve finally cleanup semantics."
+      }
+    }
+  ],
+  "existing-manifold-native-scope": [
+    {
+      "group": "public/docs/assets/solidsl_gallery",
+      "proposal": {
+        "helper_key": "existing-manifold-native-scope",
+        "title": "Use existing Solid.scope for native demonstration lifetimes",
+        "rationale": "Existing helper reuse, not a new proposal. Both gallery native examples manually close several handles after operations that can throw.",
+        "before": "val build = part.buildSolid(q)\n...\nbuild.close()",
+        "after": "Solid.scope {\n    val build = part.buildSolid(q)\n    ...\n    Unit\n}",
+        "evidence": [
+          "public/docs/assets/solidsl_gallery/cross_check_code_.kt body 2: coarse, fine and exact",
+          "public/docs/assets/solidsl_gallery/refusals_code_.kt body 4: build and naive",
+          "src/jvmMain/kotlin/afield/geometry/solid/manifold/Solid.kt:1215 scope closes tracked native objects on exceptions and normal exit; returned Solid values are exempted"
+        ],
+        "existing_or_declined_check": "Solid.scope and AutoCloseable.use are already implemented. Checked helper register; no declined auto-presenting graphics chain is being proposed.",
+        "verification": "Exercise success, exception and rerun paths; copy mesh payloads before scope exit and inspect real viewer output."
+      }
+    }
+  ],
+  "existing-solidsl-field-lowering": [
+    {
+      "group": "public/docs/assets/solidsl_gallery",
+      "proposal": {
+        "helper_key": "existing-solidsl-field-lowering",
+        "title": "Capture the existing lowered field once before dense sampling",
+        "rationale": "Existing API reuse, not a new helper: remove expression lowering from each callback invocation.",
+        "before": "Solid.levelSet(bounds, edge, parallel = true) { x, y, z -> part.toLevelSetField().at(x, y, z) }",
+        "after": "val field = part.toLevelSetField()\nSolid.levelSet(bounds, edge, parallel = true, field = field::at)",
+        "evidence": [
+          "public/docs/assets/solidsl_gallery/refusals_code_.kt body 4, lines 72-74",
+          "src/jvmMain/kotlin/afield/lang/solidsl/SolidField.kt:75-85 and recursive toField3 at 195"
+        ],
+        "existing_or_declined_check": "Field3 and toLevelSetField already exist and their KDoc shows this exact form. Checked Already in Field, Approved and Declined; this is not the declined magical compute dispatch proposal.",
+        "verification": "Compile the named field argument and compare real generated meshes/measurements."
+      }
+    }
+  ],
+  "faust-render-wav": [
+    {
+      "group": "dev_docs/agents/transcripts/faust_polyphony.yaml",
+      "proposal": {
+        "helper_key": "faust-render-wav",
+        "status": "new-proposal",
+        "title": "Convert an already-rendered Faust pattern to WAV bytes",
+        "rationale": "The offline result already holds left/right/sampleRate. Four repeated presentation call sites expose an engine helper and unpack the same fields. A tiny conversion can shorten them while retaining explicit output channel ownership.",
+        "before": "display(\"audio\", afield.audio.engine.WavFloatArrayWriter.encodeStereo16(render.left, render.right, render.sampleRate, 0.9f))",
+        "after": "display(\"audio\", render.wav(normalizePeak = 0.9f)) // proposed API",
+        "evidence": [
+          "dev_docs/agents/transcripts/faust_polyphony.yaml body 3: two WAV calls; body 4 line 233; body 6 line 324",
+          "src/jvmMain/kotlin/afield/audio/synth/FaustPattern.kt:194 FaustPatternRender holds both arrays and sampleRate; showFaustPattern at 891 renders again before encoding",
+          "src/jvmMain/kotlin/afield/audio/engine/WavFloatArrayWriter.kt:84 existing encodeStereo16"
+        ],
+        "existing_or_declined_check": "Checked BOX_CODE_HELPER_IDEAS Already in Field/Approved/Declined: no Faust WAV conversion listed. Source checked FaustPatternRender, showFaustPattern, FaustBox faustWaveform and WavFloatArrayWriter; show helpers synthesize/render rather than encode an existing result. Existing x.f3 approval remains separate. No declined helper overlaps.",
+        "verification": "After API approval, byte-for-byte compare default/null/explicit normalization against encodeStereo16, verify sample rate and channel count, and play actual outputs without constructing a live audio engine."
+      }
+    }
+  ],
+  "field-audio-tracked-analysis": [
+    {
+      "group": "dev_docs/agents/transcripts/audio_ai_spectral_embeddings.yaml",
+      "proposal": {
+        "helper_key": "field-audio-tracked-analysis",
+        "title": "New proposal: track an arbitrary Field Audio analysis operation",
+        "rationale": "Remove repeated submit/watch/await/inspect plumbing while keeping operation, progress channel and cancellation explicit.",
+        "before": "client.submit(request).thenCompose { accepted -> display(...); client.watch(...); client.awaitAnalysis(accepted).thenApply { client.inspect(...); it } }",
+        "after": "client.trackAnalysis(request, onAccepted = { ... }, onProgress = { ... }) // proposed API",
+        "evidence": [
+          "dev_docs/agents/transcripts/audio_ai_spectral_embeddings.yaml body 3, trackedSpectral",
+          "dev_docs/agents/transcripts/audio_ai_corpus_microscope.yaml body 2, tracked"
+        ],
+        "existing_or_declined_check": "Checked FieldAudioClient.submit/watch/awaitAnalysis and RenderedAudioAnalysis.analyzeRenderedAudio. The latter requires RenderedAudioFile and asset import, while these requests already reference assets. No matching already-in-Field or declined proposal in BOX_CODE_HELPER_IDEAS.",
+        "verification": "Real-service success/failure/handshake/cancellation and two consecutive reruns; reuse RenderedAudioAnalysis cancellation cleanup semantics."
+      }
+    },
+    {
+      "group": "public/docs/audio_ai_spectral_embeddings.md",
+      "proposal": {
+        "helper_key": "field-audio-tracked-analysis",
+        "title": "Existing review proposal: track an arbitrary Field Audio analysis operation",
+        "rationale": "This page repeats the submit/watch/await adapter from the spectral and corpus transcripts. Consolidate progress, transport failures and cancellation in one proposed API.",
+        "before": "client.submit(request).thenCompose { accepted -> display(...); client.watch(accepted.jobId) { ... }; client.awaitAnalysis(accepted) }",
+        "after": "client.trackAnalysis(request, onAccepted = { ... }, onProgress = { ... }) // proposed, run-owned cancellation",
+        "evidence": [
+          "public/docs/audio_ai_spectral_embeddings.md body 2, trackedSpectral, line 74",
+          "dev_docs/agents/transcripts/audio_ai_spectral_embeddings.yaml body 3; existing resume-a review"
+        ],
+        "existing_or_declined_check": "Checked BOX_CODE_HELPER_IDEAS and FieldAudioClient.submit/watch/awaitAnalysis plus RenderedAudioAnalysis cancellation ownership. No declined equivalent; same stable proposal already exists in resume-a.jsonl, so this is consolidation, not a second new helper.",
+        "verification": "Real-service success/failure, rejected websocket handshake, cancellation during each stage, and two overlapping reruns with correct output ownership."
+      }
+    }
+  ],
+  "interaction-snapshot-strip": [
+    {
+      "group": "public/docs/interaction_nets_examples.md",
+      "proposal": {
+        "helper_key": "interaction-snapshot-strip",
+        "title": "Arrange captured interaction-net stages",
+        "rationale": "Consolidate repeated frame/arrow/fitInto scaffolding without hiding state mutation or reducer scheduling.",
+        "before": "Capture before/after FLines and cards, create two Rects, background lines and arrow, fitInto each, then call showInteractionOverview.",
+        "after": "showInteractionStages(stage(\"Before\", beforeLines, beforeSummary), stage(\"After\", afterLines, afterSummary), cards = listOf(detail.summaryHtml(\"Rewrite\")))",
+        "evidence": [
+          "public/docs/interaction_nets_examples.md bodies 1-4 repeat two-panel layout; body 5 uses three panels."
+        ],
+        "existing_or_declined_check": "New proposal. Inspected interactionnets.kt showInteractionSummary/showInteractionOverview/interactionSummaryGrid: overview renders supplied graphicLines but does not lay out stages. Existing showPlaneGrid lacks the linked summary-card presentation. No matching approved or declined idea in BOX_CODE_HELPER_IDEAS.md.",
+        "verification": "Compare all five real captures and verify snapshot values stay independent of later net mutations."
+      }
+    }
+  ],
+  "interpolant-callable-start-at": [
+    {
+      "group": "public/docs/interpolants_examples.md",
+      "proposal": {
+        "helper_key": "interpolant-callable-start-at",
+        "title": "Expose startAt on callable interpolants",
+        "rationale": "New proposal: smoothTo and inertialTo return () -> T while both hidden implementations also implement NeedsStartingValue<T>. A public callable type would remove repeated casts without hiding the explicit restart gesture.",
+        "before": "val q = smoothTo<Float>(steps = 140) { 1f }; (q as NeedsStartingValue<Float>).startAt(0f)",
+        "after": "val q = smoothTo<Float>(steps = 140) { 1f }; q.startAt(0f)",
+        "evidence": [
+          {
+            "path": "public/docs/interpolants_examples.md",
+            "occurrence": "public/docs/interpolants_examples.md#fence:31",
+            "body": 1,
+            "lines": [
+              41,
+              42,
+              54,
+              55,
+              56
+            ]
+          },
+          {
+            "path": "public/docs/interpolants_examples.md",
+            "occurrence": "public/docs/interpolants_examples.md#fence:188",
+            "body": 3,
+            "lines": [
+              199,
+              200
+            ]
+          },
+          {
+            "path": "src/jvmMain/kotlin/afield/animation/interpolation/interpolants.kt",
+            "symbols": [
+              "NeedsStartingValue",
+              "smoothTo",
+              "inertialTo"
+            ]
+          }
+        ],
+        "existing_or_declined_check": "Checked BOX_CODE_HELPER_IDEAS.md: no approved/declined startAt facade. Repository search finds startAt only on NeedsStartingValue and its hidden SmoothInterpolant/InertialInterpolant implementations; factories at 269/530 expose () -> T. Preserve the existing restart/automatic-retarget distinction.",
+        "verification": "Public API/box compile checks plus sample comparisons before first read, during restart and during automatic inertial retarget; verify compatibility with uniform bindings."
+      }
+    }
+  ],
+  "keyframe-key-vararg-pairs": [
+    {
+      "group": "dev_docs/agents/transcripts/keyframe_code_blend.yaml",
+      "proposal": {
+        "helper_key": "keyframe-key-vararg-pairs",
+        "title": "Approved follow-up: construct keys from vararg pairs",
+        "rationale": "The two keys each wrap a single pair in mutableMapOf<String, Any?> solely to satisfy the Key constructor. The approved convenience removes that boilerplate once implemented.",
+        "before": "val a = scope.Key(mutableMapOf<String, Any?>(\"amount\" to quiet))",
+        "after": "val a = scope.Key(\"amount\" to quiet)",
+        "evidence": [
+          {
+            "path": "dev_docs/agents/transcripts/keyframe_code_blend.yaml",
+            "occurrence": "dev_docs/agents/transcripts/keyframe_code_blend.yaml#yaml/operations/3/create/properties/code",
+            "body": 4,
+            "line": 240
+          },
+          {
+            "path": "src/jvmMain/kotlin/afield/animation/keyframes/keyframer.kt",
+            "context": "inner class Key currently accepts MutableMap<String, Any?>"
+          }
+        ],
+        "existing_or_declined_check": "Already-approved follow-up in BOX_CODE_HELPER_IDEAS.md: scope.Key(\"camera\" to pose) vararg pairs. Current source has no matching vararg Key constructor; do not rewrite the example before the approved API lands.",
+        "verification": "After implementing the approved overload, compile/replay keyframe_code_blend in transcript order and verify identical plan descriptions and the five generated Kotlin numeric results. Preserve the separate idle hydration target."
+      }
+    },
+    {
+      "group": "public/docs/interpolants_examples.md",
+      "proposal": {
+        "helper_key": "keyframe-key-vararg-pairs",
+        "title": "Use the approved Key vararg-pair constructor when implemented",
+        "rationale": "Already-approved follow-up, not a new helper proposal. The two map wrappers add ceremony to a three-row state definition.",
+        "before": "scope.Key(mutableMapOf(\"gain\" to 0.12, \"pos\" to Vector2f(80f, 500f), \"voice\" to stackSLString(\"saw 110 *\")))",
+        "after": "scope.Key(\"gain\" to 0.12, \"pos\" to Vector2f(80f, 500f), \"voice\" to stackSLString(\"saw 110 *\"))",
+        "evidence": [
+          {
+            "path": "public/docs/interpolants_examples.md",
+            "occurrence": "public/docs/interpolants_examples.md#fence:371",
+            "body": 5,
+            "lines": [
+              379,
+              384
+            ]
+          },
+          {
+            "path": "src/jvmMain/kotlin/afield/animation/keyframes/keyframer.kt",
+            "symbol": "inner class Key(val values: MutableMap<String, Any?>)"
+          }
+        ],
+        "existing_or_declined_check": "BOX_CODE_HELPER_IDEAS.md Approved explicitly lists scope.Key vararg pairs. Current Key at keyframer.kt 567 accepts a MutableMap, with no vararg constructor found. Do not assume the approved convenience already exists.",
+        "verification": "Implement approved API first, compile the example, then compare interpolated numeric/vector values and the discrete StackSL endpoint switch."
+      }
+    }
+  ],
+  "rectsl-wall-projection": [
+    {
+      "group": "public/docs/assets/rectsl_gallery",
+      "proposal": {
+        "helper_key": "rectsl-wall-projection",
+        "title": "New proposal: expose wall-aware projection for live RectSL rendering",
+        "rationale": "Every gallery program repeats wall dimensions and a centered ortho matrix. The library already implements WallSpec.worldToClip internally, including TopLeft origin; expose a supported form rather than copying matrix math.",
+        "before": "val ww = program.wall.width.toFloat(); val wh = program.wall.height.toFloat(); m.push[\"worldToClip\"] = Matrix4f().ortho(-ww/2f, ww/2f, -wh/2f, wh/2f, -1f, 1f)",
+        "after": "m.push[\"worldToClip\"] = program.wall.worldToClip() // proposed public visibility",
+        "evidence": [
+          {
+            "path": "public/docs/assets/rectsl_gallery/all-time_code_.kt",
+            "line": 61,
+            "occurrence": "body:2"
+          },
+          {
+            "path": "public/docs/assets/rectsl_gallery/wave-lattice_code_.kt",
+            "occurrence": "body:41"
+          },
+          {
+            "path": "src/jvmMain/kotlin/afield/lang/rectsl/RectSL.kt",
+            "line": 5279
+          }
+        ],
+        "existing_or_declined_check": "New public-surface proposal, not an already-available helper: actual implementation is internal fun WallSpec.worldToClip. Checked helper decisions; no wall projection decision. RectSLRenderRunner.renderJpgSequence and RectSLImager target offline rendering rather than this live module path. Does not propose declined auto-presenting pass chains.",
+        "verification": "If approved, compile in a live box and capture centered and top-left origins with correct bounds; retain material, blending and rerun behavior."
+      }
+    }
+  ],
+  "run-owned-future": [
+    {
+      "group": "dev_docs/agents/transcripts/loris_partial_explorer.yaml",
+      "proposal": {
+        "helper_key": "run-owned-future",
+        "status": "new-proposal",
+        "title": "Run-owned future results and progress",
+        "rationale": "Five boxes start native futures and independently attach display/error callbacks. A shared ownership convention should prevent stale completion after stop/rerun without pretending CompletableFuture cancellation interrupts a native process.",
+        "before": "client.analyzeWavAsync(..., onProgress = { display(\"status\", it) }).thenAccept { display(\"result\", it) }.exceptionally { ... }",
+        "after": "A run-owned operation adapter registers a generation, gates progress/completion, returns errors through the box and invokes a supported worker-cancellation hook; final API spelling requires design.",
+        "evidence": [
+          {
+            "path": "dev_docs/agents/transcripts/loris_partial_explorer.yaml",
+            "bodies": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "occurrence": "analyzeWavAsync followed by result/error continuations"
+          }
+        ],
+        "existing_or_declined_check": "Read BOX_CODE_HELPER_IDEAS.md: no approved/declined future adapter. Checked RunScope.kt and ReturnValueRegistry.kt for Future/CompletionStage support and LorisClient async implementation; no run registration found. Existing frames/go can provide ownership but do not automatically interrupt supplyAsync native work.",
+        "verification": "Cold-cache concurrent/rerun/stop tests must prove current-only publication and actual native-worker cleanup; preserve bounded request timeout and cached results."
+      }
+    }
+  ],
+  "sampling-grid-fline": [
+    {
+      "group": "public/docs/spatial_geometry_examples.md",
+      "proposal": {
+        "helper_key": "sampling-grid-fline",
+        "title": "New proposal: an FLine for a rectangular sampling grid",
+        "rationale": "Two independent marching-squares examples define almost the same six-line helper. A named grid operation exposes the domain, bounds and resolution without copying drawing scaffolding.",
+        "before": "fun gridLines(x0, x1, y0, y1, nx, ny) = fline { /* two sampling-grid loops */ }",
+        "after": "samplingGridFLine(Rect(x0, y0, x1 - x0, y1 - y0), nx, ny).also { it.color = gridColor; it.thickness = 0.8 }",
+        "evidence": [
+          {
+            "path": "public/docs/spatial_geometry_examples.md",
+            "line": 482,
+            "occurrence": "fence:453/body:7"
+          },
+          {
+            "path": "public/docs/spatial_geometry_examples.md",
+            "line": 652,
+            "occurrence": "fence:573/body:8"
+          }
+        ],
+        "existing_or_declined_check": "New proposal; not in Already in Field, Approved or Declined. Searched samplingGrid/gridFLine/gridLines and inspected StandardDrawing helpers; found no public equivalent, only a private NavGrid-specific example helper. API spelling is illustrative and needs human triage.",
+        "verification": "If approved, check nx+1 vertical and ny+1 horizontal lines, rectangular bounds, and preserve visible captures in both examples."
+      }
+    }
+  ],
+  "solid-midpoint-slice-sampling": [
+    {
+      "group": "public/docs/chain_ceres_manifold_contours.md",
+      "proposal": {
+        "helper_key": "solid-midpoint-slice-sampling",
+        "status": "new-proposal",
+        "title": "Visit midpoint slices with scoped native ownership",
+        "rationale": "cutHeights, areasOf, contoursOf, riemann and overlap repeat midpoint-height computation and Section.use. A small optional visitor could remove nested generic scaffolding and centralize native lifetime without hiding how the Riemann sum is formed.",
+        "before": "cutHeights(s, n).map { z -> s.slice(z).use { it.area } }; a separate traversal repeats slicing for toPolygons()",
+        "after": "Proposed API sketch only: s.sampleSlices(n) { z, section -> section.area to section.toPolygons() }; callers still compute sum * height / n explicitly.",
+        "evidence": [
+          {
+            "path": "public/docs/chain_ceres_manifold_contours.md",
+            "line": 145,
+            "occurrence_id": "public/docs/chain_ceres_manifold_contours.md#fence:121",
+            "body": 3
+          },
+          {
+            "path": "public/docs/chain_ceres_manifold_contours.md",
+            "line": 341,
+            "occurrence_id": "public/docs/chain_ceres_manifold_contours.md#fence:317",
+            "body": 4
+          },
+          {
+            "path": "public/docs/chain_ceres_manifold_contours.md",
+            "line": 349,
+            "occurrence_id": "public/docs/chain_ceres_manifold_contours.md#fence:317",
+            "body": 4
+          }
+        ],
+        "existing_or_declined_check": "Read BOX_CODE_HELPER_IDEAS.md Already in Field/Approved/Declined/Open. Searched geometry sources for layer/stack/cutHeights/sliceHeights helpers: Solid.slice and Solid.scope exist, but no midpoint-sampling visitor was found. No declined dispatch-sizing or implicit geometry proposal is revived.",
+        "verification": "If approved, compare sample z, area, contour winding/count and fill-rule results against the current explicit loops, verify Section closure on exceptions, and recapture the three CPU boxes. A callback must not return a closed Section as a usable native value."
+      }
+    }
+  ],
+  "syphon-client-run-ownership": [
+    {
+      "group": "dev_docs/agents/transcripts/syphon_bridge.yaml",
+      "proposal": {
+        "helper_key": "syphon-client-run-ownership",
+        "title": "Own each Syphon client in its creating Field run",
+        "rationale": "The existing factory allocates an AutoCloseable native client on every call; automatic ownership removes per-box cleanup ceremony and makes receive relaunch deterministic.",
+        "before": "val inp = syphonClient(\"Field pattern\") // release currently waits for explicit close or Cleaner",
+        "after": "val inp = syphonClient(\"Field pattern\") // factory registers client with RunScope.current() when present",
+        "evidence": [
+          {
+            "path": "dev_docs/agents/transcripts/syphon_bridge.yaml",
+            "occurrence": "dev_docs/agents/transcripts/syphon_bridge.yaml#yaml/operations/2/create/properties/code",
+            "body": 3
+          },
+          {
+            "path": "src/jvmMain/kotlin/afield/io/syphon/Syphon.kt",
+            "context": "syphonClient constructs SyphonClient(h); client.close frees native resources"
+          },
+          {
+            "path": "src/jvmMain/kotlin/afield/runtime/lifecycle/RunScope.kt",
+            "context": "current and own(AutoCloseable) already implement the ownership mechanism"
+          }
+        ],
+        "existing_or_declined_check": "New lifecycle convention, not an already-approved follow-up. Checked Already in Field, Approved and Declined; no Syphon ownership decision listed. Reuse RunScope.own; do not alter the cached shared-server lifetime.",
+        "verification": "Verify native close once across receive launch/relaunch/Stop, no double close after Cleaner, and normal explicitly closed standalone clients outside Field contexts."
+      }
+    }
+  ],
+  "tool-pool.versioned-notes": [
+    {
+      "group": "dev_docs/agents/tool-pool/tools.kt",
+      "proposal": {
+        "helper_key": "tool-pool.versioned-notes",
+        "title": "New proposal: typed versioned notes on ToolPool",
+        "rationale": "Provider boxes currently reconstruct the library's immutable-version note path, unchecked JSON maps, identity validation, sorting and atomic write. A typed library API could keep durable note compatibility and exact-source validation in one place.",
+        "before": "notesFor(key, revision) parses files and validates maps; pool.note reconstructs key/notes/revision, writes temporary JSON, and atomically moves it.",
+        "after": "Use ToolPool methods for typed note read/pagination and append for an exact entry; names/signatures require API review. Keep provider read-only and caller authorization checks at the tool boundary.",
+        "evidence": [
+          "dev_docs/agents/tool-pool/tools.kt body 1 lines 15-24 notesFor, lines 45-50 paging, lines 58-72 append, and lines 98-102 display; ToolPool.kt currently exposes list/read/publish but no notes methods."
+        ],
+        "existing_or_declined_check": "Checked BOX_CODE_HELPER_IDEAS.md already-in-Field, approved and declined sections and ToolPool.kt. This is a new proposal; no existing typed durable note operations found.",
+        "verification": "Library tests should preserve exact revision/source identity, chronological stable ordering, unknown cursor refusal, atomic append and read-only tool behavior; replay actual provider import and note read/write/pagination in disposable documents."
+      }
+    }
+  ]
+}

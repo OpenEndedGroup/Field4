@@ -6,7 +6,7 @@
  *   audio     — min/max envelope from a waveform URL or in-browser decode, with an <audio> transport
  *   analysis  — a Field Audio analysis preview (beats / pitch / notes), embedded or fetched once
  * The playhead and cursors are DOM overlay lines, never a Plotly relayout per frame.
- * Kotlin side: afield.stdlib.TimeViewerShell. Design notes: dev_docs/SIGNAL_VIEWER.md.
+ * Kotlin side: afield.ui.visualization.TimeViewerShell. Design notes: dev_docs/SIGNAL_VIEWER.md.
  */
 (() => {
   const root = document.currentScript.closest('.field-signal-viewer');

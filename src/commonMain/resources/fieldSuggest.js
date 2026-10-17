@@ -39,6 +39,35 @@ const CATEGORY_WEIGHT = new Map([
   ["imports", 10],
   ["snippets", 8],
   ["ai", 6],
+  // The server's own vocabulary: every `@CompletionCategory` in the tree, plus what
+  // `KotlinCompletionSupport.classifyMetadata` assigns by itself (Kotlin, External, Generic).
+  // FieldSuggestPresentationTest fails when a category reaches the popup without a row here.
+  // 12 / 8 / 4 is variant R2 of dev_docs/completion_rank_at_scale.md: +0.051 bare contested recall,
+  // +0.120 recall on receivers this tree cannot annotate, owned recall unchanged.
+  ["math", 12],
+  ["audio", 12],
+  ["audio ai", 12],
+  ["data", 12],
+  ["visualization", 12],
+  ["polytopes", 12],
+  ["alife", 12],
+  ["function", 12],
+  ["imaging", 12],
+  ["machine learning", 12],
+  ["solvers", 12],
+  ["patterns", 12],
+  ["synthesis", 12],
+  ["simulation", 12],
+  ["workspace", 12],
+  ["networking", 12],
+  ["lighting", 12],
+  ["search", 12],
+  ["video", 12],
+  ["kotlin", 8],
+  ["external", 4],
+  // Implementation detail and universal members: present, deliberately unweighted.
+  ["internal", 0],
+  ["generic", 0],
   ["other", 0],
 ]);
 
@@ -62,7 +91,7 @@ const PROXIMITY_SCORE = new Map([
 // `recency`, up to ~62 — lives in `localStorage`, i.e. zero for a new user, zero in a fresh profile, and
 // zero in every test. So the base sits ABOVE CATEGORY_WEIGHT's ceiling of 28, so a called-out member
 // clears an otherwise uncategorised page, and BELOW recency's, so what someone demonstrably uses still
-// wins. Kept in step with `afield.CommonMemberPrior.BASE`/`STEP`, which FieldSuggestPresentationTest
+// wins. Kept in step with `afield.runtime.completion.CommonMemberPrior.BASE`/`STEP`, which FieldSuggestPresentationTest
 // asserts against these two literals.
 const COMMON_MEMBER_BASE = 40;
 const COMMON_MEMBER_STEP = 2;
@@ -190,7 +219,7 @@ const requestWithReply = (
 
 // ---- Line notes ---------------------------------------------------------------------------------
 // What a box's program shows at one line — a sentence and, when a language can draw it, a picture of
-// that line's partial evaluation (afield.stdlib.LineNotes on the server: a StackSL stage, a RectSL
+// that line's partial evaluation (afield.ui.output.LineNotes on the server: a StackSL stage, a RectSL
 // scene built up to the line). Any language whose runtime registers a provider gets them, here in the
 // completion popup and, through bootstrapMonaco.js, in the notes beside the cursor.
 const LINE_NOTE_TIMEOUT_MS = 5000;

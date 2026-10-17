@@ -23,8 +23,8 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
       properties:
         code: |
-          import afield.four.util.Options
-
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -40,23 +40,23 @@ operations:
       frame: { x: 260.0, y: 40.0, w: 240.0, h: 50.0 }
       properties:
         code: |
-          import afield.four.synth.PatSynthLaunch
-          import afield.four.synth.PatWave
-          import afield.four.synth.audioEngine
-          import afield.four.synth.logBands
-          import afield.four.synth.pat
-          import afield.four.synth.patSynth
-          import afield.four.synth.patVoice
-          import afield.four.synth.snapshot
-          import afield.four.synth.stack
-
+          import afield.audio.synth.PatSynthLaunch
+          import afield.audio.synth.PatWave
+          import afield.audio.synth.audioEngine
+          import afield.audio.synth.logBands
+          import afield.audio.synth.pat
+          import afield.audio.synth.patSynth
+          import afield.audio.synth.patVoice
+          import afield.audio.synth.snapshot
+          import afield.audio.synth.stack
+          
           // The numbers the compute box reads. An inherited property rather than a global, so the
           // box graph is what says which shader is listening to which pattern.
           prop<DoubleArray>(bandEnergy)
           prop<PatSynthLaunch>(patternSynth)
-
+          
           bandEnergy = DoubleArray(4)
-
+          
           /*
           A kick on the beat, a mid-register square stab on the offbeats, and sixteen hats a
           cycle: three parts in three parts of the spectrum, so four bands have something to tell
@@ -67,11 +67,11 @@ operations:
               cps = 2.0,
               voice = patVoice(wave = PatWave.SQUARE, decay = 0.012, sustain = 0.08),
           )
-
+          
           // Four band-passes, log-spaced. Field's own Biquad, owned by this box rather than by the
           // synth graph, reading a snapshot the audio path published.
           val split = logBands(4, lowHz = 70.0, highHz = 8000.0, sampleRate = patternSynth.bank.sampleRate)
-
+          
           /*
           This box pulls the bank itself, so the analysis has samples whether or not the machine
           has an output device. To hear it, return `patternSynth` from the box instead and let the
@@ -79,7 +79,7 @@ operations:
           */
           println("output device present: ${audioEngine().outputActive}; this box is pulling the bank")
           val perFrame = patternSynth.bank.sampleRate / 60
-
+          
           frames {
               while (frame()) {
                   patternSynth.advanceOffline(perFrame)
@@ -148,18 +148,18 @@ operations:
               pc.outData.a[i].w = 0.45 + 1.8 * energy;
           }
         code: |
-          import afield.four.buffers.FrameBufferGroup
-
+          import afield.graphics.vulkan.buffers.FrameBufferGroup
+          
           val N = 24000
           // How hard each band energy pushes its ring (radius, thickness, particle size).
           val gain = 2.4
-
+          
           // One compute dispatch per frame, registered under a name so a rerun replaces it.
           var particles = computeModuleHere {}
           var step = ComputeMesh()
           particles += "step" to step
           renderer += "pattern-particles" to particles
-
+          
           var seeds = defaultBuffer {
               size = N.vec4s
               writeOnce()
@@ -168,17 +168,17 @@ operations:
           var positions = defaultBuffer { size = N.vec4s }.buffer
           // Inherited by the draw box below, which reads these positions as its vertex data.
           prop<FrameBufferGroup>(outputPositions) = positions
-
+          
           seeds.write {
               for (i in 0 until N) put(vec(Math.random(), Math.random(), 0.0, 0.0))
           }
-
+          
           step.seeds = { seeds }
           step.outData = { positions }
           step.count = {
               N.toUInt()
           } // a uint push member needs a UInt-returning lambda
-
+          
           /*
           The whole point of the chain: each push-constant float is bound to a lambda that reads
           the band energy the audio box published. The renderer evaluates these once per frame,
@@ -193,7 +193,7 @@ operations:
           step.band1 = { (bandEnergy.getOrElse(1) { 0.0 } * gain).f }
           step.band2 = { (bandEnergy.getOrElse(2) { 0.0 } * gain).f }
           step.band3 = { (bandEnergy.getOrElse(3) { 0.0 } * gain).f }
-
+          
           // One workgroup per 64 particles, matching local_size_x in the shader.
           step.x = N / 64
           step.y = 1
@@ -242,7 +242,7 @@ operations:
           layout(location = 0) in vec2 tc;
           layout(location = 1) in float ring;
 
-          // One colour per ring, and these four are `afield.visualization.signalPalette` in its own
+          // One colour per ring, and these four are `afield.ui.visualization.signalPalette` in its own
           // order, so a ring here and a trace on a showSignals plot of the same band are the same
           // colour. #7ad9ff #ff9e4a #8fff9a #ffe066.
           const vec3[4] tint = {

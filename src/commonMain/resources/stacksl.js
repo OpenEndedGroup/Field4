@@ -1993,8 +1993,16 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             }
 
             const decorations = []
-            for (const region of findStackSLEmbeddedRegions(model)) {
-                    decorations.push({
+            const own = findStackSLEmbeddedRegions(model)
+            // A slot's string has no header: the server says which ones are StackSL (see
+            // requestStackSLSlotRegions), for this version of the text only.
+            const slotted = editor._afieldStackSLSlotRegions
+            const fromServer = slotted && slotted.version === model.getVersionId()
+                    ? slotted.regions.filter((r) => !own.some((o) => o.bodyStart === r.bodyStart))
+                            .map((r) => ({ bodyStart: r.bodyStart, source: model.getValue().slice(r.bodyStart, r.bodyEnd), slot: r.slot }))
+                    : []
+            for (const region of [...own, ...fromServer]) {
+                    if (region.headerStart != null) decorations.push({
                             range: stackSLRangeFromOffsets(monacoApi, model, region.headerStart, region.headerEnd),
                             options: {
                                     inlineClassName: "afield-stacksl-token-directive",
@@ -2022,14 +2030,61 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             setStackSLEmbeddedHighlightDecorations(editor, decorations)
     }
 
+    // Asks the server which strings are StackSL slots, once the text has been still for a moment, and
+    // redraws when the answer is for the text still in the editor.
+    const requestStackSLSlotRegions = (editor) => {
+            clearTimeout(editor._afieldStackSLSlotTimer)
+            editor._afieldStackSLSlotTimer = setTimeout(() => {
+                    const model = editor.getModel && editor.getModel()
+                    if (!model || model.getLanguageId() !== "kotlin" || typeof window.requestStackSLRegions !== "function") return
+                    const version = model.getVersionId()
+                    const code = model.getValue()
+                    // Only code that assigns a string to something can have a slot's string in it.
+                    if (!/\.\s*[A-Za-z_]\w*\s*=\s*("|$)/m.test(code)) {
+                            editor._afieldStackSLSlotRegions = null
+                            return
+                    }
+                    window.requestStackSLRegions(code, (regions) => {
+                            const current = editor.getModel && editor.getModel()
+                            if (current !== model || model.getVersionId() !== version) return
+                            editor._afieldStackSLSlotRegions = { version, regions: regions.filter((r) => r.slot) }
+                            updateStackSLEmbeddedHighlight(editor)
+                    })
+            }, 300)
+    }
+
+    // Typing moves the server's regions with the text until its next answer: an edit before a region
+    // shifts it, one inside grows or shrinks it, and one across its edge drops it.
+    const carryStackSLSlotRegions = (editor, event) => {
+            const slotted = editor._afieldStackSLSlotRegions
+            const model = editor.getModel && editor.getModel()
+            if (!slotted || !model || !event || !Array.isArray(event.changes)) return
+            let regions = slotted.regions
+            // Monaco reports a batch's changes against the text before the batch; apply the last first.
+            for (const change of [...event.changes].sort((a, b) => b.rangeOffset - a.rangeOffset)) {
+                    const start = change.rangeOffset, end = start + change.rangeLength, delta = change.text.length - change.rangeLength
+                    regions = regions.flatMap((r) => {
+                            if (end <= r.bodyStart) return [{ ...r, bodyStart: r.bodyStart + delta, bodyEnd: r.bodyEnd + delta }]
+                            if (start >= r.bodyEnd) return [r]
+                            if (start >= r.bodyStart && end <= r.bodyEnd) return [{ ...r, bodyEnd: r.bodyEnd + delta }]
+                            return []
+                    })
+            }
+            editor._afieldStackSLSlotRegions = { version: model.getVersionId(), regions }
+    }
+
     const installStackSLEmbeddedHighlight = (editor) => {
             if (!editor || editor._afieldStackSLEmbeddedHighlightInstalled) return
             editor._afieldStackSLEmbeddedHighlightInstalled = true
             ensureStackSLEmbeddedHighlight(editor)
 
-            const schedule = () => setTimeout(() => updateStackSLEmbeddedHighlight(editor), 0)
+            const schedule = () => {
+                    setTimeout(() => updateStackSLEmbeddedHighlight(editor), 0)
+                    requestStackSLSlotRegions(editor)
+            }
             const scheduleDiagnostics = () => setTimeout(() => updateStackSLDiagnostics(editor), 0)
-            editor.onDidChangeModelContent(() => {
+            editor.onDidChangeModelContent((event) => {
+                    carryStackSLSlotRegions(editor, event)
                     schedule()
                     scheduleDiagnostics()
             })

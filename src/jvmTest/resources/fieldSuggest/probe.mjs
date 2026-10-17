@@ -831,17 +831,10 @@ const CASES = {
     );
   },
 
-  // ---- characterization: today's behaviour, written down because it is surprising -------------
-  "CHARACTERIZATION: the category weights predate the server's category vocabulary": async () => {
-    // CATEGORY_WEIGHT keys the *old* client-side buckets (local/graphics/functions/values/…), so of
-    // the categories the Kotlin side now sends only `Graphics` scores at all: `Math`, `Data`,
-    // `Polytopes`, `Audio AI`, `ALife`, `Solvers`, `Imaging`, `Workspace`, `Function`, `Kotlin`,
-    // `External` all fall through to 0 — the same weight as `other`, and below `imports` (10) and
-    // `snippets` (8). The visible consequence is asserted here rather than argued about: at equal
-    // fuzzy score, an import outranks a Math function.
-    //
-    // This is a characterization, NOT an endorsement. If you are here because you rebalanced the
-    // weights, this expectation is what you came to change.
+  "the server's categories are weighted: a Math function outranks an import": async () => {
+    // CATEGORY_WEIGHT used to key only the old client-side buckets, so `Math`, `Data`, `Polytopes`, …
+    // fell through to 0 and an import (10) outranked a Math function at equal fuzzy score. The table
+    // now carries the server vocabulary (R2 in dev_docs/completion_rank_at_scale.md).
     const { list } = await openPopup({
       code: "val l = line|",
       metadata: [
@@ -849,7 +842,7 @@ const CASES = {
         candidate("line", { category: "Imports" }),
       ],
     });
-    eq(sectionsOf(list()), ["Imports", "Math"], "today: Imports (10) outranks Math (unweighted)");
+    eq(sectionsOf(list()), ["Math", "Imports"], "Math (12) outranks Imports (10)");
   },
 };
 

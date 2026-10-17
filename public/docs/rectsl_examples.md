@@ -1,6 +1,6 @@
 # RectSL examples
 
-Every operator in the [cheatsheet](rectsl_cheatsheet.md) turns up somewhere on this page, and every example is a whole program you can paste into a `#rectsl` box and start pulling apart. The page starts with array primitives that multiply one shape across a wall, and emitters that split and cascade. Then come the same scenes lowered into a single GLSL distance function, the pattern language used to lay a scene out by rhythm, charts and plotted figures, and a longer gallery that covers the rest of the language. The host side is normal Field Kotlin calling `afield.rectsl.*`.
+Every operator in the [cheatsheet](rectsl_cheatsheet.md) turns up somewhere on this page, and every example is a whole program you can paste into a `#rectsl` box and start pulling apart. The page starts with array primitives that multiply one shape across a wall, and emitters that split and cascade. Then come the same scenes lowered into a single GLSL distance function, the pattern language used to lay a scene out by rhythm, charts and plotted figures, and a longer gallery that covers the rest of the language. The host side is normal Field Kotlin calling `afield.lang.rectsl.*`.
 
 ## Rendered gallery
 
@@ -440,7 +440,7 @@ one `->rot` on the group orbits the whole layout.
 ### Distribution curves — the Functions bridge
 
 Linear `mix` is rarely the shape you want across an array. RectSL borrows
-[`afield.stdlib.Functions`](functions_examples.md), a library of easings,
+[`afield.math.functions.Functions`](functions_examples.md), a library of easings,
 distributions, and noise defined over `[0, 1]`, which is exactly the range of the
 array fraction `f`. `ease` shapes a value through the full Penner family; `gaussian`,
 `noise`, and `fbm` push a reusable curve you `sample` at `f`; `reflect` and `tile`
@@ -589,9 +589,9 @@ wrong numbers, fits it, and binds all three curves into the program
 with `compileRectSL(source, curves)`, the Functions→RectSL half of the bridge:
 
 ```diffstatic {data-lang=kotlin}
-import afield.rectsl.compileRectSL
-import afield.stdlib.Functions
-import afield.stdlib.fitBest
+import afield.lang.rectsl.compileRectSL
+import afield.math.functions.Functions
+import afield.math.functions.fitBest
 
 with(Functions) {
     val target = gaussian(0.30, 0.11) + gaussian(0.72, 0.13) * 0.80
@@ -789,7 +789,7 @@ integer hash lowered into the shader rather than sampled: the GPU drops the same
 copies the CPU does. See [the cheatsheet's Fidelity section](rectsl_cheatsheet.md#fidelity)
 for how a 64-bit hash fits in a shader that has no 64-bit integers.
 
-??? aside "How the agreement is checked"
+??? aside "Agents: how the GPU and raster agreement is checked"
     Before it draws any of the looks, the harness renders a *probe* shader (the same
     field, reporting `scene(p, t)` as a 24-bit fixed-point number instead of drawing
     it), reads the framebuffer back, and compares it against `program.sample(t)`, the
@@ -1654,7 +1654,7 @@ RectSL's premise is that the CPU can read exact rectangle state, so the same
 program is equally a data structure. From normal Field Kotlin:
 
 ```diffstatic {data-lang=kotlin}
-import afield.rectsl.*
+import afield.lang.rectsl.*
 
 val program = RectAnimationOracle.compile(rectsl).program!!
 val mid  = program.sample(2.0)        // exact rect transforms/colours at t = 2s
@@ -1753,7 +1753,7 @@ end-group
 The clips below fill in the rest of the language: together with the gallery above they use
 every operator in the [cheatsheet](rectsl_cheatsheet.md) at least once.
 
-??? aside "The coverage check"
+??? aside "Agents: the cheatsheet coverage check"
     `checkCheatsheetCoverage` in `RectSLExamples.kt` fails if some cheatsheet operator stops
     appearing in an example, treating aliases (`add`/`+`, `lte`/`<=`, `clone`/`copy`, …) as
     one. It needs the Kotlin compiler and the gallery workspace, so it runs as the
@@ -2086,7 +2086,7 @@ To write a program out as a JPG sequence, give `RectSLRenderRunner` the pixel sc
 frame rate and output folder, and run it inside `frames {}`:
 
 ```diffstatic {data-lang=kotlin}
-import afield.rectsl.*
+import afield.lang.rectsl.*
 
 val settings = RectSLRenderSettings(
     pixelsPerMeter = 100.0,

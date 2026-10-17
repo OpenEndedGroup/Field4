@@ -14,51 +14,28 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 From `code`
 
-Run this box. Then run it AGAIN, without stopping it first.
-
-The counter restarts and the colour changes, and there is still exactly one loop.
-Running a box bumps its run generation; the Frames from the previous run closes over
-the OLD generation, notices the mismatch at the top of its next frame(), and cancels.
-
-It gets one more body call before that happens, because shouldend is read at the top of
-frame() and the suspended body is already halfway through a call that will return true.
-
-Read the rate line too. That is the whole reason AnimationClock exists: frameNumber
-counts work, and the amount of work a second holds is not a constant.
-
-nanoTime, not Random(): a fresh script context can hand out the same first random value
-twice, which would make this demo silently claim nothing.
+Run twice without stopping: the counter restarts, the colour changes, and one loop
+remains. The old run cancels at its next frame(), after its suspended body resumes.
+Compare frameNumber with elapsed time: the counter measures work, not seconds.
+A time-derived hue makes the new launch visible even with a fresh script context.
 
 ```edn [field-box id="frames_lifecycle_rerun" role="properties"]
-{"id" "frames_lifecycle_rerun" "index" 0 "name" "3 · re-run replaces, it does not stack" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · re-run replaces, it does not stack" "_tombstone" false "frame" #afield/rect [60.0 620.0 560.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_rerun_code_.kt" "lines" 47 "characters" 1724 "sha256" "21e8fce8d5a93561009f6bf185ed2b0a907a344327165614455c98a3e9436ad4"}]}
+{"id" "frames_lifecycle_rerun" "index" 0 "name" "3 · re-run replaces, it does not stack" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · re-run replaces, it does not stack" "_tombstone" false "frame" #afield/rect [60.0 620.0 560.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_rerun_code_.kt" "lines" 34 "characters" 1197 "sha256" "c8b7dd2df4eaffc88bededa10355c138626303c4ec51ac70ecc13864edb000bf"}]}
 ```
 
 ```kotlin [field-property box="frames_lifecycle_rerun" name="code" path="frames_lifecycle_rerun_code_.kt"]
 /*
-Run this box. Then run it AGAIN, without stopping it first.
-
-The counter restarts and the colour changes, and there is still exactly one loop.
-Running a box bumps its run generation; the Frames from the previous run closes over
-the OLD generation, notices the mismatch at the top of its next frame(), and cancels.
-
-It gets one more body call before that happens, because shouldend is read at the top of
-frame() and the suspended body is already halfway through a call that will return true.
-
-Read the rate line too. That is the whole reason AnimationClock exists: frameNumber
-counts work, and the amount of work a second holds is not a constant.
-
-nanoTime, not Random(): a fresh script context can hand out the same first random value
-twice, which would make this demo silently claim nothing.
+Run twice without stopping: the counter restarts, the colour changes, and one loop
+remains. The old run cancels at its next frame(), after its suspended body resumes.
+Compare frameNumber with elapsed time: the counter measures work, not seconds.
+A time-derived hue makes the new launch visible even with a fresh script context.
 */
 val hue = ((System.nanoTime() / 1_000_000L) % 360L).toInt()
 val swatch = "hsl($hue 70% 60%)"
 val started = AnimationClock.nowSeconds()
 var nextDraw = 0.0
 
-/*
-showRow puts the swatch beside the readout. The swatch is raw HTML because its colour
-is this launch's data, not styling.
-*/
+// Keep this launch's swatch beside its frame count and elapsed-time readout.
 val show: (Int, Double) -> Unit = { n, elapsed ->
     val rate = if (elapsed > 0.5) "%,.0f frames a second".format(n / elapsed) else "measuring"
     showRow(
@@ -67,7 +44,7 @@ val show: (Int, Double) -> Unit = { n, elapsed ->
         """
         ### frame ${"%,d".format(n)}
 
-        {muted:$rate · ${"%.1f".format(elapsed)} s elapsed}
+        {muted:$rate · ${elapsed.f1} s elapsed}
 
         {muted:this launch's colour is $swatch}
         """,
@@ -95,18 +72,15 @@ An animate { } with no end condition. It runs until you press stop, or until you
 re-run this box. The running indicator on the box stays lit the whole time.
 
 ```edn [field-box id="frames_lifecycle_forever" role="properties"]
-{"id" "frames_lifecycle_forever" "index" 1 "name" "1 · runs until you stop it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · runs until you stop it" "_tombstone" false "frame" #afield/rect [60.0 60.0 560.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_forever_code_.kt" "lines" 68 "characters" 1946 "sha256" "50f818e6294762b194bd2da1fa494aee726224c81d798d4bfc8ed8e92955d1d9"}]}
+{"id" "frames_lifecycle_forever" "index" 1 "name" "1 · runs until you stop it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · runs until you stop it" "_tombstone" false "frame" #afield/rect [60.0 60.0 560.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_forever_code_.kt" "lines" 58 "characters" 1724 "sha256" "0a5e718f1080349852796506a5ae5d658eececf7cce8cb77ff7d224e59b9ff3e"}]}
 ```
 
 ```kotlin [field-property box="frames_lifecycle_forever" name="code" path="frames_lifecycle_forever_code_.kt"]
 // An animate { } with no end condition. It runs until you press stop, or until you
 // re-run this box. The running indicator on the box stays lit the whole time.
 val started = AnimationClock.nowSeconds()
-/*
-Trail length and resolution are a bandwidth decision, not a taste one: every redraw
-serialises the whole trail to SVG and pushes it down the output socket. 8 s at 0.06
-is ~130 points; 12 s at 0.02 is ~600, enough to saturate the connection.
-*/
+// Each redraw sends the whole trail as SVG. Keep its duration and sample count bounded.
+// At these settings it carries about 130 points.
 val trailSeconds = 8.0
 val trailStep = 0.06
 var nextDraw = 0.0
@@ -119,11 +93,7 @@ fun disc(cx: Double, cy: Double, r: Double, rgba: Vec4) = fline {
 }
 
 fun border(rgba: Vec4) = fline {
-    moveTo(8.0, 8.0)
-    lineTo(552.0, 8.0)
-    lineTo(552.0, 312.0)
-    lineTo(8.0, 312.0)
-    close()
+    rect(8.0, 8.0, 544.0, 304.0)
     color = rgba
     thickness = 1.2
     stroked = true
@@ -136,12 +106,9 @@ fun atY(s: Double) = 160.0 + 120.0 * kotlin.math.sin(s * 1.7)
 val draw: (Double) -> Unit = { t ->
     val trail = fline {
         var s = kotlin.math.max(0.0, t - trailSeconds)
-        var first = true
+        breakNext() // The first sample starts the trail; later samples extend it.
         while (s <= t) {
-            if (first) {
-                moveTo(atX(s), atY(s))
-                first = false
-            } else lineTo(atX(s), atY(s))
+            lineTo(atX(s), atY(s))
             s += trailStep
         }
         color = vec(0.30, 0.52, 0.68, 0.55)
@@ -177,62 +144,34 @@ animate {
 
 From `code`
 
-NOT launched by the transcript, because the point is that you drive this one yourself.
-Three things to try, in this order:
-
-1. Run it and press STOP inside the eight seconds.
--> both lines, with .end { } first. Note that they appear on the frame AFTER the
-button: cancelling the body resumes it through the dispatcher, so the end phase
-lands on a later Runloop tick and stop is not a synchronous barrier for it.
-2. Run it and let the eight seconds elapse.
--> only the finally line. The body returned; there was no cancellation to catch,
-and a cancellation is the only route into .end { }.
-3. Run it, and while it is still counting, RUN IT AGAIN.
--> both lines again. A re-run bumps the strand generation rather than the launch
-epoch, but either way the end job registers and runs — and it runs from inside
-frame()'s catch, before the cancellation unwinds the body's finally.
-
-So .end { } means "when this animation is cancelled", not "when it finishes".
+Launch this box yourself and try three exits:
+1. Stop before eight seconds: .end runs, then finally, on a later Runloop tick.
+2. Let eight seconds elapse: the body returns and only finally runs.
+3. Re-run while it is counting: the old run prints .end, then finally.
+The .end block handles cancellation; finally also handles a normal return.
 
 ```edn [field-box id="frames_lifecycle_cleanup" role="properties"]
-{"id" "frames_lifecycle_cleanup" "index" 2 "name" "4 · cleanup — stop it, wait it out, then re-run it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · cleanup — stop it, wait it out, then re-run it" "_tombstone" false "frame" #afield/rect [700.0 620.0 620.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_cleanup_code_.kt" "lines" 56 "characters" 2366 "sha256" "d0f212d635a7408d864c0a70a19402f36514ab247d05cf7b30666320b296f321"}]}
+{"id" "frames_lifecycle_cleanup" "index" 2 "name" "4 · cleanup — stop it, wait it out, then re-run it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · cleanup — stop it, wait it out, then re-run it" "_tombstone" false "frame" #afield/rect [700.0 620.0 620.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_cleanup_code_.kt" "lines" 39 "characters" 1494 "sha256" "829f9eaf0efaff15fc49a14cd5a065a882a3ef09644bf1b7da5d4b4135daef89"}]}
 ```
 
 ```kotlin [field-property box="frames_lifecycle_cleanup" name="code" path="frames_lifecycle_cleanup_code_.kt"]
 /*
-NOT launched by the transcript, because the point is that you drive this one yourself.
-Three things to try, in this order:
-
-  1. Run it and press STOP inside the eight seconds.
-     -> both lines, with .end { } first. Note that they appear on the frame AFTER the
-        button: cancelling the body resumes it through the dispatcher, so the end phase
-        lands on a later Runloop tick and stop is not a synchronous barrier for it.
-  2. Run it and let the eight seconds elapse.
-     -> only the finally line. The body returned; there was no cancellation to catch,
-        and a cancellation is the only route into .end { }.
-  3. Run it, and while it is still counting, RUN IT AGAIN.
-     -> both lines again. A re-run bumps the strand generation rather than the launch
-        epoch, but either way the end job registers and runs — and it runs from inside
-        frame()'s catch, before the cancellation unwinds the body's finally.
-
-So .end { } means "when this animation is cancelled", not "when it finishes".
+Launch this box yourself and try three exits:
+1. Stop before eight seconds: .end runs, then finally, on a later Runloop tick.
+2. Let eight seconds elapse: the body returns and only finally runs.
+3. Re-run while it is counting: the old run prints .end, then finally.
+The .end block handles cancellation; finally also handles a normal return.
 */
 val started = AnimationClock.nowSeconds()
 val runFor = 8.0
-val notes = mutableListOf<String>()
 var nextDraw = 0.0
 
 val show: (String) -> Unit = { headline -> markdown("main", headline.md) }
 
-/*
-Cleanup goes to its OWN channel. Re-running the box immediately repaints "main" from
-the new launch, which would clobber the old launch's cleanup line before you could
-read it -- and the re-run case is the whole point of instruction 3.
-{ok:} styles them as the theme's success colour.
-*/
+// Keep a bounded cleanup history across launches. Old cleanup cannot overwrite a
+// newer run's cleanup; the live readout uses a separate channel.
 val note: (String) -> Unit = { line ->
-    notes += line
-    markdown("cleanup", notes.joinToString("\n\n") { "{ok:${it.md}}" })
+    markdownAppend("cleanup", "{ok:${line.md}}", maxEntries = 12)
 }
 
 frames {
@@ -240,7 +179,7 @@ frames {
         var elapsed = AnimationClock.nowSeconds() - started
         while (elapsed < runFor) {
             if (elapsed >= nextDraw) {
-                show("running - %.1f s of %.0f, frame %,d".format(elapsed, runFor, frameNumber))
+                show("running - ${elapsed.f1} s of ${runFor.f0}, frame ${"%,d".format(frameNumber)}")
                 nextDraw = elapsed + 0.1
             }
             frame()
@@ -265,20 +204,16 @@ frames {
 
 From `code`
 
-The same loop, with an end condition and a cleanup block. Watch it for six seconds:
-the disc travels, the bar fills, and then everything freezes and turns red. Nothing
-after that is the animation — it is the last frame the .end { } block painted.
+After six seconds, end() cancels this animation. Its .end block paints the red
+final frame before the loop stops.
 
 ```edn [field-box id="frames_lifecycle_stops" role="properties"]
-{"id" "frames_lifecycle_stops" "index" 3 "name" "2 · stops itself after six seconds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · stops itself after six seconds" "_tombstone" false "frame" #afield/rect [700.0 60.0 620.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_stops_code_.kt" "lines" 91 "characters" 2679 "sha256" "ef60cfd03479ae5ea45a0e6e4e2b8859a26370d4a0ab27abc53237eaaa146c06"}]}
+{"id" "frames_lifecycle_stops" "index" 3 "name" "2 · stops itself after six seconds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · stops itself after six seconds" "_tombstone" false "frame" #afield/rect [700.0 60.0 620.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_stops_code_.kt" "lines" 76 "characters" 2267 "sha256" "c681f8682e866f7f7602c2b103070cd22581e0aa9a550f1e0ad28f00ab9e4ea0"}]}
 ```
 
 ```kotlin [field-property box="frames_lifecycle_stops" name="code" path="frames_lifecycle_stops_code_.kt"]
-/*
-The same loop, with an end condition and a cleanup block. Watch it for six seconds:
-the disc travels, the bar fills, and then everything freezes and turns red. Nothing
-after that is the animation — it is the last frame the .end { } block painted.
-*/
+// After six seconds, end() cancels this animation. Its .end block paints the red
+// final frame before the loop stops.
 val started = AnimationClock.nowSeconds()
 val stopAfter = 6.0
 var nextDraw = 0.0
@@ -294,11 +229,7 @@ val draw: (Double, Boolean) -> Unit = { elapsed, stopped ->
     val accent = if (stopped) vec(1.0, 0.28, 0.30, 1.0) else vec(0.48, 0.85, 1.0, 1.0)
     val quiet = if (stopped) vec(1.0, 0.28, 0.30, 0.55) else vec(0.55, 0.62, 0.72, 0.7)
     val border = fline {
-        moveTo(6.0, 6.0)
-        lineTo(594.0, 6.0)
-        lineTo(594.0, 244.0)
-        lineTo(6.0, 244.0)
-        close()
+        rect(6.0, 6.0, 588.0, 238.0)
         color = quiet
         thickness = 1.4
         stroked = true
@@ -311,11 +242,7 @@ val draw: (Double, Boolean) -> Unit = { elapsed, stopped ->
         thickness = 1.4
     }
     val gutter = fline {
-        moveTo(60.0, 165.0)
-        lineTo(540.0, 165.0)
-        lineTo(540.0, 205.0)
-        lineTo(60.0, 205.0)
-        close()
+        rect(60.0, 165.0, 480.0, 40.0)
         color = quiet
         thickness = 1.0
         stroked = true
@@ -324,11 +251,7 @@ val draw: (Double, Boolean) -> Unit = { elapsed, stopped ->
     // How far through the six seconds we are. It fills, and then it stops filling.
     val progress = fline {
         val w = 480.0 * (elapsed / stopAfter).coerceIn(0.0, 1.0)
-        moveTo(60.0, 165.0)
-        lineTo(60.0 + w, 165.0)
-        lineTo(60.0 + w, 205.0)
-        lineTo(60.0, 205.0)
-        close()
+        rect(60.0, 165.0, w, 40.0)
         color = accent
         filled = true
         stroked = false

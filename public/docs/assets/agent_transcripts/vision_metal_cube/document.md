@@ -11,14 +11,14 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_vision_metal_cube" index="0" -->
 
 ```edn [field-box id="agent_vision_metal_cube" role="properties"]
-{"id" "agent_vision_metal_cube" "index" 0 "name" "Vision Metal Cube" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision Metal Cube" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_metal_cube_code_.kt" "lines" 17 "characters" 690 "sha256" "80c65800683407ad4ed63ff42b1adab64967d67b2118c820ec2429643e4e1dbf"}]}
+{"id" "agent_vision_metal_cube" "index" 0 "name" "Vision Metal Cube" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision Metal Cube" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_metal_cube_code_.kt" "lines" 17 "characters" 726 "sha256" "14d6676929e8f3c54bdc02297d7b28aec38d0344efb0ecf001f48e63d276226c"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_metal_cube" name="code" path="agent_vision_metal_cube_code_.kt"]
-import afield.graphics.VisionMetalGeometryOrigin
-import afield.graphics.visionMetal
-import afield.graphics.visionMetalExampleScript
-import afield.graphics.visionMetalExampleShader
+import afield.graphics.visionos.VisionMetalGeometryOrigin
+import afield.graphics.visionos.visionMetal
+import afield.graphics.visionos.visionMetalExampleScript
+import afield.graphics.visionos.visionMetalExampleShader
 
 // `geometry` is explicit: there is no fallback to the head's cube, so a program that
 // neither ships vertices nor builds them in Kotlin/JS would draw nothing. This one asks

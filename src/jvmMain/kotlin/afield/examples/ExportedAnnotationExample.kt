@@ -1,6 +1,44 @@
 package afield.examples
 
-import afield.*
+import afield.ai.agent.*
+import afield.ai.conversation.*
+import afield.ai.tools.*
+import afield.animation.gesture.*
+import afield.animation.interpolation.*
+import afield.animation.keyframes.*
+import afield.app.diagnostics.*
+import afield.app.notifications.*
+import afield.app.protocol.*
+import afield.app.server.*
+import afield.app.settings.*
+import afield.audio.synth.*
+import afield.data.table.*
+import afield.document.context.*
+import afield.document.graph.*
+import afield.document.history.*
+import afield.document.persistence.*
+import afield.document.properties.*
+import afield.document.workspace.*
+import afield.graphics.color.*
+import afield.graphics.paint.*
+import afield.graphics.vulkan.*
+import afield.math.functions.*
+import afield.media.capture.*
+import afield.media.stream.*
+import afield.media.video.*
+import afield.runtime.completion.*
+import afield.runtime.execution.*
+import afield.runtime.kotlin.*
+import afield.runtime.lifecycle.*
+import afield.tools.automation.*
+import afield.tools.docs.*
+import afield.ui.controls.*
+import afield.ui.layout.*
+import afield.ui.notation.*
+import afield.ui.output.*
+import afield.ui.output.templates.*
+import afield.ui.slides.*
+import afield.ui.visualization.*
 
 /**
  * Example demonstrating the @exported annotation feature.

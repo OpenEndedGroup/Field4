@@ -1,7 +1,7 @@
-import afield.solidsl.*
-import afield.manifold.ManifoldLibrary
-import afield.stdlib.MeshView
-import afield.stdlib.isWatertight
+import afield.lang.solidsl.*
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.isWatertight
 
 // ---- a part that is half CSG and half field -------------------------------------------
 // A plate you could machine, unioned with a blob you could not: the fillet where the ball
@@ -69,7 +69,7 @@ println()
 // What the naive version would have cost: one level set over the whole part, same edge length.
 val raw = part.bounds()!!
 val edge = maxOf(raw.size.x, raw.size.y, raw.size.z) / 90.0
-val naive = afield.manifold.Solid.levelSet(raw.expandedBy(2.0 * edge), edge, parallel = true) { x, y, z ->
+val naive = afield.geometry.solid.manifold.Solid.levelSet(raw.expandedBy(2.0 * edge), edge) { x, y, z ->
     part.toLevelSetField().at(x, y, z)
 }
 println("hybrid  ${build.solid.triangleCount} triangles")

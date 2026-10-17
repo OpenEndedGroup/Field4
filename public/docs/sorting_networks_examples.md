@@ -10,7 +10,7 @@ This example builds a bubble network and Batcher's odd-even merge network on ten
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/topology_compare.png" wait="1.0" capture="box"}
 :::static
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 val bubble = SortingNetwork.bubble(10)
 val merge = SortingNetwork.oddEvenMerge(10)
@@ -57,7 +57,7 @@ A diagram doesn't show how quickly a network removes disorder. `layerTrace(...)`
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/disorder_decay.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 
@@ -146,8 +146,8 @@ Odd-even merge does most of its work early: its first layer is the steepest step
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/anneal_search.png" wait="1.0" capture="box" open-outputs="true" timeout="70"}
 :::static
-import afield.darkMode
-import afield.graphics.FLine
+import afield.ui.visualization.darkMode
+import afield.geometry.path.FLine
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 
@@ -199,7 +199,7 @@ This example runs `anneal` over every combination of three starting networks, th
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/anneal_regimes.png" wait="1.0" capture="box" open-outputs="true" timeout="90"}
 :::static
-import afield.darkMode
+import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
 

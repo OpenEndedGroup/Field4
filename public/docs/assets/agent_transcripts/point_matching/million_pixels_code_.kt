@@ -32,6 +32,6 @@ val px = IntArray(n) { i ->
     val c = okhsl(atan2(dy, dx) * 180 / PI + 360, 0.85, 0.25 + 0.6 * sqrt(dx * dx + dy * dy) / radius)
     (255 shl 24) or ((c.x * 255).toInt() shl 16) or ((c.y * 255).toInt() shl 8) or (c.z * 255).toInt()
 }
-display("main", afield.util.PngEncoder.encode(px, side, side))
+display("main", afield.media.image.util.PngEncoder.encode(px, side, side))
 displayOpen("main")
 println("matched %,d to %,d in %.1f s, rms travel %.1f px".format(n, n, seconds, sqrt(match.meanSquaredDistance)))

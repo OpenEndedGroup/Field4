@@ -1,14 +1,14 @@
-import afield.four.Renderer
-import afield.four.util.Window
-import afield.stdlib.ShaderNeuralParticles
-var Box.panels by Inheritance<List<afield.stdlib.ShaderNeuralParticles>>() /**/
-val Once.panels by Onceing<List<afield.stdlib.ShaderNeuralParticles>>() /**/
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.simulation.particles.ShaderNeuralParticles
+var Box.panels by Inheritance<List<afield.simulation.particles.ShaderNeuralParticles>>() /**/
+val Once.panels by Onceing<List<afield.simulation.particles.ShaderNeuralParticles>>() /**/
 val Why.panels by Whying() /**/
-var Box.fieldA by Inheritance<afield.stdlib.FlowMatchExport>() /*from:li_fields*/ /**/
-val Once.fieldA by Onceing<afield.stdlib.FlowMatchExport>() /*from:li_fields*/ /**/
+var Box.fieldA by Inheritance<afield.simulation.particles.FlowMatchExport>() /*from:li_fields*/ /**/
+val Once.fieldA by Onceing<afield.simulation.particles.FlowMatchExport>() /*from:li_fields*/ /**/
 val Why.fieldA by Whying() /*from:li_fields*/ /**/
-var Box.fieldB by Inheritance<afield.stdlib.FlowMatchExport>() /*from:li_fields*/ /**/
-val Once.fieldB by Onceing<afield.stdlib.FlowMatchExport>() /*from:li_fields*/ /**/
+var Box.fieldB by Inheritance<afield.simulation.particles.FlowMatchExport>() /*from:li_fields*/ /**/
+val Once.fieldB by Onceing<afield.simulation.particles.FlowMatchExport>() /*from:li_fields*/ /**/
 val Why.fieldB by Whying() /*from:li_fields*/ /**/
 var Box.window by Inheritance<Window>() /*from:li_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:li_renderer*/ /**/

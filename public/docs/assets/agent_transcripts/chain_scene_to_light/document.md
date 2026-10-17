@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rig_measure" index="0" -->
 
 ```edn [field-box id="rig_measure" role="properties"]
-{"id" "rig_measure" "index" 0 "name" "3. Measure: round trip and aliasing (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Measure: round trip and aliasing (run)" "_tombstone" false "frame" #afield/rect [60.0 560.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_measure_code_.kt" "lines" 11 "characters" 666 "sha256" "1ffaff1f3df7ae5c2c0c78b5230f510890f202043aeac00643e6e7a7560cd97e"}]}
+{"id" "rig_measure" "index" 0 "name" "3. Measure: round trip and aliasing (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Measure: round trip and aliasing (run)" "_tombstone" false "frame" #afield/rect [60.0 560.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_measure_code_.kt" "lines" 11 "characters" 669 "sha256" "0afa0491c1fb9e7fa446942daeff7eb881ded4219b7870c3be02aee248dbf013"}]}
 ```
 
 ```kotlin [field-property box="rig_measure" name="code" path="rig_measure_code_.kt"]
-import afield.dmx.*
+import afield.io.dmx.*
 
 // The page's measurements, on this machine: nine frames sent and received back on a free port the
 // system picks (so this can run beside boxes 1 and 2), and a thin line swept across the rig,
@@ -33,11 +33,11 @@ println("area average:  dark in ${area.darkFrames} frames, light on the rig ${"%
 <!-- field-box id="rig_receiver" index="1" -->
 
 ```edn [field-box id="rig_receiver" role="properties"]
-{"id" "rig_receiver" "index" 1 "name" "2. Receiver: the rig lit by what arrived (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Receiver: the rig lit by what arrived (launch)" "_tombstone" false "frame" #afield/rect [1120.0 60.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_receiver_code_.kt" "lines" 15 "characters" 634 "sha256" "264d3814c5bc396336f6d18414f18b119e1272fd1eef80478da74c1abceda3aa"}]}
+{"id" "rig_receiver" "index" 1 "name" "2. Receiver: the rig lit by what arrived (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Receiver: the rig lit by what arrived (launch)" "_tombstone" false "frame" #afield/rect [1120.0 60.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_receiver_code_.kt" "lines" 15 "characters" 637 "sha256" "281d4e933ef5c8b0138bca07d1c1c968be636e1d88c282a5e312f593a0ddd414"}]}
 ```
 
 ```kotlin [field-property box="rig_receiver" name="code" path="rig_receiver_code_.kt"]
-import afield.dmx.*
+import afield.io.dmx.*
 
 // Field as an sACN node on the sender's port (35690, fixed so the two boxes agree; change both
 // together). It knows where the fixtures are (the same layout),
@@ -59,12 +59,12 @@ loop {
 <!-- field-box id="scene_sender" index="2" -->
 
 ```edn [field-box id="scene_sender" role="properties"]
-{"id" "scene_sender" "index" 2 "name" "1. Scene on the rig: RectSL to sACN (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Scene on the rig: RectSL to sACN (launch)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "scene_sender_code_.kt" "lines" 52 "characters" 1535 "sha256" "7195d09ca2bbc4bd89afb41e12a287fc8b2234351828da7bebbd1640613e98cc"}]}
+{"id" "scene_sender" "index" 2 "name" "1. Scene on the rig: RectSL to sACN (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Scene on the rig: RectSL to sACN (launch)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "scene_sender_code_.kt" "lines" 52 "characters" 1543 "sha256" "71b7fcf637995fced9b8529d9a25b8fd8b0ea76a2988383807e002bc8062aeca"}]}
 ```
 
 ```kotlin [field-property box="scene_sender" name="code" path="scene_sender_code_.kt"]
-import afield.dmx.*
-import afield.rectsl.*
+import afield.io.dmx.*
+import afield.lang.rectsl.*
 
 // A RectSL scene, drawn on the CPU, on a light rig. Edit the scene and launch again: the receiver
 // box shows what arrives. (Try the line's width, 0.25 ->wh below, or area = false further down.)

@@ -1,5 +1,5 @@
-import afield.graphics.VisionGeometryPreview
-import afield.graphics.previewVisionGeometry
+import afield.graphics.visionos.VisionGeometryPreview
+import afield.graphics.visionos.previewVisionGeometry
 
 // Exactly what you would paste into a `// {{ visionmetal }}` box — a lantern built from
 // the shape helpers and a hand-written ring of quads on top.

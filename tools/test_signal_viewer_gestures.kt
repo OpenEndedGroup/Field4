@@ -1,6 +1,6 @@
 // Run through field_backdoor on a private code property after tools/test_signal_viewer.js.
 // Uses real Playwright mouse events in the current, open signal output.
-val page: com.microsoft.playwright.Page = afield.globalPlaywriteContext ?: throw IllegalStateException("Playwright not active")
+val page: com.microsoft.playwright.Page = afield.app.server.globalPlaywriteContext ?: throw IllegalStateException("Playwright not active")
 val selector = ".field-signal-viewer .fsv-plot"
 val rootSelector = ".field-signal-viewer"
 fun state(): List<Double> = (page.evaluate("Array.from(document.querySelectorAll('.field-signal-viewer')).map(r=>[Number(r.dataset.start),Number(r.dataset.end)])[0]") as List<*>).map { (it as Number).toDouble() }

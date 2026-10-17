@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import functools
+import json
 import re
 import subprocess
 import sys
@@ -37,8 +38,8 @@ def _kotlin_source(path: str) -> bool:
     return _under(path, "src") and path.endswith(".kt")
 
 
-_REFERENCE_GENERATOR_REL = "src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt"
-_SOURCE_ROOTS_DECL = re.compile(r"private val SOURCE_ROOTS = listOf\((.*?)\n    \)", re.DOTALL)
+_REFERENCE_GENERATOR_REL = "src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt"
+_SOURCE_ROOTS_DECL = re.compile(r"\bprivate\s+val\s+SOURCE_ROOTS\s*=\s*listOf\s*\(")
 _KOTLIN_STRING = re.compile(r'"([^"\n]+)"')
 
 
@@ -51,13 +52,50 @@ class ReferenceRootsUnreadable(RuntimeError):
     """
 
 
+def _parse_reference_source_roots(text: str) -> tuple[str, ...]:
+    """Read a literal Kotlin list, stopping at its own closing parenthesis.
+
+    Formatting and comments may change; expressions/interpolations need an explicit
+    parser update rather than a guessed population.
+    """
+    match = _SOURCE_ROOTS_DECL.search(text)
+    if match is None:
+        raise ReferenceRootsUnreadable("no private val SOURCE_ROOTS = listOf(...) declaration")
+    pos, roots, need_value = match.end(), [], True
+    while pos < len(text):
+        trivia = re.match(r"(?:\s+|//[^\n]*|/\*.*?\*/)+", text[pos:], re.S)
+        if trivia:
+            pos += trivia.end()
+        if text[pos:pos + 1] == ")":
+            if not roots:
+                raise ReferenceRootsUnreadable("SOURCE_ROOTS is empty")
+            return tuple(roots)
+        if not need_value:
+            if text[pos:pos + 1] != ",":
+                break
+            pos += 1
+            need_value = True
+            continue
+        if text[pos:pos + 1] != '"':
+            break
+        try:
+            value, end = json.JSONDecoder().raw_decode(text, pos)
+        except ValueError as error:
+            raise ReferenceRootsUnreadable("invalid SOURCE_ROOTS string") from error
+        if not isinstance(value, str) or not value or "$" in value:
+            break
+        roots.append(value)
+        pos, need_value = end, False
+    raise ReferenceRootsUnreadable("SOURCE_ROOTS must be a closed list of literal path strings")
+
+
 @functools.lru_cache(maxsize=1)
 def _reference_source_roots() -> tuple[str, ...]:
     """The source roots ``generateCodebaseReference`` actually reads, from the generator itself.
 
     Derived, never copied. This predicate used to name two roots —
     ``afield/stdlib`` and ``afield/visualization`` — while
-    :data:`afield.docs.StdlibReferenceGenerator.SOURCE_ROOTS` named seventeen. Measured over
+    :data:`afield.tools.docs.StdlibReferenceGenerator.SOURCE_ROOTS` named seventeen. Measured over
     ``git ls-files`` in this worktree on 2026-09-18: **402** tracked ``.kt`` files sit under the
     generator's roots and the old two-root predicate selected **170** of them, so **232 (58%)** of
     the generator's own input set could be staged with the staleness guard never firing. Three
@@ -82,19 +120,7 @@ def _reference_source_roots() -> tuple[str, ...]:
             "Point _REFERENCE_GENERATOR_REL at its new home; do not re-introduce a copy of "
             "SOURCE_ROOTS here."
         )
-    match = _SOURCE_ROOTS_DECL.search(generator.read_text())
-    if match is None:
-        raise ReferenceRootsUnreadable(
-            f"no `private val SOURCE_ROOTS = listOf(...)` in {_REFERENCE_GENERATOR_REL} — the "
-            "declaration this predicate reads was renamed or reshaped. Update "
-            "_SOURCE_ROOTS_DECL; do not re-introduce a copy of the list here."
-        )
-    roots = tuple(_KOTLIN_STRING.findall(match.group(1)))
-    if not roots:
-        raise ReferenceRootsUnreadable(
-            f"`SOURCE_ROOTS` in {_REFERENCE_GENERATOR_REL} parsed to an empty list"
-        )
-    return roots
+    return _parse_reference_source_roots(generator.read_text())
 
 
 def _reference_input(path: str) -> bool:
@@ -140,18 +166,21 @@ def _compiled_transcript(path: str) -> bool:
 
 def _completion_input(path: str) -> bool:
     return (
-        _under(path, "public/docs/assets/agent_transcripts")
+        # Authored transcripts regenerate the starting-point boxes harvested below. Select
+        # both generators up front, before those generated changes exist in the diff.
+        _compiled_transcript(path)
+        or _under(path, "public/docs/assets/agent_transcripts")
         or _under(path, "templates")
         or _under(path, "tools/completion-corpus/boxes")
-        or _under(path, "src/jvmMain/kotlin/afield/macros")
+        or _under(path, "src/jvmMain/kotlin/afield/runtime/macros")
         or path
         in {
-            "src/jvmMain/kotlin/afield/CompletionCorpus.kt",
-            "src/jvmMain/kotlin/afield/CompletionCorpusHarvest.kt",
-            "src/jvmMain/kotlin/afield/KotlinInterface.kt",
-            "src/jvmMain/kotlin/afield/KotlinInterface2.kt",
-            "src/jvmMain/kotlin/afield/KotlinScriptEngine.kt",
-            "src/jvmMain/kotlin/afield/stdlib/shaders.kt",
+            "src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpus.kt",
+            "src/jvmMain/kotlin/afield/runtime/completion/CompletionCorpusHarvest.kt",
+            "src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface.kt",
+            "src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface2.kt",
+            "src/jvmMain/kotlin/afield/runtime/kotlin/KotlinScriptEngine.kt",
+            "src/jvmMain/kotlin/afield/graphics/shader/shaders.kt",
         }
         or _macro_producer(path)
     )
@@ -195,13 +224,13 @@ def _macro_producer(path: str) -> bool:
 
 
 _CITATION_TEST_SOURCES = {
-    "src/jvmTest/kotlin/afield/docs/CitationContractTest.kt",
-    "src/jvmTest/kotlin/afield/docs/CitationGuard.kt",
-    "src/jvmTest/kotlin/afield/docs/DocsFenceTreatmentTest.kt",
-    "src/jvmTest/kotlin/afield/docs/DocsGatesWiringTest.kt",
-    "src/jvmTest/kotlin/afield/docs/SmallLanguageAnatomyTest.kt",
-    "src/jvmTest/kotlin/afield/graphics/CloseNodeCitationDriftTest.kt",
-    "src/jvmTest/kotlin/afield/server/ServerSurfaceLedgerTest.kt",
+    "src/jvmTest/kotlin/afield/tools/docs/CitationContractTest.kt",
+    "src/jvmTest/kotlin/afield/tools/docs/CitationGuard.kt",
+    "src/jvmTest/kotlin/afield/tools/docs/DocsFenceTreatmentTest.kt",
+    "src/jvmTest/kotlin/afield/tools/docs/DocsGatesWiringTest.kt",
+    "src/jvmTest/kotlin/afield/tools/docs/SmallLanguageAnatomyTest.kt",
+    "src/jvmTest/kotlin/afield/geometry/path/CloseNodeCitationDriftTest.kt",
+    "src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt",
 }
 _CITATION_EXTENSIONS = "kt|js|md|py|kts|html|swift|glsl|json|yml|yaml"
 _CITATION_LEDGER_PATH = re.compile(
@@ -220,8 +249,8 @@ _CLOSE_NODE_PATH = re.compile(
 def _citation_input_paths() -> frozenset[str]:
     """Read the citation registries instead of maintaining a second source-path list here."""
     repo = Path(__file__).resolve().parents[1]
-    contract_source = repo / "src/jvmTest/kotlin/afield/docs/CitationContractTest.kt"
-    close_source = repo / "src/jvmTest/kotlin/afield/graphics/CloseNodeCitationDriftTest.kt"
+    contract_source = repo / "src/jvmTest/kotlin/afield/tools/docs/CitationContractTest.kt"
+    close_source = repo / "src/jvmTest/kotlin/afield/geometry/path/CloseNodeCitationDriftTest.kt"
 
     guarded_pages = set(_GUARDED_PAGE.findall(contract_source.read_text()))
     guarded_pages.add("dev_docs/fline_close_nodes.md")
@@ -259,7 +288,7 @@ def _citation_input_paths() -> frozenset[str]:
     return frozenset(resolved)
 
 
-_PERSONAL_BOUNDARY_REL = "src/jvmTest/kotlin/afield/docs/PersonalBoundaryTest.kt"
+_PERSONAL_BOUNDARY_REL = "src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt"
 _SCAN_ROOTS_DECL = re.compile(r"private val SCAN_ROOTS = listOf\((.*?)\n\s*\)", re.DOTALL)
 _SCAN_EXTENSIONS_DECL = re.compile(r"private val SCAN_EXTENSIONS = setOf\((.*?)\)", re.DOTALL)
 
@@ -345,6 +374,19 @@ class Guard:
         return self.input_matches(path) or any(_under(path, root) for root in self.output_roots)
 
 
+def _python_tool_input(path: str) -> bool:
+    # The reference catalog is read by Python guard-selection and documentation
+    # detector tests. Its producer and generated pages must run those tests too.
+    return (
+        _demo_input(path)
+        or path == _REFERENCE_GENERATOR_REL
+        or _under(path, "public/docs/reference")
+        or (_under(path, "tools") and path.endswith(".py"))
+        or _under(path, "tools/refactor-engine")
+        or path in {"build.gradle.kts", "pyproject.toml", "uv.lock"}
+    )
+
+
 GUARDS = (
     Guard(
         "checkCodebaseReference",
@@ -362,7 +404,7 @@ GUARDS = (
     Guard("checkAgentTranscriptIndex", "agent transcript index", _transcript_input),
     Guard("checkAgentTranscriptLayouts", "agent transcript and demo layouts", _demo_input),
     Guard("checkAgentDemos", "saved demo consistency", _demo_input),
-    Guard("checkPythonTools", "demo registration and corpus ledgers", _demo_input),
+    Guard("checkPythonTools", "Python tools and their corpus contracts", _python_tool_input),
     Guard(
         "checkCompletionCorpusFixtures",
         "completion-corpus fixtures",

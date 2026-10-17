@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["petri_sculpture_trace"] "properties" {"children" #{#afield/box "petri_sculpture_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 227 "sha256" "816b77214788d6c50f993e600de3408b650476c2faf6d6f26f6eed39a443d771"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["petri_sculpture_trace"] "properties" {"children" #{#afield/box "petri_sculpture_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 238 "sha256" "a638c9dcc41817acc78a680363fba75a1c79e62b490a665bfc9e3f7a409cfbd8"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,17 +31,17 @@ start(renderer::run)
 <!-- field-box id="petri_sculpture_trace" index="1" -->
 
 ```edn [field-box id="petri_sculpture_trace" role="properties"]
-{"id" "petri_sculpture_trace" "index" 1 "name" "a deadlock, sculpted and traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a deadlock, sculpted and traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_sculpture_trace_code_.kt" "lines" 172 "characters" 7256 "sha256" "a4f76e086c448f30a39a99ff8d253dd3db13744eb901634d93b3c2eea0d88aee"}]}
+{"id" "petri_sculpture_trace" "index" 1 "name" "a deadlock, sculpted and traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a deadlock, sculpted and traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_sculpture_trace_code_.kt" "lines" 172 "characters" 7328 "sha256" "e9bf9dfb2885e660d207f88e852c43ecd45131f9f7f459dc2ffcc8f69211fae9"}]}
 ```
 
 ```kotlin [field-property box="petri_sculpture_trace" name="code" path="petri_sculpture_trace_code_.kt"]
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.util.Camera
-import afield.petri.*
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.vulkan.util.Camera
+import afield.simulation.petri.*
 import java.io.File
 import kotlin.math.PI
 import kotlin.math.cos

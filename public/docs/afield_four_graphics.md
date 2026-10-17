@@ -1,4 +1,4 @@
-# afield.four Graphics
+# Field 4 Graphics
 
 Open **Welcome → Starting points → canonical_graphics** to get an editable copy
 of this complete graphics curriculum, including its code and shader sidecars.
@@ -8,7 +8,7 @@ original stays unchanged, and opening it again makes another fresh copy.
 
 For the experimental raster-primary area lights, Vulkan ray-query shadows and optional RTXDI resampling, see [Direct lighting](direct_lighting.md).
 
-`afield.four` is Field's direct Vulkan path. A graphics box usually has three parts:
+`Field 4` is Field's direct Vulkan path. A graphics box usually has three parts:
 
 - Kotlin code that creates modules, meshes, buffers, cameras, textures, and renderer connections.
 - Shader properties such as `vertex`, `fragment`, `compute`, or `vertex_fragment`.
@@ -231,7 +231,7 @@ void main()
 
 Because the uniform block is named `view`, the Kotlin side writes `module.view.p` and `module.view.m`. The module owns this resource because the block is declared at descriptor set/binding scope, not as a per-mesh push constant.
 
-`moduleHere()` generates a Kotlin class per uniform block, named by capitalising the block's name. Name a block after something the box already uses (a block called `camera` would generate a `Camera` class) and that class hides the import: `Camera()` would then build the generated class, and `camera.at` would fail to resolve.
+`moduleHere()` generates a Kotlin class per uniform block, named by capitalising the block's name. When that name is already a type the box imports, the class gets `Block` on the end instead: a block called `camera` generates `CameraBlock`, so `Camera()` is still Field's camera.
 
 ## Camera as push constants
 
@@ -437,7 +437,7 @@ layout(local_size_x = 64) in;
 layout(std430, buffer_reference) buffer inData { vec4 a[]; };
 layout(std430, buffer_reference) buffer outData { vec4 a[]; };
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 layout(push_constant) uniform dat {
     inData inData;
@@ -456,7 +456,7 @@ void main() {
 }
 ```
 
-`{% include "fieldProbe" %}` is Field's shader templating pulling in the probe preamble; see [Field probes](field_probes.md). Templating in general is [Shader templating](#shader-templating) below.
+`{% property "fieldProbe" %}` is Field's shader templating pulling in the probe preamble; see [Field probes](field_probes.md). Templating in general is [Shader templating](#shader-templating) below.
 
 The draw box is a **child of the compute box**, and that is the only reason `outputPositions` resolves:
 
@@ -597,7 +597,7 @@ The name `bbc` is the bridge. Kotlin creates `prop<LoadedTexture>(bbc)`, the sha
 A shader can declare an *array* of samplers, and the Kotlin side binds it by publishing an array of image views under the array's name. The reflected-name contract is the same as the single texture above; only the type changes.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04b-multi-texture.png" alt="the same multicoloured checkerboard quad with its white and black crossing diagonals. It is pixel-identical to the single-texture figure on purpose: all three entries of the sampler array point at the same image file, so what the figure shows is that the array binds, links and draws at all" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-multi-texture" source-box="assets/canonical_graphics/3cbcadc0-b279-470d-9a5f-afc120518829" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.texture.*
+import afield.graphics.texture.*
 
 var bbc = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 bbc.transferNow()
@@ -685,7 +685,7 @@ camera.at = vec(0,0,-10)
 camera.p()
 
 loop {
-    module.VertexData.modelView = camera.m()
+    module.VertexData.modelView = meshes[0].meshes[0].modelView(camera)
     module.VertexData.proj = camera.p()
     frame()
 }
@@ -693,7 +693,7 @@ loop {
 
 Three things to notice. `meshes[0].meshes[0].applyToMesh(m, camera)` copies one primitive of one model into your mesh; the outer index is the model, the inner one the primitive, so a multi-part file is addressed rather than flattened. `module.VertexData` is the reflected *uniform block*, assigned whole (`module.VertexData.proj = camera.p()`) instead of through per-member lambdas. And `camera.p.orthoness` / `camera.p.matchDepth` are Field's blend between perspective and orthographic rather than a choice between them.
 
-There is one thing to watch in that loop. `applyToMesh` composes `modelView` as `view * model`, defaulting `model` to the primitive's own node transform. That default assembles a multi-node file where its nodes put it, instead of heaping every part at the origin. Assigning `module.VertexData.modelView = camera.m()` each frame overwrites that with the view alone, which is fine for `Box.gltf` (one node, no transform) and wrong for anything positioned by its nodes. If you drive the camera from a loop like this, compose the model matrix in there too, or pass `model = Matrix4f()` to `applyToMesh` and own the placement yourself. [Geometry from disk](geometry_from_disk.md) has the measurement behind that.
+`applyToMesh` composes `modelView` as `view * model`, with the primitive's own node transform as the model, so a multi-node file assembles where its nodes put it. The loop keeps that by assigning `meshes[0].meshes[0].modelView(camera)`, the same product, rather than `camera.m()` alone. [Geometry from disk](geometry_from_disk.md) has the measurement behind it.
 
 The vertex shader shows what "already matched to the data" means. Rather than declaring vertex attributes, it reads a flat float array through a buffer reference and unpacks by stride:
 
@@ -836,7 +836,7 @@ void main()
 }
 ```
 
-Compare that with the texturing fragment shader: it is the same shader. From the consumer's side there is no difference between sampling a file loaded from disk and sampling the output of another box. Two boxes and one renamed property are the smallest complete statement of how `afield.four` composes.
+Compare that with the texturing fragment shader: it is the same shader. From the consumer's side there is no difference between sampling a file loaded from disk and sampling the output of another box. Two boxes and one renamed property are the smallest complete statement of how `Field 4` composes.
 
 The graphics-scene transcripts `threebox` and `spin_glass` in [agent transcripts](agent_transcripts.md) are runnable versions of the same producer/consumer shape.
 
@@ -846,8 +846,8 @@ A target you can read *and* write in the same pass is a contradiction, so feedba
 
 ```diffstatic {data-lang=kotlin}
 import org.lwjgl.vulkan.VK10.*
-import afield.four.targets.*
-import afield.four.texture.*
+import afield.graphics.vulkan.targets.*
+import afield.graphics.texture.*
 
 prop<PingPongRenderToTexture>(target) = PingPongRenderToTexture {
     clearFirst = false
@@ -884,7 +884,7 @@ void main()
 Reading `otherView` at a slightly offset coordinate and writing the channels back swapped (`c.gr`) is what makes the image drift and recolour over time rather than settle. The consuming box then displays `target.thisImageView`, the half that was just written:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.texture.*
+import afield.graphics.texture.*
 
 prop<HasImageView>(bbc) = target.thisImageView
 ```
@@ -1013,12 +1013,12 @@ void main()
 
 ## Shader includes
 
-Shader properties are templated before they reach the compiler, and `{% include "name" %}` pulls in another property by name. `5. included` shares its attribute and push-constant declarations with a sibling box:
+Shader properties are templated before they reach the compiler, and `{% property "name" %}` pulls in another property by name. `5. included` shares its attribute and push-constant declarations with a sibling box:
 
 ```diffstatic {data-lang=glsl}
 #version 450
 
-{% include "vertex_included" %}
+{% property "vertex_included" %}
 
 layout (location = 0) out vec4 fcol;
 
@@ -1064,7 +1064,7 @@ void main()
 }
 ```
 
-Note that `#include` here is the C-style directive handled by the shader compiler's include resolver, while `{% include %}` above is Field's own templating over box properties: two different mechanisms that happen to share a name. This example needs a Lygia checkout on disk, which is why it carries no figure.
+This example needs a Lygia checkout on disk, which is why it carries no figure.
 
 ## Shader templating
 
@@ -1111,7 +1111,7 @@ In the corpus this box also carries a `//%-` line, which is Field's execution br
 Templating gets more interesting when the substituted source is itself generated from a Kotlin type. `PushConstants<T>` reflects a Kotlin class into a GLSL push-constant declaration:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/05c-push-constants.png" alt="one right triangle filling a black window in flat dark crimson, the same geometry as the templating figure with a different colour. The value arrives through a push-constant block GLSL never declared by hand, reflected out of a Kotlin class" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-push-constants" source-box="assets/canonical_graphics/42056e8d-ec8b-4bf8-b84a-1cd1d8524510" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.four.util.*
+import afield.graphics.vulkan.util.*
 
 class MyPC(
     var a : Vec4,
@@ -1209,11 +1209,11 @@ void main()
 }
 ```
 
-Two things are required. `#extension GL_EXT_debug_printf : enable` has to be there, and printing needs validation layers switched on (`Options.validation`); without them the call compiles and silently does nothing. And the guard matters: `debugPrintfEXT` with no condition in a shader running over a million invocations will flood the log and stall the frame. The guard here (`gl_VertexIndex == 0`) prints once per draw, for the first vertex.
+Two things are required. `#extension GL_EXT_debug_printf : enable` has to be there, and printing needs the validation layer (`Options.validate`, on by default, or `Options.shaderDebugPrintf`); a shader that calls `debugPrintfEXT` with both off gets a warning in the log, since it would print nothing. And the guard matters: `debugPrintfEXT` with no condition in a shader running over a million invocations will flood the log and stall the frame. The guard here (`gl_VertexIndex == 0`) prints once per draw, for the first vertex.
 
 ## Debugging: texture probes
 
-The other debugging tool goes the other way: instead of printing text, it samples a value out of a running shader and draws it. `fieldProbeHere()` creates the probe and `{% include "fieldProbe" %}` brings the shader side in:
+The other debugging tool goes the other way: instead of printing text, it samples a value out of a running shader and draws it. `fieldProbeHere()` creates the probe and `{% property "fieldProbe" %}` brings the shader side in:
 
 ```diffstatic {data-lang=kotlin}
 prop<LoadedTexture>(bbc) = LoadedTexture("bbc.jpg")
@@ -1257,7 +1257,7 @@ m.set(4*n, 2*n) {
 ```diffstatic {data-lang=glsl}
 #version 450
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 // …
 
@@ -1397,8 +1397,6 @@ Slang requires `slangc` to be available. Field checks an explicit `AFIELD_SLANGC
 The last lesson is the shortest, because the work is packaged:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.*
-
 var dla = ShaderDlaSystem() {
     width = 1024
     height = 1024
@@ -1516,7 +1514,7 @@ layout(push_constant) uniform Push {
     int seed;
 } push;
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 layout(location = 0) out vec4 outColor;
 
@@ -1585,6 +1583,143 @@ void main() {
 }
 ```
 
+## A fluid: lattice Boltzmann { #lattice-boltzmann }
+
+`ShaderLatticeBoltzmannSystem` is a two-dimensional fluid. Every texel is a lattice site holding nine numbers, how much fluid there is moving in each of nine directions: still, the four neighbours, the four diagonals. A step moves each of those one site along its direction, then relaxes each site toward the equilibrium for its own density and velocity, and a population that runs into a solid site bounces back where it came from. Density and velocity are never stored; they are sums over the nine. This box builds one as a wind tunnel, wind blowing left to right across a lattice that wraps:
+
+```diffstatic {data-lang=kotlin}
+// A lattice Boltzmann fluid in a wind tunnel: a wind blows left to right and the
+// lattice wraps, so what leaves on the right comes back on the left.
+// On its own it is uniform wind and shows nothing; the box beneath this one puts
+// something in its way.
+prop<ShaderLatticeBoltzmannSystem>(lbm) = ShaderLatticeBoltzmannSystem() {
+    width = 800
+    height = 480
+    baseVelocity = Vector2f(0.08f, 0f)
+    // a thin fluid (viscosity about 0.014) so the wake sheds vortices
+    relaxation = 1.85f
+    // nothing pulls the fluid back toward the wind, so the wake travels;
+    // the inlet that 10b draws at the left edge keeps the wind blowing
+    driveBlend = 0f
+    stepsPerFrame = 8
+    dyeDecayPerFrame = 0.001f
+    // vorticity: orange turns one way, blue the other. Try COMPOSITE, DYE or SPEED
+    previewMode = FluidVisualizationMode.CURL
+}
+
+// this installs the editable collision-and-streaming rule in this box's fragment tab
+lbm.installInto()
+```
+
+A wind through an empty tunnel is uniform and shows nothing, so a second box beneath this one puts something in its way. It draws into the fluid's control texture, where red is solid, green and blue a push, and alpha a dye source that also holds the wind steady. `controlsParameters` gives the module additive blending, and the controls are carried from frame to frame, so what the shader writes is a drawing that stays until `clearControls()` erases it:
+
+```diffstatic {data-lang=kotlin}
+// Draws into the fluid's control texture: a solid disc, walls top and bottom, and
+// stripes of dye released at the left edge. The controls persist from frame to
+// frame, so clear them first or a re-run leaves the old drawing behind.
+lbm.clearControls()
+
+var module = moduleHere(lbm.controlsParameters("cylinder"))
+lbm.addControls("cylinder", module)
+
+val quad = fullscreenTriangle(module)
+module += "quad" to quad
+
+quad.center = { vec(160f, 236f) }
+quad.radius = { 24f }
+quad.height = { 480f }
+```
+
+```diffstatic {data-lang=glsl}
+void main() {
+    vec2 p = gl_FragCoord.xy;
+    outColor = vec4(0.0);
+
+    if (distance(p, push.center) < push.radius) outColor.r = 1.0;
+    if (p.y < 3.0 || p.y > push.height - 3.0) outColor.r = 1.0;
+
+    if (p.x < 4.0 && mod(floor(p.y / 12.0), 2.0) == 0.0) outColor.a = 1.0;
+}
+```
+
+These are the `10. lattice boltzmann` and `10b. lbm cylinder` lessons of `canonical_graphics`, and the [`lattice_boltzmann_cylinder`](agent_transcripts.md#lattice_boltzmann_cylinder) starting point builds both with their renderer. The flow divides round the cylinder, and within a minute or so the two layers of shear behind it start to roll up alternately, one turning each way, and leave a von Kármán vortex street:
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="lbm_renderer" transcript="dev_docs/agents/transcripts/lattice_boltzmann_cylinder.yaml" screenshot="assets/afield_four_graphics/10-lattice-boltzmann.png" wait="80" timeout="240" native-wait-frames="4" embed=true hidden=true name="four-lattice-boltzmann" alt="vorticity behind a white cylinder in a dark wind tunnel: the flow from the left divides round it, and behind it the shear layers have rolled up into a street of alternating orange and blue vortices drifting to the right"}
+// The transcript built the renderer, the fluid and the cylinder and launched them;
+// this waits for the wake to start shedding and captures the window.
+```
+
+What decides it is the Reynolds number, speed times cylinder width over viscosity. The viscosity is `(1/relaxation − 0.5) / 3`, so `relaxation = 1.85f` gives about 0.014 and, with a wind of 0.08 sites per step past a 48-site cylinder, a Reynolds number near 280. Two settings in this box are there to let the street form. `driveBlend = 0f` turns off the pull back toward the wind that every site otherwise feels, which would damp a growing wake faster than it grows; the inlet stripes keep the wind blowing instead. And `initialNoise`, on by default, starts the fluid with a velocity too small to see, because a symmetric setup computed exactly stays symmetric and the wake would never start to swing.
+
+`stepsPerFrame = 8` runs eight lattice steps a frame. The method is only accurate while the fluid moves well under a site per step, so at one step a frame a gust takes thousands of frames to cross the window. `previewMode` chooses what you see: `CURL` is vorticity, `DYE` the dye alone, `SPEED` and `VELOCITY` the flow, `COMPOSITE` the dye lit by the flow. It is read every frame, so assigning `lbm.settings.previewMode` from another box changes the view without restarting anything, and so does every other setting except the sizes.
+
+The box's `fragment` tab holds one step of the method, all nine populations written to three attachments of one ping-pong target in a single pass, and editing it re-runs the fluid.
+
+## A forest fire { #forest-fire }
+
+`ShaderForestFireSystem` spreads fire through a forest. Each texel is a tree or bare ground, decided once from a hash of its position, and each tree is ready to burn, burning, or recovering. A ready tree catches from a burning neighbour, by chance: each burning neighbour gets one try per frame with probability `spreadProbability`, half by default. A tree burns for a few frames, then cannot burn again until it has recovered. Because trees recover, the fire never runs out of fuel, and a front can be followed by another one through the same trees. There are four kinds of fire, one per colour channel, and they compete: a tree that catches one kind is not available to the others until it has recovered. This box builds a forest the shape of the window:
+
+```diffstatic {data-lang=kotlin}
+// A forest fire: a fixed scatter of trees, and four kinds of fire (red, green, blue,
+// magenta) that compete for them. Burnt trees recover, so a fire front can be
+// followed by another. Nothing burns until something is lit; the box beneath this
+// one lights it.
+// The forest is 768 trees high and as wide as the window's shape needs, so it fills
+// the window without being stretched.
+val treesHigh = 768
+prop<ShaderForestFireSystem>(fire) = ShaderForestFireSystem() {
+    height = treesHigh
+    width = treesHigh * window.width / window.height
+    treeDensity = 0.6f
+}
+
+// this installs the editable spreading rule in this box's fragment tab
+fire.installInto()
+```
+
+Nothing burns until something is lit. The box beneath it draws into the fire's ignition texture, one kind of fire per channel; `fireInputParameters` makes the drawing additive, so writing 1 into a channel lights that kind there. This one lights two points, red and green, and keeps them lit:
+
+```diffstatic {data-lang=kotlin}
+// Draws into the fire's ignition texture: two points that burn for ever, one red
+// and one green. Each relights its neighbourhood as soon as the trees recover, so
+// each sends out a train of rings, and where the trains meet one kind takes over.
+fire.clearFireInput()
+fire.clearState()
+
+var module = moduleHere(fire.fireInputParameters("starter"))
+fire.addFireInput("starter", module)
+
+val quad = fullscreenTriangle(module)
+module += "quad" to quad
+
+// positions are in trees, so place them as fractions of the forest's size
+val w = fire.settings.width.toFloat()
+val h = fire.settings.height.toFloat()
+quad.red = { vec(w * 0.33f, h * 0.5f) }
+quad.green = { vec(w * 0.68f, h * 0.5f) }
+quad.radius = { 4f }
+```
+
+```diffstatic {data-lang=glsl}
+void main() {
+    vec2 p = gl_FragCoord.xy;
+    outColor = vec4(0.0);
+    if (distance(p, push.red) < push.radius) outColor.r = 1.0;
+    if (distance(p, push.green) < push.radius) outColor.g = 1.0;
+}
+```
+
+These are the `11. forest fire` and `11b. fire starter` lessons of `canonical_graphics`, and the [`forest_fire`](agent_transcripts.md#forest_fire) starting point builds both with a square window of their own. A point that never goes out relights the trees round it as soon as they recover, so each sends out a train of rings, one ring per recovery time. Red recovers faster than green by default, so its rings come more often. The two trains meet, and in the trees between the sources they interleave, each kind taking the trees the other has just left:
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="fire_renderer" transcript="dev_docs/agents/transcripts/forest_fire.yaml" screenshot="assets/afield_four_graphics/11-forest-fire.png" wait="30" timeout="240" native-wait-frames="4" embed=true hidden=true name="four-forest-fire" alt="a square forest crowded with ragged concentric rings of red and green fire, the trains from the two ignition points interleaved where they have met and passed through the recovering trees"}
+// The transcript built the renderer, the forest and the fire starter and launched them;
+// this waits for the two trains of rings to fill the forest and captures the window.
+```
+
+`spreadProbability` is what makes the rings round. At 1 every burning tree lights all eight of its neighbours at once, the fire moves one texel a frame along the diagonals as fast as along the axes, and the rings come out square. At one half each front advances by chance, slower on average, and roughens into a ragged circle. `treeDensity` is the other setting to try: it is the fraction of texels that hold a tree, and the default of 0.72 makes a denser, more uniform forest than the 0.6 here.
+
+The box's `fragment` tab holds the spreading rule, and editing it re-runs the fire.
+
 ## Stopping the renderer
 
 Stopping the box that owns `renderer` also stops every running box connected beneath it, then
@@ -1598,15 +1733,17 @@ is gone, then the boxes it stopped, parents before children.
 Anything that is not a box job, such as a raw `thread {}` or a renderer stashed in a global, is
 not stopped. If it writes a buffer after the device is gone, it gets an `IllegalStateException`
 that says so. A queue submission after the renderer has gone, or a descriptor that still names a
-freed buffer, is refused the same way. Stop that work yourself, from a box you can stop. The
-order is written up in `dev_docs/renderer_teardown_order.md`.
+freed buffer, is refused the same way. Stop that work yourself, from a box you can stop.
+
+??? aside "Agents: teardown order"
+    The shutdown order is written up in `dev_docs/renderer_teardown_order.md`.
 
 ## Where these examples come from
 
 Every example on this page is a box in a real Field document, `canonical_graphics`, which is
 committed under `public/docs/assets/canonical_graphics/` and is what the viewer at the top of this
 page is showing. If you want to read the code rather than the prose, or you are an agent about to
-write `afield.four` code and want a known-good pattern to adapt, start from
+write Field 4 graphics code and want a known-good pattern to adapt, start from
 [the lesson index](assets/canonical_graphics/LESSONS.md). It lists every lesson with its Kotlin and
 shader files, records the parent chain each one needs in order to run, and carries a reverse index
 from Field API name (`RenderToTexture`, `LoadedTexture`, `computeModuleHere`, `GpuRadixSort`, …) to

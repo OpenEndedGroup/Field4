@@ -18,7 +18,7 @@ Layout is AWT's advances and kerning pairs, plus the things AWT does not do: \n,
 spacing, alignment, and a mutable transform handle per glyph.
 
 ```edn [field-box id="typo_layout" role="properties"]
-{"id" "typo_layout" "index" 0 "name" "3 — advances, kerning, tracking, alignment" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — advances, kerning, tracking, alignment" "_tombstone" false "frame" #afield/rect [1000.0 60.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_layout_code_.kt" "lines" 49 "characters" 2869 "sha256" "b50c5dd54a5f65d0b7534ffd5aefc589a5a1151f959cefdb93c1f33499efead8"}]}
+{"id" "typo_layout" "index" 0 "name" "3 — advances, kerning, tracking, alignment" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — advances, kerning, tracking, alignment" "_tombstone" false "frame" #afield/rect [1000.0 60.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_layout_code_.kt" "lines" 49 "characters" 2882 "sha256" "bd23363077e6ac45d57b52889e1b3ef3069790f655f0c44d5adce5c84c8c56de"}]}
 ```
 
 ```kotlin [field-property box="typo_layout" name="code" path="typo_layout_code_.kt"]
@@ -53,7 +53,7 @@ showPlaneGrid(
     "tracking 0.16em — ${"%.0f".format(loose.advanceWidth)} units wide" to
         (loose.metricsFLines() + loose.advanceBoxFLines() + loose.toFLines(thickness = 1.0)),
     columns = 1, cellWidth = 820, cellHeight = 240,
-    window = afield.Rect(-20.0, -face.ascent - 20, loose.advanceWidth + 40, face.lineHeight + 40)
+    window = afield.app.protocol.Rect(-20.0, -face.ascent - 20, loose.advanceWidth + 40, face.lineHeight + 40)
 )
 
 // Multi-line and alignment, measured by the real layout so the wrap is right for the

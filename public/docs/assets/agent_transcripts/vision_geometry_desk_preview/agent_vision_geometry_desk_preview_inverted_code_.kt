@@ -1,5 +1,5 @@
-import afield.graphics.VisionGeometryPreview
-import afield.graphics.previewVisionGeometry
+import afield.graphics.visionos.VisionGeometryPreview
+import afield.graphics.visionos.previewVisionGeometry
 
 // A ring of quads whose corners are given in the other order. Every normal still points
 // outward; only the winding changed. The head culls back faces, so on the device this is a

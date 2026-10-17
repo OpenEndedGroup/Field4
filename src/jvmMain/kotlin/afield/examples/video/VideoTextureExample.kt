@@ -1,8 +1,8 @@
 package afield.examples.video
 
-import afield.four.Renderer
-import afield.four.device.CommandBuffer
-import afield.four.texture.video.VideoTexture
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.device.CommandBuffer
+import afield.graphics.texture.video.VideoTexture
 
 /**
  * Example usage of VideoTexture.

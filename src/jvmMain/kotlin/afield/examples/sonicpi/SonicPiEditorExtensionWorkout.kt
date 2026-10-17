@@ -1,7 +1,7 @@
 package afield.examples.sonicpi
 
-import afield.four.synth.SonicPiEditorExtension
-import afield.util.NodeTool
+import afield.audio.synth.SonicPiEditorExtension
+import afield.media.image.util.NodeTool
 import java.nio.file.Files
 import kotlin.io.path.writeText
 
@@ -122,7 +122,7 @@ object SonicPiEditorExtensionWorkout {
           proof.vocabulary.samples.size + " samples (Sonic Pi " + proof.vocabulary.version + ")");
 
         const text = [
-          'import afield.four.synth.*',
+          'import afield.audio.synth.*',
           'sonicPi(${"\"\"\""}',
           '#sonicpi',
           '# an ordinary comment',

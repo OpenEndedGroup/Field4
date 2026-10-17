@@ -22,7 +22,7 @@ const cpuBitmap = process.env.FIELD_BROWSER_TEXTURE_CPU_BITMAP === "1";
 // channel, events, input, the page bridge, CDP — is unchanged, so a caller that only drives the tab
 // pays for no shared texture, no native handle bridge, and no readback socket. It is what makes the
 // control plane reachable from a JVM with no Renderer, and therefore from a test. See
-// afield.four.browser.HeadlessPuppetBrowser.
+// afield.media.browser.HeadlessPuppetBrowser.
 const noFrames = process.env.FIELD_BROWSER_TEXTURE_NO_FRAMES === "1";
 // The receiver's address, in whichever form this platform's handle transfer needs.
 const sharedTexture = !cpuBitmap && !noFrames;

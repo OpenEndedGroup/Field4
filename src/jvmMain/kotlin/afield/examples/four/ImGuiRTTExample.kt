@@ -1,10 +1,10 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.imgui.ImGuiRenderToTexture
-import afield.four.modules.fromContext
-import afield.four.targets.RenderTarget
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.imgui.ImGuiRenderToTexture
+import afield.document.context.fromContext
+import afield.graphics.vulkan.targets.RenderTarget
+import afield.graphics.vulkan.util.Window
 
 /**
  * Backwards-compatible shim for the old example helper.

@@ -1,8 +1,8 @@
 package afield.examples
 
-import afield.Box
-import afield.KotlinInterface
-import afield.preamble
+import afield.document.graph.Box
+import afield.runtime.kotlin.KotlinInterface
+import afield.document.graph.preamble
 
 /*
 FIELD_TEST

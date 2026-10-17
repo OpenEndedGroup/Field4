@@ -1,4 +1,4 @@
-import afield.graphics.FLine
+import afield.geometry.path.FLine
 
 val bubble = SortingNetwork.bubble(10)
 val merge = SortingNetwork.oddEvenMerge(10)

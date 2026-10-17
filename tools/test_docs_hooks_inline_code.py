@@ -66,7 +66,7 @@ PLAIN = [
     "2.5.0",
     "28 / 28 / 29",
     # Paths, file names, globs, extensions.
-    "src/jvmMain/kotlin/afield/Boxes.kt",
+    "src/jvmMain/kotlin/afield/document/graph/Boxes.kt",
     "tools/test_*.py",
     "dev_docs/agents/",
     "/field-docs/",
@@ -171,10 +171,10 @@ def page(body: str) -> str:
 class MarkInlineCodeHtmlTests(unittest.TestCase):
     def test_prose_code_is_marked_and_paths_are_not(self):
         out = mark_inline_code_html(page(
-            "<p>Call <code>foo.bar(10.0)</code> from <code>src/jvmMain/kotlin/afield/Boxes.kt</code>.</p>"
+            "<p>Call <code>foo.bar(10.0)</code> from <code>src/jvmMain/kotlin/afield/document/graph/Boxes.kt</code>.</p>"
         ))
         self.assertIn(f"{MARKED}foo.bar(10.0)</code>", out)
-        self.assertIn("<code>src/jvmMain/kotlin/afield/Boxes.kt</code>", out)
+        self.assertIn("<code>src/jvmMain/kotlin/afield/document/graph/Boxes.kt</code>", out)
 
     def test_entities_are_decoded_before_classifying(self):
         out = mark_inline_code_html(page("<li><code>List&lt;Vec2&gt;(n)</code> and <code>&lt;div&gt;</code></li>"))

@@ -1,9 +1,9 @@
 package afield.ai.agent
 
-import afield.Box
-import afield.SessionInformation
-import afield.ai.core.AiBoxConversation
-import afield.ai.core.ToolExecutionContext
+import afield.document.graph.Box
+import afield.app.server.SessionInformation
+import afield.ai.conversation.AiBoxConversation
+import afield.ai.tools.ToolExecutionContext
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -27,8 +27,8 @@ class AgentTaskPanelTest {
         val (info, tools) = document()
         val asker = tools.newBox(NewBoxRequest("Budget"))
         val box = info.boxes[asker.uid]!!
-        val old = afield.handlers["ai-assist"]
-        afield.handlers["ai-assist"] = mutableSetOf({ message, _ ->
+        val old = afield.app.protocol.handlers["ai-assist"]
+        afield.app.protocol.handlers["ai-assist"] = mutableSetOf({ message, _ ->
             assertEquals("64", message.payload!!.jsonObject.getValue("maxToolRounds").jsonPrimitive.content)
             AiBoxConversation.running(box, true)
             assertEquals(-1, AiBoxConversation.turnRounds(box))
@@ -36,7 +36,7 @@ class AgentTaskPanelTest {
             AiBoxConversation.write(box, "<<you>>\nFinish the retained build\n<<ai>>\nWork is still pending.\n")
             AiBoxConversation.completed(box, 64, true)
             AiBoxConversation.running(box, false)
-            afield.Handled.yes
+            afield.app.protocol.Handled.yes
         })
         try {
             val result = run(info, AgentTaskRequest(goal = "Finish the retained build", mode = "live", chatBox = "Budget",
@@ -46,7 +46,7 @@ class AgentTaskPanelTest {
             assertTrue(result.hitToolRoundCap)
             assertEquals("budget-exhausted", result.verdict, "An easy check must not mask an interrupted workflow")
         } finally {
-            if (old == null) afield.handlers.remove("ai-assist") else afield.handlers["ai-assist"] = old
+            if (old == null) afield.app.protocol.handlers.remove("ai-assist") else afield.app.protocol.handlers["ai-assist"] = old
         }
     }
 
@@ -112,14 +112,14 @@ class AgentTaskPanelTest {
         val box = info.boxes[asker.uid]!!
         AiBoxConversation.write(box, "<<you>>\nearlier\n<<progress-open>>\nPartial work\n")
         AiBoxConversation.running(box, true)
-        val old = afield.handlers["ai-chat-history"]
+        val old = afield.app.protocol.handlers["ai-chat-history"]
         var historyReads = 0
-        afield.handlers["ai-chat-history"] = mutableSetOf({ message, _ ->
-            assertEquals(info, afield.thisSessionInfo.get())
+        afield.app.protocol.handlers["ai-chat-history"] = mutableSetOf({ message, _ ->
+            assertEquals(info, afield.app.server.thisSessionInfo.get())
             assertEquals(box.id, message.payload!!.jsonObject.getValue("uid").jsonPrimitive.content)
             historyReads++
             AiBoxConversation.recoverInterrupted(box)
-            afield.Handled.yes
+            afield.app.protocol.Handled.yes
         })
         try {
             val result = run(info, AgentTaskRequest(goal = "continue", mode = "scripted",
@@ -130,7 +130,7 @@ class AgentTaskPanelTest {
             assertTrue("Partial work" in history && "Previous AI turn was interrupted" in history)
             assertTrue("<<you>>\ncontinue" in history && "Recovered" in history)
         } finally {
-            if (old == null) afield.handlers.remove("ai-chat-history") else afield.handlers["ai-chat-history"] = old
+            if (old == null) afield.app.protocol.handlers.remove("ai-chat-history") else afield.app.protocol.handlers["ai-chat-history"] = old
         }
     }
 
@@ -141,12 +141,12 @@ class AgentTaskPanelTest {
         val box = info.boxes[asker.uid]!!
         val history = "<<you>>\nEarlier\n<<ai>>\nEarlier answer\n"
         AiBoxConversation.write(box, history)
-        val old = afield.handlers["ai-assist"]
+        val old = afield.app.protocol.handlers["ai-assist"]
         val oldLimit = AgentTaskRunner.panelTurnLimitMs
-        afield.handlers["ai-assist"] = mutableSetOf({ _, _ ->
+        afield.app.protocol.handlers["ai-assist"] = mutableSetOf({ _, _ ->
             AiBoxConversation.write(box, history + "<<you>>\nLong analysis\n<<progress-open>>\nWorking\n")
             AiBoxConversation.running(box, true)
-            afield.Handled.yes
+            afield.app.protocol.Handled.yes
         })
         AgentTaskRunner.panelTurnLimitMs = 1
         try {
@@ -162,7 +162,7 @@ class AgentTaskPanelTest {
         } finally {
             AgentTaskRunner.panelTurnLimitMs = oldLimit
             AiBoxConversation.running(box, false)
-            if (old == null) afield.handlers.remove("ai-assist") else afield.handlers["ai-assist"] = old
+            if (old == null) afield.app.protocol.handlers.remove("ai-assist") else afield.app.protocol.handlers["ai-assist"] = old
         }
     }
 
@@ -171,15 +171,15 @@ class AgentTaskPanelTest {
         val (info, tools) = document()
         val asker = tools.newBox(NewBoxRequest("Failed"))
         val box = info.boxes[asker.uid]!!
-        val old = afield.handlers["ai-assist"]
+        val old = afield.app.protocol.handlers["ai-assist"]
         val message = "AI general failed: provider token rate limit"
-        afield.handlers["ai-assist"] = mutableSetOf({ _, _ ->
+        afield.app.protocol.handlers["ai-assist"] = mutableSetOf({ _, _ ->
             // Even a turn that finishes during dispatch started, unlike a refused request.
             AiBoxConversation.running(box, true)
             AiBoxConversation.write(box, "<<you>>\nInspect retained job\n<<ai>>\nPartial diagnosis\n")
             AiBoxConversation.failed(box, message)
             AiBoxConversation.running(box, false)
-            afield.Handled.yes
+            afield.app.protocol.Handled.yes
         })
         try {
             val result = run(info, AgentTaskRequest(goal = "Inspect retained job", mode = "live", chatBox = "Failed",
@@ -193,7 +193,7 @@ class AgentTaskPanelTest {
             assertTrue("No checks — ERROR" in history)
             assertTrue("Agent task not started" !in history)
         } finally {
-            if (old == null) afield.handlers.remove("ai-assist") else afield.handlers["ai-assist"] = old
+            if (old == null) afield.app.protocol.handlers.remove("ai-assist") else afield.app.protocol.handlers["ai-assist"] = old
         }
     }
 
@@ -205,12 +205,12 @@ class AgentTaskPanelTest {
         AiBoxConversation.running(box, true)
         AiBoxConversation.failed(box, "Earlier failure")
         AiBoxConversation.running(box, false)
-        val old = afield.handlers["ai-assist"]
-        afield.handlers["ai-assist"] = mutableSetOf({ _, _ ->
+        val old = afield.app.protocol.handlers["ai-assist"]
+        afield.app.protocol.handlers["ai-assist"] = mutableSetOf({ _, _ ->
             AiBoxConversation.running(box, true)
             AiBoxConversation.write(box, "<<you>>\nRead the job\n<<ai>>\nThe old log says AI general failed; the saved job completed.\n")
             AiBoxConversation.running(box, false)
-            afield.Handled.yes
+            afield.app.protocol.Handled.yes
         })
         try {
             val result = run(info, AgentTaskRequest(goal = "Read the job", mode = "live", chatBox = "Recovered",
@@ -220,7 +220,7 @@ class AgentTaskPanelTest {
             assertEquals(1, result.checks.size)
             assertTrue("old log says AI general failed" in result.finalText)
         } finally {
-            if (old == null) afield.handlers.remove("ai-assist") else afield.handlers["ai-assist"] = old
+            if (old == null) afield.app.protocol.handlers.remove("ai-assist") else afield.app.protocol.handlers["ai-assist"] = old
         }
     }
 

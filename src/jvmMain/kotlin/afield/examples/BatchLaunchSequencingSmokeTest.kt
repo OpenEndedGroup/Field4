@@ -1,14 +1,14 @@
 package afield.examples
 
-import afield.Box
-import afield.Execute
-import afield.KotlinExecution
-import afield.Message
-import afield.SavingContext
-import afield.SessionInformation
-import afield.box
-import afield.offline
-import afield.thisSessionInfo
+import afield.document.graph.Box
+import afield.app.protocol.Execute
+import afield.runtime.execution.KotlinExecution
+import afield.app.protocol.Message
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.document.graph.box
+import afield.document.graph.offline
+import afield.app.server.thisSessionInfo
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.nio.file.Files
@@ -241,14 +241,14 @@ object BatchLaunchSequencingSmokeTest {
     }
 
     private fun startRunloopDaemon() {
-        val t = Thread({ afield.Runloop.runLoop.start() }, "batch-launch-sequencing-harness-runloop")
+        val t = Thread({ afield.runtime.lifecycle.Runloop.runLoop.start() }, "batch-launch-sequencing-harness-runloop")
         t.isDaemon = true
         t.start()
         val deadline = System.currentTimeMillis() + 30_000
-        while (afield.Runloop.runLoop.frame < 1L) {
+        while (afield.runtime.lifecycle.Runloop.runLoop.frame < 1L) {
             check(System.currentTimeMillis() < deadline) { "runloop did not start within 30s" }
             Thread.sleep(20)
         }
-        println("BatchLaunchSequencingSmokeTest: runloop up (frame=${afield.Runloop.runLoop.frame})")
+        println("BatchLaunchSequencingSmokeTest: runloop up (frame=${afield.runtime.lifecycle.Runloop.runLoop.frame})")
     }
 }

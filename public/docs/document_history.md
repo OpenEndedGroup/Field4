@@ -90,7 +90,7 @@ ui.moveMouse(5.0, 5.0, 2)
 ui.pause(800)
 ```
 
-Above, an earlier save of the box `sketch` is selected in the timeline, and the editor shows how it differs from the current code. To scrub one line back through its versions without leaving the editor, use the [History Lens](history_lens.md) instead.
+Above, an earlier save of the box `sketch` is selected in the timeline, and the editor shows how it differs from the current code. To scrub one line back through its versions without leaving the editor, use [Code History](history_lens.md) instead.
 
 ## Get back an earlier version
 
@@ -141,7 +141,7 @@ can briefly read `0 boxes`.
 - **Line** keeps only the versions that changed the line your editor cursor is on — a per-line
   blame.
 - **name this version** labels the selected version (`#12 before the refactor`); named versions
-  are listed in the sidebar, and the [History Lens](history_lens.md) shows the same labels.
+  are listed in the sidebar, and [Code History](history_lens.md) shows the same labels.
 
 ## Where versions come from
 
@@ -161,6 +161,6 @@ you have named versions.
 
 ## Related features
 
-- Use the [History Lens](history_lens.md) to scrub a single line through its versions without leaving the editor.
+- Use [Code History](history_lens.md) to scrub a single line through its versions without leaving the editor.
 - Use a [bookmark](moving_around_the_canvas.md#bookmarks) to return to a saved working view without changing content.
 - Use [Interactive Guides](interactive_guides.md) when you want to explain a document state instead of restoring one.

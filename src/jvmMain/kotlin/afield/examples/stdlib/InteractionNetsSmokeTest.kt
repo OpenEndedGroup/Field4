@@ -1,9 +1,64 @@
 package afield.examples.stdlib
 
-import afield.Box
-import afield.Rect
-import afield.graphics.FLine
-import afield.stdlib.*
+import afield.document.graph.Box
+import afield.app.protocol.Rect
+import afield.geometry.path.FLine
+import afield.ai.learning.*
+import afield.ai.retrieval.*
+import afield.animation.interpolation.*
+import afield.animation.keyframes.*
+import afield.animation.motion.*
+import afield.app.commands.*
+import afield.app.diagnostics.*
+import afield.audio.analysis.*
+import afield.audio.synth.*
+import afield.data.collections.*
+import afield.data.formats.*
+import afield.data.graph.*
+import afield.data.sorting.*
+import afield.document.context.*
+import afield.document.graph.*
+import afield.document.properties.*
+import afield.document.workspace.*
+import afield.geometry.mesh.*
+import afield.geometry.path.*
+import afield.geometry.spatial.*
+import afield.graphics.color.*
+import afield.graphics.interaction.*
+import afield.graphics.render.*
+import afield.graphics.shader.*
+import afield.graphics.text.*
+import afield.graphics.vulkan.buffers.*
+import afield.io.osc.*
+import afield.io.process.*
+import afield.lang.lambda.*
+import afield.lang.python.*
+import afield.lang.remotejs.*
+import afield.lang.stacksl.*
+import afield.math.autodiff.*
+import afield.math.control.*
+import afield.math.estimation.*
+import afield.math.functions.*
+import afield.math.linalg.*
+import afield.math.optimization.*
+import afield.math.statistics.*
+import afield.math.units.*
+import afield.media.image.*
+import afield.media.video.*
+import afield.runtime.execution.*
+import afield.runtime.languages.*
+import afield.runtime.lifecycle.*
+import afield.simulation.agents.*
+import afield.simulation.automata.*
+import afield.simulation.particles.*
+import afield.study.build.*
+import afield.study.evidence.*
+import afield.study.search.*
+import afield.study.source.*
+import afield.study.ui.*
+import afield.ui.controls.*
+import afield.ui.output.*
+import afield.ui.visualization.*
 import kotlin.math.abs
 
 /*
@@ -68,11 +123,17 @@ object InteractionNetsSmokeTest {
         val detail = reducer.stepDetailed(net) ?: error("Expected beta step")
         require(detail.ruleName == "beta-linear") { "Expected beta-linear, got ${detail.ruleName}" }
         require(detail.swapped) { "Expected swapped=true when the pair is connected as LAM -> APP" }
-        require(detail.createdNodeIds.isEmpty()) { "beta-linear should not create nodes" }
+        // Lambdascope: the body reaches the result, and the argument the binder, each through a level-0 scope.
+        require(detail.createdNodeIds.size == 2 && detail.createdNodeIds.all { net.node(it).type == Lambda.DELIM && Lambda.levelOf(net.node(it)) == 0.0 }) {
+            "beta-linear should create two level-0 delimiters, created ${detail.createdNodeIds.map { net.node(it).type.name }}"
+        }
         require(detail.events.singleOrNull()?.kind == "beta") { "beta-linear should emit a beta event" }
-        requireConnected(net, net.node("root"), net.node("body"))
-        requireConnected(net, net.node("binder"), net.node("arg"))
         require(net.nodes.none { it.id == "app" || it.id == "lam" }) { "APP/LAM nodes should be removed" }
+        // Both delimiters face an atom (the root, the constant), so they go, and the plain wiring is left.
+        reducer.reduce(net, maxSteps = 8)
+        require(net.nodes.none { it.type == Lambda.DELIM }) { "the delimiters should leave against the root and the constant" }
+        requireConnected(net, net.nodes.single { it.type == Lambda.ROOT }, net.node("body"))
+        requireConnected(net, net.node("binder"), net.nodes.single { it.type == Lambda.CONST })
     }
 
     private fun testEnergyBiasedSchedulerPrefersHotterPair() {

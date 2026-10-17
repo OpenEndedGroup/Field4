@@ -1,12 +1,12 @@
 package afield.examples.steamaudio
 
-import afield.four.audio.steamaudio.AudioBuffer
-import afield.four.audio.steamaudio.AudioSettings
-import afield.four.audio.steamaudio.BinauralEffect
-import afield.four.audio.steamaudio.BinauralEffectParams
-import afield.four.audio.steamaudio.Hrtf
-import afield.four.audio.steamaudio.HrtfInterpolation
-import afield.four.audio.steamaudio.SteamAudioContext
+import afield.audio.spatial.steamaudio.AudioBuffer
+import afield.audio.spatial.steamaudio.AudioSettings
+import afield.audio.spatial.steamaudio.BinauralEffect
+import afield.audio.spatial.steamaudio.BinauralEffectParams
+import afield.audio.spatial.steamaudio.Hrtf
+import afield.audio.spatial.steamaudio.HrtfInterpolation
+import afield.audio.spatial.steamaudio.SteamAudioContext
 import java.lang.foreign.Arena
 import java.lang.foreign.ValueLayout
 import kotlin.math.PI

@@ -30,7 +30,8 @@ operations:
         code: |
           // A payroll, a headcount and a peak — three facts no single row states.
           val d = Datalog()
-          d.add("""
+          d.add(
+              """
               #datalog
               emp(ada, sales, 100).  emp(bob, sales, 200).
               emp(cy, eng, 50).      emp(di, eng, 70).
@@ -43,13 +44,14 @@ operations:
               // An aggregate's target has to be a variable nothing has bound yet, so "the top
               // earner" is a second rule that joins back against the peak.
               topEarner(D, W) :- peak(D, M), emp(W, D, M).
-          """)
+          """,
+          )
 
           println(d.query("payroll(D, S)").table())
           println()
 
-          // Before 2026-08-30 every one of these answered "no proof reconstructed".
-          listOf("payroll(sales, 300)", "headcount(eng, 2)", "topEarner(sales, bob)").forEach { goal ->
+          // Compare sum/count contributors with a maximum joined back to its earner.
+          ["payroll(sales, 300)", "headcount(eng, 2)", "topEarner(sales, bob)"].forEach { goal ->
               println(d.why(goal)?.render() ?: "$goal is not in the model")
           }
 
@@ -63,12 +65,14 @@ operations:
         code: |
           // The question a query asks more often: it came back empty, and why.
           val g = Datalog()
-          g.add("""
+          g.add(
+              """
               #datalog
               edge(a, b). edge(b, c). edge(c, d).
               path(X, Y) :- edge(X, Y).
               path(X, Z) :- path(X, Y), edge(Y, Z).
-          """)
+          """,
+          )
           println(g.whyNot("path(a, e)").render())
           println()
 

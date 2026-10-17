@@ -18,7 +18,7 @@ you have edited the file the card describes your Field, not ours.
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#cheatsheet .centered-container-div" screenshot="assets/keybindings/cheatsheet.png" padding="8" wait="0" timeout="120" embed=true hidden=true name="keybindings-cheatsheet" alt="Field's ? cheatsheet card, with every key legend filled in from the live keybindings"}
 // The card's legends come from the live bindings, so make sure this capture is of the
 // defaults rather than of whatever an earlier capture on this page left in force.
-afield.UserKeybindingsManager.watchFile(null)
+afield.app.settings.UserKeybindingsManager.watchFile(null)
 ui.pause(1200)
 
 // The card is taller than it is allowed to be and scrolls; lift that ceiling so the still shows
@@ -203,7 +203,7 @@ scratch.writeText(
     "  open-command-palette: alt+k\n" +
     "  new-box: cmd+alt+b\n"
 )
-afield.UserKeybindingsManager.watchFile(scratch)
+afield.app.settings.UserKeybindingsManager.watchFile(scratch)
 ui.pause(1500)
 
 // Alt+K is not a shortcut Field has: if the palette opens, it opened because of the file.
@@ -218,7 +218,7 @@ ui.pause(1400)
 // them describing this scratch file.
 Thread {
     Thread.sleep(2500)
-    afield.UserKeybindingsManager.watchFile(null)
+    afield.app.settings.UserKeybindingsManager.watchFile(null)
 }.also { it.isDaemon = true }.start()
 ```
 
@@ -261,9 +261,9 @@ bindings, the same ones the keypresses themselves consult, and settle it:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keybindings/inspect.png" wait="1.0" wait-output=true wait-output-kind="display" capture="box" open-outputs="true" padding="16" embed=true name="keybindings-inspect" macro-file="../../dev_docs/agents/transcripts/docs_capture/keybindings_inspect.yaml" capture-box="agent_keybindings_inspect" alt="A Field box listing the shortcut currently bound to five commands, read from the live keybinding layer"}
 // Point the watcher at ~/.afield/keybindings.yaml — a no-op unless something moved it,
 // which the rebinding figure further up this page does.
-afield.UserKeybindingsManager.watchFile(null)
+afield.app.settings.UserKeybindingsManager.watchFile(null)
 
-val live = afield.UserKeybindingsManager.resolved
+val live = afield.app.settings.UserKeybindingsManager.resolved
 val ids = ["new-box", "open-command-palette", "show-cheatsheet", "execute-fragment", "connect"]
 // A command with no binding yet is the interesting row, so it says so in a role rather than
 // looking like any other cell.
@@ -306,7 +306,11 @@ exactly what a fresh `keybindings.yaml` says.
 
 <!-- BEGIN generated: default bindings -->
 
-**133 rebindable commands**, 55 of them with a shortcut out of the box. Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.
+**133 rebindable commands**, 56 of them with a shortcut out of the box.
+
+??? aside "Agents: regenerating this table"
+
+    Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.
 
 ### Global
 
@@ -426,7 +430,7 @@ exactly what a fresh `keybindings.yaml` says.
 | `execute-all` | `alt+0` | editor | Run Box |
 | `execute-fragment` | `alt+enter` | editor | Run Line / Selection |
 | `forward-next-property` | `cmd+.` | editor | Next Property |
-| `history-lens-selection` | *(none)* | editor | Show History Lens for Line / Selection |
+| `history-lens-selection` | `alt+shift+h` | editor | Show Code History for Line / Selection |
 | `launch-all` | `alt+up` | editor | Launch Box |
 | `launch-fragment` | `alt+1` | editor | Launch Line / Selection |
 | `paired-shader-definition` | `f12` | editor | Go to Paired Shader Definition |

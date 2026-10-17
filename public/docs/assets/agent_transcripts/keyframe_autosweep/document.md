@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="ks_renderer" index="0" -->
 
 ```edn [field-box id="ks_renderer" role="properties"]
-{"id" "ks_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["ks_rig"] "properties" {"children" #{#afield/box "ks_rig"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_renderer_code_.kt" "lines" 15 "characters" 258 "sha256" "5d8395db0d55b1a4c2f2fa1d15531eb2125e0efcc928e927406fca662d766819"}]}
+{"id" "ks_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["ks_rig"] "properties" {"children" #{#afield/box "ks_rig"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_renderer_code_.kt" "lines" 15 "characters" 269 "sha256" "09e49c3ac083346484ff64201f85b2fc0a320767f15c0a23d673bd7718daa910"}]}
 ```
 
 ```kotlin [field-property box="ks_renderer" name="code" path="ks_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -45,26 +45,26 @@ contract a sweep needs: named lanes with a getter and a setter, and nothing else
 document writing them.
 
 ```edn [field-box id="ks_rig" role="properties"]
-{"id" "ks_rig" "index" 1 "name" "the rig, and ten lanes of it" "parents" ["root" "ks_renderer"] "children" ["ks_sweep"] "properties" {"children" #{#afield/box "ks_sweep"} "parents" #{#afield/box "root" #afield/box "ks_renderer"} "name" "the rig, and ten lanes of it" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_rig_code_.kt" "lines" 155 "characters" 7746 "sha256" "db438eac08e64daa674fe2005dc3fd0e68ed6c03dbf5dacd4cac45a65c92d59c"}]}
+{"id" "ks_rig" "index" 1 "name" "the rig, and ten lanes of it" "parents" ["root" "ks_renderer"] "children" ["ks_sweep"] "properties" {"children" #{#afield/box "ks_sweep"} "parents" #{#afield/box "root" #afield/box "ks_renderer"} "name" "the rig, and ten lanes of it" "_tombstone" false "frame" #afield/rect [40.0 200.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_rig_code_.kt" "lines" 155 "characters" 7826 "sha256" "2cd129e276dbdbb10878645a6922eaad45029b46f9af3de805f369888d50162b"}]}
 ```
 
 ```kotlin [field-property box="ks_rig" name="code" path="ks_rig_code_.kt"]
 // The half you would replace with your own sketch. Everything below the scene is the
 // contract a sweep needs: named lanes with a getter and a setter, and nothing else in the
 // document writing them.
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.stdlib.KeyframeCollection
-import afield.stdlib.KeyframeScope
-import afield.stdlib.keyFilesMatching
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.path
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
+import afield.animation.keyframes.KeyframeCollection
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.keyFilesMatching
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
+import afield.document.workspace.path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 
 prop<StandardRenderer.Bundle>(bundle)
-prop<afield.stdlib.KeyframeScope>(keys)
+prop<afield.animation.keyframes.KeyframeScope>(keys)
 
 val r: Renderer = fromContext()
 val dim = 512
@@ -218,15 +218,15 @@ What a night looks like from the other end. Nothing here touches the renderer: a
 archive describes itself, which is the whole point of the manifests.
 
 ```edn [field-box id="ks_archive" role="properties"]
-{"id" "ks_archive" "index" 2 "name" "the morning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the morning" "_tombstone" false "frame" #afield/rect [1500.0 40.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_archive_code_.kt" "lines" 45 "characters" 2164 "sha256" "7f81195e6d47ea3fba820eee9c016d83b93cd78e9a0d36437d94144e4d152a0d"}]}
+{"id" "ks_archive" "index" 2 "name" "the morning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the morning" "_tombstone" false "frame" #afield/rect [1500.0 40.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_archive_code_.kt" "lines" 45 "characters" 2215 "sha256" "404c786ce80ff8dbbeb7b5d33e09d415008f367ba4835c8a5a8326064378ec49"}]}
 ```
 
 ```kotlin [field-property box="ks_archive" name="code" path="ks_archive_code_.kt"]
 // What a night looks like from the other end. Nothing here touches the renderer: an
 // archive describes itself, which is the whole point of the manifests.
-import afield.stdlib.path
-import afield.stdlib.readSweepArchive
-import afield.stdlib.sweepArchiveSummary
+import afield.document.workspace.path
+import afield.animation.keyframes.readSweepArchive
+import afield.animation.keyframes.sweepArchiveSummary
 import java.util.Base64
 import kotlin.io.path.exists
 import kotlin.io.path.readBytes
@@ -264,7 +264,7 @@ markdown("what went in", """
 // One lane's trajectory through the night, read out of the keys themselves.
 val intensities = rows.map { m ->
     val key = archive.resolve("renders/${m.id}/key.json")
-    if (key.exists()) (afield.stdlib.KeyframeScope().loadKey(key)["light.intensity"] as? Number ?: 0).toFloat() else 0f
+    if (key.exists()) (afield.animation.keyframes.KeyframeScope().loadKey(key)["light.intensity"] as? Number ?: 0).toFloat() else 0f
 }
 showSignals("light.intensity" to intensities, title = "one lane across the night", xTitle = "render")
 ```
@@ -281,24 +281,24 @@ The whole of it. Twelve renders here so the box finishes while you watch; set `c
 to 5000 and `maxDurationMs` to whatever "stop at 7am" is, and walk away.
 
 ```edn [field-box id="ks_sweep" role="properties"]
-{"id" "ks_sweep" "index" 3 "name" "the sweep" "parents" ["root" "ks_rig"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ks_rig"} "name" "the sweep" "_tombstone" false "frame" #afield/rect [40.0 360.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_sweep_code_.kt" "lines" 61 "characters" 2826 "sha256" "c41a922c34a5fdbfe3709d83b7c3a087b9fae7c335d9e66c2742ba55d694b8fa"}]}
+{"id" "ks_sweep" "index" 3 "name" "the sweep" "parents" ["root" "ks_rig"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ks_rig"} "name" "the sweep" "_tombstone" false "frame" #afield/rect [40.0 360.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_sweep_code_.kt" "lines" 61 "characters" 2937 "sha256" "07133015ecea0ce073fe633f7b6f5fc3f97ce0440deb74cc4cd9155d57502dd5"}]}
 ```
 
 ```kotlin [field-property box="ks_sweep" name="code" path="ks_sweep_code_.kt"]
 // The whole of it. Twelve renders here so the box finishes while you watch; set `count`
 // to 5000 and `maxDurationMs` to whatever "stop at 7am" is, and walk away.
-import afield.stdlib.KeyframeScope
-import afield.stdlib.KeyframeSweep
-import afield.stdlib.SweepConfig
-import afield.stdlib.awaitFrames
-import afield.stdlib.captureClip
-import afield.stdlib.captureStill
-import afield.stdlib.path
-import afield.stdlib.rendersPerHour
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.KeyframeSweep
+import afield.animation.keyframes.SweepConfig
+import afield.animation.keyframes.awaitFrames
+import afield.animation.keyframes.captureClip
+import afield.animation.keyframes.captureStill
+import afield.document.workspace.path
+import afield.animation.keyframes.rendersPerHour
 
 val r: Renderer = fromContext()
 val keys: KeyframeScope = fromContext()
-val bundle: afield.four.fabricated.StandardRenderer.Bundle = fromContext()
+val bundle: afield.graphics.scene.fabricated.StandardRenderer.Bundle = fromContext()
 val pool = "%document/looks".path
 val archive = "%document/sweep".path
 
@@ -330,7 +330,7 @@ frames {
         render.captureClip(r, bundle.postStack.output(), frames = 8, fps = 12, settleFrames = 0) { _, t ->
             // A small orbit *around* the blended camera, so the clip moves without
             // overwriting the lane the key set.
-            val at = render.key["camera.at"] as afield.stdlib.linalg.Vector3f
+            val at = render.key["camera.at"] as afield.math.linalg.Vector3f
             val a = (t - 0.5) * 0.5
             bundle.scene.camera.at.set(
                 (at.x * kotlin.math.cos(a) - at.z * kotlin.math.sin(a)).toFloat(),

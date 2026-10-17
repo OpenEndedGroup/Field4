@@ -1,4 +1,4 @@
-import afield.stdlib.Vec3
+import afield.math.linalg.Vec3
 import kotlin.random.Random
 
 // A real Conway output, then every vertex jittered. The topology is not touched: the

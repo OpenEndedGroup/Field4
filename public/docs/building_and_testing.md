@@ -7,7 +7,7 @@ end-to-end through the same machinery. This page covers running both locally.
 
 For every flag and the internals, see `AGENTS.md` and
 `dev_docs/testing/TESTING_STRATEGY.md` in the
-[repository](https://github.com/OpenEndedGroup/Field).
+[repository](https://github.com/OpenEndedGroup/Field4).
 
 ## Prerequisites
 
@@ -42,11 +42,10 @@ The mode controls how much Field work happens:
 | `strict` | Invalidate captures when the runner code or a transcript changes (via a digest), then re-run those. | You changed capture/runner logic and want stale captures caught. |
 | `always` | Regenerate every screenshot and video, ignoring the cache. | A full recapture, or when you don't trust the cache. |
 
-The runner owns `FIELD_DOCS_RUNNER_PORT` outright. In every mode except
-`never` it insists on a server it started itself, so if something is already
-answering on that port it posts a shutdown request to it, waits, and gives up
-with "Stop the stale Field process" if it is still there. Aim a build at the
-Field you are working in and you lose that session.
+In every mode except `never` the runner insists on a Field it started itself. If a
+Field it did not start is answering on `FIELD_DOCS_RUNNER_PORT`, the build stops and
+names that Field's PID and workspace rather than shutting it down; unset the
+variable and the runner picks a free port.
 
 Handy flags for `tools/build_zensical_docs.py`:
 
@@ -112,7 +111,7 @@ uv run --group docs python tools/docs_capture_audit.py --page functions_examples
 uv run --group docs python tools/docs_capture_audit.py --inventory
 
 # no Field: which source files does each fence reach, and what would touching one invalidate?
-uv run --group docs python tools/docs_capture_audit.py --plan --touched src/jvmMain/kotlin/afield/stdlib/Functions.kt
+uv run --group docs python tools/docs_capture_audit.py --plan --touched src/jvmMain/kotlin/afield/math/functions/Functions.kt
 ```
 
 Captures are not byte-reproducible — only a handful are byte-stable run to run — so
@@ -179,8 +178,7 @@ uv run --project . --group backdoor python tools/run_field_tests.py --refresh-ca
 `--refresh-catalog` rebuilds `build/field-tests/catalog.json` first, then runs
 each discovered test one at a time. The runner prewarms one persistent Field on
 `--port` for the whole run (pass `--no-prewarm` to reuse an already-running
-server instead). Per-test timeouts come from each test's annotation, so **don't**
-pass `--timeout` to this runner.
+server instead). Each test's timeout is the `timeoutSec` in its annotation.
 
 **Committed generated assets.** Several things in the repo are generated from
 source and then committed, so that a change to one shows up as a reviewable diff.

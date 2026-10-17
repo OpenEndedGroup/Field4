@@ -1,0 +1,11 @@
+{
+  "groups": 568,
+  "dispositions": {
+    "keep": 302,
+    "revise": 265,
+    "needs-context": 1
+  },
+  "findings": 405,
+  "helper_families": 23,
+  "source_commit": "eb6b34e4fbec4cc228bcfab66027a285995c01e3"
+}

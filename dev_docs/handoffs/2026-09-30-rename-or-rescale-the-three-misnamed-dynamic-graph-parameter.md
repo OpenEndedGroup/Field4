@@ -15,7 +15,7 @@
 On `public/docs/dynamic_graph_systems_examples.md`, the page used to apologise for three
 parameters "named for a quantity they are not" and said they could not be renamed. The human's
 note: "stop this. If their names are really this bad, change the names. We have no users (yet)."
-That is an API change in `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt`, its tests,
+That is an API change in `src/jvmMain/kotlin/afield/data/graph/dynamic_graph_systems.kt`, its tests,
 and the docs fences that use it — not a prose edit.
 
 ## Evidence (verified in source)

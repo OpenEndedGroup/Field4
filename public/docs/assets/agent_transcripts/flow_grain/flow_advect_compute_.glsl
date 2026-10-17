@@ -6,7 +6,10 @@ void main() {
     int i = int(gl_GlobalInvocationID.x);
     if (i >= CELLS) return;
     vec2 p = worldPosition(i);
-    if (rock(p)) { storeCell(i, vec3(0)); return; }
+    if (rock(p)) {
+        storeCell(i, vec3(0));
+        return;
+    }
     vec2 velocity = readCell(pc.source, worldCell(i)).xy;
     vec2 back = p - velocity * pc.clock.y;
     if (rock(back)) back = p;

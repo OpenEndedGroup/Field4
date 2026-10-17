@@ -124,13 +124,13 @@ val audio = patRenderStereo(patTimed(notes, beats = 8.0), cycles = 2, cps = 0.25
 
 The matched morph, twice through:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_morph/drawn-morph-matched.wav" audio-spec="drawn-morph-matched" audio-renderer="afield.four.synth.DrawnMorphDocs" embed=true hidden=true name="chain-drawn-morph-matched-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_morph/drawn-morph-matched.wav" audio-spec="drawn-morph-matched" audio-renderer="afield.audio.synth.DrawnMorphDocs" embed=true hidden=true name="chain-drawn-morph-matched-audio"}
 // Offline-rendered by DrawnMorphDocs.renderWav("drawn-morph-matched").
 ```
 
 The same loop with `to` in place of `partner`, the points paired by index:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_morph/drawn-morph-index.wav" audio-spec="drawn-morph-index" audio-renderer="afield.four.synth.DrawnMorphDocs" embed=true hidden=true name="chain-drawn-morph-index-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_morph/drawn-morph-index.wav" audio-spec="drawn-morph-index" audio-renderer="afield.audio.synth.DrawnMorphDocs" embed=true hidden=true name="chain-drawn-morph-index-audio"}
 // Offline-rendered by DrawnMorphDocs.renderWav("drawn-morph-index").
 ```
 
@@ -155,7 +155,7 @@ markdown("dips", "lowest note, matched: %.2f  \nlowest note, by list index: %.2f
 
 ## Drawing your own
 
-Open drawn_morph from the welcome screen's starting points and run `shapes`, then `paired`,
+Open [drawn_morph](agent_transcripts.md#drawn_morph) from the welcome screen's starting points and run `shapes`, then `paired`,
 `morph` and `play`. To morph your own shapes, press `alt/option-d` and draw two closed strokes with the
 pen (`p`), then replace `morphShapes()` in `shapes` with a line that names the two strokes you drew
 last:

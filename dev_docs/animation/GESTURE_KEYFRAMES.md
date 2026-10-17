@@ -1,7 +1,7 @@
 # Gesture takes <-> keyframe lanes
 
-Code: `src/jvmMain/kotlin/afield/math/gestureKeyframes.kt`, `GestureHandle` in `afield/visualizers.kt`.
-Test: `src/jvmTest/kotlin/afield/GestureKeyframesTest.kt`. User docs: `public/docs/keyframe_editor.md#from-a-performed-gesture`.
+Code: `src/jvmMain/kotlin/afield/animation/gesture/gestureKeyframes.kt`, `GestureHandle` in `afield/visualizers.kt`.
+Test: `src/jvmTest/kotlin/afield/animation/gesture/GestureKeyframesTest.kt`. User docs: `public/docs/keyframe_editor.md#from-a-performed-gesture`.
 Demo: `dev_docs/agents/transcripts/gesture_to_keyframes.yaml` (box `gk_bake`).
 
 ## Method

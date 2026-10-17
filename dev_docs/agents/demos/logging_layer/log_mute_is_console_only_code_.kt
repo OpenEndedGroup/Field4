@@ -1,8 +1,8 @@
-import afield.ai.core.ConsoleMute
-import afield.ai.core.LogDispatcher
-import afield.ai.core.LogSink
-import afield.ai.core.withSink
-import afield.logger.lprintln
+import afield.ai.diagnostics.ConsoleMute
+import afield.ai.diagnostics.LogDispatcher
+import afield.ai.diagnostics.LogSink
+import afield.ai.diagnostics.withSink
+import afield.app.diagnostics.logging.lprintln
 
 // Muting does not drop the event. Both console sinks check the mute set and return
 // early; no other sink checks it at all. So a muted line is still in the log widget,

@@ -164,10 +164,10 @@ data class CompletionRequest(
     val declarations: String = "",
     /** The box's own `import` lines (added to the default REPL imports). */
     val imports: List<String> = emptyList(),
-    /** The REPL imports the caller's boxes get for free — Field's `afield.introImports`. Supersedes the
+    /** The REPL imports the caller's boxes get for free — Field's `afield.document.graph.introImports`. Supersedes the
      *  analyzer's own fallback list, which exists only for callers that send none. */
     val replImports: List<String> = emptyList(),
-    /** Implicit receiver types in scope (e.g. `afield.Box`), modelled as `with(...)` scopes. */
+    /** Implicit receiver types in scope (e.g. `afield.document.graph.Box`), modelled as `with(...)` scopes. */
     val implicitReceivers: List<String> = emptyList(),
     /** Field's binary classpath (jars + build/classes) — `System.getProperty("java.class.path")`. */
     val classpathRoots: List<String> = emptyList(),
@@ -691,16 +691,7 @@ private class K2SidecarAnalyzer(private val config: SidecarConfig) {
         return (line0 + 1 - lineOffset).coerceAtLeast(1) to column0 + 1
     }
 
-    private val defaultImports = listOf(
-        "afield.*",
-        "afield.stdlib.*",
-        "afield.four.*",
-        "afield.four.modules.*",
-        "afield.four.util.*",
-        "afield.graphics.*",
-        "afield.stdlib.linalg.*",
-        "kotlin.math.*"
-    )
+    private val defaultImports = CompletionImports.default
 }
 
 /**
@@ -764,7 +755,7 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
     /**
      * The scope a request is analysed under when it carries no [CompletionRequest.replImports], and what
      * the ASM index is seeded with at session build. NOT the source of truth for Field's REPL imports —
-     * that is `afield.Boxes.intro`, which the live client sends per request. See [CompletionImports].
+     * that is `afield.document.graph.intro`, which the live client sends per request. See [CompletionImports].
      */
     private val defaultImports = CompletionImports.default
 

@@ -1,8 +1,8 @@
 package afield.examples.stacksl
 
-import afield.stacksl.NoiseVec3
-import afield.stacksl.VolumetricNoiseConstants
-import afield.stacksl.VolumetricNoiseReference
+import afield.lang.stacksl.NoiseVec3
+import afield.lang.stacksl.VolumetricNoiseConstants
+import afield.lang.stacksl.VolumetricNoiseReference
 import java.awt.image.BufferedImage
 import java.io.File
 import kotlin.math.abs

@@ -1,12 +1,12 @@
 # Physics: particles, constraints and cloth
 
-Field has a particle solver. `afield.four.physics.SimdVerlet` holds some thousands of particles in
+Field has a particle solver. `afield.simulation.physics.SimdVerlet` holds some thousands of particles in
 flat float arrays, pulls them toward each other with distance constraints, and integrates them with
 Verlet. `Cloth` wires a rectangular grid of those constraints for you. `SimdVerlet.debugLines()`
 draws the solver's own state so you can see when the wiring is wrong.
 
 It is a **CPU** solver with **no renderer of its own**. It hands you `FLine`s, and where those go is
-your business: `showPlane` into a box output, `Box.lines` into the 3D view, an `afield.four`
+your business: `showPlane` into a box output, `Box.lines` into the 3D view, a Field 4
 renderer. Nothing here needs a GPU.
 
 The API is in the [codebase reference](reference/simulation.md). This page covers the thing that
@@ -82,7 +82,7 @@ the only difference is where the factors of `stiffness × iterations = 960` sit.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/equivalence.png" wait="4.0" capture="box" open-outputs="true" w="1020" h="820" padding="14" name="physics-equivalence"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 :::fold the sheet, and a ruler for comparing two of them
 // A 20 x 10 sheet hanging from every fourth particle of row 0. The plane view has y growing DOWN
@@ -164,7 +164,7 @@ every frame, plotted as its base-10 logarithm.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/equivalence_drift.png" wait="4.0" capture="box" open-outputs="true" w="1080" h="620" padding="14" name="physics-equivalence-drift"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 :::fold the same sheet and ruler as above
 fun sheet(stiffness: Float) = SimdVerlet(SimdVerlet.State3.empty()).addCloth(
@@ -231,7 +231,7 @@ where 100 % means a spring stretched to twice its rest length.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/tuning_ladder.png" wait="6.0" capture="box" open-outputs="true" w="1660" h="1000" padding="14" name="physics-tuning-ladder"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 :::fold the sheet, and a strain meter that reads the solver's own rest lengths
 fun sheet(stiffness: Float, curvature: Float = 0f) =
@@ -344,15 +344,15 @@ rather than a stiffener.
 ### Divergence at the high end
 
 At a high enough product the solve does what explicit integration does: the correction overshoots,
-the overshoot is corrected harder, and the run stops being a number. There is no automatic clamp and
-nothing prints a warning: a diverging run simply goes quiet, because a `NaN` coordinate draws
-nothing.
+the overshoot is corrected harder, and the run stops being a number. Nothing is clamped. The first
+step that leaves a coordinate non-finite prints a warning in the box's output naming the step size
+and iteration count, and `sim.diverged` turns true.
 
 The strain trace carries plenty of warning before the `NaN` arrives, for anyone who is watching it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/divergence.png" wait="5.0" capture="box" open-outputs="true" w="1200" h="620" padding="14" name="physics-divergence"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 :::fold the sheet and the strain meter, exactly as above
 fun sheet(stiffness: Float) = SimdVerlet(SimdVerlet.State3.empty()).addCloth(
@@ -436,7 +436,7 @@ into the block above. It is cheap, and it goes wrong long before the drawing doe
 
 ---
 
-## Curvature and the size of its default
+## Curvature
 
 Distance constraints alone give you a net, not a fabric. Nothing in them resists *bending*: a sheet
 can fold to a crease and every spring is still at rest length. `Cloth` adds an optional curvature
@@ -448,13 +448,12 @@ a force generator per particle: the per-particle path would charge `width × hei
 resumes every frame for what is a single scalar sweep. `cloth.curvatureStrength = 0f` switches it off
 live without unregistering anything.
 
-The trap is that `curvatureStrength` defaults to **0.05**, and it accumulates into the *same*
-`ax/ay/az` the constraint solve does, so it is competing against `stiffness × iterations`, not
-against 1.
+`curvatureStrength` accumulates into the same `ax/ay/az` the constraint solve does, so its scale is
+the springs', and it defaults to a third of `stiffness`: 20 for the sheet below.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/curvature.png" wait="5.0" capture="box" open-outputs="true" w="1180" h="720" padding="14" name="physics-curvature"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 :::fold the sheet, now with a curvature strength, and the same ruler
 fun sheet(curvature: Float) = SimdVerlet(SimdVerlet.State3.empty()).addCloth(
@@ -489,8 +488,7 @@ fun fit(cloths: List<Cloth>, pad: Double = 0.5): Rect {
     return Rect(x0 - pad, y0 - pad, (x1 - x0) + 2 * pad, (y1 - y0) + 2 * pad)
 }
 :::endfold
-// Off, the library default, and two settings picked to be on the same scale as stiffness x
-// iterations = 960. Everything else is identical.
+// Off, a weak 0.05, the default at this stiffness (60 / 3 = 20), and 100. Everything else is identical.
 val strengths = [0f, 0.05f, 20f, 100f]
 val cloths = strengths.map { sheet(it) }
 
@@ -511,16 +509,11 @@ showPlaneGrid(
 :::endfold
 ```
 
-![Four panels of the same hanging cloth at stiffness sixty and sixteen iterations, with curvature strength off, at the library default of 0.05, at 20 and at 100; each caption reports how far the furthest particle sits from the corresponding particle of the sheet with no curvature force.](assets/physics/curvature.png)
+![Four panels of the same hanging cloth at stiffness sixty and sixteen iterations, with curvature strength off, at 0.05, at the default of 20 and at 100; each caption reports how far the furthest particle sits from the corresponding particle of the sheet with no curvature force.](assets/physics/curvature.png)
 
-At `stiffness × iterations = 960` the default `0.05` barely moves the sheet: the caption's distance
-is a tiny fraction of one grid spacing. `20` and `100` move it visibly, giving a flatter sheet with
-shallower festoons.
-
-Next to springs this stiff, the default does almost nothing. If you
-turned curvature on, expected the sheet to flatten, and saw nothing happen, that is why. Pick a
-curvature strength by looking at `stiffness × iterations` first. It wants to be within an order of
-magnitude or two of the product, not of 1.
+At `stiffness × iterations = 960`, `0.05` barely moves the sheet: the caption's distance is a tiny
+fraction of one grid spacing. The default of `20` and `100` move it visibly, giving a flatter sheet
+with shallower festoons.
 
 ---
 
@@ -531,22 +524,20 @@ other particles**, wires the four slots, pins what `pinned` selects, registers t
 hands back a handle that speaks grid coordinates: `cloth[col, row]` is a particle index, `position`,
 `pin`, `teleport`, `grabNearest` and `lines()` all address the grid rather than the flat arrays.
 
-Three things about that shape are contracts rather than conveniences.
+Three rules follow from that shape.
 
 **One constraint set per simulation, not per cloth.** The solver walks `0 until state.size` and
 indexes the slot arrays by *particle* index, so a set cannot cover only part of a simulation. A cloth
 adopts `sim.constraints4` if there already is one and otherwise publishes the one it creates. Two
-cloths in one simulation therefore share a single set. If you drive the simulation yourself rather
-than through `cloth.step(...)`, you must pass it: `sim.step(dt, damping, gravity, iterations,
-sim.constraints4)`. The no-constraints overload solves nothing, and the sheet falls apart with no error.
+cloths in one simulation therefore share a single set, and `sim.step(dt, damping, gravity,
+iterations)` solves it.
 
 **`cloth.step(...)` steps the whole simulation.** It is a convenience for the common case where the
 cloth *is* the simulation. With other systems in the same `SimdVerlet`, drive it yourself.
 
-**A cloth is a contiguous index range and does not survive removals below it.** Its particles are
-`[base, base + count)`, and both the slots and the curvature sweep are written in those terms.
-`applyQueuedRemovalsSwap` compacts and renumbers. Appending particles after a cloth is fine; deleting
-particles from underneath one is not.
+**A cloth is a contiguous index range.** Its particles are `[base, base + count)`, and both the
+slots and the curvature sweep are written in those terms. Appending particles after a cloth is fine;
+`queueRemove` refuses a particle inside or below one, since removing it would renumber the cloth.
 
 Dragging goes through `grabNearest`, which installs a **PID position controller** on the nearest
 particle rather than teleporting it. The difference matters: a teleport moves one particle out of the
@@ -568,7 +559,7 @@ crease.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/debug_view.png" wait="5.0" capture="box" open-outputs="true" w="1080" h="900" padding="14" name="physics-debug-view"}
 :::static
-import afield.four.physics.*
+import afield.simulation.physics.*
 
 :::fold the sheet, and the ruler
 fun sheet() = SimdVerlet(SimdVerlet.State3.empty()).addCloth(
@@ -657,7 +648,7 @@ Two more things about the drawing:
   the 3-slot `constraints`. An unused slot (neighbour `-1`, or zero stiffness) draws nothing, so a
   constraint that was never wired shows up as a *gap*.
 - **`thickness` and `pointSize` are in the units the output uses.** Pixels of the mapped frame for
-  `showPlane` / `showPlaneGrid`; world units for `Box.lines` and the `afield.four` renderers, where
+  `showPlane` / `showPlaneGrid`; world units for `Box.lines` and the Field 4 renderers, where
   they want to be very much smaller. The dot radius convention is `pointSize * 3`.
 
 Pass `particles = cloth.base until cloth.end` to draw one cloth out of a busier simulation, and
@@ -668,7 +659,7 @@ that a sheet has begun to vibrate before it becomes visible as motion.
 
 ## Also in the box
 
-`afield.four.physics` holds more than the particle solver, and the rest is not covered here:
+`afield.simulation.physics` holds more than the particle solver, and the rest is not covered here:
 
 - **The world layer** — `Collider`/`ColliderSet` (sphere, plane, box, capsule and a general signed
   distance function), `Tearing`, `Wind`, and `Strand`, a rope that can be knotted to a cloth. These

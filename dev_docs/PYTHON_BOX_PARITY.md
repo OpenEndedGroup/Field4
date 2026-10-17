@@ -14,7 +14,7 @@ gets and whether a Python box now gets it.
 
 ## How the pieces fit
 
-- `src/jvmMain/kotlin/afield/python/PythonErrors.kt`: Python source for `_field_error_location`,
+- `src/jvmMain/kotlin/afield/lang/python/PythonErrors.kt`: Python source for `_field_error_location`,
   plus `boxLine`/`describe`. `_exec_with_return2` and `aexec_with_return` record
   `_field_last_error` in their `except` blocks; `runOnce` reads it after a `JepException` before
   falling back to the old JEP-message regexes. Tested under plain `python3` by `PythonErrorsTest`.

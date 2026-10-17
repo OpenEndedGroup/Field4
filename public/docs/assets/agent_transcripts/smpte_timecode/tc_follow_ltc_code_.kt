@@ -1,4 +1,4 @@
-import afield.timecode.*
+import afield.io.timecode.*
 
 // Follow LTC delivered in audio-sized blocks, and read the clock between blocks, as a draw loop would.
 val clock = TimecodeClock(TimecodeRate.FPS_24).followLtc(48000)

@@ -15,7 +15,7 @@ registration.
 ## A graph, addressed
 
 Give `graphPaths` a pattern and it hands back a `PathSet`: an ordered collection
-of *live lenses*: each one is an address plus a getter, and a setter too if the
+of *live lenses*. Each one is an address plus a getter, and a setter too if the
 slot is mutable. Nothing is copied, so if the value changes between two reads,
 the second read sees the change.
 
@@ -71,9 +71,7 @@ or a custom `descendInto`, call `graphPaths` and pass a `GraphWalkOptions`.
     `/` is defined on `Any?`, but ordinary division is untouched: a member `div`
     always beats an extension, so numbers, vectors, quaternions and signals keep
     their own arithmetic, and `kotlin.io.path`'s `path / "sub"` still joins a
-    path. The one new case is a `String` on the right: `"a" / "b"` type-checks and
-    returns an empty `PathSet`, so a mistyped `/` shows up a step later than a
-    compile error would.
+    path.
 
 ## Patterns and predicates
 
@@ -239,7 +237,7 @@ on their own. `clearModulation()` and `clearSuppliers()` detach them again.
 
 ## Notes on traversal
 
-Some behaviours to know about before you point this at something large:
+What the walk does on a large or unusual graph:
 
 - **Descent stops at the obvious leaves** — numbers, strings, booleans, enums,
   primitive arrays, functions, class objects — and at anything in the JDK's own

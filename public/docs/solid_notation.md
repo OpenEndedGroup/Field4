@@ -1,6 +1,6 @@
-# A solid, written down: `afield.solidsl`
+# A solid, written down: `afield.lang.solidsl`
 
-In `afield.solidsl` a shape is a **value**. Subtracting a cylinder from a cuboid builds an expression
+In `afield.lang.solidsl` a shape is a **value**. Subtracting a cylinder from a cuboid builds an expression
 tree, and from that one tree you can march a mesh, build an exact CSG solid, emit GLSL, or simplify
 it. A document you can open and run is [at the bottom of the page](#open-this); the KDoc for
 `SolidExpr`, `Profile`, `SolidLowering` and `SolidTemplate` covers every declaration used here.
@@ -75,7 +75,7 @@ one primitive with no exact form — see [refusals](#refusals-are-in-the-type).
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/vocabulary.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // Every panel frames its own bounds, so the small shapes are not lost beside the large ones.
 val q = SolidQuality(segments = 64, edgeLengthFraction = 1.0 / 55.0)
@@ -104,7 +104,7 @@ cross-section at every resolution, and is wrong in a different way instead.
 
 ## Two lowerings of one source
 
-A `SolidExpr` lowers two ways, and [`afield.manifold`](manifold.md) supplies the second of them.
+A `SolidExpr` lowers two ways, and [`afield.geometry.solid.manifold`](manifold.md) supplies the second of them.
 Neither is a superset of the other, so which one you want depends on what you are going to do next:
 
 <div class="field-data-table" markdown>
@@ -165,7 +165,7 @@ tree, and `exactRefusal()` answers the yes-or-no.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/refusals.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 val q = SolidQuality(segments = 64, edgeLengthFraction = 1.0 / 70.0)
 
@@ -229,7 +229,7 @@ them side by side:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/hybrid.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 val q = SolidQuality(segments = 96, edgeLengthFraction = 1.0 / 80.0)
 
@@ -318,9 +318,9 @@ does not always come back out as three angles), reassociating `SmoothUnion`, reo
 A tree you can read is also a tree you can differentiate, and that is the third thing you can do with
 one source. Declare which numbers in a shape are free, hand over some samples of the shape you
 actually want, and a gradient finds them — the 3D version of what
-[`afield.rectsl.RectSLFn`](rectsl_inverse_animation.md) does for 2D tracks.
+[`afield.lang.rectsl.RectSLFn`](rectsl_inverse_animation.md) does for 2D tracks.
 
-The machinery is `afield.stdlib.AD`, reverse-mode automatic differentiation over `Double`:
+The machinery is `afield.math.autodiff.AD`, reverse-mode automatic differentiation over `Double`:
 `SolidGradient.kt` is `SolidField.kt`'s `toField3` transposed line for line into `AD` arithmetic.
 Reverse mode because the objective is one scalar loss over many sample points and a handful of
 parameters, so one forward pass and one backward sweep give every parameter derivative at once. The
@@ -433,7 +433,7 @@ measured for it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/inverse.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // The model, and the three numbers to be solved for. `barRadius` drives BOTH of the cylinder's
 // radii, which is how "the bar is a cylinder, not a frustum" gets written down.
@@ -513,7 +513,7 @@ Marched, the seed, the fit and the target:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/partial.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // A sphere and a cylinder. The model below gets a CUBE and a cylinder.
 val truth = sphere(0.62) + cylinder(2.20, 0.28)
@@ -560,7 +560,7 @@ shows something the two ends cannot: *when* each parameter stops moving.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/converging.png" wait="14.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 val truth = sphere(0.62) + cylinder(2.20, 0.28)
 val target = truth.sampleField(count = 3000, seed = 17)
@@ -642,15 +642,8 @@ of the target, so read the report with that in mind.
     reaches the same loss in 36 iterations. The figures use ADAM because its small steps make a
     readable filmstrip ([`dev_docs/SOLIDSL_OPTIMIZER_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/SOLIDSL_OPTIMIZER_MEASUREMENTS.md)).
 
-!!! note "A cube hidden inside the bar gets zero gradient"
-
-    Seed `cubeSize` at `0.40` against a bar of radius `0.55` and the fit reports
-    `cubeSize 0.400000 -> 0.400000` after 372 iterations. `Union` is `min`, so
-    a child that is never the nearest surface at any sample point receives **exactly** zero
-    gradient, and a cube small enough to sit wholly inside the bar is never the nearest surface
-    anywhere. `fit.deadParameters` reports `none` here, because it only looks at the gradient at
-    the seed, and there the cube is invisible to the loss rather than stationary in it. [What makes a parameter refuse to move](#what-makes-a-parameter-refuse-to-move)
-    is the same failure mode arriving by a different route.
+A cube small enough to sit wholly inside the bar never moves at all: seeded at `0.40` against a bar
+of radius `0.55`, `cubeSize` comes back `0.400000` and `fit.deadParameters` names it.
 
 ### What makes a parameter refuse to move
 
@@ -668,7 +661,8 @@ smoothUnion(sphere(1.0), sphere(0.25), k = 0.9).parameterize { … }
     .fitParameters(target, …).deadParameters      // []
 ```
 
-`SolidFit.deadParameters` names the parameters whose gradient was exactly zero at the start. It is
+`SolidFit.deadParameters` names the parameters whose gradient was exactly zero at the start, and
+those the descent never moved off their seed. It is
 reported rather than thrown, because a legitimately dead parameter is a fine thing to have in a
 vector — a fit over six holes where one is genuinely irrelevant — and it is the *unexpectedly* dead
 one that looks like a success.
@@ -704,8 +698,8 @@ start, so a fit with `iterations = 0` reports it before the descent takes a sing
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/one_sided.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
-import afield.stdlib.TriMesh
+import afield.lang.solidsl.*
+import afield.geometry.mesh.TriMesh
 
 // Three lobes on the X axis with independent radii.
 val template = smoothUnion(
@@ -754,7 +748,7 @@ threeGrid(
     "fitted  ·  right = %.6f".format(fit.values[right]) to m(fit.fitted),
     "truth  ·  right = %.2f".format(truth[right]) to m(template.withValues(truth)),
     channel = "one_sided", columns = 4, height = 230,
-    view = MeshView(width = 250, height = 190, yawDegrees = 0.0, pitchDegrees = 30.0, distance = 3.6, wireframe = false),
+    view = MeshView(width = 250, height = 190, yawDegrees = 0.0, pitchDegrees = 30.0, distance = 3.6, wireframe = false), padding = 1.41,
 )
 ```
 
@@ -771,25 +765,13 @@ Primitives are centred on the origin. Everything else follows Manifold's convent
 
 - `cylinder` runs along **Z**.
 - `Profile.extruded(h)` runs from `z = 0` to `z = h` — *not* centred, because `Section.extruded` is not.
-- `Profile.revolved()` turns about **Z**, profile at `x ≥ 0`, counter-clockwise from `+X`.
+- `Profile.revolved()` turns about **Z**, profile at `x ≥ 0`, counter-clockwise from `+X`. The mesh
+  lathe `revolveMesh` defaults to Y; pass `axis = RevolveAxis.Z` to get the same solid from it.
 - `turned(x, y, z)` is in **degrees**, applied X then Y then Z.
 
 There is no `Torus` node:
 `torus(R, r)` is a function that builds `Profile.circle(r).translated(R, 0).revolved()`, which is
 what a torus is.
-
-!!! warning "Two lathes, ninety degrees apart"
-
-    Field has two of these and they do not agree. Check which one you have before you port a
-    profile between them.
-
-    | | axis | profile |
-    |---|---|---|
-    | `afield.stdlib.revolveMesh` | **Y** | `(radius, y)` |
-    | `afield.manifold.Section.revolved`, and therefore `Profile.revolved` | **Z** | `(radius, z)` |
-
-    Porting a profile one way or the other means swapping its `y` and `z`, or rotating the result.
-    `Profile.revolved` takes no axis argument, because Manifold's revolve has none.
 
 ## Open this {#open-this}
 

@@ -1,6 +1,6 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.neuralrendering.*
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.render.neural.*
 
 val owner = renderer
 prop<OpenDlssNrStudy>(lab)

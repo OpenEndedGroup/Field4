@@ -176,7 +176,7 @@ stackSLEvolveStudio(evolution)
 
 ## How "close" is measured
 
-The default score is LPIPS, a learned perceptual distance (`Lpips.distance(a, b)` in [`afield.onnx`](reference/machine-learning.md)): both pictures go through the convolution stages of an image-recognition network, and the differences between their features are weighted by a layer trained on people's judgements of which images look alike. It compares edges, blobs and textures, not pixel values. The first time it runs on a machine Field builds the model, which takes about a minute.
+The default score is LPIPS, a learned perceptual distance (`Lpips.distance(a, b)` in [`afield.ai.inference.onnx`](reference/machine-learning.md)): both pictures go through the convolution stages of an image-recognition network, and the differences between their features are weighted by a layer trained on people's judgements of which images look alike. It compares edges, blobs and textures, not pixel values. The first time it runs on a machine Field builds the model, which takes about a minute.
 
 `metric = StackSLMetric.PIXEL` scores by average pixel error instead. Here are both on the bands target, 400 renders each:
 
@@ -249,7 +249,8 @@ Without the watchmaker, these are the five built-in targets' best programs at 1,
 
 ![five rows on black, one per built-in target: the target, then the best picture from evolveStackSLTowards (GP), from wide() without a model, and from the search with the watchmaker (both), each with its layout agreement. GP draws a white disc on blue for the disc, wavy lines for the rings, too many bands, a smear for the checkerboard and quadrants in the wrong colours; wide draws grey rings, fine wavy stripes, very fine stripes, a blurred cross and the same wrong quadrants; both draws all five almost exactly](assets/stacksl_evolve/watchmaker-original.png)
 
-`StackSLEvolveGallery` (the `stacksl.evolve.gallery` smoke test) runs `evolveStackSLTowards` across three targets and two metrics at 700 renders each, and fails if LPIPS with lexicase stops beating its control or stops out-drawing pixel error on `quadrants`. The watchmaker is not in it, since it needs a model.
+??? aside "Agents: the smoke test that pins this"
+    `StackSLEvolveGallery` (the `stacksl.evolve.gallery` smoke test) runs `evolveStackSLTowards` across three targets and two metrics at 700 renders each, and fails if LPIPS with lexicase stops beating its control or stops out-drawing pixel error on `quadrants`. The watchmaker is not in it, since it needs a model.
 
 ??? aside "How the watchmaker's figures and numbers were made"
     The comparison table, the two results figures and the watchmaker's pictures come from `afield.examples.stacksl.StackSLWatchmakerTrial`, run with OpenAI's `gpt-6-luna` as the fast model on 2026-10-08, and are committed images rather than runner captures, because a capture would call a paid model on every docs build. The trial saves every round's prompt, both pictures and the raw replies beside its results. To run it again: `run-jvm-main afield.examples.stacksl.StackSLWatchmakerTrial --arg=--budget --arg 1200 --arg=--seeds --arg 1,2,3` through the backdoor (about two hours for all arms), and `--arg=--figure --arg <dir>/trial.json` to draw a figure from the results. The model is not deterministic, so a rerun gives other programs and numbers near these.

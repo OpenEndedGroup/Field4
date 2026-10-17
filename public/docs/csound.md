@@ -131,9 +131,6 @@ Rest the cursor on a line to see its note:
 - on a line that declares or uses a channel (`chn_k`, `chnget`, `chnset`, `invalue`, `outvalue`),
   the channel's value in the playing Csound, read live.
 
-The event count comes from the score text, so events sent later with alt/option-Enter or from Kotlin are
-not counted.
-
 With the cursor on `instr Pluck`, the note at the editor's foot counts the score's events for it:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" clip-selector=".monaco-editor-container" screenshot="assets/csound/line-note-instr.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/csound_line_notes.yaml" capture-box="csound_doc_pluck" padding="10" wait="0" timeout="120" embed=true hidden=true name="csound-line-note-instr" alt="The Pluck .csd in Field's editor with the cursor on line 5, instr Pluck. At the editor's foot the line note reads instr Pluck: 3 events in the score, and under it, lines 15, 16, 17."}
@@ -239,7 +236,7 @@ The same holds offline. `renderSignalsOffline` advances any number of signals th
 blocks, without a device, which is how this box measures a Csound filter on a Field sine:
 
 ```diffstatic {data-lang=kotlin}
-val cs = afield.csound.CsoundInstance("""
+val cs = afield.audio.csound.CsoundInstance("""
 instr Filter
   ain   chnget    "in"
   alow  butterlp  ain, 500
@@ -291,7 +288,7 @@ boxes (**pluck**, **fx**, **typo**) and five Kotlin boxes that use each of the d
 See also: [Faust](faust.md) and [Pure Data](pure_data.md), the other languages that play through
 the same audio engine, and [How to make sound in Field](sound.md).
 
-??? aside "How the captures and numbers on this page were made"
+??? aside "Agents: how the captures and numbers on this page are made"
     The two editor figures and the completion popup are captured by the docs runner against a
     real Field. The editor figures are gated on `requires="csound"`, so a machine without a built
     libcsound keeps the committed images. `CsoundDocsFencesTest` renders every `data-lang=csound`

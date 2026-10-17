@@ -1,4 +1,4 @@
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // ---- change the twist and re-run: the shader changes with it ----------------------
 val twist = 140.0       // Degrees over the column's height.

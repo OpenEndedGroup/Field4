@@ -45,7 +45,7 @@ corrupting its expected output failed exactly that case.
   won, and the copy only appeared to work because 0.64's `Parser.parse(String)` had the same
   signature. Under the new jar that surfaced as `NoSuchMethodError` inside a
   `catch (t: Throwable)`, which silently turned the comment pass off. The copy is now Field's own
-  `afield.FieldKtParser` (`afield/internal/FieldKtParser.kt`), used by the comment pass, the
+  `afield.runtime.kotlin.FieldKtParser` (`afield/internal/FieldKtParser.kt`), used by the comment pass, the
   RemoteJS instrumenter and the pattern-rewrite smoke. Nothing shadows ktfmt.
 - ktfmt's stock parser runs fine beside the forked compiler: checked in a live Field, where
   `-format-property` formatted and synced a box after that box had compiled and run.

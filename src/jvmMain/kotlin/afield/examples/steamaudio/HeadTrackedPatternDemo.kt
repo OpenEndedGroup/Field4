@@ -1,14 +1,14 @@
 package afield.examples.steamaudio
 
-import afield.four.synth.HeadPose
-import afield.four.synth.SynthContext
-import afield.four.synth.VirtualHead
-import afield.four.synth.pat
-import afield.four.synth.param
-import afield.four.synth.patSpatial
-import afield.four.synth.stack
-import afield.four.synth.with
-import afield.stdlib.Vec3
+import afield.audio.synth.HeadPose
+import afield.audio.synth.SynthContext
+import afield.audio.synth.VirtualHead
+import afield.audio.synth.pat
+import afield.audio.synth.param
+import afield.audio.synth.patSpatial
+import afield.audio.synth.stack
+import afield.audio.synth.with
+import afield.math.linalg.Vec3
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.math.abs

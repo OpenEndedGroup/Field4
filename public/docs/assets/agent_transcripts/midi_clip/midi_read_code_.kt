@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 import java.io.File
 
 // 2 - Read it back, and check the round trip actually held.

@@ -126,12 +126,12 @@ After the server is listening, run each entrypoint **one at a time**, through th
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --attach-existing --port 9816 --timeout 240 \
-  --command 'run-jvm-main afield.four.modules.ClusterGeometrySmoke --arg=--clip' \
+  --command 'run-jvm-main afield.graphics.render.ClusterGeometrySmoke --arg=--clip' \
   > build/neural-tools/clusters-final.json
 ```
 
-Use the same invocation for `afield.four.neural.GpuShaderTrainingSmoke --arg=--clip`
-(`gpu-learning-final.json`) and `afield.four.reconstruction.PathTracedReconstructionSmoke --arg=--clip`
+Use the same invocation for `afield.graphics.shader.learning.GpuShaderTrainingSmoke --arg=--clip`
+(`gpu-learning-final.json`) and `afield.media.reconstruction.PathTracedReconstructionSmoke --arg=--clip`
 (`path-rr-final.json`). Markers are respectively `COMPUTED CLUSTERS CHECK DONE`,
 `GPU SHADER TRAINING CHECK DONE` and `PATH RR CHECK DONE`; require exit 0 and no VUID errors.
 `AdvancedVulkanFallbackSmoke` forces both optional feature families off and verifies useful scalar

@@ -34,17 +34,17 @@ operations:
         h: 110.0
       properties:
         code: |
-          import afield.four.Target
-          import afield.four.fabricated.GaussianSplatRenderer
-          import afield.four.fabricated.GaussianSplatRenderer.Blend
-          import afield.four.fabricated.GaussianSplatRenderer.SortMode
-          import afield.four.fabricated.GaussianSplatRenderer.SplatSource
-          import afield.four.fabricated.SplatSequence
-          import afield.four.fabricated.SplatTransport
-          import afield.stdlib.linalg.Matrix4f
-          import afield.stdlib.linalg.Vector3f
+          import afield.graphics.vulkan.Target
+          import afield.graphics.scene.fabricated.GaussianSplatRenderer
+          import afield.graphics.scene.fabricated.GaussianSplatRenderer.Blend
+          import afield.graphics.scene.fabricated.GaussianSplatRenderer.SortMode
+          import afield.graphics.scene.fabricated.GaussianSplatRenderer.SplatSource
+          import afield.graphics.scene.fabricated.SplatSequence
+          import afield.graphics.scene.fabricated.SplatTransport
+          import afield.math.linalg.Matrix4f
+          import afield.math.linalg.Vector3f
           import java.io.File
-
+          
           // ---- knobs: edit and re-run this box ------------------------------------
           // No committed sample: point this at your own frames. To make some, take a .ply per
           // frame and run PlayCanvas splat-transform over each:
@@ -64,19 +64,19 @@ operations:
           // legitimate artistic move but not a fix for a dark scene.
           val colorGamma = 2.2f
           // -----------------------------------------------------------------------
-
+          
           if (!sequenceDir.isDirectory) {
               println("no sequence at $sequenceDir")
               println("Point `sequenceDir` above at a directory of .compressed.ply frames.")
               println("PlayCanvas splat-transform writes them: splat-transform in.ply out.compressed.ply")
               println("Any 3DGS .ply will do as a source; a single frame repeated also works.")
           } else {
-
+          
           val sequence = SplatSequence.fromDirectory(sequenceDir, cacheFrames = 160)
           val capacity = sequence.peakWindowSplats(slots)
           println("sequence ${sequence.frameCount} frames; capacity $capacity splats")
           println("  (the true peak over any $slots consecutive frames, not the $slots largest anywhere)")
-
+          
           // Each capture is a depth map from a camera at the origin looking down +z, so its content
           // already sits ~1-1.6 in front of its own origin. A ring around the viewer is therefore
           // fifteen rotations about Y and no translation: every panel lands at its natural distance.
@@ -95,7 +95,7 @@ operations:
           val ring = (0 until slots).map { i ->
               yRotation(-arc / 2.0 + arc * i / (slots - 1).coerceAtLeast(1))
           }
-
+          
           val cloud = GaussianSplatRenderer.streaming(
               capacity = capacity,
               renderer = renderer,
@@ -113,9 +113,9 @@ operations:
           cloud.camera.up = Vector3f(0f, -1f, 0f)
           cloud.alphaScale = alphaBoost
           cloud.install()
-
+          
           val scratch = GaussianSplatRenderer.PackScratch()
-
+          
           // ---- the play head. Select a line and run it as a fragment while this plays ----------
           // transport.playing = false          pause
           // transport.normalized = 0.42        scrub to 42% of the shot
@@ -125,11 +125,11 @@ operations:
           // transport.loop = false             clamp at the ends instead of wrapping
           val transport = SplatTransport(sequence.frameCount, fps = fps)
           // -------------------------------------------------------------------------------------
-
+          
           var packedMs = 0.0
           var decodes = 0
           var displayFrames = 0
-
+          
           renderer.renderList.preTargets["__splat_feed__"] = Target { _, _ ->
               displayFrames++
               // False on the display frames where the resolved frame did not move -- six in seven at
@@ -149,7 +149,7 @@ operations:
               packedMs = (System.nanoTime() - t0) / 1e6
               decodes++
           }
-
+          
           var reportedAt = System.nanoTime()
           renderer.renderList.preTargets["__splat_report__"] = Target { _, _ ->
               val now = System.nanoTime()
@@ -160,10 +160,10 @@ operations:
                       "last pack %.1f ms  %s".format(packedMs, sequence.stats))
               decodes = 0; displayFrames = 0
           }
-
+          
           println("streaming ${sequence.frameCount} frames at $fps fps, sort=$sortEachFrame")
           println("blend=${if (blend.orderIndependent) "order-independent, the sort is optional" else "Over, needs the back-to-front order"}")
-
+          
           }
   - connect:
       parent: agent_graphics_context

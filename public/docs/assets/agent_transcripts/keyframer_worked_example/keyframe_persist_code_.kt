@@ -3,9 +3,9 @@ saveKey writes pretty JSON — and, every single time, ALSO appends a numbered c
 <file>.versions directory with a manifest. Nothing prunes it, so a hundred saves leave a
 hundred files. What survives the trip is a closed set; everything else is dropped silently.
 */
-import afield.stdlib.KeyframeScope
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.stackSLString
+import afield.animation.keyframes.KeyframeScope
+import afield.math.linalg.Vector3f
+import afield.animation.keyframes.stackSLString
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframer-demo")

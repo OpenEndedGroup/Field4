@@ -1,7 +1,7 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.diffusion.*
-import afield.four.modules.fromContextWithNameOrNull
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.media.video.diffusion.*
+import afield.document.context.fromContextWithNameOrNull
 
 // Connect this box beneath a running renderer box before launching it.
 val owner: Renderer = fromContext()

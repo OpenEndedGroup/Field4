@@ -1,0 +1,45 @@
+name: reactive_props_slider_drag
+description: |
+  The Meter capture's setup: reactive_props_slider.yaml, then a real pointer drag of Gain's
+  slider from 0.50 to near the top of its track (0.97), so Meter's picture is the one the drag reruns. Setup for `public/docs/reactive_properties.md`, "Controls". "Gain" declares
+  `propDown<Double>(gain)` and binds it to a slider with `syncToProperty`; "Meter", under Gain,
+  draws a bar `gain` long. Both run once. Dragging the slider reruns Meter (checked live with
+  `sendSliderUpdate`, and by ReactivePropsTest.aRawWriteToADeclaredDownPropertyIsAChange).
+operations:
+  - create:
+      box: rp_gain
+      name: Gain
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          propDown<Double>(gain)
+          syncToProperty("gain", 0.5, min = 0.0, max = 1.0)
+  - create:
+      box: rp_meter
+      name: Meter
+      frame: { x: 40.0, y: 260.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          val width = (gain * 300).toInt()
+          display("main", "<div style='width:${width}px;height:14px;background:#4a90d9'></div><p>gain ${"%.2f".format(gain)}</p>")
+  - connect: { parent: rp_gain, child: rp_meter }
+  - execute: { box: rp_gain, property: code }
+  - execute: { box: rp_meter, property: code }
+  - await: {}
+  - wait: { frames: 10 }
+  - drive:
+      script: |
+        ui.eval("return window.fieldBackdoorPrepareBoxScreenshot({ uid: 'rp_gain', openOutputs: true, expectOutputs: 'panel' });")
+        ui.pause(500)
+        ui.waitForSelector("[data-slider-id] .field-slider-visual .slider-thumb", 15000.0)
+        val r = ui.eval("const v = document.querySelector('[data-slider-id] .field-slider-visual'); const t = v.querySelector('.slider-thumb').getBoundingClientRect(); const b = v.getBoundingClientRect(); return [t.x + t.width / 2, t.y + t.height / 2, b.x + b.width * 0.8];").toString()
+        val (tx, ty, ex) = r.trim('[', ']').split(",").map { it.trim().toDouble() }
+        ui.moveMouse(tx, ty)
+        ui.mouseDown()
+        ui.moveMouse(ex, ty, steps = 12)
+        ui.mouseUp()
+        ui.pause(1000)
+        val after = ui.eval("return document.querySelector('[data-slider-id]').getAttribute('aria-valuenow');").toString()
+        check(after.trim('"').toDouble() > 0.6) { "slider drag from ($tx, $ty) to $ex left the value at $after" }
+  - await: {}
+  - wait: { frames: 10 }

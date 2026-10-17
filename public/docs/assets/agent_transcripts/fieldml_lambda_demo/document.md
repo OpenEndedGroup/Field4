@@ -109,12 +109,12 @@ let Collections = hostClass "java.util.Collections"
 <!-- field-box id="fieldml-lambda-raster" index="3" -->
 
 ```edn [field-box id="fieldml-lambda-raster" role="properties"]
-{"id" "fieldml-lambda-raster" "index" 3 "name" "Six typed callback parameters" "parents" ["root" "fieldml-lambda-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-lambda-root"} "name" "Six typed callback parameters" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-lambda-raster_code_.kt" "lines" 22 "characters" 1010 "sha256" "c644eb1deb7da0ccd2c95aa3b32014268a7379ec46a4152ae00961703485e3c6"}]}
+{"id" "fieldml-lambda-raster" "index" 3 "name" "Six typed callback parameters" "parents" ["root" "fieldml-lambda-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-lambda-root"} "name" "Six typed callback parameters" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-lambda-raster_code_.kt" "lines" 22 "characters" 1020 "sha256" "3c2bf415b83fb5861c0d8a7a998debd1db826d9f1eeb69343901b03409f8bb08"}]}
 ```
 
 ```kotlin [field-property box="fieldml-lambda-raster" name="code" path="fieldml-lambda-raster_code_.kt"]
-let Img = hostClass "afield.stdlib.Img"
-let Imaging = hostClass "afield.stdlib.Imaging_fieldKt"
+let Img = hostClass "afield.media.image.Img"
+let Imaging = hostClass "afield.media.image.Imaging_fieldKt"
 
 // Two callbacks, six typed parameters, no casts.
 //
@@ -150,14 +150,14 @@ completion, or misspell a member, and the box answers from the JVM signature
 the callback is going to satisfy.
 
 ```edn [field-box id="fieldml-lambda-types" role="properties"]
-{"id" "fieldml-lambda-types" "index" 4 "name" "What the checker knows inside a lambda" "parents" ["root" "fieldml-lambda-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-lambda-root"} "name" "What the checker knows inside a lambda" "_tombstone" false "frame" #afield/rect [400.0 170.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-lambda-types_code_.kt" "lines" 21 "characters" 893 "sha256" "29be7703c8cfb910442c8bac7bc6e5f7d3be1bb0e7eb2bd324adea6050ff38ea"}]}
+{"id" "fieldml-lambda-types" "index" 4 "name" "What the checker knows inside a lambda" "parents" ["root" "fieldml-lambda-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-lambda-root"} "name" "What the checker knows inside a lambda" "_tombstone" false "frame" #afield/rect [400.0 170.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-lambda-types_code_.kt" "lines" 21 "characters" 898 "sha256" "c9fad63b4aaffaeea8a96870dabe5ae996ef208fab3d5e8b4d1fdaab10798b4f"}]}
 ```
 
 ```kotlin [field-property box="fieldml-lambda-types" name="code" path="fieldml-lambda-types_code_.kt"]
 // Everything below is inferred. Put the caret inside a lambda body and ask for
 // completion, or misspell a member, and the box answers from the JVM signature
 // the callback is going to satisfy.
-let Img = hostClass "afield.stdlib.Img"
+let Img = hostClass "afield.media.image.Img"
 
 // `x` and `y` are Ints because Function2's type arguments say so, so `x * 4 + y`
 // is integer arithmetic and `toFloat` is needed to leave it.

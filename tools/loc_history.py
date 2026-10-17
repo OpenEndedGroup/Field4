@@ -85,7 +85,7 @@ LANG_NAMES = {"kt": "Kotlin", "js": "JavaScript", "html": "HTML", "swift": "Swif
               "shader": "Shaders"}
 
 # Counted extension -> language. Java is deliberately absent: 32.5k of its 33k lines are
-# jextract output (`src/jvmMain/java/afield/four/audio/steamaudio/raw/`), and the rest is
+# jextract output (`src/jvmMain/java/afield/audio/spatial/steamaudio/raw/`), and the rest is
 # ~120 lines; count it and that directory has to go in GENERATED_DIRS first.
 EXT_LANG = {
     "kt": "kt", "js": "js", "html": "html", "swift": "swift", "py": "py", "rs": "rs",

@@ -1,15 +1,15 @@
 package afield.examples.ceres
 
-import afield.stdlib.ceres.AxisSet
-import afield.stdlib.ceres.FfmCeresBackend
-import afield.stdlib.ceres.InteractionPolicy
-import afield.stdlib.ceres.LineRef
-import afield.stdlib.ceres.PointRef
-import afield.stdlib.ceres.SolveOptions
-import afield.stdlib.ceres.Vec3
-import afield.stdlib.ceres.geometryModel
-import afield.stdlib.ceres.liveGeometry
-import afield.stdlib.linalg.Vector3f
+import afield.math.optimization.ceres.AxisSet
+import afield.math.optimization.ceres.FfmCeresBackend
+import afield.math.optimization.ceres.InteractionPolicy
+import afield.math.optimization.ceres.LineRef
+import afield.math.optimization.ceres.PointRef
+import afield.math.optimization.ceres.SolveOptions
+import afield.math.optimization.ceres.Vec3
+import afield.math.optimization.ceres.geometryModel
+import afield.math.optimization.ceres.liveGeometry
+import afield.math.linalg.Vector3f
 import kotlin.math.abs
 import kotlin.math.sqrt
 

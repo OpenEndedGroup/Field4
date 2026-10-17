@@ -1,6 +1,6 @@
 import org.lwjgl.vulkan.VK10.*
-import afield.four.targets.*
-import afield.four.texture.*
+
+
 
 prop<PingPongRenderToTexture>(target) = PingPongRenderToTexture {
     clearFirst = false

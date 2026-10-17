@@ -1,4 +1,4 @@
-import afield.petri.*
+import afield.simulation.petri.*
 
 // A place holds tokens; a transition fires when all its inputs have one. Give a
 // transition a sound after the `:` and firing it plays that sound. That is the whole

@@ -1,0 +1,16 @@
+{
+  "id" : "r3-7837e20bb90d",
+  "parent" : "r2-fafd8168ed0f",
+  "description" : "adopt variant 10 points: 10 points; same colors, spacing and outer radius.",
+  "created" : "2026-10-16T09:56:04.703868Z",
+  "sourceHash" : "7837e20bb90d70d03eec92cd796ede5b5112269f75efea2fc20b3a3c4a41ae9c",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : false,
+    "nonFiniteFraction" : 0.0,
+    "words" : 124,
+    "knobs" : 70,
+    "stages" : 14
+  }
+}

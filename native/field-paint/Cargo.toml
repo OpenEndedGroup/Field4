@@ -3,7 +3,7 @@ name = "field_paint_jvm"
 version = "0.1.0"
 edition = "2024"
 publish = false
-description = "claude-paint's `paint` crate behind a flat C ABI, for afield.paint"
+description = "claude-paint's `paint` crate behind a flat C ABI, for afield.graphics.paint"
 
 [lib]
 crate-type = ["cdylib"]

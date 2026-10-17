@@ -122,8 +122,8 @@ exact ones. The optimizer, step size and target are the same.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/exact_fit.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="1000" padding="16"}
 :::static
-import afield.stdlib.Functions
-import afield.stdlib.FnGradientMode
+import afield.math.functions.Functions
+import afield.math.autodiff.FnGradientMode
 
 with(Functions) {
     val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)
@@ -198,8 +198,8 @@ creates a local minimum, and gradient descent cannot climb out of one.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/abs_seed.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="900" padding="16"}
 :::static
-import afield.stdlib.Functions
-import afield.stdlib.FnGradientMode
+import afield.math.functions.Functions
+import afield.math.autodiff.FnGradientMode
 
 with(Functions) {
     val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)
@@ -350,6 +350,6 @@ discs just touch, the discs settle into contact instead of bouncing in and out o
 - The [`autodiff_worked_example`](agent_transcripts.md#autodiff_worked_example) starting point is
   this page as a document you can edit and re-run.
 
-??? aside "Developer notes"
+??? aside "Agents: how autodiff is built"
     [`dev_docs/autodiff.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/autodiff.md) covers the tape layout, the corner convention, how `Fn` graphs are
     differentiated and when that returns `null`, and what is not covered.

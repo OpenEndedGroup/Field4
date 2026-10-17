@@ -143,7 +143,7 @@ Native bridge tools (always present):
 - `field_screenshot_box` — render a box's output as an image.
 - `field_paint_gesture` — replay a gesture take (rows `[t,x,y]` or `[t,x,y,pressure,tiltX,tiltY,twist]`)
   or its keyframe lanes as a brush stroke on a fresh paint canvas and return the PNG; `bake` also
-  returns lanes to edit and pass back. Runs `afield.paint.GestureReplayMain` through `run-jvm-main`,
+  returns lanes to edit and pass back. Runs `afield.graphics.paint.GestureReplayMain` through `run-jvm-main`,
   so no document needs to be open ([`GESTURE_PAINT_REPLAY.md`](../paint/GESTURE_PAINT_REPLAY.md)).
 - `field_debug_probe` — inspect a live variable's value at runtime (see
   [Runtime debug probe](#runtime-debug-probe) below).
@@ -184,8 +184,8 @@ HTML.
 Two targeting modes (give exactly one):
 
 - **Source mode — anywhere in loaded `src/`.** Pass `file` (path or basename, e.g.
-  `Server.kt` or `src/jvmMain/kotlin/afield/Server.kt`) and/or `class` (fully qualified,
-  e.g. `afield.Server`), with `line` the real file line and `symbol` the variable. This
+  `Server.kt` or `src/jvmMain/kotlin/afield/app/server/Server.kt`) and/or `class` (fully qualified,
+  e.g. `afield.app.server.Server`), with `line` the real file line and `symbol` the variable. This
   is the "what is X here?" tool for framework code (line numbers illustrative):
   `{"file": "Server.kt", "line": 1761, "symbol": "now"}`.
 - **Box mode — a running box's snippet.** Pass `box` (uid/name), `line` within the box

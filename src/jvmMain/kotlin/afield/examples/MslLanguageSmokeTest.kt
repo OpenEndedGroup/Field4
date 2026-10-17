@@ -1,10 +1,10 @@
 package afield.examples
 
-import afield.graphics.MslEditorLanguage
-import afield.graphics.VisionMetalKotlinJs
+import afield.graphics.shader.MslEditorLanguage
+import afield.graphics.visionos.VisionMetalKotlinJs
 import java.io.File
 import java.nio.file.Files
-import afield.util.NodeTool
+import afield.media.image.util.NodeTool
 
 /*
 FIELD_TEST

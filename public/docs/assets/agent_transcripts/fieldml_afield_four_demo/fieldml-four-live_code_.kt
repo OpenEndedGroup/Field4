@@ -1,7 +1,7 @@
-// A whole afield.four scene, described from FieldML, with no hostAs in it.
+// A whole Field 4 scene, described from FieldML, with no hostAs in it.
 //
 // This box needs a live Vulkan device, so it does nothing useful unless an
-// ancestor box owns a running afield.four Window and Renderer. The backdoor's
+// ancestor box owns a running Field 4 Window and Renderer. The backdoor's
 // --graphics-context flag makes exactly that box and parents new boxes to it;
 // in an ordinary session, connect this box to whichever box owns your renderer.
 //
@@ -29,11 +29,11 @@ let params =
     let _ = p |> hostSet "vertex" vertexSource in
     let _ = p |> hostSet "fragment" fragmentSource in
     p |> hostSet "name" "fieldmlTriangle"
-  ) (hostClass "afield.four.modules.ModuleKt")
+  ) (hostClass "afield.graphics.render.ModuleKt")
 
-let module = hostNew (params) (hostClass "afield.four.modules.Module")
-let pointer = module |> hostExt (hostClass "afield.four.modules.ModuleKt") "pointer" Unit
-let mesh = hostNew (renderer, pointer) (hostClass "afield.four.modules.Mesh")
+let module = hostNew (params) (hostClass "afield.graphics.render.Module")
+let pointer = module |> hostExt (hostClass "afield.graphics.render.ModuleKt") "pointer" Unit
+let mesh = hostNew (renderer, pointer) (hostClass "afield.graphics.render.Mesh")
 let _ = pointer |> hostCall1 "plusAssign" (hostNew ("tri", mesh) (hostClass "kotlin.Pair"))
 let _ = mesh |> hostCall "resize" (3, 0, pointer)
 let target = renderer |> hostCall1 "renderTargetFor" 0

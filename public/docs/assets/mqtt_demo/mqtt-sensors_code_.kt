@@ -1,4 +1,4 @@
-import afield.mqtt.*
+import afield.io.mqtt.*
 
 // Three pretend sensors publishing to the embedded broker ten times a second.
 // The kitchen and hall send plain numbers; the garden sends JSON, as many ESP32 sketches do.

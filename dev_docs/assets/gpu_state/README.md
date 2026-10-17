@@ -58,7 +58,7 @@ Only this README stayed behind, because it is prose about the demo rather than p
 
 ## Provenance
 
-The model is the human's `dust_two` document, read and rebuilt out of public `afield.four` API only.
+The model is the human's `dust_two` document, read and rebuilt out of public Field 4 API only.
 `dust_two` imports `drowning.*` — `DustField`, `DustBuffers`, `DustLayout`, `dustGains(...)` — which
 is a personal jar and not in this repository, so nothing here shares a line with it. What it does
 share is the shape: four buffers with four different residencies, both halves of the ping-pong

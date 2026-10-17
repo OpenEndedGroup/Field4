@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build libpd — Pure Data as a C library — for `afield.pd`, on macOS, Linux or Windows.
+"""Build libpd — Pure Data as a C library — for `afield.audio.pd`, on macOS, Linux or Windows.
 
 libpd is Pd's DSP engine and message system without its GUI: open a `.pd` patch, send it
-messages, pull blocks of audio out of it. `afield.pd` binds its C ABI (`z_libpd.h`) directly
+messages, pull blocks of audio out of it. `afield.audio.pd` binds its C ABI (`z_libpd.h`) directly
 through Java FFM, so there is no wrapper library of Field's own — only libpd itself.
 
 It is built with ``PD_MULTI=ON``: every `PdInstance` in Field is its own Pd, with its own patches,

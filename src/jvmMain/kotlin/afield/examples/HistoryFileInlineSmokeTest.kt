@@ -1,10 +1,10 @@
 package afield.examples
 
-import afield.Box
-import afield.HistoryManager
-import afield.SavingContext
-import afield.SessionInformation
-import afield.thisSessionInfo
+import afield.document.graph.Box
+import afield.document.history.HistoryManager
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.app.server.thisSessionInfo
 import java.nio.file.Files
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText

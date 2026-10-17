@@ -1,4 +1,4 @@
-import afield.four.synth.*
+
 
 // 1 - Condense a rhythm.
 //

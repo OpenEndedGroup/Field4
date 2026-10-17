@@ -1,12 +1,12 @@
 package afield.examples
 
-import afield.remotejs.KotlinJsHeadProfiles
-import afield.remotejs.KotlinToJsCompiler
+import afield.lang.remotejs.KotlinJsHeadProfiles
+import afield.lang.remotejs.KotlinToJsCompiler
 import org.json.JSONObject
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.TimeUnit
-import afield.util.NodeTool
+import afield.media.image.util.NodeTool
 
 /*
 FIELD_TEST

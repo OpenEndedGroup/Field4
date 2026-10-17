@@ -1,12 +1,12 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.util.GpuNeighbourGrid
-import afield.four.util.GpuProbe
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.four.util.gpuProbe
-import afield.stdlib.linalg.Vector2f
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.GpuNeighbourGrid
+import afield.graphics.vulkan.util.GpuProbe
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.util.gpuProbe
+import afield.math.linalg.Vector2f
 import kotlin.math.hypot
 import kotlin.system.exitProcess
 

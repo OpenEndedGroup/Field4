@@ -96,7 +96,7 @@ and logging JVM tests, `checkCodebaseReference`, `checkKDocAttachment`,
 `citationGates`, and the tree-write guard; log:
 `/tmp/field4-environment-ac-jvm-guards.log`. The Table filter in that invocation
 used its directory rather than its package, so did not rerun Table tests; the
-combined-tree full suite must cover `afield.TableTest`.
+combined-tree full suite must cover `afield.ui.visualization.TableTest`.
 Combined-tree verification/landing is still pending at this checkpoint. Nothing
 has been pushed.
 
@@ -111,7 +111,7 @@ The combined tree with main `fd2f05da3`, including the GPU-skinning declaration,
 passed **`./gradlew --no-daemon certify`** in 26m 58s:
 
 - JVM: **4,091 tests, zero failures/errors, 26 skipped** (4,065 passed), across
-  409 suites. This includes all 31 `afield.TableTest` tests.
+  409 suites. This includes all 31 `afield.ui.visualization.TableTest` tests.
 - Python: **579 passed / 580 run, one built-site-dependent skip**, including all
   22 environment tests and the expanded display-declaration census.
 - All 136 materialized transcripts, demo/index/layout guards, completion corpus,

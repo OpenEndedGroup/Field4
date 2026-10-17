@@ -130,5 +130,5 @@ The small cross-framework oracle can be explicitly regenerated with:
 ```sh
 uv run --project optional/transport-flow python optional/transport-flow/write_parity_fixture.py \
   src/jvmTest/resources/transport-flow-parity.json
-./gradlew jvmTest --tests afield.stdlib.StippleTransportTest --tests afield.stdlib.FlowMatchingTest
+./gradlew jvmTest --tests afield.geometry.spatial.StippleTransportTest --tests afield.ai.learning.FlowMatchingTest
 ```

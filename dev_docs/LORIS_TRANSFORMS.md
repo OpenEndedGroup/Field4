@@ -3,7 +3,7 @@
 `LorisClient.distill/sift/dilate/morph` run the pinned Loris library's own Channelizer + Distiller,
 Sieve, Dilator and Morpher inside the `field_loris` helper (`native/field-loris/main.cpp`,
 protocol modes 2-5). Nothing is re-implemented in Kotlin except the plain envelope edits in
-`src/jvmMain/kotlin/afield/stdlib/loris/LorisTransforms.kt`.
+`src/jvmMain/kotlin/afield/audio/analysis/loris/LorisTransforms.kt`.
 
 Facts worth knowing:
 

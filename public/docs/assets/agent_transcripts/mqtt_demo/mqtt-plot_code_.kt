@@ -1,4 +1,4 @@
-import afield.mqtt.*
+import afield.io.mqtt.*
 
 // Keep the latest value and recent history of everything under sensors/, and plot it twice a second.
 // `series` holds the last 512 numbers per topic; `number(topic, "temp")` reads a field out of JSON.

@@ -11,12 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="youtube_desktop_renderer" index="0" -->
 
 ```edn [field-box id="youtube_desktop_renderer" role="properties"]
-{"id" "youtube_desktop_renderer" "index" 0 "name" "16:9 window + renderer" "parents" ["root"] "children" ["youtube_desktop_panel"] "properties" {"children" #{#afield/box "youtube_desktop_panel"} "parents" #{#afield/box "root"} "name" "16:9 window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_desktop_renderer_code_.kt" "lines" 20 "characters" 414 "sha256" "601f0cd1fd9f3d84553de5330a8487ce4c7bf5d7e2d8122b0dfd39c7e174fbb0"}]}
+{"id" "youtube_desktop_renderer" "index" 0 "name" "16:9 window + renderer" "parents" ["root"] "children" ["youtube_desktop_panel"] "properties" {"children" #{#afield/box "youtube_desktop_panel"} "parents" #{#afield/box "root"} "name" "16:9 window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_desktop_renderer_code_.kt" "lines" 20 "characters" 438 "sha256" "15a0022082c7da47187c8ea09ef16c80467cb98b944a484ae62b668d368467e1"}]}
 ```
 
 ```kotlin [field-property box="youtube_desktop_renderer" name="code" path="youtube_desktop_renderer_code_.kt"]
-import afield.Rect
-import afield.four.util.Options
+import afield.app.protocol.Rect
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -42,15 +42,15 @@ start(renderer::run)
 <!-- field-box id="youtube_desktop_panel" index="1" -->
 
 ```edn [field-box id="youtube_desktop_panel" role="properties"]
-{"id" "youtube_desktop_panel" "index" 1 "name" "YouTube — direct mouse + keyboard" "parents" ["root" "youtube_desktop_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_desktop_renderer"} "name" "YouTube — direct mouse + keyboard" "_tombstone" false "frame" #afield/rect [330.0 140.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_desktop_panel_code_.kt" "lines" 36 "characters" 1285 "sha256" "bc5b2c219e184fc6245d1cfa2bbed23d2dadabbe5a97a47380a2d2f6b327cff6"}]}
+{"id" "youtube_desktop_panel" "index" 1 "name" "YouTube — direct mouse + keyboard" "parents" ["root" "youtube_desktop_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_desktop_renderer"} "name" "YouTube — direct mouse + keyboard" "_tombstone" false "frame" #afield/rect [330.0 140.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_desktop_panel_code_.kt" "lines" 36 "characters" 1299 "sha256" "30794eecb5bd95f762e363b36a13561a5b7fcf3465215cc5eafa6831d6a75791"}]}
 ```
 
 ```kotlin [field-property box="youtube_desktop_panel" name="code" path="youtube_desktop_panel_code_.kt"]
-import afield.four.Target
-import afield.four.browser.FieldUiBrowserTexture
-import afield.four.browser.PuppetBrowserWindowPanel
+import afield.graphics.vulkan.Target
+import afield.media.browser.FieldUiBrowserTexture
+import afield.media.browser.PuppetBrowserWindowPanel
 
-prop<afield.four.browser.PuppetBrowser>(browserControl)
+prop<afield.media.browser.PuppetBrowser>(browserControl)
 
 val browser = FieldUiBrowserTexture(
     renderer = renderer,

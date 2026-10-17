@@ -216,10 +216,10 @@ uv run python tools/docs_notes.py memory --page sound.md "the second example is 
 - **Each agent is limited to a set of tools.** Claude may read and edit files, run the notes
   command, and run read-only `git` and `grep`. Codex runs in its `workspace-write` sandbox.
 
-??? aside "Where the parts live"
+??? aside "Agents: where the parts live"
 
     The panel is `src/commonMain/resources/docsAnnotations.js`, the store and its routes are
-    `src/jvmMain/kotlin/afield/server/docsAnnotations.kt`, and everything on this page that
+    `src/jvmMain/kotlin/afield/app/server/docsAnnotations.kt`, and everything on this page that
     runs from a terminal is `tools/docs_notes.py`, with its tests in `tools/test_docs_notes.py`.
     The server and the tool both rewrite the same JSON file, so any field the tool writes must
     also be declared on the Kotlin side or the server drops it; `KotlinSchemaTest` checks that.

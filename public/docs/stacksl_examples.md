@@ -126,7 +126,7 @@ palette
 
 ```diffstatic {data-lang=stacksl}
 : warp
-  uv 6.0 * time + sin
+  drop uv 6.0 * time + sin
   0.35 *
   uv +
 ;
@@ -512,7 +512,7 @@ Definitions are written with `: name ... ;`. Inside StackSL, a definition behave
 
 ```diffstatic {data-lang=stacksl}
 : warp
-  uv 8.0 * time + sin
+  drop uv 8.0 * time + sin
   0.18 *
   uv +
 ;
@@ -885,11 +885,11 @@ vec4 prefix_warp(vec4 prefix_in) { ... }
 vec4 prefix_paletteMist(vec4 prefix_in) { ... }
 ```
 
-The low-level compiler is in `afield.stacksl`:
+The low-level compiler is in `afield.lang.stacksl`:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stacksl.StackSLCompileOptions
-import afield.stacksl.StackSLCompiler
+import afield.lang.stacksl.StackSLCompileOptions
+import afield.lang.stacksl.StackSLCompiler
 
 val result = StackSLCompiler.compile(
     source = stackSL ?: "",
@@ -1145,9 +1145,8 @@ one-line `module.program = "uv 4 * fbm"`), or any string whose first line is
 `#stacksl`. Completion opened inside it offers the StackSL vocabulary, with each
 word's stack effect and cheatsheet entry, and the program's own definitions. Rest
 the cursor on a line and the note beside it shows that line's stage, drawn alone
-as **Render this function alone** draws it, which the caption says. Only a
-`#stacksl` string is coloured as StackSL; a slot's string without the header is
-still coloured as a Kotlin string.
+as **Render this function alone** draws it, which the caption says. Both kinds of
+string are coloured as StackSL.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" graphics-context=true region="window" clip-selector=".afield-suggest" screenshot="assets/stacksl/stackauto-in-string-completion.png" transcript="assets/transcripts/stackauto_numbers_setup.yaml" capture-box="stackauto_numbers" padding="6" wait="0" timeout="300" warm-completion=true embed=true hidden=true name="stackauto-in-string-completion" alt="The completion popup opened inside the slot's string, after the pal of palette. On the left, under WORDS, one row: palette, with its stack effect t a b c d — color. On the right, a square of blue, white, orange and violet cloud captioned line 7 · stack.auto.program, what it leaves on the stack, at t = 1.75 s · GPU (Apple M1 Max), drawn alone — not with your shader's input; under it the cheatsheet entry: cosine palette a + bcos(tc + d), and source StackSL cheatsheet."}
 // In the slot's one-line string, with the caret after the `pal` of `palette`: ask for completion there.

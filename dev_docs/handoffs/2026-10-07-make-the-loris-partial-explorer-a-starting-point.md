@@ -9,6 +9,6 @@
 `offline.html?file=assets/agent_transcripts/loris_partial_explorer/metadata.edn`, a read-only
 viewer. Rule 19: a runnable document is a starting point on the welcome screen. Publish the
 explorer as a starting point and link that instead. Also check whether
-`model.spectralWhirlpool(...)` really needs the `import afield.stdlib.loris.spectralWhirlpool`
+`model.spectralWhirlpool(...)` really needs the `import afield.audio.analysis.loris.spectralWhirlpool`
 the page tells readers to write (rule 7: no `afield.stdlib.*` imports in box code); if so, add it
 to the box preamble's imports and drop the sentence's import.

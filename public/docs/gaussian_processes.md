@@ -12,34 +12,48 @@ variable, then draws five possible functions over the same grid:
 :::static
 val xs = doubleArrayOf(-1.2, -0.35, 0.1, 0.95)
 val ys = doubleArrayOf(-0.7, 0.8, 0.35, -0.4)
-val gp = gp1D(xs, ys,
+val gp = gp1D(
+    xs,
+    ys,
     noiseStd = doubleArrayOf(0.06, 0.06, 0.22, 0.06),
-    kernel = GpKernels.rbf(lengthScale = 0.48))
+    kernel = GpKernels.rbf(lengthScale = 0.48),
+)
 val grid = DoubleArray(181) { -1.8 + 3.6 * it / 180 }
 val posterior = gp.posterior(grid)
 
 // GP values are y-up; the SVG is y-down, so flip and scale into pixels
 fun plot(line: FLine) = line.transform { vec(it.x * 180, -it.y * 120, 0) }
 
-val draws = (0L..4L).map { seed ->
-    plot(posterior.sampleFLine(grid, seed)).apply {
-        color = vec(0.3, 0.65, 0.9, 0.7)
-        thickness = 1.5
+val draws =
+    (0L..4L).map { seed ->
+        plot(posterior.sampleFLine(grid, seed)).apply {
+            color = vec(0.3, 0.65, 0.9, 0.7)
+            thickness = 1.5
+        }
     }
-}
 val (lower, upper) = posterior.intervalFLines(grid)
 val band = [lower, upper].map {
-    plot(it).apply { color = vec(1, 0.5, 0.2, 0.5); thickness = 1.0 }
+    plot(it).apply {
+        color = vec(1, 0.5, 0.2, 0.5)
+        thickness = 1.0
+    }
 }
 val mean = plot(posterior.meanFLine(grid)).apply {
     color = vec(1, 0.5, 0.2, 1)
     thickness = 3.0
 }
-val pins = FLine().apply {
-    xs.indices.forEach { moveTo(xs[it], ys[it]) }
-}.let(::plot).apply {
-    stroked = false; pointed = true; pointSize = 3.0; color = vec(1, 1, 1, 1)
-}
+val pins =
+    FLine()
+        .apply {
+            xs.indices.forEach { moveTo(xs[it], ys[it]) }
+        }
+        .let(::plot)
+        .apply {
+            stroked = false
+            pointed = true
+            pointSize = 3.0
+            color = vec(1, 1, 1, 1)
+        }
 lines(draws + band + mean + pins, w = 700.0, h = 360.0, fitToSize = true)
 ```
 
@@ -69,8 +83,8 @@ val prediction = gp.predict(0.5)
 val expectedValue = prediction.mean
 val variance = prediction.variance
 val standardDeviation = prediction.std
-val interval = prediction.interval()  // mean ± 1.96 standard deviations
-val fastMean = gp.mean(0.5)           // avoids the uncertainty solve
+val interval = prediction.interval() // mean ± 1.96 standard deviations
+val fastMean = gp.mean(0.5) // avoids the uncertainty solve
 ```
 
 `gp.posterior(grid)` returns a `GpJoint`. Its `mean`, `variance` and full `covariance` arrays use
@@ -99,17 +113,25 @@ val kernels = [
     GpKernels.matern(0.5, lengthScale = 0.5),
     GpKernels.periodic(period = 1.3, lengthScale = 0.8),
 ]
-val colors = [vec(0.3, 0.65, 0.9, 0.8), vec(0.95, 0.55, 0.25, 0.8),
-    vec(0.9, 0.35, 0.55, 0.8), vec(0.4, 0.85, 0.5, 0.8)]
+val colors = [
+    vec(0.3, 0.65, 0.9, 0.8),
+    vec(0.95, 0.55, 0.25, 0.8),
+    vec(0.9, 0.35, 0.55, 0.8),
+    vec(0.4, 0.85, 0.5, 0.8),
+]
 
 // one row per kernel, stacked down the page; y-up within each row
 val rows = kernels.flatMapIndexed { row, kernel ->
     val prior = GaussianProcess.prior(dimensions = 1, kernel = kernel)
     val joint = prior.posterior(grid)
     (0L..2L).map { seed ->
-        joint.sampleFLine(grid, seed).transform { vec(it.x * 160, row * 170 - it.y * 50, 0) }.apply {
-            color = colors[row]; thickness = 1.5
-        }
+        joint
+            .sampleFLine(grid, seed)
+            .transform { vec(it.x * 160, row * 170 - it.y * 50, 0) }
+            .apply {
+                color = colors[row]
+                thickness = 1.5
+            }
     }
 }
 lines(rows, w = 700.0, h = 560.0, fitToSize = true)
@@ -134,9 +156,9 @@ combines a slowly changing periodic component with small local deviations:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val kernel = GpKernels.periodic(period = 1.0, lengthScale = 0.6) *
-    GpKernels.rbf(lengthScale = 4.0) +
-    GpKernels.matern(nu = 1.5, lengthScale = 0.08, variance = 0.03)
+val kernel =
+    GpKernels.periodic(period = 1.0, lengthScale = 0.6) * GpKernels.rbf(lengthScale = 4.0) +
+        GpKernels.matern(nu = 1.5, lengthScale = 0.08, variance = 0.03)
 val prior = GaussianProcess.prior(dimensions = 1, kernel = kernel)
 val functions = prior.posterior(DoubleArray(300) { it / 60.0 }).samples(6, seed = 91)
 ```
@@ -171,7 +193,10 @@ change the old one or any samples already drawn from it.
 ```diffstatic {data-lang=kotlin}
 :::static
 val refined = gp.condition(
-    arrayOf(doubleArrayOf(0.6)), doubleArrayOf(-0.8), doubleArrayOf(0.03))
+    arrayOf(doubleArrayOf(0.6)),
+    doubleArrayOf(-0.8),
+    doubleArrayOf(0.03),
+)
 ```
 
 ## A field over the plane
@@ -183,26 +208,47 @@ of your positions, not grid indices.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/field2d.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 val points = [vec(-0.8, -0.5), vec(0.55, -0.5), vec(-0.3, 0.65), vec(0.65, 0.55)]
-val field = gp2D(points, doubleArrayOf(0.9, -0.7, -0.8, 0.65),
-    kernel = GpKernels.matern(1.5, doubleArrayOf(0.55, 0.8)), noiseStd = 0.04)
+val field = gp2D(
+    points,
+    doubleArrayOf(0.9, -0.7, -0.8, 0.65),
+    kernel = GpKernels.matern(1.5, doubleArrayOf(0.55, 0.8)),
+    noiseStd = 0.04,
+)
 val side = 40
-val queries = Array(side * side) { i ->
-    doubleArrayOf(-1.2 + 2.4 * (i % side) / (side - 1),
-                  -1.2 + 2.4 * (i / side) / (side - 1))
-}
+val queries =
+    Array(side * side) { i ->
+        doubleArrayOf(
+            -1.2 + 2.4 * (i % side) / (side - 1),
+            -1.2 + 2.4 * (i / side) / (side - 1),
+        )
+    }
 val joint = field.posterior(queries)
 fun grid(values: DoubleArray) = Array(side) { row -> DoubleArray(side) { col -> values[row * side + col] } }
 
 // panels side by side, separated by a thin gap
-fun row(vararg panels: Array<DoubleArray>, gap: Double) = Array(side) { r ->
-    panels.flatMapIndexed { i, p -> (if (i > 0) List(2) { gap } else emptyList()) + p[r].toList() }.toDoubleArray()
-}
+fun row(vararg panels: Array<DoubleArray>, gap: Double) =
+    Array(side) { r ->
+        panels.flatMapIndexed { i, p -> (if (i > 0) List(2) { gap } else emptyList()) + p[r].toList() }.toDoubleArray()
+    }
 
 // the mean and two whole-field draws share one colour scale; then the standard deviation
-showHeatmap(row(grid(joint.mean), grid(joint.sample(seed = 57)), grid(joint.sample(seed = 58)), gap = 0.0),
-    vmin = -2.5, vmax = 2.5, normalize = false, colormap = "coolwarm", width = 720, channel = "mean, two draws")
-showHeatmap(grid(joint.variance.map { sqrt(it) }.toDoubleArray()),
-    vmin = 0.0, normalize = false, colormap = "magma", width = 240, channel = "standard deviation")
+showHeatmap(
+    row(grid(joint.mean), grid(joint.sample(seed = 57)), grid(joint.sample(seed = 58)), gap = 0.0),
+    vmin = -2.5,
+    vmax = 2.5,
+    normalize = false,
+    colormap = "coolwarm",
+    width = 720,
+    channel = "mean, two draws",
+)
+showHeatmap(
+    grid(joint.variance.map { sqrt(it) }.toDoubleArray()),
+    vmin = 0.0,
+    normalize = false,
+    colormap = "magma",
+    width = 240,
+    channel = "standard deviation",
+)
 ```
 
 The first panel is the mean; the next two are whole-field draws. They agree near the four
@@ -225,7 +271,9 @@ each spatial point, such as density, displacement magnitude or a material parame
 val volume = gp3D(
     [vec(-0.7, -0.4, -0.5), vec(0.6, 0.4, 0.5), vec(-0.5, 0.6, 0.0)],
     doubleArrayOf(0.8, -0.8, -0.5),
-    kernel = GpKernels.rbf(doubleArrayOf(0.7, 0.7, 0.9)), noiseStd = 0.04)
+    kernel = GpKernels.rbf(doubleArrayOf(0.7, 0.7, 0.9)),
+    noiseStd = 0.04,
+)
 val atOnePoint = volume.predict(0.1, 0.2, 0.3)
 val uncertainty = atOnePoint.std
 ```
@@ -242,30 +290,51 @@ Once drawn, the function can be evaluated anywhere, in any order, including in s
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/field3d.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 val observations = arrayOf(
-    doubleArrayOf(-0.7, -0.4, -0.5), doubleArrayOf(0.6, 0.4, 0.5),
-    doubleArrayOf(-0.5, 0.6, 0.0), doubleArrayOf(0.6, -0.6, 0.0))
-val featureModel = GpRbfFeatures(
-    lengthScales = doubleArrayOf(0.7, 0.7, 0.9), frequencyCount = 512, seed = 77
-).fit(observations, doubleArrayOf(0.8, -0.8, -0.5, 0.6), DoubleArray(4) { 0.04 })
+    doubleArrayOf(-0.7, -0.4, -0.5),
+    doubleArrayOf(0.6, 0.4, 0.5),
+    doubleArrayOf(-0.5, 0.6, 0.0),
+    doubleArrayOf(0.6, -0.6, 0.0),
+)
+val featureModel =
+    GpRbfFeatures(
+            lengthScales = doubleArrayOf(0.7, 0.7, 0.9),
+            frequencyCount = 512,
+            seed = 77,
+        )
+        .fit(observations, doubleArrayOf(0.8, -0.8, -0.5, 0.6), DoubleArray(4) { 0.04 })
 val oneVolume = featureModel.samplePath(seed = 88)
 
 // three z slices through the same sampled volume, then its uncertainty on those slices
 val side = 64
-fun slice(z: Double, f: (Double, Double, Double) -> Double) = Array(side) { row ->
-    DoubleArray(side) { col ->
-        f(-1.0 + 2.0 * col / (side - 1), -1.0 + 2.0 * row / (side - 1), z)
+fun slice(z: Double, f: (Double, Double, Double) -> Double) =
+    Array(side) { row ->
+        DoubleArray(side) { col ->
+            f(-1.0 + 2.0 * col / (side - 1), -1.0 + 2.0 * row / (side - 1), z)
+        }
     }
-}
-fun row(panels: List<Array<DoubleArray>>, gap: Double) = Array(side) { r ->
-    panels.flatMapIndexed { i, p -> (if (i > 0) List(2) { gap } else emptyList()) + p[r].toList() }.toDoubleArray()
-}
+fun row(panels: List<Array<DoubleArray>>, gap: Double) =
+    Array(side) { r ->
+        panels.flatMapIndexed { i, p -> (if (i > 0) List(2) { gap } else emptyList()) + p[r].toList() }.toDoubleArray()
+    }
 val zs = [-0.5, 0.0, 0.5]
-showHeatmap(row(zs.map { z -> slice(z) { x, y, zz -> oneVolume(x, y, zz) } }, gap = 0.0),
-    vmin = -2.0, vmax = 2.0, normalize = false, colormap = "coolwarm", width = 720,
-    channel = "one sample at z = -0.5, 0, 0.5")
-showHeatmap(row(zs.map { z -> slice(z) { x, y, zz -> featureModel.predict(x, y, zz).std } }, gap = 0.0),
-    vmin = 0.0, vmax = 1.0, normalize = false, colormap = "magma", width = 720,
-    channel = "standard deviation on the same slices")
+showHeatmap(
+    row(zs.map { z -> slice(z) { x, y, zz -> oneVolume(x, y, zz) } }, gap = 0.0),
+    vmin = -2.0,
+    vmax = 2.0,
+    normalize = false,
+    colormap = "coolwarm",
+    width = 720,
+    channel = "one sample at z = -0.5, 0, 0.5",
+)
+showHeatmap(
+    row(zs.map { z -> slice(z) { x, y, zz -> featureModel.predict(x, y, zz).std } }, gap = 0.0),
+    vmin = 0.0,
+    vmax = 1.0,
+    normalize = false,
+    colormap = "magma",
+    width = 720,
+    channel = "standard deviation on the same slices",
+)
 ```
 
 These are three slices through **one** such sampled volume, drawn in the same box. Sampling each
@@ -301,37 +370,58 @@ val curve = gpCurve(
     doubleArrayOf(0.0, 0.2, 0.65, 1.0),
     [vec(-1.0, -0.6, 0), vec(-0.65, 0.65, 0), vec(0.6, 0.5, 0), vec(0.9, -0.5, 0)],
     kernel = GpKernels.matern(2.5, lengthScale = 0.28, variance = 0.3),
-    noiseStd = DoubleArray(4) { 0.015 }, dimensions = 2,
-    outputCovariance = arrayOf(doubleArrayOf(1.0, 0.35), doubleArrayOf(0.35, 0.7)))
+    noiseStd = DoubleArray(4) { 0.015 },
+    dimensions = 2,
+    outputCovariance = arrayOf(doubleArrayOf(1.0, 0.35), doubleArrayOf(0.35, 0.7)),
+)
 val t = DoubleArray(121) { it / 120.0 }
 val distribution = curve.posterior(t)
 
 // y-up curve coordinates into y-down pixels
 fun plot(line: FLine) = line.transform { vec(it.x * 250, -it.y * 250, 0) }
 
-val alternatives = (0L..4L).map { seed ->
-    plot(distribution.sampleLine(seed)).apply { color = vec(0.3, 0.65, 0.9, 0.7); thickness = 1.5 }
+val alternatives =
+    (0L..4L).map { seed ->
+        plot(distribution.sampleLine(seed)).apply {
+            color = vec(0.3, 0.65, 0.9, 0.7)
+            thickness = 1.5
+        }
+    }
+val meanCurve = plot(distribution.meanLine()).apply {
+    color = vec(1, 0.5, 0.2, 1)
+    thickness = 3.0
 }
-val meanCurve = plot(distribution.meanLine()).apply { color = vec(1, 0.5, 0.2, 1); thickness = 3.0 }
 
 // 95% position ellipses from the 2×2 covariance at a few parameters
-val ellipses = (10..110 step 20).map { i ->
-    val c = distribution.covarianceAt(i)
-    val a = c[0][0]; val b = c[0][1]; val d = c[1][1]
-    val mid = (a + d) / 2; val r = sqrt(((a - d) / 2).pow(2) + b * b)
-    val angle = 0.5 * atan2(2 * b, a - d)
-    val k = sqrt(-2 * ln(0.05))
-    val r1 = k * sqrt(mid + r); val r2 = k * sqrt(max(0.0, mid - r))
-    val p = distribution.meanPoints[i]
-    FLine().apply {
-        for (s in 0..48) {
-            val u = 2 * PI * s / 48
-            val x = p.x + r1 * cos(u) * cos(angle) - r2 * sin(u) * sin(angle)
-            val y = p.y + r1 * cos(u) * sin(angle) + r2 * sin(u) * cos(angle)
-            if (s == 0) moveTo(x, y) else lineTo(x, y)
-        }
-    }.let(::plot).apply { color = vec(1, 1, 1, 0.6); thickness = 1.0 }
-}
+val ellipses =
+    (10..110 step 20).map { i ->
+        val c = distribution.covarianceAt(i)
+        val a = c[0][0]
+        val b = c[0][1]
+        val d = c[1][1]
+        val mid = (a + d) / 2
+        val r = sqrt(((a - d) / 2).pow(2) + b * b)
+        val angle = 0.5 * atan2(2 * b, a - d)
+        val k = sqrt(-2 * ln(0.05))
+        val r1 = k * sqrt(mid + r)
+        val r2 = k * sqrt(max(0.0, mid - r))
+        val p = distribution.meanPoints[i]
+        FLine()
+            .apply {
+                breakNext()
+                for (s in 0..48) {
+                    val u = 2 * PI * s / 48
+                    val x = p.x + r1 * cos(u) * cos(angle) - r2 * sin(u) * sin(angle)
+                    val y = p.y + r1 * cos(u) * sin(angle) + r2 * sin(u) * cos(angle)
+                    lineTo(x, y)
+                }
+            }
+            .let(::plot)
+            .apply {
+                color = vec(1, 1, 1, 0.6)
+                thickness = 1.0
+            }
+    }
 lines(alternatives + ellipses + meanCurve, w = 700.0, h = 420.0, fitToSize = true)
 ```
 
@@ -358,11 +448,13 @@ of a closed-curve model is one because its parameter is normalised arc length.
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.graphics.*
-
 val stroke = FLine().moveTo(0, 0).lineTo(100, 60).lineTo(180, 0)
-val model = stroke.gaussianProcess(trainingSamples = 24, dimensions = 2,
-    kernel = GpKernels.matern(2.5, lengthScale = 0.2, variance = 225.0), noiseStd = 2.0)
+val model = stroke.gaussianProcess(
+    trainingSamples = 24,
+    dimensions = 2,
+    kernel = GpKernels.matern(2.5, lengthScale = 0.2, variance = 225.0),
+    noiseStd = 2.0,
+)
 val fitted = model.posterior(DoubleArray(180) { it / 179.0 })
 val variation = fitted.sampleLine(seed = 29)
 ```
@@ -383,40 +475,64 @@ centroid, which for a loop is its middle.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/loop.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 // six pins around a loop; move any of them and run again
-val pins = [vec(1.0, 0.0, 0), vec(0.45, 0.8, 0), vec(-0.5, 0.95, 0),
-                  vec(-1.1, 0.0, 0), vec(-0.4, -0.75, 0), vec(0.6, -0.9, 0)]
+val pins = [
+    vec(1.0, 0.0, 0),
+    vec(0.45, 0.8, 0),
+    vec(-0.5, 0.95, 0),
+    vec(-1.1, 0.0, 0),
+    vec(-0.4, -0.75, 0),
+    vec(0.6, -0.9, 0),
+]
 // each pin's place on the loop's parameter, which runs once round from 0 to 1
 val at = DoubleArray(pins.size) { it.toDouble() / pins.size }
 
 // a periodic kernel with period 1 makes t = 0 and t = 1 the same point, value and slope
-val loop = gpCurve(at, pins,
+val loop = gpCurve(
+    at,
+    pins,
     kernel = GpKernels.periodic(period = 1.0, lengthScale = 0.6, variance = 0.04),
-    noiseStd = DoubleArray(pins.size) { 0.01 }, dimensions = 2)
+    noiseStd = DoubleArray(pins.size) { 0.01 },
+    dimensions = 2,
+)
 val t = DoubleArray(201) { it / 200.0 }
 val distribution = loop.posterior(t)
 
 fun plot(line: FLine) = line.transform { vec(it.x * 200, -it.y * 200, 0) }
 
-val draws = (0L..5L).map { seed ->
-    plot(distribution.sampleLine(seed)).apply { color = vec(0.3, 0.65, 0.9, 0.8); thickness = 1.5 }
+val draws =
+    (0L..5L).map { seed ->
+        plot(distribution.sampleLine(seed)).apply {
+            color = vec(0.3, 0.65, 0.9, 0.8)
+            thickness = 1.5
+        }
+    }
+val mean = plot(distribution.meanLine()).apply {
+    color = vec(1, 0.5, 0.2, 1)
+    thickness = 3.0
 }
-val mean = plot(distribution.meanLine()).apply { color = vec(1, 0.5, 0.2, 1); thickness = 3.0 }
 val dots = plot(FLine().apply { pins.forEach { moveTo(it.x, it.y) } }).apply {
-    stroked = false; pointed = true; pointSize = 3.0; color = vec(1, 1, 1, 1)
+    stroked = false
+    pointed = true
+    pointSize = 3.0
+    color = vec(1, 1, 1, 1)
 }
 lines(draws + mean + dots, w = 600.0, h = 520.0, fitToSize = true)
 
 // the seam: a draw's last point is its first, and it turns there no more than anywhere else
 val p = distribution.samplePoints(seed = 0L)
 fun turn(a: Vec3, b: Vec3, c: Vec3): Double {
-    val ux = b.x - a.x; val uy = b.y - a.y; val vx = c.x - b.x; val vy = c.y - b.y
+    val ux = b.x - a.x
+    val uy = b.y - a.y
+    val vx = c.x - b.x
+    val vy = c.y - b.y
     return abs(atan2(ux * vy - uy * vx, ux * vx + uy * vy).toDouble())
 }
 val seamGap = hypot((p.last().x - p.first().x).toDouble(), (p.last().y - p.first().y).toDouble())
 val seamTurn = turn(p[p.size - 2], p[0], p[1])
 val maxTurn = (1 until p.size - 1).maxOf { turn(p[it - 1], p[it], p[it + 1]) }
-println("seam gap %.2e, turn at the seam %.4f rad, largest turn elsewhere %.4f rad"
-    .format(seamGap, seamTurn, maxTurn))
+println(
+    "seam gap %.2e, turn at the seam %.4f rad, largest turn elsewhere %.4f rad".format(seamGap, seamTurn, maxTurn),
+)
 ```
 
 ![An orange closed loop through six white pins, with six blue closed draws that pinch in at every pin and bulge apart between them; the seam at the rightmost pin, where each draw starts and ends, is as smooth as anywhere else](assets/gaussian_processes/loop.png)
@@ -443,30 +559,46 @@ direction is less certain:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/frames.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 // two loose pins, a pinned launch direction, and a free middle
-val arch = gpCurve(doubleArrayOf(0.0, 1.0), [vec(0, 0, 0), vec(1, 0, 0)],
-    GpKernels.rbf(0.4), dimensions = 2, noiseStd = doubleArrayOf(0.02, 0.02),
-    velocities = [0.0 to vec(0, 3, 0), 1.0 to vec(0, -3, 0)])
+val arch = gpCurve(
+    doubleArrayOf(0.0, 1.0),
+    [vec(0, 0, 0), vec(1, 0, 0)],
+    GpKernels.rbf(0.4),
+    dimensions = 2,
+    noiseStd = doubleArrayOf(0.02, 0.02),
+    velocities = [0.0 to vec(0, 3, 0), 1.0 to vec(0, -3, 0)],
+)
 val ts = DoubleArray(41) { it / 40.0 }
 
 fun plot(line: FLine) = line.transform { vec(it.x * 500, -it.y * 500, 0) }
 
 // a tick across the curve at every frame, longer where the tangent direction is uncertain
-val ticks = arch.frames(ts).map { f ->
-    val w = 0.02 + 0.2 * f.tangentAngleStd.coerceAtMost(1.0)
-    val p = f.position; val n = f.normal!!
-    plot(FLine().moveTo(p.x - n.x * w, p.y - n.y * w).lineTo(p.x + n.x * w, p.y + n.y * w)).apply {
-        color = vec(0.4, 0.85, 0.5, 0.9); thickness = 1.5
+val ticks =
+    arch.frames(ts).map { f ->
+        val w = 0.02 + 0.2 * f.tangentAngleStd.coerceAtMost(1.0)
+        val p = f.position
+        val n = f.normal!!
+        plot(FLine().moveTo(p.x - n.x * w, p.y - n.y * w).lineTo(p.x + n.x * w, p.y + n.y * w)).apply {
+            color = vec(0.4, 0.85, 0.5, 0.9)
+            thickness = 1.5
+        }
     }
+val draws =
+    (0L..3L).map { seed ->
+        plot(arch.posterior(ts).sampleLine(seed)).apply {
+            color = vec(0.3, 0.65, 0.9, 0.85)
+            thickness = 1.2
+        }
+    }
+val mean = plot(arch.posterior(ts).meanLine()).apply {
+    color = vec(1, 0.5, 0.2, 1)
+    thickness = 3.0
 }
-val draws = (0L..3L).map { seed ->
-    plot(arch.posterior(ts).sampleLine(seed)).apply { color = vec(0.3, 0.65, 0.9, 0.85); thickness = 1.2 }
-}
-val mean = plot(arch.posterior(ts).meanLine()).apply { color = vec(1, 0.5, 0.2, 1); thickness = 3.0 }
 lines(draws + ticks + mean, w = 700.0, h = 420.0, fitToSize = true)
 
 val k = arch.curvature(ts)
-println("curvature at the top: of mean %.2f, of draws %.2f ± %.2f"
-    .format(k.ofMean[20], k.mean[20], k.std[20]))
+println(
+    "curvature at the top: of mean %.2f, of draws %.2f ± %.2f".format(k.ofMean[20], k.mean[20], k.std[20]),
+)
 ```
 
 ![An orange arch rising straight up from its left pin, over the top and straight down to its right pin, with faint blue draws around it; green ticks cross it at even steps, short at the ends where the direction is pinned and longest across the top](assets/gaussian_processes/frames.png)
@@ -492,10 +624,10 @@ curve whose draws belong to the same functions as `posterior(grid)`.
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val slope = gp.derivative(0, 0.5)              // ∂f/∂x at x = 0.5
+val slope = gp.derivative(0, 0.5) // ∂f/∂x at x = 0.5
 val slopeMean = slope.mean
 val slopeStd = slope.std
-val slopes = gp.derivativePosterior(grid)       // a GpJoint, like posterior(grid)
+val slopes = gp.derivativePosterior(grid) // a GpJoint, like posterior(grid)
 val steepest = slopes.sampleFLine(grid, seed = 3)
 ```
 
@@ -509,18 +641,33 @@ fun plot(line: FLine) = line.transform { vec(it.x * 220, -it.y * 120, 0) }
 
 // the same two values, with and without a pinned launch slope at x = 0
 val free = gp1D(doubleArrayOf(0.0, 2.0), doubleArrayOf(0.0, 0.0), GpKernels.rbf(lengthScale = 0.6))
-val launched = gp1D(doubleArrayOf(0.0, 2.0), doubleArrayOf(0.0, 0.0),
+val launched = gp1D(
+    doubleArrayOf(0.0, 2.0),
+    doubleArrayOf(0.0, 0.0),
     GpKernels.rbf(lengthScale = 0.6),
-    slopes = [GpDerivativeObservation.slope(0.0, value = 1.5, noiseStd = 0.1)])
+    slopes = [GpDerivativeObservation.slope(0.0, value = 1.5, noiseStd = 0.1)],
+)
 
 fun drawsOf(model: GaussianProcess, c: Vec4, offset: Double) =
     model.posterior(grid).samples(4, seed = 7).map { ys ->
-        FLine().apply { grid.indices.forEach { if (it == 0) moveTo(grid[it], ys[it] + offset) else lineTo(grid[it], ys[it] + offset) } }
-            .let(::plot).apply { color = c; thickness = 1.5 }
+        FLine()
+            .apply {
+                breakNext()
+                grid.indices.forEach { lineTo(grid[it], ys[it] + offset) }
+            }
+            .let(::plot)
+            .apply {
+                color = c
+                thickness = 1.5
+            }
     }
 
-lines(drawsOf(free, vec(0.6, 0.6, 0.6, 0.7), 0.0) +
-      drawsOf(launched, vec(0.3, 0.65, 0.9, 0.9), -3.0), w = 700.0, h = 420.0, fitToSize = true)
+lines(
+    drawsOf(free, vec(0.6, 0.6, 0.6, 0.7), 0.0) + drawsOf(launched, vec(0.3, 0.65, 0.9, 0.9), -3.0),
+    w = 700.0,
+    h = 420.0,
+    fitToSize = true,
+)
 
 val slope = launched.derivative(0, 0.0)
 println("slope at 0: %.2f ± %.2f".format(slope.mean, slope.std))
@@ -544,8 +691,11 @@ estimates of an integral:
 ```diffstatic {data-lang=kotlin}
 :::static
 val nodes = DoubleArray(21) { it / 20.0 }
-val area = gp.posterior(nodes).linearTransform(
-    arrayOf(DoubleArray(21) { if (it == 0 || it == 20) 0.025 else 0.05 }))  // trapezoid rule
+val area =
+    gp.posterior(nodes)
+        .linearTransform(
+            arrayOf(DoubleArray(21) { if (it == 0 || it == 20) 0.025 else 0.05 }),
+        ) // trapezoid rule
 val areaMean = area.mean[0]
 val areaStd = sqrt(area.variance[0])
 ```
@@ -561,13 +711,15 @@ in log space, using finite differences of Field's own likelihood:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val fit = fitGpHyperparametersWithSmile([
-    GpParameter("lengthScale", 0.5, 0.03, 3.0),
-    GpParameter("variance", 1.0, 0.01, 10.0),
-    GpParameter("noiseStd", 0.1, 0.001, 0.5)
-]) { p ->
-    gp1D(xs, ys, GpKernels.matern(2.5, p[0], p[1]), noiseStd = p[2])
-}
+val fit = fitGpHyperparametersWithSmile(
+    [
+        GpParameter("lengthScale", 0.5, 0.03, 3.0),
+        GpParameter("variance", 1.0, 0.01, 10.0),
+        GpParameter("noiseStd", 0.1, 0.001, 0.5),
+    ],
+) { p ->
+        gp1D(xs, ys, GpKernels.matern(2.5, p[0], p[1]), noiseStd = p[2])
+    }
 val fittedModel = fit.process
 val settings = fit.parameters
 val stationarity = fit.projectedGradientMax
@@ -590,35 +742,59 @@ samples of something that repeats are scanned over two octaves of candidate peri
 val xs = DoubleArray(9) { 0.23 * it }
 val ys = DoubleArray(9) { sin(2 * PI * xs[it] / 0.8) + 0.1 * cos(7.0 * it) }
 
-val periods = DoubleArray(61) { 0.4 * 2.0.pow(2.0 * it / 60.0) }   // two octaves, log spaced
-val scan = scanGpEvidence(periods) { p ->
-    gp1D(xs, ys, GpKernels.periodic(period = p, lengthScale = 0.8), noiseStd = 0.1)
-}
+val periods = DoubleArray(61) { 0.4 * 2.0.pow(2.0 * it / 60.0) } // two octaves, log spaced
+val scan =
+    scanGpEvidence(periods) { p ->
+        gp1D(xs, ys, GpKernels.periodic(period = p, lengthScale = 0.8), noiseStd = 0.1)
+    }
 val weights = scan.posteriorWeights
 
 // posterior weight over the period; ticks mark 0.4, 0.8 and 1.6 on a log axis
-val bars = periods.indices.map { i ->
-    val x = ln(periods[i] / 0.4) * 400
-    FLine().moveTo(x, 0.0).lineTo(x, -300 * weights[i] / weights.max()).apply {
-        color = vec(0.3, 0.65, 0.9, 1); thickness = 4.0
+val bars =
+    periods.indices.map { i ->
+        val x = ln(periods[i] / 0.4) * 400
+        FLine().moveTo(x, 0.0).lineTo(x, -300 * weights[i] / weights.max()).apply {
+            color = vec(0.3, 0.65, 0.9, 1)
+            thickness = 4.0
+        }
     }
+val axis = FLine().moveTo(0.0, 4.0).lineTo(ln(4.0) * 400, 4.0).apply {
+    color = vec(0.6, 0.6, 0.6, 1)
+    thickness = 1.0
 }
-val axis = FLine().moveTo(0.0, 4.0).lineTo(ln(4.0) * 400, 4.0).apply { color = vec(0.6, 0.6, 0.6, 1); thickness = 1.0 }
-val octaves = (0..2).map { o ->
-    FLine().moveTo(ln(2.0.pow(o)) * 400, 4.0).lineTo(ln(2.0.pow(o)) * 400, 14.0).apply { color = vec(0.6, 0.6, 0.6, 1) }
-}
+val octaves =
+    (0..2).map { o ->
+        FLine().moveTo(ln(2.0.pow(o)) * 400, 4.0).lineTo(ln(2.0.pow(o)) * 400, 14.0).apply {
+            color = vec(0.6, 0.6, 0.6, 1)
+        }
+    }
 lines(bars + axis + octaves, w = 700.0, h = 260.0, fitToSize = true, channel = "period weights")
 println("likeliest period %.3f".format(scan.best))
 
 // keep that uncertainty: mix the candidates by their weights
 val mixed = gp1D(xs, ys, GpKernels.periodicMixture(periods, weights, lengthScale = 0.8), noiseStd = 0.1)
 val grid = DoubleArray(241) { -0.2 + 2.4 * it / 240 }
-val draws = mixed.posterior(grid).samples(4, seed = 5).map { ys ->
-    FLine().apply { grid.indices.forEach { if (it == 0) moveTo(grid[it] * 250, -ys[it] * 100) else lineTo(grid[it] * 250, -ys[it] * 100) } }
-        .apply { color = vec(0.3, 0.65, 0.9, 0.7); thickness = 1.5 }
-}
-val dots = FLine().apply { xs.indices.forEach { moveTo(xs[it] * 250, -ys[it] * 100) } }
-    .apply { stroked = false; pointed = true; pointSize = 3.0; color = vec(1, 1, 1, 1) }
+val draws =
+    mixed.posterior(grid).samples(4, seed = 5).map { ys ->
+        FLine()
+            .apply {
+                breakNext()
+                grid.indices.forEach { lineTo(grid[it] * 250, -ys[it] * 100) }
+            }
+            .apply {
+                color = vec(0.3, 0.65, 0.9, 0.7)
+                thickness = 1.5
+            }
+    }
+val dots =
+    FLine()
+        .apply { xs.indices.forEach { moveTo(xs[it] * 250, -ys[it] * 100) } }
+        .apply {
+            stroked = false
+            pointed = true
+            pointSize = 3.0
+            color = vec(1, 1, 1, 1)
+        }
 lines(draws + dots, w = 700.0, h = 260.0, fitToSize = true, channel = "draws from the mixture")
 ```
 
@@ -648,8 +824,7 @@ val a = featureModel.samplePath(101)
 val b = featureModel.samplePath(202)
 fun animated(x: Double, y: Double, z: Double, phase: Double): Double {
     val m = featureModel.mean(x, y, z)
-    return m + kotlin.math.cos(phase) * (a(x, y, z) - m) +
-        kotlin.math.sin(phase) * (b(x, y, z) - m)
+    return m + kotlin.math.cos(phase) * (a(x, y, z) - m) + kotlin.math.sin(phase) * (b(x, y, z) - m)
 }
 ```
 

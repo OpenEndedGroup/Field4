@@ -1,7 +1,7 @@
 # Certified envelopes for `Functions.Fn` — the interval walker
 
-Landed on `nightly/2026-09-23/1-fn-interval-bounds`. Code: `src/jvmMain/kotlin/afield/stdlib/FnInterval.kt`;
-tests: `src/jvmTest/kotlin/afield/stdlib/FnIntervalTest.kt`; viewer hook: `SignalChannel.certified`
+Landed on `nightly/2026-09-23/1-fn-interval-bounds`. Code: `src/jvmMain/kotlin/afield/math/functions/FnInterval.kt`;
+tests: `src/jvmTest/kotlin/afield/math/functions/FnIntervalTest.kt`; viewer hook: `SignalChannel.certified`
 in `SignalViewer.kt` + `signal-viewer.js`; demo: `dev_docs/agents/demos/certified_envelope/`.
 
 ## Why

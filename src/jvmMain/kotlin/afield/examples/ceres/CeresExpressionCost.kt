@@ -1,23 +1,23 @@
 package afield.examples.ceres
 
-import afield.stdlib.ceres.CachedCeresSolvers
-import afield.stdlib.ceres.CeresExpr
-import afield.stdlib.ceres.CeresExprVec
-import afield.stdlib.ceres.CeresLinearSolver
-import afield.stdlib.ceres.CeresProgram
-import afield.stdlib.ceres.FfmCeresBackend
-import afield.stdlib.ceres.PointCloud
-import afield.stdlib.ceres.RobustLoss
-import afield.stdlib.ceres.SolveOptions
-import afield.stdlib.ceres.SolveRequest
-import afield.stdlib.ceres.Vec3
-import afield.stdlib.ceres.buildCeresProgram
-import afield.stdlib.ceres.c
-import afield.stdlib.polytope.CeresRealization
-import afield.stdlib.polytope.PlaneFormulation
-import afield.stdlib.polytope.RealizationProblem
-import afield.stdlib.polytope.RelaxationPlan
-import afield.stdlib.polytope.conway
+import afield.math.optimization.ceres.CachedCeresSolvers
+import afield.math.optimization.ceres.CeresExpr
+import afield.math.optimization.ceres.CeresExprVec
+import afield.math.optimization.ceres.CeresLinearSolver
+import afield.math.optimization.ceres.CeresProgram
+import afield.math.optimization.ceres.FfmCeresBackend
+import afield.math.optimization.ceres.PointCloud
+import afield.math.optimization.ceres.RobustLoss
+import afield.math.optimization.ceres.SolveOptions
+import afield.math.optimization.ceres.SolveRequest
+import afield.math.optimization.ceres.Vec3
+import afield.math.optimization.ceres.buildCeresProgram
+import afield.math.optimization.ceres.c
+import afield.geometry.polytope.CeresRealization
+import afield.geometry.polytope.PlaneFormulation
+import afield.geometry.polytope.RealizationProblem
+import afield.geometry.polytope.RelaxationPlan
+import afield.geometry.polytope.conway
 
 /**
  * What the expression VM costs against the equivalent hand-written functor.

@@ -4,9 +4,9 @@ the focus distance — rather than a position and a target point. Interpolating 
 SCREW MOTION, and between two cameras looking at the same subject it is a very different
 move from lerping the two positions. Draw both and the argument makes itself.
 */
-import afield.four.util.CameraPose
-import afield.stdlib.KeyframeScope
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.vulkan.util.CameraPose
+import afield.animation.keyframes.KeyframeScope
+import afield.math.linalg.Vector3f
 
 // The two camera positions; both look at the subject at the origin. Move one and rerun.
 var fromPos = Vector3f(8f, 2f, 0f)

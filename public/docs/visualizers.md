@@ -16,7 +16,7 @@ ask Field to show a value, the **value visualizer** turns it into a compact HTML
 view — a reflective tree for arbitrary objects, and, for the types Field draws
 with, a little inline graphic. You reach it three ways, all
 of which call the same renderer (`ValueVisualizer.visualize(...)`, in
-`src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt`):
+`src/jvmMain/kotlin/afield/ui/visualization/ValueVisualizer.kt`):
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -178,7 +178,7 @@ treatment, and it is the case where the picture most obviously beats the text: a
 `Img` is a `FloatArray` you cannot read, a `List<Corner>` is forty records of
 three doubles each, and a `GaussianPyramid` is `GaussianPyramid@3f1a2b`. Every
 imaging value below is rendered by
-`src/jvmMain/kotlin/afield/visualization/ImagingVisualizer.kt`, reached through the
+`src/jvmMain/kotlin/afield/ui/visualization/ImagingVisualizer.kt`, reached through the
 same `.h` you have been using all along.
 
 Evaluate an `Img` and you get the actual pixels, aspect-correct, plus a `<details>`
@@ -709,9 +709,6 @@ Three rules matter once a figure mixes computed values into the prose:
 
 Beyond GitHub-flavoured markdown there are two additions: `:::row … :::end`, splitting columns on a `---` line, for the before/after shape markdown cannot spell; and `{role:text}` spans — `accent`, `muted`, `dim`, `ok`, `warn`, `bad` — so a callout never needs a hex literal. Neither applies inside code, so a `:::row` or a `{warn:…}` shown *as* an example stays as written. The figure above uses both: the before/after row, and the `ok`, `warn` and `muted` spans on its status line.
 
-??? aside "Why the example closes its row with `:::end`"
-    A bare `:::` also closes a row in a live box, but on a docs page the runner treats a line that is exactly `:::` as one of its own fence-section markers — the same family as the `:::static` at the top of every runnable example — and strips it out of the code before running it. The row then never closes, and swallows the rest of the card in the built page only.
-
 You do not need `trimIndent()`; the text is dedented for you, and unlike `trimIndent` it survives having a multi-line value interpolated into it. `width` pins the card's width; without it the card is as wide as its widest unbreakable line.
 
 ### Trees and columns
@@ -836,10 +833,10 @@ And while it is not a “visualizer” in the chart sense, `logs(...)` belongs i
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-logs.png" alt="A logs embed with a channels: demo chip, a find box and a clear button. Below, one grouped block in the demo channel, each row with its time: starting a job, then step 1 of 3, step 2 of 3 and step 3 of 3, the block running on below the bottom of the panel." wait="3.0" capture="box" open-outputs="true" w="900" h="200" embed=true name="logs-demo"}
 logs("logs") { channel("demo") }
 
-val log = afield.ai.core.LogDispatcher
-log.log(afield.ai.core.LogEvent("demo", "starting a job", blockId = "job", boundary = afield.ai.core.BlockBoundary.BEGIN))
-for (i in 1..3) log.log(afield.ai.core.LogEvent("demo", "step $i of 3", blockId = "job"))
-log.log(afield.ai.core.LogEvent("demo", "done", blockId = "job", boundary = afield.ai.core.BlockBoundary.END))
+val log = afield.ai.diagnostics.LogDispatcher
+log.log(afield.ai.diagnostics.LogEvent("demo", "starting a job", blockId = "job", boundary = afield.ai.diagnostics.BlockBoundary.BEGIN))
+for (i in 1..3) log.log(afield.ai.diagnostics.LogEvent("demo", "step $i of 3", blockId = "job"))
+log.log(afield.ai.diagnostics.LogEvent("demo", "done", blockId = "job", boundary = afield.ai.diagnostics.BlockBoundary.END))
 ```
 
 It gives you a live log iframe inside an output channel, which is often exactly what you want while instrumenting a system.
@@ -1142,7 +1139,7 @@ Pass `polar = true` to draw any of the three around a circle. A step sequence is
 - On a polar `matrix`, rows are rings (row 0 is the outermost) and columns are sectors running clockwise from twelve o'clock. The playhead lights a whole sector.
 - On a polar `rangeSlider`, the track is the whole circle, and `min` and `max` meet at the top. The band runs clockwise from `start` to `endInclusive` and may wrap through the top. Drag inside it to turn the whole band.
 
-A wrapped band has `start > endInclusive`, which Kotlin's own `in` reads as an empty range, so test it with `arcContains`. On a dial a range means an arc, so use it for values that are already circular: a phase, a hue, a window into a loop.
+On a dial a range means an arc, and `value in band` follows it. Use it for values that are already circular: a phase, a hue, a window into a loop.
 
 <!--
 FIELD_TEST
@@ -1173,7 +1170,7 @@ controlGroup("dial", columns = 3) {
     grid = matrix("pattern", rows = 4, columns = 16, states = 4, initialValue = pattern, polar = true) { pattern = it }
     range = rangeSlider("band", min = 20.0, max = 2000.0, initialValue = band, polar = true) {
         band = it
-        print(it.arcContains(100.0))
+        print(100.0 in it)
     }
 }
 
@@ -1679,7 +1676,7 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-signal-panels.png" alt="four synth panels in amber and blue on black. 'audio' pairs a dense stereo waveform at peak 0.858, rms 0.382 with a spectrum whose harmonics march up to a broad shelf past 5 kHz. 'scope' shows the same pair after filtering: a smaller waveform at peak 0.355 and a spectrum whose partials die away by 5 kHz. 'env' draws an ADSR, the orange gate dropping partway across and the blue level decaying after it, tagged RELEASE, lvl 0.401. 'comp' overlays an amber signal swelling into a compressor's blue gain-reduction curve, tagged GR 18.5 dB, threshold -18.0 dB, ratio 6.00:1" wait="1.5" capture="box" open-outputs="true" padding="8" w="1200" h="350" trim=true embed=true name="signal-panels"}
 :::static
-import afield.four.synth.*
+import afield.audio.synth.*
 
 val sampleRate = 48_000f
 val frames = 512

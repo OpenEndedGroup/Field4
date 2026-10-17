@@ -11,12 +11,12 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 500.0, h: 110.0 }
       properties:
         code: |
-          import afield.solidcraft.SolidCraftDesign
-          import afield.solidcraft.SolidCraftLibrary
-          import afield.stdlib.MeshRenderer
-          import afield.stdlib.MeshView
-          import afield.stdlib.showMeshGrid
-          import afield.stdlib.weld
+          import afield.geometry.solid.solidcraft.SolidCraftDesign
+          import afield.geometry.solid.solidcraft.SolidCraftLibrary
+          import afield.geometry.mesh.MeshRenderer
+          import afield.geometry.mesh.MeshView
+          import afield.geometry.mesh.showMeshGrid
+          import afield.geometry.mesh.weld
 
           run {
               if (!SolidCraftLibrary.isAvailable) {

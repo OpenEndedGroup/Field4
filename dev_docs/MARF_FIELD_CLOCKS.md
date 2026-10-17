@@ -159,9 +159,9 @@ So the framing that makes `STEPS` easy to hold in the head: **`STEPS` subdivides
 
 | | |
 | --- | --- |
-| The clocks, the grid, the refusal | `src/jvmMain/kotlin/afield/four/synth/Marf.kt` |
-| The assertions, against the night's ten spellings | `src/jvmTest/kotlin/afield/four/synth/MarfTest.kt` |
-| The snippet ↔ figure guard, and its negative control | `src/jvmTest/kotlin/afield/four/synth/MarfDocsGuardTest.kt` |
+| The clocks, the grid, the refusal | `src/jvmMain/kotlin/afield/audio/synth/Marf.kt` |
+| The assertions, against the night's ten spellings | `src/jvmTest/kotlin/afield/audio/synth/MarfTest.kt` |
+| The snippet ↔ figure guard, and its negative control | `src/jvmTest/kotlin/afield/audio/synth/MarfDocsGuardTest.kt` |
 | The published account | `public/docs/marf.md` |
 | A replayable scene where the refusal fires | `dev_docs/agents/artifacts/marf_field_clocks/` |
 
@@ -195,12 +195,12 @@ many stages a pattern *has* is not a nicety, it is the difference between a refi
 ### The first one has no fix inside `STEPS`, and that is why `AUTO` exists
 
 A signal has no steps to walk. `signalOf` answers *any* query with a single analog event spanning it
-(`src/jvmMain/kotlin/afield/four/synth/PatSignals.kt:73#signalOf`), so there is no structure in it
+(`src/jvmMain/kotlin/afield/audio/synth/PatSignals.kt:73#signalOf`), so there is no structure in it
 for a step grid to find, whatever the grid is built from — which is why widening the grid to event
 boundaries fixed the rests and did nothing for this. Walking it therefore samples once per cycle,
 and a cycle-periodic signal sampled once per cycle is a constant: `saw()` as an address stops
 moving, measured as eight identical samples in
-`src/jvmTest/kotlin/afield/four/synth/MarfTest.kt:276#a continuous address glides through the bank instead of stepping`.
+`src/jvmTest/kotlin/afield/audio/synth/MarfTest.kt:276#a continuous address glides through the bank instead of stepping`.
 
 So the clock has to be *chosen* rather than repaired, and `marfResolveClock` chooses it from the
 leading field: discrete events → `STEPS`, none → `CYCLES`.

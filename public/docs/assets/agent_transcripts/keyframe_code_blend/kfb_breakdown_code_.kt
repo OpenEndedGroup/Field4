@@ -2,9 +2,9 @@
 // is not a program — so a keyframe blend steps them. Unless they differ only in numbers,
 // which is the case worth finding, because that is the case a person authoring two looks
 // for one patch keeps producing.
-import afield.stdlib.CodeBlendMode
-import afield.stdlib.CodeBlendOptions
-import afield.stdlib.planStackSLCodeBlend
+import afield.animation.keyframes.CodeBlendMode
+import afield.animation.keyframes.CodeBlendOptions
+import afield.animation.keyframes.planStackSLCodeBlend
 
 val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
 val cool = "uv 8.0 * fbm 0.45 + [0.2,0.5,1.0] *"

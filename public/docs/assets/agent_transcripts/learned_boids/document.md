@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="lb_renderer" index="0" -->
 
 ```edn [field-box id="lb_renderer" role="properties"]
-{"id" "lb_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["lb_train"] "properties" {"children" #{#afield/box "lb_train"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_renderer_code_.kt" "lines" 13 "characters" 322 "sha256" "acd5a99033a29ca1ff24f95cef6d5097ccd7e3a67f50ca1d5263940c78db0220"}]}
+{"id" "lb_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["lb_train"] "properties" {"children" #{#afield/box "lb_train"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_renderer_code_.kt" "lines" 13 "characters" 333 "sha256" "e9aa3201b3d8526ac381dc9ce75bd9d8fe68e6ed1e50ee8632f5fd6f0453e731"}]}
 ```
 
 ```kotlin [field-property box="lb_renderer" name="code" path="lb_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -35,15 +35,15 @@ start(renderer::run)
 <!-- field-box id="lb_train" index="1" -->
 
 ```edn [field-box id="lb_train" role="properties"]
-{"id" "lb_train" "index" 1 "name" "train the rule" "parents" ["root" "lb_renderer"] "children" ["lb_written" "lb_learned"] "properties" {"children" #{#afield/box "lb_written" #afield/box "lb_learned"} "parents" #{#afield/box "root" #afield/box "lb_renderer"} "name" "train the rule" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_train_code_.kt" "lines" 99 "characters" 3474 "sha256" "d076604a50ffa266c603489aecfc6247e227c25d76b73cd27599aaf7e71c1765"}]}
+{"id" "lb_train" "index" 1 "name" "train the rule" "parents" ["root" "lb_renderer"] "children" ["lb_written" "lb_learned"] "properties" {"children" #{#afield/box "lb_written" #afield/box "lb_learned"} "parents" #{#afield/box "root" #afield/box "lb_renderer"} "name" "train the rule" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_train_code_.kt" "lines" 99 "characters" 3494 "sha256" "7f96047269d7789f37ae4d40aec1e58e78b08f2fa768cd79fe530cefe1c72ef8"}]}
 ```
 
 ```kotlin [field-property box="lb_train" name="code" path="lb_train_code_.kt"]
-import afield.stdlib.DeepSetsOptions
-import afield.stdlib.InteractionExample
-import afield.stdlib.trainEquivariant
+import afield.ai.learning.DeepSetsOptions
+import afield.ai.learning.InteractionExample
+import afield.ai.learning.trainEquivariant
 
-prop<afield.stdlib.EquivariantWeights>(learnedRule)
+prop<afield.ai.learning.EquivariantWeights>(learnedRule)
 
 val radius = 2f / 64f
 val minSeparation = radius * 0.05f
@@ -145,15 +145,15 @@ println("trained ${learnedRule.parameterCount} parameters: ${learnedRule}")
 <!-- field-box id="lb_written" index="2" -->
 
 ```edn [field-box id="lb_written" role="properties"]
-{"id" "lb_written" "index" 2 "name" "written rule" "parents" ["root" "lb_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lb_train"} "name" "written rule" "_tombstone" false "frame" #afield/rect [740.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_written_code_.kt" "lines" 79 "characters" 2862 "sha256" "aaed31eebc1eaba3c0f1cc3905466761eb8883f119485c5d873a589d34877874"}]}
+{"id" "lb_written" "index" 2 "name" "written rule" "parents" ["root" "lb_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lb_train"} "name" "written rule" "_tombstone" false "frame" #afield/rect [740.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_written_code_.kt" "lines" 79 "characters" 2883 "sha256" "de04b2ceea3417faa7cf5b3a0606131e702e0a2b952c67c9d9d43a9fbd041855"}]}
 ```
 
 ```kotlin [field-property box="lb_written" name="code" path="lb_written_code_.kt"]
-import afield.four.physics.ShaderBoids
-import afield.four.util.GpuNeighbourGrid
-import afield.stdlib.linalg.Vector2f
+import afield.simulation.physics.ShaderBoids
+import afield.graphics.vulkan.util.GpuNeighbourGrid
+import afield.math.linalg.Vector2f
 
-prop<afield.four.physics.ShaderBoids>(written)
+prop<afield.simulation.physics.ShaderBoids>(written)
 
 // Built once: GPU buffers, neighbour grid and draw pass. Everything below is live.
 once.written {
@@ -235,13 +235,13 @@ println("written rule: ${written.count} boids")
 <!-- field-box id="lb_learned" index="3" -->
 
 ```edn [field-box id="lb_learned" role="properties"]
-{"id" "lb_learned" "index" 3 "name" "learned rule" "parents" ["root" "lb_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lb_train"} "name" "learned rule" "_tombstone" false "frame" #afield/rect [1080.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_learned_code_.kt" "lines" 61 "characters" 2216 "sha256" "4d1aa9007367c7fba494f5fc7fc6e3d0c085b24d2d7379d034fb1cb4720aef97"}]}
+{"id" "lb_learned" "index" 3 "name" "learned rule" "parents" ["root" "lb_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lb_train"} "name" "learned rule" "_tombstone" false "frame" #afield/rect [1080.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_learned_code_.kt" "lines" 61 "characters" 2231 "sha256" "b8788c9f3224fd26af134393886df97ad3919e3094c0b7fa0fdb712f63c883ff"}]}
 ```
 
 ```kotlin [field-property box="lb_learned" name="code" path="lb_learned_code_.kt"]
-import afield.four.physics.ShaderBoids
-import afield.four.util.GpuNeighbourGrid
-import afield.stdlib.linalg.Vector2f
+import afield.simulation.physics.ShaderBoids
+import afield.graphics.vulkan.util.GpuNeighbourGrid
+import afield.math.linalg.Vector2f
 
 // `learnedRule` is the trained network from the parent box. The only difference from
 // the written flock is this argument.

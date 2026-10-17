@@ -1,8 +1,8 @@
-import afield.frames
-import afield.kratos.*
-import afield.manifold.ManifoldLibrary
-import afield.stdlib.MeshView
-import afield.stdlib.showMeshGrid
+import afield.runtime.lifecycle.frames
+import afield.simulation.kratos.*
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.showMeshGrid
 import kotlin.math.abs
 
 // Launch this box once (Alt-R). Worker startup and solves yield to Field's frame loop.

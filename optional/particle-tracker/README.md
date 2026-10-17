@@ -54,7 +54,7 @@ Validation:
 ```sh
 python -m unittest discover -s optional/particle-tracker -v
 make -C optional/particle-tracker/engine test
-./gradlew jvmTest --tests afield.stdlib.ParticleVideoTest
+./gradlew jvmTest --tests afield.media.video.ParticleVideoTest
 ```
 
 The explicit `afield.examples.video.ParticleTrackerSmoke` JVM entrypoint takes `VIDEO OUTPUT_DIR`.

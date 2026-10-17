@@ -15,7 +15,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 ```
 
 ```kotlin [field-property box="pt_renderer" name="code" path="pt_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -35,13 +35,13 @@ start(renderer::run)
 ```
 
 ```kotlin [field-property box="pt_emitters" name="code" path="pt_emitters_code_.kt"]
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.util.Camera
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.linalg.Vector4f
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.vulkan.util.Camera
+
+
 
 prop<PathTracingRenderer>(tracer)
 

@@ -1,6 +1,5 @@
-// The collection half of the gate used to be narrower than its own machinery: it admitted
-// `IntArray` but not `ByteArray`, `List` but not `Set`, while both the tree and the explorer
-// already knew how to draw all of them. Swap the two lines below to compare `.h` and `.h2`.
+// Sets are browsable collections. Swap the two display lines to compare the compact
+// `.h` view with the paged `.h2` explorer.
 
 val names = (1..400).map { "node-" + it }.toSet()
 

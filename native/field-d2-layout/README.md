@@ -9,11 +9,11 @@ The engine worth having here is **TALA**, which Terrastruct open-sourced under M
 drawings; TALA was built for software-architecture diagrams — labelled boxes with connections,
 arranged to be read. That is what a Field canvas and a Petri net both are.
 
-The JVM client is `afield.layout.D2Layout`, which spawns this binary per call and answers `null`
+The JVM client is `afield.ui.layout.D2Layout`, which spawns this binary per call and answers `null`
 whenever it cannot — missing, wrong protocol, timed out, or an error. Callers fall back rather than
 fail.
 
-First caller: `PetriLayout.TALA` (`afield.petri.PetriVisual`), which falls through to
+First caller: `PetriLayout.TALA` (`afield.simulation.petri.PetriVisual`), which falls through to
 `PetriLayout.FORCE` and its own force-directed solver when the helper is absent. Intended second
 caller: an "organize document" command over a document's boxes, which is what the relative
 coordinate mode below exists for.
@@ -21,7 +21,7 @@ coordinate mode below exists for.
 ## Why a separate process
 
 Field is a JVM application and d2 is Go, so the obvious move was to compile d2 to WebAssembly and
-host it in-process on GraalWasm, next to libfaust (`afield.four.synth.FaustEngine`). That was
+host it in-process on GraalWasm, next to libfaust (`afield.audio.synth.FaustEngine`). That was
 measured on 2026-09-08 and rejected on two independent counts.
 
 **It does not run.** GraalWasm 25.0.2 registers `wasi_snapshot_preview1.poll_oneoff` as
@@ -77,7 +77,7 @@ go test ./...
 ```
 
 On Windows the output needs the extension — `go build -o build\field-d2-layout.exe .` — which is
-also where `afield.layout.D2Layout` looks.
+also where `afield.ui.layout.D2Layout` looks.
 
 The result is ~15 MB and lands in `build/`, which is gitignored. Field prints the right one of these
 lines itself when the helper is missing: it checks whether `go` is on PATH and tells you either to
