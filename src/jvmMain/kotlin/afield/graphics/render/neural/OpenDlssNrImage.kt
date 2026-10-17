@@ -1,3 +1,11 @@
+/**
+ * Runs one image file through [OpenDlssNrPass] and shows the result on screen.
+ *
+ * [OpenDlssNrImage] loads the image, requires [OpenDlssNrSupport.availability] to be ready, and after
+ * [OpenDlssNrImage.install] evaluates the pass each frame under the renderer, with `controls` for
+ * the network and `exposure`, `gamma` and `offset` for grading afterwards.
+ */
+
 package afield.graphics.render.neural
 
 import afield.graphics.vulkan.Renderer

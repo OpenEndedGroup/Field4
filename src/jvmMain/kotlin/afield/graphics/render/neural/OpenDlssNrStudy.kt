@@ -1,3 +1,12 @@
+/**
+ * An editable source image fed through the native neural-rendering (NR) pass, with a graded comparison.
+ *
+ * [OpenDlssNrStudy] renders a source, either a fragment shader, a loaded image or a small geometry
+ * scene, into a texture, runs it through [OpenDlssNrPass] when [OpenDlssNrSupport] reports the
+ * native library ready, and displays a graded comparison. Without the library it still shows the
+ * source. [OpenDlssNrStudy.reload] swaps shaders live and [OpenDlssNrStudy.saveFrame] captures a frame.
+ */
+
 package afield.graphics.render.neural
 
 import afield.graphics.vulkan.Renderer
