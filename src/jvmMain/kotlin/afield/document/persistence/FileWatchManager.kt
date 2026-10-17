@@ -885,9 +885,13 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             } else {
                 withSpaces
             }
-            // 4. Use a default if empty, otherwise capitalize first letter
+            // 4. Use a default if empty, otherwise capitalize first letter. What is left is usually
+            // just the property name, which would call every dropped code file "Code"; the box id is
+            // the one thing the author chose, so it names the box instead.
             val displayName = if (meaningfulPart.isEmpty()) {
                 "Box $boxId"
+            } else if (meaningfulPart.equals(propertyName, ignoreCase = true)) {
+                boxId
             } else {
                 meaningfulPart.replaceFirstChar { it.uppercase() }
             }
@@ -901,7 +905,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             // Read and set the file content
             val content = file.readText()
             box.setPropertyRaw(propertyName, content, doResync = true)
-            
+            recordWatcherLoad(box.id, propertyName, content)
+
             // Mark for persistence
             if (box.isInsideInitialized()) {
                 box.inside.markSidecarPending(box.id, propertyName)
