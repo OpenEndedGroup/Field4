@@ -157,11 +157,12 @@ in audio-sized blocks. See [SMPTE Timecode](smpte_timecode.md).
 
 ### matrix_profile
 
-**Motifs, discords and contrast**, in four pure-CPU boxes on `afield.math.matrixprofile`: a random
-walk with a wiggle hidden three times, found by `matrixProfile(...).motifs()`; a pulse train with one
-malformed beat, found by `discords()`; four noisy channels with a gesture in two of them, found with its channels by
-`multiMatrixProfile`; and two sets of examples where only one has a step, found by
-`contrastProfile(...).platos()`. Each box makes its own signal from a fixed seed, so swap in yours.
+**Motifs, discords and contrast**, in four boxes that use `afield.math.matrixprofile` (no GPU
+needed). A random walk with a wiggle hidden three times, found by `matrixProfile(...).motifs()`; a
+pulse train with one malformed beat, found by `discords()`; four noisy channels with a gesture in
+two of them, which `multiMatrixProfile` finds along with the channels that carry it; and two sets
+of examples where only one has a step, found by `contrastProfile(...).platos()`. Each box makes its
+own signal from a fixed seed, so replace that with your own data.
 See [Motifs, Discords and Contrast](matrix_profile.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/matrix_profile/metadata.edn)
