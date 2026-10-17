@@ -3628,6 +3628,8 @@ comes out. See [`MorphoEvaluator`](languages.md#morphospec-kt-morphoevaluator).
 
 `src/jvmMain/kotlin/afield/lang/morpho/MorphoSearch.kt` — [read the source](source/jvmMain/afield/lang/morpho/MorphoSearch/)
 
+**Used in:** [Searching for MorphoHDL Circuits](../morpho_search.md)
+
 ### MorphoIndividual { #morphosearch-kt-morphoindividual }
 
 [<code class="highlight"><span class="k">class</span> <span class="nf">MorphoIndividual</span><span class="p">(</span><span class="k">val</span> <span class="n">genome</span><span class="p">:</span> <span class="nc">MorphoGenome</span><span class="p">,</span> <span class="k">val</span> <span class="n">fitness</span><span class="p">:</span> <span class="nc">MorphoFitness</span><span class="p">)</span></code>](source/jvmMain/afield/lang/morpho/MorphoSearch/#L20)
