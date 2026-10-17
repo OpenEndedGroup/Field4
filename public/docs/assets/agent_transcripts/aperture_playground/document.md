@@ -11,16 +11,17 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "1. Renderer" "parents" ["root"] "children" ["aperture_sprites" "aperture_source"] "properties" {"children" #{#afield/box "aperture_sprites" #afield/box "aperture_source"} "parents" #{#afield/box "root"} "name" "1. Renderer" "_tombstone" false "frame" #afield/rect [60.0 70.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 9 "characters" 275 "sha256" "a514d764a0c67315add20f084aa93c25050e23305586014ea39ed1fd27878b26"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "1. Renderer" "parents" ["root"] "children" ["aperture_sprites" "aperture_source"] "properties" {"children" #{#afield/box "aperture_sprites" #afield/box "aperture_source"} "parents" #{#afield/box "root"} "name" "1. Renderer" "_tombstone" false "frame" #afield/rect [60.0 70.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 10 "characters" 279 "sha256" "59930bc0746093a513d55dc04694cfce08a47dd3851c5aad863cf726b55968b5"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
 import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
 once.renderer {
-    window = Window("Field — aperture playground", initialDimensions = Rect(80.0,80.0,960.0,720.0))
+    window = Window("Field — aperture playground", initialDimensions = Rect(80.0, 80.0, 960.0, 720.0))
     Renderer(window)
 }
 start(renderer::run)
@@ -31,16 +32,17 @@ start(renderer::run)
 <!-- field-box id="aperture_source" index="1" -->
 
 ```edn [field-box id="aperture_source" role="properties"]
-{"id" "aperture_source" "index" 1 "name" "2. Source RTT — lines and points" "parents" ["root" "agent_graphics_context"] "children" ["aperture_half"] "properties" {"children" #{#afield/box "aperture_half"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2. Source RTT — lines and points" "_tombstone" false "frame" #afield/rect [460.0 70.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_source_code_.kt" "lines" 42 "characters" 1762 "sha256" "7e0b320c4f32eca9b01d3426068abad6bb115c81adef78755ff233c86d931219"} {"name" "vertex" "language" "glsl" "path" "aperture_source_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_source_fragment_.glsl" "lines" 23 "characters" 919 "sha256" "6b57e0d80a57e72bd70425960fa676c688f03844d0204ffd68116390bc5b180d"}]}
+{"id" "aperture_source" "index" 1 "name" "2. Source RTT — lines and points" "parents" ["root" "agent_graphics_context"] "children" ["aperture_half"] "properties" {"children" #{#afield/box "aperture_half"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2. Source RTT — lines and points" "_tombstone" false "frame" #afield/rect [460.0 70.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_source_code_.kt" "lines" 43 "characters" 1726 "sha256" "b2d02a5cc68a822eb11ad608ba2abdc25a5158f5ab4fb3fbba9a406c1c36103c"} {"name" "vertex" "language" "glsl" "path" "aperture_source_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_source_fragment_.glsl" "lines" 26 "characters" 927 "sha256" "52fd5840bbc29fbd596a4b00c17be6df51103f76300a2782bb35816e2a2a0c8f"}]}
 ```
 
 ```kotlin [field-property box="aperture_source" name="code" path="aperture_source_code_.kt"]
-import afield.graphics.vulkan.targets.RenderToTexture
 import org.lwjgl.vulkan.VK10.*
 
-// Full-resolution RGBA16F source. RGBA hold light at radii 0, 4, 10, 24 px.
-// Alpha is the fourth light band, so every intermediate filter must use blend=false.
-// propDown: re-running this box with new dimensions re-runs the passes that read paintSource.
+/*
+Full-resolution RGBA16F source. RGBA hold light at radii 0, 4, 10, 24 px.
+Alpha is the fourth light band, so every intermediate filter must use blend=false.
+propDown: re-running this box with new dimensions re-runs the passes that read paintSource.
+*/
 propDown<RenderToTexture>(paintSource)
 thisBox.paintSource = RenderToTexture {
     width = window.width
@@ -48,13 +50,13 @@ thisBox.paintSource = RenderToTexture {
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
     clearFirst = true
-    clearColor = vec(0,0,0,0)
+    clearColor = vec(0, 0, 0, 0)
     debugName = "paint-source"
 }
 thisBox.paintSource.setDefaultSampler(anisotropyEnable = false)
 renderer.renderList.preTargets["paint-source"] = thisBox.paintSource
 prop<afield.math.linalg.Vec4>(apertureControl)
-thisBox.apertureControl = vec(1.5,0,0,0)
+thisBox.apertureControl = vec(1.5, 0, 0, 0)
 println("paint source RTT ready: ${thisBox.paintSource.width}x${thisBox.paintSource.height}")
 
 var module = moduleHere {
@@ -67,16 +69,16 @@ var mesh = Mesh()
 module += "source" to mesh
 mesh.resize(3)
 paintSource += "source" to module
-// x = defocus radius in framebuffer pixels, y = energy, z = sprite radius, w = guide mix.
-mesh.look = { vec(24.0,1.0,0.0,0.0) }
-mesh.size = { vec(paintSource.width,paintSource.height,0,0) }
+// x = requested maximum defocus pixels (capped at 24), y = source energy; z/w are unused.
+mesh.look = { vec(24.0, 1.0, 0.0, 0.0) }
+mesh.size = { vec(paintSource.width, paintSource.height, 0, 0) }
 
 // Nest the two editable reduction helpers without hiding their shaders.
-thisBox.frame = Rect(360.0,70.0,260.0,270.0)
+thisBox.frame = Rect(360.0, 70.0, 260.0, 270.0)
 thisBox.inside.boxes.getValue("aperture_half").nestedIn = thisBox
-thisBox.inside.boxes.getValue("aperture_half").frame = Rect(15.0,70.0,240.0,55.0)
+thisBox.inside.boxes.getValue("aperture_half").frame = Rect(15.0, 70.0, 240.0, 55.0)
 thisBox.inside.boxes.getValue("aperture_quarter").nestedIn = thisBox
-thisBox.inside.boxes.getValue("aperture_quarter").frame = Rect(15.0,150.0,240.0,55.0)
+thisBox.inside.boxes.getValue("aperture_quarter").frame = Rect(15.0, 150.0, 240.0, 55.0)
 ```
 
 ```glsl [field-property box="aperture_source" name="vertex" path="aperture_source_vertex_.glsl"]
@@ -94,7 +96,10 @@ void main() {
 #version 450
 layout(location=0) in vec2 uv;
 layout(location=0) out vec4 result;
-layout(push_constant) uniform Source { vec4 look; vec4 size; } pc;
+layout(push_constant) uniform Source {
+    vec4 look;
+    vec4 size;
+} pc;
 float capsule(vec2 p, vec2 a, vec2 b) {
     vec2 d=b-a;
     return length(p-a-d*clamp(dot(p-a,d)/dot(d,d),0.0,1.0));
@@ -121,21 +126,20 @@ void main() {
 <!-- field-box id="aperture_half" index="2" -->
 
 ```edn [field-box id="aperture_half" role="properties"]
-{"id" "aperture_half" "index" 2 "name" "3. Reduce ½" "parents" ["root" "aperture_source"] "children" ["aperture_quarter" "aperture_medium"] "properties" {"children" #{#afield/box "aperture_quarter" #afield/box "aperture_medium"} "parents" #{#afield/box "root" #afield/box "aperture_source"} "name" "3. Reduce ½" "_tombstone" false "frame" #afield/rect [460.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_half_code_.kt" "lines" 28 "characters" 856 "sha256" "adb40c5929d81c8734ad6fbd92244e399a7e9e9411d609000ef1ba5b312e4af2"} {"name" "vertex" "language" "glsl" "path" "aperture_half_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_half_fragment_.glsl" "lines" 11 "characters" 462 "sha256" "19cb748c5dc55457a71e36933a6ab62bd0892e455180917b2b060f61f2a884ef"}]}
+{"id" "aperture_half" "index" 2 "name" "3. Reduce ½" "parents" ["root" "aperture_source"] "children" ["aperture_quarter" "aperture_medium"] "properties" {"children" #{#afield/box "aperture_quarter" #afield/box "aperture_medium"} "parents" #{#afield/box "root" #afield/box "aperture_source"} "name" "3. Reduce ½" "_tombstone" false "frame" #afield/rect [460.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_half_code_.kt" "lines" 27 "characters" 809 "sha256" "7c1631f9bb1a004caf5d6667ba2d84e2981707189fb187150010c3b0ad1eb0ab"} {"name" "vertex" "language" "glsl" "path" "aperture_half_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_half_fragment_.glsl" "lines" 11 "characters" 454 "sha256" "f7dad831d940b89297b19153878272f3195716a1205a80dc454f539f74a25ad9"}]}
 ```
 
 ```kotlin [field-property box="aperture_half" name="code" path="aperture_half_code_.kt"]
-import afield.graphics.vulkan.targets.RenderToTexture
 import org.lwjgl.vulkan.VK10.*
 
 val source = paintSource
 propDown<RenderToTexture>(paintHalf) = RenderToTexture {
-    width = (source.width/2).coerceAtLeast(1)
-    height = (source.height/2).coerceAtLeast(1)
+    width = (source.width / 2).coerceAtLeast(1)
+    height = (source.height / 2).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
     clearFirst = true
-    clearColor = vec(0,0,0,0)
+    clearColor = vec(0, 0, 0, 0)
     debugName = "paintHalf"
 }
 paintHalf.setDefaultSampler(anisotropyEnable = false)
@@ -175,8 +179,8 @@ void main() {
     // Average a pixel footprint. RGBA remain independent energy bands.
     vec2 d = 0.25 * vec2(dFdx(uv.x), dFdy(uv.y));
     result = 0.25 * (texture(paintSource,uv+vec2(-d.x,-d.y))
-        + texture(paintSource,uv+vec2(d.x,-d.y))
-        + texture(paintSource,uv+vec2(-d.x,d.y)) + texture(paintSource,uv+d));
+    + texture(paintSource,uv+vec2(d.x,-d.y))
+    + texture(paintSource,uv+vec2(-d.x,d.y)) + texture(paintSource,uv+d));
 }
 ```
 
@@ -185,21 +189,20 @@ void main() {
 <!-- field-box id="aperture_quarter" index="3" -->
 
 ```edn [field-box id="aperture_quarter" role="properties"]
-{"id" "aperture_quarter" "index" 3 "name" "4. Reduce ¼" "parents" ["root" "aperture_half"] "children" ["aperture_broad"] "properties" {"children" #{#afield/box "aperture_broad"} "parents" #{#afield/box "root" #afield/box "aperture_half"} "name" "4. Reduce ¼" "_tombstone" false "frame" #afield/rect [460.0 440.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_quarter_code_.kt" "lines" 28 "characters" 873 "sha256" "9fa5d69a4522c9521266f484a99e2aeb65a0f300069f8eb2df8b4dfb9df6d986"} {"name" "vertex" "language" "glsl" "path" "aperture_quarter_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_quarter_fragment_.glsl" "lines" 11 "characters" 452 "sha256" "d0b7081138e7f149297dd0dd434b08e573a0002a4d934b3e6eb6e7ff68661d7e"}]}
+{"id" "aperture_quarter" "index" 3 "name" "4. Reduce ¼" "parents" ["root" "aperture_half"] "children" ["aperture_broad"] "properties" {"children" #{#afield/box "aperture_broad"} "parents" #{#afield/box "root" #afield/box "aperture_half"} "name" "4. Reduce ¼" "_tombstone" false "frame" #afield/rect [460.0 440.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_quarter_code_.kt" "lines" 27 "characters" 826 "sha256" "6c0ee8fbdff312f6880d9de1c402d2e3136adee3347da560a173869896ea16b6"} {"name" "vertex" "language" "glsl" "path" "aperture_quarter_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_quarter_fragment_.glsl" "lines" 11 "characters" 444 "sha256" "ced8adc4342a1323b853755fe2038584cf0c1fbf839ea5bb709bc6da8f6315f6"}]}
 ```
 
 ```kotlin [field-property box="aperture_quarter" name="code" path="aperture_quarter_code_.kt"]
-import afield.graphics.vulkan.targets.RenderToTexture
 import org.lwjgl.vulkan.VK10.*
 
 val source = paintSource
 propDown<RenderToTexture>(paintQuarter) = RenderToTexture {
-    width = (source.width/4).coerceAtLeast(1)
-    height = (source.height/4).coerceAtLeast(1)
+    width = (source.width / 4).coerceAtLeast(1)
+    height = (source.height / 4).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
     clearFirst = true
-    clearColor = vec(0,0,0,0)
+    clearColor = vec(0, 0, 0, 0)
     debugName = "paintQuarter"
 }
 paintQuarter.setDefaultSampler(anisotropyEnable = false)
@@ -239,8 +242,8 @@ void main() {
     // Average a pixel footprint. RGBA remain independent energy bands.
     vec2 d = 0.25 * vec2(dFdx(uv.x), dFdy(uv.y));
     result = 0.25 * (texture(paintHalf,uv+vec2(-d.x,-d.y))
-        + texture(paintHalf,uv+vec2(d.x,-d.y))
-        + texture(paintHalf,uv+vec2(-d.x,d.y)) + texture(paintHalf,uv+d));
+    + texture(paintHalf,uv+vec2(d.x,-d.y))
+    + texture(paintHalf,uv+vec2(-d.x,d.y)) + texture(paintHalf,uv+d));
 }
 ```
 
@@ -255,7 +258,7 @@ From `code`
 Exact disc/aperture overlap: no texture or blur pass for this column.
 
 ```edn [field-box id="aperture_sprites" role="properties"]
-{"id" "aperture_sprites" "index" 4 "name" "8. Analytic point sprites" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "8. Analytic point sprites" "_tombstone" false "frame" #afield/rect [1320.0 440.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_sprites_code_.kt" "lines" 15 "characters" 553 "sha256" "809ab182e52f70b0009219e94de6e0bd9bbfa888dd695ec5f672de5f48349e0f"} {"name" "vertex" "language" "glsl" "path" "aperture_sprites_vertex_.glsl" "lines" 13 "characters" 559 "sha256" "5969dbe19a5f47692e6b507bfbafe9eca155a0be5d1f1ecc094e298bbe947004"} {"name" "fragment" "language" "glsl" "path" "aperture_sprites_fragment_.glsl" "lines" 29 "characters" 1435 "sha256" "fe7c255899267b868be3adcc431b6f23dece617dd51799b0c1fd80896277386b"}]}
+{"id" "aperture_sprites" "index" 4 "name" "8. Analytic point sprites" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "8. Analytic point sprites" "_tombstone" false "frame" #afield/rect [1320.0 440.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_sprites_code_.kt" "lines" 15 "characters" 559 "sha256" "ae18a7f13608085e061a7b014c7992820562d1e7c0433f4f57b70f1bb5463a2f"} {"name" "vertex" "language" "glsl" "path" "aperture_sprites_vertex_.glsl" "lines" 16 "characters" 567 "sha256" "7c05a99e285e628d5a8e5bd7ecdaad19c502de74531ba4c11391f95fdeabeda2"} {"name" "fragment" "language" "glsl" "path" "aperture_sprites_fragment_.glsl" "lines" 32 "characters" 1443 "sha256" "808feb9ea02f6de9fc5e255a04ac0c202e870b8ad8fdfedd78025740aae48078"}]}
 ```
 
 ```kotlin [field-property box="aperture_sprites" name="code" path="aperture_sprites_code_.kt"]
@@ -270,15 +273,18 @@ var module = moduleHere {
 var mesh = Mesh()
 module += "sprites" to mesh
 mesh.resize(24)
-mesh.size = { vec(window.width,window.height,0,0) }
+mesh.size = { vec(window.width, window.height, 0, 0) }
 // x: maximum aperture pixels; y: outline; z: intensity; w: solid fill.
-mesh.look = { vec(24.0,0.0,1.0,1.0) }
+mesh.look = { vec(24.0, 0.0, 1.0, 1.0) }
 renderer.renderList += "aperture-sprites" to module
 ```
 
 ```glsl [field-property box="aperture_sprites" name="vertex" path="aperture_sprites_vertex_.glsl"]
 #version 450
-layout(push_constant) uniform Sprite { vec4 size; vec4 look; } pc;
+layout(push_constant) uniform Sprite {
+    vec4 size;
+    vec4 look;
+} pc;
 layout(location=0) out vec2 local;
 layout(location=1) flat out vec2 appearance;
 const vec2 corners[6] = vec2[6](vec2(-1,-1),vec2(1,-1),vec2(1,1),vec2(-1,-1),vec2(1,1),vec2(-1,1));
@@ -294,7 +300,10 @@ void main() {
 
 ```glsl [field-property box="aperture_sprites" name="fragment" path="aperture_sprites_fragment_.glsl"]
 #version 450
-layout(push_constant) uniform push { vec4 size; vec4 look; } pc;
+layout(push_constant) uniform push {
+    vec4 size;
+    vec4 look;
+} pc;
 layout(location=0) in vec2 local;
 layout(location=1) flat in vec2 appearance; // visible energy, aperture radius
 layout(location=0) out vec4 color;
@@ -329,21 +338,20 @@ void main() {
 <!-- field-box id="aperture_broad" index="5" -->
 
 ```edn [field-box id="aperture_broad" role="properties"]
-{"id" "aperture_broad" "index" 5 "name" "6. Aperture 24 px" "parents" ["root" "aperture_quarter"] "children" ["aperture_composite"] "properties" {"children" #{#afield/box "aperture_composite"} "parents" #{#afield/box "root" #afield/box "aperture_quarter"} "name" "6. Aperture 24 px" "_tombstone" false "frame" #afield/rect [890.0 440.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_broad_code_.kt" "lines" 31 "characters" 975 "sha256" "60d05d9ceb54b042a5f86c33fc6f766ef62df586cfba444cbf71a33f32111019"} {"name" "vertex" "language" "glsl" "path" "aperture_broad_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_broad_fragment_.glsl" "lines" 25 "characters" 1053 "sha256" "06de5cf20ca560005d7c729736f7b487543de1ed3b746062519a1c681aee4a60"}]}
+{"id" "aperture_broad" "index" 5 "name" "6. Aperture 24 px" "parents" ["root" "aperture_quarter"] "children" ["aperture_composite"] "properties" {"children" #{#afield/box "aperture_composite"} "parents" #{#afield/box "root" #afield/box "aperture_quarter"} "name" "6. Aperture 24 px" "_tombstone" false "frame" #afield/rect [890.0 440.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_broad_code_.kt" "lines" 30 "characters" 931 "sha256" "b2ceb8e5d411e744f3fe5d63214a0e0505da0f2e91dea278044ea8258cb66617"} {"name" "vertex" "language" "glsl" "path" "aperture_broad_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_broad_fragment_.glsl" "lines" 27 "characters" 1057 "sha256" "6b5b546e1ec925580d3684b191205d36c33888920fc31f265d98955e79995c63"}]}
 ```
 
 ```kotlin [field-property box="aperture_broad" name="code" path="aperture_broad_code_.kt"]
-import afield.graphics.vulkan.targets.RenderToTexture
 import org.lwjgl.vulkan.VK10.*
 
 val source = paintSource
 propDown<RenderToTexture>(paintBroad) = RenderToTexture {
-    width = (source.width/4).coerceAtLeast(1)
-    height = (source.height/4).coerceAtLeast(1)
+    width = (source.width / 4).coerceAtLeast(1)
+    height = (source.height / 4).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
     clearFirst = true
-    clearColor = vec(0,0,0,0)
+    clearColor = vec(0, 0, 0, 0)
     debugName = "paintBroad"
 }
 paintBroad.setDefaultSampler(anisotropyEnable = false)
@@ -363,7 +371,7 @@ paintBroad += "filter" to module
 renderer.renderList.preTargets["paintBroad"] = paintBroad
 
 // x/y stretch the aperture; z changes its rim softness; w is gain.
-mesh.aperture = { vec(1.0,1.0,1.0,1.0) }
+mesh.aperture = { vec(1.0, 1.0, 1.0, 1.0) }
 ```
 
 ```glsl [field-property box="aperture_broad" name="vertex" path="aperture_broad_vertex_.glsl"]
@@ -382,7 +390,9 @@ void main() {
 layout(location=0) in vec2 uv;
 layout(location=0) out vec4 result;
 layout(set=0,binding=0) uniform sampler2D paintQuarter;
-layout(push_constant) uniform Aperture { vec4 aperture; } pc;
+layout(push_constant) uniform Aperture {
+    vec4 aperture;
+} pc;
 vec4 sampleBlack(vec2 p) {
     if (any(lessThan(p,vec2(0))) || any(greaterThan(p,vec2(1)))) return vec4(0);
     return texture(paintQuarter,p);
@@ -410,21 +420,20 @@ void main() {
 <!-- field-box id="aperture_medium" index="6" -->
 
 ```edn [field-box id="aperture_medium" role="properties"]
-{"id" "aperture_medium" "index" 6 "name" "5. Aperture 4 / 10 px" "parents" ["root" "aperture_half"] "children" ["aperture_composite"] "properties" {"children" #{#afield/box "aperture_composite"} "parents" #{#afield/box "root" #afield/box "aperture_half"} "name" "5. Aperture 4 / 10 px" "_tombstone" false "frame" #afield/rect [890.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_medium_code_.kt" "lines" 31 "characters" 976 "sha256" "eafb03a940d3f6ddc087dfcf5b72ac4e1eaa0e88e53e9477afa439d7c1a15f95"} {"name" "vertex" "language" "glsl" "path" "aperture_medium_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_medium_fragment_.glsl" "lines" 27 "characters" 1111 "sha256" "194af25ee478556c05b6762e8f7b78f59a754d60dc71310969661fec9379629b"}]}
+{"id" "aperture_medium" "index" 6 "name" "5. Aperture 4 / 10 px" "parents" ["root" "aperture_half"] "children" ["aperture_composite"] "properties" {"children" #{#afield/box "aperture_composite"} "parents" #{#afield/box "root" #afield/box "aperture_half"} "name" "5. Aperture 4 / 10 px" "_tombstone" false "frame" #afield/rect [890.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_medium_code_.kt" "lines" 30 "characters" 932 "sha256" "ceab3075736a7cde2d151c2375cca583afc3b0c530e3103a0d2073c0ec29eba6"} {"name" "vertex" "language" "glsl" "path" "aperture_medium_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_medium_fragment_.glsl" "lines" 29 "characters" 1115 "sha256" "b4e3de183e9ee1c6d70d5df07b441dda42849d8a08d1b5b6f65a6cb87ff904e1"}]}
 ```
 
 ```kotlin [field-property box="aperture_medium" name="code" path="aperture_medium_code_.kt"]
-import afield.graphics.vulkan.targets.RenderToTexture
 import org.lwjgl.vulkan.VK10.*
 
 val source = paintSource
 propDown<RenderToTexture>(paintMedium) = RenderToTexture {
-    width = (source.width/2).coerceAtLeast(1)
-    height = (source.height/2).coerceAtLeast(1)
+    width = (source.width / 2).coerceAtLeast(1)
+    height = (source.height / 2).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
     clearFirst = true
-    clearColor = vec(0,0,0,0)
+    clearColor = vec(0, 0, 0, 0)
     debugName = "paintMedium"
 }
 paintMedium.setDefaultSampler(anisotropyEnable = false)
@@ -444,7 +453,7 @@ paintMedium += "filter" to module
 renderer.renderList.preTargets["paintMedium"] = paintMedium
 
 // x/y stretch the aperture; z changes its rim softness; w is gain.
-mesh.aperture = { vec(1.0,1.0,1.0,1.0) }
+mesh.aperture = { vec(1.0, 1.0, 1.0, 1.0) }
 ```
 
 ```glsl [field-property box="aperture_medium" name="vertex" path="aperture_medium_vertex_.glsl"]
@@ -463,7 +472,9 @@ void main() {
 layout(location=0) in vec2 uv;
 layout(location=0) out vec4 result;
 layout(set=0,binding=0) uniform sampler2D paintHalf;
-layout(push_constant) uniform Aperture { vec4 aperture; } pc;
+layout(push_constant) uniform Aperture {
+    vec4 aperture;
+} pc;
 vec4 sampleBlack(vec2 p) {
     if (any(lessThan(p,vec2(0))) || any(greaterThan(p,vec2(1)))) return vec4(0);
     return texture(paintHalf,p);
@@ -493,15 +504,14 @@ void main() {
 <!-- field-box id="aperture_composite" index="7" -->
 
 ```edn [field-box id="aperture_composite" role="properties"]
-{"id" "aperture_composite" "index" 7 "name" "7. Composite — sharp / blur / guide" "parents" ["root" "aperture_medium" "aperture_broad"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "aperture_medium" #afield/box "aperture_broad"} "name" "7. Composite — sharp / blur / guide" "_tombstone" false "frame" #afield/rect [1320.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_composite_code_.kt" "lines" 28 "characters" 980 "sha256" "a34cad87819e0b8908770feab6ed9006cf2e20767030f80219d4aeb09d66dd5c"} {"name" "vertex" "language" "glsl" "path" "aperture_composite_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_composite_fragment_.glsl" "lines" 17 "characters" 729 "sha256" "af5b9b160b30ffcebf34f4724487234ba15e9dd4c0a0aeba220323e937bef9cc"}]}
+{"id" "aperture_composite" "index" 7 "name" "7. Composite — sharp / blur / guide" "parents" ["root" "aperture_medium" "aperture_broad"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "aperture_medium" #afield/box "aperture_broad"} "name" "7. Composite — sharp / blur / guide" "_tombstone" false "frame" #afield/rect [1320.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_composite_code_.kt" "lines" 27 "characters" 959 "sha256" "6ddb8d89fed43ad93a379a23e13e57869d2e7bfa4b08076c2dcb74a3edc669d0"} {"name" "vertex" "language" "glsl" "path" "aperture_composite_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_composite_fragment_.glsl" "lines" 19 "characters" 729 "sha256" "870d46d6e6d7caa9b2a9da5f87b395e668bde930fea8dcd29ac954f775b7cea1"}]}
 ```
 
 ```kotlin [field-property box="aperture_composite" name="code" path="aperture_composite_code_.kt"]
-import afield.graphics.vulkan.targets.RenderToTexture
-import afield.document.context.fromContextWithNameOrNull
 import org.lwjgl.vulkan.VK10.*
 
-// Screen composite. B and G in the paint box control this shared vector.
+// Screen composite: apertureControl.x is gain; y selects the display mode.
+// Edit and rerun controls.set below to update the vector read by the push supplier.
 val controls = fromContextWithNameOrNull<afield.math.linalg.Vec4>("apertureControl")!!
 val source = paintSource
 val medium = paintMedium
@@ -524,7 +534,7 @@ renderer.renderList += "paint-composite" to module
 println("paint composite ready")
 
 // y: 0 aperture, 1 sharp, 2 radius guide. Edit here and re-execute.
-controls.set(1.0f,0.0f,0.0f,0.0f)
+controls.set(1.0f, 0.0f, 0.0f, 0.0f)
 ```
 
 ```glsl [field-property box="aperture_composite" name="vertex" path="aperture_composite_vertex_.glsl"]
@@ -545,14 +555,16 @@ layout(location=0) out vec4 result;
 layout(set=0,binding=0) uniform sampler2D paintSource;
 layout(set=0,binding=1) uniform sampler2D paintMedium;
 layout(set=0,binding=2) uniform sampler2D paintBroad;
-layout(push_constant) uniform Display { vec4 displayControl; } pc;
+layout(push_constant) uniform Display {
+    vec4 displayControl;
+} pc;
 void main() {
     vec4 sharp = texture(paintSource,uv);
     vec4 mid = texture(paintMedium,uv);
     float energy = dot(sharp,vec4(1));
     float c = sharp.r + mid.g + mid.b + texture(paintBroad,uv).a;
     if (pc.displayControl.y > 1.5)
-        c = energy>0.000001 ? dot(sharp,vec4(0,4,10,24))/(24.0*energy) : 0.0;
+    c = energy>0.000001 ? dot(sharp,vec4(0,4,10,24))/(24.0*energy) : 0.0;
     else if (pc.displayControl.y > 0.5) c = energy;
     result = vec4(vec3(c*pc.displayControl.x),0);
 }

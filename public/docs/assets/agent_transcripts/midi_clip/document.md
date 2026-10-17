@@ -10,32 +10,49 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 <!-- field-box id="midi_devices" index="0" -->
 
+### Narrative
+
+From `code`
+
+3 - What MIDI hardware can this machine see, and can Field drive it?
+
+`MidiDevices.list()` reports whatever the JVM sees. The JDK always contributes
+Gervill (a software synthesizer) and the Real Time Sequencer, so the list is never
+empty - which means "the list is non-empty" is not evidence of hardware. `hardware()`
+is the filter that answers that question.
+
+On macOS the IAC driver appears as two entries with the SAME name, one output and one
+input, so a name alone does not identify a device: check the direction.
+
 ```edn [field-box id="midi_devices" role="properties"]
-{"id" "midi_devices" "index" 0 "name" "What can this machine see?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What can this machine see?" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_devices_code_.kt" "lines" 44 "characters" 1864 "sha256" "ea3ff8e04f8c732aa66ba14a4c0f3ab314dd54939bf1ce5b47041b99ffcc637c"}]}
+{"id" "midi_devices" "index" 0 "name" "What can this machine see?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What can this machine see?" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_devices_code_.kt" "lines" 48 "characters" 1908 "sha256" "0784e3c7a0dac0d81185a824960c1e467a170813bf0e837c6ecfd371fa3781bb"}]}
 ```
 
 ```kotlin [field-property box="midi_devices" name="code" path="midi_devices_code_.kt"]
-import afield.audio.synth.*
+/*
+3 - What MIDI hardware can this machine see, and can Field drive it?
 
-// 3 - What MIDI hardware can this machine see, and can Field drive it?
-//
-// `MidiDevices.list()` reports whatever the JVM sees. The JDK always contributes
-// Gervill (a software synthesizer) and the Real Time Sequencer, so the list is never
-// empty - which means "the list is non-empty" is not evidence of hardware. `hardware()`
-// is the filter that answers that question.
-//
-// On macOS the IAC driver appears as two entries with the SAME name, one output and one
-// input, so a name alone does not identify a device: check the direction.
+`MidiDevices.list()` reports whatever the JVM sees. The JDK always contributes
+Gervill (a software synthesizer) and the Real Time Sequencer, so the list is never
+empty - which means "the list is non-empty" is not evidence of hardware. `hardware()`
+is the filter that answers that question.
+
+On macOS the IAC driver appears as two entries with the SAME name, one output and one
+input, so a name alone does not identify a device: check the direction.
+*/
 val all = MidiDevices.list()
 val hardware = MidiDevices.hardware()
 
-val rows = all.joinToString("\n") { d ->
-    val direction = listOfNotNull(
-        if (d.canReceive) "Field can send" else null,
-        if (d.canTransmit) "Field can listen" else null
-    ).joinToString(" + ")
-    "| `${d.name}` | ${d.vendor} | ${d.implementation} | $direction |"
-}
+val rows =
+    all.joinToString("\n") { d ->
+        val direction =
+            listOfNotNull(
+                    if (d.canReceive) "Field can send" else null,
+                    if (d.canTransmit) "Field can listen" else null,
+                )
+                .joinToString(" + ")
+        "| `${d.name}` | ${d.vendor} | ${d.implementation} | $direction |"
+    }
 
 markdown(
     "main",
@@ -57,7 +74,8 @@ markdown(
     One caveat worth knowing before you open an input: doing so starts a non-daemon
     `Java Sound MidiInDevice Thread` that outlives `close()`, so a JVM that has opened a
     MIDI input will not exit on its own.
-    """.trimIndent()
+    """
+        .trimIndent(),
 )
 ```
 
@@ -66,38 +84,40 @@ markdown(
 <!-- field-box id="midi_audition" index="1" -->
 
 ```edn [field-box id="midi_audition" role="properties"]
-{"id" "midi_audition" "index" 1 "name" "Hear it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Hear it" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_audition_code_.kt" "lines" 61 "characters" 2024 "sha256" "588989d4ce1742f8d6d27a2963e9322364fdd9a9fb99decf5b91af3cee18c4aa"}]}
+{"id" "midi_audition" "index" 1 "name" "Hear it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Hear it" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_audition_code_.kt" "lines" 65 "characters" 2029 "sha256" "fe84a69d5873d97144f0a0188ac56234384de3aa6fb9eb79348f139ce7b4b630"}]}
 ```
 
 ````kotlin [field-property box="midi_audition" name="code" path="midi_audition_code_.kt"]
-import afield.audio.synth.*
 import java.io.File
 
-// 4 - Hear it. Two routes, and this box tells you which one it took.
-//
-// Offline rendering pulls the JDK's Gervill synthesizer faster than real time, which
-// needs `com.sun.media.sound.AudioSynthesizer.openStream`. `java.desktop` does not
-// export that package, so it only works in a JVM launched with
-// `--add-exports=java.desktop/com.sun.media.sound=ALL-UNNAMED`. Field's own JVM is not,
-// so this box will normally report the live route instead - and say so, rather than
-// pretending to have rendered something.
+/*
+4 - Hear it. Two routes, and this box tells you which one it took.
+
+Offline rendering pulls the JDK's Gervill synthesizer faster than real time, which
+needs `com.sun.media.sound.AudioSynthesizer.openStream`. `java.desktop` does not
+export that package, so it only works in a JVM launched with
+`--add-exports=java.desktop/com.sun.media.sound=ALL-UNNAMED`. Field's own JVM is not,
+so this box will normally report the live route instead - and say so, rather than
+pretending to have rendered something.
+*/
 val clip = MidiClip.of(
-    listOf(
+    [
         MidiNote(60, 0.0, 2.0, 100),
         MidiNote(64, 0.0, 2.0, 95),
         MidiNote(67, 0.0, 2.0, 105),
-        MidiNote(72, 0.5, 1.5, 110)
-    ),
+        MidiNote(72, 0.5, 1.5, 110),
+    ],
     bpm = 120.0,
-    name = "chord"
+    name = "chord",
 )
 
 val reason = midiRenderUnavailableReason()
 
-val report = if (reason == null) {
-    val wav = File(System.getProperty("java.io.tmpdir"), "field-midi-demo.wav")
-    val r = clip.renderWav(wav, tailSeconds = 1.0)
-    """
+val report =
+    if (reason == null) {
+        val wav = File(System.getProperty("java.io.tmpdir"), "field-midi-demo.wav")
+        val r = clip.renderWav(wav, tailSeconds = 1.0)
+        """
     ### Rendered offline to a WAV
 
     | | |
@@ -110,9 +130,10 @@ val report = if (reason == null) {
 
     Peak amplitude is the check that matters: a WAV of pure silence is exactly as large
     as a loud one, so file size proves nothing. ${if (r.isSilent) "**This one is silent.**" else "This one is not silent."}
-    """.trimIndent()
-} else {
     """
+            .trimIndent()
+    } else {
+        """
     ### Offline rendering is not available in this JVM
 
     $reason
@@ -126,8 +147,9 @@ val report = if (reason == null) {
     ```
 
     Or to any other port `MidiDevices.outputs()` lists in box 3.
-    """.trimIndent()
-}
+    """
+            .trimIndent()
+    }
 
 showMidiRoll(clip)
 markdown("main", report)
@@ -138,41 +160,39 @@ markdown("main", report)
 <!-- field-box id="midi_write" index="2" -->
 
 ```edn [field-box id="midi_write" role="properties"]
-{"id" "midi_write" "index" 2 "name" "Write a MIDI file" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Write a MIDI file" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_write_code_.kt" "lines" 56 "characters" 1788 "sha256" "b71bbab19dce06ee3db939feccac1cb7fcd2e0ac43ff4ceff3b20a1c08bd687a"}]}
+{"id" "midi_write" "index" 2 "name" "Write a MIDI file" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Write a MIDI file" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_write_code_.kt" "lines" 55 "characters" 1699 "sha256" "7de4798fdd42eef3e833eec4cafb1a9e9a78092c9f026ea865d6eabe09d154ac"}]}
 ```
 
 ```kotlin [field-property box="midi_write" name="code" path="midi_write_code_.kt"]
-import afield.audio.synth.*
 import java.io.File
 
-// 1 - Write a MIDI file a DAW will open.
-//
-// The pattern is ordinary mini-notation. `toMidiClip` renders it over two cycles, and
-// one cycle is one bar of 4/4 by default, so this is eight bars-worth of quarter notes
-// at 104 BPM. Tidal's octave convention applies: c5 is middle C, MIDI 60.
-val melody = pat("c5 e5 g5 b5 c6 b5 g5 e5")
-    .with(gain(0.8))
-    .with(sustain(0.85))
+/*
+1 - Write a MIDI file a DAW will open.
 
-val bass = pat("c3 c3 g3 g3")
-    .with(gain(0.95))
+The pattern is ordinary mini-notation: two cycles at eight quarter-note beats per cycle
+give sixteen beats, or four bars of 4/4, at 104 BPM.
+Tidal's octave convention applies: c5 is middle C, MIDI 60.
+*/
+val melody = pat("c5 e5 g5 b5 c6 b5 g5 e5").with(gain(0.8)).with(sustain(0.85))
+
+val bass = pat("c3 c3 g3 g3").with(gain(0.95))
 
 val clip = MidiClip(
-    tracks = listOf(
+    tracks = [
         MidiTrackData(
             notes = melody.toMidiClip(cycles = 2, beatsPerCycle = 8).notes,
             name = "lead",
-            program = GeneralMidi.ELECTRIC_PIANO
+            program = GeneralMidi.ELECTRIC_PIANO,
         ),
         MidiTrackData(
             notes = bass.toMidiClip(cycles = 2, beatsPerCycle = 8, channel = 1).notes,
             name = "bass",
-            program = GeneralMidi.ACOUSTIC_BASS
-        )
-    ),
-    tempoMap = listOf(0.0 to 104.0),
+            program = GeneralMidi.ACOUSTIC_BASS,
+        ),
+    ],
+    tempoMap = [0.0 to 104.0],
     name = "field-demo",
-    timeSignature = 4 to 4
+    timeSignature = 4 to 4,
 )
 
 val out = File(System.getProperty("java.io.tmpdir"), "field-midi-demo.mid")
@@ -196,7 +216,8 @@ markdown(
     | length | ${"%.2f".format(clip.durationSeconds)}s / ${clip.durationBeats} beats |
 
     Format 1, with a real conductor track. Open it in any DAW, or run box 2.
-    """.trimIndent()
+    """
+        .trimIndent(),
 )
 ```
 
@@ -205,17 +226,18 @@ markdown(
 <!-- field-box id="midi_read" index="3" -->
 
 ```edn [field-box id="midi_read" role="properties"]
-{"id" "midi_read" "index" 3 "name" "Read it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Read it back" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_read_code_.kt" "lines" 39 "characters" 1509 "sha256" "af6de133f24b0fc2de1cf67af9ad1c409684b64f0ab5a1c2d58929a7587ffbcf"}]}
+{"id" "midi_read" "index" 3 "name" "Read it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Read it back" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_read_code_.kt" "lines" 41 "characters" 1486 "sha256" "f6dba57c10971e5fbccfb36413db3d2688ab48597576277a13f3484a43eb3235"}]}
 ```
 
 ```kotlin [field-property box="midi_read" name="code" path="midi_read_code_.kt"]
-import afield.audio.synth.*
 import java.io.File
 
-// 2 - Read it back, and check the round trip actually held.
-//
-// Run box 1 first. This reads the file with no knowledge of what wrote it: the PPQ,
-// tempo map, track split and track names all come out of the file itself.
+/*
+2 - Read it back, and check the round trip actually held.
+
+Run box 1 first. This reads the file with no knowledge of what wrote it: the PPQ,
+tempo map, track split and track names all come out of the file itself.
+*/
 val file = File(System.getProperty("java.io.tmpdir"), "field-midi-demo.mid")
 require(file.isFile) { "run box 1 first - no file at ${file.absolutePath}" }
 
@@ -246,7 +268,8 @@ markdown(
     `${firstCycle.sortedBy { it.arc.start }.map { it.value }.joinToString(" ")}`.
 
     The roll above is drawn from the *file*, not from the clip box 1 held in memory.
-    """.trimIndent()
+    """
+        .trimIndent(),
 )
 ```
 

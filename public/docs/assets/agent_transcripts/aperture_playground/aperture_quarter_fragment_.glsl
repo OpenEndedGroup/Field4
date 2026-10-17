@@ -6,6 +6,6 @@ void main() {
     // Average a pixel footprint. RGBA remain independent energy bands.
     vec2 d = 0.25 * vec2(dFdx(uv.x), dFdy(uv.y));
     result = 0.25 * (texture(paintHalf,uv+vec2(-d.x,-d.y))
-        + texture(paintHalf,uv+vec2(d.x,-d.y))
-        + texture(paintHalf,uv+vec2(-d.x,d.y)) + texture(paintHalf,uv+d));
+    + texture(paintHalf,uv+vec2(d.x,-d.y))
+    + texture(paintHalf,uv+vec2(-d.x,d.y)) + texture(paintHalf,uv+d));
 }
