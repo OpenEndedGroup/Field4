@@ -25,11 +25,11 @@ async def main():
     if sum(max(pixel)>30 for pixel in image.getdata())>1000:
      (m.OUT/f'polytope-{label}.png').write_bytes(png.read_bytes());visible=True;break
    assert visible,('native polytope stayed empty',label)
- 
+
    await fragment(label+'-clock-start','val time0 = m.params().x;println("'+label+' initial time $time0")')
    await m.batch(label+'-advance',['wait-native-renderer renderer --frames 20 --timeout 60'])
    await fragment(label+'-clock-advances','check(m.params().x > time0);println("'+label+' push time advances")')
- 
+
  if '--native-only' in sys.argv:
   await cleanup()
   return
@@ -73,4 +73,3 @@ async def cleanup():
  await fragment('native-cleanup','renderer.renderList.modules.entries.removeIf { it.value === module };module.current.cleanup();println("private module released before renderer")')
  await m.batch('native-stop',['stop polytope','stop renderer'])
 if __name__ == '__main__':asyncio.run(finish() if '--finish' in sys.argv else main())
-

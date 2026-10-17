@@ -68,7 +68,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Typed polytope push and KotlinJS sum](../box_code_adoption_batch_32/README.md) | Three more findings addressed; identical native RGB captures, advancing time and actual KotlinJS arithmetic verified. |
 
-[Machine checkpoint](checkpoint.json): **260 of 405 findings addressed**, one implemented with
+| [Typed studies and kit sources](../box_code_adoption_batch_33/README.md) | Three more findings addressed; saved/reopened sources, inherited handles, real kit migration/refusal and ten standalone docs states verified. |
+
+[Machine checkpoint](checkpoint.json): **263 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.

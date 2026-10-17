@@ -24,9 +24,12 @@ which an agent changes through `SetBoxPropertyRequest` or a study's guarded edit
 
 ```diffstatic {data-lang=kotlin}
 // The room sizes every level of this kind uses, read from this box's roomRules property.
-prop<String?>(roomRules)
-val rules = (roomRules ?: "").lines().filter { "=" in it }
-    .associate { it.substringBefore("=").trim() to it.substringAfter("=").trim().toInt() }
+prop<String>(roomRules, "")
+val rules =
+    roomRules
+        .lines()
+        .filter { "=" in it }
+        .associate { it.substringBefore("=").trim() to it.substringAfter("=").trim().toInt() }
 markdown("main", "Rooms are ${rules["minRoom"]} to ${rules["maxRoom"]} cells wide.")
 ```
 
