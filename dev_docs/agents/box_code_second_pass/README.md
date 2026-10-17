@@ -36,7 +36,7 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Live control previews](../box_code_adoption_batch_16/README.md) | Five findings resolved; actual browser callbacks/rerun persistence, implicit-receiver distinction and the regenerated docs capture verified. |
 
-| [Drawing and painting path helpers](../box_code_adoption_batch_17/README.md) | Eleven more findings addressed; seventy code bodies, three transcripts and actual geometry checks verified; native paint rendering explicitly unavailable. |
+| [Drawing and painting path helpers](../box_code_adoption_batch_17/README.md) | Eleven more findings addressed; seventy code bodies, three transcripts and actual geometry checks verified; native paint rendering subsequently verified with the existing library. |
 
 | [Typed shader-source reads](../box_code_adoption_batch_18/README.md) | Five more findings addressed; 21 code bodies, six compiled graphs/full examples and live inherited-source reads verified. |
 
