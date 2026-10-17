@@ -94,7 +94,9 @@ Five drifted boxes out of 31 coded boxes across the nine scripts. Both demos wer
 during the promotion sweep; this reproduces that reading as `tools/test_demo_build_scripts.py`, which
 compares each `create` op's `code` against the committed `<box>_code_.kt` and lists the five in
 `KNOWN_STALE` **box by box**, so a new drift in `logging_layer` still fails and a repaired box also
-fails until its exception is removed. It costs a file read; the replay-and-compare version costs a
+fails until its exception is removed. On 2026-10-15 all five were repaired by copying each saved
+document's code back into its `build.yaml` (the document was the truth), and `KNOWN_STALE` was
+deleted: every script is now held to its document with no exceptions. It costs a file read; the replay-and-compare version costs a
 JVM and is `checkAgentTranscripts`' job.
 
 What it does not check: frames, names, graph topology or the property set. Only the Kotlin — which is
@@ -128,7 +130,7 @@ are compiled by nothing. The only thing in the tree that reacted was the corpus-
 `tools/test_demo_build_scripts.py`, which reports that a demo arrived and nothing about whether it
 is checked.
 
-`src/jvmTest/kotlin/afield/docs/AgentDemoRegistrationTest.kt` now asserts the missing half —
+`src/jvmTest/kotlin/afield/tools/docs/AgentDemoRegistrationTest.kt` now asserts the missing half —
 every demo document maps to a registered transcript or sits in a named `UNVERIFIED` list with its
 reason and its fix — and `skinned_characters` is the one entry on that list. Writing the transcript
 is the fix; it belongs in `COMPILE_ONLY`, because its boxes open a Window and a Renderer.

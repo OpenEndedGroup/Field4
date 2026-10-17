@@ -6,7 +6,7 @@ Field's browser graphics head is a page you open yourself, on whichever device y
 https://FIELD_HOST:9092/extensions/remote_ar/index.html
 ```
 
-`FIELD_HOST` is the machine your Field is running on and 9092 is Field's own HTTPS port, so that address — and every other `/extensions/…` path on this page — is served by a running Field and by nothing else. None of them is a link on this documentation site: there is no host to substitute and no page to fetch until Field is up. Read them as addresses to type beside a live Field, not as references to follow from here.
+`FIELD_HOST` is the machine your Field is running on and 9092 is Field's own HTTPS port, so that address, like every other `/extensions/…` path on this page, is served by a running Field. Type it into a browser beside a live Field; it is not a link on this site.
 
 Load it on an Android phone, on a headset, or in a second browser window on the machine Field is already running on. Wherever you open it, it connects back to the Field server over WebSocket and executes your Javascript boxes there. The same page has three modes:
 
@@ -16,8 +16,8 @@ Load it on an Android phone, on a headset, or in a second browser window on the 
 
 There is no external key, hosted scene, or platform-specific page to set up.
 
-This is the *browser* head. Field's other head is native and does not go through WebXR at all — see
-**[Apple Vision Pro](vision.md)** for the visionOS front end, its RealityKit and Live Metal surfaces,
+This is the *browser* head. Field's other head is native and does not go through WebXR at all. See
+[Apple Vision Pro](vision.md) for the visionOS front end, its RealityKit and Live Metal surfaces,
 and the pose channel that lets the desktop renderer draw from the wearer's own viewpoint.
 
 ## Start a RemoteJS document
@@ -28,7 +28,7 @@ and the pose channel that lets the desktop renderer draw from the wearer's own v
 4. Open the remote head URL on the target device. Use Field's HTTPS URL on a phone or headset because immersive WebXR requires a secure context.
 5. Run or launch a Javascript child box in Field.
 
-The older `isRemoteJSRoot` property is still recognized when opening historical documents. New documents should use the normal main-language action; it persists `mainLanguage = remotejs` and labels child boxes as Javascript.
+The main-language action stores `mainLanguage = remotejs` on the root and labels its child boxes as Javascript.
 
 The checked-in `remote` and `advanced_remote` templates contain examples of FLine geometry, assets, animation, and interaction.
 
@@ -51,11 +51,11 @@ display("remote-ar", """
 displayOpen("remote-ar")
 ```
 
-The leading slash in that `src` is deliberate and is relative to *Field's* server, not to this site — a box's output pane is served by the same Field that serves `/extensions/`, so the iframe resolves there and only there. Copied into a web page anywhere else it resolves to nothing.
+The leading slash in that `src` is relative to Field's server: a box's output pane is served by the same Field that serves `/extensions/`. Copied into a web page anywhere else, it points at nothing.
 
 ## Draw into the head from Kotlin
 
-The head runs Kotlin too. A box whose main language is **Kotlin → head** (`kotlinjs`) compiles its Kotlin source to JavaScript and ships it to every connected head; the first line's `// {{ remoteAR }}` marker selects the A-Frame/Three.js scene profile, which binds `addPlane`, `addBox`, `vec`, `stage`, `FLine`, `SCENE`, and the `THREE.*` classes. So a second box can draw straight into the head embedded above — here it adds a lit plane:
+The head runs Kotlin too. A box whose main language is **Kotlin → head** (`kotlinjs`) compiles its Kotlin source to JavaScript and ships it to every connected head; the first line's `// {{ remoteAR }}` marker selects the A-Frame/Three.js scene profile, which binds `addPlane`, `addBox`, `vec`, `stage`, `FLine`, `SCENE`, and the `THREE.*` classes. So a second box can draw straight into the head embedded above. Here it adds a lit plane:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/ar_reference/remote-ar-kotlin-plane.png" capture="box" name="ar-reference-kotlin-plane" macro-file="../../dev_docs/agents/transcripts/docs_capture/remote_ar_kotlin_plane.yaml" capture-box="agent_remote_ar_plane_head" wait="2" timeout="180" open-outputs="true" padding="18" embed=true alt="A lit blue plane drawn into the embedded Remote AR head by a Kotlin-to-JS box" w="1000" h="220"}
 // {{ remoteAR }}
@@ -159,26 +159,34 @@ Every execution carries a stable `box_NAME|UUID` source name. Runtime failures a
 
 ## Testing the head
 
-Append `?selftest=1&debug=1` to the head URL. The small status panel shows the connection, dependency versions, WebXR platform, and self-test result. Automation can read:
+Append `?selftest=1&debug=1` to the head URL. The small status panel shows the connection, dependency versions, WebXR platform, and self-test result. A script in the head's page can read the same state:
 
 ```diffstatic {data-lang=javascript}
 window.__fieldRemoteHead.snapshot()
 await window.__fieldRemoteHead.selfTest()
 ```
 
-The self-test checks the vendored A-Frame/Three pairing, scene setup, sandbox storage, runtime completion, source-mapped errors, FLine stroke/cubic geometry, hit callback surfaces, glTF loader, and a complete task lifecycle driven by A-Frame's frame loop. The browser regression additionally creates a real RemoteJS language root in Field, runs a child box through the WebSocket, observes `42` in the head, and captures the status panel:
+The self-test checks the vendored A-Frame/Three pairing, scene setup, sandbox storage, runtime completion, source-mapped errors, FLine stroke/cubic geometry, hit callback surfaces, glTF loader, and a complete task lifecycle driven by A-Frame's frame loop. It runs on a desktop browser; camera permission and entering an AR session on an Android phone or through Endrun/ARKit can only be checked on the device itself.
 
-```diffstatic {data-lang=bash}
-uv run --project . --group backdoor python tools/run_ui_regressions.py \
-  --id remote-ar-head --port 9490 --timeout 45
-```
+??? aside "Agents: the browser regression for the head"
 
-The test is a desktop check of the full transport and rendering head. Camera permission, native Android WebXR session entry, and Endrun/ARKit session entry still require their physical devices.
+    The UI regression creates a real RemoteJS language root in Field, runs a child box through the WebSocket, observes `42` in the head, and captures the status panel:
+
+    ```diffstatic {data-lang=bash}
+    uv run --project . --group backdoor python tools/run_ui_regressions.py \
+      --id remote-ar-head --port 9490 --timeout 45
+    ```
+
+    It is a desktop check of the full transport and rendering head. Camera permission, native Android WebXR session entry, and Endrun/ARKit session entry have no automated test: each needs its physical device, and nothing in the suites drives one.
 
 ## Vendored runtime
 
-The head loads local copies of A-Frame 1.8.0 and Tone.js 15.1.22 from `extensions/remote_ar/vendor/`. A-Frame's browser bundle embeds its own `super-three` 0.184.0, so there is no separate Three.js here; the one Three.js anything imports directly is the stock build under `vendor/three/` that the docs viewer uses. Licenses, package metadata, archive checksums, and refresh instructions live beside them. To reproduce the vendor tree:
+The head loads local copies of A-Frame 1.8.0 and Tone.js 15.1.22 from `extensions/remote_ar/vendor/`, so it needs no network beyond the connection to Field. A-Frame's browser bundle embeds its own `super-three` 0.184.0, so there is no separate Three.js in the head.
 
-```diffstatic {data-lang=bash}
-python3 tools/vendor_remote_ar_runtime.py
-```
+??? aside "Agents: refreshing the vendor tree"
+
+    The one Three.js anything imports directly is the stock build under `vendor/three/` that the docs viewer uses. Licenses, package metadata, archive checksums, and refresh instructions live beside the vendored files. To reproduce the vendor tree:
+
+    ```diffstatic {data-lang=bash}
+    python3 tools/vendor_remote_ar_runtime.py
+    ```

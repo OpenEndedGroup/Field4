@@ -3,10 +3,10 @@
 // that differs only in numbers. The transport differs: a shader reads a push constant,
 // and a generated Kotlin expression reads a registry slot addressed by an integer written
 // into its text, because generated text cannot close over a value.
-import afield.stdlib.CodeBlendMode
-import afield.stdlib.CodeBlendOptions
-import afield.stdlib.KeyframeScope
-import afield.stdlib.sourceBlock
+import afield.animation.keyframes.CodeBlendMode
+import afield.animation.keyframes.CodeBlendOptions
+import afield.animation.keyframes.KeyframeScope
+import afield.study.source.sourceBlock
 
 val quiet = sourceBlock { 2.0f * 3.0f + 1.0f }
 val loud = sourceBlock { 8.0f * 3.0f + 5.0f }

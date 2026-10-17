@@ -1,4 +1,4 @@
-import afield.morpho.*
+import afield.lang.morpho.*
 
 // y = (x != 0). The reason this is the interesting target and bitwise XOR is not: morpho
 // sizes a LUT cell to its widest operand and broadcasts the narrow ones, so there is no

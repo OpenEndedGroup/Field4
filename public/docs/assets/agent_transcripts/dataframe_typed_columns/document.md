@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 1 - Typed columns, no strings
@@ -61,33 +61,24 @@ println("decade: " + adults.decade.toList())
 <!-- field-box id="dataframe_live" index="2" -->
 
 ```edn [field-box id="dataframe_live" role="properties"]
-{"id" "dataframe_live" "index" 2 "name" "4 - Typed across the boundary" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Typed across the boundary" "_tombstone" false "frame" #afield/rect [480.0 190.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_live_code_.kt" "lines" 27 "characters" 1384 "sha256" "5b854d7e58211bb4b9279d78034b70e60ef61ddc1ec50962d103de909f84b3b1"}]}
+{"id" "dataframe_live" "index" 2 "name" "4 - Typed across the boundary" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Typed across the boundary" "_tombstone" false "frame" #afield/rect [480.0 190.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_live_code_.kt" "lines" 18 "characters" 748 "sha256" "da64cf7634e7578e65e50e427394d72167e606767ea47803aea344069bca9691"}]}
 ```
 
 ```kotlin [field-property box="dataframe_live" name="code" path="dataframe_live_code_.kt"]
 import org.jetbrains.kotlinx.dataframe.api.*
 
-// The plugin's inferred type cannot outlive the expression that made it: it is built from
-// LOCAL classes, which cannot appear in the type of a snippet's property, so on its own
-// `people` would come back as DataFrame<Any> the moment it crossed a compile boundary.
-//
-// `typed()` fixes that by reading the frame's RUNTIME columns — the data is already
-// loaded, so they are exactly right — and writing a real schema into this box's preamble:
-//   @DataSchema interface Peach { val name: String; val age: Int }
+// typed() reads the loaded columns and writes a named schema into this box's preamble:
+// @DataSchema interface Peach { val name: String; val age: Int }
+// That named type lets later fragments use the columns as Kotlin properties.
 val people = dataFrameOf("name", "age")(
     "Alice", 15,
     "Bob", 30,
     "Cara", 45,
 ).typed("Peach")
 
-// `//%-` is what makes this work in ONE execution. Field splits the box there and runs the
-// halves in order, re-running the preamble setup before compiling each one (the
-// per-fragment runLaunchSetupBlocks in execution.kt), so `Peach` is declared by the time
-// the half below is compiled. Delete the marker and this box stops compiling: with a
-// single fragment the schema is written only after that fragment was already compiled.
-//
-// The same thing works across separate executions — load once here, then select and run
-// the lines below as often as you like without reloading.
+// Keep this break: the first fragment writes Peach, then Field reloads the preamble
+// before compiling the fragment below. Once loaded, select and run the lines below
+// repeatedly to query the same frame without reloading its data.
 //%-
 val p = people.cast<Peach>()
 println("ages: " + p.age.toList())

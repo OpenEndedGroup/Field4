@@ -1,11 +1,11 @@
 package afield.examples.audio
 
-import afield.four.audio.TrackingResonatorAnalysis
-import afield.four.audio.TrackingResonatorBank
-import afield.four.audio.WavFloatData
-import afield.four.audio.WavFloatArrayLoader
-import afield.four.audio.WavFloatArrayWriter
-import afield.four.audio.trackingResonate
+import afield.audio.engine.TrackingResonatorAnalysis
+import afield.audio.engine.TrackingResonatorBank
+import afield.audio.engine.WavFloatData
+import afield.audio.engine.WavFloatArrayLoader
+import afield.audio.engine.WavFloatArrayWriter
+import afield.audio.engine.trackingResonate
 import java.io.File
 import java.util.Locale
 import kotlin.math.abs

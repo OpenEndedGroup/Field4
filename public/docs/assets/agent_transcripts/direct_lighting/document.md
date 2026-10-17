@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["direct_light_lab"] "properties" {"children" #{#afield/box "direct_light_lab"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 289 "sha256" "48b4c5aeec967fc6ec5dc83b23de5c1e6e911c61acc39c811a8d1eac77f6020a"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["direct_light_lab"] "properties" {"children" #{#afield/box "direct_light_lab"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 300 "sha256" "ed9c90e9909e15814bcf04d30e27c778e23b8bdb27e200771a092e766fb4a29b"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -38,18 +38,18 @@ start(renderer::run)
 <!-- field-box id="direct_light_lab" index="1" -->
 
 ```edn [field-box id="direct_light_lab" role="properties"]
-{"id" "direct_light_lab" "index" 1 "name" "direct lighting" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "direct lighting" "_tombstone" false "frame" #afield/rect [400.0 160.0 340.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "direct_light_lab_code_.kt" "lines" 85 "characters" 4006 "sha256" "50f734ae28e65243651b7fb24ba6b4083be7c285a1ebfd01011797a990e43746"}]}
+{"id" "direct_light_lab" "index" 1 "name" "direct lighting" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "direct lighting" "_tombstone" false "frame" #afield/rect [400.0 160.0 340.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "direct_light_lab_code_.kt" "lines" 85 "characters" 4060 "sha256" "85b3e418f871afbbe37248f4543c74bf9824970b3b0df8f17e33e766a4637e79"}]}
 ```
 
 ```kotlin [field-property box="direct_light_lab" name="code" path="direct_light_lab_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.lighting.*
-import afield.four.fabricated.rtxdiSettings
-import afield.stdlib.linalg.Vector3f
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.render.lighting.*
+import afield.graphics.scene.fabricated.rtxdiSettings
+import afield.math.linalg.Vector3f
 import kotlin.math.*
-import afield.four.modules.fromContextWithNameOrNull
-import afield.four.util.keyCamera
+import afield.document.context.fromContextWithNameOrNull
+import afield.graphics.vulkan.util.keyCamera
 
 prop<DirectLightingDemo>(lab)
 // Re-executing this box replaces the experiment at a frame boundary.

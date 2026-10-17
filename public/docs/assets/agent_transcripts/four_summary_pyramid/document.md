@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="sp_renderer" index="0" -->
 
 ```edn [field-box id="sp_renderer" role="properties"]
-{"id" "sp_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["sp_bundle"] "properties" {"children" #{#afield/box "sp_bundle"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_renderer_code_.kt" "lines" 11 "characters" 255 "sha256" "8251a3f6a4fdf54cacf976a2bd1dcd6a751183b0b9587f88304830c00777ea1f"}]}
+{"id" "sp_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["sp_bundle"] "properties" {"children" #{#afield/box "sp_bundle"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_renderer_code_.kt" "lines" 11 "characters" 266 "sha256" "f4e7c43f0339e8891463e878b54d2d60a16d8be1b83f5c139a30d7fa2fdfede3"}]}
 ```
 
 ```kotlin [field-property box="sp_renderer" name="code" path="sp_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -36,29 +36,19 @@ start(renderer::run)
 
 From `code`
 
-`afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
-itself. And the `prop<>` type argument is written out in full on purpose: `prop<>`
-rewrites the box's code and the rewrite does not carry the snippet's own imports, so
-`prop<StandardRenderer.Bundle>(bundle)` under an
-`import afield.four.fabricated.StandardRenderer` fails with
-`Unresolved reference 'StandardRenderer'` reported against the *import* line.
+Import the fabricated scene helpers explicitly; they are not part of a box's automatic imports.
 
 ```edn [field-box id="sp_bundle" role="properties"]
-{"id" "sp_bundle" "index" 1 "name" "bundle" "parents" ["root" "sp_renderer"] "children" ["sp_summary"] "properties" {"children" #{#afield/box "sp_summary"} "parents" #{#afield/box "root" #afield/box "sp_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_bundle_code_.kt" "lines" 33 "characters" 1405 "sha256" "fd91de787c436466d30ce1daf97b4c0488bd130a2f26b67c131cebeb36b118d0"}]}
+{"id" "sp_bundle" "index" 1 "name" "bundle" "parents" ["root" "sp_renderer"] "children" ["sp_summary"] "properties" {"children" #{#afield/box "sp_summary"} "parents" #{#afield/box "root" #afield/box "sp_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_bundle_code_.kt" "lines" 28 "characters" 1040 "sha256" "9e318a89c3a247e802a39045e1d54008b6205ecc4e4259b082997174bce493c0"}]}
 ```
 
 ```kotlin [field-property box="sp_bundle" name="code" path="sp_bundle_code_.kt"]
-// `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
-// itself. And the `prop<>` type argument is written out in full on purpose: `prop<>`
-// rewrites the box's code and the rewrite does not carry the snippet's own imports, so
-// `prop<StandardRenderer.Bundle>(bundle)` under an
-// `import afield.four.fabricated.StandardRenderer` fails with
-// `Unresolved reference 'StandardRenderer'` reported against the *import* line.
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.stdlib.linalg.Vector3f
+// Import the fabricated scene helpers explicitly; they are not part of a box's automatic imports.
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
+import afield.math.linalg.Vector3f
 
-prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+prop<StandardRenderer.Bundle>(bundle)
 
 // `renderer` is the parent box's `prop<Renderer>`, visible here through the preamble —
 // there is nothing to fetch with `fromContext()`.
@@ -88,18 +78,18 @@ println("bundle ready: ${bundle.postStack.names()}")
 <!-- field-box id="sp_summary" index="2" -->
 
 ```edn [field-box id="sp_summary" role="properties"]
-{"id" "sp_summary" "index" 2 "name" "summary pyramid" "parents" ["root" "sp_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sp_bundle"} "name" "summary pyramid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_summary_code_.kt" "lines" 139 "characters" 6723 "sha256" "54bf91fb82219207af0e3a5aa7c5bb310e68fcd81cdd0b68d07252679dfb3bb5"}]}
+{"id" "sp_summary" "index" 2 "name" "summary pyramid" "parents" ["root" "sp_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sp_bundle"} "name" "summary pyramid" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sp_summary_code_.kt" "lines" 139 "characters" 6783 "sha256" "20a4006e2148b0c21b9c506ceec5b71b015c143d8029a7507c6845887ba705fb"}]}
 ```
 
 ```kotlin [field-property box="sp_summary" name="code" path="sp_summary_code_.kt"]
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.FabricatePassSize
-import afield.four.fabricated.FabricatePassSpec
-import afield.four.fabricated.addPassChain
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.FabricatePassSize
+import afield.graphics.scene.fabricated.FabricatePassSpec
+import afield.graphics.scene.fabricated.addPassChain
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
 
-prop<afield.four.fabricated.FabricateBuiltChain>(summary)
+prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(summary)
 
 // The field being summarised: three anisotropic blobs that drift and rotate, with the
 // mass in alpha and a value ramp in red. A chain head that synthesises its own input is

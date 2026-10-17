@@ -116,8 +116,8 @@ These are application intervals, not GPU presentation measurements. If your upda
 already skips repeated renderer frames, place `beginFrame()` after that guard so each
 record corresponds to one actual update.
 
-`measure` and `profileScope("name") { … }` label synchronous work. Do not suspend or move
-threads inside these scopes. Standard `launch(CoroutineName("Orbit")) { … }` labels child
+`measure` and `profileScope("name") { … }` label synchronous work: a suspension inside one does
+not compile, and a scope that ends on another thread is marked "moved threads". Standard `launch(CoroutineName("Orbit")) { … }` labels child
 lanes, including children dispatched by `SimulationClock`. A selected lane reports
 inclusive costs. All-lane totals and the overview use self costs, subtracting measured
 children so nested scopes are counted once. Parent bars still enclose child work.
@@ -236,10 +236,9 @@ background compilation and renderer execution, are outside the exact resume coun
 Optional JVM stacks cover their sampled CPU/allocation activity. GPU timings are in the
 renderer profiler; this panel does not show them.
 
-The source revision is a fingerprint of the box's `code` property captured with its
-launch context. The source button opens **current** code; it does not restore the
-captured revision. Use **Hot code** for sampled source lines. Alternate-property launches are
-identified by their strand, but the fingerprint still refers to the `code` property.
+The source revision is a fingerprint of the property that was launched, taken at launch. The
+source button opens that property as it is now, and the detail says when it has been edited
+since the capture. Use **Hot code** for sampled source lines.
 
 ## Capture limits
 
@@ -467,7 +466,7 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/frame_budget/cpuspan-window.png" capture="box" w="900" h="300" wait="2.0" timeout="180" embed=true name="frame-budget-cpuspan-window" alt="A Field box output panel labelled main, holding a five-column table titled 'one deliberate hitch, seen through a 500-sample window', headed when, n, p50 ms, p99 ms and max ms. Two rows. 'Just after the hitch (600 spans in)' reports n of 500 rather than 600, a p50 and a p99 both around a third of a millisecond, and a max of about fifty milliseconds highlighted as a warning. '500 spans later' reports n of 500 again, the same third-of-a-millisecond p50 and p99, and a max that has fallen back under one millisecond, shown as ok. A footnote states how little p99 moved against how far max fell, and that max is back among the short spans."}
 :::static
-import afield.four.CPUSpan
+import afield.graphics.vulkan.CPUSpan
 
 // Drive the real CPUSpan.time 600 times under a label of my own: 599 short spans and one
 // deliberate long one. Nothing here simulates the window — WINDOW and the percentile
@@ -481,9 +480,9 @@ val withHitch = CPUSpan.snapshot().first { it.label == label }
 repeat(500) { CPUSpan.time(label) { Thread.sleep(0, 200_000) } }
 val after = CPUSpan.snapshot().first { it.label == label }
 
-val rows = listOf("just after the hitch (600 spans in)" to withHitch, "500 spans later" to after)
+val rows = ["just after the hitch (600 spans in)" to withHitch, "500 spans later" to after]
 display("main", Table(
-    listOf("when", "n", "p50 ms", "p99 ms", "max ms"),
+    ["when", "n", "p50 ms", "p99 ms", "max ms"],
     title = "one deliberate hitch, seen through a 500-sample window",
     note = "across those 500 spans p99 moved by " +
         "%.2f".format(after.p99Ms - withHitch.p99Ms) + "ms while max fell by " +
@@ -492,8 +491,8 @@ display("main", Table(
         (if (after.maxMs > 10) "somehow still holding it" else "back among the short spans") +
         ". A single stutter is visible in max, for eight seconds, and nowhere else."
 )
-    .rows(rows.map { (when_, s) -> listOf(when_, s.n,
-        "%.2f".format(s.p50Ms), "%.2f".format(s.p99Ms), "%.2f".format(s.maxMs)) })
+    .rows(rows.map { (when_, s) -> [when_, s.n,
+        "%.2f".format(s.p50Ms), "%.2f".format(s.p99Ms), "%.2f".format(s.maxMs)] })
     .role("when", CellRole.ACCENT)
     .roleBy("max ms") { if ((it as String).toDouble() > 10) CellRole.WARN else CellRole.OK }
     .expect("n", because = "the window is 500, so 600 and 1100 spans both report 500") { it == 500 })
@@ -533,15 +532,15 @@ says outright:
 > One scheduled continuation, ending when it returns/yields/suspends; gaps are not CPU work.
 > — `profiling.kt:27#/** One scheduled continuation, ending when it returns/yields/suspends; gaps are not CPU work. */`
 
-Read that sentence twice, because almost everything people get wrong here is in it.
+Most misreadings of the timeline come from forgetting what that sentence says.
 
 **A resume is not a frame.** It ends at the suspension point, not at the end of your
 iteration, so `loop { work; delay(16) }` produces *two* resumes per turn round the loop:
 one that does the work and suspends, and one that wakes up afterwards and immediately
 loops. The second one costs nothing. That makes a median-over-resumes a median over a
 population that is half empty, and it is why the panel warns that its percentiles are per
-resume rather than per frame. In the three-second recording measured for this page (the
-replay command is at the bottom), the box that allocates an array of 8,192 vectors every
+resume rather than per frame. In a three-second recording of the
+[profiling_timeline demo](#try-the-demo), the box that allocates an array of 8,192 vectors every
 turn showed **314 resumes: 157 that allocated a mean of 229,712 bytes and 157 that
 allocated a mean of 208**. Its median resume allocated 208 bytes. Its mean allocated
 114,966. Neither number is wrong; only one of them is about your work.
@@ -574,8 +573,11 @@ What it structurally cannot see:
   attached at launch (`Phased.kt:238#val launchJob = inMain(Box.boxContextElement(box) + ProfileOrigin(box, strand))`)
   and inherited by child coroutines. Work on a renderer thread, a background compile, a
   `DefaultDispatcher` worker — none of it reaches the counters.
+- **Field's own work in a box's context.** Starting the editor's completion for a box runs on
+  the Runloop under that box, but it is not the box's code, so it is not charged to the box
+  (`CoroutineProfiling.kt:52#if (context[ProfileExemptKey] != null) { task.run(); return }`).
 - **Any other document.** A resume whose origin belongs elsewhere is run untouched
-  (`CoroutineProfiling.kt:43#if (capture == null || origin == null || origin.document != capture.document) { task.run(); return }`),
+  (`CoroutineProfiling.kt:51#if (capture == null || origin == null || origin.document != capture.document) { task.run(); return }`),
   which is a privacy property as much as a scoping one, and only one capture may be live in
   the process at a time (`CoroutineProfiling.kt:70#check(active == null || active?.document == document)`).
 - **Anything past its bounds.** Captures run 1 to 30 seconds
@@ -621,7 +623,7 @@ reports overwritten history.
 `budget.measure("Collision") { … }` and `profileScope("name") { … }` bracket synchronous
 stages. Inclusive costs contain nested children; self costs subtract them. All-lane sums
 use self costs, while selecting one lane shows its inclusive cost. Adding inclusive parent
-and child values would double-count work. Do not suspend or change threads inside a scope.
+and child values would double-count work.
 Frame totals and scope totals are different populations and must not be added together.
 
 GC collection counts and collector time cover the whole JVM over the capture. With stacks
@@ -746,13 +748,12 @@ subdivided within a resume.
 
 **4. Follow a sample to a named line.** Open **Hot code**, brush the interval you care
 about, choose **Lines**, and switch between CPU and allocation samples. Then select the row
-and read its source. This is the step that actually works, and here is the real output of
-it on the demo, from the recording measured for this page. Grouped by innermost frame, the
+and read its source. Here is what that showed for the demo, in the same recording. Grouped by innermost frame, the
 allocation samples ranked:
 
 | sampled weight | events | innermost frame |
 |---|---|---|
-| 28.87 MiB | 136 | `afield.stdlib.LinalgKt.vec` |
+| 28.87 MiB | 136 | `afield.math.linalg.LinalgKt.vec` |
 | 1.98 MiB | 9 | the vector box's own line 12 |
 | 1.92 MiB | 9 | `kotlinx.coroutines.EventLoopImplBase.scheduleResumeAfterDelay` |
 
@@ -776,8 +777,8 @@ lane's exact `wallMs` found the CPU problem in the first second.
 
 **5. Jump to the box with the gutter heatmap on.** **Open box with gutter heatmap** puts
 you in Monaco with the sampled lines striped in the gutter, cyan for CPU and amber for
-estimated allocation. The mechanism is worth a paragraph, because it explains the one way
-this step disappoints people.
+estimated allocation. The stripes vanish in one case that surprises people, and the
+matching rule below explains why.
 
 A capture's source records carry more than a path. `ProfileStackSource`
 (`profiling.kt:50#data class ProfileStackSource(val id: Int, val path: String, val code: String,`)

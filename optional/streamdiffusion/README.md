@@ -54,7 +54,7 @@ Check `StreamDiffusionSupport.probe(renderer, config).available` before construc
 a processor, and show `reason` when unavailable. Resolve the renderer before an asynchronous boundary:
 
 ```kotlin
-import afield.four.diffusion.*
+import afield.media.video.diffusion.*
 import java.io.File
 
 val owner: Renderer = fromContext()

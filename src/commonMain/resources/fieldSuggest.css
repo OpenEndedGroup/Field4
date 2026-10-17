@@ -760,3 +760,19 @@
 .hoverlay-left .afield-line-note img {
   max-height: 96px;
 }
+
+/* Open Anything: a docs hit previews the rendered page itself (quickpick.js, paletteMountDocsFrame). */
+.afield-palette-docs-frame-wrap {
+    margin: 8px 0;
+    border: 1px solid rgba(var(--field-white-rgb), 0.12);
+    border-radius: 6px;
+    overflow: hidden;
+    background: #111;
+}
+
+.afield-palette-docs-frame {
+    display: block;
+    width: 100%;
+    height: min(470px, calc(100vh - 290px));
+    border: 0;
+}

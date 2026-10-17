@@ -17,7 +17,7 @@ features. No driver or system-package changes are required.
 | Scene producers | Canonical path-tracing transcripts | Materials, lens, glTF, glass, procedural meshes and live integrator reload |
 | Raster-primary direct lighting / RTXDI | `four/lighting`, `FabricateDirectLighting` | Separate [lighting results](lighting/results/README.md); independent of the path-tracer changes |
 
-All Kotlin paths above are beneath `src/jvmMain/kotlin/afield/four/`; shader paths are beneath
+Kotlin paths above are beneath `src/jvmMain/kotlin/afield/graphics/` (`fabricated/` is `scene/fabricated/`, `modules/` and `four/lighting` are `render/`); shader paths are beneath
 `src/jvmMain/resources/afield/four/`. Ordinary startup still negotiates optional ray features.
 No RTXDI, DXC, DLSS or new native dependency is needed for this audit.
 
@@ -93,7 +93,7 @@ the server's display and Vulkan environment. On a multi-GPU Linux machine this s
 ```bash
 export VK_DRIVER_FILES=/usr/share/vulkan/icd.d/nvidia_icd.json
 uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9730 --timeout 3900 \
-  --command 'run-jvm-main afield.four.fabricated.RayTracingGpuAudit --arg=--all --arg=--require-ray-query --arg=--require-pipeline --timeout 3800'
+  --command 'run-jvm-main afield.graphics.scene.fabricated.RayTracingGpuAudit --arg=--all --arg=--require-ray-query --arg=--require-pipeline --timeout 3800'
 ```
 
 `--all` runs the core, pipeline, emitter, medium and benchmark stages. Without it, the shorter

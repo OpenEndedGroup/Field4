@@ -1,8 +1,7 @@
-import afield.four.fabricated.*
-import afield.four.util.Camera
-import afield.manifold.*
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.polytope.*
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
+import afield.geometry.solid.manifold.*
+import afield.math.linalg.Vector3f
 import afield.examples.chain.PhotoToSolidChain
 import java.io.File
 prop<PathTracingRenderer>(tracer)

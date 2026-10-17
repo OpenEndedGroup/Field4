@@ -1,0 +1,16 @@
+{
+  "id" : "r5-e63307b6d523",
+  "parent" : "r4-4b8f100a41d2",
+  "description" : "adopt variant C: Loose billows: irregularly gathered folds, vertical at the top and curving gently below.",
+  "created" : "2026-10-16T10:01:28.905510Z",
+  "sourceHash" : "e63307b6d5237f8b1a45b279ac19d44cb614c9cee8d4d01139a98bfb353dc8d0",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : true,
+    "nonFiniteFraction" : 0.0,
+    "words" : 206,
+    "knobs" : 96,
+    "stages" : 25
+  }
+}

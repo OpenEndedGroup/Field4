@@ -1,12 +1,16 @@
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 import java.nio.*
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
-var Box.browserControl by Inheritance<afield.four.browser.PuppetBrowser>() /**/
-val Once.browserControl by Onceing<afield.four.browser.PuppetBrowser>() /**/
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
+import afield.media.browser.PuppetBrowser
+var Box.browserControl by Inheritance<afield.media.browser.PuppetBrowser>() /**/
+val Once.browserControl by Onceing<afield.media.browser.PuppetBrowser>() /**/
 val Why.browserControl by Whying() /**/
 /*graphics-input:pos*/ val Mesh.pos by FromInput()
 /*graphics-input:tc*/ val Mesh.tc by FromInput()

@@ -1,10 +1,65 @@
 package afield.examples
 
-import afield.four.physics.OctreeBarnesHutPool
-import afield.four.physics.SimdVerlet
-import afield.generator2
-import afield.graphics.FLine
-import afield.stdlib.*
+import afield.simulation.physics.OctreeBarnesHutPool
+import afield.simulation.physics.SimdVerlet
+import afield.runtime.lifecycle.generator2
+import afield.geometry.path.FLine
+import afield.ai.learning.*
+import afield.ai.retrieval.*
+import afield.animation.interpolation.*
+import afield.animation.keyframes.*
+import afield.animation.motion.*
+import afield.app.commands.*
+import afield.app.diagnostics.*
+import afield.audio.analysis.*
+import afield.audio.synth.*
+import afield.data.collections.*
+import afield.data.formats.*
+import afield.data.graph.*
+import afield.data.sorting.*
+import afield.document.context.*
+import afield.document.graph.*
+import afield.document.properties.*
+import afield.document.workspace.*
+import afield.geometry.mesh.*
+import afield.geometry.path.*
+import afield.geometry.spatial.*
+import afield.graphics.color.*
+import afield.graphics.interaction.*
+import afield.graphics.render.*
+import afield.graphics.shader.*
+import afield.graphics.text.*
+import afield.graphics.vulkan.buffers.*
+import afield.io.osc.*
+import afield.io.process.*
+import afield.lang.lambda.*
+import afield.lang.python.*
+import afield.lang.remotejs.*
+import afield.lang.stacksl.*
+import afield.math.autodiff.*
+import afield.math.control.*
+import afield.math.estimation.*
+import afield.math.functions.*
+import afield.math.linalg.*
+import afield.math.optimization.*
+import afield.math.statistics.*
+import afield.math.units.*
+import afield.media.image.*
+import afield.media.video.*
+import afield.runtime.execution.*
+import afield.runtime.languages.*
+import afield.runtime.lifecycle.*
+import afield.simulation.agents.*
+import afield.simulation.automata.*
+import afield.simulation.particles.*
+import afield.study.build.*
+import afield.study.evidence.*
+import afield.study.search.*
+import afield.study.source.*
+import afield.study.ui.*
+import afield.ui.controls.*
+import afield.ui.output.*
+import afield.ui.visualization.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -381,33 +436,33 @@ var lastBarnesHutFLine_depth = 5
 
 data class SimdNodePick3D(
     val nodeIndex: Int,
-    val queryPoint: afield.stdlib.Vec3,
-    val nodePosition: afield.stdlib.Vec3,
+    val queryPoint: afield.math.linalg.Vec3,
+    val nodePosition: afield.math.linalg.Vec3,
     val distanceToNode: Float
 )
 
 class GrowingSequenceRuntime internal constructor(
     val frames: Sequence<Pair<FLine, FLine>>,
     private val grabFn: (
-        queryPoint: afield.stdlib.Vec3,
-        controllerPosition: afield.stdlib.Vec3,
+        queryPoint: afield.math.linalg.Vec3,
+        controllerPosition: afield.math.linalg.Vec3,
         controllerRotation: Quat,
         maxOutsideDistance: Double
     ) -> SimdNodePick3D?,
-    private val continueFn: (controllerPosition: afield.stdlib.Vec3, controllerRotation: Quat) -> Boolean,
+    private val continueFn: (controllerPosition: afield.math.linalg.Vec3, controllerRotation: Quat) -> Boolean,
     private val releaseFn: () -> Int?,
     private val grabbedNodeIndexFn: () -> Int?,
     private val closeFn: () -> Unit
 ) : AutoCloseable {
     fun grab(
-        queryPoint: afield.stdlib.Vec3,
-        controllerPosition: afield.stdlib.Vec3 = vec(queryPoint.x, queryPoint.y, queryPoint.z),
+        queryPoint: afield.math.linalg.Vec3,
+        controllerPosition: afield.math.linalg.Vec3 = vec(queryPoint.x, queryPoint.y, queryPoint.z),
         controllerRotation: Quat = Quat(),
         maxOutsideDistance: Double = Double.POSITIVE_INFINITY
     ): SimdNodePick3D? = grabFn(queryPoint, controllerPosition, controllerRotation, maxOutsideDistance)
 
     fun grab(
-        controllerPosition: afield.stdlib.Vec3,
+        controllerPosition: afield.math.linalg.Vec3,
         controllerRotation: Quat,
         maxOutsideDistance: Double = Double.POSITIVE_INFINITY
     ): SimdNodePick3D? = grab(
@@ -417,10 +472,10 @@ class GrowingSequenceRuntime internal constructor(
         maxOutsideDistance = maxOutsideDistance
     )
 
-    fun continueGrab(controllerPosition: afield.stdlib.Vec3, controllerRotation: Quat): Boolean =
+    fun continueGrab(controllerPosition: afield.math.linalg.Vec3, controllerRotation: Quat): Boolean =
         continueFn(controllerPosition, controllerRotation)
 
-    fun `continue`(controllerPosition: afield.stdlib.Vec3, controllerRotation: Quat): Boolean =
+    fun `continue`(controllerPosition: afield.math.linalg.Vec3, controllerRotation: Quat): Boolean =
         continueGrab(controllerPosition, controllerRotation)
 
     fun release(): Int? = releaseFn()

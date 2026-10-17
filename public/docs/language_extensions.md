@@ -1,15 +1,12 @@
 # Field language extensions
 
 Write a few lines of your own language inside a triple-quoted string in a Kotlin
-box and Monaco sees one long string, coloured all the way through. Field's editor
-keeps a small browser-side registry that lets you change that, for languages that
-are useful before they are fully integrated into Field. Register an extension and
-your language gets syntax highlighting inside the embedded region, its own
-diagnostics, and a flow/context lens, and nobody has to edit the Kotlin/JS Monaco
-bindings to add the next one. RectSL is the experiment this was built for.
-
-StackSL uses this API internally while keeping its older global hooks available.
-That makes StackSL both a real consumer and the reference implementation.
+box and the editor sees one long string, coloured all the way through. A language
+extension changes that. It is a small JavaScript object, registered in the
+browser, that gives your language syntax highlighting inside the string, its own
+error markers, completion, and decorations that show how values move through the
+code. You do not need to change Field's editor to add one, so a language can be
+useful long before it is built into Field. RectSL and StackSL both work this way.
 
 ## Loading
 
@@ -89,14 +86,14 @@ FieldLanguageExtensions.register({
 }
 ```
 
-Each hook is optional. Hook failures are caught and reported to the browser
-console so one experimental language does not take down the editor.
+Each hook is optional. An error thrown by a hook is caught and reported to the
+browser console, so a broken extension does not take down the editor.
 
 ## Embedded regions
 
-Embedded language support starts with a region detector. A region should include
-absolute offsets into the Monaco model so later hooks can map tokens back to
-editor positions:
+An extension starts by finding the regions of its language in the editor's text.
+Each region gives character offsets from the start of the text, so the other
+hooks can turn a position in your language back into a line and column:
 
 ```diffstatic {data-lang=javascript}
 {
@@ -194,17 +191,18 @@ FieldLanguageExtensions.register({
 
 ## Flow and context lenses
 
-`updateFlowLens(...)` is for visual relationships in the text: stack consumers,
-track producers, duplicated rectangles, mirrored keyframes, or timing
-transformations. Use Monaco decorations, preferably with an editor-local
-decoration collection:
+`updateFlowLens(...)` draws relationships in the text: which word consumes a
+value from the stack, which line produces a track, which rectangles are copies of
+each other. Draw them as Monaco decorations, kept in a collection that belongs to
+the editor:
 
 ```diffstatic {data-lang=javascript}
 const state = editor._rectslFlow || (editor._rectslFlow = editor.createDecorationsCollection([]))
 state.set(decorations)
 ```
 
-`buildContextPayload(...)` feeds the small editor context badge:
+`buildContextPayload(...)` fills the small badge at the lower left of the editor
+with whatever is useful about the cursor's position:
 
 ```diffstatic {data-lang=javascript}
 buildContextPayload(editor, resolveContext) {
@@ -225,17 +223,14 @@ buildContextPayload(editor, resolveContext) {
 }
 ```
 
-For RectSL, useful context payloads might include the current word's stack
-effect, the selected rectangle/group, sampled track value at the current time, or
-the source and target keyframes of a timing transform.
+For RectSL, the badge could show what the word under the cursor does to the
+stack, the selected rectangle, or a track's value at the current time.
 
 ## Completion items
 
-`provideCompletionItems(...)` lets an out-of-tree language answer before Field's
-server-side completion path. This is useful for embedded DSLs, because the
-language often knows its local vocabulary without needing Kotlin compiler
-context. FieldSuggest renders these suggestions; they are not registered with
-Monaco's built-in suggest widget:
+`provideCompletionItems(...)` answers completion inside your language before Field
+asks the Kotlin compiler. A small language usually knows its own vocabulary, so
+it can answer on its own. The suggestions appear in Field's completion popup:
 
 ```diffstatic {data-lang=javascript}
 provideCompletionItems(editor, model, position, { monaco }) {
@@ -261,22 +256,16 @@ provideCompletionItems(editor, model, position, { monaco }) {
 }
 ```
 
-RectSL's incubating extension keeps a word-documentation table beside the
-highlighter and flow lens, so FieldSuggest completion, token colors, and the
-context badge all describe the same language. Field's user-facing completion
-goes through FieldSuggest, not Monaco's built-in suggest widget.
+RectSL keeps one table of word documentation and uses it for completion, token
+colours and the context badge, so all three describe the same language.
 
 ## Line notes: what a line did { #line-notes }
 
 Rest the cursor on a line of a box's program, or open completion there, and Field shows a note about
-that line beside the cursor and at the top of the completion popup. A note is what the line came to —
-set in the face value visualizers use, with its results in bold — over a small, muted line saying where
-that came from and how old it is, and a picture when the language has one to draw. What a picture shows
-is not written out again beside it; the AI tool below, which may not see the picture, still gets it as
-text. Pictures are drawn at
-twice their size and shown at their own, so they stay sharp on a Retina display. A language gives notes
-by registering a provider for the property its programs live in, so this is not a closed list; these
-are the ones Field's own languages give:
+that line beside the cursor and at the top of the completion popup. The note says what the line came
+to, with its results in bold. Under it, a smaller line says where that answer came from and how old it
+is, and some languages add a picture. A language gives notes by registering a provider for the property
+its programs live in, so any language can have them. These are the ones Field's own languages give:
 
 | language | the note for a line | picture |
 | --- | --- | --- |
@@ -286,6 +275,9 @@ are the ones Field's own languages give:
 | Clojure | what each top-level form evaluated to on the last run, and its type | — |
 | Python | what each top-level statement came to on the last run: an expression's value, the name it assigned, what it defined, or just that it ran | — |
 | FieldML | the value each top-level `let` bound on the last run, and its type; the final expression's value | — |
+| Kotlin | the value each top-level `val` or `var` held when the last run finished | — |
+| Morpho | the `# main` line: the grown circuit's gates, cells and depth; a `LUT` line: the gates it became; a `def`: how many times it was expanded, at which widths, and the gates beneath it | — |
+| Nano | how many times the instruction ran on the last run, the registers after it last did, and what it output; or that it never ran | — |
 | Datalog | a rule: the facts its body derives in the box's model; a query: its answers; a fact: whether it is in the model and which rules read it | the derived rows, as a table |
 | Pd | an object: what it is fed by and feeds; an `[s]` or `[r]`: the last value through its name, live from the playing patch; a `#X connect` line: the two ends it joins | — |
 
@@ -295,11 +287,10 @@ The [ForthField](forth_examples.md#what-each-line-left-on-the-stack) and
 
 **A note never runs your code.** StackSL and RectSL can say what part of a program does without
 running it, because a partial StackSL program is still a pure shader and a partial RectSL scene a
-pure description. Forth, Clojure, Python and FieldML programs print, draw, define things and change
+pure description. Forth, Clojure, Python, FieldML, Kotlin, Morpho and Nano programs print, draw, define things and change
 state that outlives the run, so their notes are *recorded*: as the box runs, each top-level step reports
-what it came to, and the note reads that record back. It says so — "last run, 12 s ago" — and follows
-its line when you edit above it. Pressing run changes a note without changing the text it is about, so
-the editor asks again each time the cursor rests rather than keeping an old answer.
+what it came to, and the note reads that record back. The note says so ("last run, 12 s ago"), and it
+stays with its line when you edit above it. Running the box again updates the note.
 
 When the line itself has changed since the box ran, the note says so before it tells you what the old
 text did. Here the cell below has run once, and `+ 1` has just been typed on the end of line 3:
@@ -329,63 +320,48 @@ not reached. Datalog needs no record: a Datalog box accumulates one model, and a
 you have edited but not run is reported as not in the model rather than answered for. Directives such as
 `#reset` are never run for a note.
 
-Two details of the recording are worth knowing. A Clojure value is printed under a bounded
-`*print-length*`, and a lazy sequence nothing has realised is named, not printed — printing it would
-realise it, running code the program never ran. A Python note prints a value only when it is a
-builtin number, a short string, or a small list, tuple, set or dict of those; anything else — a
-DataFrame, a tensor, an object of your own class — is named by its type, because printing it would run
-its `__repr__`. Only a plain name is read back after an assignment, so recording evaluates nothing the
-statement did not, and a cell's docstring and `from __future__` imports are left exactly where Python
-needs them. Setting `AFIELD_PYTHON_LINE_NOTES=0` in Field's environment turns Python's recording off.
+Recording never runs code your program did not. A Clojure value is printed with a limited
+`*print-length*`, and a lazy sequence that nothing has realised is named rather than printed, since
+printing it would realise it. A Python note prints a value only when it is a builtin number, a short
+string, or a small list, tuple, set or dict of those. Anything else, such as a DataFrame, a tensor or
+an object of your own class, is named by its type, because printing it would run its `__repr__`.
+Setting `AFIELD_PYTHON_LINE_NOTES=0` in Field's environment turns Python's recording off.
 
-Recording costs something for each top-level step — a Forth line, a Clojure form, a Python statement, a
-FieldML `let` — and nothing for each turn of a loop inside one, so a program's cost grows with its
-length, not with how long it runs. A picture is drawn only when its note is asked for.
+Recording costs a little for each top-level step (a Forth line, a Clojure form, a Python statement, a
+FieldML `let`) and nothing for each turn of a loop inside one, so a long-running loop costs no more
+than a short one.
 
-Kotlin box code has no notes of its own yet. A Kotlin box is compiled as one snippet and only its
-final value comes back, so a per-line value would need the box's source rewritten before
-compilation. Inside a Kotlin box, a `#stacksl` or `#rectsl` string still gets its language's notes.
-Morpho and Nano boxes have none.
+A Kotlin line that declares nothing, such as a `println`, has no note, because a run keeps only the
+values of what it declares. Inside a Kotlin box, a `#stacksl` or `#rectsl` string gets its own
+language's notes.
 
-A box's AI chat can read the same notes: the `ReadLineNotes` tool is offered in a conversation on a
-program that has them — not on a plain Kotlin box — and returns each line's note as one sentence, with
-its picture as an image.
+A box's AI chat can read the same notes through its `ReadLineNotes` tool, which returns each line's
+note as one sentence, with its picture as an image.
 
 ## When to promote
 
-Keep a language out of tree while its syntax and semantics are moving quickly.
-Promote it into Field when one of these becomes true:
+Keep a language as an extension while its syntax is still changing. Build it
+into Field when one of these becomes true:
 
-- It needs a durable property language in `monacoPropertyLanguages`.
-- Its compiler/runtime should ship with Field.
-- Its diagnostics need server-side data.
-- Other Field systems need to call it directly.
+- A box property should be written in it, with its own editor language.
+- Its compiler or runtime should ship with Field.
+- Its error messages need information only the server has.
+- Other parts of Field need to call it directly.
 
-Until then, the extension registry lets the language feel native in the editor
-without becoming part of the editor bindings.
+## A language built into Field: FieldML
 
-## What a promoted language looks like: FieldML
+FieldML is the language of a whole box, not a region inside a string, so it
+does not use the extension registry. It gets the same three things another way:
 
-FieldML is a main language rather than an embedded region, so it does not use
-the registry described above. It takes the built-in route instead, which
-replaces all three of the registry hooks:
+- **Highlighting** comes from a Monaco language of its own,
+  [fieldml.js](https://github.com/OpenEndedGroup/Field4/blob/main/src/commonMain/resources/fieldml.js),
+  with FieldML's keywords, type names, operators, brackets and comment forms.
+- **Completion and hover come from the server**, which answers from the same
+  types the compiler uses. Each suggestion shows its real type, and after a
+  `|>` the functions that accept the piped value come first.
+- **Error markers are real type errors**, from compiling the box when it runs.
 
-- **Highlighting** comes from a registered Monaco language rather than an
-  embedded-region matcher. `src/commonMain/resources/fieldml.js` calls
-  `monaco.languages.register` and installs a Monarch grammar with its own
-  keywords, type names and operators, plus a language configuration for
-  brackets, auto-closing pairs and the `//` and `(* *)` comment forms.
-- **Completion and hover come from the server**, not from a JS
-  `completionItems` hook. A FieldML box's execution routes `complete` and
-  `describeSymbolContext` into `FieldMLCompletionEngine`, which answers from the
-  same type prelude the compiler uses. Items carry their real inferred types,
-  and when the caret follows a `|>` the engine ranks the functions whose last
-  argument accepts the piped type.
-- **Diagnostics are real type errors**, not lexical guesses. Running a box
-  compiles it, so the messages come from the inferencer with source ranges.
-
-The trade is the usual one. An extension-registry language ships as a `.js`
-file and can change shape in an afternoon; a promoted language has a compiler,
-a type checker and a prelude to keep in step, and gains completion that
-actually knows what a name means. See the
-[FieldML Cheatsheet](fieldml_cheatsheet.md) for the surface that buys.
+An extension is one `.js` file that is easy to change. A built-in language has
+a compiler and a type checker to keep up to date, and in return its completion
+knows what each name means. The [FieldML Cheatsheet](fieldml_cheatsheet.md)
+shows the language.

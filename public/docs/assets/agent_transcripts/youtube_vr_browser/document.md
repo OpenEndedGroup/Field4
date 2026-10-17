@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. window + renderer
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="youtube_vr_renderer" index="0" -->
 
 ```edn [field-box id="youtube_vr_renderer" role="properties"]
-{"id" "youtube_vr_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["youtube_vr_panel"] "properties" {"children" #{#afield/box "youtube_vr_panel"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_vr_renderer_code_.kt" "lines" 22 "characters" 607 "sha256" "b82cac1ce7cb268b08c1dc60e9092bac6134f5b95a50d0324b6326af42282150"}]}
+{"id" "youtube_vr_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["youtube_vr_panel"] "properties" {"children" #{#afield/box "youtube_vr_panel"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_vr_renderer_code_.kt" "lines" 22 "characters" 629 "sha256" "d7b86120583e7054b2a123d01f70d92b40b44b8bf67c2e811b8b5369ca924926"}]}
 ```
 
 ```kotlin [field-property box="youtube_vr_renderer" name="code" path="youtube_vr_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -30,7 +30,7 @@ once.renderer {
     window = Window("YouTube · puppet browser")
     val created = Renderer(window)
     if (Options.enableVR) {
-        created.openXRHmdTarget = afield.four.targets.OpenXRHmdTarget(created)
+        created.openXRHmdTarget = afield.graphics.vulkan.targets.OpenXRHmdTarget(created)
     }
     created
 }
@@ -44,18 +44,18 @@ start(renderer::run)
 <!-- field-box id="youtube_vr_panel" index="1" -->
 
 ```edn [field-box id="youtube_vr_panel" role="properties"]
-{"id" "youtube_vr_panel" "index" 1 "name" "YouTube — interactive Chromium panel" "parents" ["root" "youtube_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_vr_renderer"} "name" "YouTube — interactive Chromium panel" "_tombstone" false "frame" #afield/rect [320.0 140.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_vr_panel_code_.kt" "lines" 62 "characters" 2297 "sha256" "8d1ac4f7445e7f53269a87d76be798411db34b460ff7d5303e296c4a6a2ea8bf"}]}
+{"id" "youtube_vr_panel" "index" 1 "name" "YouTube — interactive Chromium panel" "parents" ["root" "youtube_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_vr_renderer"} "name" "YouTube — interactive Chromium panel" "_tombstone" false "frame" #afield/rect [320.0 140.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_vr_panel_code_.kt" "lines" 66 "characters" 2291 "sha256" "a52099e0b7fa4fb26b1de3a1f488422bcf121fcf383082a5e2c00cdc470b7311"}]}
 ```
 
 ```kotlin [field-property box="youtube_vr_panel" name="code" path="youtube_vr_panel_code_.kt"]
-import afield.four.Target
-import afield.four.browser.FieldUiBrowserTexture
-import afield.four.browser.PuppetBrowserVrPanel
-import afield.four.browser.PuppetBrowserWindowInput
-import afield.four.targets.SideBySideStereoTarget
+import afield.graphics.vulkan.Target
+import afield.media.browser.FieldUiBrowserTexture
+import afield.media.browser.PuppetBrowser
+import afield.media.browser.PuppetBrowserVrPanel
+import afield.media.browser.PuppetBrowserWindowInput
 
-// prop declarations are lifted into Field's preamble before ordinary imports are applied.
-prop<afield.four.browser.PuppetBrowser>(browserControl)
+// Publish browser controls to connected boxes.
+prop<PuppetBrowser>(browserControl)
 
 // The producer is a full Chromium page, not an embed: consent, account state, player,
 // navigation and audio all behave as they do in an ordinary browser.
@@ -65,13 +65,14 @@ val browser = FieldUiBrowserTexture(
     width = 1280,
     height = 720,
     // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
-    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
+    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
 )
 browserControl = browser
 
 // Import the newest cross-process frame before either eye samples the resident texture.
-renderer.renderList.preTargets["youtube-browser-upload"] =
-    Target { command, _ -> browser.prepareSampledImagesFor(command) }
+renderer.renderList.preTargets["youtube-browser-upload"] = Target { command, _ ->
+    browser.prepareSampledImagesFor(command)
+}
 
 val stereo = SideBySideStereoTarget(renderer, openXR = renderer.openXRHmdTarget)
 val panel = PuppetBrowserVrPanel(
@@ -80,7 +81,7 @@ val panel = PuppetBrowserVrPanel(
     browser = browser,
     widthMeters = 1.6f,
     distanceMeters = 1.7f,
-    name = "youtube-browser-panel"
+    name = "youtube-browser-panel",
 )
 panel.build()
 panel.enableDesktopInteraction()
@@ -94,21 +95,24 @@ keyboard.takeFocus()
 stereo.packed.blitToScreen(
     renderer = renderer,
     target = renderer.renderList,
-    name = "youtube-stereo-screen"
+    name = "youtube-stereo-screen",
 )
 
 var announced = false
 loop {
     if (!announced && browser.pageReady) {
         announced = true
-        println("YouTube is live on a ${browser.spec.width}x${browser.spec.height} " +
-            "texture; trigger accepts consent and controls playback")
+        println(
+            "YouTube is live on a ${browser.spec.width}x${browser.spec.height} " +
+                "texture; trigger accepts consent and controls playback",
+        )
     }
     frame()
-}.end {
-    renderer.renderList.preTargets.remove("youtube-browser-upload")
-    keyboard.close()
-    browser.close()
 }
+    .end {
+        renderer.renderList.preTargets.remove("youtube-browser-upload")
+        keyboard.close()
+        browser.close()
+    }
 ```
 

@@ -10,15 +10,14 @@ Install **Git and Git LFS**, and run `git lfs install` before cloning. The compi
 in LFS: without it, Git leaves a small text pointer where the compiler JAR should be. GitHub's
 **Download ZIP** is not the recommended installation route.
 
-Allow several gigabytes for the checkout, downloaded runtimes, dependency caches and build output.
-The tracked checkout alone is about 1.3 GB. Start with at least **10 GB of free space**; this is a
-planning allowance, not a measured minimum. For this beta, **16 GB RAM is recommended** for the
-source build. The Kotlin compiler is allowed a 10 GB heap. CI checks cover server-only startup;
-desktop and graphics workloads on 8 GB machines have not been qualified.
-The first launch needs internet access to download dependencies and compile the project.
-Fresh Windows and Apple-silicon macOS CI launches took about 20–25 minutes; your machine
-and connection will affect that time. Later launches reuse the download and compiler caches.
-A long-running Gradle task is normal; `BUILD FAILED` is not.
+Start with at least **10 GB of free space** for the checkout, downloaded runtimes, dependency
+caches and build output, and **16 GB of RAM**. The Kotlin compiler is allowed a 10 GB heap, and
+desktop and graphics work on 8 GB machines has not been tested.
+
+The first launch needs internet access to download dependencies and compile the project; allow
+20–25 minutes, depending on your machine and connection. Later launches reuse the
+downloads and compiled code. A Gradle task that runs for a long time is normal; `BUILD FAILED` is
+not.
 
 <div class="field-data-table" markdown>
 
@@ -28,7 +27,7 @@ A long-running Gradle task is normal; `BUILD FAILED` is not.
 | **Linux, x86-64** | A glibc desktop distribution, Git LFS, `curl`, a C/C++ toolchain, Make, CMake, and the desktop libraries listed below. Run from your desktop session. |
 | **Windows, x64** | Git for Windows with Git LFS enabled. Use `field.bat`, or PowerShell as shown below. The launcher provisions its runtimes; a separate C++ compiler is not needed for the default Windows launch. |
 | **Linux, ARM64** | The launcher has an ARM64 provisioning path, but this release has not yet been validated end to end on ARM64. Treat it as experimental. |
-| **Intel Macs / native Windows ARM64** | Not supported by the pinned toolchain. GraalVM Community 25.0.2 supplies no Intel macOS or Windows ARM64 build; the launcher reports this before downloading. |
+| **Intel Macs / native Windows ARM64** | Not supported by the pinned toolchain. GraalVM Community 25.4 supplies no Intel macOS or Windows ARM64 build; the launcher reports this before downloading. |
 
 </div>
 
@@ -99,10 +98,11 @@ On the first **interactive** launch, a small Kotlin welcome tool runs before Fie
 Choose the recommended desktop app or browser/server mode, then select optional features from
 the checkbox list: **Up/Down** moves, **Space** toggles and **Enter** reviews your choices.
 Prerequisites appear at the right. Features with missing tools are disabled unless Windows
-setup can install every missing tool through winget. Install other prerequisites and rerun setup. Unsupported platform features and NVIDIA-only
-features without a working `nvidia-smi` are omitted. Limited terminals use numbered checkboxes:
+setup can install every missing tool through winget; install the other prerequisites and rerun
+setup. Features your platform does not support, and NVIDIA-only features without a working
+`nvidia-smi`, are left out. Limited terminals use numbered checkboxes:
 type numbers or names to toggle, then Enter to review. Leave everything unchecked to skip extras.
-It shows the exact package-manager commands and requires typing `INSTALL`
+Setup then shows the exact package-manager commands and requires typing `INSTALL`
 before running them. Administrator authentication belongs to your OS package manager; no API keys
 are requested. You can leave the commands for later and install them yourself.
 
@@ -111,7 +111,7 @@ Python prerequisites do not include a configured JEP runtime: complete that in t
 and agent tooling have their own guides and prerequisites.
 
 The menu covers Python/JEP, computer vision and voice; Vulkan/OpenXR and shader tools;
-Ceres, TetGen, Manifold and paint; Pure Data, Csound and LuaJIT; and optional
+Ceres, TetGen, Manifold, [SolidCraft](solidcraft.md), paint and the [Patchy layered editor](patchy.md); Pure Data, Csound and LuaJIT; and optional
 physics, video, audio-AI and training workers, guide/template services and audio samples. It also includes agent and documentation tooling.
 Kotlin, JavaScript, Faust, ordinary audio and browser drawing work without selecting any extras.
 
@@ -128,18 +128,16 @@ that task and checks its build tools. Type **BUILD** to run it, or leave it for 
 approves the displayed system packages only. Windows native-library builds need Visual Studio
 C++ Build Tools and a Developer PowerShell; the default Windows app launch does not.
 
-Large model environments and downloads, GPU SDKs, containers, Python interpreter selection and
-permissions remain explicit steps in each feature’s guide. Setup shows those steps and platform
-limits. A completed build or saved selection does not establish that a model, GPU or device works;
-use the feature’s runtime probe or example after preparation.
+Large model downloads, GPU SDKs, containers, choosing a Python interpreter and granting
+permissions are steps in each feature's own guide; setup lists them. Once a feature is prepared,
+run its example to check that it works on your machine.
 
 Your choices live in `~/.field4/first-run.properties`. Reopen the tool with `./field.sh --setup`
 (Windows: `.\field.bat --setup`); this command configures setup and exits. Noninteractive launches
 skip the questionnaire. Automation may also set `AFIELD_FIRST_RUN=skip`; prerequisite checks still
 apply. The helper builds on the wrapper's Java 17, independently of Field's compiler fork.
 
-The terminal shows startup progress and server URLs. This older screenshot illustrates the console;
-current launches use HTTPS:
+The terminal shows startup progress and server URLs:
 
 ![A dark terminal filling the window with the word FIELD drawn very large in ASCII art, each letter built from slashes and dots. Beneath it three lines each tagged with a dim "welcome" marker read "welcome to Field, ß-023" and "http://localhost:9092/index.html?file=helloVideo". Below those, the server's own log: Ktor reporting "Application started in 0.206 seconds" and "Responding at http://0.0.0.0:9092", the filestore persisting its cache, "indexed 243 files, 3617 definitions", "found 54429 classes on classpath in 1.851s", and at the bottom a Gradle progress line reading "96% EXECUTING" against the still-running `:runJvm` task](assets/screenshot_22.png)
 
@@ -204,7 +202,7 @@ The right side is a stack of collapsible panels, one per part of Field:
   extra Java libraries.
 - **Runtime** and **Vulkan**: the JVM Field is running on, and whether graphics windows will open
   on this machine. If Vulkan is missing, the panel gives install steps for your OS; the graphics
-  system itself is described in [afield.four Graphics](afield_four_graphics.md).
+  system itself is described in [Field 4 Graphics](afield_four_graphics.md).
 - **Python**: which interpreter [Python boxes](python.md) will use.
 - **AI**: model settings and the background tasks that improve Field's docs and tools, described
   in [Your History with Field](history_overview.md#the-welcome-dashboard); what the models do
@@ -220,9 +218,10 @@ document files. Opening one makes an editable copy in the current workspace. The
 is left alone, and copies you made earlier are not updated. Opening a copy does not run its boxes.
 
 To keep your templates somewhere else, start Field with
-`-Dafield.personalTemplates.dir=/path/to/templates`. When two templates share a name, a bundled
-one wins, then one in `src/personal`, then one in your own directory, so give yours distinctive
-names. Git ignores `src/personal`, so back those templates up yourself.
+`-Dafield.personalTemplates.dir=/path/to/templates`. If one of your templates has the same name
+as a bundled one, both are listed: yours gets `-checkout` (from `src/personal`) or `-personal`
+(from your own directory) added to its name. Git ignores `src/personal`, so back those templates
+up yourself.
 
 ## Browser or server-only use
 
@@ -274,9 +273,11 @@ for the deliberate cross-origin exceptions and integration settings.
   set `$env:PORT = "9477"` first. The launcher does not attach to someone else's Field.
 - **Download or checksum failure**: correct the connection/proxy problem and rerun. An incomplete
   GraalVM download is discarded.
-- **Out of memory during compilation**: close memory-heavy applications and include available RAM,
-  swap, and the first compiler error in your report. Lowering the compiler heap may make the build
-  fail sooner; it is not a verified low-memory installation recipe.
+- **Out of memory during compilation**: close memory-heavy applications and try again. If it still
+  fails, report your available RAM and swap with the first compiler error.
+- **macOS permissions**: accept the permission prompt for the folder you chose, and install the
+  Command Line Tools when asked. Field does not need Gatekeeper, FileVault or other protections
+  turned off.
 - **An error after startup**: include the first error and its context, OS/architecture, and the
   exact launch command. Review logs before posting them; paths and document output may be private.
 
@@ -284,14 +285,9 @@ for the deliberate cross-origin exceptions and integration settings.
 _Field·4_ is still beta software. Report reproducible problems through the public repository's
 [GitHub issue tracker](https://github.com/OpenEndedGroup/Field4/issues).
 
-On macOS, use the specific permission prompt shown for the folder you chose, and install Command
-Line Tools when requested. Field does not require disabling Gatekeeper, FileVault or other system
-protections. A report should contain the actual error rather than screenshots of unrelated
-Privacy & Security settings.
-
 ## Updating
 
-Update it the same way:
+To update Field, pull the latest source into your checkout:
 
 ```diffstatic {data-lang=bash}
 git pull
@@ -299,7 +295,7 @@ git pull
 
 and then start it again, which rebuilds whatever changed.
 
-The command palette (`Cmd-Shift-P`, or `Ctrl-Shift-P` on Windows and Linux; `F1` also works) includes **Check for updates**, which tells you whether that is worth
+The command palette (`ctrl/command-shift-P`) includes **Check for updates**, which tells you whether that is worth
 doing. It reports how many commits you are behind `origin`, and any local commits of your own that
 `origin` does not have.
 
@@ -311,7 +307,7 @@ It does not pull or change your checkout. If the answer is "7 new commits on ori
 If it cannot answer (Field was unpacked from an archive, `HEAD` is detached, there is no `origin`,
 or the network is down) it says which, rather than reporting that you are up to date.
 
-??? aside "For maintainers: making an update announce itself"
+??? aside "Agents: making an update announce itself"
     Most commits should pass without comment — the count is enough. When a commit needs everyone
     who pulls it to *do* something, give it a `Field-Notice` trailer:
 

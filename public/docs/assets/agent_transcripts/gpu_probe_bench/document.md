@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 1 - a window, because there is no headless mode
@@ -11,13 +11,13 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="probe_renderer" index="0" -->
 
 ```edn [field-box id="probe_renderer" role="properties"]
-{"id" "probe_renderer" "index" 0 "name" "1 - a window, because there is no headless mode" "parents" ["root"] "children" ["probe_hello" "probe_chain" "probe_caught"] "properties" {"children" #{#afield/box "probe_hello" #afield/box "probe_chain" #afield/box "probe_caught"} "parents" #{#afield/box "root"} "name" "1 - a window, because there is no headless mode" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_renderer_code_.kt" "lines" 16 "characters" 573 "sha256" "74c3dc7a20ab66f43ec5e4348cfa250d6c51ccb2beae20b38b5a60d914907644"}]}
+{"id" "probe_renderer" "index" 0 "name" "1 - a window, because there is no headless mode" "parents" ["root"] "children" ["probe_hello" "probe_chain" "probe_caught"] "properties" {"children" #{#afield/box "probe_hello" #afield/box "probe_chain" #afield/box "probe_caught"} "parents" #{#afield/box "root"} "name" "1 - a window, because there is no headless mode" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_renderer_code_.kt" "lines" 16 "characters" 578 "sha256" "98388d6abbaf3c713990ce2ebd6d49ca48e28068ac97392d03accc1d278838a5"}]}
 ```
 
 ```kotlin [field-property box="probe_renderer" name="code" path="probe_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
-// `afield.four` has no headless mode: a compute-only dispatch still needs a Window for
+// Field 4 has no headless mode: a compute-only dispatch still needs a Window for
 // the device to exist, and it needs an awake display. So every box below is a child of
 // this one and resolves `renderer` from it.
 //
@@ -38,11 +38,11 @@ start(renderer::run)
 <!-- field-box id="probe_chain" index="1" -->
 
 ```edn [field-box id="probe_chain" role="properties"]
-{"id" "probe_chain" "index" 1 "name" "3 - divergence, 12 Jacobi sweeps, project" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "3 - divergence, 12 Jacobi sweeps, project" "_tombstone" false "frame" #afield/rect [520.0 200.0 460.0 160.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_chain_code_.kt" "lines" 194 "characters" 8154 "sha256" "d37e839d607da6822d97f57298c3462727f83b06ce598eb7d88b430a3ab0e3b5"}]}
+{"id" "probe_chain" "index" 1 "name" "3 - divergence, 12 Jacobi sweeps, project" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "3 - divergence, 12 Jacobi sweeps, project" "_tombstone" false "frame" #afield/rect [520.0 200.0 460.0 160.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_chain_code_.kt" "lines" 194 "characters" 8165 "sha256" "73dc993cf306be7f79cbba6535290d49a9ff73f53ab9af92b6b138a1933ccf01"}]}
 ```
 
 ```kotlin [field-property box="probe_chain" name="code" path="probe_chain_code_.kt"]
-import afield.four.util.GpuProbe
+import afield.graphics.vulkan.util.GpuProbe
 
 // The chain the workspace document actually runs, at a size that fits in a box.
 //
@@ -243,12 +243,12 @@ frames {
 <!-- field-box id="probe_caught" index="2" -->
 
 ```edn [field-box id="probe_caught" role="properties"]
-{"id" "probe_caught" "index" 2 "name" "4 - half a grid, so the sentinel fires" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "4 - half a grid, so the sentinel fires" "_tombstone" false "frame" #afield/rect [40.0 420.0 420.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_caught_code_.kt" "lines" 41 "characters" 1515 "sha256" "e2237cd086f8248b963203c0dee4a33eb4163ce0257d334e620f1a5ca18c0a36"}]}
+{"id" "probe_caught" "index" 2 "name" "4 - half a grid, so the sentinel fires" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "4 - half a grid, so the sentinel fires" "_tombstone" false "frame" #afield/rect [40.0 420.0 420.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_caught_code_.kt" "lines" 41 "characters" 1537 "sha256" "8022768e9e5219dee14b8519b4d9478a806e89240c7535829eca1dbdaae05561"}]}
 ```
 
 ```kotlin [field-property box="probe_caught" name="code" path="probe_caught_code_.kt"]
-import afield.four.util.GpuProbe
-import afield.four.util.GpuProbeNeverLanded
+import afield.graphics.vulkan.util.GpuProbe
+import afield.graphics.vulkan.util.GpuProbeNeverLanded
 
 // The same shader as box 2, told to write half as many cells on purpose. This is the
 // box that says whether the sentinel is load-bearing: a hand-rolled probe that waits
@@ -295,11 +295,11 @@ frames {
 <!-- field-box id="probe_hello" index="3" -->
 
 ```edn [field-box id="probe_hello" role="properties"]
-{"id" "probe_hello" "index" 3 "name" "2 - the whole idiom, on one screen" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "2 - the whole idiom, on one screen" "_tombstone" false "frame" #afield/rect [40.0 200.0 420.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_hello_code_.kt" "lines" 50 "characters" 2375 "sha256" "5cd521e6f9df96b5197b00d9079d78615891846b32c7922023601ffcc407e599"}]}
+{"id" "probe_hello" "index" 3 "name" "2 - the whole idiom, on one screen" "parents" ["root" "probe_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "probe_renderer"} "name" "2 - the whole idiom, on one screen" "_tombstone" false "frame" #afield/rect [40.0 200.0 420.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "probe_hello_code_.kt" "lines" 50 "characters" 2386 "sha256" "b1b6e1b332d9d89b78d8e79ba499221dbbb14fcd3d1f617a609684575d7aceac"}]}
 ```
 
 ```kotlin [field-property box="probe_hello" name="code" path="probe_hello_code_.kt"]
-import afield.four.util.GpuProbe
+import afield.graphics.vulkan.util.GpuProbe
 
 // A fixture, a shader, a dispatch, a wait, a readback, three claims. What matters is
 // what is NOT here: no `defaultBuffer` whose access pattern you have to remember

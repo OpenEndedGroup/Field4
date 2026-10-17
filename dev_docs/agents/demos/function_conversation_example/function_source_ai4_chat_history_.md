@@ -1,3 +1,4 @@
+<<run-model:{"provider":"openai","requestedModel":"gpt-6-astra","responseModel":"gpt-6-astra"}>>
 <<you>>
 We are experimenting with talking a multivariate Functions.kt function into existence. Use the document-defined function study tools. Start by reading guides/working.md with DocumentGuideReadRequest and inspecting InspectFunctionStudy. The source box is function_source. Use EditFunctionStudy for candidate transactions (complete Kotlin source, expected revision and live source hash); this compiles and checks before activation. Do not edit this box via generic edit tools. All tool names and StudyComposition/StudyEvent API contracts are in the guide. Keep the Kotlin readable and self-contained.
 
@@ -56,7 +57,7 @@ Planning tool use
 Next tool: `EditFunctionStudy`
 <<progress>>
 Using EditFunctionStudy
-{"description":"One-hour drifting three-channel background with six evenly spaced, smooth chirp crescendos, exact holds and mirrored decrescendos.","expectedRevision":"r2-8f83d79e35c9","expectedSourceHash":"8f83d79e35c9d46b2a3c840be91a336958a3420904135dd1df01e2408d0f722a","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.*\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitude = 0.20\n    ...
+{"description":"One-hour drifting three-channel background with six evenly spaced, smooth chirp crescendos, exact holds and mirrored decrescendos.","expectedRevision":"r2-8f83d79e35c9","expectedSourceHash":"8f83d79e35c9d46b2a3c840be91a336958a3420904135dd1df01e2408d0f722a","source":"import afield.math.functions.Functions\nimport afield.math.functions.StudyComposition\nimport afield.math.functions.StudyEvent\nimport afield.math.functions.StudyChoice\nimport kotlin.math.*\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitude = 0.20\n    ...
 <<progress>>
 EditFunctionStudy finished
 keys=error,tool,message
@@ -74,7 +75,7 @@ Planning tool use
 Next tool: `EditFunctionStudy`
 <<progress>>
 Using EditFunctionStudy
-{"description":"One-hour drifting three-channel background with six smooth chirp crescendos, exact holds and mirrored decrescendos; qualify scalar trigonometry.","expectedRevision":"r2-8f83d79e35c9","expectedSourceHash":"8f83d79e35c9d46b2a3c840be91a336958a3420904135dd1df01e2408d0f722a","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitu...
+{"description":"One-hour drifting three-channel background with six smooth chirp crescendos, exact holds and mirrored decrescendos; qualify scalar trigonometry.","expectedRevision":"r2-8f83d79e35c9","expectedSourceHash":"8f83d79e35c9d46b2a3c840be91a336958a3420904135dd1df01e2408d0f722a","source":"import afield.math.functions.Functions\nimport afield.math.functions.StudyComposition\nimport afield.math.functions.StudyEvent\nimport afield.math.functions.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitu...
 <<progress>>
 EditFunctionStudy finished
 r3-66fd67f6fe7c Compiled, checked and activated images=0
@@ -164,7 +165,7 @@ Planning tool use
 Next tool: `EditFunctionStudy`
 <<progress>>
 Using EditFunctionStudy
-{"description":"Move selected e3 40 seconds later; preserve all internal timing, other events and absolute-time background. Supersede even spacing for e3 only.","expectedRevision":"r3-66fd67f6fe7c","expectedSourceHash":"66fd67f6fe7cd2f7ebe0547d6d89386fc1fa418b54c419ea3fd590536ce5de19","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitud...
+{"description":"Move selected e3 40 seconds later; preserve all internal timing, other events and absolute-time background. Supersede even spacing for e3 only.","expectedRevision":"r3-66fd67f6fe7c","expectedSourceHash":"66fd67f6fe7cd2f7ebe0547d6d89386fc1fa418b54c419ea3fd590536ce5de19","source":"import afield.math.functions.Functions\nimport afield.math.functions.StudyComposition\nimport afield.math.functions.StudyEvent\nimport afield.math.functions.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val backgroundAmplitud...
 <<progress>>
 EditFunctionStudy finished
 r4-f7f9ef4f2f47 Compiled, checked and activated images=0
@@ -249,7 +250,7 @@ Planning tool use
 Next tool: `EditFunctionStudy`
 <<progress>>
 Using EditFunctionStudy
-{"description":"Double selected e3 rise to 200 seconds with start pinned at 1425; keep 30-second hold, 100-second fall and Hz endpoints; no changes to other events or background.","expectedRevision":"r4-f7f9ef4f2f47","expectedSourceHash":"f7f9ef4f2f47f0097bb2a400927fdc601a1d8ea9a0fdd0defafa07c47c8a2abf","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val...
+{"description":"Double selected e3 rise to 200 seconds with start pinned at 1425; keep 30-second hold, 100-second fall and Hz endpoints; no changes to other events or background.","expectedRevision":"r4-f7f9ef4f2f47","expectedSourceHash":"f7f9ef4f2f47f0097bb2a400927fdc601a1d8ea9a0fdd0defafa07c47c8a2abf","source":"import afield.math.functions.Functions\nimport afield.math.functions.StudyComposition\nimport afield.math.functions.StudyEvent\nimport afield.math.functions.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45\n    val...
 <<progress>>
 EditFunctionStudy finished
 r5-2aa6023ddfca Compiled, checked and activated images=0
@@ -358,7 +359,7 @@ Planning tool use
 Next tool: `EditFunctionStudy`
 <<progress>>
 Using EditFunctionStudy
-{"description":"Instance-specific e3 y shoulder-clock lag: C2 bump peaking at 6 seconds, strictly advancing local time, recovered at 1605 before unchanged shared hold; preserve x/z and all other times.","expectedRevision":"r5-2aa6023ddfca","expectedSourceHash":"2aa6023ddfca13fa20c7c678abd282b93b2ccd10d9a1b68f6ac789a127ef91de","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroun...
+{"description":"Instance-specific e3 y shoulder-clock lag: C2 bump peaking at 6 seconds, strictly advancing local time, recovered at 1605 before unchanged shared hold; preserve x/z and all other times.","expectedRevision":"r5-2aa6023ddfca","expectedSourceHash":"2aa6023ddfca13fa20c7c678abd282b93b2ccd10d9a1b68f6ac789a127ef91de","source":"import afield.math.functions.Functions\nimport afield.math.functions.StudyComposition\nimport afield.math.functions.StudyEvent\nimport afield.math.functions.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroun...
 <<progress>>
 EditFunctionStudy finished
 r6-deb1b1738cb0 Compiled, checked and activated images=0
@@ -530,7 +531,7 @@ Planning tool use
 Next tool: `EditFunctionStudy`
 <<progress>>
 Using EditFunctionStudy
-{"description":"Delete fourth interruption resolved as e4 only, exposing absolute-time background at 1985..2215; retain all other events including e3 timing and y lag, with r6 retained as parent.","expectedRevision":"r6-deb1b1738cb0","expectedSourceHash":"deb1b1738cb0f63b77afc786e6487464425871f8f20a264479f8c088ae901698","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCente...
+{"description":"Delete fourth interruption resolved as e4 only, exposing absolute-time background at 1985..2215; retain all other events including e3 timing and y lag, with r6 retained as parent.","expectedRevision":"r6-deb1b1738cb0","expectedSourceHash":"deb1b1738cb0f63b77afc786e6487464425871f8f20a264479f8c088ae901698","source":"import afield.math.functions.Functions\nimport afield.math.functions.StudyComposition\nimport afield.math.functions.StudyEvent\nimport afield.math.functions.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCente...
 <<progress>>
 EditFunctionStudy finished
 r7-ebc54198e3ae Compiled, checked and activated images=0
@@ -614,7 +615,7 @@ Planning tool use
 Next tool: `EditFunctionStudy`
 <<progress>>
 Using EditFunctionStudy
-{"description":"Warp only background passage 1100..1250 with a 6-second C2 delay bump: slow first half, catch up second, positive clock rate and pinned endpoints; preserve all events and other times.","expectedRevision":"r7-ebc54198e3ae","expectedSourceHash":"ebc54198e3aea15a0ca6ce900be84524d3d9ea946a54fd81939f042ac0616f42","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundC...
+{"description":"Warp only background passage 1100..1250 with a 6-second C2 delay bump: slow first half, catch up second, positive clock rate and pinned endpoints; preserve all events and other times.","expectedRevision":"r7-ebc54198e3ae","expectedSourceHash":"ebc54198e3aea15a0ca6ce900be84524d3d9ea946a54fd81939f042ac0616f42","source":"import afield.math.functions.Functions\nimport afield.math.functions.StudyComposition\nimport afield.math.functions.StudyEvent\nimport afield.math.functions.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundC...
 <<progress>>
 EditFunctionStudy finished
 r8-e4aea058bc8b Compiled, checked and activated images=0
@@ -770,7 +771,7 @@ Planning tool use
 Next tool: `EditFunctionStudy`
 <<progress>>
 Using EditFunctionStudy
-{"description":"Restore unwarped background using historical r7 source passage; new child of r8 preserving all current events, e3 y lag and e4 deletion; retain warp experiment in history.","expectedRevision":"r8-e4aea058bc8b","expectedSourceHash":"e4aea058bc8b7496a7f4c8856f8a4b23ebf7aa9c283bfa35aaaf48d235938152","source":"import afield.stdlib.Functions\nimport afield.stdlib.StudyComposition\nimport afield.stdlib.StudyEvent\nimport afield.stdlib.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45...
+{"description":"Restore unwarped background using historical r7 source passage; new child of r8 preserving all current events, e3 y lag and e4 deletion; retain warp experiment in history.","expectedRevision":"r8-e4aea058bc8b","expectedSourceHash":"e4aea058bc8b7496a7f4c8856f8a4b23ebf7aa9c283bfa35aaaf48d235938152","source":"import afield.math.functions.Functions\nimport afield.math.functions.StudyComposition\nimport afield.math.functions.StudyEvent\nimport afield.math.functions.StudyChoice\nimport kotlin.math.PI\n\nwith(Functions) {\n    val durationSeconds = 3600.0\n    val carrierPeriodSeconds = 40.0\n    val relativePhasePeriodSeconds = 100.0\n    val phaseExcursionRadians = 2.0 * PI / 3.0\n    val backgroundCenter = 0.45...
 <<progress>>
 EditFunctionStudy finished
 r9-82456e1e48ac Compiled, checked and activated images=0

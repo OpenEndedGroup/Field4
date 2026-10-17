@@ -68,9 +68,9 @@ policy is not to commit that capture: "one is tens of megabytes and would be som
 than a fixture". Regenerate them with:
 
 ```bash
-run-jvm-main afield.four.modules.SplatToolsKt sheet ~/Downloads/circle-05-a120p0_00001_ out/
-run-jvm-main afield.four.modules.SplatToolsKt frame  ~/Downloads/circle-05-a120p0_00001_/frame_000060.compressed.ply out/
-run-jvm-main afield.four.modules.SplatToolsKt stats  ~/Downloads/circle-05-a120p0_00001_/frame_000060.compressed.ply
+run-jvm-main afield.graphics.render.SplatToolsKt sheet ~/Downloads/circle-05-a120p0_00001_ out/
+run-jvm-main afield.graphics.render.SplatToolsKt frame  ~/Downloads/circle-05-a120p0_00001_/frame_000060.compressed.ply out/
+run-jvm-main afield.graphics.render.SplatToolsKt stats  ~/Downloads/circle-05-a120p0_00001_/frame_000060.compressed.ply
 ```
 
 ## Reading a splat PNG without being fooled

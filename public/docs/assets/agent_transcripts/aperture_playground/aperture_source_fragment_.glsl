@@ -1,7 +1,10 @@
 #version 450
 layout(location=0) in vec2 uv;
 layout(location=0) out vec4 result;
-layout(push_constant) uniform Source { vec4 look; vec4 size; } pc;
+layout(push_constant) uniform Source {
+    vec4 look;
+    vec4 size;
+} pc;
 float capsule(vec2 p, vec2 a, vec2 b) {
     vec2 d=b-a;
     return length(p-a-d*clamp(dot(p-a,d)/dot(d,d),0.0,1.0));

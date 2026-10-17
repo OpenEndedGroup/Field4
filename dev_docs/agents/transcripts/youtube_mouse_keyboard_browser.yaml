@@ -11,16 +11,16 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 330.0, h: 100.0 }
       properties:
         code: |
-          import afield.Rect
-          import afield.four.util.Options
-
+          import afield.app.protocol.Rect
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
-
+          
           Options.enableHDR = false
           Options.enableVR = false
           Options.profiling = false
-
+          
           once.renderer {
               window = Window(
                   "YouTube · mouse + keyboard",
@@ -28,7 +28,7 @@ operations:
               )
               Renderer(window)
           }
-
+          
           println("YouTube mouse + keyboard renderer ready")
           start(renderer::run)
   - create:
@@ -37,12 +37,12 @@ operations:
       frame: { x: 330.0, y: 140.0, w: 420.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.Target
-          import afield.four.browser.FieldUiBrowserTexture
-          import afield.four.browser.PuppetBrowserWindowPanel
-
-          prop<afield.four.browser.PuppetBrowser>(browserControl)
-
+          import afield.graphics.vulkan.Target
+          import afield.media.browser.FieldUiBrowserTexture
+          import afield.media.browser.PuppetBrowserWindowPanel
+          
+          prop<afield.media.browser.PuppetBrowser>(browserControl)
+          
           val browser = FieldUiBrowserTexture(
               renderer = renderer,
               url = "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
@@ -52,15 +52,15 @@ operations:
               cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
           )
           browserControl = browser
-
+          
           renderer.renderList.preTargets["youtube-desktop-browser-upload"] =
               Target { command, _ -> browser.prepareSampledImagesFor(command) }
-
+          
           // This is direct window input, not a synthetic controller ray. The panel letterboxes if
           // the window is resized and uses that same fitted rectangle for its mouse hit test.
           val screen = PuppetBrowserWindowPanel(renderer, browser, "youtube-desktop-browser")
           screen.build(takeFocus = true)
-
+          
           var announced = false
           loop {
               if (!announced && browser.pageReady) {

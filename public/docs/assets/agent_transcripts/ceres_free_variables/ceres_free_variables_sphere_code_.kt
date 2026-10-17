@@ -1,14 +1,14 @@
-import afield.graphics.FLine
-import afield.stdlib.ceres.CachedCeresSolvers
-import afield.stdlib.ceres.CeresExprVec
-import afield.stdlib.ceres.CeresLinearSolver
-import afield.stdlib.ceres.FfmCeresBackend
-import afield.stdlib.ceres.PointCloud
-import afield.stdlib.ceres.SolveOptions
-import afield.stdlib.ceres.SolveRequest
-import afield.stdlib.ceres.Vec3
-import afield.stdlib.ceres.buildCeresProgram
-import afield.stdlib.ceres.RobustLoss
+import afield.geometry.path.FLine
+import afield.math.optimization.ceres.CachedCeresSolvers
+import afield.math.optimization.ceres.CeresExprVec
+import afield.math.optimization.ceres.CeresLinearSolver
+import afield.math.optimization.ceres.FfmCeresBackend
+import afield.math.optimization.ceres.PointCloud
+import afield.math.optimization.ceres.SolveOptions
+import afield.math.optimization.ceres.SolveRequest
+import afield.math.optimization.ceres.Vec3
+import afield.math.optimization.ceres.buildCeresProgram
+import afield.math.optimization.ceres.RobustLoss
 import java.nio.file.Files
 import java.nio.file.Path
 

@@ -9,7 +9,7 @@ description: |
   launch them, so no window opens while the document is being written.
 
   Registered `COMPILE_ONLY`: replaying the boxes would need a window, since box 1 opens one and
-  `afield.four` has no headless mode. What the registration buys is that all four box bodies are
+  Field 4 has no headless mode. What the registration buys is that all four box bodies are
   compiled against Field's real K2 and preamble import set on every build -- the one place box code
   can diverge from `jvmMain` and that no Gradle gate could otherwise see. The GPU numbers are
   asserted separately by the `four.gpu-probe.pressure-chain` and `four.gpu-probe.self-check`
@@ -21,9 +21,9 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 360.0, h: 110.0 }
       properties:
         code: |
-          import afield.four.util.Options
-
-          // `afield.four` has no headless mode: a compute-only dispatch still needs a Window for
+          import afield.graphics.vulkan.util.Options
+          
+          // Field 4 has no headless mode: a compute-only dispatch still needs a Window for
           // the device to exist, and it needs an awake display. So every box below is a child of
           // this one and resolves `renderer` from it.
           //
@@ -43,8 +43,8 @@ operations:
       frame: { x: 40.0, y: 200.0, w: 420.0, h: 150.0 }
       properties:
         code: |
-          import afield.four.util.GpuProbe
-
+          import afield.graphics.vulkan.util.GpuProbe
+          
           // A fixture, a shader, a dispatch, a wait, a readback, three claims. What matters is
           // what is NOT here: no `defaultBuffer` whose access pattern you have to remember
           // (`fixture` insists on streamReads(), because a host read out of write-combined
@@ -52,7 +52,7 @@ operations:
           // count guessed by feel; and no `finally { renderer.computeList.modules.remove(key) }`.
           val probe = GpuProbe(renderer, "hello")
           val out = probe.fixture("out", 256)
-
+          
           probe.stage("fives", """#version 450
           #extension GL_EXT_buffer_reference : require
           layout(std430, buffer_reference) buffer Field { vec4 v[]; };
@@ -69,7 +69,7 @@ operations:
               bind("target") { out }
               bind("count") { 64 }
           }
-
+          
           frames {
               try {
                   // `arm` prefills the output with a sentinel and `stillWaiting` is a CONDITION,
@@ -78,7 +78,7 @@ operations:
                   // a SILENT no-op, which is why `repeat(4) { frame() }` is a hope and not a wait.
                   probe.arm(out)
                   while (probe.stillWaiting()) frame()
-
+          
                   val got = probe.read(out)
                   println("landed after ${probe.framesToLand} pumped frame(s)")
                   probe.exactly("cell 0 value", got[0], 5f, buffer = "out", index = 0)
@@ -99,8 +99,8 @@ operations:
       frame: { x: 520.0, y: 200.0, w: 460.0, h: 160.0 }
       properties:
         code: |
-          import afield.four.util.GpuProbe
-
+          import afield.graphics.vulkan.util.GpuProbe
+          
           // The chain the workspace document actually runs, at a size that fits in a box.
           //
           // A MAC (staggered) grid: u on the left x-face of each cell, v on the bottom y-face,
@@ -112,13 +112,13 @@ operations:
           val FLOATS = CELLS * 4
           val GROUPS = CELLS / 64
           val SWEEPS = 12
-
+          
           val head = """#version 450
           #extension GL_EXT_buffer_reference : require
           layout(std430, buffer_reference) buffer Field { vec4 v[]; };
           layout(local_size_x = 64) in;
           """
-
+          
           val divergenceGlsl = head + """
           layout(push_constant) uniform Push { Field velocity; Field divergence; uint side; } pc;
           void main() {
@@ -133,7 +133,7 @@ operations:
               pc.divergence.v[id] = vec4((uR - uL) + (vT - vB), 0.0, 0.0, 0.0);
           }
           """
-
+          
           val jacobiGlsl = head + """
           layout(push_constant) uniform Push { Field pressureIn; Field pressureOut; Field divergence; uint side; } pc;
           void main() {
@@ -148,7 +148,7 @@ operations:
               pc.pressureOut.v[id] = vec4((pL + pR + pB + pT - pc.divergence.v[id].x) * 0.25, 0.0, 0.0, 0.0);
           }
           """
-
+          
           val projectGlsl = head + """
           layout(push_constant) uniform Push { Field velocity; Field pressure; Field velocityOut; uint side; } pc;
           void main() {
@@ -164,14 +164,14 @@ operations:
               pc.velocityOut.v[id] = vec4(u, v, 0.0, 0.0);
           }
           """
-
+          
           val probe = GpuProbe(renderer, "chain")
           val velocity = probe.fixture("velocity", FLOATS)
           val velocityOut = probe.fixture("velocityOut", FLOATS)
           val divergence = probe.fixture("divergence", FLOATS)
           val pressureA = probe.fixture("pressureA", FLOATS)
           val pressureB = probe.fixture("pressureB", FLOATS)
-
+          
           // A multi-scale divergent field. Jacobi kills high-frequency error in a handful of
           // sweeps and low frequency in hundreds, so a single-scale field would report either a
           // spectacular reduction or a negligible one and neither would say anything.
@@ -188,7 +188,7 @@ operations:
           probe.upload(velocity, seeded)
           probe.fill(pressureA, 0f)
           probe.fill(pressureB, 0f)
-
+          
           // The oracle: the divergence stencil again, in Kotlin, so the "after" number is not
           // computed by the thing being graded.
           fun divergenceOf(f: FloatArray): FloatArray {
@@ -203,13 +203,13 @@ operations:
               }
               return d
           }
-
+          
           fun maxAbs(a: FloatArray): Float {
               var m = 0f
               for (v in a) if (v.isFinite()) m = maxOf(m, kotlin.math.abs(v))
               return m
           }
-
+          
           // Three stages. Note there is ONE `stage` call for all twelve Jacobi sweeps: a Stage is
           // one shader and one compile, and each `dispatch` adds a workgroup launch plus its own
           // barrier, so sweep k reads what sweep k-1 wrote. Twelve compiles would have been the
@@ -236,7 +236,7 @@ operations:
               bind("velocityOut") { velocityOut }
               bind("side") { N }
           }
-
+          
           frames {
               try {
                   probe.arm(velocityOut, divergence)
@@ -244,7 +244,7 @@ operations:
                   println("chain: " + probe.stageList.size + " stages, " +
                       probe.stageList.sumOf { it.dispatchCount } + " dispatches, landed after " +
                       probe.framesToLand + " frame(s)")
-
+          
                   // Claim 1: the divergence pass against the closed form, at every cell.
                   val gpuDiv = probe.read(divergence)
                   val cpuDiv = divergenceOf(seeded)
@@ -261,7 +261,7 @@ operations:
                   // A floor of 2.2 fails if somebody edits the seed into something flat, which
                   // is the only way the rest of this box could pass while meaning nothing.
                   probe.atLeast("input field max |div|", before, 2.2f, buffer = "velocity")
-
+          
                   // Claim 2: the sweep. Pressure re-zeroed each sample, so frames x SWEEPS is
                   // the whole iteration count and the points are comparable.
                   println("  frames  sweeps   max |div| after   reduction")
@@ -299,16 +299,16 @@ operations:
       frame: { x: 40.0, y: 420.0, w: 420.0, h: 150.0 }
       properties:
         code: |
-          import afield.four.util.GpuProbe
-          import afield.four.util.GpuProbeNeverLanded
-
+          import afield.graphics.vulkan.util.GpuProbe
+          import afield.graphics.vulkan.util.GpuProbeNeverLanded
+          
           // The same shader as box 2, told to write half as many cells on purpose. This is the
           // box that says whether the sentinel is load-bearing: a hand-rolled probe that waits
           // `repeat(4) { frame() }` and then reads would report whatever was in the buffer, and
           // the half that never ran looks exactly like agreement.
           val probe = GpuProbe(renderer, "caught")
           val out = probe.fixture("out", 256)
-
+          
           probe.stage("fives", """#version 450
           #extension GL_EXT_buffer_reference : require
           layout(std430, buffer_reference) buffer Field { vec4 v[]; };
@@ -323,7 +323,7 @@ operations:
               bind("target") { out }
               bind("count") { 32 }
           }
-
+          
           frames {
               try {
                   // Four seconds, not the twelve-second default: this case is MEANT to time out

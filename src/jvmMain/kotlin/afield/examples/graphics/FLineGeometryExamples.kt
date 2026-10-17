@@ -1,11 +1,18 @@
 package afield.examples.graphics
 
-import afield.graphics.*
-import afield.stdlib.Vec2
-import afield.stdlib.Vec3
-import afield.stdlib.fline
-import afield.stdlib.pointed
-import afield.stdlib.vec
+import afield.audio.tone.*
+import afield.geometry.path.*
+import afield.graphics.render.*
+import afield.graphics.shader.*
+import afield.graphics.three.*
+import afield.graphics.visionos.*
+import afield.lang.remotejs.*
+import afield.ui.visualization.*
+import afield.math.linalg.Vec2
+import afield.math.linalg.Vec3
+import afield.graphics.render.fline
+import afield.graphics.render.pointed
+import afield.math.linalg.vec
 import kotlin.math.PI
 
 /**
@@ -682,14 +689,14 @@ object FLineGeometryExamples {
             lineTo(-40f, 20f)
             lineTo(40f, -20f)
         }
-        val selfIntersections = pointMarkers(selfIntersecting.findSelfIntersections(1f))
+        val selfIntersections = pointMarkers(selfIntersecting.selfCrossings2D(1f).map { it.point })
 
         val circle = createCircle(vec(0f, 0f), 35f, 64)
         val line = fline {
             moveTo(-60f, -10f)
             lineTo(60f, 10f)
         }
-        val crossings = pointMarkers(line.findIntersectionsWith(circle, 1f))
+        val crossings = pointMarkers(line.crossings2D(circle, 1f).map { it.point })
 
         return mapOf(
             "self_intersecting" to listOf(selfIntersecting),
@@ -776,7 +783,7 @@ object FLineGeometryExamples {
         }
 
         val probe = vec(80f, 20f, 0f)
-        val (closest, _) = square.closestPoint(probe)
+        val closest = square.nearestLocation(probe)!!.point
         val closestLine = fline {
             moveTo(probe.x, probe.y, probe.z)
             lineTo(closest.x, closest.y, closest.z)
@@ -786,11 +793,11 @@ object FLineGeometryExamples {
         val outsidePoint = vec(80f, 20f, 0f)
         val insidePoint2D = vec(20f, 20f)
         val outsidePoint2D = vec(80f, 20f)
-        val insideContains = square.contains(insidePoint2D)
-        val outsideContains = square.contains(outsidePoint2D)
-        val insideWinding = square.windingNumber(insidePoint2D)
-        val outsideWinding = square.windingNumber(outsidePoint2D)
-        val signedArea = square.signedArea2D()
+        val insideContains = square.contains2D(insidePoint2D)
+        val outsideContains = square.contains2D(outsidePoint2D)
+        val insideWinding = square.windingNumber2D(insidePoint2D)
+        val outsideWinding = square.windingNumber2D(outsidePoint2D)
+        val signedArea = square.area2D()
 
         val insideIndicator = fline {
             val length = if (insideContains) 6f else 0f
@@ -1379,8 +1386,8 @@ object FLineGeometryExamples {
 
             // ===== Intersections =====
             println("  Testing intersections...")
-            testLine.findSelfIntersections(1f)
-            testLine.findIntersectionsWith(testCircle, 1f)
+            testLine.selfCrossings2D(1f).map { it.point }
+            testLine.crossings2D(testCircle, 1f).map { it.point }
             println("    ✓ Intersections passed")
 
             // ===== Curvature Analysis =====
@@ -1415,10 +1422,10 @@ object FLineGeometryExamples {
 
             // ===== Geometric Queries =====
             println("  Testing geometric queries...")
-            testLine.closestPoint(vec(50f, 50f, 0f))
-            testSquare.windingNumber(vec(25f, 25f))
-            testSquare.contains(vec(25f, 25f))
-            testSquare.signedArea2D()
+            testLine.nearestLocation(vec(50f, 50f, 0f))
+            testSquare.windingNumber2D(vec(25f, 25f))
+            testSquare.contains2D(vec(25f, 25f))
+            testSquare.area2D()
             testSquare.centroid2D()
             println("    ✓ Geometric queries passed")
 

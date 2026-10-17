@@ -29,9 +29,9 @@ Almost everything you do in code starts by _naming_ a value so you can use it la
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val name = "Ada"     // name is "Ada" (and you can't reassign it)
-var count = 0        // count is 0 (and you can change it)
-count += 1           // count is now 1
+val name = "Ada" // name is "Ada" (and you can't reassign it)
+var count = 0 // count is 0 (and you can change it)
+count += 1 // count is now 1
 
 // name = "Lady Ada"  // doesn't compile: val can't be reassigned
 ```
@@ -46,8 +46,8 @@ Types describe what kind of value something is (number, text, true/false, etc.).
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val x = 10              // inferred Int
-val y: Double = 2.5     // explicit type
+val x = 10 // inferred Int
+val y: Double = 2.5 // explicit type
 val ok: Boolean = true
 val ch: Char = 'x'
 val s: String = "hi"
@@ -71,20 +71,22 @@ Kotlin takes its number types seriously in ways that might irritate you (it cert
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val i = 1        // Int
-val l = 1L       // Long
-val d = 1.0      // Double
-val f = 1.0f     // Float
+val i = 1 // Int
+val l = 1L // Long
+val d = 1.0 // Double
+val f = 1.0f // Float
 
-// Kotlin won't do implicit widening conversions:
-// val bad: Double = 1      // doesn't compile
-// val bad2: Float = 1.0    // doesn't compile
+/*
+Kotlin won't do implicit widening conversions:
+val bad: Double = 1      // doesn't compile
+val bad2: Float = 1.0    // doesn't compile
+*/
 
 val ok1: Double = i.toDouble() // result: 1.0
-val ok2: Float = i.toFloat()   // result: 1.0f
+val ok2: Float = i.toFloat() // result: 1.0f
 
-val sumD = d + i.toDouble()    // result: 2.0
-val sumF = f + i.toFloat()     // result: 2.0f
+val sumD = d + i.toDouble() // result: 2.0
+val sumF = f + i.toFloat() // result: 2.0f
 
 // If you want a Double literal, write 1.0; if you want Float, write 1.0f.
 ```
@@ -98,10 +100,10 @@ Field's default live-coding imports add short `Number` extension properties for 
 ```diffstatic {data-lang=kotlin}
 :::static
 val ok1: Double = i.d // result: 1.0
-val ok2: Float = i.f   // result: 1.0f
+val ok2: Float = i.f // result: 1.0f
 
-val sumD = d + i.d    // result: 2.0
-val sumF = f + i.f + 0.2.f    // result: 2.2f
+val sumD = d + i.d // result: 2.0
+val sumF = f + i.f + 0.2.f // result: 2.2f
 ```
 
 And `.i` and `.l` as well. This looks a bit odd, but it's much less typing than `.toDouble()`.
@@ -126,8 +128,8 @@ expect:
 :::static
 val x = 42
 
-println(x)           // prints: 42
-println("x = " + x)  // prints: x = 42
+println(x) // prints: 42
+println("x = " + x) // prints: x = 42
 ```
 
 Field wires Kotlin's `print( ... )` and `println( ... )` functions such that whatever is printed arrives at the bottom of the text editor. Furthermore, there's a `_print( ... )` that arrives right there next to that line itself. This is especially handy for instrumenting code and figuring out if it's even running.
@@ -228,10 +230,13 @@ val msg1 = "Hello, " + who
 val msg2 = "Hello, $who"
 val msg3 = "2 + 3 = ${2 + 3}"
 
-val raw = """ // a multi-line string
-line 1
-line 2
-""".trimIndent()
+// A multi-line string, with shared indentation removed by trimIndent().
+val raw =
+    """
+    line 1
+    line 2
+    """
+        .trimIndent()
 ```
 
 Python interpolation (today) is typically f-strings (`f"Hello, {who}"`). JavaScript interpolation is template strings (`` `Hello, ${who}` ``).
@@ -261,7 +266,7 @@ Functions let you name a reusable piece of code. Kotlin function signatures star
 ```diffstatic {data-lang=kotlin}
 :::static
 fun add(a: Int, b: Int): Int {
-  return a + b
+    return a + b
 }
 
 fun add2(a: Int, b: Int) = a + b // expression body (type inferred)
@@ -276,8 +281,6 @@ Kotlin files can declare a `package` at the top, and can `import` names so you c
 ```diffstatic {data-lang=kotlin}
 :::static
 package my.project
-
-import my.other.Thing
 ```
 
 In Field you’ll often skip this because Field pre-imports a lot of things (mostly from itself) before you start writing. You’ll still occasionally see `import ...` in examples.
@@ -324,7 +327,7 @@ As your functions get more parameters, it’s helpful if callers don’t need to
 ```diffstatic {data-lang=kotlin}
 :::static
 fun greet(name: String = "world", punct: String = "!") {
-  println("Hello, $name$punct")
+    println("Hello, $name$punct")
 }
 
 greet()
@@ -410,15 +413,15 @@ Kotlin:
 ```diffstatic {data-lang=kotlin}
 :::static
 for (i in 0..3) {
-  println(i) // 0,1,2,3
+    println(i) // 0,1,2,3
 }
 
 for (i in 0 until 3) {
-  println(i) // 0,1,2
+    println(i) // 0,1,2
 }
 
 for (i in 6 downTo 0 step 2) {
-  println(i) // 6,4,2,0
+    println(i) // 6,4,2,0
 }
 ```
 
@@ -427,7 +430,7 @@ Field also defines an extension function to make the common case even terser:
 ```diffstatic {data-lang=kotlin}
 :::static
 6 {
-  _print(it) // 0,1,2,3,4,5
+    _print(it) // 0,1,2,3,4,5
 }
 ```
 
@@ -436,7 +439,7 @@ And for interpolation between 0 and 1 _inclusive_
 ```diffstatic {data-lang=kotlin}
 :::static
 5.alphas {
-  _print(it) // 0, 0.25, 0.5, 0.75, 1
+    _print(it) // 0, 0.25, 0.5, 0.75, 1
 }
 ```
 
@@ -444,30 +447,32 @@ Python loops over values; counting uses `range(start, stop[, step])`. JavaScript
 
 ### Lists and maps
 
-If you only learn two data structures in Kotlin for everyday Field scripting, learn `List` and `Map`. Kotlin distinguishes between read-only interfaces (`List`, `Map`) and mutable versions (`MutableList`, `MutableMap`). The common constructors are `listOf(...)` and `mapOf(...)`, and the mutable ones are `mutableListOf(...)` and `mutableMapOf(...)`.
+If you only learn two data structures in Kotlin for everyday Field scripting, learn `List` and `Map`. Kotlin distinguishes between read-only interfaces (`List`, `Map`) and mutable versions (`MutableList`, `MutableMap`). Write a list as a literal in square brackets, `[10, 20, 30]`; on its own that is a read-only `List`. Declare a type and the same brackets build that instead: `val ys: MutableList<Int> = [1, 2, 3]`, or `val s: Set<String> = ["a", "b"]`, and `[]` is an empty one. Maps are built with `mapOf(...)` and `mutableMapOf(...)`.
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val xs = listOf(10, 20, 30)
+val xs = [10, 20, 30]
 val first = xs[0] // result: 10
 
-val ys = mutableListOf(1, 2, 3)
+val ys: MutableList<Int> = [1, 2, 3]
 ys.add(4)
 ys[0] = 99
+
 // result: ys is [99, 2, 3, 4]
 
 val m = mapOf("a" to 1, "b" to 2)
-val a1 = m["a"]          // result: 1 (type is Int?)
-val c1 = m["c"]          // result: null
-val safe = m["c"] ?: 0   // result: 0
+val a1 = m["a"] // result: 1 (type is Int?)
+val c1 = m["c"] // result: null
+val safe = m["c"] ?: 0 // result: 0
 
 val mm = mutableMapOf("x" to 10)
 mm["y"] = 20
 mm["x"] = 11
+
 // result: mm is {x=11, y=20}
 
 for ((k, v) in mm) {
-  println("$k -> $v")
+    println("$k -> $v")
 }
 ```
 
@@ -558,11 +563,12 @@ When you have more than two cases, Kotlin’s `when` is a clean way to choose be
 ```diffstatic {data-lang=kotlin}
 :::static
 fun describe(x: Any): String = when (x) {
-  0 -> "zero"
-  1, 2 -> "one or two"
-  in 3..10 -> "3 to 10"
-  is String -> "a string of length ${x.length}"
-  else -> "something else"
+    0 -> "zero"
+    1,
+    2 -> "one or two"
+    in 3..10 -> "3 to 10"
+    is String -> "a string of length ${x.length}"
+    else -> "something else"
 }
 ```
 
@@ -623,12 +629,12 @@ The odd Kotlin-specific syntax is that if the _last_ argument to a function is a
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val nums = listOf(1, 2, 3)
+val nums = [1, 2, 3]
 
 val doubled = nums.map { it * 2 } // result: [2, 4, 6]
 
 repeat(3) { i ->
-  println(i) // result: prints 0, 1, 2 on separate lines
+    println(i) // result: prints 0, 1, 2 on separate lines
 }
 
 // If there's exactly one parameter, you can often use the implicit name `it`:
@@ -679,24 +685,23 @@ This is especially handy when the methods you’re calling don’t return the ob
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.graphics.*
-
 // These three are equivalent: they all build the same FLine.
 
 // 1) `fline { ... }`: preferred in Field. Inside the block, `this` is the object.
 val f1 = fline {
-  moveTo(50, 50)
-  lineTo(200, 120)
-  thickness = 4.0
-  color = vec(1.0, 1.0, 1.0, 1.0)
+    moveTo(50, 50)
+    lineTo(200, 120)
+    thickness = 4.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
 }
 
 // 2) `also { ... }` chaining: inside the block, `it` is the object.
-val f2 = FLine()
-  .also { it.moveTo(50, 50) }
-  .also { it.lineTo(200, 120) }
-  .also { it.thickness = 4.0 }
-  .also { it.color = vec(1.0, 1.0, 1.0, 1.0) }
+val f2 =
+    FLine()
+        .also { it.moveTo(50, 50) }
+        .also { it.lineTo(200, 120) }
+        .also { it.thickness = 4.0 }
+        .also { it.color = vec(1.0, 1.0, 1.0, 1.0) }
 
 // 3) Explicit variable reuse.
 val f3 = FLine()
@@ -722,8 +727,8 @@ val s1: String = "ok"
 val s2: String? = null
 
 val len1 = s1.length
-val len2 = s2?.length          // safe call -> Int?
-val len3 = s2?.length ?: 0     // Elvis -> Int
+val len2 = s2?.length // safe call -> Int?
+val len3 = s2?.length ?: 0 // Elvis -> Int
 
 // Avoid unless you *really* mean it:
 // val boom = s2!!.length
@@ -772,7 +777,7 @@ It’s common to ask “are these two values the same?”. Kotlin splits this in
 val a = "hi"
 val b = "h" + "i"
 
-val structural = (a == b)   // compares values
+val structural = (a == b) // compares values
 val referential = (a === b) // same object reference?
 ```
 
@@ -833,10 +838,10 @@ Exceptions are how Kotlin represents “something went wrong” at runtime. Kotl
 ```diffstatic {data-lang=kotlin}
 :::static
 val n: Int = try {
-  "123".toInt()
+    "123".toInt()
 } catch (e: Exception) {
-  0
-}
+        0
+    }
 ```
 
 Python and JavaScript both use `try`/`except` or `try`/`catch` blocks in the usual statement style:
@@ -892,10 +897,10 @@ When you check a value’s type (for example, “is this a String?”), Kotlin o
 ```diffstatic {data-lang=kotlin}
 :::static
 fun shout(x: Any) {
-  if (x is String) {
-    // inside this block, x is treated as String
-    println(x.uppercase())
-  }
+    if (x is String) {
+        // inside this block, x is treated as String
+        println(x.uppercase())
+    }
 }
 ```
 

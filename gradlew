@@ -290,6 +290,24 @@ if "$cygwin" || "$msys" ; then
 fi
 
 
+# FIELD TOOLCHAIN SELECTION START
+# Use the exact Field JDK already provisioned by field.sh. The wrapper's own
+# bootstrap JVM is separate; Gradle's vendor/major spec cannot pin a Graal build.
+field_graal_version=$(sed -n 's/^val graalvmVersion = "\([^"]*\)".*/\1/p' "$APP_HOME/build.gradle.kts")
+if [ -n "$field_graal_version" ]; then
+    for field_java in "$HOME"/.field4/toolchains/graalvm-community-*"$field_graal_version"*/bin/java \
+                      "$HOME"/.field4/toolchains/graalvm-community-*"$field_graal_version"*/Contents/Home/bin/java; do
+        [ -x "$field_java" ] || continue
+        field_jdk=${field_java%/bin/java}
+        [ -f "$field_jdk/release" ] || continue
+        field_found=$(sed -n 's/^GRAALVM_VERSION="\([^"]*\)"/\1/p' "$field_jdk/release")
+        [ "$field_found" = "$field_graal_version" ] || continue
+        set -- "-Porg.gradle.java.installations.paths=$field_jdk" "$@"
+        break
+    done
+fi
+# FIELD TOOLCHAIN SELECTION END
+
 # Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 

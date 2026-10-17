@@ -9,7 +9,7 @@
 ## The notes that led here
 
 - `00a37ca1` (public/docs/audio_ai_codec.md:3): we should do this with real music, not (just) a chirp
-  > Field keeps codec tokens visible as compositional data. A codec.reconstruct operation produces an immutable model-native input, an NPY token tensor, a model-native reconstruction, a 48 kHz audition proxy, reconstruction metrics, and full model provenance. The renderer below is the same afield.stdlib.noir.audioai.CodecVisualization that draws service results; the fence hands it a synthetic fixture, so you can run it and read the display with no GPU worker attached.
+  > Field keeps codec tokens visible as compositional data. A codec.reconstruct operation produces an immutable model-native input, an NPY token tensor, a model-native reconstruction, a 48 kHz audition proxy, reconstruction metrics, and full model provenance. The renderer below is the same afield.audio.ai.CodecVisualization that draws service results; the fence hands it a synthetic fixture, so you can run it and read the display with no GPU worker attached.
 
 ## What was asked
 
@@ -22,7 +22,7 @@ synthetic source (a chirp plus two sines at 8 kHz), then makes a *fake* "reconst
 (`source * 0.91 + two small sinusoids`, lines 21-25). It also makes up the token tensor (lines
 27-31) and hardcodes the metrics (`ReconstructionMetrics(0.0123, 18.7, 0.143)`, line 37). The
 only real code in the capture is the renderer, `CodecVisualization.renderHtml`
-(`src/jvmMain/kotlin/afield/stdlib/noir/audioai/CodecVisualization.kt`). The companion transcript
+(`src/jvmMain/kotlin/afield/audio/ai/CodecVisualization.kt`). The companion transcript
 `dev_docs/agents/transcripts/audio_ai_codec.yaml` says the same thing: the fixture exists
 "without pretending to run EnCodec when the isolated GPU service is absent."
 

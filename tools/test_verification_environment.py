@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -307,6 +308,48 @@ class EnvironmentTests(unittest.TestCase):
             state.capture_with_environment(capture, options=self.options(), page_path=Path("disk.md"), block_index=1)
         self.assertEqual(state.environment_outcomes[0]["status"], "interrupted")
         state._stop_shared_field_server.assert_called_once()
+
+
+class RunnerPortOwnershipTests(unittest.TestCase):
+    """The docs runner replaces only a Field its own checkout's automation started."""
+
+    def state(self):
+        state = docs_hooks.RunnerState.__new__(docs_hooks.RunnerState)
+        state.repo_root = Path.cwd().resolve()
+        state.backdoor_port = 9573
+        state._shared_field_started_by_runner = False
+        state._http_health_ok = Mock(return_value=True)
+        state._listener_pids = Mock(return_value=[4242])
+        state._request_shared_field_shutdown = Mock()
+        state._ensure_shared_field_server = Mock()
+        return state
+
+    def test_a_field_serving_another_workspace_is_refused_not_shut_down(self):
+        state = self.state()
+        info = {"repoRoot": str(state.repo_root), "workspace": "/Users/someone/Documents/Field"}
+        with patch.object(docs_hooks, "field_instance_info", return_value=info):
+            with self.assertRaisesRegex(RuntimeError, r"PID 4242.*does not shut down"):
+                state._ensure_runner_owned_field_server(reason="a capture")
+        state._request_shared_field_shutdown.assert_not_called()
+
+    def test_another_checkouts_field_is_refused(self):
+        state = self.state()
+        with patch.object(docs_hooks, "field_instance_info", return_value={"repoRoot": "/elsewhere"}):
+            with self.assertRaisesRegex(RuntimeError, "belongs to /elsewhere"):
+                state._ensure_runner_owned_field_server(reason="a capture")
+        state._request_shared_field_shutdown.assert_not_called()
+
+    def test_this_checkouts_automation_field_may_be_replaced(self):
+        state = self.state()
+        workspace = str(docs_hooks.automation_workspace(state.repo_root))
+        info = {"repoRoot": str(state.repo_root), "workspace": workspace}
+        state._http_health_ok = Mock(side_effect=[True, True, False, False])
+        environment = {k: v for k, v in os.environ.items() if k != docs_hooks.RUNNER_WORKSPACE_ENV}
+        with patch.dict("os.environ", environment, clear=True), \
+             patch.object(docs_hooks, "field_instance_info", return_value=info):
+            state._ensure_runner_owned_field_server(reason="a capture")
+        state._request_shared_field_shutdown.assert_called_once()
+        state._ensure_shared_field_server.assert_called_once()
 
 
 class DiskBudgetTests(unittest.TestCase):

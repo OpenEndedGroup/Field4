@@ -1,12 +1,9 @@
 # Metadata template server integration
 
-The durable Field-side contract is documented beside `templateServers` and `templating()` in
-`src/jvmMain/kotlin/afield/server/templating.kt`. The Flask protocol and storage paths live beside
-the implementation in `server/metadata_server.py` and `server/README.md`.
-
-The similarly named top-level `metadata_store/` is not served by this Flask app; it is an input to
-`tools/sync_offline_assets.py`. The Flask app serves
-`server/metadata_store/<template>/metadata.edn`.
+The Python template-server prototype was retired from the repository in October 2026.
+Field's existing remote-template client remains: its contract is documented beside
+`templateServers` and `templating()` in `src/jvmMain/kotlin/afield/app/server/templating.kt`.
+The configuration below requires a separately provided compatible service.
 
 ## Configure Field
 
@@ -49,10 +46,3 @@ mkdir -p /path/to/workspace/templates/my_template
 curl -o /path/to/workspace/templates/my_template/metadata.edn \
   http://localhost:5001/download/my_template
 ```
-
-## Security boundary
-
-`metadata_server.py` is a development server: CORS is unrestricted, Flask debug mode defaults on,
-and `app.run` uses Flask's default all-interface bind. The download route reduces the requested name
-to its final path component, but the service has no authentication or TLS. Do not expose it directly
-as a production service.

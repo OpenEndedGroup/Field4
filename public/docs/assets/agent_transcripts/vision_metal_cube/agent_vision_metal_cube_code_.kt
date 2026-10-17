@@ -1,7 +1,7 @@
-import afield.graphics.VisionMetalGeometryOrigin
-import afield.graphics.visionMetal
-import afield.graphics.visionMetalExampleScript
-import afield.graphics.visionMetalExampleShader
+import afield.graphics.visionos.VisionMetalGeometryOrigin
+import afield.graphics.visionos.visionMetal
+import afield.graphics.visionos.visionMetalExampleScript
+import afield.graphics.visionos.visionMetalExampleShader
 
 // `geometry` is explicit: there is no fallback to the head's cube, so a program that
 // neither ships vertices nor builds them in Kotlin/JS would draw nothing. This one asks

@@ -1,16 +1,16 @@
 # Document history: code ownership
 
 User behavior belongs in `public/docs/document_history.md`. The backend contract is colocated with
-`HistoryManager` and `installHistoryHandlers()` in `src/jvmMain/kotlin/afield/history.kt`.
+`HistoryManager` and `installHistoryHandlers()` in `src/jvmMain/kotlin/afield/document/history/history.kt`.
 
 Ownership map:
 
-- `src/jvmMain/kotlin/afield/history.kt` — version discovery/cache, restore and cherry-pick,
+- `src/jvmMain/kotlin/afield/document/history/history.kt` — version discovery/cache, restore and cherry-pick,
   diffs/search/line history, metrics, names, screenshots, and all history RPC handlers.
-- `src/jvmMain/kotlin/afield/saving.kt` — backup rotation used by ordinary saves and restores.
-- `src/commonMain/kotlin/rpc.kt` — serialized request and response types.
+- `src/jvmMain/kotlin/afield/document/persistence/saving.kt` — backup rotation used by ordinary saves and restores.
+- `src/commonMain/kotlin/afield/app/protocol/rpc.kt` — serialized request and response types.
 - `src/commonMain/resources/history.html` — history UI and client-side message handling.
-- `src/jvmMain/kotlin/afield/Server.kt` — serves `/history` and `/history-screenshot`.
+- `src/jvmMain/kotlin/afield/app/server/Server.kt` — serves `/history` and `/history-screenshot`.
 - `tools/run_ui_regressions.py` — the `history-panel` browser regression.
 
 On disk, ordered `backups/metadata_backup_*.edn` files plus the live `metadata.edn` form the

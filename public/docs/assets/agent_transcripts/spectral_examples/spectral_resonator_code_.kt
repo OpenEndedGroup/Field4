@@ -1,5 +1,5 @@
-import afield.four.audio.resonate
-import afield.four.audio.resonatorAlphaHeuristics
+import afield.audio.engine.resonate
+import afield.audio.engine.resonatorAlphaHeuristics
 
 val sampleRate = 8000f
 val n = 24000

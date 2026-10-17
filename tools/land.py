@@ -6,7 +6,9 @@
     uv run python tools/land.py wait <id>                         # block until it lands or bounces
     uv run python tools/land.py mine [branch]                     # the mailbox: this branch's attempts
     uv run python tools/land.py sync [--push]                     # bring origin/main in via the queue
-    uv run python tools/land.py huh [--context]                   # ask claude -p what the queue is doing
+    uv run python tools/land.py doc                               # build the local docs when its turn arrives
+    uv run python tools/land.py huh [--context]                   # ask the agent what the queue is doing
+    uv run python tools/land.py bouncy [--hours 12] [--context]   # ask the agent about stranded bounces
     uv run python tools/land.py run [--once]                      # the lander (one per clone)
 
 Why: every agent used to land itself. Each merged `main`, ran ~45 minutes of guards, found `main` had
@@ -28,8 +30,24 @@ What the lander does with each round:
    the record of who landed what.
 4. Fast-forwards `main` to it. If `main` moved meanwhile (a human merged by hand), it starts the item
    again from step 1.
-5. On any failure it bounces the item: the reason and the log path go in `status`, and `main` is
-   untouched. Fix the branch, commit, and enqueue again.
+5. On a red guard it first asks the fixer (below). Otherwise, or if the fixer declines, it bounces
+   the item: the reason and the log path go in `status`, and `main` is untouched. Fix the branch,
+   commit, and enqueue again.
+
+The fixer: at a red round, the agent (`claude -p`, or `codex exec` with FIELD_AGENT=codex; see
+tools/field_agent.py) runs in the lander's worktree on the exact tree that failed,
+once per item, for up to FIELD_LAND_FIXER_MIN (15) minutes. It decides whether the failure is a
+small mechanical slip one branch made (a missed count, a citation to something that moved, a
+misplaced KDoc). If so it edits; the lander checks the edit (at most 6 files and 60 lines, no
+deletions, no edits to the accepted-red registers, the guards, the hooks, the build or this script,
+no disabled tests), commits it on the culprit's tip as `fixup/<branch>` without moving the branch
+itself, and runs the whole round again with the full guard. If not, its diagnosis goes into the
+bounce. Every attempt is in `field-land-queue/fixer.jsonl`. FIELD_LAND_FIXER=off turns it off.
+
+`doc` is a queue barrier: preceding landings finish before it builds `public/field4/` in the
+checkout holding `main`; later landings wait until the build finishes. It reuses committed captures
+and reports its own failure without undoing a landing. The running lander must be restarted after
+changes to this script are landed, because Python does not reload it while running.
 
 The queue is plain JSON files in the clone's common git dir (`field-land-queue/`), so every worktree
 of the clone sees the same queue. The commit is pinned at enqueue time: later commits on the branch
@@ -47,12 +65,17 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import field_agent  # noqa: E402  (which agent to ask: claude or codex)
+
 PENDING, LANDED, BOUNCED = "pending", "landed", "bounced"
+DOC = "doc"
 POLL_SECONDS = 15
 # The lander's worktree sits on this branch rather than a detached HEAD, because a clean, merged,
 # detached worktree is exactly what tools/reap_merged_worktrees.py removes; it protects this name.
@@ -114,6 +137,10 @@ def _move(queue: Path, item: dict, to_state: str) -> None:
     (queue / to_state / f"{item['id']}.json").write_text(json.dumps(item, indent=2) + "\n")
 
 
+def _is_doc(item: dict) -> bool:
+    return item.get("kind") == DOC
+
+
 # ---------------------------------------------------------------------------- enqueue / status / wait
 
 
@@ -146,7 +173,7 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
     for item in _items(queue, PENDING):
         # An item the lander has started stays: removing its file mid-landing hid it from status
         # while it landed anyway. The new commit queues behind it instead.
-        if item["branch"] == branch and not item.get("started"):
+        if item.get("branch") == branch and not item.get("started"):
             # A re-enqueue replaces the older request: the newest commit is the one meant. It keeps
             # the older one's place in line, and says whose it was, since two agents can enqueue
             # the same branch and one would otherwise silently undo the other.
@@ -184,13 +211,44 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_doc(args: argparse.Namespace) -> int:
+    """Queue one HTML build in the checkout whose `main` Field normally serves."""
+    here = Path.cwd()
+    primary = _primary(here)
+    holder = _main_holder(primary)
+    if holder is None:
+        print("land: doc needs a checkout with main checked out", file=sys.stderr)
+        return 2
+    queue = _queue_dir(here)
+    stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    item = {
+        "id": f"{stamp}-doc",
+        "kind": DOC,
+        "checkout": str(holder.resolve()),
+        "by": os.environ.get("FIELD_LAND_BY") or f"{_git(here, 'config', 'user.name', check=False) or 'unknown'} @ {here.name}",
+        "enqueued": _now(),
+        "seq": time.time_ns(),
+    }
+    base, n = item["id"], 1
+    while _find(queue, item["id"]):
+        n += 1
+        item["id"] = f"{base}-{n}"
+    _move(queue, item, PENDING)
+    print(f"land: queued docs build {item['id']} for {holder}; {len(_items(queue, PENDING)) - 1} ahead of it.")
+    print(f"Progress: uv run python tools/land.py status {item['id']}")
+    print(f"Outcome: uv run python tools/land.py wait {item['id']}")
+    return 0
+
+
 _SUBJECTS: dict[str, str] = {}
 
 
 def _subject(item: dict) -> str:
     """The first line of the branch tip's commit message: a branch name like
     claude/distracted-mccarthy-deeb34 says nothing about what is landing."""
-    sha = item["sha"]
+    if _is_doc(item):
+        return "Build the local documentation site"
+    sha = item.get("fixup", {}).get("from", item["sha"])  # the branch's own subject, not the fixup's
     if sha not in _SUBJECTS:
         result = subprocess.run(["git", "log", "-1", "--format=%s", sha], stdout=subprocess.PIPE,
                                 stderr=subprocess.DEVNULL, text=True)
@@ -235,14 +293,23 @@ def _log_lines(item: dict) -> list[str]:
 
 
 def _ran_gradle(item: dict) -> bool:
+    if _is_doc(item):
+        return False
     return any(line.startswith("> Task :") for line in _log_lines(item))
 
 
 def _phase(item: dict) -> tuple[str, str]:
     """(what the landing is doing, the last thing it printed), read from its log."""
     lines = _log_lines(item)
+    if _is_doc(item):
+        return "building local docs", (lines[-1][:400] if lines else "")
     if not lines:
         return "starting", ""
+    # The fixer prints nothing while it works (its reply goes to the log at the end), so the line
+    # announcing it is the newest one until it answers.
+    asked = [n for n, line in enumerate(lines) if line.startswith("land: ") and "asking the fixer" in line]
+    if asked and not any(line.startswith("land: fixer: ") for line in lines[asked[-1]:]):
+        return "red; " + lines[asked[-1]].split("red; ", 1)[-1], lines[asked[-1]][:400]
     steps = [line for line in lines if line.startswith("merge_regen:")]
     tasks = [line[len("> Task "):].split()[0] for line in lines if line.startswith("> Task :")]
     step = steps[-1][len("merge_regen: "):] if steps else "merging onto main"
@@ -256,29 +323,51 @@ def _phase(item: dict) -> tuple[str, str]:
             current = running[-1][len("citationGates: running "):] if running else ""
             finished_current = done and current and f"] {current} " in done[-1]
             step += f" {count}" + (f", running {current}" if current and not finished_current else "")
-    return step, lines[-1][:160]
+    return step, lines[-1][:400]
 
 
 def _typical(queue: Path, gradle: bool) -> float | None:
     """Median duration of recent landings of the same kind (with or without a Gradle guard)."""
-    took = [t for item in _items(queue, LANDED)[-20:] if _ran_gradle(item) == gradle and (t := _took(item)) is not None]
+    took = [t for item in _items(queue, LANDED)[-20:] if not _is_doc(item) and _ran_gradle(item) == gradle and (t := _took(item)) is not None]
     return sorted(took)[len(took) // 2] if took else None
 
 
 def _superseded_by(queue: Path, item: dict) -> dict | None:
     """A later landing of the same branch, which makes this bounce history rather than news."""
+    # Doc builds (`land.py doc`) are queue items with no branch; they never supersede anything.
+    if _is_doc(item) or not item.get("branch"):
+        return None
+    # A later attempt: enqueued later (seq is nanoseconds; finished times are per-second, so a fix
+    # landing in the bounce's own second was missed), falling back to time for items without seq.
+    def later_than(other: dict) -> bool:
+        if other.get("seq") and item.get("seq"):
+            return other["seq"] > item["seq"]
+        return other.get("finished", "") > item.get("finished", "")
     later = [other for other in _items(queue, LANDED)
-             if other["branch"] == item["branch"] and other.get("finished", "") > item.get("finished", "")]
+             if other.get("branch") == item["branch"] and other["id"] != item["id"] and later_than(other)]
     return later[0] if later else None
 
 
 def _describe(state: str, item: dict, queue: Path | None = None) -> str:
+    if _is_doc(item):
+        head = f"{item['id']}  docs for {item['checkout']}  by {item['by']}"
+        lines = [f"{'building' if state == PENDING and item.get('started') else 'queued' if state == PENDING else 'built' if state == LANDED else 'failed':8} {head}"]
+        if state == PENDING and item.get("started"):
+            lines.append(f"         building for {_span(_since(item['started']))}; log: {item.get('log', '')}")
+        elif state == LANDED:
+            lines.append(f"         main {item.get('built_from', '')[:9]}, {_span(_since(item.get('finished')))} ago")
+        elif state == BOUNCED:
+            lines.append(f"         {_span(_since(item.get('finished')))} ago: {item.get('reason', '?')}")
+            lines.append(f"         log: {item.get('log', '')}")
+        return "\n".join(lines)
     head = f"{item['id']}  {item['sha'][:9]}  by {item['by']}"
     lines = [f"{state:8} {head}"]
     if _subject(item):
         lines.append(f"         \u201c{_subject(item)}\u201d")
     if item.get("note"):
         lines.append(f"         note: {item['note']}")
+    if state == PENDING and item.get("fixup"):
+        lines.append(f"         lander fixup {item['fixup']['sha'][:9]} on {item['fixup']['branch']}: {item['fixup'].get('reason', '')}")
     if state == PENDING and item.get("started"):
         waited = (_when(item["started"]) - _when(item["enqueued"])).total_seconds() if _when(item.get("enqueued")) else 0
         running = _since(item["started"])
@@ -313,6 +402,10 @@ def _describe(state: str, item: dict, queue: Path | None = None) -> str:
             + (f", took {_span(took)} ({how})" if took is not None else "")
             + (f"; {item['reason']}" if item.get("reason") else "")
         )
+        if item.get("fixup"):
+            f = item["fixup"]
+            lines.append(f"         with a lander fixup {f['sha'][:9]} on {f['branch']} ({f.get('reason', '')}); "
+                         f"your branch lacks it: git merge {f['branch']}")
         if item.get("pushed_as"):
             lines.append(f"         pushed main {item['pushed_as'][:9]} to origin")
         elif item.get("push_error"):
@@ -431,16 +524,117 @@ Be brief and specific. Plain text, no markdown headers.
 
 
 def _ask_huh(queue: Path) -> str:
-    claude = shutil.which("claude")
-    if not claude:
-        return "`claude` is not on PATH, so there is nothing to ask. The context it would have read:\n\n" + _huh_context(queue)
-    context = _huh_context(queue)
+    return _ask_agent(HUH_PROMPT, _huh_context(queue), timeout=240)
+
+
+def _ask_agent(prompt: str, context: str, timeout: int = 300) -> str:
+    """Ask the configured agent (field_agent: claude -p or codex exec) about [context], read-only."""
+    agent = field_agent.configured_agent()
+    argv = field_agent.headless_argv(agent)
+    if argv is None:
+        return f"`{agent}` is not installed, so there is nothing to ask. The context it would have read:\n\n" + context
     try:
-        result = subprocess.run([claude, "-p", "--output-format", "text"], input=HUH_PROMPT + context,
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=240)
-        return result.stdout.strip() or "(claude returned nothing)"
+        # stdout is the answer; codex narrates its progress on stderr, kept only for when there is no answer.
+        result = subprocess.run(argv, input=prompt + context, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True, timeout=timeout)
+        return result.stdout.strip() or result.stderr.strip()[-2000:] or f"({agent} returned nothing)"
     except subprocess.TimeoutExpired:
-        return "claude -p took more than 4 minutes; giving up."
+        return f"{field_agent.describe(agent)} took more than {timeout // 60} minutes; giving up."
+
+
+# ---------------------------------------------------------------------------- bouncy?
+
+
+def _stranded_bounces(queue: Path, hours: float) -> list[dict]:
+    """Bounces in the last [hours] that nothing has followed up: no later landing of the branch and
+    no attempt of it still queued. The ones somebody has to act on."""
+    cutoff = time.time() - hours * 3600
+    queued = {i.get("branch") for i in _items(queue, PENDING)}
+    out = []
+    for item in _items(queue, BOUNCED):
+        when = _when(item.get("finished"))
+        if _is_doc(item) or not when or when.timestamp() < cutoff:
+            continue
+        if _superseded_by(queue, item) or item.get("branch") in queued:
+            continue
+        # Landed some other way (merged into another branch that landed): not stranded.
+        if _ok(_primary(Path.cwd()), "merge-base", "--is-ancestor", item["sha"], "refs/heads/main"):
+            continue
+        out.append(item)
+    # One per branch: the newest attempt is the one that matters.
+    newest: dict[str, dict] = {}
+    for item in out:
+        newest[item["branch"]] = item
+    return list(newest.values())
+
+
+def _bouncy_context(queue: Path, items: list[dict]) -> str:
+    primary = _primary(Path.cwd())
+    worktrees = {}
+    current = None
+    for line in _git(primary, "worktree", "list", "--porcelain").splitlines():
+        if line.startswith("worktree "):
+            current = line.split(" ", 1)[1]
+        elif line.startswith("branch refs/heads/"):
+            worktrees[line[len("branch refs/heads/"):]] = current
+    out = []
+    for item in items:
+        branch = item["branch"]
+        tip = _git(primary, "rev-parse", "-q", "--verify", f"refs/heads/{branch}", check=False)
+        moved = ""
+        if tip and tip != item["sha"]:
+            moved = _git(primary, "log", "--format=%h %cr %s", f"{item['sha']}..{tip}", check=False) or "(rewritten)"
+        on_main = _ok(primary, "merge-base", "--is-ancestor", item["sha"], "refs/heads/main")
+        out.append(f"===== bounce {item['id']} =====")
+        out.append(f"branch: {branch}\nbounced commit: {item['sha']}  \u201c{_subject(item)}\u201d")
+        out.append(f"enqueued by: {item.get('by')}\nbounced: {item.get('finished')} ({_span(_since(item.get('finished')))} ago)")
+        out.append(f"history: {item.get('history', [])}")
+        out.append(f"reason: {' '.join(str(item.get('reason', '?')).split())}")
+        out.append(f"branch tip now: {tip or '(branch deleted)'}; worktree: {worktrees.get(branch, '(none)')}")
+        out.append(f"bounced commit already on main: {on_main}")
+        out.append("commits on the branch since the bounce (fixed but never re-enqueued?):\n" + (moved or "(none)"))
+        log = Path(item.get("log", ""))
+        failures = log.with_suffix(".failures.txt") if item.get("log") else None
+        if failures and failures.exists():
+            out.append("failure messages:\n" + failures.read_text()[:4000])
+        if log.is_file():
+            lines = log.read_text(errors="replace").splitlines()
+            out.append("log tail:\n" + "\n".join(lines[-60:]))
+        out.append("")
+    return "\n".join(out)
+
+
+BOUNCY_PROMPT = """You are looking at Field4's landing queue (tools/land.py). Agents enqueue branches; a lander merges
+them onto main, regenerates generated files, runs a guard, and bounces a branch that fails, with a
+reason. The bounces below happened recently and nothing followed them up: the branch has not landed
+since and is not queued again. For EACH bounce, briefly:
+1. Whose fault: the branch's own change, or the lander/tooling/environment (a false alarm, a killed
+   build, a dirty checkout, a hang)? Give the evidence.
+2. What has happened since: fixed on the branch but never re-enqueued, untouched, or already on main.
+3. What to do: if it was not the branch's fault, or it is already fixed, the exact
+   `uv run python tools/land.py enqueue <branch>` to run. Otherwise the concrete fix.
+4. A short message (3-5 sentences) Marc can paste to the agent that owns the branch.
+Be brief and specific. Plain text, no markdown headers. Never suggest merging into main by hand.
+
+"""
+
+
+def _ask_bouncy(queue: Path, hours: float) -> str:
+    items = _stranded_bounces(queue, hours)
+    if not items:
+        return f"Nothing bounced in the last {hours:g} h is left stranded: every bounce since then has landed or is queued again."
+    head = f"{len(items)} stranded bounce(s) in the last {hours:g} h: " + ", ".join(i["branch"] for i in items) + "\n\n"
+    return head + _ask_agent(BOUNCY_PROMPT, _bouncy_context(queue, items))
+
+
+def cmd_bouncy(args: argparse.Namespace) -> int:
+    queue = _queue_dir(Path.cwd())
+    items = _stranded_bounces(queue, args.hours)
+    if args.context:
+        print(_bouncy_context(queue, items) if items else "(no stranded bounces)")
+        return 0
+    print(_ask_bouncy(queue, args.hours))
+    return 1 if items else 0
 
 
 def cmd_huh(args: argparse.Namespace) -> int:
@@ -493,6 +687,7 @@ class _Style:
             "gradle": "\ue660" if nerd else "", "note": "\uf249" if nerd else "#",
             "log": "\uf15c" if nerd else "", "main": "\uf126" if nerd else "",
             "push": "\uf062" if nerd else "^", "pull": "\uf063" if nerd else "v",
+            "fix": "\uf0ad" if nerd else "%",
         }
 
     def c(self, code: str, text: str) -> str:
@@ -515,14 +710,22 @@ def _bar(fraction: float, width: int = 24) -> str:
 def _pretty_status(queue: Path, recent: int) -> None:
     st = _Style()
     g = st.g
-    width = min(shutil.get_terminal_size((100, 20)).columns, 110)
+    cols = shutil.get_terminal_size((100, 20)).columns
+    width = min(cols, 110)  # rules only; text lines use the whole terminal
     rule = lambda title: print(st.dim("\u2500\u2500 ") + st.bold(title) + " " + st.dim("\u2500" * max(width - len(title) - 4, 0)))
 
+    def clip(text: str, indent: int) -> str:
+        """Fit `text` after `indent` columns of the terminal, marking a cut with an ellipsis."""
+        room = max(cols - indent - 1, 20)
+        return text if len(text) <= room else text[: room - 1] + "\u2026"
+
     def who(item: dict) -> str:
+        if _is_doc(item):
+            return f"{st.magenta('docs')}  {st.dim(item['checkout'])}  {st.dim(g['user'] + ' ' + item['by'])}"
         line = f"{st.magenta(g['branch'] + ' ' + item['branch'])}  {st.dim(item['sha'][:9])}  {st.dim(g['user'] + ' ' + item['by'])}"
         subject = _subject(item)
         # The tip's commit subject, on its own line: the branch name rarely says what is landing.
-        return line + (f"\n      {subject[: width - 8]}" if subject else "")
+        return line + (f"\n      {clip(subject, 6)}" if subject else "")
 
     # Lander
     if _lander_running(queue):
@@ -537,6 +740,11 @@ def _pretty_status(queue: Path, recent: int) -> None:
         print(f"{st.red(g['down'])} {st.bold(st.red('lander down'))}  nothing lands. "
               + st.cyan("uv run python tools/land.py run"))
     print()
+
+    def fixed_line(item: dict) -> str:
+        f = item["fixup"]
+        head = f"{g['fix']} fixer {f['sha'][:9]} on {f['branch']}: "
+        return st.yellow(head) + clip(f.get("reason", ""), 6 + len(head))
 
     pending = _items(queue, PENDING)
     active = [i for i in pending if i.get("started")]
@@ -560,16 +768,18 @@ def _pretty_status(queue: Path, recent: int) -> None:
         for member in members:
             print(f"  {st.yellow(g['land'])} {who(member)}")
             if member.get("note"):
-                print(f"    {st.dim(g['note'] + ' ' + member['note'][: width - 8])}")
+                print(f"    {st.dim(g['note'] + ' ' + clip(member['note'], 6))}")
+            if member.get("fixup"):
+                print(f"    {fixed_line(member)}")
         if typical:
             frac = running / typical
             tail = f"~{_span(typical - running)} left" if running < typical else st.yellow(f"{_span(running - typical)} over typical")
             print(f"    {st.cyan(_bar(min(frac, 1.0)))}  {st.bold(_span(running))} {st.dim('/ ~' + _span(typical))}  {tail}")
         else:
             print(f"    {st.bold(_span(running))} {st.dim('elapsed, no typical duration yet')}")
-        print(f"    {st.dim('step')}  {step[: width - 12]}")
+        print(f"    {st.dim('step')}  {clip(step, 10)}")
         if last:
-            print(f"    {st.dim('last')}  {st.dim(last[: width - 12])}")
+            print(f"    {st.dim('last')}  {st.dim(clip(last, 10))}")
         print(f"    {st.dim(g['log'] + ' ' + item.get('log', ''))}")
     print()
 
@@ -583,6 +793,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
     for n, item in enumerate(waiting, 1):
         eta = f"  starts ~{_span(ahead)}" if typical else ""
         print(f"  {st.dim(str(n) + '.')} {st.cyan(g['wait'])} {who(item)}  {st.dim('waiting ' + _span(_since(item.get('enqueued'))) + eta)}")
+        if item.get("fixup"):
+            print(f"     {fixed_line(item)}")
         if item.get("blocked"):
             b = item["blocked"]
             print(f"     {st.yellow(g['bounce'] + ' blocked ' + _span(_since(b.get('since'))))} "
@@ -605,11 +817,17 @@ def _pretty_status(queue: Path, recent: int) -> None:
             what = f"main {item.get('sha', '')[:9]} \u2192 origin  ({commits} commit{'s' if commits != '1' else ''})"
             if item.get("error"):
                 print(f"  {st.red(g['push'] + ' push failed')}  {what}  {st.dim(ago + ' ago')}")
-                print(f"    {st.red(item['error'][: width - 6])}")
+                print(f"    {st.red(clip(item['error'], 4))}")
             else:
                 print(f"  {st.cyan(g['push'] + ' pushed')}  {what}  {st.dim(ago + ' ago')}")
             continue
         took = _took(item)
+        if _is_doc(item):
+            label = st.green(g['ok'] + ' built') if state == LANDED else st.red(g['bounce'] + ' docs failed')
+            print(f"  {label}  {who(item)}  {st.dim(ago + ' ago')}")
+            if state == BOUNCED:
+                print(f"    {st.red(clip(str(item.get('reason', '?')), 4))}")
+            continue
         if state == LANDED and _is_pull(item):
             origin_note = "from origin \u00b7 " + g["main"] + " " + item.get("landed_as", "")[:9]
             print(f"  {st.cyan(g['pull'] + ' pulled')}  {who(item)}  {st.dim(origin_note)}"
@@ -619,12 +837,14 @@ def _pretty_status(queue: Path, recent: int) -> None:
             how = (g["gradle"] + " guard") if _ran_gradle(item) else "no gradle"
             print(f"  {st.green(g['ok'])} {who(item)}  {st.dim(g['main'] + ' ' + item.get('landed_as', '')[:9])}"
                   f"  {st.dim(ago + ' ago')}" + (st.dim(f" \u00b7 took {_span(took)} \u00b7 {how}") if took is not None else ""))
+            if item.get("fixup"):
+                print(f"      {fixed_line(item)}")
         elif _superseded_by(queue, item):
             continue  # bounced, then landed: history, not news
         else:
             reason = " ".join(str(item.get("reason", "?")).split())
             print(f"  {st.red(g['bounce'])} {who(item)}  {st.dim(ago + ' ago')}")
-            print(f"    {st.red(reason[: width - 6])}")
+            print(f"    {st.red(clip(reason, 4))}")
 
 
 def cmd_status(args: argparse.Namespace) -> int:
@@ -662,7 +882,7 @@ def cmd_status(args: argparse.Namespace) -> int:
                 lines = frame.getvalue().split("\n")
                 if len(lines) > rows - 2:
                     lines = lines[: rows - 3] + [_Style().dim(f"  \u2026 {len(lines) - rows + 3} more lines (make the window taller)")]
-                footer = _Style().dim(f"{_now()} \u00b7 every 2s \u00b7 h huh? \u00b7 q to quit")
+                footer = _Style().dim(f"{_now()} \u00b7 every 2s \u00b7 h huh? \u00b7 b bouncy? \u00b7 q to quit")
                 sys.stdout.write("\033[H" + "\033[K\n".join(lines) + "\033[K\n" + footer + "\033[K\033[J")
                 sys.stdout.flush()
                 if stdin is None:
@@ -671,8 +891,13 @@ def cmd_status(args: argparse.Namespace) -> int:
                     key = os.read(stdin, 1)
                     if key in (b"q", b"Q", b"\x1b", b"\x03"):
                         break
+                    if key in (b"b", b"B"):
+                        sys.stdout.write("\033[2J\033[H" + _Style().yellow("bouncy? looking for bounces nobody followed up (then the agent; ~30-60 s)") + "\n")
+                        sys.stdout.flush()
+                        _pager(_ask_bouncy(queue, 12), stdin)
+                        sys.stdout.write("\033[2J")
                     if key in (b"h", b"H"):
-                        sys.stdout.write("\033[2J\033[H" + _Style().yellow("huh? asking claude about the queue (gathering context, then claude -p; ~30-60 s)") + "\n")
+                        sys.stdout.write("\033[2J\033[H" + _Style().yellow("huh? asking the agent about the queue (gathering context, then the agent; ~30-60 s)") + "\n")
                         sys.stdout.flush()
                         _pager(_ask_huh(queue), stdin)
                         sys.stdout.write("\033[2J")
@@ -701,7 +926,8 @@ def cmd_status(args: argparse.Namespace) -> int:
         print(f"\nqueued ({len(waiting)}), in landing order:")
         for n, item in enumerate(waiting, 1):
             estimate = f", starts in about {_span(ahead)}" if typical else ""
-            print(f"  {n}. {item['id']}  {item['sha'][:9]}  by {item['by']}  waiting {_span(_since(item.get('enqueued')))}{estimate}")
+            detail = f"docs for {item['checkout']}" if _is_doc(item) else item['sha'][:9]
+            print(f"  {n}. {item['id']}  {detail}  by {item['by']}  waiting {_span(_since(item.get('enqueued')))}{estimate}")
             if item.get("blocked"):
                 b = item["blocked"]
                 print(f"     BLOCKED {_span(_since(b.get('since')))} by uncommitted edits in {b.get('where')}: " + ", ".join(b.get("files", [])))
@@ -729,7 +955,7 @@ def cmd_mine(args: argparse.Namespace) -> int:
     branch = args.branch or _git(here, "branch", "--show-current")
     queue = _queue_dir(here)
     attempts = sorted(
-        ((state, item) for state in (PENDING, LANDED, BOUNCED) for item in _items(queue, state) if item["branch"] == branch),
+        ((state, item) for state in (PENDING, LANDED, BOUNCED) for item in _items(queue, state) if item.get("branch") == branch),
         key=lambda pair: pair[1]["id"], reverse=True,
     )
     if not attempts:
@@ -841,9 +1067,9 @@ def _fast_forward_main(primary: Path, old: str, new: str) -> str | None:
 
 def _first_error(log: Path) -> str:
     text = log.read_text(errors="replace").splitlines()
-    # Most specific first: a failing test, a compiler error, Gradle's own account, and only then
-    # merge_regen's summary line, which names no cause.
-    for pattern in (r" > .* FAILED$", r"^e: ", r"source conflicts", r"What went wrong", r"FAILED",
+    # Most specific first: the docs builder's own verdict, a failing test, a compiler error, Gradle's
+    # own account, and only then merge_regen's summary line, which names no cause.
+    for pattern in (r"^docs build failed: ", r" > .* FAILED$", r"^e: ", r"source conflicts", r"What went wrong", r"FAILED",
                     r"merge_regen: .*fail", r"[Ee]rror"):
         for i, line in enumerate(text):
             if re.search(pattern, line):
@@ -855,6 +1081,10 @@ def _message(item: dict) -> str:
     message = f"Land {item['branch']} ({item['by']})\n\nLanding queue item {item['id']}, commit {item['sha']}."
     if item.get("note"):
         message += f"\n\n{item['note']}"
+    if item.get("fixup"):
+        f = item["fixup"]
+        message += (f"\n\nThe guard failed on {f['from'][:12]}; the lander's fixer added {f['sha'][:12]} "
+                    f"({f['branch']}): {f.get('reason', '')}")
     return message
 
 
@@ -930,17 +1160,105 @@ def _lander_gradle_home() -> Path | None:
     return home
 
 
+# What keeps the machine awake while a build runs: macOS's `caffeinate`. The lander runs on a laptop,
+# and asleep a build makes no progress. FIELD_LAND_CAFFEINATE names another command, or "off".
+CAFFEINATE = os.environ.get("FIELD_LAND_CAFFEINATE", "caffeinate" if sys.platform == "darwin" else "off")
+
+
+def _hold_awake(pid: int) -> subprocess.Popen | None:
+    """Keeps the machine from idle sleep until [pid] exits (`caffeinate -i -w <pid>`), or None where
+    there is no such command. Closing a laptop's lid still sleeps it; see _run_watched for why that
+    no longer bounces the build."""
+    exe = shutil.which(CAFFEINATE) if CAFFEINATE and CAFFEINATE != "off" else None
+    if not exe:
+        return None
+    try:
+        return subprocess.Popen([exe, "-i", "-w", str(pid)], stdin=subprocess.DEVNULL,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        return None
+
+
+_CURRENT_BUILD: dict[str, int] = {}
+
+
+def _group_alive(pgid: int) -> bool:
+    try:
+        os.killpg(pgid, 0)
+        return True
+    except (ProcessLookupError, PermissionError):
+        return False
+
+
+def _stop_group(pgid: int) -> None:
+    """TERM the build's process group, then KILL whatever is left after 10 s."""
+    with contextlib.suppress(OSError):
+        os.killpg(pgid, 15)
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline and _group_alive(pgid):
+        time.sleep(0.2)
+    with contextlib.suppress(OSError):
+        os.killpg(pgid, 9)
+
+
+def _stop_orphaned_build(queue: Path) -> None:
+    """A lander that died without cleaning up (kill -9, a crash) leaves its build running under the
+    next one: two builds in one worktree, which corrupts Kotlin output. Stop it before landing."""
+    record = queue / "build.json"
+    try:
+        info = json.loads(record.read_text())
+    except (OSError, json.JSONDecodeError):
+        return
+    pgid = int(info.get("pgid", 0))
+    if pgid and info.get("lander") != os.getpid() and _group_alive(pgid):
+        leader = subprocess.run(["ps", "-o", "command=", "-p", str(pgid)], stdout=subprocess.PIPE, text=True).stdout
+        if "merge_regen" in leader or not leader.strip():  # only ever the lander's own build
+            print(f"land: stopping an orphaned build from a previous lander (process group {pgid})", flush=True)
+            _stop_group(pgid)
+    record.unlink(missing_ok=True)
+
+
 def _run_watched(cmd: list[str], cwd: Path, env: dict, log: Path, out) -> int | None:
-    """Run [cmd] with its output in [log]. None if it went silent for WATCHDOG_MINUTES: a build that
-    writes nothing for that long is wedged (the hour in configuration), and waiting longer only holds
-    up everyone behind it. Its whole process group and the lander's Gradle daemons are stopped."""
+    """Run [cmd] with its output in [log], holding the machine awake while it runs. None if it went
+    silent for WATCHDOG_MINUTES: a build that writes nothing for that long is wedged (the hour in
+    configuration), and waiting longer only holds up everyone behind it. Its whole process group and
+    the lander's Gradle daemons are stopped.
+
+    Silence is timed on the monotonic clock, which on macOS stops while the machine sleeps, so a
+    build that a closed lid paused is not taken for a wedged one. Timing it from the log's mtime
+    with the wall clock bounced a whole batch of seven on 2026-10-07."""
     proc = subprocess.Popen(cmd, cwd=cwd, stdout=out, stderr=subprocess.STDOUT, env=env, start_new_session=True)
+    awake = _hold_awake(proc.pid)
+    # Its own session, so the watchdog can stop the whole build: which also means stopping the lander
+    # no longer stops it. Record it, so a SIGTERM'd lander stops it and a new lander finds an orphan.
+    record = log.parent.parent / "build.json"
+    record.write_text(json.dumps({"pgid": proc.pid, "lander": os.getpid(), "started": _now(), "log": str(log)}) + "\n")
+    _CURRENT_BUILD["pgid"] = proc.pid
+    try:
+        return _watch(proc, cwd, env, log, out)
+    finally:
+        _CURRENT_BUILD.pop("pgid", None)
+        record.unlink(missing_ok=True)
+        if awake is not None and awake.poll() is None:
+            awake.terminate()
+            with contextlib.suppress(subprocess.TimeoutExpired):
+                awake.wait(timeout=5)
+
+
+def _watch(proc: subprocess.Popen, cwd: Path, env: dict, log: Path, out) -> int | None:
+    last_write = log.stat().st_mtime
+    quiet_since = time.monotonic()
     while True:
         try:
             return proc.wait(timeout=min(30.0, max(WATCHDOG_MINUTES * 60 / 4, 0.5)))
         except subprocess.TimeoutExpired:
             pass
-        silent = time.time() - log.stat().st_mtime
+        written = log.stat().st_mtime
+        if written != last_write:
+            last_write = written
+            quiet_since = time.monotonic()
+            continue
+        silent = time.monotonic() - quiet_since
         if silent < WATCHDOG_MINUTES * 60:
             continue
         out.write(f"\nland: watchdog: no output for {silent / 60:.0f} min; stopping the build\n")
@@ -1001,7 +1319,7 @@ def _events(queue: Path, kind: str) -> list[dict]:
 
 def _is_pull(item: dict) -> bool:
     """A sync item: origin's main, landed through the queue."""
-    return item["branch"].startswith("sync/origin")
+    return not _is_doc(item) and item["branch"].startswith("sync/origin")
 
 
 def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
@@ -1029,6 +1347,227 @@ def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
     first_line = next((line.strip() for line in first_message.splitlines() if line.strip()), "")
     more = f" (+{len(found) - 1} more)" if len(found) > 1 else ""
     return f"{first_name}: {first_line[:220]}{more}; full messages: {path}"
+
+
+# ---------------------------------------------------------------------------- the fixer
+
+
+# Most bounces are a missed number, a citation pointing at a symbol that moved, a KDoc in the wrong
+# place: a minute's fix, followed by a re-enqueue and (in a batch) an hour of bisecting. At a red
+# round the lander gives the agent (field_agent.py) one chance, in its own worktree on the exact tree that failed,
+# to make the fix and say whose branch it belongs to. A fix that passes the checks below is committed
+# onto that branch's tip as `fixup/<branch>` (the branch itself is never moved: it is usually checked
+# out in somebody's worktree) and the whole batch goes round again with the full guard. The guard,
+# not the fixer, decides whether it lands. FIELD_LAND_FIXER=off turns it off.
+FIXER = os.environ.get("FIELD_LAND_FIXER", "on")
+FIXER_MINUTES = float(os.environ.get("FIELD_LAND_FIXER_MIN", "15"))
+FIXUP_MAX_FILES = 6
+FIXUP_MAX_LINES = 60
+# Making the guard pass by changing the guard is not a fix: the registers of accepted reds, the guards
+# themselves, the landing machinery, and the hooks are refused outright.
+FIXUP_DENIED_PATHS = re.compile(
+    r"^(dev_docs/testing/expected_\w+\.json|tools/(land|merge_regen|install_git_hooks)\.py|tools/check_[^/]+\.py"
+    r"|\.githooks/|githooks/|build\.gradle\.kts|settings\.gradle\.kts|gradle/)")
+# ...and so is switching a test off.
+FIXUP_DENIED_ADDED = re.compile(r"@Ignore|@Disabled|pytest\.mark\.skip|unittest\.skip|\bxit\(|\bxdescribe\(")
+FIXER_VERDICT = "FIXER-VERDICT:"
+
+FIXER_PROMPT = """You are the landing queue's fixer for the Field repository. The lander merged the
+branches below onto main and the guard failed. You are in the lander's own worktree, on the exact
+merged tree that failed; build output is warm, and nothing else is building here. AGENTS.md in this
+directory is the repo guide.
+
+Your job is a judgement call: is this failure a small, mechanical slip that one of these branches
+obviously made (a count or number not updated, a citation pointing at something that moved or was
+renamed, a KDoc in the wrong place, a missing entry in a list a guard checks, a typo in a reference)?
+
+- If yes: fix it with the smallest edit that is plainly right, then re-run the narrowest command that
+  reproduces the failing check (one test class, one checker script, one Gradle task) and confirm it
+  passes. Do not run the whole guard; the lander does that afterwards.
+- If the failure is about behaviour, timing, flakiness, design, or anything you would have to explain
+  with "probably", or it needs more than a few lines, do not edit anything; say why. Your diagnosis
+  goes into the bounce and is useful on its own.
+
+Hard rules (the lander rejects a fix that breaks them):
+- Do not run git commands that change anything: no commit, stash, checkout, reset, merge, or branch.
+  The lander commits your edit itself.
+- Do not edit dev_docs/testing/expected_*.json, tools/check_*.py, tools/land.py, tools/merge_regen.py,
+  the git hooks, or the Gradle build files; do not delete files; do not disable or skip a test.
+- At most {max_files} files and {max_lines} changed lines.
+- The fix must belong to ONE branch below: the one whose change the failure follows from.
+
+End your reply with exactly one line, and nothing after it:
+{verdict} {{"verdict": "fix" or "decline", "culprit": "<branch name>" or null, "reason": "<one sentence>"}}
+
+"""
+
+
+def _fixer_command() -> list[str] | None:
+    custom = os.environ.get("FIELD_LAND_FIXER_CMD")
+    if custom:
+        import shlex
+        return shlex.split(custom)
+    return field_agent.headless_argv(edits=True)
+
+
+def _fixer_context(members: list[dict], main_sha: str, wt: Path, log: Path, failures: str | None, queue: Path) -> str:
+    parts = [f"main before this round: {main_sha}\n\nBranches in the round, each merged as its own commit:"]
+    for m in members:
+        stat = _git(wt, "diff", "--stat=120", f"{main_sha}...{m['sha']}", check=False)
+        parts.append(f"\n## {m['branch']} ({m['sha'][:9]}, by {m['by']})\n{_subject(m) or ''}\n{stat}")
+    if failures:
+        parts.append(f"\nFailing tests (first): {failures}")
+        path = log.with_suffix(".failures.txt")
+        if path.exists():
+            parts.append(path.read_text(errors="replace")[:6000])
+    tail = log.read_text(errors="replace").splitlines()[-200:]
+    parts.append("\nThe end of the landing log:\n" + "\n".join(tail))
+    ledger = _fixer_ledger(queue)[-8:]
+    if ledger:
+        parts.append("\nWhat the fixer did on recent reds (for calibration):\n"
+                     + "\n".join(f"- {e.get('outcome')}: {e.get('reason', '')}" for e in ledger))
+    return "\n".join(parts)
+
+
+def _fixer_ledger(queue: Path) -> list[dict]:
+    try:
+        lines = (queue / "fixer.jsonl").read_text().splitlines()
+    except OSError:
+        return []
+    out = []
+    for line in lines:
+        with contextlib.suppress(json.JSONDecodeError):
+            out.append(json.loads(line))
+    return out
+
+
+def _record_fixer(queue: Path, out, **fields) -> None:
+    fields = {"finished": _now(), **fields}
+    with (queue / "fixer.jsonl").open("a") as f:
+        f.write(json.dumps(fields) + "\n")
+    out.write(f"land: fixer: {fields.get('outcome')}: {fields.get('reason', '')}\n")
+    out.flush()
+
+
+def _run_fixer(cmd: list[str], prompt: str, wt: Path, env: dict, out) -> str | None:
+    """The fixer's whole reply, or None if it overran FIXER_MINUTES (its process group is stopped)."""
+    proc = subprocess.Popen(cmd, cwd=wt, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, text=True, start_new_session=True)
+    awake = _hold_awake(proc.pid)
+    _CURRENT_BUILD["pgid"] = proc.pid
+    try:
+        reply, _ = proc.communicate(prompt, timeout=FIXER_MINUTES * 60)
+        return reply
+    except subprocess.TimeoutExpired:
+        _stop_group(proc.pid)
+        proc.communicate()
+        return None
+    finally:
+        _CURRENT_BUILD.pop("pgid", None)
+        if awake is not None and awake.poll() is None:
+            awake.terminate()
+        out.flush()
+
+
+def _fixer_verdict(reply: str) -> dict | None:
+    for line in reversed(reply.splitlines()):
+        if line.strip().startswith(FIXER_VERDICT):
+            with contextlib.suppress(json.JSONDecodeError):
+                verdict = json.loads(line.strip()[len(FIXER_VERDICT):])
+                return verdict if isinstance(verdict, dict) else None
+    return None
+
+
+def _fixup_problem(wt: Path, base: str) -> str | None:
+    """Why the staged edit is not acceptable as a fixup, or None."""
+    status = _git(wt, "diff", "--cached", "--name-status", base, check=False).splitlines()
+    if not status:
+        return "it changed nothing"
+    paths = [line.split("\t")[-1] for line in status]
+    if any(line.startswith("D") for line in status):
+        return "it deletes a file"
+    denied = [p for p in paths if FIXUP_DENIED_PATHS.search(p)]
+    if denied:
+        return f"it edits {', '.join(denied)}, which a fixup may not touch"
+    if len(paths) > FIXUP_MAX_FILES:
+        return f"it touches {len(paths)} files (at most {FIXUP_MAX_FILES})"
+    lines = 0
+    for row in _git(wt, "diff", "--cached", "--numstat", base, check=False).splitlines():
+        added, removed = row.split("\t")[:2]
+        lines += int(added) if added.isdigit() else FIXUP_MAX_LINES
+        lines += int(removed) if removed.isdigit() else 0
+    if lines > FIXUP_MAX_LINES:
+        return f"it changes {lines} lines (at most {FIXUP_MAX_LINES})"
+    diff = _git(wt, "diff", "--cached", "-U0", base, check=False)
+    if any(FIXUP_DENIED_ADDED.search(l) for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++")):
+        return "it disables or skips a test"
+    return None
+
+
+def _try_fixer(members: list[dict], main_sha: str, wt: Path, queue: Path, log: Path, failures: str | None,
+               env: dict, out) -> tuple[dict, str] | None:
+    """Give the fixer one go at the red tree in [wt]. On an accepted fix returns (culprit item, the
+    fixup commit on the culprit's tip, also at refs/heads/fixup/<branch>); otherwise None, with the
+    fixer's reason in the log and the ledger. The caller resets [wt] either way."""
+    # One attempt per item: the bisect rounds after a decline would only ask the same question again.
+    eligible = [m for m in members if not _is_pull(m) and not m.get("fixer_tried")]
+    cmd = _fixer_command() if FIXER != "off" else None
+    if not eligible or cmd is None:
+        return None
+    for m in eligible:
+        m["fixer_tried"] = True
+    # The failed tree, regeneration output included, as a scratch commit on the lander's own branch:
+    # whatever the fixer changes is then exactly the diff against it. Plumbing, so no hook runs.
+    _git(wt, "add", "-A")
+    base = _git(wt, "commit-tree", _git(wt, "write-tree"), "-p", "HEAD", "-m", "lander: the tree that failed")
+    _git(wt, "update-ref", "HEAD", base)
+    names = ", ".join(m["branch"] for m in eligible)
+    out.write(f"\nland: {_now()} red; asking the fixer (up to {FIXER_MINUTES:.0f} min) about {names}\n")
+    out.flush()
+    prompt = FIXER_PROMPT.format(max_files=FIXUP_MAX_FILES, max_lines=FIXUP_MAX_LINES, verdict=FIXER_VERDICT)
+    reply = _run_fixer(cmd, prompt + _fixer_context(eligible, main_sha, wt, log, failures, queue), wt, env, out)
+    if reply is None:
+        _record_fixer(queue, out, outcome="timeout", reason=f"no verdict within {FIXER_MINUTES:.0f} min", branches=names)
+        return None
+    out.write("land: fixer reply:\n" + "\n".join("  | " + l for l in reply.splitlines()[-40:]) + "\n")
+    verdict = _fixer_verdict(reply) or {}
+    reason = " ".join(str(verdict.get("reason") or "no verdict line").split())[:300]
+    culprit = next((m for m in eligible if m["branch"] == verdict.get("culprit")), None)
+    for m in eligible:
+        m["fixer_note"] = reason
+    if verdict.get("verdict") != "fix":
+        _record_fixer(queue, out, outcome="declined", reason=reason, branches=names)
+        return None
+    if _git(wt, "rev-parse", "HEAD") != base:
+        _record_fixer(queue, out, outcome="rejected", reason=f"it moved HEAD itself ({reason})", branches=names)
+        return None
+    if culprit is None:
+        _record_fixer(queue, out, outcome="rejected", reason=f"culprit {verdict.get('culprit')!r} is not in the round ({reason})", branches=names)
+        return None
+    _git(wt, "add", "-A")
+    problem = _fixup_problem(wt, base)
+    if problem:
+        _record_fixer(queue, out, outcome="rejected", reason=f"{problem} ({reason})", branch=culprit["branch"])
+        return None
+    files = _git(wt, "diff", "--cached", "--name-only", base).split()
+    fix = _git(wt, "commit-tree", _git(wt, "write-tree"), "-p", base, "-m", "lander fixer edit")
+    # The same edit on the culprit's own tip: a three-way merge in the object store, nothing checked out.
+    merged = subprocess.run(["git", "merge-tree", "--write-tree", f"--merge-base={base}", culprit["sha"], fix],
+                            cwd=wt, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    if merged.returncode != 0:
+        _record_fixer(queue, out, outcome="rejected", branch=culprit["branch"],
+                      reason=f"the fix does not apply to {culprit['branch']} on its own, so it is not that branch's alone ({reason})")
+        return None
+    message = (f"Lander fixup: {reason}\n\nMade by the landing queue's fixer ({field_agent.describe()}) when {log.stem} went red;\n"
+               f"the full guard ran again on it before landing.\n\n"
+               f"Lander-Fixup: {culprit['id']} {culprit['sha'][:12]}\n")
+    fixer_env = {**env, "GIT_AUTHOR_NAME": "Field lander fixer", "GIT_AUTHOR_EMAIL": "lander-fixer@field.invalid"}
+    tip = subprocess.run(["git", "commit-tree", merged.stdout.split()[0], "-p", culprit["sha"], "-m", message],
+                         cwd=wt, env=fixer_env, check=True, stdout=subprocess.PIPE, text=True).stdout.strip()
+    _git(wt, "update-ref", f"refs/heads/fixup/{culprit['branch']}", tip)
+    _record_fixer(queue, out, outcome="fixed", reason=reason, branch=culprit["branch"], item=culprit["id"],
+                  files=files, sha=tip)
+    return culprit, tip
 
 
 def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecting: int | None) -> str:
@@ -1120,11 +1659,24 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
             return "blocked"
         if code != 0:
             failures = _collect_failures(wt, round_started, log)
+            with log.open("a") as out:
+                fixed = _try_fixer(members, main_sha, wt, queue, log, failures, env, out)
             _reset(wt, main_sha)
+            if fixed:
+                culprit, tip = fixed
+                culprit["fixup"] = {"sha": tip, "branch": f"fixup/{culprit['branch']}", "from": culprit["sha"],
+                                    "reason": culprit.get("fixer_note", "")}
+                culprit["sha"] = tip
+                for item in members:
+                    item.pop("fixer_note", None)
+                    _requeue(queue, item, f"red {batch_id}; the fixer committed {tip[:9]} on fixup/{culprit['branch']}; "
+                                          f"the round goes again with the full guard")
+                return "fixed"
             if len(members) == 1:
                 item = members[0]
                 found = f" (found by bisecting a red batch of {bisecting})" if bisecting else ""
-                item.update(reason=(failures or _first_error(log)) + found, finished=_now())
+                note = f"; fixer: {item.pop('fixer_note')}" if item.get("fixer_note") else ""
+                item.update(reason=(failures or _first_error(log)) + found + note, finished=_now())
                 _move(queue, item, BOUNCED)
                 return "bounced"
             for item in members:
@@ -1164,6 +1716,40 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
     return "green"
 
 
+def _run_doc(item: dict, primary: Path, queue: Path) -> None:
+    """Build the served checkout after earlier queue items, without changing Git history."""
+    checkout = Path(item["checkout"])
+    log = queue / "logs" / f"{item['id']}.log"
+    item.update(started=_now(), log=str(log))
+    _move(queue, item, PENDING)
+    holder = _main_holder(primary)
+    if holder is None or holder.resolve() != checkout.resolve():
+        item.update(reason="the checkout holding main changed; queue a new doc item for the current checkout", finished=_now())
+        _move(queue, item, BOUNCED)
+        return
+    script = checkout / "tools" / "build_zensical_docs.py"
+    if not script.is_file():
+        item.update(reason=f"docs builder missing in {checkout}", finished=_now())
+        _move(queue, item, BOUNCED)
+        return
+    item["built_from"] = _git(checkout, "rev-parse", "HEAD")
+    _move(queue, item, PENDING)
+    env = {**os.environ, "FIELD_DOCS_RUNNER_MODE": "never", "PYTHONUNBUFFERED": "1"}
+    with log.open("w") as out:
+        out.write(f"land: building local docs in {checkout} from main {item['built_from'][:9]}\n")
+        out.flush()
+        # The builder stops a wedged zensical itself within minutes (FIELD_DOCS_ZENSICAL_STALL_SEC),
+        # refuses a site missing pages, and only then replaces public/field4/; --gate-site-links makes
+        # a failing link check fail the job too, so "built" means a site that was checked.
+        code = _run_watched([sys.executable, str(script), "--gate-site-links"], checkout, env, log, out)
+    if code == 0:
+        item["finished"] = _now()
+        _move(queue, item, LANDED)
+    else:
+        item.update(reason=(f"docs build went silent for {WATCHDOG_MINUTES:.0f} min" if code is None else _first_error(log)), finished=_now())
+        _move(queue, item, BOUNCED)
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     here = Path.cwd()
     primary = _primary(here)
@@ -1183,12 +1769,30 @@ def cmd_run(args: argparse.Namespace) -> int:
             "a terminal" if sys.stdin.isatty() else "a background process")
         (queue / "lander.json").write_text(json.dumps(
             {"pid": os.getpid(), "started": _now(), "once": args.once, "via": via, "worktree": str(wt)}) + "\n")
+        _stop_orphaned_build(queue)
+
+        def stop(signum, _frame):
+            # launchd's kickstart -k and bootout send SIGTERM. Take the build down with us, or it
+            # keeps running under the next lander.
+            pgid = _CURRENT_BUILD.get("pgid")
+            if pgid:
+                print(f"land: signal {signum}; stopping the running build (process group {pgid})", flush=True)
+                _stop_group(pgid)
+                (queue / "build.json").unlink(missing_ok=True)
+            raise SystemExit(128 + signum)
+
+        signal.signal(signal.SIGTERM, stop)
+        signal.signal(signal.SIGINT, stop)
         print(f"land: lander up in {wt}; queue {queue}", flush=True)
         limit, bisecting, suspects = args.batch, None, set()
         while True:
             pending = _items(queue, PENDING)
+            # A docs item is an exact boundary. Later landings cannot pass it, and it cannot
+            # pass an earlier landing that is waiting on edits in main's checkout.
+            doc_index = next((n for n, item in enumerate(pending) if _is_doc(item)), None)
+            before_doc = pending[:doc_index] if doc_index is not None else pending
             ready = []
-            for item in pending:
+            for item in before_doc:
                 blocking = _blocking_edits(primary, item)
                 if blocking:
                     if item.get("blocked", {}).get("files") != blocking:
@@ -1201,13 +1805,12 @@ def cmd_run(args: argparse.Namespace) -> int:
                     ready.append(item)
                 else:
                     ready.append(item)
-            pending = ready
-            if pending:
-                batch = pending[:limit]
+            if ready:
+                batch = ready[:limit]
                 wt = _lander_worktree(primary, args.worktree)  # re-created if something removed it
                 print(f"land: {_now()} landing {len(batch)}: " + ", ".join(i["branch"] for i in batch), flush=True)
                 result = _land_batch(batch, primary, wt, queue, bisecting)
-                if result == "blocked":
+                if result in ("blocked", "fixed"):
                     continue
                 if result == "red":
                     # Halve and retry from the oldest. Each round builds on the current main, so a pair
@@ -1225,9 +1828,16 @@ def cmd_run(args: argparse.Namespace) -> int:
                     state, done = _find(queue, item["id"]) or ("?", item)
                     print(_describe(state, done, queue), flush=True)
                 continue
+            if doc_index == 0:
+                item = pending[0]
+                print(f"land: {_now()} building docs in {item['checkout']}", flush=True)
+                _run_doc(item, primary, queue)
+                state, done = _find(queue, item["id"]) or ("?", item)
+                print(_describe(state, done, queue), flush=True)
+                continue
             if args.once and not _items(queue, PENDING):
                 return 0
-            if args.once and not ready:
+            if args.once:
                 print("land: everything left is blocked by uncommitted edits in main's checkout; exiting", flush=True)
                 return 0
             time.sleep(POLL_SECONDS)
@@ -1244,13 +1854,19 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--push", action="store_true", help="push main to origin once this lands (only if it lands)")
     p.add_argument("--by", help="who is asking (default: $FIELD_LAND_BY, else user @ worktree)")
     p.set_defaults(func=cmd_enqueue)
+    p = sub.add_parser("doc", help="queue a local docs build after preceding landings")
+    p.set_defaults(func=cmd_doc)
     p = sub.add_parser("status", help="show the queue, or one item (exit 0 landed, 1 bounced, 3 pending)")
     p.add_argument("id", nargs="?")
     p.add_argument("--recent", type=int, default=5)
     p.add_argument("--plain", action="store_true", help="the plain text agents see, even on a terminal")
     p.add_argument("--watch", action="store_true", help="on a terminal, redraw every 2 seconds; q, Esc or ctrl-c quits")
     p.set_defaults(func=cmd_status)
-    p = sub.add_parser("huh", help="ask claude -p what is going on with the queue (what --watch's h key does)")
+    p = sub.add_parser("bouncy", help="ask the agent about recent bounces nobody followed up (what --watch's b key does)")
+    p.add_argument("--hours", type=float, default=12.0, help="how far back to look (default 12)")
+    p.add_argument("--context", action="store_true", help="print the context it would send, and do not ask")
+    p.set_defaults(func=cmd_bouncy)
+    p = sub.add_parser("huh", help="ask the agent what is going on with the queue (what --watch's h key does)")
     p.add_argument("--context", action="store_true", help="print the context it would send, and do not ask")
     p.set_defaults(func=cmd_huh)
     p = sub.add_parser("sync", help="fetch origin/main and land it through the queue (--push: push main after)")

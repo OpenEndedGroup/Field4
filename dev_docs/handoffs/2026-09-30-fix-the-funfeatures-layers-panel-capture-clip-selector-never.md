@@ -30,7 +30,7 @@ The image is a real runner capture that has gone wrong, so fixing it means debug
   editor holding `showLayers()`, a "Reloaded keybindings from /Users/marc/.afield/keybindings.yaml"
   toast, and no palette at all. So the clip selector never matched, and the capture still wrote a
   full-window image instead of failing. The `waitForSelector` should also have timed out.
-- The class is added by `renderLayersPalette` in `src/jsMain/kotlin/afield/outputareas.kt`
+- The class is added by `renderLayersPalette` in `src/jsMain/kotlin/outputareas.kt`
   (`contentRoot.classList.add("layers-palette")`), which is only reached when the box's output
   area renders the palette. The capture shows the box's output area closed. See the memory
   "open the channel, one per channel" (display-channel-visibility).

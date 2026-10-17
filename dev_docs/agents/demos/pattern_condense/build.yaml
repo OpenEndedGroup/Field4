@@ -25,8 +25,8 @@ operations:
       frame: { x: 60.0, y: 60.0, w: 400.0, h: 136.0 }
       properties:
         code: |
-          import afield.four.synth.*
-
+          
+          
           // 1 - Condense a rhythm.
           //
           // patCondense searches Field's own mini-notation for the shortest string that plays the
@@ -44,29 +44,29 @@ operations:
               "bd [hh hh] sd [cp cp]",
               "a b c d e c a d"
           )
-
+          
           val found = showPatCondense(*rhythms.toTypedArray(), channel = "roll")
-
+          
           val rows = rhythms.zip(found).joinToString("\n") { (source, c) ->
               "| `$source` | `${c.notation}` | ${c.notation.length}/${c.flat.length} | " +
                   "${"%.2f".format(c.compression)} | ${c.structure.joinToString(", ")} |"
           }
-
+          
           markdown(
               "main",
               """
               ### ${found.count { it.exact }} of ${found.size} condensed exactly
-
+          
               | given | shortest string that plays it | chars | ratio | structure |
               |---|---|---|---|---|
               $rows
-
+          
               The last row is why the other three mean anything. `a b c d e c a d` has no repeat at any
               split the grammar can take, so nothing shortens it and it comes back as itself. A search
               scored on description length has to be shown *not* naming a figure as well as naming one.
-
+          
               Bounds this run used: ${found.first().limits}
-
+          
               The figure is on the **roll** channel beside this one. These rhythms are abstract — `x`,
               `bd`, `a` — so there is nothing to play here; box 3 is the one you can listen to.
               """.trimIndent()
@@ -77,21 +77,25 @@ operations:
       frame: { x: 60.0, y: 500.0, w: 400.0, h: 136.0 }
       properties:
         code: |
-          import afield.four.synth.*
           import kotlin.random.Random
 
-          // 2 - Invent nothing.
-          //
-          // The failure mode of a description-length search is naming a figure that is one step away
-          // from the rhythm in front of it. This box runs that check live, on masks with no structure
-          // put into them.
-          //
-          // POKE THIS: change `seed`, or `density` (one step in N is on), or `trials`. The count of
-          // wrong namings has to stay 0 whatever you set, because every mask that came back as a
-          // whole-span figure is recomputed here from bjorklund / kolakoskiMask and compared.
+          /*
+          2 - Invent nothing.
+
+          The failure mode of a description-length search is naming a figure that is one step away
+          from the rhythm in front of it. This box runs that check live, on masks with no structure
+          put into them.
+
+          POKE THIS: change `seed`, or `density` (one step in N is on), or `trials`. The count of
+          wrong namings has to stay 0 whatever you set, because every mask that came back as a
+          whole-span figure is recomputed here from bjorklund / kolakoskiMask and compared.
+          */
           val seed = 20260910
           val density = 3
           val trials = 300
+
+          require(density > 0) { "density must be positive (one step in N is on)" }
+          require(trials > 0) { "trials must be positive to compare compression" }
 
           val random = Random(seed)
           val euclidean = Regex("""^x\((\d+),(\d+)(?:,(\d+))?\)$""")
@@ -144,7 +148,8 @@ operations:
               None of this rests on the search's own opinion of itself: every string it returned was
               re-parsed and re-played before it was accepted, and the namings above are recomputed from
               the generators rather than read off the label.
-              """.trimIndent()
+              """
+                  .trimIndent(),
           )
   - create:
       box: condense_from_audio
@@ -152,8 +157,8 @@ operations:
       frame: { x: 60.0, y: 940.0, w: 400.0, h: 136.0 }
       properties:
         code: |
-          import afield.four.synth.*
-
+          
+          
           // 3 - Close the loop: samples in, structure out.
           //
           // patTranscribe recovers a step grid from audio and writes it out one slot per step, which
@@ -165,7 +170,7 @@ operations:
           // "60 ~ ~ 60 60 ~ 60 ~", which comes back as 60(k8), or "60 60 ~ 60 ~ ~ 60 ~", which has no
           // single figure and comes back as two halves.
           val bar = "60 ~ ~ 60 ~ 60 ~ ~"
-
+          
           val audio = patRenderStereo(
               pat(bar),
               cycles = 1,
@@ -174,7 +179,7 @@ operations:
           )
           val heard = patTranscribe(audio.mono, PatSoundDocs.SR, minHz = 180.0, maxHz = 420.0)
           val condensed = patCondense(heard)
-
+          
           showPatRollOf(
               "played" to pat(bar),
               "heard" to pat(heard.miniNotation),
@@ -184,14 +189,14 @@ operations:
               cycles = 1,
               channel = "roll"
           )
-
+          
           // The two players are the claim you can hear. The first is the EXACT buffer patTranscribe was
           // given - not a re-render of `bar`, the same floats - so what you hear is what was listened to.
           // The second is `condensed.notation` sent back through the same voice. If patCondense is right
           // they are the same bar, and the point of a shortest notation is that shortening it cost nothing.
           display(
               "played",
-              afield.four.audio.WavFloatArrayWriter.encodeStereo16(
+              afield.audio.engine.WavFloatArrayWriter.encodeStereo16(
                   audio.left, audio.right, PatSoundDocs.SR, normalizePeak = 0.9f
               )
           )
@@ -202,12 +207,12 @@ operations:
               voice = patVoice(decay = 0.06, sustain = 0.6),
               channel = "condensed"
           )
-
+          
           markdown(
               "main",
               """
               ### From samples to a figure
-
+          
               | | |
               |---|---|
               | played | `$bar` |
@@ -215,11 +220,11 @@ operations:
               | grid recovered | ${heard.grid?.describe() ?: "none"} |
               | heard | `${heard.miniNotation}` |
               | **condensed** | **`${condensed.notation}`** |
-
+          
               The `heard` row is everything `patTranscribe` can say on its own. The last row is the same
               bar after `patCondense(heard)`, and it names the figure. Nothing between the render and the
               transcription looked at `bar`.
-
+          
               Four outputs, each on its own channel: **roll** draws the three lanes, **played** is the
               buffer that was actually transcribed, **condensed** is `${condensed.notation}` rendered
               back through the same voice, and this table is **main**. The two players should be the

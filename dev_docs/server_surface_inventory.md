@@ -38,7 +38,7 @@ What was uncovered before this page existed, and is what it adds:
 | --- | --- | --- |
 | HTTP **read** routes | 45 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
-| `staticFiles` directory mounts | 6 | nothing — invisible to every route regex in the tree |
+| `staticFiles` directory mounts | 7 | nothing — invisible to every route regex in the tree |
 | `/ws` **command** names (`handlers`) | 130 | nothing |
 | `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
@@ -68,7 +68,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-45 routes, 35 of them with no route-specific guard. `guard` is computed from the handler
+47 routes, 36 of them with no route-specific guard. `guard` is computed from the handler
 body by the docs-route vocabulary the mutating census also uses
 (`docsAnnotations.kt:739#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:723#fun ApplicationCall.refuseUnlessLocalDocsClient`); there is no `install(Authentication)`
@@ -88,6 +88,7 @@ mutation; it is a different one.
 | --- | --- | --- |
 | `GET /api/agent-worktrees` | `Server.kt` | none |
 | `GET /api/ai-tool-use-improvement` | `Server.kt` | none |
+| `GET /api/ai-tool-use-improvement/view` | `Server.kt` | none |
 | `GET /api/chatlog/blob` | `ChatlogRoutes.kt` | loopback + same-site |
 | `GET /api/chatlog/lens` | `ChatlogRoutes.kt` | loopback + same-site |
 | `GET /api/code-use/failures` | `Server.kt` | none |
@@ -100,17 +101,21 @@ mutation; it is a different one.
 | `GET /api/docs-improvement/pass` | `docsPass.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass/diff` | `docsPass.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass/handoff` | `docsPass.kt` | loopback + same-site |
+| `GET /api/docs-search` | `Server.kt` | none |
 | `GET /api/docs-source-file` | `docsSourceFile.kt` | loopback + same-site |
 | `GET /api/document-guide-asset` | `documentGuides.kt` | none |
 | `GET /api/export-tagged-documents` | `Server.kt` | none |
 | `GET /api/instance-info` | `Server.kt` | none |
 | `GET /api/maven-classpath` | `Server.kt` | none |
 | `GET /api/maven-search` | `Server.kt` | none |
+| `GET /api/patchy-document/{binding}` | `PatchyWebStorage.kt` | same-site |
 | `GET /api/python-settings` | `Server.kt` | none |
 | `GET /api/semantic-search/model` | `Server.kt` | none |
 | `GET /api/semantic-search/settings` | `Server.kt` | none |
 | `GET /api/semantic-search/status` | `Server.kt` | none |
 | `GET /api/source` | `Server.kt` | none |
+| `GET /api/refactor-pass` | `refactorPass.kt` | loopback + same-site |
+| `GET /api/terminal` | `terminal.kt` | loopback + same-site |
 | `GET /api/vulkan-status` | `Server.kt` | loopback + same-site |
 | `GET /api/welcome-changelog` | `Server.kt` | none |
 | `GET /api/welcome-docs` | `Server.kt` | none |
@@ -130,6 +135,7 @@ mutation; it is a different one.
 | `GET /min/{...}` | `Server.kt` | none |
 | `GET /signal-viewer/{id}` | `signalViewer.kt` | none |
 | `GET /project/{...}` | `Server.kt` | none |
+| `GET /three-buffers` | `Server.kt` | none |
 | `GET /three-review` | `Server.kt` | loopback + same-site |
 | `GET /three-review-image` | `Server.kt` | loopback + same-site |
 
@@ -237,9 +243,9 @@ for more than pages, and nothing in the repository records whether any of these 
 
 ## Static directory mounts
 
-Six `staticFiles` mounts, all in `Server.kt`, and **none of them is visible to any route
+Seven `staticFiles` mounts, all in `Server.kt`, and **none of them is visible to any route
 regex in the tree** — a `staticFiles` call is not a verb declaration, so every census
-written before this page missed all six.
+written before this page missed these mounts.
 
 | mount | directory | declared in |
 | --- | --- | --- |
@@ -249,6 +255,7 @@ written before this page missed all six.
 | `/` | `File("./src/jsMain/resources/monaco")` | `Server.kt` |
 | `/` | `File(home)` | `Server.kt` |
 | `/sample-assets` | `File("./public/docs/assets/fabricate_demo")` | `Server.kt` |
+| `/patchy` | `patchyWebRoot` | `Server.kt` |
 
 Four serve build output and bundled front-end resources. The fifth,
 `Server.kt#staticFiles(remotePath = "", dir = File(home))`, serves **the workspace
@@ -256,7 +263,7 @@ directory** at `/`, which is the same tree `/project/{...}` serves with a contai
 Ktor's own `staticFiles` does the containment check here, which is why this is a note rather
 than a second `/local`.
 
-The sixth arrived on 2026-09-13 and is the only one with a mount point of its own. It serves
+The sixth arrived on 2026-09-13 and serves
 the shared sample assets — the CC0 Khronos ToyCar GLB and the Venice sunset environment —
 because a **head** box (a browser or a headset running Kotlin compiled to JavaScript) can
 only fetch an asset over http, and the thing that reads as the answer to that,
@@ -267,7 +274,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-130 command names, in the `handlers` table. This is the real command API, it is roughly twice
+131 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -283,8 +290,8 @@ the file, and the reach is described per file below in prose that a human checke
 
 | declaring file | commands |
 | --- | --- |
-| `Server.kt` | 51 |
-| `agent_backdoor.kt` | 23 |
+| `Server.kt` | 53 |
+| `agent_backdoor.kt` | 24 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
 | `Ai4Installer.kt` | 10 |
@@ -299,6 +306,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `ButtonControlHandler.kt` | 1 |
 | `CoroutineProfiling.kt` | 1 |
 | `DocsSearchInstaller.kt` | 1 |
+| `dependencies.kt` | 1 |
 | `documentGuides.kt` | 1 |
 | `fileproxy.kt` | 1 |
 | `visualizers.kt` | 1 |
@@ -323,6 +331,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `ButtonControlHandler.kt` | one control-widget callback |
 | `CoroutineProfiling.kt` | starts, latches, and reads bounded in-memory coroutine captures for the attached document; at most one recording process-wide, with a 30-second maximum |
 | `DocsSearchInstaller.kt` | documentation search |
+| `dependencies.kt` | the attached document's box-to-box dependency record (`PropertyDependencies`), for the dependency layer: `get` reads it, `clear` forgets it in memory, and the autosave then writes the empty record to `<document>/dependencies.edn` unless the document is read-only. The client sends no path, code or box id. No guard beyond the `/ws` boundary, decided 2026-10-09: the worst a hostile frame can do is erase that record, which box runs rebuild |
 | `documentGuides.kt` | document-relative guide listing and reading, revision-checked saves, and shared file-proxy creation; writes reject read-only documents |
 | `fileproxy.kt` | **creates a file-proxy box**, which writes a new file into the workspace |
 | `visualizers.kt` | one control-widget callback: `array-update` carries a multislider, matrix, range-slider or menu value as a list of doubles to the callback box code registered for that control id, and records it in the control cache. Unguarded beyond the `/ws` boundary, like `slider-update` and `button-update` beside it; guarding the control-message family is one change for all of them |
@@ -358,6 +367,7 @@ in-route same-site check stops a web page.
 | `agent-open-playwright` | `agent_backdoor.kt` |
 | `agent-playwright-input` | `agent_backdoor.kt` |
 | `agent-run-jvm-main` | `agent_backdoor.kt` |
+| `agent-save-document` | `agent_backdoor.kt` |
 | `agent-set-property` | `agent_backdoor.kt` |
 | `agent-snapshot` | `agent_backdoor.kt` |
 | `agent-task` | `agent_backdoor.kt` |
@@ -394,6 +404,7 @@ in-route same-site check stops a web page.
 | `custom-marking-request` | `Server.kt` |
 | `debug-probe` | `Server.kt` |
 | `debug-source-probe` | `Server.kt` |
+| `dependency-graph` | `dependencies.kt` |
 | `diff-history-version` | `history.kt` |
 | `docs_search_input` | `DocsSearchInstaller.kt` |
 | `document-guide` | `documentGuides.kt` |
@@ -462,10 +473,12 @@ in-route same-site check stops a web page.
 | `set-rects` | `Server.kt` |
 | `set-string` | `Server.kt` |
 | `set-viewport` | `Server.kt` |
+| `set-viewports` | `Server.kt` |
 | `set-visible-layers` | `Server.kt` |
 | `shared-ui-intent` | `Server.kt` |
 | `slider-update` | `Server.kt` |
 | `slideshow-command` | `Server.kt` |
+| `stacksl-regions` | `Server.kt` |
 | `stop-all` | `executing.kt` |
 | `stop-box` | `executing.kt` |
 | `store-history-screenshot` | `history.kt` |
@@ -519,7 +532,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 130 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 131 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove
@@ -642,6 +655,8 @@ Demonstrated rather than asserted:
 | one ledger row's path edited by hand, 2026-08-22 | failed naming the row as both `missing` and `stale` |
 
 ### Geometry review
+
+`GET /three-buffers?uid=<view>&generation=<id>` streams the binary arrays that a view's latest `three/geometry` description refers to; a superseded generation is a 404. It carries the trust of the WebSocket that delivered the description and no guard of its own: a remote native client may fetch it, and the application-wide origin guard refuses cross-site browser reads.
 
 `GET /three-review?uid=<view>` reads the source box’s selection and saved geometry notes under the same-site docs access policy. `three-selection` and `three-observation` WebSocket messages validate the view and artifact before mutating the review inbox. See [Geometry review](agents/GEOMETRY_REVIEW.md).
 

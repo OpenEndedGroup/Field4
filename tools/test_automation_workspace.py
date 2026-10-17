@@ -101,6 +101,17 @@ class AutomationWorkspaceTests(unittest.TestCase):
 
         self.assertEqual(environment["AFIELD_CODE_USE_PATH"], str(logs / "code-use" / "field-code-use.sqlite"))
 
+    def test_server_environment_gives_documentation_notes_a_checkout_local_store(self) -> None:
+        # Exported in the agent's shell, this is usually the notebook the revision agents work from.
+        users_store = str(Path.home() / ".afield" / "docs-annotations.json")
+        environment = automation_server_environment(9477, base={"AFIELD_DOCS_ANNOTATIONS_STORE": users_store})
+        build = Path(__file__).resolve().parent.parent / "build"
+
+        self.assertEqual(
+            environment["AFIELD_DOCS_ANNOTATIONS_STORE"],
+            str(build / "field-automation-docs-annotations.json"),
+        )
+
     def test_docs_server_never_inherits_or_rewrites_the_global_preference(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -132,7 +143,7 @@ class AutomationWorkspaceTests(unittest.TestCase):
                 command[0],
             )
             self.assertEqual(kwargs["env"]["AFIELD_SKIP_WORKSPACE_PERSIST"], "1")
-            self.assertNotIn(str(Path.home() / ".afield"), kwargs["env"]["AFIELD_COMPLETION_INTERACTION_LOG_PATH"])
+            self.assertEqual(str(Path(__file__).resolve().parents[1] / "build/field-automation-logs/completion_interactions"), kwargs["env"]["AFIELD_COMPLETION_INTERACTION_LOG_PATH"])
             kwargs["stdout"].close()
 
 

@@ -1,9 +1,9 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.neuralrendering.*
-import afield.four.modules.fromContext
-import afield.four.modules.fromContextWithNameOrNull
-import afield.stdlib.linalg.Vector4f
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.render.neural.*
+import afield.document.context.fromContext
+import afield.document.context.fromContextWithNameOrNull
+import afield.math.linalg.Vector4f
 import java.nio.file.Path
 
 // Run as a child of the standard renderer box. Edit this path to use your own image.

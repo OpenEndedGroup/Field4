@@ -29,7 +29,7 @@ libs/dataframe-plugin.jar filter=lfs diff=lfs merge=lfs -text
 
 # jextract output for the Steam Audio bindings: 77 files of FFM accessors, regenerated rather
 # than edited. Keep them out of the language stats and collapsed in diffs and reviews.
-src/jvmMain/java/afield/four/audio/steamaudio/raw/** linguist-generated=true
+src/jvmMain/java/afield/audio/spatial/steamaudio/raw/** linguist-generated=true
 
 # Mermaid's generated bundle includes upstream template strings with significant trailing spaces.
 src/jsMain/resources/mermaid/* whitespace=-blank-at-eol linguist-generated=true
@@ -39,10 +39,20 @@ src/jsMain/resources/mermaid/* whitespace=-blank-at-eol linguist-generated=true
 # fail that check.
 native/steamaudio/include/** -text linguist-vendored=true
 native/steamaudio/THIRDPARTY.md -text linguist-vendored=true
+src/commonMain/resources/vendor/klecks/** whitespace=-blank-at-eol,-blank-at-eof linguist-vendored=true
 
 # Unified-diff context lines carry a literal leading space, including empty context lines.
 optional/opendlssnr/*.patch whitespace=-blank-at-eol,-blank-at-eof
 optional/streamdiffusion/upstream/*.patch whitespace=-blank-at-eol,-blank-at-eof
+optional/patchy-web/*.patch whitespace=-blank-at-eol,-blank-at-eof
+
+# Hand-written prose that may carry derived numerals, `**1025**<!--count:key-->`. The `field-counts`
+# driver (`tools/merge_derived_counts.py`) is an ordinary text merge that first takes our side's
+# numeral for every key, so two branches that each moved a count do not conflict on it, and
+# `tools/merge_regen.py` rewrites it from the code (ProseNumeralContractTest). Real prose conflicts
+# still stop the merge. Before the generated rules below, so those still win where both match.
+public/docs/**/*.md merge=field-counts
+dev_docs/**/*.md merge=field-counts
 
 # Generated artifacts: never hand-merge them. The `field-generated` driver keeps our side so the merge
 # never stops on them; `tools/merge_regen.py` (or the landing queue) then reruns each generator on the

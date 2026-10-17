@@ -1,21 +1,21 @@
-import afield.four.modules.fromContextWithNameOrNull
-import afield.four.flow.TileAtlasLayout
-import afield.four.targets.*
-import afield.stdlib.TileResidency
+import afield.document.context.fromContextWithNameOrNull
+import afield.simulation.flow.TileAtlasLayout
+import afield.graphics.vulkan.targets.*
+import afield.graphics.render.TileResidency
 import kotlin.math.*
 
 // Dependencies are explicit graph exports; resources stay in their parent box.
 val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
 val cameraHistory = fromContextWithNameOrNull<FrameBufferGroup>("cameraHistory")!!
 val itemHistory = fromContextWithNameOrNull<FrameBufferGroup>("itemHistory")!!
-val flowLook = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowLook")!!
-val flowClock = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowClock")!!
-val flowEmitter = fromContextWithNameOrNull<afield.stdlib.Vec4>("flowEmitter")!!
-val force = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("force")!!
-val grainCell = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("grainCell")!!
-val strokeTime = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("strokeTime")!!
-val flowWidth = fromContextWithNameOrNull<afield.stdlib.EffectiveParameter>("flowWidth")!!
-val resetFlow = fromContextWithNameOrNull<afield.SimulationReset>("resetFlow")!!
+val flowLook = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowLook")!!
+val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
+val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
+val force = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("force")!!
+val grainCell = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("grainCell")!!
+val strokeTime = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("strokeTime")!!
+val flowWidth = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("flowWidth")!!
+val resetFlow = fromContextWithNameOrNull<afield.runtime.lifecycle.SimulationReset>("resetFlow")!!
 val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
 val travel = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")!!
 
@@ -25,7 +25,7 @@ val camera = FrameHistory()
 val items = MotionItems()
 val pose = MotionPose()
 val itemData = FloatArray(12)
-val matrix = afield.stdlib.linalg.Matrix4f()
+val matrix = afield.math.linalg.Matrix4f()
 val key = "flow-frame-inputs"
 var ticks = 0L
 var resetEpoch = 1

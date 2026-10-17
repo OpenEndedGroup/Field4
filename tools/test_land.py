@@ -25,9 +25,49 @@ calls = pathlib.Path(__file__).resolve().parents[2] / "REGEN_CALLS"
 calls.write_text(calls.read_text() + "x" if calls.exists() else "x")
 if pathlib.Path("HANGS").exists():
     import time; time.sleep(600)
+if pathlib.Path("SLOW").exists():
+    import time; time.sleep(1.5)
+if pathlib.Path("COUNT").exists() and pathlib.Path("COUNT").read_text().strip() == "wrong":
+    print("merge_regen: CountTest > count matches FAILED", file=sys.stderr)
+    sys.exit(1)
 if pathlib.Path("BREAKS").exists() or (pathlib.Path("PAIR_A").exists() and pathlib.Path("PAIR_B").exists()):
     print("merge_regen: a guard failed on the batch", file=sys.stderr)
     sys.exit(1)
+'''
+
+DOC_STUB = '''
+import pathlib, sys
+root = pathlib.Path.cwd().parent
+record = root / "DOC_RUNS"
+line = f"{pathlib.Path('seed.txt').read_text().strip()}:{pathlib.Path('alpha.txt').exists()}:{pathlib.Path('beta.txt').exists()}\\n"
+record.write_text((record.read_text() if record.exists() else "") + line)
+if pathlib.Path("DOCS_BREAKS").exists():
+    print("docs build failed deliberately", file=sys.stderr)
+    sys.exit(1)
+pathlib.Path("public/field4/keyframe_editor").mkdir(parents=True, exist_ok=True)
+pathlib.Path("public/field4/keyframe_editor/index.html").write_text("built docs")
+'''
+
+
+# Stands in for `claude -p` as the fixer, run in the lander's worktree with the prompt on stdin. The
+# mode file next to it says what it does: fix COUNT, decline, cheat through the accepted-reds
+# register, or blame a branch that is not in the round.
+FIXER_STUB = '''
+import json, pathlib, sys
+prompt = sys.stdin.read()
+here = pathlib.Path(__file__).parent
+(here / "FIXER_CALLS").write_text((here / "FIXER_CALLS").read_text() + "x" if (here / "FIXER_CALLS").exists() else "x")
+mode, culprit = (here / "FIXER_MODE").read_text().split()
+assert "CountTest" in prompt or mode == "decline", prompt[-2000:]
+if mode == "fix":
+    pathlib.Path("COUNT").write_text("right\\n")
+elif mode == "cheat":
+    pathlib.Path("dev_docs/testing").mkdir(parents=True, exist_ok=True)
+    pathlib.Path("dev_docs/testing/expected_test_failures.json").write_text("[]\\n")
+    pathlib.Path("COUNT").write_text("right\\n")
+verdict = "decline" if mode == "decline" else "fix"
+print("looked at it")
+print("FIXER-VERDICT: " + json.dumps({"verdict": verdict, "culprit": culprit, "reason": f"{mode} the count"}))
 '''
 
 
@@ -38,12 +78,17 @@ class LandQueueTest(unittest.TestCase):
         self.primary = root / "repo"
         self.lander = root / "lander"
         self.env = {
-            **os.environ,
+            # Not the lander's own GRADLE_USER_HOME, which it exports to the guard running this suite:
+            # inherited, the test lander's watchdog ran `gradlew --stop` in a fixture with no gradlew,
+            # and the wedge test stayed pending on every landing that ran checkPythonTools.
+            **{k: v for k, v in os.environ.items() if k != "GRADLE_USER_HOME"},
             "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
             "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
             "FIELD_LAND_BY": "test-agent",
             # Never seed a private Gradle home from the real ~/.gradle in a test.
             "FIELD_LAND_GRADLE_HOME": "shared",
+            # Never ask the real claude; the fixer tests switch on a stub.
+            "FIELD_LAND_FIXER": "off",
         }
         self.primary.mkdir()
         self.git(self.primary, "init", "-q", "-b", "main")
@@ -51,6 +96,7 @@ class LandQueueTest(unittest.TestCase):
         self.git(self.primary, "config", "merge.field-generated.driver", "true")
         (self.primary / "tools").mkdir()
         (self.primary / "tools/merge_regen.py").write_text(STUB)
+        (self.primary / "tools/build_zensical_docs.py").write_text(DOC_STUB)
         (self.primary / "seed.txt").write_text("seed\n")
         self.git(self.primary, "add", "-A")
         self.git(self.primary, "commit", "-q", "-m", "seed")
@@ -83,6 +129,43 @@ class LandQueueTest(unittest.TestCase):
         subjects = self.git(self.primary, "log", "--format=%s", "main").splitlines()
         self.assertEqual(subjects[:2], ["Land beta (test-agent)", "Land alpha (test-agent)"])
         self.assertTrue((self.primary / "beta.txt").exists(), "primary's checkout was not fast-forwarded")
+
+    def test_doc_item_separates_landing_batches_and_builds_the_main_checkout(self) -> None:
+        self.assertEqual(self.land(self.branch_with("alpha", "alpha.txt"), "enqueue").returncode, 0)
+        request = self.land(self.primary, "doc")
+        self.assertEqual(request.returncode, 0, request.stdout + request.stderr)
+        doc_id = request.stdout.split("queued docs build ", 1)[1].split(" ", 1)[0]
+        self.assertEqual(self.land(self.branch_with("beta", "beta.txt"), "enqueue").returncode, 0)
+        result = self.run_lander()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((Path(self._tmp.name) / "DOC_RUNS").read_text(), "seed:True:False\n")
+        self.assertEqual((self.primary / "public/field4/keyframe_editor/index.html").read_text(), "built docs")
+        self.assertEqual(self.guard_calls(), 2, "the docs item must split the branch batches")
+        self.assertIn("built", self.land(self.primary, "status", doc_id).stdout)
+        self.assertEqual(self.land(self.primary, "wait", doc_id).returncode, 0)
+
+    def test_failed_doc_item_reports_failure_and_does_not_bounce_later_branch(self) -> None:
+        (self.primary / "DOCS_BREAKS").write_text("yes\n")
+        request = self.land(self.primary, "doc")
+        doc_id = request.stdout.split("queued docs build ", 1)[1].split(" ", 1)[0]
+        self.land(self.branch_with("beta", "beta.txt"), "enqueue")
+        result = self.run_lander()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.land(self.primary, "wait", doc_id).returncode, 1)
+        self.assertIn("docs build failed deliberately", self.land(self.primary, "status", doc_id).stdout)
+        self.assertIn("Land beta", self.git(self.primary, "log", "-1", "--format=%s", "main"))
+
+    def test_doc_item_waits_for_an_earlier_blocked_landing(self) -> None:
+        wt = self.branch_with("alpha", "alpha.txt")
+        (wt / "seed.txt").write_text("alpha changed seed\n")
+        self.git(wt, "commit", "-qam", "edit seed")
+        (self.primary / "seed.txt").write_text("uncommitted\n")
+        self.land(wt, "enqueue")
+        self.land(self.primary, "doc")
+        self.land(self.branch_with("beta", "beta.txt"), "enqueue")
+        self.run_lander()
+        self.assertFalse((Path(self._tmp.name) / "DOC_RUNS").exists())
+        self.assertEqual(self.states()["beta"], "pending")
 
     def test_a_failing_landing_bounces_and_leaves_main_alone(self) -> None:
         before = self.git(self.primary, "rev-parse", "main")
@@ -212,8 +295,74 @@ class LandQueueTest(unittest.TestCase):
 
     def states(self) -> dict[str, str]:
         queue = Path(self.git(self.primary, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "field-land-queue"
-        return {json.loads(f.read_text())["branch"]: state
-                for state in ("pending", "landed", "bounced") for f in (queue / state).glob("*.json")}
+        return {item["branch"]: state
+                for state in ("pending", "landed", "bounced") for f in (queue / state).glob("*.json")
+                if (item := json.loads(f.read_text())).get("branch")}
+
+    def use_fixer(self, mode: str, culprit: str) -> Path:
+        root = Path(self._tmp.name)
+        (root / "fixer.py").write_text(FIXER_STUB)
+        (root / "FIXER_MODE").write_text(f"{mode} {culprit}\n")
+        self.env.update(FIELD_LAND_FIXER="on", FIELD_LAND_FIXER_CMD=f"{sys.executable} {root / 'fixer.py'}")
+        return root
+
+    def queue(self) -> Path:
+        return Path(self.git(self.primary, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "field-land-queue"
+
+    def miscounted(self, name: str) -> None:
+        wt = self.branch_with(name, f"{name}.txt")
+        (wt / "COUNT").write_text("wrong\n")
+        self.git(wt, "add", "-A")
+        self.git(wt, "commit", "-q", "-m", f"{name} forgot to update the count")
+        self.land(wt, "enqueue")
+
+    def test_the_fixer_fixes_a_slip_in_a_batch_and_everything_lands_without_bisecting(self) -> None:
+        root = self.use_fixer("fix", "bad")
+        self.land(self.branch_with("ok1", "ok1.txt"), "enqueue")
+        self.miscounted("bad")
+        self.land(self.branch_with("ok2", "ok2.txt"), "enqueue")
+        result = self.run_lander()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.states(), {"ok1": "landed", "bad": "landed", "ok2": "landed"})
+        self.assertEqual(self.guard_calls(), 2, "one red round, one green round, no bisect")
+        self.assertEqual((self.primary / "COUNT").read_text(), "right\n")
+        # The fixup sits on its own branch on top of the culprit's tip; the culprit's branch is untouched.
+        fixup = self.git(self.primary, "rev-parse", "fixup/bad")
+        self.assertEqual(self.git(self.primary, "rev-parse", "fixup/bad^"), self.git(self.primary, "rev-parse", "bad"))
+        self.assertIn("Lander-Fixup:", self.git(self.primary, "log", "-1", "--format=%B", fixup))
+        self.assertEqual(self.git(self.primary, "log", "-1", "--format=%an", fixup), "Field lander fixer")
+        mine = self.land(Path(self._tmp.name) / "bad", "mine")
+        self.assertIn("git merge fixup/bad", mine.stdout)
+        self.assertIn("forgot to update the count", mine.stdout, "the subject is the branch's, not the fixup's")
+        ledger = [json.loads(l) for l in (self.queue() / "fixer.jsonl").read_text().splitlines()]
+        self.assertEqual([e["outcome"] for e in ledger], ["fixed"])
+        self.assertEqual((root / "FIXER_CALLS").read_text(), "x")
+
+    def test_a_declined_fix_bounces_with_the_diagnosis_and_is_asked_only_once(self) -> None:
+        root = self.use_fixer("decline", "bad")
+        self.land(self.branch_with("ok1", "ok1.txt"), "enqueue")
+        self.miscounted("bad")
+        self.run_lander()
+        self.assertEqual(self.states(), {"ok1": "landed", "bad": "bounced"})
+        self.assertIn("fixer: decline the count", self.land(Path(self._tmp.name) / "bad", "mine").stdout)
+        self.assertEqual((root / "FIXER_CALLS").read_text(), "x", "the bisect rounds must not ask again")
+
+    def test_a_fix_that_edits_the_accepted_reds_register_is_rejected(self) -> None:
+        self.use_fixer("cheat", "bad")
+        self.miscounted("bad")
+        self.run_lander()
+        self.assertEqual(self.states(), {"bad": "bounced"})
+        ledger = (self.queue() / "fixer.jsonl").read_text()
+        self.assertIn("rejected", ledger)
+        self.assertIn("expected_test_failures.json", ledger)
+        self.assertNotIn("fixup/bad", self.git(self.primary, "branch", "--list", "fixup/*"))
+
+    def test_a_fix_blaming_a_branch_not_in_the_round_is_rejected(self) -> None:
+        self.use_fixer("fix", "nobody")
+        self.miscounted("bad")
+        self.run_lander()
+        self.assertEqual(self.states(), {"bad": "bounced"})
+        self.assertIn("not in the round", (self.queue() / "fixer.jsonl").read_text())
 
     def test_a_batch_shares_one_guard_and_keeps_one_commit_per_branch(self) -> None:
         names = ["b1", "b2", "b3", "b4", "b5"]
@@ -308,6 +457,92 @@ class LandQueueTest(unittest.TestCase):
         mine = self.land(Path(self._tmp.name) / "wedge", "mine").stdout
         self.assertIn("watchdog", mine)
         self.assertEqual(self.guard_calls(), 2, "one retry, then the bounce")
+
+    def test_a_build_holds_the_machine_awake_until_it_exits(self) -> None:
+        # A stand-in for caffeinate that records how it was asked, and whether the build was still
+        # running then; the real one keeps a laptop from sleeping through a landing.
+        fake = Path(self._tmp.name) / "fake-caffeinate"
+        record = Path(self._tmp.name) / "CAFFEINATE"
+        fake.write_text(f"""#!/bin/sh
+pid="$3"
+if kill -0 "$pid" 2>/dev/null; then alive=alive; else alive=gone; fi
+echo "$1 $2 $alive" > {record}
+while kill -0 "$pid" 2>/dev/null; do sleep 0.1; done
+""")
+        fake.chmod(0o755)
+        self.env["FIELD_LAND_CAFFEINATE"] = str(fake)
+        self.land(self.branch_with("awake", "SLOW"), "enqueue")
+        self.run_lander()
+        self.assertEqual(self.states(), {"awake": "landed"})
+        self.assertEqual(record.read_text().split(), ["-i", "-w", "alive"])
+
+    def test_mine_and_status_survive_a_branchless_doc_item(self) -> None:
+        # `land.py doc` items have no branch or sha; mine crashed with KeyError: 'branch' on one.
+        wt = self.branch_with("xi", "BREAKS")
+        self.land(wt, "enqueue")
+        self.run_lander()
+        queue = Path(self.git(self.primary, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "field-land-queue"
+        (queue / "landed" / "20991231-000000-doc.json").write_text(json.dumps(
+            {"id": "20991231-000000-doc", "kind": "doc", "checkout": str(self.primary), "by": "t",
+             "enqueued": "2099-12-31T00:00:00+00:00", "finished": "2099-12-31T00:00:01+00:00", "seq": 1}))
+        mine = self.land(wt, "mine")
+        self.assertNotIn("Traceback", mine.stderr, mine.stderr)
+        self.assertEqual(mine.returncode, 1)
+        status = self.land(self.primary, "status", "--plain")
+        self.assertNotIn("Traceback", status.stderr, status.stderr)
+
+    def _hanging_lander(self) -> subprocess.Popen:
+        self.land(self.branch_with("omicron", "HANGS"), "enqueue")
+        lander = subprocess.Popen([sys.executable, str(LAND), "run", "--worktree", str(self.lander)],
+                                  cwd=self.primary, env=self.env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        record = Path(self.git(self.primary, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "field-land-queue/build.json"
+        for _ in range(200):
+            if record.exists():
+                break
+            time.sleep(0.1)
+        self.assertTrue(record.exists(), "the build never started")
+        return lander, json.loads(record.read_text())["pgid"]
+
+    @staticmethod
+    def _alive(pgid: int) -> bool:
+        try:
+            os.killpg(pgid, 0)
+            return True
+        except OSError:
+            return False
+
+    def test_sigterm_to_the_lander_stops_its_build(self) -> None:
+        lander, pgid = self._hanging_lander()
+        lander.terminate()                       # what launchctl kickstart -k sends
+        lander.wait(timeout=30)
+        for _ in range(100):
+            if not self._alive(pgid):
+                break
+            time.sleep(0.1)
+        self.assertFalse(self._alive(pgid), "the build outlived its lander")
+
+    def test_a_new_lander_stops_a_build_orphaned_by_kill_9(self) -> None:
+        lander, pgid = self._hanging_lander()
+        lander.kill()                            # no chance to clean up
+        lander.wait(timeout=30)
+        self.assertTrue(self._alive(pgid), "precondition: kill -9 leaves the build running")
+        self.env["FIELD_LAND_WATCHDOG_MIN"] = "0.05"  # the re-landed HANGS branch must not take 30 min
+        self.run_lander()                        # the next lander starts...
+        self.assertFalse(self._alive(pgid), "...and must stop the orphan before landing anything")
+
+    def test_bouncy_lists_only_bounces_nobody_followed_up(self) -> None:
+        self.land(self.branch_with("rho", "BREAKS"), "enqueue")        # bounces and is left alone
+        fixed = self.branch_with("sigma", "BREAKS")
+        self.land(fixed, "enqueue")                                     # bounces...
+        self.run_lander()
+        (fixed / "BREAKS").unlink()
+        self.git(fixed, "commit", "-qam", "fix sigma")
+        self.land(fixed, "enqueue")                                     # ...then is fixed and lands
+        self.run_lander()
+        context = self.land(self.primary, "bouncy", "--context").stdout
+        self.assertIn("branch: rho", context)
+        self.assertNotIn("branch: sigma", context)
+        self.assertIn("a guard failed", context)
 
 
 if __name__ == "__main__":

@@ -1,23 +1,23 @@
 package afield.examples.four
 
-import afield.Box
-import afield.four.Renderer
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.stdlib.KeyframeScope
-import afield.stdlib.KeyframeSweep
-import afield.stdlib.SweepConfig
-import afield.stdlib.SweepReport
-import afield.stdlib.awaitFrames
-import afield.stdlib.captureClip
-import afield.stdlib.captureStill
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.readSweepArchive
-import afield.stdlib.sweepTargetPngBytes
-import afield.stdlib.sweepArchiveSummary
+import afield.document.graph.Box
+import afield.graphics.vulkan.Renderer
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.KeyframeSweep
+import afield.animation.keyframes.SweepConfig
+import afield.animation.keyframes.SweepReport
+import afield.animation.keyframes.awaitFrames
+import afield.animation.keyframes.captureClip
+import afield.animation.keyframes.captureStill
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
+import afield.animation.keyframes.readSweepArchive
+import afield.animation.keyframes.sweepTargetPngBytes
+import afield.animation.keyframes.sweepArchiveSummary
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -91,7 +91,7 @@ expect:
  * Writes its archive to `build/keyframe-sweep/`, which is worth looking at afterwards: it is a real,
  * small version of what a night produces.
  *
- * Needs a GPU and a display, for the reason `FabricatePassChainDemo` documents: `afield.four` has no
+ * Needs a GPU and a display, for the reason `FabricatePassChainDemo` documents: Field 4 has no
  * headless mode, because `Renderer` requires a `Window`. Everything measured is rendered offscreen;
  * the window is incidental.
  */
@@ -248,7 +248,7 @@ object KeyframeSweepDemo {
      *
      * The fourth key is deliberately *incomplete* — it predates the `ao.strength` and `palette`
      * lanes, the way a key saved three weeks ago does. That is not a flaw in the fixture: it is the
-     * case [afield.stdlib.MissingSlots] exists for, and the sweep's manifests record the back-fill.
+     * case [afield.animation.keyframes.MissingSlots] exists for, and the sweep's manifests record the back-fill.
      */
     fun writePool(scope: KeyframeScope, dir: Path): Int {
         dir.createDirectories()

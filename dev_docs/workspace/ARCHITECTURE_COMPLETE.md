@@ -3,12 +3,12 @@
 A Field document is a directory containing `metadata.edn` plus optional sidecars for
 large text properties. Three code areas own the behavior:
 
-- [`saving.kt`](../../src/jvmMain/kotlin/afield/saving.kt) snapshots the live boxes,
+- [`saving.kt`](../../src/jvmMain/kotlin/afield/document/persistence/saving.kt) snapshots the live boxes,
   writes metadata and sidecars, and records writes so they are not reloaded as external
   changes.
-- [`FileWatchManager.kt`](../../src/jvmMain/kotlin/afield/FileWatchManager.kt) observes
+- [`FileWatchManager.kt`](../../src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt) observes
   external filesystem events and reconciles them with the open session.
-- [`Boxes.kt`](../../src/jvmMain/kotlin/afield/Boxes.kt) defines the persistent and
+- [`Boxes.kt`](../../src/jvmMain/kotlin/afield/document/graph/Boxes.kt) defines the persistent and
   sidecar-backed property sets.
 
 The detailed watcher contract is colocated as `FileWatchManager` KDoc and summarized in

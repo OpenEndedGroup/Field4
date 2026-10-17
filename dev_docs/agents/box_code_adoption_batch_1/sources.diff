@@ -1,0 +1,729 @@
+diff --git a/dev_docs/agents/transcripts/frames_lifecycle.yaml b/dev_docs/agents/transcripts/frames_lifecycle.yaml
+index 9f1d6e3ed..3fc645db9 100644
+--- a/dev_docs/agents/transcripts/frames_lifecycle.yaml
++++ b/dev_docs/agents/transcripts/frames_lifecycle.yaml
+@@ -228,7 +228,7 @@ operations:
+                   """
+                   ### frame ${"%,d".format(n)}
+ 
+-                  {muted:$rate · ${"%.1f".format(elapsed)} s elapsed}
++                  {muted:$rate · ${elapsed.f1} s elapsed}
+ 
+                   {muted:this launch's colour is $swatch}
+                   """,
+@@ -261,15 +261,14 @@ operations:
+           */
+           val started = AnimationClock.nowSeconds()
+           val runFor = 8.0
+-          val notes = mutableListOf<String>()
+           var nextDraw = 0.0
+ 
+           val show: (String) -> Unit = { headline -> markdown("main", headline.md) }
+ 
+-          // Keep cleanup in its own channel so a new launch's readout leaves it visible.
++          // Keep a bounded cleanup history across launches. Old cleanup cannot overwrite a
++          // newer run's cleanup; the live readout uses a separate channel.
+           val note: (String) -> Unit = { line ->
+-              notes += line
+-              markdown("cleanup", notes.joinToString("\n\n") { "{ok:${it.md}}" })
++              markdownAppend("cleanup", "{ok:${line.md}}", maxEntries = 12)
+           }
+ 
+           frames {
+@@ -277,7 +276,7 @@ operations:
+                   var elapsed = AnimationClock.nowSeconds() - started
+                   while (elapsed < runFor) {
+                       if (elapsed >= nextDraw) {
+-                          show("running - %.1f s of %.0f, frame %,d".format(elapsed, runFor, frameNumber))
++                          show("running - ${elapsed.f1} s of ${runFor.f0}, frame ${"%,d".format(frameNumber)}")
+                           nextDraw = elapsed + 0.1
+                       }
+                       frame()
+diff --git a/dev_docs/agents/transcripts/loris_partial_explorer.yaml b/dev_docs/agents/transcripts/loris_partial_explorer.yaml
+index d2797fff7..9afb1fbed 100644
+--- a/dev_docs/agents/transcripts/loris_partial_explorer.yaml
++++ b/dev_docs/agents/transcripts/loris_partial_explorer.yaml
+@@ -9,29 +9,43 @@ operations:
+       frame: { x: 40.0, y: 40.0, w: 480.0, h: 100.0 }
+       properties:
+         code: |
+-          import afield.ui.visualization.AudioVisualizer
+-          import afield.ui.visualization.AudioVisualizerOptions
+           import afield.audio.engine.WavFloatArrayLoader
+-          import afield.document.workspace.path
+-          
++
+           val path = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
+           val sync = "loris-source-study"
+           val client = LorisClient()
+           display("worker", LorisNative.describe())
+-          client.analyzeWavAsync(path,
+-              options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0,
+-                  frequencyDriftHz = 50.0, amplitudeFloorDb = -55.0),
+-              onProgress = { display("status", it) },
+-          ).thenAccept { analyzed ->
+-              val wav = WavFloatArrayLoader.loadWavToFloatArray(path.toString())
+-              val source = AudioVisualizer.renderSamplesHtml(wav.samples, wav.sampleRate,
+-                  AudioVisualizerOptions(width = 1000, waveformHeight = 95, syncGroup = sync), label = "Source")
+-              display("source and reconstruction", source + analyzed.visualizationHtml(
+-                  LorisViewOptions(height = 400, syncGroup = sync)))
+-              display("provenance", analyzed.provenance)
+-          }.exceptionally { error ->
+-              display("error", error.cause?.message ?: error.message ?: error.toString())
+-              null
++          // Stop or rerun cancels this analysis and suppresses late output from its old run.
++          runAsync(
++              onResult = { analyzed: LorisResult ->
++                  val wav = WavFloatArrayLoader.loadWavToFloatArray(path.toString())
++                  val source = AudioVisualizer.renderSamplesHtml(
++                      wav.samples,
++                      wav.sampleRate,
++                      AudioVisualizerOptions(width = 1000, waveformHeight = 95, syncGroup = sync),
++                      label = "Source",
++                  )
++                  display(
++                      "source and reconstruction",
++                      source +
++                          analyzed.visualizationHtml(
++                              LorisViewOptions(height = 400, syncGroup = sync),
++                          ),
++                  )
++                  display("provenance", analyzed.provenance)
++              },
++              onError = { failure -> display("error", failure.message ?: failure.toString()) },
++          ) {
++              client.analyzeWavAsync(
++                  path,
++                  options = LorisOptions(
++                      resolutionHz = 35.0,
++                      windowWidthHz = 80.0,
++                      frequencyDriftHz = 50.0,
++                      amplitudeFloorDb = -55.0,
++                  ),
++                  onProgress = progress { text: String -> display("status", text) },
++              )
+           }
+   - create:
+       box: loris_edit_partials
+@@ -39,55 +53,89 @@ operations:
+       frame: { x: 1120.0, y: 40.0, w: 480.0, h: 100.0 }
+       properties:
+         code: |
+-          import afield.document.workspace.path
+-          
+           val client = LorisClient()
+           val minimumTrackSeconds = 0.03
+           val frequencyScale = 0.75
+           val bandwidthScale = 0.0
+-          client.analyzeWavAsync("%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+-              options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0,
+-                  frequencyDriftHz = 50.0, amplitudeFloorDb = -55.0),
+-              onProgress = { display("status", it) },
+-          ).thenCompose { analyzed ->
+-              val selected = analyzed.model.copy(partials = analyzed.model.partials.filter {
+-                  it.points.last().timeSeconds - it.points.first().timeSeconds >= minimumTrackSeconds
+-              })
+-              display("status", "Resynthesizing ${selected.partials.size} selected tracks…")
+-              client.synthesizeAsync(selected.transformed(frequencyScale = frequencyScale,
+-                  bandwidthScale = bandwidthScale, gain = 0.8))
+-          }.thenAccept { result ->
+-              display("changed partials and sound", result.visualizationHtml(LorisViewOptions(
+-                  axis = LorisFrequencyAxis.ERB,
+-                  syncGroup = "loris-edited-study")))
+-              display("provenance", result.provenance)
+-          }.exceptionally { error ->
+-              display("error", error.cause?.message ?: error.message ?: error.toString())
+-              null
+-          }
++          client
++              .analyzeWavAsync(
++                  "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
++                  options = LorisOptions(
++                      resolutionHz = 35.0,
++                      windowWidthHz = 80.0,
++                      frequencyDriftHz = 50.0,
++                      amplitudeFloorDb = -55.0,
++                  ),
++                  onProgress = { display("status", it) },
++              )
++              .thenCompose { analyzed ->
++                  val selected = analyzed.model.copy(
++                      partials = analyzed.model.partials.filter {
++                          it.points.last().timeSeconds - it.points.first().timeSeconds >= minimumTrackSeconds
++                      },
++                  )
++                  display("status", "Resynthesizing ${selected.partials.size} selected tracks…")
++                  client.synthesizeAsync(
++                      selected.transformed(
++                          frequencyScale = frequencyScale,
++                          bandwidthScale = bandwidthScale,
++                          gain = 0.8,
++                      ),
++                  )
++              }
++              .thenAccept { result ->
++                  display(
++                      "changed partials and sound",
++                      result.visualizationHtml(
++                          LorisViewOptions(
++                              axis = LorisFrequencyAxis.ERB,
++                              syncGroup = "loris-edited-study",
++                          ),
++                      ),
++                  )
++                  display("provenance", result.provenance)
++              }
++              .exceptionally { error ->
++                  display("error", error.cause?.message ?: error.message ?: error.toString())
++                  null
++              }
+   - create:
+       box: loris_two_resolutions
+       name: 3 · independent fine-time and fine-frequency passes
+       frame: { x: 40.0, y: 2200.0, w: 480.0, h: 100.0 }
+       properties:
+         code: |
+-          import afield.document.workspace.path
+           import java.util.concurrent.CompletableFuture
+-          
++
+           val client = LorisClient()
+           val path = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
+-          val passes = listOf(
+-              "fine time" to LorisOptions(resolutionHz = 80.0, windowWidthHz = 160.0, hopSeconds = .003),
+-              "fine frequency" to LorisOptions(resolutionHz = 20.0, windowWidthHz = 40.0, hopSeconds = .005),
+-          ).map { (name, settings) ->
+-              client.analyzeWavAsync(path, durationSeconds = 6.0, options = settings,
+-                  onProgress = { display("$name status", it) },
+-              ).thenAccept { result ->
+-                  display(name, result.visualizationHtml(LorisViewOptions(label = name,
+-                      height = 280, syncGroup = "loris-resolution-comparison")))
+-                  display("$name provenance", result.provenance)
+-              }
+-          }
++          val passes =
++              listOf(
++                      "fine time" to LorisOptions(resolutionHz = 80.0, windowWidthHz = 160.0, hopSeconds = .003),
++                      "fine frequency" to LorisOptions(resolutionHz = 20.0, windowWidthHz = 40.0, hopSeconds = .005),
++                  )
++                  .map { (name, settings) ->
++                      client
++                          .analyzeWavAsync(
++                              path,
++                              durationSeconds = 6.0,
++                              options = settings,
++                              onProgress = { display("$name status", it) },
++                          )
++                          .thenAccept { result ->
++                              display(
++                                  name,
++                                  result.visualizationHtml(
++                                      LorisViewOptions(
++                                          label = name,
++                                          height = 280,
++                                          syncGroup = "loris-resolution-comparison",
++                                      ),
++                                  ),
++                              )
++                              display("$name provenance", result.provenance)
++                          }
++                  }
+           CompletableFuture.allOf(*passes.toTypedArray()).exceptionally { error ->
+               display("error", error.cause?.message ?: error.message ?: error.toString())
+               null
+@@ -98,70 +146,99 @@ operations:
+       frame: { x: 1120.0, y: 2200.0, w: 480.0, h: 100.0 }
+       properties:
+         code: |
+-          import afield.document.workspace.path
+-          import kotlin.math.PI
+-          import kotlin.math.pow
+-          import kotlin.math.sin
+-          
+           val client = LorisClient()
+           val chunkStart = 6.0
+           val chunkDuration = 3.0
+-          client.analyzeWavAsync("%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+-              options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0,
+-                  frequencyDriftHz = 50.0, amplitudeFloorDb = -55.0),
+-              onProgress = { display("status", it) },
+-          ).thenCompose { analyzed ->
+-              val model = analyzed.model
+-              val changed = model.copy(partials = model.partials.map { partial ->
+-                  partial.copy(points = partial.points.map { point ->
+-                      val u = (point.timeSeconds - chunkStart) / chunkDuration
+-                      if (u <= 0.0 || u >= 1.0) point else {
+-                          val envelope = sin(PI * u).pow(2)
+-                          val octaves = 1.5 * envelope * sin(2 * PI * 4 * u)
+-                          val shutter = .25 + .75 * (.5 + .5 * sin(2 * PI * 12 * chunkDuration * u))
+-                          point.copy(
+-                              frequencyHz = (point.frequencyHz * 2.0.pow(octaves)).coerceAtMost(model.sampleRate * .49),
+-                              amplitude = point.amplitude * (1 - envelope + envelope * shutter),
+-                              bandwidth = point.bandwidth * (1 - envelope) + .85 * envelope,
+-                          )
+-                      }
+-                  })
+-              })
+-              display("status", "Resynthesizing the whirlpool…")
+-              client.synthesizeAsync(changed)
+-          }.thenAccept { edited ->
+-              display("edited tracks and sound", edited.visualizationHtml(
+-                  LorisViewOptions(height = 400, syncGroup = "my-whirlpool")))
+-              display("provenance", edited.provenance)
+-          }.exceptionally { error ->
+-              display("error", error.cause?.message ?: error.message ?: error.toString())
+-              null
+-          }
++          client
++              .analyzeWavAsync(
++                  "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
++                  options = LorisOptions(
++                      resolutionHz = 35.0,
++                      windowWidthHz = 80.0,
++                      frequencyDriftHz = 50.0,
++                      amplitudeFloorDb = -55.0,
++                  ),
++                  onProgress = { display("status", it) },
++              )
++              .thenCompose { analyzed ->
++                  val model = analyzed.model
++                  val changed = model.copy(
++                      partials =
++                          model.partials.map { partial ->
++                              partial.copy(
++                                  points =
++                                      partial.points.map { point ->
++                                          val u = (point.timeSeconds - chunkStart) / chunkDuration
++                                          if (u <= 0.0 || u >= 1.0) point
++                                          else {
++                                              val envelope = sin(PI * u).pow(2)
++                                              val octaves = 1.5 * envelope * sin(2 * PI * 4 * u)
++                                              val shutter = .25 + .75 * (.5 + .5 * sin(2 * PI * 12 * chunkDuration * u))
++                                              point.copy(
++                                                  frequencyHz = (point.frequencyHz * 2.0.pow(octaves)).coerceAtMost(
++                                                      model.sampleRate * .49,
++                                                  ),
++                                                  amplitude = point.amplitude * (1 - envelope + envelope * shutter),
++                                                  bandwidth = point.bandwidth * (1 - envelope) + .85 * envelope,
++                                              )
++                                          }
++                                      },
++                              )
++                          },
++                  )
++                  display("status", "Resynthesizing the whirlpool…")
++                  client.synthesizeAsync(changed)
++              }
++              .thenAccept { edited ->
++                  display(
++                      "edited tracks and sound",
++                      edited.visualizationHtml(
++                          LorisViewOptions(height = 400, syncGroup = "my-whirlpool"),
++                      ),
++                  )
++                  display("provenance", edited.provenance)
++              }
++              .exceptionally { error ->
++                  display("error", error.cause?.message ?: error.message ?: error.toString())
++                  null
++              }
+   - create:
+       box: loris_label_align_morph
+       name: 5 · label, align and morph two phrases
+       frame: { x: 40.0, y: 4400.0, w: 480.0, h: 100.0 }
+       properties:
+         code: |
+-          import afield.document.workspace.path
+-          
+           val client = LorisClient()
+-          client.analyzeWavAsync(
+-              "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+-              options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0,
+-                  frequencyDriftHz = 50.0, amplitudeFloorDb = -55.0),
+-              onProgress = { display("status", it) },
+-          ).thenAccept { analyzed ->
+-              val film = analyzed.model
+-              val a = client.distill(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0)).model
+-              val b = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0)).model
+-              display("labels", "A ${a.labelCounts()}  B ${b.labelCounts()}")
+-              val end = a.durationSeconds
+-              val aligned = client.dilate(b, listOf(0.0, b.loudestTimeSeconds(), end),
+-                  listOf(0.0, a.loudestTimeSeconds(), end), durationSeconds = end).model
+-              val morphed = client.morph(a.dropUnlabeled(), aligned.dropUnlabeled(), LorisEnvelope.ramp(0.4, 1.6))
+-              display("morph", morphed.visualizationHtml(LorisViewOptions(maximumHz = 5000.0, syncGroup = "my-morph")))
+-          }.exceptionally { error ->
+-              display("error", error.cause?.message ?: error.message ?: error.toString())
+-              null
+-          }
++          client
++              .analyzeWavAsync(
++                  "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
++                  options = LorisOptions(
++                      resolutionHz = 35.0,
++                      windowWidthHz = 80.0,
++                      frequencyDriftHz = 50.0,
++                      amplitudeFloorDb = -55.0,
++                  ),
++                  onProgress = { display("status", it) },
++              )
++              .thenAccept { analyzed ->
++                  val film = analyzed.model
++                  val a = client.distill(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0)).model
++                  val b = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0)).model
++                  display("labels", "A ${a.labelCounts()}  B ${b.labelCounts()}")
++                  val end = a.durationSeconds
++                  val aligned =
++                      client
++                          .dilate(
++                              b,
++                              listOf(0.0, b.loudestTimeSeconds(), end),
++                              listOf(0.0, a.loudestTimeSeconds(), end),
++                              durationSeconds = end,
++                          )
++                          .model
++                  val morphed = client.morph(a.dropUnlabeled(), aligned.dropUnlabeled(), LorisEnvelope.ramp(0.4, 1.6))
++                  display("morph", morphed.visualizationHtml(LorisViewOptions(maximumHz = 5000.0, syncGroup = "my-morph")))
++              }
++              .exceptionally { error ->
++                  display("error", error.cause?.message ?: error.message ?: error.toString())
++                  null
++              }
+diff --git a/dev_docs/agents/transcripts/mesh_geometry_examples.yaml b/dev_docs/agents/transcripts/mesh_geometry_examples.yaml
+index d6749b89c..35b8439a0 100644
+--- a/dev_docs/agents/transcripts/mesh_geometry_examples.yaml
++++ b/dev_docs/agents/transcripts/mesh_geometry_examples.yaml
+@@ -79,20 +79,8 @@ operations:
+           // sphere is an inscribed polyhedron, so it is always a little under.
+           println()
+           println("unit cube      volume ${cube.signedVolume()}  area ${cube.surfaceArea()}")
+-          println(
+-              "icosphere(3)   volume %.6f against 4/3 pi r^3 = %.6f"
+-                  .format(
+-                      ball.signedVolume(),
+-                      4.0 / 3.0 * PI * r * r * r,
+-                  ),
+-          )
+-          println(
+-              "icosphere(3)   area   %.6f against 4 pi r^2   = %.6f"
+-                  .format(
+-                      ball.surfaceArea(),
+-                      4.0 * PI * r * r,
+-                  ),
+-          )
++          compare("icosphere(3) volume", ball.signedVolume(), 4.0 / 3.0 * PI * r * r * r)
++          compare("icosphere(3) area", ball.surfaceArea(), 4.0 * PI * r * r)
+ 
+           /*
+           The generators are already welded, so weld() finds nothing to merge and returns the
+@@ -273,7 +261,7 @@ operations:
+ 
+           /*
+           Smoothing: a Laplacian pass is a diffusion, so it deflates the shape; Taubin's lambda /
+-          mu pair alternates a shrink with an inflate and holds the volume. Both remove the same
++          mu pair alternates a shrink with an inflate to reduce shrinkage. Both remove the same
+           noise, and the numbers are the whole point.
+           */
+           val rng = java.util.Random(7)
+@@ -291,7 +279,7 @@ operations:
+           println("clean     volume %.5f".format(clean.signedVolume()))
+           println("noisy     volume %.5f".format(noisy.signedVolume()))
+           println("laplacian volume %.5f  <- a diffusion deflates the ball".format(laplacian.signedVolume()))
+-          println("taubin    volume %.5f  <- the lambda/mu pair holds it".format(taubin.signedVolume()))
++          println("taubin    volume %.5f  <- the lambda/mu pair reduces shrinkage".format(taubin.signedVolume()))
+ 
+           /*
+           QEM decimation: quadric error metric edge collapse with the link condition (so a
+@@ -322,9 +310,9 @@ operations:
+               "icosahedronMesh() control" to icosahedronMesh(0.8),
+               "loopSubdivide(1)" to rounds[0],
+               "loopSubdivide(3)" to rounds[2],
+-              "+18% radial noise" to noisy,
++              "±9% radial noise" to noisy,
+               "laplacianSmooth(30) — deflated" to laplacian,
+-              "taubinSmooth(30) — volume held" to taubin,
++              "taubinSmooth(30) — reduced shrinkage" to taubin,
+               budgets[0].first to budgets[0].second,
+               budgets[1].first to budgets[1].second,
+               budgets[2].first to budgets[2].second,
+@@ -361,30 +349,22 @@ operations:
+                   ),
+           )
+ 
+-          // Gauss-Bonnet is a global identity: the integral of Gaussian curvature over a closed
+-          // surface is 2 pi times its Euler characteristic. No local bug survives it.
++          /*
++          Gauss-Bonnet is a global identity: the integral of Gaussian curvature over a closed
++          surface is 2 pi times its Euler characteristic. This checks the aggregate,
++          not every local curvature value; the sphere estimates above are a separate check.
++          */
+           for ((label, m) in
+               listOf(
+                   "icosphere" to ball,
+                   "torus" to torusMesh(64, 32, 0.6, 0.24),
+                   "cube" to boxMesh(),
+               )) {
+-              val k = m.gaussianCurvature()
+-              val areas = m.mixedVertexAreas()
+-              var total = 0.0
+-              for (v in 0 until m.vertexCount) total += k[v] * areas[v]
+-              println(
+-                  "Gauss-Bonnet on the %-10s integral %10.6f against 2 pi chi = %10.6f"
+-                      .format(
+-                          label,
+-                          total,
+-                          2.0 * PI * m.eulerCharacteristic(),
+-                      ),
+-              )
++              compare("Gauss-Bonnet on $label", m.integrate(m.gaussianCurvature()), 2.0 * PI * m.eulerCharacteristic())
+           }
+ 
+-          // The BVH turns every useful query from O(n) into O(log n). Each answer below has an
+-          // analytic counterpart, printed beside it.
++          // The BVH prunes spatially irrelevant triangles for repeated ray and nearest queries.
++          // Analytic answers below check the results; inside tests need a closed mesh.
+           val tree = ball.bvh()
+           val hit = tree.raycast(vec(0, 0, -5), vec(0, 0, 1))
+           println()
+@@ -436,10 +416,7 @@ operations:
+           partitions its clip box exactly, so the cell volumes must sum to the box's own volume —
+           a one-line check on the whole conversion.
+           */
+-          val rand = java.util.Random(31)
+-          val sites = List(48) {
+-              vec(rand.nextFloat() * 1.6 - 0.8, rand.nextFloat() * 1.6 - 0.8, rand.nextFloat() * 1.6 - 0.8)
+-          }
++          val sites = randomPoints(48, seed = 31, bounds = AxisAlignedBoundingBox3D(vec(-0.8, -0.8, -0.8), vec(0.8, 0.8, 0.8)))
+           val lattice = Voronoi3d.build(sites, clipPadding = 0.15f)
+           var total = 0.0
+           var closed = 0
+@@ -465,11 +442,12 @@ operations:
+           // A tube swept along an FLine: rotation-minimising frames, so it does not twist where the
+           // path's curvature swings through vertical.
+           val path = FLine()
++          path.breakNext()
+           for (i in 0..120) {
+               val t = i / 120.0
+               val a = 2.0 * PI * 2.0 * t
+               val p = vec(cos(a) * 0.6, (t - 0.5) * 1.3, sin(a) * 0.6)
+-              if (i == 0) path.moveTo(p) else path.lineTo(p)
++              path.lineTo(p)
+           }
+           val coil = tubeMesh(path, radius = 0.1, sides = 18, samples = 120, caps = true)
+           println()
+diff --git a/dev_docs/agents/transcripts/spin_glass.yaml b/dev_docs/agents/transcripts/spin_glass.yaml
+index b2f4917c1..89a19370d 100644
+--- a/dev_docs/agents/transcripts/spin_glass.yaml
++++ b/dev_docs/agents/transcripts/spin_glass.yaml
+@@ -25,7 +25,7 @@ operations:
+       properties:
+         code: |
+           import afield.graphics.vulkan.util.Options
+-          
++
+           prop<Window>(window)
+           prop<Renderer>(renderer)
+           Options.enableHDR = false
+@@ -128,60 +128,60 @@ operations:
+               pc.spins.s[idx] = ns;
+           }
+         code: |
+-          import afield.graphics.render.computeMemoryBarrier
+-          import afield.graphics.render.computeTask
+-          
+-          val L = 128
+-          val N = L * L
++          // Rebuild update, measure and view after changing the lattice size or bond model.
++          // Periodic checkerboard neighbours need a positive, even side length.
++          val latticeSide = 128
++          require(latticeSide > 0 && latticeSide % 2 == 0) { "L must be positive and even" }
++          val N = latticeSide * latticeSide
+           val groups = (N + 63) / 64
+-          
+-          // simulation parameters, published so the measure + view boxes can read them
+-          prop<Int>(sgL) = L
++
++          // Published controls. To set temperature live, first run sgAnneal = false.
++          prop<Int>(sgL) = latticeSide
+           prop<Double>(sgTemperature) = 3.0
+           prop<Double>(sgField) = 0.0
+           prop<Int>(sgMode) = 0 // 0 = Metropolis, 1 = heat-bath
+           prop<Int>(sgModel) = 0 // 0 = +/-J bimodal, 1 = Gaussian bonds
+           prop<Int>(sgSweeps) = 0
+           prop<Boolean>(sgAnneal) = true
+-          
++
+           // annealing schedule: temperature swings between Thi and Tlo every `period` sweeps
+           val Thi = 3.0
+           val Tlo = 0.04
+           val period = 6000
+-          val model = sgModel
+-          
++          val model = sgModel // Sampled while building bonds; changing it requires rebuilding.
++
+           // in-place lattice state (single, persistent copy — not per-frame)
+-          var spins = defaultBuffer { size = N.floats }.buffer
+-          var jRight = defaultBuffer { size = N.floats }.buffer
+-          var jDown = defaultBuffer { size = N.floats }.buffer
+-          
++          val spinData = defaultBuffer { size = N.floats }.buffer
++          val rightBonds = defaultBuffer { size = N.floats }.buffer
++          val downBonds = defaultBuffer { size = N.floats }.buffer
++
+           val rng = java.util.Random(20260720L)
+           /*
+           random initial spins, then bonds: Gaussian when sgModel == 1, else +/-1.
+           The bond draw is written out twice because a local `fun` that reads a prop
+           fails K2 codegen in a box script.
+           */
+-          spins.write { for (i in 0 until N) put(if (rng.nextBoolean()) 1f else -1f) }
+-          jRight.write {
++          spinData.write { for (i in 0 until N) put(if (rng.nextBoolean()) 1f else -1f) }
++          rightBonds.write {
+               for (i in 0 until N) put(if (model == 1) rng.nextGaussian().toFloat() else if (rng.nextBoolean()) 1f else -1f)
+           }
+-          jDown.write {
++          downBonds.write {
+               for (i in 0 until N) put(if (model == 1) rng.nextGaussian().toFloat() else if (rng.nextBoolean()) 1f else -1f)
+           }
+-          
+-          prop<FrameBufferGroup>(sgSpins) = spins
+-          prop<FrameBufferGroup>(sgJRight) = jRight
+-          prop<FrameBufferGroup>(sgJDown) = jDown
+-          
++
++          prop<FrameBufferGroup>(sgSpins) = spinData
++          prop<FrameBufferGroup>(sgJRight) = rightBonds
++          prop<FrameBufferGroup>(sgJDown) = downBonds
++
+           var sweep = 0
+           var seed = 1
+           var T = Thi
+-          
++
+           var module = computeModuleHere {}
+           // a ComputeMesh must be added to its module before x/y/z or push constants are set
+           val even = ComputeMesh()
+           val odd = ComputeMesh()
+-          
++
+           // "tick" runs first each frame: advance the sweep counter + anneal schedule once.
+           module +=
+               "tick" to
+@@ -198,32 +198,32 @@ operations:
+                       }
+                   }
+           module += "even" to even
+-          module += "barrierE" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
++          module += "barrierE" to computeBarrier()
+           module += "odd" to odd
+-          module += "barrierO" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
++          // Publish the completed sweep to the measure pass and the fragment shader.
++          module += "barrierO" to computeBarrier(graphics = true)
+           renderer += "spinGlassUpdate" to module
+-          
++
+           // both half-sweeps share bindings; they differ only in checkerboard colour and seed
+-          for (m in listOf(even, odd)) {
+-              m.x = groups
+-              m.y = 1
+-              m.z = 1
+-              m.spins = { spins }
+-              m.jRight = { jRight }
+-              m.jDown = { jDown }
+-              m.L = { L.toUInt() } // uint push members need UInt-returning lambdas
+-              m.mode = { sgMode.toUInt() }
+-              m.field = { sgField.toFloat() }
+-              m.temperature = { T.toFloat() }
++          bindPush(even, odd) {
++              x = groups
++              y = 1
++              z = 1
++              spins = { spinData }
++              jRight = { rightBonds }
++              jDown = { downBonds }
++              L = { latticeSide }
++              mode = { sgMode }
++              field = { sgField.toFloat() }
++              temperature = { T.toFloat() }
+           }
+-          even.color = { 0u }
+-          odd.color = { 1u }
++          even.color = { 0 }
++          odd.color = { 1 }
+           even.seed = { seed.toUInt() }
+-          odd.seed = {
+-              (seed + 100003).toUInt()
+-          } // offset so the two passes draw different randoms
+-          
+-          println("update launched L=" + L + " N=" + N + " groups=" + groups)
++          // Offset the seed so the two passes draw different randoms.
++          odd.seed = { (seed + 100003).toUInt() }
++
++          println("update launched L=" + latticeSide + " N=" + N + " groups=" + groups)
+   # 3. measure box: probe (spin, energy) for every site -> field-probe stats card.
+   - create:
+       box: sg_measure
+@@ -269,32 +269,31 @@ operations:
+               fieldProbe(vec2(s, e));
+           }
+         code: |
+-          import afield.graphics.render.computeMemoryBarrier
+-          import afield.graphics.render.computeTask
+-          
+           val L = sgL
+           val N = L * L
+           val groups = (N + 63) / 64
+-          
++
+           // call fieldProbeHere BEFORE computeModuleHere so attachFieldProbe wires the SSBO.
+           // samples >= N keeps every site each frame, so the reported means are exact.
+           fieldProbeHere(samples = if (N < 262144) N else 262144).display("stats")
+           displayOpen("stats")
+-          
++
+           var module = computeModuleHere {}
+           val m = ComputeMesh()
+           // leading barrier: make the update box's spin writes visible to this read.
+-          module += "sync" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
++          module += "sync" to computeBarrier()
+           module += "measure" to m
+           renderer += "spinGlassMeasure" to module
+-          
++
+           m.x = groups
+           m.y = 1
+           m.z = 1
+           m.spins = { sgSpins }
+           m.jRight = { sgJRight }
+           m.jDown = { sgJDown }
+-          m.L = { sgL.toUInt() }
++          m.L = {
++              L
++          } // Match the dispatch count captured for this measurement setup.
+           m.field = { sgField.toFloat() }
+           println("measure launched N=" + N)
+   # 4. lattice view box: fullscreen triangle, fragment reads the shared spins buffer.
+@@ -365,19 +364,17 @@ operations:
+           }
+         code: |
+           var module = moduleHere { primitiveType = triangles }
+-          var m = Mesh()
++          val m = fullscreenTriangle(module)
+           module += "grid" to m
+           renderer += "spinGlassDraw" to module
+ 
+           m.spins = { sgSpins }
+           m.jRight = { sgJRight }
+           m.jDown = { sgJDown }
+-          m.L = { sgL.toUInt() }
++          m.L = { sgL }
+           m.aspect = { window.width / window.height.toFloat() }
+-          // set to { 1u } and re-run to overlay frustrated plaquettes
+-          m.showFrustration = { 0u }
+-          // three vertices, no index buffer: the vertex shader makes the fullscreen triangle
+-          m.set(3, 0) {}
++          // set to { 1 } and re-run to overlay frustrated plaquettes
++          m.showFrustration = { 0 }
+           println("draw launched")
+   # topology: each box is chained beneath the previous one so the shared lattice
+   # buffers (published as props by sg_update) propagate down to measure + view.

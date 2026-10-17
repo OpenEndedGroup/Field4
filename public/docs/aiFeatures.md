@@ -2,8 +2,8 @@
 
 Every AI feature in Field works from where you already are. The box you have
 selected and the spot your cursor sits in travel with the request; what changes
-between features is what you are asking for. `command/ctrl-4` starts a
-conversation about a box, `command/ctrl-3` asks for an edit at one place in the
+between features is what you are asking for. `ctrl/command-4` starts a
+conversation about a box, `ctrl/command-3` asks for an edit at one place in the
 editor, `ctrl-space` mixes AI candidates into ordinary completion, and
 `ai("...")` fills in a function body from its signature. None of it works until Field has a provider
 to talk to, so configure OpenAI, OpenRouter or Anthropic from
@@ -11,7 +11,7 @@ to talk to, so configure OpenAI, OpenRouter or Anthropic from
 
 ## Chat about one box
 
-Select one box and press `command/ctrl-4`, or run **AI Chat (panel)** from the
+Select one box and press `ctrl/command-4`, or run **AI Chat (panel)** from the
 command palette. Field opens the `ai-chat` output area for that box. The chat
 receives the box's current code and can use the Field tools made available by
 the server to inspect or propose edits to box properties and related source.
@@ -31,8 +31,6 @@ After a restart or provider change, AI4 uses the recent saved text as context. T
 transcript stays in the document's `<box-id>_ai4_chat_history_.md` sidecar. To keep resumed
 requests bounded, model context uses at most the most recent 64,000 characters (preferring
 whole turns); saved images remain visible but must be attached again for fresh image analysis.
-Existing conversations from versions before this feature need to be exported before restarting
-those versions, because their transcripts lived only in memory.
 
 ### Writing while it works
 
@@ -42,6 +40,13 @@ step it is on, between one tool call and the next, so you can correct or redirec
 a long task without waiting for it to finish. Once read, the message moves to the
 point in the reply where the model saw it. If the reply finishes first, the queued
 message is sent as your next message; several queued messages go together.
+
+### Waiting for long builds
+
+An agent that starts a long [derived build](studies.md#build-derived-results-without-blocking-edits)
+can end its turn and leave the waiting to Field, which resumes the conversation with the build's
+outcome when it finishes. No model request is made while it waits. See
+[Let AI4 Wait for Long Builds](ai4_long_builds.md).
 
 ### Browsing saved states
 
@@ -87,13 +92,15 @@ it. These are provider-specific histories, not complete document forks.
 A document can expose an existing history without adopting a new persistence format:
 
 ```diffstatic {data-lang=kotlin}
-import afield.*
-import afield.ai.core.*
+
+import afield.ai.completion.*
+import afield.ai.diagnostics.*
+import afield.ai.models.*
 
 // Connect these callbacks to your existing saved-state store.
 stateTree("design", "Design", read = {
     StateTreeSnapshot(
-        nodes = listOf(StateTreeNode("saved-1", title = "Initial design")),
+        nodes = [StateTreeNode("saved-1", title = "Initial design")],
         current = "saved-1",
         note = "Saved authored states")
 }, inspect = { id ->
@@ -132,14 +139,17 @@ transcript, with its images in the document's `ai4_blobs` folder.
 part of the instructions, its size, and what the provider keeps of it. That
 differs by provider. OpenAI keeps the conversation on its side, so the stable
 instructions go into it once and the context that changes between turns is added
-with every turn, which makes a long conversation grow; this was measured to cost
-less than sending it separately, because the conversation stays cacheable.
+with every turn. A long conversation grows that way, but it stays cacheable, which
+costs less than sending the changing context separately.
 Anthropic gets the stable instructions with every request and the changing context
 with the newest request only.
 
 You can paste images into the chat input. Field sends those attachments with
 the next message, which is useful when the desired change is easier to point at
 than describe.
+
+A chat is saved with its box, rewound turns included. [Reading saved AI4 chats](ai4_chat_archive.md)
+shows how to read one back as a tree and have AI4 write a shorter version of it beside the original.
 
 ![two boxes on the canvas, window joined to Texture by a cyan cable, with the Texture box's AI Chat area open below them. The question is "what do you see in this image?", and above it sits the pasted attachment itself: a screenshot of these same two boxes. The answer describes a dark node-based canvas with a smaller node labelled window and a larger one labelled Texture, a curved cable between them, and a panel labelled AI Chat. An empty input reading "Ask about this box..." is at the bottom](assets/screenshot_53.png)
 
@@ -154,7 +164,7 @@ StackSL program drawn live in a window, with three recorded sessions, and
 
 ## Chat at an editor location
 
-Press `command/ctrl-3`, or run **AI Chat in editor**. With a selection, Field
+Press `ctrl/command-3`, or run **AI Chat in editor**. With a selection, Field
 marks that range as the requested rewrite; without a selection, it marks the
 cursor position. The request also identifies the current box property and line.
 
@@ -238,7 +248,7 @@ errors. A tool lets it work on *yours*. You write an ordinary Kotlin class and a
 ordinary Kotlin lambda, register the pair, and from the next turn onward the
 model can call it by name, with arguments it chose, and read what you return.
 
-The whole surface is `afield.ai.core.AgentToolExtensions`. Nothing needs to be
+The whole surface is `afield.ai.tools.AgentToolExtensions`. Nothing needs to be
 edited in Field to add a tool: the registration goes the other way.
 
 ### The smallest version
@@ -264,9 +274,9 @@ expect:
 -->
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.ToolExecutionContext
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.SummarisesForToolLog
+import afield.ai.tools.ToolExecutionContext
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
@@ -313,7 +323,7 @@ The second is `13.02`, and it arrived by way of a JSON string, through the same
 Jackson call the bridge makes, so a request class whose defaults or enums do not
 survive the trip fails here rather than in the middle of a conversation.
 
-Now select any box, press `command/ctrl-4`, and ask *"is a 4.2 by 3.1 metre room
+Now select any box, press `ctrl/command-4`, and ask *"is a 4.2 by 3.1 metre room
 big enough?"*
 
 ### Live coding
@@ -462,16 +472,14 @@ left it when the document opens. Leave it off for state the document saves itsel
 
 Two optional interfaces, both worth implementing:
 
-- **`SummarisesForToolLog`** — one line for Field's tool I/O log. Without it the
-  log records only your result's class name, which cannot distinguish a turn
+- `SummarisesForToolLog`: one line for Field's tool I/O log. Without it the
+  log records only your result's class name, so you cannot tell a turn
   where the model got what it needed from one where it got an error and gave up.
-- **`CarriesToolImages`** — pictures. Both agent loops send them as real images:
+- `CarriesToolImages`: pictures. Both agent loops send them as real images:
   OpenAI and OpenRouter as a message following the tool output, Anthropic as
   image blocks inside the tool result itself. This is how a tool lets a model
-  *look* at what it just did instead of taking your word for it. The exception is
-  a tool called over the MCP backdoor — that reply is JSON, so it carries the
-  numbers and not the picture. Put anything the model must not miss in the
-  result as well as in the image.
+  *look* at what it just did. A tool called over the MCP bridge returns them too, as MCP image
+  content beside the JSON result (up to eight per call).
 
 ```diffstatic {data-lang=kotlin}
 data class RoomReport(
@@ -483,15 +491,14 @@ data class RoomReport(
 }
 ```
 
-`toolImages` is annotated `@get:JsonIgnore` on the interface, and it matters that
-you inherit that rather than reinventing it. A tool result is serialised to JSON
-and sent to the model as the function output; a base64 PNG that reaches *that*
-path is spent as text tokens and buys nothing, because a model cannot see an
-image encoded inside a JSON string. The picture has to travel as a picture.
+`toolImages` is annotated `@get:JsonIgnore` on the interface, so override it as
+shown rather than declaring your own image field. A tool result is serialised to
+JSON and sent to the model as the function output, and a base64 PNG inside that
+JSON is spent as text tokens: the model cannot see an image encoded in a string.
 
 ### A worked example you can run
 
-`afield.four.modules.GeometryAgentTools` is a real, public tool set built exactly
+`afield.graphics.render.GeometryAgentTools` is a real, public tool set built exactly
 this way, over the loaders in [Geometry from disk](geometry_from_disk.md). Point
 it at a directory and the model can find out what geometry you have and look at
 any of it:
@@ -529,9 +536,9 @@ Called on the glTF sample that ships with Field, it answers with 77429 vertices,
 
 ![The rendered mesh a model receives when it calls InspectGeometryFile](assets/ai_tool_demo/toycar_inspect.png)
 
-The full session — both descriptors, both calls, both results — is committed
-alongside it as `public/docs/assets/ai_tool_demo/session.md`, produced with no
-API key and no model.
+The full session (both descriptors, both calls, both results) is in
+[`session.md`](https://github.com/OpenEndedGroup/Field4/blob/main/public/docs/assets/ai_tool_demo/session.md);
+it needs no API key and no model.
 
 If you have no scans handy, this makes some and runs both tools over them,
 including putting the picture the model would receive into the box's output:
@@ -551,11 +558,11 @@ expect:
 -->
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.CarriesToolImages
-import afield.ai.core.SummarisesForToolLog
-import afield.ai.core.ToolExecutionContext
-import afield.four.modules.InspectGeometryFileResult
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.CarriesToolImages
+import afield.ai.tools.SummarisesForToolLog
+import afield.ai.tools.ToolExecutionContext
+import afield.graphics.render.InspectGeometryFileResult
 import java.io.File
 
 val root = File(System.getProperty("java.io.tmpdir"), "field-ai-tool-docs").also { it.mkdirs() }
@@ -584,8 +591,8 @@ display("<img src='" + image.dataUrl + "' style='width:100%'/>")
 `execute` takes a name and a JSON string, which is exactly the shape a model's
 tool call arrives in, so this runs the real tool path with the model left out.
 
-There is a loadable document with both examples side by side:
-`public/docs/assets/ai_tool_demo/metadata.edn`.
+Both examples are side by side in the
+[ai_tool_demo](agent_transcripts.md#ai_tool_demo) starting point.
 
 ### If your tool takes a path, or anything else from the outside
 
@@ -597,9 +604,9 @@ search roots: it canonicalises the requested path and then walks up the parent
 chain, which refuses a `..` that escapes, a symlink that points out, and a
 sibling directory whose name merely starts with a root's name.
 
-The design notes — why the dependency points this way, what the two bridges do
-with your registration, and what is still not covered — are in
-`dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`.
+??? aside "Agents: how the chat and MCP bridges use a registration"
+    How the two bridges (the chat and MCP) use your registration is described in
+    `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`.
 
 A tool set that edits something which draws — a program, a scene, numbers in a
 property — does not have to be written from scratch. [Studies](studies.md) shows a
@@ -658,16 +665,18 @@ chat or from an external tool. External captures arrive as images. A failed shad
 may leave the last good picture visible, so its diagnostics remain separate from the
 screenshot.
 
-Kotlin launch receipts identify the source that completed setup. A pending running
-stripe is not proof that compilation succeeded, and successful setup is not proof of
-sustained animation. Dependent Kotlin macro operations stop on setup errors and preserve
-prior changes for inspection; undo is an explicit action.
+When AI4 launches a Kotlin box, it gets back a receipt naming the source that
+completed setup. A box showing its running stripe may still be compiling, and a box
+whose setup succeeded may still stop animating later, so the receipt is what says
+setup finished. A Kotlin macro whose later steps depend on a launch stops when setup
+fails, and keeps the changes made so far so you can inspect them; undoing them is up
+to you.
 
-Other language engines retain their normal macro dispatch behavior, with
-`setupVerified: false` and an explicit message that completion is unverified.
+Macros in other languages wait (up to ten seconds) for each engine's execution verdict, so their
+receipts report completion too, and a failed execution is an error.
 The external backdoor's awaited `run`, `launch` and `continue` commands get a receipt
-from every engine, not only Kotlin. The receipt is earned rather than assumed: an engine
-reporting success while the box printed an error still comes back failed.
+from every engine, not only Kotlin. A box that printed an error comes back failed even
+when its engine reported success.
 
 See [Flow grain and motion](flow_grain.md) for an editable graphics example with resets,
 parameters, motion correspondence and a repeatable profiling scenario.

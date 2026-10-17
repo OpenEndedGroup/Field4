@@ -252,7 +252,7 @@ _source_page_anchors: dict[str, Any] | None = None
 
 
 def source_page_anchors() -> dict[str, Any]:
-    """The basename -> {page, lines} map written by afield.docs.SourcePageGenerator, or empty."""
+    """The basename -> {page, lines} map written by afield.tools.docs.SourcePageGenerator, or empty."""
     global _source_page_anchors
     if _source_page_anchors is None:
         path = os.environ.get(SOURCE_PAGE_ANCHORS_ENV, "").strip()
@@ -879,6 +879,7 @@ class RunnerOptions:
 CAPTURE_PROFILE_PLATFORMS = {
     "linux-nvidia": "linux",
     "macos-electron": "darwin",
+    "patchy-web": "",  # optional WebAssembly site; available on any host when explicitly selected
 }
 
 
@@ -1040,14 +1041,17 @@ class RunnerState:
         # Construction alone must not boot Field before power/display are checked.
         atexit.register(self.close)
 
-    def source_refs_digest(self, code: str) -> str:
-        """Digest of the stdlib source this fence's code text reaches. `""` when it reaches none."""
+    def source_refs_digest(self, code: str, page_path: Path | None = None) -> str:
+        """Digest of the stdlib source this fence's code text reaches, plus whatever its page declares
+        with `<!-- capture-sources: ... -->`. `""` when it reaches none."""
+        extra = () if page_path is None or self.source_refs_mode == "off" else page_capture_sources(self.repo_root, page_path)
         return compute_source_refs_digest(
             repo_root=self.repo_root,
             code=code,
             symbol_index=self.source_symbol_index,
             file_digest_cache=self._source_file_digests,
             mode=self.source_refs_mode,
+            extra_files=extra,
         )
 
     def handle_capture_error(
@@ -1649,7 +1653,17 @@ class RunnerState:
         # The completion backend is decided by this env, at JVM start, and cannot be changed later: the
         # sidecar URL is read from `System.getenv`. So it has to be resolved BEFORE the server starts,
         # not lazily at the first completion capture.
-        server_env = automation_server_environment(self.backdoor_port)
+        # The general automation notebook also holds draft review notes made by other test
+        # runners. The notes-panel capture must see only notes from this docs runner, while
+        # still staying isolated from the user's real notebook.
+        server_env = automation_server_environment(
+            self.backdoor_port,
+            extra={
+                "AFIELD_DOCS_ANNOTATIONS_STORE": str(
+                    self.repo_root / "build" / "field-docs-runner-annotations.json"
+                )
+            },
+        )
         sidecar_url = self._ensure_semantic_sidecar()
         if sidecar_url:
             server_env[SIDECAR_URL_ENV] = sidecar_url
@@ -1755,9 +1769,16 @@ class RunnerState:
             return
 
         if self._http_health_ok(self.backdoor_port):
+            refusal = self._foreign_field_refusal()
+            if refusal is not None:
+                raise RuntimeError(
+                    f"Field docs runner needs a runner-owned Field server for {reason}, but {refusal}. "
+                    "The runner does not shut down a Field it did not start: stop it yourself, or "
+                    "choose a fresh FIELD_DOCS_RUNNER_PORT (unset, the runner picks a free port)."
+                )
             LOG.warning(
                 "Field docs runner needs a fresh runner-owned Field server for %s; "
-                "requesting shutdown of existing server on port %s",
+                "requesting shutdown of this checkout's automation Field on port %s",
                 reason,
                 self.backdoor_port,
             )
@@ -1775,6 +1796,35 @@ class RunnerState:
                 )
 
         self._ensure_shared_field_server()
+
+    def _foreign_field_refusal(self) -> str | None:
+        """Why the Field on the runner's port must not be shut down, or ``None`` when it may be.
+
+        Only a Field this checkout's automation started -- same checkout, serving the runner's own
+        automation workspace -- is the runner's to replace. Anything else (the Field someone is
+        working in, another worktree's) is refused, naming its PID and workspace.
+        """
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        info = field_instance_info(self.backdoor_port, ctx)
+        pids = ", ".join(str(pid) for pid in self._listener_pids()) or "unknown"
+        where = f"the Field on port {self.backdoor_port} (PID {pids})"
+        if info is None:
+            return f"{where} does not report its identity"
+        try:
+            same_checkout = Path(str(info.get("repoRoot"))).resolve() == self.repo_root.resolve()
+            expected_workspace = Path(
+                os.environ.get(RUNNER_WORKSPACE_ENV) or str(automation_workspace(self.repo_root))
+            ).resolve()
+            same_workspace = Path(str(info.get("workspace"))).resolve() == expected_workspace
+        except (OSError, TypeError, ValueError):
+            return f"{where} reported an unreadable identity"
+        if not same_checkout:
+            return f"{where} belongs to {info.get('repoRoot')}"
+        if not same_workspace:
+            return f"{where} serves workspace {info.get('workspace')}, not the runner's {expected_workspace}"
+        return None
 
     def _stop_shared_field_server(self) -> None:
         if not self._shared_field_started_by_runner:
@@ -2356,7 +2406,7 @@ class RunnerState:
         video_path.parent.mkdir(parents=True, exist_ok=True)
         cache_allowed = self.runner_mode != "always"
         scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
-        source_refs = self.source_refs_digest(code)
+        source_refs = self.source_refs_digest(code, page_path)
         cache_metadata = compute_cache_metadata(
             code=code,
             options=video_options,
@@ -2522,7 +2572,7 @@ class RunnerState:
         )
 
         cache_allowed = self.runner_mode != "always"
-        source_refs = self.source_refs_digest(generated_code)
+        source_refs = self.source_refs_digest(generated_code, page_path)
         cache_metadata = compute_cache_metadata(
             code=generated_code,
             options=options,
@@ -2660,7 +2710,7 @@ class RunnerState:
 
         cache_allowed = self.runner_mode != "always"
         scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
-        source_refs = self.source_refs_digest(code)
+        source_refs = self.source_refs_digest(code, page_path)
         cache_metadata = compute_cache_metadata(
             code=code, options=options, page_path=page_path, block_index=block_index,
             runner_source_digest=self.runner_source_digest,
@@ -2789,7 +2839,7 @@ class RunnerState:
         screenshot_path.parent.mkdir(parents=True, exist_ok=True)
         cache_allowed = self.runner_mode != "always"
         scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
-        source_refs = self.source_refs_digest(code)
+        source_refs = self.source_refs_digest(code, page_path)
         cache_metadata = compute_cache_metadata(
             code=code,
             options=options,
@@ -3042,7 +3092,27 @@ def ensure_state(config: Any) -> RunnerState:
     return STATE
 
 
+EMBED_SCREENSHOT_RE = re.compile(r'^```\w*_runner\b[^\n]*\bembed=true\b[^\n]*$', re.M)
+IMAGE_LINE_RE = re.compile(r'^!\[[^\]]*\]\(([^)\s]+)\)', re.M)
+
+
+def duplicate_embedded_images(markdown: str) -> list[tuple[int, str]]:
+    """(line, path) of each image line repeating a screenshot an `embed=true` runner fence on the
+    page already puts there: the embed appends the capture under its fence, so a second reference
+    shows every figure twice (paint_canvas.md, watercolor.md and paint_gestures.md did, 2026-10-08)."""
+    embedded = set()
+    for m in EMBED_SCREENSHOT_RE.finditer(markdown):
+        shot = re.search(r'\bscreenshot="([^"]+)"', m.group(0))
+        if shot:
+            embedded.add(shot.group(1))
+    return [(markdown.count("\n", 0, m.start()) + 1, m.group(1)) for m in IMAGE_LINE_RE.finditer(markdown) if m.group(1) in embedded]
+
+
 def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, files: Any) -> str:
+    duplicates = duplicate_embedded_images(markdown)
+    if duplicates:
+        raise RuntimeError(f"{page_path}: these image lines repeat a screenshot their runner fence already embeds (embed=true); "
+                           "delete them: " + ", ".join(f"line {n} {path}" for n, path in duplicates))
     markdown = rewrite_source_citations(
         markdown,
         depth=page_directory_depth(page_path, state.docs_dir),
@@ -3120,7 +3190,8 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 line_number=start_line,
                 options=options,
             )
-            code = wrap_runnable_code_for_language(code=code, language_key=language_key)
+            if not runs_in_language_root(options):
+                code = wrap_runnable_code_for_language(code=code, language_key=language_key)
             options = maybe_enable_output_wait(options=options, code=code)
             runner_code = code_with_macro_digest(
                 code=code,
@@ -3292,7 +3363,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
     # default keeps every existing dough_dsp_sound.md fence hashing exactly as it did.
     audio_renderer = (
         first_attr(attrs, "audio-renderer", "audio_renderer", "audioRenderer")
-        or "afield.four.synth.DoughDspSoundDocs"
+        or "afield.audio.synth.DoughDspSoundDocs"
     ).strip()
     if not screenshot and not video and not audio:
         raise RuntimeError(f"{page_path}:{line_number} {runner_name} requires screenshot=\"...\", video=\"...\" and/or audio=\"...\"")
@@ -3305,6 +3376,13 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
     capture = (first_attr(attrs, "capture", "mode") or "box").strip().lower()
     if capture not in {"box", "window", "window-editor", "editor", "native-window", "ui"}:
         raise RuntimeError(f"{page_path}:{line_number} unsupported capture={capture!r}")
+    if capture == "native-window" and video:
+        # The video recorders all record the browser page; recording "the native window" through
+        # them would silently capture the wrong surface (capture_limits.md).
+        raise RuntimeError(
+            f"{page_path}:{line_number} capture=\"native-window\" cannot take video=: no recorder "
+            "records the native window; use screenshot= or a browser capture for the video"
+        )
 
     # capture="ui" runs the fence body as a `drive` transcript that scripts the live
     # editor (keypresses/clicks) via Playwright and captures a video and/or still. The
@@ -3510,7 +3588,7 @@ def wrap_runnable_code_for_language(*, code: str, language_key: str) -> str:
         wrapped = f"""
 // FIELD_DOCS_EXPECT_OUTPUT_AREA: true
 // FIELD_DOCS_EXPECT_SVG: false
-import afield.nano.nanoRunReportHtml
+import afield.lang.nano.nanoRunReportHtml
 
 val __nanoSource = {source_literal}
 
@@ -3533,7 +3611,7 @@ display(
         wrapped = f"""
 // FIELD_DOCS_EXPECT_OUTPUT_AREA: true
 // FIELD_DOCS_EXPECT_SVG: true
-import afield.docs.renderMorphoDocsSnippet
+import afield.tools.docs.renderMorphoDocsSnippet
 
 val __morphoSource = {source_literal}
 renderMorphoDocsSnippet(__morphoSource)
@@ -3546,7 +3624,7 @@ renderMorphoDocsSnippet(__morphoSource)
         wrapped = f"""
 // FIELD_DOCS_EXPECT_OUTPUT_AREA: true
 // FIELD_DOCS_EXPECT_SVG: {"true" if expects_svg else "false"}
-import afield.docs.renderForthDocsSnippet
+import afield.tools.docs.renderForthDocsSnippet
 
 val __forthSource = {source_literal}
 renderForthDocsSnippet(__forthSource)
@@ -3599,9 +3677,9 @@ def fabricate_docs_harness_code(*, scene: str, output_path: Path) -> str:
     output_literal = json.dumps(str(output_path))
     ready_literal = json.dumps(ready_message)
     return f"""
-import afield.four.Renderer
-import afield.four.fabricated.StandardRendererDocsHarness
-import afield.four.modules.fromContext
+import afield.graphics.vulkan.Renderer
+import afield.graphics.scene.fabricated.StandardRendererDocsHarness
+import afield.document.context.fromContext
 
 val renderer: Renderer = fromContext()
 
@@ -3637,8 +3715,28 @@ def extract_effective_code(*, lines: list[str], fence_name: str, page_path: Path
 
 def extract_static_code(*, lines: list[str]) -> str:
     code_lines = [line.rstrip("\r\n") for line in lines]
-    # Drop section AND fold markers; keep the code inside a fold region (it must run).
-    filtered = [line for line in code_lines if not is_marker_line(line.strip())]
+    # Drop section AND fold markers; keep the code inside a fold region (it must run). A bare `:::`
+    # is a marker only while a fold is open (it closes it); anywhere else it is the box's own code,
+    # such as a markdown table row closed with `:::`, and runs as it would in a live box.
+    filtered: list[str] = []
+    fold_open = False
+    for line in code_lines:
+        stripped = line.strip()
+        if stripped == ":::":
+            if fold_open:
+                fold_open = False
+                continue
+            filtered.append(line)
+            continue
+        if stripped == ":::fold" or stripped.startswith(":::fold "):
+            fold_open = True
+            continue
+        if stripped == ":::endfold":
+            fold_open = False
+            continue
+        if is_marker_line(stripped):
+            continue
+        filtered.append(line)
     return normalize_code_lines(filtered)
 
 
@@ -3942,6 +4040,32 @@ def fence_source_files(
     return tuple(sorted(reached))
 
 
+CAPTURE_SOURCES_RE = re.compile(r"<!--\s*capture-sources:\s*(?P<paths>.*?)-->", re.S)
+
+
+def page_capture_sources(repo_root: Path, page_path: Path) -> tuple[str, ...]:
+    """Source files a page declares its captures depend on, beyond the ones its fences name.
+
+    A page writes `<!-- capture-sources: src/.../contours.kt src/.../mesh/ -->` (whitespace-separated,
+    repo-relative; a trailing `/` means every `.kt` under that directory). The per-fence digest only
+    sees the files whose symbols a fence's code names directly, so a helper reached through another
+    call, or a bridge in a different package, needs saying here for an incremental build to notice it.
+    """
+    try:
+        text = page_path.read_text(encoding="utf-8")
+    except OSError:
+        return ()
+    files: set[str] = set()
+    for match in CAPTURE_SOURCES_RE.finditer(text):
+        for entry in match.group("paths").split():
+            target = repo_root / entry
+            if entry.endswith("/") and target.is_dir():
+                files.update(str(path.relative_to(repo_root)) for path in target.rglob("*.kt"))
+            else:
+                files.add(entry)
+    return tuple(sorted(files))
+
+
 def compute_source_refs_digest(
     *,
     repo_root: Path,
@@ -3949,6 +4073,7 @@ def compute_source_refs_digest(
     symbol_index: dict[str, tuple[str, ...]],
     file_digest_cache: dict[str, str] | None = None,
     mode: str = "direct",
+    extra_files: tuple[str, ...] = (),
 ) -> str:
     """Hash the contents of every source file this fence reaches.
 
@@ -3956,7 +4081,7 @@ def compute_source_refs_digest(
     the key out of the digest payload entirely so such a fence hashes exactly as it did before this
     existed.
     """
-    files = fence_source_files(code=code, symbol_index=symbol_index, mode=mode)
+    files = tuple(sorted(set(fence_source_files(code=code, symbol_index=symbol_index, mode=mode)) | set(extra_files)))
     if not files:
         return ""
     cache = file_digest_cache if file_digest_cache is not None else {}
@@ -4038,7 +4163,7 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         payload["audioSpec"] = options.audio_spec
         # Only when it is not the historic default, so existing fences keep their digest and
         # do not all re-render on this change.
-        if options.audio_renderer != "afield.four.synth.DoughDspSoundDocs":
+        if options.audio_renderer != "afield.audio.synth.DoughDspSoundDocs":
             payload["audioRenderer"] = options.audio_renderer
     return payload
 
@@ -4551,7 +4676,31 @@ def runner_code_expects_svg(code: str) -> bool:
     # Only a bare call to Field's own `lines(...)` FLine renderer counts, so a member call is excluded.
     # The cost is that an explicit `someBox.lines(...)` no longer implies SVG; a snippet written that way
     # can say so with a FIELD_DOCS_EXPECT_SVG codegen expectation.
-    return re.search(r"(?<![.\w])lines\s*\(", code) is not None
+    # A `lines(...)` inside a `three { }` / `threeLines { }` builder adds FLines to the Three.js scene
+    # and makes no SVG, so those blocks do not count.
+    return re.search(r"(?<![.\w])lines\s*\(", without_three_blocks(code)) is not None
+
+
+_THREE_BLOCK_OPEN = re.compile(r"(?<![.\w])three(?:Lines)?\b[^{\n]*\{")
+
+
+def without_three_blocks(code: str) -> str:
+    """[code] with the body of every `three ... { }` / `threeLines ... { }` builder block removed."""
+    out = []
+    i = 0
+    while True:
+        m = _THREE_BLOCK_OPEN.search(code, i)
+        if not m:
+            out.append(code[i:])
+            return "".join(out)
+        out.append(code[i:m.end()])
+        depth = 1
+        j = m.end()
+        while j < len(code) and depth:
+            depth += {"{": 1, "}": -1}.get(code[j], 0)
+            j += 1
+        out.append("}")
+        i = j
 
 
 def runner_code_expects_output_area(code: str) -> bool:
@@ -4935,6 +5084,16 @@ def docs_runner_fieldml_root_alias(*, target_uid: str) -> str:
 # language needs a root. `fieldml` predates the set and produces byte-identical commands through it.
 
 
+def runs_in_language_root(options: RunnerOptions) -> bool:
+    """Whether the fence runs as a box of its own language, under a `mainLanguage` root.
+
+    A launched Forth fence does too: `frame` needs a real ForthField strand, which the one-shot
+    `renderForthDocsSnippet` wrapper cannot give it.
+    """
+    language = options.language_key.strip().lower()
+    return language in MAIN_LANGUAGE_ROOT_LANGUAGES or (language == "forth" and options.execution == "launch")
+
+
 def docs_runner_language_root_alias(*, target_uid: str, language: str) -> str:
     return safe_transcript_id(f"{target_uid}_{language}_root")
 
@@ -4971,6 +5130,25 @@ def graphics_launch_timeout(options: RunnerOptions) -> float:
     survive at least as long.
     """
     return max(float(options.timeout), GRAPHICS_LAUNCH_TIMEOUT_FLOOR_SECONDS)
+
+
+def graphics_renderer_launch_commands(*, options: RunnerOptions, repo_root: Path) -> list[str]:
+    """Bring up the docs renderer, `agent_graphics_context`, and wait until it draws."""
+    renderer_macro_path = graphics_renderer_transcript_path(repo_root)
+    launch_timeout = graphics_launch_timeout(options)
+    return [
+        shlex.join([
+            "macro", "write", "graphics_renderer_launch",
+            "--file", str(renderer_macro_path),
+            "--timeout", str(launch_timeout),
+        ]),
+        shlex.join(["macro", "run", "graphics_renderer_launch", "--timeout", str(launch_timeout)]),
+        shlex.join([
+            "wait-native-renderer", "agent_graphics_context",
+            "--frames", "3",
+            "--timeout", str(launch_timeout),
+        ]),
+    ]
 
 
 def generated_graphics_child_transcript(*, target_uid: str, options: RunnerOptions) -> str:
@@ -5151,6 +5329,10 @@ def build_backdoor_command(
         backdoor_commands.append("playwright-open --electron")
 
     if options.capture == "ui":
+        # graphics-context=true: the renderer first, so the setup transcript can connect its boxes
+        # beneath `agent_graphics_context`.
+        if options.graphics_context:
+            backdoor_commands.extend(graphics_renderer_launch_commands(options=options, repo_root=repo_root))
         # Optional setup: run a transcript= file of create/launch ops FIRST, in the same
         # backdoor session, so its boxes exist when the drive runs. Needed for captures
         # that require scene setup a drive fragment can't do itself (a drive fragment runs
@@ -5221,27 +5403,7 @@ def build_backdoor_command(
     default_target_uid = options.capture_box or options.run_box or (generated_target_uid if options.graphics_context else "@last")
     language = options.language_key.strip().lower()
     if options.graphics_context:
-        renderer_macro_path = graphics_renderer_transcript_path(repo_root)
-        launch_timeout = graphics_launch_timeout(options)
-        backdoor_commands.append(shlex.join([
-            "macro",
-            "write",
-            "graphics_renderer_launch",
-            "--file", str(renderer_macro_path),
-            "--timeout", str(launch_timeout),
-        ]))
-        backdoor_commands.append(shlex.join([
-            "macro",
-            "run",
-            "graphics_renderer_launch",
-            "--timeout", str(launch_timeout),
-        ]))
-        backdoor_commands.append(shlex.join([
-            "wait-native-renderer",
-            "agent_graphics_context",
-            "--frames", "3",
-            "--timeout", str(launch_timeout),
-        ]))
+        backdoor_commands.extend(graphics_renderer_launch_commands(options=options, repo_root=repo_root))
     if options.macro_file:
         macro_path = resolve_macro_file_path(repo_root=repo_root, page_path=page_path, macro_file=options.macro_file)
         macro_name = macro_name_for_options(options=options, page_path=page_path, block_index=block_index)
@@ -5310,7 +5472,7 @@ def build_backdoor_command(
             setup_macro_name,
             "--timeout", str(options.timeout),
         ]))
-    elif language in MAIN_LANGUAGE_ROOT_LANGUAGES:
+    elif runs_in_language_root(options):
         root_alias = docs_runner_language_root_alias(target_uid=generated_target_uid, language=language)
         backdoor_commands.append(shlex.join([
             "new-box",

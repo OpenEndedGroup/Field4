@@ -6,7 +6,7 @@ instrument plays. Field runs Csound in-process, through its C library, in two wa
 
 - **as a box language**: set a box's Main Language to Csound, and its children hold `.csd` text.
   The editor highlights it and completes opcodes with their signatures. Launching a box plays it,
-  and Alt-Enter sends single instruments and score lines to the running Csound.
+  and alt/option-Enter sends single instruments and score lines to the running Csound.
 - **from Kotlin**: `csound(orchestra, score)` and `CsoundInstance` hold a Csound inside a Kotlin
   box, for when the Kotlin side is doing most of the work.
 
@@ -63,23 +63,21 @@ flags that pick a device or a file (`-o`, `-i`, `-+rtaudio`, `-M` and the like),
 audio engine is the device. Text without `<CsInstruments>` is read as a bare orchestra with no score.
 
 A `chn_k` channel starts at the default it declares: above, `chnget "cutoff"` reads 2400 until
-something writes the channel. Csound on its own leaves the channel at 0 and keeps the default only
-as a hint for the host, so the same file in another Csound host can play a 0 Hz `butterlp`, which is
-silence.
+something writes the channel. Other Csound hosts may start it at 0, which makes this `butterlp` silent there.
 
 ### The keys
 
 | Key | Where | What it does |
 | --- | --- | --- |
-| **Alt-0**, Run, Launch | anywhere | Compiles the orchestra and score into a new Csound of the box's own and plays it, replacing any earlier one. The box runs until it is stopped or the score ends. `f 0 z` in the score keeps Csound running with nothing scheduled. |
-| **Alt-Enter** | a line inside `instr … endin` | Recompiles that whole instrument into the running Csound (`csoundCompileOrc`). Notes already sounding finish with the old definition, and the next event uses the new one. |
-| **Alt-Enter** | a selection of whole instruments | Compiles the selection as it is. |
-| **Alt-Enter** | an orchestra line outside any instrument | Compiles that line (or selection) as global code, which runs once: a new `ftgen` table, a `chn_k` declaration. |
-| **Alt-Enter** | a score line or selection | Reads it into the running Csound now (`csoundReadScore`). Start times count from this moment, so `i "Pluck" 0 1 69 -9` sounds at once. |
-| **Alt-Enter** | `<CsOptions>` | Sends nothing. The box says that options apply at the next launch. |
+| **alt/option-0**, Run, Launch | anywhere | Compiles the orchestra and score into a new Csound of the box's own and plays it, replacing any earlier one. The box runs until it is stopped or the score ends. `f 0 z` in the score keeps Csound running with nothing scheduled. |
+| **alt/option-Enter** | a line inside `instr … endin` | Recompiles that whole instrument into the running Csound (`csoundCompileOrc`). Notes already sounding finish with the old definition, and the next event uses the new one. |
+| **alt/option-Enter** | a selection of whole instruments | Compiles the selection as it is. |
+| **alt/option-Enter** | an orchestra line outside any instrument | Compiles that line (or selection) as global code, which runs once: a new `ftgen` table, a `chn_k` declaration. |
+| **alt/option-Enter** | a score line or selection | Reads it into the running Csound now (`csoundReadScore`). Start times count from this moment, so `i "Pluck" 0 1 69 -9` sounds at once. |
+| **alt/option-Enter** | `<CsOptions>` | Sends nothing. The box says that options apply at the next launch. |
 | Stop | | Ends the performance and frees the Csound. |
 
-Alt-Enter needs the box to be playing, and says so if it is not. Errors from any of these, Csound's
+alt/option-Enter needs the box to be playing, and says so if it is not. Errors from any of these, Csound's
 own messages, are marked on the box line they belong to.
 
 ### Completion
@@ -110,15 +108,10 @@ ui.waitForSelector(".afield-suggest-row", 20000.0)
 ui.pause(1400)
 ```
 
-The opcode list is not written by hand. `./gradlew generateCsoundVocabulary` asks libcsound for
-every opcode it has compiled in (`csoundNewOpcodeList`): 1220 opcodes and 1906 signatures in Csound
-6.18.1. It then joins on the description, syntax lines and arguments from the Csound Reference
-Manual's DocBook source, release 6.18.0, downloaded and checksummed. The result is
-`src/commonMain/resources/csound-vocabulary.json`. The manual describes 1183 of the 1220 opcodes;
-the other 37 (`maxtab`, `tabmap`, `mp3sr` and the like, mostly deprecated or undocumented) show
-their signatures alone. A test fails when the names or signatures no longer match the library, and
-another when the descriptions no longer match the pinned manual. The editor's highlighting reads the
-same file.
+The opcode list comes from libcsound itself, so it holds every opcode your build has compiled in.
+The descriptions, syntax lines and arguments come from the Csound Reference Manual. The few opcodes
+the manual does not describe, mostly deprecated ones such as `maxtab` and `mp3sr`, show their
+signatures alone. The editor's highlighting reads the same list.
 
 Hovering on an opcode in the editor shows its description and syntax, and links to its page in the
 manual, for example [`butterlp`](https://csound.com/docs/manual/butterlp.html).
@@ -137,9 +130,6 @@ Rest the cursor on a line to see its note:
   has no such instrument;
 - on a line that declares or uses a channel (`chn_k`, `chnget`, `chnset`, `invalue`, `outvalue`),
   the channel's value in the playing Csound, read live.
-
-The event count comes from the score text, so events sent later with Alt-Enter or from Kotlin are
-not counted.
 
 With the cursor on `instr Pluck`, the note at the editor's foot counts the score's events for it:
 
@@ -194,7 +184,7 @@ pluck.setChannel("cutoff", 900)                 // chnget "cutoff" sees it on th
 pluck.setStringChannel("voice", "from Kotlin")  // an S channel
 println(pluck.channel("level"))                 // what chnset last wrote
 
-listOf(57, 60, 64, 69).forEachIndexed { k, note ->
+[57, 60, 64, 69].forEachIndexed { k, note ->
     pluck.event("i \"Pluck\" ${k * 0.5} 0.5 $note -12")   // p-fields from Kotlin values
 }
 
@@ -239,15 +229,14 @@ of Field's graph. Two things to know about timing:
 
 - Csound performs whole `ksmps` blocks, 32 frames here. Audio into Csound, through `connect` or
   `ins`, is delayed by exactly one block, 32 frames or 0.67 ms at 48 kHz, so that every block has a
-  whole control period of input whatever size the engine's buffer is. A test checks that a
-  straight-through channel returns the input exactly 32 frames late.
+  whole control period of input whatever size the engine's buffer is.
 - Audio out of Csound is not delayed further. It is in step with the block Field asked for.
 
 The same holds offline. `renderSignalsOffline` advances any number of signals through the same audio
 blocks, without a device, which is how this box measures a Csound filter on a Field sine:
 
 ```diffstatic {data-lang=kotlin}
-val cs = afield.csound.CsoundInstance("""
+val cs = afield.audio.csound.CsoundInstance("""
 instr Filter
   ain   chnget    "in"
   alow  butterlp  ain, 500
@@ -293,23 +282,17 @@ shows a player and a waveform.
 
 ## The demo
 
-`dev_docs/agents/transcripts/csound_demo.yaml` builds the whole set in a fresh document: a Csound root
-with three Csound boxes (**pluck**, **fx**, **typo**), and five Kotlin boxes that use every
-direction above. Replay it with the backdoor's `macro write csound_demo --file …` and `macro run
-csound_demo`, or open **csound_demo** from the welcome screen's starting points.
+Open csound_demo from the welcome screen's starting points. It is a Csound root with three Csound
+boxes (**pluck**, **fx**, **typo**) and five Kotlin boxes that use each of the directions above.
 
-??? aside "How the captures and numbers on this page were made"
+See also: [Faust](faust.md) and [Pure Data](pure_data.md), the other languages that play through
+the same audio engine, and [How to make sound in Field](sound.md).
+
+??? aside "Agents: how the captures and numbers on this page are made"
     The two editor figures and the completion popup are captured by the docs runner against a
     real Field. The editor figures are gated on `requires="csound"`, so a machine without a built
-    libcsound keeps the committed images and says why. An editor image does not show whether the
-    fence plays, so `CsoundDocsFencesTest` renders every `data-lang=csound` fence on this page
-    offline and fails on a silent one, or on an `expect-error` fence that compiles. It found the
-    Pluck fence silent before Field applied `chn_k` defaults. The completion figure needs no libcsound,
-    because it reads the committed vocabulary. The quoted gain (0.2420) and the latency (exactly 32
-    frames) come from `CsoundDataPlaneTest` and from running the demo through the backdoor on
-    2026-10-02.
-
-    One build fix is behind the named instruments on this page. Csound marks a named p1
-    (`i "Pluck"`) with a NaN, and the `-ffast-math` its CMake adds lets clang assume that NaNs
-    cannot happen. With it, every named-instrument event was "instr 0 undefined" (reproduced in a
-    few lines of C against the library). `build_csound_native.py` turns fast-math off.
+    libcsound keeps the committed images. `CsoundDocsFencesTest` renders every `data-lang=csound`
+    fence on this page offline and fails on a silent one, or on an `expect-error` fence that
+    compiles. The opcode vocabulary is regenerated by `./gradlew generateCsoundVocabulary` into
+    `src/commonMain/resources/csound-vocabulary.json`, and tests fail when it drifts from the
+    library or the pinned manual. The quoted gain and latency come from `CsoundDataPlaneTest`.

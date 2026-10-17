@@ -81,15 +81,15 @@ export FIELD_STREAMDIFFUSION_ROOT=/path/to/sd2
 
 Run Field from its checkout. An existing compatible backend can be reused: install
 `optional/streamdiffusion/requirements.txt` into its environment and set the same
-variable. If Field is already running, replace the curves box's `root` expression
-with `java.io.File("/path/to/sd2")` and run the box again. Nothing is downloaded
+variable. If Field is already running, write the path into
+`~/.afield/streamdiffusion-root.txt` instead and run the box again. Nothing is downloaded
 merely by opening the document.
 
 TAEHV is the decoder for this integration. `useTensorRT = true` is the default;
 the first run may build engines. To use the Torch decoder path instead, set
-`useTensorRT = false` in the configuration. Check
-`view.session.capabilities.optBoolean("tensorrt_active")` to see whether an engine
-actually executed; requesting TensorRT does not establish that it is active.
+`useTensorRT = false` in the configuration. `view.session.tensorRtActive` says whether an
+engine actually executed, and `view.session.status` notes it when TensorRT was requested and is not
+running.
 
 ## Process your own rendered texture
 
@@ -102,7 +102,7 @@ In a box connected beneath your renderer, this wraps an existing `source` RTT.
 The processor schedules the source render and supplies a sampled output target:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.diffusion.*
+import afield.media.video.diffusion.*
 
 val root = StreamDiffusionSupport.configuredRoot()
 val config = root?.let {
@@ -168,22 +168,22 @@ updates:
 
 <video controls muted loop playsinline preload="metadata" src="assets/streaming_diffusion/charcoal-085-baseline.mp4" width="1024" height="512" style="max-width:100%;height:auto;aspect-ratio:2/1"></video>
 
-The enabled run uses a paper fill for rejected pixels, avoiding the pale
-outline of old curve positions caused by falling back to flat source paper.
-Generated marks beyond the supplied correspondence can still leave trails. These clips
-establish that the paths run together, rather than a measured temporal-quality
-improvement for each control. [Run data](assets/streaming_diffusion/charcoal-085-run.json)
-and [worker log](assets/streaming_diffusion/charcoal-085-worker.txt) retain active settings,
-resets and engine loads. With the controls enabled, the first steady interval
-presented approximately 16 FPS. The retained run data gives chunk timings.
+The enabled run fills rejected pixels with paper reconstructed from nearby
+output, so old curve positions do not leave a pale outline. Generated marks
+beyond the supplied correspondence can still leave trails. The clips show the
+controls working together; they do not measure how much each one improves
+temporal stability. With the controls enabled the run presented about 16 FPS
+once steady; the [run data](assets/streaming_diffusion/charcoal-085-run.json)
+and [worker log](assets/streaming_diffusion/charcoal-085-worker.txt) record the
+settings, resets, engine loads and chunk timings.
 
 For your own scene, pass a `StreamDiffusionMotionProvider` to the processor and
 opt into the controls. The provider records a GPU correspondence target in the
 supplied command buffer:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.diffusion.*
-import afield.four.device.CommandBuffer
+import afield.media.video.diffusion.*
+import afield.graphics.vulkan.device.CommandBuffer
 
 val config = StreamDiffusionConfig(checkNotNull(root),
     displayReprojection = true, historyBlend = .35, noiseAdvection = .8)
@@ -264,8 +264,9 @@ stylized reference image borrowed for that call. Return a sampled, single-layer,
 single-sample RTT matching the source's dimensions and colour format; you own it.
 Return null for the default source fallback. This leaves noise and history
 blending unchanged. The demo uses this hook to reconstruct paper from nearby
-reference pixels outside old ribbons, avoiding a brighter source-paper footprint.
-It is a local approximation, rather than a prediction of new stylized content.
+reference pixels outside old ribbons, so the flat source paper does not show
+through as a brighter patch. It is a local approximation and does not predict
+new stylized content.
 
 History blending warps the previous resolved result into the new result's frame,
 clamps its colours to the fresh result's 3 × 3 neighbourhood, and blends using
@@ -299,7 +300,8 @@ copies for the current four/five-frame group and retained scene state are additi
 `displayReprojectionRequests`, `historyBlendRequests` and `noiseMotionFrames`
 report requests/maps sent by Field. The worker's `noise_motion_frames` reports
 maps actually consumed by noise advection, and `noise_advection` reports its
-active setting. Counts do not establish correspondence quality or valid coverage.
+active setting. These are counts only; they say nothing about how good the
+correspondence was or how much of the image it covered.
 
 ## Resolution
 
@@ -307,17 +309,16 @@ Width and height must each be multiples of 32. Rectangular images are accepted;
 there is no square-image requirement. Resolution is fixed when the processor is
 created. To resize, close it and create a new processor for the resized source.
 
-The worker accepts dimensions up to 4096 × 4096. This is a protocol ceiling,
-not a demonstrated usable model resolution. **512 × 512 is verified on an RTX
-4090.** Larger images increase GPU memory and computation. Doubling both
+The worker accepts dimensions up to 4096 × 4096, but the model has only been
+run at 512 × 512, on an RTX 4090. Larger images increase GPU memory and computation. Doubling both
 width and height gives four times the pixels and can cost more than four times
 the computation. A new resolution may require new TensorRT engines.
 
 ## Duration, FPS and latency
 
 There is no fixed clip-duration limit. The adapter streams with bounded buffers
-and a rolling model cache rather than storing the whole video. Continuous runs
-lasting hours have not been established.
+and a rolling model cache rather than storing the whole video. It has not been
+tested over runs lasting hours.
 
 `fps` accepts 1–60 and controls capture and output pacing. It is a requested
 sampling rate; available GPU throughput determines whether it can be sustained.
@@ -327,8 +328,8 @@ diffusion updates at 16 FPS, holding the latest completed image between updates.
 The worker collects five frames initially, then processes groups of four. At
 16 FPS, four input frames span 250 ms; measured computation takes approximately
 186 ms per group at 512 × 512. Collection, the two-step causal pipeline and
-output pacing add delay. **16 FPS does not mean 62.5 ms end-to-end latency.**
-Exact source-to-display latency has not been measured. Model startup takes tens
+output pacing add delay, so end-to-end latency is longer than the 62.5 ms
+a 16 FPS frame interval suggests; it has not been measured exactly. Model startup takes tens
 of seconds on the recorded machine; initial TensorRT engine building can take
 longer. `startupTimeoutSeconds` defaults to 240 and can be increased.
 
@@ -348,8 +349,8 @@ in order; Field keeps displaying the last completed output while it is busy.
 
 The native ink run on an RTX 4090 sustained **16.00 presented FPS at 512 × 512**
 over an 18-second steady interval. The median four-frame worker chunk took
-186 ms. An earlier run used approximately 12.3 GiB of total GPU memory,
-including Field and other desktop allocations. Scene complexity, other GPU workloads and resolution
+186 ms. In an earlier run, total GPU memory use (including Field and the rest
+of the desktop) was about 12.3 GiB. Scene complexity, other GPU workloads and resolution
 change the available throughput and memory headroom.
 
 The text encoder moves to CPU after initial prompt encoding by default. Later
@@ -365,10 +366,10 @@ construct visibility and confidence; the model does not consume them directly.
     TAEHV and active TensorRT. [Run data](assets/streaming_diffusion/charcoal-085-run.json) and the
     [worker log](assets/streaming_diffusion/charcoal-085-worker.txt) retain settings and engine loads.
     The capture uses the starting point's geometry and prompt controls with strict
-    checkpoint loading. The [earlier ink clip](assets/streaming_diffusion/motion-all.mp4)
-    retains the pale paper footprint that prompted the display fill. Missing-backend behavior was also run
-    on Linux; macOS was not run on that host. The backend's setup and architecture
-    are in `optional/streamdiffusion/README.md` in the Field checkout.
+    checkpoint loading. The [ink clip](assets/streaming_diffusion/motion-all.mp4)
+    was recorded without the display fill and shows the pale paper outline it
+    removes. The backend's setup and architecture are in
+    [`optional/streamdiffusion/README.md`](https://github.com/OpenEndedGroup/Field4/blob/main/optional/streamdiffusion/README.md).
 
 See also [the graphics starting point](afield_four_graphics.md) and
 [render to texture](afield_four_graphics.md#render-to-texture).

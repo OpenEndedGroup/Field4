@@ -16,7 +16,7 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 220.0, h: 60.0 }
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -31,11 +31,10 @@ operations:
       frame: { x: 320.0, y: 140.0, w: 260.0, h: 70.0 }
       properties:
         code: |
-          import afield.four.fabricated.PathTraceEmitterGpuSmoke
-          import afield.four.modules.fromContext
-          val renderer: Renderer = fromContext()
+          import afield.graphics.scene.fabricated.PathTraceEmitterGpuSmoke
+          val r = renderer
           val verify: suspend () -> Unit = {
-              PathTraceEmitterGpuSmoke.run(renderer, "build/emitter-check")
+              PathTraceEmitterGpuSmoke.run(r, "build/emitter-check")
               println("EMITTER CHECK DONE")
           }
           start(verify)

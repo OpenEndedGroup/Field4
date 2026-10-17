@@ -24,6 +24,6 @@ breakpoints (time, Hz, amplitude, radians phase, bandwidth). No full-array JSON.
 client hashes the request, executable and local Loris shared libraries for durable caching;
 validates results before publishing; and runs a bounded subprocess off the Field UI thread.
 
-Run `./gradlew jvmTest --tests 'afield.stdlib.loris.LorisTest'` after the opt-in build for the
+Run `./gradlew jvmTest --tests 'afield.audio.analysis.loris.LorisTest'` after the opt-in build for the
 actual tracking/reconstruction/cache/resynthesis smoke. Without the native build the same test
 suite checks data validation, transforms and the viewer without fetching anything.

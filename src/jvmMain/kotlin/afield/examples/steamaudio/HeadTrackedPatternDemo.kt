@@ -1,15 +1,14 @@
 package afield.examples.steamaudio
 
-import afield.four.synth.HeadPose
-import afield.four.synth.PatSpatialLaunch
-import afield.four.synth.SynthContext
-import afield.four.synth.VirtualHead
-import afield.four.synth.pat
-import afield.four.synth.param
-import afield.four.synth.patSpatial
-import afield.four.synth.stack
-import afield.four.synth.with
-import afield.stdlib.Vec3
+import afield.audio.synth.HeadPose
+import afield.audio.synth.SynthContext
+import afield.audio.synth.VirtualHead
+import afield.audio.synth.pat
+import afield.audio.synth.param
+import afield.audio.synth.patSpatial
+import afield.audio.synth.stack
+import afield.audio.synth.with
+import afield.math.linalg.Vec3
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.math.abs
@@ -50,24 +49,146 @@ import kotlin.math.sqrt
  * ./gradlew headTrackedDemo
  * ```
  *
- * `patSpatial` is documented as a realtime path, and it is one -- but "realtime" there means *paced
- * by whatever drains its ring*, which is normally an audio device. Nothing in the render thread
- * limits it to wall clock: it sleeps only when the ring is at target fill. A file render like this
- * one drains the ring as fast as the blocks appear, so it free-runs -- the `vs rt` column below
- * reports 9.7x on the first movement and 35x to 42x once the JIT is hot. That is why the heads below
- * are driven from the render thread's frame counter rather than from the clock on the wall; see
- * [renderOrigin]. The per-movement readout is printed as it goes.
+ * Nothing about the render is realtime. `patSpatial`'s render thread sleeps only when its ring is
+ * at target fill, so a file render that drains the ring as fast as blocks appear free-runs: the
+ * `vs rt` column reports 7x to 30x. The head is therefore a function of the **render frame**,
+ * handed to [patSpatial] as `listenerPoseAt` and evaluated by the render thread at the top of each
+ * block, so the motion and the music share one timeline and two runs write the same file.
+ * `pat_spatial.md` publishes this render through `PatSpatialSoundDocs`, at five seconds a movement.
  */
 private const val SAMPLING_RATE = 44_100
 
 /** The block the WAV is pulled in. Unrelated to the render thread's own 128-frame block. */
 private const val BLOCK = 512
 
-/** Seconds per movement. */
+/** Seconds per movement in the Gradle demo. */
 private const val MOVEMENT_SECONDS = 8.0
 
-/** Cycles per second. Two is a brisk walking pulse, so a movement is sixteen bars. */
+/** Cycles per second. Two is a brisk walking pulse, so an eight-second movement is sixteen bars. */
 private const val CPS = 2.0
+
+/** The four movements, in order, as the readout labels them. */
+private val MOVEMENTS = listOf(
+    "1. head still",
+    "2. head turning right, one turn",
+    "3. head stepping side to side",
+    "4. head leaning in and out",
+)
+
+/** A finished render: interleaved stereo at [sampleRate], plus a readout line per movement. */
+class HeadTrackedRender(val interleaved: FloatArray, val sampleRate: Int, val readout: List<String>)
+
+/**
+ * Where the head is at render frame [frame], for movements of [movementFrames] each.
+ *
+ *  1. No motion: the room's origin, level and facing -Z, which is what an untracked patSpatial does.
+ *  2. A full turn to the right over the movement.
+ *  3. Two metres each way along the room's +X, looking straight ahead throughout.
+ *  4. Straight in toward the kick and back out. -Z is forward and the kick is at 2 m, so 1.6 m of
+ *     approach closes most of the distance without arriving inside the source.
+ *
+ * Each movement starts from its own t = 0, so 2, 3 and 4 all begin at the identity pose.
+ */
+fun headTrackedPose(frame: Long, movementFrames: Long, sampleRate: Int): HeadPose {
+    val movement = (frame / movementFrames).toInt()
+    val seconds = (frame - movement * movementFrames) / sampleRate.toDouble()
+    val period = movementFrames / sampleRate.toDouble()
+    return when (movement) {
+        1 -> VirtualHead.turning(degreesPerSecond = 360.0 / period).pose(seconds)
+        2 -> VirtualHead.walking(Vec3(1f, 0f, 0f), metres = 2.0, periodSeconds = period).pose(seconds)
+        3 -> VirtualHead.walking(Vec3(0f, 0f, -1f), metres = 1.6, periodSeconds = period).pose(seconds)
+        else -> HeadPose.IDENTITY
+    }
+}
+
+/**
+ * Renders the four movements, [movementSeconds] each, and returns the audio.
+ *
+ * Three sounds at three fixed places in the room, written as three layers rather than as one
+ * pattern with placement patterns over it. `spat` is what makes them three sources -- Steam Audio
+ * aims a whole mono buffer, so a separately placed sound needs its own Dough engine -- and stacking
+ * the layers keeps each group's `az` a constant that can be read back against the readout.
+ *
+ * The ring hands blocks over in the order they were rendered, starting from frame 0, so frame n of
+ * the file is frame n of [headTrackedPose]'s timeline. Needs Steam Audio's `libphonon`
+ * (`./gradlew fetchSteamAudioNatives`).
+ */
+fun renderHeadTracked(movementSeconds: Double = MOVEMENT_SECONDS, sampleRate: Int = SAMPLING_RATE): HeadTrackedRender {
+    val kick = pat("bd ~ ~ ~")
+        .with(param("spat", "kick"), param("az", 0), param("dist", 2.0))
+    val hats = pat("hh*8")
+        .with(param("spat", "hat"), param("az", -85), param("dist", 1.2))
+    val snare = pat("~ ~ sd ~")
+        .with(param("spat", "snare"), param("az", 85), param("dist", 1.2))
+
+    val movementFrames = (movementSeconds * sampleRate).toLong()
+    val total = (movementFrames * MOVEMENTS.size).toInt()
+    val out = FloatArray(total * 2)
+    val readout = mutableListOf<String>()
+
+    val launch = patSpatial(
+        stack(kick, hats, snare),
+        cps = CPS,
+        sampleRate = sampleRate,
+        maxSources = 3,
+        listenerPoseAt = { frame -> headTrackedPose(frame, movementFrames, sampleRate) },
+    )
+    try {
+        check(launch.awaitReady()) { "the spatial room never became ready" }
+        val ctx = SynthContext(sampleRate.toFloat(), BLOCK)
+        val l = FloatArray(BLOCK)
+        val r = FloatArray(BLOCK)
+        var at = 0
+        for ((index, label) in MOVEMENTS.withIndex()) {
+            val end = ((index + 1) * movementFrames).toInt()
+            val startedAt = System.nanoTime()
+            var sumL = 0.0
+            var sumR = 0.0
+            val first = at
+            while (at < end) {
+                // The block does not exist until the render thread has made it. Waiting here is
+                // not an underrun, and the ring's own counter is what would say otherwise.
+                while (launch.room.ring.fill < BLOCK) {
+                    launch.room.failure?.let { throw IllegalStateException("render thread failed", it) }
+                    Thread.sleep(1L)
+                }
+                java.util.Arrays.fill(l, 0f)
+                java.util.Arrays.fill(r, 0f)
+                // A fresh cycle id per pull: StereoNode memoizes per id, so a repeat would be
+                // answered from its cache instead of from the ring.
+                ctx.cycleId = at.toLong() / BLOCK + 1
+                ctx.time = at.toFloat() / sampleRate
+                launch.bank.render(l, r, BLOCK, ctx)
+                val n = minOf(BLOCK, total - at)
+                for (i in 0 until n) {
+                    out[2 * (at + i)] = l[i]
+                    out[2 * (at + i) + 1] = r[i]
+                    if (at + i < end) {
+                        sumL += l[i].toDouble() * l[i]
+                        sumR += r[i].toDouble() * r[i]
+                    }
+                }
+                at += BLOCK
+            }
+            val counted = (minOf(at, end) - first).coerceAtLeast(1)
+            val rmsL = sqrt(sumL / counted)
+            val rmsR = sqrt(sumR / counted)
+            val wallSeconds = (System.nanoTime() - startedAt) / 1e9
+            readout += "  %-34s %8.5f %8.5f %6.2f %7.1fx".format(
+                label, rmsL, rmsR, rmsL / rmsR.coerceAtLeast(1e-9), movementSeconds / wallSeconds.coerceAtLeast(1e-9),
+            )
+            // Movements 2 and 3 sweep symmetrically, so their L/R averages back toward 1 -- the
+            // moving image is in the file, not in this number. Movement 4's levels are the ones
+            // to read.
+            if (abs(rmsL) < 1e-6 && abs(rmsR) < 1e-6) readout += "      (silent -- something is wrong)"
+        }
+        val underruns = launch.room.ring.underruns
+        check(underruns == 0L) { "$underruns frames of underrun: the file would not be the render" }
+    } finally {
+        launch.close()
+    }
+    return HeadTrackedRender(out, sampleRate, readout)
+}
 
 fun main() {
     val output = Path.of("build/demo/head-tracked.wav")
@@ -76,191 +197,12 @@ fun main() {
     println("OpenXR head pose -> pat -> Dough -> Steam Audio HRTF")
     println("  $SAMPLING_RATE Hz, ${MOVEMENT_SECONDS.toInt()} s of audio per movement")
     println()
+    println("  %-34s %8s %8s %6s %8s".format("movement", "rmsL", "rmsR", "L/R", "vs rt"))
 
-    // Three sounds at three fixed places in the room, written as three layers rather than as one
-    // pattern with placement patterns over it. `spat` is what makes them three sources -- Steam
-    // Audio aims a whole mono buffer, so a separately placed sound needs its own Dough engine --
-    // and stacking the layers is what keeps each group's `az` a constant that can be read back
-    // against the report rather than an alignment to reason about.
-    val kick = pat("bd ~ ~ ~")
-        .with(param("spat", "kick"), param("az", 0), param("dist", 2.0))
-    val hats = pat("hh*8")
-        .with(param("spat", "hat"), param("az", -85), param("dist", 1.2))
-    val snare = pat("~ ~ sd ~")
-        .with(param("spat", "snare"), param("az", 85), param("dist", 1.2))
-    val placed = stack(kick, hats, snare)
+    val render = renderHeadTracked()
+    render.readout.forEach(::println)
 
-    val samples = ArrayList<Float>(((MOVEMENT_SECONDS * 4 + 1) * SAMPLING_RATE).toInt() * 2)
-
-    val launch = patSpatial(
-        placed,
-        cps = CPS,
-        sampleRate = SAMPLING_RATE,
-        maxSources = 3,
-    )
-
-    try {
-        print("  booting three Dough engines and Steam Audio ... ")
-        System.out.flush()
-        check(launch.awaitReady()) { "the spatial room never became ready" }
-        println("ready")
-        println()
-        println("  %-34s %8s %8s %6s %8s".format("movement", "rmsL", "rmsR", "L/R", "vs rt"))
-
-        // Every moving head below reads this, not the wall clock: it is how far the render thread
-        // has got, which is the timeline of the blocks being spatialised. See [renderOrigin].
-        val audioClock = { (launch.room.framesRendered - renderOrigin) / SAMPLING_RATE.toDouble() }
-
-        // 1. No pose source at all: the listener sits at the room's origin, level and facing -Z,
-        //    which is exactly what an untracked patSpatial has always done.
-        record(launch, samples, "1. head still", MOVEMENT_SECONDS, driver = null)
-
-        // 2. A full turn to the right over the movement. 360/8 = 45 degrees a second.
-        record(
-            launch, samples, "2. head turning right, one turn", MOVEMENT_SECONDS,
-            driver = VirtualHead.turning(degreesPerSecond = 360.0 / MOVEMENT_SECONDS, clock = audioClock),
-        )
-
-        // 3. Two metres each way along the room's +X, looking straight ahead throughout.
-        record(
-            launch, samples, "3. head stepping side to side", MOVEMENT_SECONDS,
-            driver = VirtualHead.walking(
-                Vec3(1f, 0f, 0f), metres = 2.0, periodSeconds = MOVEMENT_SECONDS, clock = audioClock,
-            ),
-        )
-
-        // 4. Straight in toward the kick and back out. -Z is forward, and the kick is at 2 m, so
-        //    1.6 m of approach closes most of the distance without arriving inside the source.
-        record(
-            launch, samples, "4. head leaning in and out", MOVEMENT_SECONDS,
-            driver = VirtualHead.walking(
-                Vec3(0f, 0f, -1f), metres = 1.6, periodSeconds = MOVEMENT_SECONDS, clock = audioClock,
-            ),
-        )
-    } finally {
-        launch.close()
-    }
-
-    val interleaved = FloatArray(samples.size) { samples[it] }
-    WavWriter.write(output, interleaved, channelCount = 2, samplingRate = SAMPLING_RATE)
+    WavWriter.write(output, render.interleaved, channelCount = 2, samplingRate = render.sampleRate)
     println()
-    println("  wrote ${interleaved.size / 2} frames to $output -- headphones, please")
-}
-
-/**
- * Frames the render thread had produced when the current movement began.
- *
- * Every moving head in this demo reads `framesRendered - renderOrigin`, and it is worth being
- * precise about why that clock and not one of the two more obvious ones:
- *
- *  - **Not the wall clock.** A `patSpatial` render is paced by whatever drains its ring. An audio
- *    device makes it realtime; a loop that waits only for the next block to exist makes it free-run,
- *    measured here between 9.7x and 42x. A head on the wall clock would therefore complete a few
- *    degrees of its turn over a movement's worth of audio, by a factor nothing can predict.
- *  - **Not the frames pulled into the file.** The block coming out of the ring was spatialised up to
- *    a ring's depth ago -- 0.37 s at the default size. A pose applied against the pulling end
- *    therefore aims a block that was rendered before it, and the head motion in the file trails the
- *    music by that much. The render thread's own counter is the timeline of the blocks actually
- *    being aimed, so there is nothing to correct for.
- */
-private var renderOrigin: Long = 0L
-
-/**
- * Ever-increasing cycle id for every pull in this file, discards included.
- *
- * [afield.four.synth.StereoNode] memoizes per cycle id and starts its cache at -1, so a pull that
- * reuses an id -- or passes -1 -- is answered from the cache instead of generating, and on the very
- * first call that cache is zero-length. One counter that never repeats is the whole guard.
- */
-private var cycleClock: Long = 0L
-
-/**
- * Pull [seconds] of audio out of [launch] into [into], with the listener following [driver].
- *
- * The head is pumped from this loop rather than from a timer thread, which is also the shape an
- * OpenXR consumer wants, for a different reason given under [afield.four.synth.HeadPoseSource]: the
- * headset's pose is coherent inside the frame that located it.
- *
- * The tracker is closed at the end of each movement rather than left running, so there is never a
- * pair of them writing to the room's one listener.
- */
-private fun record(
-    launch: PatSpatialLaunch,
-    into: MutableList<Float>,
-    label: String,
-    seconds: Double,
-    driver: VirtualHead?,
-) {
-    // Every movement starts from where the head would be at t = 0 for its own motion, including
-    // movement 1, whose "motion" is sitting at the origin.
-    launch.setListenerPose(HeadPose.IDENTITY)
-
-    // Throw away what the ring is already holding. Those blocks were spatialised under the previous
-    // movement's pose, and recording them would put a third of a second of the last movement at the
-    // head of this one -- visible in the first run of this demo as a turn that finished at 350
-    // degrees instead of 360, short by exactly the ring's depth. One pass is enough: the render
-    // thread refills as this drains, but it cannot get more than a block or two ahead of it.
-    val ctx = SynthContext(SAMPLING_RATE.toFloat(), BLOCK)
-    val discard = FloatArray(BLOCK)
-    while (launch.room.ring.fill >= BLOCK) {
-        ctx.cycleId = ++cycleClock
-        launch.bank.render(discard, discard, BLOCK, ctx)
-    }
-
-    renderOrigin = launch.room.framesRendered
-    driver?.start()
-    val tracker = driver?.let { launch.followHead(it, hz = 0.0) }
-    val startedAt = System.nanoTime()
-
-    val l = FloatArray(BLOCK)
-    val r = FloatArray(BLOCK)
-    var sumL = 0.0
-    var sumR = 0.0
-    var counted = 0
-    var at = 0
-    val total = (seconds * SAMPLING_RATE).toInt()
-    try {
-        while (at < total) {
-            // The block does not exist until the render thread has made it. Waiting here is not
-            // an underrun, and the ring's own counter is what would say otherwise.
-            while (launch.room.ring.fill < BLOCK) {
-                launch.room.failure?.let { throw IllegalStateException("render thread failed", it) }
-                Thread.sleep(1L)
-            }
-            // Where the head is for the block about to be pulled, on the file's own clock.
-            tracker?.pump()
-            java.util.Arrays.fill(l, 0f)
-            java.util.Arrays.fill(r, 0f)
-            ctx.cycleId = ++cycleClock
-            ctx.time = at.toFloat() / SAMPLING_RATE
-            launch.bank.render(l, r, BLOCK, ctx)
-            for (i in 0 until BLOCK) {
-                into.add(l[i])
-                into.add(r[i])
-                sumL += l[i].toDouble() * l[i]
-                sumR += r[i].toDouble() * r[i]
-                counted++
-            }
-            at += BLOCK
-        }
-    } finally {
-        tracker?.close()
-    }
-
-    val wallSeconds = (System.nanoTime() - startedAt) / 1e9
-    val rmsL = sqrt(sumL / counted)
-    val rmsR = sqrt(sumR / counted)
-    println("  %-34s %8.5f %8.5f %6.2f %7.1fx".format(
-        label, rmsL, rmsR, rmsL / rmsR.coerceAtLeast(1e-9), seconds / wallSeconds.coerceAtLeast(1e-9),
-    ))
-    if (tracker != null) {
-        println("      %s".format(tracker))
-    }
-    // Movements 2 and 3 sweep symmetrically, so their windowed L/R averages back toward 1 -- the
-    // moving image is in the file, not in this number. Movement 4's levels are the ones to read.
-    if (abs(rmsL) < 1e-6 && abs(rmsR) < 1e-6) println("      (silent -- something is wrong)")
-    val underruns = launch.room.ring.underruns
-    if (underruns > 0L) {
-        println("      $underruns frames of underrun so far; this machine is oversubscribed")
-    }
+    println("  wrote ${render.interleaved.size / 2} frames to $output -- headphones, please")
 }

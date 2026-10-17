@@ -22,7 +22,7 @@ from docs_hooks import (  # noqa: E402
 )
 
 TREE = RepoTree.from_paths([
-    "src/jvmMain/kotlin/afield/Boxes.kt",
+    "src/jvmMain/kotlin/afield/document/graph/Boxes.kt",
     "tools/field_backdoor.py",
     "server/README.md",
     "public/docs_hooks.py",
@@ -38,8 +38,8 @@ def page(body: str) -> str:
 class RepoSourceHrefTests(unittest.TestCase):
     def test_a_tracked_file_under_a_linked_root_links_to_main(self):
         self.assertEqual(
-            repo_source_href("src/jvmMain/kotlin/afield/Boxes.kt", TREE),
-            (f"{BLOB}/src/jvmMain/kotlin/afield/Boxes.kt", None),
+            repo_source_href("src/jvmMain/kotlin/afield/document/graph/Boxes.kt", TREE),
+            (f"{BLOB}/src/jvmMain/kotlin/afield/document/graph/Boxes.kt", None),
         )
         for path in ("tools/field_backdoor.py", "server/README.md", "public/docs_hooks.py"):
             with self.subTest(path=path):
@@ -66,7 +66,7 @@ class RepoSourceHrefTests(unittest.TestCase):
 
     def test_what_is_not_a_repo_path_is_neither(self):
         for text in ("Boxes.kt", "afield/Boxes.kt", "tools/test_*.py", "src/{a,b}", "foo.bar(1)", "src",
-                     "/src/jvmMain/kotlin/afield/Boxes.kt", "src/jvmMain/kotlin/afield/Boxes.kt extra"):
+                     "/src/jvmMain/kotlin/afield/document/graph/Boxes.kt", "src/jvmMain/kotlin/afield/document/graph/Boxes.kt extra"):
             with self.subTest(text=text):
                 self.assertEqual(repo_source_href(text, TREE), (None, None))
 

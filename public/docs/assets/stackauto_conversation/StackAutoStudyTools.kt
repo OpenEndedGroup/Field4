@@ -1,27 +1,34 @@
-package afield.stacksl.study
+package afield.lang.stacksl.study
 
-import afield.Box
-import afield.RunsAt
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.ToolExecutionContext
-import afield.plugins
-import afield.stdlib.StudySourceEdit
-import afield.stdlib.LiveStudy
-import afield.stdlib.StudyReport
-import afield.stdlib.StudyRequest
-import afield.stdlib.StudyToolClasses
-import afield.stdlib.registerStudyTools
-import afield.stdlib.numbers
+import afield.document.graph.Box
+import afield.runtime.lifecycle.RunsAt
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.ToolExecutionContext
+import afield.runtime.lifecycle.plugins
+import afield.math.functions.StudySourceEdit
+import afield.study.source.LiveStudy
+import afield.study.evidence.StudyReport
+import afield.study.source.StudyRequest
+import afield.study.source.StudyToolClasses
+import afield.study.source.registerStudyTools
+import afield.study.ui.numbers
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
-// The tools an AI4 conversation gets when it is opened on the code of a box whose shaders have
-// `{{ stack.auto.<slot> }}` slots with programs bound. Each works on one slot's study
-// (StackAutoStudies), inside the box's own shader: the end result is what the tools show.
+/**
+ * The tools an AI4 conversation gets when it is opened on the code of a box whose shaders have
+ * `{{ stack.auto.<slot> }}` slots with programs bound.
+ *
+ * Each works on one slot's study (see [StackAutoStudies]), inside the box's own shader: the end
+ * result is what the tools show.
+ */
 
+/** How to work on a stack.auto slot, or the StackSL words guide's entries matching a search term. */
 @JsonClassDescription("Read how to work on a stack.auto slot: StackSL inside someone's own shader. Call it once, before your first edit in a conversation; with search, look a word up in the StackSL words guide instead.")
 data class StackAutoSlotGuide(
-    @JsonPropertyDescription("A word or phrase to look up in the StackSL words guide; empty returns how to work on a slot") val search: String = ""
+    /** A word or phrase to look up in the StackSL words guide; empty returns how to work on a slot. */
+    @JsonPropertyDescription("A word or phrase to look up in the StackSL words guide; empty returns how to work on a slot")
+    val search: String = ""
 )
 
 @JsonClassDescription("Read a stack.auto slot's study: its program, the host shader's lines that declare and call it (what its input and output mean — the host decides, not StackSL's own frame), where the module is drawn (the window, a render target), the compiler's problems and warnings, its numbers (knobs: index, line:column, as typed, the operand the compiler took it as, the card's name in brackets, and whether it is turned live but not kept), keys, and history. slot may be empty when the box has only one. Inspect once before editing and reuse sourceHash.")
@@ -42,7 +49,7 @@ data class PatchStackAutoSlot(override val slot: String = "", override val expec
     @JsonPropertyDescription("How many moments the sheet holds, 2..9, evenly spaced across over") val moments: Int = 4) : StackAutoSlotRequest, StudyRequest.Patch
 
 /** One number to turn: knob index from Inspect, and its new value. */
-data class StackAutoNumberEdit(override val knob: Int, override val value: Double) : afield.stdlib.NumberEdit
+data class StackAutoNumberEdit(override val knob: Int, override val value: Double) : afield.study.ui.NumberEdit
 
 @JsonClassDescription("Turn a slot's numbers live, through its uniform block — no recompile — and see the host shader with them. They stay turned but unkept unless keep is true, which writes them into the program as a new revision (then expectedRevision and expectedSourceHash are needed). Use it to try values; keep what the person likes.")
 data class SetStackAutoNumbers(override val slot: String = "", override val numbers: List<StackAutoNumberEdit>, val keep: Boolean = false,
@@ -81,7 +88,7 @@ data class AdoptStackAutoVariant(override val slot: String = "", override val ex
 interface StackAutoSlotRequest { val slot: String }
 
 /** The [StackAutoSlotGuide] tool's answer. */
-data class StackAutoGuideText(val text: String) : afield.ai.core.SummarisesForToolLog {
+data class StackAutoGuideText(val text: String) : afield.ai.tools.SummarisesForToolLog {
     override fun toolLogSummary(): String = "guide ${text.length} chars"
 }
 
@@ -117,7 +124,7 @@ private val onASlotBox: (ToolExecutionContext) -> Boolean = { ctx ->
     ctx.focus?.let { it.property == "code" && StackAutoStudies.slots(it.box).isNotEmpty() } == true
 }
 
-private val LIBRARY = "afield.stacksl.study.stackauto"
+private val LIBRARY = "afield.lang.stacksl.study.stackauto"
 
 private fun box(ctx: ToolExecutionContext): Box =
     ctx.focus?.box ?: throw IllegalStateException("stack.auto slot tools work on the box whose chat is open")

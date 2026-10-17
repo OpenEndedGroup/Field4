@@ -5,7 +5,7 @@ numbers and where they came from, and the traps found on the way.
 
 ## Why
 
-`afield.four.vision.OpticalFlow` (2026-09-25) is `VK_NV_optical_flow` only. Its constructor
+`afield.media.vision.OpticalFlow` (2026-09-25) is `VK_NV_optical_flow` only. Its constructor
 `check`s `device.supportsOpticalFlow`, which `Device.kt` sets from the NV feature struct. On macOS
 (MoltenVK), and on any GPU older than Ada, both optical-flow starting points refused to run.
 The only other flow in the tree was CPU and sparse (`opticalFlowLK` / `opticalFlowBlockMatch` in
@@ -88,7 +88,7 @@ outliers < 2%) would have failed it.
 - **`prop<SomeInterface>(x)` emits no import.** `importHelp.kt` builds its simple-name index from
   ClassGraph's `allStandardClasses`, which excludes interfaces. The box then fails with
   "Unresolved reference" in its preamble, and no Gradle gate sees it, because the library compiles.
-  The pingpong box spells `prop<afield.four.vision.OpticalFlowOperation>(flow)` in full for this
+  The pingpong box spells `prop<afield.media.vision.OpticalFlowOperation>(flow)` in full for this
   reason. Probable fix, not made (importHelp.kt was off-limits): scan `allClasses` with
   interfaces included, then re-run the corpus gate.
 - **Simple-name collisions also emit no import.** The first name, `DenseOpticalFlow`, collides

@@ -11,8 +11,8 @@ that surface exactly. In a box, `Tetgen.tetrahedralize` takes a closed `TriMesh`
 `TetMesh`. This one fills an L-shaped part built with Manifold:
 
 ```diffstatic {data-lang=kotlin}
-import afield.manifold.*
-import afield.tetgen.*
+import afield.geometry.solid.manifold.*
+import afield.geometry.mesh.tetgen.*
 
 val part = Solid.cube(80.0, 40.0, 15.0) + Solid.cube(15.0, 40.0, 70.0)   // an L, 30 triangles
 val mesh = Tetgen.tetrahedralize(part.toTriMesh(), targetEdgeLength = 5.0)
@@ -44,21 +44,21 @@ shows both.
 
 A tetrahedral mesh is awkward to look at, which is a real obstacle to trusting one. Render it
 naively and you see the boundary — the surface you already had — while everything the mesher
-actually did stays hidden. `afield.tetgen` has three answers, and the figure below is all three:
+actually did stays hidden. `afield.geometry.mesh.tetgen` has three answers, and the figure below is all three:
 `boundary()` for the skin, `filtered()` with a half-space test for a cutaway, and
 `toTriMesh(shrink = …)` for the view where each element stands slightly apart from its neighbours.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/cutaway.png" alt="three views of the same bent bracket, side by side. 'the closed surface TetGen is given - 618 triangles' is a smooth flat-shaded grey solid with two cylindrical bores, its faces so large that the flat panels are single triangles. 'half the elements, skinned - 18523 tetrahedra' is the same shape cut in half lengthways and re-drawn from the tetrahedra, so the cut face is a crust of small facets and the mesh visibly tightens into a dense collar around each bore. 'the same half, elements shrunk to 0.72 - colour is radius ratio, dark is worse' pulls every element back from its neighbours so the interior shows as separated tetrahedra, coloured yellow through teal: yellow over most of the bulk, and the darker teal concentrated in the collars around the bores and along the cut" wait="10" capture="box" open-outputs="true" padding="20" requires="tetgen,manifold" name="cutaway" embed=true}
 :::static
-import afield.manifold.*
-import afield.tetgen.*
+import afield.geometry.solid.manifold.*
+import afield.geometry.mesh.tetgen.*
 
 // An L-bracket: two blocks, three bores. Sharp edges from the L, curved surfaces from the bores.
 // This part is used for every measurement on this page.
 val part = Solid.scope {
     val foot = Solid.cube(80.0, 40.0, 15.0)
     val post = Solid.cube(15.0, 40.0, 70.0)
-    val bolts = listOf(12.0, 28.0).map {
+    val bolts = [12.0, 28.0].map {
         Solid.cylinder(40.0, 5.0, segments = 48).translated(55.0, it, -5.0)
     }
     val eye = Solid.cylinder(60.0, 6.0, segments = 48)
@@ -79,7 +79,7 @@ val half = mesh.filtered { centroid[3 * it + 1] < 20.0 }
 val quality = half.qualities()
 val colors = FloatArray(3 * half.cellCount)
 for (t in 0 until half.cellCount) {
-    val c = afield.Colormaps.sample("viridis", quality[t])
+    val c = afield.graphics.color.Colormaps.sample("viridis", quality[t])
     colors[3 * t] = c.r.toFloat(); colors[3 * t + 1] = c.g.toFloat(); colors[3 * t + 2] = c.b.toFloat()
 }
 :::fold measure it, then draw the three views
@@ -121,37 +121,33 @@ bores would not come through it round.
 `targetEdgeLength` is in the surface's own units and is translated to the only size control TetGen
 takes, a maximum element volume: `h³ / (6 sqrt 2)`, the volume of a regular tetrahedron of that edge.
 
-A coarse request gets you almost exactly what no request gets you, because **the input surface
-sets a floor that `targetEdgeLength` cannot lift**. TetGen conforms to the triangles it is given, and this bracket's
-618 triangles are already about 10 mm across; the quality refinement then subdivides from there. A
-coarse request is silently ignored, and there is no warning, so check `cellCount` rather than
-assuming the number you passed did something.
+The input surface sets the coarsest mesh you can get. TetGen keeps every triangle it is given, and
+this bracket's 618 triangles are already about 10 mm across, so asking for larger elements than that
+changes nothing, and `tetrahedralize` logs a warning saying so.
 
-Finer requests behave: cost grows roughly in proportion to the element count, about 11–14 µs per
-element, so a 36,000-element mesh takes about half a second. That is fast enough to re-mesh on every
-geometry edit, which is what `afield.tetgen` expects; nothing in it updates a mesh in place. The
-measured sweep is under [Measurements](#measurements).
+Finer requests work as expected. Cost grows roughly in proportion to the element count, about
+11–14 µs per element, so a 36,000-element mesh takes about half a second: fast enough to re-mesh on
+every geometry edit. `afield.geometry.mesh.tetgen` has no way to update a mesh in place, so re-meshing is how you
+follow an edit. The measured sweep is under [Measurements](#measurements).
 
 ## Into Kratos
 
-`structural.bodyFitted` is what this feeds. It runs a small-displacement element on the supplied mesh
-with a clamp region, gravity and a total force spread over a load region; `createBodyMesh` is the
-protocol verb and `KratosSession.openMeshAsync` the Kotlin one. `TetMesh`'s flat `positions`/`cells`
-layout matches the wire format, so nothing is reshaped in between. The mesh
-picks the element: four nodes per cell gets `SmallDisplacementElement3D4N`, ten gets
-`SmallDisplacementElement3D10N`. There is no parameter, so there is nothing for the two ends to
-disagree about.
+A mesh from here goes to Kratos's `structural.bodyFitted` solve, which runs a small-displacement
+element on it with a clamp region, gravity and a total force spread over a load region. Open it with
+`KratosSession.openMeshAsync` from Kotlin (`createBodyMesh` in the protocol); `TetMesh`'s flat
+`positions`/`cells` arrays are sent as they are. The mesh decides the element type: four nodes per
+cell gives `SmallDisplacementElement3D4N`, ten gives `SmallDisplacementElement3D10N`.
 
-That matters, because the 4-node tetrahedron is a **constant-strain** element. Its four corners
-carry a linear displacement field, so strain is one value for the whole element and cannot vary
-inside it. Bending is precisely the case where strain has to vary across a section: tension on one
-face, compression on the other. An element that cannot represent that resists it instead. It
-**locks**, and is far too stiff, converging on the right answer from below and slowly.
+Use 10-node elements for anything that bends. The 4-node tetrahedron is a constant-strain element:
+its corners carry a linear displacement field, so strain has one value across the whole element.
+Bending needs strain to vary across a section, tension on one face and compression on the other, so
+4-node elements resist it and come out far too stiff (this is called locking). They approach the
+right answer from below, and slowly.
 
-Refining is not a way out of it. On a cantilever under self-weight, the 4-node element reaches 62% of
+Refining does not fix this. On a cantilever under self-weight, the 4-node element reaches 62% of
 the Euler–Bernoulli tip deflection at 1,080 elements, still 38% short; the 10-node element is within
-5% at *thirty*. So if you are bending anything, pass `order = 2` and mesh coarsely, rather than
-passing `order = 1` and refining. `optional/kratos/VERIFICATION.md` has the per-mesh numbers, the
+5% at thirty. If you are bending anything, pass `order = 2` and mesh coarsely, rather than
+passing `order = 1` and refining. [`optional/kratos/VERIFICATION.md`](https://github.com/OpenEndedGroup/Field4/blob/main/optional/kratos/VERIFICATION.md) has the per-mesh numbers, the
 axial-extension control, and why landing just under 100% is right.
 
 ### Asking for 10-node elements
@@ -181,7 +177,7 @@ read a cell's first four indices and are unaffected.
     pointers before it returns, and `outelements()` then dereferences them. Driven from the command
     line it usually survives; driven through `tetgenio` it does not, because `outelements()`
     allocates the output node array first and the allocator hands back the block just freed — so
-    TetGen reads its own coordinates as pointers. `tools/tetgen_o2_use_after_free.py` pins that
+    TetGen reads its own coordinates as pointers. [`tools/tetgen_o2_use_after_free.py`](https://github.com/OpenEndedGroup/Field4/blob/main/tools/tetgen_o2_use_after_free.py) pins that
     outside the JVM: the same cube built twice from the same TetGen source, SIGSEGV as shipped and
     229 nodes with that one `delete[]` commented out.
 
@@ -228,15 +224,15 @@ ratio.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/quality.png" alt="two stacked output panels. The upper one plots 'radius ratio over 66489 elements' as a histogram, x axis '3 r_in / r_circ' from 0 to about 1, y axis 'elements' to 6000: a long flat tail hugging zero from 0.05 up to about 0.5, then a steep climb to a peak just under 7000 elements around 0.9, and a sharp drop in the last bin. Almost the whole population sits in the good half of the axis. The lower panel, 'the 400 worst elements, in place', draws those elements alone against black, so they hang in space as a few hundred slivers and flat wedges holding the silhouette of the bracket; they are thickest in two dense knots where the bores are and thin everywhere else. Its footer reads 1459 verts, 1584 tris, extent 80.000 x 40.000 x 70.000, chi=709, open (0 boundary loops), and 'radius ratio 0.0362 to 0.2886 - densest around the three bores, and scattered everywhere else'" wait="12" capture="box" open-outputs="true" padding="20" requires="tetgen,manifold" name="quality" embed=true}
 :::static
-import afield.manifold.*
-import afield.tetgen.*
+import afield.geometry.solid.manifold.*
+import afield.geometry.mesh.tetgen.*
 
 // The same bracket as the figure above, built in the same order — which matters more than it
 // looks like it should. See "the same solid, built in a different order" under Sizing.
 val part = Solid.scope {
     val foot = Solid.cube(80.0, 40.0, 15.0)
     val post = Solid.cube(15.0, 40.0, 70.0)
-    val bolts = listOf(12.0, 28.0).map {
+    val bolts = [12.0, 28.0].map {
         Solid.cylinder(40.0, 5.0, segments = 48).translated(55.0, it, -5.0)
     }
     val eye = Solid.cylinder(60.0, 6.0, segments = 48)
@@ -295,7 +291,8 @@ shape for Delaunay refinement, so judge a mesh by its tail rather than by its me
 
 ### Input surfaces
 
-Eight malformed surfaces, all fed to `Tetgen.tetrahedralize` on this machine:
+What `Tetgen.tetrahedralize` does with common malformed surfaces, next to a closed cube for
+comparison:
 
 <div class="field-data-table" markdown>
 
@@ -332,24 +329,9 @@ against `Solid.volume` before you trust a result.
     Two of the eight — self-intersection and degeneracy — reach TetGen's own fatal handler. Built
     normally TetGen calls `exit()` there, which inside a live Field session ends the session. The
     wrapper is compiled with `TETLIBRARY`, which makes TetGen throw an `int` instead, and
-    `field_tetgen.cpp` catches it: letting a C++ exception unwind through FFM's downcall frames
-    aborts the VM. `TetgenTest.anOpenSurfaceIsRefusedWithoutTakingTheProcessDown` guards that the
-    process survives — though note that on this build the five-faced cube it uses comes back through
-    the *empty mesh* path rather than the throw, so the two inputs that genuinely exercise the catch
-    are the self-intersecting pair and the degenerate one.
-
-    TetGen also writes to the process's stdout on that path — `Exception: All vertices are (nearly)
-    collinear (Tol = 1e-08).` — despite the `Q` (quiet) switch. The message reaching Kotlin is the
-    wrapper's; the line in your terminal is TetGen's.
-
-!!! warning "A refused surface leaves two files in your working directory"
-    Refusing a self-intersecting surface leaves `tetgen-tmpfile_skipped.node` and
-    `tetgen-tmpfile_skipped.face` in the **process's current working directory**, holding the facets
-    it gave up on. `Q` does not suppress it and `TETLIBRARY` does not redirect it. In a live Field
-    session that directory is wherever the server was launched from.
-
-    They are TetGen's own debugging aid: the pair from a failed Boolean is a Medit-readable dump of
-    exactly which facets tangled. Delete them when you are done with them.
+    [`field_tetgen.cpp`](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-tetgen/src/field_tetgen.cpp) catches it: letting a C++ exception unwind through FFM's downcall frames
+    aborts the VM. `TetgenTest.aFatalSurfaceIsRefusedWithoutTakingTheProcessDown` feeds it both
+    inputs and checks the process survives.
 
 ## Installing it
 
@@ -366,7 +348,7 @@ it straight into the wrapper. There is nothing to `find_package`: TetGen is two 
 dependencies, which is why there is a C++ wrapper here at all and why it is only 320 lines.
 
 ```diffstatic {data-lang=kotlin}
-import afield.tetgen.*
+import afield.geometry.mesh.tetgen.*
 
 TetgenLibrary.isAvailable       // cheap enough to branch on in a box
 TetgenLibrary.describe()        // "TetGen wrapper at /…/libfield_tetgen_jvm.dylib (TetGen 1.6.0)"
@@ -381,17 +363,17 @@ it. Field is AGPL-3, so the first applies and nothing further is needed. Kratos 
 behind `USE_TETGEN_NONFREE_TPL` because *Kratos* is BSD, and its published wheels contain MMG and no
 TetGen.
 
-Two things in the build are required and neither is negotiable:
+??? aside "Two build settings the wrapper depends on"
+    - **`predicates.cxx` is compiled at `-O0`.** Upstream's own makefile says so. Shewchuk's exact
+      predicates depend on their arithmetic not being reassociated or kept at extended precision in
+      a register; built optimised they return wrong signs on nearly-degenerate input. That does not
+      crash — it silently produces an invalid tetrahedralization.
+    - **`TETLIBRARY` is defined**, which is what turns `exit()` into a throwable. See "The fatal
+      path" above.
 
-- **`predicates.cxx` is compiled at `-O0`.** Upstream's own makefile says so. Shewchuk's exact
-  predicates depend on their arithmetic not being reassociated or kept at extended precision in a
-  register; built optimised they return wrong signs on nearly-degenerate input. That does not crash
-  — it silently produces an invalid tetrahedralization.
-- **`TETLIBRARY` is defined**, which is what turns `exit()` into a throwable. See the warning above.
-
-The C ABI passes results through out-parameters rather than a struct, so the Kotlin side never has
-to reproduce this compiler's field offsets and tail padding. Getting that wrong reads plausible
-garbage rather than failing, which is the same class of mistake as everything else on this page.
+    The C ABI passes results through out-parameters rather than a struct, so the Kotlin side never
+    has to reproduce this compiler's field offsets and tail padding. Getting that wrong reads
+    plausible garbage rather than failing.
 
 ## Measurements
 
@@ -401,7 +383,7 @@ a section says otherwise.
 ??? aside "Where the numbers on this page come from"
     They were produced in this repository on an Apple M-series laptop, natively, with no container,
     except the beam deflections under [Into Kratos](#into-kratos), which come from the solver
-    container. `dev_docs/TETGEN.md` has the mesher comparison that chose TetGen, including a sweep of
+    container. [`dev_docs/TETGEN.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/TETGEN.md) has the mesher comparison that chose TetGen, including a sweep of
     `StructuralMechanicsApplication` for an immersed element.
 
 ### The `quality` bound
@@ -431,7 +413,7 @@ What tightening does buy is the *bulk* of the tail. The first percentile improve
 `1.414` and makes the tail worse again.
 
 ??? aside "This disagrees with `dev_docs/TETGEN.md`, on a different body"
-    That page records that `1.2` removed the last poor element "for no measurable cost", measured on
+    [That page](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/TETGEN.md) records that `1.2` removed the last poor element "for no measurable cost", measured on
     a slab welded to a ball. On this bracket it removes nothing and costs 20%. The difference is
     the geometry: the default is a starting point, so sweep it on your own part.
 
@@ -524,8 +506,8 @@ an edge, and measures how far the result sits from the true surface.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/sharp_edge.png" alt="two stacked plots. The upper, 'the corner at (1.0, 1.5), in a 0.24 x 0.24 window', zooms far enough in to see one corner four times over: the orange 'exact, and TetGen's' outline turns a true right angle at x=1, y=1.5, while the three marched outlines cut it off short, the red h=0.4 lowest and flattest, the green h=0.2 above it, the blue h=0.1 nearly on the orange but still parting from it as it approaches the corner. Captioned 'halving h halves the bite the level set takes out of the corner'. The lower, 'worst boundary error against cell size', is a log-log plot of worst distance from the true surface against cell size h at 0.05, 0.1, 0.2 and 0.4: two straight lines of different slope, blue 'box - first order' running from about 0.003 to 0.03, green 'sphere - second order' from about 0.0002 to 0.01 and so steeper. Captioned 'log-log. The box halves when h halves; the sphere quarters.'" wait="14" capture="box" open-outputs="true" padding="20" requires="tetgen,manifold" name="sharp_edge" embed=true}
 :::static
-import afield.manifold.*
-import afield.tetgen.*
+import afield.geometry.solid.manifold.*
+import afield.geometry.mesh.tetgen.*
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -553,15 +535,15 @@ fun worstError(xyz: DoubleArray, distance: (Double, Double, Double) -> Double): 
 }
 fun coordinates(m: TriMesh) = DoubleArray(m.positions.size) { m.positions[it].toDouble() }
 :::fold march both bodies at four resolutions, then plot the corner and the convergence
-val sizes = listOf(0.4, 0.2, 0.1, 0.05)
+val sizes = [0.4, 0.2, 0.1, 0.05]
 val boxError = mutableListOf<Double>()
 val sphereError = mutableListOf<Double>()
 val corners = mutableListOf<Pair<String, List<Vec2>>>()
 
 println("h      box, worst error        sphere, worst error")
 for (h in sizes) {
-    val b = Solid.levelSet(bounds, h, parallel = true) { x, y, z -> -boxDistance(x, y, z) }
-    val s = Solid.levelSet(bounds, h, parallel = true) { x, y, z -> -sphereDistance(x, y, z) }
+    val b = Solid.levelSet(bounds, h) { x, y, z -> -boxDistance(x, y, z) }
+    val s = Solid.levelSet(bounds, h) { x, y, z -> -sphereDistance(x, y, z) }
     boxError += worstError(coordinates(b.toTriMesh()), ::boxDistance)
     sphereError += worstError(coordinates(s.toTriMesh()), ::sphereDistance)
     println("${"%.2f".format(h)}   ${"%.6f".format(boxError.last())} = " +
@@ -633,8 +615,8 @@ corner.line("exact, and TetGen's", exactCorner.first, exactCorner.second,
     color = vec(1.0, 0.72, 0.35, 1.0), thickness = 3.0)
 // Coarsest red through finest blue, explicitly. The default palette gives three of these four
 // series a warm colour and the figure becomes four orange lines.
-val byResolution = listOf(
-    vec(0.95, 0.45, 0.45, 1.0), vec(0.55, 0.95, 0.55, 1.0), vec(0.45, 0.85, 1.0, 1.0))
+val byResolution = [
+    vec(0.95, 0.45, 0.45, 1.0), vec(0.55, 0.95, 0.55, 1.0), vec(0.45, 0.85, 1.0, 1.0)]
 corners.forEachIndexed { i, (label, points) ->
     val clipped = clippedToWindow(points)
     corner.line(label, clipped.first, clipped.second, color = byResolution[i], thickness = 2.0)
@@ -672,7 +654,7 @@ TetGen's worst node lies `0.0` outside the true box, exactly, because it never r
 surface: Manifold's triangulation goes in as a piecewise-linear complex whose facet edges are
 constraints, and TetGen's output honours them. So this is the one choice on the page that is not a
 trade-off — if your part has a sharp edge and you care what happens there, the level-set route cannot
-get you closer by refining. `dev_docs/TETGEN.md` has the per-resolution errors, and the same
+get you closer by refining. [`dev_docs/TETGEN.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/TETGEN.md) has the per-resolution errors, and the same
 comparison run against MMG rather than marching cubes.
 
 ### Where precision is lost: `TriMesh` stores float32

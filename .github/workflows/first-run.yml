@@ -8,6 +8,10 @@ on:
         type: choice
         default: all
         options: [all, ubuntu-24.04, windows-latest, macos-14]
+      patchy:
+        description: Also build the optional Patchy WebAssembly editor (large Qt/Emscripten downloads)
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -33,6 +37,8 @@ jobs:
           else
             ./gradlew -p tools/first-run test
           fi
+      - name: Check pinned Patchy source patch
+        run: python tools/build_patchy_web.py --check-patch
       - name: Windows launcher build-result regression
         if: runner.os == 'Windows'
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/test_field_ps1_launcher.ps1
@@ -52,3 +58,44 @@ jobs:
           path: |
             build/first-run-evidence/
             tools/first-run/build/test-results/
+  patchy-web:
+    if: inputs.patchy
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os == 'all' && '["ubuntu-24.04","windows-latest","macos-14"]' || format('["{0}"]', inputs.os)) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build optional Patchy Web editor
+        run: python tools/build_patchy_web.py
+      - name: Verify staged site
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          import shutil
+          site = Path.home() / '.field4/patchy-web/site'
+          manifest = json.loads((site / 'field-patchy.json').read_text())
+          for name, expected in manifest['assets'].items():
+              assert hashlib.sha256((site / name).read_bytes()).hexdigest() == expected, name
+          assert manifest['revision'] == json.loads(Path('optional/patchy-web/pin.json').read_text())['revision']
+          assert manifest['iosevkaSha256'] == hashlib.sha256(Path('optional/patchy-web/iosevka-field-ui.ttf').read_bytes()).hexdigest()
+          assert b'iosevka-field-ui.ttf' in (site / 'patchy.js').read_bytes()
+          evidence = Path('build/first-run-evidence/patchy')
+          evidence.mkdir(parents=True, exist_ok=True)
+          shutil.copy2(site / 'field-patchy.json', evidence / 'field-patchy.json')
+          print('Verified', len(manifest['assets']), 'Patchy site assets')
+          PY
+      - name: Retain Patchy build manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: patchy-web-${{ matrix.os }}
+          path: build/first-run-evidence/patchy/field-patchy.json

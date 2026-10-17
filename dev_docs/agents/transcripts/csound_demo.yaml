@@ -33,7 +33,7 @@ operations:
         isCsoundRoot: true
         code: |
           // This root stays Kotlin; its `mainLanguage` makes the boxes under it Csound.
-          println(afield.csound.CsoundLibrary.describe())
+          println(afield.audio.csound.CsoundLibrary.describe())
   - create:
       box: cs_pluck
       name: "pluck"
@@ -203,7 +203,7 @@ operations:
       properties:
         code: |
           // Offline: a Field 1 kHz sine through Csound's butterlp at 500 Hz, and back.
-          val cs = afield.csound.CsoundInstance("""
+          val cs = afield.audio.csound.CsoundInstance("""
           instr Filter
             ain   chnget    "in"
             alow  butterlp  ain, 500
@@ -213,7 +213,7 @@ operations:
           val node = cs.node(audioIn = mapOf("in" to SineOsc(Param(1000f))))
           val (dry, low) = renderSignalsOffline(0.5, SineOsc(Param(1000f)), node.audioOut("low"))
           cs.close()
-
+          
           fun rms(x: FloatArray) = sqrt(x.drop(4800).sumOf { it.toDouble() * it } / (x.size - 4800))
           val expected = 1.0 / sqrt(1.0 + 16.0)    // a 2nd-order Butterworth at twice its cutoff
           println("in rms ${"%.4f".format(rms(dry))}, out rms ${"%.4f".format(rms(low))}: gain ${"%.4f".format(rms(low) / rms(dry))}, Butterworth says ${"%.4f".format(expected)}")
@@ -227,7 +227,7 @@ operations:
       properties:
         code: |
           // A wavetable computed in Kotlin, copied into ftable 1, played by poscil, and read back.
-          val cs = afield.csound.CsoundInstance("""
+          val cs = afield.audio.csound.CsoundInstance("""
           giWave  ftgen  1, 0, 4096, 10, 1
           instr Play
             asig  poscil  0.3, 220, giWave

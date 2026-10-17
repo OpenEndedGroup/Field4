@@ -23,7 +23,7 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
 
           prop<Window>(window)
           prop<Renderer>(renderer)
@@ -40,16 +40,6 @@ operations:
       frame: { x: 260.0, y: 40.0, w: 240.0, h: 50.0 }
       properties:
         code: |
-          import afield.four.synth.PatSynthLaunch
-          import afield.four.synth.PatWave
-          import afield.four.synth.audioEngine
-          import afield.four.synth.logBands
-          import afield.four.synth.pat
-          import afield.four.synth.patSynth
-          import afield.four.synth.patVoice
-          import afield.four.synth.snapshot
-          import afield.four.synth.stack
-
           // The numbers the compute box reads. An inherited property rather than a global, so the
           // box graph is what says which shader is listening to which pattern.
           prop<DoubleArray>(bandEnergy)
@@ -104,20 +94,18 @@ operations:
           };
 
           layout(push_constant) uniform dat {
+              // Written once: x = random phase, y = thickness variation per particle.
               Seeds seeds;
-              // written once: one random phase and radius per particle
+              // This frame's output: xy = position, z = ring index, w = particle size.
               Out outData;
-              // this frame's positions, read by the draw box
+              // Elapsed seconds.
               float time;
-              // seconds
+              // Band energies: 70 Hz kick, 340 Hz, 1.6 kHz stab harmonics, 8 kHz hats.
               float band0;
-              // 70 Hz — the kick
               float band1;
-              // 340 Hz
               float band2;
-              // 1.6 kHz — the square stab's harmonics
               float band3;
-              // 8 kHz — the hats
+              // Valid particle count; the final workgroup may include padding.
               uint count;
           } pc;
 
@@ -148,8 +136,6 @@ operations:
               pc.outData.a[i].w = 0.45 + 1.8 * energy;
           }
         code: |
-          import afield.four.buffers.FrameBufferGroup
-
           val N = 24000
           // How hard each band energy pushes its ring (radius, thickness, particle size).
           val gain = 2.4
@@ -242,7 +228,7 @@ operations:
           layout(location = 0) in vec2 tc;
           layout(location = 1) in float ring;
 
-          // One colour per ring, and these four are `afield.visualization.signalPalette` in its own
+          // One colour per ring, and these four are `afield.ui.visualization.signalPalette` in its own
           // order, so a ring here and a trace on a showSignals plot of the same band are the same
           // colour. #7ad9ff #ff9e4a #8fff9a #ffe066.
           const vec3[4] tint = {

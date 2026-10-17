@@ -1,0 +1,277 @@
+{
+  "date": "2026-10-15",
+  "branch": "codex/box-code-revision-pilot",
+  "base_commit": "c483d75fd8061e4e3853f54fa79bc9ebe6577fc9",
+  "inventory": {
+    "occurrences": 8083,
+    "review_occurrences": 3560,
+    "review_groups": 577,
+    "roles": {
+      "source": 2222,
+      "inline-fallback": 497,
+      "docs-fence": 2073,
+      "document-mirror": 78,
+      "capture-driver": 81,
+      "generated": 3062,
+      "history": 1,
+      "generated-reference": 69
+    },
+    "review_languages": {
+      "kotlin": 3122,
+      "glsl": 428,
+      "kotlinjs": 10
+    },
+    "review_flags": {
+      "check-lifecycle-and-live-edits": 323,
+      "needs-graph-context": 649,
+      "review-raw-property-access": 38,
+      "preserve-fragments": 18
+    },
+    "findings": 44,
+    "excluded_files": 126
+  },
+  "distinct_review_bodies": 2895,
+  "review_lines": 93850,
+  "checks": {
+    "drawing_original": {
+      "assertion_output": [
+        "PILOT: current=8 captured=5; animation advanced"
+      ],
+      "active_jobs_before_rerun": 1,
+      "active_jobs_after_rerun": 1,
+      "live_running_after_stop": 0
+    },
+    "drawing_candidate": {
+      "assertion_output": [
+        "PILOT: current=8 captured=8; animation advanced"
+      ],
+      "active_jobs_before_rerun": 1,
+      "active_jobs_after_rerun": 1,
+      "live_running_after_stop": 0
+    },
+    "triangle": {
+      "real_shader_pipeline": true,
+      "render_modules_before_after": [
+        1,
+        1
+      ],
+      "rerun_pixels_identical": true
+    },
+    "context_original": {
+      "ok": true,
+      "output": [
+        [
+          {
+            "uid": "agent_context_parent",
+            "line": 2,
+            "html": "parent context ready"
+          },
+          {
+            "uid": "agent_context_child",
+            "line": 2,
+            "html": "child inherited: value from parent"
+          }
+        ]
+      ]
+    },
+    "context_qualifier_only_rejected": {
+      "ok": true,
+      "output": [
+        [
+          {
+            "uid": "agent_context_parent",
+            "line": 2,
+            "html": "parent context ready"
+          },
+          {
+            "uid": "agent_context_child",
+            "line": 2,
+            "html": "child inherited: value from parent"
+          }
+        ]
+      ],
+      "accepted": false,
+      "reason": "Retained setPropertyRaw and a nullable string-based lookup; replaced with typed property inheritance."
+    },
+    "context_revised": {
+      "ok": true,
+      "api": "prop<String>(greeting) assignment; direct inherited read",
+      "rerun_ok": true,
+      "parent_edit_asserted_in_child": true,
+      "output": [
+        [
+          {
+            "uid": "agent_context_parent",
+            "line": 2,
+            "html": "parent context ready"
+          },
+          {
+            "uid": "agent_context_child",
+            "line": 1,
+            "html": "child inherited: value from parent"
+          }
+        ],
+        [
+          {
+            "uid": "agent_context_parent",
+            "kind": "ok",
+            "line": 1,
+            "html": "ok"
+          },
+          {
+            "uid": "agent_context_child",
+            "line": 2,
+            "html": "child inherited edit: edited in parent"
+          },
+          {
+            "uid": "agent_context_parent",
+            "kind": "ok",
+            "line": 1,
+            "html": "ok"
+          }
+        ]
+      ],
+      "raw_results": "build/box-code-revision/pilot/context_typed_results.json"
+    }
+  },
+  "sources": {
+    "dev_docs/agents/transcripts/two_box_context.yaml": {
+      "base_sha256": "6f809e77f20fdd59ee2c8b05eeb30681a887b16e28678856fcfc438b26c21b66",
+      "current_sha256": "5f0b49521410505ccffc4d47ec937eb76fd4ce87caad1c51052d26bf297a2d5b"
+    },
+    "templates/first-steps/first_steps_drawing_code_.kt": {
+      "base_sha256": "88f6f3fe9cae36eea18bc8824b394df4929490ccaf86e223759eb67419a1d73a",
+      "current_sha256": "88f6f3fe9cae36eea18bc8824b394df4929490ccaf86e223759eb67419a1d73a"
+    },
+    "dev_docs/agents/transcripts/afield_four_traditional_triangle.yaml": {
+      "base_sha256": "1225b991e667abeddc799ba05955ee0aa379828cebd7d2b8581275bd4040c9ae",
+      "current_sha256": "1225b991e667abeddc799ba05955ee0aa379828cebd7d2b8581275bd4040c9ae"
+    }
+  },
+  "captures": {
+    "drawing_original.png": {
+      "sha256": "88902a436f8ee5fd39cdeceb85393df1a9a2645ef0c2bc81b83446d0741f6333",
+      "pixels": [
+        1234,
+        686
+      ]
+    },
+    "drawing_candidate.png": {
+      "sha256": "4479fb5a0118b9151b94d2516f3adb3c90374e56b207ab34b2176feabb17f105",
+      "pixels": [
+        1234,
+        686
+      ]
+    },
+    "triangle.png": {
+      "sha256": "f69c121d3a222b5b6145204b64b3d65428e0d54f392bf6ba78f8e68ac93e9edc",
+      "pixels": [
+        4112,
+        2524
+      ]
+    }
+  },
+  "verification": {
+    "kotlin_compile": "passed",
+    "selected_transcript_guard": "passed after typed-property revision",
+    "transcript_layouts": "passed",
+    "materialization": "passed after typed-property revision, 224 documents",
+    "census_tests": "8 passed",
+    "corpus_count_tests": "5 passed after generated table refresh",
+    "python_suite_initial": {
+      "exit_code": 1,
+      "passed": 1213,
+      "failed": 10,
+      "skipped": 35,
+      "count_failure_subsequently_repaired": true,
+      "unresolved_failures": 9,
+      "full_log": "/tmp/box-code-pilot-python-tests.log",
+      "unresolved_failures_after_tooling_repair": 0
+    },
+    "python_suite": {
+      "exit_code": 0,
+      "passed": 1264,
+      "run": 1268,
+      "failed": 0,
+      "skipped": 4,
+      "command": "./gradlew checkPythonTools",
+      "standalone_parser_tests": 26,
+      "refactor_integration_tests_exercised": 31,
+      "skips": [
+        "built docs site absent",
+        "optional submodules absent (two tests)",
+        "Linux native preflight"
+      ],
+      "full_log": "build/box-code-revision/pilot/tooling_python_gate.log"
+    },
+    "toolchain_repair": {
+      "compile": "passed",
+      "graalvm_version": "25.4.4.1.1",
+      "java_runtime_version": "25.0.4.1.1+1-jvmci-25.4-b23",
+      "home": "/Users/marc/.field4/toolchains/graalvm-community-25.4.4.1.1+1.1/Contents/Home",
+      "forced_old_jdk": "rejected 25.0.2 as a mismatch",
+      "windows_execution_verified": false,
+      "compile_log": "build/box-code-revision/pilot/tooling_pinned_compile.log",
+      "rejection_log": "build/box-code-revision/pilot/tooling_old_jdk_rejected.log"
+    },
+    "reference_detectors": {
+      "dead_anchors": 0,
+      "anchor_links_checked": 5318,
+      "overviews_matching": 424,
+      "overviews_mismatching": 0
+    }
+  },
+  "baseline_diagnostics": {
+    "reference_roots": "list regex consumes beyond the new one-line SOURCE_ROOTS declaration",
+    "anchors": "one reported #custom:linkName anchor on visualization.md",
+    "kdoc_mirror": [
+      "graphics.md / SolidGradient.kt: 93 source lines, 98 published",
+      "workspace.md / keyframeBrowsing.kt: one line differs"
+    ]
+  },
+  "handoffs": {
+    "first_steps": "d6dc958a",
+    "baseline_verification": "33e71cfd",
+    "baseline_verification_status": "closed after full tooling repair"
+  },
+  "baseline_failure_sources_recorded_before_repairs": {
+    "tools/check_staged_generated_artifacts.py": {
+      "identical_to_base": true,
+      "sha256": "1be28025115d69bc3df921aeb3ad8a46840e8e381f8ac9cefb5dfc3a092c3c6e"
+    },
+    "tools/test_check_staged_generated_artifacts.py": {
+      "identical_to_base": true,
+      "sha256": "0116155e00c3828138902826bbd926fba64395874f64412cad77b24b53723474"
+    },
+    "src/jvmMain/kotlin/afield/tools/docs/StdlibReferenceGenerator.kt": {
+      "identical_to_base": true,
+      "sha256": "19247218b68ab7bd4695f6d1778d8b0467ad5ad0ff817848919178f2b3811807"
+    },
+    "tools/docs_voice/check_anchors.py": {
+      "identical_to_base": true,
+      "sha256": "4837bd43efda16e59edc21207fc2bb85d25d08c09d18eb33a57511fe9ed805e2"
+    },
+    "tools/docs_voice/check_kdoc_mirror.py": {
+      "identical_to_base": true,
+      "sha256": "0211dbf246a87d7f45d782c6c7b8c8f0a9f2c452d546d394f4cc0b4e0786b7f8"
+    },
+    "public/docs/reference/visualization.md": {
+      "identical_to_base": true,
+      "sha256": "460aa489390e9f7b3e4457c0276d5cc669a4c6eeed3c11c189089a5aa47fd994"
+    },
+    "public/docs/reference/graphics.md": {
+      "identical_to_base": true,
+      "sha256": "85b9d9f9d1222a15fca1283fcb31c8e848b971018e703a6ebfa535b5c887fd3e"
+    },
+    "public/docs/reference/workspace.md": {
+      "identical_to_base": true,
+      "sha256": "23661a4a091384875d99b0128899bdda07da856c81d8448d29203069215ae171"
+    }
+  },
+  "prior_verification": {
+    "refactor_landing_python": "1248 passed /1252 run,4 skipped",
+    "refactor_landing_log": "batch-20261015-123001-301197.log",
+    "following_catalog_landing_log": "batch-20261015-124844-793465.log",
+    "gap": "following reference catalog change did not select checkPythonTools; selector repaired"
+  }
+}

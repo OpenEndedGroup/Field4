@@ -1,26 +1,26 @@
 package afield.examples.ceres
 
-import afield.stdlib.LeastSquaresOptions
-import afield.stdlib.Vec3
-import afield.stdlib.ceres.CachedCeresSolvers
-import afield.stdlib.ceres.CeresLinearSolver
-import afield.stdlib.ceres.FfmCeresBackend
-import afield.stdlib.ceres.PointCloud
-import afield.stdlib.ceres.SolveOptions
-import afield.stdlib.ceres.SolveRequest
-import afield.stdlib.polytope.CeresRealization
-import afield.stdlib.polytope.CeresRelaxationOptions
-import afield.stdlib.polytope.PolyhedralObject
-import afield.stdlib.polytope.Realization3
-import afield.stdlib.polytope.RealizationProblem
-import afield.stdlib.polytope.RelaxationPlan
-import afield.stdlib.polytope.ceresRealizationAvailable
-import afield.stdlib.polytope.conway
-import afield.stdlib.polytope.geometryDiagnostics
-import afield.stdlib.polytope.normalize
-import afield.stdlib.polytope.relaxWithCeres
-import afield.stdlib.polytope.report
-import afield.stdlib.polytope.weightedResidualRms
+import afield.math.optimization.LeastSquaresOptions
+import afield.math.linalg.Vec3
+import afield.math.optimization.ceres.CachedCeresSolvers
+import afield.math.optimization.ceres.CeresLinearSolver
+import afield.math.optimization.ceres.FfmCeresBackend
+import afield.math.optimization.ceres.PointCloud
+import afield.math.optimization.ceres.SolveOptions
+import afield.math.optimization.ceres.SolveRequest
+import afield.geometry.polytope.CeresRealization
+import afield.geometry.polytope.CeresRelaxationOptions
+import afield.geometry.polytope.PolyhedralObject
+import afield.geometry.polytope.Realization3
+import afield.geometry.polytope.RealizationProblem
+import afield.geometry.polytope.RelaxationPlan
+import afield.geometry.polytope.ceresRealizationAvailable
+import afield.geometry.polytope.conway
+import afield.geometry.polytope.geometryDiagnostics
+import afield.geometry.polytope.normalize
+import afield.geometry.polytope.relaxWithCeres
+import afield.geometry.polytope.report
+import afield.geometry.polytope.weightedResidualRms
 import kotlin.math.sin
 
 /**

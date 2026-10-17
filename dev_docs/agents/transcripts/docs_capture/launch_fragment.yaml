@@ -1,0 +1,20 @@
+name: launch_fragment
+description: A box whose loop block running_code.md launches with Alt+1, to show the margin marker.
+operations:
+  - create:
+      box: launch_fragment
+      name: launch a fragment
+      frame: { x: 60.0, y: 60.0, w: 260.0, h: 60.0 }
+      properties:
+        code: |
+          var count = 0
+          println("this line is not part of the fragment")
+
+          loop {
+              count++
+              print(count)
+              true
+          }
+  - execute: { box: launch_fragment, property: code }
+  - wait:
+      millis: 1000

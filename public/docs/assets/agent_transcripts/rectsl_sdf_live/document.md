@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. window + renderer
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rectsl_sdf_renderer" index="0" -->
 
 ```edn [field-box id="rectsl_sdf_renderer" role="properties"]
-{"id" "rectsl_sdf_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["rectsl_sdf_live"] "properties" {"children" #{#afield/box "rectsl_sdf_live"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_renderer_code_.kt" "lines" 15 "characters" 265 "sha256" "32da6471a66e7ad90d960f58a6b1d0ff82f0555a696130e9b59d909d50953d1c"}]}
+{"id" "rectsl_sdf_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["rectsl_sdf_live"] "properties" {"children" #{#afield/box "rectsl_sdf_live"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_renderer_code_.kt" "lines" 15 "characters" 276 "sha256" "119c36f12add916d6de62dab2dc8266cee2c018890c2497f264f39c57c4848e6"}]}
 ```
 
 ```kotlin [field-property box="rectsl_sdf_renderer" name="code" path="rectsl_sdf_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -56,7 +56,7 @@ motion blur — in exchange for fill, material and z order, because `min` is
 union and a union has no layers.
 
 ```edn [field-box id="rectsl_sdf_live" role="properties"]
-{"id" "rectsl_sdf_live" "index" 1 "name" "rectsl scene as a distance field" "parents" ["root" "rectsl_sdf_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rectsl_sdf_renderer"} "name" "rectsl scene as a distance field" "_tombstone" false "frame" #afield/rect [300.0 140.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_live_code_.kt" "lines" 96 "characters" 4178 "sha256" "3a648fe9b1881cabf9cef4d50f82f7050f40b3ff122577c78df5ed9b5648a412"}]}
+{"id" "rectsl_sdf_live" "index" 1 "name" "rectsl scene as a distance field" "parents" ["root" "rectsl_sdf_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rectsl_sdf_renderer"} "name" "rectsl scene as a distance field" "_tombstone" false "frame" #afield/rect [300.0 140.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_live_code_.kt" "lines" 96 "characters" 4210 "sha256" "3819f648b1342a04edae716383e2925abcdc79bf34db2bd9f284c4540a6158ef"}]}
 ```
 
 ```kotlin [field-property box="rectsl_sdf_live" name="code" path="rectsl_sdf_live_code_.kt"]
@@ -74,14 +74,14 @@ union and a union has no layers.
 // blending *between* rectangles, boolean ops, per-pixel normals and sub-frame
 // motion blur — in exchange for fill, material and z order, because `min` is
 // union and a union has no layers.
-import afield.four.modules.Mesh
-import afield.four.modules.Module
-import afield.four.modules.parameters
-import afield.four.modules.pointer
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.RectSLGlsl
-import afield.rectsl.RectSLSdfLook
-import afield.rectsl.RectSLSdfShader
+import afield.graphics.render.Mesh
+import afield.graphics.render.Module
+import afield.graphics.render.parameters
+import afield.graphics.render.pointer
+import afield.lang.rectsl.RectAnimationOracle
+import afield.lang.rectsl.RectSLGlsl
+import afield.lang.rectsl.RectSLSdfLook
+import afield.lang.rectsl.RectSLSdfShader
 
 // 1. An ordinary RectSL scene. Nothing here is SDF-specific: one animated
 //    template, six copies from `array`. Edit it and re-run.

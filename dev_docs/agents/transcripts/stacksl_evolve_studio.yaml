@@ -1,0 +1,34 @@
+name: stacksl_evolve_studio
+description: >
+  A StackSL search toward a picture that the AI4 chat steers. One box keeps a StackSLEvolution on
+  itself and registers an agentExtension over it: tools to run generations, look at the leaders,
+  propose programs, ask the fast model for a round of edits (the watchmaker), take a gradient step on
+  a leader's numbers, change the metric and population, and breed with saved populations; context
+  describing the search; /population and /sheet; and the population as branch state, so rewinding
+  the chat rewinds the search. Opening the document renders only the target; the search starts at
+  the first evolve_step. The transcript only runs the box: searching needs a person (or
+  `agent-task --chat-box Evolve`) and an AI provider.
+operations:
+  - create:
+      box: stacksl_evolve_studio
+      name: "Evolve"
+      frame: { x: 80.0, y: 80.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // A StackSL search toward a picture, steered from this box's AI panel. Ask, for instance:
+          // "evolve toward the target, and bring the watchmaker in when it stalls".
+          // The chat runs generations (evolve_step), looks at the leaders (evolve_look), proposes programs
+          // (evolve_propose), asks the fast model for a round of edits (evolve_watchmaker), takes a gradient
+          // step on a leader's numbers (evolve_fit) and changes the metric or the population (evolve_configure).
+          // The population belongs to the conversation: rewind the chat and the search goes back with it, and
+          // evolve_crossbreed breeds with any population the conversation has been in, on any branch.
+          // /population and /sheet show the leaders. For your own picture:
+          //   StackSLTarget.of("logo", imgFromFile("/path/to/logo.png"))
+          val evolution = stackSLEvolution(StackSLTargets.rings(32))
+          stackSLEvolveStudio(evolution)
+          display("ai-chat", afield.ai.conversation.AiBoxConversation.read(thisBox))
+  - execute:
+      box: stacksl_evolve_studio
+      property: code
+  - wait:
+      millis: 300

@@ -33,16 +33,16 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 480.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.synth.Param
-          import afield.four.synth.SineOsc
-          import afield.stdlib.noir.audioai.FieldAudioClient
-          import afield.stdlib.noir.audioai.FieldAudioTransportException
-          import afield.stdlib.noir.audioai.RenderedAudioFile
-          import afield.stdlib.noir.audioai.analyzeRenderedAudio
-          import afield.stdlib.noir.audioai.renderDoughWav
+          import afield.audio.synth.Param
+          import afield.audio.synth.SineOsc
+          import afield.audio.ai.FieldAudioClient
+          import afield.audio.ai.FieldAudioTransportException
+          import afield.audio.ai.RenderedAudioFile
+          import afield.audio.ai.analyzeRenderedAudio
+          import afield.audio.ai.renderDoughWav
           import java.nio.file.Path
           import java.util.concurrent.CompletionException
-
+          
           // A real render: Dough writes real RIFF bytes, faster than real time.
           val rendered = renderDoughWav(
               Path.of(System.getProperty("java.io.tmpdir"), "field-audio-demo", "tone.wav"),
@@ -60,11 +60,11 @@ operations:
               "rendered ${render.path} · ${render.channels}ch @ ${render.sampleRate} Hz · " +
                   "${"%.3f".format(render.durationSeconds)} s",
           )
-
+          
           // The default address. Nothing is listening on it unless you started the Python service.
           val client = FieldAudioClient()
           display("service", "asking ${client.baseUri}")
-
+          
           client.analyzeRenderedAudio(render)
               .thenAccept { completed ->
                   display(
@@ -87,7 +87,6 @@ operations:
                   )
                   null
               }
-
   - execute: { box: audio_absent_service }
   # The refusal lands on the client's own executor a few milliseconds after the fragment returns,
   # so give the `exceptionally` branch time to display before anything asks for the output.

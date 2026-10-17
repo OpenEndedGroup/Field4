@@ -1,6 +1,6 @@
 import afield.examples.chain.PhotoToSolidChain
-import afield.manifold.Solid
-import afield.manifold.toSolid
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
 
 val mount = PhotoToSolidChain.mount()
 println(mount.summary())

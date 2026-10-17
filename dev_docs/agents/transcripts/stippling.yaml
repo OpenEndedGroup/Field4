@@ -1,0 +1,81 @@
+name: stippling
+description: >
+  Stippling an image with `stipple` / `Stippler` (afield.geometry.spatial, stippling.kt): exactly N dots that
+  follow the picture's tone and keep an even, blue-noise spacing from one another.
+
+  `stipple_hello` is the whole idea in two statements: draw a shaded sphere as an `Img`, then
+  `showImg(stipplesToImg(sphere.stipple(6000, invert = true), 480, 360))`. `stipple_relaxing` shows the
+  algorithm working. It draws the stratified sample the stippler starts from, then
+  takes one Lloyd step per frame (Voronoi cells by distance transform, each dot to its cell's
+  weighted centroid) beside it, plotting how far the dots moved. The start already has the right
+  number of dots in every region and rough spacing; relaxation keeps the counts and evens out the
+  spacing, then stops at a fixed point.
+
+  Pure CPU, no Window and no Renderer: the dots are rasterised by `stipplesToImg` and shown with
+  `showImg` (a PNG into `display`), and the plot is `showSignals`. The PNG matters for the second
+  box, which redraws every frame: the same 6000 dots through `lines(stipplesToFLine(...))` are 15 MB
+  of SVG per redraw, against 95 kB of PNG. The first box is executed; the second is a `loop { }`,
+  so it is launched, given 90 real runloop frames, and stopped. Executed end to end by
+  examples.demo-transcript.exec.
+operations:
+  - create:
+      box: stipple_hello
+      name: stipple — a sphere in 6000 dots
+      frame: { x: 80.0, y: 80.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // A shaded sphere on a white floor, as an Img: lit from up and to the left (y grows down).
+          val sphere = Img.generate(480, 360) { x, y ->
+              val dx = (x - 220) / 140.0
+              val dy = (y - 170) / 140.0
+              val r2 = dx * dx + dy * dy
+              val tone = if (r2 < 1.0) 0.1 + 0.9 * max(0.0, -0.45 * dx - 0.55 * dy + 0.7 * sqrt(1.0 - r2))
+                         else 1.0 - 0.6 * exp(-2.0 * ((x - 280) / 150.0).pow(2) - 2.0 * ((y - 318) / 30.0).pow(2))
+              tone.toFloat()
+          }
+
+          // 6000 dots wherever it is dark (`invert`, as ink on paper), evenly spaced rather than clumped.
+          val dots = sphere.stipple(6000, invert = true)
+          showImg(stipplesToImg(dots, sphere.width, sphere.height))
+
+          // The same dots as geometry, for a plotter or an SVG: lines(stipplesToFLine(dots, size = 0.4))
+
+          // Try this: 2000 or 20000 dots; `densityPower = 2f` for harder contrast (point density goes
+          // as tone^densityPower); drop `invert` to stipple the light instead of the shadow.
+
+  - create:
+      box: stipple_relaxing
+      name: Stippler — watching Lloyd relaxation settle
+      frame: { x: 80.0, y: 640.0, w: 370.0, h: 100.0 }
+      properties:
+        code: |
+          // Launch it (Alt-R). The same sphere as `stipple_hello`.
+          val sphere = Img.generate(480, 360) { x, y ->
+              val dx = (x - 220) / 140.0
+              val dy = (y - 170) / 140.0
+              val r2 = dx * dx + dy * dy
+              val tone = if (r2 < 1.0) 0.1 + 0.9 * max(0.0, -0.45 * dx - 0.55 * dy + 0.7 * sqrt(1.0 - r2))
+                         else 1.0 - 0.6 * exp(-2.0 * ((x - 280) / 150.0).pow(2) - 2.0 * ((y - 318) / 30.0).pow(2))
+              tone.toFloat()
+          }
+
+          // Where the stippler starts: one dot per equal share of the darkness along a Hilbert curve,
+          // so every region already has the right number of dots. Their spacing is rough, and evening
+          // it out is what relaxation is for.
+          val s = Stippler(sphere, 6000, invert = true)
+          showImg(stipplesToImg(s.points(), 480, 360), channel = "start")
+
+          // One Lloyd step per frame, until no dot moves.
+          val moved = mutableListOf<Double>()
+          loop {
+              if (moved.lastOrNull() == 0.0) return@loop
+              moved += s.step()
+              showImg(stipplesToImg(s.points(), 480, 360), channel = "relaxed")
+              showSignals("mean movement (px)" to moved, title = "Lloyd step ${s.iterations}", xTitle = "step")
+          }
+
+  - execute: { box: stipple_hello, property: code }
+  - launch: { box: stipple_relaxing, property: code }
+  - await: { wait: pending }
+  - wait: { frames: 90 }
+  - stop: { box: stipple_relaxing }

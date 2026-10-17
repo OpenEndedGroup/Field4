@@ -1,10 +1,13 @@
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
-import afield.four.buffers.FrameBufferGroup
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
+import afield.graphics.vulkan.buffers.FrameBufferGroup
 import java.nio.*
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*start*/
@@ -50,23 +53,23 @@ fun BufferParameters.asBonds(): Bonds =
     buffer.asBonds()
 /*end*/
 /*graphics-pc-structure:spins*/ var Structure.spins by Structure.FromStructure<Any>()
-/*graphics-pc-binding:spins*/ var Mesh.spins by Mesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*graphics-pc-binding-group:spins*/ var MeshGroup.spins by MeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*graphics-pc-binding:spins*/ var Mesh.spins by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:spins*/ var MeshGroup.spins by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-structure:jRight*/ var Structure.jRight by Structure.FromStructure<Any>()
-/*graphics-pc-binding:jRight*/ var Mesh.jRight by Mesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*graphics-pc-binding-group:jRight*/ var MeshGroup.jRight by MeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*graphics-pc-binding:jRight*/ var Mesh.jRight by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:jRight*/ var MeshGroup.jRight by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-structure:jDown*/ var Structure.jDown by Structure.FromStructure<Any>()
-/*graphics-pc-binding:jDown*/ var Mesh.jDown by Mesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*graphics-pc-binding-group:jDown*/ var MeshGroup.jDown by MeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*graphics-pc-binding:jDown*/ var Mesh.jDown by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:jDown*/ var MeshGroup.jDown by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-structure:L*/ var Structure.L by Structure.FromStructure<Any>()
-/*graphics-pc-binding:L*/ var Mesh.L by Mesh.BoundFromStructure<UInt>()
-/*graphics-pc-binding-group:L*/ var MeshGroup.L by MeshGroup.BoundFromStructure<UInt>()
+/*graphics-pc-binding:L*/ var Mesh.L by Mesh.BoundFromStructure<Any>()
+/*graphics-pc-binding-group:L*/ var MeshGroup.L by MeshGroup.BoundFromStructure<Any>()
 /*graphics-pc-structure:aspect*/ var Structure.aspect by Structure.FromStructure<Any>()
 /*graphics-pc-binding:aspect*/ var Mesh.aspect by Mesh.BoundFromStructure<Float>()
 /*graphics-pc-binding-group:aspect*/ var MeshGroup.aspect by MeshGroup.BoundFromStructure<Float>()
 /*graphics-pc-structure:showFrustration*/ var Structure.showFrustration by Structure.FromStructure<Any>()
-/*graphics-pc-binding:showFrustration*/ var Mesh.showFrustration by Mesh.BoundFromStructure<UInt>()
-/*graphics-pc-binding-group:showFrustration*/ var MeshGroup.showFrustration by MeshGroup.BoundFromStructure<UInt>()
+/*graphics-pc-binding:showFrustration*/ var Mesh.showFrustration by Mesh.BoundFromStructure<Any>()
+/*graphics-pc-binding-group:showFrustration*/ var MeshGroup.showFrustration by MeshGroup.BoundFromStructure<Any>()
 var Box.sgL by Inheritance<Int>() /*from:sg_update*/ /**/
 val Once.sgL by Onceing<Int>() /*from:sg_update*/ /**/
 val Why.sgL by Whying() /*from:sg_update*/ /**/

@@ -1,6 +1,6 @@
 package afield.examples
 
-import afield.thisSessionInfo
+import afield.app.server.thisSessionInfo
 import java.io.File
 import kotlin.system.exitProcess
 

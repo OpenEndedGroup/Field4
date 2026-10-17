@@ -1,13 +1,13 @@
 package afield.examples
 
-import afield.Box
-import afield.OperationTranscript
-import afield.Rect
-import afield.SavingContext
-import afield.SessionInformation
-import afield.box
-import afield.isTrue
-import afield.thisSessionInfo
+import afield.document.graph.Box
+import afield.tools.automation.OperationTranscript
+import afield.app.protocol.Rect
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.document.graph.box
+import afield.document.graph.isTrue
+import afield.app.server.thisSessionInfo
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
@@ -94,7 +94,7 @@ object OperationTranscriptMacroSmokeTest {
             val parent = box("transcript_parent", createIfMissing = false)
             val child = box("transcript_child", createIfMissing = false)
             require(parent.name == "Transcript Parent") { parent.name }
-            require(child.code == """println("child")""") { child.code }
+            require(child.code == """println("child")""") { child.code.orEmpty() }
             require(child in parent.children && parent in child.parents) { "Expected parent/child connection" }
             require(child.frame == Rect(240.0, 60.0, 200.0, 100.0)) { "Unexpected child frame: ${child.frame}" }
 

@@ -1,16 +1,16 @@
 package afield.examples.four
 
-import afield.Box
-import afield.four.Renderer
-import afield.four.modules.Module
-import afield.four.modules.parameters
-import afield.four.modules.pointer
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.preamble
-import afield.stdlib._fragment
-import afield.stdlib.attachShader
-import afield.stdlib.reloadShader
+import afield.document.graph.Box
+import afield.graphics.vulkan.Renderer
+import afield.graphics.render.Module
+import afield.graphics.render.parameters
+import afield.graphics.render.pointer
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.document.graph.preamble
+import afield.graphics.shader._fragment
+import afield.graphics.shader.attachShader
+import afield.graphics.shader.reloadShader
 import kotlin.system.exitProcess
 
 /*

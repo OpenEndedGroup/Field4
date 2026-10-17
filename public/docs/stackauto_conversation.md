@@ -18,6 +18,11 @@ That is the recorded document running in Field, two cycles of its window capture
 is the same kind of conversation as [Talking a shader into existence](stacksl_conversation.md), with
 the StackSL living inside your own graphics code instead of in a window of its own.
 
+??? aside "Agents: listing spelling"
+    Kotlin listings on this page use Field’s current `[…]` spelling for single-line
+    list constructors. Saved conversations, source revisions and downloadable documents
+    keep their recorded spelling; the listings were re-rendered, not re-run.
+
 ## Two slots in one box
 
 The box `polytope_source` builds the mesh in Kotlin and draws it with its own `vertex` and `fragment`
@@ -26,7 +31,7 @@ shaders. The vertex shader asks one slot where each face goes:
 <!-- stackauto-study-source:starter-vertex -->
 ```diffstatic {data-lang=glsl}
 // explode(vec4(face centre xyz, time)): .x pushes the face out along its normal,
-// .y shrinks it about its own centre (0 keeps it whole, 1 shrinks it to a point).
+// .y shrinks about the face centre: 0 keeps it whole; values >= 0.95 leave 5% size.
 {{ stack.auto.explode }}
 
 void main() {
@@ -80,7 +85,7 @@ intact, and open it. It has two boxes:
 | Box | What it is |
 | --- | --- |
 | **renderer — launch me first** | Opens the window. Select it and choose **Launch Box**. |
-| **the polytope — talk here (AI4)** | The mesh, its shaders and the two slots. Run it (**command/ctrl-return**) once the window is open, then press **command/ctrl-4** for AI4 chat. |
+| **the polytope — talk here (AI4)** | The mesh, its shaders and the two slots. Run it (**ctrl/command-return**) once the window is open, then press **ctrl/command-4** for AI4 chat. |
 
 Configure an AI provider through Field's welcome page if you have not already; see
 [AI features](aiFeatures.md). In a document of your own, any box whose shader has a
@@ -188,8 +193,8 @@ smooth
 
 ![Nine moments: grey in the first, then orange faces flying out and cooling back to a dark solid](assets/stackauto_conversation/polytope/images/c7855b5f718821bdd000.png)
 
-The first frame is still grey: that picture was taken before the new pipeline was drawing. Edits
-now wait for it (see the note at the end).
+The first frame is still grey because it was read back before the new pipeline was drawing. An edit
+now returns only once the new pipeline draws (see [The tools](#the-tools)).
 
 ### 4 · Burning through at the peak
 
@@ -302,7 +307,7 @@ void main() {
             val n = solid.faceNormal(face.id)
             val ring = topology.faceCycle(face.id).map { xyz[topology.vertexMap.getValue(it)] }
             for (k in ring.indices) {
-                for ((p, r) in listOf(c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f)) {
+                for ((p, r) in [c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f]) {
                     pos.add(p.x, p.y, p.z); nrm.add(n.x, n.y, n.z); cen.add(c.x, c.y, c.z)
                     fid.add(face.id.value.toFloat()); faceRadius.add(r)
                 }
@@ -323,7 +328,7 @@ until the box ran again. The model had no way to run it, and said so:
 > I added a boundary-following correction, but its live mesh update failed, so I can't claim that
 > version is working.
 
-### The person runs the box
+### Running the box
 
 Running the polytope box rebuilt the mesh, and the window drew the frames.
 
@@ -393,7 +398,7 @@ max
 ## The tools
 
 A box whose code binds a slot has these in its AI4 chat, from
-[`afield.stacksl.study`](assets/stackauto_conversation/StackAutoStudyTools.kt):
+[`afield.lang.stacksl.study`](assets/stackauto_conversation/StackAutoStudyTools.kt):
 
 | Tool | What it does |
 | --- | --- |
@@ -451,10 +456,8 @@ polytope box's AI4 chat. Opening the chat does not call a model.
   only rebind the slots.
 - A sheet is sampled in real time: its frames are as far apart as the window was when they were read
   back, and each is labelled with when it was taken.
-- On macOS the shader is translated to Metal, and a function named like one of Metal's types (`decay`,
-  `array`) will not build there. A slot with such a name is refused before it is compiled.
 
-??? aside "How this was recorded, and what checks it"
+??? aside "How this page was recorded and checked"
 
     Each turn went through the `ai-assist` RPC that Field's chat panel sends, with
     `tools/conversation_demo.py record`; the prompts are in the document's `prompts/`, and the run

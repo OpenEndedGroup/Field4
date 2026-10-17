@@ -15,8 +15,8 @@ UV_PROJECT_ENVIRONMENT=/tmp/field-transport-flow-venv \
 uv run --project optional/transport-flow --frozen python -m unittest discover \
   -s optional/transport-flow -v
 
-./gradlew jvmTest --tests afield.stdlib.StippleTransportTest \
-  --tests afield.stdlib.FlowMatchingTest checkKDocAttachment
+./gradlew jvmTest --tests afield.geometry.spatial.StippleTransportTest \
+  --tests afield.ai.learning.FlowMatchingTest checkKDocAttachment
 ```
 
 Python tests pass: image mass/aspect/repeatability, BSP bijection and travel

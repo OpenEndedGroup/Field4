@@ -11,8 +11,8 @@ of rules that became code live in
 
 **Field·4** is a Kotlin live-coding environment for graphics and exploratory data visualization:
 
-- **Backend (JVM/Kotlin)**: a Ktor HTTPS + WebSocket server (`afield.Server`) that manages
-  documents, runs user code, and optionally drives Vulkan/OpenXR rendering via `afield.four`.
+- **Backend (JVM/Kotlin)**: a Ktor HTTPS + WebSocket server (`afield.app.server.Server`) that manages
+  documents, runs user code, and optionally drives Vulkan/OpenXR rendering via Field 4.
 - **Frontend (Kotlin/JS)**: a browser UI (canvas + Monaco editor) talking to the server over a
   small JSON RPC protocol defined in `src/commonMain`.
 - **Persistence (.edn)**: documents live on disk as `metadata.edn` plus sidecar files for large
@@ -24,11 +24,10 @@ Top-level layout:
   deps, webpack bundling.
 - `src/`: the JVM + JS application (`commonMain` / `jvmMain` / `jsMain`).
 - `public/`: built/static assets and docs (`public/docs/`, offline viewer assets).
-- `metadata_store/`, `templates/`: example and template documents (`metadata.edn`).
-- `server/`: optional Python services — `metadata_server.py` serves templates from
-  `metadata_store/`, `guide_chat_server.py` backs slideshow chat (see `server/README.md`).
+- `dev_docs/agents/transcripts/`, `dev_docs/agents/demos/`, `templates/`: authored examples and templates;
+  generated transcript documents live under `public/docs/assets/agent_transcripts/`.
 - `python/`: Python that ships with Field, appended to `sys.path` in Python boxes — `fieldcv`
-  (OpenCV/mediapipe detectors sharing numpy memory with Kotlin through `afield.python.NumpyShared`;
+  (OpenCV/mediapipe detectors sharing numpy memory with Kotlin through `afield.lang.python.NumpyShared`;
   optional `cv` dependency group, see `python/fieldcv/README.md`).
 - `dev_docs/`: internal design notes, grouped in topical folders (`agents/`, `animation/`,
   `workspace/`, `physics/`, `testing/`, ...).
@@ -55,8 +54,9 @@ Top-level layout:
     refuses a non-existent directory before building, and treats a path to a document (a folder
     holding `metadata.edn`, or the file itself) as "the workspace above this, and open that".
     `./field.sh --print-workspace` answers "which one would I get?" without launching.
-  - With no argument the workspace is whatever was used last, recorded machine-wide in
-    `~/.afield/last-workspace.txt` — so a sibling clone or worktree may have written it.
+  - With no argument the workspace is whatever this checkout used last, recorded in its
+    gitignored `.afield-local/last-workspace.txt`; a checkout with no record yet falls back to the
+    machine-wide `~/.afield/last-workspace.txt` that every checkout used to share.
     `field.sh` prints the workspace it resolved, and where from, before it builds.
 - Open a document directly: `--document <name>` (resolved against the workspace; a path is
   reduced to its last segment). `/app-url` — what the launcher curls for the Electron window —
@@ -137,6 +137,10 @@ the `tools/land.py wait <id>` that `enqueue` prints as a background command (exi
 bounced) instead of polling; when you come back to a branch, `tools/land.py mine` lists what
 happened to every attempt to land it. To push, `enqueue --push` (pushes `main` once that item lands);
 to bring in work from `origin`, `tools/land.py sync [--push]` lands `origin/main` through the queue.
+`uv run python tools/land.py doc` adds a documentation build at that point in the queue: earlier
+landings finish first, then the lander refreshes `public/field4/` in the checkout holding `main`
+using existing captures, before later landings proceed. Use the printed `status`/`wait` id to see
+whether that build finished; a doc failure reports its own error and does not undo a landing.
 Never `git pull` or push `main` by hand.
 The hooks only report which guards a commit affects, so commits take seconds; do not use
 `--no-verify`, and do not run or track guards as "owed" before landing. Bring `main` into your
@@ -187,6 +191,16 @@ branch with `tools/merge_regen.py main`, which regenerates rather than hand-merg
 ---
 
 ## 4. Backdoor essentials
+
+For work the user expects to see in Field's Electron app, begin with the MCP
+`field_status` and `field_electron_tabs` tools. Check `serverWorkspace`, the
+selected tab and its URL before using document or box operations. Inspect and
+capture the existing tab with `field_electron_inspect` and
+`field_electron_screenshot`; use `field_electron_act` for labelled controls and
+`field_electron_console` for its recent warnings and errors. Use an independent
+browser capture when the task calls for an isolated test, and label that capture
+as a separate browser view. The active output-iframe bridge addresses content
+inside a box's output area.
 
 Prefer `tools/field_backdoor.py` to driving a browser by hand. Full reference:
 [`dev_docs/agents/FIELD_BACKDOOR.md`](dev_docs/agents/FIELD_BACKDOOR.md) (workflow, capture
@@ -251,26 +265,28 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 - `src/commonMain` — shared RPC and dispatch. `Messages.kt` is the tiny message bus (`handlers`,
   `sendWithReply`, `handle`, `expect fun _send`); `rpc.kt` holds the `@Serializable` payload
   types. If a type crosses the wire, define it here.
-- `src/jvmMain` — backend. `afield/Server.kt` (Ktor server, `/ws`, session/document state,
-  handlers), `afield/Boxes.kt` (the `Box` model and property conventions), `afield/execution.kt`
-  and `afield/KotlinInterface.kt` (compile/run live Kotlin, route output to the UI). Subsystems:
-  persistence (`saving.kt`, `edn.kt`, `FileWatchManager.kt`), history (`history.kt`, UI in
-  `src/commonMain/resources/history.html`), the live-coding stdlib (`afield/stdlib/`),
-  Vulkan/VR (`afield/four/`), extra runtimes (`afield/python/`, `afield/clojure/`,
-  `afield/remotejs/`), server features (`afield/server/`), and grouped helpers in
-  `afield/{docs,internal,math,ui,visualization,workspace}/` (still package `afield`).
-- `src/jsMain` — frontend. `afield/Main.kt` (canvas, selection, editor, commands),
-  `afield/Message.kt` (WebSocket client on `ws(s)://<host>/ws` + JSON decode + dispatch), `afield/Messages_helpers.kt`
-  (`@JsExport` wrappers). Static assets loaded by `src/commonMain/resources/index.html`: Monaco
+- `src/jvmMain` — backend; each folder is its package. `afield/app/server/Server.kt` (Ktor server,
+  `/ws`, session/document state, handlers), `afield/document/graph/Boxes.kt` (the `Box` model and
+  property conventions), `afield/runtime/execution/execution.kt` and
+  `afield/runtime/kotlin/KotlinInterface.kt` (compile/run live Kotlin, route output to the UI).
+  Subsystems: persistence (`afield/document/persistence/`: `saving.kt`, `edn.kt`,
+  `FileWatchManager.kt`), history (`afield/document/history/history.kt`, UI in
+  `src/commonMain/resources/history.html`), the live-coding library split by domain
+  (`afield/{math,geometry,graphics,audio,media,simulation,data,ui,...}/`), Vulkan/VR
+  (`afield/graphics/vulkan/`), extra runtimes (`afield/lang/{python,clojure,remotejs,...}/`) and
+  server features (`afield/app/server/`).
+- `src/jsMain` — frontend. `afield/app/client/Main.kt` (canvas, selection, editor, commands),
+  `afield/app/client/Message.kt` (WebSocket client on `ws(s)://<host>/ws` + JSON decode + dispatch),
+  `afield/app/client/Messages_helpers.kt` (`@JsExport` wrappers). Static assets loaded by `src/commonMain/resources/index.html`: Monaco
   under `src/jsMain/resources/monaco/`, fonts and helpers under `src/jsMain/resources/`.
 - There is no separate chat bundle (no `src/jsChatMain`): guide/shared chat is mounted from the main frontend and
   proxied by `afield/server/chat.kt` when the optional Flask chat server runs.
 
 ### RPC
 
-Messages are `kotlinx.serialization` JSON in the `afield.Message` envelope. Both sides send via
+Messages are `kotlinx.serialization` JSON in the `afield.app.protocol.Message` envelope. Both sides send via
 `_send(...)` (JVM actual in `Server.kt`, JS actual in `Message.kt`); `handle(message)` looks up
-`handlers[message.name]`, many of which `afield.Server.server()` installs. Replies:
+`handlers[message.name]`, many of which `afield.app.server.Server.server()` installs. Replies:
 `sendWithReply(message, callbackName, handler)` sets `replyTo`, and the receiver answers with
 `Message(callbackName)` (often via `message.toName(...)`). A new RPC is (1) payload types in
 `rpc.kt`, (2) a server handler in `Server.kt` or `afield/server/*`, (3) a frontend sender or
@@ -288,7 +304,7 @@ scripts may still use globals exposed on `window`; new module scripts import.
 
 Field has more than one main loop, and conflating them makes bugs hard fast.
 
-- `afield.Runloop` (`src/jvmMain/kotlin/afield/Runloop.kt`), started from `Server.kt`, advances
+- `afield.runtime.lifecycle.Runloop` (`src/jvmMain/kotlin/afield/Runloop.kt`), started from `Server.kt`, advances
   the coarse frame counter (`Runloop.frame`), runs `preRun` / `main.frame()` / `postRun` once per
   tick, and hosts main-thread coordination: UI, box/runtime bookkeeping, websocket-adjacent work,
   graphics setup that must step with the app frame, and low-rate control updates (graph/query
@@ -296,7 +312,7 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
   It is not the audio callback, not sample-accurate, and must not advance oscillator phase,
   filter state, delay lines, envelopes, or other DSP state because UI or helper code wants a
   "current value".
-- `FieldAudioEngine` (`src/jvmMain/kotlin/afield/four/synth/FieldAudioEngine.kt`) owns a separate
+- `FieldAudioEngine` (`src/jvmMain/kotlin/afield/audio/synth/FieldAudioEngine.kt`) owns a separate
   daemon audio thread: it calls `Signal.render(...)` / `generate(...)` on the real synth graph with
   its `SynthContext`, owns DSP state progression, and mixes the fixed-size PCM buffers OpenAL
   queues.
@@ -322,7 +338,7 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
   (`afield/stdlib/props.kt`) generate new inherited properties. Shader properties (`fragment`,
   `vertex`, `compute`, `task`, `mesh`) are built this way (`afield/stdlib/shaders.kt`), which is
   why shader graphs compose through box connections.
-- `fromContext<T>()` (in `afield.four.modules`, `src/jvmMain/kotlin/afield/four/modules/Mesh.kt`)
+- `fromContext<T>()` (in `afield.document.context`, `src/jvmMain/kotlin/afield/document/context/Mesh_context.kt`)
   finds the nearest `T` by searching the executing `Box` (`Box.context`), its `properties`, its
   script variables (`box.ki.context.vars`), then each parent in turn. Use
   `fromContextWithNameOrNull<T>("name")` for a specific named value. A missing `Renderer` is
@@ -365,8 +381,8 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
 - Chat: `SlideStepBuilder.withChat(...)` adds a collapsible Discussion under a note;
   `Box.withChat(...)` mounts the same UI into an output channel (`display("chat", ...)`) via
   `mountSharedChat(...)` from `Main.kt`. Field proxies chat RPC through `afield/server/chat.kt` to
-  the optional Flask server (`CHAT_SERVER_URL`, default `http://localhost:5002`;
-  `server/guide_chat_server.py`; data in `chat_data/`).
+  an external service (`CHAT_SERVER_URL`, default `http://localhost:5002`). The old Python
+  service was retired; the chat UI and proxy remain pending redesign.
 
 ### Drawing layer (Excalidraw)
 
@@ -383,7 +399,7 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
 
 - Ctrl/pinch-wheel zooms the box canvas about the cursor (`setCanvasZoom`, 0.1×–4×); **Reset Canvas Zoom** in the palette returns to 100%. Translation stays in screen pixels, so pan deltas and centring are zoom-independent.
 - Anything that turns a screen measurement into a world one goes through a pane: `CanvasCamera.paneAt(x, y)` for a pointer, `CanvasCamera.paneOf(element)` for a box, then `worldX`/`worldY`/`worldRect` (box drag/resize deltas still divide by `mainZoom`). Rectangles that mean "the visible canvas" are `pane.rect`, not `window.innerWidth/innerHeight`. Window-sized SVG layers take `worldViewBox(w, h)`. The background dots are the visual unit for `frame` and scale with zoom; the live grid shader is `src/commonMain/resources/fieldWebglBackground.js` (the inline copy in `Main.kt` is a fallback that does not run when that script has installed), and both take `u_zoom`.
-- Not yet zoom-aware: slideshow annotations (`slideshowSupport.kt`) and the server's `viewport` rect (still translation + window size). Bookmarks record zoom; ones saved before that keep the current zoom.
+- `Box.viewport` is the main pane's world rect `(-x, -y, w, h)` in world units at any zoom, and `Box.viewports` lists every pane's visible world rect (`sendViewportsToServer` in `Main.kt`). Slideshow notes and annotations are drawn from client rects and redrawn by `applyViewportTranslation`, so they follow pan and zoom (UI regression `slideshow-annotation-zoom`). Bookmarks record zoom; ones saved before that keep the current zoom.
 - **Split panes** (palette: **Split Canvas Here**, **... Columns Here**, **... Rows Here** add dividers, up to two per axis; **Unlink Pane** (and **... Horizontally/Vertically**), **Relink Pane**; **Remove Canvas Split**; `canvasCamera.kt`, thumbnails in `canvasSplitPreview.kt`): each pane shows its own world band and holds the DOM of the boxes whose frame origin is in it; panes in a row share Y scroll, panes in a column share X, zoom is shared. The split is the root `panes` property, written through the marked `send("set-string", payload)` so stale echoes are dropped. Dividers move by their handles (release at the edge or double-click to remove one); the top-left grip splits. Connection, hint and arc layers draw through the bottom-right pane's camera from each box's on-screen rect, so they reach every pane. The drawing layer has one Excalidraw per pane (`syncPaneMounts` in `drawingLayer.kt`); only the main pane's shows a toolbar. A box dragged across a divider rides an unclipped drag canvas and is re-expressed in the destination pane's camera on drop (`beginBoxDrag`/`endBoxDrag`). Status and gaps are in `dev_docs/workspace/SPLIT_PANES_PLAN.md`.
 - **Frame Selected** (`alt+f`, `frameSelected` in `Main.kt`) fits the selection and its open output panels into the largest window region not covered by the editor, docs or Field panels (`FRAME_OCCLUDERS`), zooming out only as needed.
 - One scene per document, as `.excalidraw` JSON in the root box's `drawing` property (inline in `metadata.edn`, since root never writes sidecars). Remote updates merge with Excalidraw's `reconcileElements`.
@@ -398,15 +414,15 @@ canvas. The bookmarks panel (`alt+b`, `bookmarks.kt`) and the layers panel (`alt
 
 ### FLine
 
-`afield.graphics.FLine` (`afield/graphics/FLine.kt`) is the core drawn line/path type, with
+`afield.geometry.path.FLine` (`afield/graphics/FLine.kt`) is the core drawn line/path type, with
 geometry in `FLineGeometry.kt` (sampling, offsets, boolean ops, smoothing) and
 `FLinesAndJavaShapes.kt` (round-trips through `java.awt.geom`). It renders to SVG/HTML
 (`afield/graphics/someSkiko.kt`, Skia `SVGCanvas`; `Box.lines(...)` displays it) and to Vulkan
-(`afield/graphics/StandardDrawing.kt` streams into `afield.four.buffers.DynamicallyWriteable`).
+(`afield/graphics/StandardDrawing.kt` streams into `afield.graphics.vulkan.buffers.DynamicallyWriteable`).
 
 ---
 
-## 6. Graphics (`afield.four`)
+## 6. Vulkan graphics (Field 4)
 
 The Vulkan stack under `src/jvmMain/kotlin/afield/four/` is built on LWJGL (Vulkan, VMA,
 shaderc, SPIRV-Cross via the `spvc` bindings) with optional OpenXR targets for VR.
@@ -418,7 +434,7 @@ KosmicKrisp manifest by default on Apple silicon with macOS 26+ (MoltenVK elsewh
 `AFIELD_VULKAN_DRIVER=moltenvk`, which the IOSurface features still need;
 `dev_docs/KOSMICKRISP.md`). `Window` and `Instance` call it themselves, so no entrypoint can skip
 it. With no SDK, LWJGL's bundled MoltenVK is used.
-`afield.four.util.VulkanProbe` probes loader, driver, layers and SDK in a child JVM and shows them
+`afield.graphics.vulkan.util.VulkanProbe` probes loader, driver, layers and SDK in a child JVM and shows them
 in the `/welcome` Vulkan panel (`/welcome#vulkan`, `GET /api/vulkan-status[?refresh=1]`), with
 per-OS install steps. Shader introspection uses LWJGL's SPIRV-Cross bindings; the old checked-in
 `bin/spirv-cross-*` binaries are no longer needed.
@@ -458,11 +474,11 @@ code, and a landing runs it on what it changed.
   optional `:persistentProperties`, merged into `Box.ioPersistentProperties` on load.
 - Tagged values inside `:properties`: `#afield/rect [x y w h]`, `#afield/box "uid"`,
   `#afield/file-inline {"path" "...", "inline" "..."}`, `#afield/file "relative/path.ext"` (a
-  sidecar read from disk). Template/example files (e.g. `metadata_store/`) use a simpler subset
+  sidecar read from disk). Some legacy template/example files use a simpler subset
   (plain vectors for frames, inline code strings); the loader is deliberately permissive.
 - Sidecar naming is `<boxId>_<propertyName>_.<extension>`, mapped by `Box.ioSeparateProperties`
   (`Boxes.kt`): `code` → `kt`; `fragment|vertex|compute|task|mesh` → `glsl`;
-  `customization|remote_js` → `js`; `metadata` → `yaml`. `FileWatchManager` reloads externally
+  `customization` → `js`; `metadata` → `yaml`. `FileWatchManager` reloads externally
   edited sidecars into live sessions (`dev_docs/FileWatchManager.md`).
 - History: `File.safeSave(...)` (`saving.kt`) writes `backups/`; `HistoryManager` (`history.kt`)
   writes `versions.edn` — `transitions` (`{fromIndex,toIndex,timestamp}`) and `names` (version
@@ -511,7 +527,7 @@ code, and a landing runs it on what it changed.
   Markdown plus captured assets.
 - Read-only offline viewer: `offline.html`, `offline-viewer.js`, `edn-parser.js` in
   `src/commonMain/resources`; canonical vendored assets in `src/jsMain/resources/monaco/min`,
-  `woff2`, `iosevka.css`. `build-offline-docs.sh` writes `dist/offline-viewer/`. Copies under
+  `woff2`, `iosevka.css`. `tools/build-offline-docs.sh` writes `dist/offline-viewer/`. Copies under
   `public/` and `dev_docs/` are generated and ignored — refresh with
   `uv run python tools/sync_offline_assets.py --target public --target dev_docs --no-docs`;
   `embed-example.html` shows iframing `offline.html?file=...`.

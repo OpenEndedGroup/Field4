@@ -1,6 +1,8 @@
-// Overlap is a hinge: relu(r1 + r2 - distance)^2, zero when the discs are disjoint and
-// growing quadratically once they interpenetrate. Walls are the same shape. Every term is
-// differentiable, so the packing is a descent rather than a relaxation loop of nudges.
+/*
+Overlap is a hinge: relu(r1 + r2 - distance)^2, zero when the discs are disjoint and
+growing quadratically once they interpenetrate. Walls are the same shape. Every term is
+differentiable, so the packing is a descent rather than a relaxation loop of nudges.
+*/
 val radii = doubleArrayOf(38.0, 32.0, 30.0, 26.0, 24.0, 22.0, 20.0, 18.0, 16.0, 14.0, 12.0, 10.0)
 val boxWidth = 340.0
 val boxHeight = 250.0
@@ -12,8 +14,7 @@ val before = radii.indices.map {
 }
 
 fun frame() = fline {
-    moveTo(0.0, 0.0); lineTo(boxWidth, 0.0); lineTo(boxWidth, boxHeight); lineTo(0.0, boxHeight)
-    close()
+    rect(0.0, 0.0, boxWidth, boxHeight)
     color = vec(0.36, 0.44, 0.56, 0.7)
     thickness = 1.2
 }
@@ -29,7 +30,7 @@ fun worstOverlapOf(circles: List<PackedCircle>): Double {
     for (i in circles.indices) for (j in i + 1 until circles.size) {
         val d = kotlin.math.hypot(
             (circles[i].centre.x - circles[j].centre.x).toDouble(),
-            (circles[i].centre.y - circles[j].centre.y).toDouble()
+            (circles[i].centre.y - circles[j].centre.y).toDouble(),
         )
         worst = kotlin.math.max(worst, circles[i].radius + circles[j].radius - d)
     }
@@ -45,16 +46,29 @@ showPlaneGrid(
     channel = "1 packing",
     columns = 2,
     cellWidth = 380,
-    window = window
+    window = window,
 )
 showSignals(
     "overlap + wall + pull loss" to packing.run.losses,
     channel = "2 loss",
     title = "packing loss per L-BFGS iteration",
-    xTitle = "iteration"
+    xTitle = "iteration",
 )
 
-"worst pairwise overlap " + worstOverlapOf(before) + " -> " + packing.worstOverlap + " units\n" +
-"worst escape beyond the box wall: " + packing.worstEscape + " units\n" +
-"loss " + packing.run.initialValue + " -> " + packing.run.value +
-" in " + packing.run.iterations + " iterations (" + packing.run.reason + ")"
+"worst pairwise overlap " +
+    worstOverlapOf(before) +
+    " -> " +
+    packing.worstOverlap +
+    " units\n" +
+    "worst escape beyond the box wall: " +
+    packing.worstEscape +
+    " units\n" +
+    "loss " +
+    packing.run.initialValue +
+    " -> " +
+    packing.run.value +
+    " in " +
+    packing.run.iterations +
+    " iterations (" +
+    packing.run.reason +
+    ")"

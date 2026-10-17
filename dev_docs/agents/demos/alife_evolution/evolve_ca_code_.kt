@@ -3,7 +3,7 @@
 // A life-like rule is a TABLE: which neighbour counts cause a birth, which cause survival. At a
 // radius-2 neighbourhood that is 24 birth bits and 25 survival bits, a fixed-length bit string, and
 // therefore a genome two parents can be recombined across. Field had exactly one other two-parent
-// crossover before this (afield.morpho.MorphoGenerator); LifeRuleGenome.crossover is uniform
+// crossover before this (afield.lang.morpho.MorphoGenerator); LifeRuleGenome.crossover is uniform
 // crossover over the rule table and it is real recombination, not a graft.
 //
 // Radius 2 rather than the classic Moore 8 is a deliberate choice and it is the most useful thing

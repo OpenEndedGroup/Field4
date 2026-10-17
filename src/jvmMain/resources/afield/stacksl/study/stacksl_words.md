@@ -5,7 +5,7 @@ do not edit here. Stack effects read `a b -- c`, top of stack on the right. Sear
 for a word rather than reading it all. Texture sampling (`sample`, `prev`, feedback) is left out:
 a study renders single-pass programs and refuses those words.
 
-## Mental model
+## How a program runs
 
 The smallest complete program is one word and a clamp:
 
@@ -274,7 +274,7 @@ palette
 
 ## Volumetric noise
 
-`noise` and `fbm` above are two-dimensional. They read `coord.xy + coord.zw * 0.07`, so a `vec4` carrying a position and a time is flattened into a plane, with z entering at a fourteenth of the weight of x. That is a shear, not a third dimension: on a volume seen down z it reads as one fixed pattern imprinted at every depth. These words read `input.xyz` (and `.xyzw`) properly.
+`noise` and `fbm` above are two-dimensional. They read `coord.xy + coord.zw * 0.07`, so z barely changes the result: a volume seen along z shows the same pattern at every depth. Use these words when you need noise in three or four dimensions; they read `input.xyz` (or all of `.xyzw`).
 
 | Word | Stack | What it does |
 | --- | --- | --- |
@@ -284,7 +284,7 @@ palette
 | `fbm4` | `coord octaves lacunarity gain -- s` | the same in four dimensions. |
 | `curl3` | `coord epsilon octaves -- vec` | divergence-free curl noise, as `vec4(v.xyz, 0)`. The curl of a three-offset `fbm3` vector potential, so an advected particle swirls instead of piling into a sink. Short form uses epsilon `0.05` and three octaves. |
 | `fbmd3` | `coord epsilon octaves -- vec` | `fbm3` and its gradient at once: `.x` is the value, `.yzw` the gradient, which is the normal of the isosurface through that point. |
-| `warp3` | `coord strength octaves -- s` | domain-warped `fbm3` — `fbm3` sampled at a position displaced by another `fbm3` vector field. Filaments and folds rather than clouds. Still `0..1`. |
+| `warp3` | `coord strength octaves -- s` | domain-warped `fbm3`: `fbm3` sampled at a position displaced by another `fbm3` vector field. Filaments and folds rather than clouds. Still `0..1`. |
 | `worley3`, `voronoi3` | `coord -- vec` | cellular noise, packed: `.x` is F1 (distance to the nearest feature point), `.y` is F2, `.z` is `F2 - F1` (near zero exactly on the cell walls, so it is the crack field), `.w` is a constant per cell for flat shading. `worley3 x` reads like `fbm x`; `worley3 z` draws the cracks. |
 
 ```stacksl
@@ -292,6 +292,30 @@ input 2.2 * curl3 xyz 0.4 *        # a divergence-free three-channel force
 input 6 * worley3 z 1- 8 pow       # glowing cell walls
 input 1.7 * warp3                  # filaments
 input fbmd3 yzw normalize          # a surface normal from the noise field
+```
+
+## Phase noise
+
+These words make noise whose phase you can turn, separately for each frequency. Use them when you need several fields that belong together: two eyes of a stereo pair, three colour channels, species of particles, or one field at two moments. Turn the phase of every frequency and the second field correlates with the first by `cos(2π·turns)`: `0` gives the same field, `0.25` an uncorrelated partner with the same character, and `0.5` its negative. Turn only the fine frequencies and the two fields share their large forms exactly while their detail differs.
+
+| Word | Stack | What it does |
+| --- | --- | --- |
+| `qnoise` | `coord octaves lacunarity gain -- quad` | quadrature noise. Short form is five octaves, lacunarity `2`, gain `0.5`. Put a quoted definition before or after the arguments to give every wave a phase offset of your own (see below). |
+| `phnoise` | `coord phases octaves lacunarity gain -- quad` | `qnoise` with a phase per octave: `phases.x` turns octave 0, `.y` octave 1, `.z` octave 2, and `.w` octave 3 and everything finer. The short form reads up to two values, so `coord phases phnoise` is the usual spelling. |
+| `phrot` | `quad turns -- quad` | rotate a pair's phase by `turns.x`: `x` becomes `c·cos θ − s·sin θ`, and `z` and `w` pass through. Works on any `(cos, sin)` pair, including `phacelle`'s. |
+
+```stacksl
+input 8 * qnoise x 0.5 * 0.5 +
+input 8 * qnoise >n <n x <n 0.33 phrot x <n 0.67 phrot x vec3 0.5 * 0.5 +
+input 8 * [0,0,0.1,0.3] t * phnoise x 0.5 * 0.5 +
+```
+
+```stacksl
+: fine >k 0.5 4 <k x smoothstep 0.5 * ;     # no turn at frequency 0.5, half a turn from 4 up
+'fine input 8 * qnoise x
+
+: churn >k <k z 0.5 - <k w * ;              # each wave drifts at its own speed
+'churn input 8 * qnoise x 0.5 * 0.5 +       # noise that changes without sliding
 ```
 
 ## Color spaces
@@ -305,7 +329,7 @@ input fbmd3 yzw normalize          # a surface normal from the noise field
 | `ryb`, `ryb2rgb`, `from-ryb` | convert paint-like RYB color to RGB without clamping. |
 | `ryb.c`, `ryb2rgb.c`, `from-ryb.c` | clamped RYB-to-RGB conversion. |
 
-Good trick: do math in `rgb2oklab`, especially channel offsets and contrast, then return through `oklab`.
+Colour offsets and contrast changes look more even in OKLab: convert with `rgb2oklab`, do the math, then convert back with `oklab`.
 
 ## Definitions
 
@@ -313,7 +337,7 @@ Define reusable words with `: name ... ;`. A call consumes one input value, runs
 
 ```stacksl
 : half  >v  <v 0.5 *  ;      # right: consumes one, leaves one
-: half  =v  <v 0.5 *  ;      # wrong: leaves its input under its result, so every call pushes two
+: half  =v  <v 0.5 *  ;      # refused: leaves its input under its result, so every call pushes two
 ```
 
 ```stacksl

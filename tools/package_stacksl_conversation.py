@@ -36,7 +36,7 @@ CHAT_FILE = "stacksl_source_ai4_chat_history_.md"
 PROGRAM_FILE = "stacksl_source_stackSL_.stacksl"
 STUDY = "studies/stacksl_source"
 STARTER_FILES = ("README.md", "AGENTS.md", "metadata.edn", PROGRAM_FILE)
-TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/stacksl/study/StackSLStudyTools.kt"
+TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLStudyTools.kt"
 # The page's "adding a tool" example, as the FIELD_TEST stacksl.study.document-tool runs it.
 TOOL_EXAMPLE = ROOT / "src/jvmMain/kotlin/afield/examples/stacksl/StackSLDocumentToolSmoke.kt"
 # Screenshots of Field itself, taken by tools/capture_stacksl_conversation.py rather than built here.
@@ -209,10 +209,10 @@ def source_blocks() -> dict[str, str]:
         assert finals[name] == revision(name, heads[name].split("-")[0]), f"{name}: the box does not hold HEAD"
     ink_before, ink_after = revision("ink", "r4"), revision("ink", "r5")
     tiles_before, tiles_after = revision("tiles", "r3"), revision("tiles", "r4")
-    aurora_before, aurora_after = revision("aurora", "r6"), revision("aurora", "r7")
-    palette = ("# Alternating", "<q polar y")
-    # The three time rates the half-speed edit changed: two in the hem, one in the folds.
-    rates = lambda source: excerpt(source, ": aurora-hem", ";") + "\n\n" + excerpt(source, "# Uneven gathers", "<fold 82")
+    aurora_before, aurora_after = revision("aurora", "r5"), revision("aurora", "r6")
+    palette = ("# Cobalt stars", "\n<color\n")
+    # The five time rates the half-speed edit changed: two in the curtain's edge, three in the folds.
+    rates = lambda source: excerpt(source, "# The curtain's lower edge", "# Emerald lower")
     example = TOOL_EXAMPLE.read_text().split("// example:start\n", 1)[1].split("// example:end", 1)[0]
     return {
         "starter": fence((DEMOS / STARTER / PROGRAM_FILE).read_text()),

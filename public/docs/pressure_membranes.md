@@ -1,6 +1,6 @@
 # Pressure membranes
 
-`afield.four.physics.pressure` relaxes a supplied closed triangular membrane with
+`afield.simulation.physics.pressure` relaxes a supplied closed triangular membrane with
 elastic reinforcement, tethers, and supports. It is a mesh mechanics library:
 it does not choose an architectural shape, infer tape connectivity, or generate
 sewing patterns. Those steps belong to the caller.
@@ -12,31 +12,52 @@ stress-free or cuttable reference surface.
 
 ## A complete small example
 
-This deliberately coarse octahedron is a mechanics example, not a fabrication pattern.
+This example inflates a coarse octahedron to 1000 Pa and prints why the solver stopped and the
+remaining force residual. The octahedron is only there to exercise the solver; it is not a
+fabrication pattern.
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.physics.pressure.*
+import afield.simulation.physics.pressure.*
 
-val points = listOf(
-    P3(1.0, 0.0, 0.0), P3(-1.0, 0.0, 0.0),
-    P3(0.0, 1.0, 0.0), P3(0.0, -1.0, 0.0),
-    P3(0.0, 0.0, 1.0), P3(0.0, 0.0, -1.0)
-)
+val points = [
+    P3(1.0, 0.0, 0.0),
+    P3(-1.0, 0.0, 0.0),
+    P3(0.0, 1.0, 0.0),
+    P3(0.0, -1.0, 0.0),
+    P3(0.0, 0.0, 1.0),
+    P3(0.0, 0.0, -1.0),
+]
 // Explicit illustrative material; not a product specification.
 val film = Film(young = 1e6, poisson = .3, thickness = .1, density = 100.0)
-val triangles = listOf(0, 1).flatMap { a ->
-    listOf(2, 3).flatMap { b ->
-        listOf(4, 5).map { c ->
-            val ids = if ((points[b]-points[a]).cross(points[c]-points[a]).dot(points[a]) > 0)
-                listOf(a,b,c) else listOf(a,c,b)
-            val e = points[ids[1]]-points[ids[0]]
-            val q = points[ids[2]]-points[ids[0]]
-            PanelTriangle(ids[0], ids[1], ids[2], "skin",
-                doubleArrayOf(0.0, 0.0, e.norm(), 0.0,
-                    q.dot(e.unit()), q.cross(e.unit()).norm()), film)
+val triangles =
+    [0, 1].flatMap { a ->
+        [2, 3].flatMap { b ->
+            [4, 5].map { c ->
+                // Choose outward winding using the face normal and its position from the origin.
+                val ids =
+                    if ((points[b] - points[a]).cross(points[c] - points[a]).dot(points[a]) > 0) [a, b, c]
+                    else [a, c, b]
+                val e = points[ids[1]] - points[ids[0]]
+                val q = points[ids[2]] - points[ids[0]]
+                // Project the rest triangle into its local, unstretched 2D material frame.
+                PanelTriangle(
+                    ids[0],
+                    ids[1],
+                    ids[2],
+                    "skin",
+                    doubleArrayOf(
+                        0.0,
+                        0.0,
+                        e.norm(),
+                        0.0,
+                        q.dot(e.unit()),
+                        q.cross(e.unit()).norm(),
+                    ),
+                    film,
+                )
+            }
         }
     }
-}
 val envelope = Envelope(points.flatMap { it.array().toList() }.toDoubleArray(), triangles)
 val solution = InflationSolver.solve(envelope, LoadCase(pressure = 1000.0))
 println("${solution.reason}; residual ${solution.residualN} N")
@@ -79,6 +100,8 @@ and restart along a sampled unstable direction; it does not certify a global min
 not as collision prevention. Refine meshes and compare physical quantities before
 trusting a visually smooth result.
 
-Independent tests cover analytic force derivatives, packed/reference agreement across
-material branches, sealed gas, translation invariance, mesh validation, cancellation,
-and convergence toward the spherical Laplace pressure law under mesh refinement.
+??? aside "What the tests cover"
+
+    Independent tests cover analytic force derivatives, packed/reference agreement across
+    material branches, sealed gas, translation invariance, mesh validation, cancellation,
+    and convergence toward the spherical Laplace pressure law under mesh refinement.

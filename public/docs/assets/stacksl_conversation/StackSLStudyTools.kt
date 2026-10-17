@@ -1,29 +1,35 @@
-package afield.stacksl.study
+package afield.lang.stacksl.study
 
-import afield.Box
-import afield.RunsAt
-import afield.ai.core.AgentToolExtensions
-import afield.ai.core.ToolExecutionContext
-import afield.plugins
-import afield.stdlib.FileManager
-import afield.stdlib.StudySourceEdit
-import afield.stdlib.LiveStudy
-import afield.stdlib.StudyReport
-import afield.stdlib.StudyRequest
-import afield.stdlib.StudyToolClasses
-import afield.stdlib.registerStudyTools
-import afield.stdlib.numbers
+import afield.document.graph.Box
+import afield.runtime.lifecycle.RunsAt
+import afield.ai.tools.AgentToolExtensions
+import afield.ai.tools.ToolExecutionContext
+import afield.runtime.lifecycle.plugins
+import afield.document.workspace.FileManager
+import afield.math.functions.StudySourceEdit
+import afield.study.source.LiveStudy
+import afield.study.evidence.StudyReport
+import afield.study.source.StudyRequest
+import afield.study.source.StudyToolClasses
+import afield.study.source.registerStudyTools
+import afield.study.ui.numbers
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
-// The tools an AI4 conversation gets when it is opened on a StackSL program's `stackSL` property.
-// Each works on the focused box's own study (see StackSLPrograms), so nothing here is per document.
-// A document can still add tools of its own from a box: AgentToolExtensions.register with its
-// document as the scope.
+/**
+ * The tools an AI4 conversation gets when it is opened on a StackSL program's `stackSL` property.
+ *
+ * Each works on the focused box's own study (see [StackSLPrograms]), so nothing here is per
+ * document. A document can still add tools of its own from a box: [AgentToolExtensions.register]
+ * with its document as the scope.
+ */
 
+/** The working guide for StackSL studies, or the words guide's entries matching a search term. */
 @JsonClassDescription("Read how to work on a StackSL study: the frame, idioms that hold, traps, the tools and the style a person expects. Call it once, before your first edit in a conversation. With search, return the words guide's entries matching a word or phrase instead.")
 data class StackSLStudyGuide(
-    @JsonPropertyDescription("A word or phrase to look up in the StackSL words guide; empty returns the working guide") val search: String = ""
+    /** A word or phrase to look up in the words guide; empty returns the working guide. */
+    @JsonPropertyDescription("A word or phrase to look up in the StackSL words guide; empty returns the working guide")
+    val search: String = ""
 )
 
 @JsonClassDescription("Read this StackSL study: the checked program, whether the editor holds an unchecked human edit (dirty; then liveSource is what is in the box and liveCheck says whether it compiles), revision history, compiler warnings, stages (one per line), knobs (the numbers a person typed, one line each: index, line:column, as typed, the operand the compiler took it as — 'mix amount', 'multiply b'), and personAt — the line the person's editor cursor is on, so 'this line' usually means it. Inspect once before editing and reuse liveSourceHash. Historical revisions are immutable. Renders come from the GPU of the window above the program (the CPU reference, slowly, when there is none). The window also shows the program live at whatever time it has reached; prefer ObserveStackSLStudy, which renders exact times. ReloadShaders does not apply: an accepted edit reaches the window by itself.")
@@ -125,7 +131,7 @@ private val onAProgram: (ToolExecutionContext) -> Boolean = { ctx ->
  * The scope the library's tools register under, so a document that registers a tool of the same name
  * from a box adds to them rather than replacing them (see AgentToolExtensions, "Scopes").
  */
-private val LIBRARY = "afield.stacksl.study"
+private val LIBRARY = "afield.lang.stacksl.study"
 
 private fun program(ctx: ToolExecutionContext): Box =
     ctx.focus?.box ?: throw IllegalStateException("StackSL study tools work on the box whose chat is open")
@@ -182,6 +188,6 @@ fun installStackSLStudyTools() {
 }
 
 /** The [StackSLStudyGuide] tool's answer. */
-data class StackSLGuideText(val text: String) : afield.ai.core.SummarisesForToolLog {
+data class StackSLGuideText(val text: String) : afield.ai.tools.SummarisesForToolLog {
     override fun toolLogSummary(): String = "guide ${text.length} chars"
 }

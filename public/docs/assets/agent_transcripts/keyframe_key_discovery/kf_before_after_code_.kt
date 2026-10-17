@@ -6,10 +6,10 @@
 //
 // Run this box. Two browsers appear. The top one is what you used to get.
 
-import afield.stdlib.KeyframeCollection
-import afield.stdlib.KeyframeScope
-import afield.stdlib.everyKeyGlob
-import afield.four.buffers.Structure
+import afield.animation.keyframes.KeyframeCollection
+import afield.animation.keyframes.KeyframeScope
+import afield.animation.keyframes.everyKeyGlob
+import afield.graphics.vulkan.buffers.Structure
 import java.nio.file.Files
 
 // A temp directory, so this demo writes nothing into your document.

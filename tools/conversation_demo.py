@@ -53,6 +53,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def current_kotlin_listing(source: str) -> str:
+    """Present saved Kotlin using today's list spelling without editing the recording.
+
+    Only complete, non-spread calls supported by the box-idiom rewriter are adapted.
+    Callers disclose this presentation change; transcript readers and downloads keep
+    the saved source. This is not a new execution or capture of the example.
+    """
+    if __package__:
+        from .check_box_idioms import list_literals
+    else:
+        from check_box_idioms import list_literals
+    lines = []
+    for line in source.splitlines(keepends=True):
+        rewrite = list_literals(line)
+        lines.append(rewrite[0] if rewrite and rewrite[1] else line)
+    return "".join(lines)
+
+
 @dataclass(frozen=True)
 class Study:
     """What distinguishes one kind of study for recording: its box, property, tools and window."""
@@ -150,6 +168,10 @@ async def _inspect(client, study: Study) -> dict:
     raise RuntimeError(f"{study.inspect_tool} failed: " + json.dumps(last)[:1000])
 
 
+DONE = ("Finished AI conversation", "Reply ready in the chat.")
+FAILED = ("AI general failed", "AI work stopped before finishing", "Stopped. Details are in the chat.", "AI4 setup")
+
+
 async def record_turn(study: Study, document: Path, label: str, prompt: str, port: int, timeout: float) -> dict:
     """Send one AI4 turn to [study]'s box in [document] and keep the evidence; see the module docs."""
     fb = _backdoor()
@@ -181,8 +203,9 @@ async def record_turn(study: Study, document: Path, label: str, prompt: str, por
             if notices and notices[-1] != last_notice:
                 last_notice = notices[-1]
                 print(last_notice[:240], flush=True)
-            if any("Finished AI conversation" in n or "AI general failed" in n or "AI4 setup" in n for n in notices):
-                status = "completed" if any("Finished AI conversation" in n for n in notices) else "failed"
+            # AI4's end-of-turn notices; the first of each pair is the older wording.
+            if any(m in n for n in notices for m in DONE + FAILED):
+                status = "completed" if any(m in n for n in notices for m in DONE) else "failed"
                 break
         events = client.events_since(seq)
         panels = [e.get("payload", {}) for e in events if e.get("name") == "set-output" and e.get("payload", {}).get("channel") == "ai-chat"]
@@ -394,7 +417,7 @@ def render_turn(body: str, default_label: str = "AI4") -> str:
         image = re.fullmatch(r"_(.+?)_\s*\n\n!\[tool image\]\((images/[^)]+)\)", text, flags=re.DOTALL)
         if image:
             caption, path = image[1], image[2]
-            window = caption.startswith("afield.four render window")
+            window = caption.startswith(("Vulkan render window", "Field 4 render window"))
             shown = "The live window, captured for the model" if window else caption
             sections.append(f'<figure class="{"window" if window else "evidence"}"><a href="{path}" title="Open full size">'
                             f'<img src="{path}" alt="{escape(shown)}" loading="lazy"></a><figcaption>{escape(shown)}</figcaption></figure>')
@@ -457,7 +480,8 @@ def settle_assets(output: Path, expected: dict[str, bytes], check: bool, label: 
                   captured: tuple[str, ...] = (), capture_script: str = "", gitignore: str | None = None) -> None:
     """Write [expected] under [output] and delete anything else, or with [check] refuse any
     difference. [captured] files are screenshots another script makes: required, never compared."""
-    written = {p.relative_to(output).as_posix() for p in output.rglob("*") if p.is_file() and p.name != ".gitignore"} if output.is_dir() else set()
+    written = {p.relative_to(output).as_posix() for p in output.rglob("*")
+               if p.is_file() and p.name not in {".gitignore", ".DS_Store"}} if output.is_dir() else set()
     if check:
         stale = sorted(n for n, data in expected.items() if not (output / n).is_file() or (output / n).read_bytes() != data)
         stale += [f"{n} (run {capture_script})" for n in captured if not (output / n).is_file()]

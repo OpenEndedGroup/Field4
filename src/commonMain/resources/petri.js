@@ -4,7 +4,7 @@
 //
 // This is the single source of truth for the extension. It is served as a static AMD module
 // (loaded via bithero/petri in bootstrapMonaco.js) in the browser, and is also read verbatim
-// by afield.petri.PetriEditorExtension for the node-probe smoke test. The wrapper below
+// by afield.simulation.petri.PetriEditorExtension for the node-probe smoke test. The wrapper below
 // supports both worlds: it registers an AMD module when a Monaco loader is present, and
 // otherwise self-installs immediately (as it does under bare eval).
 //

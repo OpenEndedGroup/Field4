@@ -4,8 +4,8 @@
 A StackSL conversation document is two boxes: a root (``stacksl_window``) whose main language is
 StackSL and which holds no Kotlin, and the program (``stacksl_source``), its child, whose ``stackSL``
 property is the shader. The program autoruns: opening the document draws it, which opens the root's
-window (``afield.stdlib.LanguageRoots``), and the program's AI4 chat has the study tools (they are
-library code, ``afield.stacksl.study``, not a box). Box text
+window (``afield.runtime.languages.LanguageRoots``), and the program's AI4 chat has the study tools (they are
+library code, ``afield.lang.stacksl.study``, not a box). Box text
 lives in sidecar files beside ``metadata.edn`` — ``<uid>_<property>_.<ext>`` — so an edit is a normal
 diff; this script writes the ``metadata.edn`` that makes the folder an openable Field document, in
 the bytes Field's codec writes (``checkAgentDemos`` holds that).

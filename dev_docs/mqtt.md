@@ -1,10 +1,10 @@
-# afield.mqtt — implementation notes
+# afield.io.mqtt — implementation notes
 
 Pure-Kotlin MQTT 3.1.1 (no library dependency), added 2026-10-04 on `nightly/2026-10-04/1-mqtt-bridge`.
 User page: `public/docs/mqtt.md`. Demo: `public/docs/assets/mqtt_demo/`.
 
 ## Files
-- `src/jvmMain/kotlin/afield/mqtt/MqttCodec.kt` — packets, remaining-length varint, topic matching.
+- `src/jvmMain/kotlin/afield/io/mqtt/MqttCodec.kt` — packets, remaining-length varint, topic matching.
 - `MqttBroker.kt` — embedded broker; thread per connection; clean sessions only.
 - `MqttClient.kt` — client; reader thread owns keepalive; `dispatch` decides the callback thread.
 - `MqttBox.kt` — `Box.mqtt`, `Box.mqtt(url)`, `Box.mqttBroker`, `MqttConnections`.
@@ -20,7 +20,7 @@ User page: `public/docs/mqtt.md`. Demo: `public/docs/assets/mqtt_demo/`.
   showed `retained: false` before this). `Box.mqtt` waits up to 1 s for a newly made connection.
 - Bridges: `toOsc(filter, oscClient)` and `toDmx(topic, out, universe, channel, path, range)` are
   ordinary keyed subscriptions.
-- Callbacks are queued and drained in `Runloop.preRun["afield.mqtt.dispatch"]` (≤2000 per frame,
+- Callbacks are queued and drained in `Runloop.preRun["afield.io.mqtt.dispatch"]` (≤2000 per frame,
   `setUnowned`, permanent). With no Runloop (`Runloop.mainThread == null`: tests, jvm-main) they run
   on the reader thread.
 - `series` history is recorded from every received message (numeric payloads, plus numeric JSON
@@ -28,7 +28,7 @@ User page: `public/docs/mqtt.md`. Demo: `public/docs/assets/mqtt_demo/`.
   without a callback.
 
 ## Verification (2026-10-04)
-- `./gradlew jvmTest --tests 'afield.mqtt.*'`: 21 tests at first, 25 now (+ retire, retained ordering, OSC, DMX) (codec spec bytes, §4.7 wildcard matrix,
+- `./gradlew jvmTest --tests 'afield.io.mqtt.*'`: 21 tests at first, 25 now (+ retire, retained ordering, OSC, DMX) (codec spec bytes, §4.7 wildcard matrix,
   broker/client over loopback: QoS 1, QoS 2 downgrade, retained + clear, will vs clean close,
   keepalive timeout, reconnect + resubscribe, QoS 1 queued across an outage, id takeover, v5
   CONNECT refused with CONNACK 1, JSON helpers, demo bundle parse, re-run handler replacement).

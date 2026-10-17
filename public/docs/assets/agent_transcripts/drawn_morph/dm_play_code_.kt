@@ -3,11 +3,11 @@
 val from = notation.named("from")!!.points.resampleByLength(240, closed = true)
 val to = notation.named("to")!!.points.resampleByLength(240, closed = true)
 val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.6)
-for ((label, partner) in listOf("matched" to matchPoints(from, to).reorder(to), "by list index" to to)) {
+for ((label, partner) in ["matched" to matchPoints(from, to).reorder(to), "by list index" to to]) {
     val notes = mutableListOf<TimedNote>()
     val spread0 = spreadOf(from)
     for (k in 0 until 32) {
-        val t = if (k < 16) k / 15.0 else (31 - k) / 15.0   // out to the heart, then back
+        val t = if (k < 16) k / 15.0 else (31 - k) / 15.0 // out to the heart, then back
         val midi = 72 + 12 * log2(spreadOf(morphBetween(from, partner, t)) / spread0)
         notes += TimedNote(k * 0.25, k * 0.25 + 0.25, midi)
     }

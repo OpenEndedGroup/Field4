@@ -24,7 +24,7 @@ from docs_hooks import (  # noqa: E402
     rewrite_source_citations,
 )
 
-GUARD = REPO_ROOT / "src/jvmTest/kotlin/afield/docs/CitationGuard.kt"
+GUARD = REPO_ROOT / "src/jvmTest/kotlin/afield/tools/docs/CitationGuard.kt"
 
 
 class SourceCitationRewriteTests(unittest.TestCase):

@@ -1,8 +1,8 @@
 package afield.examples
 
-import afield.Box
-import afield.Rect
-import afield.SavingContext
+import afield.document.graph.Box
+import afield.app.protocol.Rect
+import afield.document.persistence.SavingContext
 import java.nio.file.Files
 
 /*

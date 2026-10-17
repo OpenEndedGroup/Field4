@@ -1,4 +1,4 @@
-import afield.dmx.*
+import afield.io.dmx.*
 
 // Field as an Art-Net node: listen on UDP 6454, merge what arrives (HTP), answer ArtPoll.
 // Launch this first, then launch the sender. Stopping this box closes the socket.

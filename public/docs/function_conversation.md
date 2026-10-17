@@ -7,26 +7,24 @@ Kotlin in a Field box, with a saved revision you can inspect or return to.
 This example uses AI4 chat to build a one-hour, three-channel signal. The box
 that holds the function is a *function study*: its AI4 chat has tools to edit
 the Kotlin, plot it, and check what changed, and its output shows the signal
-viewer. The tools ship with Field, and a document can add its own from a box —
-the working document can extend the environment you are working in, and teach
-the assistant a new way to observe and act, with no Field rebuild.
-
-[Talking a shader into existence](stacksl_conversation.md) does the same for a
-StackSL program drawn live in a window.
+viewer. The tools ship with Field, and a document can add its own from one of
+its boxes, giving the assistant new ways to measure and edit without rebuilding
+Field.
 
 ## Start
 
-In any document, select a box — press **n** to make one — and choose **Make a
+In any document, select a box (press **n** to make one) and choose **Make a
 Function Study** from the command palette. An empty box is given the starter's
 source, below, which is checked in as the first revision and drawn in the box's
 signal viewer; a box whose Kotlin already returns a `StudyComposition` keeps it.
-Select the box and press **command/ctrl-4** to open AI4 chat. Configure an AI
+Select the box and press **ctrl/command-4** to open AI4 chat. Configure an AI
 provider through Field's welcome page if you have not already; see
 [AI features](aiFeatures.md).
 
-[Talking a shader into existence](stacksl_conversation.md) and
-[Talking a scene into existence](rectsl_conversation.md) start the same way, with
-**Make a StackSL Program** and **Make a RectSL Scene**.
+[Talking a shader into existence](stacksl_conversation.md) does the same for a
+StackSL program drawn live in a window, and
+[Talking a scene into existence](rectsl_conversation.md) for a RectSL scene. They
+start the same way, with **Make a StackSL Program** and **Make a RectSL Scene**.
 
 The recorded conversation below started from the same source, in a document of its
 own. [Download that starter](assets/function_conversation/function_conversation.zip)
@@ -53,9 +51,9 @@ collects the three channels. The conversation replaces and extends this same cod
 
 <!-- function-study-source:starter -->
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.Functions
-import afield.stdlib.StudyComposition
-import afield.stdlib.StudyChoice
+import afield.math.functions.Functions
+import afield.math.functions.StudyComposition
+import afield.math.functions.StudyChoice
 
 // Three empty channels. Describe the function you want in this box's AI4 chat.
 with(Functions) {
@@ -110,7 +108,7 @@ entirely. Zoom in before you judge a detail.
 to open **function_conversation_example**. It contains the finished source, all
 nine saved revisions, and the recorded conversations and plots. Opening it restores
 the checked composition and draws the viewer. Then select **The function — talk
-here (AI4)** and press **command/ctrl-4**.
+here (AI4)** and press **ctrl/command-4**.
 The seven recorded turns are already in that box's chat, with their original
 prompts, replies, tool traces and plot images. Scroll back to watch the function
 grow, or send a new message to continue from the finished example. Simply opening
@@ -132,9 +130,9 @@ this same source; the first saved conversation grows r2 into r3.
 
 <!-- function-study-source:recorded-start -->
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.Functions
-import afield.stdlib.StudyComposition
-import afield.stdlib.StudyChoice
+import afield.math.functions.Functions
+import afield.math.functions.StudyComposition
+import afield.math.functions.StudyChoice
 
 // A blank musical page: three constant channels. Ask AI4 to grow this Kotlin.
 // The final expression returns a candidate; the tools box compiles and checks it.
@@ -299,10 +297,10 @@ the listing away, copy it from the code block, or [download the Kotlin file](ass
 ???+ example "Complete final source · r9-82456e1e48ac"
 
     ```diffstatic {data-lang=kotlin}
-    import afield.stdlib.Functions
-    import afield.stdlib.StudyComposition
-    import afield.stdlib.StudyEvent
-    import afield.stdlib.StudyChoice
+    import afield.math.functions.Functions
+    import afield.math.functions.StudyComposition
+    import afield.math.functions.StudyEvent
+    import afield.math.functions.StudyChoice
     import kotlin.math.PI
 
     with(Functions) {
@@ -465,8 +463,8 @@ r.register(SampleFunctionStudy::class.java, onAFunctionStudy, LIBRARY) { ctx, q 
 
 The request class supplies the tool's input schema; the gate offers it when the
 conversation's focus is a function study, and the handler works on that box.
-A document can register tools of its own the same way from one of its boxes —
-a measurement, a plot, another request class — scoped to itself, then run the box
+A document can register tools of its own the same way from one of its boxes
+(a measurement, a plot, another request class), scoped to itself, then run the box
 and keep chatting; [Talking a shader into existence](stacksl_conversation.md#adding-a-tool-of-your-own)
 has a worked example. The observation tools return both measurements and rendered
 plot images to AI4, so the assistant can inspect what its Kotlin does before making
@@ -499,8 +497,8 @@ endpoint and verifies the written rows. A 3,600-second composition produces
 The current study checks three pure, deterministic channels against `[0, 1]`.
 It is suited to functions you can sample in any order. Kotlin runs in Field's
 existing JVM, so use fast evaluators; this is not a way to sample a stateful audio
-graph or isolate arbitrary blocking code. The tools and checks are visible on
-purpose, so you can adapt the experiment to another kind of function.
+graph or isolate arbitrary blocking code. The tools and checks are ordinary
+library code, so you can adapt them to another kind of function.
 
 ??? aside "Why the recorded turns are slow"
 

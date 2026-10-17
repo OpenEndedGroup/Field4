@@ -1,19 +1,20 @@
 # MQTT: sensors, devices and brokers
 
-`afield.mqtt` lets a box publish and subscribe over MQTT, the small publish/subscribe protocol that
+`afield.io.mqtt` lets a box publish and subscribe over MQTT, the small publish/subscribe protocol that
 ESP32 and Arduino sketches, Node-RED, Home Assistant and TouchDesigner all speak. Messages go to a
 **broker**; anything subscribed to a matching **topic** (a path such as `sensors/kitchen/temp`)
 receives them. Field includes its own broker, so nothing needs installing to try it.
 
-Open `public/docs/assets/mqtt_demo/` as a document. Box 1 plays three pretend sensors, box 2 listens
-to every temperature, box 3 plots them, and box 4 shows a retained message.
+The [`mqtt_demo`](agent_transcripts.md#mqtt_demo) starting point puts the pieces of this page together: one box
+plays three pretend sensors, one listens to every temperature, one plots them, and one shows a
+retained message.
 
-## Five lines to a sensor feed
+## A sensor feed
 
 This subscribes to every room's temperature and shows the latest one:
 
 ```diffstatic {data-lang=kotlin}
-import afield.mqtt.*
+import afield.io.mqtt.*
 
 mqtt.subscribe("sensors/+/temp") { topic, message ->
     markdown("**$topic** = ${message.number}")
@@ -48,7 +49,7 @@ This box publishes a retained scene and then subscribes; the subscription receiv
 as retained:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mqtt/retained.png" execution="run" wait="2.0" wait-output="true" wait-output-kind="display" capture="box" open-outputs="true" w="700" timeout="90" embed=true name="mqtt-retained" alt="A box output reading: installation/scene: dusk at 0.4 (retained: true)"}
-import afield.mqtt.*
+import afield.io.mqtt.*
 
 mqtt.publish("installation/scene", mapOf("name" to "dusk", "brightness" to 0.4), qos = 1, retain = true)
 
@@ -64,7 +65,7 @@ Often you only want the latest value. `track` subscribes without a callback, and
 something to plot:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mqtt/track_series.png" execution="launch" wait="6.0" wait-output="true" wait-output-kind="display" capture="box" open-outputs="true" w="900" timeout="120" embed=true name="mqtt-track-series" alt="A dark line plot titled Temperatures with two traces, kitchen in cyan oscillating around 21 and garden in orange drifting around 12, built from MQTT messages received over the last few seconds"}
-import afield.mqtt.*
+import afield.io.mqtt.*
 
 :::fold two pretend sensors, publishing ten times a second
 val start = AnimationClock.nowSeconds()
@@ -106,7 +107,7 @@ mqtt.toOsc("sensors/#", oscClient("127.0.0.1", 7000))
 an Art-Net or sACN output from [Driving Lights](dmx_lighting.md):
 
 ```diffstatic {data-lang=kotlin}
-import afield.dmx.*
+import afield.io.dmx.*
 
 val out = artnetOut("192.168.1.50")
 mqtt.toDmx("sensors/hall/lux", out, universe = 1, channel = 1, range = 0.0..800.0)
@@ -142,7 +143,7 @@ disappears without disconnecting.
 The connection is made once per broker and reconnects by itself, resubscribing, if the broker
 restarts or the network drops. `print(mqtt)` shows its state and message counts.
 
-## What this does not do
+## Not supported
 
 - MQTT 3.1.1 only; MQTT 5 brokers accept 3.1.1 clients, so this matters only for v5-only features.
 - No TLS (`mqtts://`, port 8883) and no WebSocket transport.

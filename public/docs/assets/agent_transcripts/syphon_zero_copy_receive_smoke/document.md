@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. syphon zero-copy renderer
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="syphon_zero_copy_renderer" index="0" -->
 
 ```edn [field-box id="syphon_zero_copy_renderer" role="properties"]
-{"id" "syphon_zero_copy_renderer" "index" 0 "name" "syphon zero-copy renderer" "parents" ["root"] "children" ["syphon_zero_copy_smoke"] "properties" {"children" #{#afield/box "syphon_zero_copy_smoke"} "parents" #{#afield/box "root"} "name" "syphon zero-copy renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_zero_copy_renderer_code_.kt" "lines" 15 "characters" 291 "sha256" "2e4631a7450029da5defce01879697540767ff5d420049cb5ac2ef9d99bc94f8"}]}
+{"id" "syphon_zero_copy_renderer" "index" 0 "name" "syphon zero-copy renderer" "parents" ["root"] "children" ["syphon_zero_copy_smoke"] "properties" {"children" #{#afield/box "syphon_zero_copy_smoke"} "parents" #{#afield/box "root"} "name" "syphon zero-copy renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_zero_copy_renderer_code_.kt" "lines" 15 "characters" 302 "sha256" "885aba3bfb38dbfc42fc1838d74eef4e22fb42038c2cb66dd78fff3b80e7334a"}]}
 ```
 
 ```kotlin [field-property box="syphon_zero_copy_renderer" name="code" path="syphon_zero_copy_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -37,12 +37,12 @@ start(renderer::run)
 <!-- field-box id="syphon_zero_copy_smoke" index="1" -->
 
 ```edn [field-box id="syphon_zero_copy_smoke" role="properties"]
-{"id" "syphon_zero_copy_smoke" "index" 1 "name" "Syphon receive, zero-copy, exact pixels" "parents" ["root" "syphon_zero_copy_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "syphon_zero_copy_renderer"} "name" "Syphon receive, zero-copy, exact pixels" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_zero_copy_smoke_code_.kt" "lines" 80 "characters" 3638 "sha256" "c10b5f1beaa25227380e3ddccc4bcfaaefd31d94fc69298a3fcbcbdfb29fee08"} {"name" "vertex" "language" "glsl" "path" "syphon_zero_copy_smoke_vertex_.glsl" "lines" 6 "characters" 138 "sha256" "907a218100d7c3399bd0131de3d4aae514b9fd90ea58b289f8f8b333fa6d650b"} {"name" "fragment" "language" "glsl" "path" "syphon_zero_copy_smoke_fragment_.glsl" "lines" 7 "characters" 270 "sha256" "85655a25a50c56788ef5a3ee94286463b233bd4d029823941e0e051055f9ccbe"}]}
+{"id" "syphon_zero_copy_smoke" "index" 1 "name" "Syphon receive, zero-copy, exact pixels" "parents" ["root" "syphon_zero_copy_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "syphon_zero_copy_renderer"} "name" "Syphon receive, zero-copy, exact pixels" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_zero_copy_smoke_code_.kt" "lines" 80 "characters" 3652 "sha256" "209db44415840e536532a6a1c534db3f2349613ba406dce561e13302828029d5"} {"name" "vertex" "language" "glsl" "path" "syphon_zero_copy_smoke_vertex_.glsl" "lines" 6 "characters" 138 "sha256" "907a218100d7c3399bd0131de3d4aae514b9fd90ea58b289f8f8b333fa6d650b"} {"name" "fragment" "language" "glsl" "path" "syphon_zero_copy_smoke_fragment_.glsl" "lines" 7 "characters" 270 "sha256" "85655a25a50c56788ef5a3ee94286463b233bd4d029823941e0e051055f9ccbe"}]}
 ```
 
 ```kotlin [field-property box="syphon_zero_copy_smoke" name="code" path="syphon_zero_copy_smoke_code_.kt"]
-import afield.syphon.*
-import afield.four.TexturePreviewCache
+import afield.io.syphon.*
+import afield.graphics.render.TexturePreviewCache
 import org.lwjgl.vulkan.VK10.*
 import java.io.ByteArrayInputStream
 import java.util.Base64

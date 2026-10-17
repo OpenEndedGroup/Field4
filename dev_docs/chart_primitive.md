@@ -1,12 +1,12 @@
 # `chart()` — the FLine plot primitive
 
-`afield.Chart` is to a plot what `afield.Table` is to a grid: build it, hand it to `Box.showChart`
+`afield.ui.visualization.Chart` is to a plot what `afield.ui.visualization.Table` is to a grid: build it, hand it to `Box.showChart`
 (or let a box's last expression be one), and it arrives on screen in the repo's style with no markup
 in the way. It implements `ToHTML`, so `display(channel, chart)`, `chart.h` and a returned `Chart`
 all render the same figure.
 
-Source: [`src/jvmMain/kotlin/afield/visualization/charts.kt`](../src/jvmMain/kotlin/afield/visualization/charts.kt),
-the DataFrame entry point in [`DataFrameCharts.kt`](../src/jvmMain/kotlin/afield/visualization/DataFrameCharts.kt).
+Source: [`src/jvmMain/kotlin/afield/ui/visualization/charts.kt`](../src/jvmMain/kotlin/afield/ui/visualization/charts.kt),
+the DataFrame entry point in [`DataFrameCharts.kt`](../src/jvmMain/kotlin/afield/ui/visualization/DataFrameCharts.kt).
 A loadable document is at [`dev_docs/agents/demos/chart_primitive/`](agents/demos/chart_primitive/) —
 open its `metadata.edn` in Field.
 
@@ -171,7 +171,7 @@ Chart(title = "residual per iteration", xLabel = "iteration", yLabel = "|r|")
 - **Marks.** `points`, `line`, `area`, `bars`, `histogram`, `boxes`, `rule`, `vrule`, `band`.
 - **`toFLines()`** lowers the whole figure to `List<FLine>` in pixel space; `plotRect()` reports the
   frame the derived insets landed on.
-- **`toHTML()`** goes through `afield.graphics.linesToHTML`, which is the markup `Box.lines` builds.
+- **`toHTML()`** goes through `afield.ui.visualization.linesToHTML`, which is the markup `Box.lines` builds.
 
 ### Labels are glyph outlines, and there are three traps
 
@@ -288,7 +288,7 @@ Two harnesses, deliberately split: `ChartTest` owns the arithmetic, `ChartGaller
 
 ```bash
 # 24 assertions: ticks, mapping, log refusals, loudness, expectations, clipping, wrapping
-./gradlew jvmTest --no-daemon --tests 'afield.ChartTest'
+./gradlew jvmTest --no-daemon --tests 'afield.ui.visualization.ChartTest'
 
 # six figures plus two grids rendered to real PNGs, with ink floors and two counterfactuals
 CHART_GALLERY_DIR=/tmp/chart-gallery-out \
@@ -328,25 +328,20 @@ What that does **not** cover is Chromium deciding which `<g>` a click landed in.
 `tools/fline_hit_proof.py` covers that half for `FLineHitInspectorFigure`, and the markup here comes
 out of the same `buildInteractiveSVG`.
 
-## Capture gotcha
+## Capture gotcha (fixed 2026-10-16)
 
-`screenshot-box <uid>` selects the box, but the canvas's depth-of-field can still have the *previous*
-selection in focus when the shot lands, and the result is a plausible-looking blurred figure. The
-reliable recipe is to open the box first and preserve that selection:
-
-```
---command 'editor-open <uid> --open-outputs'
---command 'sleep 2'
---command 'screenshot-box <uid> out.png --padding 10 --preserve-selection'
-```
-
-Two consecutive `screenshot-box` calls on the same box sometimes works and sometimes does not; the
-`editor-open` form worked every time.
+This section used to recommend `editor-open --open-outputs`, a sleep, then
+`screenshot-box --preserve-selection`, blaming a canvas depth-of-field lag. Field has no
+depth-of-field. What made repeats unreliable was the prep itself: `fitBoxWidthToOutputsForScreenshot`
+measured each panel at the width the previous capture had set and added 56 px, so every repeated
+`screenshot-box` of a box was wider than the last. It now measures at the panel's pre-capture
+width, and the prep also waits for a navigation pan or a finite CSS animation to finish before
+the shot. Three consecutive shots of one box now come out the same size, with the same content.
 
 ## Migrating a hand-roller
 
 `FunctionsPlotGallery` is ported: its private `niceTicks` and `fmt` are gone in favour of
-`afield.niceTicks` and `afield.tickLabels`, and its committed captures are regenerated. Two things
+`afield.ui.visualization.niceTicks` and `afield.ui.visualization.tickLabels`, and its committed captures are regenerated. Two things
 improved for free — the old copy never snapped its tick values (invisible only because `fmt` rounded
 to two decimals), and an axis that read "-1, -0.50, 0, 0.50, 1" now reads "-1, -0.5, 0, 0.5, 1".
 

@@ -3,7 +3,7 @@
 *2026-08-04.*
 
 `ThreeJsViewerTessellationParityTest` executes `threejs_viewer.html`'s `tessellateCoplanarGroups` on
-GraalJS and compares it to `afield.graphics.PlanarTessellation` triangle for triangle. That is a strong
+GraalJS and compares it to `afield.geometry.path.PlanarTessellation` triangle for triangle. That is a strong
 statement about the numbers and **no statement at all about the pixels**, so these are the pixels.
 
 Replayable, and replayed to make these four images:

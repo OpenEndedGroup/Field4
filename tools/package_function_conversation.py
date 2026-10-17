@@ -26,7 +26,7 @@ EXAMPLE = DEMOS / "function_conversation_example"
 STUDY = EXAMPLE / "studies/function_source"
 STARTER_FILES = ("README.md", "AGENTS.md", "metadata.edn", "function_source_code_.kt")
 CHAT_FILE = "function_source_ai4_chat_history_.md"
-TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/stdlib/FunctionStudyTools.kt"
+TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/math/functions/FunctionStudyTools.kt"
 # Screenshots of Field itself, made by tools/capture_function_conversation.py.
 CAPTURED = ("starter.png", "saved-chat.png")
 RECORDED_TURNS = ("01-create", "02-move", "03-stretch", "04-lag", "05-delete", "06-warp", "07-restore-background")
@@ -47,7 +47,7 @@ def revision(name: str) -> str:
 
 
 def source_blocks() -> dict[str, str]:
-    """Listings and edit views come from the saved Kotlin, not parallel examples."""
+    """Listings are the saved Kotlin's bytes, so the page and its downloads show the same source."""
     def excerpt(source: str, start: str, end: str) -> str:
         return textwrap.dedent(source[source.index(start) : source.index(end)]).strip()
 
@@ -71,10 +71,14 @@ def source_blocks() -> dict[str, str]:
     }
 
 
+RESPONSE_MODEL = re.compile(r"response provider=(\w+) requestedModel=([\w.-]+) responseModel=ResponsesModel\{string=([\w.-]+)\}")
+
+
 def recorded_chat() -> bytes:
     """Restore original UI turns, not a newly written summary or simulated conversation."""
     folder = EXAMPLE / "conversations"
     turns = []
+    models: set[tuple[str, str, str]] = set()
     for label in RECORDED_TURNS:
         record = json.loads((folder / (label + ".json")).read_text())
         text = (folder / (label + ".md")).read_text().split("\n\n", 1)[1]
@@ -90,7 +94,14 @@ def recorded_chat() -> bytes:
 
         # Data URLs make the imported chat portable to another workspace or a copied box.
         turns.append(re.sub(r"\]\((images/[^)]+\.png)\)", image, text).strip())
-    return ("\n\n".join(turns) + "\n").encode()
+        models.update(RESPONSE_MODEL.findall(json.dumps(record)))
+    # The turns predate per-response model records; the run's logs name one model, which the chat
+    # states once, as the run's, rather than writing it into any turn.
+    assert len(models) == 1, f"the recorded run names {sorted(models)}, not one model"
+    provider, requested, response = next(iter(models))
+    header = "<<run-model:" + json.dumps({"provider": provider, "requestedModel": requested, "responseModel": response},
+                                         separators=(",", ":")) + ">>\n"
+    return (header + "\n\n".join(turns) + "\n").encode()
 
 
 def reader(name: str, source: str) -> bytes:

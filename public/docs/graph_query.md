@@ -16,8 +16,8 @@ registration.
 
 Give `graphPaths` a pattern and it hands back a `PathSet`: an ordered collection
 of *live lenses*. Each one is an address plus a getter, and a setter too if the
-slot is mutable. Nothing is copied, so reading a path twice can legitimately
-give two answers.
+slot is mutable. Nothing is copied, so if the value changes between two reads,
+the second read sees the change.
 
 <!--
 FIELD_TEST
@@ -47,9 +47,8 @@ than alphabetically: you read them in the order you declared them.
 
 ## The slash shorthand
 
-A path already separates its segments with `/`, so the operator that starts a
-query may as well be spelled the same way. `rig / "**/freq"` *is*
-`rig.graphPaths("**/freq")`: same walk, same live refs, less to type.
+`rig / "**/freq"` is shorthand for `rig.graphPaths("**/freq")`: the same query,
+less to type.
 
 ```diffstatic {data-lang=kotlin}
 // the same query, twice
@@ -65,16 +64,14 @@ Those parentheses on the first line are not optional: `.` binds tighter than
 `/`, so `rig / "**/freq".whereValueIs<Float> { ... }` would be looking for that
 method on the *string*.
 
-`/` is defined on `Any?`, which is a wide place to put an operator. Ordinary
-division is untouched: a member `div` always beats an extension, so every
-numeric type, and every vector, quaternion or signal type that spells `/` its
-own way, keeps its own arithmetic. Between two extensions the more specific
-receiver wins, so `kotlin.io.path`'s `path / "sub"` still joins a path. The one
-new case is a `String` on the right of `/`. `"a" / "b"` type-checks and hands
-back an empty `PathSet`, so a `/` you got wrong shows up a step later than a
-compile error would. The operator has nowhere to put a `GraphWalkOptions`
-either: when you need a depth cap, private properties or a custom
-`descendInto`, call `graphPaths` and say so.
+The shorthand takes no options. When you need a depth cap, private properties
+or a custom `descendInto`, call `graphPaths` and pass a `GraphWalkOptions`.
+
+??? aside "What `/` does to ordinary division"
+    `/` is defined on `Any?`, but ordinary division is untouched: a member `div`
+    always beats an extension, so numbers, vectors, quaternions and signals keep
+    their own arithmetic, and `kotlin.io.path`'s `path / "sub"` still joins a
+    path.
 
 ## Patterns and predicates
 
@@ -183,12 +180,9 @@ display("main", "naming a path: $named edge reads — " +
         "walking all ${all.size} slots: $everything edge reads")
 ```
 
-Three things are *not* part of a literal prefix, and each falls back to the walk.
-A segment holding a within-segment glob (`"osc*"`) has to be compared against the
-names that are actually there. A literal segment spelled with the wrong case may
-have a sibling differing only in case, which a single descent could not report,
-so it defers to the walk. And a pattern with more than one `|` branch has no
-single path to descend: it walks once and filters by every branch.
+A within-segment glob (`"osc*"`), a literal spelled in a different case from the
+property, and a pattern with more than one `|` branch all end the literal prefix,
+and the query walks from there.
 
 That example also shows `LiveGraphInspectable`: implement it and you decide what
 your object's children are, instead of letting reflection guess. Custom edges
@@ -201,13 +195,10 @@ pattern is parsed a single time and the plan is reusable.
 
 ## Driving numbers: `params()`
 
-`params()` is the synth-flavoured head on the generic layer. It narrows a
-`PathSet` to the slots that can be *driven* (native `Param`s, and any writable
-numeric field) and gives you set-at-once operations over the group.
-
-In that second category a plain `Float` or `Int` property
-on an ordinary object gains base/supplier/modulation semantics, so anything with
-numbers in it can be driven like a synth parameter.
+`params()` narrows a query to the slots that can be *driven*: Field's `Param`s,
+and any writable numeric field. A plain `Float` or `Int` property on an ordinary
+object can then be set, modulated and supplied like a synth parameter, and you
+can change the whole group at once.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/paramset.png" alt="an output panel holding a ParamSet of 6, with columns path, base and state: a/freq 110, a/gain 0.100, b/freq 220, b/gain 0.500, c/freq 440, c/gain 0.900, and every one of the six marked scalar" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-paramset" w="760" h="300"}
 :::static
@@ -246,7 +237,7 @@ on their own. `clearModulation()` and `clearSuppliers()` detach them again.
 
 ## Notes on traversal
 
-Some behaviours to know about before you point this at something large:
+What the walk does on a large or unusual graph:
 
 - **Descent stops at the obvious leaves** — numbers, strings, booleans, enums,
   primitive arrays, functions, class objects — and at anything in the JDK's own
@@ -259,7 +250,12 @@ Some behaviours to know about before you point this at something large:
   is therefore reachable under *each* of its addresses, while `a → b → a` still
   terminates. `maxDepth` and `maxRefs` bound the rest.
 - **Collections are transparent.** Maps are keyed by their stringified key,
-  lists and arrays by index, and mutable ones are writable.
+  lists and arrays by index, and mutable ones are writable. A `Set` is
+  addressed by position in iteration order and is read-only.
+- **You can browse the same edges.** `tree("t", value)` and `column("c", value)`
+  list exactly what this walk sees; `p` copies a row's path, and a filter
+  containing `/`, `*` or `|` runs `graphPaths` and lists the matches (see
+  [Trees and columns](visualizers.md#trees-and-columns)).
 - **Non-public classes work.** Your own `private` and `internal` model classes
   are read and written like any other.
 - **A throwing getter won't derail a walk**, but reading that one slot

@@ -1,7 +1,7 @@
 name: syphon_bridge
 description: >
   Three boxes that move frames over Syphon, the macOS standard for sharing video between
-  applications, through afield.syphon (an Objective-C shim over the Syphon framework). The first
+  applications, through afield.io.syphon (an Objective-C shim over the Syphon framework). The first
   lists the Syphon servers on this machine. The second publishes an animated picture as the server
   "Field pattern", visible to Resolume, TouchDesigner, MadMapper, OBS or any other Syphon client.
   The third connects to a server as a client and shows its latest frame — by default Field's own
@@ -15,17 +15,19 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.syphon.*
+          import afield.io.syphon.*
 
           run {
-          if (!Syphon.isAvailable) {
-              markdown(Syphon.describe())
-              return@run
-          }
+              if (!Syphon.isAvailable) {
+                  markdown(Syphon.describe())
+                  return@run
+              }
 
-          val servers = Syphon.servers(waitMs = 1000)
-          markdown(if (servers.isEmpty()) "No Syphon servers are running."
-                   else servers.joinToString("\n") { "- **${it.appName}** ${it.name}" })
+              val servers = Syphon.servers(waitMs = 1000)
+              markdown(
+                  if (servers.isEmpty()) "No Syphon servers are running."
+                  else servers.joinToString("\n") { "- **${it.appName}** ${it.name}" },
+              )
           }
   - create:
       box: syphon_publish
@@ -33,7 +35,7 @@ operations:
       frame: { x: 80.0, y: 520.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.syphon.*
+          import afield.io.syphon.*
           import java.awt.BasicStroke
           import java.awt.Color
           import java.awt.RenderingHints
@@ -72,12 +74,16 @@ operations:
       frame: { x: 80.0, y: 960.0, w: 340.0, h: 100.0 }
       properties:
         code: |
-          import afield.syphon.*
+          import afield.io.syphon.*
 
           // without the library this stops here and says how to build it
           check(Syphon.isAvailable) { Syphon.describe() }
 
-          // a server's name, app name or uuid; "" takes the first one announced
+          /*
+          Match a server name, app name or UUID; "" takes the first announced server.
+          This named client is shared across reruns; a closed client is recreated on lookup.
+          Stop ends this receive loop while leaving the shared connection available.
+          */
           val inp = syphonClient("Field pattern")
 
           loop {

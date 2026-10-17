@@ -6,12 +6,10 @@ does nothing feed into, which two boxes both write the same property. `graphPath
 ([Querying Object Graphs](graph_query.md)) can address a slot by pattern, but it cannot follow an
 edge and then follow it again.
 
-`afield.datalog` can. It is a small deductive database: you state facts, you write rules that
+`afield.data.query.datalog` can. It is a small deductive database: you state facts, you write rules that
 derive more facts from them, and the engine runs the rules to exhaustion. Recursion is the normal
 case rather than a special one, so transitive closure is two lines. Facts can come from Datalog
 text, from Kotlin collections, or from the document you have open.
-
-Everything on this page is real output from a running box.
 
 ## Facts, rules, and a question
 
@@ -58,8 +56,8 @@ out and the program still runs. Put it in and the region lights up, which the la
 
 ## The answer is a fixpoint
 
-`query` runs one goal. `solve` hands back the whole model: every relation, saturated. Looking at it
-once shows what the engine actually did.
+`query` runs one goal. `solve` hands back the whole model: every relation, with every fact the
+rules can derive.
 
 <!--
 FIELD_TEST
@@ -87,14 +85,12 @@ display("main", d.solve())
 ```
 
 Four stated edges produce twelve paths. The cycle `b → c → d → b` makes those three nodes mutually
-reachable, including each from itself, and the rules terminate anyway: a rule can only ever add
-rows that are already in the (finite) product of what it reads, so there is nothing left to add
-after a few rounds.
+reachable, including each from itself. The rules still stop: they can only combine values that are
+already there, so after a few rounds there is nothing new to add.
 
 ## Why a fact is there
 
-A query engine that answers `yes` and stops is hard to trust on a graph you cannot see. Ask for the
-derivation instead.
+`why` shows how a fact was derived: which rules fired, and which stated facts they started from.
 
 <!--
 FIELD_TEST
@@ -121,14 +117,11 @@ d.add("""
 display("main", d.why("path(a, d)"))
 ```
 
-Each line names the rule that produced it, and the leaves are facts you stated. The search
-terminates on cyclic input because the engine records which round each fact first appeared in, and
-a proof may only descend to strictly earlier rounds. `path(a, a)` in the graph above gets a proof
-too, rather than an infinite regress.
+Each line names the rule that produced it, and the leaves are facts you stated. Cycles are fine:
+`path(a, a)` in the graph above gets a finite proof too.
 
-A proof runs through an aggregate as well. `count` and `sum` are exactly the numbers you cannot
-check by reading, and a fact derived through one is justified by the tuples that contributed to it,
-plus the arithmetic that combined them.
+A proof runs through an aggregate as well. A fact derived through `count` or `sum` lists the rows
+that contributed to it and the arithmetic that combined them:
 
 ```diffstatic {data-lang=text}
 payroll(sales, 300)   [payroll(D, S) :- dept(D), S = sum P : { emp(_1, D, P) }]
@@ -143,14 +136,10 @@ too, because "nothing bigger exists" is half of what the answer means. A group i
 of display; the value is always computed over the whole of it. A negated body literal appears as its
 own step, since "no such fact" is often the reason a rule fired.
 
-The number in the proof is recomputed from the group and checked against the model. If the two ever
-disagreed you would get the old answer — a note saying no proof was reconstructed — rather than a
-plausible wrong tree.
-
 ## Why one is not
 
-The question a query asks more often. An empty result gives no reason, so `whyNot` walks the
-conjunction and names the literal that took the answer set to zero.
+An empty result gives no reason, so `whyNot` runs the query one goal at a time and names the goal
+where the answers ran out.
 
 ```diffstatic {data-lang=text}
 whynot cell(C, V), V > 5, colour(C, red)   no answers
@@ -173,12 +162,10 @@ whynot path(a, e)   not in the model; 2 rule(s) could have produced it
        1  edge(a, e)  0 answers   <- nothing survives here
 ```
 
-The counts come from the real engine — each prefix of the conjunction is run as a rule — so they
-cannot disagree with the query they are explaining. Three answers are kept distinct, because in an
-empty result they look identical: a literal with no matching rows, a predicate nothing defines at
-all, and a test written before the atom that binds its variable. The last of those is reported as
-"not evaluable this early" rather than as zero, because the fix is to reorder the rule and not to
-go looking for missing data.
+`whyNot` tells apart three causes that look the same in an empty result: a goal with no matching
+rows, a predicate nothing defines, and a test written before the goal that binds its variable. The
+last is reported as "not evaluable this early", because the fix is to reorder the rule rather than
+to look for missing data.
 
 ## Facts from Kotlin objects
 
@@ -203,15 +190,15 @@ expect:
 :::static
 data class Take(val clip: String, val shot: String, val seconds: Int, val rating: Int)
 
-val takes = listOf(
+val takes = [
     Take("a017", "wide",   42, 5), Take("a018", "wide",   38, 2),
     Take("a021", "close",  19, 4), Take("a022", "close",  22, 3),
     Take("a030", "insert",  8, 2), Take("a031", "insert", 11, 1),
-)
+]
 
 val d = Datalog()
-d.facts("take", takes) { listOf(it.clip, it.shot, it.seconds, it.rating) }
-d.facts("shot", listOf(listOf("wide"), listOf("close"), listOf("insert")))
+d.facts("take", takes) { [it.clip, it.shot, it.seconds, it.rating] }
+d.facts("shot", [["wide"], ["close"], ["insert"]])
 d.add("""
     #datalog
     covered(S) :- take(_, S, _, R), R >= 4.
@@ -305,17 +292,15 @@ asked. Build a new `Datalog` to refresh it.
 
 ## Any object graph
 
-The document bridge is a schema someone wrote by hand. The general one comes from
-[`graphPaths`](graph_query.md): walk any live object, and turn every slot it addressed into facts.
+`addBoxGraph` knows about boxes. For any other Kotlin object, `addObjectGraph` walks it the way
+[`graphPaths`](graph_query.md) does and turns every slot it visits into facts. A `graphPaths`
+pattern can address slots but cannot follow an edge repeatedly, or notice that two paths lead to
+the same object; Datalog supplies both.
 
-The two layers cover each other's gaps. A glob addresses slots but cannot follow an edge and then
-follow it again, and it has nothing to say about two addresses that turn out to be the same object.
-Datalog has the recursion and no idea what an object is. `addObjectGraph` costs one walk and gives
-`slot`, `link`, `segment`, `depth`, `at`, `value`, `type` and `writable`; `dlObjectGraphRules` adds
-`alias`, `reaches`, `unreached` and `leaf` on top.
-
-`at(Path, ObjectId)` is the one that pays for the trip. Every non-scalar value gets a number *by
-identity*, so aliasing needs no special relation — it is `at` joined with itself:
+`addObjectGraph` gives `slot`, `link`, `segment`, `depth`, `at`, `value`, `type` and `writable`;
+`dlObjectGraphRules` adds `alias`, `reaches`, `unreached` and `leaf` on top. In `at(Path, ObjectId)`
+every non-scalar value gets a number by identity, so two paths that reach the same object share a
+number, and `alias` is `at` joined with itself:
 
 <!--
 FIELD_TEST
@@ -346,18 +331,17 @@ display("main", d.query("alias(A, B)"))
 display("settable", d.query("reaches(\"carrier\", P), writable(P)"))
 ```
 
-Two names for one oscillator, found without being told to look. Equality would have called all three
-the same, since two `Osc(220f, 0.8f, "shared")` are equal and only one is *shared*; the walk already
-visits a shared node under every alias, so the facts were there to join.
+`alias` finds the two names for one oscillator. It compares identity, not equality, so two separate
+oscillators with the same settings would not match.
 
-The right-hand answer is the other half: every settable slot below `carrier`, which needs the
-transitive step a glob has no way to write.
+The second answer lists every settable slot anywhere below `carrier`, which takes the recursive
+step a `graphPaths` pattern cannot express.
 
-Scope the walk with the same pattern `graphPaths` takes — `addObjectGraph(rig, "carrier/*")` loads
-one level, and a literal prefix costs O(depth) where `**` walks everything.
+Narrow the walk with a `graphPaths` pattern: `addObjectGraph(rig, "carrier/*")` loads one level,
+and a literal prefix is much cheaper than `**`, which walks everything.
 
-Use `addBoxGraph` for a document even so. Its schema is `child`, `nested`, `frame` and `prop`,
-where a reflective walk of a `Box` hands you every field one actually has.
+For a document, use `addBoxGraph` anyway: its `child`, `nested`, `frame` and `prop` relations are
+what you want to ask about, where a walk of a `Box` object turns up every internal field it has.
 
 ## Drawing what it derived
 
@@ -377,10 +361,10 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/datalog/reachability.png" alt="seven yellow diamond nodes numbered 0 to 6 around an ellipse. Eight thick yellow lines are the stated edges, the ring 0-1-2-3-4 back to 0, plus the branch 1-5-6 rejoining at 2. Behind them a dense haze of thin blue-grey lines joins almost every other pair of nodes: the implied edges, outnumbering the stated ones four to one" wait="1.5" capture="box" open-outputs="true" embed=true name="datalog-reachability" w="760" h="430"}
 :::static
-val links = listOf(0 to 1, 1 to 2, 2 to 3, 3 to 4, 4 to 0, 1 to 5, 5 to 6, 6 to 2)
+val links = [0 to 1, 1 to 2, 2 to 3, 3 to 4, 4 to 0, 1 to 5, 5 to 6, 6 to 2]
 
 val d = Datalog()
-d.facts("edge", links.map { listOf(it.first, it.second) })
+d.facts("edge", links.map { [it.first, it.second] })
 d.add("""
     #datalog
     path(X, Y) :- edge(X, Y).
@@ -497,8 +481,7 @@ ui.pause(1500)
 ```
 
 Diagnostics inside a region are lexical only: unbalanced brackets, an unterminated string, a clause
-with no `.`. Whether a rule is safe or stratified is a property of the whole program, which the
-engine decides when it runs; underlining a half-typed buffer for it would flag correct code.
+with no `.`. The rules in "What it refuses" below are checked when the program runs.
 
 Rest the cursor on a statement and the note beside it answers from the box's model: a rule says how
 many facts its body derives there and draws them as a table, a query shows its answers, and a fact says
@@ -537,5 +520,4 @@ variables are bound nowhere else. A predicate used at two different arities. Neg
 aggregation inside a recursive cycle, which it reports with the cycle named rather than picking an
 evaluation order.
 
-**Where it lives.** `src/jvmMain/kotlin/afield/datalog/`, and `dev_docs/DATALOG.md` for the
-implementation notes.
+**Source.** `src/jvmMain/kotlin/afield/data/query/datalog/`.

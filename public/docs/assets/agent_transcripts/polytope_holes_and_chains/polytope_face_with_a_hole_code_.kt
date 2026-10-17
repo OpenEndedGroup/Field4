@@ -1,5 +1,3 @@
-import afield.stdlib.polytope.*
-
 // ***** CHANGE THIS LINE ***** the window's half-width, anywhere inside (0, 1).
 val solid = cubeWithWindow(side = 0.45f)
 
@@ -8,17 +6,21 @@ val windowed = topology.elements(2).single { topology.faceHasHoles(it.id) }
 val geometry = solid.triangulate()
 val rimTriangles = (0 until geometry.triangleCount).count { geometry.sourceFace(it) == windowed.id }
 
-// Everything a holed face refuses, and the message it refuses with. These are values, not
-// accidents: a Conway operator, a dualization and an OFF export are all defined for closed
-// manifolds, and a face with a hole is a surface with boundary.
-val refusals = listOf<Pair<String, () -> Any>>(
-    "topology.dual()" to { topology.dual() },
-    "solid.bevel()" to { solid.bevel() },
-    "solid.toOff()" to { solid.toOff() },
-    "triangulate(FanFaceTriangulator)" to { solid.triangulate(FanFaceTriangulator) },
-).map { (name, call) ->
-    name to (runCatching { call() }.exceptionOrNull()?.message ?: "DID NOT THROW")
-}
+/*
+Everything a holed face refuses, and the message it refuses with. These are values, not
+accidents: a Conway operator, a dualization and an OFF export are all defined for closed
+manifolds, and a face with a hole is a surface with boundary.
+*/
+val refusals =
+    listOf<Pair<String, () -> Any>>(
+            "topology.dual()" to { topology.dual() },
+            "solid.bevel()" to { solid.bevel() },
+            "solid.toOff()" to { solid.toOff() },
+            "triangulate(FanFaceTriangulator)" to { solid.triangulate(FanFaceTriangulator) },
+        )
+        .map { (name, call) ->
+            name to (runCatching { call() }.exceptionOrNull()?.message ?: "DID NOT THROW")
+        }
 
 println(
     """
@@ -29,15 +31,18 @@ println(
     closed manifold = ${topology.validate(checkManifold = true).isValid}, and the only complaints are
         ${topology.validate(checkManifold = true).issues.size} one-sided window edges
     triangles cut from the windowed face = $rimTriangles (a solid square would be 2)
-    """.trimIndent(),
+    """
+        .trimIndent(),
 )
 println("\nrefused, by name:")
 refusals.forEach { (call, message) -> println("  $call -> $message") }
 println("\norbit the view below; the window is a window, and the far wall is behind it")
 
-// One FLine per face. A face's holes are further closed contours on that same line — one
-// line is still one face, and a hole is not a face — which is what the viewer's own
-// outer-ring-plus-holes grouping then subtracts.
+/*
+One FLine per face. A face's holes are further closed contours on that same line — one
+line is still one face, and a hole is not a face — which is what the viewer's own
+outer-ring-plus-holes grouping then subtracts.
+*/
 val faceLines = solid.toFaceFLines { face, line ->
     val holes = topology.faceHoles(face.id)
     line.filled = true
@@ -55,7 +60,8 @@ val faceLines = solid.toFaceFLines { face, line ->
             - holes: `${holes.map { it.size }}`
             - triangles: `${(0 until geometry.triangleCount).count { geometry.sourceFace(it) == face.id }}`
             - clicked at: `${hit.position}`
-            """.trimIndent(),
+            """
+                .trimIndent(),
         )
     }
 }

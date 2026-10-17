@@ -179,6 +179,46 @@ AI completions stream in a few seconds later and merge (they no longer block the
 fixed in `fieldSuggest.js`). For an AI-completion shot, wait a beat longer after the first row so
 the `AI` section is populated.
 
+### Live UI over a renderer (`capture="ui" graphics-context=true`)
+
+UI that only exists while a box draws through the renderer — the **stack.auto numbers** card, a
+StackSL stage note inside a Kotlin string — needs both: add `graphics-context=true` to the
+`capture="ui"` fence. The runner then launches `agent_graphics_context` and waits for its frames
+*before* the `transcript=` setup runs, so the setup can `connect` its boxes beneath the renderer and
+`launch` them. The drive then only waits for the real DOM (`.stack-auto-card .field-slider`,
+`.afield-line-note img`) and clips. Worked example: the three stack.auto fences in
+`stacksl_examples.md` with `assets/transcripts/stackauto_numbers_setup.yaml`.
+
+When such a capture comes out empty, find out which side is failing before you touch the drive:
+
+- **Poll the DOM from the drive** (`repeat(30) { println(ui.eval("…")); ui.pause(200) }`) rather than
+  trusting one `waitForSelector`. A `waitForSelector` on a note that never came returned without
+  failing once; the figure showed no note at all.
+- **Call the server side directly** from a probe box connected beneath `agent_graphics_context` in the
+  same backdoor invocation (`new-box`, `connect agent_graphics_context @last`, `run @last --file …`).
+  Find the target box by walking `thisBox.parents.flatMap { it.children }`. `afield.document.graph.box(id)` returns
+  null from box code.
+- **Box code runs on the main thread.** Anything that waits for a renderer frame (the StackSL GPU
+  rasterizer) must run on a `Thread` that writes its result to a file, which a later `wait-file`
+  reads. Joining that thread from the box deadlocks, because the main thread is the one that draws.
+- Providers behind `runCatching { … }.getOrNull()` (line notes, the card) show a failure as "no
+  note". Replicate their steps one by one in the probe to see which returns null.
+
+### Animating a box written in another language
+
+A launched box in a language other than Kotlin records like a Kotlin one (`capture="box"`
+`execution="launch"` `video=` `duration=`) once two things hold, both true for Forth since
+2026-10-10 (`forth_examples.md`, `forth-frame-spinner`):
+
+- **The fence runs as a box of that language.** `runs_in_language_root` in `public/docs_hooks.py`
+  sends it through a `mainLanguage` root. A Forth fence that only runs once is still wrapped in
+  `renderForthDocsSnippet`, which has no strand, so `frame` fails there.
+- **The runtime publishes `box.currentRunningStates[strand]`** while its strand runs, as `Phased.kt`
+  does for Kotlin. The video recorder relaunches through `box.ke` (the box's own execution) and opens
+  only when that state's watermark passes the stopped generation. A runtime that only sends
+  `is-running` times out with "waiting for relaunched video target to reach its first active frame",
+  and the trace shows `currentRunningStates={}`.
+
 `field_probes.md` deliberately omits its card capture until the hook can frame the output area of
 the real GPU-driven probe. The former CPU-created `FieldProbeSnapshot` stand-in was removed because
 it exercised only card rendering, not the documented probe path.
@@ -233,10 +273,10 @@ important mechanics (all verified by reading the hook + logs):
    `moduleHere()` generates one Kotlin class per uniform block, capitalising the block's
    name (`shaders.kt`, `replaceFirstChar { uppercase() }`), straight into the box's
    preamble. So a GLSL `uniform camera { … }` makes the box declare its own `Camera`,
-   and a declaration in the box beats *any* import — including the `afield.four.util.*`
-   every box already gets, and including an explicit `import afield.four.util.Camera`.
+   and a declaration in the box beats *any* import — including the `afield.graphics.vulkan.util.*`
+   every box already gets, and including an explicit `import afield.graphics.vulkan.util.Camera`.
    Symptom: `Unresolved reference 'at' on receiver of type
-   'Docs_…__preamble__2.Camera'`. Fix: fully-qualify (`afield.four.util.Camera()`, as
+   'Docs_…__preamble__2.Camera'`. Fix: fully-qualify (`afield.graphics.vulkan.util.Camera()`, as
    `afield_four_graphics.md` §1b does — that verbosity is load-bearing, don't "tidy" it)
    or rename the uniform block.
 

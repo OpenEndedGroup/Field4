@@ -1,18 +1,18 @@
 package afield.examples
 
-import afield.Box
-import afield.OperationTranscript
-import afield.Rect
-import afield.SavingContext
-import afield.SessionInformation
-import afield.box
-import afield.isTrue
-import afield.macros.checkAtticAndExecute
-import afield.macros.checkIntroductionAndExecute
-import afield.macros.checkPreambleAndExecute
-import afield.remotejs.KotlinJsExecution
-import afield.remotejs.kotlinJsTopologyNeedsUpdating
-import afield.thisSessionInfo
+import afield.document.graph.Box
+import afield.tools.automation.OperationTranscript
+import afield.app.protocol.Rect
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.document.graph.box
+import afield.document.graph.isTrue
+import afield.runtime.macros.checkAtticAndExecute
+import afield.runtime.macros.checkIntroductionAndExecute
+import afield.runtime.macros.checkPreambleAndExecute
+import afield.lang.remotejs.KotlinJsExecution
+import afield.lang.remotejs.kotlinJsTopologyNeedsUpdating
+import afield.app.server.thisSessionInfo
 import kotlinx.coroutines.runBlocking
 import org.yaml.snakeyaml.Yaml
 import java.io.File
@@ -87,7 +87,7 @@ expect:
  * one of [EXECUTE] or [COMPILE_ONLY] below. An unclassified transcript fails the test on purpose.
  *
  * These three sets are also where the *public* index page's claim about CI comes from:
- * [afield.docs.AgentTranscriptIndexGuard] reads them and fails the build unless
+ * [afield.tools.docs.AgentTranscriptIndexGuard] reads them and fails the build unless
  * `public/docs/agent_transcripts.md` has an entry for every transcript, filed under a section whose
  * declared verification level matches the set the transcript is in. That is why they are `internal`
  * rather than private — classification is decided here and nowhere else.
@@ -96,11 +96,22 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
+        "stacksl_fit_demo",
+        // ai4_chat_archive.md's demo: reads the example chat under public/docs/assets by checkout path.
+        "ai4_chat_archive",
         "particle_video_reader",
+        // The staged-project starting place: a level edited through guarded tools, three study-build
+        // stages behind a gate, a qualified loot rule and a corpus of variants. CPU only; Manifold is used
+        // when installed and the blockout says so when it is not.
+        "staged_project",
         // Five CPU boxes on the drawing layer's scene (the root box's `drawing` property): draw from
         // code, read it back, register a stroke reaction, and read two graphic scores by cutting
         // them. No client is needed — the scene is server-side data — so every box executes headless.
         "drawing_notation",
+        // interactive_guides.md's starting point: a four-step slideshow over two CPU boxes. Headless the
+        // notes and selections go to no browser, but every box (the guide included) runs to completion.
+        "slideshow_guide",
         // Five CPU boxes: draw a score on the drawing, read it with notation.space, turn it into notes
         // twice (as drawn, and snapped to a scale), render with patRenderStereo into audio players,
         // and measure onsets and pitches in the renders. No
@@ -115,7 +126,7 @@ object DemoTranscriptExecSmokeTest {
         "studies_rings",
         // Lua over LuaJIT: the transcript executes only its Kotlin root, which prints where LuaJIT was
         // found (or how to install it), so it needs nothing the build does not own. The Lua boxes are a
-        // guest language; afield.lua.LuaStateTest and LuaBoxTest run their code against a real lua_State.
+        // guest language; afield.lang.lua.LuaStateTest and LuaBoxTest run their code against a real lua_State.
         "lua_demo",
         // Three bounded CPU boxes: refusal messages, field-clock curves, and a computed ledger.
         // No audio device or renderer; unlike marf_demo, every box is safe to execute headless.
@@ -147,6 +158,14 @@ object DemoTranscriptExecSmokeTest {
         // running it buys is keyframes(...), KeyframeEvaluator and the Keyframe-seeded overload
         // through the real box path.
         "keyframe_editor",
+        // A gesture take baked into two keyframe lanes: one launched loop that bakes on first run and
+        // plays the pad, its playhead and both lanes, stopped after 90 frames. Pure CPU; what running it
+        // buys is bakeGesture, toKeyframes and setTake through the real box path.
+        "gesture_to_keyframes",
+        // A pen gesture's take baked into x/y/pressure lanes and painted from them with a brush of
+        // moving hairs, and one take painted four ways to show what the pad keeps and drops. Two
+        // still CPU boxes through afield.graphics.paint; without the paint library both say so and stop.
+        "gesture_paint_replay",
         // BSP-OT matching: two still boxes executed (one of them a million points a side, a few
         // seconds) and a launched morph loop stopped after 90 frames.
         "point_matching",
@@ -163,7 +182,7 @@ object DemoTranscriptExecSmokeTest {
         // See dev_docs/FN_REWRITE_SELF_BOX_REENTRY.md.
         "fn_rewrite_kotlin_boxes",
         // Blending two code keyframes. Pure CPU: the StackSL goes through the real compiler and then
-        // through afield.stacksl.cpu's GLSL interpreter, and the fourth box compiles generated Kotlin
+        // through afield.lang.stacksl.cpu's GLSL interpreter, and the fourth box compiles generated Kotlin
         // through K2 inside its own box — which is the one part of the feature a unit test cannot
         // reach, and the reason this is EXECUTE rather than COMPILE_ONLY.
         "keyframe_code_blend",
@@ -187,6 +206,10 @@ object DemoTranscriptExecSmokeTest {
         "dataframe_typed_columns",
         "spectral_examples",
         "imaging_cv_examples",
+        // Two CPU boxes: one executed stipple(), one launched `loop { }` taking a Lloyd step a frame
+        // for 90 real runloop frames. Both draw through stipplesToImg -> showImg (a PNG into display),
+        // so no Window and no Renderer.
+        "stippling",
         // A photograph to a printable solid, across four families that do not import one another:
         // DepthAnything (ONNX) for monocular depth, the imaging family to normalise it, reliefMesh to
         // close it into something with a volume, and Manifold for the Boolean. EXECUTE rather than
@@ -318,6 +341,20 @@ object DemoTranscriptExecSmokeTest {
         "keyframe_key_discovery",
         "logging_layer",
         "midi_clip",
+        // SMPTE timecode (2026-10-08): drop-frame arithmetic, LTC round trip under gain/noise/speed
+        // ramp, MTC into a TimecodeClock, a clock following LTC. Pure CPU, no audio or MIDI device.
+        "smpte_timecode",
+        // Matrix profile (2026-10-15): motifs/discords, mSTAMP across four channels, and a
+        // contrast profile. Pure CPU, signals generated in the box.
+        "matrix_profile",
+        // GP instruments (2026-10-10): GpOptimizer tunes a curve to a target, a GpPreference A/B loop
+        // waits on two buttons, and the same loop runs against a simulated judge. Pure CPU, FLines only.
+        "gp_instruments",
+        // GP drawing (2026-10-10): a closed periodic loop through six pins, 1-D conditioning and a
+        // 2-D field, with controls. Pure CPU, FLines and heatmaps only.
+        "gp_drawing",
+        // Inspector embeds (2026-10-12): tree(), column(), a live list and logs(). Pure CPU.
+        "browse_embeds",
         "pattern_condense",
         "read_only_session",
         "solidsl_inverse",
@@ -383,6 +420,11 @@ object DemoTranscriptExecSmokeTest {
         // drawn through lines() and controlGroup sliders. CPU only.
         "stipple_sheet",
         "fline_hit_records",
+        // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
+        "fline_measure",
+        // fline_examples.md's exact booleans and offsets: Area vs booleanExact, byOffsetting vs
+        // byOffsettingExact, side by side through lines(). CPU only.
+        "fline_exact_booleans",
         // The companion to sound.md's real-drums section. showDirtAudio / showPatAudio mix offline
         // into inline players, so no audio device; with no Dirt-Samples on the build machine every
         // token falls back to patVoice, which is box 3's subject anyway.
@@ -400,7 +442,10 @@ object DemoTranscriptExecSmokeTest {
         // — and the first one draws the same shape through Field's own marchingCubes instead, with the
         // difference named, rather than failing.
         "manifold_solids",
-        // Three pure-CPU boxes that paint and draw FLines through afield.paint (FFM into the optional
+        // The optional Rust bridge opens a bundled design and renders both parameter values through
+        // Field's CPU mesh preview. With no native artifact the box explains the build command.
+        "solidcraft_intro",
+        // Three pure-CPU boxes that paint and draw FLines through afield.graphics.paint (FFM into the optional
         // Rust wrapper over claude-paint's `paint` crate) and display a PNG, so no Window and no
         // Renderer. All check PaintCanvas.isAvailable first; without `./gradlew buildPaintNative` — the branch CI
         // takes — they print where they looked and stop, rather than failing.
@@ -410,8 +455,13 @@ object DemoTranscriptExecSmokeTest {
         // scribble aiTool that paints on it. No model is called; without the paint library the Studio
         // says so and stops, like paint_canvas.
         "ai4_paint_studio",
+        // One pure-CPU box that keeps a StackSLEvolution on itself and registers an agentExtension over
+        // it (evolve_* tools, context, commands, the population as branch state). Executing it renders
+        // only the target: the search, LPIPS and the watchmaker start at the first evolve_step, which
+        // needs a chat. No model is called.
+        "stacksl_evolve_studio",
         // Three CPU boxes: pen strokes with pressure drawn on the drawing layer and read back with
-        // notation, then painted (brush swell from the pen) and drawn in pencil through afield.paint.
+        // notation, then painted (brush swell from the pen) and drawn in pencil through afield.graphics.paint.
         // The paint boxes check PaintCanvas.isAvailable first, like paint_canvas.
         "drawn_paint",
         // Two pure-CPU boxes that lower a RectSL scene to a GLSL distance field and print it.
@@ -420,6 +470,14 @@ object DemoTranscriptExecSmokeTest {
         // emitter's own starting point still compiles against it.
         "rectsl_glsl_sdf",
         "solidsl_notation",
+        // The solid_notation.md gallery and the geometry_from_disk.md repair demo, as starting points.
+        // CPU only; the Manifold halves print an install message and fall back when it is absent.
+        "solidsl_gallery",
+        "mesh_repair_demo",
+        // sorting_networks_examples.md's four fences as boxes, pure CPU. Only the two drawing boxes are
+        // launched: the two annealing boxes search for 70 and 90 seconds, and the docs runner executes
+        // them for the page's captures.
+        "sorting_networks",
         // Two pure-CPU boxes on the third track backend: one prints a track's symbolic IR with its
         // free parameters still unsolved, the other fits those parameters against waypoints and
         // rasterises target/seed/fitted with TriMesh.renderPng into display(). `toFn` and the Adam
@@ -434,7 +492,7 @@ object DemoTranscriptExecSmokeTest {
         // `source` lambda. Pure arithmetic and one daemon sampler thread — no Window, no Renderer, no
         // audio device — so the whole transcript runs to completion here.
         "control_surface_laws",
-        // Asks `afield.CommonMemberPrior` and `KotlinSourceIndex` what ranking prior and completion
+        // Asks `afield.runtime.completion.CommonMemberPrior` and `KotlinSourceIndex` what ranking prior and completion
         // category the popup currently has for a receiver type, and tabulates the answer into
         // display(). Two in-process lookups and some string building — no completion server, no
         // window — so running it here is also the cheapest check that the two entry points
@@ -444,13 +502,22 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // ORCA in a box output, playing through a returned PatSynthBank, so running it opens an audio
+        // device; and ORCA itself only plays in a browser. `run_ui_regressions.py --id orca-io` runs
+        // the same calls in a real page, and OrcaTest feeds the Kotlin side the page's reports.
+        "orca_hello",
+        // Two of them and a frames loop between: the same reasons. OrcaHeadlessTest runs its exchange
+        // on ORCA's own operators in the JVM, and pins it to this transcript.
+        "orca_duet",
+        // ORCA with AI4 on the board: the same reasons as orca_hello. Its tools run in the orca-io regression.
+        "orca_jam",
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
         "chain_scene_to_light",
         // Syphon (macOS frame sharing) through the optional native/field-syphon library: two of the
         // three boxes are `loop { }`s that publish and receive frames across Syphon's shared GPU
         // surface. Not evaluated here (a Mac, Metal and `./gradlew buildSyphonNative`);
-        // afield.syphon.SyphonTest runs the cross-process round trip with exact pixels instead.
+        // afield.io.syphon.SyphonTest runs the cross-process round trip with exact pixels instead.
         "syphon_bridge",
         // The same over the Vulkan renderer: followOnGpu (GPU copy into an IOSurface) and a Syphon
         // client as a texture. Needs a Window, a Renderer and the library; verified live by hand.
@@ -492,7 +559,7 @@ object DemoTranscriptExecSmokeTest {
         "reconstruction_plumbing", // Live moduleHere MRT -> NGX; GPU checked by check_plumbing.py.
         "rr_plumbing", // Raw RTXDI and editable guide conversion -> RR; same GPU check.
         "learned_from_module", // Real moduleHere capture + asynchronous training: check_shader_learning.py.
-        // Box 1 opens a Window because `afield.four` has no headless mode — a compute-only dispatch
+        // Box 1 opens a Window because Field 4 graphics has no headless mode — a compute-only dispatch
         // still needs one for the device to exist — so the bench cannot be replayed here. What this
         // entry buys is the thing that was actually missing: all four box bodies are compiled
         // against Field's real K2/preamble import set on every build, which is where box code
@@ -518,9 +585,13 @@ object DemoTranscriptExecSmokeTest {
         // lambdas; the pattern scheduler and the band analysis in front of it are covered by
         // synth.pat.seam, which needs no device at all.
         "pattern_particles",
+        // A window and a per-frame burst buffer; the net and the three run queries the sparks box
+        // makes each frame (firingsOver, markingAt, countAt) are covered by PetriSparksDocsTest.
+        "petri_sparks",
         "life3d_manifold_path_trace",
         "rectsl_spacetime_path_trace",
         "skinned_volume_path_trace",
+        "petri_state_space_sculpture",
         // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
         "openxr_eye_intersection",
         "afield_four_traditional_triangle",
@@ -561,6 +632,7 @@ object DemoTranscriptExecSmokeTest {
         "path_tracer_instrument",
         "path_tracing_emitters",
         "path_tracing_medium",
+        "python_box_parity",
         "python_cells",
         // fieldcv: the Python cells need JEP plus the optional cv group, and a camera; the Kotlin
         // graphics boxes are compiled.
@@ -570,7 +642,7 @@ object DemoTranscriptExecSmokeTest {
         "pure_data_demo",
         // Csound: the Kotlin root and five Kotlin boxes need libcsound built (./gradlew
         // buildCsoundNative), which the build does not own, so they are compiled; the three Csound
-        // boxes are a guest language and skipped, as Pd's are. afield.csound.* tests run the calls
+        // boxes are a guest language and skipped, as Pd's are. afield.audio.csound.* tests run the calls
         // against a real Csound when one is built. Every box was run by hand on 2026-10-02.
         "csound_demo",
         "four_summary_pyramid",
@@ -591,6 +663,11 @@ object DemoTranscriptExecSmokeTest {
         // its pixels are checked by the `rectsl-sdf` docs capture instead.
         "rectsl_sdf_live",
         "spin_glass",
+        // Each opens its own Window + Renderer and runs a GPU simulation (a lattice Boltzmann wind
+        // tunnel, a forest fire), so compile-only here; their pixels are the
+        // `four-lattice-boltzmann` and `four-forest-fire` docs captures in afield_four_graphics.md.
+        "lattice_boltzmann_cylinder",
+        "forest_fire",
         "imgui_vr_panel",
         // A hidden Electron window renders Field itself into Chromium shared textures; the live
         // macOS replay crosses IOSurface Mach rights and samples them in Vulkan. CI compiles the
@@ -636,7 +713,7 @@ object DemoTranscriptExecSmokeTest {
         "letter_interpolation",
         "letter_interpolation_panels",
         // The two demo documents that were compiled by nothing until 2026-09-21. Both are here
-        // because their transcripts exist to close the hole [afield.docs.AgentDemoRegistrationTest]
+        // because their transcripts exist to close the hole [afield.tools.docs.AgentDemoRegistrationTest]
         // names, and neither can be EXECUTE.
         //
         // `skinned_characters` opens a GLFW window and a Vulkan renderer in `skin_renderer` and
@@ -655,6 +732,35 @@ object DemoTranscriptExecSmokeTest {
         // EXECUTE transcript, because the one point the document makes is that the bank does not
         // know whether it is being drawn or heard, and that argument does not survive the split.
         "marf_demo",
+        // The mqtt.md and oscquery.md demos: `loop { }` boxes over Field's own broker and a published
+        // OSCQuery service on fixed ports, meant to be launched and stopped by hand. MqttDemoBundleTest
+        // checks the bundle opens.
+        "mqtt_demo",
+        "oscquery_demo",
+        // dmx_lighting.md's demo: `loop { }` boxes on Art-Net's and sACN's fixed UDP ports (6454,
+        // 5568). DmxLightingDemoBundleTest checks the bundle; the page's fences run each box's
+        // loopback on its own, and its hero capture replays this transcript with the launches.
+        "dmx_lighting_demo",
+        // sonic_pi.md's demo: two of its three boxes play through Sonic Pi. SonicPiPatternDemoDriftTest
+        // holds the page's fences to the document.
+        "sonicpi_pattern_demo",
+        // rtp_midi.md's demo opens real RTP-MIDI sessions on UDP 5004-5007 and announces over Bonjour.
+        "rtp_midi_demo",
+        // aiFeatures.md's tool demo: its geometry tool renders a mesh for the model to look at.
+        "ai_tool_demo",
+        // fieldml_host_bridge.md's demos. Their boxes are FieldML under a FieldML root, a guest
+        // language this harness cannot run (it does not install the @RunsAt language registry), so
+        // only the Kotlin window-and-renderer boxes of the GPU ones are compiled here;
+        // FieldMLSmokeExamplesTest and FieldMLSourceMacroTest run the FieldML documents themselves.
+        "fieldml_macro_demo",
+        "fieldml_host_bridge_demo",
+        "fieldml_lambda_demo",
+        "fieldml_afield_four_demo",
+        "fieldml_frames_demo",
+        "fieldml_macro_module_demo",
+        "fieldml_mesh_demo",
+        // stacksl_examples.md's gallery draws into a native window.
+        "stacksl_gallery",
     )
 
     /**
@@ -780,7 +886,7 @@ object DemoTranscriptExecSmokeTest {
             if (code.isBlank()) continue
             // Only KotlinJS-head boxes: a `// {{ marker }}` first line, or mainLanguage == kotlinjs.
             val mainLang = target.getPropertyRaw("mainLanguage", "")?.toString()?.trim().orEmpty()
-            val selection = runCatching { afield.remotejs.KotlinJsHeadProfiles.resolve(code) }.getOrNull()
+            val selection = runCatching { afield.lang.remotejs.KotlinJsHeadProfiles.resolve(code) }.getOrNull()
             if (selection == null || (!selection.explicit && !mainLang.equals("kotlinjs", ignoreCase = true))) {
                 println("[kotlinjs]   $id: not a kotlinjs-head box — skipped")
                 continue
@@ -792,7 +898,7 @@ object DemoTranscriptExecSmokeTest {
                 println("[kotlinjs]   $id: FAIL $msg")
             }
             val prepared = selection.profile.prepareSource(selection.source)
-            val result = afield.remotejs.KotlinToJsCompiler.compile(
+            val result = afield.lang.remotejs.KotlinToJsCompiler.compile(
                 prepared, moduleName = "demo_${name}_${id.take(8)}", wrapImplicitMain = false,
             )
             val errors = result.diagnostics.filter { it.severity == "error" }
@@ -839,11 +945,11 @@ object DemoTranscriptExecSmokeTest {
         // Opened the way Field opens a document, so code that asks which open document a box is in
         // (BoxStudies.documentOf, which a study's default revision directory needs) gets the answer
         // it gets in Field rather than "not in an open document". Removed again after the replay.
-        afield.documents[document.absolutePath] = thisSessionInfo.get()
+        afield.app.server.documents[document.absolutePath] = thisSessionInfo.get()
         val run = try {
             OperationTranscript.runMacro(document.absolutePath, name)
         } finally {
-            afield.documents.remove(document.absolutePath)
+            afield.app.server.documents.remove(document.absolutePath)
         }
         val errorLines = run.output.filter { it.kind == "error" || it.kind == "err" }
 
@@ -926,14 +1032,12 @@ object DemoTranscriptExecSmokeTest {
                 println("[compile]   $id: code_language=$codeLanguage, not Kotlin — skipped")
                 continue
             }
-            // The other way a box becomes a guest one: its parent is a language root
-            // (`mainLanguage: python`, as fieldcv_webcam's cv_python is), and the child carries no
-            // `code_language` of its own.
-            val rootLanguage = target.parents.firstNotNullOfOrNull { p ->
-                p.getPropertyRaw("mainLanguage")?.toString()?.trim()?.takeIf { it.isNotEmpty() && !it.equals("kotlin", ignoreCase = true) }
-            }
-            if (rootLanguage != null) {
-                println("[compile]   $id: child of a mainLanguage=$rootLanguage root, not Kotlin — skipped")
+            // The other way a box becomes a guest one: it sits beneath a `mainLanguage` root
+            // (`fieldcv_webcam`'s cells hang off a `mainLanguage: python` box rather than carrying
+            // `code_language` themselves).
+            val guestRoot = guestLanguageRoot(target)
+            if (guestRoot != null) {
+                println("[compile]   $id: beneath mainLanguage=$guestRoot root, not Kotlin — skipped")
                 continue
             }
             val diags = compileBoxOnly(target)
@@ -952,6 +1056,26 @@ object DemoTranscriptExecSmokeTest {
     }
 
     /**
+     * The guest `mainLanguage` of the nearest ancestor language root, or null when [box] is Kotlin.
+     * `kotlinjs` roots are not guest here: their heads go through the KotlinJS pass above.
+     */
+    private fun guestLanguageRoot(box: Box): String? {
+        val seen = HashSet<Box>()
+        var frontier = box.parents.toList()
+        while (frontier.isNotEmpty()) {
+            val next = ArrayList<Box>()
+            for (p in frontier) {
+                if (!seen.add(p)) continue
+                val lang = p.getPropertyRaw("mainLanguage")?.toString()?.trim().orEmpty()
+                if (lang.isNotEmpty() && !lang.equals("kotlin", true) && !lang.equals("kotlinjs", true)) return lang
+                next.addAll(p.parents)
+            }
+            frontier = next
+        }
+        return null
+    }
+
+    /**
      * Compile [box]'s Kotlin `code` through the real pipeline with evaluation skipped, returning any
      * ERROR-severity diagnostics. Reuses the real macro expander, preamble evaluation and K2
      * compiler; only the terminal `eval` of the main body is omitted (that is where a graphics box
@@ -966,7 +1090,7 @@ object DemoTranscriptExecSmokeTest {
             // Then substitute the `__line__` sentinel the print macros emit — standardExecutionPractice
             // (the real path) does this between applyMacros and eval; skipping it leaves an unresolved
             // `__line__` reference. The exact number is irrelevant to compilation.
-            val expanded = box.ki.applyMacros(box, box.code)
+            val expanded = box.ki.applyMacros(box, requireNotNull(box.code) { "${box.name} has no Kotlin code to compile" })
                 .split("\n")
                 .mapIndexed { i, line -> line.replace("__line__", "$i") }
                 .joinToString("\n")
@@ -1046,15 +1170,15 @@ object DemoTranscriptExecSmokeTest {
     }
 
     internal fun startRunloopDaemon() {
-        val t = Thread({ afield.Runloop.runLoop.start() }, "demo-transcript-harness-runloop")
+        val t = Thread({ afield.runtime.lifecycle.Runloop.runLoop.start() }, "demo-transcript-harness-runloop")
         t.isDaemon = true
         t.start()
         val deadline = System.currentTimeMillis() + 30_000
-        while (afield.Runloop.runLoop.frame < 1L) {
+        while (afield.runtime.lifecycle.Runloop.runLoop.frame < 1L) {
             check(System.currentTimeMillis() < deadline) { "runloop did not start within 30s" }
             Thread.sleep(20)
         }
-        println("DemoTranscriptExecSmokeTest: runloop up (frame=${afield.Runloop.runLoop.frame})")
+        println("DemoTranscriptExecSmokeTest: runloop up (frame=${afield.runtime.lifecycle.Runloop.runLoop.frame})")
     }
 
     internal fun locateTranscriptsDir(): File {

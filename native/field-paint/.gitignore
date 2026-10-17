@@ -1,1 +1,4 @@
 /target/
+# made by `cargo test` run on the vendored crate alone; the wrapper's Cargo.lock pins its dependencies
+/vendor/paint/Cargo.lock
+/vendor/paint/target/

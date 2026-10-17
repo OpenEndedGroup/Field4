@@ -1,7 +1,7 @@
 package afield.examples
 
-import afield.remotejs.KotlinToJsCompiler
-import afield.remotejs.KotlinToJsCompiler.Profile
+import afield.lang.remotejs.KotlinToJsCompiler
+import afield.lang.remotejs.KotlinToJsCompiler.Profile
 import java.nio.file.Files
 
 /*

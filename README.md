@@ -1,46 +1,25 @@
 # Field 4
 
-Field 4 is a Kotlin-based live-coding environment for graphics, exploratory
-data visualization, and new media art.
-
-Edit a number, launch the code, and watch a drawing change. Inspect values beside the code,
-stop the animation, and keep the edited document. The first example runs without a GPU driver,
-Python or an AI key.
+Field 4 is a live-coding environment for graphics, sound, exploratory data visualization, and new media art.
 
 [![A moving drawing in Field, with its editable Kotlin and inline petal count](public/docs/assets/first_steps/preview.gif)](https://openendedgroup.com/field4/first_steps/)
 
 [Watch the short recording](https://openendedgroup.com/field4/assets/first_steps/first-look.mp4) ·
 [Your first five minutes](public/docs/first_steps.md)
 
-**AGPL-3.0-or-later.** See [LICENSE](LICENSE). Field runs locally; optional AI uses your own
-provider/account. [What stays local and what leaves](public/docs/privacy.md).
-
 Project site and user documentation: https://openendedgroup.com/field4
 
 ## Status
 
-Field 4 is being prepared for its first public source release. Expect some
-sharp edges while the repository is being cleaned up, especially around native
-graphics/audio dependencies and developer tooling.
+Field 4 is in active development but is usable for real work, teaching and inspiration.
 
 ## Requirements
 
-- Apple silicon macOS, glibc Linux (x86-64; ARM64 experimental), or Windows x64
-- Linux desktop launch: `curl`, C/C++ compiler, Make, CMake, and Electron desktop libraries
-- macOS desktop launch: Apple Command Line Tools (`xcode-select --install`)
-- A shell that can run the Gradle wrapper
-- **Git LFS, installed before you clone.** `libs/kotlin-compiler-embeddable-*.jar`
-  (~180MB) is stored with LFS. Clone without it and Git silently leaves a 134-byte
-  text pointer in the jar's place; the build then fails partway through
-  `:compileKotlinJvm` with `zip END header not found`, which does not obviously
-  point back here. Install it (`apt install git-lfs`, `brew install git-lfs`, or
-  the Windows Git installer's LFS option) and run `git lfs install` once per
-  machine. If you have already cloned without it, you do not need to re-clone —
-  install Git LFS and run `git lfs pull`.
+The core of Field runs on Apple silicon macOS, glibc Linux (x86-64; ARM64 experimental), or Windows x64
+- Git LFS should be installed before you clone,
 - Internet access on the first build so Gradle can download toolchains and
-  dependencies
+  dependencies,
 - Several GB of downloads/build storage; allow 10 GB free and 16 GB RAM for the source build
-- For browser use, a browser that can accept the local development HTTPS certificate
 
 See the [installation guide](public/docs/installation.md) for package commands and platform limits.
 Java, Gradle and Node are provisioned by the launchers. Python, AI keys and optional submodules
@@ -66,17 +45,18 @@ cd Field4
 .\field.bat
 ```
 
-This is the one command you need: it builds Field (compiling the Kotlin/JVM
-backend and the JavaScript front end via the Gradle wrapper), then launches the
-backend and the Electron window together.
+This is the one command you need. 
+
+The first interactive launch runs a small Kotlin welcome tool: choose desktop/browser mode and
+optional Python prerequisites or Vulkan diagnostics or other optional native things. It prints a package installation plan and
+requires explicit confirmation before running commands. Reopen it with `./field.sh --setup`
+(Windows: `field.bat --setup`). Noninteractive launches skip the questions; automation may set
+`AFIELD_FIRST_RUN=skip`.
 
 The **first run compiles the whole project and downloads large native
 dependencies** (LWJGL graphics/audio, Lucene, ONNX Runtime, and others), so
 allow time and bandwidth for the initial build. Fresh Windows and Apple-silicon
-macOS CI launches took about 20–25 minutes; your machine and connection will affect
-that time. Subsequent launches reuse the dependency cache and incremental compiler output.
-If the build fails, the script stops and prints the Gradle errors instead of launching a stale build —
-fix them and re-run.
+macOS CI launches took about 20–25 minutes. Subsequent launches reuse the dependency cache and incremental compiler output.
 
 The backend runs in the terminal you launched from, with a live status console
 pinned at the top (startup progress, frame rate, GPU uploads, compile/evaluate
@@ -94,12 +74,6 @@ AFIELD_SKIP_BUILD=1 ./field.sh
 ```powershell
 $env:AFIELD_SKIP_BUILD = "1"; .\field.ps1
 ```
-
-The first interactive launch runs a small Kotlin welcome tool: choose desktop/browser mode and
-optional Python prerequisites or Vulkan diagnostics. It prints a package installation plan and
-requires explicit confirmation before running commands. Reopen it with `./field.sh --setup`
-(Windows: `field.bat --setup`). Noninteractive launches skip the questions; automation may set
-`AFIELD_FIRST_RUN=skip`.
 
 When Welcome opens, click **Start here: a moving drawing**. It gives you an editable copy with
 launch, edit, inspect, stop and reopen instructions. **Next: native graphics** opens a small
@@ -270,10 +244,10 @@ the sidecar, at the cost of failing those fences.
 
 The consolidated testing guide is `dev_docs/testing/TESTING_STRATEGY.md`.
 
-## License
+## License & Privacy
 
-Field 4 is licensed under the GNU Affero General Public License, version 3.0 or later.
-See `LICENSE`.
+**AGPL-3.0-or-later.** See [LICENSE](LICENSE). Field runs locally; optional AI uses your own
+provider/account. [What stays local and what leaves](public/docs/privacy.md).
 
 ## Repository Map
 
@@ -283,7 +257,7 @@ See `LICENSE`.
 - `src/jsMain`: browser UI, canvas/editor integration, output areas, and
   commands
 - `public/docs`: Zensical source for the user documentation
-- `metadata_store` and `templates`: example documents and document templates
+- `dev_docs/agents/transcripts`, `dev_docs/agents/demos`, and `templates`: example definitions and document templates
 - `tools`: automation utilities for Agents, including the Field backdoor test runner
 - `dev_docs`: internal design notes and agent-facing development notes
 

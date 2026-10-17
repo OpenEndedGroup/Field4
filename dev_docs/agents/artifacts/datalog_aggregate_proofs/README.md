@@ -121,7 +121,7 @@ until false. Note the table changes two variables per row, so it localises the p
 not to the step; the call sites are what settle it.
 
 That is a transcript-layer gap affecting every non-Kotlin box language, recorded here rather than
-fixed, because it is not `afield.datalog`'s bug.
+fixed, because it is not `afield.data.query.datalog`'s bug.
 
 The failure shape is why this is written down at length: it works for whoever wrote it and is silent
 for whoever reads it, and it reports success either way.

@@ -15,6 +15,11 @@ This file is about what goes on a page and how it reads.
    got wrong, why a guard exists, and internal mechanism a user never touches go in a
    `??? aside` at most, or in `dev_docs/`, or nowhere. The test: would someone who does not care
    how the page was made want to read it? ("Stop talking to Marc and start talking to our users.")
+   The reverse also holds: setup a user has to do (enabling an optional SDK control, installing a
+   tool) is for the reader, so it goes in an open `!!! note`, not a collapsed aside
+   (`direct_lighting.md`, 2026-10-11). A contributor-only section that contains a code fence
+   cannot become an aside without indenting the fence, which changes its pinned bytes; file a
+   handoff to move it to `dev_docs/` and link it (`vision_geometry.md`, 2026-10-11).
 2. **No lab-notebook voice.** Do not narrate an investigation and report findings as you make them.
    Say how the thing works and how to use it. The same goes for a "missing features" section: it
    says what is and is not supported, and what to use instead. Effort estimates ("a weekend of
@@ -28,7 +33,10 @@ This file is about what goes on a page and how it reads.
 5. **No AI-speak or invented vocabulary.** "load-bearing", "seam", "carrier", "on the seam", and
    any term the reader has not met are out. Define a necessary term where it first appears, or
    use plain words. Rephrase anything that only parses on a second reading ("two ways out of
-   where?").
+   where?"). The ban is on invented or metaphorical use, not on a field's own terms: a carrier
+   wave in signal processing, or a `seam` that names a real signature (`sound_paths.md`), stays.
+   "Seam" as a metaphor for a boundary or a join does not (`spatial_geometry_examples.md`,
+   2026-10-11).
 
 ## Code on the page
 
@@ -55,7 +63,10 @@ This file is about what goes on a page and how it reads.
 13. **Look at every capture you make, at column width.** It is legible, not half size. There is no
    empty canvas or editor below the content (trim or clip it). The interesting state is showing
    (a selected version, not the current one; the panel open, not the window). It matches today's
-   UI, including the command palette's current shortcut.
+   UI, including the command palette's current shortcut. Alt text and captions are prose, and
+   they describe what the code draws today: when they disagree with the fence (a caption saying
+   twelve wires over code that builds ten, from an older capture), fix the text to match the code
+   (`sorting_networks_examples.md`, 2026-10-08).
 14. **Captures come from the runner.** Videos come from a `capture="ui"` fence or an operation
    transcript (use `hide-toasts=true` when notifications cover the subject), never a hand
    recording, which goes stale silently. AGENTS.md section 3 forbids faking one.
@@ -65,7 +76,11 @@ This file is about what goes on a page and how it reads.
    pitched page whose own analysis listens back to its render (YIN pitch tracking on
    `chain_drawn_score.md`, `chain_drawn_morph.md`) may keep a plain synth voice such as
    `patVoice`, because the analysis needs a clean, detached, single-pitch signal (Marc,
-   2026-10-03).
+   2026-10-03). A page that says its output cannot be captured ("realtime only", "needs
+   hardware") has that claim checked against the build tasks and tests: if one already produces
+   the output, publish it through the runner; if the claim is wrong, fix the page or the code
+   rather than leave the gap (Marc, 2026-10-07; `pat_spatial.md` said this while
+   `./gradlew headTrackedDemo` wrote a WAV).
 
 ## Where things live
 
@@ -77,8 +92,14 @@ This file is about what goes on a page and how it reads.
 18. **Short titles that say what the page is for.** "How to make sound in Field", "File
    management", "Automating Field". The nav label must not wrap.
 19. **Link whatever a reader can open.** A runnable document is a starting point on the welcome
-   screen, linked from the page, never a workspace path. A source path links to its file. Links
-   are plain text, not bold. Pages that relate say so with a "see also".
+   screen, linked from the page, never a workspace path. A source path links to its file on
+   GitHub, spelled `https://github.com/OpenEndedGroup/Field4/blob/main/<path>`; that includes a
+   `dev_docs/` note a user page points at, and if the note is not worth a link it is not worth
+   naming. Links
+   are plain text, not bold. Pages that relate say so with a "see also". Every saved document under
+   `public/docs/assets/` and `dev_docs/agents/demos/` is a starting point, linked as
+   `agent_transcripts.md#<name>`; `AgentDemoRegistrationTest` fails on one that is not, apart
+   from a named backlog that may only shrink.
 20. **A fact on a page stays true.** When code changes, the page changes in the same commit, and a
    number that can be derived (a count of call sites, pages, transcripts) is derived by its
    guard, not typed.
@@ -89,6 +110,34 @@ This file is about what goes on a page and how it reads.
    pages goes in a handoff document (`docs_notes.py handoff`), not an improvised edit.
 22. **An answer that needs no edit closes the note.** Resolve it with the reason; do not rewrite a
    page to look responsive.
+
+## Making the edit
+
+23. **Re-read every edited sentence from its first word.** Checking only the replaced words is
+   how a split or merged sentence ships half-joined ("…collection, In the saved lessons…",
+   `afield_four_graphics.md`, 2026-10-11). Consolidation is where a prose pass most often
+   introduces an error, factual or grammatical.
+24. **Before renaming a heading, find everything that uses its text.** Grep `public/docs` for
+   inbound `page.md#anchor` links, and grep `tools/` and `src/` for the heading string: a packaged
+   page can share its turn titles with the transcript its packager writes
+   (`stackauto_conversation.md` and `tools/package_stackauto_conversation.py`), and a guard can pin
+   an anchor (`#sonicpi_pattern_demo` on `agent_transcripts.md`).
+
+## What a page should not have to say
+
+25. **A sharp edge the page has to warn about is a bug: fix it, do not document it.** If a
+   paragraph exists only to explain an exception, a stale file, a workaround, a name that
+   misleads, or "these two still do not…", the fix belongs in the code, data or tool, and the page
+   then says nothing about it. A prose pass files a `code` handoff for each one, quoting the
+   paragraph, and leaves the paragraph in place until the fix lands. The handoff says what to fix
+   and that the paragraph is deleted in the same change (Marc, 2026-10-15: `agent_transcripts.md`
+   documented two build scripts that no longer rebuilt their documents, and a test that listed
+   them as known-stale "so an exception cannot outlive its reason").
+26. **Material written for agents goes in an agents' aside.** Sometimes a page does need to tell an
+   agent something a reader does not need: which guard pins a file, what not to hand-edit, which
+   tool regenerates it. Put it in a collapsed `??? aside "Agents: <topic>"`, its title starting
+   with `Agents:`, never in the body text. If the agent-facing note describes a hazard that a
+   tool could prevent, it is also rule 25.
 
 ## Turning these into checks
 
@@ -101,7 +150,9 @@ cheapest first checks, none of them written yet:
 | 6 | a heading line followed, after blank lines only, by a fence |
 | 7 | inside a runner fence: `fromContext<Renderer>()`, `import afield.stdlib.`, `_print(` |
 | 13 | a capture whose bottom rows are a uniform background colour over some height |
-| 19 | a `**[...](...)**` link |
+| 16 | `chains.md` has a card for every page in its nav section (two were missing, 2026-10-11) |
+| 19 | a `**[...](...)**` link; a GitHub link not spelled `OpenEndedGroup/Field4` |
+| 20 | a page stating how many transcripts the welcome screen withholds agrees with `AgentTranscriptMaterializer.EXCLUDE` (stale twice) |
 
 The documentation voice pass (`~/.claude/scheduled-tasks/documentation-voice-pass/`,
 `score_voice.py`) already scores structural faults such as headings, slide labels, plan language

@@ -194,6 +194,28 @@ checkout left, the family having already been cleaned up by hand. That is the ho
 night rather than a defect. The harness that produces them runs 45 units 8-wide and reaps none, so
 the family recurs in bursts, and naming it means the next burst is reachable without editing code.
 
+## Worktrees whose directory was deleted by hand
+
+The reverse of an orphan: git still lists the worktree (`git worktree list --porcelain` marks it
+`prunable`), but its directory is gone. On 2026-10-08 four of these had built up in one day, and
+the first `git status` inside one exited 128 and stopped the whole run, including the build clean.
+`classify_worktree` now checks for the directory before running anything in it, and calls the
+tree `prunable`. `--apply` runs `git worktree prune` first, which is lossless: it drops only the
+admin entries of worktrees whose directories no longer exist, and their branches and commits stay.
+A dry run lists them and leaves them alone. `--clean-builds` skips them.
+
+## Keeping a worktree: `.reaper-keep`
+
+Merged, clean and idle is not the same as unused. On 2026-10-12 the reaper removed
+`.claude/worktrees/split-panes-p0`, a tree Marc had asked to keep. It was safe only while an
+`http.server` held its cwd, and the day that server stopped, nothing distinguished it from any other
+finished tree. The list of trees to keep lived in an agent's notes, where the tool could not see it.
+
+A file named `.reaper-keep` in a worktree's root now refuses it, ahead of every other check, with the
+verdict `kept`: it is never removed, `--completed` naming it is an error, and `--clean-builds` leaves
+its build output alone. The file is gitignored, so it does not make the tree dirty. To keep a tree,
+`touch <tree>/.reaper-keep`; to release it, delete the file.
+
 ## Running it
 
 ```

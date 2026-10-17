@@ -18,7 +18,7 @@ second") says: "And a customizable list of other places third."
 ## Why it is bigger than a docs edit
 
 The resolver has no such list today, so writing that sentence would be false. In
-`src/jvmMain/kotlin/afield/stdlib/FileManager.kt`:
+`src/jvmMain/kotlin/afield/document/workspace/FileManager.kt`:
 
 - `searchRoots()` returns only the document's `files/` followed by `currentProjectFileRoots(create = false)`,
   meaning the `_projects/<name>/files/` of each project that contains the document.

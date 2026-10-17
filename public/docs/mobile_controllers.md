@@ -62,10 +62,10 @@ ui.pause(6000)
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-mobile-controller-group" screenshot="assets/mobile_controllers/group.png" alt="The Group tab of the Field mobile controller showing a box's controlGroup at iPhone size" padding="0" wait="0" timeout="120" embed=true hidden=true name="mobile-controller-group"}
 controlGroup("controls") {
     slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = 0.35) { }
-    vec2Control("orbit", initialValue = afield.stdlib.linalg.Vector2f(0.35f, -0.2f)) { }
+    vec2Control("orbit", initialValue = afield.math.linalg.Vector2f(0.35f, -0.2f)) { }
     checkbox("armed", initialValue = true) { }
     stringInput("name", initialValue = "Field") { }
-    colorPicker("accent", initialValue = afield.stdlib.linalg.Vector4f(0.95f, 0.45f, 0.15f, 0.85f)) { }
+    colorPicker("accent", initialValue = afield.math.linalg.Vector4f(0.95f, 0.45f, 0.15f, 0.85f)) { }
 }
 ui.eval("""
     document.getElementById("docs-mobile-controller-group")?.remove()
@@ -89,6 +89,9 @@ ui.waitForSelector("#docs-mobile-controller-group", 8000.0)
 ui.pause(6000)
 ```
 
+The Group tab also carries multisliders, matrices, range sliders and menus, with their playheads.
+Here is a small step sequencer, first in the desktop app beside its code, then on the phone:
+
 ```diffstatic_runner {data-lang=kotlin capture="window" with-editor="true" viewport="1440x900" execution="launch" open-outputs="true" wait-output="true" wait-output-kind="display" screenshot="assets/mobile_controllers/desktop-sequencer.png" alt="The Field desktop app: on the canvas, a box named sequencer with its output panel open, showing a sixteen-bar velocity multislider, a four-row pattern grid with cells in red, green and blue, a band range slider and a wave menu, with an orange playhead on one column; beside it the code editor open on the box's Kotlin, the controlGroup declaring those four controls and the loop that drives the playheads" wait="1.5" timeout="180" w="220" h="80" embed=true hidden=true name="sequencer"}
 var velocity = 16 { i -> 0.5 + 0.4 * Math.sin(i * 0.6) }
 var pattern = 4 { r -> 16 { c -> if ((c + r * 3) % 8 == 0) 1 + (c / 4) % 3 else 0 } }
@@ -109,7 +112,7 @@ controlGroup("sequencer") {
         band = it
         print(it.h)
     }
-    menu("wave", listOf("sine", "saw", "square", "noise"), initialIndex = 1) { _, name ->
+    menu("wave", ["sine", "saw", "square", "noise"], initialIndex = 1) { _, name ->
         wave = name
     }
 }

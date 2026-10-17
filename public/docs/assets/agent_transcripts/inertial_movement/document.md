@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. what restarting a blend costs
@@ -19,13 +19,15 @@ line: restarting a blend throws away the speed it had, which is what any one-sho
 does every time you re-aim it. Left alone, `inertialTo` re-solves and keeps that speed.
 
 ```edn [field-box id="inertial_vs_restarting" role="properties"]
-{"id" "inertial_vs_restarting" "index" 0 "name" "what restarting a blend costs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what restarting a blend costs" "_tombstone" false "frame" #afield/rect [80.0 900.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inertial_vs_restarting_code_.kt" "lines" 28 "characters" 1057 "sha256" "e47d04b2046bd298ed52af210aedb483ad9012268f9a63e6ae26e0955704f16a"}]}
+{"id" "inertial_vs_restarting" "index" 0 "name" "what restarting a blend costs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what restarting a blend costs" "_tombstone" false "frame" #afield/rect [80.0 900.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inertial_vs_restarting_code_.kt" "lines" 35 "characters" 1132 "sha256" "bb691322ebe32922ff617ee9e9a7b9e6b2633ab0d4e2181b01a3fec0f85ac680"}]}
 ```
 
 ```kotlin [field-property box="inertial_vs_restarting" name="code" path="inertial_vs_restarting_code_.kt"]
-// The same target and two identical interpolants. The only difference is the `startAt`
-// line: restarting a blend throws away the speed it had, which is what any one-shot ease
-// does every time you re-aim it. Left alone, `inertialTo` re-solves and keeps that speed.
+/*
+The same target and two identical interpolants. The only difference is the `startAt`
+line: restarting a blend throws away the speed it had, which is what any one-shot ease
+does every time you re-aim it. Left alone, `inertialTo` re-solves and keeps that speed.
+*/
 var goal = 0.0
 val carried = inertialTo<Double>(time = 0.4) { goal }
 val restarted = inertialTo<Double>(time = 0.4) { goal }
@@ -42,11 +44,16 @@ loop {
     target += goal
     reSolved += carried()
     fromRest += restarted()
+    if (target.size > 300) {
+        target.removeAt(0)
+        reSolved.removeAt(0)
+        fromRest.removeAt(0)
+    }
 
     showSignals(
-        "goal" to target.takeLast(300),
-        "left to re-solve" to reSolved.takeLast(300),
-        "restarted every frame" to fromRest.takeLast(300),
+        "goal" to target,
+        "left to re-solve" to reSolved,
+        "restarted every frame" to fromRest,
         title = "re-solving a blend against restarting it",
         xTitle = "frame",
     )
@@ -65,7 +72,7 @@ Drag the XY pad; the character chases it. Every slider is live — one coroutine
 Framer, so a plain `var` per control is all this needs.
 
 ```edn [field-box id="movement_playground" role="properties"]
-{"id" "movement_playground" "index" 1 "name" "movement model — a character chasing a pad" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "movement model — a character chasing a pad" "_tombstone" false "frame" #afield/rect [80.0 1750.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "movement_playground_code_.kt" "lines" 91 "characters" 4324 "sha256" "617a72d6c4944dab386a8527b508fdfac8fd789cabb7c653b1f214c53d606e34"}]}
+{"id" "movement_playground" "index" 1 "name" "movement model — a character chasing a pad" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "movement model — a character chasing a pad" "_tombstone" false "frame" #afield/rect [80.0 1750.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "movement_playground_code_.kt" "lines" 120 "characters" 4595 "sha256" "1fd4ae7075c2ab84ba53087554241818eae887b5cceb8aac940acdcb44299ec6"}]}
 ```
 
 ```kotlin [field-property box="movement_playground" name="code" path="movement_playground_code_.kt"]
@@ -84,13 +91,26 @@ var halflife = 0.10
 var compensation = 1.0
 
 controlGroup("movement") {
-    vec2Control("target", initialValue = pad, xRange = -1.0 to 1.0, yRange = -1.0 to 1.0,
-                step = 0.02) { pad = it }
+    vec2Control(
+        "target",
+        initialValue = pad,
+        xRange = -1.0 to 1.0,
+        yRange = -1.0 to 1.0,
+        step = 0.02,
+    ) {
+        pad = it
+    }
     slider("top speed (px/s)", min = 80.0, max = 700.0, step = 10.0, initialValue = topSpeed) { topSpeed = it }
-    slider("acceleration (px/s²)", min = 200.0, max = 4000.0, step = 50.0, initialValue = acceleration) { acceleration = it }
-    slider("deceleration (px/s²)", min = 200.0, max = 6000.0, step = 50.0, initialValue = deceleration) { deceleration = it }
+    slider("acceleration (px/s²)", min = 200.0, max = 4000.0, step = 50.0, initialValue = acceleration) {
+        acceleration = it
+    }
+    slider("deceleration (px/s²)", min = 200.0, max = 6000.0, step = 50.0, initialValue = deceleration) {
+        deceleration = it
+    }
     slider("turn strength", min = 0.0, max = 16.0, step = 0.25, initialValue = turn) { turn = it }
-    slider("directional acceleration", min = 0.0, max = 1.0, step = 0.05, initialValue = directional) { directional = it }
+    slider("directional acceleration", min = 0.0, max = 1.0, step = 0.05, initialValue = directional) {
+        directional = it
+    }
     slider("smoothing half-life (s)", min = 0.0, max = 0.4, step = 0.005, initialValue = halflife) { halflife = it }
     slider("lag compensation", min = 0.0, max = 2.0, step = 0.05, initialValue = compensation) { compensation = it }
 }
@@ -130,7 +150,8 @@ loop {
 
     character.update(stick(character.position, target), 1f / 60f, params)
     ghost.update(
-        stick(ghost.position, target), 1f / 60f,
+        stick(ghost.position, target),
+        1f / 60f,
         params.copy(accelerationHalflife = 0f, decelerationHalflife = 0f, accelerationCompensation = 0f),
     )
 
@@ -138,26 +159,41 @@ loop {
     while (trail.size > 240) trail.removeFirst()
 
     val path = FLine()
-    trail.forEachIndexed { i, p -> if (i == 0) path.moveTo(p.x, p.y) else path.lineTo(p.x, p.y) }
+    path.breakNext()
+    trail.forEach { p -> path.lineTo(p.x, p.y) }
 
     showPlane(
-        listOf(
+        [
             fline {
-                moveTo(target.x - 10f, target.y); lineTo(target.x + 10f, target.y)
-                moveTo(target.x, target.y - 10f); lineTo(target.x, target.y + 10f)
-            }.apply { thickness = 1.5; color = vec(0.95, 0.85, 0.35, 1.0) },
-            path.apply { thickness = 1.5; color = vec(0.35, 0.75, 0.95, 1.0) },
-            whisker(ghost, 14f).apply { thickness = 1.0; color = vec(0.55, 0.55, 0.65, 1.0) },
-            whisker(character, 22f).apply { thickness = 2.5; color = vec(0.35, 0.95, 0.6, 1.0) },
-        ),
+                moveTo(target.x - 10f, target.y)
+                lineTo(target.x + 10f, target.y)
+                moveTo(target.x, target.y - 10f)
+                lineTo(target.x, target.y + 10f)
+            }
+                .apply {
+                    thickness = 1.5
+                    color = vec(0.95, 0.85, 0.35, 1.0)
+                },
+            path.apply {
+                thickness = 1.5
+                color = vec(0.35, 0.75, 0.95, 1.0)
+            },
+            whisker(ghost, 14f).apply {
+                thickness = 1.0
+                color = vec(0.55, 0.55, 0.65, 1.0)
+            },
+            whisker(character, 22f).apply {
+                thickness = 2.5
+                color = vec(0.35, 0.95, 0.6, 1.0)
+            },
+        ],
         window = view,
         // Inside the 520px output panel, so this box's panel does not overlap its
         // neighbour's in the column to the right.
         width = 500,
         height = 300,
         title = "drag the pad — green is the model, grey is the same model unsmoothed",
-        caption = "%.0f px/s · %.0f px behind the target"
-            .format(character.speed, target.distance(character.position)),
+        caption = "%.0f px/s · %.0f px behind the target".format(character.speed, target.distance(character.position)),
     )
 }
 ```
@@ -174,7 +210,7 @@ Launch it (Alt-R). `goal` jumps between two values; reading `eased` arrives ther
 inertia instead of snapping, and re-aims mid-flight without losing the speed it had.
 
 ```edn [field-box id="inertial_hello" role="properties"]
-{"id" "inertial_hello" "index" 2 "name" "inertialTo — the whole idea" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "inertialTo — the whole idea" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inertial_hello_code_.kt" "lines" 18 "characters" 609 "sha256" "816cb237174d1b1b731c8d210088a93a5591008b7bfcebcc06b0886e8b049809"}]}
+{"id" "inertial_hello" "index" 2 "name" "inertialTo — the whole idea" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "inertialTo — the whole idea" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inertial_hello_code_.kt" "lines" 22 "characters" 668 "sha256" "98d39c4477929f5ede9fd4f5ef9b6dfa8f0ad854450edc73d5a9277434dd9fc5"}]}
 ```
 
 ```kotlin [field-property box="inertial_hello" name="code" path="inertial_hello_code_.kt"]
@@ -189,9 +225,13 @@ loop {
     goal = if ((frameNumber / 40) % 2 == 0) 1.0 else -1.0
     target += goal
     seen += eased()
+    if (target.size > 240) {
+        target.removeAt(0)
+        seen.removeAt(0)
+    }
     showSignals(
-        "goal" to target.takeLast(240),
-        "inertialTo" to seen.takeLast(240),
+        "goal" to target,
+        "inertialTo" to seen,
         title = "one value, chasing a square wave",
         xTitle = "frame",
     )

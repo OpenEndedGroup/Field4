@@ -15,7 +15,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 ```
 
 ```kotlin [field-property box="pt_renderer" name="code" path="pt_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,20 +31,18 @@ start(renderer::run)
 <!-- field-box id="pt_medium" index="1" -->
 
 ```edn [field-box id="pt_medium" role="properties"]
-{"id" "pt_medium" "index" 1 "name" "shafts of light through haze" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "shafts of light through haze" "_tombstone" false "frame" #afield/rect [320.0 180.0 400.0 140.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_medium_code_.kt" "lines" 78 "characters" 3954 "sha256" "e16af50dcc57bd42586b9ca607a522914ba8957becc4de0f66947b159bf0a64f"}]}
+{"id" "pt_medium" "index" 1 "name" "shafts of light through haze" "parents" ["root" "pt_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pt_renderer"} "name" "shafts of light through haze" "_tombstone" false "frame" #afield/rect [320.0 180.0 400.0 140.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pt_medium_code_.kt" "lines" 76 "characters" 3876 "sha256" "8645b08a3e3794bc7e08e00452e8372923a873a734ee59842a2e2e3c5ec6efae"}]}
 ```
 
 ```kotlin [field-property box="pt_medium" name="code" path="pt_medium_code_.kt"]
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.modules.fromContext
-import afield.four.util.Camera
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.linalg.Vector4f
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.vulkan.util.Camera
 
-val renderer: Renderer = fromContext()
+
+
 prop<PathTracingRenderer>(tracer)
 
 // A bright strip light with four slats under it, and nothing else lit. Everything is

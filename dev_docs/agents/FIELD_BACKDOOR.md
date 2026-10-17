@@ -14,9 +14,9 @@ that are easy to misunderstand. It is not a second command reference.
   `FieldBackdoor.ensure_server()` in the same file; the startup budget is
   `ManagedStartupWatch` in `tools/verification_runtime.py`.
 - Server RPC handlers used by Playwright, native captures, and JVM entrypoints:
-  `src/jvmMain/kotlin/afield/Server.kt`.
+  `src/jvmMain/kotlin/afield/app/server/Server.kt`.
 - Semantic document operations and their guarantees:
-  `src/jvmMain/kotlin/afield/operation_transcript.kt` and
+  `src/jvmMain/kotlin/afield/tools/automation/operation_transcript.kt` and
   [`OPERATION_TRANSCRIPT.md`](OPERATION_TRANSCRIPT.md).
 - Smoke catalog runner: `tools/run_field_tests.py`.
 - Browser regression runner: `tools/run_ui_regressions.py`.
@@ -513,6 +513,17 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 Details, the tool list and measured results are in
 [`../ai/IN_FIELD_AGENT_HARNESS.md`](../ai/IN_FIELD_AGENT_HARNESS.md).
 
+### A box chat's state: `ai-chat`
+
+`ai-chat <box>` asks the box's chat what it is doing (`ai-chat-history`) and returns `running` (a turn
+runs now), `suspendedOn` (what a turn that ended with `AwaitStudyBuildsRequest` waits for: `since`,
+`resumesBy`, each job with its last seen status), `turns` and `lastReply`. Wait on those, never on
+refusal text or the history file going quiet: a turn that waits for builds has ended, and Field starts
+the next one itself when they finish. `--stop-waiting` ends the wait (the builds keep running).
+`agent-task --chat-box` returns when its turn ends, which for a turn that awaits builds is before they
+finish, and its checks see the document as it was then; poll `ai-chat` for the resumed turn. See
+[`public/docs/ai4_long_builds.md`](../../public/docs/ai4_long_builds.md).
+
 ## Suite entrypoints
 
 ```bash
@@ -746,7 +757,7 @@ builds a three-box graph with a tie and a shadowed ancestor and checks all three
 
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9877 \
-  --command 'why Child _speed' --command 'why Child --type afield.four.Renderer'
+  --command 'why Child _speed' --command 'why Child --type afield.graphics.vulkan.Renderer'
 ```
 
 ## Suite runner details

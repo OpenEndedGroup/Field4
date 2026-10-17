@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. the shipped primitive that has an interior Close in it
@@ -14,17 +14,17 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 From `code`
 
-Not a hand-built fixture: this is what afield.stdlib.arrow returns when you ask for a
+Not a hand-built fixture: this is what afield.graphics.render.arrow returns when you ask for a
 head at both ends. Its appendHead ends each arrowhead with close(), so the node list is
 MoveTo LineTo | MoveTo LineTo LineTo Close | MoveTo LineTo LineTo Close
 and the first Close has a whole arrowhead after it.
 
 ```edn [field-box id="close_node_arrow" role="properties"]
-{"id" "close_node_arrow" "index" 0 "name" "the shipped primitive that has an interior Close in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the shipped primitive that has an interior Close in it" "_tombstone" false "frame" #afield/rect [80.0 700.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_arrow_code_.kt" "lines" 56 "characters" 2669 "sha256" "1be5a18c222f70b762b62f929af6315afd6c19a95f38155ddfcb174eeb2dbbb6"}]}
+{"id" "close_node_arrow" "index" 0 "name" "the shipped primitive that has an interior Close in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the shipped primitive that has an interior Close in it" "_tombstone" false "frame" #afield/rect [80.0 700.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_arrow_code_.kt" "lines" 56 "characters" 2682 "sha256" "2dc6717bc2480416864eebea3f62d57a78f55c5c42d22c7b79a49c9a44616beb"}]}
 ```
 
 ```kotlin [field-property box="close_node_arrow" name="code" path="close_node_arrow_code_.kt"]
-// Not a hand-built fixture: this is what afield.stdlib.arrow returns when you ask for a
+// Not a hand-built fixture: this is what afield.graphics.render.arrow returns when you ask for a
 // head at both ends. Its appendHead ends each arrowhead with close(), so the node list is
 //   MoveTo LineTo | MoveTo LineTo LineTo Close | MoveTo LineTo LineTo Close
 // and the first Close has a whole arrowhead after it.
@@ -61,8 +61,8 @@ val ops = listOf<Pair<String, (FLine) -> Any?>>(
     "bySimplifying" to { l -> l.bySimplifying(2f) },
     "byConvexHull2D" to { l -> l.byConvexHull2D() },
     "byFiltering" to { l -> l.byFiltering { _, _ -> true } },
-    "windingNumber" to { l -> l.windingNumber(vec(150f, 60f)) },
-    "contains" to { l -> l.contains(vec(150f, 60f)) },
+    "windingNumber" to { l -> l.windingNumber2D(vec(150f, 60f)) },
+    "contains" to { l -> l.contains2D(vec(150f, 60f)) },
     "centroid2D" to { l -> l.centroid2D() },
     "fast2DBounds" to { l -> l.fast2DBounds() },
     "byDashing" to { l -> l.byDashing(14f, 8f).size },

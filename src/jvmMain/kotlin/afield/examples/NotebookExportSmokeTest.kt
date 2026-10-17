@@ -1,12 +1,12 @@
 package afield.examples
 
-import afield.Box
-import afield.SavingContext
-import afield.SessionInformation
-import afield.python.isPythonRoot
-import afield.server.exportNotebookCells
-import afield.server.importNotebookCells
-import afield.thisSessionInfo
+import afield.document.graph.Box
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.lang.python.isPythonRoot
+import afield.app.server.exportNotebookCells
+import afield.app.server.importNotebookCells
+import afield.app.server.thisSessionInfo
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive

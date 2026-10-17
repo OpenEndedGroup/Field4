@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="li_renderer" index="0" -->
 
 ```edn [field-box id="li_renderer" role="properties"]
-{"id" "li_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["li_fields"] "properties" {"children" #{#afield/box "li_fields"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_renderer_code_.kt" "lines" 11 "characters" 260 "sha256" "d28cd606359d20ae167a81a4d2b9e2472caf7092f4cfa7a90be93f4ab25e6dfb"}]}
+{"id" "li_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["li_fields"] "properties" {"children" #{#afield/box "li_fields"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_renderer_code_.kt" "lines" 11 "characters" 271 "sha256" "e584cf367ebbe3a390751c47b9fd1164d4e7545a3360993b8f0bbb53effa73a9"}]}
 ```
 
 ```kotlin [field-property box="li_renderer" name="code" path="li_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -33,17 +33,17 @@ start(renderer::run)
 <!-- field-box id="li_fields" index="1" -->
 
 ```edn [field-box id="li_fields" role="properties"]
-{"id" "li_fields" "index" 1 "name" "train both letters" "parents" ["root" "li_renderer"] "children" ["li_panels"] "properties" {"children" #{#afield/box "li_panels"} "parents" #{#afield/box "root" #afield/box "li_renderer"} "name" "train both letters" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_fields_code_.kt" "lines" 65 "characters" 3021 "sha256" "245b178fa4d7a7fa9efe3344c7d19c52862298403533be43bd0c4a3083f7214c"}]}
+{"id" "li_fields" "index" 1 "name" "train both letters" "parents" ["root" "li_renderer"] "children" ["li_panels"] "properties" {"children" #{#afield/box "li_panels"} "parents" #{#afield/box "root" #afield/box "li_renderer"} "name" "train both letters" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_fields_code_.kt" "lines" 65 "characters" 3069 "sha256" "46fcf0c61045348ef95b277164143b9b65ffeff67ce746f46bb2425fdd757e77"}]}
 ```
 
 ```kotlin [field-property box="li_fields" name="code" path="li_fields_code_.kt"]
-import afield.stdlib.FlowCoupling
-import afield.stdlib.FlowMatchOptions
-import afield.stdlib.contourComponents
-import afield.stdlib.flowMatch
+import afield.ai.learning.FlowCoupling
+import afield.ai.learning.FlowMatchOptions
+import afield.ai.learning.contourComponents
+import afield.ai.learning.flowMatch
 
-prop<afield.stdlib.FlowMatchExport>(fieldA)
-prop<afield.stdlib.FlowMatchExport>(fieldB)
+prop<afield.simulation.particles.FlowMatchExport>(fieldA)
+prop<afield.simulation.particles.FlowMatchExport>(fieldB)
 
 val LETTERS = "C" to "S"
 val N = 512
@@ -109,14 +109,14 @@ println("${LETTERS.first} and ${LETTERS.second}: ${fieldA.network.parameterCount
 <!-- field-box id="li_panels" index="2" -->
 
 ```edn [field-box id="li_panels" role="properties"]
-{"id" "li_panels" "index" 2 "name" "three pinned panels" "parents" ["root" "li_fields"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "li_fields"} "name" "three pinned panels" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_panels_code_.kt" "lines" 38 "characters" 1637 "sha256" "a3dddba634315dc65a9e5414fc03ea7c7422a34a36f019e0969ee8c6f26542e1"}]}
+{"id" "li_panels" "index" 2 "name" "three pinned panels" "parents" ["root" "li_fields"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "li_fields"} "name" "three pinned panels" "_tombstone" false "frame" #afield/rect [740.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_panels_code_.kt" "lines" 38 "characters" 1679 "sha256" "249644dca4c1a509a1180270fc9a2c5f6437f184670b4bc57712009ad03c6bce"}]}
 ```
 
 ```kotlin [field-property box="li_panels" name="code" path="li_panels_code_.kt"]
-import afield.stdlib.ShaderNeuralParticles
-import afield.stdlib.blendWith
+import afield.simulation.particles.ShaderNeuralParticles
+import afield.simulation.particles.blendWith
 
-prop<List<afield.stdlib.ShaderNeuralParticles>>(panels)
+prop<List<afield.simulation.particles.ShaderNeuralParticles>>(panels)
 
 // 0.5 is the ring. The other two are where the form is buckling -- a ring with the S's
 // spine pressing into it -- and they are the reason this figure is not just "a circle".

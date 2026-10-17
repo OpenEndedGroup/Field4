@@ -79,7 +79,7 @@ ui.pause(800)
 ## Turn snapping on
 
 Snapping is active while Caps Lock is on, or after you run **Toggle Box Snapping** from the
-command palette (`F1` over the canvas), which stays on until you run it again.
+command palette (`ctrl/command-shift-P` over the canvas), which stays on until you run it again.
 
 1. Press `Caps Lock`.
 2. Drag a box near another box.
@@ -89,19 +89,9 @@ When neither is on, dragging and resizing stay freeform.
 
 ## What snaps
 
-Field looks for nearby layout relationships on each axis independently. That means one drag can snap horizontally and vertically at the same time.
-
-Field can snap to:
-
-- left-edge alignment
-- right-edge alignment
-- top-edge alignment
-- bottom-edge alignment
-- center alignment
-- even horizontal spacing between neighboring boxes
-- even vertical spacing between neighboring boxes
-
-During a snap, Field draws cyan guide lines and tick marks so you can see what relationship it found.
+A box snaps to the edges and centres of nearby boxes, and to even spacing between its neighbours.
+Each axis snaps on its own, so one drag can line a box up horizontally and vertically at once. Cyan
+guide lines and tick marks show what the box has snapped to.
 
 ## Edge and center alignment
 
@@ -112,19 +102,19 @@ During a snap, Field draws cyan guide lines and tick marks so you can see what r
 ## Even spacing
 
 If a dragged box can land between two other boxes with equal spacing, Field offers that as a snap
-target and draws measurement ticks on the guide line, which is how you get an evenly spaced row or
-a regular vertical stack without measuring by hand. Gaps under 5 px do not count as spacing, so a
+target and draws ticks on the guide line. That is how you lay out an evenly spaced row or column
+without measuring. Gaps under 5 px do not count as spacing, so a
 tight cluster of boxes offers nothing to space evenly.
 
 ## Resize snapping
 
-With Caps Lock on, the edge you drag while resizing snaps to nearby box edges, so adjacent boxes
+With snapping on, the edge you drag while resizing snaps to nearby box edges, so adjacent boxes
 can share a boundary.
 
 ## Thresholds
 
-A box jumps to a snap once it is close enough to it. Alignment and spacing use different distances, and alignment draws its guide before it will take
-the snap.
+A box jumps into place once it is close enough. Alignment and spacing use different distances, and
+an alignment guide appears before the box will jump.
 
 <div class="field-data-table" markdown>
 
@@ -135,18 +125,16 @@ the snap.
 
 </div>
 
-So a spacing snap engages anywhere its guide is visible, while an alignment guide can appear while
-you are still too far out for the box to move. Resizing uses the same 10 px as alignment. Drag near
-the relationship you want and watch for the guide line.
+Resizing uses the same 10 px as alignment.
 
 ## When to use it
 
 Snapping helps when you arrange a document for presentation, or tidy a graph after a run of
-exploratory edits. It gets in the way while sketching, which is why it is off until you press
-Caps Lock.
+exploratory edits. It gets in the way while sketching, which is why it is off until you turn
+it on.
 
 ## Related features
 
 - Use [Interactive Guides](interactive_guides.md) when the layout itself is part of a walkthrough.
 - Use a [bookmark](moving_around_the_canvas.md#bookmarks) to save a useful view once you have arranged it.
-- Use [Document History](document_history.md) if you want to roll back to an earlier document state rather than manually undoing a large layout change.
+- Use [Document History](document_history.md) to go back to an earlier version of the document instead of undoing a large layout change by hand.

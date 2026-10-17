@@ -1,5 +1,3 @@
-import afield.stdlib.polytope.*
-
 // Take the cube's coordinates away. The topology is untouched, and every combinatorial
 // question about the dual is still decidable.
 val abstractCube = PolyhedralObject(cube().topology)
@@ -7,17 +5,25 @@ val abstract = abstractCube.transform(ConwayOperator.DUAL).polyhedron
 
 // Ask the abstract object for geometry anyway, and keep whatever it actually says.
 // These are real caught exceptions; nothing here paraphrases an error message.
-val flineRefusal = runCatching { abstract.toFaceFLines() }
+val flineRefusal = runCatching {
+    abstract.toFaceFLines()
+}
     .fold({ "no exception — unexpected" }, { "${it::class.simpleName}: ${it.message}" })
-val triangleRefusal = runCatching { abstract.triangulate() }
+val triangleRefusal = runCatching {
+    abstract.triangulate()
+}
     .fold({ "no exception — unexpected" }, { "${it::class.simpleName}: ${it.message}" })
 
-// ***** CHANGE THIS *****  Swap DualCentroidRealization for any RealizationPolicy3 —
-// `RealizationPolicy3 { _, _ -> null }` keeps the object abstract forever, which is a
-// perfectly legal thing for a polytope to be.
+/*
+***** CHANGE THIS ***** Try a realization policy that supplies coordinates.
+The right-hand column draws that geometry; policies returning null belong in the
+abstract comparison above, where geometry refusals are caught and displayed.
+*/
 val realized = cube().dual(DualCentroidRealization).polyhedron
 
-markdown("dual", """
+markdown(
+    "dual",
+    """
     #### The dual of `cube()` with and without an embedding
 
     | | abstract | after a realization policy |
@@ -30,7 +36,10 @@ markdown("dual", """
     | `triangulate()` | `$triangleRefusal` | ${realized.triangulate().triangleCount} triangles |
 
     The left column is a complete, valid, checkable octahedron. It has nowhere to be.
-""".trimIndent(), width = 900)
+"""
+        .trimIndent(),
+    width = 900,
+)
 
 // The registered value printer reduces this to a public data class from Summaries.kt.
 abstract.topology

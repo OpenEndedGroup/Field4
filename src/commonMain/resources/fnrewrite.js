@@ -9,7 +9,7 @@ define("bithero/fnrewrite", ["require", "vs/editor/editor.api"], function (requi
                 "op", "replace", "name", "domain", "all", "default", "value", "it",
                 "role", "edge", "parameter", "parent", "under", "tag", "depth", "index",
         ])
-        // Highlighted op vocabulary. Kept a curated subset of afield.stdlib.OpRegistry.knownOps.
+        // Highlighted op vocabulary. Kept a curated subset of afield.math.functions.OpRegistry.knownOps.
         // FunctionsGraphRewriteTest mirrors this against the registry in BOTH directions:
         //   forward — every word here must be OpRegistry.knows(it) (no unknown ops), and
         //   reverse — every OpRegistry.transmutableOps target must appear here (no missing

@@ -53,7 +53,7 @@ precedence over the environment. Enabling LAN binding does **not** disable brows
 There are deliberate exceptions:
 
 - `/api/import-offline-doc` accepts cross-origin imports from the offline document viewer.
-  This is an import capability, not a general grant to execute commands.
+  It imports a document and cannot run commands.
 - Ordinary GET navigations into Field remain allowed so documentation links can open the editor.
   The page initiating a navigation cannot read the resulting Field-origin document.
 - Docs annotation and improvement-pass routes apply their own loopback and origin checks.
@@ -65,14 +65,9 @@ Do not turn off the origin guard simply to acknowledge a self-signed certificate
 separate things. A reverse proxy or custom hostname also needs deliberate integration work;
 the default browser policy recognises localhost and literal IP addresses without DNS lookup.
 
-## Route inventory and evidence
+## Route inventory
 
 [`dev_docs/server_surface_inventory.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/server_surface_inventory.md)
-records HTTP routes, static mounts and command channels, together with their route-specific
-access controls. Tests check the inventory against source in both directions. A route marked
-`none` has no route-specific authentication: the listener and application-wide browser policy
-still apply. The inventory is not a claim that every request is authenticated.
-
-The read/write and WebSocket tests exercise the application's real origin guard, including the
-exemptions. Defaults are covered separately. For maintainers, changing a listener or an origin
-policy requires checking ordinary desktop use, automation, offline import and remote clients.
+lists every HTTP route, static mount and command channel, with the access controls each one has
+of its own. A route marked `none` has none beyond the listener and the application-wide browser
+policy above.

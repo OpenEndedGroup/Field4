@@ -89,16 +89,16 @@ and named-arg completion (K1 has none).
   Opt-ins: `@OptIn(KaExperimentalApi::class, KaIdeApi::class, KaK1Unsupported::class)`.
 - **Kotlin gotcha:** don't mix `Sequence` and `List` in a `+` merge — inference collapses to `List<Any>`
   and `.sorted()` fails. Make every sub-result `List<String>`.
-- **The REPL's imports live in `afield.Boxes.intro`, and nowhere else.** A box gets that whole set for
+- **The REPL's imports live in `afield.document.graph.intro`, and nowhere else.** A box gets that whole set for
   free; the sidecar analyses it in another process and cannot see it, so it has to be *told*. It is sent
-  per request as `CompletionRequest.replImports`, from `afield.introImports` (derived from `intro`, so it
+  per request as `CompletionRequest.replImports`, from `afield.document.graph.introImports` (derived from `intro`, so it
   cannot drift) via `KotlinInterface2.complete` → `AaCompletionClient`.
   Do **not** add a package to the sidecar's own list to make a box's types resolve — add it to `intro`.
   The sidecar's `CompletionImports.fieldFallback` is a *floor* for callers that send no `replImports`
   (the corpus spike), explicitly not authoritative. There used to be two hand-written copies of it, and
   they had drifted from `intro` and from each other, which is exactly the bug this note exists to
-  prevent: a box using `afield.graphquery` / `afield.nano` / `afield.four.{targets,buffers,texture}` /
-  `afield.stdlib.linalg.{arena,storage}` without writing its own import resolved under the K1 delegate
+  prevent: a box using `afield.data.query.graph` / `afield.lang.nano` / `afield.graphics.vulkan.{targets,buffers}` / `afield.graphics.texture` /
+  `afield.math.linalg.{arena,storage}` without writing its own import resolved under the K1 delegate
   and not under AA — and AA's empty result silently fell back, so completion looked fine and was quietly
   worse. A package in `replImports` that the prebuilt ASM index wasn't seeded with is scanned on demand
   (`AaCompleter.indexFor` → `AaSymbolIndex.scanPackages`, memoised), so what seeds the index and what is
@@ -147,7 +147,7 @@ Goal: an automated, repeatable comparison + regression gate.
 Because K1 runs in-process (jvm-main) and AA runs out-of-process (sidecar), the differential is a
 **two-dump + one-diff** design rather than a single jvm-main test:
 - [x] **K1 dump** — new jvm-main FIELD_TEST `kotlin.completion-diffdump.probe`
-      (`src/jvmMain/kotlin/afield/CompletionDiffK1Probe.kt`) runs the real `KotlinInterface2.complete`
+      (`src/jvmMain/kotlin/afield/runtime/completion/CompletionDiffK1Probe.kt`) runs the real `KotlinInterface2.complete`
       (K1, intro-warmed) over both TSV corpora → `build/completion-corpus/k1-candidates.json`.
 - [x] **AA dump** — spike `--json-out` (+ comma-separated `--corpus`) dumps raw AA candidates →
       `build/completion-corpus/aa-candidates.json`.
@@ -258,12 +258,12 @@ regressions 0; live E2E 16/16 checks, p50 25 ms.
   (`complete(snippet,cursor,preamble,implicitReceivers,extraImports)` + `splitPreamble`),
   `AaSymbolIndex` (disk cache + `@Metadata` typealias reader), `AaCandidate`.
 - Spike harness: `tools/code-use-semantic-sidecar/.../CompletionSpike.kt` + `runSpike` task (+ `--json-out`).
-- **Differential (Stage B):** `tools/completion_diff.py`; K1 dump `src/jvmMain/kotlin/afield/CompletionDiffK1Probe.kt`
+- **Differential (Stage B):** `tools/completion_diff.py`; K1 dump `src/jvmMain/kotlin/afield/runtime/completion/CompletionDiffK1Probe.kt`
   (FIELD_TEST `kotlin.completion-diffdump.probe`).
 - **Endpoint + client (Stage C):** `/complete` + `K2CompletionAnalyzer` in `CodeUseSemanticSidecar.kt`;
-  `src/jvmMain/kotlin/afield/AaCompletionClient.kt`; flag in `KotlinScriptEngine.kt`
+  `src/jvmMain/kotlin/afield/runtime/completion/AaCompletionClient.kt`; flag in `KotlinScriptEngine.kt`
   (`KotlinEngineConfig.activeCompletionBackend`, **default AA**); wired in `KotlinInterface2.complete()`.
-- **Live E2E (Stage D):** `src/jvmMain/kotlin/afield/CompletionAaE2EProbe.kt` (FIELD_TEST
+- **Live E2E (Stage D):** `src/jvmMain/kotlin/afield/runtime/completion/CompletionAaE2EProbe.kt` (FIELD_TEST
   `kotlin.completion-aa-e2e.probe`) — start the sidecar, write its URL to
   `build/completion-corpus/sidecar-url.txt`, run via `run_field_tests --id kotlin.completion-aa-e2e.probe`.
 - Corpus: `tools/completion-corpus/scraped.tsv` (22 dot fixtures, on main), `name-fixtures.tsv` (name+arg).

@@ -5,8 +5,8 @@ animators call a candy wrapper. Field already measures that as a length:
 `DualQuaternionSkinning.candyWrapperRadius` reports the narrowest ring. A length does not say how
 much of the limb has gone. This page measures the volume instead. It poses one rigged glTF, turns
 the posed mesh into a Manifold solid, weighs it, and hands the same solid to the path tracer.
-`afield.four.modules` skins the file on the CPU, `afield.manifold` turns the triangles into a solid
-and measures it, and `afield.four.fabricated` traces the result.
+`afield.graphics.scene` skins the file on the CPU, `afield.geometry.solid.manifold` turns the triangles into a solid
+and measures it, and `afield.graphics.scene.fabricated` traces the result.
 
 The render below shows the same limb skinned both ways.
 
@@ -25,7 +25,9 @@ Environment: Venice Sunset by Greg Zaal / Poly Haven (CC0), shared with the
 
 `RiggedFixture`, the rig the skinning tests use, is an open tube with no caps, so it encloses no
 volume and Manifold will not take it as a solid. `CappedTwistFixture` is the same two-bone rig with
-both ends closed. Like `RiggedFixture`, it is written out by Kotlin source rather than downloaded:
+both ends closed. Like `RiggedFixture`, it is written out by Kotlin source
+([`CappedTwistFixture.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/graphics/scene/CappedTwistFixture.kt)) rather
+than downloaded:
 
 * 12 sides, radius 0.5, height 4, with rings every 0.25 along the bone and a centre vertex on each
   cap. That makes 206 vertices and 408 triangles, and every edge is shared by exactly two of them.
@@ -45,11 +47,11 @@ methods, and plots the enclosed volume Manifold reports for each pose.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_skinned_volume/sweep.png" wait="8" capture="box" open-outputs="true" w="1000" h="460" padding="16" timeout="180" requires="manifold" name="chain-skinned-volume-sweep" alt="A line plot of enclosed volume against twist angle from 0 to 180 degrees. The linear-blend trace falls smoothly from 3.0 to 2.0; the dual-quaternion trace rises very slightly above the flat rest line at 3.0 and eases back" embed=true}
 :::static
-import afield.four.modules.CappedTwistFixture
-import afield.four.modules.GltfSkinning.SkinningMethod
-import afield.four.modules.GltfSkinning.SkinningOptions
-import afield.four.modules.skinnedGltfToTriMesh
-import afield.manifold.toSolid
+import afield.graphics.scene.CappedTwistFixture
+import afield.graphics.scene.GltfSkinning.SkinningMethod
+import afield.graphics.scene.GltfSkinning.SkinningOptions
+import afield.graphics.scene.skinnedGltfToTriMesh
+import afield.geometry.solid.manifold.toSolid
 
 val rig = CappedTwistFixture.locate()
 val twists = (0..12).map { it * 15f }
@@ -87,12 +89,12 @@ This box measures four poses with two independent volume calculations, Manifold'
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_skinned_volume/readout.png" wait="8" capture="box" open-outputs="true" w="1060" h="330" padding="18" timeout="180" requires="manifold" name="chain-skinned-volume-readout" embed=true}
 :::static
-import afield.four.modules.CappedTwistFixture
-import afield.four.modules.DualQuaternionSkinning
-import afield.four.modules.GltfSkinning.SkinningMethod
-import afield.four.modules.GltfSkinning.SkinningOptions
-import afield.four.modules.skinnedGltfToTriMesh
-import afield.manifold.toSolid
+import afield.graphics.scene.CappedTwistFixture
+import afield.graphics.scene.DualQuaternionSkinning
+import afield.graphics.scene.GltfSkinning.SkinningMethod
+import afield.graphics.scene.GltfSkinning.SkinningOptions
+import afield.graphics.scene.skinnedGltfToTriMesh
+import afield.geometry.solid.manifold.toSolid
 
 val rig = CappedTwistFixture.locate()
 
@@ -160,7 +162,7 @@ the tube happens to be triangulated.
 | triangles to a scene | [`importTriMesh`](reference/renderers.md#pathtracetrimesh-kt-functions) | positions, normals, one material, a transform | zero-area triangles, which are counted and skipped |
 
 Linear blending and dual quaternions are the same call with a different `SkinningOptions`, so the
-comparison above runs both from one palette on one file. The only difference between the two
+comparison above runs both on one file. The only difference between the two
 tubes in the render is that `method` argument.
 
 ## Where each piece is documented

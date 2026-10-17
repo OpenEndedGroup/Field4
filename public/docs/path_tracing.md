@@ -1,14 +1,12 @@
 # Progressive path tracing
 
 [`PathTracingRenderer`](reference/renderers.md#pathtracingrenderer-kt-pathtracingrenderer) is a GPU
-path tracer for `afield.four`. It runs on ordinary
+path tracer for Field 4. It runs on ordinary
 Vulkan compute devices, including MoltenVK on macOS. When Field has enabled
 `VK_KHR_ray_query`, `AUTO` selects hardware triangle traversal. Both backends use
-the same lighting, material evaluation and accumulation code. The Linux/NVIDIA GPU audit
-checks both backends, including shared triangle edges, camera motion, glass and textured glTF. Every type this page calls is
-browsable on the [Renderers](reference/renderers.md) reference page, with the KDoc that sits beside
-it in the source, next to the real-time deferred renderer this one is an alternative to and the
-splat renderer that is neither.
+the same lighting, material evaluation and accumulation code. Every type this page
+uses is documented on the [Renderers](reference/renderers.md) reference page, alongside
+the real-time deferred renderer and the splat renderer.
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/materials.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="materials study converged" embed=true hidden=true timeout="150" name="path-tracing-materials" alt="Plastic, polished gold and rough metal spheres lit by a Venice sunset environment, rendered by Field’s progressive path tracer" macro-file="../../dev_docs/agents/transcripts/path_tracing_materials.yaml" capture-box="path_trace_materials"}
 // Built and launched from dev_docs/agents/transcripts/path_tracing_materials.yaml.
@@ -28,10 +26,8 @@ The two opaque material studies opt into `indirectClamp = 10f`; the glass study 
 clamping disabled so its transmitted lighting and caustics are preserved.
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.fabricated.*
-import afield.four.modules.fromContext
+import afield.graphics.scene.fabricated.*
 
-val renderer: Renderer = fromContext()
 val tracer = PathTraceDemo.install(renderer,
     "public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
 tracer.samplesPerFrame = 1
@@ -65,9 +61,9 @@ Opaque roughness zero uses a small finite roughness floor. Glass has a true spec
 reflection/refraction mode at zero roughness.
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.fabricated.*
-import afield.four.util.Camera
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
+import afield.math.linalg.Vector3f
 
 val scene = PathTraceScene()
 val paint = scene.material(PathTraceMaterial.plastic(0.7f, 0.08f, 0.02f))
@@ -103,7 +99,7 @@ keyboard controls. The tracer uses perspective projection and its own output asp
 ratio; `SuperProjection` orthographic blending and principal-point offsets are not used.
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.util.keyCamera
+import afield.graphics.vulkan.util.keyCamera
 
 val camera = tracer.camera
 camera.at.set(0f, 2.6f, 8f)
@@ -161,7 +157,7 @@ motion blur, diffraction or a multi-element photographic lens.
 Load a static glTF 2.0 scene before creating the tracer:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.fabricated.*
+import afield.graphics.scene.fabricated.*
 
 val scene = PathTraceScene.fromGltf("/absolute/path/model.glb")
 val tracer = pathTracingHere(scene, env, camera = camera)
@@ -179,8 +175,8 @@ To add a model alongside other geometry, use `scene.importGltf`. Its result
 provides world-space bounds, a name-to-material-ID map and import warnings:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 
 val scene = PathTraceScene()
 val model = scene.importGltf("/absolute/path/model.gltf",
@@ -294,7 +290,7 @@ medium](#a-participating-medium) below, and the table there compares the two dir
 `fogDensity` remains the cheaper choice when you only need distance haze.
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.linalg.Vector3f
+import afield.math.linalg.Vector3f
 
 tracer.fogColor = Vector3f(0.25f, 0.35f, 0.5f)
 tracer.fogDensity = 0.1f
@@ -303,12 +299,10 @@ tracer.fogBackground = true
 ```
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/fog.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="fog study converged" embed=true hidden=true timeout="180" name="path-tracing-fog" alt="A row of PBR spheres and a checkerboard floor fading into blue-grey depth fog with increasing distance"}
-import afield.four.fabricated.*
-import afield.four.util.Camera
-import afield.four.modules.fromContext
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
+import afield.math.linalg.Vector3f
 
-val renderer: Renderer = fromContext()
 val scene = PathTraceScene()
 val grey = scene.material(PathTraceMaterial.diffuse(0.3f, 0.3f, 0.3f))
 val light = scene.material(PathTraceMaterial.diffuse(0.65f, 0.65f, 0.65f))
@@ -366,15 +360,14 @@ distance, rather than distances along subsequent reflected or refracted rays.
 Temporal history stores unfogged colour, then applies the current camera distance
 when reprojecting it; moving out of dense fog can reveal retained surface detail.
 
-For the physical version — which does create light shafts, and which dims the light
-arriving at a surface as well as the light leaving it — see the next section. The two
-mechanisms are independent and both still work; they are not two spellings of one
-thing, and enabling both attenuates whatever the camera sees first twice over.
+For light shafts, and for haze that dims the light arriving at a surface as well as
+the light leaving it, use the medium in the next section. The two controls are
+independent; enabling both attenuates whatever the camera sees first twice over.
 
 ## A participating medium
 
-`mediumDensity` puts a real, homogeneous participating medium in the scene. It is a
-different mechanism from `fogDensity` above, not a better-tuned version of it:
+`mediumDensity` fills the scene, or a box within it, with uniform haze that light
+scatters through. It works differently from `fogDensity` above:
 
 | Property | `fogDensity` | `mediumDensity` |
 | --- | --- | --- |
@@ -391,18 +384,18 @@ different mechanism from `fogDensity` above, not a better-tuned version of it:
 
 The same geometry twice: `mediumDensity = 0.16` above, `fogDensity = 0.16` with a grey
 `fogColor` below, both at 1536 samples per pixel. The slats' shadows reach the wall and the
-floor in both — shadows on *surfaces* are not what separates them. What separates them is
-the air. Over the 100920 pixels of that frame whose primary ray hits no geometry at all,
-the medium puts a mean radiance of **0.91481** with a spatial standard deviation of
-**2.02372**; `fogDensity` puts **0.34068** with a deviation that prints as **0.00000**,
-because a background miss has no depth for a depth curve to act on — that population is
-constant for `fogDensity` *by construction*, not merely nearly so. With neither, both
-figures are exactly zero. Both images come from `PathTraceMediumGpuSmoke.godRays`, which
-asserts the gap in the form that survives re-running: the medium's deviation against a floor
-(`mediumSpread > 0.5`) and `fogDensity`'s variation **relative to its own mean**
-(`fogSpread / fogMean < 1e-4`). The residue behind that relative test is float32
-accumulation over 100 000 pixels, which is a claim about arithmetic rather than about
-rendering, so it is not quoted here as an absolute.
+floor in both; the difference is in the air, which the medium lights unevenly and
+`fogDensity` paints one flat grey.
+
+??? aside "How the two images were compared"
+    Over the 100920 pixels of that frame whose primary ray hits no geometry at all,
+    the medium gives a mean radiance of 0.91481 with a spatial standard deviation of
+    2.02372; `fogDensity` gives 0.34068 with a deviation that prints as 0.00000, because a
+    background miss has no depth for a depth curve to act on. With neither, both figures
+    are exactly zero. Both images come from `PathTraceMediumGpuSmoke.godRays`, which
+    asserts the medium's deviation against a floor (`mediumSpread > 0.5`) and
+    `fogDensity`'s variation relative to its own mean (`fogSpread / fogMean < 1e-4`); the
+    relative test allows for float32 accumulation over 100 000 pixels.
 
 ```diffstatic {data-lang=kotlin}
 // The room is the medium's extent. Bounds are not decoration: an unbounded medium has
@@ -428,28 +421,21 @@ tracer.maxBounces = 8                                  // a collision spends one
 
 Changing any of them resets accumulation.
 
-**A medium spends your bounce budget.** A collision in the medium is
+**A medium uses up bounces.** A collision in the medium is
 an interaction like a surface hit, and it spends one of `maxBounces`. A medium dense
 enough to scatter a path three or four times therefore has that many fewer bounces
 left for surfaces, and a dense enough medium makes the image *darken* rather than
-brighten — that is energy the bounce cap is discarding. Raise `maxBounces` (the cap is
-twelve) or lower the density.
+brighten, because the bounce cap is discarding energy. Raise `maxBounces` (the maximum
+is twelve) or lower the density.
 
-The energy a given budget loses at a fixed density is measurable. In a box **2.4** optical depths across, a medium that conserves
-energy exactly — albedo 1, where the true answer is a whole number — reads `0.46337` of
-its value at one bounce, `0.64054` at two, `0.85178` at four, `0.97776` at eight and
-`0.99680` at twelve. Monotone, and never above 1.0, which is what tells you the deficit
-is truncation rather than a leak. `PathTraceMediumGpuSmoke` runs that sweep.
+As a guide to how much is lost: in a box 2.4 optical depths across, a medium with
+albedo 1 keeps 0.46337 of its true brightness at one bounce, 0.64054 at two, 0.85178
+at four, 0.97776 at eight and 0.99680 at twelve (`PathTraceMediumGpuSmoke` runs this
+sweep). The point at which darkening becomes visible depends on the scene, so raise
+`maxBounces` along with the density and check your own scene; the demo below cycles
+four densities.
 
-Note what that does *not* establish: it is a sweep over the bounce budget at one density,
-so it does not locate a density at which darkening sets in. Treat "raise `maxBounces` when
-you raise the density" as the rule and the sweep as its cost, and if you need the
-threshold for your own scene, measure it there — the demo below cycles four densities for
-exactly that reason.
-
-Light connections carry transmittance, and that is what makes the medium compose with
-`emitterSampling` rather than merely coexist with it: a lamp seen through haze is
-dimmed on the way to the eye *and* on the way to every surface it lights. Both
+The medium works with `emitterSampling`: a lamp seen through haze is dimmed on the way to the eye *and* on the way to every surface it lights. Both
 estimators — the phase function's own sampling, and the connection to a light — are
 combined with the same power heuristic the surface arms use, so they do not
 double-count.
@@ -459,16 +445,14 @@ double-count.
 The four properties above tune a medium; they do not let you change what scattering *is*.
 For that, reload the integrator (see [Replacing the integrator on a running
 tracer](#replacing-the-integrator-on-a-running-tracer)) and replace the phase function
-itself. This is the customisation point that stays unbiased, for a specific reason: the
-distance sample and the transmittance depend only on extinction, so swapping the
-*directional* distribution leaves them untouched.
+itself. This stays unbiased because the distance sample and the transmittance depend
+only on extinction, so changing the directional distribution leaves them untouched.
 
 Two functions have to change together. `phase(mu, g)` is the density, used both to weight a
 scattering event and as the pdf in the MIS weight; `samplePhase(rd, g, xi)` draws from it.
-**They are a matched pair, and nothing in the shader checks that they still match.** Here
-is a two-term Henyey–Greenstein — a forward lobe plus a weaker backward one, which is how
-atmospheric and cloud media actually behave, and which single-term HG cannot express at any
-`g`:
+**Keep them matched; nothing in the shader checks that they agree.** This example is a
+two-term Henyey–Greenstein: a forward lobe plus a weaker backward one, as in atmospheric
+and cloud media, which single-term HG cannot express at any `g`:
 
 ```diffstatic {data-lang=kotlin}
 val twoLobe = tracer.integratorSource()
@@ -507,36 +491,28 @@ val twoLobe = tracer.integratorSource()
 println(tracer.reloadIntegrator(twoLobe))   // RELOADED; accumulation restarts
 ```
 
-A check for this already exists.
-`PathTraceMediumGpuSmoke`'s white furnace puts an albedo-one medium in a uniform unit
-radiance field with no geometry at all, where the answer is an analytic **1.0** for *any*
-correctly normalised phase function. It runs at six anisotropies precisely because that
-makes it a test of whether `phase` and `samplePhase` are the same distribution, rather than
-only of whether one of them integrates to one. Change one and not the other and the furnace
-moves off 1.0; the packaged pair holds it to within 0.00001. So after editing a phase
-function, run that arm — it is the cheapest arm in the harness and the only one that can
-catch this class of mistake.
+After editing a phase function, run the white-furnace arm of `PathTraceMediumGpuSmoke`,
+the cheapest arm in the harness. It puts an albedo-one medium in a uniform unit radiance
+field with no geometry, where the answer is exactly 1.0 for any correctly normalised
+phase function. It runs at six anisotropies, so it catches `phase` and `samplePhase`
+drifting apart as well as a phase function that is not normalised, which would otherwise
+break energy conservation silently. The packaged pair holds it to within 0.00001.
 
-Two things this does **not** extend to. A phase function that is not normalised over the
-sphere breaks energy conservation silently, and the furnace is how you find out. And a
-**heterogeneous** medium is not a phase-function change: `sampleMediumDistance` inverts the
-closed-form CDF for a *constant* extinction and `mediumTransmittance` is `exp(-σt · span)`,
-so substituting a `density(p)` lookup into the shader leaves both of them wrong in a way no
-image will show you. Varying density needs delta or ratio tracking in place of both, which
-is not shipped — see the limits in
+A medium whose density varies through space is not a phase-function change:
+`sampleMediumDistance` inverts the closed-form CDF for a constant extinction and
+`mediumTransmittance` is `exp(-σt · span)`, so substituting a `density(p)` lookup into the
+shader makes both wrong without any visible sign. Varying density needs delta or ratio
+tracking in place of both, which Field does not provide; see
 `dev_docs/PARTICIPATING_MEDIA.md`.
 
-### Opening it
+### The medium demo
 
-A loadable document is at
-`dev_docs/agents/demos/path_tracing_medium/`:
-a slatted strip light over a hazed room, cycling `mediumDensity` so you can watch the
-shafts arrive. How the medium is verified, and against what, is in
-`dev_docs/PARTICIPATING_MEDIA.md`.
+The [path_tracing_medium](agent_transcripts.md#path_tracing_medium) starting point is a
+slatted strip light over a hazed room, cycling `mediumDensity` so you can watch the
+shafts appear. How the medium is tested is in `dev_docs/PARTICIPATING_MEDIA.md`.
 
 **A medium and `temporalReuse` are effectively exclusive.** A collision on the camera ray leaves the history guide's
-surface normal unset, so reprojection rejects that pixel — correct and safe, but it means a
-dense medium gets no temporal reuse for most of the frame. Raise `samplesPerFrame` instead
+surface normal unset, so reprojection rejects that pixel, and a dense medium gets no temporal reuse for most of the frame. Raise `samplesPerFrame` instead
 of reaching for reuse.
 
 ## Material shaders in a Field box
@@ -545,7 +521,7 @@ Use `pathTracingHere` instead of the plain constructor to put material evaluatio
 in the current box's editable **compute** property:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.fabricated.*
+import afield.graphics.scene.fabricated.*
 
 val tracer = pathTracingHere(scene, env, camera = camera, name = "study")
 tracer.blitToScreen()
@@ -565,7 +541,7 @@ Material shadeMaterial(Material material, PathTraceSurface surface) {
 
 The templates supply types, buffer declarations and the integrator. The middle is
 ordinary Field shader source: edit it, link the compute property, include shared
-box properties with `{% include "paint.compute" %}` (box name plus property), and use the normal **Reload Compute
+box properties with `{% property "paint.compute" %}` (box name plus property), and use the normal **Reload Compute
 Shader** / **Update Compute Shader** actions. Failed compilation keeps the last
 working pipeline. Successful shader replacement resets accumulation automatically.
 
@@ -856,17 +832,15 @@ With temporal reuse disabled, use `tracer.samples` to compare views at the same 
 
 ## Sampling the lamps directly
 
-The clamp above buys a clean preview and pays bias for it. For one particular source
-of specks there is no need to pay: a small, bright emissive triangle.
-
-Emissive geometry used to be found only by chance — a path had to *happen* to scatter
-into a lamp. The smaller and brighter the lamp, the rarer that is, and the spikier
-each rare hit. The environment map has never had this problem, because it is
-importance-sampled against a cumulative table and connected to with a shadow ray.
-Emissive triangles now are too:
+The clamp above gives a clean preview at the cost of some bias. Specks from small,
+bright emissive triangles can be removed without bias by sampling the lamps directly.
+Without it, a path finds a lamp only by scattering into it by chance; the smaller and
+brighter the lamp, the rarer and spikier those hits. With it, emissive triangles are
+importance-sampled from a cumulative table and connected with a shadow ray, as the
+environment map is. It is on by default:
 
 ```diffstatic {data-lang=kotlin}
-tracer.emitterSampling = true // the default; false reaches the previous estimator exactly
+tracer.emitterSampling = true // the default; false finds lamps by BSDF sampling only
 println("${tracer.emitterCount} emissive triangles are sampled directly")
 ```
 
@@ -886,42 +860,35 @@ Both of these are 256 samples per pixel at 480 × 360, three bounces, two lamps 
 
 ![The same scene and sample count with emitter sampling on: clean diffuse surfaces, a soft shadow under the sphere, a cool tint on its right side from the smaller lamp](assets/path_tracing/emitter_on.png)
 
-`PathTraceEmitterGpuSmoke` measures both halves of that on real GPU readback. Over
-the 6,746 lit pixels of a 96 × 72 render of the same scene — luminance between 0.004
-and 6, which excludes the black background and the directly visible lamps — at an
-equal 257 samples per pixel:
+??? aside "How much emitter sampling helps on this scene"
+    `PathTraceEmitterGpuSmoke` measures the difference on real GPU readback. Over
+    the 6,746 lit pixels of a 96 × 72 render of the same scene — luminance between 0.004
+    and 6, which excludes the black background and the directly visible lamps — at an
+    equal 257 samples per pixel:
 
-| Emitter sampling | RMSE against a 65,536-sample reference | Ratio |
-| --- | ---: | ---: |
-| off | 0.13534 | |
-| on | 0.00389 | **34.8×** |
+    | Emitter sampling | RMSE against a 65,536-sample reference | Ratio |
+    | --- | ---: | ---: |
+    | off | 0.13534 | |
+    | on | 0.00389 | **34.8×** |
 
-The ratio's denominator is a property of the scene, not of the estimator: a larger
-lamp, or any environment light at all, moves it down. The check asserts a floor of
-28×, near the measurement rather than comfortably below it.
+    The ratio depends on the scene: a larger lamp, or any environment light, lowers it.
+    The check asserts a floor of 28×.
 
-The image it converges to is the same one. That is checked against the separate,
-already-checked environment path rather than against itself: a sphere inside a
-uniformly emissive cube, at one bounce, is the identical integral as the same sphere
-under a constant unit environment map, and the two agree to within a pixel-level
-residual that shrinks as the reference budget grows. The agreement figures are in
-`dev_docs/PATH_TRACING_MEASUREMENTS.md`.
+    Both converge to the same image. That is checked against the environment path: a sphere inside a
+    uniformly emissive cube, at one bounce, is the identical integral as the same sphere
+    under a constant unit environment map, and the two agree to within a pixel-level
+    residual that shrinks as the reference budget grows. The agreement figures are in
+    `dev_docs/PATH_TRACING_MEASUREMENTS.md`.
 
 The extra shadow ray costs one traversal per surface interaction. A scene with no
 emissive triangle is bit-for-bit identical with the control on or off.
 
-Four things are excluded from the table, and in each case the consequence is
+Each emissive triangle is weighted by its area times its emitted brightness: the emission factor, times the mean of its emission texture when it has one. Three things are excluded from the table, and in each case the consequence is
 that emission from them is found by BSDF sampling alone, exactly as before:
 
 - **Emitters behind stochastic alpha coverage** (`AlphaMode.MASK` or `BLEND`). The
   two strategies would otherwise disagree about whether the emitter is there at all.
 - **Emissive glass.** Transmissive materials are shaded on the dielectric path.
-- **Emission that comes only from a texture.** The table's weight reads the
-  material's emission factor, so a triangle whose factor is black and whose emissive
-  *texture* is bright carries weight zero. Where the factor is non-zero the texture
-  is fully honoured: the direct sampler reads radiance through the same texture
-  lookup, and the same box-authored `shadeMaterial` hook, that a BSDF hit does. If
-  those two disagreed about one point, their combination would be biased.
 - **Zero-area triangles**, which cannot be sampled by area at all.
 
 `maxBounces` is a path length limit, and a shadow ray reaches one segment past it: the connection from the
@@ -951,8 +918,8 @@ checks; `--all` adds the statistical emitter/medium suites and a GPU timing swee
 records the actual device and enabled backends. From a launched renderer child:
 
 ```diffstatic {data-lang=kotlin}
-val renderer: Renderer = fromContext()
-val verify: suspend () -> Unit = { PathTraceGpuSmoke.run(renderer) }
+val r = renderer
+val verify: suspend () -> Unit = { PathTraceGpuSmoke.run(r) }
 start(verify)
 ```
 
@@ -961,7 +928,7 @@ alpha holds primary visibility coverage. RGB is premultiplied by alpha; `samples
 reports the sample count. Glass hits have coverage one, including their traced
 refraction; this alpha is not a transmission matte. Call it outside frame recording on Field's render thread.
 It waits for GPU readback and is intended for export and checks, not the frame loop.
-Create/install/close on that same thread, as with other `afield.four` resources.
+Create/install/close on that same thread, as with other Field 4 resources.
 `close()` detaches the passes immediately and defers destruction until in-flight
 frames have retired.
 
@@ -1027,12 +994,11 @@ Rows at their default are dropped rather than shown as zeros, so a plain tracer 
 rows and each of the five optional groups — a non-agreeing up, a lens, temporal reuse,
 fog, an attached convergence log — adds one. Ten is the ceiling.
 
-**The tracer does not use `camera.up`.** It
-builds its own up as `right × forward`: the component of the declared up that is
-perpendicular to the view direction, normalised. So a declared up that is not already
-unit-length and perpendicular gives a different vector from the one the image is made
-with, and the row says how far apart they are. The shipped material study's camera is
-11.94° out. The row appears only when they disagree.
+**`up` is the part of `camera.up` perpendicular to the view direction**, normalised: the
+same up the raster camera's `lookAt` builds its image with. A camera that looks up or down
+with the default up of (0, 1, 0), as the material study's does, has an effective up that
+differs from the declared one, here by 11.94°, and the row says by how much. Both renderers
+use the effective up, so their images agree. The row appears only when the two differ.
 
 `samples` counts within a **generation**, and `resetGeneration` counts the generations.
 Two sample counts are comparable only if the generation between them has not advanced;
@@ -1093,9 +1059,8 @@ will not reflect your edit until the next build. Either way the backend's `#defi
 HARDWARE_QUERY` is applied for you, and applied idempotently: source that already carries
 one, or lacks one, both come out right for this device.
 
-**Three outcomes, not a boolean.** `ComputeModulePointer.reload` answers `false` both for
-"this source is already compiled" and for "this source does not compile", so code wrapping
-it in `check(…)` throws on a no-op:
+`reloadIntegrator` reports one of three outcomes, as `ComputeModulePointer.reloadOutcome` does for
+any compute module.
 
 | `IntegratorReload.status` | meaning | `ok` | `reloaded` |
 | --- | --- | --- | --- |
@@ -1106,10 +1071,7 @@ it in `check(…)` throws on a no-op:
 A failed reload is invisible in the window — the image carries on from where it was — which
 is the same guarantee the material-shader path gives.
 
-One timing note, because it bites the code most likely to check the result. The swap is
-*observed* a frame after it is requested: `reloadIntegrator` replaces the module, and the
-next frame is what notices the new pipeline and discards accumulation. So waiting on a
-sample count immediately after a reload is satisfied by the count the **old** integrator
-left behind. Wait for `samples` to fall first, or for `lastResetReason` to change.
+A successful reload sets `samples` back to 0 at once, so waiting on a sample count afterwards waits
+for the new integrator's samples.
 
 The opaque path tracer can also feed [Ray Reconstruction](path_traced_reconstruction.md), with raw and progressive views retained.

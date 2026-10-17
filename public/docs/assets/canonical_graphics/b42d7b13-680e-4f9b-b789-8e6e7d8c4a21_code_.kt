@@ -1,7 +1,9 @@
-import afield.four.Renderer
-import afield.four.buffers.*
-import afield.four.modules.*
-import afield.stdlib.linalg.*
+
+
+
+
+
+
 
 // Three position/color vertices form one triangle.
 // The schema shares their memory layout between Kotlin and GLSL.
@@ -31,7 +33,6 @@ vertexData.mapAndWrite_bytes {
 }
 
 //%-
-val renderer: Renderer = fromContext()
 
 var module = moduleHere {
     primitiveType = triangles

@@ -1,7 +1,9 @@
-// Every PlacedGlyph carries mutable handles — offset, rotation, scale, pivot — and the
-// pivot defaults to the glyph's own visual centre, so a bare `rotation = 0.3` spins each
-// letter about itself. These handles are the API rather than an afterthought: this whole box
-// is one layout, computed once, and a function of elapsed seconds written into it.
+/*
+Every PlacedGlyph carries mutable handles — offset, rotation, scale, pivot — and the
+pivot defaults to the glyph's own visual centre, so a bare `rotation = 0.3` spins each
+letter about itself. These handles are the API rather than an afterthought: this whole box
+is one layout, computed once, and a function of elapsed seconds written into it.
+*/
 val face = typeface("SansSerif", 150.0)
 val layout = layoutText("KINETIC", face, tracking = 16.0)
 
@@ -9,9 +11,17 @@ val layout = layoutText("KINETIC", face, tracking = 16.0)
 // a still frame instead of the frame breathing around them.
 val window = run {
     val probe = layoutText("KINETIC", face, tracking = 16.0)
-    probe.eachGlyph { i -> rotation = 0.5; scale = vec(1.3, 1.3); offset = vec(0.0, 34.0) }
+    probe.eachGlyph { i ->
+        rotation = 0.5
+        scale = vec(1.3, 1.3)
+        offset = vec(0.0, 34.0)
+    }
     val a = probe.bounds
-    probe.eachGlyph { i -> rotation = -0.5; scale = vec(1.3, 1.3); offset = vec(0.0, -34.0) }
+    probe.eachGlyph { i ->
+        rotation = -0.5
+        scale = vec(1.3, 1.3)
+        offset = vec(0.0, -34.0)
+    }
     a.union(probe.bounds)
 }
 
@@ -31,6 +41,7 @@ animate {
     }
     showImgGrid(
         "t = %.1fs".format(elapsed) to rasterizeText(layout, 1100, 420, window = window),
-        columns = 1, cellSide = 820
+        columns = 1,
+        cellSide = 820,
     )
 }

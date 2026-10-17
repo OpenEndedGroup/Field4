@@ -14,7 +14,7 @@ The embedded viewer's "Open in Field4" button opens a prepared Nano document wit
     allowfullscreen>
 </iframe>
 
-In a fresh document, Nano boxes live under a parent box that is a language root: run **Set Main Language: Nano** on the parent and its children become Nano boxes. The older `isNanoRoot` property is still honoured, so historical documents keep working, but new ones should use the action. The examples below are written as Nano assembly, and each was assembled and executed by Field; the state you see under it is what came out.
+In a fresh document, Nano boxes live under a parent box that is a language root: run **Set Main Language: Nano** on the parent and its children become Nano boxes. The examples below are written as Nano assembly, and each was assembled and executed by Field; the state you see under it is what came out.
 
 ## Registers, output, and the first RAM write
 
@@ -53,11 +53,11 @@ out r1
 hlt
 ```
 
-There is no array abstraction here, only an address register walking forward, and `ldi r2, 8` sets how far: the orange run is exactly eight cells, `0x14` to `0x1b`.
+The address register walks forward one cell at a time, and `ldi r2, 8` sets how far: the orange run is exactly eight cells, `0x14` to `0x1b`.
 
 ## Summation by counting down to zero
 
-Every instruction that computes a value into a register sets the zero flag, `ldr` and `and` included; `mov` and the two stores are the ones that leave it alone. `jnz` reads whatever the last of them left behind, so the countdown idiom is a matter of *ordering* rather than of `dec` being special: put `dec` immediately before the branch and the loop tests the counter.
+Every instruction that computes a value into a register sets the zero flag, `ldr` and `and` included; `mov` and the two stores are the ones that leave it alone. `jnz` reads whatever the last of them left behind, so for a countdown, put `dec` immediately before the branch and the loop tests the counter.
 
 ```diffstatic_runner {data-lang=nano screenshot="assets/nano_examples/summation_with_loop.png" wait="1.0" capture="box" embed=true name="nano-summation-with-loop" alt="Nano state panel: steps 35, pc 0x0b, halted, zero flag set. R0 has counted down to 0x00 and R1 holds 0x37, 55 in decimal, which is also the output stream's one entry. A single orange cell at 0x1c holds 0x37. The disassembly shows the loop body at L04 as add r1 r0, dec r0, jnz back four bytes."}
 :::static
@@ -74,7 +74,7 @@ out r1
 hlt
 ```
 
-This sums `10 + 9 + ... + 1` into `r1`, leaving `55` in both the output stream and RAM address `0x1c`. Note that `add r1, r0` sets the flag too — it is only because `dec r0` runs after it that `jnz` sees the counter rather than the accumulator.
+This sums `10 + 9 + ... + 1` into `r1`, leaving `55` in both the output stream and RAM address `0x1c`. `add r1, r0` sets the flag too; it is only because `dec r0` runs after it that `jnz` sees the counter rather than the accumulator.
 
 ## `.data` turns the tail of the program into a lookup table
 
@@ -118,4 +118,4 @@ Starting from `6`, one call to `dbl` gives `12`, and the second gives `24`.
 
 ## When a sketch misbehaves
 
-The panels under each run answer different questions. The register cards and RAM grid say what the machine ended up holding. The disassembly says what the assembler thought you wrote, which is where a mis-counted `ldrr` offset or a branch that landed one byte off shows up. And the `state` chip reads either `halted` or `running`, where `running` means the step budget ran out before any `hlt` did — a VM error such as `Call stack overflow` gets its own orange banner above the registers instead.
+The panels under each run answer different questions. The register cards and RAM grid say what the machine ended up holding. The disassembly says what the assembler thought you wrote, which is where a mis-counted `ldrr` offset or a branch that landed one byte off shows up. And the `state` chip reads either `halted` or `running`, where `running` means the step budget ran out before any `hlt` did. A VM error such as `Call stack overflow` gets its own orange banner above the registers instead.

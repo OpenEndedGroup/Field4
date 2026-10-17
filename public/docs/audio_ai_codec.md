@@ -1,17 +1,16 @@
-# EnCodec reconstruction microscope
+# EnCodec round trip
 
-Field keeps codec tokens visible as compositional data. A `codec.reconstruct` operation produces an
-immutable model-native input, an NPY token tensor, a model-native reconstruction, a 48 kHz audition
-proxy, reconstruction metrics, and full model provenance. Here the input is a four-second,
-eight-voice chord rendered by Field's Faust example. Listen to the model input and reconstruction
-while comparing their spectra and the four codebook streams between them.
+*To run the examples on this page, open the [audio_ai_codec](agent_transcripts.md#audio_ai_codec) starting point.*
+
+EnCodec compresses audio into a few streams of tokens and decodes them back. Running a
+`codec.reconstruct` operation on a sound shows you both ends and the tokens in between: the input
+as the model hears it, the token streams (one per codebook), the reconstruction, and how far it
+differs from the input. Here the input is a four-second, eight-voice chord rendered by Field's
+Faust example.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_codec/reconstruction_microscope.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-codec" alt="Real EnCodec input and reconstruction waveforms, spectra, measured errors and four codebook streams"}
 :::static
-import afield.stdlib.noir.audioai.*
-import afield.stdlib.AudioVisualizer
-import afield.stdlib.AudioVisualizerOptions
-import afield.four.audio.WavFloatArrayLoader
+import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path
 val json = FieldAudioClient.json
@@ -28,12 +27,15 @@ Listen to the [model input](assets/audio_ai_codec/source.wav) and its [EnCodec r
 <audio controls preload="metadata" src="assets/audio_ai_codec/reconstruction.wav"></audio>
 
 
-The players contain the actual 32 kHz model input and decoded result. The error figures are the
-worker's measurements, including an SNR of 6.79 dB; the 48 kHz audition proxy is a separate asset.
+Both players hold the 32 kHz mono audio the model actually reads and writes, so the waveforms
+and spectra line up sample for sample. The operation also returns a 48 kHz copy for listening.
+The waveform players are the ordinary [audio visualizer](visualizers.md#recorded-audio-waveform-player-playhead-and-navigation):
+click to seek, drag to pan, and use the wheel to zoom.
 
-For a live result, submit `codecReconstruction(region)`, await it with
-`client.awaitCodec(accepted)`, then call `client.codecVisualizationHtml(result, cacheDirectory)`.
-The comparison uses the 32 kHz mono model input and native reconstruction so the waveforms and
-log-frequency STFTs remain exactly aligned; the 48 kHz proxy remains a separately labelled audition
-asset. Both waveform players use the general `AudioVisualizer`: click to seek, drag to pan, use the
-wheel to zoom, and follow the optional vertical playhead during playback.
+To analyse your own sound, submit `codecReconstruction(region)`, wait for it with
+`client.awaitCodec(accepted)`, then display `client.codecVisualizationHtml(result, cacheDirectory)`.
+
+## See also
+
+- [Field Audio AI](field_audio_ai.md)
+- [Faust](faust.md)

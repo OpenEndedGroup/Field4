@@ -13,7 +13,7 @@ so the visionOS receiver never learns which backend produced the stream.
 **The receiver** (the other end of this stream) is the visionOS shell at
 **`../field-visionos`** — see its `Field4Vision/RTT/` (UDP reassembly → VideoToolbox decode →
 RealityKit) and its `README.md`. **The producer** that drives this helper from Field is
-`afield.four.stream.FieldRTTStreamer` (JVM). Contract shared by all three: `WIRE_FORMAT.md`.
+`afield.media.stream.FieldRTTStreamer` (JVM). Contract shared by all three: `WIRE_FORMAT.md`.
 
 ## Build & run
 
@@ -42,7 +42,7 @@ printf '%s\n' \
   | ./.build/debug/field-encode
 ```
 
-The JVM side is `afield.four.stream.FieldEncodeProcess` in the field4 repo.
+The JVM side is `afield.media.stream.FieldEncodeProcess` in the field4 repo.
 
 `surfaces` is a small ring (2–3) of **global** `IOSurfaceID`s the producer renders into
 round-robin; `frame` says "surface *i* is ready, encode it now." SBS is the producer's

@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rp_renderer" index="0" -->
 
 ```edn [field-box id="rp_renderer" role="properties"]
-{"id" "rp_renderer" "index" 0 "name" "frame history renderer" "parents" ["root"] "children" ["rp_bundle"] "properties" {"children" #{#afield/box "rp_bundle"} "parents" #{#afield/box "root"} "name" "frame history renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 100.0] "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_renderer_code_.kt" "lines" 10 "characters" 248 "sha256" "aa209cdda55609d779460ce6d29a6a33fab2d5f30684d071ad313d1f560d4d92"} {"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "8c95217c5eb296f0b777d1cd1c5a4aac3bd08cee26c0845c51bfbd99a3c29f34"}]}
+{"id" "rp_renderer" "index" 0 "name" "frame history renderer" "parents" ["root"] "children" ["rp_bundle"] "properties" {"children" #{#afield/box "rp_bundle"} "parents" #{#afield/box "root"} "name" "frame history renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 100.0] "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_renderer_code_.kt" "lines" 10 "characters" 259 "sha256" "f5f6fcebe96a04d8606b2f66b781a1251c91b4f3547f9f8b43bc1c64b306d93c"} {"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "8c95217c5eb296f0b777d1cd1c5a4aac3bd08cee26c0845c51bfbd99a3c29f34"}]}
 ```
 
 ```kotlin [field-property box="rp_renderer" name="code" path="rp_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -28,8 +28,8 @@ start(renderer::run)
 ```
 
 ```text [field-property box="rp_renderer" name="preamble"]
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -44,26 +44,28 @@ val Once.renderer by Onceing<Renderer>() /**/
 
 From `code`
 
-`afield.four.fabricated` is not among a box's automatic imports, and the `prop<>` type
+`afield.graphics.scene.fabricated` is not among a box's automatic imports, and the `prop<>` type
 argument is written out in full on purpose: `prop<>` rewrites the box's code and the
 rewrite does not carry the snippet's own imports, so `prop<StandardRenderer.Bundle>`
 under an `import ...StandardRenderer` fails against the *import* line.
 
 ```edn [field-box id="rp_bundle" role="properties"]
-{"id" "rp_bundle" "index" 1 "name" "lit scene" "parents" ["root" "rp_renderer"] "children" ["rp_chain"] "properties" {"children" #{#afield/box "rp_chain"} "parents" #{#afield/box "root" #afield/box "rp_renderer"} "name" "lit scene" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0] "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_bundle_code_.kt" "lines" 40 "characters" 1782 "sha256" "67b028330c979231243a921b14a726b0ebbcb2b1bf0a5a9ea1d9a4c816df2759"} {"name" "preamble" "language" "text" "lines" 8 "characters" 407 "sha256" "7ae4d91094799cd551bb5acef3c326b45a83f3affe6bec76a9848e32c871619d"}]}
+{"id" "rp_bundle" "index" 1 "name" "lit scene" "parents" ["root" "rp_renderer"] "children" ["rp_chain"] "properties" {"children" #{#afield/box "rp_chain"} "parents" #{#afield/box "root" #afield/box "rp_renderer"} "name" "lit scene" "_tombstone" false "frame" #afield/rect [400.0 40.0 320.0 100.0] "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_bundle_code_.kt" "lines" 50 "characters" 2128 "sha256" "144e5431f5f920c476bded0e120bdecfd43507eadd6c12f14d98fa2bdc22ddb1"} {"name" "preamble" "language" "text" "lines" 8 "characters" 407 "sha256" "7ae4d91094799cd551bb5acef3c326b45a83f3affe6bec76a9848e32c871619d"}]}
 ```
 
 ```kotlin [field-property box="rp_bundle" name="code" path="rp_bundle_code_.kt"]
-// `afield.four.fabricated` is not among a box's automatic imports, and the `prop<>` type
-// argument is written out in full on purpose: `prop<>` rewrites the box's code and the
-// rewrite does not carry the snippet's own imports, so `prop<StandardRenderer.Bundle>`
-// under an `import ...StandardRenderer` fails against the *import* line.
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
 
-prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+prop<StandardRenderer.Bundle>(bundle)
+
+/*
+The registration handles, kept so the next box can move each ball independently.
+`registerSphere` returns the `PullingMeshPair` it registered and there is no by-name
+lookup on a bundle, so the handle is the only way back to an object once it is in the
+scene — hold it at registration or you cannot animate it at all.
+*/
+prop<MutableList<StandardRenderer.Bundle.PullingMeshPair>>(balls)
 
 // A `once`, unlike the chain box: `StandardRenderer.build` has no replace-in-place path,
 // so re-running it would strand the bundle the chain is appended to.
@@ -73,8 +75,8 @@ once.bundle {
         StandardRenderer.Config(
             renderWidth = 1024,
             renderHeight = 1024,
-            backgroundColor = Vector3f(0.05f, 0.06f, 0.08f)
-        )
+            backgroundColor = Vector3f(0.05f, 0.06f, 0.08f),
+        ),
     )
     b.scene.camera.at.set(0f, 1.4f, -4.2f)
     b.scene.camera.target.set(0f, 0f, 0f)
@@ -83,24 +85,32 @@ once.bundle {
     // The standard stack's own motion blur off: it is a second, different temporal effect
     // and it would sit upstream of everything the chain below is showing you.
     b.scene.motionBlurStrength = 0f
-    // Silhouette edges, so there is something for a reprojection to be right or wrong about.
+    /*
+    Silhouette edges, so there is something for a reprojection to be right or wrong about.
+    The handles go into `balls` in row-major order, ix outer and iz inner, which is the
+    order the animation box relies on to recover (ix, iz) from an index.
+    */
+    val handles = mutableListOf<afield.graphics.scene.fabricated.StandardRenderer.Bundle.PullingMeshPair>()
     for (ix in -2..2) for (iz in -2..2) {
-        b.registerSphere(name = "ball-" + ix + "-" + iz, radius = 0.3f, slices = 24, stacks = 24)
-            .setModel(Matrix4f().translate(ix * 0.85f, 0f, iz * 0.85f))
+        handles.add(
+            b.registerSphere(name = "ball-" + ix + "-" + iz, radius = 0.3f, slices = 24, stacks = 24)
+                .setModel(Matrix4f().translate(ix * 0.85f, 0f, iz * 0.85f)),
+        )
     }
+    balls = handles
     b.applyScenePlan()
     b.present(renderer = renderer)
     b.attachTo(renderer)
     b
 }
-println("bundle ready: " + bundle.postStack.names())
+println("bundle ready: " + bundle.postStack.names() + ", " + balls.size + " balls")
 ```
 
 ```text [field-property box="rp_bundle" name="preamble"]
-import afield.four.util.Window
-import afield.four.Renderer
-var Box.bundle by Inheritance<afield.four.fabricated.StandardRenderer.Bundle>() /**/
-val Once.bundle by Onceing<afield.four.fabricated.StandardRenderer.Bundle>() /**/
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
+var Box.bundle by Inheritance<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
+val Once.bundle by Onceing<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -116,11 +126,11 @@ val Once.renderer by Onceing<Renderer>() /**/
 ```
 
 ```kotlin [field-property box="rp_chain" name="code" path="rp_chain_code_.kt"]
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.addPassChain
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.addPassChain
 
-prop<afield.four.fabricated.FabricateBuiltChain>(chain)
+prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(chain)
 
 // `persistent` says WHAT last frame's pixels were. `frameHistory` says WHERE they were.
 // `temporalAccumulate` declares both, and that composition is the whole point: without the
@@ -161,12 +171,12 @@ frames {
 ```
 
 ```text [field-property box="rp_chain" name="preamble"]
-import afield.four.util.Window
-import afield.four.Renderer
-var Box.chain by Inheritance<afield.four.fabricated.FabricateBuiltChain>() /**/
-val Once.chain by Onceing<afield.four.fabricated.FabricateBuiltChain>() /**/
-var Box.bundle by Inheritance<afield.four.fabricated.StandardRenderer.Bundle>() /**/
-val Once.bundle by Onceing<afield.four.fabricated.StandardRenderer.Bundle>() /**/
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
+var Box.chain by Inheritance<afield.graphics.scene.fabricated.FabricateBuiltChain>() /**/
+val Once.chain by Onceing<afield.graphics.scene.fabricated.FabricateBuiltChain>() /**/
+var Box.bundle by Inheritance<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
+val Once.bundle by Onceing<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -222,12 +232,12 @@ frames {
 ```
 
 ```text [field-property box="rp_modes" name="preamble"]
-import afield.four.util.Window
-import afield.four.Renderer
-var Box.chain by Inheritance<afield.four.fabricated.FabricateBuiltChain>() /**/
-val Once.chain by Onceing<afield.four.fabricated.FabricateBuiltChain>() /**/
-var Box.bundle by Inheritance<afield.four.fabricated.StandardRenderer.Bundle>() /**/
-val Once.bundle by Onceing<afield.four.fabricated.StandardRenderer.Bundle>() /**/
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
+var Box.chain by Inheritance<afield.graphics.scene.fabricated.FabricateBuiltChain>() /**/
+val Once.chain by Onceing<afield.graphics.scene.fabricated.FabricateBuiltChain>() /**/
+var Box.bundle by Inheritance<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
+val Once.bundle by Onceing<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/

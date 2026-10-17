@@ -114,7 +114,7 @@ object CompletionSpike {
         // De-risk: can findTopLevelCallables resolve a binary-library top-level function by exact name?
         @OptIn(KaExperimentalApi::class, KaIdeApi::class)
         analyze(contextFile) {
-            for (probe in listOf("kotlin.collections" to "map", "afield.stdlib" to "toggleNetwork")) {
+            for (probe in listOf("kotlin.collections" to "map", "afield.simulation.automata" to "toggleNetwork")) {
                 val n = findTopLevelCallables(FqName(probe.first), Name.identifier(probe.second)).count()
                 System.err.println("[selftest] findTopLevelCallables(${probe.first}, ${probe.second}) = $n")
             }

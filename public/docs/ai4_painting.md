@@ -4,8 +4,9 @@
 starting point. It needs the paint library (`./gradlew buildPaintNative`, see
 [Paint and pencil from FLines](paint_canvas.md#building-the-library)) and an AI provider.*
 
-The Studio is one box that turns the [paint simulator](paint_canvas.md) into a place where the AI
-chat can paint. The box puts an oil canvas on an easel and gives the agent tools to paint on it. You
+The Studio is one box that turns the [paint simulator](paint_canvas.md), built on alice's
+[claude-paint](https://github.com/aliceisjustplaying/claude-paint), into a place where the AI chat
+can paint. The box puts an oil canvas on an easel and gives the agent tools to paint on it. You
 open the box's AI panel and ask for a painting, and the agent lays it in, looks at it, corrects it
 and hangs it in the box's gallery. The three paintings below came from one conversation with the
 Studio:
@@ -51,24 +52,68 @@ is identical to the hung dusk painting:
 
 ## Browsing the saved paintings
 
-The Studio's `branchState("canvas", ...)` registration also enables **States** in the
-AI chat. A completed request adds a node and its saved canvas snapshot. While the first
-painting is still being made, the tree is empty: the agent's intermediate looks are
-progress images, not saved conversation branches. The open tree updates when a turn finishes.
+Because the Studio saves its canvas with the conversation (see
+[What the box defines](#what-the-box-defines)), the AI chat's **States** tree works here too. Each
+completed request adds a node with its saved canvas. While the first painting is still being made,
+the tree is empty: the agent's looks along the way are progress images, not saved states. The open
+tree updates when a request finishes.
 
-Select an earlier node to inspect its conversation and snapshot identity. The cyan
-**current** circle stays at the active conversation position; browsing another node
-leaves the easel alone. **Reference in chat** inserts a compact reference so AI4 can
+Select an earlier node to see its conversation and which saved canvas it holds. The cyan
+**current** circle stays where the conversation is; browsing another node leaves the easel alone. **Reference in chat** inserts a compact reference so AI4 can
 retrieve that state's recorded contents when asked. **Keep for comparison**, followed
 by **Discuss differences** on another node, prepares references to both in your draft.
 The inspector shows saved text and ancestry; it does not reconstruct a canvas preview.
 
 For a named alternative, ask AI4 to fork a saved state under a name such as
-*Harbour at dusk*. `StateForkRequest` creates the saved child without activating it.
-`StateReadRequest` can then retrieve it by that exact name. Continue the alternative
+*Harbour at dusk*. The fork is saved without switching the easel to it, and AI4 can read it
+back later by that exact name. Continue the alternative
 with the existing `/branches` and `/branch <number>` commands, which restore the
 Studio's canvas as well as its conversation. [Browsing saved states](aiFeatures.md#browsing-saved-states)
 describes the tools and how other documents expose their own histories.
+
+## Brushes the conversation keeps
+
+A fresh brush comes clean from the palette. A brush the agent keeps (`paint_tool`, then
+`paint_load` and the `tool` argument of `paint_stroke` and `paint_dab`) stays dirty between
+requests: dragged through wet paint, it carries some of that colour into its next stroke, and a
+reload mixes into what is left in it unless the agent wipes it. A kept knife keeps its bead and a
+kept rag its load. The canvas context tells the agent what each kept tool carries, and `/tools` shows
+it to you.
+
+The kept tools belong to the conversation, like the canvas. Here a request asked for an evening
+landscape painted with a kept sky brush and a kept land brush, a knife and a rag; a second request
+turned it into a storm, reloading the sky brush without wiping it. Rewound to before the storm,
+the canvas and all four tools went back to how the evening left them, and a new request for a
+moonlit night was painted from there, with the sky brush as the evening had left it:
+
+![three paintings on black of the same landscape: pale sky over grey-green hills and a dark field; the same field under a dark blue-grey storm sky with pale spatters of rain across the whole picture; and the evening landscape repainted as a night with a deep blue sky and a small pale moon](assets/ai4_painting/kept_tools.jpg)
+
+## Watercolour, and brushes whose hairs move
+
+On a sheet of paper (`paint_fresh` with `ColdPress`, `HotPress`, `Rough`, `Xuan` or `Blotting`) the
+agent paints in [watercolour and ink](watercolor.md): `paint_wash` with a watercolour brush,
+`paint_drop`, `paint_wet` to wet a region, and `paint_tilt` to tilt the board. The water then
+moves on its own, so the agent waits for it (`paint_wait` with seconds) and can look at where the
+paper is still wet (`paint_look` with `map="surface"`).
+
+A brush kept with `paint_tool` and `moving=true` is a [brush with moving hairs](paint_gestures.md).
+The agent paints with it through `paint_gesture`, giving the speed, pressure along the stroke, and
+the tilt and roll of the handle, for the marks that depend on the hand. Below, the agent was asked
+for grasses at the edge of a wood, scrubbing the wood in with a moving hog flat, flicking the
+blades up with a moving rigger and rolling the flat through a path; then to scrub the hog hard
+along the bottom edge and lay three light strokes with it. The conversation was then rewound to
+before the scrub, and both brushes came back exactly as the grasses had left them.
+
+![three oil paintings on black of the same scene: a dark green wood scrubbed in with broad zigzag strokes over the top half, a field of olive grass below with pale flicked grass blades, and a cream path winding up through it, laid with a flat brush rolled as it went. In the middle painting, a broad flat cream band has been scrubbed along the bottom edge and three long, light cream strokes cross the grass. The third painting is the first again, as the rewind restored it](assets/ai4_painting/moving_hairs.jpg)
+
+??? aside "How the moving-hairs figure was made"
+    One live run on 2026-10-08, OpenAI `gpt-6.1-sol`, in a fresh Studio, from one backdoor connection:
+    two requests as real panel turns (`agent-task --chat-box Studio`) and the rewind as the panel sends
+    it. The first and middle frames are the PNG `paint_hang` wrote and the agent's own `paint_look` after
+    the second request; the third is its first look after the rewind. A probe box hashed both kept
+    brushes' `state()` and the canvas between the steps: after the rewind all three hashed as they had
+    after the first request (the hog's retained bend back to 0.005 rad from 0.013). The docs build
+    cannot remake the figure, since that needs a model.
 
 ## The same request, another model
 
@@ -88,36 +133,41 @@ These commands work in the Studio's chat:
 
 - `/canvas` shows the canvas in the chat.
 - `/palette` lists the tube paints with a swatch of each.
+- `/tools` lists the kept tools and what each one carries.
 - `/gallery` lists the hung paintings, which the box shows in its `gallery` panel.
 - `/branches` lists the versions of the conversation, and `/branch <n>` switches to one.
 
 To start a version from an earlier point, use the rewind button on one of your own requests. The
-conversation, and the canvas with it, go back to how they were before that request.
+conversation, and the canvas and the kept brushes with it, go back to how they were before that
+request.
 
 !!! note "A canvas is large"
     Each saved state of the Studio's canvas is about 28 MB on disk, kept in the document's `ai4_blobs/state`
-    folder. Every request that changes the painting adds one, and none is deleted yet.
+    folder. Every request that changes the painting adds one; `pruneAiStates(dryRun = false)` frees all
+    but the latest three along each branch. The kept tools are small beside it, some 20 kB a request.
 
 ## What the box defines
 
 All of this is ordinary box code, in one `agentExtension` block. A tool is an
 [`aiTool`](aiFeatures.md), here the one that dabs a loaded brush at a list of points. `canvas()`,
-`paintOf()`, `brushOf()`, `rad()` and `done()` are small helpers defined above it in the same box:
+`brushFor()`, `loadInto()`, `rad()` and `done()` are small helpers defined above it in the same box:
+`brushFor` takes a kept brush by name, or a fresh one of the kind asked for.
 
 ```diffstatic {data-lang=kotlin}
 tool("paint.dab") {
     describe("Touch the brush down at points and lift it: dabs, petals, leaves, highlights. One load for all of them.")
     effects(ToolEffect.CONTROL_RUNTIME)
     val points by param<List<Double>>("[x0, y0, x1, y1, ...]")
-    val color by param<String>("#rrggbb, a tube name, or tubes by parts")
-    val brush by param<String>("Round, HogFlat, Filbert, Fan, Rigger or Badger", default = "Round")
+    val color by param<String?>("#rrggbb, a tube name, or tubes by parts; null dabs a kept tool with what it carries", default = null)
+    val tool by param<String?>("a kept brush's name to dab with; null for a fresh brush", default = null)
+    val brush by param<String>("Round, HogFlat, Filbert, Fan, Rigger, Badger or Stippler (a fresh brush)", default = "Round")
     val width by param<Double>("brush width in canvas units", default = 12.0)
     val pressure by param<Double>("harder makes a bigger, fuller mark", default = 0.6)
     val angle by param<Double>("a flat's wide axis, degrees", default = 0.0)
     action {
-        val c = canvas(); val p = paintOf(color())
-        val b = c.brush(brushOf(brush()), width = width())
-        if (p.tubes != null) b.load(p.tubes) else b.load(p.color)
+        val c = canvas()
+        val b = brushFor(tool(), brush(), width(), color())
+        loadInto(b, color())
         points().chunked(2).filter { it.size == 2 }.forEach { c.touch(b, it[0], it[1], pressure = pressure(), angle = rad(angle())) }
         done("${points().size / 2} dab(s)")
     }
@@ -125,10 +175,12 @@ tool("paint.dab") {
 ```
 
 Colours can be hex, or real tube paints mixed by parts, `"lead white:4, cadmium yellow:1"`, which
-mix the way paint does. The Studio has eleven tools in all: strokes along curves, dabs, whole
-regions worked with a painter's handling (`Broad`, `Body`, `Detail`, `Glaze`, `Scumble`, `Blend`),
-glazes, pencil and chalk lines, hatching, stippling, drying time, a fresh canvas, hanging, and an
-ageing tool the agent loads only when it asks for it.
+mix the way paint does. The Studio's other tools are strokes along curves, whole regions worked
+with a painter's handling (`Broad`, `Body`, `Detail`, `Glaze`, `Scumble`, `Blend`), glazes, pencil
+and chalk lines, hatching, stippling, a painting knife, a rag, spatter, keeping a tool by name and
+loading it, timed gestures with a brush of moving hairs, watercolour washes, drops, wetting and
+tilting the board, drying time, a fresh canvas or sheet of paper, hanging, and an ageing tool the
+agent loads only when it asks for it.
 
 The agent also needs to know the canvas it is painting on. A `context` block is text the agent
 reads at the start of every request, computed then, so it describes the canvas as it is:
@@ -147,17 +199,22 @@ to paint and which tubes there are. That one never changes, so it is marked
 
 The canvas follows the conversation because of one more call. `branchState` hands the canvas to
 the chat, which saves it before and after every request and restores it when the conversation
-moves:
+moves. The kept tools have a second `branchState` of their own, `PaintToolbox.save` and `load`:
 
 ```diffstatic {data-lang=kotlin}
 branchState("canvas",
     save = { canvas().saveState(it.path) },
     restore = { f -> replace(f?.let { PaintCanvas.load(it.path) } ?: fresh()); show() },
     onConflict = BranchConflict.RESTORE, resumeOnOpen = true)
+// and so do the kept tools, each bristle's paint and all
+branchState("tools",
+    save = { tools().save(it) },
+    restore = { f -> thisBox.properties["studio.tools"] = f?.let { PaintToolbox.load(it) } ?: PaintToolbox() },
+    onConflict = BranchConflict.RESTORE, resumeOnOpen = true)
 ```
 
 `restore` gets `null` when the conversation has no saved canvas, which here means starting on a
-fresh one. Before restoring, the chat checks whether the canvas changed since the conversation last
+fresh one (and, for the tools, an empty toolbox). Before restoring, the chat checks whether the canvas changed since the conversation last
 saw it, for instance because a tool was run on it from outside the chat. By default a changed state
 is left as it is, and the chat says so. The Studio's canvas belongs to the conversation, so it asks
 for `BranchConflict.RESTORE`: the chat restores anyway, after saving the canvas it replaces.
@@ -177,5 +234,12 @@ has the rest of what `agentExtension` can add.
     on black and adds the captions; it draws nothing on the frames. The docs build cannot remake
     them, since that needs a model. Hanging the canvas after the rewind and after the switch back
     gave PNGs byte-identical to the hung dusk and night paintings, which is how the restores were
-    checked. That run also found three bugs, fixed before these figures were made; they are
-    recorded in `dev_docs/ai/AI4_PI_LESSONS.md`.
+    checked.
+
+??? aside "How the kept-tools figure was made"
+    One live run on 2026-10-08, OpenAI `gpt-6.1-sol`, in a fresh Studio: the three requests were sent
+    as real panel turns (`agent-task --chat-box Studio`), and the rewind as the panel sends it, all
+    from one backdoor connection. The paintings are the PNGs `paint_hang` wrote. Between the steps a
+    probe box hashed every kept tool's `state()` and the canvas: after the rewind the four tools and
+    the canvas hashed exactly as they had after the first request, and `/branch` back to the storm
+    brought back the storm's hashes. The docs build cannot remake the figure, since that needs a model.

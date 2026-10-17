@@ -22,6 +22,7 @@ from build_zensical_docs import (  # noqa: E402
     jep_python_candidates,
     resolve_jep_python,
     loris_executable_path,
+    solidcraft_library_path,
 )
 
 FENCE = (
@@ -156,7 +157,7 @@ class CeresLibraryPathTests(unittest.TestCase):
 class TetgenLibraryPathTests(unittest.TestCase):
     """The same two properties for TetGen, whose resolver is Ceres' with a second candidate.
 
-    Kept in step with `afield.tetgen.TetgenLibrary.searchedPaths` by hand, so the point of
+    Kept in step with `afield.geometry.mesh.tetgen.TetgenLibrary.searchedPaths` by hand, so the point of
     these is to make a drift between the two a test failure rather than a docs build that
     reports "no artifact" while the JVM happily finds one a directory away.
     """
@@ -181,9 +182,21 @@ class TetgenLibraryPathTests(unittest.TestCase):
         self.assertEqual("./gradlew buildTetgenNative", how_to_build)
 
 
+class SolidCraftLibraryPathTests(unittest.TestCase):
+    def test_capture_uses_the_optional_build_artifact_or_override(self):
+        os.environ.pop("AFIELD_SOLIDCRAFT_LIBRARY", None)
+        resolved = solidcraft_library_path(Path("/repo"))
+        self.assertEqual(resolved.parent, Path("/repo/build/native/solidcraft"))
+        self.assertIn("field_solidcraft_jvm", resolved.name)
+        os.environ["AFIELD_SOLIDCRAFT_LIBRARY"] = "/custom/solidcraft.so"
+        self.addCleanup(os.environ.pop, "AFIELD_SOLIDCRAFT_LIBRARY", None)
+        self.assertEqual(solidcraft_library_path(Path("/repo")), Path("/custom/solidcraft.so"))
+        self.assertEqual(NATIVE_PREREQUISITES["solidcraft"][1], "./gradlew buildSolidCraftNative")
+
+
 class PaintLibraryPathTests(unittest.TestCase):
     """TetGen's three properties for the paint wrapper, kept in step with
-    `afield.paint.PaintLibrary.searchedPaths` by hand."""
+    `afield.graphics.paint.PaintLibrary.searchedPaths` by hand."""
 
     def test_the_environment_override_wins(self):
         os.environ["AFIELD_PAINT_LIBRARY"] = "/somewhere/libfield_paint_jvm.dylib"
@@ -203,7 +216,7 @@ class PaintLibraryPathTests(unittest.TestCase):
 
 
 class LibpdLibraryPathTests(unittest.TestCase):
-    """TetGen's two properties for libpd, kept in step with `afield.pd.PdLibrary.searchedPaths`."""
+    """TetGen's two properties for libpd, kept in step with `afield.audio.pd.PdLibrary.searchedPaths`."""
 
     def test_the_environment_override_wins(self):
         os.environ["AFIELD_PD_LIBRARY"] = "/somewhere/libpd-multi.dylib"
@@ -223,7 +236,7 @@ class LibpdLibraryPathTests(unittest.TestCase):
 
 
 class CsoundLibraryPathTests(unittest.TestCase):
-    """libpd's properties for libcsound, kept in step with `afield.csound.CsoundLibrary.searchedPaths`."""
+    """libpd's properties for libcsound, kept in step with `afield.audio.csound.CsoundLibrary.searchedPaths`."""
 
     def test_the_environment_override_wins(self):
         os.environ["AFIELD_CSOUND_LIBRARY"] = "/somewhere/libcsound64.so"

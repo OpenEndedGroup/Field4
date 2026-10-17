@@ -161,7 +161,7 @@ process.on("unhandledRejection", (reason) => {
 });
 
 app.setName(APP_NAME);
-// A capture Electron (afield.docs.ElectronCaptureBrowser) gets its own profile, so the user's
+// A capture Electron (afield.tools.docs.ElectronCaptureBrowser) gets its own profile, so the user's
 // per-host zoom, cookies and window state never reach a docs capture, and their running Field4 app
 // keeps its profile to itself.
 if (process.env.FIELD_ELECTRON_USER_DATA) {
@@ -260,19 +260,26 @@ function filenameFromUrl(rawUrl) {
     if (file && file.trim()) return file.trim();
 
     const pathname = parsed.pathname.replace(/\/+$/, "");
-    if (pathname.endsWith("/welcome")) return "welcome";
-    if (pathname.endsWith("/dir")) return "/dir";
+    if (pathname.endsWith("/welcome")) return "Welcome";
+    if (/\/(field-docs|field4)(\/|$)/.test(pathname)) return "Documentation";
+    if (pathname.endsWith("/dir")) return "Directory";
     if (pathname.endsWith("/code-use")) return "Code Use";
     if (pathname.endsWith("/index.html")) return "document";
     if (pathname.endsWith("/docs-pass.html")) return "Docs Pass";
+    if (pathname.endsWith("/refactor-pass.html")) return "Refactoring";
     // Any other Field page (/history.html, /logs.html, ...) is named by its file, not the host.
     const page = pathname.match(/\/([^/]+)\.html$/);
-    if (page) return page[1];
+    if (page) return page[1].charAt(0).toUpperCase() + page[1].slice(1);
     if (parsed.hostname) return parsed.hostname;
   } catch (_) {
     // Ignore invalid URLs and fall back below.
   }
-  return "welcome";
+  return "Welcome";
+}
+
+// A utility tab is any Field page that is not a document (welcome, terminal, docs pass, ...).
+function isUtilityUrl(rawUrl) {
+  return documentKeyFromUrl(rawUrl) === null;
 }
 
 function documentKeyFromUrl(rawUrl) {
@@ -440,6 +447,10 @@ function createTabStripMarkup() {
       color: var(--text);
     }
 
+    .tab.utility {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
     .tab.active:hover {
       border-bottom-color: var(--tab-active-bg);
     }
@@ -528,13 +539,13 @@ function createTabStripMarkup() {
       addButton.hidden = welcomeOpen;
       addButton.disabled = welcomeOpen;
       tabsNode.innerHTML = tabs.map((tab) => {
-        const title = String(tab.title || 'welcome')
+        const title = String(tab.title || 'Welcome')
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#39;');
-        const activeClass = tab.active ? ' active' : '';
+        const activeClass = (tab.active ? ' active' : '') + (tab.utility ? ' utility' : '');
         return \`
           <button type="button" class="tab\${activeClass}" data-tab-id="\${tab.id}" aria-pressed="\${tab.active ? 'true' : 'false'}">
             <span class="tab-label">\${title}</span>
@@ -792,7 +803,7 @@ function createMainWindow() {
 
   // The window's own webContents is never used (every page is a WebContentsView), so it never gets
   // a renderer, and a CDP client that auto-attaches to it waits forever: Playwright's
-  // connectOverCDP hangs on its Page.enable. The docs capture path (afield.docs.ElectronCaptureBrowser)
+  // connectOverCDP hangs on its Page.enable. The docs capture path (afield.tools.docs.ElectronCaptureBrowser)
   // attaches over CDP, so when remote debugging is on, give it a page that answers.
   if (app.commandLine.hasSwitch("remote-debugging-port")) {
     win.webContents.loadURL("about:blank");
@@ -899,6 +910,7 @@ function createMainWindow() {
         title: tab.title,
         active: tab.id === activeTabId,
         welcome: isWelcomeUrl(tab.url),
+        utility: isUtilityUrl(tab.url),
       })),
       activeTabId,
     });
@@ -1310,6 +1322,26 @@ function createMainWindow() {
   };
   ipcMain.on("field4-renderer-diagnostic", onRendererDiagnostic);
 
+  const onTabIdentity = (event) => {
+    const tab = tabs.find((candidate) => liveContents(candidate) === event.sender);
+    if (!tab) return null;
+    return {
+      windowId: win.id,
+      tabId: tab.id,
+      webContentsId: event.sender.id,
+      active: tab.id === activeTabId,
+      title: tab.title,
+      url: contentsUrl(tab),
+      document: (() => {
+        try { return new URL(contentsUrl(tab)).searchParams.get("file"); }
+        catch (_) { return null; }
+      })(),
+      utility: isUtilityUrl(contentsUrl(tab)),
+      diagnosticLogPath,
+    };
+  };
+  ipcMain.handle("field4-tab-identity", onTabIdentity);
+
   const onlyFromStrip =
     (handler) =>
     (event, ...args) => {
@@ -1545,6 +1577,7 @@ function createMainWindow() {
     ipcMain.removeListener("field4-tabs-reveal", onRevealTabs);
     ipcMain.removeListener("field4-tabs-hide", onHideTabs);
     ipcMain.removeHandler("field4-history-capture-window");
+    ipcMain.removeHandler("field4-tab-identity");
     ipcMain.removeListener("field4-renderer-diagnostic", onRendererDiagnostic);
   });
 
@@ -1567,7 +1600,7 @@ async function logGpuStatus(label) {
   }
 }
 
-// A capture Electron (afield.docs.ElectronCaptureBrowser) is owned by the Field JVM that launched it,
+// A capture Electron (afield.tools.docs.ElectronCaptureBrowser) is owned by the Field JVM that launched it,
 // and a JVM that dies without running its shutdown hooks would otherwise leave it running forever.
 const ownerPid = Number(process.env.FIELD_ELECTRON_OWNER_PID || 0);
 if (ownerPid > 0) {

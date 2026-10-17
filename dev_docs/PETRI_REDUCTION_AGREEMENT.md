@@ -5,7 +5,7 @@ against the full search rather than against the theorem. `petri_nets.md` says th
 and what the check compares; this file is the corpus and the numbers, and which of them a test
 actually asserts.
 
-Source: `src/jvmTest/kotlin/afield/petri/PetriReductionFuzzTest.kt`.
+Source: `src/jvmTest/kotlin/afield/simulation/petri/PetriReductionFuzzTest.kt`.
 
 ## The corpus
 

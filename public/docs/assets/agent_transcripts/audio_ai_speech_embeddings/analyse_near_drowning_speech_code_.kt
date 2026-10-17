@@ -1,7 +1,6 @@
-import afield.Box
-import afield.stdlib.AudioVisualizerOptions
-import afield.stdlib.SmileMdsDistance
-import afield.stdlib.noir.audioai.*
+import afield.document.graph.Box
+import afield.ui.visualization.AudioVisualizerOptions
+import afield.math.statistics.SmileMdsDistance
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture

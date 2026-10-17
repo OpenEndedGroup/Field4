@@ -59,7 +59,7 @@ Capture (screenshots, output collection) is **not** a macro op — it is done wi
 
 ## Graphics Topology Rule
 
-`afield.four` examples get their `Renderer` from graph topology, not from global state. The renderer box must be launched first, and each graphics example box must be connected as a child of that renderer box before it runs.
+Field 4 examples get their `Renderer` from graph topology, not from global state. The renderer box must be launched first, and each graphics example box must be connected as a child of that renderer box before it runs.
 
 Use this sequence for new graphics automation:
 
@@ -70,7 +70,7 @@ Use this sequence for new graphics automation:
 5. In example code, resolve `val renderer: Renderer = fromContext()` at top level before calling `start(...)` or launching suspend work.
 6. Pass that renderer explicitly into async helpers that render or capture.
 
-If a graphics example reports `must pass in a value for context parameter afield.four.Renderer`, treat it as a broken parent-child setup or a renderer lookup that happened after coroutine context was lost. Fix the transcript topology or capture the renderer before `start(...)`; do not add sleeps or window-system screenshot fallbacks.
+If a graphics example reports `must pass in a value for context parameter afield.graphics.vulkan.Renderer`, treat it as a broken parent-child setup or a renderer lookup that happened after coroutine context was lost. Fix the transcript topology or capture the renderer before `start(...)`; do not add sleeps or window-system screenshot fallbacks.
 
 For renderer boxes, keep `start(renderer::run)` as the final expression of the launched code. Field uses the returned `Frames` object as the running job; adding logging or setup after `start(...)` can leave a constructed renderer whose frame counter never advances.
 
@@ -93,6 +93,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 
 - `hello_display.yaml`: smallest useful blank-canvas transcript; creates one box, displays HTML, and can be undone.
 - `ai4_iframe_hello.yaml`: one Field-served webpage in an output iframe, with a textbox and opt-in AI4 tools for inspecting and driving that live page. Run the host box after opening its starting point.
+- `orca_hello.yaml`: ORCA in a box output (`orca()`), playing through a returned `PatSynthBank`, with `exposeTools()` so AI4 can read and write the grid. Compiled only: running it opens an audio device, and ORCA plays only in a browser; `run_ui_regressions.py --id orca-io` is its live check.
+- `orca_jam.yaml`: one ORCA with four voiced channels and `exposeTools(about = ...)`: AI4 plays it with `orca_write`/`orca_look` while it runs, and its board and tempo follow the chat (`branchState`). Compiled only, like `orca_hello`.
+- `orca_duet.yaml`: two ORCAs in one box, `lead` and `echo`, with a `frames { }` loop that copies lead's notes into echo's track and nudges lead's tune from echo's; ends with `synth + frames { }`, so launch it. Compiled only, like `orca_hello`; `OrcaHeadlessTest` runs the same exchange headless and fails if the transcript drifts from `OrcaSoundDocs`.
 - `hello_display_capture.yaml`: same as `hello_display.yaml` but paired with the backdoor capture-command chain (`wait-output` / `output` / `screenshot-box`) documented under "Capturing output and screenshots" — the worked example of capturing a macro's output and a cropped screenshot.
 - `polytope_conway_demo.yaml`: one deliberately compact **polytope review box**. It marks two opposite cube faces with different height attributes, selects and applies `kis` only to those faces, converts the authoritative polygon faces to separate `FLine`s, and ends in the on-canvas `threeLines(...)` viewer. Orbit and hover the result; clicking a face reports its output id, transform role, source elements, and resolved height. Its inspection output also exercises the registered data-class visualizers for the transform and its polygon-to-triangle provenance.
 - `polytope_conway_gallery.yaml`: the same algebra as **four small boxes, one question each** — the demo set `dev_docs/POLYTOPE_ALGEBRA.md` §6 asks for, and the loadable companion to `public/docs/polytope_examples.md`. (1) an editable Conway-expression contact sheet whose captions are read off the topology, so retyping the expression list rebuilds everything; (2) a topology-only dual whose missing coordinates are shown by two *real* caught exceptions before a realization policy is applied; (3) a selective **and** non-uniform `kis` whose deployed scalar is painted onto pickable output faces; (4) a realization before/after leaving the solver's own diagnostics as the box's final value. Each box names the one line to change. Pure CPU.
@@ -103,21 +106,39 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   1024 x 1024 square onto a million points in three discs and paints each pixel by its target.
   The two still boxes execute and the morph is launched for 90 frames and stopped.
 - `paint_canvas.yaml`: three pure-CPU boxes that paint and draw FLines through
-  `afield.paint.PaintCanvas` — three strokes that run a brush dry, a flow field of a few hundred
+  `afield.graphics.paint.PaintCanvas` — three strokes that run a brush dry, a flow field of a few hundred
   blended strokes, and a pencil drawing with hatching and chalk. Needs `./gradlew buildPaintNative`;
   without it every box says so and stops.
 - `ai4_paint_studio.yaml`: one box that makes the paint canvas a studio for AI4 — an
-  `agentExtension` with eleven `paint.*` tools, canvas and craft context, `/canvas`, `/palette` and
-  `/gallery`, and the canvas as `branchState`, so a chat rewind restores it; and a Scribbler box whose
+  `agentExtension` with twenty `paint.*` tools (among them named tools kept between requests, a
+  knife, a rag, spatter, and watercolour and ink on paper), canvas and craft context, `/canvas`, `/palette`, `/tools` and
+  `/gallery`, and the canvas and the kept tools as `branchState`, so a chat rewind restores both;
+  and a Scribbler box whose
   `aiTool("scribble")` paints on the Studio's canvas. The transcript only runs the boxes; painting
   needs a person (or `agent-task --chat-box Studio`) and a provider.
-- `syphon_bridge.yaml`: three boxes over `afield.syphon` (macOS) — list the Syphon servers on the
+- `stacksl_evolve_studio.yaml`: one box that makes a StackSL search toward a picture a world for
+  AI4 — an `agentExtension` with `evolve_*` tools (step, look, propose, watchmaker, fit, configure,
+  states, crossbreed, render, guide), context on the search, `/population` and `/sheet`, and the
+  population as `branchState`, so a chat rewind rewinds the search and `evolve_crossbreed` can breed
+  with a branch left behind. The transcript only runs the box, which renders the target and nothing
+  else; searching needs a person (or `agent-task --chat-box Evolve`) and a provider.
+- `syphon_bridge.yaml`: three boxes over `afield.io.syphon` (macOS) — list the Syphon servers on the
   machine, publish an animated picture as "Field pattern", and receive it back through Syphon into
   a `display`. Needs `./gradlew buildSyphonNative` (Xcode); compiled, not evaluated, by CI.
 - `syphon_gpu.yaml`: a renderer, a RenderToTexture published with `followOnGpu` (GPU copy into an
   IOSurface, no readback) as "Field GPU", and a Syphon client drawn as a texture over the window.
+- `stippling.yaml`: two pure-CPU boxes for `stippling.kt`. `stipple_hello` turns a shaded-sphere
+  `Img` into 6000 evenly spaced dots in two statements; `stipple_relaxing` is a launched `loop { }`
+  that shows the weighted random start beside one Lloyd step a frame, with `showSignals` plotting how
+  far the dots moved.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
+- `staged_project.yaml` — the staged-project starting place (`public/docs/staged_projects.md`): a level on a
+  grid behind `level.inspect`/`level.edit`, blockout, traversal and placement stages with a "reachable loot"
+  gate, the loot rule as a qualified source, and a corpus box that builds seeded variants with the same stages.
+- `matrix_profile.yaml` — the matrix profile page's four boxes (`public/docs/matrix_profile.md`): motifs in a random walk, a malformed beat as a discord, `multiMatrixProfile` finding a gesture and its two channels out of four, and `contrastProfile` finding the shape only the positive examples share.
 - `keyframe_editor.yaml` — the keyframe editor page's four boxes: a curve played into a meter, one key of each type, an `onChange` overlay, and key types of its own written with `interpolant(...)`.
+- `gesture_to_keyframes.yaml` — a gesture pad's take baked into linked x/y keyframe lanes with `bakeGesture`, and edited lanes sent back to the pad with `setTake`.
+- `gesture_paint_replay.yaml` — a pen gesture pad's take (pressure and tilt kept) baked into x/y/pressure lanes and painted from them with `PaintCanvas.gesture(x, y, pressureLane = ...)`; a second box paints one take four ways to show what the recording drops.
   no Window, no Renderer, all **launched** rather than executed. `inertial_hello` is five
   declarations and a `showSignals` call: the least you can write and see `inertialTo` work.
   `inertial_vs_restarting` adds a `startAt` per frame, so the restarted arm and the re-solving one
@@ -129,7 +150,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   in `afield/stdlib/interpolants.kt`.
 - `studies_rings.yaml`: a study defined by one box and driven by two children: `rings` makes a `SourceFramesStudy` of its `rings` property and calls `registerStudyTools("Rings", …)`; `change it` publishes a SetNumbers revision per run (warmth flips) and shows it over its parent; `try things` sweeps the ring count and holds two variants unpublished. Pure CPU. Companion to `public/docs/studies.md`.
 - `two_box_context.yaml`: creates two boxes, connects them, and runs child code that depends on graph context.
-- `graphics_renderer_launch.yaml`: creates the reusable `agent_graphics_context` renderer box, launches it with `start(renderer::run)`, prints `agent graphics renderer ready`, and waits three Runloop frames. Run this before child `afield.four` graphics transcripts.
+- `gp_instruments.yaml`: **Gaussian processes as tuning instruments** — a `GpOptimizer` fitting a curve's three dials to a target in thirty tries, a `GpPreference` A/B loop over a rosette driven by two buttons, and the same loop against a simulated judge whose favourite walks to its hidden ideal.
+- `gp_drawing.yaml`: **Drawing with Gaussian processes**, to play with — a closed loop through six draggable pins (periodic kernel, no seam), four 1-D measurements with length-scale and noise sliders, and a 2-D field's mean, draws and standard deviation. Companion to `public/docs/gaussian_processes.md`.
+- `graphics_renderer_launch.yaml`: creates the reusable `agent_graphics_context` renderer box, launches it with `start(renderer::run)`, prints `agent graphics renderer ready`, and waits three Runloop frames. Run this before child Field 4 graphics transcripts.
 - `field_ui_browser_texture.yaml`: self-contained recursive graphics proof and puppet-browser starting point. A hidden Electron window opens the same Field document, transfers accelerated offscreen IOSurfaces into the JVM, and a Vulkan mesh samples the stable resident texture. The native window's mouse and keyboard control Chromium, `browserControl` publishes the full navigation/input/JavaScript/CDP interface for experimentation, and the launch performs a page-to-Field-to-JavaScript promise round trip. Start Field normally, then run the renderer box before the connected panel box.
 - `youtube_mouse_keyboard_browser.yaml`: the direct desktop-input puppet-browser starting point. It opens a full YouTube watch page into a matching 1280×720 native window and routes that window's mouse motion/buttons/wheel plus physical keyboard, modifiers, and text input straight into Chromium. There is no OpenXR or controller stand-in: click the EU consent controls, use the search field, and operate the player as an ordinary browser. Electron keeps page audio live.
 - `youtube_kaleidoscope.yaml`: the deliberately excessive native-compositing proof. It accepts the EU consent page and starts a real YouTube video through the puppet JavaScript bridge, then samples the fully composited Chromium tab across 224 independently animated Vulkan triangles. The vertex stage opens moving cracks; the fragment stage folds, mirrors and chromatically separates a different region of the browser texture in every shard. Its public walkthrough and live docs capture are in `public/docs/puppet_browser.md`.
@@ -147,7 +170,7 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 
 - `autodiff_worked_example.yaml`: **automatic differentiation** as five pure-CPU boxes, one per layer of the AD stack. `autodiff_basics` differentiates one expression three ways that must agree (reverse-mode tape, second-order forward-mode `Dual2`, and a central-difference oracle) and plots f, f' and f'' from a single sweep, plus the exact 2x2 Rosenbrock Hessian. `autodiff_optimizers` walks the same Rosenbrock valley with SGD+momentum, Adam and L-BFGS and plots log10 loss - the line-searched method plunges past 1e-24 in ~42 iterations while the first-order ones are still crawling near 1e-3. `autodiff_fn_fit` is the Field-specific bridge: the SAME `fitGradient()` call once with the historic finite-difference gradient and once with `gradient = FnGradientMode.EXACT`, which re-interprets the `Fn` graph in AD arithmetic - same optimiser, lower RMSE, a quarter of the loss evaluations - and asks `exactFitRefusal` why a saw-based seed is refused. `autodiff_ik` solves inverse kinematics on a four-link `FLine` chain and shows the rest pose, the solved pose and a smoothness-penalised pose in three panels sharing one window. `autodiff_pack` packs twelve discs by descending a `relu(overlap)^2` hinge, before and after. No `Window`, no `Renderer`; EXECUTE-bucket in `examples.demo-transcript.exec`. Committed captures of all five box outputs live in `public/docs/assets/autodiff/`; the layer itself is documented in `dev_docs/autodiff.md`.
 - `recstl_playground.yaml`: a one-stop, drag-in **RectSL playground**. Builds a "window + renderer" parent box and a child "recstl" box connected beneath it; the child compiles a `#rectsl` snippet, draws it live in the on-screen window, and publishes a `controlGroup("transport")` in its output area — `play`/`loop` checkboxes, a `speed` slider, and a `time` scrub slider. Edit the `rectsl` string and re-run the child to change it live; check `play` to loop it, or scrub `time` while paused to freeze on a frame. Requires a GPU/Vulkan window (like `threebox.yaml`); capture its window with a follow-on `native-screenshot <path>` (`--with-playwright`). Because it starts with `name:`/`operations:`, dropping the file onto a Field document is recognized as a transcript and run (write-then-run) — this is the intended "drag in to get started" path.
-- `threebox.yaml`: self-contained capstone. One transcript builds a three-box particle system on a blank canvas — a renderer box (owns `Window` + `Renderer`, pumps the loop), a compute box (simulates particles into a `buffer_reference` buffer and probes speed via `{% include "fieldProbe" %}`, publishing the buffer as `prop<FrameBufferGroup>(outputPositions)`), and a draw box (reads `outputPositions` and renders). Requires a GPU/Vulkan window. Demonstrates cross-box property publish/read and the `await` barrier between the three launches; the transcript itself produces no image artifact (no screenshot step) — capture its native window with a follow-on `native-screenshot <path>` backdoor command (`--with-playwright`).
+- `threebox.yaml`: self-contained capstone. One transcript builds a three-box particle system on a blank canvas — a renderer box (owns `Window` + `Renderer`, pumps the loop), a compute box (simulates particles into a `buffer_reference` buffer and probes speed via `{% property "fieldProbe" %}`, publishing the buffer as `prop<FrameBufferGroup>(outputPositions)`), and a draw box (reads `outputPositions` and renders). Requires a GPU/Vulkan window. Demonstrates cross-box property publish/read and the `await` barrier between the three launches; the transcript itself produces no image artifact (no screenshot step) — capture its native window with a follow-on `native-screenshot <path>` backdoor command (`--with-playwright`).
 - `vision_metal_cube.yaml`: one device-facing box that publishes the animated indexed cube to
   Field4Vision's autonomous Compositor Services renderer. Open **Live Metal** in the visionOS app,
   run the transcript, and watch Field output for `vision-metal shader: Shader installed`. The program
@@ -163,7 +186,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   topology to settle, updates named uniforms on the native compositor clock, and includes a complete
   editable Metal shader in the child's `fragment` property.
   Open **Live Metal** in Field4Vision to see it on a visionOS device or simulator.
-- `spin_glass.yaml`: a five-box **2D Edwards-Anderson spin glass**, Vulkan-compute accelerated, on a blank canvas — a renderer box, a "metropolis update" compute box (checkerboard / red-black Monte Carlo over Ising spins with random `+/-J` or Gaussian bonds and cosine simulated annealing, updating in-place `buffer_reference` buffers it publishes as props), a "measure" compute box (probes `vec2(spin, energy)` for every site via `{% include "fieldProbe" %}`, so the stats card's x-mean is the magnetization and its y-mean the energy per spin), and a "lattice view" draw box (a fullscreen triangle whose fragment shader reads the shared spins buffer and colours each cell). Requires a GPU/Vulkan window. Demonstrates a red-black compute update split into two dispatches per frame with a `computeMemoryBarrier` task between them, per-frame simulation state advanced from a leading `computeTask` "tick", and a `renderer -> update -> measure -> view` publish/read chain. Produces no image artifact itself — capture its native window with a follow-on `native-screenshot <path>` backdoor command (`--with-playwright`).
+- `spin_glass.yaml`: a five-box **2D Edwards-Anderson spin glass**, Vulkan-compute accelerated, on a blank canvas — a renderer box, a "metropolis update" compute box (checkerboard / red-black Monte Carlo over Ising spins with random `+/-J` or Gaussian bonds and cosine simulated annealing, updating in-place `buffer_reference` buffers it publishes as props), a "measure" compute box (probes `vec2(spin, energy)` for every site via `{% property "fieldProbe" %}`, so the stats card's x-mean is the magnetization and its y-mean the energy per spin), and a "lattice view" draw box (a fullscreen triangle whose fragment shader reads the shared spins buffer and colours each cell). Requires a GPU/Vulkan window. Demonstrates a red-black compute update split into two half-sweeps per frame with `computeBarrier()` between them and `computeBarrier(graphics = true)` publishing the finished sweep, per-frame simulation state advanced from a leading `computeTask` "tick", and a `renderer -> update -> measure -> view` publish/read chain. Produces no image artifact itself — capture its native window with a follow-on `native-screenshot <path>` backdoor command (`--with-playwright`).
+- `lattice_boltzmann_cylinder.yaml`: a three-box **lattice Boltzmann wind tunnel** (renderer, `ShaderLatticeBoltzmannSystem` published as `lbm`, and a cylinder box drawing a solid disc, walls and dye/inlet stripes into the fluid's control texture). Sheds a von Kármán street within a minute or so. Requires a GPU/Vulkan window; capture it with `native-screenshot <path> --uid lbm_renderer`. Lessons 10/10b of `canonical_graphics` are the same two boxes.
+- `forest_fire.yaml`: a three-box **GPU forest fire** (renderer with a square window, `ShaderForestFireSystem` published as `fire`, and a fire-starter box keeping a red and a green ignition point lit). Two trains of ragged rings fill the forest and interleave within about a minute. Requires a GPU/Vulkan window; capture with `native-screenshot <path> --uid fire_renderer`. Lessons 11/11b of `canonical_graphics` are the same two boxes.
 
 - `alife_script.yaml`: **a per-agent behaviour layer for ALife** — sequencing, waiting on simulation
   time, named phases, bounded concurrent sub-behaviours, and steering drives composed from whatever is
@@ -219,9 +244,16 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `euclid(12,24)` at the same density, the same rule run recursively as a branching tree whose level
   sizes are the word's own partial sums, and a `.wav` player pinned to the canvas through
   `customization`. Sample-backed through `showDirtAudio`; falls back to `patVoice` with no library.
+- `browse_embeds.yaml`: **the three inspector embeds**, one box each — `tree(...)` over a data class,
+  a `DoubleArray`, a 5000-item list paged 200 rows at a time, object keys and a two-node loop;
+  `column(...)`; a **launched** box whose list grows without a re-run; and `logs(...)` filtered to one
+  channel. Pure CPU. See `dev_docs/INSPECTOR_EMBEDS.md`.
 - `pattern_condense.yaml`: **the shortest way to write a rhythm down** — `patCondense` accepts a
   candidate only by re-parsing and playing it, which is why box 1 draws pairs rather than printing
   strings. Includes the loop closed from audio: samples in, `60(3,8)` out.
+- `python_box_parity.yaml`: **Python boxes doing what Kotlin boxes do** — an error marked on the line
+  inside the function that raised, and a slider and checkbox whose callbacks are Python. Same JEP
+  prerequisite as `python_cells`, and compile-only here for the same reason.
 - `python_cells.yaml`: **Python cells under a Kotlin language root**. The root stays Kotlin — the
   toggle swaps a root's *children*. Needs an interpreter with JEP's native library found before Field
   started, which is why it is compile-only here.
@@ -236,6 +268,16 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   parameters, and the failure mode that presents as a converged optimisation: a child swallowed under a
   hard `Union` is dead, because a pointwise `min` hands the whole derivative to whichever child is
   nearest.
+- `solidsl_gallery.yaml`, `mesh_repair_demo.yaml`, `mqtt_demo.yaml`, `oscquery_demo.yaml`,
+  `sonicpi_pattern_demo.yaml`, `dmx_lighting_demo.yaml`, the seven `fieldml_*_demo.yaml`,
+  `stacksl_gallery.yaml`, `stacksl_fit_demo.yaml`: generated by `DocumentToTranscript` from the demo
+  documents of the same name under `public/docs/assets/`, so each page's demo is a starting point.
+  The documents stay where they are, because their bundle and drift tests read them there;
+  regenerate the yaml after editing one, then re-add the replay's `launch`/`await` ops.
+  `fieldml_afield_four_demo.yaml` also carries a `fieldml-four-renderer` box its document lacks (the
+  document expects a renderer from the session), copied from `fieldml_frames_demo`; keep it.
+- `sorting_networks.yaml`: the four runner fences of `public/docs/sorting_networks_examples.md`,
+  fold markers removed, one box each. Regenerate it when those fences change.
 - `interaction_nets_lambda.yaml`: **λ-calculus on interaction nets**, three pure-CPU boxes. A term is
   compiled to a net, reduced by local rules, and read back, with every answer checked against a
   capture-avoiding substitution evaluator that shares nothing with it — 25 of 25 named closed terms

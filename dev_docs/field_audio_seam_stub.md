@@ -1,6 +1,6 @@
 # Testing the Field Audio seam without Field Audio
 
-`afield.stdlib.noir.audioai` talks to a *separate process*: the Python service in
+`afield.audio.ai` talks to a *separate process*: the Python service in
 `services/field-audio-ai`, a git submodule with its own worker virtual environments, reached over
 HTTP and one WebSocket at `http://127.0.0.1:8765` by default. On this machine, checked rather than
 assumed: there is no `.venv` at the submodule root, and `worker-environments/analysis` and
@@ -9,13 +9,13 @@ assumed: there is no `.venv` at the submodule root, and `worker-environments/ana
 downloading models. So for most of the life of this codebase, on most machines, **every code path
 past the WAV renderers has been unrunnable and untested.**
 
-`src/jvmTest/kotlin/afield/stdlib/noir/audioai/FieldAudioServiceStub.kt` is the answer:
+`src/jvmTest/kotlin/afield/audio/ai/FieldAudioServiceStub.kt` is the answer:
 a Ktor/Netty server on an ephemeral loopback port that speaks enough of the protocol to drive the
 real client. `RenderedAudioSeamTest` uses it to exercise the real `FieldAudioClient` and the real
 `analyzeRenderedAudio`, unmodified, over a real socket.
 
 ```
-./gradlew jvmTest --tests 'afield.stdlib.noir.audioai.*'
+./gradlew jvmTest --tests 'afield.audio.ai.*'
 ```
 
 ## Why a server and not a fake client
@@ -66,7 +66,7 @@ Eight facts the stub honours, each one a place a convenient stub would have lied
 `> 0`, as the service does.
 
 The stub also reads the uploaded WAV's header **by hand** (`wavHeader`, a small RIFF walk at the
-bottom of the file) rather than reusing `afield.four.audio` or the production `wavHeaderFacts`. That
+bottom of the file) rather than reusing `afield.audio.engine` or the production `wavHeaderFacts`. That
 is deliberate: a test that asserts the reported duration equals the renderer's own claim is then
 cross-validation between two independent parsers, not a tautology.
 
@@ -242,9 +242,9 @@ received rather than the one the caller asked for. No change made.
 
 ## Where the tests live
 
-- `src/jvmTest/kotlin/afield/stdlib/noir/audioai/FieldAudioServiceStub.kt` — the stub.
-- `src/jvmTest/kotlin/afield/stdlib/noir/audioai/RenderedAudioSeamTest.kt` — the seam, end to end.
-- `src/jvmTest/kotlin/afield/stdlib/noir/audioai/RenderedAudioAnalysisTest.kt` — the renderers and
+- `src/jvmTest/kotlin/afield/audio/ai/FieldAudioServiceStub.kt` — the stub.
+- `src/jvmTest/kotlin/afield/audio/ai/RenderedAudioSeamTest.kt` — the seam, end to end.
+- `src/jvmTest/kotlin/afield/audio/ai/RenderedAudioAnalysisTest.kt` — the renderers and
   the HTML, which predate the stub and need none of it.
 
 ## The submodule pointer rots quietly, and here is why nobody notices

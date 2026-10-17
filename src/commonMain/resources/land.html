@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
+    <title>Field Landing Queue</title>
+    <link rel="preload" href="/woff2/iosevka-semicondensedlight.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/iosevka.css">
+    <link rel="stylesheet" href="/field-tool-pages.css">
+    <style>
+        main { width: min(1280px, 96vw); }
+        .panel-header { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+        #frame { display: block; width: 100%; height: calc(100vh - 230px); min-height: 360px; border: 1px solid var(--border); border-radius: 6px; background: #000; }
+        #status.bad { color: var(--danger); }
+    </style>
+</head>
+<body class="field-webgl-page">
+<script src="/fieldWebglBackground.js"></script>
+<script>window.FieldWebGLBackground?.install(document.body, { fixed: true });</script>
+<main>
+    <header>
+        <div>
+            <h1>Landing queue</h1>
+            <p><code>uv run python tools/land.py status --watch</code> in this checkout: <b>h</b> asks what is going on, <b>b</b> looks at bounces nobody followed up, <b>q</b> quits.</p>
+        </div>
+    </header>
+    <section class="panel">
+        <div class="panel-header">
+            <span id="status" class="muted">starting</span>
+            <button id="restart" type="button">Restart</button>
+        </div>
+        <iframe id="frame" title="land.py status --watch"></iframe>
+    </section>
+</main>
+<script>
+    // A land-watch terminal (afield/server/terminal.kt) shown through /terminal.html. One is shared:
+    // re-opening this page re-attaches to the running watch instead of starting another.
+    const status = document.getElementById("status");
+    const frame = document.getElementById("frame");
+    const say = (text, bad = false) => { status.textContent = text; status.className = bad ? "bad" : "muted"; };
+
+    async function attach(fresh) {
+        try {
+            const list = await (await fetch("/api/terminal", { cache: "no-store" })).json();
+            let watch = fresh ? null : list.find(t => t.kind === "land-watch" && t.running);
+            if (!watch) {
+                const response = await fetch("/api/terminal", {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ kind: "land-watch", cols: 110, rows: 40 }),
+                });
+                if (!response.ok) throw new Error(await response.text());
+                watch = await response.json();
+            }
+            frame.src = `/terminal.html?id=${encodeURIComponent(watch.id)}`;
+            say(watch.directory);
+        } catch (e) {
+            say("Could not start the watch: " + e.message, true);
+        }
+    }
+
+    document.getElementById("restart").addEventListener("click", async () => {
+        const list = await (await fetch("/api/terminal", { cache: "no-store" })).json().catch(() => []);
+        for (const t of list.filter(t => t.kind === "land-watch" && t.running)) {
+            await fetch(`/api/terminal/${encodeURIComponent(t.id)}/kill`, { method: "POST" });
+        }
+        attach(true);
+    });
+    attach(false);
+</script>
+</body>
+</html>

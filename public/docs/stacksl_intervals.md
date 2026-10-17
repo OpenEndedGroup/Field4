@@ -10,12 +10,12 @@ This runs the GLSL the compiler emits: the same interpreter that renders the [ga
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl_intervals/ring.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="120" name="stacksl-intervals-ring"}
 :::static
-import afield.stacksl.cpu.StackSLIntervals
+import afield.lang.stacksl.cpu.StackSLIntervals
 
 display("tiles", StackSLIntervals.tilePicture("p length 0.5 0.08 pulse white *"))
 ```
 
-The soft ring (left) and its proof (right). Each square on the right is filled with the colour it was proven to have and outlined. The black inside and outside the ring settles in large squares; the squares shrink towards the ring's soft edge, where the colour changes from one pixel to the next. About 60% of the image is proven by a square bigger than one pixel.
+The soft ring (left) and its proof (right). Each square on the right is filled with the colour it was proven to have and outlined. The black inside and outside the ring settles in large squares; the squares shrink towards the ring's soft edge, where the colour changes from one pixel to the next. Most of the image is proven by squares bigger than one pixel.
 
 A single pixel is always settled, because a pixel is one input, and one input gives exactly the value the renderer computes.
 
@@ -25,21 +25,21 @@ The width of the bound depends on how much the program can change across the reg
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl_intervals/widths.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="180" name="stacksl-intervals-widths"}
 :::static
-import afield.stacksl.cpu.StackSLCpu
-import afield.stacksl.cpu.StackSLIntervals
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLIntervals
 
-val programs = listOf(
+val programs = [
     "p length 0.5 0.08 pulse white *",
     "uv x 18 * sin 0.5 + 0.5 * palette saturate",
     "uv 6 * noise palette saturate",
     "uv 5 * fbm 0.45 threshold orange * saturate",
-)
-val sizes = listOf(64, 16, 4, 2, 1)
-val table = Table(listOf("program") + sizes.map { "${it}×$it" },
+]
+val sizes = [64, 16, 4, 2, 1]
+val table = Table(["program"] + sizes.map { "${it}×$it" },
     title = "widest channel of the bound, for a square centred on pixel (64, 8) of a 128×128 render")
 for (program in programs) {
     val glsl = StackSLCpu.expandStackAuto(StackSLCpu.stillTemplate(), program)
-    table.row(listOf(program) + sizes.map { n ->
+    table.row([program] + sizes.map { n ->
         val x0 = 64 - n / 2
         val y0 = (8 - n / 2).coerceIn(0, 128 - n)
         val b = StackSLIntervals.enclosePixels(glsl, x0, y0, x0 + n - 1, y0 + n - 1, 128, 128)
@@ -51,9 +51,11 @@ display("widths", table)
 
 The ring and the stripes tighten steadily as the square shrinks. The two noise programs don't: their bound stays wide until the square is a single pixel. Value noise and fbm look up a pseudo-random hash at each lattice point, and the hash takes `fract` of a large product. Over any range wider than a point, that is anywhere in `[0, 1]`. So these programs are bounded, and the bound is correct, but it is only useful pixel by pixel. That is a limit of plain interval arithmetic over a hash: splitting the region further doesn't help until it stops being a region.
 
+The tile picture of a thresholded fbm shows what that costs:
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl_intervals/threshold.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="180" name="stacksl-intervals-threshold"}
 :::static
-import afield.stacksl.cpu.StackSLIntervals
+import afield.lang.stacksl.cpu.StackSLIntervals
 
 display("tiles", StackSLIntervals.tilePicture("uv 5 * fbm 0.45 threshold orange * saturate"))
 ```
@@ -66,7 +68,7 @@ A comparison between two overlapping intervals is neither true nor false. When a
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl_intervals/branches.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="120" name="stacksl-intervals-branches"}
 :::static
-import afield.stacksl.cpu.StackSLIntervals
+import afield.lang.stacksl.cpu.StackSLIntervals
 
 val shader = """
     #version 450
@@ -87,7 +89,7 @@ val early = """
     void main() { outColor = vec4(f(fragUV.x)); }
 """.trimIndent()
 
-display("branches", Table(listOf("shader", "pixels", "red channel"), title = "an undecided if runs both arms")
+display("branches", Table(["shader", "pixels", "red channel"], title = "an undecided if runs both arms")
     .row("if (x < 0.5) v = 0.75", "left third", StackSLIntervals.enclosePixels(shader, 0, 0, 20, 63, 64, 64).let { "${it.lo[0]}..${it.hi[0]}" })
     .row("if (x < 0.5) v = 0.75", "right third", StackSLIntervals.enclosePixels(shader, 43, 0, 63, 63, 64, 64).let { "${it.lo[0]}..${it.hi[0]}" })
     .row("if (x < 0.5) v = 0.75", "a row across the middle", StackSLIntervals.enclosePixels(shader, 0, 0, 63, 0, 64, 64).let { "${it.lo[0]}..${it.hi[0]}" })
@@ -98,10 +100,10 @@ Two arms that leave by different routes, one returning and one carrying on, can'
 
 ## What is refused
 
-Builtins with no interval rule yet are refused by name rather than guessed: the texture functions, `cross`, `reflect`, `refract`, `faceforward`, `tan`, the inverse trigonometric functions, the hyperbolic functions other than `tanh`, the matrix builtins and the bit operators. None of the 29 gallery programs that don't sample a texture uses one, and all of them can be bounded.
+Builtins with no interval rule yet are refused by name rather than guessed: the texture functions, `cross`, `reflect`, `refract`, `faceforward`, `tan`, the inverse trigonometric functions, the hyperbolic functions other than `tanh`, the matrix builtins and the bit operators. None of the gallery programs that don't sample a texture uses one, so all of them can be bounded.
 
 !!! note "What exactly is guaranteed"
     For every pixel centre inside the rectangle, each channel the `Float` reference path renders lies inside the bound, or is NaN and the bound says NaN is possible, or the pixel was discarded and the bound says it may be. Each operation is bounded in `Double` and its endpoints rounded outward to `Float`. This is sound for `+ − × ÷` and `sqrt` because rounding to nearest is monotone. The library transcendentals are widened by a few `Double` ulps before rounding. Composite builtins (`mod`, `fract`, `mix`, `smoothstep`, `dot`, `length`) are bounded one operation at a time, in the order the reference path computes them.
 
-??? aside "Where this lives"
-    The interval values are `GlslIntervalScalars` in `src/jvmMain/kotlin/afield/stacksl/cpu/GlslInterval.kt`, the third value type for the GLSL interpreter after the `Float` reference and the reverse-mode one in `GlslAd.kt`. The three-valued conditions are in `GlslMachine` (`GlslInterpreter.kt`): `GlslScalars.truth` answers `UNKNOWN` only for the interval values, so the other two are unchanged, and `StackSLCpuFloatPathManifestTest` and `StackSLGradientTest` still pin their bits. `StackSLIntervals.kt` holds `enclosePixels`, `certifiedTiles` and `tilePicture`. `StackSLIntervalTest` renders the whole non-texture gallery and checks some 400,000 pixels against the bounds of the rectangles they sit in, with no violations. The Fn version of the same idea, and the design note for both, is [Proving a Function's Range](fn_intervals.md) and `dev_docs/FN_INTERVAL.md`.
+??? aside "Agents: where this lives and what pins it"
+    The interval values are `GlslIntervalScalars` in `src/jvmMain/kotlin/afield/lang/stacksl/cpu/GlslInterval.kt`, the third value type for the GLSL interpreter after the `Float` reference and the reverse-mode one in `GlslAd.kt`. The three-valued conditions are in `GlslMachine` (`GlslInterpreter.kt`): `GlslScalars.truth` answers `UNKNOWN` only for the interval values, so the other two are unchanged, and `StackSLCpuFloatPathManifestTest` and `StackSLGradientTest` still pin their bits. `StackSLIntervals.kt` holds `enclosePixels`, `certifiedTiles` and `tilePicture`. `StackSLIntervalTest` renders the whole non-texture gallery and checks every pixel against the bounds of the rectangles they sit in, with no violations. The Fn version of the same idea, and the design note for both, is [Proving a Function's Range](fn_intervals.md) and `dev_docs/FN_INTERVAL.md`.

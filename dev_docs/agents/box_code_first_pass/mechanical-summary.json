@@ -1,0 +1,15 @@
+{
+  "current_bodies": 2861,
+  "statuses": {
+    "already-formatted": 608,
+    "candidate": 653,
+    "candidate-trailing-comma-layout": 507,
+    "language-review": 13,
+    "parse-review": 822,
+    "preservation-review": 258
+  },
+  "teaching_sources_modified": false,
+  "formatter": "Field editor ktfmt, deterministic imports (no K2), GLSL formatter",
+  "verification": "Private-copy formatting and conservative token/fragment checks only; no compilation or runtime claim.",
+  "imports_changed": 401
+}

@@ -1,17 +1,18 @@
 # Flow grain and motion
 
-Open the **flow_grain** starting point and launch its numbered boxes in order. A small
-fluid moves through a bounded pool of world tiles. The image combines a short integral
-of random grain with finite particles drawn as thin velocity strokes. A rotating marker
-also writes previous-frame coordinates into a second render-target attachment.
+Open the [flow_grain](agent_transcripts.md#flow_grain) starting point and launch its
+numbered boxes in order. A small fluid moves through a bounded pool of world tiles. The
+image combines a short integral of random grain with finite particles drawn as thin
+velocity strokes. A rotating marker also writes previous-frame coordinates into a second
+render-target attachment.
 
-[Open the editable starting point](offline.html?file=assets/agent_transcripts/flow_grain/metadata.edn).
-The installer is `dev_docs/agents/transcripts/flow_grain.yaml`; running that macro in an
-empty document creates and launches the complete graph. It has no personal-source dependencies.
+The graph is installed by the macro
+[`flow_grain.yaml`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/flow_grain.yaml);
+running it in an empty document creates and launches every box.
 
 Each stage is an ordinary box: edit its shader, reload it, and inspect the result. The
 fluid storage helper is another editable box. Small reusable functions are included
-from `afield.four.flow.FlowShaders`; the render targets, dispatch order, barriers,
+from `afield.simulation.flow.FlowShaders`; the render targets, dispatch order, barriers,
 lighting and artistic parameters remain in the graph.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/flow_grain/flow.png" capture="native-window" native-wait-frames="24" embed=true hidden=true timeout="180" name="flow-grain-playground" alt="World-space grain curls around obstacles; thin velocity strokes cross the flow and a rotating white marker writes motion coordinates." macro-file="../../dev_docs/agents/transcripts/flow_grain.yaml" capture-box="flow_renderer"}
@@ -30,8 +31,8 @@ lighting and artistic parameters remain in the graph.
 | Profile | Launch a repeatable reset, warm-up and 180-frame camera path, then inspect the existing profiling timeline. |
 
 Use Field's normal **Stop Box** and **Launch Box** controls. Stop the renderer to stop
-rendering; stop a stage to remove it from the pipeline. Relaunch stages in their numbered
-order after rebuilding the resources box. Shader reloads preserve the resources.
+rendering; stop a stage to remove it from the pipeline. Relaunching the resources box relaunches the
+stages that use its resources, in their numbered order. Shader reloads preserve the resources.
 
 Stopping a stage detaches its work so you can edit and relaunch it. Closing the document's
 last session also closes its native renderer, which waits for the device and then releases
@@ -39,7 +40,7 @@ the buffers, textures and shader resources the graph registered.
 
 ## Resident world tiles
 
-`afield.stdlib.TileResidency` maps world tile coordinates onto a fixed number of slots.
+`afield.graphics.render.TileResidency` maps world tile coordinates onto a fixed number of slots.
 It floors negative coordinates correctly, retains overlapping tiles during movement,
 and increments a slot generation whenever the slot is recycled. A teleport costs the
 same bounded scan as ordinary movement. It does not allocate a larger world.
@@ -60,7 +61,7 @@ resident world coordinates before sampling a slot: modulo addressing alone accid
 joins opposite edges of the pool. The demo also tags each cell's contents with its
 generation, so a recycled tile cannot read fluid left by its previous occupant.
 
-`afield.four.flow.TileAtlasLayout` adds atlas coordinates and optional halo storage for
+`afield.simulation.flow.TileAtlasLayout` adds atlas coordinates and optional halo storage for
 texture-based solvers. A halo must be filled from a resident neighbour, or from your
 chosen outside boundary condition. The helper does not decide what an unloaded world
 means. The demo uses storage buffers and explicit neighbouring-cell lookup instead.
@@ -72,7 +73,7 @@ For a ready-made fixed-domain solver, see [Fabricate Renderer](fabricate_rendere
 
 ## Motion history for the camera and for objects
 
-Use the existing `afield.four.targets.FrameHistory` for camera history. Capture once per
+Use the existing `afield.graphics.vulkan.targets.FrameHistory` for camera history. Capture once per
 **rendered frame**, using `Renderer.frameCounter`, target dimensions and a scene epoch.
 A missed frame, resize, epoch change or explicit invalidation makes history unavailable.
 The packed buffer contains four matrices and a viewport vector: 68 floats.
@@ -87,6 +88,8 @@ val pose = MotionPose()
 val previous = FloatArray(8)
 
 // Once per render, after updating pose in place:
+// Supply the current viewProjection, target width/height and sceneEpoch from your renderer.
+history.capture(renderer.frameCounter, viewProjection, width, height, sceneEpoch)
 objects.begin(renderer.frameCounter)
 objects.write("emitter", pose, previous, allow = history.available, revision = geometryRevision)
 ```
@@ -96,7 +99,7 @@ previous energy, previous softness and a reserved scalar. Change `revision` when
 or material correspondence changes. Disappearing for a frame, reappearing after a gap,
 resetting or rewinding also invalidates history.
 
-The demo RTT's second attachment is `(previousU, previousV, valid, coverage)`. These are
+The second attachment of the demo's render target is `(previousU, previousV, valid, coverage)`. These are
 absolute texture coordinates with Field's top-left convention, **not** pixels per second.
 The world has camera correspondence; the rotating marker has camera plus object
 correspondence. Procedural grain moves with the world and so has camera correspondence
@@ -128,7 +131,7 @@ obstacle thinner than a step; use a segment mask or smaller steps where that mat
 
 Noise lives on fixed world grids. Pixel footprint selects and blends adjacent fixed
 scales; changing zoom never rescales noise around the world origin. If you mix motion
-from an image into the carrier, `flowImageVelocity` unprojects current and previous
+from an image into the grain, `flowImageVelocity` unprojects current and previous
 samples through their respective cameras. Pass the fetched motion texel's center,
 not the requesting pass's differently sized pixel coordinate.
 
@@ -160,9 +163,10 @@ existing object viewer, and shader push constants read the effective values.
 
 The profile box uses `frameProfile`, named scopes and `CoroutineProfiles`, and captures
 CPU and allocations only; GPU pass timings stay in the renderer profiler. To get GPU
-queries too, set `Options.profiling = true` in the renderer box and relaunch the numbered
-graph. The setting is read at startup, so switching it on always costs you a restart, and
-which pipeline statistics you get back varies by device.
+queries too, set `Options.profiling = true` from any box: the running renderer starts its
+GPU timestamp queries on the next frame, and stops them when it is set back to `false`.
+Pipeline statistics are collected only on Windows, where the device supports them;
+Windows performance counters still need the setting on before the renderer starts.
 
 What each instrument measures, and what it is fair to compare, is in
 [Profiling](profiling_timeline.md), in its [Holding a frame budget](profiling_timeline.md#holding-a-frame-budget) part.

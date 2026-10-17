@@ -8,7 +8,7 @@
 ## The notes that led here
 
 - `1ae7ae30` (public/docs/keyframer_examples.md:3): do we not have a picture of the wonderful keyframe panel?
-  > Every keyframer.kt declaration used below is listed, with its KDoc, in the codebase reference: keyframer.kt. The two supporting types the examples lean on, afield.four.buffers.Structure and afield.four.util.CameraPose, are not: they live in afield.four, which the reference leaves to afield.four Graphics.
+  > Every keyframer.kt declaration used below is listed, with its KDoc, in the codebase reference: keyframer.kt. The two supporting types the examples lean on, afield.graphics.vulkan.buffers.Structure and afield.graphics.vulkan.util.CameraPose, are not: they live in Field 4, which the reference leaves to Field 4 Graphics.
 
 ## What was asked
 
@@ -18,9 +18,9 @@ picture of the wonderful keyframe panel?"
 ## The answer, and why this is more than a prose edit
 
 No. None of the pages under `public/docs/` has a still of the keyframe collection browser
-(`Box.keyframeBrowser`, `src/jvmMain/kotlin/afield/outputs.kt:859#fun Box.keyframeBrowser(`, page
+(`Box.keyframeBrowser`, `src/jvmMain/kotlin/afield/ui/output/outputs.kt:859#fun Box.keyframeBrowser(`, page
 `src/commonMain/resources/keyframe_browser.html`, server side
-`src/jvmMain/kotlin/afield/server/keyframeBrowsing.kt`). The page never shows a `keyframeBrowser(...)` call
+`src/jvmMain/kotlin/afield/app/server/keyframeBrowsing.kt`). The page never shows a `keyframeBrowser(...)` call
 either. It mentions the browser only in passing, at its **Code blend** button ("Seeing what it
 decided", near the end). The only uses in the docs tree are the `keyframe_key_discovery` agent
 transcript (`public/docs/assets/agent_transcripts/keyframe_key_discovery/*.kt`), which is only
@@ -39,8 +39,8 @@ Add a short section after "Saving: every save is history", or fold it into that 
 browser browses exactly those saved files:
 
 ```kotlin
-import afield.four.buffers.Structure
-import afield.stdlib.KeyframeScope
+import afield.graphics.vulkan.buffers.Structure
+import afield.animation.keyframes.KeyframeScope
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframer-browser")

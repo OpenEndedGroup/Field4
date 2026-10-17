@@ -1,12 +1,12 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.device.CommandBuffer
-import afield.four.device.Fence
-import afield.four.modules.fromContextWithNameOrNull
-import afield.four.targets.PingPongRenderToTexture
-import afield.four.texture.HasImageView
-import afield.four.vision.opticalFlow
-import afield.stdlib.linalg.Vector2f
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.vulkan.device.CommandBuffer
+import afield.graphics.vulkan.device.Fence
+import afield.document.context.fromContextWithNameOrNull
+import afield.graphics.vulkan.targets.PingPongRenderToTexture
+import afield.graphics.texture.HasImageView
+import afield.media.vision.opticalFlow
+import afield.math.linalg.Vector2f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK13.*
 
@@ -14,7 +14,7 @@ prop<AutoCloseable>(flowSession)
 fromContextWithNameOrNull<AutoCloseable>("flowSession")?.close()
 
 // One editable module, two retained frames. Rendering rotates the ring automatically.
-prop<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer) {
+propDown<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer) {
     width=960; height=540; useDepth=false; format=VK_FORMAT_R16G16B16A16_SFLOAT
 }
 val scene = moduleHere { history.apply(); depthTest=false; depthWrite=false; blend=false }
@@ -25,13 +25,13 @@ scene += "image" to triangle
 history += "image" to scene
 
 // These providers follow the ring. Do not snapshot their .imageView handles.
-prop<HasImageView>(previousImage) = history.previousImageView
-prop<HasImageView>(currentImage) = history.latestImageView
+propDown<HasImageView>(previousImage) = history.previousImageView
+propDown<HasImageView>(currentImage) = history.latestImageView
 // The NV hardware engine where the device has one; portable pyramidal Lucas–Kanade everywhere else.
 // Fully qualified: prop<T> finds T's import in a classpath index that lists classes, not interfaces.
-prop<afield.four.vision.OpticalFlowOperation>(flow) = opticalFlow(renderer,previousImage,currentImage,grid=4)
+prop<afield.media.vision.OpticalFlowOperation>(flow) = opticalFlow(renderer,previousImage,currentImage,grid=4)
 println("Optical flow backend: ${flow.backend}")
-prop<RenderToTexture>(motion) = flow.output
+propDown<RenderToTexture>(motion) = flow.output
 
 // evaluate() submits (to the optical-flow queue, or the graphics queue) and waits, so run it between Field frames.
 // Submit the source first. The final fence makes the produced pair ready to sample.

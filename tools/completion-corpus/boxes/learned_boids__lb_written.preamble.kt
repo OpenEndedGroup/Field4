@@ -1,10 +1,11 @@
-import afield.four.Renderer
-import afield.four.util.Window
-var Box.written by Inheritance<afield.four.physics.ShaderBoids>() /**/
-val Once.written by Onceing<afield.four.physics.ShaderBoids>() /**/
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.simulation.physics.ShaderBoids
+var Box.written by Inheritance<afield.simulation.physics.ShaderBoids>() /**/
+val Once.written by Onceing<afield.simulation.physics.ShaderBoids>() /**/
 val Why.written by Whying() /**/
-var Box.learnedRule by Inheritance<afield.stdlib.EquivariantWeights>() /*from:lb_train*/ /**/
-val Once.learnedRule by Onceing<afield.stdlib.EquivariantWeights>() /*from:lb_train*/ /**/
+var Box.learnedRule by Inheritance<afield.ai.learning.EquivariantWeights>() /*from:lb_train*/ /**/
+val Once.learnedRule by Onceing<afield.ai.learning.EquivariantWeights>() /*from:lb_train*/ /**/
 val Why.learnedRule by Whying() /*from:lb_train*/ /**/
 var Box.window by Inheritance<Window>() /*from:lb_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:lb_renderer*/ /**/

@@ -1,6 +1,6 @@
 package afield.setup
 
-import afield.asciiWelcome
+import afield.app.server.asciiWelcome
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import kotlin.test.Test

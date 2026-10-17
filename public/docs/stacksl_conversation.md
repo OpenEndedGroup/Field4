@@ -17,12 +17,12 @@ and a document can add tools of its own.
 In any document, select a box — press **n** to make one — and choose **Make a StackSL Program** from
 the command palette. A root box, **StackSL window**, appears above it and opens a square window; the
 box becomes a program, layered noise over slowly drifting coordinates, and draws in it. Select the
-program and press **command/ctrl-4** to open AI4 chat. Configure an AI provider through Field's
+program and press **ctrl/command-4** to open AI4 chat. Configure an AI provider through Field's
 welcome page if you have not already; see [AI features](aiFeatures.md).
 
 The program box edits its `stackSL` property, and the window follows every edit that compiles; an
 edit with an error is marked on its line, and the window keeps the last program that compiled.
-Running the box (command/ctrl-return) checks your program in as a revision. The root holds no code:
+Running the box (ctrl/command-return) checks your program in as a revision. The root holds no code:
 it is the box whose main language is StackSL, and it opens its window when a program beneath it
 starts. Stopping the root, or closing the window, stops the programs in it; running one again reopens
 the window, and a program whose window is closed still has its card's WebGL preview. **Set Main
@@ -36,7 +36,7 @@ it. It has two boxes:
 | Box | What it is |
 | --- | --- |
 | **StackSL window** | The StackSL root. It holds no code; its window opens when the program starts. |
-| **the shader — talk here (AI4)** | The program. Select it and press **command/ctrl-4** to open AI4 chat. |
+| **the shader — talk here (AI4)** | The program. Select it and press **ctrl/command-4** to open AI4 chat. |
 
 The program starts as one flat grey:
 
@@ -71,10 +71,9 @@ sees exact frames at the times it asks for rather than wherever the window's clo
 the recorded sessions an accepted edit, including its before/after preview, took 0.7–1.3 s; a sheet
 of three or four variants at three times took 0.9–2.4 s; a comparison took under 0.7 s.
 
-StackSL also has a CPU interpreter, which this study used first. It is exact, but a program built
-from several octaves of noise runs at a few thousand pixels per second, and a single variant sheet
-took most of a minute. It is still here: it renders when there is no window, and every result says
-which renderer drew it. The tests use it as an independent reference.
+StackSL also has a CPU interpreter. It is exact but slow: a program built from several octaves of
+noise runs at a few thousand pixels per second, so a single variant sheet takes most of a minute.
+It renders when there is no window, and every result says which renderer drew it.
 
 The window presents through an sRGB swapchain: the shader writes linear colour, and the display
 encodes it. The study encodes its images the same way, so the model and the person judge the same
@@ -114,21 +113,21 @@ The **study card** in the program box's output is the person's side of the study
 - exports in progress, which can be cancelled;
 - **Check in the editor's program** when you have typed an edit you have not run.
 
-![The study card for the finished aurora: WebGL preview, the GPU evidence frame, number sliders grouped by line with colour swatches, 13 of 36 stages showing what each line stored, and seven revisions with Restore](assets/stacksl_conversation/card.png)
+![The study card for the finished aurora: revision r6 with 25 stages and 96 knobs, the live WebGL preview, and the first 24 number sliders grouped by line under each line's comment](assets/stacksl_conversation/card.png)
 
 This is the program box of the finished aurora session, reopened in Field. Past about 24 numbers,
 the remaining lines' sliders wait behind a disclosure.
 
-Clicking the tile of line 54, `<rays * >curtain`, holds the window at that stage: the aurora's
-curtains alone, before lines 56–59 colour them emerald and violet and lay them over the sky.
+Clicking the tile of line 29, `[0.18,0.22,0.29,0] * <night + >lit`, holds the window at that
+stage: the sky, the curtain and the stars, before lines 31–35 draw the black hill over them.
 
-![The aurora's window held at line 54: pale vertical curtains of light on black, brightest a little below the middle, with no sky, stars or hills](assets/stacksl_conversation/stage.png)
+![The aurora's window held at line 29: green-to-violet folds and faint stars over the whole frame, with no hill](assets/stacksl_conversation/stage.png)
 
 ## The tools
 
 AI4 offers these tools to any conversation opened on a box's `stackSL` property, and each works on
 that box's program. They are library code, in
-[`afield.stacksl.study`](assets/stacksl_conversation/StackSLStudyTools.kt), registered through
+[`afield.lang.stacksl.study`](assets/stacksl_conversation/StackSLStudyTools.kt), registered through
 [AI4's tool interface](aiFeatures.md#give-the-ai-a-tool-of-your-own):
 
 | Tool | Purpose |
@@ -166,8 +165,8 @@ the tool; two documents can each have their own tool of the same name.
 
 <!-- stacksl-study-source:colour-tool -->
 ```diffstatic {data-lang=kotlin}
-import afield.ai.core.AgentToolExtensions
-import afield.stacksl.study.StackSLStudyShader
+import afield.ai.tools.AgentToolExtensions
+import afield.lang.stacksl.study.StackSLStudyShader
 import com.fasterxml.jackson.annotation.JsonClassDescription
 
 @JsonClassDescription("The colours a StackSL program types, as the window shows them.")
@@ -187,9 +186,10 @@ shows them, such as `["#f3bc7c"]`.
 
 ## Three recorded sessions
 
-Each session below is a real AI4 conversation with the window running, recorded with gpt-6-astra
-through OpenAI. The pictures are the images the tools returned to the model. Between turns, a person
-acted in Field: adopting variants in the card, keeping a slider value, editing the program by hand.
+Each session below is a real AI4 conversation with the window running, through OpenAI: the ink
+with gpt-6-astra, the tiles and the aurora with gpt-6.1-sol. The pictures are the images the tools
+returned to the model. Between turns, a person acted in Field: adopting variants in the card,
+keeping a slider value, editing the program by hand.
 
 ### Ink in amber water
 
@@ -308,112 +308,126 @@ The model exported a 2048 × 2048 still at 20 seconds and a 12-second clip start
 > A still image, no animation: a zellige-like tile pattern — eight-fold star rosettes in cobalt and
 > white with a little saffron, separated by thin dark grout lines.
 
-The first edit built the pattern from three definitions: `wedge` folds a point into one mirrored
-slice of the rosette, `star` measures the distance to the star's edge, and `octagon` the distance to
-the central polygon (it became `medallion` when the rosettes gained ten points). Everything depends
-on position only.
+The first edit built the pattern from two definitions: `squaremax`, a square's distance field, and
+`starfield`, the distance to an eight-point star's edge. A small octagon sits in each rosette's
+centre and a diamond where four tiles meet. Everything depends on position only.
 
-![The live window: four by four cobalt eight-point rosettes on white, saffron diamonds, dark grout](assets/stacksl_conversation/tiles/images/1ee06c0e9f6b7bd1430c.jpg)
+![The first edit beside the flat grey it replaced: four by four cobalt eight-point rosettes on ivory, saffron centres, cobalt diamonds, dark grout](assets/stacksl_conversation/tiles/images/3e9272e1e1a49a4aa05b.png)
 
 > Before we settle on eight: show me what the rosettes look like with 6, 8, 10 and 12 points, side by
 > side.
 
 A still program renders once, so the variant sheet is a single row:
 
-![Variant sheet: the current rosettes, then 6, 8, 10 and 12 points](assets/stacksl_conversation/tiles/images/d1bbeac39c24d913f3e1.png)
+![Variant sheet: the current rosettes, then 6, 8, 10 and 12 points](assets/stacksl_conversation/tiles/images/5d85362758805c6ff9c9.png)
 
 The person adopted **10 points** in the card. Next came a recolour in terracotta, cream and deep
-green, with the geometry unchanged and a proof. The patch changed fifteen numbers in five colour
-literals, plus three comments:
+green, with the geometry unchanged and a proof. The model changed fifteen numbers in five colour
+literals with `SetStackSLNumbers`, and left the comments, which still name cobalt and saffron:
 
 <!-- stacksl-study-source:tiles-recolour -->
 ```diff {data-lang=stacksl}
 :::before
-# Alternating cobalt facets, warm white ground, tiny saffron corner diamonds.
-[0.88,0.87,0.81,1] >ivory
-[0.018,0.055,0.30,1] [0.027,0.10,0.44,1]
+# Cobalt stars in an ivory ground.
+[0.009,0.037,0.25,1] [0.88,0.90,0.84,1] -0.002 0.002 <edge smoothstep mix >color
+
+# Fine charcoal grout on the perimeter of every star.
+<color [0.012,0.018,0.023,1] 0.006 0.009 <edge abs smoothstep 1 swap - mix >color
+
+# A smaller white star forms the center of each rosette.
+<color [0.88,0.90,0.84,1] 0.127 0.130 <star smoothstep 1 swap - mix >color
+<color [0.012,0.018,0.023,1] 0.004 0.007 <star 0.129 - abs smoothstep 1 swap - mix >color
+
+# Small saffron octagons at the center, framed with dark grout.
+<tile abs x <tile abs y max <tile abs x <tile abs y + 0.707107 * max >octagon
+<color [0.012,0.018,0.023,1] 0.067 0.070 <octagon smoothstep 1 swap - mix >color
+<color [0.88,0.43,0.025,1] 0.058 0.061 <octagon smoothstep 1 swap - mix >color
+
+# Small cobalt diamonds join the four white interstitial tiles.
+<tile abs x <tile abs y + >corner
+<color [0.012,0.018,0.023,1] 0.848 0.853 <corner smoothstep mix >color
+<color [0.009,0.037,0.25,1] 0.863 0.868 <corner smoothstep mix >color
 :::after
-# Alternating terracotta facets, cream ground, tiny deep-green corner diamonds.
-[0.92,0.84,0.68,1] >ivory
-[0.48,0.135,0.065,1] [0.62,0.205,0.105,1]
+# Cobalt stars in an ivory ground.
+[0.48,0.13,0.065,1] [0.91,0.82,0.65,1] -0.002 0.002 <edge smoothstep mix >color
+
+# Fine charcoal grout on the perimeter of every star.
+<color [0.012,0.018,0.023,1] 0.006 0.009 <edge abs smoothstep 1 swap - mix >color
+
+# A smaller white star forms the center of each rosette.
+<color [0.91,0.82,0.65,1] 0.127 0.130 <star smoothstep 1 swap - mix >color
+<color [0.012,0.018,0.023,1] 0.004 0.007 <star 0.129 - abs smoothstep 1 swap - mix >color
+
+# Small saffron octagons at the center, framed with dark grout.
+<tile abs x <tile abs y max <tile abs x <tile abs y + 0.707107 * max >octagon
+<color [0.012,0.018,0.023,1] 0.067 0.070 <octagon smoothstep 1 swap - mix >color
+<color [0.015,0.095,0.045,1] 0.058 0.061 <octagon smoothstep 1 swap - mix >color
+
+# Small cobalt diamonds join the four white interstitial tiles.
+<tile abs x <tile abs y + >corner
+<color [0.012,0.018,0.023,1] 0.848 0.853 <corner smoothstep mix >color
+<color [0.48,0.13,0.065,1] 0.863 0.868 <corner smoothstep mix >color
 ```
 <!-- /stacksl-study-source:tiles-recolour -->
 
-The model compared three stages. The first, stage 24, ends in `>joint`, so both programs had only
-their input on top and the comparison showed nothing; its reasoning noticed the empty-looking stage.
-It then compared stage 20, the petal-divider and hub field, and stage 23, the star-masked
-background joints. Both were identical:
+For the proof it compared the two revisions at five stages, each a line that ends in a store: the
+tile coordinates (`>tile`), the star field (`>star`), the star's edge (`>edge`), the octagon
+(`>octagon`) and the corner diamonds (`>corner`). A stage that ends in a store compares the value it
+stored, so each of these is the geometry itself, without the colour. All five were identical across
+36,864 samples:
 
-![Stage comparison at stage 20: the petal and hub field before and after the recolour, difference black](assets/stacksl_conversation/tiles/images/e1db8d56ac8d7c4b114d.png)
+![The recolour beside the adopted ten points: terracotta rosettes, cream ground and deep-green centres above the cobalt original](assets/stacksl_conversation/tiles/images/d73848bbbd0e99d7763d.png)
 
-That first comparison is why a stage that ends in a store now compares the value it stored — here,
-the grout field — and why a comparison of the program's input alone is reported as vacuous.
-
-Then the person widened the grout by hand, changing `0.003 0.005 <joint smoothstep` to
-`0.007 0.009 <joint smoothstep`, and did not check it in.
+Then the person widened the star grout by hand, changing `0.006 0.009 <edge abs smoothstep` to
+`0.012 0.015 <edge abs smoothstep`, and did not check it in.
 
 > I thickened the grout myself in the editor. Look at what I changed and keep it — but check the
-> small green diamonds: with the wider grout, are they still readable? Fix them if not.
+> small green centres: with the wider grout, are they still readable? Fix them if not.
 
 `InspectStackSLStudy` reported the editor as dirty and returned the person's text. The model named
-the change, looked at the live window, judged both sizes of diamond readable, and made no edit. The
-person then pressed **Check in** in the card.
+the change, rendered the editor's version beside the checked-in one, judged the green centres still
+readable, and made no edit. The person then pressed **Check in** in the card.
 
-![The live window with the person's wider grout: terracotta ten-point rosettes, cream ground, deep-green diamonds](assets/stacksl_conversation/tiles/images/ef6f2c1fe78a3a5f37c6.jpg)
+![Variant sheet: the checked-in recolour and the person's wider grout, side by side](assets/stacksl_conversation/tiles/images/911926424fbc71eed097.png)
 
 <!-- stacksl-study-source:tiles-final -->
-??? example "The complete program · r5-95e30638631a"
+??? example "The complete program · r5-dff520b30859"
 
     ```diffstatic {data-lang=stacksl}
-    # Still zellige: all geometry and glaze depend only on position.
-    # Fold a point into one of ten mirrored wedges.
-    : wedge
-      polar >pol
-      <pol y 0.314159265 + 0.628318531 mod 0.314159265 - abs
-      <pol x swap vec2 cart
-    ;
-    # Ten-point star with the same tip and valley radii as the original.
-    : star
-      wedge dup x swap y 1.707717 * + 0.465 - 1.707717 dup * 1 + sqrt /
-    ;
-    # Ten-sided central white medallion.
-    : medallion
-      wedge x
-    ;
-    # Four by four repeating rosettes.
-    uv 4 * >grid
-    <grid fract 0.5 - >q
-    <q star >edge
-    <q wedge >fold
-    <q medallion 0.132 - >hub
-    # Alternating terracotta facets, cream ground, tiny deep-green corner diamonds.
-    [0.92,0.84,0.68,1] >ivory
-    [0.48,0.135,0.065,1] [0.62,0.205,0.105,1]
-    <q polar y 0.314159265 + 0.628318531 / floor 2 mod mix >cobalt
-    <ivory <cobalt -0.0015 0.0015 <edge smoothstep 1- mix
-    <ivory -0.0015 0.0015 <hub smoothstep 1- mix
-    >ceramic
-    # A small deep-green diamond sits at each junction of four repeats.
-    <q abs 0.5 swap - x+y 0.105 - 0.707107 * >goldedge
-    <ceramic [0.012,0.095,0.045,1] -0.0015 0.0015 <goldedge smoothstep 1- mix
-    >ceramic
-    # Deep-green centre jewel, deliberately much smaller than the terracotta petals.
-    <q abs x+y 0.045 - 0.707107 * >jewel
-    <ceramic [0.012,0.095,0.045,1] -0.0015 0.0015 <jewel smoothstep 1- mix
-    >ceramic
-    # Grout follows star edges, hub, centre jewels and the ten petal divisions.
-    <edge abs <hub abs min <goldedge abs min <jewel abs min >joint
-    <fold x 0.309016994 * <fold y 0.951056516 * - abs
-    <hub 0.004 > * <hub 0.004 <= 1 * +
-    <joint min >joint
-    # Straight background joints end at the rosette and corner diamonds.
-    <q abs dup x swap y max 0.5 swap -
-    <edge 0.006 > * <edge 0.006 <= 1 * +
-    <joint min >joint
-    # Subtle static glaze variation; dark, narrow recessed mortar.
-    <ceramic uv 95 * noise 0.045 * 0.955 + *
-    >glaze
-    [0.024,0.028,0.035,1] <glaze 0.007 0.009 <joint smoothstep mix
+    # (asked) Still zellige-like tiles: eight-fold cobalt and white rosettes,
+    # a little saffron, and thin dark grout. No time-dependent words.
+    # (chosen) Four repeats, square/diamond eight-point stars, ivory inset stars.
+    : squaremax >point <point abs x <point abs y max ;
+    : starfield >point
+    <point y <point x atan2 0.6283185307179586 / 0.5 + fract 0.5 - abs 0.6283185307179586 * >angle
+    0.3141592653589793 <angle - sin 0.765366865 * <angle sin +
+    0.23651136821647611 / <point length * 0.707106781 * ;
+
+    # Repeating coordinates; the two squares make an eight-point silhouette.
+    uv 4 * fract 0.5 - >tile
+    <tile starfield >star
+    <star 0.303 - >edge
+
+    # Cobalt stars in an ivory ground.
+    [0.48,0.13,0.065,1] [0.91,0.82,0.65,1] -0.002 0.002 <edge smoothstep mix >color
+
+    # Fine charcoal grout on the perimeter of every star.
+    <color [0.012,0.018,0.023,1] 0.012 0.015 <edge abs smoothstep 1 swap - mix >color
+
+    # A smaller white star forms the center of each rosette.
+    <color [0.91,0.82,0.65,1] 0.127 0.130 <star smoothstep 1 swap - mix >color
+    <color [0.012,0.018,0.023,1] 0.004 0.007 <star 0.129 - abs smoothstep 1 swap - mix >color
+
+    # Small saffron octagons at the center, framed with dark grout.
+    <tile abs x <tile abs y max <tile abs x <tile abs y + 0.707107 * max >octagon
+    <color [0.012,0.018,0.023,1] 0.067 0.070 <octagon smoothstep 1 swap - mix >color
+    <color [0.015,0.095,0.045,1] 0.058 0.061 <octagon smoothstep 1 swap - mix >color
+
+    # Small cobalt diamonds join the four white interstitial tiles.
+    <tile abs x <tile abs y + >corner
+    <color [0.012,0.018,0.023,1] 0.848 0.853 <corner smoothstep mix >color
+    <color [0.48,0.13,0.065,1] 0.863 0.868 <corner smoothstep mix >color
+    <color
     ```
 <!-- /stacksl-study-source:tiles-final -->
 
@@ -422,157 +436,130 @@ person then pressed **Check in** in the card.
 > A night sky over a dark hill line: an aurora curtain of green fading into violet, slowly rippling,
 > and a few faint stars.
 
-On the first turn the model traced its draft, reading the stack at one point, patched it, and
-checked three frames and the window. The trace sheet shows what each line leaves on top of the
-stack. In this recording, lines that end in a store show only the program's input, drawn as a colour
-ramp; the trace now shows the value each of those lines stored:
+The model wrote the program with one `EditStackSLStudy` and checked frames at 0, 6 and 12 seconds:
 
-![Trace: one tile per line, from the sky gradient through the hem mask to the finished scene](assets/stacksl_conversation/aurora/images/562d0a9c1ae5c25c85e4.png)
+![The first edit at 0, 6 and 12 seconds above the flat grey it replaced: green-to-violet rays over a blue band and a black hill](assets/stacksl_conversation/aurora/images/9dc529444cb531f565d6.png)
 
 > The hills must stay perfectly still and black. Check whether anything moves below the horizon,
 > and if it does, fix it without touching the sky.
 
-To check, the model used variants as instruments: a diagnostic candidate that kept only the pixels
-below the ridge, rendered at 0, 4, 9 and 30 seconds. Nothing moved there, but the hills were
-blue-black. Its patch added two lines at the end: exact black at and below the unchanged ridge. A
-stage comparison showed that everything before those lines was identical, and a second diagnostic
-variant confirmed that the hills were uniformly zero.
+The model found the hills already still but blue-black, and patched them to exact black below the
+unchanged hill line. Its preview's difference row shows the change confined to the hill:
 
-Then the person pointed at something in the window:
+![The patch against the previous revision at three times; the difference row is red only below the hill line](assets/stacksl_conversation/aurora/images/2ad4616b0d96c0d9081d.png)
+
+The model took the lower black band as the hills. Between it and the curtain stayed a broad
+blue-black shape, and the person asked about it:
 
 > In the middle, under the curtain, there's a big soft dark mound that reads like a second, nearer
 > mountain — with stars in front of it. What is that shape, exactly? Show me what makes it, then make
 > it read as open sky.
 
-![The live window before the mound turn: the aurora's lower edge outlines a dark shape like a nearer hill](assets/stacksl_conversation/aurora/images/209540814b0b94be1793.jpg)
+The model traced the program, one tile per line. Each line that ends in a store shows the value it
+stored, named after the arrow, so the trace reads as the program's named parts:
 
-The model answered with four variants in one sheet. **sky-only** removes the aurora: the mound
-disappears. **cutoff** draws the aurora's lower-edge mask alone: it is the mound's outline. The
-other two are candidate fixes.
+![Trace at 0 s: one tile per line, from the ux and uy gradients through edge, height and the cutoff at line 12 to the finished scene](assets/stacksl_conversation/aurora/images/7d749b1c3ac86d46aca2.png)
 
-![Diagnostic variants: current, sky-only, the cutoff mask, soft-glow and open-sky, at three times](assets/stacksl_conversation/aurora/images/28c11eb441fccc6df23f.png)
+Its answer: the mound was plain sky, outlined by the aurora's abrupt lower cutoff at line 12
+(`<height 0 0.035 ramp`), which the trace shows forming before the hills are drawn. It replaced the
+cutoff with a broad fade, `-0.28 0.06 <height smoothstep`, so the curtain dissolves into the sky:
 
-Its answer: the mound was negative space. The curtain stopped abruptly along a wavy edge, and the
-unlit sky below that edge read as a solid shape. The stars were background stars. Since the request
-included making it read as open sky, the model adopted **open-sky** itself: ray tips of varied length
-that fade out instead of ending on one edge.
+![The open-sky fix against the previous revision: the blue mound is gone and the difference is confined to the band it occupied](assets/stacksl_conversation/aurora/images/ebadaa72e99d2b64aaee.png)
 
 > Make the curtain hang more like fabric, with vertical folds. Try two or three versions and I'll
 > choose.
 
-The model offered fine pleats, broad drapes and gathered silk; the person adopted **C**, gathered
-silk, in the card.
+The model offered broad drapes, fine pleats and loose billows, at 0 and 8 seconds, and recommended
+the billows:
+
+![Variant sheet: the current curtain and candidates A (broad drapes), B (fine pleats) and C (loose billows), each at two times](assets/stacksl_conversation/aurora/images/ae7eee919458cc0e191f.png)
+
+The person adopted **C** in the card.
 
 > I took C in the card. Now slow the whole ripple to about half speed, keeping everything else
 > exactly as it is, and show me it really moves about half as much.
 
-The model found the three time rates among the program's knobs and halved them with
+The model found the five time rates among the program's knobs and halved them with
 `SetStackSLNumbers`:
 
 <!-- stacksl-study-source:aurora-slower -->
 ```diff {data-lang=stacksl}
 :::before
-: aurora-hem >q
-  <q x 7 * time 0.12 * + sin 0.035 * 0.43 +
-  <q x 17 * time 0.08 * - sin 0.018 * +
-
-# Uneven gathers: folds bunch together, then open into wider hanging panels.
-uv x
-uv x 13 * sin 0.035 * +
-uv x 6 * time 0.16 * + sin
-uv y 1- 2 pow * 0.04 * + >fold
+# The curtain's lower edge undulates slowly across the sky.
+<ux 7 * 0.12t + sin 0.065 *
+<ux 17 * 0.08t - sin 0.022 * + 0.43 + >edge
+<uy <edge - >height
+# Broad atmospheric lower fade: no mountain-like cutoff beneath the curtain.
+-0.28 0.06 <height smoothstep
+<height 0.04 0.44 ramp 1 swap - * >veil
+# Loose hanging fabric: uneven gathers with billowing lower folds.
+<ux 48 * <ux 9 * 0.08t + sin 2.5 * +
+<uy 1 swap - dup * <ux 7 * 0.12t + sin * 4 * +
+sin 0.5 * 0.5 + 1.6 pow 0.88 * 0.12 + >folds
+<ux 9 * 0.07t - sin 0.25 * 0.75 + >strength
 :::after
-: aurora-hem >q
-  <q x 7 * time 0.06 * + sin 0.035 * 0.43 +
-  <q x 17 * time 0.04 * - sin 0.018 * +
-
-# Uneven gathers: folds bunch together, then open into wider hanging panels.
-uv x
-uv x 13 * sin 0.035 * +
-uv x 6 * time 0.08 * + sin
-uv y 1- 2 pow * 0.04 * + >fold
+# The curtain's lower edge undulates slowly across the sky.
+<ux 7 * 0.06t + sin 0.065 *
+<ux 17 * 0.04t - sin 0.022 * + 0.43 + >edge
+<uy <edge - >height
+# Broad atmospheric lower fade: no mountain-like cutoff beneath the curtain.
+-0.28 0.06 <height smoothstep
+<height 0.04 0.44 ramp 1 swap - * >veil
+# Loose hanging fabric: uneven gathers with billowing lower folds.
+<ux 48 * <ux 9 * 0.04t + sin 2.5 * +
+<uy 1 swap - dup * <ux 7 * 0.06t + sin * 4 * +
+sin 0.5 * 0.5 + 1.6 pow 0.88 * 0.12 + >folds
+<ux 9 * 0.035t - sin 0.25 * 0.75 + >strength
 ```
 <!-- /stacksl-study-source:aurora-slower -->
 
-Over the same first second, mean frame-to-frame change fell from 0.693 to 0.348: 50.2% of the
-original. The model said that this measures image change, not distance travelled. It also pointed
-out that the slowed program at 2 and 4 seconds reproduces the original at 1 and 2 seconds. Every use
-of `time` in the program is multiplied by one of those rates, so that is exact, and the replay test
-below checks it.
+It measured the mean frame-to-frame change over the first two seconds: 1.2076 before and 0.6065
+after for the first second (50.2%), 1.2107 and 0.6040 for the second (49.9%). The model said that
+this measures image change, not distance travelled, and that the slowed program at 4 seconds
+reaches the original's state at 2. Every use of `time` in the program is multiplied by one of those
+rates, so that is exact, and the replay test below checks it.
 
-![The final live window: gathered green-to-violet folds with faint stars over black hills](assets/stacksl_conversation/aurora/images/804f9a6512820314a518.jpg)
+![The half-speed program against C at 0, 1, 2 and 4 seconds: identical at 0 s, the difference growing with time](assets/stacksl_conversation/aurora/images/79296ea727c07fc1ba77.png)
 
 <!-- stacksl-study-source:aurora-final -->
-??? example "The complete program · r7-988cdeeb24a0"
+??? example "The complete program · r6-47a28af6de3b"
 
     ```diffstatic {data-lang=stacksl}
-    # (asked) Night sky, dark hills, green fading to violet aurora, slow ripples, faint stars.
-    # (chosen) A luminous pleated curtain above a low, perfectly still, pure-black horizon.
-
-    # A gently folding lower edge; one coordinate in, one height out.
-    : aurora-hem >q
-      <q x 7 * time 0.06 * + sin 0.035 * 0.43 +
-      <q x 17 * time 0.04 * - sin 0.018 * +
-    ;
-    # Soft, fixed pinpoints; one star position in, one brightness out.
-    : starlight length 620 * dup * neg exp ;
-    # Static hills with smaller irregularities along their crest.
-    : hill-line >q
-      <q x 6 * 0.8 + sin 0.044 * 0.15 +
-      <q x 15 * sin 0.022 * +
-      <q [32,2,0,0] * fbm 0.018 * +
-    ;
-
-    # Midnight blue, subtly lighter toward the horizon.
-    [0.002,0.004,0.014] [0.008,0.019,0.033] uv y 1- 2 pow mix >sky
-
-    # A few faint stars, kept still while the curtain moves.
-    uv [0.08,0.78] - starlight
-    uv [0.19,0.92] - starlight 0.7 * +
-    uv [0.31,0.69] - starlight 0.6 * +
-    uv [0.43,0.88] - starlight +
-    uv [0.57,0.95] - starlight 0.55 * +
-    uv [0.69,0.76] - starlight 0.8 * +
-    uv [0.83,0.91] - starlight 0.6 * +
-    uv [0.94,0.65] - starlight +
-    uv [0.13,0.37] - starlight 0.45 * +
-    uv [0.75,0.34] - starlight 0.5 * +
-    [0.15,0.18,0.24] * <sky + >sky
-
-    # Height above the rippling hem.
-    uv time >w aurora-hem >hem
-    uv y <hem - >height
-
-    # Uneven gathers: folds bunch together, then open into wider hanging panels.
-    uv x
-    uv x 13 * sin 0.035 * +
-    uv x 6 * time 0.08 * + sin
-    uv y 1- 2 pow * 0.04 * + >fold
-    <fold 82 * >pleat
-    <pleat <pleat sin 0.6 * + cos 0.5 * 0.5 +
-    1.7 pow 0.74 * 0.065 + >rays
-    <fold 245 * sin 0.5 * 0.5 + 0.18 * 0.82 + <rays * >rays
-
-    # Diffuse lower tips of varied length, rather than a single silhouetted edge.
-    <height 0 min
-    <fold 37 * 0 vec2 noise 0.1 * 0.08 + /
-    dup * neg exp
-    <height 0 max 6 * neg exp *
-    0.72 1.0 uv y smoothstep 1- *
-    <rays * >curtain
-
-    # Emerald at the hem blends into violet higher in the curtain.
-    [0.025,0.46,0.13] [0.22,0.028,0.4]
-    0.035 0.28 <height smoothstep mix
-    <curtain * <sky + >scene
-
-    # A near-black hill silhouette occludes everything behind it.
-    uv hill-line >ridge
-    [0.001,0.002,0.0035] <scene
-    -0.001 0.002 uv y <ridge - smoothstep mix
-    saturate
-    # Exact black at/below the static ridge; leave every above-ridge pixel untouched.
-    black uv y <ridge <= select
+    # (asked) Night sky, dark hills, slowly rippling green-to-violet aurora, faint stars.
+    # (chosen) Fine vertical folds, soft upper veil, and perfectly still, pure-black hills.
+    uv x >ux
+    uv y >uy
+    # Midnight blue sky, slightly brighter near the horizon.
+    [0.0015,0.003,0.012,0] [0.004,0.013,0.025,0] <uy 1 swap - mix >sky
+    # The curtain's lower edge undulates slowly across the sky.
+    <ux 7 * 0.06t + sin 0.065 *
+    <ux 17 * 0.04t - sin 0.022 * + 0.43 + >edge
+    <uy <edge - >height
+    # Broad atmospheric lower fade: no mountain-like cutoff beneath the curtain.
+    -0.28 0.06 <height smoothstep
+    <height 0.04 0.44 ramp 1 swap - * >veil
+    # Loose hanging fabric: uneven gathers with billowing lower folds.
+    <ux 48 * <ux 9 * 0.04t + sin 2.5 * +
+    <uy 1 swap - dup * <ux 7 * 0.06t + sin * 4 * +
+    sin 0.5 * 0.5 + 1.6 pow 0.88 * 0.12 + >folds
+    <ux 9 * 0.035t - sin 0.25 * 0.75 + >strength
+    # Emerald lower curtain grades into a violet upper veil.
+    [0.012,0.48,0.13,0] [0.17,0.018,0.32,0] <height 0.05 0.32 ramp mix
+    <veil * <folds * <strength * 0.65 * <sky + >night
+    # A few fixed, faint stars, softened to tiny pinpoints.
+    uv [0.12,0.82,0,0] - length 0 0.002 pulse
+    uv [0.29,0.91,0,0] - length 0 0.0016 pulse +
+    uv [0.76,0.88,0,0] - length 0 0.002 pulse +
+    uv [0.91,0.69,0,0] - length 0 0.0017 pulse +
+    uv [0.56,0.94,0,0] - length 0 0.0018 pulse +
+    uv [0.07,0.58,0,0] - length 0 0.0017 pulse +
+    [0.18,0.22,0.29,0] * <night + >lit
+    # An unlit rolling hill line occludes both sky and aurora.
+    <ux 6 * 0.4 + sin 0.045 *
+    <ux 15 * sin 0.014 * + 0.17 + >hill
+    <lit [0.0003,0.0007,0.0012,0] <uy <hill - -0.002 0.002 ramp 1 swap - mix
+    # Hard occlusion below the static horizon; sky above remains untouched.
+    <hill <uy step *
     ```
 <!-- /stacksl-study-source:aurora-final -->
 
@@ -600,7 +587,7 @@ Open the copy: the window opens and draws the finished program, and the program 
 card. The recorded turns are in the program box's AI4 chat. Opening the chat does not call a model;
 sending a message continues from the last revision.
 
-![The aurora document's program box with its AI4 chat restored, scrolled to the reply explaining the mound, followed by the folds request and its variant sheet](assets/stacksl_conversation/saved-chat.png)
+![The aurora document's program box with its AI4 chat restored, scrolled to the reply explaining the mound, followed by its trace and the open-sky fix](assets/stacksl_conversation/saved-chat.png)
 
 ## Limits
 
@@ -614,7 +601,7 @@ sending a message continues from the last revision.
 - The window's clock runs freely. When the model captures the window, it sees whatever moment the
   window is at; tool images are the exact frames.
 
-??? aside "How these sessions were recorded, and what checks them"
+??? aside "Agents: how the sessions were recorded and tested"
 
     Each turn went through the `ai-assist` RPC that Field's chat panel sends; the prompts are in each
     document's `prompts/`. The person-side actions clicked the card's Adopt, Keep and Check in
@@ -627,12 +614,14 @@ sending a message continues from the last revision.
     checks that the chat Field restores is byte for byte the one saved; the held stage is a click on
     the stage's tile in the card, in the same browser.
 
-    The sessions were recorded when the tools were a box in each document, before they became
-    library code and before the card moved onto the program box, and with a box of Kotlin above the
-    program that opened the window, where the root now holds no code. The tools and their names were
-    the same; one kind of result has changed since, as the tiles session describes: a line that ends
-    in a store now shows, and compares, the value it stored. The documents have since been
-    rearranged into today's two boxes, keeping each session's revisions and chat.
+    The ink session was recorded on 2026-09-26, when the tools were a box in each document, before
+    they became library code and before the card moved onto the program box, and with a box of
+    Kotlin above the program that opened the window. That document has since been rearranged into
+    today's two boxes, keeping its revisions and chat. The tiles and aurora sessions were recorded
+    again on 2026-10-16 from the blank starting document, with the same prompts, so their tool
+    images show what a line that ends in a store stored. The tiles grout prompt names the green
+    centres, where the first recording's named green diamonds, because that is where this
+    recolour put the green.
 
     `StackSLConversationExamplesTest` replays all three on the CPU interpreter, a different renderer
     from the GPU the sessions used. Every saved revision must still pass the check, the program box

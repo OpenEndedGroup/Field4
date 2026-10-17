@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer — Field UI texture
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="field_ui_texture_renderer" index="0" -->
 
 ```edn [field-box id="field_ui_texture_renderer" role="properties"]
-{"id" "field_ui_texture_renderer" "index" 0 "name" "renderer — Field UI texture" "parents" ["root"] "children" ["field_ui_texture_panel"] "properties" {"children" #{#afield/box "field_ui_texture_panel"} "parents" #{#afield/box "root"} "name" "renderer — Field UI texture" "_tombstone" false "frame" #afield/rect [140.0 180.0 350.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_renderer_code_.kt" "lines" 15 "characters" 282 "sha256" "5b0b7c04956e2b8e82b26d18494e0da6da04e4721dc109f98e48a6df9598c923"}]}
+{"id" "field_ui_texture_renderer" "index" 0 "name" "renderer — Field UI texture" "parents" ["root"] "children" ["field_ui_texture_panel"] "properties" {"children" #{#afield/box "field_ui_texture_panel"} "parents" #{#afield/box "root"} "name" "renderer — Field UI texture" "_tombstone" false "frame" #afield/rect [140.0 180.0 350.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_renderer_code_.kt" "lines" 15 "characters" 293 "sha256" "95a7fcd446443698e199da68d238487f1c74890c923133c559d17cc96f956b8c"}]}
 ```
 
 ```kotlin [field-property box="field_ui_texture_renderer" name="code" path="field_ui_texture_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -37,20 +37,20 @@ start(renderer::run)
 <!-- field-box id="field_ui_texture_panel" index="1" -->
 
 ```edn [field-box id="field_ui_texture_panel" role="properties"]
-{"id" "field_ui_texture_panel" "index" 1 "name" "Field's UI — live Chromium texture" "parents" ["root" "field_ui_texture_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "field_ui_texture_renderer"} "name" "Field's UI — live Chromium texture" "_tombstone" false "frame" #afield/rect [560.0 180.0 430.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_panel_code_.kt" "lines" 119 "characters" 4665 "sha256" "6080e91c5d98023d3984f31668220cf5209a20a70dcf42784f79a329fa62564c"} {"name" "vertex" "language" "glsl" "path" "field_ui_texture_panel_vertex_.glsl" "lines" 9 "characters" 180 "sha256" "ba17dfa14020b0511f5632daad6bb904ff815014cb1504734d7c12283faa537d"} {"name" "fragment" "language" "glsl" "path" "field_ui_texture_panel_fragment_.glsl" "lines" 8 "characters" 228 "sha256" "4a06f58cb3aac101a544fdcd7c0e0a26970362071d68fc232f1874f49598d604"}]}
+{"id" "field_ui_texture_panel" "index" 1 "name" "Field's UI — live Chromium texture" "parents" ["root" "field_ui_texture_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "field_ui_texture_renderer"} "name" "Field's UI — live Chromium texture" "_tombstone" false "frame" #afield/rect [560.0 180.0 430.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_panel_code_.kt" "lines" 119 "characters" 4681 "sha256" "224bd32be83b695cf618286974203aed9a1586178f017bc85853a9ec815a96ba"} {"name" "vertex" "language" "glsl" "path" "field_ui_texture_panel_vertex_.glsl" "lines" 9 "characters" 180 "sha256" "ba17dfa14020b0511f5632daad6bb904ff815014cb1504734d7c12283faa537d"} {"name" "fragment" "language" "glsl" "path" "field_ui_texture_panel_fragment_.glsl" "lines" 8 "characters" 228 "sha256" "4a06f58cb3aac101a544fdcd7c0e0a26970362071d68fc232f1874f49598d604"}]}
 ```
 
 ```kotlin [field-property box="field_ui_texture_panel" name="code" path="field_ui_texture_panel_code_.kt"]
-import afield.four.browser.FieldUiBrowserTexture
-import afield.four.browser.PuppetBrowser
-import afield.four.browser.PuppetBrowserUvInput
-import afield.four.browser.PuppetBrowserWindowInput
+import afield.media.browser.FieldUiBrowserTexture
+import afield.media.browser.PuppetBrowser
+import afield.media.browser.PuppetBrowserUvInput
+import afield.media.browser.PuppetBrowserWindowInput
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.util.concurrent.CompletableFuture
 
-prop<afield.four.browser.PuppetBrowser>(browserControl)
+prop<afield.media.browser.PuppetBrowser>(browserControl)
 val browser = FieldUiBrowserTexture(
     renderer = renderer,
     url = FieldUiBrowserTexture.fieldDocumentUrl(thisBox),
@@ -71,7 +71,7 @@ val removeReadyBridge = browser.onPageRequest("field-ready") { payload ->
     })
 }
 renderer.renderList.preTargets["field-ui-browser-upload"] =
-    afield.four.Target { command, _ -> browser.prepareSampledImagesFor(command) }
+    afield.graphics.vulkan.Target { command, _ -> browser.prepareSampledImagesFor(command) }
 
 val material = moduleHere {
     textures("fieldUi" to browser)

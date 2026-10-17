@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. The 3D output area as an instrument
@@ -44,7 +44,7 @@ resolve to, which is not a coincidence -- a measurement you pick in the viewer
 produces exactly these.
 
 ```edn [field-box id="three-inspector-wall" role="properties"]
-{"id" "three-inspector-wall" "index" 0 "name" "The 3D output area as an instrument" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The 3D output area as an instrument" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "three-inspector-wall_code_.kt" "lines" 101 "characters" 4382 "sha256" "0bea1d65cdf73f3fca2b2fa51c329e2119bd343adbade572e0cebadb13a513e6"}]}
+{"id" "three-inspector-wall" "index" 0 "name" "The 3D output area as an instrument" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The 3D output area as an instrument" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "three-inspector-wall_code_.kt" "lines" 101 "characters" 4370 "sha256" "9c54f60637d22052ba44289c870e79d03ab16f7b721255e4aef3f78d79ca7878"}]}
 ```
 
 ```kotlin [field-property box="three-inspector-wall" name="code" path="three-inspector-wall_code_.kt"]
@@ -91,12 +91,12 @@ fun skin(name: String, x: Double, c: Vec4) = fline {
 }
 
 // x is the depth through the wall, in millimetres. 152 mm of build-up.
-val wall = listOf(
+val wall = [
     skin("sheathing", 0.0, vec(0.36, 0.46, 0.58, 0.5)),
     skin("studs", 90.0, vec(0.85, 0.62, 0.32, 0.28)),
     skin("services", 140.0, vec(0.35, 0.72, 0.86, 0.28)),
     skin("lining", 152.0, vec(0.90, 0.92, 0.96, 0.4))
-)
+]
 
 val conduits = (0 until 5).map { i ->
     fline {
@@ -119,7 +119,7 @@ val view = threeInspect(
     height = 560,
     units = "mm",
     explode = ThreeExplode(mode = "axis", axis = floatArrayOf(1f, 0f, 0f), sliderMax = 1400.0),
-    measurements = listOf(
+    measurements = [
         // the build-up: 152 by construction, and the figure now says so
         ThreeMeasurement(
             ThreeMeasureElement.face(wall[0]),
@@ -133,7 +133,7 @@ val view = threeInspect(
             ThreeMeasureElement.face(wall[3]),
             "clear "
         )
-    )
+    ]
 )
 
 // And because the explosion is a PARAMETER rather than a literal you retype, the

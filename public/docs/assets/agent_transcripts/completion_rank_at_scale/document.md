@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. re-run the decision
@@ -22,10 +22,10 @@ shipped fieldSuggest.js into a temp directory with one ranking constant rewritte
 578 carets through it. Nothing in the repository is touched.
 
 It needs the spec the test drops. If the box tells you it is missing, run once:
-./gradlew jvmTest --tests 'afield.FieldSuggestPresentationTest'
+./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'
 
 ```edn [field-box id="sweep" role="properties"]
-{"id" "sweep" "index" 0 "name" "re-run the decision" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "re-run the decision" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sweep_code_.kt" "lines" 42 "characters" 2132 "sha256" "c22f02fa9789409c28a1e81817c701ac4c82e6f68641f8af9d900fe62b0a24a5"}]}
+{"id" "sweep" "index" 0 "name" "re-run the decision" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "re-run the decision" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sweep_code_.kt" "lines" 42 "characters" 2170 "sha256" "1542fae9a804645ccaf32b98f1c0dcda586d8bf721fe412a8e3c80bc24338206"}]}
 ```
 
 ```kotlin [field-property box="sweep" name="code" path="sweep_code_.kt"]
@@ -37,7 +37,7 @@ It needs the spec the test drops. If the box tells you it is missing, run once:
 // 578 carets through it. Nothing in the repository is touched.
 //
 // It needs the spec the test drops. If the box tells you it is missing, run once:
-//   ./gradlew jvmTest --tests 'afield.FieldSuggestPresentationTest'
+//   ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'
 
 import java.io.File
 
@@ -60,7 +60,7 @@ val spec = File(repo, "build/completion-corpus/rank-spec.json")
 
 val report = if (!spec.exists()) {
     "no spec at ${spec.path}\n\nrun once, then re-run me:\n" +
-        "  ./gradlew jvmTest --tests 'afield.FieldSuggestPresentationTest'"
+        "  ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'"
 } else {
     val process = ProcessBuilder("python3", "tools/rank_weight_lab.py")
         .directory(repo).redirectErrorStream(true).start()
@@ -88,20 +88,20 @@ name, because `scale` is declared in 42 categorised files in this tree, `close` 
 This box calls the real thing -- `KotlinSourceIndex.getCompletionCategoryForSymbol`, with the real
 `declaredIn` the sidecar recorded -- and puts the real `CommonMemberPrior.rankOf` next to it.
 
-What you should notice is that for `afield.graphics.FLine` the index says NOTHING (`declines`), and
+What you should notice is that for `afield.geometry.path.FLine` the index says NOTHING (`declines`), and
 that is the fix working: FLine.kt carries no `@file:CompletionCategory`, so rather than borrowing the
 category of an unrelated namesake -- which is how `FLine.moveTo` came to be filed under **Math** and
 rendered in a foreign section -- it declines, and the popup's category comes one step later in
-`KotlinCompletionSupport.inferCompletionCategory`, from the *package* `afield.graphics` -> Graphics.
+`KotlinCompletionSupport.inferCompletionCategory`, from the *package* `afield.geometry.path` -> Graphics.
 That last step is `internal`, so a box cannot call it; the corpus measurement in
 FieldSuggestPresentationTest can, and its numbers are quoted at the bottom.
 
 Change RECEIVER and re-run: `java.lang.Math` is a type nobody here can annotate -- no prior, and the
 index declines rather than borrowing -- which is exactly the population the deferred decision was
-about. `afield.stdlib.TriMesh` is another Field type.
+about. `afield.geometry.mesh.TriMesh` is another Field type.
 
 ```edn [field-box id="classify" role="properties"]
-{"id" "classify" "index" 1 "name" "category + prior" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "category + prior" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "classify_code_.kt" "lines" 88 "characters" 5261 "sha256" "24d3e686cdc5c56661edab6cd03f2611d864b7c2346150a3061c046bbe46465e"}]}
+{"id" "classify" "index" 1 "name" "category + prior" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "category + prior" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "classify_code_.kt" "lines" 88 "characters" 5318 "sha256" "2f64e0c45471045e4f8e94c88ea179fac0a5f40d19ab34ce023c01ed5e11e55d"}]}
 ```
 
 ```kotlin [field-property box="classify" name="code" path="classify_code_.kt"]
@@ -112,24 +112,24 @@ about. `afield.stdlib.TriMesh` is another Field type.
 // This box calls the real thing -- `KotlinSourceIndex.getCompletionCategoryForSymbol`, with the real
 // `declaredIn` the sidecar recorded -- and puts the real `CommonMemberPrior.rankOf` next to it.
 //
-// What you should notice is that for `afield.graphics.FLine` the index says NOTHING (`declines`), and
+// What you should notice is that for `afield.geometry.path.FLine` the index says NOTHING (`declines`), and
 // that is the fix working: FLine.kt carries no `@file:CompletionCategory`, so rather than borrowing the
 // category of an unrelated namesake -- which is how `FLine.moveTo` came to be filed under **Math** and
 // rendered in a foreign section -- it declines, and the popup's category comes one step later in
-// `KotlinCompletionSupport.inferCompletionCategory`, from the *package* `afield.graphics` -> Graphics.
+// `KotlinCompletionSupport.inferCompletionCategory`, from the *package* `afield.geometry.path` -> Graphics.
 // That last step is `internal`, so a box cannot call it; the corpus measurement in
 // FieldSuggestPresentationTest can, and its numbers are quoted at the bottom.
 //
 // Change RECEIVER and re-run: `java.lang.Math` is a type nobody here can annotate -- no prior, and the
 // index declines rather than borrowing -- which is exactly the population the deferred decision was
-// about. `afield.stdlib.TriMesh` is another Field type.
+// about. `afield.geometry.mesh.TriMesh` is another Field type.
 
-import afield.CommonMemberPrior
-import afield.ai.KotlinSourceIndex
+import afield.runtime.completion.CommonMemberPrior
+import afield.runtime.completion.KotlinSourceIndex
 import java.io.File
 import java.util.zip.GZIPInputStream
 
-val RECEIVER = "afield.graphics.FLine"
+val RECEIVER = "afield.geometry.path.FLine"
 
 // Field's working directory is the checkout it was started from; walk up to its root.
 // Spelled with explicit types on purpose: in the REPL a `generateSequence(...).firstOrNull { } ?: error(...)`

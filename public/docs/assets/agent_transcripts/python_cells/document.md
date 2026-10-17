@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory" "mainLanguage"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "mainLanguage"]}
 ```
 
 ## 1. Python root -- children of this box run as Python
@@ -94,14 +94,14 @@ JEP embeds CPython *in-process*, so java.lang -- and anything else on Field's
 classpath -- is just another module, and this cell can reach its own Box.
 
 ```edn [field-box id="python_interop" role="properties"]
-{"id" "python_interop" "index" 3 "name" "the JVM is importable" "parents" ["root" "python_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "python_root"} "name" "the JVM is importable" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0] "code_language" "Python"} "blockProperties" [{"name" "code" "language" "python" "path" "python_interop_code_.kt" "lines" 11 "characters" 370 "sha256" "37da8371909602b59bb8e4aa2ecfe5a033e0a4c11ddb7aae02ed7e2a2bf2fe4f"}]}
+{"id" "python_interop" "index" 3 "name" "the JVM is importable" "parents" ["root" "python_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "python_root"} "name" "the JVM is importable" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0] "code_language" "Python"} "blockProperties" [{"name" "code" "language" "python" "path" "python_interop_code_.kt" "lines" 11 "characters" 375 "sha256" "dbaeb46b5a73226b6d82c094a2a5fd185b65628561b3b4d27b8766aea9eb221d"}]}
 ```
 
 ```python [field-property box="python_interop" name="code" path="python_interop_code_.kt"]
 # JEP embeds CPython *in-process*, so java.lang -- and anything else on Field's
 # classpath -- is just another module, and this cell can reach its own Box.
 from java.lang import System
-from afield.python import PythonInterface
+from afield.lang.python import PythonInterface
 
 box = PythonInterface.thisBox
 

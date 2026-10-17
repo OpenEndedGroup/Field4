@@ -1,0 +1,147 @@
+# Generated from fieldml_host_bridge_demo/metadata.edn by afield.examples.DocumentToTranscript.
+name: "fieldml_host_bridge_demo"
+operations:
+  - create:
+      box: "fieldml-bridge-root"
+      name: "FieldML — the JVM bridge"
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        "isFieldMLRoot": true
+        "mainLanguage": "fieldml"
+  - create:
+      box: "fieldml-bridge-raster"
+      name: "A FieldML function, rasterised by Kotlin"
+      frame: { x: 400.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        "code": |-
+          let Img = hostClass "afield.media.image.Img"
+          let Imaging = hostClass "afield.media.image.Imaging_fieldKt"
+
+          // The whole picture is this function. Change 11.0 to change the ring
+          // spacing; change "viridis" below to "magma" or "coolwarm".
+          let sample x y =
+            let u = (toFloat x - 120.0) / 120.0 in
+            let v = (toFloat y - 120.0) / 120.0 in
+            let r = sqrt (u * u + v * v) in
+            sin (r * 11.0) * cos (u * 5.0) * exp (0.0 - r * 1.1) * 0.5 + 0.5
+
+          let picture =
+            Img
+              |> hostGet "Companion"
+              |> hostCall "generate" (240, 240, sample)
+              |> hostExt Imaging "colormap" ("viridis", hostNull, hostNull)
+
+          hostStaticCall "showImg" (thisBox, picture, "main", 480, "Img.generate, driven by a FieldML function") Imaging
+  - create:
+      box: "fieldml-bridge-warp"
+      name: "A FieldML lambda inside FLine.transform"
+      frame: { x: 760.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        "code": |-
+          // FLine.transform takes a Kotlin (Vector3f) -> Vector3f. The value it
+          // hands back has no static type, so hostAs is where it gets one.
+          // Change 24.0 to change the wave height.
+          let wobble line =
+            line |> hostCall1 "transform" (fun raw ->
+              let p = hostAs "Vec3" raw in
+              vec3 p.x (p.y + 24.0 * sin (p.x / 22.0)) p.z
+            )
+
+          linspace 0.0 260.0 120
+            |> map (fun x -> vec2 x 60.0)
+            |> fold (fun line point -> line |> lineToV point) fline
+            |> wobble
+            |> stroked true
+            |> filled false
+            |> color (vec4 1.0 0.55 0.2 1.0)
+            |> thickness 2.5
+            |> drawSized "main" 300.0 160.0
+  - create:
+      box: "fieldml-bridge-types"
+      name: "Host members have real types now"
+      frame: { x: 400.0, y: 300.0, w: 300.0, h: 100.0 }
+      properties:
+        "code": |-
+          let Img = hostClass "afield.media.image.Img"
+          let img = hostNew (8, 4, 1, tabulate (fun i -> toFloat i / 32.0) 32) Img
+
+          // Try it: put the caret after the quote in hostGet "" and ask for
+          // completion — it offers Img's members with their types. Then misspell
+          // one (widht) and the box reports a type error before it runs.
+          {
+            width = img.width
+            height = img.height
+            samples = img.pixelCount
+            scalar = img.isScalar
+            area = img.width * img.height
+            first = img |> hostCall "at" (0, 0, 0)
+            boxName = thisBox |> hostGet "name"
+          }
+  - create:
+      box: "fieldml-bridge-overloads"
+      name: "Overloads, varargs, null"
+      frame: { x: 760.0, y: 170.0, w: 300.0, h: 100.0 }
+      properties:
+        "code": |-
+          let Math = hostClass "java.lang.Math"
+          let Strings = hostClass "java.lang.String"
+          let Collections = hostClass "java.util.Collections"
+
+          // Every line here is a call the previous bridge could not make.
+          {
+            // Math.max is declared four times; the argument widths choose one.
+            intMax = hostStaticCall "max" (3, 7) Math
+            floatMax = hostStaticCall "max" (3.5, 7.25) Math
+
+            // A Java vararg, filled from the spread tuple.
+            formatted = hostStaticCall "format" ("%s has %d", "the bridge", 3) Strings
+
+            // A FieldML function as a java.util.Comparator. The result is an erased
+            // generic, so it stays Host until hostAsInt says otherwise.
+            smallest = hostStaticCall "max" ([5, 1, 9, 3], fun a b -> b - a) Collections |> hostAsInt
+          }
+  - create:
+      box: "fieldml-bridge-named"
+      name: "Named arguments, and Kotlin defaults"
+      frame: { x: 1120.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        "code": |
+          // Named arguments, which are also the only way to leave a Kotlin default alone.
+          //
+          // Write a RECORD where a tuple would go. Plain reflection sees neither a
+          // parameter's name nor its default -- `Img.index(x, y, c)` is all it can tell
+          // you -- so this goes through Kotlin's own reflection, and naming the arguments
+          // is what makes the defaults reachable: a positional call has no way to say
+          // which parameter it is skipping.
+          let Img = hostClass "afield.media.image.Img"
+          let Imaging = hostClass "afield.media.image.Imaging_fieldKt"
+
+          let img = hostNew {width = 2, height = 2, channels = 3, data = [
+            0.0, 0.0, 0.0,  0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0,  0.0, 0.0, 0.0
+          ]} Img
+
+          // `Img.index(x, y, c = 0)`. The first line leaves `c` to Kotlin -- there is no
+          // positional call that can. The second shows that order is not position.
+          let defaulted = img |> hostCall "index" {x = 1, y = 0}
+          let reordered = img |> hostCall "index" {c = 2, y = 0, x = 1}
+
+          // An extension, three parameters, all with defaults: positionally you must write
+          // `("magma", hostNull, hostNull)`, and the two hostNulls are the tell that
+          // something is missing. Named, `lo` and `hi` really are computed from the image.
+          let gray = hostNew {width = 2, height = 2, channels = 1, data = [0.0, 0.25, 0.5, 1.0]} Img
+          let coloured = gray |> hostExt Imaging "colormap" {name = "magma"}
+
+          // A name reflection does not know is a compile error where it is written, and it
+          // names what you gave. Try changing `x` to `xx` above.
+          {
+            defaulted = defaulted
+            reordered = reordered
+            colouredChannels = coloured |> hostGet "channels"
+            note = "a record spreads by name; a tuple still spreads by position"
+          }
+  - connect: { parent: "fieldml-bridge-root", child: "fieldml-bridge-raster" }
+  - connect: { parent: "fieldml-bridge-root", child: "fieldml-bridge-warp" }
+  - connect: { parent: "fieldml-bridge-root", child: "fieldml-bridge-types" }
+  - connect: { parent: "fieldml-bridge-root", child: "fieldml-bridge-overloads" }
+  - connect: { parent: "fieldml-bridge-root", child: "fieldml-bridge-named" }

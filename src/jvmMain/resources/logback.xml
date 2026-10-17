@@ -9,6 +9,8 @@
         <appender-ref ref="STDOUT" />
     </root>
 
+    <!-- smileTsne reports the final cost itself; Smile logs it every tenth iteration at INFO. -->
+    <logger name="smile.manifold.TSNE" level="WARN"/>
     <logger name="io.netty" level="WARN"/>
     <!-- Common noisy disconnect path when clients drop sockets mid-read. -->
     <logger name="io.netty.channel.DefaultChannelPipeline" level="ERROR"/>

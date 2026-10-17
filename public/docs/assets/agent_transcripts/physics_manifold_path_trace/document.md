@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. path tracing renderer
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["physics_manifold_trace"] "properties" {"children" #{#afield/box "physics_manifold_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 218 "sha256" "012ed8443bbd6a083b44dfcd6e1745e705ebe33816199803005ea815f12cf9d3"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["physics_manifold_trace"] "properties" {"children" #{#afield/box "physics_manifold_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 229 "sha256" "f0366162e30c12082e2b271ce3d1eab148bc793fdff69039d5244f27c04853ce"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,26 +31,26 @@ start(renderer::run)
 <!-- field-box id="physics_manifold_trace" index="1" -->
 
 ```edn [field-box id="physics_manifold_trace" role="properties"]
-{"id" "physics_manifold_trace" "index" 1 "name" "a draped cloth, welded into one solid, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a draped cloth, welded into one solid, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "physics_manifold_trace_code_.kt" "lines" 130 "characters" 5656 "sha256" "7433f16b888b81bdf991fc4896c9d269981ebe73fb188507491a0d13843b56af"}]}
+{"id" "physics_manifold_trace" "index" 1 "name" "a draped cloth, welded into one solid, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a draped cloth, welded into one solid, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "physics_manifold_trace_code_.kt" "lines" 128 "characters" 5602 "sha256" "e294ed5267f51f6c4c7b84d0e5d05717c0715ad6f900af41ae01392a2e234680"}]}
 ```
 
 ```kotlin [field-property box="physics_manifold_trace" name="code" path="physics_manifold_trace_code_.kt"]
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.physics.PlaneCollider
-import afield.four.physics.SimdVerlet
-import afield.four.physics.SphereCollider
-import afield.four.physics.addCloth
-import afield.four.physics.addColliders
-import afield.four.util.Camera
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.simulation.physics.PlaneCollider
+import afield.simulation.physics.SimdVerlet
+import afield.simulation.physics.SphereCollider
+import afield.simulation.physics.addCloth
+import afield.simulation.physics.addColliders
+import afield.graphics.vulkan.util.Camera
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.math.linalg.Vector3f
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)
@@ -67,8 +67,8 @@ val settleFrames = 300  // physics frames before the geometry is taken
 // ---------------------------------------------------------------------------------
 
 // ---- stage one: the physics ----------------------------------------------------
-// Gravity is +y in SimdVerlet, which is why the sphere sits BELOW the sheet at y = 0.8
-// and the floor's legal side is above a plane whose normal is -y.
+// +y is up, as in the path tracer: gravity is negative, the sphere sits below the sheet,
+// and the floor is a plane whose normal is +y.
 val sim = SimdVerlet(SimdVerlet.State3.empty())
 val cloth = sim.addCloth(
     width = side,
@@ -80,20 +80,18 @@ val cloth = sim.addCloth(
     pinned = { _, _ -> false },
 )
 val world = sim.addColliders(
-    SphereCollider(0f, 0.78f, 0f, radius = 0.52f).also { it.friction = 0.8f; it.margin = 0.01f },
-    PlaneCollider(0f, -1f, 0f, offset = -1.28f).also { it.friction = 0.9f },
+    SphereCollider(0f, -0.78f, 0f, radius = 0.52f).also { it.friction = 0.8f; it.margin = 0.01f },
+    PlaneCollider(0f, 1f, 0f, offset = -1.28f).also { it.friction = 0.9f },
 )
 repeat(settleFrames) {
-    cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = 9.8f, iterations = 16)
+    cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = -9.8f, iterations = 16)
 }
 println("${cloth.count} particles, ${world.contacts} contacts on the last frame")
 
 // ---- stage two: 364 rods, one batched union ------------------------------------
-// The path tracer has +y up and SimdVerlet has +y down, so read the physics out with y
-// negated once, here, rather than flipping the camera and the floor to match it.
 fun at(col: Int, row: Int): Triple<Double, Double, Double> {
     val p = cloth.position(col, row)
-    return Triple(p.x.toDouble(), -p.y.toDouble(), p.z.toDouble())
+    return Triple(p.x.toDouble(), p.y.toDouble(), p.z.toDouble())
 }
 
 val struts = buildList {

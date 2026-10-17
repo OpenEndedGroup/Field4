@@ -24,7 +24,7 @@ val view = three(name = "foo", width = 760, height = 440) {
     camera(yaw = 34.0, pitch = 24.0)
     background("#080b0c")
     caption("Drag to orbit · Pick to annotate · ruler to measure")
-    inspect(units = "mm", groups = listOf("Block"))
+    inspect(units = "mm", groups = ["Block"])
 }
 ```
 
@@ -32,8 +32,8 @@ val view = three(name = "foo", width = 760, height = 440) {
 
 `three` is a function on the current Field box. The block has a `ThreeSceneBuilder` receiver:
 `mesh`, `lines`, `camera` and the other operations below describe the scene. The graphics and
-mesh APIs are imported in ordinary Field boxes; in Kotlin source, import `afield.graphics.*`
-and `afield.stdlib.*` and call `three` on a `Box`.
+mesh APIs are imported in ordinary Field boxes; in Kotlin source, import `afield.graphics.three.*`
+and `afield.geometry.mesh.*` and call `three` on a `Box`.
 
 ### Viewer name, channel and size
 
@@ -48,11 +48,10 @@ These are the arguments `three` itself takes:
 
 Running the same box with the same `name` updates the same viewer. To keep two independent
 scenes, give them different **names and channels**. `channel` alone does not give a scene a new
-identity. Viewer IDs are scoped to the saved document, so duplicated boxes cannot replace
-another document's scene or edit controls. Use the returned ID rather than constructing one
-from a box ID and name. Copied notes retain their original recorded identity and independent
-reply history. The value returned by `three` is the live `ThreeGeometryViewState`; `view.uid` is the
-ID used by the standalone viewer and agent inspection tools.
+identity. A viewer's ID belongs to its document, so a box copied into another document gets a
+scene of its own. The value returned by `three` is the live `ThreeGeometryViewState`; `view.uid`
+is the ID the standalone viewer and the agent tools use. Take it from there rather than building
+one from a box ID and name.
 
 ## A scene, not a picture
 
@@ -165,14 +164,14 @@ use. On a contact sheet every panel turns together, each about its own centre, a
 drag. This sheet shows six shapes in a three-by-two grid and turns them at 15° a second:
 
 ```diffstatic {data-lang=kotlin}
-val shapes = listOf(
+val shapes = [
     "block" to boxMesh(1.2, 0.8, 0.6),
     "tower" to boxMesh(0.5, 1.6, 0.5),
     "slab" to boxMesh(1.6, 0.3, 0.9),
     "cone" to coneMesh(segments = 7, radius = 0.6, height = 1.2),
     "can" to cylinderMesh(segments = 6, radius = 0.5, height = 1.0),
     "ring" to torusMesh(majorSegments = 12, minorSegments = 6),
-)
+]
 three(name = "sheet", width = 900, height = 560) {
     columns(3)
     shapes.forEachIndexed { i, (label, shape) ->
@@ -189,8 +188,7 @@ Pressing, scrolling or typing in the view pauses the turn, and it resumes `resum
 (2 by default) after the last interaction, from wherever you left it. A view turns only while it is
 on screen and the page is visible, and draws no frames while it is still. Each panel is framed for
 every angle of the turn, so nothing swings out of its cell, and a turning sheet sits a little
-further back than a still one. The framing is worked out once rather than on every frame, so a
-large sheet stays cheap to turn.
+further back than a still one.
 
 Views in separate outputs or boxes can turn together too. `linkCamera()` opens a view with
 **Link camera** already on, so this box's two outputs share one camera and one turn:
@@ -255,9 +253,6 @@ ring per hole, and this example draws those rings in the same scene as the solid
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/scene.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// FIELD_DOCS_EXPECT_SVG: false — the docs runner reads a bare `lines(` as Box.lines's 2D SVG path
-// and then demands an <svg>. The `lines(rims)` below is the scene builder's and emits an iframe.
-//
 // A gyroid is a triply-periodic minimal surface. Marched inside a finite box it is OPEN: the
 // surface leaves the sampling window rather than closing inside it, and every place it does that
 // is a boundary loop. `open(20)` in the printed summary is the claim; the picture is the evidence.
@@ -275,7 +270,7 @@ println("open boundary loops: " + rims.size)
 three(channel = "gyroid", height = 470, width = 760) {
     mesh(surface, wireframe = false)
     lines(rims)
-    camera(yaw = 32.0, pitch = 20.0, distance = 2.05)
+    camera(yaw = 32.0, pitch = 20.0, padding = 1.02)
     title("marched gyroid, with its " + rims.size + " open boundary loops drawn in the same scene")
     caption("the solid and the annotation are one scene in model space, so orbiting moves both")
 }
@@ -295,9 +290,9 @@ The control surface uses up to two columns and collapses to one in a narrow outp
 `controlGroup("controls") { ... }` retains its single column; changing layout preserves control
 identities, cached values and callbacks.
 
-An unchanged camera preset preserves the current orbit, pan and zoom when geometry
-updates. Changing the preset explicitly establishes a new view. Resizing a view
-that the user has positioned also preserves that position.
+When the geometry updates and the camera preset has not changed, the view keeps whatever orbit,
+pan and zoom you had. Changing the preset starts a new view. Resizing a view also keeps your
+position.
 
 ## The camera
 
@@ -307,33 +302,17 @@ CPU rasterizer's camera:
 - **`yawDegrees`** — orbit around `+y`. `0` looks straight down `−z`.
 - **`pitchDegrees`** — lift above the horizon. Positive looks down on the geometry.
 - **`distance`** — in multiples of the bounding-sphere radius, so one spec frames a 2 cm mesh and a
-  2 m one.
+  2 m one. The rasterizer uses it; the viewer zooms to fit instead.
+- **`padding`** — the viewer's margin around the shape's outline when it zooms to fit: `1.0`
+  touches the frame's edges, the default `1.06` leaves a little air. The rasterizer ignores it.
 - **`fieldOfViewDegrees`** — vertical. Smaller is a longer lens and less perspective.
 
 The names and meanings match, so one camera can be handed to either renderer.
 
-??? aside "In the viewer, `distance` is a padding factor"
-    The preset supplies the camera's **direction**; the viewer supplies its own distance. Having
-    placed the eye, it runs a zoom-to-fit (`fitCameraToBounds`) that slides the eye along the view
-    direction until the geometry's sampled points fit the frame the viewer was actually given — a box
-    output is as wide as its column, and a figure written for a 560 × 420 canvas arrives in a much
-    wider band.
-
-    So `distance` reaches the viewer as `max(1.02, distance / 2.7 × 1.06)`. Below about 2.6 that
-    clamps to the floor and every value frames identically; above it, raising `distance` shrinks the
-    mesh in the frame.
-
-    It is also why one figure is a different composition on the two renderers at an identical
-    viewpoint: the rasterizer frames the bounding *sphere* in a canvas it chose, the viewer fits the
-    real points to the frame it was handed, so the subject comes out noticeably larger. The toy car
-    in [Geometry from disk](geometry_from_disk.md#a-real-glb-in-a-real-output-area) is the case to
-    look at.
-
 ## Contact sheets
 
-For a custom contact sheet, `panel(...)` declares viewports in order and `mesh(..., panel = n)`
-assigns geometry to them. Calling `panel` does not change which viewport the next mesh goes into:
-the default stays `0`. FLine content is shared between viewports. This example builds a sheet by
+For a custom contact sheet, `panel(...)` declares viewports in order, and a `mesh(...)` goes into
+the panel declared most recently, or the one `panel = n` names. FLine content is shared between viewports. This example builds a sheet by
 hand:
 
 ```diffstatic {data-lang=kotlin}
@@ -347,8 +326,9 @@ three(name = "comparison", channel = "comparison", width = 760, height = 320) {
 }
 ```
 
-`threeGrid` and `threeTurntable` below build common layouts for you. Feature annotation currently
-requires a single viewport, so use a separate single-view scene to review a mesh from a sheet.
+`threeGrid` and `threeTurntable` below build common layouts for you. Pick and Save note work on a
+sheet: a pick uses the panel under the pointer, and the note remembers that panel, so loading it
+selects the feature there again and its images are of that panel. Rectangle needs a single viewport.
 
 ### One WebGL context, several panels
 
@@ -362,6 +342,8 @@ oldest with nothing in the console. Two galleries of nine would already be too m
 `ThreePanel` is a viewport within the one viewer, which is also much faster.
 
 ### `threeGrid` — several meshes, each framing its own bounds
+
+This example lays four unrelated shapes out in a two-by-two sheet, with a fact line under each:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/grid.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -392,21 +374,23 @@ threeGrid(
 Each panel has its own camera, and carries the fact line `TriMesh.threeFacts()` computes, the
 same line `toFigureHtml` writes under a rasterized figure.
 
-`facts = true` is **off by default**, and `showMeshGrid` does not turn it on. If you want the numbers
-under each panel, either call `threeGrid` directly as above, or use the `List<ThreeMeshPanel>`
-overload, for a gallery that has something specific to say about each cell:
+`showMeshGrid` prints the fact line by default and forwards `facts` to `threeGrid`; `threeGrid`
+called directly leaves it off unless asked, as above. For a gallery that has something specific to
+say about each cell, use the `List<ThreeMeshPanel>` overload:
 
 ```diffstatic {data-lang=kotlin}
 threeGrid(
-    listOf(
+    [
         ThreeMeshPanel("cuboctahedron", solid, facts = "12 vertices · 24 edges · 14 faces (8 triangles, 6 squares)"),
         ThreeMeshPanel("…kis'd", kissed, facts = "38 vertices · 84 edges · 48 faces (all triangles)"),
-    ),
+    ],
     columns = 2,
 )
 ```
 
 ### `threeTurntable` — one mesh, several angles, one upload
+
+This example shows one twisted box from four angles in a row:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/turntable.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -446,13 +430,9 @@ Every entry in the `showMesh` family takes a `renderer`, and the default is the 
 
 </div>
 
-Two size knobs that are easy to confuse:
-
-* `MeshView.width` / `MeshView.height` size the **raster** on the CPU path, and on the GPU path
-  `view.width` becomes the iframe's width in pixels;
-* `showMesh`'s own `height` parameter, default `430`, sizes the **iframe**, and `MeshView.height` is
-  ignored on that path. To get a GPU figure the same shape as a CPU one, pass `height = view.height`
-  explicitly.
+`MeshView.width` and `MeshView.height` size the figure on both paths: the raster on the CPU path,
+the iframe on the GPU path. Pass `height` to `showMesh` only to make the Three.js iframe a different
+height from the view.
 
 Give the width in pixels. The output panel sizes itself from the iframe's pixel width, and a
 percentage leaves the panel at whatever width it already had. That suits an FLine viewer filling
@@ -466,14 +446,14 @@ lists them all, and what each is for:
 
 | path | what it draws | where the pixels are made | reach for it when |
 |---|---|---|---|
-| `three`, `threeGrid`, `threeTurntable`, `threeLines`, `threeInspect` — `afield/graphics/Three.kt`, `ThreeJsViewer.kt` | FLines and `TriMesh`es together, in 3D | **WebGL** (three.js r184, vendored) in a `/threejs` iframe inside the box output | you want to turn it; you want a solid and its annotations in one scene. The default for the whole `showMesh` family |
-| `renderPng`, `renderPixels`, `toFigureHtml`, `toHTML`, `showMeshDiagnosis`, `MeshRenderer.CPU` — `afield/graphics/VisionGeometryPreview.kt` | one `TriMesh`, fixed camera, still | **CPU z-buffer in the JVM**, AWT-free, encoded by `PngEncoder` | you need the same pixels twice (see below); there is no WebGL context to spare; you want a pixel buffer to composite by hand |
-| `lines`, `l`, `drawToSVG`, `inspect` — `afield/graphics/someSkiko.kt` | FLines, **2D only** | **SVG text** emitted by a Skia recording canvas; the browser rasterizes it | 2D figures: crisp at any zoom, tiny payload, headless-safe |
+| `three`, `threeGrid`, `threeTurntable`, `threeLines`, `threeInspect` — `afield/graphics/three/Three.kt`, `ThreeJsViewer.kt` | FLines and `TriMesh`es together, in 3D | **WebGL** (three.js r184, vendored) in a `/threejs` iframe inside the box output | you want to turn it; you want a solid and its annotations in one scene. The default for the whole `showMesh` family |
+| `renderPng`, `renderPixels`, `toFigureHtml`, `toHTML`, `showMeshDiagnosis`, `MeshRenderer.CPU` — `afield/graphics/visionos/VisionGeometryPreview.kt` | one `TriMesh`, fixed camera, still | **CPU z-buffer in the JVM**, AWT-free, encoded by `PngEncoder` | you need the same pixels twice (see below); there is no WebGL context to spare; you want a pixel buffer to composite by hand |
+| `lines`, `l`, `drawToSVG`, `inspect` — `afield/ui/visualization/someSkiko.kt` | FLines, **2D only** | **SVG text** emitted by a Skia recording canvas; the browser rasterizes it | 2D figures: crisp at any zoom, tiny payload, headless-safe |
 | `lines(editable = true)`, and the automatic upgrade when an FLine has `onClick` or `hoverColor` — `FLineEditableSvg.kt` | the same, plus click / hover / drag / freehand | SVG in the browser, plus a server-side edit session | direct manipulation of control points; a figure you can click to name |
 | `moduleHere`, `Renderer`, `RenderToTexture`, and `StandardRenderer` / Fabricate on top of them — `afield/four/` | arbitrary real-time scenes, Gaussian splats, hardware ray tracing | **Vulkan on the desktop GPU**, in a GLFW window (offscreen targets still need the window) | real-time work, hot-reloaded shaders, hundreds of thousands of primitives, OpenXR |
-| `visionMetal` — `afield/graphics/VisionMetal.kt` | your live Metal shader plus its geometry | **Metal, on the Vision Pro** | headset live-coding ([Apple Vision Pro](vision.md), [geometry in the headset](vision_geometry.md)). Its desktop stand-in is `previewVisionGeometry`, which is the CPU rasterizer again |
+| `visionMetal` — `afield/graphics/visionos/VisionMetal.kt` | your live Metal shader plus its geometry | **Metal, on the Vision Pro** | headset live-coding ([Apple Vision Pro](vision.md), [geometry in the headset](vision_geometry.md)). Its desktop stand-in is `previewVisionGeometry`, which is the CPU rasterizer again |
 | the visionOS native FLine viewer — `native/field-visionos/Field4Vision/FLine/` | whatever `threeLines` / `three` published | **RealityKit / Metal on the headset** | you want an existing 3D figure in the volume ([Apple Vision Pro](vision.md)). It subscribes to the same `__threejs__` channel; there is no second API |
-| `remoteAr` — `afield/outputs.kt`, `RemoteArKotlinJs.kt` | *your Kotlin, compiled to JS*, in a WebXR page | **WebGL in the browser or headset** | AR/VR where the code runs in the head rather than on the desktop ([RemoteJS and WebXR](ar_reference.md)) |
+| `remoteAr` — `afield/ui/output/outputs.kt`, `afield/lang/remotejs/RemoteArKotlinJs.kt` | *your Kotlin, compiled to JS*, in a WebXR page | **WebGL in the browser or headset** | AR/VR where the code runs in the head rather than on the desktop ([RemoteJS and WebXR](ar_reference.md)) |
 | `rasterizeFLines`, `Img`, `showImg`, `rasterizeText`, `heatmapImage`, `RectSLFitFigure` | 2D marks into a pixel buffer, no projection and no depth | **CPU in the JVM**, `PngEncoder` | measurement rasters, image pipelines, figures that have to be identical in a test |
 
 Two entries in that table are commonly misread:
@@ -487,7 +467,7 @@ perspective, either project first with `FLine.byPerspectiveProjecting(...)` or r
 `threeLines`.
 
 **The ray tracer is not a separate renderer.** [Ray tracing examples](ray_tracing_examples.md) is
-`VK_KHR_ray_tracing_pipeline` inside `afield.four`, and Fabricate's `StandardRenderer` is a deferred
+`VK_KHR_ray_tracing_pipeline` inside Field 4, and Fabricate's `StandardRenderer` is a deferred
 g-buffer / shadow / AO / composite stack built on the same primitives. One Vulkan renderer, three
 front ends.
 
@@ -510,6 +490,8 @@ compositing several meshes into one figure yourself.
     silently.
 
 ### The same mesh, both ways
+
+This example draws one marched solid twice, with the same `MeshView`, once on each renderer:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/renderers.png" wait="7.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -534,8 +516,8 @@ The same mesh, `MeshView` and 520 × 400 frame give two visibly different pictur
 - **Shading differs, and is not meant to match.** The rasterizer is a simple two-light Lambert
   model over the vertex colours. The viewer is three.js's `MeshStandardMaterial` under an ambient,
   key and rim light.
-- **Framing differs**, as the camera aside above explains. The viewer zooms to fit; the rasterizer
-  places the eye exactly where the camera says.
+- **Framing differs**: the rasterizer places the eye at `distance`; the viewer zooms to fit with
+  `padding`.
 - **The input is the same.** Both renderers compute missing normals with `shadedNormals` at a 35°
   crease angle, so hard edges stay hard, and both use `TriMesh.colors` or the same default grey.
 - **Back-face culling is the same**, which matters for diagnosis; the next section shows it.
@@ -606,8 +588,6 @@ of the solid to an annotation beside it, as in this example:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/section.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// FIELD_DOCS_EXPECT_SVG: false — `lines(datum)` below is the scene builder's, not Box.lines.
-//
 // A block with a bore drilled down through it, and a datum line standing beside it.
 val part = marchingCubes(
     sdfSubtract(sdfBox(vec(2.0, 1.2, 1.2)), sdfCylinder(0.35, 2.0)),
@@ -628,13 +608,13 @@ three(name = "section", channel = "section", width = 760, height = 460) {
         // Cut halfway through along z, so the plane runs straight down the bore.
         section = ThreeSection(enabled = true, normal = floatArrayOf(0f, 0f, 1f), fraction = 0.5),
         // From the block's +x face, on the cut plane, to the datum beside it: 1.4 - 1.0 = 0.4.
-        measurements = listOf(
+        measurements = [
             ThreeMeasurement(
                 ThreeMeasureElement.point(1.0, 0.0, 0.0),
                 ThreeMeasureElement.segment(1.4, -0.6, 0.0, 1.4, 0.6, 0.0),
                 "clear "
             )
-        )
+        ]
     )
 }
 ```
@@ -670,8 +650,8 @@ three(name = "vehicle") {
     mesh(boxMesh(120, 60, 40), id = "body", wireframe = false)
     mesh(boxMesh(20, 20, 20), id = "wheel", wireframe = false)
     inspect(partPaths = mapOf(
-        "body" to listOf("Vehicle", "Bodywork"),
-        "wheel" to listOf("Vehicle", "Running gear")
+        "body" to ["Vehicle", "Bodywork"],
+        "wheel" to ["Vehicle", "Running gear"]
     ))
 }
 ```
@@ -699,6 +679,14 @@ constraints you applied. `width` is optional and otherwise fills the output area
 `ThreeGeometryPayload`'s `lines` / `fills` / `points` hold the FLines, and a payload with an empty
 `drawables` list carries no mesh keys, so the editable path, the inspector and the mesh scenes above
 all share one format.
+
+A scene reaches the viewer in two parts: a small description over the websocket, and its
+geometry (FLine and mesh buffers, and a solid's exact boundary) as one binary download that the
+viewer fetches when it needs it. A scene's geometry may be up to 512 MB; set `AFIELD_THREE_PAYLOAD_LIMIT_MB` to
+change that. A scene over the limit is not sent: the call that built it throws
+`ThreePayloadTooLargeException`, which gives the size and the largest drawables, and the view keeps
+what it was showing. Restyling parts with `styleParts` sends only the new styles, however large the
+scene is.
 
 Three.js ships with Field (`src/commonMain/resources/vendor/three/0.184.0/`), so the viewer works
 offline.
@@ -731,7 +719,6 @@ This small example adds a reference-axis toggle:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/tools.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// FIELD_DOCS_EXPECT_SVG: false — `lines(...)` below is the scene builder's, not Box.lines.
 three(name = "tools-example") {
     tools("/threejs_tools_demo.js")
     lines(fline { moveTo(0.0, 0.0, 0.0); lineTo(2.0, 1.0, 0.0) })
@@ -765,20 +752,15 @@ it never imports a module from the note. Older views reset tools to their initia
 Validation must reject invalid input without mutation; restoration should not fail
 once validation has accepted it.
 
-Agents can use `FieldViewer.tools.register(descriptor)` or
-`await FieldViewer.tools.load("/path/to/tool.js")` in their capture browser. Both return
-an idempotent disposal function. `FieldViewer.tools.ids()` lists installed tools.
-After direct registration, `await FieldViewer.tools.ready()` waits for initialization.
-`FieldViewer.captureStatus()` reports readiness, the geometry revision and any startup error;
-readiness includes the tools and a rendered frame, not just a loaded HTML document.
-Use the same source geometry revision when restoring a note. An application owns its
-modules and their behavior; registration does not validate geometry produced by a tool.
-
-??? aside "If you write a fence like these"
-    The runner's output validator treats a bare `lines(` in the code as a call to `Box.lines(...)`, the 2D
-    SVG path, and then fails the capture because no `<svg>` appeared. Inside `three { }`, `lines(…)` is the
-    scene builder's and emits an iframe — `// FIELD_DOCS_EXPECT_SVG: false` in the fence is the escape
-    hatch, and the first figure on this page carries it.
+??? aside "Agents: loading tools in a capture browser"
+    Use `FieldViewer.tools.register(descriptor)` or
+    `await FieldViewer.tools.load("/path/to/tool.js")` in a capture browser. Both return
+    an idempotent disposal function. `FieldViewer.tools.ids()` lists installed tools.
+    After direct registration, `await FieldViewer.tools.ready()` waits for initialization.
+    `FieldViewer.captureStatus()` reports readiness, the geometry revision and any startup error;
+    readiness includes the tools and a rendered frame, not just a loaded HTML document.
+    Use the same source geometry revision when restoring a note. An application owns its
+    modules and their behavior; registration does not validate geometry produced by a tool.
 
 ## Data colours and late viewers
 
@@ -806,6 +788,7 @@ three(name = "lit-unlit", channel = "lit-unlit", width = 760, height = 340) {
 ```
 
 ![Two panels showing the same torus coloured from blue on its inner rim to red on its outer rim by Gaussian curvature. In the left, lit panel, the shading darkens and brightens the colours with the surface's angle to the lights; in the right, unlit panel, each colour is the colormap's own value wherever it sits on the surface.](assets/three_output/lit-unlit.png)
+
 For a smooth surface with per-element colours, compute normals on the connected geometry
 before duplicating vertices for discontinuous colours; colour boundaries are not creases.
 

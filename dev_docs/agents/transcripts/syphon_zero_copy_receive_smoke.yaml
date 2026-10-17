@@ -17,19 +17,19 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
-
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
-
+          
           Options.enableHDR = false
           Options.profiling = false
-
+          
           once.renderer {
               window = Window("Syphon zero-copy receive smoke")
               Renderer(window)
           }
-
+          
           println("syphon zero-copy renderer ready")
           start(renderer::run)
   - create:
@@ -38,18 +38,18 @@ operations:
       frame: { x: 320.0, y: 180.0, w: 350.0, h: 100.0 }
       properties:
         code: |
-          import afield.syphon.*
-          import afield.four.TexturePreviewCache
+          import afield.io.syphon.*
+          import afield.graphics.render.TexturePreviewCache
           import org.lwjgl.vulkan.VK10.*
           import java.io.ByteArrayInputStream
           import java.util.Base64
           import javax.imageio.ImageIO
-
+          
           check(Syphon.isAvailable) { Syphon.describe() }
           val probePath = SyphonLibrary.probePath ?: throw IllegalStateException("field_syphon_probe is missing: ./gradlew buildSyphonNative")
           val device = renderer.device
           println("syphon-zero-copy driver=${device.physicalDevice.driverName} metalObjects=${device.supportsMetalObjects} externalMemoryHost=${device.supportsExternalMemoryHost}")
-
+          
           // 64x48 for the first half of 14 s, then 96x64
           val name = "FieldZeroCopySmoke-${ProcessHandle.current().pid()}"
           val proc = ProcessBuilder(probePath.toString(), "serve", name, "14", "64", "48", "96", "64").redirectErrorStream(true).start()
@@ -59,7 +59,7 @@ operations:
           val copiesBefore = Syphon.cpuCopies
           println("syphon-zero-copy path=${tex.path} size=${tex.width}x${tex.height} fallback='${tex.fallbackReason}'")
           require(tex.path != SyphonTexture.Path.CPU_COPY) { "fell back to copying: ${tex.fallbackReason}" }
-
+          
           prop<RenderToTexture>(syphonProbeTarget) = RenderToTexture {
               width = 96
               height = 64
@@ -75,7 +75,7 @@ operations:
               tri.add(0, 1, 2)
               tri.add(0, 2, 3)
           }
-
+          
           fun check(w: Int, h: Int) {
               val html: String = TexturePreviewCache.capture(
                   renderer, syphonProbeTarget.colorImageHandles[0], syphonProbeTarget.colorFormats[0], 96, 64,
@@ -89,7 +89,7 @@ operations:
               println("syphon-zero-copy ${w}x$h path=${tex.path} imports=${tex.imports} frames=${tex.frames} pixels=$got")
               require(got == want) { "${w}x$h: expected $want, sampled $got" }
           }
-
+          
           var ticks = 0
           var phase = 0
           loop {

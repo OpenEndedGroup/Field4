@@ -1,9 +1,6 @@
-import afield.four.Renderer
-import afield.four.modules.fromContext
-import afield.stdlib.polytope.*
+
 
 // A snub dodecahedron, each face with its own vertices, so the faces can fly apart whole.
-val renderer: Renderer = fromContext()
 val module = moduleHere()
 val m = Mesh()
 module += m named "polytope"

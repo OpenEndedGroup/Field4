@@ -22,8 +22,9 @@ import unittest
 from unittest import mock
 from pathlib import Path
 
-from loc_history import (COUNTED_EXT, GENERATED_DIRS, LANGS, SUBMODULES,
-                         VENDORED_DIRS, VENDORED_NAMES, classify, language)
+from loc_history import (COUNTED_EXT, DOCUMENT_MARKER, EXT_LANG, GENERATED_DIRS,
+                         GENERATED_PAGE, LANGS, OURS_DIRS, SUBMODULES, VENDORED_DIRS,
+                         VENDORED_NAMES, _git, classify, docs_lines, language, nav_pages)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IGNORED_UNINITIALIZED_SUBMODULE_ENTRIES = {".DS_Store"}
@@ -43,8 +44,8 @@ def submodule_checkout_state(checkout: Path) -> str:
 
 
 @functools.cache
-def paths_ever() -> frozenset[str]:
-    """Every counted-language path added anywhere in Field4's history.
+def added_ever() -> frozenset[str]:
+    """Every path added anywhere in Field4's history.
 
     Two flags carry weight here:
 
@@ -60,10 +61,20 @@ def paths_ever() -> frozenset[str]:
          "--diff-merges=first-parent"],
         capture_output=True, check=True,
     ).stdout.decode(errors="replace")
-    return frozenset(
-        line for line in out.splitlines()
-        if line.rsplit(".", 1)[-1].lower() in ("kt", "js", "html", "swift", "py")
-    )
+    return frozenset(line for line in out.splitlines() if line)
+
+
+@functools.cache
+def paths_ever() -> frozenset[str]:
+    """Every counted-language path added anywhere in Field4's history."""
+    return frozenset(p for p in added_ever() if COUNTED_EXT.search(p))
+
+
+@functools.cache
+def documents_ever() -> frozenset[str]:
+    """Every folder that has ever held a saved document's `metadata.edn`."""
+    return frozenset(p.rpartition("/")[0] for p in added_ever()
+                     if p.endswith("/" + DOCUMENT_MARKER))
 
 
 VENDORED = (
@@ -77,12 +88,27 @@ VENDORED = (
     "src/jsMain/resources/plotly-2.24.1.min.js",
     "public/docs/assets/codemirror.js",
     "public/docs/assets/mode/clike/clike.js",
+    # native/: alice's claude-paint crate, FFmpeg's NVENC headers, Steam Audio's C API.
+    "native/field-paint/vendor/paint/src/bristle.rs",
+    "native/field-encode-linux/third_party/ffnvcodec/nvEncodeAPI.h",
+    "native/steamaudio/include/phonon.h",
 )
 
+# Saved documents that are still generated: a template sheet and a gallery wrapper both sit
+# beside a metadata.edn, and GENERATED_DIRS must win over the document rule.
 GENERATED = (
     "src/generatedLinalg/kotlin/afield/stdlib/linalg/Vectors.kt",
-    "public/docs/assets/canonical_graphics/05adaae8-82c5-4273-b3b2-8db72b4a3435_code_.kt",
+    "templates/first-steps/first_steps_drawing_code_.kt",
+    "public/docs/assets/stacksl_gallery/auto-after_code_.kt",
     "templates/remote/_code_.kt",
+)
+
+# Box code in saved documents: starting points, graphics lessons, agent demos.
+EXAMPLES = (
+    "public/docs/assets/agent_transcripts/confluence_grid/confluence_grid_code_.kt",
+    "public/docs/assets/canonical_graphics/05adaae8-82c5-4273-b3b2-8db72b4a3435_code_.kt",
+    "public/docs/assets/canonical_graphics/c1046457-6538-4bb2-84ab-b3ba06f0d557_compute_.glsl",
+    "dev_docs/agents/demos/confluence_grid/8b9d6031-73d8-4a82-95db-b40acfdd2806_code_.kt",
 )
 
 OURS = (
@@ -102,21 +128,48 @@ OURS = (
     # SubmoduleTest, because it does not appear in Field4's own history at all.
     "tools/run_field_tests.py",
     "tools/field_backdoor.py",
+    # native/: the Field side of the paint engine, our C/C++/ObjC helpers, Go, shaders.
+    "native/field-paint/src/lib.rs",
+    "native/ken-ceres/src/ken_ceres.cpp",
+    "native/field-syphon/field_syphon.m",
+    "native/field-encode-linux/src/Engine.hpp",
+    "native/field-d2-layout/main.go",
+    "native/field-opendlssnr/shaders/field_nr_preprocess.comp",
+    "src/jvmMain/resources/afield/four/pathtracing/trace.comp",
 )
 
 
 class ClassifyTest(unittest.TestCase):
     def test_vendored(self) -> None:
         for path in VENDORED:
-            self.assertEqual(classify(path), "vendored", path)
+            self.assertEqual(classify(path, documents_ever()), "vendored", path)
 
     def test_generated(self) -> None:
         for path in GENERATED:
-            self.assertEqual(classify(path), "generated", path)
+            self.assertEqual(classify(path, documents_ever()), "generated", path)
 
     def test_ours(self) -> None:
         for path in OURS:
+            self.assertEqual(classify(path, documents_ever()), "ours", path)
+
+    def test_examples(self) -> None:
+        for path in EXAMPLES:
+            self.assertEqual(classify(path, documents_ever()), "examples", path)
+
+    def test_examples_need_a_document_beside_them(self) -> None:
+        """The rule is the metadata.edn in the same folder, not the folder's name."""
+        for path in EXAMPLES:
             self.assertEqual(classify(path), "ours", path)
+        nested = "public/docs/assets/agent_transcripts/confluence_grid/sub/x_code_.kt"
+        self.assertEqual(classify(nested, documents_ever()), "ours")
+
+    def test_forked_crate_keeps_our_subtree(self) -> None:
+        """`vendor/paint` is alice's crate except `src/field/`, which is Field's own."""
+        crate = "native/field-paint/vendor/paint/src"
+        self.assertEqual(classify(f"{crate}/field/aqueous.rs"), "ours")
+        self.assertEqual(classify(f"{crate}/field/mod.rs"), "ours")
+        self.assertEqual(classify(f"{crate}/canvas.rs"), "vendored")
+        self.assertEqual(classify(f"{crate}/lib.rs"), "vendored")
 
     def test_our_code_is_not_shadowed_by_a_vendor_rule(self) -> None:
         """`remote_ar/` holds our code beside a `vendor/` drop — the split must stay exact."""
@@ -129,14 +182,14 @@ class RulesStillMatchHistoryTest(unittest.TestCase):
     """A rule matching nothing in *any* commit is dead weight or a typo."""
 
     def test_sample_paths_are_real(self) -> None:
-        for path in VENDORED + GENERATED + OURS:
+        for path in VENDORED + GENERATED + EXAMPLES + OURS:
             self.assertIn(path, paths_ever(), f"{path} was never in the repo — fix the sample")
 
     def test_every_dir_rule_matches_something(self) -> None:
         ever = paths_ever()
         for frag in VENDORED_DIRS:
             self.assertTrue(any(frag in p for p in ever), f"no file ever matched {frag!r}")
-        for prefix in GENERATED_DIRS:
+        for prefix in GENERATED_DIRS + OURS_DIRS:
             self.assertTrue(any(p.startswith(prefix) for p in ever),
                             f"no file ever matched {prefix!r}")
 
@@ -257,15 +310,62 @@ class SubmoduleCheckoutContractTest(unittest.TestCase):
 
 
 class LanguageSetTest(unittest.TestCase):
-    def test_counted_extensions_match_langs(self) -> None:
-        for lang in LANGS:
-            self.assertTrue(COUNTED_EXT.search(f"x.{lang}"), lang)
-            self.assertEqual(language(f"x.{lang}"), lang)
+    def test_counted_extensions_map_into_langs(self) -> None:
+        for ext, lang in EXT_LANG.items():
+            self.assertTrue(COUNTED_EXT.search(f"x.{ext}"), ext)
+            self.assertEqual(language(f"x.{ext.upper()}"), lang)
+            self.assertIn(lang, LANGS, ext)
+
+    def test_every_lang_has_an_extension(self) -> None:
+        self.assertEqual(set(EXT_LANG.values()), set(LANGS))
 
     def test_uncounted_languages_stay_out(self) -> None:
-        """native/ also holds C++ and headers; they are not part of this count."""
-        for path in ("native/field-encode/Sources/x.cpp", "a/b.hpp", "a/b.h", "a/b.md"):
+        """Java is jextract output; Markdown is measured as docs, not code."""
+        for path in ("src/jvmMain/java/afield/X.java", "a/b.md", "a/b.yaml", "a/metadata.edn",
+                     "a/x_stackSL_.stacksl"):
             self.assertIsNone(COUNTED_EXT.search(path), path)
+
+
+class DocsTest(unittest.TestCase):
+    def test_nav_pages_reads_only_the_nav_block(self) -> None:
+        config = "\n".join((
+            "site_name: Field",
+            "docs_dir: not_a_page.md",
+            "nav:",
+            "  - Home: index.md",
+            "  # a comment naming commented_out.md",
+            "  - Tour:",
+            "    - First: tour/first.md  # trailing comment.md",
+            "    - \"Quoted\": 'quoted.md'",
+            "    - bare.md",
+            "    - Elsewhere: https://example.com/remote.md",
+            "    - Again: index.md",
+            "",
+            "markdown_extensions:",
+            "  - after.md",
+        ))
+        self.assertEqual(nav_pages(config),
+                         ["index.md", "tour/first.md", "quoted.md", "bare.md"])
+
+    def test_generated_page_markers(self) -> None:
+        for head in (b"<!-- DO NOT EDIT \xe2\x80\x94 generated by afield.tools.docs.Gen -->\n# Math",
+                     b"<!-- Generated by scripts/generate-docs.py; do not edit. -->\n"):
+            self.assertTrue(GENERATED_PAGE.match(head), head)
+        for head in (b"# Graphics\n<!-- generated by nobody -->",
+                     b"Pages generated by the runner are listed below.\n"):
+            self.assertIsNone(GENERATED_PAGE.match(head), head)
+
+    def test_head_skips_the_kdoc_reference_and_counts_the_rest(self) -> None:
+        head = _git(REPO_ROOT, "rev-parse", "HEAD").strip()
+        record = docs_lines({head}, 1)[head]
+        generated = {page for _, page in record["generated"]}
+        counted = {page for _, page in record["counted"]}
+        self.assertIn("reference/math.md", generated)
+        self.assertIn("linear_algebra_api.md", generated)
+        self.assertFalse({p for p in counted if p.startswith("reference/")},
+                         "a reference/ page lost its DO NOT EDIT header")
+        self.assertIn("index.md", counted)
+        self.assertEqual(record["missing"], [])
 
 
 if __name__ == "__main__":

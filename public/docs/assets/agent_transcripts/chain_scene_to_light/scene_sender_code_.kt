@@ -1,5 +1,5 @@
-import afield.dmx.*
-import afield.rectsl.*
+import afield.io.dmx.*
+import afield.lang.rectsl.*
 
 // A RectSL scene, drawn on the CPU, on a light rig. Edit the scene and launch again: the receiver
 // box shows what arrives. (Try the line's width, 0.25 ->wh below, or area = false further down.)

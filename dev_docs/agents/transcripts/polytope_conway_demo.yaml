@@ -1,6 +1,6 @@
 name: polytope_conway_demo
 description: >
-  One editable Field box for the afield.stdlib.polytope vertical slice. It marks the two opposite
+  One editable Field box for the afield.geometry.polytope vertical slice. It marks the two opposite
   square faces of a cube with different height attributes, selects those faces, applies kis only
   there, and sends the resulting polygonal face FLines to Field's on-canvas Three.js viewer.
   Orbit the result, hover a face, or click it to inspect its output id, Conway provenance, source
@@ -13,7 +13,6 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 400.0, h: 100.0 }
       properties:
         code: |
-          import afield.stdlib.polytope.*
 
           // Topology is the source of truth. Coordinates and the FLine viewer only arrive after
           // selection and the abstract Conway operation have decided what the new faces are.

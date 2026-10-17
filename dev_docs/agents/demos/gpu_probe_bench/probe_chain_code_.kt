@@ -1,7 +1,4 @@
-import afield.four.modules.fromContext
-import afield.four.util.GpuProbe
-
-val renderer: Renderer = fromContext()
+import afield.graphics.vulkan.util.GpuProbe
 
 // The chain the workspace document actually runs, at a size that fits in a box.
 //

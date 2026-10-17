@@ -19,7 +19,7 @@ installAiChatFenceCatalog().then(rerenderOpenChats)
         .catch(error => console.warn("AI4 fence catalog unavailable:", error));
 
 // The tool families a round's summary line counts ("2 notes · 1 edit"); the chat archive reads the
-// same file (afield.chatlog). Without it a round still shows its calls, time and failures.
+// same file (afield.ai.conversation.chatlog). Without it a round still shows its calls, time and failures.
 fetch(new URL("./ai4-chat-tool-families.json", import.meta.url))
         .then(response => {
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -388,6 +388,9 @@ function disclosureInterface(container) {
                 return !hasConcreteCssSize(iframe.style.width) &&
                         !hasConcreteCssSize(iframe.getAttribute("width") || "");
         }
+        // The one fill-frame test: the screenshot preparation in Main.kt asks this rather than
+        // keeping a copy of its own.
+        window.fieldIsFillWidthIframe = isFillWidthIframe;
 
         // The honest natural width for a fill frame is the room the owning box gives the panel:
         // from the panel's own left edge to the box's right edge. Measuring outwards like this is
@@ -1150,7 +1153,13 @@ function disclosureInterface(container) {
                 }
 
                 if (!d.contentMutationObserver && typeof MutationObserver !== "undefined") {
-                        d.contentMutationObserver = new MutationObserver(() => {
+                        // A control's transient UI (the slider's type-in field) is not
+                        // content: re-running auto-size for it shrinks the panel mid-edit.
+                        const isTransient = (n) => n.nodeType === 1 && n.classList.contains("field-transient");
+                        d.contentMutationObserver = new MutationObserver((records) => {
+                                if (records.every((r) => r.type === "childList"
+                                        && [...r.addedNodes, ...r.removedNodes].length > 0
+                                        && [...r.addedNodes, ...r.removedNodes].every(isTransient))) return;
                                 bindContentLoadEvents(id, d);
                                 observeContentTargets(id, d);
                                 markContentChanged(id, "mutation");
@@ -2146,9 +2155,10 @@ function ensureAiChat(container, uid, property) {
                         "**Commands**",
                         "- `/help` show available commands",
                         "- `/clear` delete this box’s saved conversation and start fresh",
-                        "- `/screenshot [window]` capture an `afield.four` window and attach it as an image",
+                        "- `/screenshot [window]` capture a Field 4 window and attach it as an image",
                         "- `/context` show what the last AI turn was told besides the conversation, and its size",
                         "- `/branches` list this conversation's branches (made by rewinding or editing a message); `/branch <#>` switch to one",
+                        "- `/stop-waiting` stop waiting for the builds the agent's last turn awaited (the builds keep running)",
                         "- `/box \"box name\"/property` reference a box property in the conversation",
                         "",
                         "`[window]` can be a 1-based window number or part of a window title. Quotes around box names are optional when the name/property split is unambiguous."
@@ -2322,6 +2332,20 @@ function ensureAiChat(container, uid, property) {
                         sendWithReply("ai-chat-context", {uid: targetUid},
                                 `ai-chat-context-${targetUid}-${Date.now()}`, (_message, response) => {
                                         if (chatUid() === targetUid) appendLocalChatTurn("ai", response?.markdown || "_No context report._");
+                                        return "remove";
+                                });
+                        return true;
+                }
+
+                if (command === "stop-waiting") {
+                        textarea.value = "";
+                        const targetUid = chatUid();
+                        // The server ends the wait (StudyBuildAwaits) and returns the transcript with its waiting row closed.
+                        sendWithReply("ai-chat-history", {uid: targetUid, stopWaiting: true},
+                                `ai-chat-stop-waiting-${targetUid}-${Date.now()}`, (_message, response) => {
+                                        if (chatUid() !== targetUid) return "remove";
+                                        if (typeof response?.history === "string") aiChatUpdate(container, targetUid, response.history);
+                                        if (response?.message) appendLocalChatTurn("ai", response.message);
                                         return "remove";
                                 });
                         return true;

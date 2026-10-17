@@ -20,6 +20,9 @@
         .artifact-tabs button.active { border-color: var(--field-cyan); color: var(--field-cyan); }
         .paths td:first-child { color: var(--soft); white-space: nowrap; width: 8em; }
         .paths td:last-child { color: var(--accent); overflow-wrap: anywhere; }
+        details.fold > summary { cursor: pointer; color: var(--soft); margin-top: 10px; }
+        details.fold[open] > summary { margin-bottom: 8px; }
+        .chat-frame { display: block; width: 100%; height: 120px; margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; background: #000; }
         .worktree-list { display: grid; gap: 8px; margin-top: 10px; }
         .worktree-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; }
         .worktree-title { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
@@ -28,15 +31,7 @@
         .worktree-path { margin-top: 4px; color: var(--soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .worktree-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
         .worktree-actions button { padding: 5px 10px; }
-        #artifact-body { max-height: 70vh; overflow: auto; margin-top: 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; line-height: 1.5; }
-        #artifact-body.empty { color: var(--soft); }
-        .markdown h1, .markdown h2, .markdown h3 { margin: 0.9em 0 0.35em; font-size: 14px; font-weight: 400; color: var(--field-cyan); text-transform: none; letter-spacing: 0; display: block; }
-        .markdown h1:first-child, .markdown h2:first-child, .markdown h3:first-child, .markdown p:first-child { margin-top: 0; }
-        .markdown p { color: var(--text); margin: 0.5em 0; }
-        .markdown ul { margin: 0.4em 0 0.7em 1.4em; padding: 0; }
-        .markdown pre { padding: 8px 10px; background: rgba(0, 0, 0, 0.6); border: 1px solid var(--field-border); border-radius: 7px; }
-        .patch-view { white-space: pre-wrap; overflow-wrap: anywhere; }
-        #transcript { max-height: 40vh; overflow: auto; margin-top: 10px; color: var(--soft); }
+        #transcript { max-height: 40vh; overflow: auto; color: var(--soft); }
     </style>
 </head>
 <body class="field-webgl-page">
@@ -69,15 +64,30 @@
             <button id="run-apply" type="button">Generate proposal</button>
             <button id="clear-reviewed" type="button">Mark reviewed</button>
         </div>
-        <table class="paths">
-            <tr><td>log dir</td><td id="log-dir"></td></tr>
-            <tr><td>report</td><td id="report-path"></td></tr>
-            <tr><td>dry patch</td><td id="patch-path"></td></tr>
-        </table>
+        <p id="next-step">Run a review to generate a report and patch.</p>
+        <details class="fold">
+            <summary>files</summary>
+            <table class="paths">
+                <tr><td>log dir</td><td id="log-dir"></td></tr>
+                <tr><td>transcript</td><td id="transcript-path"></td></tr>
+                <tr><td>report</td><td id="report-path"></td></tr>
+                <tr><td>dry patch</td><td id="patch-path"></td></tr>
+            </table>
+        </details>
     </section>
 
     <section>
-        <h2>2 · Proposals <span class="count" id="worktree-summary">none</span></h2>
+        <h2>2 · Run <span class="count" id="run-summary"></span></h2>
+        <p id="message">Ready.</p>
+        <iframe id="transcript-frame" class="chat-frame" src="/ai-chat-view.html" title="Agent transcript"></iframe>
+        <details class="fold">
+            <summary>raw task log</summary>
+            <pre id="transcript" class="log">No task output yet.</pre>
+        </details>
+    </section>
+
+    <section id="proposals-section" hidden>
+        <h2>Proposals <span class="count" id="worktree-summary">none</span></h2>
         <div id="worktree-list" class="worktree-list"></div>
     </section>
 
@@ -89,14 +99,7 @@
                 <button id="show-patch" type="button">Patch</button>
             </div>
         </div>
-        <p id="next-step">Run a review to generate a report and patch.</p>
-        <div id="artifact-body" class="empty">No report yet.</div>
-    </section>
-
-    <section>
-        <h2>Task log</h2>
-        <p id="message">Ready.</p>
-        <pre id="transcript" class="log">No task output yet.</pre>
+        <iframe id="artifact-frame" class="chat-frame" src="/ai-chat-view.html" title="Report and patch"></iframe>
     </section>
 </main>
 
@@ -105,6 +108,10 @@
     let latestStatus = null;
     let socket = null;
     let artifactMode = "report";
+    let view = {};
+    let viewStamp = null;
+    // The transcript frame grows to this and then scrolls; the output frame likewise.
+    const FRAME_CAP = { "transcript-frame": 0.72, "artifact-frame": 0.75 };
 
     function websocketUrl() {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -133,102 +140,49 @@
         }[ch]));
     }
 
-    function inlineMarkdown(text) {
-        return escapeHtml(text)
-            .replace(/`([^`]+)`/g, "<code>$1</code>")
-            .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-    }
-
-    function renderMarkdown(markdown) {
-        const lines = String(markdown || "").split(/\r?\n/);
-        const parts = [];
-        let list = [];
-        let code = [];
-        let inCode = false;
-
-        function flushList() {
-            if (!list.length) return;
-            parts.push(`<ul>${list.map((item) => `<li>${inlineMarkdown(item)}</li>`).join("")}</ul>`);
-            list = [];
+    function postToFrame(id, html, follow) {
+        const frame = document.getElementById(id);
+        frame.__pending = { type: "ai-chat-view", html, follow };
+        // Same origin, so a frame that announced itself before this page listened is still seen as loaded.
+        if (frame.__ready || frame.contentDocument?.getElementById("messages")) {
+            frame.__ready = true;
+            frame.contentWindow?.postMessage(frame.__pending, "*");
         }
-
-        function flushCode() {
-            if (!code.length) return;
-            parts.push(`<pre><code>${escapeHtml(code.join("\n"))}</code></pre>`);
-            code = [];
-        }
-
-        lines.forEach((line) => {
-            const trimmed = line.trim();
-            if (trimmed.startsWith("```")) {
-                if (inCode) {
-                    inCode = false;
-                    flushCode();
-                } else {
-                    flushList();
-                    inCode = true;
-                }
-                return;
-            }
-            if (inCode) {
-                code.push(line);
-                return;
-            }
-            if (!trimmed) {
-                flushList();
-                return;
-            }
-            const heading = /^(#{1,3})\s+(.+)$/.exec(trimmed);
-            if (heading) {
-                flushList();
-                const level = heading[1].length;
-                parts.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
-                return;
-            }
-            const bullet = /^[-*]\s+(.+)$/.exec(trimmed);
-            if (bullet) {
-                list.push(bullet[1]);
-                return;
-            }
-            flushList();
-            parts.push(`<p>${inlineMarkdown(trimmed)}</p>`);
-        });
-        flushList();
-        if (inCode || code.length) flushCode();
-        return parts.join("") || "<p>No report text.</p>";
     }
 
     function renderArtifacts(status) {
-        const body = document.getElementById("artifact-body");
         const next = document.getElementById("next-step");
-        const reportButton = document.getElementById("show-report");
-        const patchButton = document.getElementById("show-patch");
-        const report = status?.reportMarkdown || "";
-        const patch = status?.dryRunPatch || "";
-        reportButton.classList.toggle("active", artifactMode === "report");
-        patchButton.classList.toggle("active", artifactMode === "patch");
+        document.getElementById("show-report").classList.toggle("active", artifactMode === "report");
+        document.getElementById("show-patch").classList.toggle("active", artifactMode === "patch");
 
         if (status?.running) {
             next.textContent = status.dryRun
-                ? "Review is running. The report and patch will appear here when it finishes."
+                ? "Review is running; follow it under Run. The report and patch appear under Output when it finishes."
                 : "A proposal worktree is running. When it is ready, review it below and use Merge to apply it.";
         } else if ((status?.worktrees || []).some((proposal) => proposal.status === "ready")) {
             next.textContent = "Next: inspect the ready proposal below, then use Merge to apply it to a clean checkout.";
-        } else if (report || patch) {
-            next.textContent = "Next: use Generate proposal for a real worktree, or apply the dry-run patch manually from the path above.";
+        } else if (view.reportHtml || view.patchHtml) {
+            next.textContent = "Next: use Generate proposal for a real worktree, or apply the dry-run patch by hand.";
         } else {
-            next.textContent = "Run Review logs to generate a formatted report and dry-run patch.";
+            next.textContent = "Review logs runs an agent over the recent logs; it writes a report and a dry-run patch.";
         }
 
-        if (artifactMode === "patch") {
-            body.className = patch ? "" : "empty";
-            body.innerHTML = patch
-                ? `<pre class="patch-view">${escapeHtml(patch)}</pre>`
-                : "No dry-run patch yet.";
-        } else {
-            body.className = report ? "markdown" : "empty";
-            body.innerHTML = report ? renderMarkdown(report) : "No report yet.";
-        }
+        postToFrame("transcript-frame", view.transcriptHtml
+            || `<div class="empty">${status?.running ? "Starting..." : "No run yet. Review logs starts one."}</div>`, !!status?.running);
+        postToFrame("artifact-frame", artifactMode === "patch"
+            ? (view.patchHtml || `<div class="empty">No dry-run patch yet.</div>`)
+            : (view.reportHtml || `<div class="empty">No report yet.</div>`), false);
+    }
+
+    async function refreshView(status) {
+        if (!status || status.viewStamp === viewStamp) return;
+        try {
+            const response = await fetch("/api/ai-tool-use-improvement/view", { cache: "no-store" });
+            if (!response.ok) return;
+            view = await response.json();
+            viewStamp = status.viewStamp;
+            renderArtifacts(latestStatus);
+        } catch (_) {}
     }
 
     function render(status) {
@@ -248,8 +202,13 @@
         document.getElementById("log-dir").textContent = logs.logDir || "";
         document.getElementById("report-path").textContent = logs.reportPath || "";
         document.getElementById("patch-path").textContent = logs.dryRunPatchPath || "";
+        document.getElementById("transcript-path").textContent = latestStatus.transcriptPath || "";
+        document.getElementById("run-summary").textContent = latestStatus.taskName
+            ? `${latestStatus.taskName} · ${state}${latestStatus.startedAtEpochMs ? ` · started ${new Date(latestStatus.startedAtEpochMs).toLocaleTimeString()}` : ""}`
+            : "";
         renderWorktrees(latestStatus.worktrees || []);
         renderArtifacts(latestStatus);
+        refreshView(latestStatus);
 
         const recent = Number(logs.recentLogCount) || 0;
         const reviewButton = document.getElementById("run-review");
@@ -272,6 +231,7 @@
         const list = document.getElementById("worktree-list");
         const proposals = Array.isArray(worktrees) ? worktrees : [];
         summary.textContent = proposals.length ? countLabel(proposals.length, "proposal") : "none";
+        document.getElementById("proposals-section").hidden = proposals.length === 0;
         list.innerHTML = proposals.map((proposal) => {
             const id = escapeHtml(proposal.id || "");
             const label = escapeHtml(proposal.label || proposal.taskName || "generated proposal");
@@ -406,6 +366,17 @@
         });
     }
 
+    window.addEventListener("message", (event) => {
+        const frame = [...document.querySelectorAll(".chat-frame")].find((f) => f.contentWindow === event.source);
+        if (!frame) return;
+        if (event.data?.type === "ai-chat-view-ready") {
+            frame.__ready = true;
+            if (frame.__pending) frame.contentWindow.postMessage(frame.__pending, "*");
+        } else if (event.data?.type === "ai-chat-view-height") {
+            const cap = Math.round(window.innerHeight * (FRAME_CAP[frame.id] || 0.7));
+            frame.style.height = `${Math.max(60, Math.min(cap, Math.ceil(event.data.height) + 2))}px`;
+        }
+    });
     document.getElementById("run-review").addEventListener("click", () => run(true));
     document.getElementById("run-apply").addEventListener("click", () => run(false));
     document.getElementById("clear-reviewed").addEventListener("click", clearReviewedLogs);

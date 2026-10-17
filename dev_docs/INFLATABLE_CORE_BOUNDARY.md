@@ -10,7 +10,7 @@ Field owns reusable mechanisms, with no dependency on `src/personal`:
 | Three.js panel cameras, dolly, picking, editing commit callbacks and unlit colors | Study-specific selection, stress legends, draft history and saved solutions |
 | Output replay, responsive control groups, configurable JVM heap | Architectural documents, experiments and evidence |
 
-Core pressure API: `afield.four.physics.pressure`. See `public/docs/pressure_membranes.md`.
+Core pressure API: `afield.simulation.physics.pressure`. See `public/docs/pressure_membranes.md`.
 The private `inflatables.Physics.kt` exposes compatibility type aliases and explicit
 `studyFilm`, `studyLoad`, and `studyTape` factories. It contains no solver. Private
 shape diagnostics delegate generic checks and retain only the network seam check.

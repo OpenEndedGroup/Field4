@@ -1,10 +1,11 @@
-import afield.four.synth.*
 import java.io.File
 
-// 2 - Read it back, and check the round trip actually held.
-//
-// Run box 1 first. This reads the file with no knowledge of what wrote it: the PPQ,
-// tempo map, track split and track names all come out of the file itself.
+/*
+2 - Read it back, and check the round trip actually held.
+
+Run box 1 first. This reads the file with no knowledge of what wrote it: the PPQ,
+tempo map, track split and track names all come out of the file itself.
+*/
 val file = File(System.getProperty("java.io.tmpdir"), "field-midi-demo.mid")
 require(file.isFile) { "run box 1 first - no file at ${file.absolutePath}" }
 
@@ -35,5 +36,6 @@ markdown(
     `${firstCycle.sortedBy { it.arc.start }.map { it.value }.joinToString(" ")}`.
 
     The roll above is drawn from the *file*, not from the clip box 1 held in memory.
-    """.trimIndent()
+    """
+        .trimIndent(),
 )

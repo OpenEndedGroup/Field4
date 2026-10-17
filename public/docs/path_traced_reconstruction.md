@@ -1,12 +1,12 @@
 # Ray Reconstruction for the path tracer
 
-The path tracer can now send its current frame directly to the same Ray Reconstruction adapter used by [RTXDI lighting](ray_reconstruction.md). This includes indirect bounces, glossy reflections and an area emitter. The raw signal and progressive accumulation remain available for comparison.
+The path tracer can send its current frame directly to the same Ray Reconstruction adapter used by [RTXDI lighting](ray_reconstruction.md). This includes indirect bounces, glossy reflections and an area emitter. The raw signal and progressive accumulation remain available for comparison.
 
 ![Multi-bounce path tracing reconstructed at 1920 by 1080](assets/path_traced_reconstruction/reconstructed.png)
 
 ## Open the scene
 
-Open **Starting points → path_traced_reconstruction**, after the [optional NGX setup](neural_reconstruction.md). The scene contains a diffuse floor, plastic and metallic spheres, and an area emitter. It renders at **1920 × 1080** with one sample per pixel per frame.
+Open the [path_traced_reconstruction](agent_transcripts.md#path_traced_reconstruction) Starting Point, after the [optional NGX setup](neural_reconstruction.md#optional-installation). The scene contains a diffuse floor, plastic and metallic spheres, and an area emitter. It renders at **1920 × 1080** with one sample per pixel per frame.
 
 Choose **Raw**, **Progressive** or **RR** without restarting. **Move camera** tests reprojection; **Cut camera and reset** deliberately changes the view and discards reconstruction history. Samples per frame controls the actual integrator. The raw view stays noisy because it shows a single dispatch before any temporal accumulation.
 
@@ -41,7 +41,7 @@ This records **path tracing → guide conversion → NGX** on Field's graphics q
 
 The primary visibility sample uses the adapter's Halton jitter. UI and display tone mapping occur afterwards. Material shader revisions and tracer configuration resets invalidate reconstruction history; explicit cuts and other appearance edits use `lab.reset()`. Recreate the adapter for changed input/output dimensions. The input images belong to the tracer and are borrowed by NGX until the tracer closes.
 
-`tracer.enableFrameOutput()` also exposes these images without NGX. That lets your own `Target` inspect or process raw lighting, depth, motion and guides. The existing [reconstruction plumbing](reconstruction_plumbing.md) page explains the generic image contract; the difference here is that the path integrator produces the guides itself.
+`tracer.enableFrameOutput()` also exposes these images without NGX. That lets your own `Target` inspect or process raw lighting, depth, motion and guides. The [reconstruction plumbing](reconstruction_plumbing.md) page explains the generic image contract; the difference here is that the path integrator produces the guides itself.
 
 ## Put a material shader in the box
 
@@ -50,9 +50,7 @@ The scene above starts with Kotlin material values. To edit their appearance in 
 ```diffstatic {data-lang=kotlin}
 val tracer = pathTracingHere(scene, PathTraceEnvironment.constant(.08f, .1f, .15f),
     width = 1920, height = 1080, camera = camera, name = "rr-materials")
-// pathTracingHere installs standalone passes. Hand scheduling over to RR:
-renderer.computeList.others.remove(tracer.name, tracer)
-renderer.renderList.preTargets.remove("${tracer.name}-output")
+// install() takes over the standalone passes pathTracingHere scheduled.
 lab = PathTracedReconstruction(tracer).install()
 ```
 
@@ -79,16 +77,18 @@ Use **Update Compute Shader**, then change `8.0` to vary the stripe frequency or
 
 ## Quality and cost
 
-The GPU check compares both raw one-sample lighting and RR against a much longer progressive reference of the same static scene. It also verifies an analytical plane's radiance, depth and known camera translation in both compute-BVH and ray-query backends, then exercises moving cameras, cuts, two resolutions and recreation under Vulkan validation.
+Error is measured against a much longer progressive reference of the same static scene. At 1920 × 1080 on the RTX 4090, a warmed run measured **11.86 ms median / 12.16 ms p95** for the complete pass, including **6.09 / 6.22 ms** in NGX. Raw RGB MSE was **0.01934**, versus **0.0000689** after RR against the progressive reference. Guide storage was **308 MiB**; NGX’s internal allocation query returned zero, so its memory remains unknown. These are this scene’s results with automatic GPU clocks and Wayland presentation, not fixed-clock throughput benchmarks.
 
-At 1920 × 1080 on the RTX 4090, the final warmed run measured **11.86 ms median / 12.16 ms p95** for the complete pass, including **6.09 / 6.22 ms** in NGX. Raw RGB MSE was **0.01934**, versus **0.0000689** after RR against the progressive reference. Guide storage was **308 MiB**; NGX’s internal allocation query returned zero, so its memory remains unknown. These are this scene’s results with automatic GPU clocks and Wayland presentation, not fixed-clock throughput benchmarks.
-
-The [measurement record](assets/path_traced_reconstruction/measurements.json) contains raw/reference error, reconstructed/reference error, separate NGX and complete-pass time distributions, and guide storage at 960 × 540 and 1920 × 1080. Timings come from a continuous warmed run, separate from PNG capture. The guide path uses a 96-byte record per input pixel plus seven images, so its memory is substantial; it is an inspectable first integration rather than a compact final packing.
+The [measurement record](assets/path_traced_reconstruction/measurements.json) contains raw/reference error, reconstructed/reference error, separate NGX and complete-pass time distributions, and guide storage at 960 × 540 and 1920 × 1080. Timings come from a continuous warmed run, separate from PNG capture. The guide path uses a 96-byte record per input pixel plus seven images, so its memory cost is substantial.
 
 ![Raw one-sample multi-bounce lighting](assets/path_traced_reconstruction/raw.png)
 
+??? aside "What the GPU check covers"
+
+    Besides the error comparison above, the GPU check verifies an analytical plane's radiance, depth and known camera translation in both compute-BVH and ray-query backends, then exercises moving cameras, cuts, two resolutions and recreation under Vulkan validation.
+
 ## Current boundaries
 
-This adapter supports **opaque diffuse and glossy surfaces with a pinhole camera**. It explicitly rejects transmission/coverage materials, participating media, fog and depth of field. Those effects need different correspondence and guide treatment; their existing progressive path-tracing modes remain available. Scene geometry is a snapshot: changing geometry recreates the tracer rather than implying that object motion vectors have been supplied.
+This adapter supports **opaque diffuse and glossy surfaces with a pinhole camera**. It explicitly rejects transmission/coverage materials, participating media, fog and depth of field. Those effects need different correspondence and guide treatment; use the progressive path-tracing modes for them. Scene geometry is a snapshot: changing geometry recreates the tracer rather than implying that object motion vectors have been supplied.
 
-RR is optional. It may suppress an intentional noisy or unstable appearance, and a lower static error does not prove that every moving highlight remains faithful. Keep the raw view and test your own shader edits and abrupt changes. The existing path tracer, compute fallback and RTXDI reconstruction path retain their own interfaces.
+RR is optional. It may suppress an intentional noisy or unstable appearance, and a lower static error does not prove that every moving highlight remains faithful. Keep the raw view and test your own shader edits and abrupt changes.

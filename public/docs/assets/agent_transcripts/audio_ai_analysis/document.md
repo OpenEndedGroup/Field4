@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 1 · analysis guide and jobs
@@ -11,11 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="analysis_guide" index="0" -->
 
 ```edn [field-box id="analysis_guide" role="properties"]
-{"id" "analysis_guide" "index" 0 "name" "1 · analysis guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · analysis guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_guide_code_.kt" "lines" 10 "characters" 1040 "sha256" "dab10c36384979e9e50799a3912b41a878ae7c458d0b604c2b475ac802593938"}]}
+{"id" "analysis_guide" "index" 0 "name" "1 · analysis guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · analysis guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_guide_code_.kt" "lines" 9 "characters" 1004 "sha256" "fecd2d3655e66e40d984c334b2584cfc6e3d6583dab6e2f44df0d0ecd7c9362c"}]}
 ```
 
 ```kotlin [field-property box="analysis_guide" name="code" path="analysis_guide_code_.kt"]
-import afield.stdlib.noir.audioai.*
 
 display("guide", """
 <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
@@ -32,12 +31,11 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="analysis_visualizer_gallery" index="1" -->
 
 ```edn [field-box id="analysis_visualizer_gallery" role="properties"]
-{"id" "analysis_visualizer_gallery" "index" 1 "name" "2 · synchronized visualizer gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized visualizer gallery" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_visualizer_gallery_code_.kt" "lines" 54 "characters" 2824 "sha256" "b3dfa73cde5fe498e066d06925a75325b68ab412caa4facaeeef22ce1d055d3e"}]}
+{"id" "analysis_visualizer_gallery" "index" 1 "name" "2 · synchronized visualizer gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized visualizer gallery" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_visualizer_gallery_code_.kt" "lines" 53 "characters" 2766 "sha256" "e18724c9825a372d043481f4778ebff31e30ef70a9aa808387f1eeda29f341c9"}]}
 ```
 
 ```kotlin [field-property box="analysis_visualizer_gallery" name="code" path="analysis_visualizer_gallery_code_.kt"]
-import afield.stdlib.*
-import afield.stdlib.noir.audioai.*
+
 
 val gallerySync = "analysis-gallery"
 val galleryRate = 8_000
@@ -97,12 +95,11 @@ display("analysis board", analysisPreviewDashboardHtml(
 <!-- field-box id="analyse_nancy" index="2" -->
 
 ```edn [field-box id="analyse_nancy" role="properties"]
-{"id" "analyse_nancy" "index" 2 "name" "3 · submit, monitor, await, visualize Nancy" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, await, visualize Nancy" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_nancy_code_.kt" "lines" 55 "characters" 2494 "sha256" "830593624ed4d0c9c212c71dc1e9b118c9480b74f85df5bc111fd4c2af8e6051"}]}
+{"id" "analyse_nancy" "index" 2 "name" "3 · submit, monitor, await, visualize Nancy" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, await, visualize Nancy" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_nancy_code_.kt" "lines" 54 "characters" 2468 "sha256" "bd7075e7ffe7cdb7b81538d2b763d685cef4594c3231cdacf52e5dc7583d8e43"}]}
 ```
 
 ```kotlin [field-property box="analyse_nancy" name="code" path="analyse_nancy_code_.kt"]
-import afield.stdlib.AudioVisualizerOptions
-import afield.stdlib.noir.audioai.*
+import afield.ui.visualization.AudioVisualizerOptions
 import java.util.concurrent.CompletableFuture
 
 val client = FieldAudioClient()

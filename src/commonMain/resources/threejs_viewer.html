@@ -1130,9 +1130,14 @@ function typedArrayCtor(type) {
     return Float32Array;
 }
 
+/**
+ * Always a copy. A description's arrays are typed views of its buffer response, and handing one to a
+ * BufferAttribute uncopied would let the explode, which writes positions in place, rewrite the message
+ * the viewer keeps (`wireState.base`) to redraw after a style change.
+ */
 function typedArrayFromSpec(spec, fallbackType = 'Float32Array') {
     const Ctor = typedArrayCtor(spec?.type || fallbackType);
-    return spec?.array instanceof Ctor ? spec.array : new Ctor(spec?.array || []);
+    return new Ctor(spec?.array || []);
 }
 
 function makeDynamicAttribute(spec, fallbackType = 'Float32Array') {
@@ -1661,10 +1666,7 @@ function interactiveSlotOptions(kind, hoverColor) {
                 alpha: { itemSize: 1, fill: 1 }
             },
             makeMaterial: () => makeInteractiveLineMaterial(hoverColor),
-            configureObject: (object, material) => {
-                object.userData.interactiveMat = material;
-                if (Number.isFinite(d.style?.xrayOpacity)) material.userData.fieldXrayOpacity = d.style.xrayOpacity;
-            },
+            configureObject: (object, material) => { object.userData.interactiveMat = material; },
             afterUpdate: (slot) => updateHoverMaterial(slot.material, hoverColor)
         };
     }
@@ -3357,7 +3359,14 @@ function addPayloadDrawables(list) {
             },
             // `setInteractiveHover` reaches for this by name on whatever mesh it was handed, so a
             // hovering solid has to carry it exactly as an interactive FLine fill does.
-            configureObject: (object, material) => { object.userData.interactiveMat = material; }
+            //
+            // A part's own x-ray opacity (ThreePartAppearance.xrayOpacity) belongs here too. It sat in the
+            // interactive-lines options from 2026-10-04 to 10-07, where `d` is not defined: every
+            // clickable stroked FLine threw on build, and no part's x-ray opacity was ever applied.
+            configureObject: (object, material) => {
+                object.userData.interactiveMat = material;
+                if (Number.isFinite(d.style?.xrayOpacity)) material.userData.fieldXrayOpacity = d.style.xrayOpacity;
+            }
         });
         if (!slot) return;
 
@@ -3461,14 +3470,14 @@ function buildPointsGeometry(points, color, alpha, size) {
 // [viewer-region planar-tessellation] BEGIN
 //
 // Everything between this sentinel and its END is lifted verbatim, as text, and executed on GraalJS
-// by `src/jvmTest/kotlin/afield/graphics/ViewerJavaScript.kt`, then compared ring-set by ring-set
-// against `afield.graphics.PlanarTessellation` — the Kotlin it is a transliteration of — by
+// by `src/jvmTest/kotlin/afield/graphics/three/ViewerJavaScript.kt`, then compared ring-set by ring-set
+// against `afield.geometry.path.PlanarTessellation` — the Kotlin it is a transliteration of — by
 // `ThreeJsViewerTessellationParityTest`. The extractor fails loudly if either sentinel goes missing,
 // so the seam cannot be quietly deleted. Two rules keep the region liftable, and both are asserted
 // by `ViewerJavaScriptRegionTest`: no DOM, and no `THREE` beyond `Vector2` and
 // `ShapeUtils.triangulateShape`.
 //
-// --- planar tessellation, ported from afield.graphics.PlanarTessellation --------------------
+// --- planar tessellation, ported from afield.geometry.path.PlanarTessellation --------------------
 //
 // Editable mode re-triangulates client-side, because the user drags points and the fill has to
 // follow between server round-trips. It used to do that with a naive fan over each subpath's
@@ -3476,7 +3485,7 @@ function buildPointsGeometry(points, color, alpha, size) {
 // could disagree about both the holes and the facing of the *same* FLine. This is the rule the
 // server runs, so now they agree.
 //
-// Keep in step with `src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt`, and with the two
+// Keep in step with `src/jvmMain/kotlin/afield/geometry/path/PlanarTessellation.kt`, and with the two
 // tolerances in `Coplanarity`. Both are dimensionless: COPLANAR_SINE_OF_ANGLE is the sine of the
 // angle between two rings' unit Newell normals — unsigned, so antiparallel counts as parallel,
 // because a hole is normally wound against the ring it is a hole in — and COPLANAR_OFFSET_FRACTION
@@ -4722,11 +4731,15 @@ function featureVisible(point) {
     const cut=inspectorState.cut;
     return !cut || point.x*cut.n[0]+point.y*cut.n[1]+point.z*cut.n[2]+cut.d>=-1e-7;
 }
-function featureProject(source,point) {
-    // A restored camera can be queried before the next render updates its inverse.
-    camera.updateMatrixWorld(true);
-    const world=featureWorld(source,point), projected=world.clone().project(camera);
-    return {x:(projected.x+1)/2,y:(1-projected.y)/2,depth:projected.z,world};
+// Normalized canvas coordinates, as pick takes them. On a contact sheet the point is projected in
+// [panel], by default the panel the source is drawn in (the first, for FLines every panel shares).
+function featureProject(source,point,panel=null) {
+    const sheet=panelState.cameras.length>1;
+    const view=featureView(sheet ? (panel ?? (source.slot.panel>=0 ? source.slot.panel : 0)) : null);
+    const canvas=renderer.domElement.getBoundingClientRect();
+    const world=featureWorld(source,point), projected=world.clone().project(view.camera);
+    return {x:(view.rect.left-canvas.left+(projected.x+1)/2*view.rect.width)/canvas.width,
+        y:(view.rect.top-canvas.top+(1-projected.y)/2*view.rect.height)/canvas.height,depth:projected.z,world};
 }
 function featureValidate(selection) {
     if(selection==null)return null;
@@ -4747,6 +4760,12 @@ function featureValidate(selection) {
     } else throw new Error('Invalid feature reference');
     if(!Array.isArray(s.point)||s.point.length!==3||s.point.some((v,i)=>!Number.isFinite(v)||Math.abs(v-point[i])>Math.max(1e-7,Math.abs(point[i])*1e-12)))
         throw new Error('Feature coordinates disagree with its topology');
+    // On a contact sheet a feature is picked in one panel, and must be drawn there.
+    const panels=panelState.cameras.length;
+    if(panels>1) {
+        if(!Number.isInteger(s.panel)||s.panel<0||s.panel>=panels)throw new Error('Feature on a contact sheet names no panel of it');
+        if(![undefined,-1,s.panel].includes(source.slot.panel))throw new Error('Feature is not drawn in its panel');
+    } else if(s.panel!==undefined)throw new Error('Feature belongs to a panel of a contact sheet');
     if(s.kind==='region') {
         const r=s.region;
         if(!r||![r.cx,r.cy,r.width,r.height,r.angle].every(Number.isFinite)||r.cx<0||r.cx>1||r.cy<0||r.cy>1||r.width<=0||r.width>1||r.height<=0||r.height>1||Math.abs(r.angle)>180||!Array.isArray(r.surfaces)||!r.surfaces.length)throw new Error('Invalid region reference');
@@ -4904,11 +4923,37 @@ renderer.domElement.addEventListener('pointerup',event=>{
     if(region.width>.002&&region.height>.002)try {featureRegion(region,true);}catch(e){featureMessage(String(e),true);}
 },true);
 renderer.domElement.addEventListener('pointercancel',()=>{featureDrag=null;controls.enabled=true;featureRectangleBox(null);},true);
+// The view a feature is picked in and shown in: the whole canvas, or one panel of a contact sheet.
+// A panel has its own camera, its own rectangle of the canvas and its own drawables; FLines, which
+// every panel shares, belong to all of them. `panel` is null on a single viewport.
+function featureView(panel=null) {
+    const rect=renderer.domElement.getBoundingClientRect(), count=panelState.cameras.length;
+    if(count<=1) {
+        if(panel!=null)throw new Error('Note belongs to a panel of a contact sheet');
+        camera.updateMatrixWorld(true);
+        return {panel:null,camera,rect:{left:rect.left,top:rect.top,width:rect.width,height:rect.height},owns:()=>true};
+    }
+    if(!Number.isInteger(panel)||panel<0||panel>=count)throw new Error('Feature review on a contact sheet needs a panel');
+    updatePanelCameras();
+    const vp=panelViewport(panel,count), sx=rect.width/container.clientWidth, sy=rect.height/container.clientHeight;
+    const cam=panelState.cameras[panel].camera;cam.updateMatrixWorld(true);
+    return {panel,camera:cam,rect:{left:rect.left+vp.x*sx,top:rect.bottom-(vp.y+vp.h)*sy,width:vp.w*sx,height:vp.h*sy},
+        owns:slot=>slot.panel===undefined||slot.panel===-1||slot.panel===panel};
+}
+// Normalized canvas coordinates to a view and coordinates normalized within it; null off every panel.
+function featureViewAt(x,y) {
+    if(panelState.cameras.length<=1)return {view:featureView(),x,y};
+    updatePanelCameras();
+    const hit=panelPointerAt(x*container.clientWidth,(1-y)*container.clientHeight,panelState.cameras.map((_,i)=>panelViewport(i,panelState.cameras.length)));
+    return hit ? {view:featureView(hit.panel),x:(hit.x+1)/2,y:(1-hit.y)/2} : null;
+}
 function featurePick(x,y,kind='face',publish=false) {
-    if(panelState.cameras.length>1)throw new Error('Feature review currently requires a single viewport');
     if(!['point','face','edge','vertex'].includes(kind)||![x,y].every(v=>Number.isFinite(v)&&v>=0&&v<=1))throw new Error('Pick uses normalized canvas coordinates and face, edge or vertex');
-    camera.updateMatrixWorld(true);
-    const sources=featureSources().filter(s=>s.slot.object.visible && !inspectorState.hidden.has(s.id));
+    const at=featureViewAt(x,y);
+    if(!at)return featureSet(null,publish);
+    const {view}=at, camera=view.camera, withPanel=selection=>selection && view.panel!=null ? {...selection,panel:view.panel} : selection;
+    ({x,y}=at);
+    const sources=featureSources().filter(s=>s.slot.object.visible && !inspectorState.hidden.has(s.id) && view.owns(s.slot));
     const meshes=sources.filter(s=>s.slot.object.isMesh).map(s=>s.slot.object);
     meshes.forEach(m=>m.updateWorldMatrix(true,false));
     const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(2*x-1,1-2*y),camera);
@@ -4916,9 +4961,9 @@ function featurePick(x,y,kind='face',publish=false) {
     if(kind==='face'||kind==='point') {
         const hit=hits[0];if(!hit)return featureSet(null,publish);
         const source=sources.find(s=>s.slot.object===hit.object);
-        return featureSet(featureSurfaceSelection(source,hit,kind),publish);
+        return featureSet(withPanel(featureSurfaceSelection(source,hit,kind)),publish);
     }
-    const rect=renderer.domElement.getBoundingClientRect(), candidates=[];
+    const rect=view.rect, candidates=[];
     for(const source of sources) {
         const g=featureTopology(source);
         const vertices=source.slot.object.isPoints ? [...new Set(g.indices)] : [...new Set(g.edges.flat())];
@@ -4945,7 +4990,7 @@ function featurePick(x,y,kind='face',publish=false) {
         }
     }
     candidates.sort((a,b)=>a.distance-b.distance||a.depth-b.depth);
-    return featureSet(candidates[0]?.selection || null,publish);
+    return featureSet(withPanel(candidates[0]?.selection || null),publish);
 }
 function featureDraw() {
     const s=inspectorState.selection;if(!s)return;
@@ -4962,11 +5007,11 @@ function featureDraw() {
     const overlay=s.kind==='face'?new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({...options,transparent:true,opacity:.35,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2})):
         s.kind==='edge'?new THREE.LineSegments(geometry,new THREE.LineBasicMaterial({...options,depthTest:false})):
         new THREE.Points(geometry,new THREE.PointsMaterial({...options,size:9,sizeAttenuation:false,depthTest:false}));
-    overlay.renderOrder=1000;inspectorRoot.add(overlay);
+    overlay.renderOrder=1000;overlay.userData.featurePanel=s.panel;inspectorRoot.add(overlay);
     if(s.kind==='face'||s.kind==='edge') {
         const markerGeometry=new THREE.BufferGeometry().setFromPoints([featureAnchorWorld(source,s)]);
         const marker=new THREE.Points(markerGeometry,new THREE.PointsMaterial({...options,size:7,sizeAttenuation:false,depthTest:false}));
-        marker.renderOrder=1001;inspectorRoot.add(marker);
+        marker.renderOrder=1001;marker.userData.featurePanel=s.panel;inspectorRoot.add(marker);
     }
 }
 function featureHud() {
@@ -4976,8 +5021,9 @@ function featureHud() {
     if(s?.region)document.getElementById('feature-angle').value=String(s.region.angle);
     document.getElementById('feature-angle-value').textContent=document.getElementById('feature-angle').value+'°';
     document.getElementById('feature-tools').classList.toggle('hidden',!featureIdentity() || !editorState.uiVisible);
-    featureModeEl.disabled=panelState.cameras.length>1;
-    featureModeEl.title=featureModeEl.disabled?'Open a single viewport for feature review':'';
+    const sheet=panelState.cameras.length>1, rectangle=featureModeEl.querySelector('option[value="region"]');
+    if(rectangle){rectangle.disabled=sheet;rectangle.title=sheet?'Rectangle review needs a single viewport':'';}
+    if(sheet&&featureModeEl.value==='region')featureModeEl.value='off';
     document.getElementById('feature-review').classList.toggle('hidden',!s && featureModeEl.value==='off');
     const source=s && featureSources().find(p=>p.id===s.partId);
     document.getElementById('feature-description').textContent=s ? `${source.label} · ${s.kind}${s.region?' · '+s.region.surfaces.length+' visible part(s)':''}\n${s.point.map(v=>v.toFixed(3)).join(', ')} ${inspectorState.spec?.units||''}` : (featureModeEl.value==='region'?'Drag a rectangle over visible surfaces. Rotate it with the Angle slider.':'Click a feature. Edge and vertex picks snap within 12 pixels.');
@@ -4997,20 +5043,24 @@ function featureObservation(text,verdict='note') {
 // These are geometry-canvas images, without the note editor covering the selected feature.
 function featureCaptureEvidence(record) {
     if(!record?.selection)throw new Error('Pick a feature before saving a note');
-    if(panelState.cameras.length>1)throw new Error('Image review requires a single viewport');
     const current=inspectorSnapshot(), noteText=featureNoteEl.value;
     try {
         featureReview(record);
         const canvas=renderer.domElement, rect=canvas.getBoundingClientRect();
-        camera.updateMatrixWorld(true);
-        renderer.setViewport(0,0,rect.width,rect.height);
-        renderer.setScissorTest(false); renderGeometry(camera);
+        const view=featureView(record.selection.panel ?? null);
+        if(view.panel==null) {
+            renderer.setViewport(0,0,rect.width,rect.height);
+            renderer.setScissorTest(false); renderGeometry(camera);
+        } else renderPanels(); // every panel, as on screen; the images are cut from the note's panel
+        // The view's rectangle in canvas pixels.
+        const px=canvas.width/rect.width, py=canvas.height/rect.height;
+        const sx=(view.rect.left-rect.left)*px, sy=(view.rect.top-rect.top)*py, sw=view.rect.width*px, sh=view.rect.height*py;
         const full=document.createElement('canvas');
-        const scale=Math.min(1,1600/canvas.width,1600/canvas.height);
-        full.width=Math.max(1,Math.round(canvas.width*scale)); full.height=Math.max(1,Math.round(canvas.height*scale));
-        const ctx=full.getContext('2d');ctx.drawImage(canvas,0,0,full.width,full.height);
+        const scale=Math.min(1,1600/sw,1600/sh);
+        full.width=Math.max(1,Math.round(sw*scale)); full.height=Math.max(1,Math.round(sh*scale));
+        const ctx=full.getContext('2d');ctx.drawImage(canvas,sx,sy,sw,sh,0,0,full.width,full.height);
         const s=record.selection, region=s.region ? featureDisplayRegion(s.region) : null;
-        const source=featureSources().find(p=>p.id===s.partId), projected=featureAnchorWorld(source,s).project(camera);
+        const source=featureSources().find(p=>p.id===s.partId), projected=featureAnchorWorld(source,s).project(view.camera);
         const anchor={x:(projected.x+1)/2,y:(1-projected.y)/2};
         const cx=(region?.cx ?? anchor.x)*full.width,cy=(region?.cy ?? anchor.y)*full.height;
         const a=(region?.angle||0)*Math.PI/180;
@@ -5026,7 +5076,7 @@ function featureCaptureEvidence(record) {
         crop.getContext('2d').drawImage(full,x0,y0,x1-x0,y1-y0,0,0,crop.width,crop.height);
         const encode=c=>({width:c.width,height:c.height,dataUrl:c.toDataURL('image/png')});
         return {schemaVersion:1,artifactDigest:record.artifactDigest,view:featureClone(record.view),
-            viewport:[rect.width,rect.height],cropBounds:[x0/full.width,y0/full.height,(x1-x0)/full.width,(y1-y0)/full.height],
+            viewport:[view.rect.width,view.rect.height],...(view.panel!=null?{panel:view.panel}:{}),cropBounds:[x0/full.width,y0/full.height,(x1-x0)/full.width,(y1-y0)/full.height],
             context:encode(full),crop:encode(crop)};
     } finally { inspectorRestore(current); featureNoteEl.value=noteText; requestRender(); }
 }
@@ -5268,7 +5318,7 @@ function inspectorPartHud() {
 window.FieldInspector = Object.freeze({ snapshot: inspectorSnapshot, restore: inspectorRestore,
     pick:featurePick, region:featureRegion, select:featureSet, review:featureReview,
     parts:()=>featureClone(inspectorPartTree()),
-    project:(id,point)=>{const s=featureSources().find(p=>p.id===id);if(!s)throw new Error('Unknown feature owner');const p=featureProject(s,point);return {x:p.x,y:p.y,depth:p.depth};},
+    project:(id,point,panel=null)=>{const s=featureSources().find(p=>p.id===id);if(!s)throw new Error('Unknown feature owner');const p=featureProject(s,point,panel);return {x:p.x,y:p.y,depth:p.depth};},
     sources:()=>featureSources().map(s=>({id:s.id,label:s.label,source:s.source,precision:s.canonical?'canonical-double':'display-float'})),
     // Display-space diagnostics for automation; never use these Float bounds as Boolean geometry.
     rendered: () => payloadGeometrySlots.drawables.filter(s => s.object && s.object.isMesh).map(s => {
@@ -5513,10 +5563,10 @@ function applyCameraSpec(cam, spec, bounds, fit, points) {
     cam.far = derived.far;
     cam.updateProjectionMatrix();
     if (fit) {
-        // 2.7 is MeshView's default distance and frames the bounding sphere with a little air, so it
-        // is the multiple that means "no extra padding" here.
-        const requested = spec.distance === undefined ? 2.7 : spec.distance;
-        fitCameraToBounds(cam, bounds, derived.target, Math.max(1.02, requested / 2.7 * 1.06), points);
+        // The fit margin is the spec's viewer-only padding; distance is the rasterizer's and does not
+        // move the fitted camera.
+        const padding = spec.padding === undefined ? 1.06 : spec.padding;
+        fitCameraToBounds(cam, bounds, derived.target, Math.max(1.0, padding), points);
     }
     return derived;
 }
@@ -5699,9 +5749,234 @@ function applyPickThresholds(bounds) {
 // `const raycaster`. `null` bounds is the legacy pair, exactly.
 applyPickThresholds(null);
 
+/**
+ * What the asynchronous half of applyGeometry depends on: tool modules and the camera link. Payloads
+ * that agree on it settle identically, so a stream of them keeps the readiness the first reached. When
+ * every payload restarted readiness instead, a source sending faster than the settle (a tool sync and
+ * two frames) was never ready, and no capture of a live geometry stream could be taken. A saved review
+ * is restored against one geometry digest, so a reviewed payload always settles on its own (`null`).
+ */
+function captureSettleKey(payload) {
+    if (payload.inspector?.review) return null;
+    const inspector = payload.inspector || {};
+    return JSON.stringify([payload.toolModules || [], payload.cameraLinkScope ?? null, inspector.renderOrigin ?? null,
+        inspector.renderUpAxis ?? null, inspector.units ?? null, (payload.panels || []).length > 1]);
+}
+
+// [viewer-region wire-payload] BEGIN
+// What arrives on the websocket, made into what the rest of the viewer reads. `ThreeWire.kt` is the
+// other half.
+//
+//  * A `three/geometry` message is a description: every numeric array in it is `{array: [], buffer: i}`,
+//    and `buffers` says where entry `i` is in one binary response from `/three-buffers`. Binding turns
+//    each into a typed view of that response — no parsing, and no copy. A solid's exact topology
+//    (`inspector.parts`) becomes plain arrays instead, as JSON used to give it.
+//  * Part styles arrive beside the geometry (`partAppearance`) and in `three/appearance` messages, and
+//    are applied here exactly as `applyPartAppearance` (ThreePartAppearance.kt) applies them.
+//
+// Both replaced sending the whole scene as JSON, which on 2026-10-07 froze a house host for twenty
+// minutes over a style change to 224 panels. Pure — no DOM, no THREE, no fetch — so
+// `ThreeGeometryWireTest` runs it on the server's own messages and bytes.
+const WIRE_BUFFER_TYPES = { Float32Array, Float64Array, Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array };
+
+/**
+ * Point a description's references at [buffer], an ArrayBuffer holding its `/three-buffers` response.
+ * Mutates and returns the payload; a payload without `buffers` is returned as it is.
+ */
+function bindWireBuffers(payload, buffer) {
+    const table = payload && payload.buffers;
+    if (!table) return payload;
+    if (!buffer || buffer.byteLength !== table.bytes) {
+        throw new Error(`geometry buffers are ${buffer ? buffer.byteLength : 0} bytes; the description says ${table.bytes}`);
+    }
+    const view = (i) => {
+        const entry = table.entries[i];
+        const Ctor = entry && WIRE_BUFFER_TYPES[entry.type];
+        if (!Ctor) throw new Error(`geometry buffer ${i} has no known type`);
+        return new Ctor(buffer, entry.offset, entry.count);
+    };
+    const bind = (geometry) => {
+        if (!geometry) return;
+        Object.values(geometry.attributes || {}).forEach((spec) => {
+            if (!spec || !Number.isInteger(spec.buffer)) return;
+            spec.array = view(spec.buffer);
+            delete spec.buffer;
+        });
+        const index = geometry.index;
+        if (index && Number.isInteger(index.buffer)) {
+            index.array = view(index.buffer);
+            delete index.buffer;
+        }
+    };
+    bind(payload.lines);
+    bind(payload.fills);
+    bind(payload.points);
+    (payload.interactive || []).forEach((obj) => { bind(obj.lines); bind(obj.fills); bind(obj.points); });
+    (payload.drawables || []).forEach((d) => bind(d && d.geometry));
+    // Plain arrays, not typed views: the feature code slices and compares these doubles, and puts pieces
+    // of them in records that go back to Field as JSON.
+    Object.values((payload.inspector && payload.inspector.parts) || {}).forEach((part) => {
+        const refs = part && part.buffers;
+        if (!refs) return;
+        ['positions', 'indices', 'faces'].forEach((key) => {
+            if (Number.isInteger(refs[key])) part[key] = Array.from(view(refs[key]));
+        });
+        if (Number.isInteger(refs.edges)) {
+            const flat = view(refs.edges);
+            const edges = new Array(flat.length >> 1);
+            for (let k = 0; k < edges.length; k += 1) edges[k] = [flat[2 * k], flat[2 * k + 1]];
+            part.edges = edges;
+        }
+        delete part.buffers;
+    });
+    delete payload.buffers;
+    return payload;
+}
+
+/** [parts] applied to a payload's drawables: `applyPartAppearance` in ThreePartAppearance.kt, line for line. */
+function partAppearancePayload(payload, parts) {
+    const styles = parts || {};
+    if (!payload || !Array.isArray(payload.drawables) || !payload.drawables.length || !Object.keys(styles).length) return payload;
+    return {...payload, drawables: payload.drawables.map((d) => {
+        const style = d && Object.prototype.hasOwnProperty.call(styles, d.id) ? styles[d.id] : null;
+        const position = style && d.geometry && d.geometry.attributes ? d.geometry.attributes.position : null;
+        if (!position || !position.array) return d;
+        const color = new Float32Array(Math.floor(position.array.length / 3) * 3);
+        for (let i = 0; i < color.length; i += 3) {
+            color[i] = style.color[0];
+            color[i + 1] = style.color[1];
+            color[i + 2] = style.color[2];
+        }
+        return {
+            ...d,
+            geometry: {...d.geometry, attributes: {...d.geometry.attributes,
+                color: {itemSize: 3, array: color, type: 'Float32Array', normalized: false}}},
+            style: {...(d.style || {}), unlit: !!style.unlit,
+                xrayOpacity: Number.isFinite(style.xrayOpacity) ? style.xrayOpacity : null}
+        };
+    })};
+}
+
+/**
+ * The wire state after one message, and the payload to draw (`null` for nothing to draw).
+ *
+ * `base` is the last geometry message, bound, and what is drawn is always `base` with `parts` applied,
+ * so one style change never compounds onto the colours another wrote. A `three/appearance` message
+ * merges into `parts`, or replaces them; one for a revision this view is not showing is stale and
+ * dropped, because the next geometry message brings the current styles with it. One flagged
+ * `beforeGeometry` is a replay's: it is held for the geometry message that follows it.
+ */
+function receiveWireMessage(state, message) {
+    const current = state || {base: null, parts: {}, nextParts: null};
+    if (!message) return {state: current, draw: null};
+    if (message.type === 'three/appearance') {
+        const revision = message.revision ?? null;
+        const incoming = {...(message.parts || {})};
+        if (message.beforeGeometry) return {state: {...current, nextParts: {revision, parts: incoming}}, draw: null};
+        if (!current.base || revision !== (current.base.revision ?? null)) return {state: current, draw: null};
+        const parts = message.replace ? incoming : {...current.parts, ...incoming};
+        return {state: {...current, parts}, draw: partAppearancePayload(current.base, parts)};
+    }
+    if (message.type !== 'three/geometry') return {state: current, draw: null};
+    const next = current.nextParts;
+    const parts = next && next.revision === (message.revision ?? null) ? next.parts : {...(message.partAppearance || {})};
+    return {state: {base: message, parts, nextParts: null}, draw: partAppearancePayload(message, parts)};
+}
+
+/** A geometry message that will never be drawn — superseded before its buffers came — takes its replay styles with it. */
+function wireAbandon(state) {
+    return state ? {...state, nextParts: null} : state;
+}
+
+/**
+ * Drop what a later geometry message makes moot: everything queued before the last one, except the
+ * flagged styles sent immediately ahead of it, which are its own. A slider that republishes geometry
+ * thirty times a second must cost one buffer fetch, not thirty in a row.
+ */
+function wireCompactQueue(state, queue) {
+    let last = -1;
+    for (let i = queue.length - 1; i >= 0; i -= 1) {
+        if (queue[i] && queue[i].type === 'three/geometry') { last = i; break; }
+    }
+    if (last <= 0) return {state, queue};
+    const own = queue[last - 1].type === 'three/appearance' && queue[last - 1].beforeGeometry;
+    const from = own ? last - 1 : last;
+    const dropped = queue.slice(0, from);
+    const abandoned = dropped.some((m) => m && m.type === 'three/geometry');
+    return {state: abandoned ? wireAbandon(state) : state, queue: queue.slice(from)};
+}
+// [viewer-region wire-payload] END
+
+let wireState = null;
+
+/** Messages waiting to be drawn, in order, and the buffer fetch in flight. */
+const wireInbox = { queue: [], busy: false, fetching: null };
+
+function wireBufferUrl(message) {
+    // The server the websocket goes to, which is the page's own unless `ws` / `wsHost` say otherwise.
+    const ws = new URL(buildWsUrl());
+    const origin = `${ws.protocol === 'wss:' ? 'https:' : 'http:'}//${ws.host}`;
+    return `${origin}/three-buffers?` + new URLSearchParams({uid: message.uid, generation: message.buffers.generation});
+}
+
+function wireFailed(error) {
+    captureState.error = 'Geometry: ' + String(error?.message || error);
+    const status = document.getElementById('glb-status');
+    status.classList.add('is-error');
+    status.textContent = captureState.error;
+}
+
+function wireReceive(message) {
+    // A fetch in flight is not aborted for a newer message: under continuous updates every fetch would be
+    // aborted and nothing drawn. Queued messages it supersedes are compacted away instead.
+    wireInbox.queue.push(message);
+    wirePump();
+}
+
+/** One message at a time, in order; a description waits for its buffers before anything after it is drawn. */
+async function wirePump() {
+    if (wireInbox.busy) return;
+    wireInbox.busy = true;
+    try {
+        while (wireInbox.queue.length) {
+            ({state: wireState, queue: wireInbox.queue} = wireCompactQueue(wireState, wireInbox.queue));
+            const message = wireInbox.queue.shift();
+            try {
+                if (message.type === 'three/geometry' && message.buffers) {
+                    const controller = new AbortController();
+                    wireInbox.fetching = controller;
+                    let bytes = null;
+                    try {
+                        const response = await fetch(wireBufferUrl(message), {signal: controller.signal});
+                        // 404: superseded, and the description that replaced it is on its way.
+                        if (response.ok) bytes = await response.arrayBuffer();
+                        else if (response.status !== 404) throw new Error(`geometry buffers: HTTP ${response.status}`);
+                    } catch (error) {
+                        if (!controller.signal.aborted) wireFailed(error);
+                    } finally {
+                        wireInbox.fetching = null;
+                    }
+                    if (!bytes) { wireState = wireAbandon(wireState); continue; }
+                    bindWireBuffers(message, bytes);
+                }
+                const received = receiveWireMessage(wireState, message);
+                wireState = received.state;
+                if (received.draw) applyGeometry(received.draw);
+            } catch (error) {
+                console.error('three viewer: could not apply a message', error);
+                wireFailed(error);
+            }
+        }
+    } finally {
+        wireInbox.busy = false;
+    }
+}
+
 function applyGeometry(payload) {
     if (!payload || payload.type !== 'three/geometry') return;
-    captureState = {ready:false, error:null, revision:payload.revision || payload.inspector?.artifactDigest || null};
+    const settleKey = captureSettleKey(payload);
+    const settled = captureState.ready && settleKey !== null && captureState.settleKey === settleKey;
+    captureState = {ready:settled, error:null, revision:payload.revision || payload.inspector?.artifactDigest || null, settleKey};
     requestRender();
     payloadState = payload;
     editorState.pointerDown = null;
@@ -5763,7 +6038,7 @@ function applyGeometry(payload) {
         inspectorRefresh();
         requestRender();
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        if (payloadState === payload) captureState.ready = true;
+        if (payloadState === payload || (settleKey !== null && captureState.settleKey === settleKey)) captureState.ready = true;
     }).catch(error => {
         if (payloadState !== payload) return;
         captureState.error = 'Viewer tool: ' + String(error?.message || error);
@@ -5798,12 +6073,13 @@ function sendMessage(payload) {
 function connectWs() {
     const ws = new WebSocket(buildWsUrl());
     wsState.ws = ws;
-    ws.addEventListener('open', () => sendMessage({ type: 'hello' }));
+    // `buffers`: this viewer fetches geometry buffers over HTTP. A hello without it is sent plain JSON.
+    ws.addEventListener('open', () => sendMessage({ type: 'hello', buffers: 1 }));
     ws.addEventListener('message', (event) => {
         let message = null;
         try { message = JSON.parse(event.data); } catch (_) { return; }
         if(message.type==='three-review-ack'){featureSaving=false; featureHud(); featureMessage(message.message,!message.ok);return;}
-        applyGeometry(message);
+        wireReceive(message);
     });
     ws.addEventListener('close', () => {
         if(featureSaving){featureSaving=false;featureHud();featureMessage('Connection lost while saving. Check the inbox before retrying.',true);}
@@ -6286,9 +6562,11 @@ function applyScenePanels(payload) {
         const vp = panelViewport(index, panels.length);
         const cam = new THREE.PerspectiveCamera(45, vp.h > 0 ? vp.w / vp.h : 1, 0.01, 10000);
         const bounds = p.bounds || payload.bounds;
-        if (bounds) applyCameraSpec(cam, p.camera || {}, bounds, true, fitPointsForPanel(index));
+        // fitBounds: frame the bounds as given (a shared scale), not this panel's own geometry.
+        const fitPoints = p.fitBounds ? null : fitPointsForPanel(index);
+        if (bounds) applyCameraSpec(cam, p.camera || {}, bounds, true, fitPoints);
         panelState.cameras.push({
-            camera: cam, spec: p.camera || {}, bounds: bounds, fitPoints: fitPointsForPanel(index)
+            camera: cam, spec: p.camera || {}, bounds: bounds, fitPoints: fitPoints
         });
     });
 
@@ -6412,7 +6690,8 @@ function updatePanelCameras() {
             // Polar is measured from +y down, so a positive polar delta is a *lower* pitch.
             pitchDegrees: (spec.pitchDegrees || 0) - dPolar,
             distance: spec.distance === undefined ? 2.7 : spec.distance,
-            fieldOfViewDegrees: spec.fieldOfViewDegrees
+            fieldOfViewDegrees: spec.fieldOfViewDegrees,
+            padding: spec.padding
         };
         if (turning) placeTurningPanel(entry, view);
         else applyCameraSpec(entry.camera, view, entry.bounds, true, entry.fitPoints);
@@ -6434,6 +6713,10 @@ function setPanelVisibility(index) {
     payloadGeometrySlots.drawables.forEach((slot, ordinal) => {
         if (!slot || !slot.object) return;
         slot.object.visible = inspectorDrawableVisible(slot, ordinal) && (slot.panel === -1 || slot.panel === index);
+    });
+    // A picked feature is highlighted in the panel it was picked in, not wherever its world position falls.
+    inspectorRoot.children.forEach((child) => {
+        if (child.userData.featurePanel != null) child.visible = child.userData.featurePanel === index;
     });
 }
 
@@ -6543,8 +6826,17 @@ function render() {
     const interactivePointer = editorState.mode === 'camera' ? updateInteractiveHover() : false;
     if (editorState.mode === 'camera') renderer.domElement.style.cursor = interactivePointer ? 'pointer' : '';
 
+    if (panelState.cameras.length > 1) renderPanels();
+    else {
+        renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
+        renderGeometry(camera);
+    }
+}
+
+/** Every panel of a contact sheet, each through its own camera into its own rectangle. */
+function renderPanels() {
     const count = panelState.cameras.length;
-    if (count > 1) {
+    {
         updatePanelCameras();
         renderer.setScissorTest(true);
         for (let i = 0; i < count; i += 1) {
@@ -6560,9 +6852,7 @@ function render() {
         payloadGeometrySlots.drawables.forEach((slot, ordinal) => {
             if (slot && slot.object) slot.object.visible = inspectorDrawableVisible(slot, ordinal);
         });
-    } else {
-        renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
-        renderGeometry(camera);
+        inspectorRoot.children.forEach((child) => { if (child.userData.featurePanel != null) child.visible = true; });
     }
 }
 

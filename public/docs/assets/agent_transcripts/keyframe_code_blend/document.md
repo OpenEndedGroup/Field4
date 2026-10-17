@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Where a runtime blend cannot reach
@@ -20,7 +20,7 @@ range (`0.2_0.5`). No mix expression can be written at either position, so a run
 blend cannot reach them and says so rather than pretending.
 
 ```edn [field-box id="kfb_static" role="properties"]
-{"id" "kfb_static" "index" 0 "name" "Where a runtime blend cannot reach" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Where a runtime blend cannot reach" "_tombstone" false "frame" #afield/rect [80.0 720.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_static_code_.kt" "lines" 26 "characters" 1204 "sha256" "2312aae3be1cd91e8cfde0ee6f379b8dd029237bed09ae5a12247d4aec2ee197"}]}
+{"id" "kfb_static" "index" 0 "name" "Where a runtime blend cannot reach" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Where a runtime blend cannot reach" "_tombstone" false "frame" #afield/rect [80.0 720.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_static_code_.kt" "lines" 26 "characters" 1243 "sha256" "cb59da17413f8273ddf6e0a71a709e13f4945c1c448289bca13214e8a41d1330"}]}
 ```
 
 ```kotlin [field-property box="kfb_static" name="code" path="kfb_static_code_.kt"]
@@ -28,9 +28,9 @@ blend cannot reach them and says so rather than pretending.
 // modifier chain (`0.35s3` — an amount modulated by a sine at frequency 3) and a random
 // range (`0.2_0.5`). No mix expression can be written at either position, so a runtime
 // blend cannot reach them and says so rather than pretending.
-import afield.stdlib.CodeBlendMode
-import afield.stdlib.CodeBlendOptions
-import afield.stdlib.planStackSLCodeBlend
+import afield.animation.keyframes.CodeBlendMode
+import afield.animation.keyframes.CodeBlendOptions
+import afield.animation.keyframes.planStackSLCodeBlend
 
 val quiet = "uv 0.35s3 * fbm 0.2_0.5 +"
 val loud = "uv 0.80s3 * fbm 0.6_0.9 +"
@@ -65,17 +65,17 @@ nothing else. Then the blended expression is handed to a SourceBackedBlock whose
 kfb_kotlin, so it compiles and runs *there* while this box is the one evaluating.
 
 ```edn [field-box id="kfb_kotlin_run" role="properties"]
-{"id" "kfb_kotlin_run" "index" 1 "name" "The generated Kotlin, evaluated" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The generated Kotlin, evaluated" "_tombstone" false "frame" #afield/rect [80.0 1360.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_run_code_.kt" "lines" 27 "characters" 1097 "sha256" "f2b156bafb80bccf5e520c45d43904dc45b1bf0b4c3ed828acd698f6281d21e1"}]}
+{"id" "kfb_kotlin_run" "index" 1 "name" "The generated Kotlin, evaluated" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The generated Kotlin, evaluated" "_tombstone" false "frame" #afield/rect [80.0 1360.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_run_code_.kt" "lines" 27 "characters" 1142 "sha256" "42fba9db58c667cf058a545be6d582606b8a53f0699800c3b188e30130692748"}]}
 ```
 
 ```kotlin [field-property box="kfb_kotlin_run" name="code" path="kfb_kotlin_run_code_.kt"]
 // The same plan, rebuilt here — building one is pure, so it costs an alignment and
 // nothing else. Then the blended expression is handed to a SourceBackedBlock whose box is
 // kfb_kotlin, so it compiles and runs *there* while this box is the one evaluating.
-import afield.stdlib.CodeBlendMode
-import afield.stdlib.CodeBlendOptions
-import afield.stdlib.SourceBackedBlock
-import afield.stdlib.planKotlinCodeBlend
+import afield.animation.keyframes.CodeBlendMode
+import afield.animation.keyframes.CodeBlendOptions
+import afield.study.source.SourceBackedBlock
+import afield.animation.keyframes.planKotlinCodeBlend
 
 val plan = planKotlinCodeBlend(
     "2.0f * 3.0f + 1.0f",
@@ -112,7 +112,7 @@ which is the case worth finding, because that is the case a person authoring two
 for one patch keeps producing.
 
 ```edn [field-box id="kfb_breakdown" role="properties"]
-{"id" "kfb_breakdown" "index" 2 "name" "What the alignment finds, and what it refuses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What the alignment finds, and what it refuses" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_breakdown_code_.kt" "lines" 31 "characters" 1517 "sha256" "6dac4b14374a556bef2bf87409a46a232de603ed4a1203d08cd22dae7d62836b"}]}
+{"id" "kfb_breakdown" "index" 2 "name" "What the alignment finds, and what it refuses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What the alignment finds, and what it refuses" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_breakdown_code_.kt" "lines" 31 "characters" 1556 "sha256" "c0d90599efc5c27707d1e4eee96c1736cc758f5c0a55b8bde8c30027df17b55c"}]}
 ```
 
 ```kotlin [field-property box="kfb_breakdown" name="code" path="kfb_breakdown_code_.kt"]
@@ -120,9 +120,9 @@ for one patch keeps producing.
 // is not a program — so a keyframe blend steps them. Unless they differ only in numbers,
 // which is the case worth finding, because that is the case a person authoring two looks
 // for one patch keeps producing.
-import afield.stdlib.CodeBlendMode
-import afield.stdlib.CodeBlendOptions
-import afield.stdlib.planStackSLCodeBlend
+import afield.animation.keyframes.CodeBlendMode
+import afield.animation.keyframes.CodeBlendOptions
+import afield.animation.keyframes.planStackSLCodeBlend
 
 val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
 val cool = "uv 8.0 * fbm 0.45 + [0.2,0.5,1.0] *"
@@ -164,7 +164,7 @@ and a generated Kotlin expression reads a registry slot addressed by an integer 
 into its text, because generated text cannot close over a value.
 
 ```edn [field-box id="kfb_kotlin" role="properties"]
-{"id" "kfb_kotlin" "index" 3 "name" "The same blend, in Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The same blend, in Kotlin" "_tombstone" false "frame" #afield/rect [80.0 1040.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_code_.kt" "lines" 36 "characters" 1690 "sha256" "5157bf323ecc83177688aa0c42feb44cef3c5ecb712dc87ae3c07c849ef60b3b"}]}
+{"id" "kfb_kotlin" "index" 3 "name" "The same blend, in Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The same blend, in Kotlin" "_tombstone" false "frame" #afield/rect [80.0 1040.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_code_.kt" "lines" 36 "characters" 1735 "sha256" "69998bebd24866a40fd79a168bb768484ebb2bc6897a7dafbf173c449f00f92c"}]}
 ```
 
 ```kotlin [field-property box="kfb_kotlin" name="code" path="kfb_kotlin_code_.kt"]
@@ -173,10 +173,10 @@ into its text, because generated text cannot close over a value.
 // that differs only in numbers. The transport differs: a shader reads a push constant,
 // and a generated Kotlin expression reads a registry slot addressed by an integer written
 // into its text, because generated text cannot close over a value.
-import afield.stdlib.CodeBlendMode
-import afield.stdlib.CodeBlendOptions
-import afield.stdlib.KeyframeScope
-import afield.stdlib.sourceBlock
+import afield.animation.keyframes.CodeBlendMode
+import afield.animation.keyframes.CodeBlendOptions
+import afield.animation.keyframes.KeyframeScope
+import afield.study.source.sourceBlock
 
 val quiet = sourceBlock { 2.0f * 3.0f + 1.0f }
 val loud = sourceBlock { 8.0f * 3.0f + 5.0f }
@@ -220,7 +220,7 @@ is checkable, and this box checks it: one program, five draws, and the two ends
 compared pixel for pixel against the programs they are supposed to be.
 
 ```edn [field-box id="kfb_runtime" role="properties"]
-{"id" "kfb_runtime" "index" 4 "name" "The push-constant convention, rendered" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The push-constant convention, rendered" "_tombstone" false "frame" #afield/rect [80.0 400.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_runtime_code_.kt" "lines" 82 "characters" 3351 "sha256" "e6065aa7a2056ccb98fbc46c2919bccfba9d5cb8a98ac892288b8122ed92b86d"}]}
+{"id" "kfb_runtime" "index" 4 "name" "The push-constant convention, rendered" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The push-constant convention, rendered" "_tombstone" false "frame" #afield/rect [80.0 400.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_runtime_code_.kt" "lines" 82 "characters" 3413 "sha256" "bcf5fadedc292ceff5dd278b05aacb17b5b51b9ddf2a3cf208c040882ea3762e"}]}
 ```
 
 ```kotlin [field-property box="kfb_runtime" name="code" path="kfb_runtime_code_.kt"]
@@ -228,12 +228,12 @@ compared pixel for pixel against the programs they are supposed to be.
 // middle. It is that at 0 it *is* the left keyframe and at 1 it *is* the right one. That
 // is checkable, and this box checks it: one program, five draws, and the two ends
 // compared pixel for pixel against the programs they are supposed to be.
-import afield.stacksl.cpu.GlslValue
-import afield.stacksl.cpu.StackSLCpu
-import afield.stdlib.CodeBlendMode
-import afield.stdlib.CodeBlendOptions
-import afield.stdlib.keyframeBlendVector
-import afield.stdlib.planStackSLCodeBlend
+import afield.lang.stacksl.cpu.GlslValue
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.animation.keyframes.CodeBlendMode
+import afield.animation.keyframes.CodeBlendOptions
+import afield.animation.keyframes.keyframeBlendVector
+import afield.animation.keyframes.planStackSLCodeBlend
 
 // The convention, in a shader: a vec4 called keyframeBlend in the push-constant block.
 // Nothing declares it for you — a `stack.auto` slot cannot declare a uniform of its own,

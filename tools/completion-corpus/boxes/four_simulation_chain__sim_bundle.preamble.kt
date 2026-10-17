@@ -1,7 +1,8 @@
-import afield.four.Renderer
-import afield.four.util.Window
-var Box.bundle by Inheritance<afield.four.fabricated.StandardRenderer.Bundle>() /**/
-val Once.bundle by Onceing<afield.four.fabricated.StandardRenderer.Bundle>() /**/
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.graphics.scene.fabricated.StandardRenderer
+var Box.bundle by Inheritance<StandardRenderer.Bundle>() /**/
+val Once.bundle by Onceing<StandardRenderer.Bundle>() /**/
 val Why.bundle by Whying() /**/
 var Box.window by Inheritance<Window>() /*from:sim_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:sim_renderer*/ /**/

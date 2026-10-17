@@ -14,7 +14,7 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 320.0, h: 110.0 }
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -29,18 +29,16 @@ operations:
       frame: { x: 320.0, y: 180.0, w: 400.0, h: 140.0 }
       properties:
         code: |
-          import afield.four.fabricated.PathTraceEnvironment
-          import afield.four.fabricated.PathTraceMaterial
-          import afield.four.fabricated.PathTraceScene
-          import afield.four.fabricated.PathTracingRenderer
-          import afield.four.modules.fromContext
-          import afield.four.util.Camera
-          import afield.stdlib.linalg.Vector3f
-          import afield.stdlib.linalg.Vector4f
-
-          val renderer: Renderer = fromContext()
+          import afield.graphics.scene.fabricated.PathTraceEnvironment
+          import afield.graphics.scene.fabricated.PathTraceMaterial
+          import afield.graphics.scene.fabricated.PathTraceScene
+          import afield.graphics.scene.fabricated.PathTracingRenderer
+          import afield.graphics.vulkan.util.Camera
+          
+          
+          
           prop<PathTracingRenderer>(tracer)
-
+          
           // A bright strip light with four slats under it, and nothing else lit. Everything is
           // extruded along z and the camera looks down z, so the light's fan is seen in
           // cross-section: shafts, and shadows between them.
@@ -70,7 +68,7 @@ operations:
           tracer.showEnvironment = false
           tracer.background = Vector4f(0f, 0f, 0f, 1f)
           tracer.exposure = 0.22f
-
+          
           // ---- the medium. Bounds matter: an unbounded medium has zero transmittance to
           // ---- infinity, which would make an environment map unreachable. Here the box is
           // ---- the room, so rays leaving it are simply out of the haze.
@@ -78,13 +76,13 @@ operations:
           tracer.mediumAlbedo = Vector3f(0.96f, 0.95f, 0.93f)
           tracer.mediumAnisotropy = 0.4f
           tracer.mediumDensity = 0.16f
-
+          
           tracer.install()
           tracer.blitToScreen()
           println("${tracer.emitterCount} emissive triangles of ${tracer.triangleCount}; " +
               "the medium is ${tracer.mediumDensity} per world unit, albedo ${tracer.mediumAlbedo}, " +
               "g ${tracer.mediumAnisotropy}")
-
+          
           // ---- MOVE THIS ONE PARAMETER: mediumDensity. -----------------------------------
           // The loop cycles it every 192 samples and prints the value. At 0.0 you get the room
           // with hard-edged pools of light on the floor and nothing in the air. As it rises the

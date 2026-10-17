@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // Three simultaneous pitches. A monophonic detector's correct output here is a stated
 // inability, not the loudest note. `~` is the only thing mini-notation can say for a span

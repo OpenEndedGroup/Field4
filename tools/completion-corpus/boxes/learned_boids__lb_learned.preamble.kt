@@ -1,7 +1,7 @@
-import afield.four.Renderer
-import afield.four.util.Window
-var Box.learnedRule by Inheritance<afield.stdlib.EquivariantWeights>() /*from:lb_train*/ /**/
-val Once.learnedRule by Onceing<afield.stdlib.EquivariantWeights>() /*from:lb_train*/ /**/
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+var Box.learnedRule by Inheritance<afield.ai.learning.EquivariantWeights>() /*from:lb_train*/ /**/
+val Once.learnedRule by Onceing<afield.ai.learning.EquivariantWeights>() /*from:lb_train*/ /**/
 val Why.learnedRule by Whying() /*from:lb_train*/ /**/
 var Box.window by Inheritance<Window>() /*from:lb_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:lb_renderer*/ /**/

@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory" "mainLanguage" "isKotlinJsRoot"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "mainLanguage" "isKotlinJsRoot"]}
 ```
 
 ## 1. KotlinJS → visionOS
@@ -25,7 +25,7 @@ From `code`
 {{ visionmetal uniforms=spin,light }}
 
 ```edn [field-box id="agent_vision_geometry_heightfield" role="properties"]
-{"id" "agent_vision_geometry_heightfield" "index" 1 "name" "Geometry — height field" "parents" ["root" "agent_vision_geometry_heightfield_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_vision_geometry_heightfield_root"} "name" "Geometry — height field" "_tombstone" false "frame" #afield/rect [90.0 150.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_heightfield_code_.kt" "lines" 68 "characters" 2721 "sha256" "6b9c18101e3d822d3ee40369424a0a23f53f33ee553303a708d1980398a150f4"} {"name" "msl" "language" "msl" "path" "agent_vision_geometry_heightfield_msl_.metal" "lines" 44 "characters" 1534 "sha256" "c860f820d188ff0de4d05ab1c18ba06697728514e5e8da308d16ca5ba14183dc"}]}
+{"id" "agent_vision_geometry_heightfield" "index" 1 "name" "Geometry — height field" "parents" ["root" "agent_vision_geometry_heightfield_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_vision_geometry_heightfield_root"} "name" "Geometry — height field" "_tombstone" false "frame" #afield/rect [90.0 150.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_heightfield_code_.kt" "lines" 70 "characters" 2690 "sha256" "777cc0bb61760f1e48fc735796b351200f01d836db28cc66e38a2933c5c25ee9"} {"name" "msl" "language" "msl" "path" "agent_vision_geometry_heightfield_msl_.metal" "lines" 44 "characters" 1534 "sha256" "c860f820d188ff0de4d05ab1c18ba06697728514e5e8da308d16ca5ba14183dc"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_heightfield" name="code" path="agent_vision_geometry_heightfield_code_.kt"]
@@ -36,12 +36,12 @@ import kotlin.math.sqrt
 
 onStart {
     geometry {
-        val n = 48                 // cells per side; (n+1)^2 vertices
-        val size = 0.52            // metres across
+        val n = 48 // cells per side; (n+1)^2 vertices
+        val size = 0.52 // metres across
         val centreZ = -1.2
 
-        // The surface, as a plain function. Sampling it three times per vertex is what
-        // gives us a normal without any calculus.
+        // The center sample gives the surface position. Four neighboring samples
+        // estimate its two slopes for a numerical normal.
         fun height(x: Double, z: Double): Double {
             val r = sqrt(x * x + z * z)
             return 0.055 * cos(r * 38.0) * exp(-r * 5.5)
@@ -73,13 +73,15 @@ onStart {
             }
         }
 
-        // vertex() handed back an index for each of those; stitch them into quads. The
-        // lattice is (n+1) wide, so a cell's four corners are a, a+stride, a+stride+1, a+1.
-        //
-        // The order matters as much as the membership. This sheet lies in XZ with its
-        // normal on +y, and only this diagonal winds counter-clockwise seen from above.
-        // Take the corners the other way round and the head — which culls back faces —
-        // shows you the underside of your landscape, which is to say nothing at all.
+        /*
+        vertex() handed back an index for each of those; stitch them into quads. The
+        lattice is (n+1) wide, so a cell's four corners are a, a+stride, a+stride+1, a+1.
+
+        The order matters as much as the membership. This sheet lies in XZ with its
+        normal on +y, and only this diagonal winds counter-clockwise seen from above.
+        Take the corners the other way round and the head — which culls back faces —
+        shows you the underside of your landscape, which is to say nothing at all.
+        */
         val stride = n + 1
         for (row in 0 until n) {
             for (col in 0 until n) {

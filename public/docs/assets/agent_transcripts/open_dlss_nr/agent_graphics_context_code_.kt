@@ -1,5 +1,5 @@
-import afield.four.util.Options
-import afield.Rect
+import afield.graphics.vulkan.util.Options
+import afield.app.protocol.Rect
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableVR=false

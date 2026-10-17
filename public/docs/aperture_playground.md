@@ -2,23 +2,19 @@
 
 Defocus spreads light over an aperture-shaped footprint. A thin line should become wider
 and dimmer as it loses focus; decreasing its alpha alone leaves a dim, sharp line.
-This starting point makes that distinction easy to edit and inspect.
+This starting point is a set of render passes you can edit to see the difference.
 
-Open **aperture_playground** from the welcome screen, or
+Open [aperture_playground](agent_transcripts.md#aperture_playground) from the welcome screen, or
 [browse its boxes and shaders](offline.html?file=assets/agent_transcripts/aperture_playground/metadata.edn).
 To start the whole graph, hold **Shift–Alt** and drag a short launch stroke through
-**1. Renderer**. Field's existing gesture includes its descendants and launches them in
+**1. Renderer**. The stroke launches the renderer and then its descendants, in
 order. Use **Stop Box** (Alt–Down in the renderer's editor) to stop. Repeat the same
 Shift–Alt stroke to rebuild and restart the passes, preserving your shader edits.
 
-You can also launch the renderer alone, then execute boxes 2–8 in number order. Relaunching
-only the renderer creates a fresh graphics context, so the passes must be executed again.
-Shader edits and reload use Field's existing shader properties. After changing a texture's
-size, execute its downstream resource boxes again.
-
-For an automated setup, run `dev_docs/agents/transcripts/aperture_playground.yaml` as a
-workspace macro in an empty document. It launches the same renderer and executes the
-same boxes. Replay restores the example code; continue editing individual boxes afterward.
+You can also launch the renderer alone, then execute boxes 2–8 in number order.
+The shaders are ordinary shader properties, and edit and reload as they do in any box. Change a
+texture's size and execute its box again, and the passes that read the texture are rebuilt with it,
+in order: each texture is a `propDown` slot.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/aperture_playground/aperture.png" capture="native-window" native-wait-frames="12" embed=true hidden=true timeout="180" name="aperture-playground" alt="Four rows of lines and discs, progressively broader and dimmer from top to bottom, rendered through Field's editable aperture passes; an analytic sprite column is on the right." macro-file="../../dev_docs/agents/transcripts/aperture_playground.yaml" capture-box="agent_graphics_context"}
 // The transcript creates the real renderer, textures and editable shader graph.
@@ -36,10 +32,10 @@ same boxes. Replay restores the example code; continue editing individual boxes 
 | 7. Composite | One shader pair | Sharp source, defocused result, or guide display |
 | 8. Analytic sprites | One shader pair | Disc/aperture overlap and sprite radius |
 
-The reduction boxes nest inside the source box when it runs. All wiring remains in the
-Field document. There is no backend class hiding the shader stages.
+The reduction boxes nest inside the source box when it runs. All the wiring is in the
+document, so every shader stage is a box you can open.
 
-RGBA store **four independent light bands**, corresponding to radii 0, 4, 10 and 24
+The four RGBA channels store four independent light bands, corresponding to radii 0, 4, 10 and 24
 framebuffer pixels. A source with an intermediate blur radius distributes its energy
 between neighbouring bands. Half-resolution and quarter-resolution reductions make the
 larger footprints affordable. Circular filters spread each band, and the final pass adds
@@ -51,13 +47,12 @@ and point behaviour. In **Composite**, `controls.x` sets exposure; `controls.y` 
 sharp source, or 2 for the radius guide. The filters preserve integrated energy approximately,
 so a very broad line can become faint. Increase source energy separately to inspect it.
 
-This is a four-band approximation for additive light, not a depth-buffer camera model.
-It does not solve foreground/background occlusion across overlapping layers. For a
+The four bands approximate defocus for additive light. There is no depth buffer, so
+the passes do not handle one layer occluding another. For a
 scene with opaque depth layers, keep those layers separate or introduce depth-aware
 compositing. Radius is measured in framebuffer pixels and must be reconsidered when
 rendering at a different resolution.
 
-The underlying APIs are the same ones introduced in
-[render-to-texture and blur lessons](afield_four_graphics.md). Combine the graph with
-[frame budgets](profiling_timeline.md#holding-a-frame-budget) when comparing CPU work, and the renderer inspector for
-the render passes themselves.
+See also: the [render-to-texture and blur lessons](afield_four_graphics.md), which introduce
+the APIs these boxes use, and [frame budgets](profiling_timeline.md#holding-a-frame-budget)
+for timing the CPU side. The renderer inspector shows the render passes themselves.

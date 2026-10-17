@@ -4,14 +4,11 @@ description: |
   and a jump flood distance transform of a shape you move around. Four boxes — a renderer, a bundle,
   and one declaration each.
 
-  These are the companion to [four_pass_chain](#four_pass_chain), and they exist because that one
-  could not express them. A pass chain used to be strictly feed-forward over one frame — the planner
-  says so in as many words, *"a chain may only read backwards"* — and a fluid's velocity field this
-  frame is a function of the velocity field **last** frame. No ordering of passes within a frame
-  produces that.
-
-  So a pass may now declare itself `persistent`: its target becomes a ping-pong pair, and any pass
-  can bind a sampler to its *previous* frame. In the fluid box, `fluid-advect` is the **first** pass
+  These are the companion to [four_pass_chain](#four_pass_chain). Within one frame a chain may only
+  read backwards — a pass reads passes declared before it — but a fluid's velocity this frame is a
+  function of its velocity **last** frame. A pass that declares itself `persistent` covers that: its
+  target becomes a ping-pong pair, and any pass can bind a sampler to its *previous* frame, which
+  already exists when the frame starts. In the fluid box, `fluid-advect` is the **first** pass
   in the list and it reads `fluid-velocity`, which is the second to last — a reference pointing
   forwards, and exactly as legal as any other read of a value that already exists when the frame
   starts.
@@ -71,7 +68,7 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
 
           prop<Window>(window)
           prop<Renderer>(renderer)
@@ -92,20 +89,11 @@ operations:
       frame: { x: 380.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          /*
-          `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
-          itself. And the `prop<>` type argument is written out in full on purpose: `prop<>`
-          rewrites the box's code and the rewrite does not carry the snippet's own imports, so
-          `prop<StandardRenderer.Bundle>(bundle)` under an
-          `import afield.four.fabricated.StandardRenderer` fails with
-          `Unresolved reference 'StandardRenderer'` reported against the *import* line, while
-          every other reference in the box resolves through it normally.
-          */
-          import afield.four.fabricated.StandardRenderer
-          import afield.four.fabricated.applyScenePlan
-          import afield.stdlib.linalg.Vector3f
+          // `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
+          import afield.graphics.scene.fabricated.StandardRenderer
+          import afield.graphics.scene.fabricated.applyScenePlan
 
-          prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+          prop<StandardRenderer.Bundle>(bundle)
 
           /*
           `renderer` is the parent box's `prop<Renderer>`, visible here through the preamble —
@@ -137,14 +125,11 @@ operations:
       frame: { x: 720.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.fabricated.FabricatePassChain
-          import afield.four.fabricated.FabricatePassLibrary
-          import afield.four.fabricated.addPassChain
-          import afield.four.util.DownResult
-          import afield.four.util.MouseEvent
-          import afield.four.util.MouseEvents
+          import afield.graphics.scene.fabricated.FabricatePassChain
+          import afield.graphics.scene.fabricated.FabricatePassLibrary
+          import afield.graphics.scene.fabricated.addPassChain
 
-          prop<afield.four.fabricated.FabricateBuiltChain>(fluid)
+          prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(fluid)
 
           // The knobs. A new `resolution` starts an empty fluid; the rest keep the one you painted.
           val resolution = 256
@@ -213,19 +198,13 @@ operations:
 
           /*
           Handlers are held by name, so re-running replaces them rather than stacking a second
-          copy — no `once` needed here either.
-
-          The `onDown` is not optional even though it does nothing: MouseEvents only polls the
-          buttons some handler has *asked* about (`buttonsRequested = down.keys + up.keys`), and
-          `onDrag` only fires while a button is down, so without it no drag ever arrives and the
-          fluid sits there looking broken. And both lambdas name their parameter type because
-          `onDown`/`onUp` are overloaded on `() -> Boolean` and a `(MouseEvent) -> ...` form, and a
-          bare `{ true }` is ambiguous — everywhere, not just in a box.
+          copy — no `once` needed here either. `onUp` names its parameter type because it is
+          overloaded on `() -> Boolean` and a `(MouseEvent) -> Boolean` form, and a bare `{ true }`
+          is ambiguous.
           */
           val mouse = MouseEvents(renderer)
-          mouse.onDown("left", "fluid-paint") { _: MouseEvent -> DownResult.Keep }
-          mouse.onDrag("fluid-paint") { ev ->
-              paintAt = vec(ev.pos.x / renderer.window.width, ev.pos.y / renderer.window.height)
+          mouse.onDrag("left", "fluid-paint") { ev ->
+              paintAt = ev.uv // 0..1 across the window
               paintPush = vec(ev.delta.x * dragGain, ev.delta.y * dragGain)
               paintMass = 0.05f
               true // returning false *removes* the handler
@@ -244,14 +223,14 @@ operations:
       frame: { x: 1060.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.fabricated.FabricatePassChain
-          import afield.four.fabricated.FabricatePassInput
-          import afield.four.fabricated.FabricatePassLibrary
-          import afield.four.fabricated.FabricatePassSize
-          import afield.four.fabricated.FabricatePassSpec
-          import afield.four.fabricated.addPassChain
+          import afield.graphics.scene.fabricated.FabricatePassChain
+          import afield.graphics.scene.fabricated.FabricatePassInput
+          import afield.graphics.scene.fabricated.FabricatePassLibrary
+          import afield.graphics.scene.fabricated.FabricatePassSize
+          import afield.graphics.scene.fabricated.FabricatePassSpec
+          import afield.graphics.scene.fabricated.addPassChain
 
-          prop<afield.four.fabricated.FabricateBuiltChain>(sdf)
+          prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(sdf)
 
           // The mask: a disc and a bar, in every channel. A chain head that synthesises its own
           // input is self-contained however the chains before it ended up looking.
@@ -304,17 +283,17 @@ operations:
           // Declared every run, like the fluid: `addPassChain` replaces by name. Nothing here is
           // persistent, so the whole field simply re-floods from scratch on the next frame.
           sdf = bundle.addPassChain(
-              listOf(
+              [
                   FabricatePassSpec(
                       name = "mask",
                       fragment = maskFragment,
                       size = FabricatePassSize.Absolute(256, 256),
                       source = FabricatePassChain.CHAIN_INPUT,
                   ),
-              ) +
+              ] +
                   FabricatePassLibrary.jumpFloodDistance(
                       /*
-                      Seed, nine flood rounds at halving stride, JFA+1, then the distance — and
+                      Seed, flood rounds at halving stride, JFA+1, then the distance — and
                       `signed`, which seeds the *boundary* rather than the interior, so one flood
                       gives a field that is negative inside and positive out.
                       */
@@ -335,7 +314,7 @@ operations:
                       // sampling the 256x256 field. That combination is the whole point of the layer.
                       size = FabricatePassSize.MatchSource,
                       source = FabricatePassChain.CHAIN_INPUT,
-                      extraInputs = listOf(FabricatePassInput("bandsTex", "sdf-bands")),
+                      extraInputs = [FabricatePassInput("bandsTex", "sdf-bands")],
                   ),
               printReport = true,
           )

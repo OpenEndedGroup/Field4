@@ -187,7 +187,7 @@ even if split panes are never built.
 
 What P0 built:
 
-- `src/jsMain/kotlin/afield/canvasCamera.kt` holds `CanvasCamera`, which has per-column `x[]`,
+- `src/jsMain/kotlin/afield/app/canvas/canvasCamera.kt` holds `CanvasCamera`, which has per-column `x[]`,
   per-row `y[]`, a shared `zoom`, the `panes` list, `main`, `paneAt` and `paneOf`. It also holds
   `CanvasPane`, which has `rect`, `tx`/`ty`, the `worldX/worldY/worldRect` conversions,
   `visibleWorldRect`, `worldViewBox` and `canvasTransform`.

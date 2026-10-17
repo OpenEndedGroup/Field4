@@ -681,11 +681,11 @@
     1 CubicTo 360.0000,120.0000,0.0000 318.4000,167.2000,0.0000 340.0000,152.0000,0.0000
     2 CubicTo 349.3512,132.3336,0.0000 355.8400,124.7200,0.0000 352.3120,128.8160,0.0000
 # contains / windingNumber values the examples compute
-  square.windingNumber((20.0, 20.0)) = 1
-  square.contains((20.0, 20.0)) = true
-  square.windingNumber((80.0, 20.0)) = 0
-  square.contains((80.0, 20.0)) = false
-  square.windingNumber((25.0, 25.0)) = 1
-  square.contains((25.0, 25.0)) = true
-  square.signedArea2D() = 3600.0000
+  square.windingNumber2D((20.0, 20.0)) = 1
+  square.contains2D((20.0, 20.0)) = true
+  square.windingNumber2D((80.0, 20.0)) = 0
+  square.contains2D((80.0, 20.0)) = false
+  square.windingNumber2D((25.0, 25.0)) = 1
+  square.contains2D((25.0, 25.0)) = true
+  square.area2D() = 3600.0000
   square.centroid2D() = (30.0, 30.0)

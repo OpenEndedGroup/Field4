@@ -1,5 +1,4 @@
-import afield.stdlib.*
-import afield.stdlib.noir.audioai.*
+
 
 val gallerySync = "analysis-gallery"
 val galleryRate = 8_000

@@ -1,11 +1,9 @@
-// `afield.four.fabricated` is not among a box's automatic imports, and the `prop<>` type
-// argument is fully qualified because `prop<>`'s code rewrite does not carry the
-// snippet's own imports.
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.stdlib.linalg.Vector3f
+// `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
+import afield.math.linalg.Vector3f
 
-prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+prop<StandardRenderer.Bundle>(bundle)
 
 once.bundle {
     val b = StandardRenderer.build(

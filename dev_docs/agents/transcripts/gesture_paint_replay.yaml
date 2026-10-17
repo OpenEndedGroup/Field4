@@ -1,0 +1,121 @@
+name: gesture_paint_replay
+description: >
+  A gesture recorded on an XY pad, baked into keyframe lanes, edited, and replayed as a brush
+  movement on a paint canvas. Two boxes.
+
+  `pad to paint` has a pen gesture pad (`gesture(pen = true)`: each sample keeps the pointer's
+  pressure, tiltX, tiltY and twist) holding a wave a pen might draw, pressed hardest in the middle;
+  Shift-drag on it, or press rec, to record your own, with a tablet pen for pressure and tilt. The
+  take is baked into x, y and pressure lanes in the box's keyframe editors; "paint lanes" paints
+  them with a brush of moving hairs (`PaintCanvas.gesture(x, y, pressureLane = ...)`), so edit a
+  lane and press it again. "paint take" paints the take itself, with its tilt; "bake take" bakes it
+  again; "replay lanes" sends edited lanes back to the pad, keeping what the pen did.
+
+  `what the pad drops` paints one recorded take four ways: as a mouse records it (position and
+  time), with the pen's pressure, with pressure and tilt, and with the time thrown away (the same
+  path at an even speed), so each dimension the recording keeps or drops can be seen.
+
+  Demo for afield/paint/gestureReplay.kt (dev_docs/paint/GESTURE_PAINT_REPLAY.md). Pure CPU; no
+  Window, no Renderer. The paint library is optional (`./gradlew buildPaintNative`); without it both
+  boxes say so and stop.
+operations:
+  - create:
+      box: gpr_pad
+      name: pad to paint
+      frame: { x: 40.0, y: 30.0, w: 260.0, h: 60.0 }
+      properties:
+        code: |
+          import afield.graphics.paint.*
+          
+          var p = Vector2f(0f, 0f)
+          lateinit var pad: GestureHandle
+          
+          // A wave a pen might draw across the pad in 1.6 s: pressing hardest through the middle,
+          // leaning right and toward you, with a little tremor.
+          val rnd = java.util.Random(11)
+          val wave = (0 until 190).map { i ->
+              val u = i / 189.0
+              PenSample(1.6 * u, -0.85 + 1.7 * u + 0.006 * (rnd.nextDouble() - 0.5), 0.35 * sin(2 * PI * u) + 0.006 * (rnd.nextDouble() - 0.5),
+                  pressure = 0.05 + 0.95 * sin(PI * u), tiltX = 35.0, tiltY = 20.0)
+          }
+          
+          val x = keyframes("lanes", "x")
+          val y = keyframes("lanes", "y")
+          val pressure = keyframes("lanes", "pressure")
+          
+          fun bake() {
+              val (bx, by) = bakeGesture(pad, tolerance = 0.01, channel = "lanes")
+              pressure.setKeys(pad.penLane("pressure", tolerance = 0.03))
+              println("baked ${pad.samples.size} samples: ${pad.fit(bx, by)}, pressure ${pressure.getKeyframeCount()} keys")
+          }
+          
+          fun show(paintIt: (PaintCanvas) -> TimedGesture) {
+              if (!PaintCanvas.isAvailable) { markdown(PaintLibrary.describe()); return }
+              PaintCanvas(600, aspect = 1.0, groundColor = rgb(0.97, 0.96, 0.92), sizeMm = 200.0, seed = 4).use { c ->
+                  val g = paintIt(c)
+                  c.stroke(g, c.dynamicBrush(BrushKind.Round, 40.0, hairs = 32).load(rgb(0.25, 0.15, 0.1), stiff = 0.5), seed = 4)
+                  println("painted %.2f s, pressure %.2f to %.2f".format(g.duration, g.samples.minOf { it.pressure }, g.samples.maxOf { it.pressure }))
+                  display("main", c.png(relief = 0.6))
+              }
+          }
+          fun paintLanes() = show { c -> c.gesture(x, y, pad.xRange, pad.yRange, pressureLane = pressure) }
+          fun paintTake() = show { c -> c.gesture(pad) }
+          
+          controlGroup("gesture") {
+              pad = gesture("pen", pen = true) { p = it }
+              button("bake take") { if (it) { bake(); paintLanes() } }
+              button("paint lanes") { if (it) paintLanes() }
+              button("paint take") { if (it) paintTake() }
+              button("replay lanes") { if (it) { pad.setTake(x, y); println("the pad plays the lanes: ${pad.samples.size} samples") } }
+          }
+          displayOpen("gesture")
+          
+          if (!pad.hasTake) pad.setTake(wave)
+          if (x.isEmpty() || y.isEmpty()) bake() else println("lanes kept: ${pad.fit(x, y)}")
+          paintLanes()
+  - create:
+      box: gpr_dimensions
+      name: what the pad drops
+      frame: { x: 1160.0, y: 30.0, w: 260.0, h: 60.0 }
+      properties:
+        code: |
+          import afield.graphics.paint.*
+          
+          run {
+          if (!PaintCanvas.isAvailable) {
+              markdown(PaintLibrary.describe())
+              return@run
+          }
+          // One take, as a pen records it: an S across the pad, drawn slowly through its first 40%
+          // (1.1 s) and flicked through the rest (0.25 s), pressing hard at the start and lifting
+          // as it goes, the pen laid further over toward the end.
+          val take = (0 until 160).map { i ->
+              val u = i / 159.0
+              val s = if (u < 0.75) 0.4 * u / 0.75 else 0.4 + 0.6 * (u - 0.75) / 0.25   // how far along
+              PenSample(if (u < 0.75) 1.1 * u / 0.75 else 1.1 + 0.25 * (u - 0.75) / 0.25, -0.8 + 1.6 * s, 0.4 * sin(2 * PI * s),
+                  pressure = 1.0 - 0.95 * s, tiltX = 10.0 + 50.0 * s, tiltY = 0.0)
+          }
+          // The same path at an even pace: what is left if the recording kept no time.
+          val even = run {
+              val arc = take.zipWithNext { a, b -> hypot(b.x - a.x, b.y - a.y) }.runningFold(0.0) { acc, d -> acc + d }
+              take.mapIndexed { i, s -> s.copy(t = take.last().t * arc[i] / arc.last()) }
+          }
+          val ways = listOf(
+              "position and time, as a mouse records it" to take.map { PenSample(it.t, it.x, it.y) },
+              "with the pen's pressure" to take.map { it.copy(tiltX = 0.0) },
+              "with pressure and tilt" to take,
+              "everything but the time" to even,
+          )
+          val canvases = ways.map { (_, samples) ->
+              PaintCanvas(300, aspect = 1.0, groundColor = rgb(0.97, 0.96, 0.92), sizeMm = 120.0, seed = 5).also { c ->
+                  c.stroke(c.gesture(samples), c.dynamicBrush(BrushKind.Filbert, 50.0, hairs = 32).load(rgb(0.15, 0.2, 0.35), stiff = 0.5), seed = 5)
+              }
+          }
+          display("main", pngRow(canvases))
+          canvases.forEach { it.close() }
+          markdown("ways", ways.mapIndexed { i, (name, _) -> "${i + 1}. $name" }.joinToString("\n"))
+          }
+  - execute: { box: gpr_pad, property: code }
+  - await: { wait: pending }
+  - execute: { box: gpr_dimensions, property: code }
+  - await: { wait: pending }

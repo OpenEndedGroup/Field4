@@ -1,9 +1,9 @@
 package afield.examples.sonicpi
 
-import afield.four.audio.WavFloatArrayLoader
-import afield.four.synth.LinkAudioInterface
-import afield.four.synth.SonicPi
-import afield.four.synth.SonicPiInstall
+import afield.audio.engine.WavFloatArrayLoader
+import afield.audio.synth.LinkAudioInterface
+import afield.audio.synth.SonicPi
+import afield.audio.synth.SonicPiInstall
 import java.io.File
 import java.nio.file.Files
 import kotlin.math.PI
@@ -38,7 +38,7 @@ expect:
  * not "how does it sound" but "did this specific tone cross the boundary", and that has a number.
  *
  * Deliberately no soundcard: the PCM is committed to the Link sink directly rather than through
- * [afield.four.synth.FieldAudioEngine], so the probe does not depend on an audio device being
+ * [afield.audio.synth.FieldAudioEngine], so the probe does not depend on an audio device being
  * available or on what it is set to.
  *
  * This *reports* rather than asserts. The interop is unproven, and a probe that fails the build on an

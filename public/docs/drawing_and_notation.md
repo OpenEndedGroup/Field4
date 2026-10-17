@@ -1,6 +1,6 @@
 # Drawing and Notation
 
-Press `Alt+D` and the canvas becomes a drawing surface: pens, shapes, arrows and text, in Excalidraw's hand-made style, laid over your boxes. Press it again and you are back with the boxes. What you drew stays where you put it, pans and zooms with the canvas, and is saved with the document.
+Press `alt/option-D` and the canvas becomes a drawing surface: pens, shapes, arrows and text, in Excalidraw's hand-made style, laid over your boxes. Press it again and you are back with the boxes. What you drew stays where you put it, pans and zooms with the canvas, and is saved with the document.
 
 On its own that is a whiteboard. What makes it Field's is that your code can read the drawing and write to it. Every stroke is data a box can ask about, and every box can draw.
 
@@ -8,7 +8,7 @@ On its own that is a whiteboard. What makes it Field's is that your code can rea
 
 ## Drawing
 
-`Alt+D` switches the mouse and keyboard to the drawing; `Alt+D` again gives them back to the boxes. While the drawing has them, Excalidraw's own keys work: `p` for the pen, `r` rectangle, `o` ellipse, `a` arrow, `l` line, `t` text, `e` eraser, and space-drag or two fingers to pan. Pinch to zoom, and the boxes zoom with you.
+`alt/option-D` switches the mouse and keyboard to the drawing; `alt/option-D` again gives them back to the boxes. While the drawing has them, Excalidraw's own keys work: `p` for the pen, `r` rectangle, `o` ellipse, `a` arrow, `l` line, `t` text, `e` eraser, and space-drag or two fingers to pan. Pinch to zoom, and the boxes zoom with you.
 
 When the drawing is off it is still visible, but it lets clicks through to the boxes. Two things tie it to them:
 
@@ -103,7 +103,7 @@ A cut returns hits. A stroke crosses it at points, so a line that doubles back g
 Here is Cage's kit drawn by code: six curves, a grid, a point, and the straight line from the point inside the grid to one outside it. The box cuts the curves with the line and reports where the line meets each one:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/drawing_and_notation/fontana.png" capture="window" embed=true open-outputs="false" clip="0,0,1060,510" w="180" h="50" wait="3.0" timeout="90" name="notation-fontana" alt="Six coloured curves across a frame labelled 'fontana mix', a grey grid and point, a straight line from the point to the frame's corner, and the box's readout listing where the line crosses four of the curves"}
-val colors = listOf("#e03131", "#1971c2", "#2f9e44", "#f08c00", "#9c36b5", "#0c8599")
+val colors = ["#e03131", "#1971c2", "#2f9e44", "#f08c00", "#9c36b5", "#0c8599"]
 notation {
     frame("fontana mix", 260, 30, 780, 460)
     for (i in 0 until 6) {
@@ -112,7 +112,7 @@ notation {
     }
     rect(520, 170, 200, 170, name = "grid", stroke = "#868e96")
     ellipse(580, 230, 10, 10, name = "point", fill = "#868e96")
-    line(listOf(vec(585, 235), vec(1010, 470)), name = "the line", stroke = "#1e1e1e")
+    line([vec(585, 235), vec(1010, 470)], name = "the line", stroke = "#1e1e1e")
 }
 val line = notation.named("the line")!!
 val crossings = notation.intersect(line.start!!, line.end!!).filter { it.mark.name!!.startsWith("curve") }
@@ -129,7 +129,7 @@ Feldman's grid, read as events. Time runs across the frame and the three rows ar
 notation {
     stroke = "#868e96"
     frame("projection", 260, 30, 800, 240)
-    for (row in 1..2) line(listOf(vec(260, 30 + row * 80), vec(1060, 30 + row * 80)))
+    for (row in 1..2) line([vec(260, 30 + row * 80), vec(1060, 30 + row * 80)])
     fill = "#1971c2"
     rect(300, 42, 120, 56)
     rect(500, 122, 200, 56)
@@ -161,7 +161,7 @@ notation {
     stroke(hairpin, name = "hairpin", stroke = "#e03131")
 }
 val dynamics = notation.space("dynamics", x = 0.0..8.0, y = 0.0..1.0)
-val markings = listOf("niente", "pp", "p", "mp", "mf", "f", "ff")
+val markings = ["niente", "pp", "p", "mp", "mf", "f", "ff"]
 markdown("dynamics", (0..7).joinToString("  \n") { beat ->
     val ys = dynamics.vertical(beat.toDouble()).filter { !it.isSpan }.map { it.value }
     val gap = if (ys.size >= 2) ys.max() - ys.min() else 0.0
@@ -173,7 +173,7 @@ Draw two hairpins, or a diminuendo after the crescendo, and the same reading cod
 
 ## The starting point
 
-Open **drawing_notation** from the welcome screen's starting points. It has the ideas on this page as six boxes you run and then draw against: `draw`, `read`, `listen`, `projection 1`, `fontana mix` and `crescendo`. Or [browse it in the offline viewer](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn).
+Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome screen's starting points. It has the ideas on this page as six boxes you run and then draw against: `draw`, `read`, `listen`, `projection 1`, `fontana mix` and `crescendo`. Or [browse it in the offline viewer](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn).
 
 ## Reference
 
@@ -193,6 +193,6 @@ Open **drawing_notation** from the welcome screen's starting points. It has the 
 | `mark.kind`, `.bounds`, `.points`, `.label`, `.box`, `.fromBox`, `.toBox`, `.toFLine()`, `.yAt(x)`, `.xAt(y)` | one mark |
 
 !!! note "Colours"
-    Field shows the drawing in Excalidraw's dark theme, which draws every colour through an inversion. A colour given from code is shown transformed: pale yellow becomes dark brown. The strong colours of Excalidraw's own palette, the ones used on this page, come through well.
+    Field shows the drawing in Excalidraw's dark theme, which draws every colour through an inversion. A colour given from code is stored adjusted for it, so greys, greens and blues appear as asked, and `stroke` and `fill` read back the colour you gave. The default ink, `#1e1e1e`, still follows the theme, so it shows light on dark. Warm and pale colours (`#e03131`, `#ffec99`) lie outside what the inversion can show and appear duller or shifted.
 
 The drawing is one scene per document, kept in the document's root box. When code and a hand change it at the same moment, both changes are kept.

@@ -1,0 +1,402 @@
+{
+  "tests": {
+    "tests": 157,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "rehearsal": [
+    {
+      "command": "new-box --name HelperRenderer",
+      "ok": true,
+      "data": {
+        "documentName": "scratch",
+        "scratch": true,
+        "box": {
+          "uid": "0c2c3b30-3406-4462-9bf8-d8ffcfc512c5",
+          "name": "HelperRenderer",
+          "frame": {
+            "x": 0.0,
+            "y": 0.0,
+            "w": 100.0,
+            "h": 100.0
+          },
+          "offline": true
+        }
+      },
+      "timedOut": false
+    },
+    {
+      "command": "launch @last --file /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/renderer_code_.kt",
+      "ok": true,
+      "data": {
+        "uid": "0c2c3b30-3406-4462-9bf8-d8ffcfc512c5",
+        "property": "code",
+        "codeLength": 304,
+        "running": false,
+        "runningObservation": "setup-complete",
+        "runningMayBeTransient": true,
+        "verdict": {
+          "uid": "0c2c3b30-3406-4462-9bf8-d8ffcfc512c5",
+          "property": "code",
+          "revision": "7f2209f1ba8cc835e2a456617d23230004fde0781ed757997be13f4003030ad2",
+          "requestId": "launch_57d0b328fcb643f49e6da546c4829c23",
+          "success": true
+        }
+      },
+      "timedOut": false
+    },
+    {
+      "command": "new-box --name HelperCompute",
+      "ok": true,
+      "data": {
+        "documentName": "scratch",
+        "scratch": true,
+        "box": {
+          "uid": "a2ab60fa-dfb6-4536-85f3-10af37ef7eed",
+          "name": "HelperCompute",
+          "frame": {
+            "x": 0.0,
+            "y": 0.0,
+            "w": 100.0,
+            "h": 100.0
+          },
+          "offline": true
+        }
+      },
+      "timedOut": false
+    },
+    {
+      "command": "connect HelperRenderer @last",
+      "ok": true,
+      "data": {
+        "action": "connect",
+        "parent": "0c2c3b30-3406-4462-9bf8-d8ffcfc512c5",
+        "children": [
+          "a2ab60fa-dfb6-4536-85f3-10af37ef7eed"
+        ],
+        "childCount": 1
+      },
+      "timedOut": false
+    },
+    {
+      "command": "set @last compute --file /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/compute.glsl",
+      "ok": true,
+      "data": {
+        "ok": true,
+        "uid": "a2ab60fa-dfb6-4536-85f3-10af37ef7eed",
+        "property": "compute",
+        "message": "Set compute on HelperCompute (270 chars)."
+      },
+      "timedOut": false
+    },
+    {
+      "command": "launch @last --file /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/compute_code_.kt",
+      "ok": true,
+      "data": {
+        "uid": "a2ab60fa-dfb6-4536-85f3-10af37ef7eed",
+        "property": "code",
+        "codeLength": 680,
+        "running": false,
+        "runningObservation": "setup-complete",
+        "runningMayBeTransient": true,
+        "verdict": {
+          "uid": "a2ab60fa-dfb6-4536-85f3-10af37ef7eed",
+          "property": "code",
+          "revision": "b88f8baf448975bc7c12afaab4cfca68a6d86ee8dc7836fb5531965fc2cabef9",
+          "requestId": "launch_36495801a89844bc9c1f8d8ae39bd381",
+          "success": true
+        }
+      },
+      "timedOut": false
+    },
+    {
+      "command": "new-box --name HelperDraw",
+      "ok": true,
+      "data": {
+        "documentName": "scratch",
+        "scratch": true,
+        "box": {
+          "uid": "e14328c2-5cc1-46e9-a45a-f75605812bbb",
+          "name": "HelperDraw",
+          "frame": {
+            "x": 0.0,
+            "y": 0.0,
+            "w": 100.0,
+            "h": 100.0
+          },
+          "offline": true
+        }
+      },
+      "timedOut": false
+    },
+    {
+      "command": "connect HelperCompute @last",
+      "ok": true,
+      "data": {
+        "action": "connect",
+        "parent": "a2ab60fa-dfb6-4536-85f3-10af37ef7eed",
+        "children": [
+          "e14328c2-5cc1-46e9-a45a-f75605812bbb"
+        ],
+        "childCount": 1
+      },
+      "timedOut": false
+    },
+    {
+      "command": "set @last vertex --file /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/vertex.glsl",
+      "ok": true,
+      "data": {
+        "ok": true,
+        "uid": "e14328c2-5cc1-46e9-a45a-f75605812bbb",
+        "property": "vertex",
+        "message": "Set vertex on HelperDraw (144 chars)."
+      },
+      "timedOut": false
+    },
+    {
+      "command": "set @last fragment --file /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/fragment.glsl",
+      "ok": true,
+      "data": {
+        "ok": true,
+        "uid": "e14328c2-5cc1-46e9-a45a-f75605812bbb",
+        "property": "fragment",
+        "message": "Set fragment on HelperDraw (396 chars)."
+      },
+      "timedOut": false
+    },
+    {
+      "command": "launch @last --file /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/draw_code_.kt",
+      "ok": true,
+      "data": {
+        "uid": "e14328c2-5cc1-46e9-a45a-f75605812bbb",
+        "property": "code",
+        "codeLength": 276,
+        "running": false,
+        "runningObservation": "setup-complete",
+        "runningMayBeTransient": true,
+        "verdict": {
+          "uid": "e14328c2-5cc1-46e9-a45a-f75605812bbb",
+          "property": "code",
+          "revision": "fab275a5173ee07e6cb94baa0bdcf2c5da3492ca272234837dd5f787630d0748",
+          "requestId": "launch_586de012f9e84badba54956130ff7676",
+          "success": true
+        }
+      },
+      "timedOut": false
+    },
+    {
+      "command": "wait-native-renderer @last --frames 20 --timeout 40",
+      "ok": true,
+      "data": {
+        "ok": true,
+        "uid": "e14328c2-5cc1-46e9-a45a-f75605812bbb",
+        "frames": 20,
+        "attempts": 1,
+        "path": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/.field-backdoor/logs/20261016-093930-pid49332-fe236434-native-renderer-ready.png",
+        "message": "",
+        "screenshot": {
+          "ok": true,
+          "kind": "native-window",
+          "path": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/.field-backdoor/logs/20261016-093930-pid49332-fe236434-native-renderer-ready.png",
+          "uid": "e14328c2-5cc1-46e9-a45a-f75605812bbb",
+          "documentName": "scratch",
+          "scratch": true,
+          "sessionKey": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/field-automation-workspace/.agent-scratch/3b027228-f04a-492f-90cb-9148a8da5ea2"
+        }
+      },
+      "timedOut": false
+    },
+    {
+      "command": "native-screenshot /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/gpu.png --uid @last --wait-frames 10 --timeout 40",
+      "ok": true,
+      "data": {
+        "ok": true,
+        "kind": "native-window",
+        "path": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/gpu.png",
+        "uid": "e14328c2-5cc1-46e9-a45a-f75605812bbb",
+        "documentName": "scratch",
+        "scratch": true,
+        "sessionKey": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/field-automation-workspace/.agent-scratch/3b027228-f04a-492f-90cb-9148a8da5ea2",
+        "imagePixelWidth": 640,
+        "imagePixelHeight": 480
+      },
+      "timedOut": false
+    },
+    {
+      "command": "run HelperCompute --value \"helperCount = 18\"",
+      "ok": true,
+      "data": {
+        "uid": "a2ab60fa-dfb6-4536-85f3-10af37ef7eed",
+        "property": "code",
+        "codeLength": 16,
+        "running": false
+      },
+      "timedOut": false
+    },
+    {
+      "command": "native-screenshot /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/gpu-negative.png --uid HelperDraw --wait-frames 10 --timeout 40",
+      "ok": true,
+      "data": {
+        "ok": true,
+        "kind": "native-window",
+        "path": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/gpu-negative.png",
+        "uid": "e14328c2-5cc1-46e9-a45a-f75605812bbb",
+        "documentName": "scratch",
+        "scratch": true,
+        "sessionKey": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/field-automation-workspace/.agent-scratch/3b027228-f04a-492f-90cb-9148a8da5ea2",
+        "imagePixelWidth": 640,
+        "imagePixelHeight": 480
+      },
+      "timedOut": false
+    },
+    {
+      "command": "run HelperCompute --value \"helperCount = 17\"",
+      "ok": true,
+      "data": {
+        "uid": "a2ab60fa-dfb6-4536-85f3-10af37ef7eed",
+        "property": "code",
+        "codeLength": 16,
+        "running": false
+      },
+      "timedOut": false
+    },
+    {
+      "command": "native-screenshot /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/gpu-restored.png --uid HelperDraw --wait-frames 10 --timeout 40",
+      "ok": true,
+      "data": {
+        "ok": true,
+        "kind": "native-window",
+        "path": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/gpu-restored.png",
+        "uid": "e14328c2-5cc1-46e9-a45a-f75605812bbb",
+        "documentName": "scratch",
+        "scratch": true,
+        "sessionKey": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/field-automation-workspace/.agent-scratch/3b027228-f04a-492f-90cb-9148a8da5ea2",
+        "imagePixelWidth": 640,
+        "imagePixelHeight": 480
+      },
+      "timedOut": false
+    },
+    {
+      "command": "stop HelperRenderer",
+      "ok": true,
+      "data": {
+        "uid": "0c2c3b30-3406-4462-9bf8-d8ffcfc512c5",
+        "running": false
+      },
+      "timedOut": false
+    },
+    {
+      "command": "new-box --name OtherHelpers --x 1000 --y 0 --w 1000",
+      "ok": true,
+      "data": {
+        "documentName": "scratch",
+        "scratch": true,
+        "box": {
+          "uid": "dd879d5a-dda2-4ace-acb2-b993ac726eaa",
+          "name": "OtherHelpers",
+          "frame": {
+            "x": 1000.0,
+            "y": 0.0,
+            "w": 1000.0,
+            "h": 100.0
+          },
+          "preamble": "",
+          "offline": true
+        }
+      },
+      "timedOut": false
+    },
+    {
+      "command": "launch @last --file /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/other_code_.kt",
+      "ok": true,
+      "data": {
+        "uid": "dd879d5a-dda2-4ace-acb2-b993ac726eaa",
+        "property": "code",
+        "codeLength": 653,
+        "running": false,
+        "runningObservation": "setup-complete",
+        "runningMayBeTransient": true,
+        "verdict": {
+          "uid": "dd879d5a-dda2-4ace-acb2-b993ac726eaa",
+          "property": "code",
+          "revision": "4e538882289ce105185e812051cb3251bce6f9c5dd0bcff7f873315aa389670f",
+          "requestId": "launch_00a8dd022b6a4e8bb739e2a6e72e4758",
+          "success": true
+        }
+      },
+      "timedOut": false
+    },
+    {
+      "command": "launch @last --file /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/other_code_.kt",
+      "ok": true,
+      "data": {
+        "uid": "dd879d5a-dda2-4ace-acb2-b993ac726eaa",
+        "property": "code",
+        "codeLength": 653,
+        "running": false,
+        "runningObservation": "setup-complete",
+        "runningMayBeTransient": true,
+        "verdict": {
+          "uid": "dd879d5a-dda2-4ace-acb2-b993ac726eaa",
+          "property": "code",
+          "revision": "4e538882289ce105185e812051cb3251bce6f9c5dd0bcff7f873315aa389670f",
+          "requestId": "launch_2a7957b752844a4bb01af53a72df751c",
+          "success": true
+        }
+      },
+      "timedOut": false
+    },
+    {
+      "command": "screenshot-box @last /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/output.png",
+      "ok": true,
+      "data": {
+        "ok": true,
+        "kind": "box",
+        "path": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/box-code-revision/approved-helpers/rehearsal/output.png",
+        "uid": "dd879d5a-dda2-4ace-acb2-b993ac726eaa",
+        "documentName": "scratch",
+        "scratch": true,
+        "sessionKey": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/field-automation-workspace/.agent-scratch/3b027228-f04a-492f-90cb-9148a8da5ea2",
+        "clip": {
+          "x": 989.0,
+          "y": 130.0,
+          "w": 328.0,
+          "h": 251.1875
+        },
+        "viewport": {
+          "x": 0.0,
+          "y": 0.0,
+          "w": 2200.0,
+          "h": 2800.0
+        },
+        "imagePixelWidth": 656,
+        "imagePixelHeight": 502,
+        "devicePixelRatio": 2.0
+      },
+      "timedOut": false
+    }
+  ],
+  "sourceSha256": {
+    "src/jvmMain/kotlin/afield/animation/keyframes/keyframer.kt": "928b629dfced22376842c9236e45c588793817eb8e2d8e62e2fecc6e707ce3c8",
+    "src/jvmMain/kotlin/afield/graphics/render/ComputeMesh.kt": "ab9c556d910147175739c29b68bc1823bb3512e33b4fade9904e88134c06b516",
+    "src/jvmMain/kotlin/afield/graphics/render/Mesh.kt": "92d60e5d33b542a94b1c825c538e61734e6297f6e9c5a0083e003a8b95b07c1c",
+    "src/jvmMain/kotlin/afield/graphics/render/groups.kt": "1535319405eff882e98605dc55b3c3c6ea79651d54143e47423a4fd0eb672b5a",
+    "src/jvmMain/kotlin/afield/graphics/shader/shaders.kt": "2bf227fa219bb52a6e60acf8588067291dcc47295f562a13ca8b0af64279afe4",
+    "src/jvmMain/kotlin/afield/graphics/vulkan/buffers/Structure.kt": "cdeafa1301b613085f6c2bbe407b02cc77e2f440910a2667c78f4ef691d9b4d4",
+    "src/jvmMain/kotlin/afield/ui/output/MarkdownOutput.kt": "b0fae2dbc4419a87c16b59e0bbd736bbc8276b48e17f947e7361c56eed046a30",
+    "src/jvmTest/kotlin/afield/graphics/shader/ComputePreambleTest.kt": "ed705fc456279c42d33ee7c5217a4cef6bb7e55a15c04253ce9c1457e488427d",
+    "src/jvmMain/kotlin/afield/geometry/mesh/MeasurementHelpers.kt": "5a7fde64197c9630504f37a92dba204cba6398f0be2a7bbf15c388b76d1174ce",
+    "src/jvmMain/kotlin/afield/ui/output/MarkdownAppend.kt": "7776ad7267f629a48d2496c64f3409cc53715e020d7f8d7f18bcb3b400780fdf",
+    "src/jvmMain/kotlin/afield/ui/output/NumericFormatting.kt": "7f3c21af967a20dcfa56f1ea1d5f0cea0093a568970fb7796345902f52c36a14",
+    "src/jvmTest/kotlin/afield/examples/stdlib/ApprovedHelpersTest.kt": "337fb1cddc0e48504bf1ae7f730241692380ef631321ed3938900587062a5cd5"
+  },
+  "gpuPixels": {
+    "white": "all RGB 255",
+    "negative": "all RGB 255,0,0",
+    "restored": "all RGB 255"
+  },
+  "view": "native Vulkan window and separate headless browser; not user Electron",
+  "fullGuard": "landing queue",
+  "formatter": "Field formatBoxCode --imports (ktfmt) on four private Kotlin rehearsal copies"
+}

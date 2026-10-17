@@ -1,0 +1,24 @@
+name: inspector_search
+description: A tree() over a small scene, for the graphPaths search recording in visualizers.md.
+operations:
+  - create:
+      box: inspector_search
+      name: inspector search
+      frame: { x: 80.0, y: 100.0, w: 260.0, h: 60.0 }
+      properties:
+        code: |
+          data class Layer(val name: String, val visible: Boolean, val width: Double)
+          data class Group(val name: String, val layers: List<Layer>)
+
+          val scene = linkedMapOf(
+              "title" to "sketch",
+              "groups" to listOf(
+                  Group("background", listOf(Layer("paper", true, 1.0))),
+                  Group("ink", listOf(Layer("outline", true, 2.0), Layer("hatching", false, 0.5))),
+              ),
+          )
+          tree("scene", scene, maxHeight = 300)
+          displayOpen("scene")
+  - execute: { box: inspector_search, property: code }
+  - wait:
+      millis: 1500

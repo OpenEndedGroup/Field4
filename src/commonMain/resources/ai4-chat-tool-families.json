@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Groups AI4 tool calls by what they do to the work, for the chat archive (afield.chatlog). Names are as aiChatToolName gives them: no 24-hex wire suffix, no trailing 'Request'. A pattern ending in '*' matches a prefix. The first family that matches wins, so list narrower families first. Entries starting _field_ are box-authored tools (aiTool{}); the house-sketch kit's are listed because its chats are the first corpus. 'count' gives the nouns a chat-panel round summary uses ('2 notes'); families without it are not counted there.",
+  "note": "Groups AI4 tool calls by what they do to the work, for the chat archive (afield.ai.conversation.chatlog). Names are as aiChatToolName gives them: no 24-hex wire suffix, no trailing 'Request'. A pattern ending in '*' matches a prefix. The first family that matches wins, so list narrower families first. Entries starting _field_ are box-authored tools (aiTool{}); the house-sketch kit's are listed because its chats are the first corpus. 'count' gives the nouns a chat-panel round summary uses ('2 notes'); families without it are not counted there.",
   "families": [
     {
       "name": "notes",
@@ -68,6 +68,7 @@
         "InspectStudyBuilds",
         "ListStudyBuilds",
         "CancelStudyBuild",
+        "PruneStudyBuilds",
         "LaunchBox",
         "RunBox",
         "StopBox"

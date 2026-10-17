@@ -1,10 +1,11 @@
 # Field as a local MCP server
 
-`tools/field_mcp.py` exposes Field to MCP clients (Claude Code, Claude Desktop) as a
-**local stdio MCP server**. It is a thin bridge, not a new automation surface: every
-MCP `tools/call` is translated into the same WebSocket messages the agent backdoor
-already speaks (`agent-snapshot`, `agent-open-document`, `macro-transcript-command`,
-`agent-create-box`, `agent-box-screenshot`, and the ai4 tool registry). All semantics —
+`tools/field_mcp.py` exposes Field to MCP clients (Codex, Claude Code, Claude Desktop) as a
+**local stdio MCP server**. Document and box calls translate into the same WebSocket
+messages the agent backdoor already speaks (`agent-snapshot`, `agent-open-document`,
+`macro-transcript-command`, `agent-create-box`, `agent-box-screenshot`, and the ai4
+tool registry). The Electron tab tools attach to the visible app over loopback CDP.
+Document semantics —
 the operation-transcript op vocabulary, runtime-specific launch behavior, settle
 barrier, and output capture — live in the JVM and are reused verbatim. See
 [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md) and [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md).
@@ -63,6 +64,47 @@ To register manually instead (e.g. user scope, available in every project):
 claude mcp add -s user -e PORT=9092 field -- "$(pwd)/.venv/bin/python3" "$(pwd)/tools/field_mcp.py"
 ```
 
+## Registering with Codex
+
+Codex reads `~/.codex/config.toml`; it does not consume this repo's Claude Code
+`.mcp.json`. Register the same server with absolute paths, then start a new Codex
+chat so its tool list includes Field:
+
+```bash
+codex mcp add field --env PORT=9092 -- \
+  /ABSOLUTE/PATH/field4/.venv/bin/python3 \
+  /ABSOLUTE/PATH/field4/tools/field_mcp.py
+codex mcp list
+```
+
+The registration is local to the machine. A chat that was already running before
+registration may continue to show its original tool list.
+
+## The visible Electron app
+
+Start with `field_electron_tabs` to identify the selected window and tab, and
+check its URL and document before acting. `field_electron_inspect` reads a compact
+view of visible text, headings, links and labelled controls. `field_electron_act`
+clicks or fills one uniquely matched visible control; `field_electron_screenshot`
+returns the live tab viewport; `field_electron_console` returns recent warnings
+and errors. A `tab` argument can name an existing tab by id, title or URL. These
+tools operate on Field's actual Electron WebContentsView without opening another
+browser page. They do not change the selected tab when inspecting another tab.
+
+Use the document and box tools above for source, graph, and execution work.
+The live output-iframe tools remain available for content inside a box's output.
+
+`field.sh`, `field.ps1` and `runDesktop` expose Electron CDP on loopback at
+`Field port + 20000` (9092 → 29092). Set `FIELD_ELECTRON_CDP_PORT` to a different
+port if needed, or `off` to disable that connection. The MCP server derives the
+same default from its `PORT`; set `FIELD_ELECTRON_CDP_PORT` on the MCP server too
+when overriding it. An existing Electron app must be restarted to pick up the
+tab identity preload and debugging port. The MCP server itself still runs and
+lists its tools when Field or Electron is closed; the Electron tools then return
+a specific connection error.
+
+## Registering with Claude Desktop
+
 For the classic **Claude Desktop** chat app, add an `mcpServers` entry to
 `~/Library/Application Support/Claude/claude_desktop_config.json` (absolute paths there —
 that app does not launch from the repo directory):
@@ -99,6 +141,10 @@ Native bridge tools (always present):
 - `field_outline` — a token-efficient one-line-per-box orientation map of the document.
 - `field_read_note` / `field_write_note` — read/write a box's persistent `notes` property.
 - `field_screenshot_box` — render a box's output as an image.
+- `field_paint_gesture` — replay a gesture take (rows `[t,x,y]` or `[t,x,y,pressure,tiltX,tiltY,twist]`)
+  or its keyframe lanes as a brush stroke on a fresh paint canvas and return the PNG; `bake` also
+  returns lanes to edit and pass back. Runs `afield.graphics.paint.GestureReplayMain` through `run-jvm-main`,
+  so no document needs to be open ([`GESTURE_PAINT_REPLAY.md`](../paint/GESTURE_PAINT_REPLAY.md)).
 - `field_debug_probe` — inspect a live variable's value at runtime (see
   [Runtime debug probe](#runtime-debug-probe) below).
 - `field_lifecycle_census` — what each box still holds (jobs, strands, stop hooks, audio
@@ -138,8 +184,8 @@ HTML.
 Two targeting modes (give exactly one):
 
 - **Source mode — anywhere in loaded `src/`.** Pass `file` (path or basename, e.g.
-  `Server.kt` or `src/jvmMain/kotlin/afield/Server.kt`) and/or `class` (fully qualified,
-  e.g. `afield.Server`), with `line` the real file line and `symbol` the variable. This
+  `Server.kt` or `src/jvmMain/kotlin/afield/app/server/Server.kt`) and/or `class` (fully qualified,
+  e.g. `afield.app.server.Server`), with `line` the real file line and `symbol` the variable. This
   is the "what is X here?" tool for framework code (line numbers illustrative):
   `{"file": "Server.kt", "line": 1761, "symbol": "now"}`.
 - **Box mode — a running box's snippet.** Pass `box` (uid/name), `line` within the box

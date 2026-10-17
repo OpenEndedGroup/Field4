@@ -1,6 +1,6 @@
 package afield.examples
 
-import afield.KotlinInterface
+import afield.runtime.kotlin.KotlinInterface
 
 // Helper extension for string repetition
 private operator fun String.times(n: Int) = repeat(n)

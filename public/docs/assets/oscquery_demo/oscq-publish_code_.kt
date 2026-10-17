@@ -1,4 +1,4 @@
-import afield.oscquery.*
+import afield.io.osc.query.*
 
 // Publish four parameters as an OSCQuery service on http port 9020 (OSC UDP on 9021),
 // advertised over DNS-SD so TouchDesigner, Max, Chataigne and VDMX list it as "Field demo".

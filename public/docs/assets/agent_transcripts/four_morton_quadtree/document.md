@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="mq_renderer" index="0" -->
 
 ```edn [field-box id="mq_renderer" role="properties"]
-{"id" "mq_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["mq_bundle"] "properties" {"children" #{#afield/box "mq_bundle"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_renderer_code_.kt" "lines" 11 "characters" 255 "sha256" "cddb02cd2313885c28cb9bd3b8ca17cae62455666d6cb95d33c3d26eb3865b12"}]}
+{"id" "mq_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["mq_bundle"] "properties" {"children" #{#afield/box "mq_bundle"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_renderer_code_.kt" "lines" 11 "characters" 266 "sha256" "a87d7ab675bfdbe09722d6e3c67ce62447b4b2c965cfa016bb4ac3dee7d0cdef"}]}
 ```
 
 ```kotlin [field-property box="mq_renderer" name="code" path="mq_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -36,23 +36,19 @@ start(renderer::run)
 
 From `code`
 
-`afield.four.fabricated` is not among a box's automatic imports, and the `prop<>` type
-argument is fully qualified because `prop<>`'s code rewrite does not carry the
-snippet's own imports.
+`afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
 
 ```edn [field-box id="mq_bundle" role="properties"]
-{"id" "mq_bundle" "index" 1 "name" "bundle" "parents" ["root" "mq_renderer"] "children" ["mq_tree"] "properties" {"children" #{#afield/box "mq_tree"} "parents" #{#afield/box "root" #afield/box "mq_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_bundle_code_.kt" "lines" 24 "characters" 776 "sha256" "2d5058fd1a57df1f01640e657aed4994824d5f2e62d3a63b5d47200834903189"}]}
+{"id" "mq_bundle" "index" 1 "name" "bundle" "parents" ["root" "mq_renderer"] "children" ["mq_tree"] "properties" {"children" #{#afield/box "mq_tree"} "parents" #{#afield/box "root" #afield/box "mq_renderer"} "name" "bundle" "_tombstone" false "frame" #afield/rect [380.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_bundle_code_.kt" "lines" 22 "characters" 683 "sha256" "128406020ba3cff2365d30737aeb7d2c36e9820dd3a69ede64116f2303f54b3b"}]}
 ```
 
 ```kotlin [field-property box="mq_bundle" name="code" path="mq_bundle_code_.kt"]
-// `afield.four.fabricated` is not among a box's automatic imports, and the `prop<>` type
-// argument is fully qualified because `prop<>`'s code rewrite does not carry the
-// snippet's own imports.
-import afield.four.fabricated.StandardRenderer
-import afield.four.fabricated.applyScenePlan
-import afield.stdlib.linalg.Vector3f
+// `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
+import afield.math.linalg.Vector3f
 
-prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+prop<StandardRenderer.Bundle>(bundle)
 
 once.bundle {
     val b = StandardRenderer.build(
@@ -76,18 +72,18 @@ println("bundle ready: ${bundle.postStack.names()}")
 <!-- field-box id="mq_tree" index="2" -->
 
 ```edn [field-box id="mq_tree" role="properties"]
-{"id" "mq_tree" "index" 2 "name" "morton quadtree" "parents" ["root" "mq_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "mq_bundle"} "name" "morton quadtree" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_tree_code_.kt" "lines" 146 "characters" 6406 "sha256" "5814ccb10b3a7074281083dc36fea2e14122f91ee19ded499f57fdcdcebaceae"}]}
+{"id" "mq_tree" "index" 2 "name" "morton quadtree" "parents" ["root" "mq_bundle"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "mq_bundle"} "name" "morton quadtree" "_tombstone" false "frame" #afield/rect [720.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mq_tree_code_.kt" "lines" 146 "characters" 6466 "sha256" "16236c92ac559c98bd748c5d8828fe038c6a20dcc90a971c32f7144b0a5d9f65"}]}
 ```
 
 ```kotlin [field-property box="mq_tree" name="code" path="mq_tree_code_.kt"]
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.FabricatePassSize
-import afield.four.fabricated.FabricatePassSpec
-import afield.four.fabricated.addPassChain
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.FabricatePassSize
+import afield.graphics.scene.fabricated.FabricatePassSpec
+import afield.graphics.scene.fabricated.addPassChain
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
 
-prop<afield.four.fabricated.FabricateBuiltChain>(tree)
+prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(tree)
 
 val grid = 16      // 16x16 = 256 points, one per texel of the point texture
 val depth = 4      // 16x16 leaf cells, so 8 bits of Morton code

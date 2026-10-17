@@ -8,3 +8,5 @@
 Found by the box-code revision pass.
 
 The first `diffstatic_runner` fence on `public/docs/afield_four_graphics.md` (`name="four-traditional-triangle"`, `macro-file=../../dev_docs/agents/transcripts/afield_four_traditional_triangle.yaml`) shows the triangle box's code. The transcript has since lost its redundant `val renderer: Renderer = fromContext()` lookup (and its two imports) and gained comments for a first-time reader; the fence still shows the old code. Copy the transcript's code into the fence and rebuild the page with `FIELD_DOCS_RUNNER_MODE=strict`. `tools/check_box_idioms.py --paths public/docs/afield_four_graphics.md` lists the nine other fences on the page with the same lookup.
+
+Update (2026-10-07): the transcript now uses the nested form, `renderer += moduleHere { +Mesh("my mesh") { set(3, 3) { ... } } }`; the page prose around the fence describes `module += m named ...` and `renderer += module` as separate steps and needs the same change.

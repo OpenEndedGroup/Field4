@@ -8,10 +8,11 @@ function for each direction: `osc(port)` listens, and `oscClient(host, port)` se
 touch table, and `TuioReceiver` turns it into one frame per tracker update.
 
 Every figure on this page is a box that sends OSC to itself over the loopback interface and shows
-what arrived. The same exchanges with programs that are not Field, python-osc and SuperCollider,
-are recorded in `dev_docs/OSC_TUIO_MEASUREMENTS.md`.
+what arrived, so each example runs as it is, with no other program.
 
 ## Receiving a message
+
+This box listens on a port, sends itself one message, and shows what arrived.
 
 <!--
 FIELD_TEST
@@ -40,7 +41,9 @@ oscClient("127.0.0.1", 57301).send("/fader/1", 0.75f)
 
 `osc(57301)` binds UDP port 57301 on every network interface and starts listening. A phone on the
 same network reaches it at the computer's address. The server is cached by port, so running the box
-again hands back the same socket rather than trying to bind a second one.
+again hands back the same socket rather than trying to bind a second one. If another program
+(TouchOSC Bridge, Max, a second Field) already has the port, `osc(port)` fails with an error that
+names it.
 
 `on(pattern) { m -> … }` registers a handler for an address pattern. `m.address` is the address the
 message was sent to, and `m.arguments` is its argument list. The handler returns a generator, and
@@ -50,8 +53,7 @@ generator rather than a plain function.
 The last line sends the message that the handler receives. `oscClient(host, port)` is cached by host
 and port in the same way as `osc`, and opens its socket on the first `send`.
 
-`osc()` with no argument listens on 9000. So does Field's own OSC editor (below), when it is
-enabled, which is a reason to give your boxes a different port.
+`osc()` with no argument listens on 9000.
 
 ## Where handler code runs
 
@@ -131,9 +133,10 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/fader.png" alt="a launched box's outputs: in the main channel, an amber bar drawn inside a grey track, its length following the fader; in the value channel, the line /1/fader1 = and the value it last received" capture="box" execution="launch" wait="3" wait-output=true wait-output-kind=display wait-output-channel="main" embed=true trim=true name="osc-fader" w="760" h="140"}
 :::static
-var level = 0f   // the fader, as last received
+// Stop/rerun removes this handler; the cached OSC server stays available.
+var level = 0f // the fader, as last received
 
-osc(57308).on("/1/fader1") { m ->
+osc(57308).on("/1/fader1", runOwned = true) { m ->
     gather<OscServer.Message> { level = (m.arguments[0] as Number).toFloat() }
 }
 
@@ -156,15 +159,19 @@ animate {
         color = vec(0.91, 0.69, 0.29, 1.0)
     }
     lines(track, bar, channel = "main")
-    markdown("value", "/1/fader1 = ${"%.2f".format(level)}")
+    markdown("value", "/1/fader1 = ${level.f2}")
 }
 ```
 
 `level` is written by the generator and read by `animate`, both on the main thread, so the value the
 bar draws is always one the handler finished writing. Delete the stand-in, the lines that mention
-`phone` and `t`, and point a real control surface at port 57308 to drive it by hand. Stopping the box
-stops the animation but not the handler, which goes on writing to the stopped run's `level` until the
-box runs again and registers its replacement.
+`phone` and `t`, and point a real control surface at port 57308 to drive it by hand.
+
+`runOwned = true` ties the handler to this run of the box: stopping the box removes it along with the
+animation, and running the box again registers a fresh one, so no stopped run's `level` keeps being
+written. The server on port 57308 keeps listening either way, because it belongs to the port. Without
+`runOwned`, a handler stays registered across stops, which is what the rest of this page's examples
+use; [Handlers outlive a stop](#handlers-outlive-a-stop) explains that default.
 
 `server.debug = false` turns off the line `OSC: /step = …` that every server prints for every
 message it receives. That line goes to the console Field was started from, not to the box, so it is
@@ -177,6 +184,9 @@ that fails the same way on every message shows the error once, and running the b
 registers the handler again, clears that memory.
 
 ## What arrives: argument types
+
+This box sends one message carrying one argument of each Kotlin type and tabulates how each one
+travels and what it arrives as.
 
 <!--
 FIELD_TEST
@@ -201,19 +211,23 @@ val sent = listOf<Any?>(1, 0.5f, 0.5, 2L, true, "text", null, byteArrayOf(1, 2, 
 
 server.on("/types") { m ->
     val tags = m.event.message.info.argumentTypeTags
-    val rows = m.arguments.indices.joinToString("\n") { i ->
-        val out = sent[i]?.javaClass?.simpleName ?: "null"
-        val back = m.arguments[i]?.javaClass?.simpleName ?: "null"
-        "| $out | `${tags[i]}` | $back |"
-    }
+    val rows =
+        m.arguments.indices.joinToString("\n") { i ->
+            val out = sent[i]?.javaClass?.simpleName ?: "null"
+            val back = m.arguments[i]?.javaClass?.simpleName ?: "null"
+            "| $out | `${tags[i]}` | $back |"
+        }
     gather<OscServer.Message> {
-        markdown("main", """
+        markdown(
+            "main",
+            """
             | sent as | OSC tag | arrives as |
             |---|---|---|
             $rows
 
             the Int after the blob arrives as **${m.arguments.last()}**
-        """)
+        """,
+        )
     }
 }
 
@@ -230,9 +244,8 @@ Three details decide whether another program can read what you send:
 - **Write `0.5f`, not `0.5`.** A bare Kotlin decimal is a `Double`, and goes out as `d`. `f` is one
   of the four types OSC 1.0 requires every receiver to understand. `d`, `h` (`Long`), `T`/`F` and
   `N` are among the optional types, and the specification tells a receiver that does not know a tag
-  to discard the whole message. SuperCollider 3.12 reads `d`, but it does not read `h`: the
-  measurement page records a `Long` arriving there as a character, and every argument after it
-  arriving wrong.
+  to discard the whole message. SuperCollider 3.12 reads `d`, but it does not read `h`: a `Long`
+  arrives there as a character, and every argument after it arrives wrong.
 - **A `List` is the argument list.** `send("/types", sent)` sends nine arguments, not one array.
   The `vararg` form `send("/fader/1", 0.75f)` is the same call spelled differently.
 - **`Char` goes out as `c`**, which python-osc does not decode at all. Send a one-letter `String`.
@@ -262,28 +275,39 @@ expect:
 :::static
 val server = osc(57304)
 server.debug = false
-val patterns = listOf("/fader/1", "/fader/*", "/fader/?", "/fader/[1-3]",
-                      "/fader/{1,2}", "/fader/{1,10}", "//volume")
+val patterns = [
+    "/fader/1",
+    "/fader/*",
+    "/fader/?",
+    "/fader/[1-3]",
+    "/fader/{1,2}",
+    "/fader/{1,10}",
+    "//volume",
+]
 val hits = java.util.concurrent.ConcurrentHashMap<String, MutableList<String>>()
 
 for (p in patterns) server.on(p) { m ->
     hits.computeIfAbsent(m.address) { java.util.Collections.synchronizedList(mutableListOf()) } += p
-    gather<OscServer.Message> { }
+    gather<OscServer.Message> {}
 }
 
-val addresses = listOf("/fader/1", "/fader/2", "/fader/10", "/mixer/strip/volume")
+val addresses = ["/fader/1", "/fader/2", "/fader/10", "/mixer/strip/volume"]
 val out = oscClient("127.0.0.1", 57304)
 for (a in addresses) out.send(a, 1f)
 Thread.sleep(300)
 
 fun fired(a: String) = patterns.filter { it in (hits[a] ?: emptyList<String>()) }
-markdown("main", """
+markdown(
+    "main",
+    """
     | address | count | patterns that fired |
     |---|---|---|
     ${addresses.joinToString("\n") { a ->
         "| `$a` | ${fired(a).size} of ${patterns.size} | ${fired(a).joinToString(" ") { "`$it`" }} |"
     }}
-""", width = 860)
+""",
+    width = 860,
+)
 ```
 
 `*` matches any run of characters within one part of the address, `?` one character, `[1-3]` one
@@ -296,11 +320,12 @@ This box reads the table from the handler lambdas and displays it from the box i
 short sleep. That works because the lambdas run on the receive thread, independently of the box.
 A generator would not get its first pass until the box had finished running.
 
-## Handlers outlive the box
+## Handlers outlive a stop
 
-Handlers belong to the server, and the server belongs to the port, not to any box. Stopping a box,
-running it again, or closing its document leaves every handler it registered in place, still
-calling the code it was registered with.
+This is the default, for a handler registered without `runOwned = true`. The server belongs to the
+port, not to any box, and each handler belongs to the box that registered it. Stopping the box or
+running it again leaves its handlers in place, still calling the code they were registered with.
+Deleting the box or closing its document removes them.
 
 <!--
 FIELD_TEST
@@ -322,16 +347,26 @@ val fired = java.util.Collections.synchronizedList(mutableListOf<String>())
 val out = oscClient("127.0.0.1", 57305)
 fun sendBoth(): List<String> {
     fired.clear()
-    out.send("/old"); out.send("/new")
+    out.send("/old")
+    out.send("/new")
     Thread.sleep(200)
     return fired.sorted()
 }
 
 // what this box registered before its code was edited ...
-server.on("/old") { _ -> fired += "/old"; gather<OscServer.Message> { } }
-server.on("/new") { _ -> fired += "/new"; gather<OscServer.Message> { } }
+server.on("/old") { _ ->
+    fired += "/old"
+    gather<OscServer.Message> {}
+}
+server.on("/new") { _ ->
+    fired += "/new"
+    gather<OscServer.Message> {}
+}
 // ... and what the edited code registers: /new again, and no /old
-server.on("/new") { _ -> fired += "/new (edited)"; gather<OscServer.Message> { } }
+server.on("/new") { _ ->
+    fired += "/new (edited)"
+    gather<OscServer.Message> {}
+}
 val beforeRemove = sendBoth()
 
 server.remove("/old")
@@ -340,12 +375,15 @@ val afterRemove = sendBoth()
 server.close()
 val fresh = osc(57305)
 
-markdown("main", """
+markdown(
+    "main",
+    """
     - before any removal: `${beforeRemove.joinToString(", ", "[", "]")}` fire
     - after `remove("/old")`: `${afterRemove.joinToString(", ", "[", "]")}` fires
     - after `close()`, `osc(57305)` is a new server: **${fresh !== server}**,
       listening: **${fresh.isListening}**
-""")
+""",
+)
 fresh.close()
 ```
 
@@ -360,17 +398,6 @@ share one slot, and whichever ran last owns it. Give each box its own addresses,
 `close()` releases the port and turns the server off for good, and `osc(port)` afterwards opens a
 new one. That makes `close()` the reset when a document's handlers have got into a state you can no
 longer reason about: close the server, then run the boxes that should be listening again.
-
-!!! warning "`osc(port)` succeeds even when another program already has the port"
-    JavaOSC opens its sockets with `SO_REUSEADDR`, so binding a port that TouchOSC Bridge, Max or a
-    second Field already holds succeeds, and `isListening` says `true`. Measured on macOS: a
-    program bound to `127.0.0.1` on that port goes on receiving everything sent to `127.0.0.1`, and
-    the Field box receives nothing, with no error anywhere. When a handler never fires, look for
-    another listener first:
-
-    ```diffstatic {data-lang=bash}
-    lsof -nP -iUDP:57301
-    ```
 
 ## Sending
 
@@ -391,15 +418,12 @@ console Field was started from and does not throw, so a box that sends every fra
 while a peer is away. UDP gives no acknowledgement, so nothing tells you that a
 peer is not listening. Send to an address that a peer echoes, or watch the peer's own log.
 
-`OscClient` sends single messages. To send a bundle, build one with JavaOSC, as the next section
-does.
-
 ## Bundles and timetags
 
 A bundle is a group of messages with a timetag, the time at which the receiver should act on them.
 Controllers such as TouchOSC and SuperCollider's `sendBundle` send them. Field unpacks a bundle and
-runs each message's handlers as if the messages had arrived one by one, in order, and it holds a
-bundle whose timetag is in the future until that time.
+runs each message's handlers as if the messages had arrived one by one, in order. A bundle whose
+timetag is in the future waits until that time.
 
 <!--
 FIELD_TEST
@@ -415,11 +439,7 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/bundles.png" alt="two lines in the main output channel: stamped immediate arrived after a few milliseconds; stamped 500 ms ahead arrived after roughly 500 ms" wait="2" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="osc-bundles" w="760" h="120"}
 :::static
-import com.illposed.osc.OSCBundle
 import com.illposed.osc.OSCMessage
-import com.illposed.osc.argument.OSCTimeTag64
-import com.illposed.osc.transport.OSCPortOutBuilder
-import java.net.InetSocketAddress
 
 val server = osc(57306)
 server.debug = false
@@ -427,30 +447,22 @@ val arrivals = java.util.Collections.synchronizedList(mutableListOf<String>())
 val t0 = System.currentTimeMillis()
 server.on("/when") { m ->
     arrivals += "${m.arguments[0]} arrived after **${System.currentTimeMillis() - t0} ms**"
-    gather<OscServer.Message> { }
+    gather<OscServer.Message> {}
 }
 
-// a timetag counts seconds since 1900 in its high 32 bits, fractions of a second in its low 32
-fun timetagIn(ms: Long): OSCTimeTag64 {
-    val at = System.currentTimeMillis() + ms
-    val seconds = at / 1000 + 2_208_988_800L
-    return OSCTimeTag64.valueOf((seconds shl 32) or (((at % 1000) shl 32) / 1000))
-}
-
-val out = OSCPortOutBuilder().setRemoteSocketAddress(InetSocketAddress("127.0.0.1", 57306)).build()
-out.send(OSCBundle(listOf(OSCMessage("/when", listOf("stamped 500 ms ahead"))), timetagIn(500)))
-out.send(OSCBundle(listOf(OSCMessage("/when", listOf("stamped immediate"))), OSCTimeTag64.IMMEDIATE))
+val out = oscClient("127.0.0.1", 57306)
+out.sendIn(500, "/when", "stamped 500 ms ahead")
+out.sendBundle([OSCMessage("/when", ["stamped immediate"])])
 Thread.sleep(900)
-out.close()
 
 markdown("main", arrivals.joinToString("\n") { "- $it" })
 ```
 
 The bundle stamped 500 ms ahead was sent first and arrived second, about 500 ms later. The timing is
 as good as the two machines' clocks agree, which on one computer means within a millisecond or two,
-and across a network means whatever NTP has made of them. `timetagIn` builds the timetag from raw
-NTP seconds on purpose: JavaOSC's own conversion from a `Date` counts from an epoch an hour away from
-the true one.
+and across a network means whatever NTP has made of them. `sendIn(ms, address, …)` sends one
+message stamped that far ahead; `sendBundle(messages, atMillis)` sends several stamped for one
+wall-clock time, or for at once when `atMillis` is left out.
 
 ## TUIO: touches and tagged objects
 
@@ -482,10 +494,11 @@ import java.net.InetSocketAddress
 val rows = java.util.Collections.synchronizedList(mutableListOf<String>())
 fun ids(cursors: List<TuioReceiver.TuioCursor>) = cursors.joinToString(" ") { "${it.sessionId}" }
 
-val tuio = TuioReceiver(57307) { f ->
-    val alive = f.cursors.joinToString(" ") { "${it.sessionId} (${it.x}, ${it.y})" }
-    rows += "| ${f.fseq} | ${ids(f.cursorAdded)} | ${ids(f.cursorUpdated)} | ${ids(f.cursorRemoved)} | $alive |"
-}
+val tuio =
+    TuioReceiver(57307) { f ->
+        val alive = f.cursors.joinToString(" ") { "${it.sessionId} (${it.x}, ${it.y})" }
+        rows += "| ${f.fseq} | ${ids(f.cursorAdded)} | ${ids(f.cursorUpdated)} | ${ids(f.cursorRemoved)} | $alive |"
+    }
 tuio.start()
 
 // a stand-in tracker: the four frames a two-finger touch produces, as TUIO 1.1 bundles
@@ -493,22 +506,25 @@ val tracker = OSCPortOutBuilder().setRemoteSocketAddress(InetSocketAddress("127.
 fun frame(fseq: Int, alive: List<Int>, vararg set: List<Any>) {
     val packets = mutableListOf<OSCPacket>(OSCMessage("/tuio/2Dcur", listOf<Any>("alive") + alive))
     for (s in set) packets += OSCMessage("/tuio/2Dcur", listOf<Any>("set") + s)
-    packets += OSCMessage("/tuio/2Dcur", listOf("fseq", fseq))
+    packets += OSCMessage("/tuio/2Dcur", ["fseq", fseq])
     tracker.send(OSCBundle(packets))
 }
-frame(1, listOf(11), listOf(11, 0.25f, 0.5f, 0f, 0f, 0f))
-frame(2, listOf(11, 12), listOf(11, 0.3f, 0.5f, 0f, 0f, 0f), listOf(12, 0.75f, 0.25f, 0f, 0f, 0f))
-frame(3, listOf(12), listOf(12, 0.75f, 0.3f, 0f, 0f, 0f))
+frame(1, [11], [11, 0.25f, 0.5f, 0f, 0f, 0f])
+frame(2, [11, 12], [11, 0.3f, 0.5f, 0f, 0f, 0f], [12, 0.75f, 0.25f, 0f, 0f, 0f])
+frame(3, [12], [12, 0.75f, 0.3f, 0f, 0f, 0f])
 frame(4, listOf())
 Thread.sleep(300)
 tracker.close()
 tuio.close()
 
-markdown("main", """
+markdown(
+    "main",
+    """
     | fseq | added | updated | removed | alive after |
     |---|---|---|---|---|
     ${rows.joinToString("\n")}
-""")
+""",
+)
 ```
 
 A TUIO frame is an `alive` message listing every session id still present, a `set` message for each
@@ -523,9 +539,8 @@ Three things to know when using it from a box:
 
 - **The listener runs on the receive thread**, like an OSC handler's lambda. Copy what you need into
   your own state there, and draw from it on the main thread.
-- **Starting a receiver closes the receiver previously started on its port.** A box can build a new
-  `TuioReceiver` every time it runs. Without that, the old receiver would stay bound and, on macOS,
-  go on receiving every frame for code that had been replaced.
+- **Starting a receiver closes the receiver previously started on its port**, so a box can build a
+  new `TuioReceiver` every time it runs.
 - **Each profile's `fseq` produces a frame.** A tracker that sends both cursors and objects produces
   two frames per tracker frame, each carrying the full state of both.
 
@@ -547,8 +562,8 @@ NetAddr("127.0.0.1", 57301).sendMsg("/fader/1", 0.75);
 ```
 
 SuperCollider sends a decimal as `f`, so it arrives in Field as a `Float`. In the other direction,
-send `Int`, `Float` and `String`; the measurement page shows SuperCollider 3.12 misreading a `Long`
-and the arguments that follow it.
+send `Int`, `Float` and `String`, since SuperCollider 3.12 misreads a `Long` and the arguments
+that follow it.
 
 **A phone or tablet control surface**, such as TouchOSC. Set the app's host to the computer's
 address on the local network and its outgoing port to the one your box listens on. Listen on the
@@ -565,13 +580,6 @@ to Sonic Pi's cue port, where `sync "/osc*/your/address"` waits for it. That is 
 [Sonic Pi](sonic_pi.md) page. A Sonic Pi you started yourself also accepts cues, since the cue port
 needs no token.
 
-??? aside "Which peers were run while writing this page"
-    The Field side of every exchange here was run against python-osc 1.10.2, an OSC implementation
-    that shares no code with JavaOSC, and against SuperCollider 3.12.2's `sclang` run headless.
-    The commands and their output are in `dev_docs/OSC_TUIO_MEASUREMENTS.md`, together with the
-    defects they found. TouchOSC and Max are GUI programs, which the docs build cannot drive; the
-    settings described for them are the programs' own, and were not exercised here.
-
 ## Field's own OSC editor
 
 Separately from anything a box does, Field can listen for OSC itself and use it to edit code. The
@@ -579,6 +587,14 @@ Separately from anything a box does, Field can listen for OSC itself and use it 
 (`/field/float` by default) replaces the number under the editor's cursor with the message's last
 numeric argument and, after a short pause, runs the box being edited again, so a physical fader can
 scrub a constant in your code. The *launch* and *stop* addresses (`/field/launch`, `/field/stop`)
-launch and stop the box being edited. The default port is 9000,
-the same as `osc()`'s default, so a box that listens on 9000 and the editor are then sharing one port
-under the rule described in the warning above.
+launch and stop the box being edited. It listens on 9001 by default, one up from `osc()`'s 9000.
+
+See also: [Mobile controllers](mobile_controllers.md) for building a control surface in Field
+itself, [OSCQuery](oscquery.md), and [Sonic Pi](sonic_pi.md).
+
+??? aside "Which peers were run while writing this page"
+    The Field side of every exchange here was run against python-osc 1.10.2, an OSC implementation
+    that shares no code with JavaOSC, and against SuperCollider 3.12.2's `sclang` run headless.
+    The commands and their output are in [dev_docs/OSC_TUIO_MEASUREMENTS.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/OSC_TUIO_MEASUREMENTS.md), together with the
+    defects they found. TouchOSC and Max are GUI programs, which the docs build cannot drive; the
+    settings described for them are the programs' own, and were not exercised here.

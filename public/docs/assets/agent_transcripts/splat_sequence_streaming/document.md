@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Splat Sequence Streaming
@@ -11,19 +11,19 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="splat_sequence_streaming" index="0" -->
 
 ```edn [field-box id="splat_sequence_streaming" role="properties"]
-{"id" "splat_sequence_streaming" "index" 0 "name" "Splat Sequence Streaming" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Splat Sequence Streaming" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_sequence_streaming_code_.kt" "lines" 131 "characters" 5829 "sha256" "6ce86efc9be0af01edd7739af4a63cab435b991a9b9eae2571103d7868a89ba6"}]}
+{"id" "splat_sequence_streaming" "index" 0 "name" "Splat Sequence Streaming" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Splat Sequence Streaming" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_sequence_streaming_code_.kt" "lines" 131 "characters" 5896 "sha256" "76f17a93feb3fb3de72afaa35fe2ad44b3517cc73071f55521689939d28d6c52"}]}
 ```
 
 ```kotlin [field-property box="splat_sequence_streaming" name="code" path="splat_sequence_streaming_code_.kt"]
-import afield.four.Target
-import afield.four.fabricated.GaussianSplatRenderer
-import afield.four.fabricated.GaussianSplatRenderer.Blend
-import afield.four.fabricated.GaussianSplatRenderer.SortMode
-import afield.four.fabricated.GaussianSplatRenderer.SplatSource
-import afield.four.fabricated.SplatSequence
-import afield.four.fabricated.SplatTransport
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.vulkan.Target
+import afield.graphics.scene.fabricated.GaussianSplatRenderer
+import afield.graphics.scene.fabricated.GaussianSplatRenderer.Blend
+import afield.graphics.scene.fabricated.GaussianSplatRenderer.SortMode
+import afield.graphics.scene.fabricated.GaussianSplatRenderer.SplatSource
+import afield.graphics.scene.fabricated.SplatSequence
+import afield.graphics.scene.fabricated.SplatTransport
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Vector3f
 import java.io.File
 
 // ---- knobs: edit and re-run this box ------------------------------------

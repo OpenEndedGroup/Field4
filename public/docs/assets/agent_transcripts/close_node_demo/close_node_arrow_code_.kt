@@ -1,4 +1,4 @@
-// Not a hand-built fixture: this is what afield.stdlib.arrow returns when you ask for a
+// Not a hand-built fixture: this is what afield.graphics.render.arrow returns when you ask for a
 // head at both ends. Its appendHead ends each arrowhead with close(), so the node list is
 //   MoveTo LineTo | MoveTo LineTo LineTo Close | MoveTo LineTo LineTo Close
 // and the first Close has a whole arrowhead after it.
@@ -35,8 +35,8 @@ val ops = listOf<Pair<String, (FLine) -> Any?>>(
     "bySimplifying" to { l -> l.bySimplifying(2f) },
     "byConvexHull2D" to { l -> l.byConvexHull2D() },
     "byFiltering" to { l -> l.byFiltering { _, _ -> true } },
-    "windingNumber" to { l -> l.windingNumber(vec(150f, 60f)) },
-    "contains" to { l -> l.contains(vec(150f, 60f)) },
+    "windingNumber" to { l -> l.windingNumber2D(vec(150f, 60f)) },
+    "contains" to { l -> l.contains2D(vec(150f, 60f)) },
     "centroid2D" to { l -> l.centroid2D() },
     "fast2DBounds" to { l -> l.fast2DBounds() },
     "byDashing" to { l -> l.byDashing(14f, 8f).size },

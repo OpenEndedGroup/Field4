@@ -1,5 +1,4 @@
-import afield.stdlib.AudioVisualizerOptions
-import afield.stdlib.noir.audioai.*
+import afield.ui.visualization.AudioVisualizerOptions
 import java.util.concurrent.CompletableFuture
 
 val client = FieldAudioClient()

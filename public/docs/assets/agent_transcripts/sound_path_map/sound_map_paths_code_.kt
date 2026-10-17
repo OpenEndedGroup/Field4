@@ -1,4 +1,4 @@
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // The map, printed from the code rather than from a page: what makes samples, what carries
 // them out, what brings them in, and which of them meet the one `render` seam.

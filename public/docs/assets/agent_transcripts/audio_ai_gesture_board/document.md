@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 2 · generate and rank
@@ -11,11 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="generate_and_rank" index="0" -->
 
 ```edn [field-box id="generate_and_rank" role="properties"]
-{"id" "generate_and_rank" "index" 0 "name" "2 · generate and rank" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · generate and rank" "_tombstone" false "frame" #afield/rect [480.0 40.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "generate_and_rank_code_.kt" "lines" 26 "characters" 1187 "sha256" "acc7e3d235a5120f6f883e8ddd340f8ff5528dd43fcebd43d8bd033b11bfe1fe"}]}
+{"id" "generate_and_rank" "index" 0 "name" "2 · generate and rank" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · generate and rank" "_tombstone" false "frame" #afield/rect [480.0 40.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "generate_and_rank_code_.kt" "lines" 25 "characters" 1151 "sha256" "d8da448f4279858e34920de7adc7a48a9b1eda622b7a5deed9efc7ab88655bbd"}]}
 ```
 
 ```kotlin [field-property box="generate_and_rank" name="code" path="generate_and_rank_code_.kt"]
-import afield.stdlib.noir.audioai.*
 
 val client = FieldAudioClient()
 val source = client.assetByFilename("*Nancy*").get()
@@ -48,11 +47,10 @@ client.submit(gestureCandidates(region, sketch, seeds = 0L until 8L))
 <!-- field-box id="draw_the_gesture" index="1" -->
 
 ```edn [field-box id="draw_the_gesture" role="properties"]
-{"id" "draw_the_gesture" "index" 1 "name" "1 · draw the gesture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · draw the gesture" "_tombstone" false "frame" #afield/rect [40.0 40.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "draw_the_gesture_code_.kt" "lines" 23 "characters" 1114 "sha256" "9189d680fe527996f0005aa7687e5d90efdbcebda7fdcdeb55480fb1ba76b1a9"}]}
+{"id" "draw_the_gesture" "index" 1 "name" "1 · draw the gesture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · draw the gesture" "_tombstone" false "frame" #afield/rect [40.0 40.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "draw_the_gesture_code_.kt" "lines" 22 "characters" 1078 "sha256" "abb673691bcf9ecc49893d284726ebbc2c83811095a1cbecb9aa764908f1be80"}]}
 ```
 
 ```kotlin [field-property box="draw_the_gesture" name="code" path="draw_the_gesture_code_.kt"]
-import afield.stdlib.noir.audioai.*
 
 val sketch = gestureBoard(18.0, "uneasy nocturnal orchestra, old optical-film texture") {
     prompt(0.0, 5.0, "almost motionless low strings")

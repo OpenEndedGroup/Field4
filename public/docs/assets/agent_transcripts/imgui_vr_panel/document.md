@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. window + renderer
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="imgui_vr_renderer" index="0" -->
 
 ```edn [field-box id="imgui_vr_renderer" role="properties"]
-{"id" "imgui_vr_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["imgui_vr_panel"] "properties" {"children" #{#afield/box "imgui_vr_panel"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_renderer_code_.kt" "lines" 14 "characters" 241 "sha256" "d2064d03c2114a4503c04ef314fc55ee0014752e13806df525cdf028c8489067"}]}
+{"id" "imgui_vr_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["imgui_vr_panel"] "properties" {"children" #{#afield/box "imgui_vr_panel"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_renderer_code_.kt" "lines" 14 "characters" 252 "sha256" "719fbd4aeeadb0cbb67eaea63960664a2c1bdfa88c7af809300f2cc8d50446ab"}]}
 ```
 
 ```kotlin [field-property box="imgui_vr_renderer" name="code" path="imgui_vr_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -47,25 +47,28 @@ SideBySideStereoTarget, packed side-by-side, and blitted to the window. The pane
 interactive: the mock controller (here driven by the mouse) casts a ray, the hit is
 converted to panel UV, and injected into ImGui.
 
-Move the mouse to aim the ray; left-click to press. To bind the panel to a hand instead
-of a fixed point, call panel.place(handPos, handRight, handUp) each frame (see ImGuiPanel).
+Move the mouse to aim the ray; left-click to press.
+For a custom hand-attached panel, use the ImGuiPanel construction and registration in
+afield.examples.four.ImGuiVrPanelDemo.build. Its private panel is not exposed by demo.
 
 ```edn [field-box id="imgui_vr_panel" role="properties"]
-{"id" "imgui_vr_panel" "index" 1 "name" "imgui vr panel" "parents" ["root" "imgui_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "imgui_vr_renderer"} "name" "imgui vr panel" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_panel_code_.kt" "lines" 21 "characters" 1041 "sha256" "119444758149f9fe39b98faaeca292cfdf504f7adc447bfcc97ccaa1ccd74611"}]}
+{"id" "imgui_vr_panel" "index" 1 "name" "imgui vr panel" "parents" ["root" "imgui_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "imgui_vr_renderer"} "name" "imgui vr panel" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_panel_code_.kt" "lines" 23 "characters" 1014 "sha256" "11eb402eee2fa7beaf7eec9c47ff4b296ed97e8a18103ef52f981d9166d0ca91"}]}
 ```
 
 ```kotlin [field-property box="imgui_vr_panel" name="code" path="imgui_vr_panel_code_.kt"]
-// ImGui as a VR panel.
-//
-// ImGuiVrPanelDemo wires the whole pipeline: an ImGuiRenderToTexture drawn into an RTT,
-// textured onto a world-space ImGuiPanel quad, rendered once per eye by
-// SideBySideStereoTarget, packed side-by-side, and blitted to the window. The panel is
-// interactive: the mock controller (here driven by the mouse) casts a ray, the hit is
-// converted to panel UV, and injected into ImGui.
-//
-// Move the mouse to aim the ray; left-click to press. To bind the panel to a hand instead
-// of a fixed point, call panel.place(handPos, handRight, handUp) each frame (see ImGuiPanel).
-import afield.four.targets.SideBySideStereoTarget
+/*
+ImGui as a VR panel.
+
+ImGuiVrPanelDemo wires the whole pipeline: an ImGuiRenderToTexture drawn into an RTT,
+textured onto a world-space ImGuiPanel quad, rendered once per eye by
+SideBySideStereoTarget, packed side-by-side, and blitted to the window. The panel is
+interactive: the mock controller (here driven by the mouse) casts a ray, the hit is
+converted to panel UV, and injected into ImGui.
+
+Move the mouse to aim the ray; left-click to press.
+For a custom hand-attached panel, use the ImGuiPanel construction and registration in
+afield.examples.four.ImGuiVrPanelDemo.build. Its private panel is not exposed by demo.
+*/
 import afield.examples.four.ImGuiVrPanelDemo
 
 val sbs = SideBySideStereoTarget(renderer)

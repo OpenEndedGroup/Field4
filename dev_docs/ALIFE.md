@@ -1,6 +1,6 @@
 # Spatial artificial life — developer guide
 
-`afield.stdlib`'s `alife*.kt` family: grid cellular automata, reaction–diffusion, Lenia, agent
+The `alife*.kt` family in `afield.simulation.agents`: grid cellular automata, reaction–diffusion, Lenia, agent
 populations and L-systems. Public worked example: [`public/docs/alife_examples.md`](../public/docs/alife_examples.md).
 Verification harness: `afield.examples.stdlib.AlifeGallery`, in two tiers — FIELD_TEST
 `stdlib.alife.gallery` (`--tier fast`, 11 figures, ~6 s, tagged `smoke`, and therefore what a routine
@@ -40,13 +40,16 @@ stop.
 | `alife_agents.kt` | `BoidFlock`, `PhysarumSwarm`, `dlaCluster` / `edenCluster` / `sprinkleCluster` |
 | `alife_lsystem.kt` | `LSystem`, `turtleDraw`, `rasterizeFLines`, `spaceColonization` |
 | `alife_dla.kt` | `ShaderDlaSettings`, `ShaderDlaSystem` — the GPU aggregation, and not the same thing as `alife_agents.kt`'s CPU `dlaCluster` |
+| `alife_bml.kt` | `ShaderBmlSettings`, `ShaderBmlSystem` — the Biham–Middleton–Levine traffic model as one fragment pass over a ping-pong texture; GPU only, no CPU counterpart |
+| `alife_lbm.kt` | `ShaderLatticeBoltzmannSettings`, `ShaderLatticeBoltzmannSystem`, `FluidVisualizationMode` — a D2Q9 lattice Boltzmann fluid with a drawable control texture and advected dye; GPU only |
+| `alife_fire.kt` | `ShaderForestFireSettings`, `ShaderForestFireSystem`, `FireChannels` — a four-kind forest-fire excitable medium lit by drawing into an ignition texture; GPU only |
 | `alife_evolve.kt` | `LifeRuleGenome`, `LeniaGenome`, `caEdgeOfChaosObjective`, `leniaSolitonObjective` — the genomes and objectives `PopulationSearch` searches over |
 | `alife_script.kt` | `ScriptWorld`, `BehaviourScope`, `BehaviourSteering`, `ScriptActor` — one program per agent (see below) |
 | `alife_field.kt` | the inline `ToHTML` views for `IntGrid`, `GrayScottState` and `LeniaRun` |
 | `alife_animate.kt` | `Box.animateEvolution` and four "show a prefix of something" helpers |
 
-The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All ten
-carry `@file:afield.CompletionCategory("ALife")`. Without it the generator falls back to the category
+The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All thirteen
+carry `@file:afield.runtime.completion.CompletionCategory("ALife")`. Without it the generator falls back to the category
 `Uncategorised` (`StdlibReferenceGenerator.kt:819#private fun inferredCategory`) — which is how
 `alife_field.kt` first failed the reference drift guard, and how the gesture board came to be
 *published* on a page called "Uncategorised" from 2026-08-08 to 2026-08-14.
@@ -616,7 +619,7 @@ python3 tools/field_backdoor.py run-jvm-main afield.examples.AgentTranscriptMate
 Stated as leads rather than promises, and roughly in order of value per unit of work:
 
 - **GPU steppers.** Gray–Scott, Lenia and Physarum are all one ping-pong texture pass. The CPU versions
-  here are reference implementations; a StackSL or `afield.four` compute version would make them
+  here are reference implementations; a StackSL or Field 4 compute version would make them
   interactive at 512² and the CPU version becomes the oracle it is checked against.
 - **A `LeniaRule` from a published creature.** The right way to get Orbium is to load its array from a
   file the user supplies (or from a `.lenia` JSON), not to hardcode a remembered one. That would turn

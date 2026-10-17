@@ -1,7 +1,7 @@
 package afield.examples
 
-import afield.CodeUseSummary
-import afield.CodeUseTelemetryService
+import afield.app.diagnostics.CodeUseSummary
+import afield.app.diagnostics.CodeUseTelemetryService
 import java.nio.file.Files
 import java.sql.DriverManager
 

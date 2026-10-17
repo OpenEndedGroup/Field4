@@ -11,9 +11,8 @@ selections, the operations, the candidate sets, the ratings and annotations, the
 arrangement.
 
 The companion service is experimental, and pinned under `services/field-audio-ai` as a Git submodule
-while its architecture moves. The Field-side API is in `afield.stdlib.noir.audioai` and names
-operations such as `generate.style`, `codec.reconstruct`, and `analysis.pitch_poly`, rather than
-depending on AudioCraft classes.
+while its architecture moves. In a box its API needs no import; it names
+operations such as `generate.style`, `codec.reconstruct`, and `analysis.pitch_poly`.
 
 Running any of it needs that submodule initialized, the analysis and AudioCraft packages
 installed, and weights on disk. Short of that, what you can still read is a committed,
@@ -34,9 +33,12 @@ objects, states, and error vocabulary, and needs none of the above.
 - revision-pinned emotion2vec and WavLM Base+ speech trajectories with voice activity and live Field projections;
 - zoomable waveform, pitch, beat and token views, plus the embedded job monitor.
 
-```diffstatic {data-lang=kotlin}
-import afield.stdlib.noir.audioai.*
+## Variations of a source
 
+This box takes four and a half seconds of a recording, asks MusicGen-Style for eight
+twelve-second variations, one per seed, and shows them as a candidate board when they arrive:
+
+```diffstatic {data-lang=kotlin}
 val client = FieldAudioClient()
 val source = client.assetByFilename("*Nancy*").get()
 val region = AssetRegion(source.id, startSeconds = 18.0, durationSeconds = 4.5)
@@ -70,8 +72,10 @@ Python 3.10 worker. Field hashes the local `.safetensors` file before submission
 that digest again beneath `FIELD_AUDIO_UNDERFIT_LORA_ROOT`. The digest participates in the request
 hash, so replacing a checkpoint at the same filename cannot return an older cached candidate set.
 
+This box asks for thirty seconds through one LoRA checkpoint at strength 0.7, starting from a
+twelve-second window of the source:
+
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.noir.audioai.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()
@@ -89,7 +93,7 @@ client.submit(underfitCandidates(
     source = region,
     prompt = "sparse suspended orchestral tension",
     durationSeconds = 30.0,
-    checkpoints = listOf(lora),
+    checkpoints = [lora],
     model = UnderfitModel.SMALL_MUSIC,
     controls = UnderfitGenerationControls(
         steps = 8,
@@ -138,7 +142,7 @@ drawing to eight candidates.
 | [Short-time spectral spaces](audio_ai_spectral_embeddings.md) | do the same with no model and no GPU |
 | [MuScriptor transcription](audio_ai_muscriptor.md) | turn a mixed recording into labelled notes and MIDI |
 | [Corpus microscope](audio_ai_corpus_microscope.md) | find the other stretches that sound like this one |
-| [EnCodec microscope](audio_ai_codec.md) | work on the codec tokens themselves |
+| [EnCodec round trip](audio_ai_codec.md) | work on the codec tokens themselves |
 | [Recorded-audio visualizers](visualizers.md#recorded-audio-waveform-player-playhead-and-navigation) | put any of it on a shared playhead |
 
 The analysis pages share one contract. The job that measures a

@@ -1,0 +1,106 @@
+# Generated from oscquery_demo/metadata.edn by afield.examples.DocumentToTranscript.
+name: "oscquery_demo"
+operations:
+  - create:
+      box: "oscq-publish"
+      name: "1. Publish parameters (run first)"
+      frame: { x: 60.0, y: 60.0, w: 380.0, h: 70.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.io.osc.query.*
+          
+          // Publish four parameters as an OSCQuery service on http port 9020 (OSC UDP on 9021),
+          // advertised over DNS-SD so TouchDesigner, Max, Chataigne and VDMX list it as "Field demo".
+          // The callbacks run here, on Field's main loop, whenever one of them sets a value.
+          val q = oscQuery("Field demo")
+          q.describe("/demo", "parameters published by the OSCQuery demo document")
+          
+          fun show() = markdown("values", q.server.all.values.sortedBy { it.path }
+              .joinToString("\n") { "- `${it.path}` (${it.type}) = **${it.value.joinToString(", ")}**" })
+          
+          q.float("/demo/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { show() }
+          q.bool("/demo/on", true, "sound on") { show() }
+          q.menu("/demo/scene", listOf("dawn", "dusk", "night"), "dusk") { show() }
+          q.vector("/demo/xy", listOf(0.5, 0.5), description = "a point on a pad") { show() }
+          
+          show()
+          markdown("Browse **http://localhost:${q.httpPort}/** for the namespace, or **?HOST_INFO** for the service.")
+  - create:
+      box: "oscq-controls"
+      name: "2. Field controls, published (run)"
+      frame: { x: 520.0, y: 60.0, w: 380.0, h: 70.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.io.osc.query.*
+          
+          // Field controls that are also OSCQuery parameters, under /surface. Drag them here and every
+          // listening remote sees the change; set them from a remote and the Field control moves.
+          var gain = 0.5
+          var mute = false
+          oscQuery("Field demo").controls("/surface") {
+              slider("gain", 0.0, 1.0, initialValue = gain) { gain = it }
+              checkbox("mute", mute) { mute = it }
+          }
+  - create:
+      box: "oscq-remote"
+      name: "3. Read it back as a remote (run)"
+      frame: { x: 980.0, y: 60.0, w: 380.0, h: 70.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.io.osc.query.*
+          
+          // The other direction: read an OSCQuery service as a remote. Here it is this Field's own,
+          // so run box 1 first; point it at TouchDesigner or Chataigne by changing the host and port.
+          val remote = oscQueryRemote("127.0.0.1", 9020).refresh()
+          remote["/demo/cutoff"].set(2500.0)   // sent as OSC over UDP to the service's OSC_PORT
+          remote["/demo/scene"].set("night")
+          
+          markdown("**${remote.name}** — OSC on port ${remote.oscPort}, LISTEN: ${remote.supportsListen}\n\n" +
+              remote.params.joinToString("\n") { "- `${it.path}` ${it.type} ${it.range} ${it.description ?: ""}" })
+  - create:
+      box: "oscq-mirror"
+      name: "4. Mirror as sliders (run)"
+      frame: { x: 60.0, y: 220.0, w: 380.0, h: 70.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.io.osc.query.*
+          
+          // A slider or checkbox for every number and boolean the remote publishes. Moving one sets the
+          // remote; when the remote moves (box 5 animates /demo/lfo), the slider follows over LISTEN.
+          val remote = oscQueryRemote("127.0.0.1", 9020).refresh()
+          oscQueryMirror(remote, "mirror") { it.path.startsWith("/demo") }
+  - create:
+      box: "oscq-lfo"
+      name: "5. Animate /demo/lfo (launch)"
+      frame: { x: 520.0, y: 220.0, w: 380.0, h: 70.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.io.osc.query.*
+          
+          // A value Field changes by itself: every listener (box 4's slider, TouchDesigner) follows it.
+          val q = oscQuery("Field demo")
+          val lfo = q.float("/demo/lfo", 0.0..1.0, 0.5, "a slow sine, written by Field", access = OscAccess.READ)
+          val start = AnimationClock.nowSeconds()
+          loop {
+              lfo.set(0.5 + 0.5 * sin(AnimationClock.nowSeconds() - start))
+              delay(50)
+          }
+  - create:
+      box: "oscq-discover"
+      name: "6. Discover on the network (run)"
+      frame: { x: 980.0, y: 220.0, w: 380.0, h: 70.0 }
+      properties:
+        "autorun": false
+        "code": |
+          import afield.io.osc.query.*
+          
+          // OSCQuery services announcing themselves on this network (DNS-SD _oscjson._tcp), this Field's
+          // included once box 1 has run. Each one can be opened with oscQueryRemote(address, port).
+          val found = oscQueryDiscover(2000)
+          markdown(if (found.isEmpty()) "No OSCQuery services answered." else
+              found.joinToString("\n") { "- **${it.instance}** at `${it.address}:${it.port}`" })

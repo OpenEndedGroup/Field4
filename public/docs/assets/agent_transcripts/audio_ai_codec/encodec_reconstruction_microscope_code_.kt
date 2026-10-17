@@ -1,7 +1,6 @@
-import afield.stdlib.noir.audioai.*
-import afield.stdlib.AudioVisualizer
-import afield.stdlib.AudioVisualizerOptions
-import afield.four.audio.WavFloatArrayLoader
+import afield.ui.visualization.AudioVisualizer
+import afield.ui.visualization.AudioVisualizerOptions
+import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
 import java.nio.file.Path
 val json = FieldAudioClient.json

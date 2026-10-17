@@ -2,7 +2,7 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`ValueVisualizer.kt`](reference/visualization.md#valuevisualizer-kt), [`ImagingVisualizer.kt`](reference/visualization.md#imagingvisualizer-kt), [`plotly.kt`](reference/visualization.md#plotly-kt). Start from [what's already in the box](reference/index.md).*
 
-Field has a surprisingly rich vocabulary for showing values, not just computing them, and the cheapest way in is two keystrokes: put `.h` on the end of an expression and run the line.
+Field has many ways to show a value, and the quickest takes two keystrokes: put `.h` on the end of an expression and run the line.
 
 What comes back can land in several places. Some visuals appear **inline in the editor**, beside the line you ran. Some fill an **output area** under the box. Some output areas become **inspectors**, or **little control panels** whose sliders you drag while the code around them keeps running. And helpers like `.h` and `.h2` are about turning an arbitrary Kotlin value into something formatted well enough to read.
 
@@ -10,19 +10,19 @@ This page is a tour of the whole family.
 
 ## The value visualizer: what `.h` draws
 
-Before the instruments, the substrate. Most environments answer "what is this
+Most environments answer "what is this
 value?" with a line of `toString()`. Field answers with a *picture*: whenever you
 ask Field to show a value, the **value visualizer** turns it into a compact HTML
 view — a reflective tree for arbitrary objects, and, for the types Field draws
 with, a little inline graphic. You reach it three ways, all
 of which call the same renderer (`ValueVisualizer.visualize(...)`, in
-`src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt`):
+`src/jvmMain/kotlin/afield/ui/visualization/ValueVisualizer.kt`):
 
 ```diffstatic {data-lang=kotlin}
 :::static
-value.h                       // the .h extension: value -> pretty HTML
-display("inspect", value.h)   // drop that HTML into a named output channel
-box.viz(value = value)        // convenience: visualize into the box's "viz" channel
+value.h // the .h extension: value -> pretty HTML
+display("inspect", value.h) // drop that HTML into a named output channel
+box.viz(value = value) // convenience: visualize into the box's "viz" channel
 ```
 
 `.h` is the lightweight view used throughout Field; its heavier sibling `.h2`
@@ -51,10 +51,10 @@ data class Camera(
     val position: Vector3f,
     val fieldOfView: Double,
     val active: Boolean,
-    val layers: List<String>
+    val layers: List<String>,
 )
 
-val cam = Camera(Vector3f(0f, 1.5f, -4f), 55.0, true, listOf("dots", "lines", "labels"))
+val cam = Camera(Vector3f(0f, 1.5f, -4f), 55.0, true, ["dots", "lines", "labels"])
 cam.h
 ```
 
@@ -92,7 +92,7 @@ its class internals:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-listOf(vec(0.5, 1.5), vec(1.0, 2.0, 3.0), vec(0.25, 0.5, 1.0, 2.0)).h
+[vec(0.5, 1.5), vec(1.0, 2.0, 3.0), vec(0.25, 0.5, 1.0, 2.0)].h
 ```
 
 ![vec2, vec3 and vec4 rendered as compact tokens](assets/value_visualizers/vectors.png){ width="324" }
@@ -105,10 +105,16 @@ tree — a good way to label several related values at once:
 ```diffstatic {data-lang=kotlin}
 :::static
 linkedMapOf(
-    "scale (mat3)"     to Matrix3f().set(2f,0f,0f, 0f,3f,0f, 0f,0f,1f),
-    "translate (mat4)" to Matrix4f().identity().apply { set(3,0,5f); set(3,1,-2f); set(3,2,1f) },
-    "spin (quat)"      to Quaternionf().rotateY(0.6f)
-).h
+        "scale (mat3)" to Matrix3f().set(2f, 0f, 0f, 0f, 3f, 0f, 0f, 0f, 1f),
+        "translate (mat4)" to
+            Matrix4f().identity().apply {
+                set(3, 0, 5f)
+                set(3, 1, -2f)
+                set(3, 2, 1f)
+            },
+        "spin (quat)" to Quaternionf().rotateY(0.6f),
+    )
+    .h
 ```
 
 ![A map of mat3, mat4 and quaternion values](assets/value_visualizers/linalg_map.png){ width="564" }
@@ -128,13 +134,14 @@ SVG thumbnail of the actual geometry:
 :::static
 val spiral = FLine()
 val steps = 140
+spiral.breakNext()
 for (i in 0..steps) {
     val t = i.toDouble() / steps
     val a = t * 5.0 * 2.0 * Math.PI
     val r = 8.0 + t * 60.0
     val x = 80.0 + Math.cos(a) * r
     val y = 80.0 + Math.sin(a) * r
-    if (i == 0) spiral.moveTo(x, y) else spiral.lineTo(x, y)
+    spiral.lineTo(x, y)
 }
 spiral.h
 ```
@@ -178,7 +185,7 @@ treatment, and it is the case where the picture most obviously beats the text: a
 `Img` is a `FloatArray` you cannot read, a `List<Corner>` is forty records of
 three doubles each, and a `GaussianPyramid` is `GaussianPyramid@3f1a2b`. Every
 imaging value below is rendered by
-`src/jvmMain/kotlin/afield/visualization/ImagingVisualizer.kt`, reached through the
+`src/jvmMain/kotlin/afield/ui/visualization/ImagingVisualizer.kt`, reached through the
 same `.h` you have been using all along.
 
 Evaluate an `Img` and you get the actual pixels, aspect-correct, plus a `<details>`
@@ -349,25 +356,38 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-imaging-panels.png" alt="four imaging panels in a row, each a thumbnail over a line of metadata and a row of disclosure links. An RGB image of a yellow rectangle and a cyan disc on a four-way colour gradient, labelled 180x132, rgb, range 0.1 to 0.98; a signed Sobel response of the same scene painted in the blue-white-red coolwarm map, labelled range -0.4083 to 0.4089, signed; a GaussianPyramid as four rungs at true relative scale, 180x132 down to 22x16; and a List of 9 Corners as coloured dots on black, labelled with its response range and an inferred extent of 118.23 by 106.17" wait="1.5" capture="box" open-outputs="true" padding="8" w="1200" h="700" embed=true name="imaging-panels"}
 :::static
-val scene = Img.generateRGB(180, 132) { x, y ->
-    var r = 0.10f + 0.30f * (x / 179f)
-    var g = 0.12f + 0.22f * (y / 131f)
-    var b = 0.34f - 0.20f * (x / 179f)
-    if (x in 24..68 && y in 20..56) { r = 0.94f; g = 0.86f; b = 0.42f }
-    if (hypot(x - 128.0, y - 46.0) <= 22.0) { r = 0.30f; g = 0.80f; b = 0.92f }
-    if (x in 112..113 || y in 104..105) { r = 0.98f; g = 0.98f; b = 0.98f }
-    Triple(r, g, b)
-}
+val scene =
+    Img.generateRGB(180, 132) { x, y ->
+        var r = 0.10f + 0.30f * (x / 179f)
+        var g = 0.12f + 0.22f * (y / 131f)
+        var b = 0.34f - 0.20f * (x / 179f)
+        if (x in 24..68 && y in 20..56) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 128.0, y - 46.0) <= 22.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 112..113 || y in 104..105) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        Triple(r, g, b)
+    }
 val gray = scene.luma()
 
 // Four stages of one pipeline, four different value types, one `.h` each. showRow keeps
 // them in a single output channel instead of four tall ones.
-val panels = listOf(
-    scene.h,                                                // direct mode, 3 channels
-    gray.sobel().dx.h,                                      // signed -> coolwarm diverging
-    gray.gaussianPyramid(4).h,                              // rungs at true relative scale
-    gray.harrisCorners(minDistance = 6, maxCount = 20).h    // scatter, strength-coded
-)
+val panels = [
+    scene.h, // direct mode, 3 channels
+    gray.sobel().dx.h, // signed -> coolwarm diverging
+    gray.gaussianPyramid(4).h, // rungs at true relative scale
+    gray.harrisCorners(minDistance = 6, maxCount = 20).h, // scatter, strength-coded
+]
 showRow("panels", panels)
 
 println("imaging visualizers ready")
@@ -379,10 +399,9 @@ the renderer decides per value whether it is looking at colour data, a signed
 response, a pyramid, or a list of detections.
 
 !!! tip "Open the demo document"
-    `dev_docs/agents/transcripts/imaging_visualizers_demo.yaml` is a loadable
-    document with one box per visualizer on this page. Replay it into a fresh
-    Field with the agent backdoor (`field_run_transcript`) and look at each box's
-    output area — every box evaluates one imaging value as its last expression, so
+    The [imaging_visualizers_demo](agent_transcripts.md#imaging_visualizers_demo)
+    starting point has one box per visualizer on this page. Open it from the
+    welcome screen, run the boxes and look at each one's output area — every box evaluates one imaging value as its last expression, so
     there is no `showImg`, no `display(...)` and no explicit call at all. Then
     change a sigma or a threshold and re-run a box.
 
@@ -392,9 +411,7 @@ synth scopes.
 
 ## Inline editor visualizers
 
-These are the ones that make the editor itself feel alive.
-
-The core pattern is:
+These draw next to the line of code that produced the value. The core pattern is:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -406,7 +423,7 @@ The marker remembers a little state and renders HTML back into the editor gutter
 
 ### Histogram, history, and summary stats
 
-Histograms answer “what values have I seen?”, history answers “how did the value move?”, and stats gives you the quick executive summary.
+Histograms answer “what values have I seen?”, history answers “how did the value move?”, and stats gives you a one-line summary.
 
 The live examples below are all `loop { }` bodies, which is Field's frame loop: the body runs, then
 the frame advances, once per Runloop tick. What that tick is, and what stops one of these, is
@@ -440,9 +457,7 @@ loop {
     visualizerFrame += 1
 
     if (visualizerFrame % 2 == 0) {
-        val value = sin(tick * 0.22) * 0.7 +
-            cos(tick * 0.11) * 0.2 +
-            tick * 0.01
+        val value = sin(tick * 0.22) * 0.7 + cos(tick * 0.11) * 0.2 + tick * 0.01
 
         __m("histogram").histogram(value, dur = 120)
         __m("trail").history(value, dur = 48)
@@ -515,6 +530,8 @@ loop {
 }
 ```
 
+The same loop is shorter written against the box's `time` instead of a phase it advances itself:
+
 ```diffstatic {data-lang=kotlin}
 :::static
 loop {
@@ -525,8 +542,7 @@ loop {
 }
 ```
 
-Run that as a launch, not a plain execute. When motion is not part of the behavior being taught,
-finite deterministic input is easier to reproduce while still exercising the real visualizer.
+Run either as a launch, not a plain execute.
 
 ### Piano rolls in the editor
 
@@ -553,14 +569,14 @@ expect:
 ```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-pianoroll.mp4" wait="2.0" capture="editor" outputs="inline" padding="10" execution="launch" duration="3" fps="12" timeout="120" embed=true name="inline-pianoroll"}
 :::static
 val arp = noteProcess {
-    val chord = listOf(48, 55, 60, 64)
+    val chord = [48, 55, 60, 64]
     var step = 0
     while (true) {
         note(
             pitch = chord[step % chord.size],
             duration = 0.18,
             velocity = 0.85,
-            label = "n$step"
+            label = "n$step",
         )
         rest(0.25)
         step++
@@ -582,11 +598,11 @@ loop {
 }
 ```
 
-This is wonderful for sequencers, generative rhythm systems, or anything where you want to see future note structure without leaving the code.
+Use it for sequencers, generative rhythm systems, or anything where you want to see future note structure without leaving the code.
 
 ## Display channels: the big canvas under the box
 
-Inline visuals are intimate. `display(...)` is theatrical.
+Inline visuals sit beside one line of code. `display(...)` has the whole area under the box.
 
 Anything you pass to `display("channel", thing)` becomes HTML in a named output area. That HTML can be handwritten, auto-generated, interactive, or even an embedded browser/inspector.
 
@@ -618,20 +634,22 @@ val tiny = linkedMapOf(
     "tempo" to 122,
     "mode" to "mixolydian",
     "active" to true,
-    "notes" to listOf("C", "E", "G", "Bb")
+    "notes" to ["C", "E", "G", "Bb"],
 )
 
-val big = (0 until 18).associate { row ->
-    "row-$row" to (0 until 10).associate { col ->
-        "c$col" to row * col
+val big =
+    (0 until 18).associate { row ->
+        "row-$row" to
+            (0 until 10).associate { col ->
+                "c$col" to row * col
+            }
     }
-}
 
 display(
     "hello",
     "<div style=\"padding:18px;background:#101820;color:#f2aa4c;border:1px solid #2d4a5d\">" +
         "<b>display(...)</b> can show any HTML you like." +
-        "</div>"
+        "</div>",
 )
 display("pretty", tiny.h)
 display("heavy", big.h2)
@@ -651,7 +669,7 @@ To see all of it at once, insert the **h2 Explorer Examples** template and run i
 
 ### Markdown for captions and tables
 
-The escape hatch above has a way of taking over. A figure that wants a heading, a key/value table and a block of computed text ends up as a hundred lines of string concatenation, with a hand-picked font stack, a `<tr><td style=…>` builder and a local `fun esc(s: String)` — reliably longer than the code it was meant to illustrate, and reaching for a different shade of grey each time.
+The escape hatch above has a way of taking over. A figure that wants a heading, a key/value table and a block of computed text ends up as a hundred lines of string concatenation, with a hand-picked font stack, a `<tr><td style=…>` builder and a local `fun esc(s: String)`, often longer than the code it illustrates.
 
 `markdown("channel", "…")` says the same thing in markdown, and picks up Field's own `--field-*` tokens instead of re-inventing them:
 
@@ -677,7 +695,9 @@ val readings = linkedMapOf("tempo" to 122, "drift" to -0.004, "voice" to "saw 11
 val rows = readings.entries.joinToString("\n") { (k, v) -> "| ${k.md} | ${v.md} |" }
 val report = "converged in 41 steps\nresidual 3.2e-7"
 
-markdown("figure", """
+markdown(
+    "figure",
+    """
     ### what the run settled on
 
     | reading | value |
@@ -698,27 +718,26 @@ markdown("figure", """
     ~~~
 $report
     ~~~
-""", width = 820)
+""",
+    width = 820,
+)
 
 println("markdown figure ready")
 ```
 
-Three things make this work on real figures rather than just on prose:
+Three rules matter once a figure mixes computed values into the prose:
 
 - **HTML passes through, inline and block.** `.h`, `diffHtml()`, `graphSvg()` and friends already return HTML; interpolate them directly and they land verbatim, table cells included. Only text you actually wrote as markdown gets escaped.
-- **`value.md` for computed values.** Runtime values are not markdown — a `|` splits the row it lands in, a pair of `*` becomes emphasis, a `<b>` is read as a tag and vanishes. Escape anything you did not write yourself. The prefix spelling `mdEscape(value)` is the same function and still works; the suffix is what a row of six escapes wants, and it is the one used above.
+- **`value.md` for computed values.** Runtime values are not markdown — a `|` splits the row it lands in, a pair of `*` becomes emphasis, a `<b>` is read as a tag and vanishes. Escape anything you did not write yourself. `mdEscape(value)` is the same function, written as a call.
 - **Fenced bodies are interpolated at column zero**, hard left, the way `$report` is above. Inside a fence whitespace is the content, and splicing at the surrounding indentation would indent only the value's first line.
 
 Beyond GitHub-flavoured markdown there are two additions: `:::row … :::end`, splitting columns on a `---` line, for the before/after shape markdown cannot spell; and `{role:text}` spans — `accent`, `muted`, `dim`, `ok`, `warn`, `bad` — so a callout never needs a hex literal. Neither applies inside code, so a `:::row` or a `{warn:…}` shown *as* an example stays as written. The figure above uses both: the before/after row, and the `ok`, `warn` and `muted` spans on its status line.
 
-??? aside "Why the example closes its row with `:::end`"
-    A bare `:::` also closes a row in a live box, but on a docs page the runner treats a line that is exactly `:::` as one of its own fence-section markers — the same family as the `:::static` at the top of every runnable example — and strips it out of the code before running it. The row then never closes, and swallows the rest of the card in the built page only.
-
-You do not need `trimIndent()`; the text is dedented for you, and unlike `trimIndent` it survives having a multi-line value interpolated into it. `width` pins the card, which matters for a docs `capture="box"` screenshot: that clips to the output card, so an unpinned card sized by its widest unbreakable line loses everything past the clip.
+You do not need `trimIndent()`; the text is dedented for you, and unlike `trimIndent` it survives having a multi-line value interpolated into it. `width` pins the card's width; without it the card is as wide as its widest unbreakable line.
 
 ### Trees and columns
 
-Sometimes the right answer is not “render this as a card”, it is “let me inspect this like a little filesystem”.
+For a value you want to browse like a little filesystem, open it in a tree or column browser.
 
 <!--
 FIELD_TEST
@@ -739,28 +758,31 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-display-browsers.png" alt="two inspector channels over the same nested scene map. 'outline' is a tree browser with camera expanded to show x, y, zoom and active, and layers and palette still folded. 'columns' is a column browser, its root column listing camera, layers and palette with a scrollbar down the right of the pane" wait="3.0" capture="box" open-outputs="true" w="1200" h="260" embed=true name="display-browsers"}
 :::static
 val scene = linkedMapOf(
-    "camera" to linkedMapOf(
-        "x" to 10,
-        "y" to 20,
-        "zoom" to 1.5,
-        "active" to true
-    ),
-    "layers" to listOf(
+    "camera" to
         linkedMapOf(
-            "name" to "dots",
-            "visible" to true,
-            "points" to listOf(2, 4, 8, 16)
+            "x" to 10,
+            "y" to 20,
+            "zoom" to 1.5,
+            "active" to true,
         ),
+    "layers" to
+        [
+            linkedMapOf(
+                "name" to "dots",
+                "visible" to true,
+                "points" to [2, 4, 8, 16],
+            ),
+            linkedMapOf(
+                "name" to "lines",
+                "visible" to false,
+                "style" to linkedMapOf("width" to 2, "color" to "#f2aa4c"),
+            ),
+        ],
+    "palette" to
         linkedMapOf(
-            "name" to "lines",
-            "visible" to false,
-            "style" to linkedMapOf("width" to 2, "color" to "#f2aa4c")
-        )
-    ),
-    "palette" to linkedMapOf(
-        "background" to "#101820",
-        "accent" to "#f2aa4c"
-    )
+            "background" to "#101820",
+            "accent" to "#f2aa4c",
+        ),
 )
 
 tree("outline", scene)
@@ -774,16 +796,102 @@ println("inspector panes ready")
 
 These are especially good for nested maps, scene graphs, structured JSON-like data, or anything you want to poke around in rather than summarize.
 
-And while it is not a “visualizer” in the chart sense, `logs(...)` belongs in the same family:
+Both take any value, not only maps and lists. A data class or one of your own classes opens to its public properties, an `IntArray` or `DoubleArray` opens to its elements, and a map whose keys are objects opens each entry to its key and its value. Every row shows its name, its type and a one-line summary (`5000 items`, `"label"`, `Point(x=1.0, y=2.5, label=p)`), so you can read most of a structure without opening anything:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-tree-values.png" alt="A tree embed titled LinkedHashMap, 4 entries, with a filter box. Four folded rows, each a name, its type and the start of its summary: particle (Particle), weights (DoubleArray), many (ArrayList, 5000 items) and ring (Node, listing its fields). The selected row shows its path and copy buttons." wait="3.0" capture="box" open-outputs="true" w="900" h="200" embed=true name="tree-values"}
+data class Particle(val position: Vec3, val age: Double, val tag: String)
+class Node(val name: String) {
+    var next: Node? = null
+}
+
+val ring = Node("a")
+ring.next = Node("b").also { it.next = ring }
+
+val scene = linkedMapOf(
+    "particle" to Particle(Vec3(1f, 2f, 0.5f), 0.25, "spark"),
+    "weights" to doubleArrayOf(0.1, 0.4, 0.5),
+    "many" to List(5000) { it * it },
+    "ring" to ring,
+)
+tree("scene", scene)
+```
+
+A long collection arrives 200 rows at a time; the last row says how many there are and loads the next 200. Open rows follow the value: if code that keeps running (a `frames { }` loop, say) adds to `particles`, the tree shows the new size within about a second, without re-running the box. An object that contains itself is marked with `↺` instead of being opened forever.
+
+Keys, once you have clicked into the embed: the arrow keys move and open (in `column`, `←` and `→` move between columns), `/` filters the rows, `c` copies the selected value as text, `p` copies the row's path, and `r` reloads. The header stays put while the rows scroll. The embed grows with its content up to a height and then scrolls; pass `maxHeight = 800` to `tree` or `column` to change that height.
+
+The rows are the same edges [`graphPaths`](graph_query.md) walks, so every row has a path from the value you passed in, such as `particle/position` or `many/250`. Press `p` (or the **path** button on a row) and paste it into box code:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-logs("warnings", latestOnly = true) {
-    cat = "warning"
+val age = scene.graphPath("particle/age")?.get()
+```
+
+Type a pattern containing `/`, `*` or `|` into the filter and it runs `graphPaths` on the whole value instead of filtering one level: `**/tag` lists every `tag` at any depth, labelled by path. Choose one (Enter, or double-click) and the tree or columns open to it. Plain text still just filters the rows in view.
+
+This recording types `**/name` into the filter of a tree over a small scene of groups and layers. Every `name` at any depth is listed by its path; the arrow keys pick `groups/1/layers/1/name`, and Enter opens the tree down to it.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1000x900" clip-selector="iframe.field-inspector" video="assets/visualizers-inspector-search.mp4" fps="10" transcript="../../dev_docs/agents/transcripts/docs_capture/inspector_search.yaml" padding="6" wait="0" timeout="240" embed=true hidden=true name="inspector-search" alt="A tree embed over a scene with a title and two groups. The pointer clicks the filter and **/name is typed; the rows give way to five matches listed by path, groups/0/name through groups/1/layers/1/name. The arrow keys move down to groups/1/layers/1/name, Enter is pressed, and the tree opens groups, then [1], layers and [1], with the hatching layer's name row selected."}
+val frame = "document.querySelector('iframe.field-inspector')"
+ui.waitForSelector("iframe.field-inspector", 8000.0)
+ui.eval("document.body.classList.add('mode-no-editor'); return true")
+ui.pause(600)
+fun tree(js: String) = ui.eval("return $frame.contentWindow.$js").toString()
+check("LinkedHashMap" in tree("inspectorTreeState().root"))
+val at =
+    ui.eval(
+            """
+    const f = $frame, r = f.getBoundingClientRect();
+    const i = f.contentDocument.getElementById('filter').getBoundingClientRect();
+    return [r.left + i.left + i.width / 2, r.top + i.top + i.height / 2].join(',');
+""",
+        )
+        .toString()
+        .trim('"')
+        .split(',')
+        .map { it.toDouble() }
+ui.moveMouse(at[0], at[1], 6)
+ui.clickAt(at[0], at[1])
+ui.typeSlowly("**/name", 220)
+ui.pause(500)
+check("groups/1/layers/1/name" in tree("inspectorTreeState().query")) {
+    tree("JSON.stringify(inspectorTreeState())") + " at " + at
 }
+for (i in 1..5) {
+    ui.press("ArrowDown")
+    ui.pause(200)
+}
+ui.press("Enter")
+ui.pause(900)
+check(tree("inspectorTreeState().selected") == "\"groups/1/layers/1/name\"") { tree("inspectorTreeState().selected") }
+ui.pause(300)
+```
+
+Private properties are left out, as `graphPaths` leaves them out by default. Pass `includePrivate = true` to `tree` or `column` to list them; their paths then need `graphPaths(pattern, GraphWalkOptions(includePrivate = true))`. A row has no path when nothing reaches it by name: an element of a primitive array, a map key that is an object, the second of two map keys that print alike.
+
+And while it is not a “visualizer” in the chart sense, `logs(...)` belongs in the same family. This box shows only the `demo` channel and logs a small job into it; rows that share a block id are grouped under the block's first line:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-logs.png" alt="A logs embed with a channels: demo chip, a find box and a clear button. Below, one grouped block in the demo channel, each row with its time: starting a job, then step 1 of 3, step 2 of 3 and step 3 of 3, the block running on below the bottom of the panel." wait="3.0" capture="box" open-outputs="true" w="900" h="200" embed=true name="logs-demo"}
+logs("logs") { channel("demo") }
+
+val log = afield.ai.diagnostics.LogDispatcher
+log.log(
+    afield.ai.diagnostics.LogEvent(
+        "demo",
+        "starting a job",
+        blockId = "job",
+        boundary = afield.ai.diagnostics.BlockBoundary.BEGIN,
+    ),
+)
+for (i in 1..3) log.log(afield.ai.diagnostics.LogEvent("demo", "step $i of 3", blockId = "job"))
+log.log(
+    afield.ai.diagnostics.LogEvent("demo", "done", blockId = "job", boundary = afield.ai.diagnostics.BlockBoundary.END),
+)
 ```
 
 It gives you a live log iframe inside an output channel, which is often exactly what you want while instrumenting a system.
+
+The embed has a find box (`/`) that hides rows not containing its text, a **clear** button (or `k`), and, when you have scrolled up to read something, a `↓ N new` button instead of jumping away from what you were reading. If Field restarts, the embed reconnects by itself.
 
 ### Keeping output areas tidy
 
@@ -797,12 +905,12 @@ displayClearAll()
 ```
 
 This is useful for demos, guided tutorials, and boxes that are meant to be rerun frequently.
+`displayClear` removes the panel rather than emptying it; [Box Output](box_output.md) covers all
+four calls and the mouse gestures that do the same.
 
 ## Controls: sliders, toggles, colors, text, and XY pads
 
-Some outputs are not there to be looked at. They are there to be touched.
-
-Field can build small, pleasant control surfaces directly into output areas.
+Field can build small control surfaces directly into output areas: sliders and pads you drag while the box runs.
 
 They also reach a phone. Open `/controllers?file=<document>` on it and the **Group** tab redraws the selected box's `controlGroup(...)` at thumb size, while **Outputs** shows its output areas with their controls still live. See [Field from your phone](mobile_controllers.md#the-six-tabs).
 
@@ -824,15 +932,12 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-controls.png" alt="five stacked control widgets in one output channel, all drawn in cyan on black. GAIN, a horizontal slider a third of the way along, reading 0.35. ORBIT, a square vec2 pad with crosshairs and a handle pulled down and right of centre, annotated theta -30 degrees, magnitude 0.40, X 0.35, Y -0.20. ARMED, a checked checkbox. NAME, a text field holding 'Field'. ACCENT, an orange swatch beside an alpha slider at 0.85, with rgba(0.95, 0.45, 0.15, 0.85) printed above it" wait="1.0" capture="box" open-outputs="true" w="1200" h="180" embed=true name="controls"}
 :::static
-import afield.stdlib.linalg.Vector2f
-import afield.stdlib.linalg.Vector4f
-
 controlGroup("controls") {
-    slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = 0.35) { }
-    vec2Control("orbit", initialValue = Vector2f(0.35f, -0.2f)) { }
-    checkbox("armed", initialValue = true) { }
-    stringInput("name", initialValue = "Field") { }
-    colorPicker("accent", initialValue = Vector4f(0.95f, 0.45f, 0.15f, 0.85f)) { }
+    slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = 0.35) {}
+    vec2Control("orbit", initialValue = Vector2f(0.35f, -0.2f)) {}
+    checkbox("armed", initialValue = true) {}
+    stringInput("name", initialValue = "Field") {}
+    colorPicker("accent", initialValue = Vector4f(0.95f, 0.45f, 0.15f, 0.85f)) {}
 }
 
 println("controls ready")
@@ -849,6 +954,117 @@ Available pieces include:
 - `controlGroup(...) { ... }`
 
 The `vec2Control(...)` is the “xy thing” in the nicest sense: an XY pad with a vector line, magnitude, and angle readout.
+
+### Handling a slider
+
+Every slider, standalone, in `sliders(...)`, or in a `controlGroup`, answers the same hand:
+
+This recording drags a live `controlGroup` slider, nudges it with the arrow key, then double-clicks
+the track to return to its starting value. The large bar is updated by the slider's callback, so it
+shows the value Field receives while the pointer moves.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1000x900" clip="65,205,560,350" video="assets/visualizers-slider-gestures.mp4" fps="20" transcript="../../dev_docs/agents/transcripts/docs_capture/slider_gestures.yaml" padding="0" wait="0" timeout="240" embed=true hidden=true name="slider-gestures" alt="A live GAIN slider starts at 0.35. The pointer drags its thumb to the right and the readout and large cyan bar follow, the right arrow nudges it once, then a double-click returns the thumb, readout and bar to 0.35."}
+ui.waitForSelector(".field-slider-visual", 8000.0)
+ui.eval("document.body.classList.add('mode-no-editor'); return true")
+check("true" in ui.eval("return document.body.classList.contains('mode-no-editor')").toString())
+ui.pause(300)
+
+fun point(fraction: Double): Pair<Double, Double> {
+    val coords =
+        ui.eval(
+                """
+        const r = document.querySelector('.field-slider-visual').getBoundingClientRect();
+        return [r.left + r.width * $fraction, r.top + r.height / 2].join(',');
+    """,
+            )
+            .toString()
+            .trim('"')
+            .split(',')
+            .map { it.toDouble() }
+    return coords[0] to coords[1]
+}
+fun value(): Double =
+    ui.eval("return document.querySelector('.field-slider').dataset.value").toString().trim('"').toDouble()
+
+check(kotlin.math.abs(value() - 0.35) < 0.001)
+val from = point(0.35)
+val to = point(0.75)
+val firstHit =
+    ui.eval(
+            """
+    const e = document.elementFromPoint(${from.first}, ${from.second});
+    return [e?.tagName, e?.className?.baseVal || e?.className,
+        !!e?.closest('.field-slider-visual')].join(' / ');
+""",
+        )
+        .toString()
+check("true" in firstHit) { "slider start is covered at $from: $firstHit" }
+ui.moveMouse(from.first, from.second, 12)
+ui.pause(100)
+ui.mouseDown()
+for (step in 1..30) {
+    ui.moveMouse(
+        from.first + (to.first - from.first) * step / 30,
+        from.second,
+        1,
+    )
+    ui.pause(100)
+}
+ui.mouseUp()
+ui.pause(150)
+val dragged = value()
+check(dragged > 0.70) { "drag did not move the live slider: $dragged" }
+
+ui.press("ArrowRight")
+ui.pause(150)
+check(value() > dragged) { "arrow key did not nudge the focused slider" }
+
+val reset = point(0.5)
+val hit =
+    ui.eval(
+            """
+    const e = document.elementFromPoint(${reset.first}, ${reset.second});
+    return [!!e?.closest('.field-slider-visual'), e?.tagName, e?.className?.baseVal || e?.className,
+        e?.closest('.field-control')?.className].join(' / ');
+""",
+        )
+        .toString()
+check("true" in hit) { "slider track occluded at $reset: $hit" }
+ui.doubleClickAt(reset.first, reset.second)
+ui.pause(200)
+check(kotlin.math.abs(value() - 0.35) < 0.001) {
+    "double-click did not restore the starting value: value=${value()}, default=${ui.eval("return document.querySelector('.field-slider').dataset.default")}"
+}
+ui.moveMouse(790.0, 420.0, 8)
+ui.pause(100)
+```
+
+| Do this | To get |
+| --- | --- |
+| press and drag | the thumb jumps to the pointer and follows it |
+| hold **shift** while dragging | a relative drag, ten times finer, from wherever the value already is; pressing shift mid-drag does not make the thumb leap |
+| double-click the track | the slider's `initialValue` again |
+| click the number | type an exact value; **Enter** keeps it, **Esc** abandons it |
+| arrow keys (after a click) | one `step` per press; **shift** ×10, **alt** ÷10. A `law =` slider moves 1% of its travel instead |
+| **PageUp** / **PageDown**, **Home** / **End** | 10% of travel, or the ends |
+| **Backspace** | back to `initialValue` |
+
+The other controls' readouts take typing too. On a `vec2Control`, click **X** or **Y** to set one coordinate, the `(x, y)` pair to set both, `|v|` to change the length and keep the direction, or `θ` (degrees) to turn it and keep the length. On a `colorPicker`, click the `rgba(...)` readout and type four numbers from 0 to 1, or a `#rrggbb` hex colour; click the alpha number to type the alpha alone. Typed values are clamped and snapped like a drag.
+
+The track carries guides: ticks at the quarters, thirds and middle of its travel (the ends and middle drawn taller), a small notch under the `initialValue` that double-click returns to, and a mark at zero when the range runs from negative to positive. On a `law =` slider the ticks sit at fractions of the travel, not of the value. The `vec2Control` pad has the same quarter and third gridlines, plus rings around the centre at a quarter, half, three quarters and the full half-width of the pad, so a vector's length reads at a glance.
+
+A typed or nudged value is snapped to `step` and clamped to the range, the same as a drag, so the callback never sees a number the slider could not have produced.
+
+A `controlGroup` slider keeps its value across re-runs and in the saved document. A standalone `slider(...)` starts from `initialValue` every run. When the value should belong to the box, bind it to a property:
+
+```diffstatic {data-lang=kotlin}
+prop<Double>(gain)
+syncToProperty("gain", 0.5, min = 0.0, max = 2.0)
+```
+
+`syncToProperty` starts from the property's current value when it has one, so re-running the box keeps whatever you last dialled in, and the property is saved with the document.
+
+Declare the property with `propDown<Double>(gain)` and moving the slider also reruns every box that reads `gain`; see [Properties that re-run boxes](reactive_properties.md#a-control-reruns-the-boxes-that-read-it).
 
 ### Build one surface with mixed control types
 
@@ -870,47 +1086,62 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-mixed-controls.png" alt="two channels. 'surface' holds the same five widgets under different names: BLOOM at 0.62, a WIND pad with its handle up and left at theta 146 degrees and magnitude 0.54, TRAILS checked, LABEL reading 'wake field', and a cyan TINT swatch at alpha 0.90. 'preview' below it holds a wide rendered strip, warm brown at the left and a soft blue bloom left of centre, with the line wind=(-0.45, 0.32), bloom=0.62, trails=true underneath, so the preview and the widgets agree" wait="1.0" capture="box" open-outputs="true" w="1200" h="180" embed=true name="mixed-controls"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-mixed-controls.png" alt="Two channels: surface holds BLOOM, WIND, TRAILS, LABEL and TINT controls. Preview shows the label and current values beneath a solid monochrome circle on black. Wind moves the circle, bloom changes its size, trails changes its outline, and tint sets its luminance and alpha." wait="1.0" capture="box" open-outputs="true" w="1200" h="180" embed=true name="mixed-controls"}
 :::static
-import afield.stdlib.linalg.Vector2f
-import afield.stdlib.linalg.Vector4f
-
-var wind = Vector2f(-0.45f, 0.32f)
+var wind = Vector2f(-0.45f, 0.30f)
 var bloom = 0.62
 var trails = true
 var label = "wake field"
 var tint = Vector4f(0.25f, 0.75f, 1.0f, 0.9f)
 
+// Refresh after each edit. TINT controls monochrome luminance and alpha.
+fun updatePreview() {
+    val gray = (255 * (0.2126 * tint.x + 0.7152 * tint.y + 0.0722 * tint.z)).toInt().coerceIn(0, 255)
+    val x = 160 + wind.x * 120
+    val y = 48 - wind.y * 32
+    val radius = 6 + bloom * 22
+    val dash = if (trails) "4 3" else "none"
+    markdown(
+        "preview",
+        """
+        #### ${label.md}
+
+        <svg width="320" height="96" viewBox="0 0 320 96" style="background:#080808;border:1px solid #555">
+          <circle cx="$x" cy="$y" r="$radius" fill="rgb($gray,$gray,$gray)" fill-opacity="${tint.w}"
+                  stroke="#ddd" stroke-dasharray="$dash"/>
+        </svg>
+
+        wind=(${wind.x}, ${wind.y}) · bloom=$bloom · trails=$trails
+        tint=(${tint.x}, ${tint.y}, ${tint.z}, ${tint.w})
+        """,
+        width = 620,
+    )
+}
+
 controlGroup("surface") {
     slider("bloom", min = 0.0, max = 1.0, step = 0.01, initialValue = bloom) {
         bloom = it
+        updatePreview()
     }
     vec2Control("wind", initialValue = wind, xRange = -1.0 to 1.0, yRange = -1.0 to 1.0, step = 0.05) {
         wind = it
+        updatePreview()
     }
     checkbox("trails", initialValue = trails) {
         trails = it
+        updatePreview()
     }
     stringInput("label", initialValue = label) {
         label = it
+        updatePreview()
     }
     colorPicker("tint", initialValue = tint) {
         tint = it
+        updatePreview()
     }
 }
-
-// The gradient swatch is the bespoke part and stays as HTML; the card around it does not
-// have to be hand-built any more.
-markdown("preview", """
-    #### ${label.md}
-
-    <div style="height:96px;background:
-      radial-gradient(circle at 35% 45%, rgba(64,190,255,0.65), transparent 22%),
-      linear-gradient(135deg, rgba(255,120,40,0.18), rgba(40,210,255,0.20));
-      border:1px solid rgba(131,230,255,0.35)"></div>
-
-    wind=({accent:${wind.x}}, {accent:${wind.y}}) · bloom={accent:$bloom} · trails={accent:$trails}
-""", width = 620)
+// Cached controls may invoke callbacks during setup; draw once more after all are restored.
+updatePreview()
 
 println("mixed controls ready")
 ```
@@ -968,7 +1199,7 @@ controlGroup("sequencer") {
         band = it
         print(it.h)
     }
-    menu("wave", listOf("sine", "saw", "square", "noise"), initialIndex = 1) { _, name ->
+    menu("wave", ["sine", "saw", "square", "noise"], initialIndex = 1) { _, name ->
         wave = name
     }
 }
@@ -993,7 +1224,7 @@ Pass `polar = true` to draw any of the three around a circle. A step sequence is
 - On a polar `matrix`, rows are rings (row 0 is the outermost) and columns are sectors running clockwise from twelve o'clock. The playhead lights a whole sector.
 - On a polar `rangeSlider`, the track is the whole circle, and `min` and `max` meet at the top. The band runs clockwise from `start` to `endInclusive` and may wrap through the top. Drag inside it to turn the whole band.
 
-A wrapped band has `start > endInclusive`, which Kotlin's own `in` reads as an empty range, so test it with `arcContains`. On a dial a range means an arc, so use it for values that are already circular: a phase, a hue, a window into a loop.
+On a dial a range means an arc, and `value in band` follows it. Use it for values that are already circular: a phase, a hue, a window into a loop.
 
 <!--
 FIELD_TEST
@@ -1013,7 +1244,7 @@ expect:
 :::static
 var velocity = 16 { i -> 0.5 + 0.4 * Math.sin(i * 0.6) }
 var pattern = 4 { r -> 16 { c -> if ((c + r * 3) % 8 == 0) 1 + (c / 4) % 3 else 0 } }
-var band = 1700.0..400.0   // wraps through the top
+var band = 1700.0..400.0 // wraps through the top
 
 lateinit var steps: ArrayControlHandle<List<Double>>
 lateinit var grid: ArrayControlHandle<List<List<Int>>>
@@ -1024,7 +1255,7 @@ controlGroup("dial", columns = 3) {
     grid = matrix("pattern", rows = 4, columns = 16, states = 4, initialValue = pattern, polar = true) { pattern = it }
     range = rangeSlider("band", min = 20.0, max = 2000.0, initialValue = band, polar = true) {
         band = it
-        print(it.arcContains(100.0))
+        print(100.0 in it)
     }
 }
 
@@ -1082,6 +1313,8 @@ loop {
 
 `p` follows your finger while you drag and the take otherwise. Use it for anything with two axes: a camera, a pan and a filter, a point in a preset space.
 
+To edit a take key by key, bake it into keyframe lanes with `bakeGesture(pad)`, and send the edited lanes back with `pad.setTake(x, y)`: see [From a performed gesture](keyframe_editor.md#from-a-performed-gesture).
+
 ### Choosing the right control
 
 - Use `slider(...)` for one bounded numeric value.
@@ -1121,8 +1354,8 @@ Waveform-envelope requests have a 15-second browser deadline; a stalled service 
 and reports a timeout instead of leaving the view permanently busy. Any subsequent pan, zoom, or
 resize retries normally.
 
-Small arrays and documentation fixtures can be self-contained. This example starts in a zoomed
-window with the playhead parked inside it so both pieces of state remain visible in a still capture.
+Short sample arrays can be embedded in the page. This example opens zoomed in, with the playhead
+parked inside the visible window.
 
 <!--
 FIELD_TEST
@@ -1143,17 +1376,16 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-recorded-audio.png" alt="an audio channel headed 'five-second synthetic recording'. A wide cyan waveform block fills the pane, with one vertical amber band about a fifth of the way in marking the playhead. Beneath it: plus, minus and 'all' zoom buttons, the window 0:00.80 to 0:03.50 of 0:05.00, the hint 'wheel zoom at playhead, drag pan, click seek', and a browser audio transport parked at 0:01 of 0:05" wait="2.5" capture="box" open-outputs="true" padding="12" w="1200" h="310" embed=true name="recorded-audio"}
 :::static
-import afield.stdlib.*
-
 val sampleRate = 8_000
 val seconds = 5.0
-val recording = FloatArray((sampleRate * seconds).toInt()) { i ->
-    val t = i / sampleRate.toDouble()
-    val chirp = sin(2.0 * PI * (105.0 * t + 72.0 * t * t))
-    val low = 0.34 * sin(2.0 * PI * 47.0 * t)
-    val pulse = if ((t * 2.0).toInt() % 2 == 0) 0.16 * exp(-8.0 * (t % 0.5)) else 0.0
-    (0.54 * chirp + low + pulse).toFloat()
-}
+val recording =
+    FloatArray((sampleRate * seconds).toInt()) { i ->
+        val t = i / sampleRate.toDouble()
+        val chirp = sin(2.0 * PI * (105.0 * t + 72.0 * t * t))
+        val low = 0.34 * sin(2.0 * PI * 47.0 * t)
+        val pulse = if ((t * 2.0).toInt() % 2 == 0) 0.16 * exp(-8.0 * (t % 0.5)) else 0.0
+        (0.54 * chirp + low + pulse).toFloat()
+    }
 
 displayAudioSamples(
     samples = recording,
@@ -1176,12 +1408,14 @@ There are three general entry points from a Field box:
 
 ```diffstatic {data-lang=kotlin}
 // A browser-accessible recording. Add waveformUrl for range-aware server summaries.
-displayAudio(AudioVisualizerSource(
-    audioUrl = "/recordings/long-take.wav",
-    waveformUrl = "/analysis/long-take/waveform",
-    durationSeconds = 183.4,
-    label = "long take",
-))
+displayAudio(
+    AudioVisualizerSource(
+        audioUrl = "/recordings/long-take.wav",
+        waveformUrl = "/analysis/long-take/waveform",
+        durationSeconds = 183.4,
+        label = "long take",
+    ),
+)
 
 // Generated or transformed mono samples; encoded as a self-contained PCM16 WAV.
 displayAudioSamples(samples, sampleRate = 48_000, label = "synthesis result")
@@ -1198,13 +1432,13 @@ For a Field Audio service representation, use the same component without transfe
 the complete recording just to draw it:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.*
-import afield.stdlib.noir.audioai.*
-
 val representation: AssetRepresentation = candidate.proxyRepresentation!!
-display("audio", representation.audioVisualizerHtml(
-    options = AudioVisualizerOptions(showPlayhead = true)
-))
+display(
+    "audio",
+    representation.audioVisualizerHtml(
+        options = AudioVisualizerOptions(showPlayhead = true),
+    ),
+)
 ```
 
 That adapter asks the service for a bounded min/max envelope of only the visible interval. Each
@@ -1222,21 +1456,27 @@ offset; shared time is always `localSeconds + syncOffsetSeconds`.
 ```diffstatic {data-lang=kotlin}
 val group = "nancy-analysis"
 
-display("source", representation.audioVisualizerHtml(
-    options = AudioVisualizerOptions(
-        initialStartSeconds = 18.0,
-        initialDurationSeconds = 24.0,
-        initialPositionSeconds = 18.0,
-        syncGroup = group,
-    )
-))
+display(
+    "source",
+    representation.audioVisualizerHtml(
+        options = AudioVisualizerOptions(
+            initialStartSeconds = 18.0,
+            initialDurationSeconds = 24.0,
+            initialPositionSeconds = 18.0,
+            syncGroup = group,
+        ),
+    ),
+)
 
 // Analysis-local 0 s corresponds to source 18 s.
-display("analysis", analysisDashboardHtml(
-    listOf(beats, mono, poly),
-    syncGroup = group,
-    timeOffsetSeconds = 18.0,
-))
+display(
+    "analysis",
+    analysisDashboardHtml(
+        [beats, mono, poly],
+        syncGroup = group,
+        timeOffsetSeconds = 18.0,
+    ),
+)
 ```
 
 This synchronizes across separate `display(...)` output documents. Playback publishes a gold
@@ -1272,24 +1512,37 @@ audio.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-one-viewer.png" alt="Three stacked output panes headed envelope, audio and signal, all spanning 0 to 2 seconds. The envelope pane plots exp(-2.5 t) as a blue curve falling from 1 to near zero, its header chip reading 1024/1024 samples. The audio pane draws the decaying 220 Hz ping as a cyan waveform above a browser transport parked at 0:00 of 0:02, its chip reading click seek, wheel zoom at playhead, drag pan. The signal pane draws the same ping evaluated per window in white, its chip reading envelope and a delta t of 1.25e-4 s" wait="2" capture="box" open-outputs="true" padding="12" w="1200" embed=true name="one-viewer"}
 :::static
-import afield.stdlib.*
-import kotlin.math.*
-
 // One viewer, three sources, one timeline: a decaying 220 Hz ping.
 val sync = "one-viewer"
 val rate = 8_000
 val ping = { t: Double -> sin(2 * PI * 220 * t) * exp(-2.5 * t) }
 
 // 1. Fn.plot: the envelope, samples embedded in the page (resampled live when you zoom in).
-with(Functions) { fn(0.0..2.0, "envelope  exp(-2.5 t)") { t -> exp(-2.5 * t) }.plot("envelope", syncGroup = sync, xLabel = "seconds") }
+with(Functions) {
+    val envelope = fn(0.0..2.0, "envelope  exp(-2.5 t)") { t -> exp(-2.5 * t) }
+    envelope.plot("envelope", syncGroup = sync, xLabel = "seconds")
+}
 
 // 2. displayAudioSamples: the ping itself, playable; click to seek.
-displayAudioSamples(FloatArray(2 * rate) { ping(it / rate.toDouble()).toFloat() }, rate,
-    channel = "audio", label = "the ping, as audio", options = AudioVisualizerOptions(width = 760, syncGroup = sync))
+displayAudioSamples(
+    FloatArray(2 * rate) { ping(it / rate.toDouble()).toFloat() },
+    rate,
+    channel = "audio",
+    label = "the ping, as audio",
+    options = AudioVisualizerOptions(width = 760, syncGroup = sync),
+)
 
 // 3. displaySignal: the same ping evaluated per visible window on the server.
-displaySignal(SignalViewer(listOf(SignalChannel("ping", ping, -1.0, 1.0)), 0.0, 2.0, sampleStep = 1.0 / rate),
-    "signal", SignalViewerOptions(width = 760, label = "the ping, evaluated per window", syncGroup = sync, viewKey = "one-viewer:signal"))
+displaySignal(
+    SignalViewer([SignalChannel("ping", ping, -1.0, 1.0)], 0.0, 2.0, sampleStep = 1.0 / rate),
+    "signal",
+    SignalViewerOptions(
+        width = 760,
+        label = "the ping, evaluated per window",
+        syncGroup = sync,
+        viewKey = "one-viewer:signal",
+    ),
+)
 ```
 
 The chip in each header says what you are looking at. For the function it is `1024/1024 samples`
@@ -1310,21 +1563,21 @@ different operations in the same zoomable, pannable timeline:
 - monophonic pYIN pitch and voicing confidence;
 - Basic Pitch polyphonic note rectangles and activity summaries.
 
-![Three stacked analysis panels over a twelve-second timeline, above the source waveform and its transport: beats, with onset, local tempo and tempo confidence lanes; pitch mono, with a pYIN curve against a C3 to C4 grid and a voicing track; pitch poly, with a Basic Pitch piano roll over activation and active-pitch curves](assets/audio_ai_analysis/synchronized_analysis.png)
-
-That board is `analysisPreviewDashboardHtml(...)` drawing model-free previews; the code that
-produces it is on the [beat and pitch analysis walkthrough](audio_ai_analysis.md#the-views).
+The [beat and pitch analysis walkthrough](audio_ai_analysis.md#running-all-three-from-one-box) runs
+all three jobs on a recording and draws the board.
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.noir.audioai.*
-
 val client = FieldAudioClient()
-client.assetByFilename("*Nancy*").thenCompose { asset ->
-    val region = AssetRegion(asset.id, startSeconds = 0.0, durationSeconds = 30.0)
-    client.submit(multiScaleBeatAnalysis(region, scalesSeconds = listOf(2.0, 4.0, 8.0, 16.0)))
-}.thenCompose(client::awaitAnalysis).thenAccept { result ->
-    display("analysis", analysisVisualizationHtml(result))
-}
+client
+    .assetByFilename("*Nancy*")
+    .thenCompose { asset ->
+        val region = AssetRegion(asset.id, startSeconds = 0.0, durationSeconds = 30.0)
+        client.submit(multiScaleBeatAnalysis(region, scalesSeconds = [2.0, 4.0, 8.0, 16.0]))
+    }
+    .thenCompose(client::awaitAnalysis)
+    .thenAccept { result ->
+        display("analysis", analysisVisualizationHtml(result))
+    }
 ```
 
 Replace the request with `monophonicPitchAnalysis(region)` or
@@ -1346,9 +1599,9 @@ visualize path.
 
 ### Speech embedding phase portraits
 
-The real emotion2vec and WavLM views from the [speech walkthrough](audio_ai_speech_embeddings.md).
+The emotion2vec and WavLM views from the [speech walkthrough](audio_ai_speech_embeddings.md):
 
-![The real emotion2vec and WavLM views](assets/audio_ai_speech_embeddings/learned_spaces.png)
+![The emotion2vec and WavLM views](assets/audio_ai_speech_embeddings/learned_spaces.png)
 
 `speechEmbeddingVisualizationHtml(result)` turns the worker's cached learned-frame preview into two phase
 portraits: MDS axes 0×1 and 2×3. The complete 768-dimensional embedding remains in the immutable
@@ -1364,15 +1617,17 @@ analysis views.
 
 ```diffstatic {data-lang=kotlin}
 val sync = "field-recording-speech"
-display("source", audio.audioVisualizerHtml(
-    options = AudioVisualizerOptions(syncGroup = sync),
-))
+display(
+    "source",
+    audio.audioVisualizerHtml(
+        options = AudioVisualizerOptions(syncGroup = sync),
+    ),
+)
 
-client.submit(wavlmBasePlusEmbeddingAnalysis(region, layer = 6))
-    .thenCompose(client::awaitAnalysis)
-    .thenAccept { result ->
-        display("WavLM", speechEmbeddingVisualizationHtml(result, syncGroup = sync))
-    }
+client.submit(wavlmBasePlusEmbeddingAnalysis(region, layer = 6)).thenCompose(client::awaitAnalysis).thenAccept { result
+    ->
+    display("WavLM", speechEmbeddingVisualizationHtml(result, syncGroup = sync))
+}
 ```
 
 Use `speechEmbeddingDashboardHtml(listOf(emotion2vec, wavlm), syncGroup = sync)` to compare both
@@ -1395,9 +1650,9 @@ the neural analysis.
 
 ### Short-time spectral phase portraits
 
-Three real distance spaces from the [spectral walkthrough](audio_ai_spectral_embeddings.md).
+Three distance spaces from the [spectral walkthrough](audio_ai_spectral_embeddings.md):
 
-![Three real distance spaces](assets/audio_ai_spectral_embeddings/spectral_spaces.png)
+![Three distance spaces](assets/audio_ai_spectral_embeddings/spectral_spaces.png)
 
 `spectralEmbeddingPreviewVisualizationHtml(preview)` uses the same two phase portraits and shared
 time bus for a Field-owned MDS or t-SNE projection of mel, log-mel, or MFCC frames. The lower strip
@@ -1409,21 +1664,28 @@ One `analysis.embed_spectral` result contains all three representations, so deco
 several views without another job:
 
 ```diffstatic {data-lang=kotlin}
-client.analysisPreview(result.id).thenCombineAsync(
-    client.spectralEmbeddingFrames(
-        result, durationSeconds = 10.0, poolMillis = 200.0, hopMillis = 40.0,
-    )
-) { preview, frames ->
-    listOf(
-        SpectralEmbeddingDistance.MEL_WASSERSTEIN,
-        SpectralEmbeddingDistance.LOG_MEL_COSINE,
-        SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
-    ).map { distance ->
-        preview.withSpectralProjection(frames.tsne(distance = distance, dimensions = 4))
+client
+    .analysisPreview(result.id)
+    .thenCombineAsync(
+        client.spectralEmbeddingFrames(
+            result,
+            durationSeconds = 10.0,
+            poolMillis = 200.0,
+            hopMillis = 40.0,
+        ),
+    ) { preview, frames ->
+        [
+                SpectralEmbeddingDistance.MEL_WASSERSTEIN,
+                SpectralEmbeddingDistance.LOG_MEL_COSINE,
+                SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
+            ]
+            .map { distance ->
+                preview.withSpectralProjection(frames.tsne(distance = distance, dimensions = 4))
+            }
     }
-}.thenAccept { previews ->
-    display("spaces", spectralEmbeddingPreviewDashboardHtml(previews, syncGroup = "recording"))
-}
+    .thenAccept { previews ->
+        display("spaces", spectralEmbeddingPreviewDashboardHtml(previews, syncGroup = "recording"))
+    }
 ```
 
 The complete [short-time spectral walkthrough](audio_ai_spectral_embeddings.md) and
@@ -1432,9 +1694,9 @@ binary artifact → temporal pooling → three Field Smile spaces → bidirectio
 
 ### Instrument-labelled transcription
 
-A real recording and its recovered notes from the [MuScriptor walkthrough](audio_ai_muscriptor.md).
+A recording and its recovered notes from the [MuScriptor walkthrough](audio_ai_muscriptor.md):
 
-![A real recording and its recovered notes](assets/audio_ai_muscriptor/piano_roll.png)
+![A recording and its recovered notes](assets/audio_ai_muscriptor/piano_roll.png)
 
 The same `analysisVisualizationHtml` viewer recognizes `analysis.transcribe_music` results as a
 MuScriptor piano roll. Note colour follows the recovered instrument group; the two lower lanes show
@@ -1443,12 +1705,19 @@ pitch, speech-space, and spectral-space views, so playback, hover, seek, zoom, a
 
 ```diffstatic {data-lang=kotlin}
 val sync = "recording-to-score"
-display("source", audio.audioVisualizerHtml(
-    options = AudioVisualizerOptions(syncGroup = sync),
-))
-display("score", analysisVisualizationHtml(
-    transcription, syncGroup = sync,
-))
+display(
+    "source",
+    audio.audioVisualizerHtml(
+        options = AudioVisualizerOptions(syncGroup = sync),
+    ),
+)
+display(
+    "score",
+    analysisVisualizationHtml(
+        transcription,
+        syncGroup = sync,
+    ),
+)
 ```
 
 The complete [MuScriptor walkthrough](audio_ai_muscriptor.md) and `audio_ai_muscriptor` transcript
@@ -1464,9 +1733,9 @@ lane on one sync group. The [render-to-analysis walkthrough](audio_render_analys
 
 ### Corpus neighbour microscope
 
-Real retrieved windows from the [corpus walkthrough](audio_ai_corpus_microscope.md).
+Retrieved neighbour windows from the [corpus walkthrough](audio_ai_corpus_microscope.md):
 
-![Real retrieved windows](assets/audio_ai_corpus_microscope/neighbours.png)
+![Retrieved neighbour windows](assets/audio_ai_corpus_microscope/neighbours.png)
 
 `corpusMicroscopeHtml(preview, queryAudio)` composes the same general `AudioVisualizer` into a
 source-relative A/B board. Each neighbour retains its real asset and source timestamp, but every
@@ -1487,7 +1756,7 @@ visualize path.
 
 This player fetches its envelopes from the live Field Audio waveform endpoint.
 
-![Real service waveform envelopes of a Pat Dirt render](assets/audio_render_analysis/service_waveform.png)
+![Service waveform envelopes of a Pat Dirt render](assets/audio_render_analysis/service_waveform.png)
 
 `AudioVisualizer` is not coupled to Field Audio. Any HTTP service can provide `waveformUrl`. The
 visualizer adds these query parameters whenever its visible interval changes:
@@ -1510,8 +1779,8 @@ The endpoint returns one min/max envelope per channel:
 }
 ```
 
-Each channel array must contain `point_count` values. The tiny two-value arrays above are only
-abbreviated for readability. Keep the response cacheable: the component aborts stale requests while
+Each channel array must contain `point_count` values. The two-value arrays above are
+abbreviated. Keep the response cacheable: the component aborts stale requests while
 the user pans and asks for a fresh, pixel-sized envelope after zooming or resizing.
 
 ## Signal and synth visualizers
@@ -1538,8 +1807,6 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-signal-panels.png" alt="four synth panels in amber and blue on black. 'audio' pairs a dense stereo waveform at peak 0.858, rms 0.382 with a spectrum whose harmonics march up to a broad shelf past 5 kHz. 'scope' shows the same pair after filtering: a smaller waveform at peak 0.355 and a spectrum whose partials die away by 5 kHz. 'env' draws an ADSR, the orange gate dropping partway across and the blue level decaying after it, tagged RELEASE, lvl 0.401. 'comp' overlays an amber signal swelling into a compressor's blue gain-reduction curve, tagged GR 18.5 dB, threshold -18.0 dB, ratio 6.00:1" wait="1.5" capture="box" open-outputs="true" padding="8" w="1200" h="350" trim=true embed=true name="signal-panels"}
 :::static
-import afield.four.synth.*
-
 val sampleRate = 48_000f
 val frames = 512
 val cycles = 16
@@ -1582,7 +1849,7 @@ Good things to know here:
 - `env.stateSvg()` and `comp.stateSvg()` are compact SVG views for modulators / processors.
 - `noteProcess.pianoRollSvg()` is great when you want the piano roll in an output area instead of inline in the editor.
 
-So the choice is mostly about **where you want the visual to live**, not whether the visual exists.
+So the choice is mostly about **where you want the visual to live**.
 
 ## Choosing between inline and display
 
@@ -1593,12 +1860,6 @@ Here is the practical rule of thumb:
 - If the thing is large and structural, use `tree(...)`, `column(...)`, or `.h2`.
 - If the thing is tiny and human-readable, `.h` is often perfect.
 
-And if you are documenting or testing it:
-
-- use an **editor screenshot** for inline visuals
-- use a **box screenshot** for output channels and controls
-- remember that `histogram(...)` and `history(...)` are **passthrough probes** for debugging live values
-- prefer **finite deterministic input** when the visualizer does not need motion
-- save `loop {}` + launch for genuinely live examples
+`histogram(...)` and `history(...)` return the value they were given, so you can leave them in a computation while you debug it.
 
 All of these tools compose. One box can have a little inline history, a piano roll, a browser in one output channel, and a control surface in another. Field is very happy when code is also an interface.

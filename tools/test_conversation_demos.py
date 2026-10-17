@@ -23,13 +23,44 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+
+from tools.conversation_demo import DONE, FAILED, current_kotlin_listing, settle_assets
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 class ConversationDemoTest(unittest.TestCase):
+    def test_record_waits_for_notices_ai4_still_sends(self):
+        # `record` ends a turn on these notices; when AI4 reworded its own, the recorder waited out
+        # its whole timeout on a turn that had finished.
+        source = (REPO_ROOT / "src/jvmMain/kotlin/afield/ai/models/Ai4Installer.kt").read_text()
+        self.assertIn(DONE[-1], source)
+        self.assertIn(FAILED[1], source)
+
+    def test_current_kotlin_listing_preserves_recording_and_nonrewritable_calls(self):
+        saved = ('val names = listOf("x", "y", "z").map { it }\n'
+                 'val points = listOf(c to 0f, ring[(k + 1) % ring.size] to 1f)\n'
+                 'val spread = listOf(*xs)\nval typed = listOf<Int>(1)\n'
+                 'val empty = listOf()\nval multiline = listOf(\n    1, 2\n)\n')
+        expected = saved.replace('listOf("x", "y", "z")', '["x", "y", "z"]').replace(
+            'listOf(c to 0f, ring[(k + 1) % ring.size] to 1f)',
+            '[c to 0f, ring[(k + 1) % ring.size] to 1f]')
+        self.assertEqual(expected, current_kotlin_listing(saved))
+        self.assertIn('listOf("x", "y", "z")', saved)
+        self.assertEqual(expected, current_kotlin_listing(expected))
+
+    def test_finder_metadata_is_not_a_published_asset(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp)
+            (output / "figure.png").write_bytes(b"image")
+            (output / ".DS_Store").write_bytes(b"finder")
+            settle_assets(output, {"figure.png": b"image"}, check=True, label="demo")
+            settle_assets(output, {"figure.png": b"image"}, check=False, label="demo")
+            self.assertTrue((output / ".DS_Store").is_file())
+
     def run_check(self, command: list[str]) -> subprocess.CompletedProcess:
         return subprocess.run(command, cwd=REPO_ROOT, capture_output=True, text=True, timeout=600)
 

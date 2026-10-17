@@ -3,9 +3,9 @@
 *2026-08-02.*
 
 Everything that turns a **filled** `FLine` into triangles funnels into one place:
-`FLine.tessellate` (`src/jvmMain/kotlin/afield/graphics/FLine.kt:1019#fun tessellate`). It flattens
+`FLine.tessellate` (`src/jvmMain/kotlin/afield/geometry/path/FLine.kt:1019#fun tessellate`). It flattens
 the line into rings and hands them to `PlanarTessellation`
-(`src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt:170#fun tessellate`), which groups them into planes,
+(`src/jvmMain/kotlin/afield/geometry/path/PlanarTessellation.kt:170#fun tessellate`), which groups them into planes,
 works out which rings are holes in which, and hands each group to `FloatEarcut`.
 
 *Updated 2026-08-03: the second half of this document — "The limit that remains" and "A convention
@@ -105,7 +105,7 @@ the last of them is not what the rest of this section is about:
 
 | | |
 |---|---|
-| `graphics/StandardDrawing.kt:134#f.tessellate(samplesPerCubic)` | **geometry.** Inside `trianglesOut`, which de-indexes into an `afield.four` vertex buffer. **No in-repo callers** — it is stdlib API for user boxes that own a `DynamicallyWriteable`. |
+| `graphics/render/FLineUpload.kt:192#f.tessellate(samplesPerCubic)` | **geometry.** Inside `trianglesOut`, which de-indexes into a Field 4 vertex buffer. **No in-repo callers** — it is stdlib API for user boxes that own a `DynamicallyWriteable`. |
 | `ThreeJsViewer.kt:1255#f.tessellate(samplesPerCubic)` | **geometry.** Inside `appendFilledMesh` (`ThreeJsViewer.kt:1244#private fun appendFilledMesh`), reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:690#fun Box.threeLines`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`FLineWire.swift:69#let fills`). |
 | `ThreeJsViewer.kt:1051#line.tessellate(samples)` | **a count, not geometry.** Inside `buildThreeGeometryPayload` (`ThreeJsViewer.kt:844#internal fun buildThreeGeometryPayload`), in the `editable` branch, where the client re-triangulates and this side only wants the number for `meta.triangles`: the callback is `_, indices` and keeps `indices.size / 3`. The vertices are discarded, so no triangle it makes reaches anything that could draw it the wrong way round. |
 
@@ -120,14 +120,14 @@ ring sanitiser. So this call site is out of scope for *this* page's defect and i
 neighbouring one, which is why the number it reports has a test of its own
 (`ThreeJsEditableFillParityTest.kt:73#bothModesReportTheSameTriangleCountForAMultiPlaneHoledLine`).
 
-Not on this path at all: SVG export (`graphics/someSkiko.kt:753#stroke="none" fill=` writes
-`<path fill=…>`), the 2D Skia canvas (`graphics/someSkiko.kt:375#f.filled) PaintMode.FILL`, a filled
+Not on this path at all: SVG export (`ui/visualization/someSkiko.kt:841#stroke="none" fill=` writes
+`<path fill=…>`), the 2D Skia canvas (`ui/visualization/someSkiko.kt:463#f.filled) PaintMode.FILL`, a filled
 Skia `Path`), and typography extrusion (`typography_field.kt:342#FloatEarcut.earcut` calls
 `FloatEarcut` directly).
 
 And the reason it shipped: **nothing in Field culls back faces.** Every Vulkan pipeline is
-`VK_CULL_MODE_NONE` (`four/modules/Module.kt:803`, `:988`, `:1146`; `four/modules/MeshModule.kt:466`,
-`:664`; `four/imgui/ImGuiRenderToTexture.kt:250#vkCmdSetCullMode(cmd, VK_CULL_MODE_NONE)`). The
+`VK_CULL_MODE_NONE` (`graphics/render/Module.kt:900`, `:1073`, `:1229`; `graphics/render/MeshModule.kt:500`,
+`:683`; `graphics/vulkan/imgui/ImGuiRenderToTexture.kt:244#vkCmdSetCullMode(cmd, VK_CULL_MODE_NONE)`). The
 three.js fill materials are `MeshStandardMaterial` with `side: THREE.DoubleSide`
 (`threejs_viewer.html:1137#side: THREE.DoubleSide`, `:1325`), and although they do derive normals
 from the winding — `computeVertexNormals()` at three sites, `:955`, `:1007` and `:3410` — three.js
@@ -141,7 +141,7 @@ it, or builds a solid from filled FLines — that is, exactly the use the polyto
 
 ## The pixel proof
 
-`src/jvmTest/kotlin/afield/graphics/TessellationFacingRenderTest.kt` builds a cube out of six filled
+`src/jvmTest/kotlin/afield/geometry/path/TessellationFacingRenderTest.kt` builds a cube out of six filled
 FLines, one per face, each with a square hole, each wound outward, and rasterises it with a z-buffer,
 diffuse shading and **back-face culling** — an instrument that does care, since Field's own do not.
 
@@ -294,7 +294,7 @@ what normalises the winding of everything handed in.
 So a mirror flips every ring's area sign *equally* and cannot reorder outer and hole. What it changes
 is the handedness of the frame, and therefore the facing of every triangle that comes back — which the
 old `EarcutFaceTriangulator` compensated for correctly, holes or no holes. The measurement is
-`src/jvmTest/kotlin/afield/graphics/FloatEarcutOuterRingTest.kt`: all four windings of a square and
+`src/jvmTest/kotlin/afield/geometry/path/FloatEarcutOuterRingTest.kt`: all four windings of a square and
 its hole give the same `8400` annulus, swapping the *array order* changes the answer, and mirroring the
 frame keeps the `8400` while flipping the sign of every triangle.
 
@@ -363,9 +363,9 @@ are computed in Kotlin, so **the JavaScript never ran**, and it could not have c
 defects found in this neighbourhood within hours of the seam landing (`d3d81fee1`, `bf65e10e3`). It
 still earns its place — `meta.triangles` is worth pinning — but it is not the differential.
 
-`src/jvmTest/kotlin/afield/graphics/ViewerJavaScript.kt` is. It lifts a **marked region** of
+`src/jvmTest/kotlin/afield/graphics/three/ViewerJavaScript.kt` is. It lifts a **marked region** of
 `threejs_viewer.html` as text and evaluates it on **GraalJS**, which is already a first-party dependency
-(`build.gradle.kts:979`, and `afield.morpho.MorphoRuntime` is the established idiom). A region is
+(`build.gradle.kts:979`, and `afield.lang.morpho.MorphoRuntime` is the established idiom). A region is
 delimited by two comments and nothing else:
 
 ```

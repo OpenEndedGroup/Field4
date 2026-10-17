@@ -2,9 +2,7 @@
 
 ForthField is Field's Forth: a data stack and a dictionary of words that push and pop it. A definition is usually one line long (`: sqr dup * ;` is a complete one), and the dictionary can be rewritten while the box is still running. Around that core sit the control-flow words, vec2 helpers, enough `FLine` vocabulary to sketch geometry, and a reflection bridge that lets ForthField call methods on any JVM object it can reach.
 
-To get a ForthField box, run **Set Main Language: ForthField** on a parent box; its children then run ForthField rather than Kotlin. Documents carrying the older `isForthRoot` property still work, but the action is the way to do it now.
-
-Every example below is raw ForthField, run through the same `ForthInterpreter` your boxes use. The interpreter's KDoc in `src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt` carries a few examples of its own; the ones here expand on them.
+To get a ForthField box, run **Set Main Language: ForthField** on a parent box; its children then run ForthField rather than Kotlin. Every example below is ForthField you can paste into such a box.
 
 ## A tiny stack language
 
@@ -84,7 +82,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/variables_and_output_channels.png" alt="two output panels. The one labelled output holds the sentence Forth can emit HTML into Field output areas, wrapped in the literal markup for bold with its angle brackets shown as text rather than applied, and the one labelled debug holds count = 6.0. The first line is not what the code beside it produces: this capture predates the change that stopped the example asking display to emit HTML, and a re-render is owed. See docs_capture_staleness in dev_docs" wait="1.0" capture="box" trim=true embed=true name="forth-output-channels"}
+```diffstatic_runner {data-lang=forth screenshot="assets/forth_examples/variables_and_output_channels.png" alt="Two output panels: the one labelled output holds the sentence ForthField writes straight into a Field output area., and the one labelled debug holds count = 6.0" wait="1.0" capture="box" trim=true embed=true name="forth-output-channels"}
 :::static
 variable count
 0 count !
@@ -207,7 +205,7 @@ f @ @? properties s"color" 0.95 0.95 1.0 1.0 vec4 2 @?! put
 f @
 ```
 
-`@?` is the heuristic form. It looks for a public field of that name first, then for methods of that name sorted by parameter count, preferring a zero-argument one and otherwise taking the first whose arity fits what is currently on the stack — which is why it can pick differently depending on how deep the stack happens to be. A field holding `null` pushes nothing at all, so the stack silently comes back one shorter than you expected; and on a `Class`, the member names `new` and `newInstance` mean "construct". `@?!` is the explicit-arity form, taking the object first and the argument count off the top of the stack, and it is the escape hatch when `@?` picks the wrong overload.
+`@?` guesses what you mean. It looks for a public field of that name first, then for a method, preferring one with no arguments and otherwise taking the first whose argument count fits what is on the stack. So it can pick a different overload depending on how deep the stack is. A field holding `null` pushes nothing, which leaves the stack one shorter than you might expect. On a `Class`, `new` and `newInstance` construct an instance. When `@?` picks the wrong overload, use `@?!`, which takes the object and then the argument count from the top of the stack.
 
 For styling, numeric and vector values are a good fit for reflected `properties.put(...)`. Boolean style toggles are better expressed with the dedicated `fline-*` words.
 
@@ -219,11 +217,11 @@ s"Vec3" class-for @? getName println
 s"Fli" class-matches println
 ```
 
-`class-for` tries the name as a fully-qualified one first and only then looks it up as a simple name. If a simple name matches more than one class it refuses rather than guessing, and the error lists up to eight candidates for you to pick from. `class-matches` takes a *prefix* instead and returns up to 64 fully-qualified names, which is how you find out what a class is actually called before trying to resolve it; `class-help` prints the same list, capped at 24.
+`class-for` takes a fully-qualified or a simple class name. If a simple name matches more than one class, the error lists candidates to choose from. `class-matches` takes a prefix and returns the fully-qualified names that start with it, which is how you find what a class is called; `class-help` prints a shorter version of the same list.
 
 ## Dictionary tools, recursion, and temporary stack storage
 
-These words are the first ones to reach for when ForthField starts feeling opaque. `words` shows the dictionary, `see name` prints a definition, and `forget name` removes a user-defined word when an experiment has gone stale.
+`words` shows the dictionary, `see name` prints a definition, and `forget name` removes a user-defined word when an experiment has gone stale.
 
 ```diffstatic {data-lang=forth}
 : sqr dup * ;
@@ -258,7 +256,7 @@ The return stack is a second, temporary stack. Use it sparingly, mostly to park 
 
 ## `again`, diagnostics, and display helpers
 
-`begin ... again` is an endless loop. In normal one-shot execution that is dangerous; in launch-mode animation it is useful when the loop contains `frame`, because `frame` yields back to Field for the next tick. In a one-shot example, pair it with `leave`.
+`begin ... again` loops forever. In a launched box that is what you want, as long as the loop calls `frame` to hand each tick back to Field. In a box that runs once, leave the loop with `leave`.
 
 ```diffstatic {data-lang=forth}
 variable n
@@ -282,7 +280,7 @@ When something fails, ForthField errors include the current token, a stack snaps
 outer
 ```
 
-Reports the unknown word, shows that `10` was still on the data stack, and shows the path through `outer` into `inner`.
+The error names the unknown word, shows that `10` was still on the data stack, and shows the path through `outer` into `inner`.
 
 The small display vocabulary gives ForthField direct access to Field output areas without going through Kotlin:
 
@@ -320,9 +318,9 @@ The host bridge goes the other direction too. Kotlin can inject new words when F
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.forth.ForthInterpreter
-import afield.four.buffers.DynamicallyWriteable
-import afield.stdlib.Vec4
+import afield.lang.forth.ForthInterpreter
+import afield.graphics.vulkan.buffers.DynamicallyWriteable
+import afield.math.linalg.Vec4
 
 val forth = ForthInterpreter()
 
@@ -353,9 +351,9 @@ The host keeps hold of the resource; ForthField only names it.
 
 ## Launch mode and `frame`
 
-The interpreter also has a cooperative `frame` primitive for launch-mode animation. This one needs a real, launched ForthField box to do anything — it animates, so there is nothing to print.
+`frame` animates a launched ForthField box. The word below draws a line that turns a little each tick, and shows the tick count in a `debug` channel:
 
-```diffstatic {data-lang=forth}
+```diffstatic_runner {data-lang=forth video="assets/forth_examples/frame_spinner.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="6" fps="20" timeout="300" w="640" h="120" embed=true name="forth-frame-spinner" alt="Six seconds of the launched box. Its geom panel shows an FLine of 2 nodes: one pale blue line that starts falling to the right, flattens, and rises to the right as it turns, redrawn every tick. Under it the debug panel counts up, tick=7.0 near the start and tick=117.0 near the end."}
 variable tick
 variable line
 0 tick !
@@ -383,10 +381,13 @@ variable line
 spinner
 ```
 
-`frame` yields immediately and the word starts again on the next tick, so persistent state belongs in variables rather than transient stack structure.
+Above is the box launched for six seconds. The `geom` panel scales each tick's line to fit, so the
+turn shows as a changing slope, and the `debug` panel counts the ticks.
+
+`frame` hands control back to Field, and the word starts again on the next tick, so keep anything that must last between ticks in variables, not on the stack.
 
 ## When a definition misbehaves
 
-`words` shows the dictionary and `see name` prints a definition, which together answer most of "is the word I think I redefined actually the one running". A ForthField error already carries the token that failed, a snapshot of the data stack and the path of word calls that led there, so the usual next step is to read the error rather than to add prints.
+Use `see name` to check that the word running is the definition you think it is, and read the error before adding prints: it already names the failing token, the stack and the chain of word calls.
 
-Naming a word has one trap in it. Builtins and user definitions share a single flat dictionary, and `:` overwrites without complaint, so `: dup ... ;` replaces the real `dup` for the rest of the run. `forget` refuses to remove anything host-defined — but it will happily remove your replacement, and that leaves no entry at all rather than restoring the builtin underneath.
+Builtins and your own words share one dictionary, so `: dup ... ;` replaces the real `dup` for the rest of the run, with a warning in the output; `forget dup` brings the builtin back.

@@ -60,13 +60,13 @@ operations:
               if (a * a * a - x * x * y * y * y <= 0) heart += vec(x, 0.1 - y) // image y runs down
           }
           val partner = matchPoints(square, heart).reorder(heart)
-
+          
           // Each point keeps the colour of where it started in the square.
           val colour = IntArray(n) {
               val c = okhsl(atan2(square[it].y, square[it].x) * 180 / PI + 360, 0.9, 0.5 + 0.25 * square[it].length() / 1.42)
               (255 shl 24) or ((c.x * 255).toInt() shl 16) or ((c.y * 255).toInt() shl 8) or (c.z * 255).toInt()
           }
-
+          
           val imageWidth = 900; val imageHeight = 440
           fun splat(px: IntArray, centre: Int, a: Vec2, b: Vec2, t: Double, c: Int) {
               val x = centre + ((a.x + (b.x - a.x) * t) * 160).toInt()
@@ -74,7 +74,7 @@ operations:
               for (dy in 0..1) for (dx in 0..1)
                   if (x + dx in 0 until imageWidth && y + dy in 0 until imageHeight) px[(y + dy) * imageWidth + x + dx] = c
           }
-
+          
           displayOpen("morph")
           loop {
               if (frameNumber % 2 == 0) {
@@ -84,10 +84,9 @@ operations:
                       splat(px, imageWidth / 4, square[i], partner[i], t, colour[i])
                       splat(px, 3 * imageWidth / 4, square[i], heart[i], t, colour[i])
                   }
-                  display("morph", afield.util.PngEncoder.encode(px, imageWidth, imageHeight))
+                  display("morph", afield.media.image.util.PngEncoder.encode(px, imageWidth, imageHeight))
               }
           }
-
   - create:
       box: million_pixels
       name: a million pixels, a million targets
@@ -102,7 +101,7 @@ operations:
           val n = side * side
           val ax = FloatArray(n) { it % side + 0.5f }
           val ay = FloatArray(n) { it / side + 0.5f }
-
+          
           val discs = listOf(Triple(330.0, 400.0, 250.0), Triple(740.0, 300.0, 160.0), Triple(640.0, 760.0, 200.0))
           val area = discs.sumOf { it.third * it.third }
           val rnd = java.util.Random(9)
@@ -116,11 +115,11 @@ operations:
               home[j] = d
               bx[j] = (discs[d].first + r * cos(a)).toFloat(); by[j] = (discs[d].second + r * sin(a)).toFloat()
           }
-
+          
           val start = System.nanoTime()
           val match = BspOt2D.match(ax, ay, bx, by, BspOt2D.Options(trees = 8))
           val seconds = (System.nanoTime() - start) / 1e9
-
+          
           val px = IntArray(n) { i ->
               val j = match.targetOfSource[i]
               val (cx, cy, radius) = discs[home[j]]
@@ -128,10 +127,9 @@ operations:
               val c = okhsl(atan2(dy, dx) * 180 / PI + 360, 0.85, 0.25 + 0.6 * sqrt(dx * dx + dy * dy) / radius)
               (255 shl 24) or ((c.x * 255).toInt() shl 16) or ((c.y * 255).toInt() shl 8) or (c.z * 255).toInt()
           }
-          display("main", afield.util.PngEncoder.encode(px, side, side))
+          display("main", afield.media.image.util.PngEncoder.encode(px, side, side))
           displayOpen("main")
           println("matched %,d to %,d in %.1f s, rms travel %.1f px".format(n, n, seconds, sqrt(match.meanSquaredDistance)))
-
   - execute: { box: match_hello }
   - execute: { box: million_pixels }
   - launch: { box: square_to_heart, property: code }

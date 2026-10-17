@@ -1,6 +1,6 @@
 package afield.examples
 
-import afield.KotlinCompletionSupport
+import afield.runtime.completion.KotlinCompletionSupport
 
 /*
 FIELD_TEST

@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 2 - the branching tree
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kolakoski_tree" index="0" -->
 
 ```edn [field-box id="kolakoski_tree" role="properties"]
-{"id" "kolakoski_tree" "index" 0 "name" "2 - the branching tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - the branching tree" "_tombstone" false "frame" #afield/rect [60.0 226.0 381.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kolakoski_tree_code_.kt" "lines" 90 "characters" 3926 "sha256" "9e041f59cd534018ae2c58dd72c703263463aed144c8d6e7f8b0249432d4da68"}]}
+{"id" "kolakoski_tree" "index" 0 "name" "2 - the branching tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - the branching tree" "_tombstone" false "frame" #afield/rect [60.0 226.0 381.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kolakoski_tree_code_.kt" "lines" 90 "characters" 3929 "sha256" "b2b92735190f4d3c36df24f2884c1dc823ca759fc0c8c04bdbabaa06428d20ef"}]}
 ```
 
 ```kotlin [field-property box="kolakoski_tree" name="code" path="kolakoski_tree_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // 2 - Kolakoski branches, Euclid places, and the levels are pulse levels.
 //
@@ -91,7 +91,7 @@ showPatRollOf(
 val dirt = showDirtAudio(music, cycles = 8, cps = 1.0, channel = "audio")   // real samples, not patVoice
 val audio = dirt.audio
 val wav = "kolakoski-tree-${slots}-${a}${b}-d$depth.wav".file
-afield.four.audio.WavFloatArrayWriter.writeStereo16(wav, audio.left, audio.right, PatSoundDocs.SR, 0.9f)
+afield.audio.engine.WavFloatArrayWriter.writeStereo16(wav, audio.left, audio.right, PatSoundDocs.SR, 0.9f)
 println("wrote $wav — samples: ${dirt.usedSamples}, matched ${dirt.matched}, synth fallback ${dirt.unmatched}")
 
 markdown("main", """
@@ -112,11 +112,11 @@ displayOpen("main")
 <!-- field-box id="kolakoski_x_euclid" index="1" -->
 
 ```edn [field-box id="kolakoski_x_euclid" role="properties"]
-{"id" "kolakoski_x_euclid" "index" 1 "name" "1 - counts and placement" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - counts and placement" "_tombstone" false "frame" #afield/rect [60.0 60.0 405.3 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kolakoski_x_euclid_code_.kt" "lines" 58 "characters" 3151 "sha256" "57677757698fda6204df6876d7bc4da389e636a8d5a357332e6d6086614c8a12"}]}
+{"id" "kolakoski_x_euclid" "index" 1 "name" "1 - counts and placement" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - counts and placement" "_tombstone" false "frame" #afield/rect [60.0 60.0 405.3 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kolakoski_x_euclid_code_.kt" "lines" 58 "characters" 3154 "sha256" "627a5b8d5e33822c5b24ed812831d453a3b4924e31a668ff7715f6070fd2526d"}]}
 ```
 
 ```kotlin [field-property box="kolakoski_x_euclid" name="code" path="kolakoski_x_euclid_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // 1 - Kolakoski counts, Euclid places.
 //
@@ -153,7 +153,7 @@ showDirtAudio(struct(euclid(12, 24), pat("bd")), cycles = 3, cps = cps, channel 
 
 val audio = dirt.audio
 val wav = "kolakoski-flat.wav".file
-afield.four.audio.WavFloatArrayWriter.writeStereo16(wav, audio.left, audio.right, PatSoundDocs.SR, 0.9f)
+afield.audio.engine.WavFloatArrayWriter.writeStereo16(wav, audio.left, audio.right, PatSoundDocs.SR, 0.9f)
 println("wrote $wav — ${"%.1f".format(12 * cps)} hits/s, samples: ${dirt.usedSamples}, matched ${dirt.matched}, synth fallback ${dirt.unmatched}")
 
 markdown("main", """
@@ -181,11 +181,11 @@ displayOpen("main")
 <!-- field-box id="wav_on_canvas" index="2" -->
 
 ```edn [field-box id="wav_on_canvas" role="properties"]
-{"id" "wav_on_canvas" "index" 2 "name" "3 - a wav on the canvas" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - a wav on the canvas" "_tombstone" false "frame" #afield/rect [60.0 392.0 393.5 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wav_on_canvas_code_.kt" "lines" 37 "characters" 1687 "sha256" "78ce61b67601dcd58933d43c4a6f84f9a52a94623a9e3b9e385dde289ce81c3f"}]}
+{"id" "wav_on_canvas" "index" 2 "name" "3 - a wav on the canvas" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - a wav on the canvas" "_tombstone" false "frame" #afield/rect [60.0 392.0 393.5 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wav_on_canvas_code_.kt" "lines" 37 "characters" 1690 "sha256" "eaf3137329c3e51e1c37fc6ce6a4cf1a19c35948551373cbff1a49f88911b2d1"}]}
 ```
 
 ```kotlin [field-property box="wav_on_canvas" name="code" path="wav_on_canvas_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // 3 - A player that lives on the canvas, not in an output.
 //
@@ -202,7 +202,7 @@ val hybrid = pat(counts.joinToString(" ") { "[bd($it,3)]" })
 
 val dirt = patRenderStereoDirt(hybrid, cycles = 2, cps = 0.35)  // 5.7s; 24-slot bar, so 4.2 hits/s
 val rendered = dirt.audio
-val bytes = afield.four.audio.WavFloatArrayWriter.encodeStereo16(
+val bytes = afield.audio.engine.WavFloatArrayWriter.encodeStereo16(
     rendered.left, rendered.right, PatSoundDocs.SR, 0.9f
 )
 

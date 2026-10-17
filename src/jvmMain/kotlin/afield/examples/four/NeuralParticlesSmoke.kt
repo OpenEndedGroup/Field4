@@ -1,15 +1,15 @@
 package afield.examples.four
 
-import afield.four.Renderer
-import afield.four.util.Options
-import afield.four.util.Window
-import afield.stdlib.FlowIntegrator
-import afield.stdlib.FlowMatchOptions
-import afield.stdlib.MlpWeights
-import afield.stdlib.ShaderNeuralParticles
-import afield.stdlib.Vec3
-import afield.stdlib.flowMatch
-import afield.stdlib.vec
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.util.Window
+import afield.ai.learning.FlowIntegrator
+import afield.ai.learning.FlowMatchOptions
+import afield.simulation.particles.MlpWeights
+import afield.simulation.particles.ShaderNeuralParticles
+import afield.math.linalg.Vec3
+import afield.ai.learning.flowMatch
+import afield.math.linalg.vec
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -44,7 +44,7 @@ expect:
  * ### The assertion
  *
  * Read the particles' own `start` points back off the GPU, hand those same points to
- * [afield.stdlib.FlowMatchField.transport] with the same integrator and the same step count, and
+ * [afield.ai.learning.FlowMatchField.transport] with the same integrator and the same step count, and
  * compare the landings **point by point**. That is a far sharper oracle than any statistic of the
  * cloud: it asks "did particle *i* go where particle *i* was supposed to go", which a system that
  * produced a correct-looking shape by a wrong route would fail.

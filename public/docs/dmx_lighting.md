@@ -1,26 +1,31 @@
 # Driving Lights: Art-Net and sACN
 
-`afield.dmx` lets a box drive DMX lighting over a network, and lets Field act as a lighting node
+`afield.io.dmx` lets a box drive DMX lighting over a network, and lets Field act as a lighting node
 itself. It speaks the two protocols nearly every LED controller, pixel driver and console accepts:
 **Art-Net 4** (UDP 6454) and **sACN**, ANSI E1.31 (UDP 5568, usually multicast). On top of the wire
 formats sits a small patch model: fixtures with channel layouts and addresses, strips that overflow
 from one universe into the next, and mappers that colour fixtures from a function, a drawn line or
 an image.
 
-Nothing here needs hardware to try. Open `public/docs/assets/dmx_lighting_demo/` as a document: its
-four boxes send over the network to this machine, receive the packets again and draw what arrived.
+Nothing here needs hardware to try. The [dmx_lighting_demo](agent_transcripts.md#dmx_lighting_demo)
+starting point has four boxes that send over the network to this machine, receive the packets again
+and draw what arrived. Here it is with its three senders and receivers launched:
 
-![The demo document running: an Art-Net receiver drawing two universes, a 200-pixel strip on a curve, and an sACN RGBW matrix with the universe it received](assets/dmx_lighting/demo_document_running.png)
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1700x760" screenshot="assets/dmx_lighting/demo_document_running.png" transcript="dev_docs/agents/transcripts/dmx_lighting_demo.yaml" padding="0" wait="2" timeout="180" embed=true hidden=true name="dmx-demo-document-running" alt="The demo document running: an Art-Net receiver drawing two universes, a 200-pixel strip on a curve, and an sACN RGBW matrix with the universe it received"}
+// dev_docs/agents/transcripts/dmx_lighting_demo.yaml, with its three loop boxes launched
+```
 
 On the left, Field is an Art-Net node drawing the two universes it receives. In the middle is the
 sender: 200 pixels on a curve, 170 in universe 1 and the remaining 30 in universe 2, which is why the
 second grid on the left is mostly empty. On the right, a matrix of RGBW fixtures is sent as sACN and
 received back in the same box.
 
-## Five lines to a light
+## A first light
+
+This sets two channels on a node at a fixed address:
 
 ```diffstatic {data-lang=kotlin}
-import afield.dmx.*
+import afield.io.dmx.*
 
 val out = artnetOut("192.168.1.50")      // a node's IP, or a broadcast address
 out.universe(1)[1] = 255                 // channel 1 of universe 1, full
@@ -37,7 +42,7 @@ hands back the same output, so the socket and the lights carry on; stopping the 
 Stream_Terminated packets, so receivers let go at once rather than holding the last look.
 
 Channels are **1-based**, as on a console and in every fixture manual. Art-Net numbers universes
-from 0 and sACN from 1; `afield.dmx` passes the number you give straight through, so universe 1 is
+from 0 and sACN from 1; `afield.io.dmx` passes the number you give straight through, so universe 1 is
 Art-Net port-address `0:0:1` and sACN universe 1.
 
 ## Fixtures and a patch
@@ -46,7 +51,7 @@ Addresses by hand get old quickly. A `Patch` holds fixtures, each a `FixtureProf
 does what) at a universe and start address, placed at a position in the room:
 
 ```diffstatic {data-lang=kotlin}
-import afield.dmx.*
+import afield.io.dmx.*
 
 val patch = Patch(startUniverse = 1)
 val strip = patch.strip(200, vec(0.0, 0.0), vec(400.0, 0.0))            // 200 RGB pixels
@@ -68,7 +73,7 @@ Profiles provided: `RGB`, `GRB` (the WS2812 order many pixel controllers expose)
 slots:
 
 ```diffstatic {data-lang=kotlin}
-val myPar = FixtureProfile("my par", listOf(Slot.DIMMER, Slot.RED, Slot.GREEN, Slot.BLUE, Slot.ZERO, Slot.ZERO))
+val myPar = FixtureProfile("my par", [Slot.DIMMER, Slot.RED, Slot.GREEN, Slot.BLUE, Slot.ZERO, Slot.ZERO])
 ```
 
 A fixture's colour is always set as RGB, 0..1. Profiles with a white channel take the common part of
@@ -91,8 +96,7 @@ patch.mapImage(imgFromFile("sky.png"))               // the rig's bounding box s
 ```
 
 `map` hands the function each fixture's position, so the same function drives a strip, a grid or a
-scattered rig. `mapImage` samples an `Img` bilinearly at each fixture's position (it uses the
-imaging library's own `sampleBilinear`), which turns a matrix of fixtures into a very low
+scattered rig. `mapImage` samples an `Img` bilinearly at each fixture's position, which turns a matrix of fixtures into a very low
 resolution screen.
 
 !!! note "`mapImage` takes point samples"
@@ -111,13 +115,19 @@ patch.map { _, _, _ -> colorTemperature(3200.0) }   // tungsten; 5600.0 is dayli
 ```
 
 `stripAlong` places a strip on a drawn curve instead of a straight line: LED tape stuck to a shape.
+Here 200 pixels go on a curve, are coloured once by position, and are drawn with `showPatch`:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/dmx_lighting/patch_strip_along_curve.png" alt="200 RGB pixels along an S-shaped curve, their colours cycling through the hues along its length" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="lights" capture="box" embed=true trim=true name="dmx-strip-along-curve" w="760" h="300"}
+import afield.io.dmx.*
+
 val tape = FLine().moveTo(0, 0).cubicTo(x0 = 150, y0 = -160, x1 = 250, y1 = 160, x = 400, y = 0)
+val patch = Patch(startUniverse = 1)
 patch.stripAlong(tape, 200)                          // evenly spaced by arc length, ends on the ends
+patch.map(0.0) { x, y, _ ->
+    vec(0.5 + 0.5 * sin(x * 0.03), 0.5 + 0.5 * sin(x * 0.03 + 2.1), 0.5 + 0.5 * sin(y * 0.03))
+}
+showPatch(patch)
 ```
-
-![200 RGB pixels along a curve, coloured by a function of position and time](assets/dmx_lighting/patch_strip_along_curve.png)
 
 ## Animating
 
@@ -147,15 +157,45 @@ showPatch(patch, channel = "matrix")
 showUniverse(node, 10, profile = FixtureProfile.RGBW, cols = 16)   // or profile = null for 512 gray slots
 ```
 
-<div class="grid" markdown>
+This box sends an image to a 16 × 8 matrix of RGBW fixtures as sACN, receives it again on this
+machine, and draws both. Launch it:
 
-![A 16 by 8 RGBW matrix coloured from an image, with a brightness wave](assets/dmx_lighting/rgbw_matrix_patch.png)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/dmx_lighting/rgbw_matrix.png" alt="two output panels: a 16 by 8 matrix of RGBW fixtures coloured by a gradient with a band of brightness across it, and below it universe 10 as received over sACN, the same fixtures drawn in wire order with every other row reversed" capture="box" execution="launch" wait="3" wait-output=true wait-output-kind=display wait-output-channel="universe 10" embed=true trim=true name="dmx-rgbw-matrix" w="760" h="640"}
+import afield.io.dmx.*
 
-![The same universe received over sACN, drawn in wire order](assets/dmx_lighting/rgbw_matrix_received_universe10.png)
+// 128 RGBW fixtures x 4 slots fill universe 10 exactly; the matrix is wired serpentine, as most are.
+val patch = Patch(startUniverse = 10)
+patch.grid(16, 8, spacing = 10.0, profile = FixtureProfile.RGBW, serpentine = true)
 
-</div>
+// Any Img will do (imgFromFile("...") for a file); here a small gradient made in place.
+val img = Img(64, 32, 3, FloatArray(64 * 32 * 3) { i ->
+    val x = (i / 3) % 64 / 63f
+    val y = (i / 3) / 64 / 31f
+    when (i % 3) {
+        0 -> x
+        1 -> y
+        else -> 1f - x
+    }
+})
 
-The right-hand picture is universe 10 as it came back over the network. Every other row runs
+val out = sacnOut("127.0.0.1")   // host = null sends to multicast 239.255.0.10 instead
+val node = sacnIn()              // Field as an sACN receiver on UDP 5568
+
+// On the sender's clock: sample the image, then sweep a wave of brightness across it.
+patch.animate(out) { t ->
+    mapImage(img)
+    fixtures.forEach { it.dimmer = 0.55 + 0.45 * sin(t * 3.0 - it.position.x * 0.05) }
+}
+
+loop {
+    if (frameNumber % 6 == 0) {
+        showPatch(patch, channel = "matrix", w = 480.0, h = 260.0)
+        showUniverse(node, 10, profile = FixtureProfile.RGBW, cols = 16, w = 480.0, h = 260.0)
+    }
+}
+```
+
+The lower picture is universe 10 as it came back over the network. Every other row runs
 backwards, because the matrix was patched with `serpentine = true`, the way most LED matrices are
 wired, and the receiver draws slots in wire order.
 
@@ -165,7 +205,7 @@ wired, and the receiver draws slots in wire order.
 other software (a console, a media server, another Field) can drive it.
 
 ```diffstatic {data-lang=kotlin}
-val input = artnetIn()                  // UDP 6454; sacnIn(universes = listOf(1, 2)) joins multicast groups
+val input = artnetIn()                  // UDP 6454; sacnIn(universes = [1, 2]) joins multicast groups
 input.channel(1, 1)                     // universe 1, channel 1, 0..255
 input.universe(2)                       // all 512 slots, merged
 input.version(1)                        // bumps when universe 1 may have changed; cheap to poll
@@ -177,9 +217,30 @@ highest value per slot and `MergeMode.LTP` the most recent packet. A source that
 dropped after sACN's 2.5 s data-loss timeout or Art-Net's 10 s merge timeout, and at once when an
 sACN source sends Stream_Terminated.
 
-![Universe 1 received over Art-Net: 170 RGB pixels](assets/dmx_lighting/artnet_received_universe1.png)
+This box is a node and its own sender: it listens for Art-Net, sends the 200-pixel strip to itself,
+and draws the two universes it receives. 170 pixels fill universe 1; the other 30 roll over into
+universe 2, which is why its grid is mostly empty. Launch it:
 
-![Universe 2 received: the 30 pixels that rolled over, then nothing](assets/dmx_lighting/artnet_received_universe2.png)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/dmx_lighting/artnet_received.png" alt="two output panels of received universes: universe 1 full with 170 coloured RGB pixels, universe 2 with 30 coloured pixels and the rest of the grid empty" capture="box" execution="launch" wait="3" wait-output=true wait-output-kind=display wait-output-channel="universe 2" embed=true name="dmx-artnet-received" w="760" h="560"}
+import afield.io.dmx.*
+
+val input = artnetIn()                    // Field as a node on UDP 6454
+
+val tape = FLine().moveTo(0, 0).cubicTo(x0 = 150, y0 = -160, x1 = 250, y1 = 160, x = 400, y = 0)
+val patch = Patch(startUniverse = 1)
+patch.stripAlong(tape, 200)
+val out = artnetOut("127.0.0.1")          // to this machine, so to `input`
+patch.animate(out) { t ->
+    map(t) { x, _, time -> vec(0.5 + 0.5 * sin(x * 0.03 - time * 2.0), 0.3, 0.6) }
+}
+
+loop {
+    if (frameNumber % 4 == 0) {
+        showUniverse(input, 1)
+        showUniverse(input, 2)
+    }
+}
+```
 
 An Art-Net input answers ArtPoll, so discovery tools list Field as a node. `artPoll(host)` is the
 other side: it sends one ArtPoll and returns every `ArtPollReply` that comes back within a second.
@@ -204,20 +265,15 @@ immediate output after 4 s without.
 their decoders) work outside a box too. Then nothing closes the sockets for you: call `close()`.
 `DmxSockets.closeAll()` closes everything the box helpers opened, for a panic button.
 
-## What this does not do
+## Not supported
 
 RDM (remote device management), Art-Net's ArtAddress/ArtIpProg node programming, and sACN
 per-channel priority (start code `0xDD`) are not implemented; an sACN packet with a non-zero start
 code is ignored on receive.
 
-??? aside "How this page's pictures were made"
-    Every picture is real output from the code on this page, run by an agent through Field's backdoor
-    on 2026-09-27, not a docs-runner capture. The first is a Playwright screenshot of the demo
-    document, loaded from the committed bundle, with its three launched boxes running. The two
-    Art-Net universes further down were drawn inside Field from what its `DmxInput` had received
-    over UDP (`renderLinesPng(universeToFLines(...))`); the strip and matrix pictures are the SVG
-    the demo boxes displayed, rasterised. They would ideally be
-    capture fences, but a capture that needs two launched boxes exchanging packets is not something
-    the runner does today. The protocol claims were checked against a decoder written separately
-    from the encoder, in Python, and against the third-party `sacn` package; the record is
-    `dev_docs/dmx_lighting.md`.
+See also: [A RectSL scene on a light rig](chain_scene_to_light.md), which drives a fixture grid
+from a rendered scene, and [OSC and TUIO](osc.md) for show-control messages.
+
+??? aside "How the wire formats were checked"
+    The protocol claims were checked against a decoder written separately from the encoder, in
+    Python, and against the third-party `sacn` package; the record is [dev_docs/dmx_lighting.md](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/dmx_lighting.md).

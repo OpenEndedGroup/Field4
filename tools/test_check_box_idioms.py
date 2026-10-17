@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -27,7 +29,11 @@ class Fixture:
         return (self.root / rel).read_text(encoding="utf-8")
 
     def run(self, *args: str) -> int:
-        return idioms.main(["--root", str(self.root), *args])
+        # The landing guard exports the changed-paths listing to every check it runs, this suite
+        # included; inherited, it would scope each "whole corpus" run here to the landing's files.
+        with mock.patch.dict(os.environ):
+            os.environ.pop("AFIELD_GUARD_CHANGED_PATHS_FILE", None)
+            return idioms.main(["--root", str(self.root), *args])
 
     def close(self) -> None:
         self._dir.cleanup()
@@ -39,8 +45,8 @@ operations:
   - create:
       box: child
       code: |
-        import afield.four.Renderer
-        import afield.four.modules.fromContext
+        import afield.graphics.vulkan.Renderer
+        import afield.document.context.fromContext
         val renderer: Renderer = fromContext()
 
         var module = moduleHere { }
@@ -87,12 +93,12 @@ class RuleTests(unittest.TestCase):
             f.close()
 
     def test_an_import_still_used_stays(self):
-        code = "import afield.four.Renderer\nval renderer: Renderer = fromContext()\nval other: Renderer? = null\n"
+        code = "import afield.graphics.vulkan.Renderer\nval renderer: Renderer = fromContext()\nval other: Renderer? = null\n"
         f = Fixture({"dev_docs/agents/demos/d/x_code_.kt": code})
         try:
             f.run("--fix")
             self.assertEqual(f.read("dev_docs/agents/demos/d/x_code_.kt"),
-                             "import afield.four.Renderer\nval other: Renderer? = null\n")
+                             "import afield.graphics.vulkan.Renderer\nval other: Renderer? = null\n")
         finally:
             f.close()
 
@@ -133,6 +139,72 @@ class RuleTests(unittest.TestCase):
         self.assertEqual([x.line for x in findings], [2, 9])
 
 
+class ListLiteralTests(unittest.TestCase):
+    PATH = "public/docs/page.md"
+
+    def fixed(self, code: str) -> str:
+        f = Fixture({self.PATH: f"```kotlin\n{code}```\n"})
+        try:
+            f.run("--fix")
+            return f.read(self.PATH).removeprefix("```kotlin\n").removesuffix("```\n")
+        finally:
+            f.close()
+
+    def test_only_hand_written_docs_pages_are_checked_yet(self):
+        fence = "```kotlin\nval xs = listOf(1, 2)\n```\n"
+        files = {"dev_docs/agents/demos/d/x_code_.kt": "val xs = listOf(1, 2)\n",
+                 "public/docs/assets/lesson/x_code_.kt": "val xs = listOf(1, 2)\n",
+                 "public/docs/reference/math.md": fence,
+                 "public/docs/page.md": fence}
+        f = Fixture(files)
+        try:
+            self.assertEqual({p: [x.rule for x in idioms.process(p, f.root, fix=False)] for p in files},
+                             {**{p: [] for p in files}, "public/docs/page.md": ["list-literal"]})
+        finally:
+            f.close()
+
+    def test_a_listing_copied_from_recorded_source_keeps_its_spelling(self):
+        page = ("<!-- study-source:final -->\n```kotlin\nval xs = listOf(1, 2)\n```\n<!-- /study-source:final -->\n"
+                "```kotlin\nval ys = listOf(3, 4)\n```\n")
+        f = Fixture({self.PATH: page})
+        try:
+            self.assertEqual([(x.line, x.rule) for x in idioms.process(self.PATH, f.root, fix=False)], [(7, "list-literal")])
+        finally:
+            f.close()
+
+    def test_explicit_collection_audit_checks_and_fixes_selected_transcripts(self):
+        code = "operations:\n  - create:\n      box: test\n      code: |\n        val xs = listOf(1, 2)\n"
+        f = Fixture({TRANSCRIPT: code})
+        try:
+            self.assertEqual(f.run("--paths", TRANSCRIPT), 0)
+            self.assertEqual(f.run("--collection-literals", "--paths", TRANSCRIPT), 1)
+            self.assertEqual(f.run("--collection-literals", "--fix", "--paths", TRANSCRIPT), 0)
+            self.assertIn("val xs = [1, 2]", f.read(TRANSCRIPT))
+            self.assertEqual(f.run("--collection-literals", "--paths", TRANSCRIPT), 0)
+        finally:
+            f.close()
+
+    def test_a_one_line_call_becomes_a_literal(self):
+        self.assertEqual(self.fixed('val xs = listOf("a(", f(1, 2), listOf(3 to 4))\nfor (d in listOf(E, S)) { }\n'),
+                         'val xs = ["a(", f(1, 2), [3 to 4]]\nfor (d in [E, S]) { }\n')
+
+    def test_empty_typed_and_spread_calls_are_left_alone(self):
+        code = "val a = listOf()\nval b = listOf<Int>(1)\nval c = listOf(*xs)\nval d = xs.listOf(1)\nval e = mutableListOf(1)\n"
+        self.assertEqual(self.fixed(code), code)
+        self.assertEqual(self.fixed("val p = listOf(a * b, c)\n"), "val p = [a * b, c]\n")
+
+    def test_a_call_spanning_lines_is_a_note_not_a_rewrite(self):
+        code = "```kotlin\nval xs = listOf(\n    1,\n    2,\n)\n```\n"
+        f = Fixture({self.PATH: code})
+        try:
+            findings = idioms.process(self.PATH, f.root, fix=False)
+            self.assertEqual([(x.line, x.rule, x.fixable, x.blocking) for x in findings], [(2, "list-literal", False, False)])
+            f.run("--fix")
+            self.assertEqual(f.read(self.PATH), code)
+        finally:
+            f.close()
+
+
 class BoxContextTests(unittest.TestCase):
     PATH = "dev_docs/agents/demos/d/x_code_.kt"
 
@@ -144,14 +216,64 @@ class BoxContextTests(unittest.TestCase):
         finally:
             f.close()
 
-    def test_an_alias_fails_and_is_left_for_a_rewrite(self):
-        code = "val historyOwner = Box.context.get()!!\nhistoryOwner.frame\n"
+    def test_a_qualified_lookup_loses_its_qualifier(self):
+        f = Fixture({self.PATH: "afield.document.graph.Box.context.get()!!.display(\"x\", \"y\")\n"})
+        try:
+            self.assertEqual(f.run("--fix"), 0)
+            self.assertEqual(f.read(self.PATH), "thisBox.display(\"x\", \"y\")\n")
+        finally:
+            f.close()
+
+    def test_a_guarded_lookup_alias_becomes_a_thisBox_alias(self):
+        code = 'val owner = afield.document.graph.Box.context.get() ?: throw IllegalStateException("Run in a Field box") // tools\n'
+        f = Fixture({self.PATH: code})
+        try:
+            self.assertEqual(f.run("--fix"), 0)
+            self.assertEqual(f.read(self.PATH), "val owner = thisBox // tools\n")
+        finally:
+            f.close()
+
+    def test_a_thisBox_alias_is_a_note_and_is_left_alone(self):
+        # A smell, but not always wrong: the revision pass or a person decides.
+        code = "val historyOwner = thisBox\nhistoryOwner.frame\n"
         f = Fixture({self.PATH: code})
         try:
             findings = idioms.process(self.PATH, f.root, fix=False)
-            self.assertEqual([(x.rule, x.fixable) for x in findings], [("box-context-lookup", False)])
-            self.assertEqual(f.run("--fix"), 1)
+            self.assertEqual([(x.rule, x.blocking) for x in findings], [("box-alias", False)])
+            self.assertEqual(f.run("--fix"), 0)
             self.assertEqual(f.read(self.PATH), code)
+        finally:
+            f.close()
+
+
+MIRROR = """\
+# Field Document: d
+
+```edn [field-box id="b" role="properties"]
+{"blockProperties" [{"name" "code" "language" "kotlin" "path" "b_code_.kt" "lines" 2 "characters" 49 "sha256" "stale"}]}
+```
+
+```kotlin [field-property box="b" name="code" path="b_code_.kt"]
+val renderer: Renderer = fromContext()
+renderer.x
+```
+"""
+
+
+class DemoTests(unittest.TestCase):
+    SIDECAR = "dev_docs/agents/demos/d/b_code_.kt"
+    MIRROR = "dev_docs/agents/demos/d/document.md"
+
+    def test_fixing_a_sidecar_fixes_its_mirror_and_refreshes_the_digest(self):
+        import hashlib
+        f = Fixture({self.SIDECAR: "val renderer: Renderer = fromContext()\nrenderer.x\n", self.MIRROR: MIRROR})
+        try:
+            self.assertEqual(f.run("--fix", "--paths", self.SIDECAR), 0)
+            self.assertEqual(f.read(self.SIDECAR), "renderer.x\n")
+            mirror = f.read(self.MIRROR)
+            self.assertIn("```kotlin [field-property box=\"b\" name=\"code\" path=\"b_code_.kt\"]\nrenderer.x\n```", mirror)
+            digest = hashlib.sha256(b"renderer.x\n").hexdigest()
+            self.assertIn(f'"path" "b_code_.kt" "lines" 1 "characters" 11 "sha256" "{digest}"', mirror)
         finally:
             f.close()
 
@@ -159,9 +281,27 @@ class BoxContextTests(unittest.TestCase):
 class ScopeTests(unittest.TestCase):
     def test_generated_bundles_and_files_outside_the_corpus_are_ignored(self):
         self.assertFalse(idioms.in_corpus("public/docs/assets/agent_transcripts/x/a_code_.kt"))
-        self.assertFalse(idioms.in_corpus("src/jvmMain/kotlin/afield/Server.kt"))
+        self.assertFalse(idioms.in_corpus("src/jvmMain/kotlin/afield/app/server/Server.kt"))
         self.assertTrue(idioms.in_corpus("public/docs/assets/canonical_graphics/a_code_.kt"))
         self.assertTrue(idioms.in_corpus(TRANSCRIPT))
+
+    def test_demo_build_scripts_and_mirrors_count_but_history_does_not(self):
+        self.assertTrue(idioms.in_corpus("dev_docs/agents/demos/d/build.yaml"))
+        self.assertTrue(idioms.in_corpus("dev_docs/agents/demos/d/verify.yaml"))
+        self.assertTrue(idioms.in_corpus("dev_docs/agents/demos/d/document.md"))
+        self.assertFalse(idioms.in_corpus("dev_docs/agents/demos/d/operations.yaml"))
+        self.assertFalse(idioms.in_corpus("dev_docs/agents/demos/d/README.md"))
+        self.assertFalse(idioms.in_corpus("dev_docs/agents/demos/d/backups/b_code__backup_00000.kt"))
+
+    def test_an_inherited_git_dir_does_not_replace_the_root(self):
+        # A hook's environment can point git at the real repository instead of the fixture.
+        f = Fixture({"dev_docs/agents/demos/d/x_code_.kt": "record(Box.context.get()!!)\n"})
+        try:
+            with mock.patch.dict(os.environ, {"GIT_DIR": str(idioms.REPO_ROOT / ".git"),
+                                              "GIT_WORK_TREE": str(idioms.REPO_ROOT)}):
+                self.assertEqual(idioms.corpus_paths(f.root), ["dev_docs/agents/demos/d/x_code_.kt"])
+        finally:
+            f.close()
 
     def test_paths_limit_the_check_to_the_changed_files(self):
         f = Fixture({TRANSCRIPT: YAML, "dev_docs/agents/demos/d/clean_code_.kt": "val a = 1\n"})

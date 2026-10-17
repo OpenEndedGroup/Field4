@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. an error, on the line
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="faust_voice_error" index="0" -->
 
 ```edn [field-box id="faust_voice_error" role="properties"]
-{"id" "faust_voice_error" "index" 0 "name" "an error, on the line" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "an error, on the line" "_tombstone" false "frame" #afield/rect [80.0 780.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_error_code_.kt" "lines" 14 "characters" 600 "sha256" "ec2186875d8593d88d16adb6eed1452c85d1d8dab89f69031fa35c5ccb74bbf1"}]}
+{"id" "faust_voice_error" "index" 0 "name" "an error, on the line" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "an error, on the line" "_tombstone" false "frame" #afield/rect [80.0 780.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_error_code_.kt" "lines" 14 "characters" 601 "sha256" "00cb418f5fae30801c33bc61ec366513318509a9299f7e5ad459c769c83c8ecc"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_error" name="code" path="faust_voice_error_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // Deliberately broken — `os.sawtoothX` does not exist. Run it and Faust's own message lands
 // on the `process` line below rather than on this box's first line.
@@ -36,11 +36,11 @@ process = os.sawtoothX(440);
 <!-- field-box id="faust_voice_waveform" index="1" -->
 
 ```edn [field-box id="faust_voice_waveform" role="properties"]
-{"id" "faust_voice_waveform" "index" 1 "name" "waveform" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "waveform" "_tombstone" false "frame" #afield/rect [680.0 620.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_waveform_code_.kt" "lines" 15 "characters" 540 "sha256" "95e402bc418428509b515f7dc283d64d06fc0ede7245d82f9c09a4ade4ad298a"}]}
+{"id" "faust_voice_waveform" "index" 1 "name" "waveform" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "waveform" "_tombstone" false "frame" #afield/rect [680.0 620.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_waveform_code_.kt" "lines" 15 "characters" 541 "sha256" "b180c52816d15a37965af13953d7a564062b7e5d05c0a078e3e34e79b59e5eff"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_waveform" name="code" path="faust_voice_waveform_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // The same program, rendered offline and plotted. Nothing here touches the audio engine,
 // so this box runs on a machine with no sound card.
@@ -62,11 +62,11 @@ println("rendered 20ms of " + program.outputs + " channels")
 <!-- field-box id="faust_voice_interface" index="2" -->
 
 ```edn [field-box id="faust_voice_interface" role="properties"]
-{"id" "faust_voice_interface" "index" 2 "name" "the interface it declares" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the interface it declares" "_tombstone" false "frame" #afield/rect [80.0 420.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_interface_code_.kt" "lines" 30 "characters" 1309 "sha256" "7e85ffc76d6dd916d2b0b5752f14af37ddd75cc989bfe7b6ecdf61c5b558883b"}]}
+{"id" "faust_voice_interface" "index" 2 "name" "the interface it declares" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the interface it declares" "_tombstone" false "frame" #afield/rect [80.0 420.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_interface_code_.kt" "lines" 30 "characters" 1310 "sha256" "d192761813203920e043e88837429311d482fdf9d45f6530dba3f0ddfb19df8f"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_interface" name="code" path="faust_voice_interface_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // What the compiler says about a program's own interface. This is the whole reason the
 // controls in the first box are generated rather than written.
@@ -103,11 +103,11 @@ program.ui.meters.forEach { println(it.label + "  " + it.type + " (read-only, us
 <!-- field-box id="faust_voice_diagram" index="3" -->
 
 ```edn [field-box id="faust_voice_diagram" role="properties"]
-{"id" "faust_voice_diagram" "index" 3 "name" "block diagram" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "block diagram" "_tombstone" false "frame" #afield/rect [680.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_diagram_code_.kt" "lines" 15 "characters" 616 "sha256" "4d0324fc93a5497ba2920a8826cce900308e99dee6578ef6d89401130a7f2645"}]}
+{"id" "faust_voice_diagram" "index" 3 "name" "block diagram" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "block diagram" "_tombstone" false "frame" #afield/rect [680.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_diagram_code_.kt" "lines" 15 "characters" 617 "sha256" "635f9baedb254a43681516963cbf19477a1415b555a026efc2db074ec9fd2f83"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_diagram" name="code" path="faust_voice_diagram_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // Faust is a language about signal flow, and the block diagram *is* the signal flow. This
 // comes out of the embedded compiler, so there is no `faust -svg` and no command line.
@@ -129,11 +129,11 @@ println("diagram for " + program.name + " — " + program.wasm.size + " bytes of
 <!-- field-box id="faust_voice_play" index="4" -->
 
 ```edn [field-box id="faust_voice_play" role="properties"]
-{"id" "faust_voice_play" "index" 4 "name" "Faust voice" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Faust voice" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_play_code_.kt" "lines" 16 "characters" 753 "sha256" "ff904e4878c354c1f965e851444d5a670c7fa3a0286120bbb8f21272f9a79ad8"}]}
+{"id" "faust_voice_play" "index" 4 "name" "Faust voice" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Faust voice" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_play_code_.kt" "lines" 16 "characters" 754 "sha256" "95b8586fed1b5b15bc173c2a72c35aa73638235136df8e4a19f7eb033f4c0300"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_play" name="code" path="faust_voice_play_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // A Faust program, playing. Click this box and the sliders below appear — they are the
 // program's own hslider declarations, not something written here. Move `cutoff` while it

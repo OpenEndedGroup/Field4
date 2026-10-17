@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. normalise a term
@@ -90,7 +90,7 @@ whether any of the rest is true: `readback(reduce(compile(t)))` against an ordin
 capture-avoiding normal-order evaluator, for every named term, printed rather than summarised.
 
 ```edn [field-box id="lambda_oracle" role="properties"]
-{"id" "lambda_oracle" "index" 1 "name" "the corpus against the oracle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the corpus against the oracle" "_tombstone" false "frame" #afield/rect [60.0 2060.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lambda_oracle_code_.kt" "lines" 62 "characters" 3098 "sha256" "d6c39ae65df7d9e8ce8a9eb6caf12e2bfbf2c67f732044821ab7062d762f0f8d"}]}
+{"id" "lambda_oracle" "index" 1 "name" "the corpus against the oracle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the corpus against the oracle" "_tombstone" false "frame" #afield/rect [60.0 2060.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lambda_oracle_code_.kt" "lines" 62 "characters" 3103 "sha256" "65781a91d51566d3ef101003fcd899c6b13835a0b0a78979261ca5affa464726"}]}
 ```
 
 ```kotlin [field-property box="lambda_oracle" name="code" path="lambda_oracle_code_.kt"]
@@ -153,7 +153,7 @@ println("  de Bruijn key of Church two: " + LambdaTerms.deBruijnKey(LambdaTerms.
 println("  substitution avoids capture: " +
     LambdaTerms.format(LambdaTerms.substitute(LambdaTerms.parse("\\y. x y"), "x", LambdaTerms.parse("y"))))
 
-// Try it: add a term to `LambdaTerms.corpus()` in `src/jvmMain/kotlin/afield/stdlib/lambdaterms.kt`.
+// Try it: add a term to `LambdaTerms.corpus()` in `src/jvmMain/kotlin/afield/lang/lambda/lambdaterms.kt`.
 // `stdlib.lambda-terms.smoke` asserts the corpus by the SET OF ITS NAMES, so a new entry fails that
 // test until you name it there too — which is the point. A corpus that can shrink is not a corpus.
 ```
@@ -172,7 +172,7 @@ vocabulary, and the four reactions it takes are the two that did not exist befor
 two halves of that duplication.
 
 ```edn [field-box id="lambda_reduction" role="properties"]
-{"id" "lambda_reduction" "index" 2 "name" "one reduction, panel per stage" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one reduction, panel per stage" "_tombstone" false "frame" #afield/rect [60.0 1060.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lambda_reduction_code_.kt" "lines" 58 "characters" 2602 "sha256" "cf58678b15f64b3638e6de59941763edd3fe4d854964390343e4304a42015cd7"}]}
+{"id" "lambda_reduction" "index" 2 "name" "one reduction, panel per stage" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one reduction, panel per stage" "_tombstone" false "frame" #afield/rect [60.0 1060.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lambda_reduction_code_.kt" "lines" 58 "characters" 2620 "sha256" "7d28890a62879bd133ae68a38d57acf65b73d2e1006b306c816fbc52ef590bc1"}]}
 ```
 
 ```kotlin [field-property box="lambda_reduction" name="code" path="lambda_reduction_code_.kt"]
@@ -181,8 +181,8 @@ two halves of that duplication.
 // `dup-lam` on an abstraction whose binder is wired to its own body, and `fan-fan` annihilating the
 // two halves of that duplication.
 
-import afield.Rect
-import afield.graphics.FLine
+import afield.app.protocol.Rect
+import afield.geometry.path.FLine
 
 val source = "(\\x. x x) (\\y. y)"
 val compiled = LambdaTerms.compile(LambdaTerms.parse(source))

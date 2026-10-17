@@ -84,7 +84,7 @@ let wave t = sin (t * tau) * 0.5 + 0.5
 linspace 0.0 1.0 5 |> map wave
 ```
 
-Prefix `-` negates numbers and vectors. As in other ML languages it binds looser than application, so `f -1.0` is a subtraction — write `f (-1.0)` when you mean a negative argument.
+Prefix `-` negates numbers and vectors. As in other ML languages it binds looser than application, so `f -1.0` is a subtraction. Write `f (-1.0)` when you mean a negative argument.
 
 ## Booleans
 
@@ -254,7 +254,7 @@ FieldML has a small prelude for common Field interop. The `fline` factory create
 
 ```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_examples/lines_interop.png" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="fieldml-lines-interop" w="760" h="240" alt="An output channel labelled main: one orange unfilled stroke on black, running from the upper left, angling gently down, dropping through a smooth cubic valley across the middle, and climbing back to the upper right."}
 let lines channel =
-  hostTap "afield.graphics.lines" { channel = channel, w = 120.0, h = 80.0 }
+  hostTap "afield.ui.visualization.lines" { channel = channel, w = 120.0, h = 80.0 }
 
 fline
   |> moveTo 0.0 0.0
@@ -355,13 +355,13 @@ animate rose
 
 ## JVM interop
 
-FieldML values can cross into JVM code as ordinary host values. The most direct path is to use curated helpers such as `fline`, `vec2`, `moveTo`, and `color`; they are typed, pipe-friendly, and keep the common graphics workflow compact.
+FieldML values can be passed to Kotlin code as they are. For graphics, the prelude's own helpers (`fline`, `vec2`, `moveTo`, `color`) are typed and fit in a pipe, so use them first.
 
-When a Kotlin function is not curated, use `hostTap` to make a small FieldML wrapper around it. `hostTap` looks up the target in Field's Kotlin source index, injects the current `Box` receiver for extension functions, fills Kotlin source defaults when they are simple literals, and places the piped value into the required data argument. The record names only the arguments you want to override.
+For any other Kotlin function, `hostTap` makes a small FieldML wrapper around it. It finds the function by name, supplies the current box when the function is a `Box` extension, uses the function's default arguments, and passes the piped value as the data argument. The record names only the arguments you want to change.
 
 ```diffstatic {data-lang=fieldml}
 let lines channel =
-  hostTap "afield.graphics.lines" { channel = channel, w = 120.0, h = 80.0 }
+  hostTap "afield.ui.visualization.lines" { channel = channel, w = 120.0, h = 80.0 }
 
 fline
   |> moveTo 0.0 0.0
@@ -369,7 +369,7 @@ fline
   |> lines "main"
 ```
 
-The target name is the Kotlin package plus function name, not the generated JVM class. In the example above, FieldML writes `afield.graphics.lines`; the bridge resolves the generated `SomeSkikoKt` owner class and the `Box.lines(...)` extension shape.
+The target is named the way Kotlin names it, package plus function: `afield.ui.visualization.lines` above is the `Box.lines(...)` extension.
 
 Use `hostTap` for JVM calls that are effects in the middle of a pipe. It runs the JVM call and returns the original piped value, so downstream FieldML code can continue transforming the same object.
 
@@ -377,7 +377,7 @@ The same wrapper can expose a different part of the Kotlin function without chan
 
 ```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_examples/lines_fit_interop.png" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="fit" capture="box" embed=true name="fieldml-lines-fit-interop" w="760" h="240" alt="An output channel labelled fit: a thin cyan line on black climbing from the left edge to a sharp peak a fifth of the way across, falling into a rounded trough, rising to a broad low crest, and dropping again at the right edge."}
 let fitLines channel =
-  hostTap "afield.graphics.lines" { channel = channel, w = 180.0, h = 90.0, fitToSize = true }
+  hostTap "afield.ui.visualization.lines" { channel = channel, w = 180.0, h = 90.0, fitToSize = true }
 
 fline
   |> moveTo 0.0 70.0
@@ -392,7 +392,7 @@ fline
 
 ```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_examples/viz_record_interop.png" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="model" capture="box" embed=true name="fieldml-viz-record-interop" w="760" h="260" alt="An output channel labelled model showing Field's value visualizer over the FieldML record: label maps to run 17, samples to a list beginning 3, 5, 8, 13, with a small cyan sparkline of those values beneath it, and a state row beginning ok maps to true. The capture is clipped and cuts every line off at the right edge."}
 let viz channel =
-  hostTap "afield.viz" { channel = channel }
+  hostTap "afield.ui.visualization.viz" { channel = channel }
 
 {
   label = "run 17"
@@ -406,7 +406,7 @@ Scalar values work the same way. `progressBar` wants a name and a numeric value;
 
 ```diffstatic {data-lang=fieldml}
 let progress name =
-  hostTap "afield.progressBar" { name = name, details = "from FieldML hostTap" }
+  hostTap "afield.ui.output.progressBar" { name = name, details = "from FieldML hostTap" }
 
 0.72
   |> progress "interop"
@@ -416,7 +416,7 @@ For object construction and ad hoc member access, the lower-level host bridge is
 
 ```diffstatic {data-lang=fieldml}
 let line =
-  hostClass "afield.graphics.FLine"
+  hostClass "afield.geometry.path.FLine"
   |> hostNew0
 
 line
@@ -431,7 +431,7 @@ For the rare cases where source-indexed lookup is not enough, `hostStaticTap` an
 let lines channel =
   hostStaticTap "lines"
     (thisBox, [hostInput], channel, 120.0, 80.0, false, false, false, false)
-    (hostClass "afield.graphics.SomeSkikoKt")
+    (hostClass "afield.ui.visualization.SomeSkikoKt")
 ```
 
 Use the curated helpers first when they exist, `hostTap` when the source index knows the Kotlin function, and the raw host bridge only when you need to spell out the JVM ABI yourself.

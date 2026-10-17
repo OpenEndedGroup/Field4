@@ -1,11 +1,8 @@
-import afield.four.fabricated.FabricatePassChain
-import afield.four.fabricated.FabricatePassLibrary
-import afield.four.fabricated.addPassChain
-import afield.four.util.DownResult
-import afield.four.util.MouseEvent
-import afield.four.util.MouseEvents
+import afield.graphics.scene.fabricated.FabricatePassChain
+import afield.graphics.scene.fabricated.FabricatePassLibrary
+import afield.graphics.scene.fabricated.addPassChain
 
-prop<afield.four.fabricated.FabricateBuiltChain>(fluid)
+prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(fluid)
 
 // The knobs. A new `resolution` starts an empty fluid; the rest keep the one you painted.
 val resolution = 256
@@ -74,19 +71,13 @@ fluid["splatRadius"] = 0.04f
 
 /*
 Handlers are held by name, so re-running replaces them rather than stacking a second
-copy — no `once` needed here either.
-
-The `onDown` is not optional even though it does nothing: MouseEvents only polls the
-buttons some handler has *asked* about (`buttonsRequested = down.keys + up.keys`), and
-`onDrag` only fires while a button is down, so without it no drag ever arrives and the
-fluid sits there looking broken. And both lambdas name their parameter type because
-`onDown`/`onUp` are overloaded on `() -> Boolean` and a `(MouseEvent) -> ...` form, and a
-bare `{ true }` is ambiguous — everywhere, not just in a box.
+copy — no `once` needed here either. `onUp` names its parameter type because it is
+overloaded on `() -> Boolean` and a `(MouseEvent) -> Boolean` form, and a bare `{ true }`
+is ambiguous.
 */
 val mouse = MouseEvents(renderer)
-mouse.onDown("left", "fluid-paint") { _: MouseEvent -> DownResult.Keep }
-mouse.onDrag("fluid-paint") { ev ->
-    paintAt = vec(ev.pos.x / renderer.window.width, ev.pos.y / renderer.window.height)
+mouse.onDrag("left", "fluid-paint") { ev ->
+    paintAt = ev.uv // 0..1 across the window
     paintPush = vec(ev.delta.x * dragGain, ev.delta.y * dragGain)
     paintMass = 0.05f
     true // returning false *removes* the handler

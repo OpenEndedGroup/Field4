@@ -15,7 +15,7 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
+          import afield.graphics.vulkan.util.Options
 
           prop<Window>(window)
           prop<Renderer>(renderer)
@@ -37,17 +37,19 @@ operations:
       frame: { x: 300.0, y: 140.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // ImGui as a VR panel.
-          //
-          // ImGuiVrPanelDemo wires the whole pipeline: an ImGuiRenderToTexture drawn into an RTT,
-          // textured onto a world-space ImGuiPanel quad, rendered once per eye by
-          // SideBySideStereoTarget, packed side-by-side, and blitted to the window. The panel is
-          // interactive: the mock controller (here driven by the mouse) casts a ray, the hit is
-          // converted to panel UV, and injected into ImGui.
-          //
-          // Move the mouse to aim the ray; left-click to press. To bind the panel to a hand instead
-          // of a fixed point, call panel.place(handPos, handRight, handUp) each frame (see ImGuiPanel).
-          import afield.four.targets.SideBySideStereoTarget
+          /*
+          ImGui as a VR panel.
+
+          ImGuiVrPanelDemo wires the whole pipeline: an ImGuiRenderToTexture drawn into an RTT,
+          textured onto a world-space ImGuiPanel quad, rendered once per eye by
+          SideBySideStereoTarget, packed side-by-side, and blitted to the window. The panel is
+          interactive: the mock controller (here driven by the mouse) casts a ray, the hit is
+          converted to panel UV, and injected into ImGui.
+
+          Move the mouse to aim the ray; left-click to press.
+          For a custom hand-attached panel, use the ImGuiPanel construction and registration in
+          afield.examples.four.ImGuiVrPanelDemo.build. Its private panel is not exposed by demo.
+          */
           import afield.examples.four.ImGuiVrPanelDemo
 
           val sbs = SideBySideStereoTarget(renderer)

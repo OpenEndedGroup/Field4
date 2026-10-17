@@ -29,7 +29,7 @@ ray-query shadows when the device supports them. The **Original renderer** switc
 to the source image immediately; **Ray-query shadows** lets you compare the same scene
 with and without occlusion.
 
-??? aside "Enable the optional RTXDI controls"
+!!! note "Enable the optional RTXDI controls"
 
     In a Linux x86-64 checkout, run `uv run python tools/lighting/build_rtxdi.py --prepare`
     once, then relaunch the scene box. This prepares the pinned SDK and shader compiler in
@@ -86,12 +86,11 @@ learned denoiser.
 In a box connected below the renderer parent, a small one-light experiment is:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.lighting.*
+import afield.graphics.render.lighting.*
 
 val study = DirectLightingDemo(renderer, 1280, 720)
 study.lighting.samples = 32
-study.lighting.mode = if (study.visibility.available)
-    DirectLighting.Mode.RAY_QUERY else DirectLighting.Mode.UNSHADOWED
+study.lighting.mode = if (study.visibility.available) DirectLighting.Mode.RAY_QUERY else DirectLighting.Mode.UNSHADOWED
 frames {
     var t = 0.0
     while (true) {
@@ -100,9 +99,10 @@ frames {
         frame()
     }
 }
+    .end { study.close() }
 ```
 
-Close `study` before replacing it; the Starting Point already handles replacement on relaunch.
+Stopping the box closes its study. Re-running the box replaces the study: a new `DirectLightingDemo` closes the one the same box made before.
 The camera lives at `study.bundle.scene.camera`. Call `study.moveObject(index, matrix)` to
 move one of its opaque objects and update both raster geometry and shadow visibility.
 The resolution belongs to the study; resizing the native window scales its presentation.
@@ -110,10 +110,10 @@ The resolution belongs to the study; resizing the native window scales its prese
 To sample several lights, add this before the frame loop:
 
 ```diffstatic {data-lang=kotlin}
-import afield.four.fabricated.rtxdiSettings
+import afield.graphics.scene.fabricated.rtxdiSettings
 
 val settings = study.bundle.rtxdiSettings()
-settings.commitLights(listOf(IdentifiedAreaLight(42, study.lighting.emitter)))
+settings.commitLights([IdentifiedAreaLight(42, study.lighting.emitter)])
 study.lighting.enableRtxdi(RtxdiProgram.load(), settings).getOrThrow()
 study.lighting.mode = DirectLighting.Mode.RTXDI
 study.lighting.samples = 16
@@ -140,7 +140,7 @@ its `OpaqueInstance` values, then attach `bundle.directLighting(visibility)` aft
 bundle's surface passes. Present `lighting.output`. `registerOpaqueTriangles(...)` uses
 the same indexed geometry for rasterization and shadow rays.
 
-For `afield.four` surfaces, `DirectLighting(renderer, surfaces, visibility, width, height)`
+For Field 4 surfaces, `DirectLighting(renderer, surfaces, visibility, width, height)`
 accepts point-sampled world positions, world normals, linear RGB albedo, original source
 color and motion. `RtxdiSettings` additionally takes the same view and Vulkan projection
 matrices used for rasterization. Convert pigment or latent colors to linear RGB at this

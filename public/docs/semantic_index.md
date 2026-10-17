@@ -55,12 +55,11 @@ runs in a background worker and reports its progress on the page.
 
 ## Conversational code search is separate
 
-**Search Documentation & Code** (`Ctrl/Cmd+Shift+D`) opens a generated-answer
-surface in the documentation pane. The label mentions documentation, but its
-retrieval store covers Field's indexed Kotlin roots and query-selected GLSL
-include libraries, not the local Lucene corpora above. With no remote vector
-store configured it still writes an answer, but one with no sources behind it,
-so check what it tells you against the code.
+**Search Documentation & Code** (`ctrl/command-shift-D`) opens a generated-answer
+surface in the documentation pane. It retrieves from the same local corpora as
+above, plus the GLSL include libraries for shader questions, writes its answer
+from what it found, and lists the paths it used. When nothing matches it says
+so instead of answering.
 
 Use the `/welcome` field to find things in your workspace, and the local
 semantic-search API to search Field's source or these docs. Use conversational

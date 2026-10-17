@@ -1,6 +1,8 @@
 # A pattern in space: `pat` → Dough → Steam Audio
 
-A pattern says *what* and *when*. This path adds *where* — and it adds it with a tag, not an API.
+A pattern says what to play and when. `patSpatial` adds where: you tag each event with a direction
+and a distance, and Steam Audio places it around your head. This example plays a drum pattern whose
+sources swing from left to right and move nearer and further:
 
 ```diffstatic {data-lang=kotlin}
 audio {
@@ -14,8 +16,9 @@ audio {
 }
 ```
 
-**Put headphones on.** HRTF rendering assumes each ear hears only its own channel. Over speakers it
-collapses to something close to ordinary panning, and everything below stops being true.
+Listen on headphones. The rendering (an HRTF, a model of how your head and ears filter sound from
+each direction) assumes each ear hears only its own channel. Over speakers it sounds much like
+ordinary panning.
 
 ---
 
@@ -25,24 +28,22 @@ collapses to something close to ordinary panning, and everything below stops bei
 | --- | --- |
 | **Use it when** | you want a rhythm or a line to come from *somewhere* — a direction, a distance, a thing you can walk around — and you want the placement written in the pattern rather than driven from outside it |
 | **Use it when** | you want dough's synth vocabulary: `s`, `note`, `lpf`, `room`, `crush`, `fmi` and the rest of superdough's parameters, which this path forwards untouched |
-| **Don't** | if you need it in a file. This path is **realtime only**, and that is not a missing feature — see [why there is no clip of the output](#why-there-is-no-clip-of-the-output) |
-| **Don't** | if you need sample-exact onsets. Notes quantise to a 128-frame dough block, 2.9 ms at 44.1 kHz. [`patSynth`](sound.md) is sample-exact and proves it |
+| **Don't** | if you need sample-exact onsets. Notes quantise to a 128-frame dough block, 2.9 ms at 44.1 kHz. [`patSynth`](sound.md) is sample-exact |
 | **Don't** | if you want dozens of independently placed voices. Each `spat` group costs a dough engine — about 200 MB of wasm and a few hundred milliseconds to boot — and the default ceiling is four |
-| **Needs** | the dough wasm build (tracked here) **and** Steam Audio's `libphonon`, which is **not** committed: `./gradlew fetchSteamAudioNatives` |
+| **Needs** | the dough wasm build (in the repository) **and** Steam Audio's `libphonon`, which is **not** committed: `./gradlew fetchSteamAudioNatives` |
 
-The neighbours, so you can rule this out quickly: [`patSynth`](sound.md) is the sample-exact stand-in
-voice with no spatialisation; [`faustPoly`](faust.md) is a Faust instrument played by a pattern, also
-sample-exact, also unplaced; `spatial-openal` is Field's other spatial engine, which places *sources
-you position from code* rather than a pattern, and which — unlike this path — has an offline loopback
-mode. [Making a sound in Field: every path there is](sound_paths.md) puts all eight side by side.
+The nearest alternatives: [`patSynth`](sound.md) plays a pattern sample-exactly with no
+spatialisation; [`faustPoly`](faust.md) plays a Faust instrument from a pattern, also sample-exact and
+unplaced; `spatial-openal` is Field's other spatial engine, which places sources you position from
+code rather than from a pattern, and which can also render offline.
+[Making a sound in Field](sound_paths.md) puts every path side by side.
 
 ---
 
-## The tag is the spatial parameter
+## Placing a source
 
-A pattern's named parameters ride on `PatEvent.annotations`, and `with` writes any key at all into
-that map. So the pattern language needed no extension to describe where a sound is. Six keys are read
-by this path; **every other key is forwarded to dough untouched.**
+Placement is written with the same `with(param(...))` you use for any other pattern parameter.
+`patSpatial` reads the keys in this table and forwards every other key to dough unchanged.
 
 <div data-code-lang="kotlin" markdown>
 
@@ -51,11 +52,14 @@ by this path; **every other key is forwarded to dough untouched.**
 | `pat("bd") with param("spat", "1")` | Routes the event to spatial group 1. Each group owns a Dough engine, so adding groups also adds memory and startup cost. | `"0"` |
 | `pat("bd") with param("az", "90")` | Places the source 90 degrees to the right. Zero is directly ahead; values are degrees. | `0` |
 | `pat("bd") with param("elev", "90")` | Places the source overhead. Zero elevation lies in the horizontal plane. | `0` |
-| `pat("bd") with param("dist", "2")` | Places the source two metres from the listener. Distance participates in the spatial rendering. | `1.5` |
+| `pat("bd") with param("dist", "2")` | Places the source two metres from the listener. Further sources are quieter and, with `air`, duller. | `1.5` |
 | `pat("bd") with param("occl", "0.5")` | Sets partial occlusion. The range is zero for clear to one for fully blocked. | `0` |
 | `pat("bd") with param("air", "0")` | Disables distance-dependent air absorption for this event. Set one to apply it. | `1` |
 
 </div>
+
+This version alternates whole cycles between two spatial groups, `kit` and `hats`, each placed on
+its own:
 
 ```diffstatic {data-lang=kotlin}
 patSpatial(
@@ -69,212 +73,41 @@ patSpatial(
 ```
 
 Because `az` takes a *continuous* pattern, `sine()` sampled per event is a source that moves between
-notes. And because the placement is held on the **source** rather than on the note, that group's next
-event moves the whole group. The tags do not decorate the sound, they aim it.
+notes. The placement belongs to the group, not to the note, so a group's next event moves everything
+that group is playing.
 
-**An atom is read as a note if it is a number and as a sound name if it is not.** `pat("36 48")`
-plays MIDI notes through `s`'s default `saw`; `pat("bd sd")` asks dough for sounds *called* `bd` and
-`sd`. Both work — dough synthesises its own drums, so `pat("bd ~ sd ~, hh*8")` transfers from
-`patSynth` unchanged — but they reach dough as entirely different events, and they are not equally
-bright: measured, the drum spelling of one rhythm comes out at a 678 Hz spectral centroid and the
-note spelling at 4677 Hz. `synth.pat-spatial.sound` renders both and prints both.
+A number in a pattern is a note, and anything else is a sound name. `pat("36 48")` plays MIDI notes
+through the default `saw`; `pat("bd sd")` asks dough for the sounds called `bd` and `sd`. Dough has
+its own drums, so a drum pattern written for `patSynth` plays here unchanged. The two spellings sound
+quite different: the drums are much darker than the saw.
 
-Two more behaviours of the placement itself:
+Two more things about placement:
 
-* A placement change is **approached**, not jumped to — one pole per block, about 5 ms. A note that
-  jumps 140° of azimuth between two blocks would step the HRTF filter discontinuously, which is
-  audible as a click on every note.
-* `dist` is clamped at 0.4 m, so a source cannot land inside the head, and air absorption is a
-  per-band exponential in distance using Steam Audio's own default coefficients.
-
----
-
-## What Steam Audio is handed
-
-This is the signal one step before Steam Audio sees it. One `spat` group, one dough
-engine, every event sent `pan/0` — the buffer `PatSpatialRoom.spatialiseSource` copies into
-`source.mono` and gives to the binaural effect.
-
-```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/spatial-source-plain.wav" audio-spec="spatial-source-plain" audio-renderer="afield.four.synth.PatSpatialSoundDocs" embed=true hidden=true name="pat-spatial-source-plain"}
-// PatSpatialSoundDocs.renderWav("spatial-source-plain", …)
-// patSpatialEventsForArc(pat("36 ~ 48 ~, 72*4") with gain(0.9), az = -70, dist = 1.5)
-// -> one DoughEngine, 128-frame blocks, left channel only
-```
-
-**The mono source, as Steam Audio is handed it.** Not the spatialised output — this is `source.mono`, one `spat` group's dough engine with every event sent `pan/0`, which is the buffer the binaural effect takes as its input.
-
-```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/spatial-source-forwarded.wav" audio-spec="spatial-source-forwarded" audio-renderer="afield.four.synth.PatSpatialSoundDocs" embed=true hidden=true name="pat-spatial-source-forwarded"}
-// PatSpatialSoundDocs.renderWav("spatial-source-forwarded", …)
-// the same pattern, plus param("lpf", 700) — not a spatial tag, so forwarded verbatim
-```
-
-**The same notes, with `lpf` added to the pattern.** `lpf` is not one of the six spatial tags, so it is forwarded to dough untouched and the engine's own filter answers for it. Everything you can hear between these two clips is that forwarding rule.
-
-Three things about this path that the clips **cannot** show, because both of them are peak-normalised
-like every other figure on this site, are measured on the un-normalised buffers instead and printed
-by `run_field_tests.py --id synth.pat-spatial.sound`:
-
-1. **`pan/0` is a lossless tap, not a downmix.** Steam Audio spatialises a *mono* signal, and
-   `DoughEngine` mixes its 32 voices to stereo with `MAX_ORBITS = 1` — there is no way to pull two
-   separable signals out of one engine. So every event goes out with `pan/0`, which puts the whole
-   of that engine's energy in its left channel, and that channel *is* the mono source. Measured,
-   the right channel dough produces peaks at **exactly 0.000e+00** on both figures: not a gain law
-   landing near zero, but nothing at all. That is what lets the render thread `arraycopy` the left
-   channel instead of computing `0.5*(L+R)` and halving the level.
-2. **The six spatial tags never reach dough.** Asserted on the event maps rather than on the audio:
-   across the 24 events of these four cycles, `spat`, `az`, `elev`, `dist`, `occl` and `air` are
-   consumed here and `lpf` is not — it arrives at dough as `700`.
-3. **`az` is not in the signal at all.** The same pattern rendered at `az = 0` and at `az = -70`
-   produces a **bit-identical** mono source: 124928 samples, 0 of them differing. That is the
-   sharpest way to say what the next section says at length — the direction lives entirely in the
-   effect. It also happens to be the reason these two clips can be published under a contract that
-   re-renders them on every build: two separately booted GraalWasm engines agreeing to the bit is
-   the determinism that contract requires.
-
-And the second figure's claim, as a number:
-
-| figure | spectral centroid | vs the first | peak | RMS |
-| --- | --- | --- | --- | --- |
-| `spatial-source-plain` | 4677 Hz | — | 0.284 | 0.078 |
-| `spatial-source-forwarded` | 544 Hz | 0.12× | 0.198 | 0.059 |
-
-A saw at note 72 has harmonics well past 700 Hz, and dough's own filter takes them. The guard
-requires that ratio to stay under 0.6×, so a `lpf` that stopped reaching dough would fail the build
-rather than publish two clips that sound alike.
+* A change of placement glides over about 5 ms rather than jumping, so a note that moves far across
+  the field does not click.
+* `dist` is clamped at 0.4 m, so a source cannot land inside the head. Air absorption uses Steam
+  Audio's default coefficients.
 
 ## Hearing it
 
-Two commands, and an audio device.
+You need Steam Audio's native library, which is not in the repository. Fetch it once:
 
 ```diffstatic {data-lang=bash}
 ./gradlew fetchSteamAudioNatives
 ```
 
+Then play the example in a box, as in [Hearing it in a box](#hearing-it-in-a-box) below. To check
+the path without writing any code, this smoke test plays two sources circling at opposite azimuths
+(on a machine with no audio device it says so and stops):
+
 ```diffstatic {data-lang=bash}
 tools/run_field_tests.py --id synth.pat-spatial.engine
 ```
 
-That plays two sources at opposite azimuths, circling. On a machine with no device it says so and
-stops rather than passing for the wrong reason.
-
-## Why there is no clip of the output
-
-There is no published clip of this path's output and there cannot be one: every `audio=` fence in
-these docs is rendered offline over the backdoor — no device, no clock, no browser — and
-`patSpatial` has no offline half to call. **`PatSpatialLaunch.advanceOffline` looks like that half
-and is not.** The render thread runs on its own clock regardless, so the call only *consumes* what
-has already been produced, in real time: ask it for four seconds of audio and you wait four
-seconds, and no flag makes it faster. The HRTF needs `libphonon` besides, fetched checksum-pinned
-into `build/steamaudio` rather than carried in the repository, so on a clean clone a render of this
-path cannot start at all.
-
-The two clips above make the smaller claim instead: they are rendered by the code that really
-ships, which is [what their captions promise](sound.md#what-a-voice-caption-promises).
-
----
-
-## One dough engine per source
-
-Steam Audio spatialises a mono buffer — a direction is a property of a whole buffer, not of a voice
-inside it. That single fact decides the shape of this path: one `DoughEngine` per `spat` group, which
-is also **why `spat` exists at all** rather than every event getting its own position.
-
-That costs the pattern two things:
-
-* **A pattern's `pan` is overridden.** Every event is sent `pan/0`. Panning is lossless this way, but
-  `pan` as a musical parameter is gone. `az` replaces it, and it is a better parameter.
-* **Note onsets quantise to a dough block** — 128 frames, 2.9 ms at 44.1 kHz. Dough takes an event
-  through `evaluate()` and applies it at the next `dsp()`, so unlike `PatSynthBank`, which is
-  sample-exact and proves it by rendering bit-identically at four buffer sizes, this path cannot
-  place a note inside a block. That is a property of dough's event API, not of the scheduler.
-
-Engines are booted **ahead of the audio**, not on the first event that names a tag: `prescanCycles`
-(8 by default) opening cycles are searched for `spat` tags and their engines are built before a
-sample is produced. A tag that first appears later than that is counted by
-`PatSpatialRoom.lateSourceBoots`, and each one is a likely dropout — a boot of a few hundred
-milliseconds inside a block that owes the audio thread 2.9 ms is longer than any reasonable ring
-holds.
-
----
-
-## Why dough is not on the audio thread
-
-`patSynth` puts the pattern *query* on a feeder thread because querying allocates, and keeps
-synthesis on the audio thread because Field's own voices are a fixed amount of float arithmetic.
-Neither half of that argument survives here. `DoughEngine` is GraalWasm: every block enters a
-polyglot context, and the JIT and the collector get a say in how long that takes.
-
-`PatSpatialBudgetProbe` measures four sources against a block's 2.902 ms budget, idle and under load,
-and the two runs differ only in the tail. The median is *flat* — four wasm engines and eight Steam
-Audio effects are about 4% of a block either way, so nothing here needs optimising. The tail moves by
-a factor of three, with load the audio thread has no say over. A path whose median fits twenty-five
-times over and which still misses one block in a hundred is not a path to shave down; it is one to
-**decouple**. Both runs' percentiles are in `dev_docs/PAT_SPATIAL_MEASUREMENTS.md`.
-
-So `PatSpatialRoom` renders on its own thread into a `PatSpatialRing`, and the audio thread's entire
-job is a bounded copy out of that ring — no synthesis, no spatialisation, no allocation, no locks.
-
-Raising that thread's priority was tried and reverted. As a high-priority poller on a loaded machine
-it preempted the audio engine's own 4 ms loop badly enough that OpenAL stopped reporting processed
-buffers at all: the output went silent while the render thread sat on a *full* ring, which looks
-nothing like a priority problem and cost an hour to pin on the one line that caused it. The comment
-in `PatSpatialRoom.start` is still there.
-
----
-
-## What actually limits this
-
-Not the arithmetic — the scheduler. On a heavily loaded ten-core machine `PatSpatialEngineSmoke`
-recorded the render thread falling short of the blocks a four-second window needed while it was busy
-only about a third of that window. A thread that is idle two thirds of the time and still misses its
-deadline is not a thread that needs faster code; it is a thread that is not being scheduled. That
-run's figures are in `dev_docs/PAT_SPATIAL_MEASUREMENTS.md`.
-
-Two things follow, and both are in the code rather than in advice:
-
-* `PatSpatialRoom.busyMsTotal` against elapsed time separates the two ways of falling behind. Near
-  100% busy *with* underruns means the work does not fit and this design is wrong. Far below it means
-  the machine is oversubscribed, and the smoke says so instead of failing.
-* **The ring is sized for the scheduler's stalls, not for this code's**, which is why it defaults to
-  341 ms rather than the ~40 ms the arithmetic alone would justify.
-
-### The fields to read while it plays
-
-Everything below is a field on the launch or the room, readable from the box while it plays:
-
-<div class="field-reference" data-code-lang="kotlin" markdown>
-
-| what to read | what it means |
-| --- | --- |
-| `launch.underruns` | Counts audio frames requested when the ring had no samples available. A growing count means the producer is falling behind; the target is zero. |
-| `launch.room.ring.fill` / `.minFill` | Reports the ring’s current fill and its lowest observed fill. A falling minimum warns that the audio thread is approaching starvation. |
-| `launch.room.worstBlockMs` | Reports the longest render-thread block in milliseconds. Compare this peak with the available buffering when diagnosing dropouts. |
-| `launch.room.lateSourceBoots` | Counts engines booted after audio playback began. Pre-create the spatial groups when startup during playback causes gaps. |
-| `launch.room.busyMsTotal` | Accumulates milliseconds spent doing render work. Compare it with elapsed time to estimate how much producer capacity is in use. |
-| `launch.sources[i].peakVoices` | Reports the greatest number of simultaneous voices in group `i`. Use it to locate a group whose polyphony is driving rendering cost. |
-
-</div>
-
-Latency costs nothing musically. The pattern is queried ahead, so notes stay in time with each other;
-what the ring delays is only how soon a *start* or a *stop* is heard.
-
----
-
-## The two ways to get it wrong
-
-**A sample-rate mismatch is not a resampling.** The ring has a producer on one clock and a consumer
-on the other, so at 44.1 against 48 the audio thread consumes 9% faster than the render thread
-produces: the ring empties, and what does arrive is transposed up a tone and a half. Both symptoms
-read as a synth problem rather than a clock problem, so `registerPatSpatialReturnValue` refuses the
-mismatch outright and names the rate to pass instead.
-
-**Attaching a consumer too early drains a ring that is still warming up.** `awaitReady()` returns
-when Steam Audio is up, every prescanned engine has booted, *and* the ring has filled once — not when
-the thread started. Wait for it before handing a launch to an audio engine.
-
----
-
 ## Hearing it in a box
+
+`showPatSpatial` plays a pattern and shows a live waveform and spectrum in the box's output. This
+example moves a four-note line between two groups:
 
 ```diffstatic {data-lang=kotlin}
 showPatSpatial(
@@ -288,19 +121,17 @@ showPatSpatial(
 )
 ```
 
-`showPatSpatial` puts a live waveform and spectrum in the box's output and hands back the
-`PatSpatialLaunch`, so returning it as the box's last expression is what ties the sound to the box:
-the box stays lit while it plays, and stopping it stops the render thread and closes every dough
-engine and Steam Audio handle with it.
+It returns a `PatSpatialLaunch`. As the box's last expression, that ties the sound to the box: the
+box stays lit while it plays, and stopping the box stops the sound and frees its engines.
 
-`launch.turnListener(deg)` turns the listener's head from any thread — positive to the right, so a
-source dead ahead moves to your left. The render thread applies it at the top of a block.
+`launch.turnListener(deg)` turns the listener's head. Positive is to the right, so a source dead
+ahead moves to your left.
 
-## A head that is actually on someone
+## Following a head
 
-`turnListener` takes one angle, which is as much as a seated listener with a keyboard needs. A
-headset reports more than that, so `launch.setListenerPose(pose)` takes the whole thing — position
-and orientation — and `launch.followHead(source)` keeps it following one:
+`turnListener` takes one angle. A headset reports position and orientation, so
+`launch.setListenerPose(pose)` takes both, and `launch.followHead(source)` keeps following a pose
+source. Here a virtual head turns at 45° a second:
 
 ```diffstatic {data-lang=kotlin}
 val launch = patSpatial(
@@ -316,41 +147,126 @@ launch.followHead(VirtualHead.turning(degreesPerSecond = 45.0))
 launch
 ```
 
-On a machine with an OpenXR runtime, `hmd.asHeadPoseSource()` on an `OpenXRHmdTarget` is the same
-argument, and there is no conversion between the two: OpenXR and Steam Audio are both right-handed,
-+X right, +Y up, −Z ahead, in metres, so `HeadPose.ofOpenXR` copies seven numbers. Read that as a
-warning rather than as a convenience — a handedness mistake between these frames leaves level,
-distance, occlusion and air absorption all correct and swaps only the listener's ears, which is why
-`synth.head-tracked-spatial.smoke` pins it on rendered audio instead of on the sentence above.
+With an OpenXR headset, pass `hmd.asHeadPoseSource()` from an `OpenXRHmdTarget` instead. OpenXR and
+Steam Audio use the same axes (+X right, +Y up, −Z ahead, in metres), so the pose passes through
+unconverted.
 
-The one thing that changes underneath is what `az`, `elev` and `dist` describe. They are now
-spherical coordinates of an anchor **in the room**, not an offset from the listener, so a head that
-walks changes what it hears: lean toward a source and it is nearer, step past one and it crosses your
-ears. With the listener at the origin and level the two readings coincide exactly, which is what
-keeps every pattern on this page sounding as it did.
+Once the head can move, `az`, `elev` and `dist` place a source in the room rather than relative to
+the listener: lean toward a source and it gets nearer, step past one and it crosses your ears. With
+the listener at the origin and facing ahead, the two readings are the same.
 
-Two things to get right before wiring a real headset to it:
+If tracking is lost, the sound field stays where it was rather than snapping back to face ahead.
 
-* **Pump from the frame, not from a timer**, for `OpenXRHmdTarget`. Its pose is written by
-  `xrLocateViews` on the renderer's queue thread as loose floats, so a reader elsewhere can pick up a
-  position from one frame with an orientation from the next. Construct the listener with `hz = 0.0`
-  and call `pump()` inside the frame callback. A `StereoPoseSource` latches by contract and is fine
-  on the timer, which is the default.
-* **Losing tracking freezes the sound field**, it does not recentre it. A pose source returning false
-  leaves the last good pose applied, because a field that stops moving reads as a tracking dropout
-  where a snap back to front reads as a bug in the piece.
+Here is a kick two metres ahead, a hat hard left and a snare hard right, heard from a head that moves
+through four movements of five seconds each: still, turning once to the right, stepping two metres to
+each side, and leaning in toward the kick and back. Listen on headphones. While the head turns, the
+hat passes behind you to your right; while it steps, the kick sweeps across; while it leans in, the
+kick grows as the hat and snare fall away behind.
 
-`./gradlew headTrackedDemo` renders four movements of this to `build/demo/head-tracked.wav` — still,
-turning, stepping sideways, leaning in — differing from each other in the seven numbers of a head
-pose and in nothing else. Headphones.
+```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/head-tracked.wav" audio-spec="head-tracked" audio-renderer="afield.audio.synth.PatSpatialHeadTrackedDocs" requires="steam-audio" embed=true hidden=true name="pat-spatial-head-tracked"}
+// PatSpatialHeadTrackedDocs.renderWav("head-tracked", …)
+// HeadTrackedPatternDemo's four movements through Steam Audio's HRTF, 5 s each
+```
+
+`./gradlew headTrackedDemo` renders the same four movements at eight seconds each, to
+`build/demo/head-tracked.wav`. In both, the head is a function of where the render has got to,
+passed as `patSpatial(..., listenerPoseAt = { frame -> pose })`, so a render to a file repeats exactly.
+A headset reports its pose as it happens instead, through `followHead`.
+
+## What Steam Audio is handed
+
+These two clips are the mono signal one `spat` group sends to Steam Audio, before it is placed. The
+placed, binaural result is the clip in [Following a head](#following-a-head) above.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/spatial-source-plain.wav" audio-spec="spatial-source-plain" audio-renderer="afield.audio.synth.PatSpatialSoundDocs" embed=true hidden=true name="pat-spatial-source-plain"}
+// PatSpatialSoundDocs.renderWav("spatial-source-plain", …)
+// patSpatialEventsForArc(pat("36 ~ 48 ~, 72*4") with gain(0.9), az = -70, dist = 1.5)
+// -> one DoughEngine, 128-frame blocks, left channel only
+```
+
+The mono source for one `spat` group, before Steam Audio places it.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/spatial-source-forwarded.wav" audio-spec="spatial-source-forwarded" audio-renderer="afield.audio.synth.PatSpatialSoundDocs" embed=true hidden=true name="pat-spatial-source-forwarded"}
+// PatSpatialSoundDocs.renderWav("spatial-source-forwarded", …)
+// the same pattern, plus param("lpf", 700) — not a spatial tag, so forwarded verbatim
+```
+
+The same notes with `lpf` added to the pattern. `lpf` is not a spatial key, so dough receives it and
+its own filter darkens the sound.
+
+The direction is not in this signal at all: Steam Audio adds it afterwards. Changing `az` leaves the
+mono source exactly as it was.
+
+??? aside "Agents: what the clip renderer checks"
+    `run_field_tests.py --id synth.pat-spatial.sound` renders both clips and measures the
+    un-normalised buffers. Dough mixes to stereo, so every event is sent `pan/0`, which puts the whole
+    signal in the left channel; that channel is copied as the mono source, and the right channel is
+    checked to be silent. The six spatial keys are checked to be consumed before dough and `lpf` to
+    arrive. The same pattern at `az = 0` and `az = -70` must give a bit-identical source, which is
+    also the determinism the docs audio contract needs. The `lpf` clip's spectral centroid must stay
+    under 0.6× the plain one's, so a filter that stopped reaching dough fails the build.
+
+    | figure | spectral centroid | vs the first | peak | RMS |
+    | --- | --- | --- | --- | --- |
+    | `spatial-source-plain` | 4677 Hz | — | 0.284 | 0.078 |
+    | `spatial-source-forwarded` | 544 Hz | 0.12× | 0.198 | 0.059 |
 
 ---
 
-## Where to look next
+## How it plays
 
-Every smoke on this path except the declaration check boots Steam Audio, so running any of them
-needs `./gradlew fetchSteamAudioNatives` first. Which one establishes what is in
-`dev_docs/PAT_SPATIAL_MEASUREMENTS.md`.
+Steam Audio places a whole mono signal at one position, so `patSpatial` runs one dough engine per
+`spat` group and places each group's output. That has two consequences for a pattern:
 
-The full API — every field, every default, every parameter — is in
-[`afield.four.synth` in the generated reference](reference/patterns.md#patspatial-kt).
+* A pattern's `pan` is ignored. Use `az` instead.
+* Note onsets fall on dough's 128-frame blocks, 2.9 ms at 44.1 kHz, because dough applies events
+  once per block. `patSynth` is sample-exact if you need that.
+
+Engines start before the audio does: `patSpatial` looks through the first `prescanCycles` cycles
+(8 by default) for `spat` groups and boots an engine for each. A group that first appears later has
+to boot while the sound plays, which takes a few hundred milliseconds and is likely to cause a gap.
+`PatSpatialRoom.lateSourceBoots` counts these.
+
+Dough runs as WebAssembly, whose timing is less predictable than Field's own synths, so the groups
+are rendered on their own thread into a ring buffer, and the audio thread only copies out of it.
+The ring holds 341 ms by default, enough to ride out the scheduling stalls of a busy machine. That
+delay only affects how soon a start or stop is heard; notes stay in time with one another.
+
+Match the sample rates. The ring's two sides run on separate clocks, so a render at 44.1 kHz
+played at 48 kHz both runs dry and plays sharp. `registerPatSpatialReturnValue` refuses a mismatch
+and names the rate to pass. A launch handed to an audio engine before it is ready plays silence
+until Steam Audio is up and the ring has filled.
+
+### The fields to read while it plays
+
+These fields on the launch, and on its room, can be read from the box while it plays:
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| what to read | what it means |
+| --- | --- |
+| `launch.underruns` | Counts audio frames requested when the ring had no samples available. A growing count means the producer is falling behind; the target is zero. |
+| `launch.room.ring.fill` / `.minFill` | Reports the ring’s current fill and its lowest observed fill. A falling minimum warns that the audio thread is approaching starvation. |
+| `launch.room.worstBlockMs` | Reports the longest render-thread block in milliseconds. Compare this peak with the available buffering when diagnosing dropouts. |
+| `launch.room.lateSourceBoots` | Counts engines booted after audio playback began. Pre-create the spatial groups when startup during playback causes gaps. |
+| `launch.room.busyMsTotal` | Accumulates milliseconds spent doing render work. Compare it with elapsed time to estimate how much producer capacity is in use. |
+| `launch.sources[i].peakVoices` | Reports the greatest number of simultaneous voices in group `i`. Use it to locate a group whose polyphony is driving rendering cost. |
+
+</div>
+
+If `underruns` grows while `busyMsTotal` stays well below the elapsed time, the machine is too busy
+to schedule the render thread; if it is near the elapsed time, the work does not fit.
+
+??? aside "Measurements behind the design"
+    `PatSpatialBudgetProbe` measured four sources at about 4% of a block's budget at the median, idle
+    or loaded, with a tail that tripled under load; `PatSpatialEngineSmoke` saw a loaded machine miss
+    blocks while the render thread was mostly idle. Hence a separate render thread and a ring sized
+    for scheduler stalls. Raising the render thread's priority starved OpenAL and was reverted (see
+    the comment in `PatSpatialRoom.start`). The percentiles are in
+    `dev_docs/PAT_SPATIAL_MEASUREMENTS.md`, which also says what each smoke on this path checks.
+
+## See also
+
+- [Making a sound in Field](sound_paths.md) compares this with every other sound path.
+- [Pattern language](pattern_language.md) covers `pat`, `with` and mini-notation.
+- The full API is in [`PatSpatial.kt` in the generated reference](reference/patterns.md#patspatial-kt).

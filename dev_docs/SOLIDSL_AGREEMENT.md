@@ -1,4 +1,4 @@
-# How `afield.solidsl`'s two lowerings are held to each other
+# How `afield.lang.solidsl`'s two lowerings are held to each other
 
 Measurements that used to sit in `public/docs/solid_notation.md` and were crowding out the language
 it documents. Moved here 2026-09-13. Everything below is asserted by `SolidSLCrossValidationTest`,
@@ -182,8 +182,8 @@ negotiation.
 ## The two lathes, and which of their bounds are guarded
 
 Displaced from `public/docs/solid_notation.md` on 2026-09-16. The page keeps the trap itself —
-`afield.stdlib.revolveMesh` turns about **Y** with a `(radius, y)` profile, and
-`afield.manifold.Section.revolved` (and therefore `Profile.revolved`) about **Z** with
+`afield.geometry.mesh.revolveMesh` turns about **Y** with a `(radius, y)` profile, and
+`afield.geometry.solid.manifold.Section.revolved` (and therefore `Profile.revolved`) about **Z** with
 `(radius, z)` — and says that porting a profile means swapping `y` and `z`. What moved here is the
 measurement it illustrated that with.
 

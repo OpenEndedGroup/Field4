@@ -12,6 +12,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COMMON_RESOURCES = REPO_ROOT / "src" / "commonMain" / "resources"
 JS_RESOURCES = REPO_ROOT / "src" / "jsMain" / "resources"
+EXAMPLE_DOCUMENTS = REPO_ROOT / "public" / "docs" / "assets" / "agent_transcripts"
+BUNDLED_EXAMPLES = ("hello_display", "shared_types_demo")
 
 OFFLINE_FILES = (
     "offline.html",
@@ -28,7 +30,7 @@ RESOURCE_FILES = (
 GENERATED_DIRS = (
     "min",
     "woff2",
-    "metadata_store",
+    "assets/agent_transcripts",
 )
 
 
@@ -81,7 +83,7 @@ python3 -m http.server 8000
 Then open:
 
 ```text
-http://localhost:8000/offline.html?file=metadata_store/simple_hello/metadata.edn
+http://localhost:8000/offline.html?file=assets/agent_transcripts/hello_display/metadata.edn
 ```
 
 ## Contents
@@ -92,7 +94,7 @@ http://localhost:8000/offline.html?file=metadata_store/simple_hello/metadata.edn
 - `examples-gallery.html` - sample document gallery
 - `min/vs/` - vendored Monaco editor
 - `woff2/` and `iosevka.css` - vendored Iosevka web fonts
-- `metadata_store/` - bundled example Field documents
+- `assets/agent_transcripts/` - bundled documents generated from CI-executed transcripts
 """,
         encoding="utf-8",
     )
@@ -156,7 +158,12 @@ def sync_target(target: Path, *, metadata: bool, docs: bool) -> None:
     replace_dir(JS_RESOURCES / "woff2", target / "woff2")
 
     if metadata:
-        replace_dir(REPO_ROOT / "metadata_store", target / "metadata_store")
+        for name in BUNDLED_EXAMPLES:
+            replace_dir(EXAMPLE_DOCUMENTS / name, target / "assets" / "agent_transcripts" / name)
+        # Retire the old generated sample bundle when refreshing an existing distribution.
+        legacy = target / "metadata_store"
+        if legacy.is_dir():
+            shutil.rmtree(legacy)
 
     remove_stale_root_fonts(target)
 
@@ -179,7 +186,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--no-metadata",
         action="store_true",
-        help="Do not copy metadata_store examples into the target.",
+        help="Do not copy the bundled example documents into the target.",
     )
     parser.add_argument(
         "--no-docs",

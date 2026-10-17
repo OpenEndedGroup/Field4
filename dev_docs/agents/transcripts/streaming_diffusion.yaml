@@ -37,19 +37,19 @@ operations:
       h: 80.0
     properties:
       code: |
-        import afield.four.util.Options
-
+        import afield.graphics.vulkan.util.Options
+        
         prop<Window>(window)
         prop<Renderer>(renderer)
-
+        
         Options.enableHDR = false
         Options.profiling = false
-
+        
         once.renderer {
             window = Window("Field")
             Renderer(window)
         }
-
+        
         println("agent graphics renderer ready")
         start(renderer::run)
 - create:
@@ -62,16 +62,16 @@ operations:
       h: 80.0
     properties:
       code: |
-        import afield.controlGroup
-        import afield.displayOpen
-        import afield.four.diffusion.*
-        import afield.four.modules.fromContextWithNameOrNull
-
+        import afield.ui.output.controlGroup
+        import afield.ui.output.displayOpen
+        import afield.media.video.diffusion.*
+        import afield.document.context.fromContextWithNameOrNull
+        
         // Connect this box beneath a running renderer box before launching it.
         val owner: Renderer = fromContext()
         prop<SpinningDiffusionDemo>(diffusionDemo)
         fromContextWithNameOrNull<SpinningDiffusionDemo>("diffusionDemo")?.close()
-
+        
         // Edit these before launching. identity/invert also use the GPU bridge in both directions.
         val backend = "diffusion"
         val whiteOnBlack = false
@@ -82,9 +82,9 @@ operations:
             print("Streaming diffusion unavailable: ${support.reason}")
             markdown("""
                 ## Streaming diffusion is unavailable here
-
+        
                 ${support.reason}
-
+        
                 See [Streaming diffusion](https://openendedgroup.com/Field4/streaming_diffusion/).
                 The model environment is optional; you can keep editing this document.
             """.trimIndent())
@@ -153,7 +153,6 @@ operations:
                 }
             }.end { demo.close() }
         }
-
 - connect:
     parent: diffusion_renderer
     child: diffusion_curves

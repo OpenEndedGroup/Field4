@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="gs_renderer" index="0" -->
 
 ```edn [field-box id="gs_renderer" role="properties"]
-{"id" "gs_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["gs_sim"] "properties" {"children" #{#afield/box "gs_sim"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gs_renderer_code_.kt" "lines" 11 "characters" 249 "sha256" "cb663790768b9b9d82b5859aa0d6a9178d777df8c51f8b6ba93017b50cf3c29b"}]}
+{"id" "gs_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["gs_sim"] "properties" {"children" #{#afield/box "gs_sim"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gs_renderer_code_.kt" "lines" 11 "characters" 260 "sha256" "9d166871653e944b67b4c5970a92cef0d19e86a143a53e7f51dc725dea242279"}]}
 ```
 
 ```kotlin [field-property box="gs_renderer" name="code" path="gs_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="gs_sim" index="1" -->
 
 ```edn [field-box id="gs_sim" role="properties"]
-{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 53 "characters" 2045 "sha256" "2bb3bf4bc9c01e071f28cc2ef3c884a32f5d331d62a0d0f1b8ce56a803e009fb"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 107 "characters" 5188 "sha256" "596fd834b67573b3c07bc271c293d32f7cacb88990e5d91c4cb968db5f7d64b7"}]}
+{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 52 "characters" 1914 "sha256" "edd18ba5250dbf2ddc7e8fb23ae5e8b3c400cb068983745fb0d8f564e38f0c40"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 107 "characters" 5188 "sha256" "596fd834b67573b3c07bc271c293d32f7cacb88990e5d91c4cb968db5f7d64b7"}]}
 ```
 
 ```glsl [field-property box="gs_sim" name="compute" path="gs_sim_compute_.glsl"]
@@ -45,7 +45,7 @@ layout(std430, buffer_reference) buffer State   { vec4 a[]; };
 layout(std430, buffer_reference) buffer Anchors { vec4 a[]; };
 layout(std430, buffer_reference) buffer Heat    { vec4 a[]; };
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 layout(push_constant) uniform dat {
     State   state;        // this frame's half of the ping-pong — written
@@ -57,9 +57,8 @@ layout(push_constant) uniform dat {
     float   dt;
 } pc;
 
-// The live slot, and it goes AFTER the push block, not before: a program is free to read
-// `?pc.knobs`, and the generated function is emitted exactly where this line is. Put it above
-// and glslang says `'pc' : undeclared identifier` on a line number inside generated code.
+// The live slot. Field emits the generated function after the push block wherever this line
+// sits, so a program is free to read `?pc.knobs`.
 // Until Kotlin binds it this is `vec4 force(vec4 force_in) { return vec4(0.0); }`, so the
 // shader still compiles and the field simply sits still.
 {{ stack.auto.force }}

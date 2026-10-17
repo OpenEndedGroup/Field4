@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory" "mainLanguage" "isKotlinJsRoot"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "mainLanguage" "isKotlinJsRoot"]}
 ```
 
 ## 1. KotlinJS → Tone
@@ -25,17 +25,17 @@ From `code`
 {{ tone }}
 A tiny chord arpeggio played through a reverb, scheduled on the Transport.
 Tone is installed as the global `Tone` in the RemoteAR head; every name below is
-bound by afield.graphics.ToneKotlinJs and grounded against the vendored Tone.js.
+bound by afield.audio.tone.ToneKotlinJs and grounded against the vendored Tone.js.
 
 ```edn [field-box id="agent_tone_synth_sequence" role="properties"]
-{"id" "agent_tone_synth_sequence" "index" 1 "name" "Tone Synth Sequence" "parents" ["root" "agent_tone_synth_sequence_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_tone_synth_sequence_root"} "name" "Tone Synth Sequence" "_tombstone" false "frame" #afield/rect [120.0 690.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_tone_synth_sequence_code_.kt" "lines" 34 "characters" 1061 "sha256" "b3d344d0debab8784c216a13555cd5255dc2550e643a5b9af284e7adfabf9412"}]}
+{"id" "agent_tone_synth_sequence" "index" 1 "name" "Tone Synth Sequence" "parents" ["root" "agent_tone_synth_sequence_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_tone_synth_sequence_root"} "name" "Tone Synth Sequence" "_tombstone" false "frame" #afield/rect [120.0 690.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_tone_synth_sequence_code_.kt" "lines" 34 "characters" 1063 "sha256" "61b85cbaf2d2d94821f0b48387ae91cb86ea4900d64e2cd73adc01cf1ab93677"}]}
 ```
 
 ```kotlin [field-property box="agent_tone_synth_sequence" name="code" path="agent_tone_synth_sequence_code_.kt"]
 // {{ tone }}
 // A tiny chord arpeggio played through a reverb, scheduled on the Transport.
 // Tone is installed as the global `Tone` in the RemoteAR head; every name below is
-// bound by afield.graphics.ToneKotlinJs and grounded against the vendored Tone.js.
+// bound by afield.audio.tone.ToneKotlinJs and grounded against the vendored Tone.js.
 onStart {
     val synth = Tone.PolySynth()
     val reverb = Tone.Reverb(2.5)

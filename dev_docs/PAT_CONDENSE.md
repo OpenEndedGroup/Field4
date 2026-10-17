@@ -2,7 +2,7 @@
 
 Built on `nightly/2026-09-10/1-pattern-structure-synthesis`, on top of `c08b19003`.
 
-`src/jvmMain/kotlin/afield/four/synth/PatCondense.kt` takes a rhythm — a boolean step mask, a
+`src/jvmMain/kotlin/afield/audio/synth/PatCondense.kt` takes a rhythm — a boolean step mask, a
 `PatPattern<String>`, a `PatTranscription`, or a mini-notation string — and returns the shortest
 string in Field's own mini-notation whose parse renders to an **identical** event set, together with
 the structure it found and the compression it achieved.
@@ -108,7 +108,7 @@ is nothing shorter" from "the search stopped looking".
 
 ## Measurements
 
-All from `src/jvmTest/kotlin/afield/four/synth/PatCondenseTest.kt`, 2026-09-10, every floor asserted
+All from `src/jvmTest/kotlin/afield/audio/synth/PatCondenseTest.kt`, 2026-09-10, every floor asserted
 in the file rather than printed.
 
 **Round trip over the corpus that already existed.** The corpus is the set of distinct `pat("…")`
@@ -193,12 +193,12 @@ measured above it is false.
 
 ```bash
 # the tests
-./gradlew jvmTest --tests 'afield.four.synth.PatCondenseTest'
+./gradlew jvmTest --tests 'afield.audio.synth.PatCondenseTest'
 
 # the figure (roll 11 of the piano-roll gallery)
 python3 tools/run_field_tests.py --id synth.pat.gallery --port <p>
 python3 tools/field_backdoor.py --port <p> run-jvm-main \
-    afield.four.synth.PatPianoRollGallery --arg "$PWD/dev_docs/assets/pat_gallery"
+    afield.audio.synth.PatPianoRollGallery --arg "$PWD/dev_docs/assets/pat_gallery"
 
 # the demo
 ./field.sh dev_docs/agents/demos/pattern_condense --read-only

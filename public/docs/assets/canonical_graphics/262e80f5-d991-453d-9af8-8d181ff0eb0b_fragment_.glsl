@@ -4,8 +4,11 @@ layout(location = 0) in vec2 tc;
 void main()
 {
     float d = max(0.0, 0.5-length(tc-vec2(0.5)));
-    float w = fwidth(d);
-    d = smoothstep(0.1, 0.1+w, d)*smoothstep(0.14+w, 0.14, d);
-    uFragColor = vec4(1.0, 0.8, 0.4, d*0.2);
-    if (d<0.01) discard;
+    // A positive pixel feather keeps both smoothstep intervals well defined.
+    float w = max(fwidth(d), 1e-6);
+    // d increases inward: enter the outer rim, then fade into the inner hole.
+    float coverage = smoothstep(0.1, 0.1+w, d) *
+    (1.0 - smoothstep(0.14, 0.14+w, d));
+    uFragColor = vec4(1.0, 0.8, 0.4, coverage*0.2);
+    if (coverage<0.01) discard;
 }

@@ -6,7 +6,7 @@ A small network can approximate a function that is expensive to evaluate at ever
 
 ## Open the experiment
 
-Open **Starting points → learned_shader** after building the optional shaders. **Compare** shows the original function, the learned approximation, and absolute RGB error multiplied by eight. The other views fill the image with either the original or the approximation.
+Open the [learned_shader](agent_transcripts.md#learned_shader) starting point after building the [optional shaders](#optional-toolchain). **Compare** shows the original function, the learned approximation, and absolute RGB error multiplied by eight. The other views fill the image with either the original or the approximation.
 
 Switch **Cooperative vectors** to compare NVIDIA's accelerated matrix-vector operations with ordinary shader arithmetic. Both use the same weights. **Animate time** traverses the training interval, which is −1 to 1; the API rejects a time outside it rather than extrapolating.
 
@@ -71,11 +71,13 @@ val dataset = ShaderTraining.capture(
 )
 ```
 
-Call capture **between frames**, for example from the Starting Point's button handler in its `frames` loop. Export briefly blocks that loop while rendering and reading back the dataset; training itself runs separately. Each capture uses a new directory, so an interrupted export cannot masquerade as a completed dataset.
+Call capture **between frames**, for example from the Starting Point's button handler in its `frames` loop. Export briefly blocks that loop while rendering and reading back the dataset; training itself runs separately. Each capture uses a new directory, so an interrupted export is never mistaken for a completed dataset.
 
-Keep every input not represented by x, y or the chosen parameter fixed. If your shader also depends on camera position, normals, material identity, arbitrary texture contents or feedback history, this is a fit of the resulting image for the captured setup—not a general replacement for that material or simulation. A camera move or a changed texture requires a new fit. More independent inputs require an explicitly extended dataset, feature encoding and network; they are not inferred from GLSL.
+Keep every input not represented by x, y or the chosen parameter fixed. If your shader also depends on camera position, normals, material identity, arbitrary texture contents or feedback history, the model fits the resulting image for the captured setup only, and does not replace that material or simulation in general. A camera move or a changed texture requires a new fit. More independent inputs require an explicitly extended dataset, feature encoding and network; they are not inferred from GLSL.
 
 ### Train, inspect, and load
+
+Start training in the background from the captured dataset:
 
 ```diffstatic {data-lang=kotlin}
 val trainingJob = ShaderTraining.trainAsync(
@@ -124,7 +126,7 @@ Captured models use inference-only mode by default. They never compare themselve
 
 ## The compiled draw path
 
-The trained result is a **buffer of weights**, used by a fixed **Slang compute shader** compiled directly to SPIR-V. Training changes the weights; it does not generate a new GLSL translation of your source. The current draw path is:
+The trained result is a buffer of weights, used by a fixed Slang compute shader compiled directly to SPIR-V. Training changes the weights; it does not generate a new GLSL translation of your source. The current draw path is:
 
 **normalized x, y, parameter → Slang network → RGB buffer → GLSL resolve → `learned.output` RTT → your GLSL material**
 
@@ -219,7 +221,7 @@ void main() {
 
 ### Keep learning finished, keep the material editable
 
-Open **Starting points → learned_shader**. Stop the original comparison box and launch **editable learned material** under the same renderer. This second scene loads the same trained model at a fixed parameter and presents its output to an ordinary `moduleHere()`. The left panel shows the raw learned image; the right shows a color-and-stripe treatment.
+Open the [learned_shader](agent_transcripts.md#learned_shader) starting point. Stop the original comparison box and launch **editable learned material** under the same renderer. This second scene loads the same trained model at a fixed parameter and presents its output to an ordinary `moduleHere()`. The left panel shows the raw learned image; the right shows a color-and-stripe treatment.
 
 ![The fixed learned image on the left and an editable GLSL treatment on the right](assets/learned_shader/material.png)
 
@@ -237,7 +239,7 @@ renderer.renderList.preTargets["editable learned material"] = learned
 renderer.renderList.modules["editable learned material"] = material
 ```
 
-This is that box's actual **fragment** property. Edit `.65`, change the channel order, or change the stripes while it runs, then use **Reload Shader (Alt-R)**:
+This is that box's actual **fragment** property. Edit `.65`, change the channel order, or change the stripes while it runs, then use **Reload Shader (alt/option-R)**:
 
 ```diffstatic {data-lang=glsl}
 #version 460
@@ -268,7 +270,7 @@ There are three useful kinds of edits:
 
 Changing the network's inputs, layer sizes or feature encoding is a model change: update training and host layout validation together. Adding an effect after inference is just ordinary shader editing.
 
-You can also treat `learned(v)` as an ingredient inside the Slang source itself—for example, multiply its RGB by an analytic pattern in `main()`. That requires recompiling the kernel, but can reuse the saved weights. Keep `v` inside the model's training domain; changing the surrounding source does not give the network knowledge of new inputs.
+You can also use `learned(v)` inside the Slang source itself: for example, multiply its RGB by an analytic pattern in `main()`. That requires recompiling the kernel, but can reuse the saved weights. Keep `v` inside the model's training domain; changing the surrounding source does not give the network knowledge of new inputs.
 
 ## The original analytic example
 
@@ -293,7 +295,7 @@ The bundled model is 3,456 bytes of little-endian FP16 weights and biases, with 
 
 The built-in striped function's held-out training set has RGB MSE **0.00127** across 8,192 points after 6,000 updates and FP16 weight conversion. The GPU check compares both execution paths with an independent CPU evaluation of those quantized weights. [Recorded timings and numerical errors](assets/learned_shader/measurements.json) compare the original function, ordinary network arithmetic, and cooperative-vector inference after warm-up; how each was checked against an independent CPU evaluation is in `dev_docs/lighting/NEURAL_TOOLS.md`.
 
-On an RTX 4090 at 1920 × 1080, the network takes **5.57 ms** with ordinary arithmetic and **0.307 ms** with cooperative vectors—about 18 times faster. Maximum sampled disagreement with the CPU is 0.00105 RGB for cooperative inference. The original striped wave function itself takes about **0.279 ms**, so this particular approximation does **not** beat the original shader. It demonstrates a fast learned function and an inspectable tradeoff, rather than a reason to replace every analytic function with a network.
+On an RTX 4090 at 1920 × 1080, the network takes **5.57 ms** with ordinary arithmetic and **0.307 ms** with cooperative vectors, about 18 times faster. Maximum sampled disagreement with the CPU is 0.00105 RGB for cooperative inference. The original striped wave function itself takes about **0.279 ms**, so this particular approximation is slower than the original shader. Use it to see how fast a learned function can run and what it costs in accuracy; a network is not a faster replacement for every analytic function.
 
 The **learned_from_module** workflow measures the complete comparison target as well as inference. In the 1080p run, cooperative inference alone was **0.257 ms median**, but the learned view including buffer-to-texture resolve and comparison display was **5.58 ms**, versus **1.98 ms** for the source view. These spans exclude final window presentation. The original source pass was verified to be skipped in learned-only mode. Its extra passes outweigh any saving for this teacher; use the full-path timings when deciding whether to replace your shader. The runs are warmed, under Wayland with automatic GPU clocks rather than fixed ones.
 
@@ -304,9 +306,9 @@ The discontinuity deserves its own measurement. The edge band covers pixels with
 | Built-in function, parameter 0.25 | 0.00118 | 0.0175 | 0.000503 |
 | Captured `moduleHere()`, held-out parameter 0.173 | 0.000194 | 0.00321 | 0.0000700 |
 
-Maximum individual RGB error is about **0.50** in both studies, despite their much smaller image-wide averages. The network uses continuous features and ReLU layers, so it approximates a hard step with a finite transition. The two studies use different backgrounds, training data and step counts; this table describes their respective fits rather than ranking training methods.
+Maximum individual RGB error is about **0.50** in both studies, despite their much smaller image-wide averages. The network uses continuous features and ReLU layers, so it approximates a hard step with a finite transition. The two studies use different backgrounds, training data and step counts, so the table describes each fit and does not rank the training methods.
 
-This is an approximation, and the error panel is part of the instrument. The network can lose small details or smooth a deliberate discontinuity. Its fixed training domain and small architecture are useful constraints for an experiment, not evidence that arbitrary shaders can be compressed this way.
+The result is an approximation, so keep the error panel in view. The network can lose small details or smooth a deliberate discontinuity, and its fixed training domain and small architecture mean an arbitrary shader will not necessarily compress this way.
 
 ## Optional toolchain
 

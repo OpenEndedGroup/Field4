@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["learned_shader" "learned_material"] "properties" {"children" #{#afield/box "learned_shader" #afield/box "learned_material"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 289 "sha256" "48b4c5aeec967fc6ec5dc83b23de5c1e6e911c61acc39c811a8d1eac77f6020a"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["learned_shader" "learned_material"] "properties" {"children" #{#afield/box "learned_shader" #afield/box "learned_material"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 300 "sha256" "ed9c90e9909e15814bcf04d30e27c778e23b8bdb27e200771a092e766fb4a29b"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -38,14 +38,14 @@ start(renderer::run)
 <!-- field-box id="learned_shader" index="1" -->
 
 ```edn [field-box id="learned_shader" role="properties"]
-{"id" "learned_shader" "index" 1 "name" "learned shader" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "learned shader" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_shader_code_.kt" "lines" 37 "characters" 1452 "sha256" "c2a2f060c6cc521e4eb804813d85da82a27a811cfcf1c2b4796701056817a7d6"}]}
+{"id" "learned_shader" "index" 1 "name" "learned shader" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "learned shader" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_shader_code_.kt" "lines" 37 "characters" 1489 "sha256" "79fa58d4631f8e5a60235b862d678babaf44733f2aa89429b29415ee7f4a7bac"}]}
 ```
 
 ```kotlin [field-property box="learned_shader" name="code" path="learned_shader_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.neural.*
-import afield.four.modules.fromContextWithNameOrNull
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.shader.learning.*
+import afield.document.context.fromContextWithNameOrNull
 
 prop<LearnedShader>(lab)
 fromContextWithNameOrNull<LearnedShader>("lab")?.close()
@@ -86,12 +86,12 @@ frames {
 <!-- field-box id="learned_material" index="2" -->
 
 ```edn [field-box id="learned_material" role="properties"]
-{"id" "learned_material" "index" 2 "name" "editable learned material" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "editable learned material" "_tombstone" false "frame" #afield/rect [400.0 340.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_material_code_.kt" "lines" 35 "characters" 1477 "sha256" "7e9f164605c934e4607f6329cfb69cece416f1daabb7d4b055b637f7bb852f83"} {"name" "vertex" "language" "glsl" "path" "learned_material_vertex_.glsl" "lines" 7 "characters" 175 "sha256" "1e43f7ca1494c90d2072d80eb62e4118246e249203b45177e5d04315758f8538"} {"name" "fragment" "language" "glsl" "path" "learned_material_fragment_.glsl" "lines" 12 "characters" 437 "sha256" "bc8a710aa843e8bb6e8b66e697d8ed3e2fe8680ac3af0677f7f5c2804bf3a0c9"}]}
+{"id" "learned_material" "index" 2 "name" "editable learned material" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "editable learned material" "_tombstone" false "frame" #afield/rect [400.0 340.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_material_code_.kt" "lines" 35 "characters" 1494 "sha256" "2fc2d3c4a16d4a99fa47f0065adbbb55df1fd4c2262154496bf92ff86b7d38a6"} {"name" "vertex" "language" "glsl" "path" "learned_material_vertex_.glsl" "lines" 7 "characters" 175 "sha256" "1e43f7ca1494c90d2072d80eb62e4118246e249203b45177e5d04315758f8538"} {"name" "fragment" "language" "glsl" "path" "learned_material_fragment_.glsl" "lines" 12 "characters" 437 "sha256" "bc8a710aa843e8bb6e8b66e697d8ed3e2fe8680ac3af0677f7f5c2804bf3a0c9"}]}
 ```
 
 ```kotlin [field-property box="learned_material" name="code" path="learned_material_code_.kt"]
-import afield.four.neural.LearnedShader
-import afield.four.modules.fromContextWithNameOrNull
+import afield.graphics.shader.learning.LearnedShader
+import afield.document.context.fromContextWithNameOrNull
 
 // A separate scene: stop the original learned-shader box before launching this one.
 // Edit this box's fragment property while it runs; the network stays allocated.

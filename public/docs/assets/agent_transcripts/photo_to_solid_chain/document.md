@@ -3,21 +3,21 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
-## 1. the same solid, marched — and is parallel = true reproducible?
+## 1. the same solid, marched
 
 <!-- field-box id="photo_levelset" index="0" -->
 
 ```edn [field-box id="photo_levelset" role="properties"]
-{"id" "photo_levelset" "index" 0 "name" "the same solid, marched — and is parallel = true reproducible?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the same solid, marched — and is parallel = true reproducible?" "_tombstone" false "frame" #afield/rect [60.0 3100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_levelset_code_.kt" "lines" 44 "characters" 2354 "sha256" "a65313cc59eec340b2edcd66a9543b2462d2fe8a0b545912574215a02a66de79"}]}
+{"id" "photo_levelset" "index" 0 "name" "the same solid, marched" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the same solid, marched" "_tombstone" false "frame" #afield/rect [60.0 3100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_levelset_code_.kt" "lines" 20 "characters" 1088 "sha256" "2fe2514e859d47da5d8ab61d7f36c32ab0f1c117ee54fe10a405472840b38e9e"}]}
 ```
 
 ```kotlin [field-property box="photo_levelset" name="code" path="photo_levelset_code_.kt"]
 import afield.examples.chain.PhotoToSolidChain
-import afield.manifold.Solid
-import afield.manifold.toSolid
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
 
 // Two independent constructions of the same object: the grid triangulation, and a marched
 // level set of the same depth field. Compared against EACH OTHER, not against a constant.
@@ -26,39 +26,15 @@ val edge = 2.0 / 128
 Solid.scope {
     // plaqueVolume, not volume: the field describes the plaque, and `volume` is the plaque
     // UNION the frame. Comparing against the wrong one of those reads as a 7% disagreement.
-    val marched = PhotoToSolidChain.marchedPlaque(mount.depth, mount.footprintZ, edge, parallel = false)
+    val marched = PhotoToSolidChain.marchedPlaque(mount.depth, mount.footprintZ, edge)
     val apart = kotlin.math.abs(marched.volume - mount.plaqueVolume) / mount.plaqueVolume
-    println("grid %.9f, marched %.9f — %.3f%% apart at edgeLength %.4f"
-        .format(mount.plaqueVolume, marched.volume, apart * 100, edge))
-    println("two constructions that share no code, agreeing to about one marching cell")
+    markdown(buildString {
+        appendLine("grid volume %.9f, marched %.9f — **%.3f%%** apart at edgeLength %.4f"
+            .format(mount.plaqueVolume, marched.volume, apart * 100, edge))
+        appendLine()
+        appendLine("Two constructions that share no code, agreeing to about one marching cell.")
+    }, width = 760)
 }
-
-// Solid.levelSet's KDoc says parallel = true is not reproducible. Eight runs each way, in
-// three regimes. `floor` erodes the plaque into islands, which is the only thing that
-// changes between them — the field, the bounds and the edge length are identical.
-val regimes = listOf(
-    "the plaque itself" to -0.12,
-    "eroded a little" to 0.10,
-    "eroded to islands" to 0.14,
-)
-val rows = regimes.map { (label, floor) ->
-    label to PhotoToSolidChain.reproducibilityCensus(mount.depth, mount.footprintZ, 2.0 / 64, floor)
-}
-
-// A table, not a paragraph: the whole point is that one column is constant and the other
-// is not. An answer counts as the same only if triangles, components AND the volume to
-// twelve places all agree, so this cannot report reproducibility that is not there.
-markdown(buildString {
-    appendLine("| regime | components | `parallel = false` | `parallel = true` |")
-    appendLine("| --- | --- | --- | --- |")
-    rows.forEach { (label, c) ->
-        appendLine("| $label (floor %+.2f) | %d | **%s** distinct | **%s** distinct |"
-            .format(c.floor, c.parts, c.sequentialRatio(), c.parallelRatio()))
-    }
-    appendLine()
-    appendLine("8 runs each way per regime, edgeLength ${"%.4f".format(2.0 / 64)}, one depth field.")
-    appendLine("Distinct answers are counted on (triangles, components, volume to 1e-12).")
-}, width = 760)
 ```
 
 ## 2. the depth map as a closed relief plaque
@@ -101,13 +77,13 @@ showImgGrid(
 <!-- field-box id="photo_boolean" index="2" -->
 
 ```edn [field-box id="photo_boolean" role="properties"]
-{"id" "photo_boolean" "index" 2 "name" "mounted in a frame, and what the Boolean owes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mounted in a frame, and what the Boolean owes" "_tombstone" false "frame" #afield/rect [60.0 2100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_boolean_code_.kt" "lines" 33 "characters" 1652 "sha256" "0301ac42623cd277a75ba0582e005b8f763b27e64e6d6b403c60019435504e88"}]}
+{"id" "photo_boolean" "index" 2 "name" "mounted in a frame, and what the Boolean owes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mounted in a frame, and what the Boolean owes" "_tombstone" false "frame" #afield/rect [60.0 2100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_boolean_code_.kt" "lines" 33 "characters" 1682 "sha256" "75e62fae4428626983e01e068ae808c68a5010ae34decb040446d6816397e75d"}]}
 ```
 
 ```kotlin [field-property box="photo_boolean" name="code" path="photo_boolean_code_.kt"]
 import afield.examples.chain.PhotoToSolidChain
-import afield.manifold.Solid
-import afield.manifold.toSolid
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
 
 val mount = PhotoToSolidChain.mount()
 println(mount.summary())

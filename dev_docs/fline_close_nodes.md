@@ -34,10 +34,10 @@ at `7abe8736` and running that one test.)
 
 | function | file:line | what it did |
 |---|---|---|
-| `findSelfIntersections` | `FLineGeometry.kt:674` | threw |
+| `findSelfIntersections` (since removed; `selfCrossings2D`) | `FLineMeasure.kt:148` | threw |
 | `bySimplifying` | `:590` | threw |
 | `byConvexHull2D` | `:831` | threw |
-| `windingNumber`, and so `FLine.contains` | `:1110` | threw — no `Close` branch at all, unlike both its siblings |
+| `windingNumber`, and so `FLine.contains` (both since replaced by `windingNumber2D` / `contains2D`) | `:1110` | threw — no `Close` branch at all, unlike both its siblings |
 | `centroid2D` (degenerate branch only) | `:1212` | threw |
 | `byReversing` | `:1301` | **wrong answer** — see below |
 | `bySubdividing` | `:2130` | threw on some shapes, **silently dropped the `Close`** on the rest |
@@ -58,7 +58,7 @@ a `MoveTo`, which neither branch matches. `FLine().lineTo(...)` is legal, and it
 outline arriving from a `java.awt.Shape` has **no `Close` node at all**. Pinned at four shapes,
 including a two-contour ring, by `InteriorCloseNodeTest.awtNeverEmitsACloseNode`.
 
-**From `afield.stdlib.arrow`.** `arrow(startHead = true, endHead = true)` (`StandardDrawing.kt:396`)
+**From `afield.graphics.render.arrow`.** `arrow(startHead = true, endHead = true)` (`StandardDrawing.kt:396`)
 calls `appendHead` (`:426`) twice, and `appendHead` ends each arrowhead with `target.close()`
 (`:439`). So a double-headed arrow is
 
@@ -287,10 +287,10 @@ which 1 interior` — and runs ten operations over it, every one of which used t
 
 | file | what |
 |---|---|
-| `src/jvmMain/kotlin/afield/graphics/FLine.kt` | `byFiltering`, `fast2DBounds` |
-| `src/jvmMain/kotlin/afield/graphics/FLineGeometry.kt` | the ten geometry sites; `byReversing` and `windingNumber` rewritten |
-| `src/jvmMain/kotlin/afield/graphics/FLinesAndJavaShapes.kt` | `intersect` family off-by-one; `_flineToJavaShape` closes and tolerates a leading `LineTo`; `CubicSegment3(FLine, index)`; `copyDepthFrom` |
-| `src/jvmTest/kotlin/afield/graphics/InteriorCloseNodeTest.kt` | the corpus, the audit sweep, per-site tests, the blast radius |
-| `src/jvmTest/kotlin/afield/graphics/InteriorCloseFigureTest.kt` | the figures, and the assertions that keep them honest |
-| `src/jvmTest/kotlin/afield/graphics/ArcLengthSpacingTest.kt` | the restored multi-subpath dashing regression |
+| `src/jvmMain/kotlin/afield/geometry/path/FLine.kt` | `byFiltering`, `fast2DBounds` |
+| `src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt` | the ten geometry sites; `byReversing` and `windingNumber` rewritten |
+| `src/jvmMain/kotlin/afield/geometry/path/java2d/FLinesAndJavaShapes.kt` | `intersect` family off-by-one; `_flineToJavaShape` closes and tolerates a leading `LineTo`; `CubicSegment3(FLine, index)`; `copyDepthFrom` |
+| `src/jvmTest/kotlin/afield/geometry/path/InteriorCloseNodeTest.kt` | the corpus, the audit sweep, per-site tests, the blast radius |
+| `src/jvmTest/kotlin/afield/geometry/path/InteriorCloseFigureTest.kt` | the figures, and the assertions that keep them honest |
+| `src/jvmTest/kotlin/afield/geometry/path/ArcLengthSpacingTest.kt` | the restored multi-subpath dashing regression |
 | `dev_docs/agents/transcripts/close_node_demo.yaml` | the replayable demo |

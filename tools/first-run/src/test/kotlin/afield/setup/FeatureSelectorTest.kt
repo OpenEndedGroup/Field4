@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 class FeatureSelectorTest {
     private fun options(platform: String = "linux", tools: (String) -> Boolean = { true }, nvidia: Boolean = true,
                         rustErrors: List<String> = emptyList(), rustup: Boolean = true) =
-        featureOptions(platform, tools, nvidia, rustErrors, rustup)
+        featureOptions(platform, tools, nvidia, rustErrors, rustup, solidcraftErrors = emptyList())
 
     @Test fun missingToolsDisableFeaturesAndCannotBeSelectedEvenFromSavedPreferences() {
         val choices = options(tools = { it != "cargo" && it != "uv" }, rustup = false)
@@ -39,6 +39,12 @@ class FeatureSelectorTest {
         assertFalse(windows.any { it.extra.id in setOf("syphon", "csound", "tracker") })
         assertTrue("cl" in windows.first { it.extra.id == "tetgen" }.prerequisites)
         assertTrue("python" in windows.first { it.extra.id == "python" }.prerequisites)
+        for (platform in listOf("mac", "linux", "windows")) {
+            val patchy = options(platform).first { it.extra.id == "patchy-web" }
+            assertEquals("buildPatchyWeb", patchy.extra.task)
+            assertTrue(patchy.enabled)
+            assertTrue(patchy.prerequisites.containsAll(setOf("git", "cmake")))
+        }
     }
 
     @Test fun oldRustDisablesPaintAndMovementStopsAtListEdges() {
@@ -47,6 +53,17 @@ class FeatureSelectorTest {
         val state = FeatureSelection(choices)
         state.move(-100); assertEquals(0, state.cursor)
         state.move(100); assertEquals(choices.lastIndex, state.cursor)
+    }
+
+    @Test fun solidcraftNeedsModernRustAndHasAnOptInBuild() {
+        val old = featureOptions("mac", { true }, rustErrors = emptyList(), solidcraftErrors = listOf("rustc must be at least 1.95"))
+        assertFalse(old.first { it.extra.id == "solidcraft" }.enabled)
+        for (platform in listOf("mac", "linux", "windows")) {
+            val choice = options(platform).first { it.extra.id == "solidcraft" }
+            assertEquals("buildSolidCraftNative", choice.extra.task)
+            assertTrue(choice.prerequisites.containsAll(setOf("git", "cargo", "rustc")))
+            assertTrue("buildSolidCraftNative" in preparationCommands(setOf("solidcraft"), platform).single())
+        }
     }
 
     @Test fun rowsFitNarrowTerminalsAndRightAlignPrerequisitesWithoutZeroPrefixes() {

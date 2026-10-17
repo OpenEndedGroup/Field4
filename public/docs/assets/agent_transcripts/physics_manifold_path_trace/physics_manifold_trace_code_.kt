@@ -1,19 +1,19 @@
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.physics.PlaneCollider
-import afield.four.physics.SimdVerlet
-import afield.four.physics.SphereCollider
-import afield.four.physics.addCloth
-import afield.four.physics.addColliders
-import afield.four.util.Camera
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.linalg.Vector3f
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.simulation.physics.PlaneCollider
+import afield.simulation.physics.SimdVerlet
+import afield.simulation.physics.SphereCollider
+import afield.simulation.physics.addCloth
+import afield.simulation.physics.addColliders
+import afield.graphics.vulkan.util.Camera
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.math.linalg.Vector3f
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)
@@ -30,8 +30,8 @@ val settleFrames = 300  // physics frames before the geometry is taken
 // ---------------------------------------------------------------------------------
 
 // ---- stage one: the physics ----------------------------------------------------
-// Gravity is +y in SimdVerlet, which is why the sphere sits BELOW the sheet at y = 0.8
-// and the floor's legal side is above a plane whose normal is -y.
+// +y is up, as in the path tracer: gravity is negative, the sphere sits below the sheet,
+// and the floor is a plane whose normal is +y.
 val sim = SimdVerlet(SimdVerlet.State3.empty())
 val cloth = sim.addCloth(
     width = side,
@@ -43,20 +43,18 @@ val cloth = sim.addCloth(
     pinned = { _, _ -> false },
 )
 val world = sim.addColliders(
-    SphereCollider(0f, 0.78f, 0f, radius = 0.52f).also { it.friction = 0.8f; it.margin = 0.01f },
-    PlaneCollider(0f, -1f, 0f, offset = -1.28f).also { it.friction = 0.9f },
+    SphereCollider(0f, -0.78f, 0f, radius = 0.52f).also { it.friction = 0.8f; it.margin = 0.01f },
+    PlaneCollider(0f, 1f, 0f, offset = -1.28f).also { it.friction = 0.9f },
 )
 repeat(settleFrames) {
-    cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = 9.8f, iterations = 16)
+    cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = -9.8f, iterations = 16)
 }
 println("${cloth.count} particles, ${world.contacts} contacts on the last frame")
 
 // ---- stage two: 364 rods, one batched union ------------------------------------
-// The path tracer has +y up and SimdVerlet has +y down, so read the physics out with y
-// negated once, here, rather than flipping the camera and the floor to match it.
 fun at(col: Int, row: Int): Triple<Double, Double, Double> {
     val p = cloth.position(col, row)
-    return Triple(p.x.toDouble(), -p.y.toDouble(), p.z.toDouble())
+    return Triple(p.x.toDouble(), p.y.toDouble(), p.z.toDouble())
 }
 
 val struts = buildList {

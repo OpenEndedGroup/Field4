@@ -11,15 +11,15 @@ layout(std430, buffer_reference) readonly buffer IndexBuffer {
 };
 
 layout(push_constant) uniform PushConstants {
-    mat4 modelView;        // view * model
-    mat4 proj;             // projection
+    mat4 modelView; // view * model
+    mat4 proj; // projection
 
     vec4 materialBaseColor;
 
-    uint vertexOffset;     // in floats
-    uint indexOffset;      // in indices
-    uint vertexStride;     // in floats
-    uint useVertexColor;   // bool as uint
+    uint vertexOffset; // in floats
+    uint indexOffset; // in indices
+    uint vertexStride; // in floats
+    uint useVertexColor; // bool as uint
 
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
@@ -36,34 +36,34 @@ void main()
     uint base = pc.vertexOffset + idx * pc.vertexStride;
 
     vec3 pos = vec3(
-        pc.vertexBuffer.vertexData[base + 0],
-        pc.vertexBuffer.vertexData[base + 1],
-        pc.vertexBuffer.vertexData[base + 2]
+    pc.vertexBuffer.vertexData[base + 0],
+    pc.vertexBuffer.vertexData[base + 1],
+    pc.vertexBuffer.vertexData[base + 2]
     );
 
     vec3 normal = vec3(
-        pc.vertexBuffer.vertexData[base + 3],
-        pc.vertexBuffer.vertexData[base + 4],
-        pc.vertexBuffer.vertexData[base + 5]
+    pc.vertexBuffer.vertexData[base + 3],
+    pc.vertexBuffer.vertexData[base + 4],
+    pc.vertexBuffer.vertexData[base + 5]
     );
 
     vec2 uv = vec2(
-        pc.vertexBuffer.vertexData[base + 6],
-        pc.vertexBuffer.vertexData[base + 7]
+    pc.vertexBuffer.vertexData[base + 6],
+    pc.vertexBuffer.vertexData[base + 7]
     );
 
     vec4 color = vec4(
-        pc.vertexBuffer.vertexData[base + 8],
-        pc.vertexBuffer.vertexData[base + 9],
-        pc.vertexBuffer.vertexData[base + 10],
-        pc.vertexBuffer.vertexData[base + 11]
+    pc.vertexBuffer.vertexData[base + 8],
+    pc.vertexBuffer.vertexData[base + 9],
+    pc.vertexBuffer.vertexData[base + 10],
+    pc.vertexBuffer.vertexData[base + 11]
     );
 
     if (pc.useVertexColor == 0u) {
         color = vec4(1.0);
     }
 
-    vec4 viewPos =  pc.proj * pc.modelView*vec4(pos, 1.0);
+    vec4 viewPos = pc.proj * pc.modelView*vec4(pos, 1.0);
 
     mat3 mv3 = mat3(pc.modelView);
     vec3 normalVS = normalize(mv3 * normal);

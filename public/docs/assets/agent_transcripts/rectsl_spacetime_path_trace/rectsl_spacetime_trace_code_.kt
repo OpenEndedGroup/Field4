@@ -1,20 +1,20 @@
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.util.Camera
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.rectsl.compileRectSL
-import afield.rectsl.toAdField
-import afield.stdlib.boundsOf
-import afield.stdlib.diagnose
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.marchingCubes
-import afield.stdlib.sampledField3D
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.vulkan.util.Camera
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.lang.rectsl.compileRectSL
+import afield.lang.rectsl.toAdField
+import afield.geometry.mesh.boundsOf
+import afield.geometry.mesh.diagnose
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.math.linalg.Vector3f
+import afield.geometry.mesh.marchingCubes
+import afield.geometry.mesh.sampledField3D
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)
@@ -92,7 +92,7 @@ val innerBounds = boundsOf(
 // level set closes it against the box.
 val unpadded = sampledField3D(inner, nx, ny, nt, innerBounds)
 val cutMarch = marchingCubes(unpadded, innerBounds, resolution = 140)
-val cutSolid = Solid.levelSetOf(unpadded, innerBounds, edgeLength = 0.12, parallel = false)
+val cutSolid = Solid.levelSetOf(unpadded, innerBounds, edgeLength = 0.12)
 println()
 println("with the volume ending exactly at the first and last frame:")
 println("  marchingCubes: ${cutMarch.triangleCount} triangles, " +
@@ -122,7 +122,7 @@ println("and with one empty slice each side:")
 println("  marchingCubes: ${marched.triangleCount} triangles, " +
     "watertight ${marched.isWatertight()}, genus ${marched.genus()}")
 
-val whole = Solid.levelSetOf(spacetime, bounds, edgeLength = 0.12, parallel = false)
+val whole = Solid.levelSetOf(spacetime, bounds, edgeLength = 0.12)
 println("  levelSetOf:    ${whole.triangleCount} triangles, status ${whole.status}, " +
     "genus ${whole.genus}, volume ${"%.3f".format(whole.volume)}")
 
@@ -137,7 +137,7 @@ val scene = PathTraceScene()
 val body = scene.material(PathTraceMaterial.plastic(1.0f, 1.0f, 1.0f, 0.26f))
 val floorMaterial = scene.material(PathTraceMaterial.plastic(0.42f, 0.43f, 0.45f, 0.5f))
 
-val place = afield.stdlib.linalg.Matrix4f().scale(0.34f, 0.34f, 0.34f)
+val place = afield.math.linalg.Matrix4f().scale(0.34f, 0.34f, 0.34f)
 val sceneLo = Vector3f(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)
 val sceneHi = Vector3f(-Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE)
 var appended = 0
@@ -154,7 +154,7 @@ parts.forEach { part ->
         colours[v * 3 + 1] = 0.34f + 0.14f * u
         colours[v * 3 + 2] = 0.86f - 0.76f * u
     }
-    val tinted = afield.stdlib.TriMesh(
+    val tinted = afield.geometry.mesh.TriMesh(
         positions = plain.positions,
         indices = plain.indices,
         normals = plain.normals,

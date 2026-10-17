@@ -36,7 +36,7 @@ not cut off.
 - **Release with Shift held** to put the transcript in the chat input without sending it, so you
   can edit it first.
 - **A quick tap** (under a quarter of a second) is ignored, and so is any take where you press
-  another key while holding the push-to-talk key. Option-letter and Ctrl-C keep working.
+  another key while holding the push-to-talk key. alt/option-letter and Ctrl-C keep working.
 - Each chat also has a **microphone button** beside its input. Hold it to talk into that chat
   specifically.
 
@@ -102,7 +102,7 @@ a new machine also waits for the download.
 Clips are transcribed one at a time, so a second take started while the first is being
 transcribed waits its turn.
 
-## When it does not work
+## Troubleshooting
 
 Field reports a problem as a notification titled **AI4 voice**.
 
@@ -134,8 +134,7 @@ message. Set `FIELD_VOICE_TIMEOUT_MS` to wait longer per clip, and
 download.
 
 To use a different Whisper model, set `FIELD_VOICE_MODEL` before starting Field: a Hugging Face
-repository for `mlx-whisper`, or a model name
-for `faster-whisper` (for example `medium.en`).
+repository for `mlx-whisper`, or a model name for `faster-whisper` (for example `medium.en`).
 
 ??? aside "Where the numbers on this page come from"
     The transcripts and timings were measured on 2026-10-04 by speaking the sentence with macOS
@@ -144,8 +143,4 @@ for `faster-whisper` (for example `medium.en`).
     runs gave the same text and 368–375 ms. Model load (from a warm Hugging Face cache) was
     3.8 s. A synthetic voice is easier than a person in a room, so read the timing as a floor and
     the priming result as the shape of the effect rather than its size. The browser half
-    (recording, the key handling, target choice) was read from `voiceInput.js` and
-    `outputareas2.js`, not exercised with a real microphone. `tools/test_whisper_worker.py` pins
-    the worker's line protocol with a stub backend, and `VoiceTranscriberTest` pins the Kotlin
-    side's timeout, stderr and reply-id handling against fake workers. Through `VoiceTranscriber`
-    itself the same clip took 4.9 s cold (model load included) and 0.38 s warm.
+    (recording, the key handling, target choice) has not been timed with a real microphone.

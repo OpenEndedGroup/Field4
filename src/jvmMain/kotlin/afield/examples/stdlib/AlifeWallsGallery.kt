@@ -1,16 +1,17 @@
 package afield.examples.stdlib
 
-import afield.graphics.FLine
-import afield.stdlib.NavGrid
-import afield.stdlib.ScriptWorld
-import afield.stdlib.WallResponse
-import afield.stdlib.closestPointOnSegment
-import afield.stdlib.montage
-import afield.stdlib.pointSourceField
-import afield.stdlib.rasterizeFLines
-import afield.stdlib.rasterizeFLinesFramed
-import afield.stdlib.savePng
-import afield.stdlib.sweepSegment
+import afield.geometry.path.FLine
+import afield.simulation.agents.NavGrid
+import afield.simulation.agents.ScriptWorld
+import afield.simulation.agents.WallResponse
+import afield.simulation.agents.closestPointOnSegment
+import afield.media.image.montage
+import afield.simulation.agents.pointSourceField
+import afield.simulation.agents.rasterizeFLines
+import afield.simulation.agents.rasterizeFLinesFramed
+import afield.media.image.savePng
+import afield.simulation.automata.savePng
+import afield.simulation.agents.sweepSegment
 import java.io.File
 import kotlin.math.PI
 import kotlin.math.abs
@@ -56,8 +57,8 @@ expect:
  *  - [figureCounterfactual] — routed `seek` against direct `seek` on an S-maze, over 8 seeds, with
  *    floors on both arrival fractions, on the margin, **and on both arms' path lengths** so that
  *    two stuck populations cannot pass as a win.
- *  - [figureSteering] — [afield.stdlib.BehaviourSteering.cling],
- *    [afield.stdlib.BehaviourSteering.gradient] and [WallResponse.BOUNCE], which are pictures first
+ *  - [figureSteering] — [afield.simulation.agents.BehaviourSteering.cling],
+ *    [afield.simulation.agents.BehaviourSteering.gradient] and [WallResponse.BOUNCE], which are pictures first
  *    and are checked for the one property each that a picture would not show.
  *
  * As a FIELD_TEST it renders to a temp dir and writes no committed assets. Pass `--out DIR` (or a
@@ -480,8 +481,8 @@ object AlifeWallsGallery {
      * The two arms are **identical in every respect but one drive**: the same arena, the same walls,
      * the same integrator, the same speeds, the same spawn positions from the same seed, the same
      * `avoidWalls` and `separate` terms at the same weights, the same arrival predicate and the same
-     * step budget. Arm A steers with [afield.stdlib.BehaviourSteering.route]; arm B steers with
-     * [afield.stdlib.BehaviourSteering.seek], which is the verb that was already there and is
+     * step budget. Arm A steers with [afield.simulation.agents.BehaviourSteering.route]; arm B steers with
+     * [afield.simulation.agents.BehaviourSteering.seek], which is the verb that was already there and is
      * untouched by this branch.
      *
      * The maze is an S and that is the point. A single barrier can be beaten by a local rule that
@@ -798,7 +799,7 @@ object AlifeWallsGallery {
 
     /**
      * One arm of the counterfactual, differing from the other **only** in whether the goal drive is
-     * [afield.stdlib.BehaviourSteering.route] or [afield.stdlib.BehaviourSteering.seek].
+     * [afield.simulation.agents.BehaviourSteering.route] or [afield.simulation.agents.BehaviourSteering.seek].
      *
      * Same spawn jitter from the same seed in both arms, so the two populations start on identical
      * coordinates and any difference downstream is the drive.
@@ -842,7 +843,7 @@ object AlifeWallsGallery {
     }
 
     /**
-     * The same maze with one agent in it and no [afield.stdlib.BehaviourSteering.separate].
+     * The same maze with one agent in it and no [afield.simulation.agents.BehaviourSteering.separate].
      *
      * Returns `arrivalStep, pathLength, wallContacts`, with `arrivalStep = 0` for a failure. The
      * control for the *crowding*: the arm above runs twelve agents into one corridor, and twelve

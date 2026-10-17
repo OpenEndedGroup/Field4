@@ -109,8 +109,8 @@ the same non-reentrant dispatcher used elsewhere (see the `warmCompletion` note 
 - If `KotlinEngineConfig.activeCompletionBackend == AA` (`KotlinInterface2.kt:561#activeCompletionBackend ==`):
   1. gather the box's inherited preamble: `normalizePreambleText(gatherPreambleUpwards(box))`
      (`KotlinInterface2.kt:562#normalizePreambleText(gatherPreambleUpwards`; `gatherPreambleUpwards` in `macros/macros.kt:117#fun gatherPreambleUpwards`,
-     `normalizePreambleText` in `stdlib/shaders.kt:2569#fun normalizePreambleText`).
-  2. collect implicit receiver type names (e.g. `afield.Box`).
+     `normalizePreambleText` in `graphics/shader/shaders.kt:3109#fun normalizePreambleText`).
+  2. collect implicit receiver type names (e.g. `afield.document.graph.Box`).
   3. call `AaCompletionClient.complete(s, cursor, completionPreamble, receiverTypes)` on
      `Dispatchers.IO` (`KotlinInterface2.kt:565-566`).
   4. If AA **served** the result, log `backend=AA … (detail)` and return it (`KotlinInterface2.kt:569-571`).
@@ -123,7 +123,7 @@ given completion is never a mystery.
 
 ### 2.4 `AaCompletionClient` — the HTTP bridge
 
-`AaCompletionClient` (`src/jvmMain/kotlin/afield/AaCompletionClient.kt:21#object AaCompletionClient`) is an `object` with no AA
+`AaCompletionClient` (`src/jvmMain/kotlin/afield/runtime/completion/AaCompletionClient.kt:21#object AaCompletionClient`) is an `object` with no AA
 dependencies. `complete()` (`:84`):
 
 - resolves the endpoint (`endpoint()`, `:65`): prefer `-Dafield.completion.sidecarUrl`, else
@@ -196,7 +196,7 @@ compilable, **in-memory dangling `KtFile`** and asks the Analysis API what's in 
   macro writes both (`class MappedStructure { lateinit var tri: IntBuffer … }` +
   `fun Mesh.set(…, builder: MappedStructure.() -> Unit)`), so without them the body of
   `m.set(3, 1) { tri.‸ }` had no `MappedStructure` receiver: `tri` resolved to the next thing in scope
-  by that name — `afield.four.synth.tri`, a triangle oscillator, via intro's `import afield.four.synth.*`
+  by that name — `afield.audio.synth.tri`, a triangle oscillator, via intro's `import afield.audio.synth.*`
   — and the panel answered with `TriOsc`'s members. Because file-scope declarations don't enumerate, the
   dot path adds the file's own callables explicitly (`fromFile`) and the name path its own classifiers
   (`fileClassifiers`), which is what makes the preamble's `m.set(`/`m.pos` reachable on `m.`.
@@ -221,7 +221,7 @@ compilable, **in-memory dangling `KtFile`** and asks the Analysis API what's in 
 - **The box's own `import` lines → the header, the caret's included.** The snippet is pasted inside
   `fun __c() { … }`, where an import is a syntax error, so `hoistImports` blanks each whole-line import in
   place (same length, so offsets survive) and the header carries it. The line the caret was typing a path
-  on used to stay in the body, so every import-line completion (`import kotlin.math.‸`, `import afield.pd.‸`)
+  on used to stay in the body, so every import-line completion (`import kotlin.math.‸`, `import afield.audio.pd.‸`)
   answered 0 with "no qualified expr", and the empty answer handed it to K1 without any sign in the panel.
   `importPathAt` now moves that line too: the header gets its text up to the caret, plus the caret marker
   when no name is typed yet, and the caret goes with it. `completeAt` answers it in its own branch: root
@@ -369,8 +369,8 @@ Seven rounds of findings from this sweep, each of which is a defect class rather
    `afield.stdlib`'s 3877 names alphabetically is the same truncate-the-alphabet mistake and measured 233ms
    of one keystroke; over the cap the note says "type a character"), and the package index is seeded with
    the boot module layer's package names. `pkg/0` 86% → 97%.
-7. **A package nobody imported has contents too** (2026-10-04, 595-box corpus). `afield.pd.‸PdInstance`,
-   `prop<afield.four.fabricated.‸FabricateBuiltChain>(x)` and `java.util.concurrent.atomic.‸AtomicLong`
+7. **A package nobody imported has contents too** (2026-10-04, 595-box corpus). `afield.audio.pd.‸PdInstance`,
+   `prop<afield.graphics.scene.fabricated.‸FabricateBuiltChain>(x)` and `java.util.concurrent.atomic.‸AtomicLong`
    answered `0 matched in package`: 56 misses, because the index holds only imported packages' contents
    and a package path is written out precisely when nothing imported it. `packageCandidates` now scans
    such a package on demand (`AaCompleter.contentsOf`, the star-import scan, memoised per session, about
@@ -381,7 +381,7 @@ Still open, in miss-count order, and the diagnosis for each:
 
 - **Macro keywords are not symbols** (~20 misses: `strategy` 10, `choice`, `topdown`, `repeat`, plus
   `rule`/`from`/`to` in the unresolved-name histogram). `strategy { bottomup("fg") }` is expanded by
-  `applyMacros`, and `afield.macros.strategy` is an `erased()` stub in a package no box imports — so AA is
+  `applyMacros`, and `afield.runtime.macros.strategy` is an `erased()` stub in a package no box imports — so AA is
   right that nothing by that name is in scope. Offering them needs macro *vocabulary* in completion, which
   is a feature rather than a lowering defect.
 - **Runtime-only receivers** (8 `receiver type UNRESOLVED (error)`, e.g. `cube.position` in a remoteAR box,
@@ -841,8 +841,8 @@ of defect: it replays *recorded sidecar payloads*, so it only ever measures AA.
 
 ### `CompletionAaE2EProbe` — live end-to-end (Stage D)
 
-`src/jvmMain/kotlin/afield/CompletionAaE2EProbe.kt` — FIELD_TEST `kotlin.completion-aa-e2e.probe`
-(runner `jvm-main`, entrypoint `afield.CompletionAaE2EProbe`). Sets `activeCompletionBackend = AA`,
+`src/jvmMain/kotlin/afield/runtime/completion/CompletionAaE2EProbe.kt` — FIELD_TEST `kotlin.completion-aa-e2e.probe`
+(runner `jvm-main`, entrypoint `afield.runtime.completion.CompletionAaE2EProbe`). Sets `activeCompletionBackend = AA`,
 builds a parent→child box pair with an inherited preamble, and drives the **real**
 `KotlinInterface2.complete()` chain against a running sidecar. It asserts AA-only signals (named-argument
 completion, inherited `prop<>`/`@exported` names), measures warm latency, and verifies that a bad sidecar
@@ -854,7 +854,7 @@ Run: `python3 tools/run_field_tests.py --id kotlin.completion-aa-e2e.probe`.
 
 ### `CompletionDiffK1Probe` — the K1 side of the differential (Stage B)
 
-`src/jvmMain/kotlin/afield/CompletionDiffK1Probe.kt` — FIELD_TEST `kotlin.completion-diffdump.probe`.
+`src/jvmMain/kotlin/afield/runtime/completion/CompletionDiffK1Probe.kt` — FIELD_TEST `kotlin.completion-diffdump.probe`.
 Runs the **real production K1 path** over the shared corpora and dumps raw candidates per fixture to
 `build/completion-corpus/k1-candidates.json`. The AA side is dumped out-of-process by the sidecar spike
 (`runSpike --json-out … aa-candidates.json`).
@@ -933,7 +933,7 @@ own figure sitting in the middle of the how-to. The page keeps the behaviour; th
 
 Asking a live sidecar's `/complete` for `val f = FLine()` then `f.`, with the running JVM's own
 classpath, returns **254 candidates, 248 of them carrying `receiverQualifiedName =
-afield.graphics.FLine`** — the exact key `CommonMemberPrior.rankOf` looks up. All eight of `FLine`'s
+afield.geometry.path.FLine`** — the exact key `CommonMemberPrior.rankOf` looks up. All eight of `FLine`'s
 `@CommonMembers` are among them, across every overload:
 
 | member | rows returned | all carry the receiver | prior position |

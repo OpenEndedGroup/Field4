@@ -11,7 +11,9 @@ the loop repeats. ``.gitattributes`` marks those outputs ``merge=field-generated
 (registered by ``tools/install_git_hooks.py``) keeps our side so the merge never stops on them. This
 script then reruns each affected generator once on the merged sources and stages the result before
 committing, and runs the full generated-artifact guard first: the hooks only report, so this is
-where the result is verified rather than trusted.
+where the result is verified rather than trusted. Derived numerals in hand-written prose
+(``**1025**<!--count:key-->``) work the same way: the ``field-counts`` driver merges those pages
+as text without conflicting on the numeral, and the ``citationGates`` regenerator rewrites it.
 
 Only real source conflicts stop the merge. Resolve them, ``git add`` them, and run ``--continue``.
 """
@@ -26,6 +28,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_staged_generated_artifacts import GUARDS, guards_for_paths  # noqa: E402
+from verification_runtime import pinned_graalvm_args  # noqa: E402
 
 # Guard task -> (Gradle arguments that rewrite the committed artifact, extra environment).
 REGENERATORS: dict[str, tuple[list[str], dict[str, str]]] = {
@@ -34,7 +37,7 @@ REGENERATORS: dict[str, tuple[list[str], dict[str, str]]] = {
     "checkCompletionCorpusFixtures": (["checkCompletionCorpusFixtures"], {"AFIELD_HARVEST_WRITE": "1"}),
     # Counts written into prose as `N<!--count:key-->` (logging.md's lprintln call sites, ...).
     "citationGates": (
-        ["citationGates", "--tests", "afield.docs.ProseNumeralContractTest", "--rerun"],
+        ["citationGates", "--tests", "afield.tools.docs.ProseNumeralContractTest", "--rerun"],
         {"AFIELD_WRITE_DERIVED_COUNTS": "1"},
     ),
 }
@@ -59,8 +62,8 @@ def _lines(text: str) -> list[str]:
     return [line for line in text.splitlines() if line]
 
 
-def _driver_registered(repo: Path) -> bool:
-    return _git(repo, "config", "--get", "merge.field-generated.driver", check=False).strip() != ""
+def _driver_registered(repo: Path, name: str = "field-generated") -> bool:
+    return _git(repo, "config", "--get", f"merge.{name}.driver", check=False).strip() != ""
 
 
 def regenerate(repo: Path, changed: set[str]) -> tuple[int, set[str]]:
@@ -82,7 +85,7 @@ def regenerate(repo: Path, changed: set[str]) -> tuple[int, set[str]]:
             gradle_args += args
             env.update(extra_env)
         print(f"merge_regen: regenerating {', '.join(g.description for g in group)} ({' '.join(gradle_args)})")
-        code = subprocess.run([str(repo / "gradlew"), "--continue", *gradle_args], cwd=repo, env=env).returncode
+        code = subprocess.run([str(repo / "gradlew"), *pinned_graalvm_args(repo), "--continue", *gradle_args], cwd=repo, env=env).returncode
         if code != 0:
             print("merge_regen: regeneration failed; the merge is left uncommitted for you to inspect", file=sys.stderr)
             return code, set()
@@ -145,6 +148,10 @@ def main(argv: list[str] | None = None) -> int:
     if not _driver_registered(repo):
         print("merge driver field-generated is not registered; run: uv run python tools/install_git_hooks.py", file=sys.stderr)
         return 2
+    if not _driver_registered(repo, "field-counts"):
+        # Not fatal: without it these pages take git's own text merge, as they did before the driver.
+        print("merge_regen: merge driver field-counts is not registered, so two edits of a <!--count:--> "
+              "numeral will conflict; run: uv run python tools/install_git_hooks.py", file=sys.stderr)
 
     in_merge = subprocess.run(["git", "rev-parse", "-q", "--verify", "MERGE_HEAD"], cwd=repo, stdout=subprocess.DEVNULL).returncode == 0
     if args.cont:

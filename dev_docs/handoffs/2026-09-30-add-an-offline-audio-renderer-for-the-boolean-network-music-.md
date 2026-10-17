@@ -8,7 +8,7 @@
 ## The notes that led here
 
 - `21983d5d` (public/docs/boolean_network_music_examples.md:5): Some rendered audio examples would be good
-  > Boolean networks become musically useful once their states acquire time. Give each network step a duration and the state stream can be read as notes, labels, triggers, and sample hits. The bridge lives inside afield.four.synth.
+  > Boolean networks become musically useful once their states acquire time. Give each network step a duration and the state stream can be read as notes, labels, triggers, and sample hits. The bridge lives inside afield.audio.synth.
 
 ## What was asked
 
@@ -25,18 +25,18 @@ published fence on every build through `Class.forName(renderer).INSTANCE.renderW
 and fails when the render fails or differs from the committed bytes. So a clip on this page needs:
 
 1. **An offline renderer object** with `fun renderWav(name: String, outPath: String)`, like
-   `CaSoundDocs` (`src/jvmMain/kotlin/afield/four/synth/CaSoundDocs.kt`), which the
+   `CaSoundDocs` (`src/jvmMain/kotlin/afield/audio/synth/CaSoundDocs.kt`), which the
    `chain_ca_sound.md` page uses as
-   `audio="assets/chain_ca_sound/gasket-bar.wav" audio-spec="gasket-bar" audio-renderer="afield.four.synth.CaSoundDocs"`.
+   `audio="assets/chain_ca_sound/gasket-bar.wav" audio-spec="gasket-bar" audio-renderer="afield.audio.synth.CaSoundDocs"`.
    Nothing like it exists for Boolean networks. The page's examples produce a `NoteProcess` or
    `Iterator<ScheduledNote>` (`BooleanNetworkSequencing.kt`), and I found no offline
    NoteProcess → PCM path in `afield/four/synth/`. The offline renderers that do exist go through
    `patRenderStereo(pattern, cycles, cps, voice)` (`SoundRenderPathDocs.kt`, `PatSynthDocs.kt`) or
    hand-built `Signal` graphs (`DoughDspPlotGallery.kt`).
 2. **Registry edits, each pinned:** an `ORIGIN_BY_RENDERER` entry
-   (`src/jvmMain/kotlin/afield/four/synth/DocsAudioProvenance.kt`, the map near the top),
+   (`src/jvmMain/kotlin/afield/audio/synth/DocsAudioProvenance.kt`, the map near the top),
    `EXPECTED_FENCE_COUNT` (currently 58) and the per-`Origin` counts in
-   `src/jvmTest/kotlin/afield/four/synth/DocsAudioProvenanceGuardTest.kt`, and the
+   `src/jvmTest/kotlin/afield/audio/synth/DocsAudioProvenanceGuardTest.kt`, and the
    `docs-audio-producer` marker's `declaredIn` in `SoundPathMap.kt`. `sound.md` and
    `sound_paths.md` also state the corpus size in words.
 3. **Committed, deterministic inputs.** The Dirt examples cannot be rendered as written: they
@@ -48,7 +48,7 @@ engineering rather than prose.
 
 ## Proposed approach
 
-Add `BooleanNetworkSoundDocs` in `afield.four.synth`, shaped like `CaSoundDocs`:
+Add `BooleanNetworkSoundDocs` in `afield.audio.synth`, shaped like `CaSoundDocs`:
 
 - Scenes that mirror the page's figures, with the same seeds and step durations so each clip
   matches its piano roll:

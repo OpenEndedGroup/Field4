@@ -6,50 +6,16 @@ Each section below puts a short program next to the image or clip it renders. Th
 
 To write StackSL in conversation with AI4, with the program running live in a window and tools that check and record each change, see [Talking a shader into existence](stacksl_conversation.md).
 
-StackSL is vector-first: every stack value is a `vec4`. Numbers become `vec4(n)`, swizzles repack into `vec4`, and most operators work component-wise. The compiler emits one callable function:
-
-```diffstatic {data-lang=glsl}
-vec4 prefix(vec4 prefix_in) { ... }
-```
-
-Named StackSL definitions become GLSL functions whose names start with the same prefix:
-
-```diffstatic {data-lang=glsl}
-vec4 prefix_warp(vec4 prefix_in) { ... }
-vec4 prefix_paletteMist(vec4 prefix_in) { ... }
-```
-
-This keeps generated names out of the global shader namespace. The Field property for source text is `stackSL`; sidecar files use `.stacksl`.
+Every stack value is a `vec4`. Numbers become `vec4(n)`, swizzles repack into `vec4`, and most operators work component-wise. In a Field box the program text lives in the `stackSL` property, saved beside the document as a `.stacksl` file.
 
 ## Rendered gallery
 
-The whole gallery is rendered inside a single Field document: one renderer, one
-offscreen target, and one `{{ stack.auto.program }}` fragment slot (see [Kotlin
-and template use](#kotlin-and-template-use)). `StackSLGalleryHarness` walks the
-program list, re-binds the slot for each one, waits a few frames, and reads the
-texture back to a PNG. Each program reaches a fullscreen fragment shader as
-`program(vec4(uv, hash, time))`. The target is sRGB, like the window, so the
-shader's output is treated as linear light and encoded on the way into the PNG:
-the images below are what the same program shows in a window.
-
-??? aside "Until 2026-09-27 these images were darker than the window"
-    The harness used to render into `R8G8B8A8_UNORM`, which stores the shader's
-    output as it is, while the window's swapchain is `B8G8R8A8_SRGB` and encodes
-    it. `uv saturate` read 128 at `u = 0.5` where a native-window capture of the
-    same program read 188, and the `fbm-palette` still averaged 60 against the
-    window's 110, with navy and black where the window shows violet. The
-    regenerated stills match those captures to a tenth of a level on average. The feedback clips
-    changed the most, because their ping-pong target is sRGB now as well: in the
-    old `feedback-trails` still 74% of the pixels sat at exactly 8/255, where a
-    0.94 decay stops moving an 8-bit linear value, and that floor would have shown
-    as a grey haze once encoded. `PingPongRenderToTexture` defaults to sRGB, so
-    this is also what the program does in a document of your own.
-
-The programs are not baked into the harness. Each is an editable box in a
-canonical_graphics-style workspace at `assets/stacksl_gallery/`
-(`<name>_stackSL_.stacksl` plus a fullscreen `fragment`/`vertex` and the `code`
-that binds `module.program = stackSL`). It is one Field document; you can browse
-and live-edit the boxes below. Edit a `.stacksl` file and regenerate.
+Each program below runs in a fullscreen fragment shader that passes it
+`vec4(uv, hash, time)`, and the image is what the same program shows in a
+window. Every program is a box in one Field document, the
+[`stacksl_gallery`](agent_transcripts.md#stacksl_gallery) starting point, which you can browse
+here: each box holds the StackSL, a fullscreen `fragment` and `vertex`, and the
+`code` that binds `module.program = stackSL`.
 
 <iframe
   src="offline.html?file=assets/stacksl_gallery/metadata.edn"
@@ -74,6 +40,7 @@ expect:
     path: /tmp/docs-stacksl-gallery-hero.png
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl/_gallery-hero.png" source-image="/tmp/docs-stacksl-gallery-hero.png" wait="45.0" timeout="300" execution="launch" embed=false graphics-context=true name="stacksl-gallery" hidden=true fabricate-scene="stacksl-gallery"}
+
 ```
 
 **Normalized coordinates** — the initial stack value, clamped.
@@ -159,7 +126,7 @@ palette
 
 ```diffstatic {data-lang=stacksl}
 : warp
-  uv 6.0 * time + sin
+  drop uv 6.0 * time + sin
   0.35 *
   uv +
 ;
@@ -352,10 +319,8 @@ uv 5 * fbm palette 1.7 contrast tonemap saturate
 
 ## Animated
 
-Time-driven programs read `input.w`, so the same fullscreen harness animates them:
-`StackSLGalleryHarness.renderAnimations` sweeps a `time` push constant and encodes
-the frames to mp4, one shader build per clip. Mark a workspace box `animate: true`
-in its `metadata.yaml` to add it here.
+A program that reads time (`time`, or `input.w`) animates. These clips are the
+same fullscreen shader with time running.
 
 <!--
 FIELD_TEST
@@ -372,6 +337,7 @@ expect:
     path: /tmp/docs-stacksl-animations-hero.png
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl/_animations-hero.png" source-image="/tmp/docs-stacksl-animations-hero.png" wait="120.0" timeout="600" execution="launch" embed=false graphics-context=true name="stacksl-animations" hidden=true fabricate-scene="stacksl-animations"}
+
 ```
 
 **FBM drifting through a palette** — `uv 5.0 * time 0.12 * + fbm palette saturate`
@@ -404,12 +370,10 @@ expect:
        style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
 </video>
 
-**Feedback trails (ping-pong)** — the loop *is* the animation. This one samples
-the previous frame through `source`, decays it, advects it, and injects a moving
-colored band, so the image feeds back into itself each frame. It is the
-artificial-life / reaction pattern StackSL is built for; the harness renders it
-with a `PingPongRenderToTexture` so the previous frame is available while the
-current one is written.
+**Feedback trails (ping-pong)**: this program samples the previous frame through
+`source`, decays it, moves it, and adds a moving coloured band, so each frame is
+built from the last. It runs in a `PingPongRenderToTexture`, which keeps the
+previous frame readable while the current one is written.
 
 ```diffstatic {data-lang=stacksl}
 0.0025 0.004 vec2 sample.w
@@ -423,10 +387,10 @@ saturate
        style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
 </video>
 
-**Diffusion (blur feedback)** — a neighborhood word (`blur`) reads the previous
-frame, so each step diffuses the last one while sparse noise is injected and
-decays. Reaction and growth are what StackSL's neighborhood fields (`blur`,
-`laplace`, `sobel`, `curl`) exist for.
+**Diffusion (blur feedback)**: `blur` reads the previous frame, so each step
+spreads the last one out while sparse noise is added and fades. The other
+neighbourhood words (`laplace`, `sobel`, `curl`) work the same way, and are
+what reaction and growth patterns are built from.
 
 ```diffstatic {data-lang=stacksl}
 0.004 blur
@@ -548,7 +512,7 @@ Definitions are written with `: name ... ;`. Inside StackSL, a definition behave
 
 ```diffstatic {data-lang=stacksl}
 : warp
-  uv 8.0 * time + sin
+  drop uv 8.0 * time + sin
   0.18 *
   uv +
 ;
@@ -562,7 +526,7 @@ field palette contrast tonemap
 
 With prefix `fx`, this emits `fx_warp`, `fx_field`, and the root function `fx`.
 
-The compiler also inlines definition calls at their call site before emitting SSA-style GLSL. The named GLSL functions are still emitted, but inlining lets repeated StackSL calls share identical samples and math when their inputs and source constants are the same.
+Calling a definition twice with the same input costs no more than calling it once: the compiler inlines each call, and identical samples and math are computed a single time.
 
 ```diffstatic {data-lang=stacksl}
 : ring
@@ -604,7 +568,7 @@ palette
 saturate
 ```
 
-Marks are local to the current root program or definition. They are SSA aliases in the generated shader, so they do not create mutable GLSL variables and unused marked values still disappear.
+Marks are local to the program or definition they appear in. A mark is only a name for a value, so it costs nothing, and a marked value nothing reads is dropped from the shader.
 
 ## Ping-pong RTT sampling
 
@@ -908,18 +872,31 @@ saturate
 
 ## Kotlin and template use
 
-The low-level compiler is in `afield.stacksl`:
+The compiler turns a program into one GLSL function named by a prefix you choose:
+
+```diffstatic {data-lang=glsl}
+vec4 prefix(vec4 prefix_in) { ... }
+```
+
+Named StackSL definitions become GLSL functions whose names start with the same prefix, which keeps them out of the rest of your shader's names:
+
+```diffstatic {data-lang=glsl}
+vec4 prefix_warp(vec4 prefix_in) { ... }
+vec4 prefix_paletteMist(vec4 prefix_in) { ... }
+```
+
+The low-level compiler is in `afield.lang.stacksl`:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stacksl.StackSLCompileOptions
-import afield.stacksl.StackSLCompiler
+import afield.lang.stacksl.StackSLCompileOptions
+import afield.lang.stacksl.StackSLCompiler
 
 val result = StackSLCompiler.compile(
     source = stackSL ?: "",
     options = StackSLCompileOptions(
         prefix = "ping",
         entrypoint = "main",
-        sampleTextures = listOf("state"),
+        sampleTextures = ["state"],
         externalizeConstants = true
     )
 )
@@ -938,7 +915,7 @@ From a box, the stdlib helper is shorter:
 ```diffstatic {data-lang=kotlin}
 val glsl = stackSLToGlsl(
     prefix = "ping",
-    sampleTextures = listOf("otherView"),
+    sampleTextures = ["otherView"],
     declareSamplers = false
 )
 ```
@@ -1008,12 +985,10 @@ Every discovered `stack.auto.*` name becomes an assignable property on the
 shader module. Assigning it compiles the StackSL first and only swaps the
 running shader if that succeeds, so a bad program leaves the previous one in
 place and you can type into a running window. The box's `code` builds the
-module from those two properties and binds the slot. `fromContext()` finds the
-renderer by walking up the box's parents, so the box has to be connected beneath
-the one that opened the window:
+module from those two properties and binds the slot. Connect the box beneath
+the renderer box that opened the window; `renderer` is then in scope:
 
 ```diffstatic {data-lang=kotlin}
-val renderer: Renderer = fromContext()
 val module = moduleHere { }
 val mesh = Mesh()
 module += mesh named "fullscreen"
@@ -1033,29 +1008,21 @@ module.program = "uv 4.0 * fbm palette saturate"   // binds and hot-reloads
     have run by the time `moduleHere` expands; [Running code in a
     box](running_code.md#the-fragment-break) explains why the line is needed.
 
-The two stills below are what this box draws, fitted into the gallery's square.
-`StackSLGalleryHarness` renders them with a per-pixel hash in `z` of `stackInput`
-and a fixed time in `w`, but `uv` and `p` build their value from `x` and `y`
-alone, so neither program sees the difference. In a window the same picture is
-stretched to the window's shape.
+The two stills below are what this box draws, cropped to a square; in a window
+the same picture is stretched to the window's shape.
 
 ??? aside "How this snippet was checked"
-    Nothing in the docs build runs this code, since the stills come from the
-    harness. That is how an earlier `moduleHere { fragment = fullscreenFragment }`
-    version, whose `module.program` could never resolve, went unnoticed. On
-    2026-09-27 the form above was run by hand in a scratch document beneath a
-    renderer box. The launch reported no errors, the one-line re-assignment turned
-    the cloud into the kaleidoscope, and both window captures, scaled to 512 × 512,
-    match the stills to within a tenth of a level on average. The
-    `once.vertex`/`once.fragment` route draws a pixel-identical frame.
+    The stills come from the gallery harness. The docs build runs this code
+    beneath its renderer through `assets/transcripts/stackauto_numbers_setup.yaml`,
+    for the card and editor figures further down.
 
 Before, running `uv 4.0 * fbm palette saturate`:
 
 ![stack.auto before rebinding: a grainy blue-and-orange cloud with no symmetry in it — warm territory through the lower left, cold blue and white through the upper right, and speckled violet borders between them](assets/stacksl/stacksl-auto-before.png)
 
 Re-assigning the same slot swaps the function in place, with no new module and no
-window teardown. Edit the string and run that one line with `alt-return`, which
-runs it against the `module` the box already built. `alt-0` runs the whole box
+window teardown. Edit the string and run that one line with `alt/option-return`, which
+runs it against the `module` the box already built. `alt/option-0` runs the whole box
 again from the top, which builds a new module:
 
 ```diffstatic {data-lang=kotlin}
@@ -1066,11 +1033,9 @@ After:
 
 ![stack.auto after rebinding: nothing of the cloud survives. A six-fold symmetric figure in burnt orange and violet, a warm star radiating from a single dark point at the exact centre with six thin darker spokes running out of it, ringed by violet lobes at the edges and corners](assets/stacksl/stacksl-auto-after.png)
 
-The gallery images take a different route. `StackSLGalleryHarness` builds a new
-module for each program and registers it under one name, and a module registered
-under a name already in use replaces the previous one. So rebuilding the whole
-module works as well as rebinding its `stack.auto` body, which is handy when the
-surrounding GLSL, not only the StackSL, is what you are editing.
+Rebuilding the whole module also works: a module added under a name already in
+use replaces the previous one. Do that when you are editing the surrounding
+GLSL, not only the StackSL.
 
 ### Its numbers, live
 
@@ -1092,18 +1057,28 @@ what you see back into that string, and **Reset** puts the literals back. Keys
 capture every number of the slot at once and blend between them, as on the
 [StackSL study card](stacksl_conversation.md).
 
+```diffstatic_runner {data-lang=kotlin capture="ui" graphics-context=true region="window" clip-selector=".stack-auto-card" screenshot="assets/stacksl/stackauto-numbers-card.png" transcript="assets/transcripts/stackauto_numbers_setup.yaml" capture-box="stackauto_numbers" padding="8" wait="0" timeout="300" embed=true hidden=true name="stackauto-numbers-card" alt="The stack.auto numbers card of the fullscreen example above. Its heading reads stack.auto.program · 1 number · as compiled · the window shows your whole shader. Under line 1 · uv 4.0 * fbm palette saturate is one slider, k0 multiplies, at 4.00. Below it the buttons Keep these numbers, Reset, Show it in your shader and Render this function alone, then a KEYS section saying No keys yet, with a button Capture these numbers as a key."}
+// The setup transcript has already run the page's fullscreen example beneath the docs renderer;
+// binding the slot draws the card. Wait for its slider rather than guess a pause.
+ui.waitForSelector(".stack-auto-card .field-slider", 60000.0)
+ui.pause(800)
+```
+
+Here is the card for the fullscreen example above. Its program has one number, the `4.0` that
+`*` multiplies `uv` by, so the card has one slider. A program with more numbers gets one slider per
+number, grouped under the line each is on.
+
 **Show it in your shader** captures the end result: the picture wherever the
 slot's module is drawn, at its current numbers. Field finds that by walking what
 the renderer draws, so it is the window when the module was added with
 `renderer += module` (the whole window, with everything else it draws), or the
 render target the module is in when it was added with `target += … to module`,
-even one that is never shown on screen. Where that can't be read back directly —
-a ping-pong target, which swaps its images every frame, a stereo target, or a
-module drawn nowhere the renderer's lists reach — the card draws the module
-once more, by itself, into a target of its own matched to its pipeline, and
-says so: the same module and state (a ping-pong still samples its real last
-frame), without whatever else draws beside it. A compute module writes buffers
-rather than a picture, and the card says so rather than show a stand-in.
+even one that is never shown on screen. Some targets can't be read back
+directly: a ping-pong target, a stereo target, or a module drawn nowhere the
+renderer can find. For those the card draws the module once more by itself,
+with the same state but without whatever else draws beside it, and says so. A
+compute module writes buffers rather than a picture, and the card says that
+too.
 
 **Render this function alone** draws the slot's program by itself, at its current
 numbers, on your renderer. Its input is the study's, `vec4(uv, hash, 0, time)`
@@ -1116,7 +1091,7 @@ From Kotlin, the block is an ordinary uniform of the module:
 ```diffstatic {data-lang=kotlin}
 module.program_numbers["program_wire_2"] = 9f   // taking hold of the block makes the slot live
 
-val scope = afield.stdlib.KeyframeScope()
+val scope = KeyframeScope()
 scope.stackAuto(module, "program")          // the slot's text, which recompiles when a key applies
 scope.stackAutoNumbers(module, "program")   // its numbers, as lanes program.k0, program.k1, …
 ```
@@ -1133,7 +1108,8 @@ block. A program with more than 128 numbers compiles with its numbers baked in,
 and its report says so. Assigning new StackSL re-seeds the numbers from its
 literals; assigning the same text again leaves them alone, so a box can re-run
 without losing what was turned. A full shader reload carries the values over.
-Set `AFIELD_STACK_AUTO_LIVE_NUMBERS=0` to compile every slot as before.
+Set `AFIELD_STACK_AUTO_LIVE_NUMBERS=0` to compile every slot with its numbers
+baked in.
 
 ### Talking to a slot
 
@@ -1169,47 +1145,79 @@ one-line `module.program = "uv 4 * fbm"`), or any string whose first line is
 `#stacksl`. Completion opened inside it offers the StackSL vocabulary, with each
 word's stack effect and cheatsheet entry, and the program's own definitions. Rest
 the cursor on a line and the note beside it shows that line's stage, drawn alone
-as **Render this function alone** draws it, which the caption says. Only a
-`#stacksl` string is coloured as StackSL; a slot's string without the header is
-still coloured as a Kotlin string.
+as **Render this function alone** draws it, which the caption says. Both kinds of
+string are coloured as StackSL.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" graphics-context=true region="window" clip-selector=".afield-suggest" screenshot="assets/stacksl/stackauto-in-string-completion.png" transcript="assets/transcripts/stackauto_numbers_setup.yaml" capture-box="stackauto_numbers" padding="6" wait="0" timeout="300" warm-completion=true embed=true hidden=true name="stackauto-in-string-completion" alt="The completion popup opened inside the slot's string, after the pal of palette. On the left, under WORDS, one row: palette, with its stack effect t a b c d — color. On the right, a square of blue, white, orange and violet cloud captioned line 7 · stack.auto.program, what it leaves on the stack, at t = 1.75 s · GPU (Apple M1 Max), drawn alone — not with your shader's input; under it the cheatsheet entry: cosine palette a + bcos(tc + d), and source StackSL cheatsheet."}
+// In the slot's one-line string, with the caret after the `pal` of `palette`: ask for completion there.
+ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); return 'setup';")
+ui.openEditor("stackauto_numbers")
+ui.pause(900)
+ui.waitForSelector(".monaco-editor", 15000.0)
+ui.clickSelector(".monaco-editor .view-lines")
+ui.pause(200)
+ui.press("Control+End")
+ui.press("ArrowUp")
+ui.press("Home")
+repeat(34) { ui.press("ArrowRight") }
+ui.pause(400)
+ui.press("Control+Space")
+ui.waitForSelector(".afield-suggest-row", 20000.0)
+ui.pause(1400)
+```
+
+Above, completion was opened in the example's one-line string with the caret after `pal`. It offers
+`palette` with its stack effect and cheatsheet entry, and above them the note for the line. Below,
+the caret rests in the same string, and the note shows at the foot of the editor:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" graphics-context=true region="window" clip-selector=".monaco-editor-container" screenshot="assets/stacksl/stackauto-in-string-stage.png" transcript="assets/transcripts/stackauto_numbers_setup.yaml" capture-box="stackauto_numbers" padding="10" wait="0" timeout="300" embed=true hidden=true name="stackauto-in-string-stage" w="560" alt="The example's code in the editor, with the caret inside the string on line 7, which assigns uv 4.0 * fbm palette saturate to module.program. At the foot of the editor, the note for that line: the same blue, white, orange and violet cloud, captioned line 7 · stack.auto.program, what it leaves on the stack, at t = 1.75 s · GPU (Apple M1 Max), drawn alone — not with your shader's input."}
+// Rest the caret on the slot's line, as a person would; its note draws that line's stage.
+ui.openEditor("stackauto_numbers")
+ui.pause(700)
+ui.waitForSelector(".monaco-editor", 15000.0)
+ui.editorHeight(470)
+ui.clickSelector(".monaco-editor .view-lines")
+ui.pause(200)
+ui.press("Control+End")
+ui.press("ArrowUp")
+ui.press("Home")
+repeat(24) { ui.press("ArrowRight") }
+ui.waitForSelector(".hoverlay-left .afield-line-note img", 30000.0)
+ui.pause(800)
+```
 
 ??? aside "How this was checked"
     On 2026-09-27, the fullscreen example above, with a vignette added to the host
     shader, ran in a real window. Turning `k2` from 4 to 9 re-zoomed the noise in
     the window and not the vignette, and render-alone drew the function without
-    it. The first run found that an untouched slot drew black: a uniform buffer
-    starts as whatever memory it was given, so `program_live` was garbage until
-    written. Modules now write it 0 as they make the block. Unit tests pin that the
-    expanded GLSL compiles, that a blank slot and a bound one declare the same
-    block, and that values carry across a rebuild. There is no docs capture of the
-    card yet.
+    it. Unit tests pin that the expanded GLSL compiles, that a blank slot and a
+    bound one declare the same block, and that values carry across a rebuild.
+    The card and editor figures come from `capture="ui"` fences with `graphics-context=true`:
+    `assets/transcripts/stackauto_numbers_setup.yaml` builds this example under the docs renderer,
+    and the drive waits for the real card and note. Making them found that a one-line slot followed
+    by a comment had no line note, and fixed it (`EmbeddedStackSLTest`).
 
 ## Volumetric noise
 
 The [volumetric word reference](stacksl_cheatsheet.md#volumetric-noise) records arities, defaults and output channels. The examples here show how those channels behave in a volume.
 
-`noise` and `fbm` are two-dimensional. `noise` lowers to
-`_noise(input.xy + input.zw * 0.07)` and `fbm` to `_fbm` of the same expression, so a
-`vec4` carrying a position and a time is squashed into a plane, and z arrives at one
-fourteenth the weight of x: a shear, not a third dimension. Feed it
-`vec4(pos.xyz, t)` and you do not get a volume. You get one picture, imprinted at
-every depth.
+`noise` and `fbm` are two-dimensional. They fold `z` and `w` into the plane as a
+small offset, so feeding them a 3D position gives you one picture, sliding slightly
+sideways as depth changes, not a volume. Use the words below when you want a
+volume.
 
-The top row below is the 2D `fbm` sampled at six values of z. It is the same image
+The top row below is the 2D `fbm` sampled at six values of z: almost the same image
 six times.
 
 ![Six z-slices each of the 2D fbm word, fbm3, and curl3](assets/stacksl/stacksl-volumetric-noise-slices.png)
 
-The middle row is `fbm3` over the same six slices: six unrelated fields, which is what
-a volume is supposed to look like. Measured as mean absolute difference from the first
-slice, the 2D word moves 0.017 → 0.065 across the march, a slow monotonic drift that
-is the signature of a pattern sliding sideways, while `fbm3` jumps straight to 0.130
-and then sits at ≈0.14, the signature of slices that are simply independent.
+The middle row is `fbm3` over the same six slices: six different fields, which is
+what a volume should look like.
 
-The bottom row is `curl3`, drawn by advecting tracers through it. Closed swirls, no
-bright knots, no holes: that is what divergence-free looks like. It matters for
-particles. A force field with sources and sinks collects your particles into the sinks
-and empties the sources; a solenoidal one moves them around forever.
+The bottom row is `curl3`, drawn by moving tracers through it. It has closed swirls
+and no bright knots or holes, because it is divergence-free. That matters for
+particles: a force field with sources and sinks collects particles into the sinks
+and empties the sources, while a divergence-free one keeps them circulating.
 
 <div data-code-lang="stacksl" markdown>
 
@@ -1226,29 +1234,13 @@ and empties the sources; a solenoidal one moves them around forever.
 
 </div>
 
-Three things this family does that the 2D words do not.
+The range of `fbm3` is exactly `0..1` for any octave count, lacunarity and gain.
+The 2D `fbm` falls slightly short of 1, so `fbm 0.5 -` is not quite centred on
+zero; used as a force, that small bias adds up to a drift. Use `fbm3` when the
+centre matters.
 
-**The range really is `0..1`.** `fbm`'s five octaves have amplitudes summing to
-0.96875, not 1, so a raw `fbm` never reaches 1 and the usual `0.5 -` recentre leaves a
-constant bias of about -0.031. Used as a force, that bias integrates into a drift
-instead of averaging out. `fbm3` accumulates its amplitude sum at run time and divides
-by it, so the range is exact for *any* octave count, lacunarity and gain. `fbm` itself
-is not renormalised, because that would move every image ever rendered from it.
-
-**No `sin()` in the hashes.** The two 2D hashes differ, and which is which matters.
-`hash11`, behind `valueNoise`, is `fract(sin(p * 127.1) * 43758.5453123)`, and `sin`
-is not bit-portable between implementations. `hash21`, behind `noise` and `fbm`, has
-no `sin` in it at all; it is multiply/add/fract already. What `hash21` cannot be is
-three-dimensional. It takes a `vec2`, and *that*, not `sin`, is why the volumetric
-family needed its own hashes. Those are multiply/add/fract over 3 and 4 inputs, so
-they are exact, and `VolumetricNoiseReference` transcribes them for the CPU, so these
-words can be unit-tested without a GPU.
-
-**`curl3` is solenoidal by construction.** It is the curl of a vector potential taken
-with central differences at one shared epsilon. Discrete shift operators commute, so
-the discrete divergence cancels term for term instead of merely coming out small:
-measured 1.8e-7, against 0.58 for the three-independent-channels field people usually
-reach for.
+`curl3` is divergence-free to rounding error, not approximately, so particles
+pushed by it do not bunch up over time.
 
 A particle force:
 
@@ -1270,11 +1262,10 @@ input 2 fbm3.2
 
 ## Fitting a program's literals
 
-Every number you type in a StackSL program is a free parameter, and the compiler already knows
-where each one came from. `externalizeConstants` lifts each literal into a *wire* and records its
-token, line and column; `StackSLWires.lift` makes the wired program runnable on the CPU backend; and
-`StackSLFit` descends on an image loss with the **exact** gradient, computed by reverse-mode
-automatic differentiation through the emitted GLSL itself.
+`StackSLFit` adjusts the numbers in a program until its image matches a target
+image. It runs the program on the CPU and follows the exact gradient of the
+difference, computed by automatic differentiation. Take this palette program,
+whose every number is a parameter the fit can move:
 
 ```diffstatic {data-lang=stacksl}
 uv 3.0 * fbm
@@ -1285,11 +1276,14 @@ uv 3.0 * fbm
 palette
 ```
 
-Seventeen numbers, seventeen parameters. Fitted against a target that is the same program with
-twelve different palette numbers, eighty Adam steps at 64×64 take about nine seconds and drive the
-mean squared error down by 1129×:
+Here the target is the same program with some of its palette numbers changed, so
+a correct answer exists. The figure shows the target, the starting image, the
+fitted image, what is left of the difference, and the loss falling over the
+steps:
 
 ![Differentiable StackSL: target, seed, fitted and residual, with the loss trajectory](assets/stacksl_fit/stacksl_fit_recovery.png)
+
+The fit takes a starting program and a target image rendered at the same size:
 
 ```diffstatic {data-lang=kotlin}
 val template = StackSLCpu.stillTemplate()
@@ -1300,37 +1294,26 @@ println(result.fittedProgram)      // StackSL source, with the fitted numbers in
 result.report().forEach(::println) // wire #1  '0.5' at 2:1  0.5 -> 0.59025836
 ```
 
-The output of a fit is not a vector, it is a **program**: the fitted values are written back at the
-token positions the compiler recorded, so `result.fittedProgram` is something you can paste into a
-`stackSL` box and run on a GPU. Recompiled from scratch through the ordinary non-wired path, it
-renders bit-identically to the fitted parameter vector.
+The result is a program: the fitted values are written back where the original
+numbers were, so `result.fittedProgram` can be pasted into a `stackSL` box and
+run on the GPU, where it draws the same image.
 
-**What that figure is, exactly.** It is a *recovery* experiment on **one program and seventeen
-wires**: the target was made by the same program with twelve of its numbers changed, so a correct
-answer exists and the descent can be scored against it. That is the right first experiment, because
-it separates "the gradient is wrong" from "the objective is wrong" — but it is not a claim about
-arbitrary images. What is verified broadly is the **gradient**, against central differences over
-nine programs and forty-six wires. Fitting a photograph, or any target no StackSL program generated,
-is unattempted here, and the paragraphs below are most of the reason why.
+Fitting works when the target is something a StackSL program could have drawn.
+A photograph, or any other target, has not been tried. Before fitting, know what
+the gradient can and cannot pass through:
 
-Three things to know before fitting anything.
+- `threshold`, `floor`, `ceil`, `round`, `posterize`, `hash`, `select` and the
+  comparisons pass no gradient, so numbers before them cannot be fitted. Words
+  that replace the stack value, such as `uv`, `p`, `time`, `pi` and the named
+  colours, likewise cut off what came before.
+- A noise frequency does fit, although `fbm` uses `floor` inside: the gradient
+  flows through the smooth blend between lattice cells.
+- `saturate` clamps, and a clamped pixel contributes nothing. A starting image
+  that is mostly blown out leaves the fit almost nothing to follow.
 
-**A `threshold` is a wall.** It lowers to a hard `step`, which carries exactly zero derivative, so
-nothing upstream of it can be reached. The same is true of `floor`, `ceil`, `round`, `posterize`,
-`hash`, `select` and the comparisons. Of the 325 documentable words, 154 pass a derivative from a
-wire upstream of them; most of the rest do not *lack* one, they discard the value — `uv`, `p`,
-`time`, `pi`, `drop`, `swap` and the twelve named colours replace what was on the stack.
-
-**A noise frequency, on the other hand, fits fine**, which is not obvious. `fbm` hashes a `floor`ed
-lattice *cell index*, and `floor`'s zero derivative means no gradient flows through the hash at
-all — only through `fract`'s interpolation weight, which is smooth.
-
-**`saturate` costs you signal.** A clamped pixel sits on a kink, so it contributes nothing to the
-gradient. A seed whose image is mostly blown out has almost nothing to descend on.
-
-The loss is a per-pixel sum of squares and rewards exactly that, with no term for structure — so
-read the residual panel rather than the loss number. `public/docs/assets/stacksl_fit_demo/` is a
-loadable three-box demo of all of this; open the directory as a Field document.
+The loss is a per-pixel sum of squares with no term for structure, so judge a
+fit by the residual panel rather than the loss number. The
+[`stacksl_fit_demo`](agent_transcripts.md#stacksl_fit_demo) starting point runs this fit.
 
 ## Built-in vocabulary
 
@@ -1379,6 +1362,12 @@ Volumetric noise:
 
 ```diffstatic {data-lang=stacksl}
 noise3 noise4 fbm3 fbm4 curl3 fbmd3 warp3 worley3 voronoi3
+```
+
+Phase noise:
+
+```diffstatic {data-lang=stacksl}
+qnoise phnoise phrot
 ```
 
 Word references:

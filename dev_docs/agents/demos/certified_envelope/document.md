@@ -23,10 +23,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 ```
 
 ```kotlin [field-property box="range" name="code" path="range_code_.kt"]
-import afield.stdlib.Functions
-import afield.stdlib.certifiedNeverExceeds
-import afield.stdlib.certifiedRange
-import afield.stdlib.certifiedReaches
+import afield.math.functions.Functions
+import afield.math.functions.certifiedNeverExceeds
+import afield.math.functions.certifiedRange
+import afield.math.functions.certifiedReaches
 
 // Branch-and-bound over the hour: the true maximum is at least the value reached at the
 // witness, and at most the proven bound. The same for the minimum.
@@ -63,12 +63,12 @@ display("claims", Table(listOf("claim", "verdict", "witness x"))
 ```
 
 ```kotlin [field-property box="certified" name="code" path="certified_code_.kt"]
-import afield.stdlib.Functions
-import afield.stdlib.SignalViewer
-import afield.stdlib.SignalViewerOptions
-import afield.stdlib.certifiedEnvelope
-import afield.stdlib.certifiedSignalChannel
-import afield.stdlib.displaySignal
+import afield.math.functions.Functions
+import afield.ui.visualization.SignalViewer
+import afield.ui.visualization.SignalViewerOptions
+import afield.math.functions.certifiedEnvelope
+import afield.ui.visualization.certifiedSignalChannel
+import afield.ui.visualization.displaySignal
 
 // The same signal as box 1. certifiedSignalChannel draws its sampled envelope in white and,
 // behind it in amber, a certified bound per bin: every value the function takes in the bin
@@ -101,13 +101,13 @@ display("numbers", Table(listOf("what", "value"), title = "the certified band, a
 ```
 
 ```kotlin [field-property box="workbench" name="code" path="workbench_code_.kt"]
-import afield.stdlib.Functions
-import afield.stdlib.FnIntervals
-import afield.stdlib.StudyEvent
-import afield.stdlib.certifiedEquals
-import afield.stdlib.certifiedNeverBelow
-import afield.stdlib.certifiedNeverExceeds
-import afield.stdlib.certifiedRange
+import afield.math.functions.Functions
+import afield.math.functions.FnIntervals
+import afield.math.functions.StudyEvent
+import afield.math.functions.certifiedEquals
+import afield.math.functions.certifiedNeverBelow
+import afield.math.functions.certifiedNeverExceeds
+import afield.math.functions.certifiedRange
 import kotlin.math.PI
 
 // The function workbench's worked example (public/docs/assets/function_conversation/final.kt),
@@ -228,11 +228,11 @@ display("max", Table(listOf("what", "value"), title = "channel x, the whole hour
 ```
 
 ```kotlin [field-property box="sampled" name="code" path="sampled_code_.kt"]
-import afield.stdlib.Functions
-import afield.stdlib.SignalChannel
-import afield.stdlib.SignalViewer
-import afield.stdlib.SignalViewerOptions
-import afield.stdlib.displaySignal
+import afield.math.functions.Functions
+import afield.ui.visualization.SignalChannel
+import afield.ui.visualization.SignalViewer
+import afield.ui.visualization.SignalViewerOptions
+import afield.ui.visualization.displaySignal
 
 // One hour: a slow 40-second swing, plus a glitch 10 ms wide at 1234.57 s — exactly halfway
 // between two of the viewer's 0.02 s samples. Built from Functions ops rather than a
@@ -267,10 +267,10 @@ display("numbers", Table(listOf("what", "value"), title = "what the sampled plot
 ```
 
 ```kotlin [field-property box="limits" name="code" path="limits_code_.kt"]
-import afield.stdlib.Functions
-import afield.stdlib.certifiedEquals
-import afield.stdlib.certifiedNeverExceeds
-import afield.stdlib.enclose
+import afield.math.functions.Functions
+import afield.math.functions.certifiedEquals
+import afield.math.functions.certifiedNeverExceeds
+import afield.math.functions.enclose
 
 // What refuses. The function workbench's channels are fn(0.0..3600.0, name) { seconds -> ... }
 // lambdas: one opaque node each, so there is nothing for an interval walk to read. It refuses by

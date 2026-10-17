@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. What prior does the popup have
@@ -25,7 +25,7 @@ of where a row appears on screen. That answer belongs to KotlinCompletionSupport
 a `category=` beside every visible row. See public/docs/completion_ranking.md.
 
 ```edn [field-box id="agent_popup_prior_inspect" role="properties"]
-{"id" "agent_popup_prior_inspect" "index" 0 "name" "What prior does the popup have" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What prior does the popup have" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_popup_prior_inspect_code_.kt" "lines" 31 "characters" 1725 "sha256" "d5d61be77e40e00872a7841d9d8f9207039b30c1c61ea43365bb6c9cd0162967"}]}
+{"id" "agent_popup_prior_inspect" "index" 0 "name" "What prior does the popup have" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What prior does the popup have" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_popup_prior_inspect_code_.kt" "lines" 31 "characters" 1863 "sha256" "8c19b91324d09527ee633e4657ddc94e01a37be7fcea23249d34aa84a65fd676"}]}
 ```
 
 ```kotlin [field-property box="agent_popup_prior_inspect" name="code" path="agent_popup_prior_inspect_code_.kt"]
@@ -38,25 +38,25 @@ a `category=` beside every visible row. See public/docs/completion_ranking.md.
 // of where a row appears on screen. That answer belongs to KotlinCompletionSupport, and it is
 // `internal` — deliberately unreachable from a box. Use `FIELD_RANK_DUMP` for that; it prints
 // a `category=` beside every visible row. See public/docs/completion_ranking.md.
-val receiver = "afield.graphics.FLine"
-val ranks = afield.CommonMemberPrior.ranksFor(receiver)
+val receiver = "afield.geometry.path.FLine"
+val ranks = afield.runtime.completion.CommonMemberPrior.ranksFor(receiver)
 
 // Sorted by position rather than trusting the map's iteration order, so the figure is the
 // same every time it is drawn.
 val prior = Table(listOf("position", "member", "prior score"))
     .rows(ranks.entries.sortedBy { it.value }.map { (member, position) ->
-        listOf(position, member, afield.CommonMemberPrior.scoreOf(position))
+        listOf(position, member, afield.runtime.completion.CommonMemberPrior.scoreOf(position))
     })
     .role("member", CellRole.ACCENT)
 
 // Position 1 scores BASE, and each position after it costs STEP.
 check(ranks.all { (_, position) ->
-    afield.CommonMemberPrior.scoreOf(position) ==
-        afield.CommonMemberPrior.BASE - afield.CommonMemberPrior.STEP * (position - 1)
+    afield.runtime.completion.CommonMemberPrior.scoreOf(position) ==
+        afield.runtime.completion.CommonMemberPrior.BASE - afield.runtime.completion.CommonMemberPrior.STEP * (position - 1)
 }) { "the prior is no longer BASE less STEP per position" }
 
 markdown("main", """
-    {muted:@CommonMembers on ${receiver.md} — ${ranks.size} members, first scores ${afield.CommonMemberPrior.BASE}, less ${afield.CommonMemberPrior.STEP} per position}
+    {muted:@CommonMembers on ${receiver.md} — ${ranks.size} members, first scores ${afield.runtime.completion.CommonMemberPrior.BASE}, less ${afield.runtime.completion.CommonMemberPrior.STEP} per position}
 
     ${prior.h}
 """)

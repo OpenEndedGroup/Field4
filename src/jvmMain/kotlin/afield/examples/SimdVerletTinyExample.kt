@@ -1,8 +1,8 @@
 package afield.examples
 
-import afield.four.physics.OctreeBarnesHutPool
-import afield.four.physics.SimdVerlet
-import afield.generator2
+import afield.simulation.physics.OctreeBarnesHutPool
+import afield.simulation.physics.SimdVerlet
+import afield.runtime.lifecycle.generator2
 import kotlin.math.sqrt
 
 /**

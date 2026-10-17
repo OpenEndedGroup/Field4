@@ -12,7 +12,7 @@ from you, and nobody from them.
 printed it), with its worktree path replaced by `{root}` and ~200 unrelated Gradle-cache jars
 dropped from the classpath. Everything that the classifier looks at -- argv[0], the
 `-Dafield.aot.*` block, the `-cp` entries under the checkout's `build/`, the trailing
-`afield.Server` -- is verbatim.
+`afield.app.server.Server` -- is verbatim.
 
 Run with:  python -m unittest tools.test_run_field_tests_reaper
 """
@@ -62,7 +62,7 @@ REAL_RUNJVM_COMMAND = (
     "{root}/build/processedResources/jvm/main:{root}/libs/nashorn-core-15.6.jar:"
     "/Users/marc/.gradle/caches/modules-2/files-2.1/io.ktor/ktor-server-netty-jvm/3.3.0/"
     "3b54f1a0d37fbe1571c2ec8358416d0cc5e7e9b3/ktor-server-netty-jvm-3.3.0.jar "
-    "afield.Server"
+    "afield.app.server.Server"
 )
 
 REAL_SIDECAR_COMMAND = (
@@ -140,7 +140,7 @@ class AttributionTests(unittest.TestCase):
         """Observed live, not hypothesised.
 
         While this change was being verified, a sibling agent's smoke run appeared on the
-        machine as pid 23545: `afield.AgentJvmMainLauncher ... afield.examples.DemoTranscriptExecSmokeTest`,
+        machine as pid 23545: `afield.tools.automation.AgentJvmMainLauncher ... afield.examples.DemoTranscriptExecSmokeTest`,
         68,496 characters of argv, **no `-Dafield.aot.cache.path` argument whatsoever**, and its
         only checkout fingerprint the `-cp` entries under
         `/Users/marc/field4-worktrees/2026-07-30-1-typography-geometry-family/build/`. So the
@@ -151,7 +151,7 @@ class AttributionTests(unittest.TestCase):
         launcher = (
             f"{JAVA} -Xmx8g "
             f"-cp {MINE}/build/classes/kotlin/jvm/main:{MINE}/libs/jep-4.3.1.jar "
-            "afield.AgentJvmMainLauncher afield.examples.DemoTranscriptExecSmokeTest"
+            "afield.tools.automation.AgentJvmMainLauncher afield.examples.DemoTranscriptExecSmokeTest"
         )
         self.assertNotIn("-Dafield.aot.cache.path", launcher)
         self.assertTrue(_command_belongs_to(launcher, MINE))
@@ -177,7 +177,7 @@ class AttributionTests(unittest.TestCase):
         # The jvm-main launcher path, and anything launched with a `@argfile` classpath.
         aot_only = (
             f"{JAVA} -Dafield.aot.cache.path={MINE}/build/aot/field.aot "
-            "afield.AgentJvmMainLauncher"
+            "afield.tools.automation.AgentJvmMainLauncher"
         )
         self.assertTrue(_command_belongs_to(aot_only, MINE))
         self.assertFalse(_command_belongs_to(aot_only, SIBLING))
@@ -186,7 +186,7 @@ class AttributionTests(unittest.TestCase):
         # A Field JVM launched by hand, out of a jar, with the AOT property off and no
         # classpath under any build/ tree: nobody may reap it. Failing to reap someone
         # else's orphan costs memory; reaping it destroys their run.
-        stray = f"{JAVA} -Dafield.aot.cache.path= -cp /opt/field/all.jar afield.Server"
+        stray = f"{JAVA} -Dafield.aot.cache.path= -cp /opt/field/all.jar afield.app.server.Server"
         for root in (MINE, SIBLING, PRIMARY):
             self.assertFalse(_command_belongs_to(stray, root), root)
 
@@ -197,7 +197,7 @@ class AttributionTests(unittest.TestCase):
         gitdir = (
             f"{JAVA} -Dafield.aot.cache.path={MINE}/build/aot/field.aot "
             f"-Dgit.dir={PRIMARY}/.git/worktrees/{MINE.name} "
-            f"-cp {MINE}/build/classes/kotlin/jvm/main afield.Server"
+            f"-cp {MINE}/build/classes/kotlin/jvm/main afield.app.server.Server"
         )
         self.assertTrue(_command_belongs_to(gitdir, MINE))
         self.assertFalse(_command_belongs_to(gitdir, PRIMARY))
@@ -250,7 +250,7 @@ class AttributionReasonTests(unittest.TestCase):
         launcher = (
             f"{JAVA} -Xmx8g "
             f"-cp {MINE}/build/classes/kotlin/jvm/main:{MINE}/libs/jep-4.3.1.jar "
-            "afield.AgentJvmMainLauncher afield.examples.DemoTranscriptExecSmokeTest"
+            "afield.tools.automation.AgentJvmMainLauncher afield.examples.DemoTranscriptExecSmokeTest"
         )
         attribution = _attribute_command(launcher, MINE)
         self.assertTrue(attribution.ours)
@@ -272,7 +272,7 @@ class AttributionReasonTests(unittest.TestCase):
         self.assertEqual(attribution.detail, f"looks like {SIBLING}")
 
     def test_an_unattributable_jvm_says_so_rather_than_naming_a_path(self) -> None:
-        stray = f"{JAVA} -Dafield.aot.cache.path= -cp /opt/field/all.jar afield.Server"
+        stray = f"{JAVA} -Dafield.aot.cache.path= -cp /opt/field/all.jar afield.app.server.Server"
         attribution = _attribute_command(stray, PRIMARY)
         self.assertFalse(attribution.ours)
         self.assertIn("no argument names a checkout build directory", attribution.detail)
@@ -441,7 +441,7 @@ class CwdCrossCheckTests(unittest.TestCase):
     def test_a_non_java_argv0_is_still_ignored(self) -> None:
         # The guard that once reaped the shell running the reaper.
         ours, foreign = classify_field_jvm_lines(
-            [(99, f"/bin/zsh -c 'grep afield.Server {self.primary}/build/x'")],
+            [(99, f"/bin/zsh -c 'grep afield.app.server.Server {self.primary}/build/x'")],
             root=self.primary,
             protected=set(),
         )

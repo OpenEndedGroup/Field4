@@ -4,26 +4,26 @@ Turn a movie into trajectories, then inspect their motion as continuous polyline
 The optional PyTorch tracker follows frame-to-frame motion; the Kotlin reader and visualizer play
 the recorded result without a Python process or a neural model.
 
-Open [Starting points → particle_video](offline.html?file=assets/agent_transcripts/particle_video/metadata.edn) to scrub the
-example or track your own movie.
+Open the [particle_video](agent_transcripts.md#particle_video) starting point to scrub the example or
+track your own movie.
 
 ## A dance in 24,000 particles
 
-Each polyline joins consecutive recorded positions of **one identity**. The recent path shows
-bends, stalls and sudden jumps that dots alone conceal. The source dance is on the left;
+Each polyline joins consecutive recorded positions of one tracked particle (one identity). The
+recent path shows bends, stalls and sudden jumps that dots alone conceal. The source dance is on the left;
 stable identity-colored trajectories are on the right. These colors stay fixed through the film's
 intentional recoloring, so the motion is easier to follow.
 <video controls muted loop playsinline preload="metadata" width="1600" height="600" poster="../assets/particle_video/comparison.png" style="width:100%;height:auto">
   <source src="assets/particle_video/comparison.mp4" type="video/mp4">
 </video>
 
-The example uses **24,000 target particles at the source's full 400 × 300 resolution**, 25 frames
+The example uses 24,000 target particles at the source's full 400 × 300 resolution, 25 frames
 per second, and 20 RAFT updates in each direction. Increasing the particle count adds sampling
 density without running a separate neural prediction per particle. Tracking runs offline; playback
 uses the recorded positions.
 
 For readable individual paths, the comparison shows identities with `id % 16 == 0`, about 1,500
-at a time, with **25 frames / one second of history**. The underlying run still tracks 24,000.
+at a time, with 25 frames (one second) of history. The underlying run still tracks 24,000.
 The [full-density polyline movie](assets/particle_video/polylines-full.mp4) draws every live
 trajectory with 12 frames of history and source colors. The
 [source video](assets/particle_video/source.mp4) and original
@@ -40,7 +40,7 @@ Watch the same polylines over a dimmed source to check the endpoints against the
 
 ## Scrub recorded tracks
 
-The second Starting point box loads a small, representative subset of the same trajectories. It
+The starting point's second box loads a small, representative subset of the same trajectories. It
 keeps every sample of each selected identity, so time, births, retirement and colors are preserved.
 Move **movie time**, adjust **history (frames)** and **line width**, or switch **identity colors**
 to inspect motion independently of the source's changing tint. Lines are the default; **points**
@@ -90,15 +90,15 @@ uv sync --project optional/particle-tracker --python 3.11 --frozen
 On an **Apple Silicon Mac**, install FFmpeg and the Xcode command-line tools, then use the same
 `uv sync` command with a native arm64 Python. Choose `device = "mps"` in
 `ParticleTrackingOptions` for Metal, or `device = "cpu"` explicitly. The default is CUDA.
-The pinned Torch 2.6 packages do not include Intel Mac wheels. Recorded tracks can still be read
-and visualized on an Intel Mac without installing the tracking environment. Mac inference has
-not yet been executed in this integration.
+The pinned Torch 2.6 packages do not include Intel Mac wheels, but recorded tracks can still be
+read and visualized on an Intel Mac without installing the tracking environment. Tracking on a Mac
+is untested.
 
 If you already have a compatible environment, set `FIELD_PARTICLE_TRACKER_PYTHON` to its Python
 executable before starting Field. The tracker is optional: Field startup and normal builds do not
 install these packages or fetch weights.
 
-The third Starting point box runs the long job in a coroutine, then opens the complete recorded
+The starting point's third box runs the long job in a coroutine, then opens the complete recorded
 result. Change the input filename and particle count for your own movie:
 
 ```diffstatic {data-lang=kotlin}
@@ -131,15 +131,15 @@ place gets a new result. Logs and provenance live beside the cached binary.
 
 For the dance, `colorLimit = 1.0` is intentional: recoloring should change the sampled color rather
 than retire an otherwise useful point. For stable-color footage, the birth-color rule can help
-retire points that drift into a different surface. It is an artistic/lifecycle choice, not a motion
-accuracy score.
+retire points that drift into a different surface. Treat it as an artistic choice about when
+points die; it does not measure tracking accuracy.
 
 Confidence combines forward/backward agreement and local photometric consistency. An uncertain
 point holds its position during the grace interval; crowding may retire younger points as fabric
 compresses. Fresh identities fill available space. Stable identity colors make these events
 visible, but do not imply recovery of the same material point after an occlusion.
 
-Dense tracks are sizeable: this twelve-second example is about **575 MB** before compression.
+Dense tracks are sizeable: this twelve-second example is about 575 MB before compression.
 The Kotlin reader memory-maps uncompressed files and decodes queried frames on demand. Its current
 limit is 2 GiB per file; split longer dense work into clips. Portable gzip copies can inflate to at
 most 256 MiB. Old cache entries can be deleted when you no longer need them.
@@ -149,7 +149,7 @@ most 256 MiB. Old cache entries can be deleted when you no longer need them.
     The example is seconds 4–16 of the Commons file, tracked on a Linux RTX 4090. It keeps the
     source's 400 × 300 pixels rather than inventing detail by upscaling. The original 1,500-particle
     test and the denser 24,000-particle version use the same bidirectional RAFT-large engine.
-    Real Kotlin launcher, reader and renderer checks precede publication; the
+    The
     [manifest](assets/particle_video/manifest.json) records model versions, options, hashes,
     cache reuse, duration and the representative-subset rule. The source is also available
     [losslessly](assets/particle_video/source.mkv) for rerunning the exact request.

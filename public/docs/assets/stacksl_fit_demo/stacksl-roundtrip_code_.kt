@@ -1,39 +1,43 @@
-// The step that turns a number into a capability: the fit's output is StackSL SOURCE.
-//
-// A fitted wire vector is a `DoubleArray` and nobody can run a `DoubleArray`. So the fitted values
-// are written back into the program at the token positions the compiler recorded, and the result
-// is an ordinary StackSL program — which this box then compiles from scratch through the ORDINARY
-// non-wired path and renders at 256. Paste the text it prints into a `stackSL` box and a GPU will
-// draw it.
-//
-// The number to watch is the last one: the maximum per-channel difference between the re-emitted
-// program's render and the fitted wire vector's render. If the literal rewriting were wrong — a
-// column off by one, a token mismatched — it would not be small, it would be a different picture.
+/*
+The step that turns a number into a capability: the fit's output is StackSL SOURCE.
 
-import afield.stacksl.cpu.StackSLCpu
-import afield.stacksl.cpu.StackSLFit
-import afield.util.PngEncoder
-import kotlin.math.abs
+A fitted wire vector is a `DoubleArray` and nobody can run a `DoubleArray`. So the fitted values
+are written back into the program at the token positions the compiler recorded, and the result
+is an ordinary StackSL program — which this box then compiles from scratch through the ORDINARY
+non-wired path and renders at 256. Paste the text it prints into a `stackSL` box and a GPU will
+draw it.
+
+The number to watch is the last one: the maximum per-channel difference between the re-emitted
+program's render and the fitted wire vector's render. If the literal rewriting were wrong — a
+column off by one, a token mismatched — it would not be small, it would be a different picture.
+*/
+
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.lang.stacksl.cpu.StackSLFit
+import afield.media.image.util.PngEncoder
 
 run {
-
-    val seedProgram = """
+    val seedProgram =
+        """
         uv 3.0 * fbm
         0.5 0.5 0.5 1 vec4
         0.5 0.5 0.5 1 vec4
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
         palette
-    """.trimIndent()
+        """
+            .trimIndent()
 
-    val targetProgram = """
+    val targetProgram =
+        """
         uv 3.0 * fbm
         0.62 0.41 0.35 1 vec4
         0.31 0.45 0.52 1 vec4
         1.0 1.0 1.0 1 vec4
         0.12 0.55 0.88 1 vec4
         palette
-    """.trimIndent()
+        """
+            .trimIndent()
 
     val template = StackSLCpu.stillTemplate()
 
@@ -73,7 +77,7 @@ run {
     val gutter = 6
     val width = 2 * panel + gutter
     val strip = IntArray(width * panel) { 0xFF14161A.toInt() }
-    listOf(viaWires, viaSource).forEachIndexed { index, raster ->
+    [viaWires, viaSource].forEachIndexed { index, raster ->
         val argb = raster.toArgb()
         val x0 = index * (panel + gutter)
         for (y in 0 until panel) for (x in 0 until panel) {
@@ -83,9 +87,11 @@ run {
     println("panels: rendered from the fitted WIRES | rendered from the re-emitted SOURCE")
     display(PngEncoder.encode(strip, width, panel))
 
-    // The one lossy step in the trip is the printing: `%.8f` is eight significant decimals and
-    // binary32 needs nine to round-trip in general, so a fitted value can land one ulp away in the
-    // source. Both outcomes have been seen and both are fine: `StackSLFitFigureTest`'s 64x64 fit
-    // round-trips at exactly 0, and this box at 48x48 measured 5.96e-08, which is one ulp of a
-    // Float near 1. That is why the guard allows 1e-4 rather than demanding zero.
+    /*
+    `%.8f` writes eight places after the decimal point, not eight significant digits.
+    That fixed precision can perturb a fitted Float; its error depends on the value's magnitude.
+    `StackSLFitFigureTest`'s 64x64 fit
+    round-trips at exactly 0, and this box at 48x48 measured 5.96e-08, which is one ulp of a
+    Float near 1. That is why the guard allows 1e-4 rather than demanding zero.
+    */
 }

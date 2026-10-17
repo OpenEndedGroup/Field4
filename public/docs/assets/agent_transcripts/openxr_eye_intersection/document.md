@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 1 · OpenXR renderer
@@ -11,12 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="eye_ray_renderer" index="0" -->
 
 ```edn [field-box id="eye_ray_renderer" role="properties"]
-{"id" "eye_ray_renderer" "index" 0 "name" "1 · OpenXR renderer" "parents" ["root"] "children" ["eye_ray_scene"] "properties" {"children" #{#afield/box "eye_ray_scene"} "parents" #{#afield/box "root"} "name" "1 · OpenXR renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "eye_ray_renderer_code_.kt" "lines" 19 "characters" 590 "sha256" "3c5f577b5a3ff192e8684e4cfc58e49115b72e38181fd3fd0d8453c73880aa59"}]}
+{"id" "eye_ray_renderer" "index" 0 "name" "1 · OpenXR renderer" "parents" ["root"] "children" ["eye_ray_scene"] "properties" {"children" #{#afield/box "eye_ray_scene"} "parents" #{#afield/box "root"} "name" "1 · OpenXR renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "eye_ray_renderer_code_.kt" "lines" 19 "characters" 612 "sha256" "ba13be9b5cfea2b85b0ba77d5913141104bb03c6cd8c4c64f1d19fe1369f1ca5"}]}
 ```
 
 ```kotlin [field-property box="eye_ray_renderer" name="code" path="eye_ray_renderer_code_.kt"]
-import afield.four.util.Options
-import afield.four.targets.OpenXRHmdTarget
+import afield.graphics.vulkan.util.Options
+import afield.graphics.vulkan.targets.OpenXRHmdTarget
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -41,7 +41,7 @@ start(renderer::run)
 <!-- field-box id="eye_ray_scene" index="1" -->
 
 ```edn [field-box id="eye_ray_scene" role="properties"]
-{"id" "eye_ray_scene" "index" 1 "name" "2 · eye rays + world marker" "parents" ["root" "eye_ray_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "eye_ray_renderer"} "name" "2 · eye rays + world marker" "_tombstone" false "frame" #afield/rect [340.0 150.0 390.0 120.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "eye_ray_scene_vertex_.glsl" "lines" 10 "characters" 308 "sha256" "ab8d89542e81627a4cd4d5eae892c294c4d5e28440d4866eac4a68ecafc34a1f"} {"name" "fragment" "language" "glsl" "path" "eye_ray_scene_fragment_.glsl" "lines" 4 "characters" 117 "sha256" "7acd5011fc495b0df8f0099cfebc8ddff5e6b6c270376fdd89d4f941e313b8f9"} {"name" "code" "language" "kotlin" "path" "eye_ray_scene_code_.kt" "lines" 173 "characters" 8109 "sha256" "fac92d0275f9fcf0bc19a27d01d5abbc26b57c9a0e75f48e89446fe1ef323085"}]}
+{"id" "eye_ray_scene" "index" 1 "name" "2 · eye rays + world marker" "parents" ["root" "eye_ray_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "eye_ray_renderer"} "name" "2 · eye rays + world marker" "_tombstone" false "frame" #afield/rect [340.0 150.0 390.0 120.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "eye_ray_scene_vertex_.glsl" "lines" 10 "characters" 308 "sha256" "ab8d89542e81627a4cd4d5eae892c294c4d5e28440d4866eac4a68ecafc34a1f"} {"name" "fragment" "language" "glsl" "path" "eye_ray_scene_fragment_.glsl" "lines" 4 "characters" 117 "sha256" "7acd5011fc495b0df8f0099cfebc8ddff5e6b6c270376fdd89d4f941e313b8f9"} {"name" "code" "language" "kotlin" "path" "eye_ray_scene_code_.kt" "lines" 173 "characters" 8088 "sha256" "6ff3a32c49aea059392dbcc0ddf04b34817510606eade7641923540561fa417d"}]}
 ```
 
 ```glsl [field-property box="eye_ray_scene" name="vertex" path="eye_ray_scene_vertex_.glsl"]
@@ -65,10 +65,10 @@ void main() { outColor = fcol; }
 ```
 
 ```kotlin [field-property box="eye_ray_scene" name="code" path="eye_ray_scene_code_.kt"]
-import afield.four.modules.*
-import afield.four.targets.BinocularGazeIntersection
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Quaternionf
+
+import afield.graphics.vulkan.targets.BinocularGazeIntersection
+import afield.math.linalg.Matrix4f
+import afield.math.linalg.Quaternionf
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.delay

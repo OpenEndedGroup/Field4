@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. What a scope watches — capture, edit, apply
@@ -19,7 +19,7 @@ write to. The simplest is a uniform Structure — and none of this needs a GPU, 
 Structure is constructible bare and bind/bindings are plain maps.
 
 ```edn [field-box id="keyframe_targets" role="properties"]
-{"id" "keyframe_targets" "index" 0 "name" "What a scope watches — capture, edit, apply" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a scope watches — capture, edit, apply" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_targets_code_.kt" "lines" 95 "characters" 3367 "sha256" "427c84a553d55b10e4382bfbad59093aaa11c40244591448eae4b56d13063e05"}]}
+{"id" "keyframe_targets" "index" 0 "name" "What a scope watches — capture, edit, apply" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a scope watches — capture, edit, apply" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_targets_code_.kt" "lines" 92 "characters" 3287 "sha256" "f700b7811c1caa0ca068cb9ab2157e4d288fffd8d157cddc1a4ece464880f0ad"}]}
 ```
 
 ```kotlin [field-property box="keyframe_targets" name="code" path="keyframe_targets_code_.kt"]
@@ -28,9 +28,6 @@ A KeyframeScope holds no values of its own. It holds *targets*: places to read f
 write to. The simplest is a uniform Structure — and none of this needs a GPU, because
 Structure is constructible bare and bind/bindings are plain maps.
 */
-import afield.four.buffers.Structure
-import afield.stdlib.KeyframeScope
-
 val glow = Structure()
 val blur = Structure()
 glow.bind("radius") { 4.0f }
@@ -103,12 +100,12 @@ markdown(
     | blur.radius | ${bound(blur, "radius")} |
     | glow.glow@radius | ${(glow.bindings["glow@radius"]?.invoke() ?: "<unbound>").md} |
 
-    #### 4 — the bindings/values trap
+    #### 4 — capture reads bindings and plain values
 
     | binding | value |
     | --- | --- |
     | bound (via bind) | ${trap["bound"].md} |
-    | set (via values) | ${trap["set"].md} {warn:← captured as null, silently} |
+    | set (via values) | ${trap["set"].md} (plain value) |
 
     #### 5 — captured() again, then re-captured
 
@@ -133,7 +130,7 @@ saveKey writes pretty JSON — and, every single time, ALSO appends a numbered c
 hundred files. What survives the trip is a closed set; everything else is dropped silently.
 
 ```edn [field-box id="keyframe_persist" role="properties"]
-{"id" "keyframe_persist" "index" 1 "name" "Saving is always additive history" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Saving is always additive history" "_tombstone" false "frame" #afield/rect [1100.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_persist_code_.kt" "lines" 110 "characters" 3441 "sha256" "776d2599bf5c6a60932ed18e4d9909aaf5dbf353469e6ad1d1e3ef4ed8602519"}]}
+{"id" "keyframe_persist" "index" 1 "name" "Saving is always additive history" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Saving is always additive history" "_tombstone" false "frame" #afield/rect [1100.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_persist_code_.kt" "lines" 107 "characters" 3328 "sha256" "269a651935f1a84ce36743954a85282070b51120947d441271cd36c6c04afdfd"}]}
 ```
 
 ```kotlin [field-property box="keyframe_persist" name="code" path="keyframe_persist_code_.kt"]
@@ -142,9 +139,6 @@ saveKey writes pretty JSON — and, every single time, ALSO appends a numbered c
 <file>.versions directory with a manifest. Nothing prunes it, so a hundred saves leave a
 hundred files. What survives the trip is a closed set; everything else is dropped silently.
 */
-import afield.stdlib.KeyframeScope
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.stackSLString
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframer-demo")
@@ -180,7 +174,7 @@ val lossy = scope.Key(
     mutableMapOf(
         "gain" to 0.90f,
         "enabled" to true, // a Boolean is outside the union
-        "taps" to listOf(1, 2, 3), // so is a list
+        "taps" to [1, 2, 3], // so is a list
         "absent" to null, // and a null is dropped too
     ),
 )
@@ -262,7 +256,7 @@ Kotlin, so a state you arrived at by fiddling becomes a diff you can commit. Eve
 literal is chosen so the paste round-trips as the same TYPE, not merely the same number.
 
 ```edn [field-box id="keyframe_updatecode" role="properties"]
-{"id" "keyframe_updatecode" "index" 2 "name" "A captured look becomes source" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A captured look becomes source" "_tombstone" false "frame" #afield/rect [1100.0 640.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_updatecode_code_.kt" "lines" 44 "characters" 1861 "sha256" "5ac77c236dc630682f7c6e6388f68eaf6131f21e2a5a7349eeb72c8efc61c3da"}]}
+{"id" "keyframe_updatecode" "index" 2 "name" "A captured look becomes source" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A captured look becomes source" "_tombstone" false "frame" #afield/rect [1100.0 640.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_updatecode_code_.kt" "lines" 39 "characters" 1722 "sha256" "039958d95c92df04be873ac5f55ec63466ee7a24b731b42979157f242e4b4c4d"}]}
 ```
 
 ```kotlin [field-property box="keyframe_updatecode" name="code" path="keyframe_updatecode_code_.kt"]
@@ -271,13 +265,8 @@ The last step of the loop closes it: Key.updateCode() emits the snapshot as past
 Kotlin, so a state you arrived at by fiddling becomes a diff you can commit. Every
 literal is chosen so the paste round-trips as the same TYPE, not merely the same number.
 */
-import afield.stdlib.KeyframeScope
-import afield.stdlib.SourceBackedBlock
-import afield.stdlib.linalg.Quaternionf
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.stackSLString
-
 val scope = KeyframeScope()
+val unsupportedNotes: List<String> = ["unsupported", "on purpose"]
 val key = scope.Key(
     mutableMapOf(
         "gain" to 0.65f, // a Float — and the 'f' suffix is load-bearing
@@ -291,7 +280,7 @@ val key = scope.Key(
         would interpolate at paste time, so it must come out escaped.
         */
         "block" to SourceBackedBlock<Any?>("box-1", "val total = 2\nprintln(\"sum: \$total\")"),
-        "notes" to listOf("unsupported", "on purpose"),
+        "notes" to unsupportedNotes,
     ),
 )
 
@@ -325,8 +314,10 @@ the focus distance — rather than a position and a target point. Interpolating 
 SCREW MOTION, and between two cameras looking at the same subject it is a very different
 move from lerping the two positions. Draw both and the argument makes itself.
 
+The two camera positions; both look at the subject at the origin. Move one and rerun.
+
 ```edn [field-box id="keyframe_camera" role="properties"]
-{"id" "keyframe_camera" "index" 3 "name" "A camera move is a screw motion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A camera move is a screw motion" "_tombstone" false "frame" #afield/rect [80.0 540.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_camera_code_.kt" "lines" 124 "characters" 4555 "sha256" "1aa399f21bbb5f2003380ceb8fc028f42fbed02fd2a52a210284fdebe031bb4b"}]}
+{"id" "keyframe_camera" "index" 3 "name" "A camera move is a screw motion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A camera move is a screw motion" "_tombstone" false "frame" #afield/rect [80.0 540.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_camera_code_.kt" "lines" 115 "characters" 4216 "sha256" "6c311feacda5a4d87c1080a51ff0fc14c171459ccc895872078545a6826eb27e"}]}
 ```
 
 ```kotlin [field-property box="keyframe_camera" name="code" path="keyframe_camera_code_.kt"]
@@ -336,10 +327,6 @@ the focus distance — rather than a position and a target point. Interpolating 
 SCREW MOTION, and between two cameras looking at the same subject it is a very different
 move from lerping the two positions. Draw both and the argument makes itself.
 */
-import afield.four.util.CameraPose
-import afield.stdlib.KeyframeScope
-import afield.stdlib.linalg.Vector3f
-
 // The two camera positions; both look at the subject at the origin. Move one and rerun.
 var fromPos = Vector3f(8f, 2f, 0f)
 var toPos = Vector3f(0f, 2f, 8f)
@@ -392,12 +379,7 @@ val sightLerp = fline {
 }
 // The subject: a small circle at the origin.
 val subject = fline {
-    val r = 14.0
-    for (i in 0..48) {
-        val ang = i / 48.0 * Math.PI * 2.0
-        if (i == 0) moveTo(r * kotlin.math.cos(ang), r * kotlin.math.sin(ang))
-        else lineTo(r * kotlin.math.cos(ang), r * kotlin.math.sin(ang))
-    }
+    circle(0, 0, 14)
     color = vec(0.95, 0.95, 0.95, 0.9)
     thickness = 2.0
 }
@@ -436,7 +418,7 @@ println("worst-case aiming error:    %.6f world units".format(worstAim))
 showPlaneGrid(
     ("plan view, looking down y\n" +
         "blue: sclerp, a quarter circle. orange: the straight line between the same two positions") to
-        listOf(sight, sightLerp, subject, chord, screw),
+        [sight, sightLerp, subject, chord, screw],
     ("distance to the subject, over the move\n" +
         "sclerp holds %.4f..%.4f; the straight line dips to %.4f — %.1f%% nearer"
             .format(
@@ -444,7 +426,7 @@ showPlaneGrid(
                 rMax,
                 lerpMid,
                 closer,
-            )) to listOf(dScrew, dChord),
+            )) to [dScrew, dChord],
     columns = 2,
     cellWidth = 440,
     cellHeight = 380,

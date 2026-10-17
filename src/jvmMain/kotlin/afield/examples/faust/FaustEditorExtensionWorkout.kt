@@ -1,7 +1,7 @@
 package afield.examples.faust
 
-import afield.four.synth.FaustEditorExtension
-import afield.util.NodeTool
+import afield.audio.synth.FaustEditorExtension
+import afield.media.image.util.NodeTool
 import java.nio.file.Files
 import kotlin.io.path.writeText
 
@@ -150,7 +150,7 @@ object FaustEditorExtensionWorkout {
 
         // --- the document under test ---
         const lines = [
-          'import afield.four.synth.*',
+          'import afield.audio.synth.*',
           '',
           'faust(${"\"\"\""}',
           '#faust',

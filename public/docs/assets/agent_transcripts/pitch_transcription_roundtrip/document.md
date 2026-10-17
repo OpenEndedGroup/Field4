@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 4 · POKE THIS — the register is the whole lever
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pitch_roundtrip_register" index="0" -->
 
 ```edn [field-box id="pitch_roundtrip_register" role="properties"]
-{"id" "pitch_roundtrip_register" "index" 0 "name" "4 · POKE THIS — the register is the whole lever" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · POKE THIS — the register is the whole lever" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_register_code_.kt" "lines" 44 "characters" 2020 "sha256" "17fa53d18ac885c9d3a111ff9d2b559374cbfa3f03028380d595a767e5a108a4"}]}
+{"id" "pitch_roundtrip_register" "index" 0 "name" "4 · POKE THIS — the register is the whole lever" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · POKE THIS — the register is the whole lever" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_register_code_.kt" "lines" 44 "characters" 2021 "sha256" "ec0dab9cd8d30c5425308f09a6e117268e19f77cc7f5fc2c80cc087c535797e1"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_register" name="code" path="pitch_roundtrip_register_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // Sixteen notes in half a second: 31 ms each.
 val notation = "60 62 64 65 67 69 71 72 72 71 69 67 65 64 62 60"
@@ -66,11 +66,11 @@ display("recovered", "pat(\"${heard.miniNotation}\")")
 <!-- field-box id="pitch_roundtrip_legato" index="1" -->
 
 ```edn [field-box id="pitch_roundtrip_legato" role="properties"]
-{"id" "pitch_roundtrip_legato" "index" 1 "name" "3 · a line with no attacks in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · a line with no attacks in it" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_legato_code_.kt" "lines" 48 "characters" 2029 "sha256" "4fdcb49d630e1aca8b2a90f49ee3d61e187e26ffe52f9754369d74c3df45d4b2"}]}
+{"id" "pitch_roundtrip_legato" "index" 1 "name" "3 · a line with no attacks in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · a line with no attacks in it" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_legato_code_.kt" "lines" 48 "characters" 2030 "sha256" "f4d018034144dec6d9b30b2e00b198f44a1bd3c01a1e63daef1e0f3abb392059"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_legato" name="code" path="pitch_roundtrip_legato_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // One oscillator, continuous phase, stepped frequency. The amplitude never moves, so the RMS
 // envelope is flat and there is no attack anywhere except the entry from silence.
@@ -125,11 +125,11 @@ showPatTranscriptionOf(
 <!-- field-box id="pitch_roundtrip_refusal" index="2" -->
 
 ```edn [field-box id="pitch_roundtrip_refusal" role="properties"]
-{"id" "pitch_roundtrip_refusal" "index" 2 "name" "5 · a chord, refused rather than guessed at" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · a chord, refused rather than guessed at" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_refusal_code_.kt" "lines" 33 "characters" 1475 "sha256" "fe456d90d306982ac860dfb3d5a010203e22f86a74184987c8fd1c8089e3a63e"}]}
+{"id" "pitch_roundtrip_refusal" "index" 2 "name" "5 · a chord, refused rather than guessed at" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · a chord, refused rather than guessed at" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_refusal_code_.kt" "lines" 33 "characters" 1476 "sha256" "13cd1b7649852fb47e0a2c4e2c02aa384fc683fcec139612b3b96901c5c22db8"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_refusal" name="code" path="pitch_roundtrip_refusal_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // Three simultaneous pitches. A monophonic detector's correct output here is a stated
 // inability, not the loudest note. `~` is the only thing mini-notation can say for a span
@@ -169,11 +169,11 @@ display("how it knows", """
 <!-- field-box id="pitch_roundtrip_clean" index="3" -->
 
 ```edn [field-box id="pitch_roundtrip_clean" role="properties"]
-{"id" "pitch_roundtrip_clean" "index" 3 "name" "2 · notate → render → hear it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · notate → render → hear it back" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_clean_code_.kt" "lines" 27 "characters" 1047 "sha256" "609817c917fd0e210762ab4a79da7f49f56bf0bb9805794d0bb30ec20b89761c"}]}
+{"id" "pitch_roundtrip_clean" "index" 3 "name" "2 · notate → render → hear it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · notate → render → hear it back" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_clean_code_.kt" "lines" 27 "characters" 1048 "sha256" "a5a0ca99c368a93fa4431dffff9b63ed65c11b23ea6e5aea8f64753930198471"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_clean" name="code" path="pitch_roundtrip_clean_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // The notation, and the ground truth Field already owns because it wrote it.
 val notation = "60 62 64 65 67 69 71 72"
@@ -207,11 +207,11 @@ display("summary", heard.describe())
 <!-- field-box id="pitch_roundtrip_guide" index="4" -->
 
 ```edn [field-box id="pitch_roundtrip_guide" role="properties"]
-{"id" "pitch_roundtrip_guide" "index" 4 "name" "1 · hearing pitch — the loop and its last arrow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · hearing pitch — the loop and its last arrow" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_guide_code_.kt" "lines" 30 "characters" 2278 "sha256" "6b451564758a17816713b0b76091d4e0cb32429f9aecea891b451ff78f82cd6d"}]}
+{"id" "pitch_roundtrip_guide" "index" 4 "name" "1 · hearing pitch — the loop and its last arrow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · hearing pitch — the loop and its last arrow" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_guide_code_.kt" "lines" 30 "characters" 2279 "sha256" "be62f3b63935456367702d931d1bb522afe213c88e135fcc2dd6adbd0f427135"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_guide" name="code" path="pitch_roundtrip_guide_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 display("guide", """
 <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.55 system-ui,sans-serif">

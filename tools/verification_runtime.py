@@ -20,6 +20,33 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Callable, Iterator, Mapping, Sequence
 
+def pinned_graalvm_args(repo: Path) -> list[str]:
+    """`-Dorg.gradle.java.installations.paths=<jdk>` for the GraalVM `field.sh` provisions, or `[]`.
+
+    The toolchain spec can only say "GraalVM, Java 25". This finds the same cached
+    exact build as field.sh and the wrappers, and supplies it explicitly for tool launches.
+    Nothing is downloaded here: with no provisioned JDK the build's exact-version
+    check rejects a mismatched auto-detected JDK.
+    """
+    if os.environ.get("AFIELD_SKIP_TOOLCHAIN_PROVISION") == "1":
+        return []
+    try:
+        build = (repo / "build.gradle.kts").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    match = re.search(r'^val graalvmVersion = "([^"]+)"', build, re.MULTILINE)
+    if not match:
+        return []
+    java = "java.exe" if os.name == "nt" else "java"
+    toolchains = Path.home() / ".field4" / "toolchains"
+    for pattern in (f"graalvm-community-*{match.group(1)}*/bin/{java}",
+                    f"graalvm-community-*{match.group(1)}*/Contents/Home/bin/{java}"):
+        for candidate in sorted(toolchains.glob(pattern)):
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return [f"-Dorg.gradle.java.installations.paths={candidate.parent.parent}"]
+    return []
+
+
 #: Backdoor verbs that, since 2026-09-14, grade themselves on the box's own error output
 #: (`grade_execution` in `tools/field_backdoor.py`). Before that they returned `ok: true`
 #: for a box that failed to compile, and the diagnostic reached the caller only as an
@@ -146,6 +173,10 @@ def automation_server_environment(
         # Test clients register throwaway commands (the chord regression's `cmd+k`), and the server
         # appends every command it sees to the keybindings file; keep that off ~/.afield.
         "AFIELD_KEYBINDINGS_FILE": str(repo_root / "build" / "field-automation-keybindings.yaml"),
+        # The documentation notes store is the revision agents' queue and defaults to the user's
+        # ~/.afield/docs-annotations.json. A capture that writes a note through the panel, or reads
+        # /docs-pass.html, must see this checkout's own notebook instead.
+        "AFIELD_DOCS_ANNOTATIONS_STORE": str(repo_root / "build" / "field-automation-docs-annotations.json"),
         # Set over the inherited environment, not under it: an exported path in the agent's shell
         # is usually the one the user's own Field writes to.
         **automation_log_environment(repo_root),
@@ -452,7 +483,9 @@ def run_with_watchdog(
     backdoor client names its session log `…-pid<PID>-….jsonl`, so the PID is an exact
     key where "newest log that happens to contain an error" is only a guess.
     """
-    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as stdout_file, tempfile.TemporaryFile(
+    with tempfile.TemporaryDirectory(prefix="field-watchdog-") as output_directory, (
+        Path(output_directory) / "stdout"
+    ).open("w+", encoding="utf-8") as stdout_file, tempfile.TemporaryFile(
         mode="w+", encoding="utf-8"
     ) as stderr_file:
         popen_kwargs: dict[str, object] = {
@@ -490,9 +523,13 @@ def run_with_watchdog(
                 if completion_probe is not None and completion_seen_at is None:
                     stdout_size = os.fstat(stdout_file.fileno()).st_size
                     if stdout_size != last_stdout_size:
-                        stdout_file.seek(0)
-                        partial_stdout = stdout_file.read()
-                        stdout_file.seek(0, os.SEEK_END)
+                        # The child inherits stdout's file offset. Seeking that descriptor
+                        # can make a concurrent write overwrite the beginning of its JSON.
+                        # A separately opened reader has its own offset on every platform.
+                        with (Path(output_directory) / "stdout").open(
+                            encoding="utf-8", errors="replace"
+                        ) as snapshot:
+                            partial_stdout = snapshot.read()
                         last_stdout_size = stdout_size
                         if completion_probe(partial_stdout):
                             completion_seen_at = now
@@ -553,6 +590,18 @@ def verification_lock(
     """
     lock_path = repo_root / ".field-backdoor" / "verification.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
+    # A verification command can launch a child that runs another supported command
+    # in the same checkout (the docs local-site bootstrap does this). The parent
+    # keeps the lock until that child exits, so acquiring it again would deadlock.
+    inherited_owner = os.environ.get(VERIFICATION_LOCK_OWNER_ENV)
+    if inherited_owner == str(os.getppid()):
+        try:
+            recorded_owner = json.loads(lock_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            recorded_owner = {}
+        if recorded_owner.get("pid") == os.getppid():
+            yield
+            return
     handle = lock_path.open("a+", encoding="utf-8")
     handle.seek(0)
     started = time.monotonic()

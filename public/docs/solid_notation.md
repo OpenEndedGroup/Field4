@@ -1,6 +1,6 @@
-# A solid, written down: `afield.solidsl`
+# A solid, written down: `afield.lang.solidsl`
 
-In `afield.solidsl` a shape is a **value**. Subtracting a cylinder from a cuboid builds an expression
+In `afield.lang.solidsl` a shape is a **value**. Subtracting a cylinder from a cuboid builds an expression
 tree, and from that one tree you can march a mesh, build an exact CSG solid, emit GLSL, or simplify
 it. A document you can open and run is [at the bottom of the page](#open-this); the KDoc for
 `SolidExpr`, `Profile`, `SolidLowering` and `SolidTemplate` covers every declaration used here.
@@ -75,7 +75,7 @@ one primitive with no exact form — see [refusals](#refusals-are-in-the-type).
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/vocabulary.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // Every panel frames its own bounds, so the small shapes are not lost beside the large ones.
 val q = SolidQuality(segments = 64, edgeLengthFraction = 1.0 / 55.0)
@@ -104,7 +104,7 @@ cross-section at every resolution, and is wrong in a different way instead.
 
 ## Two lowerings of one source
 
-A `SolidExpr` lowers two ways, and [`afield.manifold`](manifold.md) supplies the second of them.
+A `SolidExpr` lowers two ways, and [`afield.geometry.solid.manifold`](manifold.md) supplies the second of them.
 Neither is a superset of the other, so which one you want depends on what you are going to do next:
 
 <div class="field-data-table" markdown>
@@ -129,7 +129,7 @@ march improves a polyhedral shape and bottoms out on a curved one at Manifold's 
 past a certain point you are paying for triangles that buy nothing.
 
 `crossCheck` builds a shape both ways and compares volume, area, genus and a symmetric Hausdorff
-distance, which is how the two are held to each other; `dev_docs/SOLIDSL_AGREEMENT.md` records what
+distance, which is how the two are held to each other; [`dev_docs/SOLIDSL_AGREEMENT.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/SOLIDSL_AGREEMENT.md) records what
 that costs and where the floors are.
 
 ## Refusals are in the type
@@ -165,7 +165,7 @@ tree, and `exactRefusal()` answers the yes-or-no.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/refusals.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 val q = SolidQuality(segments = 64, edgeLengthFraction = 1.0 / 70.0)
 
@@ -177,7 +177,7 @@ val shellCut = sphere(0.9).shelled(0.08) - cuboid(1.2, 1.2, 1.2).at(0.9, 0.0, 0.
 // The gyroid has no window of its own and borrows the cuboid's, which is the bounds story below.
 val gyr = gyroid(6.0, 0.30) and cuboid(2.6, 2.6, 2.6)
 
-listOf("blend" to blend, "rounded" to rounded, "shell" to shellCut, "gyroid" to gyr).forEach { (n, e) ->
+["blend" to blend, "rounded" to rounded, "shell" to shellCut, "gyroid" to gyr].forEach { (n, e) ->
     println("%-8s refuses=%s".format(n, e.exactRefusal() != null))
 }
 
@@ -229,12 +229,12 @@ them side by side:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/hybrid.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 val q = SolidQuality(segments = 96, edgeLengthFraction = 1.0 / 80.0)
 
 val plate = cuboid(3.2, 2.2, 0.42)
-val bores = unionOf(listOf(-1.1 to -0.7, 1.1 to -0.7, -1.1 to 0.7, 1.1 to 0.7).map { (x, y) ->
+val bores = unionOf([-1.1 to -0.7, 1.1 to -0.7, -1.1 to 0.7, 1.1 to 0.7].map { (x, y) ->
     cylinder(2.0, 0.30, segments = 96).at(x, y, 0.0)
 })
 val boss = smoothUnion(
@@ -318,9 +318,9 @@ does not always come back out as three angles), reassociating `SmoothUnion`, reo
 A tree you can read is also a tree you can differentiate, and that is the third thing you can do with
 one source. Declare which numbers in a shape are free, hand over some samples of the shape you
 actually want, and a gradient finds them — the 3D version of what
-[`afield.rectsl.RectSLFn`](rectsl_inverse_animation.md) does for 2D tracks.
+[`afield.lang.rectsl.RectSLFn`](rectsl_inverse_animation.md) does for 2D tracks.
 
-The machinery is `afield.stdlib.AD`, reverse-mode automatic differentiation over `Double`:
+The machinery is `afield.math.autodiff.AD`, reverse-mode automatic differentiation over `Double`:
 `SolidGradient.kt` is `SolidField.kt`'s `toField3` transposed line for line into `AD` arithmetic.
 Reverse mode because the objective is one scalar loss over many sample points and a handful of
 parameters, so one forward pass and one backward sweep give every parameter derivative at once. The
@@ -433,7 +433,7 @@ measured for it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/inverse.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
+import afield.lang.solidsl.*
 
 // The model, and the three numbers to be solved for. `barRadius` drives BOTH of the cylinder's
 // radii, which is how "the bar is a cylinder, not a frustum" gets written down.
@@ -513,8 +513,7 @@ Marched, the seed, the fit and the target:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/partial.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
-import afield.stdlib.OptimizeMethod
+import afield.lang.solidsl.*
 
 // A sphere and a cylinder. The model below gets a CUBE and a cylinder.
 val truth = sphere(0.62) + cylinder(2.20, 0.28)
@@ -561,8 +560,7 @@ shows something the two ends cannot: *when* each parameter stops moving.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/converging.png" wait="14.0" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.solidsl.*
-import afield.stdlib.OptimizeMethod
+import afield.lang.solidsl.*
 
 val truth = sphere(0.62) + cylinder(2.20, 0.28)
 val target = truth.sampleField(count = 3000, seed = 17)
@@ -582,7 +580,7 @@ val fit = model.fitParameters(
 // `run.trajectory` is the parameter vector at every recorded iteration, indexed exactly like
 // `run.losses`. `shapeAt` substitutes one back into the template, so these are the shapes the
 // optimizer really held -- not six descents truncated at six different caps.
-val frames = listOf(0, 150, 500, 1200, 2400, fit.run.trajectory.lastIndex)
+val frames = [0, 150, 500, 1200, 2400, fit.run.trajectory.lastIndex]
 val tilt = model.names.indexOf("barTilt")
 
 threeGrid(
@@ -638,19 +636,14 @@ of the target, so read the report with that in mind.
     the iteration count. At 6000 it converges on the gradient tolerance in 4176.
 
     So the angle costs about ten times the iterations of the same fit without it (4176 against
-    387). If you add an angle to a fit and it seems to stall, check the arithmetic before you change
-    optimizer: `iterations x learningRate` against the distance the parameter has
-    to travel.
+    387). If you add an angle to an ADAM fit and it seems to stall, check the arithmetic:
+    `iterations x learningRate` against the distance the parameter has to travel. Or leave
+    `method` at its LBFGS default, whose line search is indifferent to units: on this problem it
+    reaches the same loss in 36 iterations. The figures use ADAM because its small steps make a
+    readable filmstrip ([`dev_docs/SOLIDSL_OPTIMIZER_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/SOLIDSL_OPTIMIZER_MEASUREMENTS.md)).
 
-!!! note "A cube hidden inside the bar gets zero gradient"
-
-    Seed `cubeSize` at `0.40` against a bar of radius `0.55` and the fit reports
-    `cubeSize 0.400000 -> 0.400000` after 372 iterations. `Union` is `min`, so
-    a child that is never the nearest surface at any sample point receives **exactly** zero
-    gradient, and a cube small enough to sit wholly inside the bar is never the nearest surface
-    anywhere. `fit.deadParameters` reports `none` here, because it only looks at the gradient at
-    the seed, and there the cube is invisible to the loss rather than stationary in it. [What makes a parameter refuse to move](#what-makes-a-parameter-refuse-to-move)
-    is the same failure mode arriving by a different route.
+A cube small enough to sit wholly inside the bar never moves at all: seeded at `0.40` against a bar
+of radius `0.55`, `cubeSize` comes back `0.400000` and `fit.deadParameters` names it.
 
 ### What makes a parameter refuse to move
 
@@ -661,14 +654,15 @@ from every sample, and a descent on its radius stops immediately because the gra
 zero.
 
 ```diffstatic {data-lang=kotlin}
-unionOf(listOf(sphere(1.0), sphere(0.25))).parameterize { … }
+unionOf([sphere(1.0), sphere(0.25)]).parameterize { … }
     .fitParameters(target, …).deadParameters      // [inner]
 
 smoothUnion(sphere(1.0), sphere(0.25), k = 0.9).parameterize { … }
     .fitParameters(target, …).deadParameters      // []
 ```
 
-`SolidFit.deadParameters` names the parameters whose gradient was exactly zero at the start. It is
+`SolidFit.deadParameters` names the parameters whose gradient was exactly zero at the start, and
+those the descent never moved off their seed. It is
 reported rather than thrown, because a legitimately dead parameter is a fine thing to have in a
 vector — a fit over six holes where one is genuinely irrelevant — and it is the *unexpectedly* dead
 one that looks like a success.
@@ -695,31 +689,89 @@ a shell can satisfy a cloud with the wrong one. `SolidCloudFit.unconstrainedPara
 point-cloud analogue of `deadParameters` and exists for the same reason — the failure arrives looking
 like convergence.
 
+#### A one-sided view
+
+Here the target is three lobes in a row, each with its own radius, and the cloud is cropped to
+`x < 0.10`, as a scanner looking from one side would see it. The right-hand lobe is centred at
+`x = 0.8`, so no point lands on it. `unconstrainedParameters` is computed from the gradient at the
+start, so a fit with `iterations = 0` reports it before the descent takes a single step:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/one_sided.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
+:::static
+import afield.lang.solidsl.*
+import afield.geometry.mesh.TriMesh
+
+// Three lobes on the X axis with independent radii.
+val template = smoothUnion(
+    smoothUnion(sphere(0.50), sphere(0.35).at(-0.80, 0.0, 0.0), 0.25),
+    sphere(0.42).at(0.80, 0.0, 0.0),
+    0.25,
+).parameterize {
+    param("middle", "SmoothUnion/a/SmoothUnion/a/Sphere.radius")
+    param("left", "SmoothUnion/a/SmoothUnion/b/Translate/Sphere.radius")
+    param("right", "SmoothUnion/b/Translate/Sphere.radius")
+}.orThrow()
+
+val truth = doubleArrayOf(0.50, 0.35, 0.42)
+val seed = doubleArrayOf(0.30, 0.56, 0.20)
+
+// The view from one side: everything right of x = 0.10 is never seen.
+val cloud = template.withValues(truth).samplePointCloud(count = 4000, seed = 4)
+    .filter { x, _, _ -> x < 0.10 }
+
+// Before the descent: zero iterations, so this is only the gradient at the seed.
+val before = template.fitToPointCloud(cloud, seed, SolidFitOptions(iterations = 0))
+println("before any step, unconstrained: ${before.unconstrainedParameters}")
+
+val fit = template.fitToPointCloud(cloud, seed)
+println(fit.report())
+
+// Each cloud point drawn as a tiny octahedron, so the cloud can sit in a mesh panel.
+fun dots(c: SolidPointCloud, r: Float = 0.014f): TriMesh {
+    val pos = FloatArray(c.size * 18)
+    val faces = intArrayOf(0, 2, 4, 2, 1, 4, 1, 3, 4, 3, 0, 4, 2, 0, 5, 1, 2, 5, 3, 1, 5, 0, 3, 5)
+    val idx = IntArray(c.size * 24)
+    for (i in 0 until c.size) {
+        val x = c.xs[i].toFloat(); val y = c.ys[i].toFloat(); val z = c.zs[i].toFloat()
+        floatArrayOf(x + r, y, z, x - r, y, z, x, y + r, z, x, y - r, z, x, y, z + r, x, y, z - r)
+            .copyInto(pos, i * 18)
+        for (k in faces.indices) idx[i * 24 + k] = i * 6 + faces[k]
+    }
+    return TriMesh(pos, idx)
+}
+
+val right = template.names.indexOf("right")
+fun m(e: SolidExpr) = e.march(resolution = 96, margin = 0.05)
+threeGrid(
+    "the cloud  ·  ${cloud.size} points, x < 0.10" to dots(cloud),
+    "seed  ·  right = %.2f".format(seed[right]) to m(template.withValues(seed)),
+    "fitted  ·  right = %.6f".format(fit.values[right]) to m(fit.fitted),
+    "truth  ·  right = %.2f".format(truth[right]) to m(template.withValues(truth)),
+    channel = "one_sided", columns = 4, height = 230,
+    view = MeshView(width = 250, height = 190, yawDegrees = 0.0, pitchDegrees = 30.0, distance = 3.6, wireframe = false), padding = 1.41,
+)
+```
+
+![Four panels in a row, grey on a dark background, all seen from above with X running left to right. First, labelled "the cloud, 2065 points, x < 0.10", a scatter of small grey dots tracing the left and middle lobes, cut off sharply at its right edge. Second, labelled "seed, right = 0.20", a large left lobe joined to a smaller middle lobe, and a small separate ball far to the right. Third, labelled "fitted, right = 0.200000", a medium left lobe and a large middle lobe joined smoothly, with the same small ball now hanging off the middle by a thin neck. Fourth, labelled "truth, right = 0.42", three well-joined lobes with the right one nearly as large as the left](assets/solid_notation/one_sided.png)
+
+The left and middle lobes come back to within `4e-4` of the truth. `right` is still `0.200000`,
+the seed, after a descent that reports convergence, and `unconstrainedParameters` named it before
+the first step. The loss cannot see it: there are no points out there to be off the surface. More
+iterations, a different optimiser or a restart do not change that; more of the view does.
+
 ## Axis conventions
 
 Primitives are centred on the origin. Everything else follows Manifold's conventions unchanged:
 
 - `cylinder` runs along **Z**.
 - `Profile.extruded(h)` runs from `z = 0` to `z = h` — *not* centred, because `Section.extruded` is not.
-- `Profile.revolved()` turns about **Z**, profile at `x ≥ 0`, counter-clockwise from `+X`.
+- `Profile.revolved()` turns about **Z**, profile at `x ≥ 0`, counter-clockwise from `+X`. The mesh
+  lathe `revolveMesh` defaults to Y; pass `axis = RevolveAxis.Z` to get the same solid from it.
 - `turned(x, y, z)` is in **degrees**, applied X then Y then Z.
 
 There is no `Torus` node:
 `torus(R, r)` is a function that builds `Profile.circle(r).translated(R, 0).revolved()`, which is
 what a torus is.
-
-!!! warning "Two lathes, ninety degrees apart"
-
-    Field has two of these and they do not agree. Check which one you have before you port a
-    profile between them.
-
-    | | axis | profile |
-    |---|---|---|
-    | `afield.stdlib.revolveMesh` | **Y** | `(radius, y)` |
-    | `afield.manifold.Section.revolved`, and therefore `Profile.revolved` | **Z** | `(radius, z)` |
-
-    Porting a profile one way or the other means swapping its `y` and `z`, or rotating the result.
-    `Profile.revolved` takes no axis argument, because Manifold's revolve has none.
 
 ## Open this {#open-this}
 
@@ -728,7 +780,7 @@ what a torus is.
   src="offline.html?file=assets/solidsl_gallery/metadata.edn"
   loading="lazy"></iframe>
 
-`assets/solidsl_gallery/metadata.edn` is a Field document with three boxes. Open it and run them:
+The [`solidsl_gallery`](agent_transcripts.md#solidsl_gallery) starting point has three boxes. Open it and run them:
 
 - **one shape, two evaluations** — one part put through both lowerings, with the meshes side by side.
   Change `boreRadius` or drop `quality` to 24 and watch the agreement degrade to the faceting floor.
@@ -740,8 +792,8 @@ what a torus is.
 All three need nothing but Field; the second needs no Manifold at all. The first and third print a
 clear "install Manifold" message and fall back to the field lowering when it is absent.
 
-For fitting there is a second document, `dev_docs/agents/demos/solidsl_inverse/metadata.edn`,
-which needs no Manifold at all. Open it in Field and run its three boxes:
+For fitting there is a second starting point, [`solidsl_inverse`](agent_transcripts.md#solidsl_inverse),
+which needs no Manifold at all. Open it and run its three boxes:
 
 - **a solid, and its exact gradient** — the slot census, a template, and `checkGradient` against
   central differences computed in the box. The last probe is the ball's own centre, where the

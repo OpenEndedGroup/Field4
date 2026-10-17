@@ -1,10 +1,11 @@
-import afield.four.Renderer
-import afield.four.util.Window
-var Box.fluid by Inheritance<afield.four.fabricated.FabricateBuiltChain>() /**/
-val Once.fluid by Onceing<afield.four.fabricated.FabricateBuiltChain>() /**/
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.graphics.scene.fabricated.StandardRenderer
+var Box.fluid by Inheritance<afield.graphics.scene.fabricated.FabricateBuiltChain>() /**/
+val Once.fluid by Onceing<afield.graphics.scene.fabricated.FabricateBuiltChain>() /**/
 val Why.fluid by Whying() /**/
-var Box.bundle by Inheritance<afield.four.fabricated.StandardRenderer.Bundle>() /*from:sim_bundle*/ /**/
-val Once.bundle by Onceing<afield.four.fabricated.StandardRenderer.Bundle>() /*from:sim_bundle*/ /**/
+var Box.bundle by Inheritance<StandardRenderer.Bundle>() /*from:sim_bundle*/ /**/
+val Once.bundle by Onceing<StandardRenderer.Bundle>() /*from:sim_bundle*/ /**/
 val Why.bundle by Whying() /*from:sim_bundle*/ /**/
 var Box.window by Inheritance<Window>() /*from:sim_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:sim_renderer*/ /**/

@@ -1,0 +1,26 @@
+// Every kind of ORCA output reaches Kotlin, and a Kotlin write reaches ORCA's grid and the document.
+val o = orca(bpm = 240, cols = 24, rows = 10, grid = """
+D4..........
+.:03C.......
+D8..........
+.;hello.....
+D8..........
+.=a12.......
+D8..........
+.!012.......
+""".trim())
+var notes = 0
+var midi = -1
+var udp = ""
+var osc = ""
+var cc = 0
+o.onNote { notes++; midi = it.midi; if (notes == 2) o.write(0, 9, "#heard#") }
+o.onUdp { udp = it }
+o.onOsc { osc = "${it.path} ${it.args}" }
+o.onCC { cc++ }
+o.onFrame {
+    val saved = "#heard#" in (getPropertyRaw("orcaGrids") as? String).orEmpty()
+    display("heard", """<pre id="orca-heard">{"notes":$notes,"midi":$midi,"udp":"$udp","osc":"$osc","cc":$cc,""" +
+        """"gridMarked":${"#heard#" in it.grid},"saved":$saved,"playing":${it.playing}}</pre>""")
+}
+displayOpen("heard")

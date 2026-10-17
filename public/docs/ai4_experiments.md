@@ -49,7 +49,7 @@ asked for a painting made almost entirely of scribble, on a fresh canvas:
 
 ![two paintings side by side on black. Left: the first landscape with scribbles laid over it, looping blue lines in the sky and hills, dense green loops across the field and a scribbled edge to the tree. Right: the same landscape painted on a fresh canvas almost entirely in scribbles, the sky a dense white mesh of loops over the warm ground, the hills in blue loops, the field in green, and the tree a nearly solid mass of wide, dense scribble](assets/ai4_experiments/scribbled.jpg)
 
- Re-running the box replaces the tool in place, so you can change how the scribble
+Re-running the box replaces the tool in place, so you can change how the scribble
 looks, or what it takes, between one request and the next. A tool lives as long as the box that
 registered it. [Give the AI a tool of your own](aiFeatures.md#give-the-ai-a-tool-of-your-own) has
 the whole DSL, and [More than a tool](aiFeatures.md#more-than-a-tool-agentextension) adds context,
@@ -115,11 +115,12 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --scra
      --check box-exists:Squares --check output-ints-include:Squares:1,4,9,16,25,36,49,64"
 ```
 
-A check decides the verdict, not the agent's own account. Checks can test boxes, outputs, pictures
+The verdict comes from the checks, whatever the agent reports. Checks can test boxes, outputs, pictures
 of outputs, and which tools and effects a turn used. `--mode scripted` replays a list of tool calls
 without a model, which is how a tool is tested. `--chat-box <box>` runs the request as that box's
 real panel turn. Two switches compare versions in the same build: `--programs off` withholds tool
-programs, and `--context legacy` sends the instructions the way the chat used to.
+programs, and `--context legacy` sends the instructions once, in the conversation's stored message, instead of
+assembling them each turn.
 
 Measured this way, on OpenAI `gpt-6-astra`, one or two runs per arm:
 
@@ -135,12 +136,16 @@ work before relying on them.
 
 - A program is not a transaction. Edits made before a failure stay. They are recorded and undoable
   like any other agent edit, but nothing rolls them back.
-- State a box hands to the conversation is saved after every request that changes it, and nothing
-  deletes old copies yet. A canvas the size of the Studio's takes about 28 MB each.
+- State a box hands to the conversation is saved after every request that changes it: about 28 MB
+  each for a canvas the size of the Studio's. States no conversation refers to are deleted on their
+  own; to free the rest, `pruneAiStates(dryRun = false)` in the box keeps the latest three along every
+  branch and the state at every fork. Without `dryRun = false` it only reports what it would free.
 - A check that must hold, such as a design revision, belongs in the tool that does the work. A
   `beforeTool` guard is a second line, and it sees only calls that go through the chat's tools.
 - The chat is not a place for long jobs. A tool call waits at most as long as the program it is in
-  has left, so a tool for a minutes-long job should start it and return a handle.
+  has left, so a tool for a minutes-long job should start it and return a handle. For a
+  [derived build](studies.md#build-derived-results-without-blocking-edits), the agent can then end
+  its turn and let Field wait: see [Let AI4 Wait for Long Builds](ai4_long_builds.md).
 
 See also: [AI4 Paints](ai4_painting.md), [AI Overview](aiFeatures.md),
 [Automating Field](automating_field.md).

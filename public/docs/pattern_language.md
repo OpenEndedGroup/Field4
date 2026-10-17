@@ -11,10 +11,10 @@ has to know how long the music is or where it will be sampled. The design comes 
 [TidalCycles](https://tidalcycles.org), and where Field's operators share a name with Tidal's
 they mean the same thing; the places they do not are listed below.
 
-The piano rolls on this page show the events each pattern produces. The clips are played by a
-simple built-in synth (`patVoice`), a sine for `bd` and filtered noise for `sd` and `hh`, so
-they do not sound like a drum machine. To hear the same patterns through the Tidal sample
-library, see [Sound](sound.md).
+The piano rolls on this page show the events each pattern produces, and the clips under the
+mini-notation forms play those events through the Tidal drum samples
+([Dirt-Samples](https://github.com/tidalcycles/Dirt-Samples)). [Sound](sound.md) shows how to
+play a pattern through them from a box.
 
 ---
 
@@ -27,11 +27,11 @@ language is functions from queries to lists of events.
 // Nothing is stored. Ask the same pattern three different questions.
 val drums = pat("bd sd hh hh")
 
-val answers = listOf(
+val answers = [
     "one cycle" to PatArc(PatQ.ZERO, PatQ.ONE),
     "second half" to PatArc(PatQ.of(1, 2), PatQ.ONE),
     "cycle 97" to PatArc(PatQ.of(97), PatQ.of(98)),
-).joinToString("\n") { (label, arc) ->
+].joinToString("\n") { (label, arc) ->
     "%-12s %s".format(label, drums.events(arc).joinToString("  ") { "${it.value}@${it.arc.start}" })
 }
 println(answers)
@@ -68,13 +68,11 @@ A space is the only separator the notation has, and it always means *divide this
 
 ![a piano roll of `bd sd` over 2 cycles](assets/pattern_language/mini/pat-mini-two-steps.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-two-steps.wav" audio-spec="two-steps" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-two-steps-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-two-steps.wav" audio-spec="two-steps" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-two-steps-audio"}
 // showPatAudio(pat("bd sd"), cycles = 2, cps = 2)
 ```
 
 Two steps, half a cycle each.
-
-Colour is per instrument throughout this page: `bd` is always this blue, `sd` always this orange. The colours are the drum map, so two bars that look different sound different.
 
 </div>
 
@@ -85,7 +83,7 @@ Colour is per instrument throughout this page: `bd` is always this blue, `sd` al
 
 ![a piano roll of `bd sd hh cp` over 2 cycles](assets/pattern_language/mini/pat-mini-four-steps.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-four-steps.wav" audio-spec="four-steps" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-four-steps-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-four-steps.wav" audio-spec="four-steps" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-four-steps-audio"}
 // showPatAudio(pat("bd sd hh cp"), cycles = 2, cps = 2)
 ```
 
@@ -100,7 +98,7 @@ Four steps, a quarter each. The cycle is divided by however many steps it finds.
 
 ![a piano roll of `bd ~ sd ~` over 2 cycles](assets/pattern_language/mini/pat-mini-rest.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-rest.wav" audio-spec="rest" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-rest-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-rest.wav" audio-spec="rest" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-rest-audio"}
 // showPatAudio(pat("bd ~ sd ~"), cycles = 2, cps = 2)
 ```
 
@@ -117,7 +115,7 @@ The rest is not a quiet event; it is no event. Four steps are written and two re
 
 ![a piano roll of `bd [sd sd]` over 2 cycles](assets/pattern_language/mini/pat-mini-subdivide.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-subdivide.wav" audio-spec="subdivide" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-subdivide-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-subdivide.wav" audio-spec="subdivide" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-subdivide-audio"}
 // showPatAudio(pat("bd [sd sd]"), cycles = 2, cps = 2)
 ```
 
@@ -134,7 +132,7 @@ This is the recursion the whole notation rests on: a group is a step, so anythin
 
 ![a piano roll of `bd [sd [hh hh]]` over 2 cycles](assets/pattern_language/mini/pat-mini-nested.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-nested.wav" audio-spec="nested" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-nested-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-nested.wav" audio-spec="nested" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-nested-audio"}
 // showPatAudio(pat("bd [sd [hh hh]]"), cycles = 2, cps = 2)
 ```
 
@@ -153,7 +151,7 @@ Brackets are not the only way to carve up a cycle. One of these avoids the brack
 
 ![a piano roll of `bd sd . hh hh hh` over 2 cycles, drawn above `[bd sd] [hh hh hh]` so the two can be read against each other](assets/pattern_language/mini/pat-mini-dot-group.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-dot-group.wav" audio-spec="dot-group" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-dot-group-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-dot-group.wav" audio-spec="dot-group" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-dot-group-audio"}
 // showPatAudio(pat("bd sd . hh hh hh"), cycles = 2, cps = 2)
 ```
 
@@ -170,7 +168,7 @@ Read the two lanes against each other: this is **two halves**, not five fifths. 
 
 ![a piano roll of `bd sd, hh*4` over 2 cycles](assets/pattern_language/mini/pat-mini-stack.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-stack.wav" audio-spec="stack" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-stack-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-stack.wav" audio-spec="stack" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-stack-audio"}
 // showPatAudio(pat("bd sd, hh*4"), cycles = 2, cps = 2)
 ```
 
@@ -191,7 +189,7 @@ Four postfix modifiers, and two markers that spell two of them without the punct
 
 ![a piano roll of `bd*4` over 2 cycles](assets/pattern_language/mini/pat-mini-fast.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-fast.wav" audio-spec="fast" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-fast-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-fast.wav" audio-spec="fast" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-fast-audio"}
 // showPatAudio(pat("bd*4"), cycles = 2, cps = 2)
 ```
 
@@ -206,7 +204,7 @@ Four postfix modifiers, and two markers that spell two of them without the punct
 
 ![a piano roll of `[bd sd]*2` over 2 cycles, drawn above `bd sd bd sd` so the two can be read against each other](assets/pattern_language/mini/pat-mini-fast-group.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-fast-group.wav" audio-spec="fast-group" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-fast-group-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-fast-group.wav" audio-spec="fast-group" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-fast-group-audio"}
 // showPatAudio(pat("[bd sd]*2"), cycles = 2, cps = 2)
 ```
 
@@ -221,7 +219,7 @@ Four postfix modifiers, and two markers that spell two of them without the punct
 
 ![a piano roll of `bd/2` over 4 cycles](assets/pattern_language/mini/pat-mini-slow.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-slow.wav" audio-spec="slow" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-slow-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-slow.wav" audio-spec="slow" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-slow-audio"}
 // showPatAudio(pat("bd/2"), cycles = 4, cps = 2)
 ```
 
@@ -238,7 +236,7 @@ Drawn over four cycles because a form that is slower than the bar has nothing to
 
 ![a piano roll of `bd!3 sd` over 2 cycles, drawn above `bd bd bd sd` so the two can be read against each other](assets/pattern_language/mini/pat-mini-repeat.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-repeat.wav" audio-spec="repeat" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-repeat-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-repeat.wav" audio-spec="repeat" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-repeat-audio"}
 // showPatAudio(pat("bd!3 sd"), cycles = 2, cps = 2)
 ```
 
@@ -253,7 +251,7 @@ Drawn over four cycles because a form that is slower than the bar has nothing to
 
 ![a piano roll of `bd ! ! sd` over 2 cycles, drawn above `bd!3 sd` so the two can be read against each other](assets/pattern_language/mini/pat-mini-repeat-bare.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-repeat-bare.wav" audio-spec="repeat-bare" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-repeat-bare-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-repeat-bare.wav" audio-spec="repeat-bare" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-repeat-bare-audio"}
 // showPatAudio(pat("bd ! ! sd"), cycles = 2, cps = 2)
 ```
 
@@ -270,7 +268,7 @@ Repeats accumulate rather than nest: two `!`s after `bd` give three kicks, which
 
 ![a piano roll of `bd@3 sd` over 2 cycles](assets/pattern_language/mini/pat-mini-elongate.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-elongate.wav" audio-spec="elongate" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-elongate-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-elongate.wav" audio-spec="elongate" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-elongate-audio"}
 // showPatAudio(pat("bd@3 sd"), cycles = 2, cps = 2)
 ```
 
@@ -285,7 +283,7 @@ Repeats accumulate rather than nest: two `!`s after `bd` give three kicks, which
 
 ![a piano roll of `bd _ _ sd` over 2 cycles, drawn above `bd@3 sd` so the two can be read against each other](assets/pattern_language/mini/pat-mini-elongate-bare.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-elongate-bare.wav" audio-spec="elongate-bare" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-elongate-bare-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-elongate-bare.wav" audio-spec="elongate-bare" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-elongate-bare-audio"}
 // showPatAudio(pat("bd _ _ sd"), cycles = 2, cps = 2)
 ```
 
@@ -306,7 +304,7 @@ Up to here the notation has described a single bar that then repeats. These four
 
 ![a piano roll of `<bd sd>` over 4 cycles](assets/pattern_language/mini/pat-mini-alternate.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-alternate.wav" audio-spec="alternate" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-alternate-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-alternate.wav" audio-spec="alternate" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-alternate-audio"}
 // showPatAudio(pat("<bd sd>"), cycles = 4, cps = 2)
 ```
 
@@ -321,7 +319,7 @@ Angle brackets take **one alternative per cycle**: kick, snare, kick, snare.
 
 ![a piano roll of `<bd sd cp> hh` over 4 cycles](assets/pattern_language/mini/pat-mini-alternate-step.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-alternate-step.wav" audio-spec="alternate-step" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-alternate-step-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-alternate-step.wav" audio-spec="alternate-step" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-alternate-step-audio"}
 // showPatAudio(pat("<bd sd cp> hh"), cycles = 4, cps = 2)
 ```
 
@@ -338,7 +336,7 @@ Three alternatives against a four-cycle figure, so the pattern takes three cycle
 
 ![a piano roll of `bd*8?` over 2 cycles](assets/pattern_language/mini/pat-mini-degrade.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-degrade.wav" audio-spec="degrade" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-degrade-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-degrade.wav" audio-spec="degrade" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-degrade-audio"}
 // showPatAudio(pat("bd*8?"), cycles = 2, cps = 2)
 ```
 
@@ -353,7 +351,7 @@ Three alternatives against a four-cycle figure, so the pattern takes three cycle
 
 ![a piano roll of `hh*8?0.3` over 2 cycles](assets/pattern_language/mini/pat-mini-degrade-p.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-degrade-p.wav" audio-spec="degrade-p" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-degrade-p-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-degrade-p.wav" audio-spec="degrade-p" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-degrade-p-audio"}
 // showPatAudio(pat("hh*8?0.3"), cycles = 2, cps = 2)
 ```
 
@@ -370,13 +368,13 @@ Deterministic matters more than it sounds: a pattern you can re-query is a patte
 
 ![a piano roll of `[bd|sd|cp]` over 4 cycles](assets/pattern_language/mini/pat-mini-random-choice.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-random-choice.wav" audio-spec="random-choice" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-random-choice-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-random-choice.wav" audio-spec="random-choice" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-random-choice-audio"}
 // showPatAudio(pat("[bd|sd|cp]"), cycles = 4, cps = 2)
 ```
 
 `|` picks **one** of the alternatives per cycle at random — where `<>` cycles through them in order.
 
-The brackets are only for show here — a whole string is a group like any other, so bare `bd|sd|cp` parses to exactly this. (It did not until September 2026: `|` was reachable only from inside a `[…]`, and the bare form was a parse error.) Deterministic in the same way `?` is, so this figure is not a different picture every time the docs build runs.
+The brackets are only for show here — a whole string is a group like any other, so bare `bd|sd|cp` parses to exactly this. Deterministic in the same way `?` is, so this figure is not a different picture every time the docs build runs.
 
 </div>
 
@@ -391,7 +389,7 @@ Braces divide by a *step count* rather than by the cycle, which is the one thing
 
 ![a piano roll of `{bd sd, hh hh hh}` over 4 cycles](assets/pattern_language/mini/pat-mini-polymeter.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-polymeter.wav" audio-spec="polymeter" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-polymeter-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-polymeter.wav" audio-spec="polymeter" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-polymeter-audio"}
 // showPatAudio(pat("{bd sd, hh hh hh}"), cycles = 4, cps = 2)
 ```
 
@@ -408,7 +406,7 @@ This is not `[bd sd, hh hh hh]`. A comma would squeeze three hats into one cycle
 
 ![a piano roll of `{bd hh cp}%8` over 4 cycles](assets/pattern_language/mini/pat-mini-polymeter-sub.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-polymeter-sub.wav" audio-spec="polymeter-sub" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-polymeter-sub-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-polymeter-sub.wav" audio-spec="polymeter-sub" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-polymeter-sub-audio"}
 // showPatAudio(pat("{bd hh cp}%8"), cycles = 4, cps = 2)
 ```
 
@@ -429,13 +427,13 @@ Two bracket suffixes that do not spell a rhythm out but *construct* one, from a 
 
 ![a piano roll of `bd(3,8)` over 2 cycles](assets/pattern_language/mini/pat-mini-euclid.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-euclid.wav" audio-spec="euclid" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-euclid-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-euclid.wav" audio-spec="euclid" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-euclid-audio"}
 // showPatAudio(pat("bd(3,8)"), cycles = 2, cps = 2)
 ```
 
 Euclidean: spread three onsets as evenly as eight slots allow. Three against eight is `x..x..x.` — gaps of 3, 3 and 2, the tresillo.
 
-This is Tidal's spelling, bead for bead, and so is every other `(pulses, steps)` pair. It was not always: until September 2026 Field's `bjorklund` stopped one pairing late and returned a *rotation* of this figure for a little over half of all inputs — the same necklace, equally even, starting on a different bead. `bd(3,8)` came out `x..x.x..`. A rotation is a different groove against the downbeat, which is the whole reason a shared notation has to agree on one.
+This is Tidal's spelling, bead for bead, and so is every other `(pulses, steps)` pair. That matters because a rotation of the same figure is a different groove against the downbeat, so a shared notation has to agree on one.
 
 </div>
 
@@ -446,7 +444,7 @@ This is Tidal's spelling, bead for bead, and so is every other `(pulses, steps)`
 
 ![a piano roll of `bd(3,8,2)` over 2 cycles](assets/pattern_language/mini/pat-mini-euclid-rotate.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-euclid-rotate.wav" audio-spec="euclid-rotate" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-euclid-rotate-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-euclid-rotate.wav" audio-spec="euclid-rotate" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-euclid-rotate-audio"}
 // showPatAudio(pat("bd(3,8,2)"), cycles = 2, cps = 2)
 ```
 
@@ -463,7 +461,7 @@ A positive offset rotates the figure earlier. This is the same three onsets as t
 
 ![a piano roll of `bd(3,8), cp(5,8)` over 2 cycles](assets/pattern_language/mini/pat-mini-euclid-stack.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-euclid-stack.wav" audio-spec="euclid-stack" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-euclid-stack-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-euclid-stack.wav" audio-spec="euclid-stack" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-euclid-stack-audio"}
 // showPatAudio(pat("bd(3,8), cp(5,8)"), cycles = 2, cps = 2)
 ```
 
@@ -478,7 +476,7 @@ Two Euclidean figures over the same eight slots. Three against five is where the
 
 ![a piano roll of `hh(k16)` over 2 cycles](assets/pattern_language/mini/pat-mini-kolakoski.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-kolakoski.wav" audio-spec="kolakoski" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-kolakoski-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-kolakoski.wav" audio-spec="kolakoski" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-kolakoski-audio"}
 // showPatAudio(pat("hh(k16)"), cycles = 2, cps = 2)
 ```
 
@@ -499,7 +497,7 @@ The last suffix is not about time at all.
 
 ![a piano roll of `bd:3 sd:1` over 2 cycles](assets/pattern_language/mini/pat-mini-sample-index.svg)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-sample-index.wav" audio-spec="sample-index" audio-renderer="afield.four.synth.PatMiniNotation" embed=true hidden=true name="pat-mini-sample-index-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/mini/pat-mini-sample-index.wav" audio-spec="sample-index" audio-renderer="afield.audio.synth.PatMiniNotation" requires="dirt-samples" embed=true hidden=true name="pat-mini-sample-index-audio"}
 // showPatAudio(pat("bd:3 sd:1"), cycles = 2, cps = 2)
 ```
 
@@ -561,9 +559,11 @@ displayOpen("main")
 ![Piano roll comparing a hand-typed cutoff staircase, appBoth fragmentation, and a continuous parameter read at three note densities](assets/pattern_language/continuous-parameter.png)
 
 Hear it: sixteen hats a cycle, two cycles flat and then two with the gain following a
-sine. Same notes, same count, one parameter now a function of time:
+sine. Same notes, same count, one parameter now a function of time. The hats are short noise
+bursts from the built-in `patVoice` rather than samples: a sampled hat rings for most of a
+second, and sixteen a cycle would blur into one sound with no level to follow.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/gain-lfo.wav" audio-spec="gain-lfo-before-after" audio-renderer="afield.four.synth.PatSoundDocs" embed=true hidden=true name="pat-doc-gain-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/gain-lfo.wav" audio-spec="gain-lfo-before-after" audio-renderer="afield.audio.synth.PatSoundDocs" embed=true hidden=true name="pat-doc-gain-audio"}
 // offline-rendered by PatSoundDocs — listen below
 ```
 
@@ -808,9 +808,9 @@ displayOpen("main")
 
 ![Piano roll of swing, press, squeeze, ncat, euclidFull and sometimesEventBy](assets/pattern_language/groove.png)
 
-Eight hats a cycle: two cycles dead straight, then two swung.
+Eight hats a cycle, the same noise bursts: two cycles dead straight, then two swung.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/swing.wav" audio-spec="swing-before-after" audio-renderer="afield.four.synth.PatSoundDocs" embed=true hidden=true name="pat-doc-swing-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/swing.wav" audio-spec="swing-before-after" audio-renderer="afield.audio.synth.PatSoundDocs" embed=true hidden=true name="pat-doc-swing-audio"}
 // offline-rendered by PatSoundDocs — listen below
 ```
 
@@ -842,7 +842,7 @@ Spelled from their own roots the progression spans 60–79 and leaps; voice-led 
 inside 53–64 with near-horizontal lines where common tones are held. 83 semitones of
 movement becomes 9, and the pitch-class sets are identical.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/voice-leading.wav" audio-spec="voice-leading" audio-renderer="afield.four.synth.PatSoundDocs" embed=true hidden=true name="pat-doc-voice-leading-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/voice-leading.wav" audio-spec="voice-leading" audio-renderer="afield.audio.synth.PatSoundDocs" embed=true hidden=true name="pat-doc-voice-leading-audio"}
 // offline-rendered by PatSoundDocs — listen below
 ```
 
@@ -876,9 +876,9 @@ From the inside it is a graph node, `op = "pat"`, and every number in the patter
 one of its leaves.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/fn-graph.png" wait="2" capture="box" open-outputs="true" name="pat-doc-fn-graph"}
-import afield.stdlib.extractParameters
-import afield.stdlib.graphNode
-import afield.stdlib.graphText
+import afield.math.functions.extractParameters
+import afield.math.functions.graphNode
+import afield.math.functions.graphText
 
 val gesture = patFn("g:(0.3,0.12) adsr:(0.8,0.01,0.08,0.4,0.2)", cps = 2.0, range = 0.9)
 val node = gesture.graphNode()
@@ -908,9 +908,9 @@ wrong numbers: wrong heights, wrong widths. Adam moves the leaves until the curv
 coincide, and the fitted result comes back out as **pattern text you can paste into a box**:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/fn-fit.png" wait="5" capture="box" open-outputs="true" name="pat-doc-fn-fit"}
-import afield.stdlib.Functions
-import afield.stdlib.fitGradient
-import afield.stdlib.graphNode
+import afield.math.functions.Functions
+import afield.math.functions.fitGradient
+import afield.math.functions.graphNode
 
 with(Functions) {
     val target = patFn("g:(0.9,0.18) g:(0.1,0.18)", cps = 1.0, range = 0.9)
@@ -950,7 +950,7 @@ gives you a kernel width that drifts across the piece.
 
 ## Where Field differs from Tidal
 
-Three names to know if you are coming from Tidal:
+Four names to know if you are coming from Tidal:
 
 | Field | Tidal | note |
 | --- | --- | --- |

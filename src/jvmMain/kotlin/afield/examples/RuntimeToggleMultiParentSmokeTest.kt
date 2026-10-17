@@ -1,16 +1,16 @@
 package afield.examples
 
-import afield.Box
-import afield.BoxExecution
-import afield.CompletionRequest
-import afield.Execute
-import afield.ExecuteSymbol
-import afield.KotlinExecution
-import afield.Message
-import afield.SavingContext
-import afield.SessionInformation
+import afield.document.graph.Box
+import afield.runtime.execution.BoxExecution
+import afield.app.protocol.CompletionRequest
+import afield.app.protocol.Execute
+import afield.app.protocol.ExecuteSymbol
+import afield.runtime.execution.KotlinExecution
+import afield.app.protocol.Message
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
 import afield.runtime.applyRuntimeToggle
-import afield.thisSessionInfo
+import afield.app.server.thisSessionInfo
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap

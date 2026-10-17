@@ -1,9 +1,9 @@
-import afield.stdlib.Functions
-import afield.stdlib.SignalViewer
-import afield.stdlib.SignalViewerOptions
-import afield.stdlib.certifiedEnvelope
-import afield.stdlib.certifiedSignalChannel
-import afield.stdlib.displaySignal
+import afield.math.functions.Functions
+import afield.ui.visualization.SignalViewer
+import afield.ui.visualization.SignalViewerOptions
+import afield.math.functions.certifiedEnvelope
+import afield.ui.visualization.certifiedSignalChannel
+import afield.ui.visualization.displaySignal
 
 // The same signal as box 1. certifiedSignalChannel draws its sampled envelope in white and,
 // behind it in amber, a certified bound per bin: every value the function takes in the bin

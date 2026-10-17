@@ -31,7 +31,7 @@ description: >
                     pattern `*/key.json` and tonight's output is tomorrow's input.
   Companion page: public/docs/keyframe_autosweep.md. The same layer driven headlessly, with
   assertions on the pixels, is `tools/run_field_tests.py --id keyframe.sweep.smoke`; the CPU half is
-  `afield.stdlib.KeyframeSweepTest`.
+  `afield.animation.keyframes.KeyframeSweepTest`.
 operations:
   - create:
       box: ks_renderer
@@ -39,19 +39,19 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.util.Options
-
+          import afield.graphics.vulkan.util.Options
+          
           prop<Window>(window)
           prop<Renderer>(renderer)
-
+          
           Options.enableHDR = false
           Options.profiling = false
-
+          
           once.renderer {
               window = Window("Keyframe sweep")
               Renderer(window)
           }
-
+          
           println("renderer ready")
           start(renderer::run)
   - create:
@@ -63,49 +63,47 @@ operations:
           // The half you would replace with your own sketch. Everything below the scene is the
           // contract a sweep needs: named lanes with a getter and a setter, and nothing else in the
           // document writing them.
-          import afield.four.fabricated.StandardRenderer
-          import afield.four.fabricated.applyScenePlan
-          import afield.stdlib.KeyframeCollection
-          import afield.stdlib.KeyframeScope
-          import afield.stdlib.keyFilesMatching
-          import afield.stdlib.linalg.Matrix4f
-          import afield.stdlib.linalg.Vector3f
-          import afield.stdlib.path
+          import afield.graphics.scene.fabricated.StandardRenderer
+          import afield.graphics.scene.fabricated.applyScenePlan
+          import afield.animation.keyframes.KeyframeCollection
+          import afield.animation.keyframes.KeyframeScope
+          import afield.animation.keyframes.keyFilesMatching
+          import afield.math.linalg.Matrix4f
+          import afield.math.linalg.Vector3f
+          import afield.document.workspace.path
           import kotlin.io.path.createDirectories
           import kotlin.io.path.writeText
-
-          // Fully qualified, because `prop<>` rewrites this box's code and the rewrite does not
-          // carry the snippet's own imports.
-          prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
-          prop<afield.stdlib.KeyframeScope>(keys)
-
+          
+          prop<StandardRenderer.Bundle>(bundle)
+          prop<afield.animation.keyframes.KeyframeScope>(keys)
+          
           val r: Renderer = fromContext()
           val dim = 512
-
+          
           // Plain locals rather than `prop<>`s: a `Path` in a document property would have to
           // survive .edn, and every box that wants these can spell them in one line.
           val pool = "%document/looks".path
-
+          
           once.keys {
               val b = StandardRenderer.build(
                   r,
                   StandardRenderer.Config(renderWidth = dim, renderHeight = dim, backgroundColor = Vector3f(0.02f, 0.02f, 0.03f))
               )
               val scene = b.scene
-
+          
               // A square target must be projected square. `Projection(renderer)`'s `auto` lambda
               // re-resizes to the *window* inside every evaluateUniform, so a one-off `resize` is
               // overwritten next frame and every sphere comes out an ellipse. Replace the lambda.
               scene.projection.auto = { scene.projection.resize(dim, dim) }
               scene.projection.resize(dim, dim)
-
+          
               scene.camera.at.set(0f, 2.0f, -3.2f)
               scene.camera.target.set(0f, 0f, 0f)
               scene.lightDirection.set(Vector3f(-0.5f, -1f, -0.3f).normalize())
               scene.lightIntensity = 3.4f
               scene.shadowStrength = 1f
               scene.aoStrength = 0.8f
-
+          
               val grid = 3
               val spheres = (0 until grid * grid).map {
                   b.registerSphere(name = "ball-$it", radius = 0.3f, slices = 24, stacks = 24, renderer = r)
@@ -116,7 +114,7 @@ operations:
               b.registerCube(name = "floor", size = 1f, renderer = r)
                   .setModel(Matrix4f().translate(0f, -0.34f, 0f).scale(11f, 0.04f, 11f))
               b.applyScenePlan()
-
+          
               var spread = 0.85f
               var visible = grid * grid
               // Hidden from the outside in. Hiding the tail of a row-major grid takes its last row
@@ -141,7 +139,7 @@ operations:
                   }
               }
               layout()
-
+          
               // The discrete lane: a name that selects a whole sub-state. There is no midpoint
               // between "warm" and "acid", which is why a blend takes it whole from one parent.
               val palettes = mapOf(
@@ -157,7 +155,7 @@ operations:
                   palette = name
               }
               applyPalette(palette)
-
+          
               bundle = b
               KeyframeScope(schemaVersion = 1).apply {
                   vector3Target("camera.at", { scene.camera.at }) { scene.camera.at.set(it) }
@@ -174,10 +172,10 @@ operations:
                   stringTarget("palette", { palette }) { applyPalette(it) }
               }
           }
-
+          
           bundle.present(renderer = r)
           bundle.attachTo(r)
-
+          
           // Four starter looks, written only if the pool is empty — so editing them here and
           // deleting the directory is how you reshape the space. The fourth is deliberately
           // *incomplete*: it predates `ao.strength` and `palette`, the way a key saved three weeks
@@ -208,7 +206,7 @@ operations:
                   "background" to Vector3f(0.020f, 0.020f, 0.020f),
                   "shadow.strength" to 0.8f, "grid.spread" to 1.05f, "grid.visible" to 6))
           }
-
+          
           // The pool as the browser sees it: which lanes every key has, and which it does not.
           val census = KeyframeCollection.load(pool, scope = keys)
           println("pool: ${census.files.size} keys in $pool")
@@ -225,21 +223,21 @@ operations:
         code: |
           // The whole of it. Twelve renders here so the box finishes while you watch; set `count`
           // to 5000 and `maxDurationMs` to whatever "stop at 7am" is, and walk away.
-          import afield.stdlib.KeyframeScope
-          import afield.stdlib.KeyframeSweep
-          import afield.stdlib.SweepConfig
-          import afield.stdlib.awaitFrames
-          import afield.stdlib.captureClip
-          import afield.stdlib.captureStill
-          import afield.stdlib.path
-          import afield.stdlib.rendersPerHour
-
+          import afield.animation.keyframes.KeyframeScope
+          import afield.animation.keyframes.KeyframeSweep
+          import afield.animation.keyframes.SweepConfig
+          import afield.animation.keyframes.awaitFrames
+          import afield.animation.keyframes.captureClip
+          import afield.animation.keyframes.captureStill
+          import afield.document.workspace.path
+          import afield.animation.keyframes.rendersPerHour
+          
           val r: Renderer = fromContext()
           val keys: KeyframeScope = fromContext()
-          val bundle: afield.four.fabricated.StandardRenderer.Bundle = fromContext()
+          val bundle: afield.graphics.scene.fabricated.StandardRenderer.Bundle = fromContext()
           val pool = "%document/looks".path
           val archive = "%document/sweep".path
-
+          
           val sweep = KeyframeSweep(
               keys, pool, archive,
               SweepConfig(
@@ -254,7 +252,7 @@ operations:
               ),
               onRender = { m -> println("${m.id} ${m.status} — " + m.parents.joinToString(", ") { "${it.key} ${"%.2f".format(it.weight)}" }) }
           )
-
+          
           // `frames { }` puts the run on the Runloop, so the callback can wait for real frames and
           // the stop key cancels it between renders. The blend is already applied when it is called.
           // `frames` rather than `start`: `start` has a receiver overload and a receiverless one, and
@@ -268,7 +266,7 @@ operations:
                   render.captureClip(r, bundle.postStack.output(), frames = 8, fps = 12, settleFrames = 0) { _, t ->
                       // A small orbit *around* the blended camera, so the clip moves without
                       // overwriting the lane the key set.
-                      val at = render.key["camera.at"] as afield.stdlib.linalg.Vector3f
+                      val at = render.key["camera.at"] as afield.math.linalg.Vector3f
                       val a = (t - 0.5) * 0.5
                       bundle.scene.camera.at.set(
                           (at.x * kotlin.math.cos(a) - at.z * kotlin.math.sin(a)).toFloat(),
@@ -292,18 +290,18 @@ operations:
         code: |
           // What a night looks like from the other end. Nothing here touches the renderer: an
           // archive describes itself, which is the whole point of the manifests.
-          import afield.stdlib.path
-          import afield.stdlib.readSweepArchive
-          import afield.stdlib.sweepArchiveSummary
+          import afield.document.workspace.path
+          import afield.animation.keyframes.readSweepArchive
+          import afield.animation.keyframes.sweepArchiveSummary
           import java.util.Base64
           import kotlin.io.path.exists
           import kotlin.io.path.readBytes
-
+          
           val archive = "%document/sweep".path
           val rows = readSweepArchive(archive)
-
+          
           println(sweepArchiveSummary(archive))
-
+          
           // A contact sheet, straight from the stills the sweep wrote. Base64 rather than a file
           // URL so the panel needs no static mount.
           val sheet = rows.joinToString("") { m ->
@@ -316,10 +314,10 @@ operations:
                   "$img${m.index}$pushed ${m.anchor.take(12)}</div>"
           }
           display("sheet", "<div style='width:500px'>$sheet</div>")
-
+          
           markdown("what went in", """
               #### ${rows.size} renders
-
+          
               | # | parents and weights | pushed past the hull | discrete lane from |
               |---|---------------------|----------------------|--------------------|
               ${rows.joinToString("\n") { m ->
@@ -328,11 +326,11 @@ operations:
                       "| ${m.discreteLanes.values.distinct().joinToString(", ")} |"
               }}
           """, width = 500)
-
+          
           // One lane's trajectory through the night, read out of the keys themselves.
           val intensities = rows.map { m ->
               val key = archive.resolve("renders/${m.id}/key.json")
-              if (key.exists()) (afield.stdlib.KeyframeScope().loadKey(key)["light.intensity"] as? Number ?: 0).toFloat() else 0f
+              if (key.exists()) (afield.animation.keyframes.KeyframeScope().loadKey(key)["light.intensity"] as? Number ?: 0).toFloat() else 0f
           }
           showSignals("light.intensity" to intensities, title = "one lane across the night", xTitle = "render")
   - connect: { parent: ks_renderer, child: ks_rig }

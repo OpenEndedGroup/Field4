@@ -309,7 +309,7 @@ def recycle_field(port: int, ctx: Any, *, grace: float = 12.0) -> None:
 
 
 # Command-line markers identifying a JVM this repo launched: the Field server
-# (build.gradle.kts `runJvm` -> mainClass afield.Server), the jvm-main test
+# (build.gradle.kts `runJvm` -> mainClass afield.app.server.Server), the jvm-main test
 # launcher and the completion Analysis API sidecar. Matching the main class
 # rather than the java binary is what keeps the reaper off Gradle/Kotlin daemons,
 # IDEs and unrelated JVMs.
@@ -318,8 +318,8 @@ def recycle_field(port: int, ctx: Any, *, grace: float = 12.0) -> None:
 # [_command_belongs_to] for that half, which is what keeps parallel agents in sibling
 # worktrees from SIGKILLing each other's tests.
 FIELD_JVM_MARKERS = (
-    "afield.Server",
-    "afield.AgentJvmMainLauncher",
+    "afield.app.server.Server",
+    "afield.tools.automation.AgentJvmMainLauncher",
     "afield.tools.codeuse.CodeUseSemanticSidecarKt",
 )
 
@@ -442,7 +442,7 @@ def _attribute_command(command: str, root: Path) -> Attribution:
       ``<root>/build/aot/field.aot``. It is the cheapest and most direct answer.
     * a ``-classpath``/``-cp`` entry under ``<root>/build/`` or the semantic sidecar's
       ``<root>/tools/code-use-semantic-sidecar/build/``. Not a theoretical fallback: an
-      observed ``afield.AgentJvmMainLauncher`` running
+      observed ``afield.tools.automation.AgentJvmMainLauncher`` running
       ``afield.examples.DemoTranscriptExecSmokeTest`` carried **no**
       ``-Dafield.aot.cache.path`` argument at all, and its classpath was the only thing naming
       its checkout. The property is also emitted *empty* when ``-PfieldAotCache=false``
@@ -1294,7 +1294,7 @@ def wrap_snippet_for_backdoor(test: dict[str, Any], snippet: str) -> str:
         source_literal = json.dumps(snippet)
         return f"""
 // FIELD_DOCS_EXPECT_OUTPUT_AREA: true
-import afield.docs.renderForthDocsSnippet
+import afield.tools.docs.renderForthDocsSnippet
 
 val __forthSource = {source_literal}
 renderForthDocsSnippet(__forthSource)
@@ -1658,6 +1658,18 @@ def build_backdoor_command(
                     ]
                 )
             )
+        elif test.get("waitOutput"):
+            # `waitOutput: {contains, channel?, kind?}`: wait for output that arrives after the run has
+            # returned, such as a build card a worker redraws. `sleep` records no events, so a fixed
+            # settle could never show such output to `expect.outputContains`; this returns the match.
+            wanted = test.get("waitOutput") or {}
+            if not isinstance(wanted, dict) or not str(wanted.get("contains") or ""):
+                raise RunnerError(f"{test.get('id')}: waitOutput needs 'contains'")
+            line = ["wait-output", "@last", "--kind", str(wanted.get("kind") or "all"), "--contains", str(wanted["contains"]),
+                    "--timeout", str(timeout)]
+            if wanted.get("channel"):
+                line += ["--channel", str(wanted["channel"])]
+            commands.append(shlex.join(line))
         elif wait_seconds > 0:
             # Tests without a concrete readiness artifact still need a bounded
             # settle period. Image-producing tests wait for the freshly deleted
@@ -1753,7 +1765,7 @@ def collect_execution_problems(backdoor_results: list[dict[str, Any]]) -> list[s
                 html = str(payload.get("html", "")).replace("\n", " ").strip()
                 # An error event with no text is not an error: it is how a runtime *clears* the
                 # marker a previous failed run left on the box (see `HasOutput.error`'s "an error of
-                # null,,-1 means 'clear errors'" in `src/jvmMain/kotlin/afield/outputs.kt`).
+                # null,,-1 means 'clear errors'" in `src/jvmMain/kotlin/afield/ui/output/outputs.kt`).
                 # DatalogExecution sends one on every success and ClojureExecution now does too, so
                 # reading it as a failure would fail every test whose box merely ran cleanly — and
                 # report it as the bare string "execution error", with nothing to go on.
@@ -2254,6 +2266,53 @@ def requires_sidecar(test: dict[str, Any]) -> bool:
     return test.get("requiresSidecar") is True
 
 
+def smoke_native_tasks(tests: list[dict[str, Any]]) -> list[str]:
+    """Build only the native helpers needed by the runnable selection."""
+    tags = {str(tag) for test in tests for tag in test.get("tags") or []}
+    slug = "slug" in tags
+    steam_audio = "steamaudio" in tags
+    if slug and steam_audio:
+        return ["buildSmokeNativePrerequisites"]
+    if slug:
+        return ["buildSlugNative"]
+    if steam_audio:
+        return ["fetchSteamAudioNatives"]
+    return []
+
+
+def prepare_smoke_natives(
+    tests: list[dict[str, Any]],
+    *,
+    environment: VerificationEnvironment | None,
+    heartbeat_interval: float,
+    progress: Callable[[str], None],
+) -> None:
+    tasks = smoke_native_tasks(tests)
+    if not tasks:
+        return
+    progress(f"Smoke native prerequisites: {', '.join(tasks)}")
+    token = environment.checkpoint(require_display=False) if environment else 0
+
+    def check_environment() -> None:
+        if environment:
+            environment.check(token, require_display=False)
+
+    result, _, timed_out = run_with_watchdog(
+        gradle_command(*tasks),
+        cwd=REPO_ROOT,
+        timeout=1200,
+        heartbeat_interval=heartbeat_interval,
+        heartbeat=progress,
+        label="smoke native prerequisites",
+        check_environment=check_environment,
+    )
+    if timed_out or result.returncode != 0:
+        detail = "\n".join((result.stdout + "\n" + result.stderr).splitlines()[-30:])
+        raise RunnerError(
+            f"Smoke native prerequisites failed ({'timed out' if timed_out else f'exit {result.returncode}'}):\n{detail}"
+        )
+
+
 def run(args: argparse.Namespace, environment: VerificationEnvironment | None = None) -> int:
     port_was_explicit = args.port is not None
     requested_port = args.port if port_was_explicit else DEFAULT_AUTOMATION_PORT
@@ -2415,6 +2474,10 @@ def run(args: argparse.Namespace, environment: VerificationEnvironment | None = 
 
     if tests:
         warn_if_node_too_old(progress)
+        prepare_smoke_natives(
+            tests, environment=environment,
+            heartbeat_interval=args.heartbeat_interval, progress=progress,
+        )
 
     # One completion sidecar for the run, when anything selected needs one. It is handed to the
     # persistent Field below, so every test of such a run completes the way a user's Field does.

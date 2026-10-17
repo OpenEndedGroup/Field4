@@ -1,7 +1,9 @@
-// The same no-argument call that answered UNCHANGED in box 3 now RELOADS, because the live
-// pipeline is the patched one. Nothing about the tracer had to be rebuilt to get here: same
-// scene, same environment, same accumulation buffers, same camera.
-import afield.four.fabricated.*
+/*
+The same no-argument call that answered UNCHANGED in box 3 now RELOADS, because the live
+pipeline is the patched one. Nothing about the tracer had to be rebuilt to get here: same
+scene, same environment, same accumulation buffers, same camera.
+*/
+import afield.graphics.scene.fabricated.*
 
 prop<PathTracingRenderer>(tracer)
 

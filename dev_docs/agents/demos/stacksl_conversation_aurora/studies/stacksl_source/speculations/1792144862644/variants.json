@@ -1,0 +1,19 @@
+{
+  "against" : "r4-4b8f100a41d2",
+  "liveSourceHash" : "4b8f100a41d2a7d9e3bb86e38acf5355a20a4ef14f67600f62acfd8a8f743efc",
+  "adopted" : "C",
+  "variants" : [ {
+    "label" : "A",
+    "note" : "Broad drapes: wide, rounded vertical folds, gently swaying toward their lower ends.",
+    "file" : "A.stacksl"
+  }, {
+    "label" : "B",
+    "note" : "Fine pleats: close-set, straighter folds with deeper shadow channels.",
+    "file" : "B.stacksl"
+  }, {
+    "label" : "C",
+    "note" : "Loose billows: irregularly gathered folds, vertical at the top and curving gently below.",
+    "file" : "C.stacksl"
+  } ],
+  "as" : "r5-e63307b6d523"
+}

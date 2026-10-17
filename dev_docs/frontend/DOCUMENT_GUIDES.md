@@ -63,7 +63,7 @@ The first pass bounds files to 1 MiB, catalogue results to 128 and local images 
 ## Verification
 
 - `node --test tools/test_document_guide.mjs` checks relative paths, fragments, stable box links, rejected URL schemes, the `box/<uid>` note namespace and the paths a typed note name is allowed to become.
-- `./gradlew jvmTest --tests afield.server.DocumentGuideFilesTest --tests afield.server.DocumentGuideNotesTest` checks discovery, canonical path confinement, stale saves, no-clobber creation, read-only protection and file bounds, plus which box notes are collected and what a read of one returns.
+- `./gradlew jvmTest --tests afield.app.server.DocumentGuideFilesTest --tests afield.app.server.DocumentGuideNotesTest` checks discovery, canonical path confinement, stale saves, no-clobber creation, read-only protection and file bounds, plus which box notes are collected and what a read of one returns.
 - `uv run --project . --group backdoor python tools/run_ui_regressions.py --id document-guide --port 9693 --timeout 60` drives the real guide UI: discovery, local images, box/line navigation, source save, a concurrent writer, close/reopen, live refresh, file proxies, a collected box note refusing writes and handing over to its box, and **Add note** reaching disk. Its retained screenshot shows the reader beside the code editor.
 
 ## Durable notes for AI4 and external agents
@@ -93,4 +93,4 @@ To move an ongoing conversation into Field, create a `HANDOFF.md` that records t
 
 This transfers working context. It does not import another application's hidden conversation state or grant AI4 arbitrary repository/shell tools.
 
-Verification for this layer: `./gradlew jvmTest --tests afield.ai.DocumentGuideToolsTest --tests afield.server.DocumentGuideFilesTest`. The tests dispatch JSON through both registries, compare schemas, exercise interleaved writers, readonly/confinement failures, search/pagination, and reopen disk-backed notes with a fresh provider.
+Verification for this layer: `./gradlew jvmTest --tests afield.ai.tools.DocumentGuideToolsTest --tests afield.app.server.DocumentGuideFilesTest`. The tests dispatch JSON through both registries, compare schemas, exercise interleaved writers, readonly/confinement failures, search/pagination, and reopen disk-backed notes with a fresh provider.

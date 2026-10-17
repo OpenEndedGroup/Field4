@@ -126,7 +126,7 @@
         }
 
         .hero .button-row {
-            justify-content: flex-start;
+            justify-content: flex-end;
         }
 
         .hero h1 {
@@ -704,6 +704,13 @@
 
         .changelog-panel details[open] {
             min-height: 0;
+        }
+
+        .changelog-more {
+            display: flex;
+            justify-content: flex-end;
+            margin: 0;
+            padding: 8px 12px 12px;
         }
 
         .changelog-count {
@@ -1386,7 +1393,7 @@
         }
 
         /* History-screenshot thumbnails live in the LEFT GUTTER, outside the list panel — one row
-           each, canvas (electron-window) capture nearest the panel and the afield.four renderer
+           each, canvas (electron-window) capture nearest the panel and the Field 4 renderer
            capture one thumbnail over (further left), in two fixed columns so they line up across
            rows. To reach the gutter without breaking the vertical scroll, the scroll container is
            extended left (negative margin + matching padding) so the gutter is inside its scroll
@@ -1414,7 +1421,7 @@
                 overflow-x: clip;
             }
 
-            /* Two thumbnail columns in the gutter: col 1 the afield.four render, col 2 the canvas
+            /* Two thumbnail columns in the gutter: col 1 the Field 4 render, col 2 the canvas
                capture nearest the panel. Right-anchored so the canvas column sits 5px left of the
                list's black border (20px = 15px panel border+padding + 5px gap); the container is
                auto-width and grows leftward as the thumbnails scale. It carries the same 1px black
@@ -1449,6 +1456,29 @@
 
             .doc-entry:hover .doc-thumbs {
                 opacity: 1;
+            }
+
+            /* Hovering a thumbnail expands it in place: the row's clip is lifted and the image is
+               scaled from its right edge (towards the gutter's open space, away from the list), so
+               layout and the neighbouring rows don't move. The cap keeps the expanded image inside
+               the gutter. */
+            .doc-thumbs:has(img.doc-thumb:hover) {
+                overflow: visible;
+                z-index: 20;
+            }
+
+            img.doc-thumb {
+                pointer-events: auto;
+                transform-origin: right center;
+                transition: transform 160ms ease-out, box-shadow 160ms ease-out;
+            }
+
+            img.doc-thumb:hover {
+                transform: translate(var(--thumb-shift-x, 0px), var(--thumb-shift, 0px)) scale(var(--thumb-scale, 6));
+                position: relative;
+                z-index: 1;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+                border-color: rgba(72, 201, 255, 0.6);
             }
 
             /* Thumbnails scale with the row height (so they grow in the tall search-result rows)
@@ -2033,6 +2063,7 @@
                         <span id="changelog-count" class="changelog-count">loading</span>
                     </summary>
                     <ol id="changelog-list"></ol>
+                    <p class="changelog-more"><a class="button-link" href="/land.html" target="_blank" rel="noopener" title="tools/land.py status --watch, in a terminal">Landing queue</a></p>
                 </details>
                 <details id="project-management-details">
                     <summary>
@@ -2232,6 +2263,10 @@
                             </div>
                         </div>
                         <div class="ai-docs-panel">
+                            <div class="ai-docs-header"><span class="ai-docs-label">Developer tools</span></div>
+                            <div class="ai-docs-actions"><button id="open-refactor-pass" type="button">Refactoring</button></div>
+                        </div>
+                        <div class="ai-docs-panel">
                             <div class="ai-docs-header">
                                 <span class="ai-docs-label">Agent tool use</span>
                                 <span id="ai-tool-use-improvement-state">checking</span>
@@ -2378,7 +2413,7 @@
                             </div>
                             <label class="osc-settings-field">
                                 <span>UDP port</span>
-                                <input id="osc-editor-port" type="number" min="1" max="65535" step="1" autocomplete="off" placeholder="9000">
+                                <input id="osc-editor-port" type="number" min="1" max="65535" step="1" autocomplete="off" placeholder="9001">
                             </label>
                             <label class="osc-settings-field">
                                 <span>debounce ms</span>
@@ -2579,7 +2614,7 @@
             autoOpenLastDocumentInDesktop: false,
             editorPropertyStickiness: "none",
             oscEditorEnabled: false,
-            oscEditorPort: 9000,
+            oscEditorPort: 9001,
             oscEditorFloatAddress: "/field/float",
             oscEditorLaunchAddress: "/field/launch",
             oscEditorStopAddress: "/field/stop",
@@ -3737,12 +3772,12 @@
         if (stateNode) {
             const mode = prefs.oscEditorDeltaMode ? "delta" : "absolute";
             const label = prefs.oscEditorEnabled
-                ? `UDP ${prefs.oscEditorPort || 9000} · ${mode} · ${prefs.oscEditorFloatAddress || "/field/float"}`
+                ? `UDP ${prefs.oscEditorPort || 9001} · ${mode} · ${prefs.oscEditorFloatAddress || "/field/float"}`
                 : "disabled";
             stateNode.textContent = label;
         }
         if (enabled) enabled.checked = !!prefs.oscEditorEnabled;
-        if (port) port.value = String(prefs.oscEditorPort || 9000);
+        if (port) port.value = String(prefs.oscEditorPort || 9001);
         if (floatAddress) floatAddress.value = prefs.oscEditorFloatAddress || "/field/float";
         if (launchAddress) launchAddress.value = prefs.oscEditorLaunchAddress || "/field/launch";
         if (stopAddress) stopAddress.value = prefs.oscEditorStopAddress || "/field/stop";
@@ -3784,7 +3819,7 @@
             autoOpenLastDocumentInDesktop: !!document.getElementById("pref-auto-open-last")?.checked,
             editorPropertyStickiness: document.querySelector(".stickiness-segment.active")?.getAttribute("data-stickiness-value") || "none",
             oscEditorEnabled: !!document.getElementById("osc-editor-enabled")?.checked,
-            oscEditorPort: Number.parseInt(document.getElementById("osc-editor-port")?.value || "9000", 10) || 9000,
+            oscEditorPort: Number.parseInt(document.getElementById("osc-editor-port")?.value || "9001", 10) || 9001,
             oscEditorFloatAddress: String(document.getElementById("osc-editor-float-address")?.value || "/field/float").trim(),
             oscEditorLaunchAddress: String(document.getElementById("osc-editor-launch-address")?.value || "/field/launch").trim(),
             oscEditorStopAddress: String(document.getElementById("osc-editor-stop-address")?.value || "/field/stop").trim(),
@@ -4037,7 +4072,7 @@
     }
 
     // Renders the left-gutter thumbnail layer for a document row: two fixed columns so captures
-    // line up across rows — column 1 is the afield.four renderer (further from the panel), column 2
+    // line up across rows — column 1 is the Field 4 renderer (further from the panel), column 2
     // is the canvas/electron-window capture (nearest the panel). A missing capture leaves an empty
     // cell so the columns still align. Search-result rows can be missing the thumbnail fields, so
     // we fall back to the canonical document entry in state.documents.
@@ -5029,7 +5064,7 @@
             state.codeUse = {
                 ...(state.codeUse || {}),
                 enabled: false,
-                message: "Could not load code-use telemetry state."
+                message: "Could not load local code-use history state."
             };
             state.semanticSearch = {
                 ...(state.semanticSearch || {}),
@@ -5726,6 +5761,7 @@
             node.textContent = parts.join(" · ");
         } catch (ignored) { node.textContent = "unavailable"; }
     }
+    document.getElementById("open-refactor-pass")?.addEventListener("click", () => window.open("/refactor-pass.html", "_blank", "noopener"));
     document.getElementById("open-docs-pass")?.addEventListener("click", () => window.open("/docs-pass.html", "_blank", "noopener"));
     refreshDocsPassState();
     setInterval(() => { if (!document.hidden) refreshDocsPassState(); }, 20000);
@@ -6022,7 +6058,7 @@
 
     async function learnOscAddress(targetId) {
         const target = document.getElementById(targetId);
-        const port = Number.parseInt(document.getElementById("osc-editor-port")?.value || "9000", 10) || 9000;
+        const port = Number.parseInt(document.getElementById("osc-editor-port")?.value || "9001", 10) || 9001;
         if (!target) return;
         const preferenceKeys = {
             "osc-editor-float-address": "oscEditorFloatAddress",
@@ -6629,6 +6665,40 @@
 
         window.addEventListener("resize", closeContextMenu);
         document.getElementById("recent-list")?.addEventListener("scroll", closeContextMenu);
+
+        // A hovered thumbnail scales 6x about its right-centre (CSS above); near the top or bottom
+        // of the list that would push it past the list's scroll clip, so slide it vertically to
+        // stay inside the list's visible rect.
+        document.getElementById("recent-list")?.addEventListener("mouseover", (event) => {
+            const img = event.target.closest?.("img.doc-thumb");
+            if (!img) return;
+            const list = event.currentTarget.getBoundingClientRect();
+            // In a narrow window, first shrink towards 3x to fit the room left of the thumbnail,
+            // then (below) shift whatever still doesn't fit.
+            const minLeft = Math.max(list.left, 0) + 8;
+            const room = (img.getBoundingClientRect().right - minLeft) / img.offsetWidth;
+            const thumbScale = Math.max(3, Math.min(6, room));
+            img.style.setProperty("--thumb-scale", `${thumbScale}`);
+            const box = img.getBoundingClientRect(); // the centre is unmoved by the scale
+            const half = img.offsetHeight * thumbScale / 2;
+            const centre = box.top + box.height / 2;
+            let shift = 0;
+            if (centre - half < list.top) shift = list.top - (centre - half);
+            else if (centre + half > list.bottom) shift = list.bottom - (centre + half);
+            img.style.setProperty("--thumb-shift", `${shift}px`);
+            // Likewise horizontally: in a narrow window the gutter is shorter than the expanded
+            // image, which grows leftward from its right edge, so push it right to start inside.
+            const left = box.right - img.offsetWidth * thumbScale;
+            img.style.setProperty("--thumb-shift-x", `${left < minLeft ? minLeft - left : 0}px`);
+        });
+        document.getElementById("recent-list")?.addEventListener("mouseout", (event) => {
+            const img = event.target.closest?.("img.doc-thumb");
+            if (img && !img.contains(event.relatedTarget)) {
+                img.style.removeProperty("--thumb-shift");
+                img.style.removeProperty("--thumb-shift-x");
+                img.style.removeProperty("--thumb-scale");
+            }
+        });
 
         requestAnimationFrame(() => {
             searchInput.focus({ preventScroll: true });

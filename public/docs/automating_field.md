@@ -80,21 +80,19 @@ exceptions appear. Running a box that isn't there, or that has no code, comes ba
 failure that names the box, never as a silent skip.
 
 The backdoor also captures pictures — a single box, the editor, the whole window, or the
-native `afield.four` graphics window — which is how this site's figures are made. It
+native Field 4 graphics window — which is how this site's figures are made. It
 records short videos of the first three. The native graphics window is stills only.
 
-Some captures fail without saying so. A `screenshot-box` of a box whose outputs were
-never opened comes back `ok: true`, clipped to the collapsed box rather than to the output
-you wanted. [What a Capture Can and Cannot Show](capture_limits.md) lists these cases and
-the reply field that tells you when you have hit one.
+[What a Capture Can and Cannot Show](capture_limits.md) lists what a capture cannot see, and
+the reply fields that tell you when you have hit one of those limits.
 
 ## Where to go next
 
-- The [Staging Overview](staging.md) section "Reproducible docs and transcript
-  automation" explains how the docs build itself uses this machinery.
+- [How these pages are built](staging.md#how-these-pages-are-built) says how the docs
+  build itself uses this machinery.
 - [Building & Testing](building_and_testing.md) covers the backdoor as a test harness.
 - For the complete reference — every operation, the observable results, and worked
-  examples on the canvas and in `afield.four` Vulkan graphics — see the
+  examples on the canvas and in Field 4 Vulkan graphics — see the
   [operation transcript reference](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/OPERATION_TRANSCRIPT.md)
   and the [backdoor reference](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/FIELD_BACKDOOR.md)
   in the Field repository. The [agent transcript gallery](agent_transcripts.md) has a worked

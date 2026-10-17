@@ -67,6 +67,8 @@ class FirstRunTest {
         assertFalse(supportsRust2024("not installed"))
         assertTrue(supportsRust2024("cargo 1.85.0 (abc 2025-02-20)"))
         assertTrue(supportsRust2024("rustc 1.97.0 (abc 2026-07-09)"))
+        assertFalse(supportsRustAtLeast("cargo 1.94.0", 95))
+        assertTrue(supportsRustAtLeast("cargo 1.95.0", 95))
     }
     @Test fun selectionKeepsLegacyNumbersAndRejectsArbitraryCommands() {
         assertEquals(setOf("vulkan", "python", "ceres"), selectedExtras("1, 2 ceres"))
@@ -82,6 +84,14 @@ class FirstRunTest {
         assertTrue("buildCeresRedistributable" in command && "buildTetgenNative" in command && "buildLibpdNative" in command)
         assertEquals(setOf("python", "cmake", "cl"), extraTools(setOf("ceres"), "windows"))
     }
+    @Test fun patchyBuildRunsOnlyWhenSelectedOnEachPlatform() {
+        for (platform in listOf("mac", "linux", "windows")) {
+            assertTrue(preparationCommands(emptySet(), platform).isEmpty())
+            val command = preparationCommands(setOf("patchy-web"), platform).single()
+            assertEquals("buildPatchyWeb", command.last())
+            assertTrue("cmake" in extraTools(setOf("patchy-web"), platform))
+        }
+    }
     @Test fun largeModelAndInterpreterSetupsRemainExplicitSeparateRecipes() {
         assertTrue(preparationCommands(setOf("cv", "voice", "diffusion", "audio-ai", "kratos", "tracker", "transport", "opendlssnr"), "linux").isEmpty())
         assertFalse(extraTools(setOf("syphon"), "windows").contains("xcrun"))
@@ -93,6 +103,7 @@ class FirstRunTest {
         assertTrue(artifactCandidates(root, "tetgen", "windows", emptyMap()).any { it.path.replace('\\', '/').endsWith("Release/field_tetgen_jvm.dll") })
         assertTrue(artifactCandidates(root, "libpd", "windows", emptyMap()).all { it.name == "libpd-multi.dll" })
         assertTrue(artifactCandidates(root, "python", "linux", emptyMap()).isEmpty())
+        assertTrue(artifactCandidates(root, "solidcraft", "mac", emptyMap()).single().path.replace('\\', '/').endsWith("build/native/solidcraft/libfield_solidcraft_jvm.dylib"))
     }
     @Test fun everyCatalogGuideAndPreparationTaskExistsInThisCheckout() {
         val root = generateSequence(File(".").absoluteFile) { it.parentFile }.first { File(it, "field.sh").isFile }

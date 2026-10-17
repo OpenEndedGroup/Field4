@@ -2,7 +2,7 @@
 """Fetch the Csound Reference Manual's DocBook source, pinned to the release Field builds.
 
 The opcode descriptions Field's Csound completion shows are generated from this source by
-`./gradlew generateCsoundVocabulary` (afield.csound.CsoundVocabulary), never typed by hand. The
+`./gradlew generateCsoundVocabulary` (afield.audio.csound.CsoundVocabulary), never typed by hand. The
 manual is the csound/manual repository at tag 6.18.0, the manual for Csound 6.18 (the repository
 has no 6.18.1 tag). It is licensed under the GNU Free Documentation License 1.2 or later (its
 `copying.txt`), which Field records next to the vocabulary it ships.

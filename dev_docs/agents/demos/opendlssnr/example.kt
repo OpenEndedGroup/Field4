@@ -1,14 +1,11 @@
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.neuralrendering.*
-import afield.four.modules.fromContext
-import afield.four.modules.fromContextWithNameOrNull
-import afield.stdlib.linalg.Vector4f
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.render.neural.*
 import java.nio.file.Path
 
 // Run as a child of the standard renderer box. Edit this path to use your own image.
 val image = Path.of("public/docs/assets/opendlssnr/ink-input.png").toAbsolutePath()
-val owner = fromContext<Renderer>()
+val owner = renderer
 prop<OpenDlssNrImage>(study)
 fromContextWithNameOrNull<OpenDlssNrImage>("study")?.close()
 val available = OpenDlssNrSupport.availability(owner)

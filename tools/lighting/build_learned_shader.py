@@ -145,9 +145,21 @@ def compile_shaders(slang: Path,source: Path,output: Path,report: dict,training_
     return report
 
 
+def write_pointer(slang: Path) -> None:
+    # SlangCompiler prefers this compiler over the Vulkan SDK's and PATH's for live shaders.
+    # This checkout-local pointer is a generated artifact, not dependency source or provenance.
+    pointer=OUT.parent/'slangc.path';pointer.parent.mkdir(parents=True,exist_ok=True)
+    temporary=pointer.with_name(f'.slangc.path.{os.getpid()}.tmp')
+    temporary.write_text(str(slang.resolve())+'\n');temporary.replace(pointer)
+
+
 def main() -> None:
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--offline',action='store_true')
+    parser.add_argument('--compiler-only',action='store_true',help='fetch the pinned slangc and record it for live Slang boxes; skip RTXNS and the learned shaders')
     args=parser.parse_args();pins=json.loads(MANIFEST.read_text())
+    if args.compiler_only:
+        slang,provenance=compiler(pins['slang'],args.offline);write_pointer(slang)
+        print(json.dumps(provenance,indent=2));print(f'[slang] ready: {slang}',flush=True);return
     sdk=ensure_sdk(pins['rtxns'],args.offline)
     # The source SDK's sample pin and Field's compiler are independent, explicit choices.
     # Field also uses this compiler for live shaders and GPU training; do not configure or
@@ -158,11 +170,7 @@ def main() -> None:
     report=compile_shaders(slang,SOURCE,OUT,{'rtxnsCommit':pins['rtxns']['revision'],
         'rtxnsSampleSlangVersion':pins['rtxns']['sampleSlangVersion'],
         'rtxnsPath':pins['rtxns']['path'],**provenance},SOURCE.with_name('train.slang'))
-    # Reuse this compiler from Field's existing SlangCompiler when no PATH compiler is installed.
-    # This checkout-local pointer is a generated artifact, not dependency source or provenance.
-    pointer=OUT.parent/'slangc.path'
-    temporary=pointer.with_name(f'.slangc.path.{os.getpid()}.tmp')
-    temporary.write_text(str(slang.resolve())+'\n');temporary.replace(pointer)
+    write_pointer(slang)
     print(json.dumps(report,indent=2));print(f'[learned shader] ready: {OUT}',flush=True)
 
 

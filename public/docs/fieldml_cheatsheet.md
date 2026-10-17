@@ -268,15 +268,15 @@ Use `hostTap` when a Kotlin function is an effect in the middle of a pipe: it lo
 
 </div>
 
-`hostCall name arguments target` takes as many arguments as the method does: a tuple, or a list written out in place, is spread; a **record** is spread *by name*, and every Kotlin parameter you leave out of it gets the default the source declared; anything else is a single argument. `hostNew` is the same for constructors. `hostCall0`, `hostCall1` and `hostCall2` fix the argument count instead; `hostCall1` never spreads, so it is how you pass one list — or one record — *as* a single argument. A FieldML function passed where the JVM wants a functional interface (a Kotlin lambda parameter, `Runnable`, `Comparator`, or a `suspend` one such as `eachFrame`'s) is converted on the way in.
+`hostCall name arguments target` takes as many arguments as the method does: a tuple, or a list written out in place, is spread; a record is spread by name, and every Kotlin parameter you leave out of it gets its declared default; anything else is a single argument. `hostNew` is the same for constructors. `hostCall0`, `hostCall1` and `hostCall2` fix the argument count instead; `hostCall1` never spreads, so use it to pass one list or one record as a single argument. A FieldML function passed where the JVM wants a functional interface (a Kotlin lambda parameter, `Runnable`, `Comparator`, or a `suspend` one such as `eachFrame`'s) is converted on the way in.
 
-The types in this table are the *static* ones. In a real call the type checker does better than `Host`: it resolves the member by reflection, so `thisBox |> hostGet "width"` is an `Int`, a misspelled member name is a type error rather than a crash, and a result whose class is known keeps that class as its type. `Host` is what is left when reflection cannot say — a generic erased to `Object`, a nullable Kotlin return, an array. It unifies with every type, which is what the `hostAs…` family is for.
+The table gives the general types. In an actual call the type checker looks the member up, so `thisBox |> hostGet "width"` is an `Int`, a misspelled member name is a type error rather than a crash, and a result whose class is known keeps that class as its type. You get `Host` only when the lookup cannot tell: a generic erased to `Object`, a nullable Kotlin return, an array. `Host` unifies with every type; the `hostAs…` functions turn it into a specific one.
 
 ## Source macros
 
-Field's box-code macros (`moduleHere`, `prop`, `println` and the rest) are rewrites over Kotlin *source*, applied before the Kotlin compiler runs. FieldML has no Kotlin compiler, so it reaches them a different way: `hostMacroExpand` runs a macro's **expansion** against this box (which is where most of a macro's work happens — shaders compiled, properties seeded, actions installed) and hands the rewrite back; `hostMacro` does that and then **calls** the function the macro rewrote the call site to. See [The JVM bridge](fieldml_host_bridge.md#source-macros) for which macros this reaches and which it cannot.
+Field's box-code macros (`moduleHere`, `prop`, `println` and the rest) rewrite Kotlin source before it is compiled. FieldML is not compiled as Kotlin, so it reaches them through two functions. `hostMacroExpand` runs a macro's expansion against this box, which is where a macro compiles its shaders, seeds its properties and installs its actions, and returns the rewritten source. `hostMacro` does the same and then calls the function the rewritten source would have called. See [The JVM bridge](fieldml_host_bridge.md#source-macros) for which macros this reaches and which it cannot.
 
-The `prop` family is native rather than expanded: `prop<T>(name)` generates a delegate *declaration*, so there is no call to make — but the delegate is a named, inheritable slot on a box, and FieldML reads and writes the same one. A Kotlin box's `speed` and a FieldML box's `prop "speed"` are one property.
+The `prop` functions are built into FieldML instead. In Kotlin, `prop<T>(name)` declares a named property that boxes below inherit, and FieldML reads and writes that same property. A Kotlin box's `speed` and a FieldML box's `prop "speed"` are one property.
 
 <div class="field-reference" data-code-lang="fieldml" markdown>
 
@@ -287,12 +287,23 @@ The `prop` family is native rather than expanded: `prop<T>(name)` generates a de
 | `prop`<br>`String -> Host` | Reads a named box property, searching this box and its ancestors. A missing property is an error. |
 | `propOr`<br>`String -> 'a -> Host` | `propOr name fallback` reads a property through the same inheritance chain and uses the fallback if it is absent. |
 | `setProp`<br>`String -> 'a -> 'a` | `setProp name value` writes locally and returns the value. This shadows an ancestor’s property without changing it. |
+| `propUp`<br>`String -> Host` | Reads an inherited slot; if absent, runs an upstream Kotlin or FieldML supplier before reading again. |
+| `propDown`<br>`String -> Host` | Reads an inherited slot and records the reader for a later reactive write. |
+| `propUpDown`<br>`String -> Host` | Combines the pull on a missing read with a recorded downstream reader. |
+| `setPropUp`<br>`String -> 'a -> 'a` | Writes a local slot that an upstream pull can find in this FieldML box. |
+| `setPropDown`<br>`String -> 'a -> 'a` | Writes locally; a changed value reruns boxes that read the old value. |
+| `setPropUpDown`<br>`String -> 'a -> 'a` | Combines an upstream supplier with a changed-write cascade. |
 | `rootProp`<br>`String -> Host` | Reads a named property from the document root. |
 | `setRootProp`<br>`String -> 'a -> 'a` | Writes a named property on the document root and returns the value, making it available through inheritance. |
 | `once`<br>`String -> ('a -> 'b) -> Host` | `once name f` computes and stores a value in this box’s own slot on first use. Later reads reuse that stored value; a JVM-null result is not cached. |
 
 </div>
 
-A macro's arguments are **source text**, because that is what a macro consumes: `hostMacroExpand "prop" ("<Double>", "(speed)")` is the `prop<Double>(speed)` call site, one string per piece. `hostMacro` takes those *and* the argument values for the rewritten call, since only the first can be text in an interpreter: `hostMacro "println" "(x)" (7, "hello")` expands `println`, then calls `Box._printlnHere` with line 7 and one payload.
+A macro's arguments are source text, one string per piece: `hostMacroExpand "prop" ("<Double>", "(speed)")` stands for the Kotlin `prop<Double>(speed)`. `hostMacro` takes the same text and then the values to call with: `hostMacro "println" "(x)" (7, "hello")` expands `println`, then calls the function it expands to with line 7 and one value.
 
-Reading a `prop` that nothing up the graph has is an error — nearly always a box that has not run yet, rather than a typo. `propOr` is the form that takes a fallback instead. Writing with `setProp` is always **local**: it shadows an ancestor's value for this box and everything below it rather than changing theirs. `setRootProp` puts the slot on the document root, so every box shares the one value. `once` computes on the first read and stores the result, so the second read does not recompute.
+Reading a `prop` that no box up the graph has set is an error, usually because the box that sets it has not run yet. `propOr` takes a fallback instead. Writing with `setProp` is always local: it shadows an ancestor's value for this box and everything below it rather than changing theirs. `setRootProp` puts the slot on the document root, so every box shares the one value. `once` computes on the first read and stores the result, so the second read does not recompute.
+
+For reactive properties, the read and write forms share the same slot as `prop` and `setProp`.
+Write `setPropUp "speed" 3` in a supplier box, then `propUp "speed"` in a child: a missing
+read runs the supplier first. Use the `Down` forms when changed writes should rerun boxes that
+previously read the slot. A writer that needs both directions uses `setPropUpDown`.

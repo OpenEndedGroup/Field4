@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 3 - Close the loop
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="condense_from_audio" index="0" -->
 
 ```edn [field-box id="condense_from_audio" role="properties"]
-{"id" "condense_from_audio" "index" 0 "name" "3 - Close the loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Close the loop" "_tombstone" false "frame" #afield/rect [60.0 940.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_from_audio_code_.kt" "lines" 74 "characters" 2929 "sha256" "8122a6919a17090e48540e8cb0486e3ca05a1e70c230a7c21974ff3965101d64"}]}
+{"id" "condense_from_audio" "index" 0 "name" "3 - Close the loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Close the loop" "_tombstone" false "frame" #afield/rect [60.0 940.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_from_audio_code_.kt" "lines" 74 "characters" 2932 "sha256" "7dd72058b3208bd5c869fe2ff440a81c103cdec8dd6fb5b4f9d6196d2d0b580c"}]}
 ```
 
 ```kotlin [field-property box="condense_from_audio" name="code" path="condense_from_audio_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // 3 - Close the loop: samples in, structure out.
 //
@@ -54,7 +54,7 @@ showPatRollOf(
 // they are the same bar, and the point of a shortest notation is that shortening it cost nothing.
 display(
     "played",
-    afield.four.audio.WavFloatArrayWriter.encodeStereo16(
+    afield.audio.engine.WavFloatArrayWriter.encodeStereo16(
         audio.left, audio.right, PatSoundDocs.SR, normalizePeak = 0.9f
     )
 )
@@ -96,11 +96,11 @@ markdown(
 <!-- field-box id="condense_basics" index="1" -->
 
 ```edn [field-box id="condense_basics" role="properties"]
-{"id" "condense_basics" "index" 1 "name" "1 - Condense a rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Condense a rhythm" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_basics_code_.kt" "lines" 46 "characters" 1936 "sha256" "63ba34bac4986d7d43e8ec33fa909d7a8975873597b057773e302eec8ffbb360"}]}
+{"id" "condense_basics" "index" 1 "name" "1 - Condense a rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Condense a rhythm" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_basics_code_.kt" "lines" 46 "characters" 1937 "sha256" "ca5cbd8cb575e265504c07c5ea6ff805dfc3ff7cd6673c807f15227f7e18cd9b"}]}
 ```
 
 ```kotlin [field-property box="condense_basics" name="code" path="condense_basics_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 
 // 1 - Condense a rhythm.
 //
@@ -153,11 +153,11 @@ markdown(
 <!-- field-box id="condense_invents_nothing" index="2" -->
 
 ```edn [field-box id="condense_invents_nothing" role="properties"]
-{"id" "condense_invents_nothing" "index" 2 "name" "2 - Invent nothing" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Invent nothing" "_tombstone" false "frame" #afield/rect [60.0 500.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_invents_nothing_code_.kt" "lines" 69 "characters" 2689 "sha256" "4a29dd1c52619af2384d602a5e332849ddbf7b7922bd0f0bc06604160458bcd0"}]}
+{"id" "condense_invents_nothing" "index" 2 "name" "2 - Invent nothing" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Invent nothing" "_tombstone" false "frame" #afield/rect [60.0 500.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_invents_nothing_code_.kt" "lines" 69 "characters" 2690 "sha256" "62196e309a0c4d896666e250c39c2026ce01e2abbb5462b7f130a88fd7e2c22a"}]}
 ```
 
 ```kotlin [field-property box="condense_invents_nothing" name="code" path="condense_invents_nothing_code_.kt"]
-import afield.four.synth.*
+import afield.audio.synth.*
 import kotlin.random.Random
 
 // 2 - Invent nothing.

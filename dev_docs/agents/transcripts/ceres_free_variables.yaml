@@ -19,18 +19,17 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 450.0, h: 100.0 }
       properties:
         code: |
-          import afield.graphics.FLine
-          import afield.stdlib.Vec3
-          import afield.stdlib.ceres.CachedCeresSolvers
-          import afield.stdlib.ceres.CeresLinearSolver
-          import afield.stdlib.ceres.FfmCeresBackend
-          import afield.stdlib.ceres.PointCloud
-          import afield.stdlib.ceres.SolveOptions
-          import afield.stdlib.ceres.SolveRequest
-          import afield.stdlib.polytope.*
+          import afield.geometry.path.FLine
+          import afield.math.linalg.Vec3
+          import afield.math.optimization.ceres.CachedCeresSolvers
+          import afield.math.optimization.ceres.CeresLinearSolver
+          import afield.math.optimization.ceres.FfmCeresBackend
+          import afield.math.optimization.ceres.PointCloud
+          import afield.math.optimization.ceres.SolveOptions
+          import afield.math.optimization.ceres.SolveRequest
           import java.nio.file.Files
           import java.nio.file.Path
-
+          
           // ---- the one parameter to change -------------------------------------------------
           // Conway prefix notation, read right to left. "tI" — the truncated icosahedron, a football —
           // is the default because it is nearly round, so every solved plane sits on the surface where
@@ -40,7 +39,7 @@ operations:
           // canonical form is a stellation, so the stems end up inside it. Also try "aC", "gD", "kkD".
           val expression = "tI"
           // ----------------------------------------------------------------------------------
-
+          
           // Nothing is committed, so look where each build task puts its artifact. Constructing the
           // backend is what refuses a missing or too-old library, so that is the check.
           val backend = listOf(
@@ -48,33 +47,33 @@ operations:
               Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
           ).filter { Files.exists(it) }
               .firstNotNullOfOrNull { runCatching { FfmCeresBackend(it) }.getOrNull() }
-
+          
           val seed = conway(expression).polyhedron
           val problem = RealizationProblem.of(seed)
           val plan = RelaxationPlan.canonicalConditions()
           val faces = seed.topology.elements(2)
-
+          
           fun faintSeed() = seed.toFaceFLines { _, line ->
               line.filled = true
               line.stroked = true
               line.thickness = 1.0
               line.color = vec(0.55, 0.60, 0.68, 0.13)
           }
-
+          
           if (backend == null) {
               println("no Ceres wrapper built; drawing the unsolved seed")
               markdown(
                   "ceres",
                   """
                   ### This box needs the native Ceres wrapper
-
+          
                   The solver is an optional extra and no binary is committed, so there is nothing here
                   to solve yet. Build one from the repository root and re-run this box:
-
+          
                   ```
                   ./gradlew buildCeresRedistributable
                   ```
-
+          
                   That produces a self-contained library — `otool -L` shows only `libc++` and
                   `libSystem` — from pinned Ceres and Eigen source. `dev_docs/CERES.md` has the whole
                   story.
@@ -92,7 +91,7 @@ operations:
                   parameterTolerance = 1e-12,
                   summary = true,
               )
-
+          
               fun solve(planes: PlaneFormulation) = CachedCeresSolvers(backend).use { solvers ->
                   solvers.solve(
                       SolveRequest(
@@ -102,7 +101,7 @@ operations:
                       ),
                   )
               }
-
+          
               // Each face's plane as a free unit normal (on a sphere manifold) plus a free scalar
               // offset, written in Kotlin as `corner . n - d` — and the same parameterisation as the
               // hand-written C++ opcode, so the two can be compared on the spot.
@@ -111,7 +110,7 @@ operations:
               val agreement = expressed.points.values.indices.maxOf {
                   kotlin.math.abs(expressed.points.values[it] - opcode.points.values[it])
               }
-
+          
               val solved = seed.copy(
                   realization = Realization3(
                       (0 until problem.vertexCount).map { i ->
@@ -123,7 +122,7 @@ operations:
                       },
                   ),
               )
-
+          
               // The free variables, read back in declaration order: two blocks per face, a unit normal
               // and an offset. They are not in the point cloud — they never were points.
               val planes = faces.indices.map { f ->
@@ -133,7 +132,7 @@ operations:
                   kotlin.math.abs(kotlin.math.sqrt(n.x * n.x + n.y * n.y + n.z * n.z) - 1.0)
               }
               val diagnostics = solved.canonicalDiagnostics()
-
+          
               println(
                   """
                   $expression — ${solved.topology.elements(0).size} vertices, ${solved.topology.elements(1).size} edges, ${faces.size} faces
@@ -146,9 +145,9 @@ operations:
                   since no residual ever asks it to stay there
                   """.trimIndent(),
               )
-
+          
               val status: (String) -> Unit = { message -> markdown("plane", message) }
-
+          
               // Colour each face by how far its own corners sit from the plane Ceres solved for.
               val faceLines = solved.toFaceFLines { face, line ->
                   val f = faces.indexOfFirst { it.id == face.id }
@@ -169,21 +168,21 @@ operations:
                       status(
                           """
                           **face ${face.id.value} of ${faces.size}** — degree ${cycle.size}
-
+          
                           Its plane is two free variables Ceres solved for, not geometry anyone supplied:
-
+          
                           - normal `n` = `(${"%.6f".format(n.x)}, ${"%.6f".format(n.y)}, ${"%.6f".format(n.z)})`, on a sphere manifold
                           - offset `d` = `${"%.6f".format(d)}`
                           - `|n|` = `${"%.15f".format(kotlin.math.sqrt(n.x * n.x + n.y * n.y + n.z * n.z))}`
                           - worst corner off this plane: `${"%.3e".format(worst)}`
-
+          
                           The residual is just `corner . n - d`, written in Kotlin and differentiated by
                           Ceres on `ceres::Jet` — no C++, no finite differences.
                           """.trimIndent(),
                       )
                   }
               }
-
+          
               // One stem per free variable: from the point of that face's plane nearest the origin,
               // outward along the normal. Both endpoints come from `n` and `d` alone — this is the part
               // of the picture you cannot draw at all without reading the free variables back.
@@ -199,7 +198,7 @@ operations:
                           it.color = vec(1.00, 0.47, 0.18, 1.00)
                       }
               }
-
+          
               threeLines(
                   faintSeed() + faceLines + stems,
                   channel = "solid",
@@ -209,15 +208,15 @@ operations:
                   editable = false,
               )
               displayOpen("solid")
-
+          
               status(
                   """
                   ### ${planes.size} planes, solved for
-
+          
                   Faint grey is the seed embedding; blue is the canonical form Ceres found; each orange
                   stem is one of the free variables — a unit normal, drawn from the point of its plane
                   nearest the origin.
-
+          
                   Click a face to read its plane.
                   """.trimIndent(),
               )
@@ -229,20 +228,20 @@ operations:
       frame: { x: 580.0, y: 80.0, w: 350.0, h: 100.0 }
       properties:
         code: |
-          import afield.graphics.FLine
-          import afield.stdlib.ceres.CachedCeresSolvers
-          import afield.stdlib.ceres.CeresExprVec
-          import afield.stdlib.ceres.CeresLinearSolver
-          import afield.stdlib.ceres.FfmCeresBackend
-          import afield.stdlib.ceres.PointCloud
-          import afield.stdlib.ceres.SolveOptions
-          import afield.stdlib.ceres.SolveRequest
-          import afield.stdlib.ceres.Vec3
-          import afield.stdlib.ceres.buildCeresProgram
-          import afield.stdlib.ceres.RobustLoss
+          import afield.geometry.path.FLine
+          import afield.math.optimization.ceres.CachedCeresSolvers
+          import afield.math.optimization.ceres.CeresExprVec
+          import afield.math.optimization.ceres.CeresLinearSolver
+          import afield.math.optimization.ceres.FfmCeresBackend
+          import afield.math.optimization.ceres.PointCloud
+          import afield.math.optimization.ceres.SolveOptions
+          import afield.math.optimization.ceres.SolveRequest
+          import afield.math.optimization.ceres.Vec3
+          import afield.math.optimization.ceres.buildCeresProgram
+          import afield.math.optimization.ceres.RobustLoss
           import java.nio.file.Files
           import java.nio.file.Path
-
+          
           // ---- the data to fit -------------------------------------------------------------
           // Four points, so the answer has a closed form to check against: the circumsphere of a
           // tetrahedron. Add a fifth and it becomes a genuine least-squares fit instead.
@@ -253,7 +252,7 @@ operations:
               Vec3(-0.4, -0.5, 2.3),
           )
           // ----------------------------------------------------------------------------------
-
+          
           // Nothing is committed, so look where each build task puts its artifact. Constructing the
           // backend is what refuses a missing or too-old library, so that is the check.
           val backend = listOf(
@@ -261,7 +260,7 @@ operations:
               Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
           ).filter { Files.exists(it) }
               .firstNotNullOfOrNull { runCatching { FfmCeresBackend(it) }.getOrNull() }
-
+          
           fun dots(): List<FLine> = data.map { p ->
               val s = 0.06f
               FLine()
@@ -278,17 +277,17 @@ operations:
                       it.color = vec(1.00, 0.52, 0.28, 1.00)
                   }
           }
-
+          
           if (backend == null) {
               println("no Ceres wrapper built; drawing the data only")
               markdown(
                   "fit",
                   """
                   ### This box needs the native Ceres wrapper
-
+          
                   A free centre and radius are solved by Ceres, and no binary is committed. Build one
                   from the repository root and re-run:
-
+          
                   ```
                   ./gradlew buildCeresRedistributable
                   ```
@@ -309,7 +308,7 @@ operations:
                       data.map { p -> (CeresExprVec.of(p) - c.vec()).length() - r.scalar }
                   }
               }
-
+          
               val result = CachedCeresSolvers(backend).use { solvers ->
                   solvers.solve(
                       SolveRequest(
@@ -328,7 +327,7 @@ operations:
               }
               val centre = result.variables.vec3("centre")
               val radius = result.variables.scalar("radius")
-
+          
               // The closed form, for comparison: |c - p_i|^2 equal for every vertex, which after
               // subtracting the first equation is a 3x3 linear system. Solved by Cramer's rule.
               fun closedForm(): Pair<Vec3, Double> {
@@ -353,14 +352,14 @@ operations:
                   val c = Vec3(column(0), column(1), column(2))
                   return c to kotlin.math.sqrt(n2(Vec3(data[0].x - c.x, data[0].y - c.y, data[0].z - c.z)))
               }
-
+          
               val (trueCentre, trueRadius) = closedForm()
               val centreError = kotlin.math.sqrt(
                   (centre.x - trueCentre.x) * (centre.x - trueCentre.x) +
                       (centre.y - trueCentre.y) * (centre.y - trueCentre.y) +
                       (centre.z - trueCentre.z) * (centre.z - trueCentre.z),
               )
-
+          
               println(
                   """
                   ${data.size} fixed points, two free variables, no point unknowns at all
@@ -370,7 +369,7 @@ operations:
                   ${result.summary}
                   """.trimIndent(),
               )
-
+          
               // The fitted sphere, as latitude and longitude circles.
               val steps = 72
               fun circle(build: (Double) -> Vec3): FLine {
@@ -386,7 +385,7 @@ operations:
                   line.color = vec(0.36, 0.78, 0.96, 0.55)
                   return line
               }
-
+          
               val shell = buildList {
                   for (k in 1..7) {
                       val phi = Math.PI * k / 8.0
@@ -408,7 +407,7 @@ operations:
                       )
                   }
               }
-
+          
               val cross = 0.14f
               val centreMark = FLine()
                   .moveTo((centre.x - cross).toFloat(), centre.y.toFloat(), centre.z.toFloat())
@@ -421,7 +420,7 @@ operations:
               centreMark.filled = false
               centreMark.thickness = 3.0
               centreMark.color = vec(0.99, 0.96, 0.62, 1.00)
-
+          
               threeLines(
                   dots() + shell + listOf(centreMark),
                   channel = "fit3d",
@@ -431,19 +430,19 @@ operations:
                   editable = false,
               )
               displayOpen("fit3d")
-
+          
               markdown(
                   "fit",
                   """
                   ### A centre and a radius, solved for
-
+          
                   Orange crosses are the fixed data. Blue is the sphere Ceres found; the yellow cross is
                   its centre — a free variable, not a point in the cloud. From a start six units away and
                   a radius an order of magnitude too small it lands on the closed-form circumcentre to
                   `${"%.2e".format(centreError)}`.
-
+          
                   The whole residual is three lines of Kotlin:
-
+          
                   ```kotlin
                   val centre = variable("centre", Vec3(6.0, -6.0, 6.0))
                   val radius = variable("radius", 0.1)
@@ -451,7 +450,7 @@ operations:
                       data.map { p -> (CeresExprVec.of(p) - c.vec()).length() - r.scalar }
                   }
                   ```
-
+          
                   It names no point at all — every unknown here is a free variable.
                   """.trimIndent(),
               )

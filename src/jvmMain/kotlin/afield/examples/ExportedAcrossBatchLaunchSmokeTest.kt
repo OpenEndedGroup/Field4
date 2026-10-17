@@ -1,10 +1,10 @@
 package afield.examples
 
-import afield.Box
-import afield.OperationTranscript
-import afield.SavingContext
-import afield.SessionInformation
-import afield.thisSessionInfo
+import afield.document.graph.Box
+import afield.tools.automation.OperationTranscript
+import afield.document.persistence.SavingContext
+import afield.app.server.SessionInformation
+import afield.app.server.thisSessionInfo
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
@@ -183,15 +183,15 @@ ${READER_CODE.trimEnd().prependIndent("          ")}
     }
 
     private fun startRunloopDaemon() {
-        val t = Thread({ afield.Runloop.runLoop.start() }, "exports-batch-launch-harness-runloop")
+        val t = Thread({ afield.runtime.lifecycle.Runloop.runLoop.start() }, "exports-batch-launch-harness-runloop")
         t.isDaemon = true
         t.start()
         val deadline = System.currentTimeMillis() + 30_000
-        while (afield.Runloop.runLoop.frame < 1L) {
+        while (afield.runtime.lifecycle.Runloop.runLoop.frame < 1L) {
             check(System.currentTimeMillis() < deadline) { "runloop did not start within 30s" }
             Thread.sleep(20)
         }
-        println("ExportedAcrossBatchLaunchSmokeTest: runloop up (frame=${afield.Runloop.runLoop.frame})")
+        println("ExportedAcrossBatchLaunchSmokeTest: runloop up (frame=${afield.runtime.lifecycle.Runloop.runLoop.frame})")
     }
 
     private fun stripHtml(html: String): String =

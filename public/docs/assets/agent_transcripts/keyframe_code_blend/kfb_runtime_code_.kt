@@ -2,12 +2,12 @@
 // middle. It is that at 0 it *is* the left keyframe and at 1 it *is* the right one. That
 // is checkable, and this box checks it: one program, five draws, and the two ends
 // compared pixel for pixel against the programs they are supposed to be.
-import afield.stacksl.cpu.GlslValue
-import afield.stacksl.cpu.StackSLCpu
-import afield.stdlib.CodeBlendMode
-import afield.stdlib.CodeBlendOptions
-import afield.stdlib.keyframeBlendVector
-import afield.stdlib.planStackSLCodeBlend
+import afield.lang.stacksl.cpu.GlslValue
+import afield.lang.stacksl.cpu.StackSLCpu
+import afield.animation.keyframes.CodeBlendMode
+import afield.animation.keyframes.CodeBlendOptions
+import afield.animation.keyframes.keyframeBlendVector
+import afield.animation.keyframes.planStackSLCodeBlend
 
 // The convention, in a shader: a vec4 called keyframeBlend in the push-constant block.
 // Nothing declares it for you — a `stack.auto` slot cannot declare a uniform of its own,

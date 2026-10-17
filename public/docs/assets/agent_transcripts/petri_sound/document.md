@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 4 — tokens that are rhythms
@@ -11,12 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="petri_demo_tokens" index="0" -->
 
 ```edn [field-box id="petri_demo_tokens" role="properties"]
-{"id" "petri_demo_tokens" "index" 0 "name" "4 — tokens that are rhythms" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — tokens that are rhythms" "_tombstone" false "frame" #afield/rect [60.0 510.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_tokens_code_.kt" "lines" 24 "characters" 1031 "sha256" "ae573d42b95d9e433812d7057a710ffd194ea0bb7ed4b8892ba447926ffdf632"}]}
+{"id" "petri_demo_tokens" "index" 0 "name" "4 — tokens that are rhythms" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — tokens that are rhythms" "_tombstone" false "frame" #afield/rect [60.0 510.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_tokens_code_.kt" "lines" 24 "characters" 1043 "sha256" "671f0a60836edcd39f2faa3cd27681aeedf10fa56b3db826bff5e40e71b68a02"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_tokens" name="code" path="petri_demo_tokens_code_.kt"]
-import afield.petri.*
-import afield.four.synth.*
+import afield.simulation.petri.*
+import afield.audio.synth.*
 
 // A token's colour can be anything, including a whole PatPattern. So a place is a
 // *section*, one circulating token is "which section is sounding", and the net enforces
@@ -46,11 +46,11 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_structure" index="1" -->
 
 ```edn [field-box id="petri_demo_structure" role="properties"]
-{"id" "petri_demo_structure" "index" 1 "name" "3 — song structure" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — song structure" "_tombstone" false "frame" #afield/rect [60.0 360.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_structure_code_.kt" "lines" 27 "characters" 927 "sha256" "73a94dc5c2c4b9a7ab6e5d85d1a10e71b4046ba9b709632e89a1101d22ceeace"}]}
+{"id" "petri_demo_structure" "index" 1 "name" "3 — song structure" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — song structure" "_tombstone" false "frame" #afield/rect [60.0 360.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_structure_code_.kt" "lines" 27 "characters" 938 "sha256" "75d68f85d7e3f4e3e1137787f64306caac8ad9c56e5ae1ccca5fbb81c5adaa0a"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_structure" name="code" path="petri_demo_structure_code_.kt"]
-import afield.petri.*
+import afield.simulation.petri.*
 
 // Two nets in one. The fast ring plays the bar; the slow ring is the arrangement, one
 // token walking verse -> verse -> chorus and back. Same mechanism at both timescales,
@@ -84,12 +84,12 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_live" index="2" -->
 
 ```edn [field-box id="petri_demo_live" role="properties"]
-{"id" "petri_demo_live" "index" 2 "name" "7 — play it live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — play it live" "_tombstone" false "frame" #afield/rect [60.0 960.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_live_code_.kt" "lines" 39 "characters" 1390 "sha256" "c030dee76371a9a8fc30917216b01560e84ecaab9812ca91e8cff61877aa9ecb"}]}
+{"id" "petri_demo_live" "index" 2 "name" "7 — play it live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — play it live" "_tombstone" false "frame" #afield/rect [60.0 960.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_live_code_.kt" "lines" 39 "characters" 1402 "sha256" "60e250d6e198b73d1f333d3a0f6876fca021f18098cd081d69f303a9dc2b37cc"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_live" name="code" path="petri_demo_live_code_.kt"]
-import afield.petri.*
-import afield.four.synth.*
+import afield.simulation.petri.*
+import afield.audio.synth.*
 
 // Boxes 1-6 render *offline* — they mix a wav and hand you a player, which needs no
 // audio device and so works in a docs build and in CI. This is the other path: the real
@@ -134,11 +134,11 @@ if (live && root != null) {
 <!-- field-box id="petri_demo_playground" index="3" -->
 
 ```edn [field-box id="petri_demo_playground" role="properties"]
-{"id" "petri_demo_playground" "index" 3 "name" "6 — playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — playground" "_tombstone" false "frame" #afield/rect [60.0 810.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_playground_code_.kt" "lines" 32 "characters" 1150 "sha256" "f8442412fbc695a5c7c9501e9fa32b1d6021af4de548cad338dc625e73df6322"}]}
+{"id" "petri_demo_playground" "index" 3 "name" "6 — playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — playground" "_tombstone" false "frame" #afield/rect [60.0 810.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_playground_code_.kt" "lines" 32 "characters" 1161 "sha256" "07ea8a6cf927427f5e4b1da49534cda8622015e90025b6376313c1e2831f0a77"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_playground" name="code" path="petri_demo_playground_code_.kt"]
-import afield.petri.*
+import afield.simulation.petri.*
 
 // A groove with a bit of everything: a read arc, a weighted arc, a capacity and
 // priorities. `bd hh` goes round fast; meanwhile `build` watches `mid` without
@@ -177,11 +177,11 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_philosophers" index="4" -->
 
 ```edn [field-box id="petri_demo_philosophers" role="properties"]
-{"id" "petri_demo_philosophers" "index" 4 "name" "5 — dining philosophers (silent)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — dining philosophers (silent)" "_tombstone" false "frame" #afield/rect [60.0 660.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_philosophers_code_.kt" "lines" 34 "characters" 1525 "sha256" "6faa855b02fe49154c09fb3ca4e9df92f8dd5803a8c80b15ce1ebbe733f08c0d"}]}
+{"id" "petri_demo_philosophers" "index" 4 "name" "5 — dining philosophers (silent)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — dining philosophers (silent)" "_tombstone" false "frame" #afield/rect [60.0 660.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_philosophers_code_.kt" "lines" 34 "characters" 1536 "sha256" "8e5a2577b494b674cdad6e8f7180a3242baec9ce01c0885b6f730a999b492636"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_philosophers" name="code" path="petri_demo_philosophers_code_.kt"]
-import afield.petri.*
+import afield.simulation.petri.*
 
 // Nothing in the model knows what a note is. Here is the same engine as a concurrency
 // checker: five philosophers, five forks, and the shape of the net computed in a loop —
@@ -222,11 +222,11 @@ for ((label, net) in listOf(
 <!-- field-box id="petri_demo_polyrhythm" index="5" -->
 
 ```edn [field-box id="petri_demo_polyrhythm" role="properties"]
-{"id" "petri_demo_polyrhythm" "index" 5 "name" "2 — five against three" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — five against three" "_tombstone" false "frame" #afield/rect [60.0 210.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_polyrhythm_code_.kt" "lines" 30 "characters" 909 "sha256" "c0ab8ff98f80a3865e630c5f31b991fb5fab9dcae4ffb76dd2844e4138d9479a"}]}
+{"id" "petri_demo_polyrhythm" "index" 5 "name" "2 — five against three" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — five against three" "_tombstone" false "frame" #afield/rect [60.0 210.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_polyrhythm_code_.kt" "lines" 30 "characters" 920 "sha256" "00b7c503e54a5c23b10caad84fcd8deb7e06a52752147d0f14fdaf5bfd1eca42"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_polyrhythm" name="code" path="petri_demo_polyrhythm_code_.kt"]
-import afield.petri.*
+import afield.simulation.petri.*
 
 // Two independent rings, one five long and one three long, sharing a clock. Nothing in
 // this source says "fifteen" — that is a property of the net, and the net can tell you.
@@ -263,11 +263,11 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_loop" index="6" -->
 
 ```edn [field-box id="petri_demo_loop" role="properties"]
-{"id" "petri_demo_loop" "index" 6 "name" "1 — the smallest loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — the smallest loop" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_loop_code_.kt" "lines" 27 "characters" 919 "sha256" "e3f48bbfcf0b028ac84a6ba29585933f11adfa80b27201b0115a6f6c6734dffc"}]}
+{"id" "petri_demo_loop" "index" 6 "name" "1 — the smallest loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — the smallest loop" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_loop_code_.kt" "lines" 27 "characters" 930 "sha256" "0c61dfabd587051148e1dfa0b345d28e8bfe36461e0ced475dd119336614fe1a"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_loop" name="code" path="petri_demo_loop_code_.kt"]
-import afield.petri.*
+import afield.simulation.petri.*
 
 // A place holds tokens; a transition fires when all its inputs have one. Give a
 // transition a sound after the `:` and firing it plays that sound. That is the whole

@@ -1,0 +1,403 @@
+package afield.lang.fieldml.tests
+
+import afield.lang.fieldml.FieldMLCompiler
+import afield.lang.fieldml.ast.BinaryOp
+import afield.lang.fieldml.ast.EBinary
+import afield.lang.fieldml.ast.ECall
+import afield.lang.fieldml.ast.EField
+import afield.lang.fieldml.ast.ELet
+import afield.lang.fieldml.ast.EList
+import afield.lang.fieldml.ast.EMatch
+import afield.lang.fieldml.ast.ERecord
+import afield.lang.fieldml.ast.ETuple
+import afield.lang.fieldml.ast.ETypeDecl
+import afield.lang.fieldml.ast.EVar
+import afield.lang.fieldml.core.Evaluator
+import afield.lang.fieldml.core.renderFieldMLValue
+import afield.lang.fieldml.lex.Lexer
+import afield.lang.fieldml.lex.TokenKind
+import afield.lang.fieldml.parse.Parser
+import afield.lang.fieldml.type.TAdt
+import afield.lang.fieldml.type.TBool
+import afield.lang.fieldml.type.TInt
+import afield.lang.fieldml.type.TList
+import afield.lang.fieldml.type.TRecord
+import afield.lang.fieldml.type.TTuple
+import afield.lang.fieldml.type.TypePrinter
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+
+class FieldMLCompilerTest {
+    @Test
+    fun lexesLiteralsAndIdentifiers() {
+        val result = Lexer("""let answer = 42 "ok" true 3.5""").lex()
+
+        assertTrue(result.diagnostics.isEmpty())
+        assertEquals(
+            listOf(TokenKind.LET, TokenKind.IDENT, TokenKind.EQ, TokenKind.INT, TokenKind.STRING, TokenKind.TRUE, TokenKind.FLOAT, TokenKind.EOF),
+            result.tokens.map { it.kind },
+        )
+    }
+
+    @Test
+    fun parsesLetBindings() {
+        val expr = parse(
+            """
+            let x = 10
+            x
+            """.trimIndent(),
+        )
+
+        val let = assertIs<ELet>(expr)
+        assertEquals("x", let.name)
+        assertIs<EVar>(let.body)
+    }
+
+    @Test
+    fun parsesTopLevelLocalLetExpression() {
+        val expr = parse("let x = 10 in x + 1")
+
+        val let = assertIs<ELet>(expr)
+        assertEquals("x", let.name)
+        assertIs<EBinary>(let.body)
+    }
+
+    @Test
+    fun parsesAdtDeclarationAndMatch() {
+        val expr = parse(
+            """
+            type Option a = None | Some a
+            match Some 10 with
+            | None -> 0
+            | Some x -> x
+            """.trimIndent(),
+        )
+
+        val typeDecl = assertIs<ETypeDecl>(expr)
+        assertEquals("Option", typeDecl.declaration.name)
+        assertEquals(listOf("None", "Some"), typeDecl.declaration.constructors.map { it.name })
+        assertIs<EMatch>(typeDecl.body)
+    }
+
+    @Test
+    fun parsesFunctionApplicationLeftAssociatively() {
+        val expr = parse("f x y")
+
+        val outer = assertIs<ECall>(expr)
+        assertIs<ECall>(outer.function)
+        assertEquals("y", assertIs<EVar>(outer.argument).name)
+    }
+
+    @Test
+    fun parsesPipeAsFunctionApplicationToPreviousValue() {
+        val expr = parse("10 |> add 32")
+
+        val call = assertIs<ECall>(expr)
+        val partial = assertIs<ECall>(call.function)
+        assertEquals("add", assertIs<EVar>(partial.function).name)
+        assertEquals("32", assertIs<afield.lang.fieldml.ast.EInt>(partial.argument).value.toString())
+    }
+
+    @Test
+    fun parsesRecords() {
+        val expr = parse(
+            """
+            {
+              x = 10.0
+              y = 20.0
+            }
+            """.trimIndent(),
+        )
+
+        val record = assertIs<ERecord>(expr)
+        assertEquals(listOf("x", "y"), record.fields.map { it.name })
+    }
+
+    @Test
+    fun parsesFieldAccess() {
+        val expr = parse("p.x")
+
+        val field = assertIs<EField>(expr)
+        assertEquals("x", field.field)
+    }
+
+    @Test
+    fun parsesOperatorPrecedence() {
+        val expr = parse("1 + 2 * 3")
+
+        val add = assertIs<EBinary>(expr)
+        assertEquals(BinaryOp.ADD, add.op)
+        assertEquals(BinaryOp.MUL, assertIs<EBinary>(add.right).op)
+    }
+
+    @Test
+    fun parsesTupleAndListLiterals() {
+        assertEquals(2, assertIs<ETuple>(parse("(1, true)")).elements.size)
+        assertEquals(3, assertIs<EList>(parse("[1, 2, 3]")).elements.size)
+    }
+
+    @Test
+    fun infersSimpleType() {
+        val result = compileOk("10 + 32")
+
+        assertEquals(TInt, result.typed!!.type)
+    }
+
+    @Test
+    fun infersPolymorphicIdentityFunction() {
+        val result = compileOk(
+            """
+            let id x = x
+            {
+              a = id 10
+              b = id true
+            }
+            """.trimIndent(),
+        )
+
+        val type = assertIs<TRecord>(result.typed!!.type)
+        assertEquals(TInt, type.fields["a"])
+        assertEquals(TBool, type.fields["b"])
+    }
+
+    @Test
+    fun reportsTypeErrorForAddingIntAndFloat() {
+        val result = FieldMLCompiler.compile("10 + 1.0")
+
+        assertFalse(result.successful)
+        assertTrue(result.diagnostics.any { "Type mismatch" in it.message })
+    }
+
+    @Test
+    fun reportsTypeErrorForAddingIntAndBool() {
+        val result = FieldMLCompiler.compile(
+            """
+            let x = 10
+            x + true
+            """.trimIndent(),
+        )
+
+        assertFalse(result.successful)
+        assertTrue(result.diagnostics.any { "Type mismatch" in it.message || "Expected Int or Float" in it.message })
+    }
+
+    @Test
+    fun reportsTypeErrorForMissingRecordField() {
+        val result = FieldMLCompiler.compile(
+            """
+            let p = { x = 10.0 }
+            p.y
+            """.trimIndent(),
+        )
+
+        assertFalse(result.successful)
+        assertTrue(result.diagnostics.any { "missing field 'y'" in it.message })
+    }
+
+    @Test
+    fun evaluatesSimpleArithmetic() {
+        val result = compileOk("10 + 32")
+
+        assertEquals("42", renderFieldMLValue(Evaluator().evaluate(result.core!!)))
+    }
+
+    @Test
+    fun evaluatesFunctions() {
+        val result = compileOk(
+            """
+            let scale x =
+              x * 2.0
+            scale 21.0
+            """.trimIndent(),
+        )
+
+        assertEquals("42.0", renderFieldMLValue(Evaluator().evaluate(result.core!!)))
+    }
+
+    @Test
+    fun evaluatesRecords() {
+        val result = compileOk(
+            """
+            let p = {
+              x = 10.0
+              y = 20.0
+            }
+            {
+              x = p.x * 2.0
+              y = p.y * 2.0
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals("{x = 20.0, y = 40.0}", renderFieldMLValue(Evaluator().evaluate(result.core!!)))
+    }
+
+    @Test
+    fun typedProgramRangeEndsAtFinalExpressionBeforeTrailingBlankLines() {
+        val result = compileOk(
+            """
+            let point = {
+              x = 10.0
+              y = 20.0
+              label = "seed"
+            }
+
+            (point.label, point.x + point.y)
+
+
+            """.trimIndent(),
+        )
+
+        assertEquals(7, result.typed!!.range.end.line)
+    }
+
+    @Test
+    fun maxExampleInfersInt() {
+        val result = compileOk(
+            """
+            let max a b =
+              if a > b then a else b
+            max 10 20
+            """.trimIndent(),
+        )
+
+        assertEquals("Int", TypePrinter().print(result.typed!!.type))
+    }
+
+    @Test
+    fun infersAdtConstructorApplication() {
+        val result = compileOk(
+            """
+            type Option a = None | Some a
+            Some 10
+            """.trimIndent(),
+        )
+
+        val type = assertIs<TAdt>(result.typed!!.type)
+        assertEquals("Option", type.name)
+        assertEquals(TInt, type.arguments.single())
+    }
+
+    @Test
+    fun infersMatchOverAdt() {
+        val result = compileOk(
+            """
+            type Option a = None | Some a
+            let value = Some 10
+            match value with
+            | None -> 0
+            | Some x -> x
+            """.trimIndent(),
+        )
+
+        assertEquals(TInt, result.typed!!.type)
+    }
+
+    @Test
+    fun supportsWildcardPattern() {
+        val result = compileOk(
+            """
+            type Option a = None | Some a
+            match None with
+            | Some x -> x
+            | _ -> 42
+            """.trimIndent(),
+        )
+
+        assertEquals(TInt, result.typed!!.type)
+    }
+
+    @Test
+    fun infersTuplesAndLists() {
+        val tuple = compileOk("(10, true)")
+        val tupleType = assertIs<TTuple>(tuple.typed!!.type)
+        assertEquals(listOf(TInt, TBool), tupleType.elements)
+
+        val list = compileOk("[1, 2, 3]")
+        val listType = assertIs<TList>(list.typed!!.type)
+        assertEquals(TInt, listType.element)
+    }
+
+    @Test
+    fun rejectsMixedListElements() {
+        val result = FieldMLCompiler.compile("[1, true]")
+
+        assertFalse(result.successful)
+        assertTrue(result.diagnostics.any { "Type mismatch" in it.message })
+    }
+
+    @Test
+    fun matchesTupleAndListPatterns() {
+        val tuple = compileOk("match (10, 32) with | (a, b) -> a + b")
+        assertEquals("42", renderFieldMLValue(Evaluator().evaluate(tuple.core!!)))
+
+        val list = compileOk("match [10, 32] with | [a, b] -> a + b | _ -> 0")
+        assertEquals("42", renderFieldMLValue(Evaluator().evaluate(list.core!!)))
+    }
+
+    @Test
+    fun reportsMatchBranchTypeMismatch() {
+        val result = FieldMLCompiler.compile(
+            """
+            type Option a = None | Some a
+            match Some 10 with
+            | None -> false
+            | Some x -> x
+            """.trimIndent(),
+        )
+
+        assertFalse(result.successful)
+        assertTrue(result.diagnostics.any { "Type mismatch" in it.message })
+    }
+
+    @Test
+    fun evaluatesAdtsAndMatch() {
+        val result = compileOk(
+            """
+            type Option a = None | Some a
+            match Some 10 with
+            | None -> 0
+            | Some x -> x
+            """.trimIndent(),
+        )
+
+        assertEquals("10", renderFieldMLValue(Evaluator().evaluate(result.core!!)))
+    }
+
+    @Test
+    fun adtCanCarryTupleAndListPayload() {
+        val result = compileOk(
+            """
+            type Option a = None | Some a
+            match Some (1, [2, 3]) with
+            | Some pair -> pair
+            | None -> (0, [])
+            """.trimIndent(),
+        )
+
+        assertEquals("(1, [2, 3])", renderFieldMLValue(Evaluator().evaluate(result.core!!)))
+    }
+
+    @Test
+    fun evaluatesTuplesAndLists() {
+        val result = compileOk("(1, [2, 3])")
+
+        assertEquals("(1, [2, 3])", renderFieldMLValue(Evaluator().evaluate(result.core!!)))
+    }
+
+    private fun parse(source: String) =
+        Parser(Lexer(source).lex().tokens).parse().also {
+            assertTrue(it.diagnostics.isEmpty(), it.diagnostics.joinToString("\n") { diagnostic -> diagnostic.message })
+        }.expr!!
+
+    private fun compileOk(source: String) =
+        FieldMLCompiler.compile(source).also {
+            assertTrue(it.successful, it.diagnostics.joinToString("\n") { diagnostic -> diagnostic.message })
+            assertNotNull(it.typed)
+            assertNotNull(it.core)
+        }
+}

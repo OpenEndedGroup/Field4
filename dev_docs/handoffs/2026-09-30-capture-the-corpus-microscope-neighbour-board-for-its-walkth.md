@@ -27,7 +27,7 @@ Treat this handoff as a second consumer of that figure and settle both together.
   live Field Audio worker (`FieldAudioClient`, `client.submit`, `client.corpusPreview`,
   `FieldAudioClient.kt:353`) and the Nancy / Final Out at Candlestick Park recordings. The docs
   runner has neither.
-- `corpusMicroscopeHtml` (`src/jvmMain/kotlin/afield/stdlib/noir/audioai/CorpusMicroscope.kt:52`)
+- `corpusMicroscopeHtml` (`src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt:52`)
   requires an `analysis.find_neighbours` `CorpusPreview` (`Protocol.kt:823`) and a WAV
   `AssetRepresentation`. It also fetches audio and waveform envelopes from `serviceBaseUrl`
   (default `/field-audio`). A hand-built preview fixture would render the cards and distance bars,

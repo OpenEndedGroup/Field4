@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Paint — strokes along a flow field
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="paint_flow_field" index="0" -->
 
 ```edn [field-box id="paint_flow_field" role="properties"]
-{"id" "paint_flow_field" "index" 0 "name" "Paint — strokes along a flow field" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Paint — strokes along a flow field" "_tombstone" false "frame" #afield/rect [80.0 1000.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_flow_field_code_.kt" "lines" 33 "characters" 1003 "sha256" "9c4fead67187dcb359158b1d77f78ccdcb89ce58adb6e8566c73827517dfb9ef"}]}
+{"id" "paint_flow_field" "index" 0 "name" "Paint — strokes along a flow field" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Paint — strokes along a flow field" "_tombstone" false "frame" #afield/rect [80.0 1000.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_flow_field_code_.kt" "lines" 33 "characters" 1012 "sha256" "0b494daa744f4559c5e21a86eddb46300e2ebd937a1905f7452b213f34abdc47"}]}
 ```
 
 ```kotlin [field-property box="paint_flow_field" name="code" path="paint_flow_field_code_.kt"]
-import afield.paint.*
+import afield.graphics.paint.*
 import kotlin.random.Random
 
 run {
@@ -55,11 +55,11 @@ display("main", canvas.png(relief = 0.8))
 <!-- field-box id="paint_pencil_drawing" index="1" -->
 
 ```edn [field-box id="paint_pencil_drawing" role="properties"]
-{"id" "paint_pencil_drawing" "index" 1 "name" "Paint — pencil, hatching and chalk" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Paint — pencil, hatching and chalk" "_tombstone" false "frame" #afield/rect [80.0 1900.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_pencil_drawing_code_.kt" "lines" 25 "characters" 915 "sha256" "987e0847612b772f01ca96422ae12bca8b3d633087c715381432249c17bc2dc9"}]}
+{"id" "paint_pencil_drawing" "index" 1 "name" "Paint — pencil, hatching and chalk" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Paint — pencil, hatching and chalk" "_tombstone" false "frame" #afield/rect [80.0 1900.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_pencil_drawing_code_.kt" "lines" 25 "characters" 924 "sha256" "ebeacf1843fea79d151a500ceb41fb2ac381e6e15db927e274c4b87ac1cf3769"}]}
 ```
 
 ```kotlin [field-property box="paint_pencil_drawing" name="code" path="paint_pencil_drawing_code_.kt"]
-import afield.paint.*
+import afield.graphics.paint.*
 
 run {
 if (!PaintCanvas.isAvailable) {
@@ -91,11 +91,11 @@ display("main", canvas.png(relief = 0.0))
 <!-- field-box id="paint_first_strokes" index="2" -->
 
 ```edn [field-box id="paint_first_strokes" role="properties"]
-{"id" "paint_first_strokes" "index" 2 "name" "Paint — a canvas, a brush, three strokes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Paint — a canvas, a brush, three strokes" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_first_strokes_code_.kt" "lines" 24 "characters" 697 "sha256" "6575f71a90a7706054a4702f955af9355205ddacf52d2500c7819cd4a1583f2f"}]}
+{"id" "paint_first_strokes" "index" 2 "name" "Paint — a canvas, a brush, three strokes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Paint — a canvas, a brush, three strokes" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "paint_first_strokes_code_.kt" "lines" 24 "characters" 706 "sha256" "fd2636dd4d1165d76971a6fe016b7e67bbc7bff75eff394e0cdf0ee5a7deead0"}]}
 ```
 
 ```kotlin [field-property box="paint_first_strokes" name="code" path="paint_first_strokes_code_.kt"]
-import afield.paint.*
+import afield.graphics.paint.*
 
 run {
 if (!PaintCanvas.isAvailable) {

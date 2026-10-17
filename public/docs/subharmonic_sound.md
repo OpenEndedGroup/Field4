@@ -5,13 +5,12 @@ it, at half its pitch, or a third, or any fraction you like. Octave-divider peda
 guitar, and dub engineers use it to put weight under a kick drum. It also produces the giant voice
 in every film trailer.
 
-Field has three of these trackers in [`Subharmonic.kt`](https://github.com/OpenEndedGroup/field4/blob/main/src/jvmMain/kotlin/afield/four/synth/Subharmonic.kt).
+Field has three of these trackers in [`Subharmonic.kt`](https://github.com/OpenEndedGroup/field4/blob/main/src/jvmMain/kotlin/afield/audio/synth/Subharmonic.kt).
 This page runs them on a synth bassline, on a kick drum and a pluck from the
 [Dirt-Samples](sound.md#getting-real-drums-in-your-own-box) library, and on fourteen seconds of
 dialogue from *Night of the Living Dead* (George A. Romero, 1968), which is in the public domain.
-Every clip is rendered from the code shown next to it. For more than an octave below,
-[a tracked voice bank](#one-input-many-voices) can replace the sound's spectrum with harmonics,
-fractional ratios or a mixture of both.
+For more than one tone under the input, [a tracked voice bank](#one-input-many-voices) at the end
+of the page replaces the sound's spectrum with harmonics, fractional ratios or a mixture of both.
 
 ---
 
@@ -44,7 +43,7 @@ showSignals(
 
 ![The tracked frequency stepping with each bass note, and the generated tone at half of it](assets/subharmonic_sound/bass-octave.png)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/bass-octave.wav" audio-spec="bass-octave" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-bass-octave-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/bass-octave.wav" audio-spec="bass-octave" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-bass-octave-audio"}
 // offline-rendered by SubharmonicSoundDocs — listen below
 ```
 
@@ -136,7 +135,7 @@ showSignals(
 
 ![Four tracked-frequency traces over the bassline: the zero-crossing and quadrature traces sit on the notes, the plain PLL overshoots, and the quieter plain PLL wanders off](assets/subharmonic_sound/bass-trackers.png)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/bass-trackers.wav" audio-spec="bass-trackers" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-bass-trackers-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/bass-trackers.wav" audio-spec="bass-trackers" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-bass-trackers-audio"}
 // offline-rendered by SubharmonicSoundDocs — listen below
 ```
 
@@ -195,7 +194,7 @@ val steps = Param(2f).apply {
 }
 val wobble = SineOsc(Param(3f)) * 0.07f * subBetween(12f, 15f)
 val single = SubharmonicQuadPLL()
-val stack = SubharmonicQuadPLL().apply { voices = listOf(SubVoice(2.0, 0.7), SubVoice(3.0, 0.2), SubVoice(4.0, 0.1)) }
+val stack = SubharmonicQuadPLL().apply { voices = [SubVoice(2.0, 0.7), SubVoice(3.0, 0.2), SubVoice(4.0, 0.1)] }
 val sub = clean.through(Subharmonic(single, division = steps + wobble)) * subBetween(0f, 15f) +
     clean.through(Subharmonic(stack)) * subBetween(15f, 18f)
 val out = bass * 0.25f + sub * 1.5f
@@ -212,7 +211,7 @@ showSignals(
 
 ![The tracked bassline stays the same while the generated frequency drops to a half, a third, two thirds, then sways, as the division changes](assets/subharmonic_sound/divisions.png)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/divisions.wav" audio-spec="divisions" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-divisions-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/divisions.wav" audio-spec="divisions" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-divisions-audio"}
 // offline-rendered by SubharmonicSoundDocs — listen below
 ```
 
@@ -230,6 +229,248 @@ each other a little over once a second, and you hear that as a slow beating. Swa
 by ±0.07 at 3 Hz makes the bass wobble without the bass itself changing at all. The last section
 uses `voices` instead of `division`: each `SubVoice` is its own oscillator with its own gain, all
 driven by one tracked frequency.
+
+---
+
+## Under a kick drum
+
+`bd:3` from Dirt-Samples is a classic drum-machine kick. It starts with a click and a pitch drop
+from about 160 Hz and settles to a body at 49 Hz that rings for half a second. A tracker follows
+that drop. Half of 49 Hz is 24.6 Hz, which you can feel on a subwoofer but cannot hear from a laptop
+or most headphones.
+
+The fix is post-processing. Driving the sub into a [`Saturator`](reference/synthesis.md) flattens
+its peaks, and a flattened sine contains odd harmonics at three, five and seven times its frequency
+(74, 123 and 172 Hz). Small speakers can play those, and the ear fills in the missing fundamental
+from the pattern of harmonics.
+
+The clip plays the beat three ways for four seconds each: dry, with the raw sub, and with the
+saturated sub.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/kick.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-kick"}
+:::static
+val kick = subDirt("bd:3")
+val beat = SamplesSignal(subSequence(12.0, (0 until 24).map { it * 0.5 to kick }))
+val tracker = SubharmonicQuadPLL()
+val sub = beat.lowpass(200f).through(Subharmonic(tracker))
+val audible = sub.through(Saturator(Param(20f))).lowpass(400f)
+val out = beat + sub * subBetween(4f, 8f) * 2f + audible * subBetween(8f, 12f) * 0.5f
+:::fold render twelve seconds and plot the first two kicks' tracked and generated pitch
+val run = subRender(out, seconds = 12f, tracker, everySeconds = 0.002)
+val first = run.times.indices.filter { run.times[it] < 1.0 }
+showSignals(
+    "tracked" to first.map { run.hz[0][it] },
+    "generated (÷ 2)" to first.map { run.subHz[0][it] },
+    x = first.map { run.times[it] }, channel = "main", title = "Following a kick's pitch drop",
+    xTitle = "seconds", yTitle = "Hz",
+)
+:::endfold
+```
+
+![Tracked pitch falling quickly from the attack to 49 Hz on each of two kicks, the generated pitch following at half](assets/subharmonic_sound/kick.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/kick.wav" audio-spec="kick" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-kick-audio"}
+// offline-rendered by SubharmonicSoundDocs — listen below
+```
+
+Here the spectrogram shows what the speaker cannot. The raw sub in the middle section is a line near 25 Hz; the saturated one in the last section adds harmonics above it:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/kick-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-kick-spectrum"}
+showSpectrogram(SubharmonicSoundDocs.render("kick"), maxHz = 400.0, channel = "main", title = "Raw and saturated sub under a kick")
+```
+
+![Spectrogram of the kick clip: dry kicks, then a line near 25 Hz under each, then that line with harmonics stacked above it](assets/subharmonic_sound/kick-spectrum.png)
+
+On a laptop, the middle four seconds may sound almost like the first four. The sub is there, and a spectrum shows it, but it sits below the speaker. In the last four seconds
+the saturated version carries about fourteen times as much of its energy above 100 Hz, and the beat
+gets heavier. The tracker's own level follows the kick's decay, so each sub dies away with the drum
+that made it and does not drone between hits.
+
+---
+
+## Rebuilding the bass of a sample
+
+`arpy` is a set of short plucked notes, `arpy:0` to `arpy:4` running C, D, F, G and A above middle
+C. Played at half speed, a melody built from them drops an octave into the tenor range, and it is
+thin there: a pluck with no low end. The next graph plays that line for four seconds, then
+highpasses it at 400 Hz so almost none of its own low end is left, and lets the tracker put a body
+back underneath.
+
+Two lowpasses in a row before the tracker give a steeper slope. The pluck's second harmonic is only
+an octave above the note, and one 12 dB-per-octave filter leaves enough of it to confuse the
+tracker on the attack.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/arpy.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-arpy"}
+:::static
+val notes = [0, 2, 4, 3, 0, 1, 4, 2]
+val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
+val arpy = SamplesSignal(subSequence(8.0, hits))
+val tracker = SubharmonicQuadPLL()
+val sub = arpy.lowpass(300f).lowpass(300f)
+    .through(Subharmonic(tracker))
+val thin = arpy.highpass(400f)
+val out = arpy * subBetween(0f, 4f) + (thin + sub * 1.5f) * subBetween(4f, 8f)
+:::fold render eight seconds and plot the tracked melody and the sub under it
+val run = subRender(out, seconds = 8f, tracker)
+showSignals(
+    "tracked" to run.hz[0],
+    "generated (÷ 2)" to run.subHz[0],
+    x = run.times, channel = "main", title = "A plucked melody and the bass it never had",
+    xTitle = "seconds", yTitle = "Hz",
+)
+:::endfold
+```
+
+![The tracked arpy melody stepping between 130 and 220 Hz, the generated line an octave below it, the same in both halves](assets/subharmonic_sound/arpy.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/arpy.wav" audio-spec="arpy" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-arpy-audio"}
+// offline-rendered by SubharmonicSoundDocs — listen below
+```
+
+In the spectrogram the second half loses the arpy's lowest partials to the highpass, and gains a new line an octave beneath where they were:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/arpy-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-arpy-spectrum"}
+showSpectrogram(SubharmonicSoundDocs.render("arpy"), maxHz = 600.0, channel = "main", title = "A plucked melody and the bass it never had")
+```
+
+![Spectrogram of the arpy clip: plucked notes with full harmonics, then the same notes thinned above 400 Hz with a new low line under each](assets/subharmonic_sound/arpy-spectrum.png)
+
+Each pluck lasts about a quarter of a second at half speed, with silence until the next. The
+quadrature PLL's gate holds the last pitch through the silence, and its frequency discriminator
+(see [Inside the quadrature PLL](#inside-the-quadrature-pll)) carries it to the next note within a
+few milliseconds of the attack. The tracked melody lands within 2% of each note. The second half
+sounds like a different instrument from the first: a bass synth doubling a bell, made from a bell
+alone.
+
+---
+
+## A voice from 1968
+
+Speech is the hardest input on this page. The pitch moves continuously, consonants are noise,
+there are gaps between words, and a voice has more energy in its formants, the resonances that make
+vowels sound different, than in its fundamental. This is the source: Johnny teasing his sister in
+the cemetery at the start of the film, with Barbara answering.
+
+<audio controls preload="metadata" src="assets/subharmonic_sound/notld-barbara-source.wav"></audio>
+
+Johnny speaks at about 120 to 200 Hz and Barbara mostly between 200 and 370 Hz, so an octave down
+lands both in the range a speaker can play.
+
+### Without preprocessing
+
+Fed the raw dialogue, the zero-crossing tracker hears the formants. They add crossings, so most of
+the time it reports a pitch well above the voice. The sub that comes out is a gargle that changes
+pitch with the vowels rather than the voice.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/film-naive.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-film-naive"}
+:::fold imports
+import afield.ui.visualization.darkMode
+import space.kscience.plotly.*
+import space.kscience.plotly.models.ScatterMode
+:::endfold
+:::static
+val voice = SamplesSignal(subFilmClip())
+val tracker = SubharmonicZeroCross(minInputHz = 60.0)
+val sub = voice.through(Subharmonic(tracker))
+val out = voice + sub * 1.5f
+:::fold render 7.5 s and plot the tracker against a YIN pitch analysis of the same clip
+val run = subRender(out, seconds = 7.5f, tracker)
+val voiced = patF0Frames(subFilmClip(), 48_000, minHz = 60.0, maxHz = 400.0)
+    .filter { it.voiced && it.centerSample < 7.5 * 48_000 }
+display("main", Plotly.plot {
+    scatter { name = "voice pitch (YIN)"; mode = ScatterMode.markers; x.set(voiced.map { it.centerSample / 48_000.0 }); y.set(voiced.map { it.hz }); marker { size = 5 } }
+    scatter { name = "zero-crossing, raw input"; mode = ScatterMode.markers; x.set(run.times); y.set(run.hz[0]); marker { size = 2 } }
+    layout { title = "Raw dialogue: the tracker follows the formants"; xaxis { title = "seconds" }; yaxis { title = "Hz" } }
+}.darkMode())
+:::endfold
+```
+
+![The zero-crossing tracker's estimate scattered far above the YIN pitch of the voice](assets/subharmonic_sound/film-naive.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/film-naive.wav" audio-spec="film-naive" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-film-naive-audio"}
+// offline-rendered by SubharmonicSoundDocs — listen below
+```
+
+The spectrogram makes the gargle visible: the sub's line jumps around well above the voice's lowest harmonic rather than below it:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/film-naive-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-film-naive-spectrum"}
+showSpectrogram(SubharmonicSoundDocs.render("film-naive"), maxHz = 600.0, channel = "main", title = "Raw dialogue with a zero-crossing sub")
+```
+
+![Spectrogram of the raw dialogue with its sub: voice harmonics, with a jumping line scattered across them](assets/subharmonic_sound/film-naive-spectrum.png)
+
+The plot compares the tracker with [YIN](reference/patterns.md), a slower, more careful pitch
+analysis that looks at whole frames at once. The tracker agrees with it on only about one voiced
+frame in ten.
+
+### With preprocessing
+
+Four steps before the tracker and two after it turn this into a usable voice effect:
+
+1. **Band-limit.** A highpass at 70 Hz removes rumble. Two lowpasses at 280 Hz leave the fundamental
+   of both voices and little above it.
+2. **Square it up.** A `Saturator` with a drive of 20 clips the band-limited voice into something
+   close to a square wave of the same pitch, and a third lowpass rounds it back toward a sine. A
+   quiet syllable and a loud one now reach the tracker at the same level.
+3. **Track.** A quadrature PLL with a 20 Hz bandwidth, wider than the default 8, because speech
+   glides faster than a bassline.
+4. **Take the level from before the clipping.** The squared signal has no dynamics left, so an
+   `EnvelopeFollower` on the band-limited voice sets the sub's level instead.
+5. **Smooth the sub** with a lowpass at 160 Hz, and mix it under the original.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/film-shaped.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-film-shaped"}
+:::fold imports
+import afield.ui.visualization.darkMode
+import space.kscience.plotly.*
+import space.kscience.plotly.models.ScatterMode
+:::endfold
+:::static
+val voice = SamplesSignal(subFilmClip())
+val band = voice.highpass(70f)
+    .lowpass(280f)
+    .lowpass(280f)
+val squared = band.through(Saturator(Param(20f))).lowpass(280f)
+val tracker = SubharmonicQuadPLL(bandwidthHz = 20.0, gateLevel = 0.05)
+val level = EnvelopeFollower(band, attackTime = Param(0.01f), releaseTime = Param(0.08f))
+val sub = squared.through(Subharmonic(tracker)).lowpass(160f) * level
+val out = voice + sub * 3f
+:::fold render the whole clip and plot the tracker against the YIN analysis
+val run = subRender(out, seconds = 13.5f, tracker)
+val voiced = patF0Frames(subFilmClip(), 48_000, minHz = 60.0, maxHz = 400.0).filter { it.voiced }
+display("main", Plotly.plot {
+    scatter { name = "voice pitch (YIN)"; mode = ScatterMode.markers; x.set(voiced.map { it.centerSample / 48_000.0 }); y.set(voiced.map { it.hz }); marker { size = 5 } }
+    scatter { name = "quadrature PLL, shaped input"; mode = ScatterMode.markers; x.set(run.times); y.set(run.hz[0]); marker { size = 2 } }
+    layout { title = "Shaped dialogue: the tracker follows the voice"; xaxis { title = "seconds" }; yaxis { title = "Hz" } }
+}.darkMode())
+:::endfold
+```
+
+![The quadrature PLL's estimate running through the YIN pitch points of both voices](assets/subharmonic_sound/film-shaped.png)
+
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/film-shaped.wav" audio-spec="film-shaped" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-film-shaped-audio"}
+// offline-rendered by SubharmonicSoundDocs — listen below
+```
+
+In the spectrogram the sub follows the shape of each phrase an octave below the voice's lowest harmonic, and turns to a broad smear where the wind comes in:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/film-shaped-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-film-shaped-spectrum"}
+showSpectrogram(SubharmonicSoundDocs.render("film-shaped"), maxHz = 600.0, channel = "main", title = "Shaped dialogue with a quadrature-PLL sub")
+```
+
+![Spectrogram of the shaped dialogue: a low line tracing each phrase an octave under the voice, and broadband low growl in the last few seconds](assets/subharmonic_sound/film-shaped-spectrum.png)
+
+Now the tracker agrees with YIN on nearly three voiced frames in four, and Johnny's "They're coming
+to get you, Barbara" has a second, larger voice under it that follows his intonation. Between
+phrases the PLL keeps running on the background sound. From about nine seconds the recording has
+wind rumble under the dialogue, and the tracker follows that as readily as a voice, so the sub turns
+to a low growl there. A tracker can only follow one pitch at a time, and it has no way of knowing
+which of the sounds in the band is the one you wanted. Barbara's highest phrases, around ten to
+twelve seconds, are above the 280 Hz band altogether, and the tracker misses them; raise the
+lowpasses if your voice sits higher.
+
+The saturation step matters most. It works as automatic gain control, and it helps every tracker,
+not just this one. With the same preprocessing, even the plain PLL, which could not follow the raw
+voice at all, agrees with YIN on more than half the voiced frames.
 
 ---
 
@@ -260,13 +501,13 @@ including its tracking corrections.
 ### Hear a harmonic bank on recorded plucks
 
 A richer monophonic input can use `HarmonicPhaseTracker`, which listens to several partials
-instead of requiring the lowpass to isolate the fundamental. This example uses the same
-recorded `arpy` melody as above. The first four seconds are dry; the next four replace it
+instead of requiring the lowpass to isolate the fundamental. This example uses the
+`arpy` melody from [Rebuilding the bass of a sample](#rebuilding-the-bass-of-a-sample). The first four seconds are dry; the next four replace it
 with eight tracked harmonics.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/phase-harmonics-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-phase-harmonics"}
 :::static
-val notes = listOf(0, 2, 4, 3, 0, 1, 4, 2)
+val notes = [0, 2, 4, 3, 0, 1, 4, 2]
 val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
 val plucks = SamplesSignal(subSequence(8.0, hits))
 val tracker = HarmonicPhaseTracker(minHz = 100.0, maxHz = 250.0, initialHz = 150.0)
@@ -282,7 +523,7 @@ showSpectrogram(doughRenderMono(out, seconds = 8f), maxHz = 2000.0,
 
 ![Recorded plucks followed by their harmonic-bank replacement](assets/subharmonic_sound/phase-harmonics-spectrum.png)
 
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/phase-harmonics.wav" audio-spec="phase-harmonics" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-phase-harmonics-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/phase-harmonics.wav" audio-spec="phase-harmonics" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-phase-harmonics-audio"}
 // Listen to the graph above.
 ```
 
@@ -293,7 +534,7 @@ Replace the eight harmonics with `rationalLattice()` to mix ratios `1/2`, `2/3`,
 plays this bank. The notes now have tones both above and below their tracked pitch.
 
 ```diffstatic {data-lang=kotlin}
-val notes = listOf(0, 2, 4, 3, 0, 1, 4, 2)
+val notes = [0, 2, 4, 3, 0, 1, 4, 2]
 val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
 val plucks = SamplesSignal(subSequence(8.0, hits))
 val analysis = TrackedPhaseAnalysis(plucks,
@@ -303,7 +544,7 @@ val colored = analysis.synthesize(bank)
 audio { plucks * subBetween(0f, 4f) + colored * subBetween(4f, 8f) }
 ```
 
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/phase-lattice.wav" audio-spec="phase-lattice" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-phase-lattice-audio"}
+```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/phase-lattice.wav" audio-spec="phase-lattice" audio-renderer="afield.audio.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-phase-lattice-audio"}
 // The pluck graph above, with rationalLattice() in place of harmonics(8).
 ```
 
@@ -316,13 +557,13 @@ The voice's `lock` controls how closely its motion follows the tracker's phase c
 
 | `lock` | voice motion |
 | --- | --- |
-| `0.0` | stable tracked frequency, like the existing subharmonic oscillator |
+| `0.0` | the smoothed tracked frequency, as `Subharmonic` uses |
 | `1.0` | the tracker's full phase advance, including its corrections |
 | between 0 and 1 | a blend of the two |
 
-This is a velocity blend, not a promise of absolute phase alignment with the original waveform.
-The existing `SubharmonicQuadPLL` keeps its previous behavior and also exposes `state`,
-`trackedPhase`, `phaseAdvance` and `confidence`.
+`lock` blends speeds only, so a voice at `1.0` still need not line up in phase with the original
+waveform. `SubharmonicQuadPLL` exposes the same `state`, `trackedPhase`, `phaseAdvance` and
+`confidence` readings.
 
 ### Share the analysis
 
@@ -373,11 +614,11 @@ Set `minHz..maxHz` to the expected fundamental range. `initialHz` seeds the sear
 `captureHz` controls the fine channels' bandwidth. Acquisition needs a window of input,
 so very short attacks can finish before the pitch settles. `state.confidence` combines
 harmonic coverage and agreement, `harmonicity` estimates the fraction of power explained by
-the channels, and `activePartials` counts usable channels. These are tracking diagnostics,
-not probabilities. Its level follower is RMS-based; the quadrature tracker's level is an
+the channels, and `activePartials` counts usable channels. Treat them as rough guides to how
+well tracking is going; they are not probabilities. Its level follower is RMS-based; the quadrature tracker's level is an
 analytic-signal amplitude, so swapping trackers can change the output level.
 
-This remains a model of one periodic sound. Two independent notes, noise and strongly
+The tracker assumes one periodic sound. Two independent notes, noise and strongly
 inharmonic bells need a different analysis. An exactly even-only spectrum such as 220,
 440 and 660 Hz really repeats at 220 Hz: the tracker cannot infer an intended 110 Hz note
 from that signal alone.
@@ -385,248 +626,6 @@ from that signal alone.
 A voice can supply a `PhaseRenderer { phase -> ... }` to replace its sine with a periodic
 function. That function must handle its own band-limiting: the bank's Nyquist fade cannot
 remove the extra harmonics of a sharp waveform or a strong phase warp.
-
----
-
-## Under a kick drum
-
-`bd:3` from Dirt-Samples is a classic drum-machine kick. It starts with a click and a pitch drop
-from about 160 Hz and settles to a body at 49 Hz that rings for half a second. A tracker follows
-that drop. Half of 49 Hz is 24.6 Hz, which you can feel on a subwoofer but cannot hear from a laptop
-or most headphones.
-
-The fix is post-processing. Driving the sub into a [`Saturator`](reference/synthesis.md) flattens
-its peaks, and a flattened sine contains odd harmonics at three, five and seven times its frequency
-(74, 123 and 172 Hz). Small speakers can play those, and the ear fills in the missing fundamental
-from the pattern of harmonics.
-
-The clip plays the beat three ways for four seconds each: dry, with the raw sub, and with the
-saturated sub.
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/kick.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-kick"}
-:::static
-val kick = subDirt("bd:3")
-val beat = SamplesSignal(subSequence(12.0, (0 until 24).map { it * 0.5 to kick }))
-val tracker = SubharmonicQuadPLL()
-val sub = beat.lowpass(200f).through(Subharmonic(tracker))
-val audible = sub.through(Saturator(Param(20f))).lowpass(400f)
-val out = beat + sub * subBetween(4f, 8f) * 2f + audible * subBetween(8f, 12f) * 0.5f
-:::fold render twelve seconds and plot the first two kicks' tracked and generated pitch
-val run = subRender(out, seconds = 12f, tracker, everySeconds = 0.002)
-val first = run.times.indices.filter { run.times[it] < 1.0 }
-showSignals(
-    "tracked" to first.map { run.hz[0][it] },
-    "generated (÷ 2)" to first.map { run.subHz[0][it] },
-    x = first.map { run.times[it] }, channel = "main", title = "Following a kick's pitch drop",
-    xTitle = "seconds", yTitle = "Hz",
-)
-:::endfold
-```
-
-![Tracked pitch falling quickly from the attack to 49 Hz on each of two kicks, the generated pitch following at half](assets/subharmonic_sound/kick.png)
-
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/kick.wav" audio-spec="kick" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-kick-audio"}
-// offline-rendered by SubharmonicSoundDocs — listen below
-```
-
-Here the spectrogram shows what the speaker cannot. The raw sub in the middle section is a line near 25 Hz; the saturated one in the last section adds harmonics above it:
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/kick-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-kick-spectrum"}
-showSpectrogram(SubharmonicSoundDocs.render("kick"), maxHz = 400.0, channel = "main", title = "Raw and saturated sub under a kick")
-```
-
-![Spectrogram of the kick clip: dry kicks, then a line near 25 Hz under each, then that line with harmonics stacked above it](assets/subharmonic_sound/kick-spectrum.png)
-
-On a laptop, the middle four seconds may sound almost like the first four. The sub is there, and a spectrum shows it, but it sits below the speaker. In the last four seconds
-the saturated version carries about fourteen times as much of its energy above 100 Hz, and the beat
-gets heavier. The tracker's own level follows the kick's decay, so each sub dies away with the drum
-that made it and does not drone between hits.
-
----
-
-## Rebuilding the bass of a sample
-
-`arpy` is a set of short plucked notes, `arpy:0` to `arpy:4` running C, D, F, G and A above middle
-C. Played at half speed, a melody built from them drops an octave into the tenor range, and it is
-thin there: a pluck with no low end. The next graph plays that line for four seconds, then
-highpasses it at 400 Hz so almost none of its own low end is left, and lets the tracker put a body
-back underneath.
-
-Two lowpasses in a row before the tracker give a steeper slope. The pluck's second harmonic is only
-an octave above the note, and one 12 dB-per-octave filter leaves enough of it to confuse the
-tracker on the attack.
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/arpy.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-arpy"}
-:::static
-val notes = listOf(0, 2, 4, 3, 0, 1, 4, 2)
-val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
-val arpy = SamplesSignal(subSequence(8.0, hits))
-val tracker = SubharmonicQuadPLL()
-val sub = arpy.lowpass(300f).lowpass(300f)
-    .through(Subharmonic(tracker))
-val thin = arpy.highpass(400f)
-val out = arpy * subBetween(0f, 4f) + (thin + sub * 1.5f) * subBetween(4f, 8f)
-:::fold render eight seconds and plot the tracked melody and the sub under it
-val run = subRender(out, seconds = 8f, tracker)
-showSignals(
-    "tracked" to run.hz[0],
-    "generated (÷ 2)" to run.subHz[0],
-    x = run.times, channel = "main", title = "A plucked melody and the bass it never had",
-    xTitle = "seconds", yTitle = "Hz",
-)
-:::endfold
-```
-
-![The tracked arpy melody stepping between 130 and 220 Hz, the generated line an octave below it, the same in both halves](assets/subharmonic_sound/arpy.png)
-
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/arpy.wav" audio-spec="arpy" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-arpy-audio"}
-// offline-rendered by SubharmonicSoundDocs — listen below
-```
-
-In the spectrogram the second half loses the arpy's lowest partials to the highpass, and gains a new line an octave beneath where they were:
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/arpy-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-arpy-spectrum"}
-showSpectrogram(SubharmonicSoundDocs.render("arpy"), maxHz = 600.0, channel = "main", title = "A plucked melody and the bass it never had")
-```
-
-![Spectrogram of the arpy clip: plucked notes with full harmonics, then the same notes thinned above 400 Hz with a new low line under each](assets/subharmonic_sound/arpy-spectrum.png)
-
-Each pluck lasts about a quarter of a second at half speed, with silence until the next. The
-quadrature PLL's gate holds the last pitch through the silence, and its frequency discriminator
-(see [Inside the quadrature PLL](#inside-the-quadrature-pll)) carries it to the next note within a
-few milliseconds of the attack. The tracked melody lands within 2% of each note. The second half
-sounds like a different instrument from the first: a bass synth doubling a bell, made from a bell
-alone.
-
----
-
-## A voice from 1968
-
-Speech is the hardest input on this page. The pitch moves continuously, consonants are noise,
-there are gaps between words, and a voice has more energy in its formants, the resonances that make
-vowels sound different, than in its fundamental. This is the source: Johnny teasing his sister in
-the cemetery at the start of the film, with Barbara answering.
-
-<audio controls preload="metadata" src="assets/subharmonic_sound/notld-barbara-source.wav"></audio>
-
-Johnny speaks at about 120 to 200 Hz and Barbara mostly between 200 and 370 Hz, so an octave down
-lands both in the range a speaker can play.
-
-### Without preprocessing
-
-Fed the raw dialogue, the zero-crossing tracker hears the formants. They add crossings, so most of
-the time it reports a pitch well above the voice. The sub that comes out is a gargle that changes
-pitch with the vowels rather than the voice.
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/film-naive.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-film-naive"}
-:::fold imports
-import afield.darkMode
-import space.kscience.plotly.*
-import space.kscience.plotly.models.ScatterMode
-:::endfold
-:::static
-val voice = SamplesSignal(subFilmClip())
-val tracker = SubharmonicZeroCross(minInputHz = 60.0)
-val sub = voice.through(Subharmonic(tracker))
-val out = voice + sub * 1.5f
-:::fold render 7.5 s and plot the tracker against a YIN pitch analysis of the same clip
-val run = subRender(out, seconds = 7.5f, tracker)
-val voiced = patF0Frames(subFilmClip(), 48_000, minHz = 60.0, maxHz = 400.0)
-    .filter { it.voiced && it.centerSample < 7.5 * 48_000 }
-display("main", Plotly.plot {
-    scatter { name = "voice pitch (YIN)"; mode = ScatterMode.markers; x.set(voiced.map { it.centerSample / 48_000.0 }); y.set(voiced.map { it.hz }); marker { size = 5 } }
-    scatter { name = "zero-crossing, raw input"; mode = ScatterMode.markers; x.set(run.times); y.set(run.hz[0]); marker { size = 2 } }
-    layout { title = "Raw dialogue: the tracker follows the formants"; xaxis { title = "seconds" }; yaxis { title = "Hz" } }
-}.darkMode())
-:::endfold
-```
-
-![The zero-crossing tracker's estimate scattered far above the YIN pitch of the voice](assets/subharmonic_sound/film-naive.png)
-
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/film-naive.wav" audio-spec="film-naive" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-film-naive-audio"}
-// offline-rendered by SubharmonicSoundDocs — listen below
-```
-
-The spectrogram makes the gargle visible: the sub's line jumps around well above the voice's lowest harmonic rather than below it:
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/film-naive-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-film-naive-spectrum"}
-showSpectrogram(SubharmonicSoundDocs.render("film-naive"), maxHz = 600.0, channel = "main", title = "Raw dialogue with a zero-crossing sub")
-```
-
-![Spectrogram of the raw dialogue with its sub: voice harmonics, with a jumping line scattered across them](assets/subharmonic_sound/film-naive-spectrum.png)
-
-The plot compares the tracker with [YIN](reference/patterns.md), a slower, more careful pitch
-analysis that looks at whole frames at once. The tracker agrees with it on only about one voiced
-frame in ten.
-
-### With preprocessing
-
-Four steps before the tracker and two after it turn this into a usable voice effect:
-
-1. **Band-limit.** A highpass at 70 Hz removes rumble. Two lowpasses at 280 Hz leave the fundamental
-   of both voices and little above it.
-2. **Square it up.** A `Saturator` with a drive of 20 clips the band-limited voice into something
-   close to a square wave of the same pitch, and a third lowpass rounds it back toward a sine. A
-   quiet syllable and a loud one now reach the tracker at the same level.
-3. **Track.** A quadrature PLL with a 20 Hz bandwidth, wider than the default 8, because speech
-   glides faster than a bassline.
-4. **Take the level from before the clipping.** The squared signal has no dynamics left, so an
-   `EnvelopeFollower` on the band-limited voice sets the sub's level instead.
-5. **Smooth the sub** with a lowpass at 160 Hz, and mix it under the original.
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/film-shaped.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-film-shaped"}
-:::fold imports
-import afield.darkMode
-import space.kscience.plotly.*
-import space.kscience.plotly.models.ScatterMode
-:::endfold
-:::static
-val voice = SamplesSignal(subFilmClip())
-val band = voice.highpass(70f)
-    .lowpass(280f)
-    .lowpass(280f)
-val squared = band.through(Saturator(Param(20f))).lowpass(280f)
-val tracker = SubharmonicQuadPLL(bandwidthHz = 20.0, gateLevel = 0.05)
-val level = EnvelopeFollower(band, attackTime = Param(0.01f), releaseTime = Param(0.08f))
-val sub = squared.through(Subharmonic(tracker)).lowpass(160f) * level
-val out = voice + sub * 3f
-:::fold render the whole clip and plot the tracker against the YIN analysis
-val run = subRender(out, seconds = 13.5f, tracker)
-val voiced = patF0Frames(subFilmClip(), 48_000, minHz = 60.0, maxHz = 400.0).filter { it.voiced }
-display("main", Plotly.plot {
-    scatter { name = "voice pitch (YIN)"; mode = ScatterMode.markers; x.set(voiced.map { it.centerSample / 48_000.0 }); y.set(voiced.map { it.hz }); marker { size = 5 } }
-    scatter { name = "quadrature PLL, shaped input"; mode = ScatterMode.markers; x.set(run.times); y.set(run.hz[0]); marker { size = 2 } }
-    layout { title = "Shaped dialogue: the tracker follows the voice"; xaxis { title = "seconds" }; yaxis { title = "Hz" } }
-}.darkMode())
-:::endfold
-```
-
-![The quadrature PLL's estimate running through the YIN pitch points of both voices](assets/subharmonic_sound/film-shaped.png)
-
-```diffstatic_runner {data-lang=kotlin audio="assets/subharmonic_sound/film-shaped.wav" audio-spec="film-shaped" audio-renderer="afield.four.synth.SubharmonicSoundDocs" embed=true hidden=true name="subharmonic-film-shaped-audio"}
-// offline-rendered by SubharmonicSoundDocs — listen below
-```
-
-In the spectrogram the sub follows the shape of each phrase an octave below the voice's lowest harmonic, and turns to a broad smear where the wind comes in:
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/film-shaped-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-film-shaped-spectrum"}
-showSpectrogram(SubharmonicSoundDocs.render("film-shaped"), maxHz = 600.0, channel = "main", title = "Shaped dialogue with a quadrature-PLL sub")
-```
-
-![Spectrogram of the shaped dialogue: a low line tracing each phrase an octave under the voice, and broadband low growl in the last few seconds](assets/subharmonic_sound/film-shaped-spectrum.png)
-
-Now the tracker agrees with YIN on nearly three voiced frames in four, and Johnny's "They're coming
-to get you, Barbara" has a second, larger voice under it that follows his intonation. Between
-phrases the PLL keeps running on the background sound. From about nine seconds the recording has
-wind rumble under the dialogue, and the tracker follows that as readily as a voice, so the sub turns
-to a low growl there. A tracker can only follow one pitch at a time, and it has no way of knowing
-which of the sounds in the band is the one you wanted. Barbara's highest phrases, around ten to
-twelve seconds, are above the 280 Hz band altogether, and the tracker misses them; raise the
-lowpasses if your voice sits higher.
-
-The saturation step matters most. It works as automatic gain control, and it helps every tracker,
-not just this one. With the same preprocessing, even the plain PLL, which could not follow the raw
-voice at all, agrees with YIN on more than half the voiced frames.
 
 ---
 

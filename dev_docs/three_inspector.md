@@ -3,9 +3,9 @@
 | | |
 | --- | --- |
 | the viewer | `src/commonMain/resources/threejs_viewer.html` |
-| the Kotlin surface | `src/jvmMain/kotlin/afield/graphics/ThreeJsInspector.kt` |
-| the payload | `src/jvmMain/kotlin/afield/graphics/ThreeJsViewer.kt` |
-| the harness | `src/jvmTest/kotlin/afield/graphics/ViewerJavaScript.kt` |
+| the Kotlin surface | `src/jvmMain/kotlin/afield/graphics/three/ThreeJsInspector.kt` |
+| the payload | `src/jvmMain/kotlin/afield/graphics/three/ThreeJsViewer.kt` |
+| the harness | `src/jvmTest/kotlin/afield/graphics/three/ViewerJavaScript.kt` |
 | the demo | `dev_docs/agents/transcripts/three_inspector_wall.yaml` (a starting point; bundle in `public/docs/assets/agent_transcripts/three_inspector_wall/`) |
 | the user-facing docs | `public/docs/fline_examples.md`, "The 3D output area as an instrument" |
 

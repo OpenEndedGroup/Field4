@@ -1,0 +1,111 @@
+# Generated from fieldml_frames_demo/metadata.edn by afield.examples.DocumentToTranscript.
+name: "fieldml_frames_demo"
+operations:
+  - create:
+      box: "fieldml-frames-renderer"
+      name: "window and renderer"
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        "code": |
+          // Kotlin owns the renderer loop: FieldML cannot call the suspend member Renderer.run.
+          // The FieldML child builds the scene; launch this parent first to publish its renderer.
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          once.renderer {
+              window = Window("FieldML - a triangle that moves")
+              Renderer(window)
+          }
+          println("renderer ready - now run the FieldML box")
+          start(renderer::run)
+  - create:
+      box: "fieldml-frames-root"
+      name: "FieldML - a moving Field 4 scene"
+      frame: { x: 40.0, y: 170.0, w: 300.0, h: 100.0 }
+      properties:
+        "isFieldMLRoot": true
+        "mainLanguage": "fieldml"
+  - create:
+      box: "fieldml-frames-live"
+      name: "A triangle that spins, driven by eachFrame"
+      frame: { x: 400.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        "code": |
+          // A whole Field 4 scene, described from FieldML -- and, unlike the still-life demo
+          // next door, one that MOVES. There is no hostAs anywhere in this box.
+          //
+          // This box needs a live Vulkan device. Run the `window and renderer` box above it first;
+          // that box owns the Window and the Renderer and this one walks up to find them.
+          //
+          // The moving half is mechanism D of dev_docs/FIELDML_HOST_BRIDGE.md, closed 2026-08-19:
+          // `eachFrame(block: suspend Frames.() -> Unit)` compiles to a Function2 whose last
+          // parameter is a Continuation, and the bridge now drops that continuation, hands the block
+          // the real `Frames`, and coerces the result to the type declared inside the continuation.
+          let read name box = box |> hostCall "getPropertyRaw" (name, hostNull)
+
+          let inherited name box =
+            let here = box |> read name in
+            if here != Unit then here
+            else box |> hostGet "parents" |> hostAsList
+                   |> fold (fun found p -> if found != Unit then found else inherited name p) Unit
+
+          let renderer = thisBox |> inherited "renderer"
+
+          let ModuleKt = hostClass "afield.graphics.render.ModuleKt"
+          let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
+          let Pair = hostClass "kotlin.Pair"
+
+          // One push-constant member, read by both stages. The name that matters is the MEMBER name
+          // (`spin`); Mesh.setMergedPushMembers keys offsets by it and ignores the block and instance
+          // names entirely.
+          let vertexSource = "#version 450\nlayout(push_constant) uniform Push { vec4 spin; } push;\nvec2 verts[3] = vec2[3](vec2(-0.7,-0.6), vec2(0.7,-0.6), vec2(0.0,0.7));\nvoid main() {\n  vec2 p = verts[gl_VertexIndex];\n  float c = cos(push.spin.x);\n  float s = sin(push.spin.x);\n  gl_Position = vec4(c*p.x - s*p.y, s*p.x + c*p.y, 0.0, 1.0);\n}"
+          let fragmentSource = "#version 450\nlayout(push_constant) uniform Push { vec4 spin; } push;\nlayout(location = 0) out vec4 o;\nvoid main() { o = vec4(0.5 + 0.5*cos(push.spin.x + vec3(0.0, 2.1, 4.2)), 1.0); }"
+
+          // parameters(renderer) { vertex = ...; fragment = ...; name = ... } is Module.kt:197. The
+          // receiver lambda's `p` is a Parameters, read straight off the JVM signature, so every
+          // member set below is checked at compile time.
+          let params =
+            hostStaticCall "parameters" (renderer, fun p ->
+              let _ = p |> hostSet "vertex" vertexSource in
+              let _ = p |> hostSet "fragment" fragmentSource in
+              p |> hostSet "name" "fieldmlSpin"
+            ) ModuleKt
+
+          let module = hostNew (params) (hostClass "afield.graphics.render.Module")
+          let pointer = module |> hostExt ModuleKt "pointer" Unit
+          let mesh = hostNew (renderer, pointer) (hostClass "afield.graphics.render.Mesh")
+          let _ = pointer |> hostCall1 "plusAssign" (hostNew ("tri", mesh) Pair)
+          let _ = mesh |> hostCall "resize" (3, 0, pointer)
+          let target = renderer |> hostCall1 "renderTargetFor" 0
+          let _ = target |> hostCall1 "plusAssign_module" (hostNew ("fieldmlSpin", module) Pair)
+
+          // The value the animation writes. `Structure.set` types its value `Any`, and a FieldML Float
+          // arrives as a JVM Double -- which Structure's writer does not recognise, so it prints
+          // "unknown type" and the member silently keeps its old bytes (Structure.kt:424). A *typed*
+          // setter is the way across: `Vector4f.set(float, float, float, float)` really declares
+          // floats, so the bridge's numeric ladder narrows for us. The same object stays in the
+          // structure and is re-serialised on every draw, so mutating it is what moves the triangle.
+          let spin = hostNew (0.0, 0.0, 0.0, 0.0) (hostClass "afield.math.linalg.Vector4f")
+          let _ = mesh |> hostGet "push" |> hostCall "set" ("spin", spin)
+
+          // Mechanism D. `f` is typed `Frames` off the JVM signature, so `f.frameNumber` is checked
+          // here rather than on the first frame -- and the block takes ONE parameter, not the two the
+          // erased Function2 has, because the continuation is not an argument anybody writes.
+          let animation =
+            hostStaticCall "eachFrame" (fun f ->
+              let t = (f |> hostGet "frameNumber" |> toFloat) * 0.04 in
+              spin |> hostCall "set" (t, 0.0, 0.0, 1.0)
+            ) Phased
+
+          // Box.launchFrames(frames, strand, mode, reportRunning) runs it on Field's Runloop with
+          // this box as the context, so `Stop` on this box stops the animation and re-running it
+          // bumps the strand generation rather than stacking a second loop.
+          let job = thisBox |> hostExt Phased "launchFrames" (animation, "fieldml-spin", "frames", true)
+
+          {
+            moduleName = params |> hostGet "name"
+            vertices = mesh |> hostGet "numVert"
+            pushConstantBytes = module |> hostGet "pushConstantSize"
+            animating = show job
+          }
+  - connect: { parent: "fieldml-frames-renderer", child: "fieldml-frames-root" }
+  - connect: { parent: "fieldml-frames-root", child: "fieldml-frames-live" }

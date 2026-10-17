@@ -62,7 +62,7 @@ per-file failures retain other matches. A partial no-match result is not evidenc
 Results are not an atomic snapshot; identity/size/mtime checks detect some concurrent changes,
 but this is not a hostile-filesystem sandbox.
 
-Implementation: `afield.ai.core.WorkspaceSearch`; one shared registration in
+Implementation: `afield.ai.tools.WorkspaceSearch`; one shared registration in
 `AgentToolRegistrations.kt`; a common provider factory binds configured roots for chat/backdoor.
 The request declares the `FILESYSTEM_READ` effect and participates in normal availability and
 withholding rules. No semantic/symbol search behavior is changed.
@@ -77,7 +77,7 @@ chat helper paths, and the backdoor's saved/live distinction.
 Verified in a provisioned Field checkout after merging current `main`:
 
 ```sh
-./gradlew jvmTest --tests 'afield.ai.core.WorkspaceSearchTest' --tests 'afield.ai.core.WorkspaceSearchIntegrationTest'
+./gradlew jvmTest --tests 'afield.ai.tools.WorkspaceSearchTest' --tests 'afield.ai.tools.WorkspaceSearchIntegrationTest'
 ./gradlew compileKotlinJvm
 ```
 

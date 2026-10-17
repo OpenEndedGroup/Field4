@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. path tracing renderer
@@ -11,11 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["rectsl_spacetime_trace"] "properties" {"children" #{#afield/box "rectsl_spacetime_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 213 "sha256" "44a886b3b252b96ed324de6a74cd7c6c6336ca714be1eb95a06ebab944778be7"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["rectsl_spacetime_trace"] "properties" {"children" #{#afield/box "rectsl_spacetime_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 224 "sha256" "35c79d6c0626c7abac860e64b9ac883b790e30da73c14a6418e3189e0e9e9787"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
-import afield.four.util.Options
+import afield.graphics.vulkan.util.Options
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,27 +31,27 @@ start(renderer::run)
 <!-- field-box id="rectsl_spacetime_trace" index="1" -->
 
 ```edn [field-box id="rectsl_spacetime_trace" role="properties"]
-{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 208 "characters" 8745 "sha256" "72fa35861be5c79427a3a7be9da6b527198d57ff2ba1d6f6ab2d53720e8d3cc8"}]}
+{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 208 "characters" 8855 "sha256" "087708d27656dcbe85a0ee9f1f9f72d4d8c1275d08e7242f2c5776e15c7f965f"}]}
 ```
 
 ```kotlin [field-property box="rectsl_spacetime_trace" name="code" path="rectsl_spacetime_trace_code_.kt"]
-import afield.four.fabricated.PathTraceEnvironment
-import afield.four.fabricated.PathTraceMaterial
-import afield.four.fabricated.PathTraceScene
-import afield.four.fabricated.PathTracingRenderer
-import afield.four.fabricated.importTriMesh
-import afield.four.util.Camera
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Solid
-import afield.rectsl.compileRectSL
-import afield.rectsl.toAdField
-import afield.stdlib.boundsOf
-import afield.stdlib.diagnose
-import afield.stdlib.genus
-import afield.stdlib.isWatertight
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.marchingCubes
-import afield.stdlib.sampledField3D
+import afield.graphics.scene.fabricated.PathTraceEnvironment
+import afield.graphics.scene.fabricated.PathTraceMaterial
+import afield.graphics.scene.fabricated.PathTraceScene
+import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.vulkan.util.Camera
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.lang.rectsl.compileRectSL
+import afield.lang.rectsl.toAdField
+import afield.geometry.mesh.boundsOf
+import afield.geometry.mesh.diagnose
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
+import afield.math.linalg.Vector3f
+import afield.geometry.mesh.marchingCubes
+import afield.geometry.mesh.sampledField3D
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)
@@ -129,7 +129,7 @@ val innerBounds = boundsOf(
 // level set closes it against the box.
 val unpadded = sampledField3D(inner, nx, ny, nt, innerBounds)
 val cutMarch = marchingCubes(unpadded, innerBounds, resolution = 140)
-val cutSolid = Solid.levelSetOf(unpadded, innerBounds, edgeLength = 0.12, parallel = false)
+val cutSolid = Solid.levelSetOf(unpadded, innerBounds, edgeLength = 0.12)
 println()
 println("with the volume ending exactly at the first and last frame:")
 println("  marchingCubes: ${cutMarch.triangleCount} triangles, " +
@@ -159,7 +159,7 @@ println("and with one empty slice each side:")
 println("  marchingCubes: ${marched.triangleCount} triangles, " +
     "watertight ${marched.isWatertight()}, genus ${marched.genus()}")
 
-val whole = Solid.levelSetOf(spacetime, bounds, edgeLength = 0.12, parallel = false)
+val whole = Solid.levelSetOf(spacetime, bounds, edgeLength = 0.12)
 println("  levelSetOf:    ${whole.triangleCount} triangles, status ${whole.status}, " +
     "genus ${whole.genus}, volume ${"%.3f".format(whole.volume)}")
 
@@ -174,7 +174,7 @@ val scene = PathTraceScene()
 val body = scene.material(PathTraceMaterial.plastic(1.0f, 1.0f, 1.0f, 0.26f))
 val floorMaterial = scene.material(PathTraceMaterial.plastic(0.42f, 0.43f, 0.45f, 0.5f))
 
-val place = afield.stdlib.linalg.Matrix4f().scale(0.34f, 0.34f, 0.34f)
+val place = afield.math.linalg.Matrix4f().scale(0.34f, 0.34f, 0.34f)
 val sceneLo = Vector3f(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)
 val sceneHi = Vector3f(-Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE)
 var appended = 0
@@ -191,7 +191,7 @@ parts.forEach { part ->
         colours[v * 3 + 1] = 0.34f + 0.14f * u
         colours[v * 3 + 2] = 0.86f - 0.76f * u
     }
-    val tinted = afield.stdlib.TriMesh(
+    val tinted = afield.geometry.mesh.TriMesh(
         positions = plain.positions,
         indices = plain.indices,
         normals = plain.normals,

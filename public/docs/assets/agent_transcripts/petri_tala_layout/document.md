@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 2 — TALA, via native/field-d2-layout
@@ -11,12 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="petri_tala_tala" index="0" -->
 
 ```edn [field-box id="petri_tala_tala" role="properties"]
-{"id" "petri_tala_tala" "index" 0 "name" "2 — TALA, via native/field-d2-layout" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — TALA, via native/field-d2-layout" "_tombstone" false "frame" #afield/rect [780.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_tala_code_.kt" "lines" 26 "characters" 948 "sha256" "04eaada9070aa830ea22cd4b1b4a9f42f1a3fbe8edd2bcf6f0df0aed8fd1da05"}]}
+{"id" "petri_tala_tala" "index" 0 "name" "2 — TALA, via native/field-d2-layout" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — TALA, via native/field-d2-layout" "_tombstone" false "frame" #afield/rect [780.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_tala_code_.kt" "lines" 26 "characters" 962 "sha256" "3d79b25ffd546378ed91752f6f072a85f52cf49fd1835f137644b9bed12e83e7"}]}
 ```
 
 ```kotlin [field-property box="petri_tala_tala" name="code" path="petri_tala_tala_code_.kt"]
-import afield.petri.*
-import afield.layout.D2Layout
+import afield.simulation.petri.*
+import afield.ui.layout.D2Layout
 
 fun philosophers(count: Int = 5): PetriNet = petri {
     for (index in 0 until count) place("fork.$index", tokens = 1)
@@ -48,11 +48,11 @@ else
 <!-- field-box id="petri_tala_force" index="1" -->
 
 ```edn [field-box id="petri_tala_force" role="properties"]
-{"id" "petri_tala_force" "index" 1 "name" "1 — FORCE, the spring model" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — FORCE, the spring model" "_tombstone" false "frame" #afield/rect [60.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_force_code_.kt" "lines" 29 "characters" 1343 "sha256" "a8ee1f3fbf1ec94cff7e24a6105fb914eb6ea114eb3c86cf2a44cd22602b5131"}]}
+{"id" "petri_tala_force" "index" 1 "name" "1 — FORCE, the spring model" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — FORCE, the spring model" "_tombstone" false "frame" #afield/rect [60.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_force_code_.kt" "lines" 29 "characters" 1354 "sha256" "90bd7364ef5e79fbb61c695f901f51e38420814aba29ed2a284f080d3cee97ae"}]}
 ```
 
 ```kotlin [field-property box="petri_tala_force" name="code" path="petri_tala_force_code_.kt"]
-import afield.petri.*
+import afield.simulation.petri.*
 
 // Five philosophers, five forks. Every philosopher needs both neighbouring forks to eat,
 // which is what makes this dense rather than deep: 25 nodes and 40 arcs, all in one
@@ -88,12 +88,12 @@ showPetriNet(net, layout = PetriLayout.FORCE, w = 620.0, h = 520.0)
 <!-- field-box id="petri_tala_status" index="2" -->
 
 ```edn [field-box id="petri_tala_status" role="properties"]
-{"id" "petri_tala_status" "index" 2 "name" "3 — which engine drew it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — which engine drew it" "_tombstone" false "frame" #afield/rect [60.0 700.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_status_code_.kt" "lines" 80 "characters" 3423 "sha256" "9759fa3daf7f06d27566e6d86aff995c737153d100a8313d0835ca3e7f65a340"}]}
+{"id" "petri_tala_status" "index" 2 "name" "3 — which engine drew it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — which engine drew it" "_tombstone" false "frame" #afield/rect [60.0 700.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_status_code_.kt" "lines" 80 "characters" 3437 "sha256" "c7700a7683157f6cbb290d440bdf060c446534fc5061547b7449d6d0b423e4cc"}]}
 ```
 
 ```kotlin [field-property box="petri_tala_status" name="code" path="petri_tala_status_code_.kt"]
-import afield.petri.*
-import afield.layout.D2Layout
+import afield.simulation.petri.*
+import afield.ui.layout.D2Layout
 
 fun philosophers(count: Int = 5): PetriNet = petri {
     for (index in 0 until count) place("fork.$index", tokens = 1)

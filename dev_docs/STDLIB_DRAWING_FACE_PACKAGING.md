@@ -6,7 +6,7 @@ file is touched.
 **Context.** A box can carry a real `import` line — `KotlinInterface2.kt` classifies
 `s.trimStart().startsWith("import ")` as `"imports-or-preamble"`, and `preambleAfterImports` gives it
 an insert point. So "it has to live in `afield.stdlib` or a box cannot reach it" is no longer a
-reason to put anything in `afield.stdlib`. That was the mistaken reason `afield.morpho` was briefly
+reason to put anything in `afield.stdlib`. That was the mistaken reason `afield.lang.morpho` was briefly
 moved into `afield.stdlib`, and it has been moved back. This report asks which of the six
 `*_field.kt` files were placed in `afield.stdlib` for that same mistaken reason.
 
@@ -80,7 +80,7 @@ For `alife_field.kt` and `wfc_field.kt` the dependency runs **backward**. The ho
 
 - `alife.kt:229#override fun toHTML(): String = alifeGridHtml` — `override fun toHTML(): String = alifeGridHtml(this)`
 - `alife_continuous.kt:114#override fun toHTML(): String = alifeGrayScottHtml` — `override fun toHTML(): String = alifeGrayScottHtml(this)`
-- `wfc.kt:393`, `wfc.kt:868` — `WfcSolver` / rules types implement `afield.ToHTML` the same way
+- `wfc.kt:393`, `wfc.kt:868` — `WfcSolver` / rules types implement `afield.ui.visualization.ToHTML` the same way
 
 And it runs backward in the other direction too, so the pair is genuinely mutually dependent:
 `alife_field.kt:125#fun alifeGridHtml(grid: IntGrid)` is `fun alifeGridHtml(grid: IntGrid)`, and `IntGrid` is declared at
@@ -94,7 +94,7 @@ implement the interface, so the type must reach its own renderer. There is no re
 a renderer to a type from outside.
 
 **What moving the file does *not* cost.** It does not force an import into the solver. `alife.kt` has
-**no** `import afield.*` lines at all and already writes `) : afield.ToHTML {` fully qualified
+**no** `import afield.*` lines at all and already writes `) : afield.ui.visualization.ToHTML {` fully qualified
 (`alife.kt:84`); fully-qualifying the one outside reference is the file's existing house style. After
 a move it could just as well write `afield.draw.alifeGridHtml(this)` — no import, header unchanged,
 and "a reader of `alife.kt` sees integer lattices and nothing about HTML" still holds. The dependency

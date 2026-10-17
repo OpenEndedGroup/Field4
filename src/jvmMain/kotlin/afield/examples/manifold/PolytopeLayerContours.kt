@@ -1,23 +1,23 @@
 package afield.examples.manifold
 
-import afield.manifold.FillRule
-import afield.manifold.ManifoldLibrary
-import afield.manifold.Section
-import afield.manifold.Solid
-import afield.manifold.toSolid
-import afield.stdlib.Vec2
-import afield.stdlib.Vec3
-import afield.stdlib.polytope.CeresRelaxationOptions
-import afield.stdlib.polytope.NormalPolicy
-import afield.stdlib.polytope.PolyhedralObject
-import afield.stdlib.polytope.RelaxationPlan
-import afield.stdlib.polytope.canonicalDiagnostics
-import afield.stdlib.polytope.canonicalize
-import afield.stdlib.polytope.ceresRealizationAvailable
-import afield.stdlib.polytope.conway
-import afield.stdlib.polytope.relaxWithCeres
-import afield.stdlib.polytope.triangulate
-import afield.stdlib.weld
+import afield.geometry.solid.manifold.FillRule
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Section
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
+import afield.math.linalg.Vec2
+import afield.math.linalg.Vec3
+import afield.geometry.polytope.CeresRelaxationOptions
+import afield.geometry.polytope.NormalPolicy
+import afield.geometry.polytope.PolyhedralObject
+import afield.geometry.polytope.RelaxationPlan
+import afield.geometry.polytope.canonicalDiagnostics
+import afield.geometry.polytope.canonicalize
+import afield.geometry.polytope.ceresRealizationAvailable
+import afield.geometry.polytope.conway
+import afield.geometry.polytope.relaxWithCeres
+import afield.geometry.polytope.triangulate
+import afield.geometry.mesh.weld
 import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.cbrt
@@ -39,9 +39,9 @@ expect:
  * Does canonicalising a Conway polytope change its printable layer contours, and by how much?
  *
  * This is the measurement behind `public/docs/chain_ceres_manifold_contours.md`. Three parts of
- * Field meet here and none of them knows the other two exist: `afield.stdlib.polytope` holds the
+ * Field meet here and none of them knows the other two exist: `afield.geometry.polytope` holds the
  * Conway operator algebra, the canonicalisation iteration and the Ceres realizer;
- * `afield.manifold` does exact geometry over Manifold's C ABI; and [Solid.slice] is the one call
+ * `afield.geometry.solid.manifold` does exact geometry over Manifold's C ABI; and [Solid.slice] is the one call
  * that crosses from 3D down to 2D.
  *
  * # Why the normalisation is the whole experiment
@@ -65,7 +65,7 @@ expect:
  * nothing with the realizer — and it is how `kkC` gets caught below.
  *
  * Manifold is optional, and so is the Ceres wrapper; a machine without either prints a clear skip
- * and exits 0, the same contract `afield.manifold.ManifoldSmokeTest` and the Ceres smokes have.
+ * and exits 0, the same contract `afield.geometry.solid.manifold.ManifoldSmokeTest` and the Ceres smokes have.
  */
 object PolytopeLayerContours {
 

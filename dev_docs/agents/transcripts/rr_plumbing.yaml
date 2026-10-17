@@ -10,17 +10,45 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR\
-        \ = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"\
-        Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+      code: |
+        import afield.graphics.vulkan.util.Options
+
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+
+        Options.enableVR = false
+        Options.enableHDR = false
+        Options.profiling = false
+
+        once.renderer {
+            window = Window("Field")
+            Renderer(window)
+        }
+
+        println("agent graphics renderer ready")
+        start(renderer::run)
 - launch:
     box: agent_graphics_context
     property: code
     type: code
     strand: renderer
-    code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR\
-      \ = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"\
-      Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+    code: |
+      import afield.graphics.vulkan.util.Options
+
+      prop<Window>(window)
+      prop<Renderer>(renderer)
+
+      Options.enableVR = false
+      Options.enableHDR = false
+      Options.profiling = false
+
+      once.renderer {
+          window = Window("Field")
+          Renderer(window)
+      }
+
+      println("agent graphics renderer ready")
+      start(renderer::run)
 - wait:
     frames: 3
 - create:
@@ -32,90 +60,204 @@ operations:
       w: 420.0
       h: 100.0
     properties:
-      code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.Target\nimport afield.four.device.CommandBuffer\n\
-        import afield.four.lighting.*\nimport afield.four.modules.fromContextWithNameOrNull\nimport afield.four.reconstruction.*\n\
-        import afield.four.texture.TextureSampler\nimport afield.stdlib.fromViews\nimport org.lwjgl.vulkan.VK13.*\n\
-        \n// This guide conversion describes the existing opaque Lambertian RTXDI bridge.\n// It is not a template\
-        \ for inventing missing glossy or transmission guides.\nNgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()\n\
-        prop<AutoCloseable>(plumbing)\nfromContextWithNameOrNull<AutoCloseable>(\"plumbing\")?.close()\nval size=ReconstructionSize(1920,1080)\n\
-        prop<DirectLightingDemo>(scene)\nscene=DirectLightingDemo(renderer,size.width,size.height)\nval settings=RtxdiSettings({scene.bundle.scene.camera.modelView()},{scene.bundle.scene.projection.evaluateUniform()})\n\
-        \    .apply { temporal=true;spatialSamples=4;denoisePasses=0 }\nscene.lighting.enableRtxdi(RtxdiProgram.load(),settings).getOrThrow()\n\
-        scene.lighting.mode=DirectLighting.Mode.RTXDI\nscene.lighting.samples=8\nval rr=DlssReconstruction(renderer,size,size,ReconstructionMode.DLAA,rayReconstruction=true)\n\
-        prop<RenderToTexture>(guides)\nguides=RenderToTexture(renderer) {\n    width=size.width;height=size.height;useDepth=false;colorAttachments=5\n\
-        \    colorFormats=listOf(VK_FORMAT_R32_SFLOAT,VK_FORMAT_R32G32_SFLOAT,\n        VK_FORMAT_R16G16B16A16_SFLOAT,VK_FORMAT_R16G16B16A16_SFLOAT,VK_FORMAT_R16G16B16A16_SFLOAT)\n\
-        }\nval sampler=TextureSampler(renderer,1,false,filter=VK_FILTER_NEAREST)\nval surfaces=scene.lighting.surfaces\n\
-        val inputs=mapOf(\"positions\" to surfaces.position,\"normals\" to surfaces.normal,\n    \"albedo\" to surfaces.albedo,\"\
-        velocity\" to surfaces.motion)\nval guideModule=moduleHere {\n    guides.apply();depthTest=false;depthWrite=false;blend=false\n\
-        \    textureResolver={ texture -> inputs[texture.name]?.let { fromViews(listOf(it),texture.name,sampler)\
-        \ } }\n}\nval quad=Mesh(renderer,guideModule)\nquad.resize(3,0,guideModule)\nguideModule += \"convert\"\
-        \ to quad\nguides += \"guides\" to guideModule\n\n// Remove independent scheduling: this pass now owns their\
-        \ order.\nscene.bundle.frameGraph().passNames().forEach { renderer.renderList.preTargets.remove(it) }\n\
-        renderer.renderList.preTargets.remove(scene.lighting.name)\nrenderer.renderList.modules.remove(\"direct-light-demo\"\
-        )\nvar bypass=false\nvar animate=true\nvar cut=false\nvar time=0.0\nvar frameIndex=0L\nvar revision=0L\n\
-        var shaderVersion=guideModule.current.fi\nval pass=object: Target {\n    override fun render(command: CommandBuffer,index:\
-        \ Int) {\n        if(shaderVersion!==guideModule.current.fi) {shaderVersion=guideModule.current.fi;revision++;rr.reset(\"\
-        guide edit\")}\n        val jitter=if(bypass)ReconstructionJitter(0f,0f) else ReconstructionJitter.halton(frameIndex,size,size)\n\
-        \        scene.bundle.scene.rasterJitterNdc.set(2*jitter.x/size.width,-2*jitter.y/size.height)\n       \
-        \ scene.animate(time)\n        if(animate)time+=1.0/60\n        settings.commitLights(listOf(IdentifiedAreaLight(1,scene.lighting.emitter)))\n\
-        \n        scene.bundle.gBuffer.render(command,index)  // geometry, unjittered motion\n        scene.lighting.render(command,index)\
-        \       // raw RTXDI RGB\n        guides.render(command,index)               // moduleHere format / convention\
-        \ conversion\n        if(!bypass)rr.evaluate(command,\n            ReconstructionInputs(scene.lighting.output,guides.imageViewArray[0],guides.imageViewArray[1]),\n\
-        \            ReconstructionFrame(frameIndex,jitter,revision=revision),\n            RayReconstructionGuides(guides.imageViewArray[2],guides.imageViewArray[3],guides.imageViewArray[4],\n\
-        \                scene.bundle.scene.camera.modelView(),scene.bundle.scene.projection.evaluateUniform()))\n\
-        \        frameIndex++\n    }\n}\nrenderer.renderList.preTargets[\"RR plumbing\"]=pass\nrr.output.blitToScreen(name=\"\
-        RR plumbing\")\n// Capture this allocation, not the mutable box prop that a rerun replaces.\nval ownedTarget=guides\n\
-        val owner=renderer // Cleanup must not depend on a still-running parent box.\nvar closed=false\nplumbing=AutoCloseable\
-        \ {\n    if(!closed) {\n        closed=true;owner.renderList.preTargets.remove(\"RR plumbing\",pass)\n \
-        \       owner.renderList.modules.remove(\"RR plumbing\")\n        rr.close();scene.close()\n        owner.cleanup+=Runnable\
-        \ {\n            guideModule.current.cleanup();sampler.cleanup()\n            ownedTarget.imageViewArray.forEach\
-        \ { it.imageView.cleanup() }\n            ownedTarget.colorImageRefs.forEach { it?.cleanup() };ownedTarget.defaultSampler?.cleanup()\n\
-        \        }\n    }\n}\ncontrolGroup(\"RTXDI to RR\") {\n    checkbox(\"Bypass to raw lighting\",initialValue=false)\
-        \ { bypass=it }\n    checkbox(\"Move light\",initialValue=true) { animate=it }\n    button(\"Cut / reset\
-        \ history\") { if(it)cut=true }\n}\ndisplayOpen(\"RTXDI to RR\")\nprintln(\"Read render(): G-buffer → raw\
-        \ RTXDI → five guide attachments → RR → screen. Edit fragment to inspect the guide mapping.\")\nframes {\n\
-        \    var wasBypass=bypass\n    while(true) {\n        if(wasBypass!=bypass) {\n            rr.reset(\"bypass\
-        \ changed\");settings.resetHistory(\"bypass changed\")\n            (if(bypass)scene.lighting.output else\
-        \ rr.output).blitToScreen(name=\"RR plumbing\")\n            wasBypass=bypass\n        }\n        if(cut)\
-        \ {time+=4;revision++;rr.reset(\"live cut\");settings.resetHistory(\"live cut\");scene.bundle.invalidateFrameHistory();cut=false}\n\
-        \        frame()\n    }\n}.end { plumbing.close() }\n"
-      vertex: '#version 460
+      code: |
+        import afield.graphics.render.lighting.*
+        import afield.graphics.vulkan.Target
+        import afield.graphics.vulkan.device.CommandBuffer
+        import afield.media.reconstruction.*
+        import org.lwjgl.vulkan.VK13.*
 
-        void main(){vec2 p=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);gl_Position=vec4(p*2-1,0,1);}
-
-        '
-      fragment: '#version 460
-
-        layout(set=0,binding=0) uniform sampler2D positions;
-
-        layout(set=0,binding=1) uniform sampler2D normals;
-
-        layout(set=0,binding=2) uniform sampler2D albedo;
-
-        layout(set=0,binding=3) uniform sampler2D velocity;
-
-        layout(location=0) out float depth;
-
-        layout(location=1) out vec2 motion;
-
-        layout(location=2) out vec4 diffuse;
-
-        layout(location=3) out vec4 specular;
-
-        layout(location=4) out vec4 normalRoughness;
-
-        void main(){ivec2 p=ivec2(gl_FragCoord.xy);vec4 pos=texelFetch(positions,p,0);
-
-        depth=pos.w;motion=-texelFetch(velocity,p,0).xy*vec2(textureSize(velocity,0));
-
-        vec3 n=texelFetch(normals,p,0).xyz;bool valid=pos.w<1 && dot(n,n)>.01;
-
-        diffuse=vec4(valid?texelFetch(albedo,p,0).rgb:vec3(0),1);
-
-        specular=vec4(0,0,0,1);normalRoughness=vec4(valid?normalize(n):vec3(0,0,1),1);
-
+        // This guide conversion describes the existing opaque Lambertian RTXDI bridge.
+        // It is not a template for inventing missing glossy or transmission guides.
+        NgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()
+        prop<AutoCloseable>(plumbing)
+        fromContextWithNameOrNull<AutoCloseable>("plumbing")?.close()
+        val size = ReconstructionSize(1920, 1080)
+        prop<DirectLightingDemo>(scene)
+        scene = DirectLightingDemo(renderer, size.width, size.height)
+        val settings =
+            RtxdiSettings({ scene.bundle.scene.camera.modelView() }, { scene.bundle.scene.projection.evaluateUniform() })
+                .apply {
+                    temporal = true
+                    spatialSamples = 4
+                    denoisePasses = 0
+                }
+        scene.lighting.enableRtxdi(RtxdiProgram.load(), settings).getOrThrow()
+        scene.lighting.mode = DirectLighting.Mode.RTXDI
+        scene.lighting.samples = 8
+        val rr = DlssReconstruction(renderer, size, size, ReconstructionMode.DLAA, rayReconstruction = true)
+        prop<RenderToTexture>(guides)
+        guides = RenderToTexture(renderer) {
+            width = size.width
+            height = size.height
+            useDepth = false
+            colorAttachments = 5
+            colorFormats = [
+                VK_FORMAT_R32_SFLOAT,
+                VK_FORMAT_R32G32_SFLOAT,
+                VK_FORMAT_R16G16B16A16_SFLOAT,
+                VK_FORMAT_R16G16B16A16_SFLOAT,
+                VK_FORMAT_R16G16B16A16_SFLOAT,
+            ]
         }
+        val sampler = TextureSampler(renderer, 1, false, filter = VK_FILTER_NEAREST)
+        val surfaces = scene.lighting.surfaces
+        val inputs = mapOf(
+            "positions" to surfaces.position,
+            "normals" to surfaces.normal,
+            "albedo" to surfaces.albedo,
+            "velocity" to surfaces.motion,
+        )
+        val guideModule = moduleHere {
+            guides.apply()
+            depthTest = false
+            depthWrite = false
+            blend = false
+            textureResolver = { texture -> inputs[texture.name]?.let { fromViews([it], texture.name, sampler) } }
+        }
+        val quad = Mesh(renderer, guideModule)
+        quad.resize(3, 0, guideModule)
+        guideModule += "convert" to quad
+        guides += "guides" to guideModule
 
-        '
+        // Remove independent scheduling: this pass now owns their order.
+        scene.bundle.frameGraph().passNames().forEach { renderer.renderList.preTargets.remove(it) }
+        renderer.renderList.preTargets.remove(scene.lighting.name)
+        renderer.renderList.modules.remove("direct-light-demo")
+        var bypass = false
+        var animate = true
+        var cut = false
+        var time = 0.0
+        var frameIndex = 0L
+        var revision = 0L
+        var shaderVersion = guideModule.current.fi
+        val pass = object : Target {
+            override fun render(command: CommandBuffer, index: Int) {
+                if (shaderVersion !== guideModule.current.fi) {
+                    shaderVersion = guideModule.current.fi
+                    revision++
+                    rr.reset("guide edit")
+                }
+                val jitter =
+                    if (bypass) ReconstructionJitter(0f, 0f) else ReconstructionJitter.halton(frameIndex, size, size)
+                scene.bundle.scene.rasterJitterNdc.set(2 * jitter.x / size.width, -2 * jitter.y / size.height)
+                scene.animate(time)
+                if (animate) time += 1.0 / 60
+                settings.commitLights([IdentifiedAreaLight(1, scene.lighting.emitter)])
+
+                scene.bundle.gBuffer.render(command, index) // geometry, unjittered motion
+                scene.lighting.render(command, index) // raw RTXDI RGB
+                guides.render(command, index) // moduleHere format / convention conversion
+                if (!bypass)
+                    rr.evaluate(
+                        command,
+                        ReconstructionInputs(scene.lighting.output, guides.imageViewArray[0], guides.imageViewArray[1]),
+                        ReconstructionFrame(frameIndex, jitter, revision = revision),
+                        RayReconstructionGuides(
+                            guides.imageViewArray[2],
+                            guides.imageViewArray[3],
+                            guides.imageViewArray[4],
+                            scene.bundle.scene.camera.modelView(),
+                            scene.bundle.scene.projection.evaluateUniform(),
+                        ),
+                    )
+                frameIndex++
+            }
+        }
+        renderer.renderList.preTargets["RR plumbing"] = pass
+        rr.output.blitToScreen(name = "RR plumbing")
+        // Capture this allocation, not the mutable box prop that a rerun replaces.
+        val ownedTarget = guides
+        val owner = renderer // Cleanup must not depend on a still-running parent box.
+        var closed = false
+        plumbing = AutoCloseable {
+            if (!closed) {
+                closed = true
+                owner.renderList.preTargets.remove("RR plumbing", pass)
+                owner.renderList.modules.remove("RR plumbing")
+                rr.close()
+                scene.close()
+                owner.cleanup += Runnable {
+                    guideModule.current.cleanup()
+                    sampler.cleanup()
+                    ownedTarget.imageViewArray.forEach { it.imageView.cleanup() }
+                    ownedTarget.colorImageRefs.forEach { it?.cleanup() }
+                    ownedTarget.defaultSampler?.cleanup()
+                }
+            }
+        }
+        controlGroup("RTXDI to RR") {
+            checkbox("Bypass to raw lighting", initialValue = false) { bypass = it }
+            checkbox("Move light", initialValue = true) { animate = it }
+            button("Cut / reset history") { if (it) cut = true }
+        }
+        displayOpen("RTXDI to RR")
+        println(
+            "Read render(): G-buffer → raw RTXDI → five guide attachments → RR → screen. Edit fragment to inspect the guide mapping.",
+        )
+        frames {
+            var wasBypass = bypass
+            while (true) {
+                if (wasBypass != bypass) {
+                    rr.reset("bypass changed")
+                    settings.resetHistory("bypass changed")
+                    (if (bypass) scene.lighting.output else rr.output).blitToScreen(name = "RR plumbing")
+                    wasBypass = bypass
+                }
+                if (cut) {
+                    time += 4
+                    revision++
+                    rr.reset("live cut")
+                    settings.resetHistory("live cut")
+                    scene.bundle.invalidateFrameHistory()
+                    cut = false
+                }
+                frame()
+            }
+        }
+            .end { plumbing.close() }
+      vertex: |
+        #version 460
+        void main() {
+            vec2 p=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);
+            gl_Position=vec4(p*2-1,0,1);
+        }
+      fragment: |
+        #version 460
+
+        layout(set = 0, binding = 0) uniform sampler2D positions;
+        layout(set = 0, binding = 1) uniform sampler2D normals;
+        layout(set = 0, binding = 2) uniform sampler2D albedo;
+        layout(set = 0, binding = 3) uniform sampler2D velocity;
+
+        layout(location = 0) out float depth;
+        layout(location = 1) out vec2 motion;
+        layout(location = 2) out vec4 diffuse;
+        layout(location = 3) out vec4 specular;
+        layout(location = 4) out vec4 normalRoughness;
+
+        void main() {
+            ivec2 pixel = ivec2(gl_FragCoord.xy);
+            vec4 positionAndDepth = texelFetch(positions, pixel, 0);
+
+            // G-buffer alpha stores Vulkan depth in [0, 1]; 1 is the cleared background.
+            depth = positionAndDepth.w;
+
+            // Raster motion is currentUV - previousUV, unjittered and Y down.
+            // Reconstruction wants current-to-previous motion in input pixels.
+            vec2 uvMotion = texelFetch(velocity, pixel, 0).xy;
+            vec2 inputSize = vec2(textureSize(velocity, 0));
+            motion = -uvMotion * inputSize;
+
+            vec3 worldNormal = texelFetch(normals, pixel, 0).xyz;
+            bool valid = positionAndDepth.w < 1 && dot(worldNormal, worldNormal) > .01;
+            diffuse = vec4(valid ? texelFetch(albedo, pixel, 0).rgb : vec3(0), 1);
+
+            // Opaque Lambertian material: zero specular RGB and roughness 1 in normalRoughness.w.
+            // Background uses a unit fallback normal instead of normalizing zero.
+            specular = vec4(0, 0, 0, 1);
+            normalRoughness = vec4(valid ? normalize(worldNormal) : vec3(0, 0, 1), 1);
+        }
 - connect:
     parent: agent_graphics_context
     child: rr_plumbing
@@ -124,50 +266,161 @@ operations:
     property: code
     type: code
     strand: scene
-    code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.Target\nimport afield.four.device.CommandBuffer\n\
-      import afield.four.lighting.*\nimport afield.four.modules.fromContextWithNameOrNull\nimport afield.four.reconstruction.*\n\
-      import afield.four.texture.TextureSampler\nimport afield.stdlib.fromViews\nimport org.lwjgl.vulkan.VK13.*\n\
-      \n// This guide conversion describes the existing opaque Lambertian RTXDI bridge.\n// It is not a template\
-      \ for inventing missing glossy or transmission guides.\nNgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()\n\
-      prop<AutoCloseable>(plumbing)\nfromContextWithNameOrNull<AutoCloseable>(\"plumbing\")?.close()\nval size=ReconstructionSize(1920,1080)\n\
-      prop<DirectLightingDemo>(scene)\nscene=DirectLightingDemo(renderer,size.width,size.height)\nval settings=RtxdiSettings({scene.bundle.scene.camera.modelView()},{scene.bundle.scene.projection.evaluateUniform()})\n\
-      \    .apply { temporal=true;spatialSamples=4;denoisePasses=0 }\nscene.lighting.enableRtxdi(RtxdiProgram.load(),settings).getOrThrow()\n\
-      scene.lighting.mode=DirectLighting.Mode.RTXDI\nscene.lighting.samples=8\nval rr=DlssReconstruction(renderer,size,size,ReconstructionMode.DLAA,rayReconstruction=true)\n\
-      prop<RenderToTexture>(guides)\nguides=RenderToTexture(renderer) {\n    width=size.width;height=size.height;useDepth=false;colorAttachments=5\n\
-      \    colorFormats=listOf(VK_FORMAT_R32_SFLOAT,VK_FORMAT_R32G32_SFLOAT,\n        VK_FORMAT_R16G16B16A16_SFLOAT,VK_FORMAT_R16G16B16A16_SFLOAT,VK_FORMAT_R16G16B16A16_SFLOAT)\n\
-      }\nval sampler=TextureSampler(renderer,1,false,filter=VK_FILTER_NEAREST)\nval surfaces=scene.lighting.surfaces\n\
-      val inputs=mapOf(\"positions\" to surfaces.position,\"normals\" to surfaces.normal,\n    \"albedo\" to surfaces.albedo,\"\
-      velocity\" to surfaces.motion)\nval guideModule=moduleHere {\n    guides.apply();depthTest=false;depthWrite=false;blend=false\n\
-      \    textureResolver={ texture -> inputs[texture.name]?.let { fromViews(listOf(it),texture.name,sampler) }\
-      \ }\n}\nval quad=Mesh(renderer,guideModule)\nquad.resize(3,0,guideModule)\nguideModule += \"convert\" to quad\n\
-      guides += \"guides\" to guideModule\n\n// Remove independent scheduling: this pass now owns their order.\n\
-      scene.bundle.frameGraph().passNames().forEach { renderer.renderList.preTargets.remove(it) }\nrenderer.renderList.preTargets.remove(scene.lighting.name)\n\
-      renderer.renderList.modules.remove(\"direct-light-demo\")\nvar bypass=false\nvar animate=true\nvar cut=false\n\
-      var time=0.0\nvar frameIndex=0L\nvar revision=0L\nvar shaderVersion=guideModule.current.fi\nval pass=object:\
-      \ Target {\n    override fun render(command: CommandBuffer,index: Int) {\n        if(shaderVersion!==guideModule.current.fi)\
-      \ {shaderVersion=guideModule.current.fi;revision++;rr.reset(\"guide edit\")}\n        val jitter=if(bypass)ReconstructionJitter(0f,0f)\
-      \ else ReconstructionJitter.halton(frameIndex,size,size)\n        scene.bundle.scene.rasterJitterNdc.set(2*jitter.x/size.width,-2*jitter.y/size.height)\n\
-      \        scene.animate(time)\n        if(animate)time+=1.0/60\n        settings.commitLights(listOf(IdentifiedAreaLight(1,scene.lighting.emitter)))\n\
-      \n        scene.bundle.gBuffer.render(command,index)  // geometry, unjittered motion\n        scene.lighting.render(command,index)\
-      \       // raw RTXDI RGB\n        guides.render(command,index)               // moduleHere format / convention\
-      \ conversion\n        if(!bypass)rr.evaluate(command,\n            ReconstructionInputs(scene.lighting.output,guides.imageViewArray[0],guides.imageViewArray[1]),\n\
-      \            ReconstructionFrame(frameIndex,jitter,revision=revision),\n            RayReconstructionGuides(guides.imageViewArray[2],guides.imageViewArray[3],guides.imageViewArray[4],\n\
-      \                scene.bundle.scene.camera.modelView(),scene.bundle.scene.projection.evaluateUniform()))\n\
-      \        frameIndex++\n    }\n}\nrenderer.renderList.preTargets[\"RR plumbing\"]=pass\nrr.output.blitToScreen(name=\"\
-      RR plumbing\")\n// Capture this allocation, not the mutable box prop that a rerun replaces.\nval ownedTarget=guides\n\
-      val owner=renderer // Cleanup must not depend on a still-running parent box.\nvar closed=false\nplumbing=AutoCloseable\
-      \ {\n    if(!closed) {\n        closed=true;owner.renderList.preTargets.remove(\"RR plumbing\",pass)\n   \
-      \     owner.renderList.modules.remove(\"RR plumbing\")\n        rr.close();scene.close()\n        owner.cleanup+=Runnable\
-      \ {\n            guideModule.current.cleanup();sampler.cleanup()\n            ownedTarget.imageViewArray.forEach\
-      \ { it.imageView.cleanup() }\n            ownedTarget.colorImageRefs.forEach { it?.cleanup() };ownedTarget.defaultSampler?.cleanup()\n\
-      \        }\n    }\n}\ncontrolGroup(\"RTXDI to RR\") {\n    checkbox(\"Bypass to raw lighting\",initialValue=false)\
-      \ { bypass=it }\n    checkbox(\"Move light\",initialValue=true) { animate=it }\n    button(\"Cut / reset history\"\
-      ) { if(it)cut=true }\n}\ndisplayOpen(\"RTXDI to RR\")\nprintln(\"Read render(): G-buffer → raw RTXDI → five\
-      \ guide attachments → RR → screen. Edit fragment to inspect the guide mapping.\")\nframes {\n    var wasBypass=bypass\n\
-      \    while(true) {\n        if(wasBypass!=bypass) {\n            rr.reset(\"bypass changed\");settings.resetHistory(\"\
-      bypass changed\")\n            (if(bypass)scene.lighting.output else rr.output).blitToScreen(name=\"RR plumbing\"\
-      )\n            wasBypass=bypass\n        }\n        if(cut) {time+=4;revision++;rr.reset(\"live cut\");settings.resetHistory(\"\
-      live cut\");scene.bundle.invalidateFrameHistory();cut=false}\n        frame()\n    }\n}.end { plumbing.close()\
-      \ }\n"
+    code: |
+      import afield.graphics.render.lighting.*
+      import afield.graphics.vulkan.Target
+      import afield.graphics.vulkan.device.CommandBuffer
+      import afield.media.reconstruction.*
+      import org.lwjgl.vulkan.VK13.*
+
+      // This guide conversion describes the existing opaque Lambertian RTXDI bridge.
+      // It is not a template for inventing missing glossy or transmission guides.
+      NgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()
+      prop<AutoCloseable>(plumbing)
+      fromContextWithNameOrNull<AutoCloseable>("plumbing")?.close()
+      val size = ReconstructionSize(1920, 1080)
+      prop<DirectLightingDemo>(scene)
+      scene = DirectLightingDemo(renderer, size.width, size.height)
+      val settings =
+          RtxdiSettings({ scene.bundle.scene.camera.modelView() }, { scene.bundle.scene.projection.evaluateUniform() })
+              .apply {
+                  temporal = true
+                  spatialSamples = 4
+                  denoisePasses = 0
+              }
+      scene.lighting.enableRtxdi(RtxdiProgram.load(), settings).getOrThrow()
+      scene.lighting.mode = DirectLighting.Mode.RTXDI
+      scene.lighting.samples = 8
+      val rr = DlssReconstruction(renderer, size, size, ReconstructionMode.DLAA, rayReconstruction = true)
+      prop<RenderToTexture>(guides)
+      guides = RenderToTexture(renderer) {
+          width = size.width
+          height = size.height
+          useDepth = false
+          colorAttachments = 5
+          colorFormats = [
+              VK_FORMAT_R32_SFLOAT,
+              VK_FORMAT_R32G32_SFLOAT,
+              VK_FORMAT_R16G16B16A16_SFLOAT,
+              VK_FORMAT_R16G16B16A16_SFLOAT,
+              VK_FORMAT_R16G16B16A16_SFLOAT,
+          ]
+      }
+      val sampler = TextureSampler(renderer, 1, false, filter = VK_FILTER_NEAREST)
+      val surfaces = scene.lighting.surfaces
+      val inputs = mapOf(
+          "positions" to surfaces.position,
+          "normals" to surfaces.normal,
+          "albedo" to surfaces.albedo,
+          "velocity" to surfaces.motion,
+      )
+      val guideModule = moduleHere {
+          guides.apply()
+          depthTest = false
+          depthWrite = false
+          blend = false
+          textureResolver = { texture -> inputs[texture.name]?.let { fromViews([it], texture.name, sampler) } }
+      }
+      val quad = Mesh(renderer, guideModule)
+      quad.resize(3, 0, guideModule)
+      guideModule += "convert" to quad
+      guides += "guides" to guideModule
+
+      // Remove independent scheduling: this pass now owns their order.
+      scene.bundle.frameGraph().passNames().forEach { renderer.renderList.preTargets.remove(it) }
+      renderer.renderList.preTargets.remove(scene.lighting.name)
+      renderer.renderList.modules.remove("direct-light-demo")
+      var bypass = false
+      var animate = true
+      var cut = false
+      var time = 0.0
+      var frameIndex = 0L
+      var revision = 0L
+      var shaderVersion = guideModule.current.fi
+      val pass = object : Target {
+          override fun render(command: CommandBuffer, index: Int) {
+              if (shaderVersion !== guideModule.current.fi) {
+                  shaderVersion = guideModule.current.fi
+                  revision++
+                  rr.reset("guide edit")
+              }
+              val jitter =
+                  if (bypass) ReconstructionJitter(0f, 0f) else ReconstructionJitter.halton(frameIndex, size, size)
+              scene.bundle.scene.rasterJitterNdc.set(2 * jitter.x / size.width, -2 * jitter.y / size.height)
+              scene.animate(time)
+              if (animate) time += 1.0 / 60
+              settings.commitLights([IdentifiedAreaLight(1, scene.lighting.emitter)])
+
+              scene.bundle.gBuffer.render(command, index) // geometry, unjittered motion
+              scene.lighting.render(command, index) // raw RTXDI RGB
+              guides.render(command, index) // moduleHere format / convention conversion
+              if (!bypass)
+                  rr.evaluate(
+                      command,
+                      ReconstructionInputs(scene.lighting.output, guides.imageViewArray[0], guides.imageViewArray[1]),
+                      ReconstructionFrame(frameIndex, jitter, revision = revision),
+                      RayReconstructionGuides(
+                          guides.imageViewArray[2],
+                          guides.imageViewArray[3],
+                          guides.imageViewArray[4],
+                          scene.bundle.scene.camera.modelView(),
+                          scene.bundle.scene.projection.evaluateUniform(),
+                      ),
+                  )
+              frameIndex++
+          }
+      }
+      renderer.renderList.preTargets["RR plumbing"] = pass
+      rr.output.blitToScreen(name = "RR plumbing")
+      // Capture this allocation, not the mutable box prop that a rerun replaces.
+      val ownedTarget = guides
+      val owner = renderer // Cleanup must not depend on a still-running parent box.
+      var closed = false
+      plumbing = AutoCloseable {
+          if (!closed) {
+              closed = true
+              owner.renderList.preTargets.remove("RR plumbing", pass)
+              owner.renderList.modules.remove("RR plumbing")
+              rr.close()
+              scene.close()
+              owner.cleanup += Runnable {
+                  guideModule.current.cleanup()
+                  sampler.cleanup()
+                  ownedTarget.imageViewArray.forEach { it.imageView.cleanup() }
+                  ownedTarget.colorImageRefs.forEach { it?.cleanup() }
+                  ownedTarget.defaultSampler?.cleanup()
+              }
+          }
+      }
+      controlGroup("RTXDI to RR") {
+          checkbox("Bypass to raw lighting", initialValue = false) { bypass = it }
+          checkbox("Move light", initialValue = true) { animate = it }
+          button("Cut / reset history") { if (it) cut = true }
+      }
+      displayOpen("RTXDI to RR")
+      println(
+          "Read render(): G-buffer → raw RTXDI → five guide attachments → RR → screen. Edit fragment to inspect the guide mapping.",
+      )
+      frames {
+          var wasBypass = bypass
+          while (true) {
+              if (wasBypass != bypass) {
+                  rr.reset("bypass changed")
+                  settings.resetHistory("bypass changed")
+                  (if (bypass) scene.lighting.output else rr.output).blitToScreen(name = "RR plumbing")
+                  wasBypass = bypass
+              }
+              if (cut) {
+                  time += 4
+                  revision++
+                  rr.reset("live cut")
+                  settings.resetHistory("live cut")
+                  scene.bundle.invalidateFrameHistory()
+                  cut = false
+              }
+              frame()
+          }
+      }
+          .end { plumbing.close() }
 - wait:
     frames: 12

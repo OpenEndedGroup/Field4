@@ -151,11 +151,11 @@ for investors gets a redaction pass (paths, names, provider ids) before it leave
 ## 8. Phase 1: what was built and what it found
 
 Code:
-- `src/commonMain/kotlin/aiChatBlocks.kt`: `parseAiChatBlocks`, moved from the panel renderer, so the
+- `src/commonMain/kotlin/afield/ai/conversation/aiChatBlocks.kt`: `parseAiChatBlocks`, moved from the panel renderer, so the
   panel and the archive share one parser. It also has `toolCall()` (the progress title),
   `programCalls()` (a tool program's `- ✓/✗` lines) and `images()` (with captions).
 - `src/commonMain/resources/ai4-chat-tool-families.json`: the family table.
-- `src/jvmMain/kotlin/afield/chatlog/ChatArchive.kt`: reads a document folder's chats as trees,
+- `src/jvmMain/kotlin/afield/ai/conversation/chatlog/ChatArchive.kt`: reads a document folder's chats as trees,
   read-only, with no Field server or box involved. `ChatArchiveCli.kt` reports on them.
 - Tests: `ChatArchiveTest` (JVM). The chat UI regressions (`ai-chat-scroll`, `ai-chat-resize`,
   `ai-chat-fence-renderers`) cover the panel's switch to the shared parser. They caught a pattern
@@ -166,7 +166,7 @@ Code:
 Run it (read-only):
 
 ```
-uv run --project . --group backdoor python tools/field_backdoor.py --json --command "run-jvm-main afield.chatlog.ChatArchiveCli --arg=--workspace --arg ~/house-machine/workspace --arg=--match --arg 'house-machine-*' --arg=--out --arg <dir>"
+uv run --project . --group backdoor python tools/field_backdoor.py --json --command "run-jvm-main afield.ai.conversation.chatlog.ChatArchiveCli --arg=--workspace --arg ~/house-machine/workspace --arg=--match --arg 'house-machine-*' --arg=--out --arg <dir>"
 ```
 
 The house corpus on 2026-10-06 (12 chats in 11 houses; houses 4 and 5 have none; 13 and 14 store
@@ -213,12 +213,12 @@ UI regression: `ai-chat-rounds`.
 ## 10. Phase 3: tools, and the first lens
 
 Code:
-- `afield.chatlog.ChatLogViews`: what an agent reads. `outline` (every turn with its time and full
+- `afield.ai.conversation.chatlog.ChatLogViews`: what an agent reads. `outline` (every turn with its time and full
   request, replies as first lines, rounds as round lines, images as captions, then abandoned
   branches), `read` (a stretch as text, each block headed by its address, paged), `search`,
   `images` (address, reference, what the tool looked for, what the agent concluded), and the lens
   checks `lensProblems` / `lensStats`.
-- `afield.chatlog.registerChatlogTools(roots…)` (`ChatlogTools.kt`): `chatlog.list/outline/read/
+- `afield.ai.conversation.chatlog.registerChatlogTools(roots…)` (`ChatlogTools.kt`): `chatlog.list/outline/read/
   search/images` and `lens.write/read/list`. Lenses are saved in the registering document's
   `lenses/<chat>/<name>.md`, beside `<name>.json` with the brief, the model and the stats.
 - `AiChatRound` (commonMain): the round line, shared by the panel and the views.
@@ -315,3 +315,16 @@ The series lens across houses, two ways (all twelve outlines are 80 k tokens):
 - B: a storyline per house first (about 300 k each, so about 3.3 M for the eleven missing), then a
   cheap series lens over `series:house-machine-*@storyline`, which also leaves a storyline for every
   house and the full hierarchy series → storyline → episodes → chat.
+
+## 13. Public page
+
+`public/docs/ai4_chat_archive.md` ("Reading Saved AI4 Chats") covers phases 1–4 for users, over the real
+`harbour` chat in `public/docs/assets/ai4_chat_archive/chats/` (the 2026-10-05 `ai4_paint_studio` run kept in
+`field-user-dir/painting-state-browser-2026-10-05/`, slimmed: history images as `ai4img:` refs, blobs at
+640 px, no `ai4_blobs/state/`), a hand-written `storyline` lens, and a `demo/` document of the page's four boxes.
+It replaced an invented `garden-shed` fixture at the human's request. Capture notes: `println` output is inline, not a panel, so the
+fences `display(...)` a `<pre>`; the viewer fence uses `capture="window"`, and its `clip` is in CSS px at the
+runner's 0.56 window scale, so `clip="0,0,2210,1460"` is the lens channel; `trim` cannot crop the grained
+canvas background. When the lens markup or viewer changes, recapture with
+`FIELD_DOCS_RUNNER_MODE=always ... --page ai4_chat_archive.md` and update the lens record's stats from the
+`stats.png` capture.

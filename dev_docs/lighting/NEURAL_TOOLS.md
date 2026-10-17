@@ -78,11 +78,11 @@ PORT=9768 VK_DRIVER_FILES=/usr/share/vulkan/icd.d/nvidia_icd.json \
 
 uv run --project . --group backdoor python tools/lighting/check_wayland.py --port 9768
 uv run --project . --group backdoor python tools/field_backdoor.py --json --attach-existing --port 9768 \
-  --command 'run-jvm-main afield.four.reconstruction.RayReconstructionSmoke --arg=--clip --timeout 360'
+  --command 'run-jvm-main afield.media.reconstruction.RayReconstructionSmoke --arg=--clip --timeout 360'
 uv run --project . --group backdoor python tools/field_backdoor.py --json --attach-existing --port 9768 \
-  --command 'run-jvm-main afield.four.vision.OpticalFlowSmoke --arg=--clip --timeout 200'
+  --command 'run-jvm-main afield.media.vision.OpticalFlowSmoke --arg=--clip --timeout 200'
 uv run --project . --group backdoor python tools/field_backdoor.py --json --attach-existing --port 9768 \
-  --command 'run-jvm-main afield.four.neural.LearnedShaderSmoke --arg=--clip --timeout 240'
+  --command 'run-jvm-main afield.graphics.shader.learning.LearnedShaderSmoke --arg=--clip --timeout 240'
 ```
 
 Check the actual Starting Points, checkbox changes, captures and ordinary Stop cleanup with:

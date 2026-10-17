@@ -5,22 +5,14 @@ DSP building blocks. A picture of a filter curve only gets you so far; the way t
 plate reverb, an LFO-swept phaser, a resonant lowpass, a click-free envelope, a soft clipper or
 a pair of aliasing oscillators *does* is to run a real signal through it and listen.
 
-The six clips below are the primitives themselves, driven by real signals rather than the
-`patVoice` drum stand-in the pattern pages use. Each is block-rendered offline (exactly as the
-audio engine renders it, minus the sound card) and written to a 16-bit PCM WAV at docs-build
-time by [`DoughDspSoundDocs`](reference/synthesis.md#doughdspsounddocs-kt-doughdspsounddocs)
-(in [`DoughDspSoundDocs.kt`](reference/synthesis.md#doughdspsounddocs-kt)); the plots are
-[`showSignals`](reference/visualization.md#plotly-kt-functions) Plotly figures of the same run.
-[Sound: the Pattern → Audio Path](sound.md) audits every audio clip in these docs and names the
-family that produced each one.
+Each section below builds one primitive, plays a signal through it, plots the result with
+[`showSignals`](reference/visualization.md#plotly-kt-functions), and lets you hear it. The clips are
+rendered offline by the same code the audio engine runs.
 
-In each runner block the code that constructs and drives the primitive is in focus, and the
-render-and-plot boilerplate is folded behind a `+ …` pill you can click to reveal. The
-offline `dough*` helpers it calls
-(`doughRenderMono`, `doughRenderStereoMono`, `doughRenderGated`, `doughPluckEnv`, and the
-plot-shaping `doughAbsEnvelope` / `doughShortTimeRms` / `doughShortTimeBrightness` /
-`doughWaveWindow`) live in the same file, [listed with their KDoc](reference/synthesis.md#doughdspsounddocs-kt-functions),
-and are auto-imported into every box.
+In each example the code that builds the primitive is shown, and the rendering and plotting are
+folded behind a `+ …` pill you can click to open. The `dough*` helpers it calls (`doughRenderMono`,
+`doughPluckEnv`, `doughAbsEnvelope` and the rest) are available in every box and
+[listed in the reference](reference/synthesis.md#doughdspsounddocs-kt-functions).
 
 ---
 
@@ -114,15 +106,15 @@ showSignals(
 ## CurvedADSR — a gated three-note rhythm
 
 A 220 Hz sine multiplied by the click-free curved envelope, gated on and off three times. Each
-note swells in and fades out with real silence between, and no clicks at the retrigger, which
-is the whole point of the curved variant. The envelope plot shows three clean humps.
+note swells in and fades out with real silence between, and the curved envelope keeps the
+retrigger free of clicks. The envelope plot shows three clean humps.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dough_dsp_sound/curved-adsr.png" wait="1.5" capture="box" open-outputs="true" name="dough-sound-adsr"}
 :::static
 val gate   = Gate()
 val voice  = SineOsc(Param(220f)) * CurvedADSR(gate, Param(0.02f), Param(0.08f), Param(0.6f), Param(0.15f))
 // (open?, seconds): three notes with silent gaps
-val rhythm = listOf(true to 0.25f, false to 0.20f, true to 0.25f, false to 0.20f, true to 0.25f, false to 0.35f)
+val rhythm = [true to 0.25f, false to 0.20f, true to 0.25f, false to 0.20f, true to 0.25f, false to 0.35f]
 :::fold render the gate schedule offline and plot the amplitude envelope
 val audio = doughRenderGated(voice, gate, rhythm)
 showSignals(
@@ -202,4 +194,6 @@ showSignals(
 ---
 
 See also: [Subharmonic Synthesis](subharmonic_sound.md), which runs pitch trackers through these
-filters and the saturator to put a tone an octave under a bassline, a kick drum and a film voice.
+filters and the saturator to put a tone an octave under a bassline, a kick drum and a film voice;
+[A pattern in space](pat_spatial.md), which plays patterns through the full dough engine; and
+[Making a sound in Field](sound_paths.md) for every sound path side by side.

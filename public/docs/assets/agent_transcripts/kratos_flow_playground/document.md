@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Kratos flow playground
@@ -11,18 +11,18 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kratos_flow" index="0" -->
 
 ```edn [field-box id="kratos_flow" role="properties"]
-{"id" "kratos_flow" "index" 0 "name" "Kratos flow playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos flow playground" "_tombstone" false "frame" #afield/rect [60.0 140.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_flow_code_.kt" "lines" 169 "characters" 9417 "sha256" "27bcc85378ed013e20217836c3b0fc14d7849ecd7e8bc70065bc03a3dba1ecc1"}]}
+{"id" "kratos_flow" "index" 0 "name" "Kratos flow playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos flow playground" "_tombstone" false "frame" #afield/rect [60.0 140.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_flow_code_.kt" "lines" 169 "characters" 9496 "sha256" "01e8357dec0a03d8d047011a58b26249de46f2099926f1aed7bae76fbd780ead"}]}
 ```
 
 ```kotlin [field-property box="kratos_flow" name="code" path="kratos_flow_code_.kt"]
-import afield.frames
-import afield.kratos.*
-import afield.manifold.ManifoldLibrary
-import afield.stdlib.MeshRenderer
-import afield.stdlib.MeshView
-import afield.stdlib.TriMesh
-import afield.stdlib.showMeshGrid
-import afield.stdlib.tubeMesh
+import afield.runtime.lifecycle.frames
+import afield.simulation.kratos.*
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.mesh.MeshRenderer
+import afield.geometry.mesh.MeshView
+import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.showMeshGrid
+import afield.geometry.mesh.tubeMesh
 import java.util.concurrent.atomic.AtomicReference
 
 // Launch (Alt-R). Drag a slider to reshape the body — that part is instant.

@@ -8,7 +8,7 @@ behavior belongs with these files:
 - `src/commonMain/resources/edn-parser.js`: the supported EDN subset.
 - `src/commonMain/resources/offline.html`: layout and static styles.
 - `tools/sync_offline_assets.py`: authoritative distribution contents.
-- `src/jvmMain/kotlin/afield/Server.kt`, route
+- `src/jvmMain/kotlin/afield/app/server/Server.kt`, route
   `/api/import-offline-doc`: optional transfer into a running Field workspace.
 
 The renderer omits the root, tombstones, boxes without a nonblank name, and boxes
@@ -38,7 +38,7 @@ treated as untrusted.
 
 ## Verification
 
-Run `./build-offline-docs.sh`, serve `dist/offline-viewer/`, and verify the sample
+Run `./tools/build-offline-docs.sh`, serve `dist/offline-viewer/`, and verify the sample
 URL documented by the script. Check graph-only fallback by withholding
 `min/vs/loader.js`. Import testing must use a disposable workspace and confirm
 both name sanitization and collision suffixing; do not aim the test at a user's

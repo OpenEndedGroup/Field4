@@ -76,6 +76,9 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator
 from urllib.parse import unquote, urlsplit
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import field_agent  # noqa: E402  (claude or codex: FIELD_AGENT, or ~/.afield/agent)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_ORIGIN = "https://openendedgroup.com"
 DOCS_ROOT = "/field4/"
@@ -470,7 +473,7 @@ def resolve_page_source(page_url: str, git: Git) -> PageSource:
             source_set, _, rest = trimmed.partition("/")
             kotlin = f"src/{source_set}/kotlin/{rest}.kt"
             if (git.root / kotlin).is_file():
-                return PageSource(page_url, rel, kotlin, {"generator": "afield.docs.SourcePageGenerator",
+                return PageSource(page_url, rel, kotlin, {"generator": "afield.tools.docs.SourcePageGenerator",
                                                           "from": kotlin, "regenerate": "./gradlew generateSourcePages"})
     return PageSource(page_url, candidates[0] if candidates else "", None)
 
@@ -1147,7 +1150,7 @@ def _draft_source(git: Git, path: str, line: int, draft: dict[str, Any], status:
               "trackedAtEpochMs": now_ms(), "trackedHead": head, "path": path, "startLine": line, "endLine": line,
               "status": status, "origins": origins_for(git, None, path, line, line), "anchoredAt": head,
               "method": "declaration", "excerpt": excerpt(text, line, line),
-              "generated": {"generator": "afield.docs.SourcePageGenerator", "from": path,
+              "generated": {"generator": "afield.tools.docs.SourcePageGenerator", "from": path,
                             "regenerate": "./gradlew generateSourcePages"},
               "draft": draft}
     if previous and previous.get("firstAnchoredAt"):
@@ -2536,7 +2539,7 @@ def pass_status(git: Git, store: Store) -> dict[str, Any]:
     result: dict[str, Any] = {"primary": str(git.root), "notes": counts, "handoffs": handoffs, "questions": questions,
                               "batches": batch_overview(git, notes),
                               "primaryBranch": git.run("branch", "--show-current", check=False).strip(),
-                              "pass": load_pass(git.root)}
+                              "pass": load_pass(git.root), "agent": field_agent.configured_agent()}
     state = result["pass"]
     if state and Path(state["worktree"]).is_dir():
         wt = Git(Path(state["worktree"]))
@@ -3280,7 +3283,7 @@ def start_session(git: Git, store: Store, batch_key: str, driver: str = "") -> d
                 item.setdefault("handoff", {})["state"] = "taken"
                 add_entry(item, "comment", f"taken in a {batch['title']} session: {worktree}", "human")
     store.mutate(take)
-    command = f"cd {shlex.quote(str(worktree))} && claude \"Read HANDOFF_SESSION.md, then let's start with the first handoff.\""
+    command = f"cd {shlex.quote(str(worktree))} && {field_agent.configured_agent()} \"Read HANDOFF_SESSION.md, then let's start with the first handoff.\""
     session = {"batch": batch_key, "title": batch["title"], "worktree": str(worktree), "branch": branch,
                "base": base_commit, "handoffs": ids, "command": command, "createdAtEpochMs": now_ms()}
     if driver:
@@ -3323,7 +3326,7 @@ def end_session(git: Git, store: Store, batch_key: str, abandon: bool) -> int:
 
 
 def add_revise_arguments(p: argparse.ArgumentParser) -> None:
-    p.add_argument("--agent", choices=sorted(AGENTS), default=os.environ.get("DOCS_NOTES_AGENT", "claude"))
+    p.add_argument("--agent", choices=sorted(AGENTS), default=os.environ.get("DOCS_NOTES_AGENT") or field_agent.configured_agent())
     p.add_argument("--agent-command", help="custom agent argv template: {prompt}, {prompt_file}, {root}")
     p.add_argument("--jobs", "-j", type=int, default=4)
     p.add_argument("--tag", action="append", default=[])

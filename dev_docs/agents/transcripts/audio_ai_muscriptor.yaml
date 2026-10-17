@@ -11,7 +11,6 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 340.0, h: 50.0 }
       properties:
         code: |
-          import afield.stdlib.noir.audioai.*
 
           display("guide", """
           <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
@@ -28,10 +27,9 @@ operations:
       frame: { x: 420.0, y: 40.0, w: 340.0, h: 50.0 }
       properties:
         code: |
-          import afield.stdlib.noir.audioai.*
-          import afield.stdlib.AudioVisualizer
-          import afield.stdlib.AudioVisualizerOptions
-          import afield.four.audio.WavFloatArrayLoader
+          import afield.ui.visualization.AudioVisualizer
+          import afield.ui.visualization.AudioVisualizerOptions
+          import afield.audio.engine.WavFloatArrayLoader
           import java.io.File
           import java.nio.file.Path
           val json = FieldAudioClient.json
@@ -47,17 +45,16 @@ operations:
       frame: { x: 40.0, y: 140.0, w: 340.0, h: 50.0 }
       properties:
         code: |
-          import afield.stdlib.AudioVisualizerOptions
-          import afield.stdlib.noir.audioai.*
+          import afield.ui.visualization.AudioVisualizerOptions
           import java.nio.file.Path
-
+          
           val client = FieldAudioClient()
           val sourcePattern = "*sonic-pi-study*" // replace with an asset you may transcribe
           // Filename matches can refer to different recordings; retain the resolved content ID.
           val sync = "muscriptor-live"
           val midiDirectory = Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders")
           display("job monitor", fieldAudioJobMonitor(heightPixels = 330))
-
+          
           client.assetByFilename(sourcePattern).thenCompose { source ->
               display("source identity", source.id)
               val audio = source.representations.firstOrNull { it.role == "canonical_project" }

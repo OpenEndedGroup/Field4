@@ -1,13 +1,13 @@
 package afield.examples.stdlib
 
-import afield.stdlib.ActivationOrder
-import afield.stdlib.Lambda
-import afield.stdlib.LambdaTerms
-import afield.stdlib.NodeState
-import afield.stdlib.Reducer
-import afield.stdlib.Term
-import afield.stdlib.net
-import afield.stdlib.vec
+import afield.data.graph.ActivationOrder
+import afield.data.graph.Lambda
+import afield.lang.lambda.LambdaTerms
+import afield.data.graph.NodeState
+import afield.data.graph.Reducer
+import afield.lang.lambda.Term
+import afield.data.graph.net
+import afield.math.linalg.vec
 
 /*
 FIELD_TEST
@@ -23,7 +23,7 @@ expect:
 */
 
 /**
- * The oracle harness for `afield.stdlib.LambdaTerms`.
+ * The oracle harness for `afield.lang.lambda.LambdaTerms`.
  *
  * The load-bearing assertion is [testCorpusAgreesWithTheOracle]: for every named term in
  * `LambdaTerms.corpus()`, `readback(reduce(compile(t)))` is α-equivalent to `referenceNormalOrder(t)` — a net
@@ -293,7 +293,8 @@ object LambdaTermsSmokeTest {
      * **Two columns, in two different units.** A net reaction is any rule firing — a β, a duplication, an erasure or
      * a fan meeting — while an oracle step is a β-reduction and nothing else. They are not comparable as a ratio and
      * neither number says "optimal". What the pair is good for is noticing a change: over the 25-term corpus at
-     * `FIRST_FOUND`, 228 net reactions against 117 oracle β-steps as measured on 2026-09-18.
+     * `FIRST_FOUND`, 1499 net reactions against 117 oracle β-steps, measured 2026-10-16 after the move to
+     * Lambdascope; most of the reactions are scope delimiters moving and closing. (228 with labelled fans.)
      *
      * A **floor** as well as a ceiling, because a step count that suddenly drops is a reducer that has stopped doing
      * the work rather than one that got clever, and the ceiling is what a rule firing forever trips. The oracle total
@@ -343,10 +344,11 @@ object LambdaTermsSmokeTest {
         false
     }
 
-    // Measured 228 at FIRST_FOUND on 2026-09-18 over the 25-term corpus; widened by about 10% each way so that a
-    // re-layout or an id change does not churn the fence, and so that a collapse or an explosion still trips it.
-    private const val STEP_FLOOR = 205
-    private const val STEP_CEILING = 255
+    // Measured 1499 at FIRST_FOUND on 2026-10-16 over the 25-term corpus (Lambdascope); widened by about 10% each
+    // way so that a re-layout or an id change does not churn the fence, and so that a collapse or an explosion still
+    // trips it.
+    private const val STEP_FLOOR = 1350
+    private const val STEP_CEILING = 1650
 
     // 117 oracle beta-steps over the same 25 terms. Exact: no scheduler enters into it.
     private const val ORACLE_BETA_TOTAL = 117

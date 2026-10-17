@@ -6,7 +6,7 @@ gap between them that is the reason there are two.
 
 ## The CPU half pins the arithmetic, and only the arithmetic
 
-`afield.stdlib.KeyframeSweepTest` recomputes `Σ wᵢ·vᵢ` from each manifest and requires it
+`afield.animation.keyframes.KeyframeSweepTest` recomputes `Σ wᵢ·vᵢ` from each manifest and requires it
 to reproduce the `key.json` written beside it. That is the whole provenance contract: a
 key on disk is a stated function of the participants and weights recorded next to it, and
 nothing in between is allowed to have edited it. On top of that it pins the

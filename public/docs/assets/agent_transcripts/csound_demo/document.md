@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 9 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory" "mainLanguage"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 9 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "mainLanguage"]}
 ```
 
 ## 1. keys
@@ -45,12 +45,12 @@ From `code`
 A wavetable computed in Kotlin, copied into ftable 1, played by poscil, and read back.
 
 ```edn [field-box id="cs_table" role="properties"]
-{"id" "cs_table" "index" 1 "name" "a table from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a table from Kotlin" "_tombstone" false "frame" #afield/rect [610.0 180.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_table_code_.kt" "lines" 20 "characters" 1020 "sha256" "bc6aebeeffc2a47d95b9f70219926a43fe9e683feacfb51462a4e7e0a93441f6"}]}
+{"id" "cs_table" "index" 1 "name" "a table from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a table from Kotlin" "_tombstone" false "frame" #afield/rect [610.0 180.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_table_code_.kt" "lines" 20 "characters" 1026 "sha256" "00df8e88e2ff0e6f60acdfaf53e0bb825eb2c0d2484b1b19b1480f595d6c6c19"}]}
 ```
 
 ```kotlin [field-property box="cs_table" name="code" path="cs_table_code_.kt"]
 // A wavetable computed in Kotlin, copied into ftable 1, played by poscil, and read back.
-val cs = afield.csound.CsoundInstance("""
+val cs = afield.audio.csound.CsoundInstance("""
 giWave  ftgen  1, 0, 4096, 10, 1
 instr Play
   asig  poscil  0.3, 220, giWave
@@ -82,12 +82,12 @@ From `code`
 This root stays Kotlin; its `mainLanguage` makes the boxes under it Csound.
 
 ```edn [field-box id="cs_root" role="properties"]
-{"id" "cs_root" "index" 2 "name" "csound — children of this box are Csound" "parents" ["root"] "children" ["cs_pluck" "cs_fx" "cs_typo"] "properties" {"children" #{#afield/box "cs_pluck" #afield/box "cs_fx" #afield/box "cs_typo"} "parents" #{#afield/box "root"} "name" "csound — children of this box are Csound" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 80.0] "mainLanguage" "csound"} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_root_code_.kt" "lines" 2 "characters" 127 "sha256" "bc49fa7e257e5b0dab9722bbfe117f0d9ed5142e79e6211faa333a9118d40b48"}]}
+{"id" "cs_root" "index" 2 "name" "csound — children of this box are Csound" "parents" ["root"] "children" ["cs_pluck" "cs_fx" "cs_typo"] "properties" {"children" #{#afield/box "cs_pluck" #afield/box "cs_fx" #afield/box "cs_typo"} "parents" #{#afield/box "root"} "name" "csound — children of this box are Csound" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 80.0] "mainLanguage" "csound"} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_root_code_.kt" "lines" 2 "characters" 133 "sha256" "2365f045bf96048b336546cc928ba5df1f40cc1bf89c8345a1aa0f2db26b197c"}]}
 ```
 
 ```kotlin [field-property box="cs_root" name="code" path="cs_root_code_.kt"]
 // This root stays Kotlin; its `mainLanguage` makes the boxes under it Csound.
-println(afield.csound.CsoundLibrary.describe())
+println(afield.audio.csound.CsoundLibrary.describe())
 ```
 
 ## 4. typo
@@ -281,12 +281,12 @@ From `code`
 Offline: a Field 1 kHz sine through Csound's butterlp at 500 Hz, and back.
 
 ```edn [field-box id="cs_measured" role="properties"]
-{"id" "cs_measured" "index" 8 "name" "through Csound, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "through Csound, measured" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_measured_code_.kt" "lines" 18 "characters" 1010 "sha256" "c3478e06efd46154a5fb8eca0a89bee9e6bd558532b60a9f8ede252bc2828d4c"}]}
+{"id" "cs_measured" "index" 8 "name" "through Csound, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "through Csound, measured" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_measured_code_.kt" "lines" 18 "characters" 1016 "sha256" "4d92947c243bb7e1b4a44daba040b3e8307e218ad7ecc6687f709e7092cf257e"}]}
 ```
 
 ```kotlin [field-property box="cs_measured" name="code" path="cs_measured_code_.kt"]
 // Offline: a Field 1 kHz sine through Csound's butterlp at 500 Hz, and back.
-val cs = afield.csound.CsoundInstance("""
+val cs = afield.audio.csound.CsoundInstance("""
 instr Filter
   ain   chnget    "in"
   alow  butterlp  ain, 500

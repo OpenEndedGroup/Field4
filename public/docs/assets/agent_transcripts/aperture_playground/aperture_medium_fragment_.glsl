@@ -2,7 +2,9 @@
 layout(location=0) in vec2 uv;
 layout(location=0) out vec4 result;
 layout(set=0,binding=0) uniform sampler2D paintHalf;
-layout(push_constant) uniform Aperture { vec4 aperture; } pc;
+layout(push_constant) uniform Aperture {
+    vec4 aperture;
+} pc;
 vec4 sampleBlack(vec2 p) {
     if (any(lessThan(p,vec2(0))) || any(greaterThan(p,vec2(1)))) return vec4(0);
     return texture(paintHalf,p);

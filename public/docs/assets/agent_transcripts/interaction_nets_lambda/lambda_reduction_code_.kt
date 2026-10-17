@@ -3,8 +3,8 @@
 // `dup-lam` on an abstraction whose binder is wired to its own body, and `fan-fan` annihilating the
 // two halves of that duplication.
 
-import afield.Rect
-import afield.graphics.FLine
+import afield.app.protocol.Rect
+import afield.geometry.path.FLine
 
 val source = "(\\x. x x) (\\y. y)"
 val compiled = LambdaTerms.compile(LambdaTerms.parse(source))

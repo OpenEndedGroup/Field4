@@ -19,17 +19,10 @@ Stepping evenly round the hue wheel is the obvious way to ask for ten distinguis
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/hsl_okhsl_sets.png" wait="1.0" capture="box"}
 :::static
-import afield.graphics.FLine
-
 fun swatchRow(y0: Double, colors: List<Vec4>, h: Double): List<FLine> = colors.mapIndexed { i, c ->
     val x0 = 40.0 + i * 90.0
-    val x1 = x0 + 78.0
     fline {
-        moveTo(x0, y0)
-        lineTo(x1, y0)
-        lineTo(x1, y0 + h)
-        lineTo(x0, y0 + h)
-        close()
+        rect(x0, y0, 78.0, h)
         filled = true
         stroked = true
         color = c
@@ -45,13 +38,13 @@ lines(
     channel = "colors-hues",
     w = 1000.0,
     h = 560.0,
-    fitToSize = true
+    fitToSize = true,
 )
 ```
 
 The `swatchRow(...)` helper removes everything except the palette itself: same count, same geometry, same spacing, same background, one row per hue system.
 
-![](assets/colors_examples/hsl_okhsl_sets.png)
+![Two rows of ten swatches: HSL hues on top, OKHSL hues below](assets/colors_examples/hsl_okhsl_sets.png)
 
 In the HSL row on top, the third and sixth swatches (a yellow-green and a cyan) come forward off the black; the OKHSL row below holds one weight across all ten. `okhsl`'s `l` is perceived lightness rather than an HSL number, so no entry ends up conspicuously brighter than its neighbours the way an HSL yellow does.
 
@@ -61,18 +54,17 @@ A palette can look fine in isolation and fail against a real background. The col
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/palette_background_paths.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
-import afield.graphics.FLine
-
 val bg = rgb(0.06, 0.08, 0.11, 1.0)
 val palette = paletteForBackground(bg, count = 7, saturation = 0.78, lightness = 0.63, minContrast = 3.5)
 
 fun ring(radius: Double, phase: Double, color: Vec4): FLine = fline {
     val n = 260
+    breakNext()
     for (i in 0..n) {
         val t = i / n.toDouble() * PI * 2.0
         val x = 540.0 + cos(t + phase) * radius
         val y = 340.0 + sin(t + phase * 1.4) * radius * 0.55
-        if (i == 0) moveTo(x, y) else lineTo(x, y)
+        lineTo(x, y)
     }
     stroked = true
     filled = false
@@ -87,6 +79,6 @@ lines(rings, channel = "colors-rings", w = 1120.0, h = 740.0, fitToSize = true)
 
 `paletteForBackground(...)` starts from the same evenly spaced okhsl ring as `hueSetOkhsl`, then for any entry whose WCAG contrast against the background falls short of `minContrast` it walks that entry's lightness until it clears the bar; a dark background is searched lighter first. Here it gets `minContrast = 3.5`, a little above the WCAG large-text threshold of 3, and all seven colors go on nested rings where a weak one would be easy to spot.
 
-![](assets/colors_examples/palette_background_paths.png)
+![Seven nested rings in paletteForBackground colors on a dark background](assets/colors_examples/palette_background_paths.png)
 
 Every ring stays readable and none sinks into the background. If nothing reaches `minContrast` the best candidate found is returned rather than an exception, so the call always hands back the count you asked for and it is the picture that tells you whether it managed. For more on constructing the underlying paths, see [FLine examples](fline_examples.md); for functional signal stacks that can drive color or geometry, see [Functions examples](functions_examples.md).

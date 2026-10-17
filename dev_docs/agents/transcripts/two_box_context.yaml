@@ -11,7 +11,7 @@ operations:
         h: 100.0
       properties:
         code: |
-          thisBox.setPropertyRaw("agent_context_value", "value from parent")
+          prop<String>(greeting) = "value from parent"
           println("parent context ready")
   - create:
       box: agent_context_child
@@ -23,8 +23,7 @@ operations:
         h: 100.0
       properties:
         code: |
-          val inherited = fromContextWithNameOrNull<String>("agent_context_value")
-          println("child inherited: $inherited")
+          println("child inherited: $greeting")
   - connect:
       parent: agent_context_parent
       child: agent_context_child
@@ -33,14 +32,13 @@ operations:
       property: code
       type: fragment
       code: |
-        thisBox.setPropertyRaw("agent_context_value", "value from parent")
+        prop<String>(greeting) = "value from parent"
         println("parent context ready")
   - execute:
       box: agent_context_child
       property: code
       type: fragment
       code: |
-        val inherited = fromContextWithNameOrNull<String>("agent_context_value")
-        println("child inherited: $inherited")
+        println("child inherited: $greeting")
   - wait:
       millis: 250

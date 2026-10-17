@@ -1,4 +1,3 @@
-import afield.stdlib.polytope.*
 
 // Topology is the source of truth. Coordinates and the FLine viewer only arrive after
 // selection and the abstract Conway operation have decided what the new faces are.

@@ -1,10 +1,13 @@
-import afield.four.Renderer
-import afield.four.util.Window
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
 import arrow.core.right
 import arrow.core.left
-import afield.four.modules.*
-import afield.four.buffers.*
-import afield.four.buffers.FrameBufferGroup
+import afield.graphics.shader.*
+import afield.graphics.scene.*
+import afield.graphics.render.*
+import afield.document.context.*
+import afield.graphics.vulkan.buffers.*
+import afield.graphics.vulkan.buffers.FrameBufferGroup
 var Box.sgL by Inheritance<Int>() /**/
 val Once.sgL by Onceing<Int>() /**/
 val Why.sgL by Whying() /**/
@@ -78,26 +81,26 @@ fun BufferParameters.asBonds(): Bonds =
     buffer.asBonds()
 /*end*/
 /*compute-pc-structure:spins*/ var Structure.spins by Structure.FromStructure<Any>()
-/*compute-pc-binding:spins*/ var ComputeMesh.spins by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*compute-pc-binding-group:spins*/ var ComputeMeshGroup.spins by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*compute-pc-binding:spins*/ var ComputeMesh.spins by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-pc-binding-group:spins*/ var ComputeMeshGroup.spins by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-structure:jRight*/ var Structure.jRight by Structure.FromStructure<Any>()
-/*compute-pc-binding:jRight*/ var ComputeMesh.jRight by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*compute-pc-binding-group:jRight*/ var ComputeMeshGroup.jRight by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*compute-pc-binding:jRight*/ var ComputeMesh.jRight by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-pc-binding-group:jRight*/ var ComputeMeshGroup.jRight by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-structure:jDown*/ var Structure.jDown by Structure.FromStructure<Any>()
-/*compute-pc-binding:jDown*/ var ComputeMesh.jDown by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*compute-pc-binding-group:jDown*/ var ComputeMeshGroup.jDown by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*compute-pc-binding:jDown*/ var ComputeMesh.jDown by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*compute-pc-binding-group:jDown*/ var ComputeMeshGroup.jDown by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-structure:L*/ var Structure.L by Structure.FromStructure<Any>()
-/*compute-pc-binding:L*/ var ComputeMesh.L by ComputeMesh.BoundFromStructure<UInt>()
-/*compute-pc-binding-group:L*/ var ComputeMeshGroup.L by ComputeMeshGroup.BoundFromStructure<UInt>()
+/*compute-pc-binding:L*/ var ComputeMesh.L by ComputeMesh.BoundFromStructure<Any>()
+/*compute-pc-binding-group:L*/ var ComputeMeshGroup.L by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:color*/ var Structure.color by Structure.FromStructure<Any>()
-/*compute-pc-binding:color*/ var ComputeMesh.color by ComputeMesh.BoundFromStructure<UInt>()
-/*compute-pc-binding-group:color*/ var ComputeMeshGroup.color by ComputeMeshGroup.BoundFromStructure<UInt>()
+/*compute-pc-binding:color*/ var ComputeMesh.color by ComputeMesh.BoundFromStructure<Any>()
+/*compute-pc-binding-group:color*/ var ComputeMeshGroup.color by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:seed*/ var Structure.seed by Structure.FromStructure<Any>()
-/*compute-pc-binding:seed*/ var ComputeMesh.seed by ComputeMesh.BoundFromStructure<UInt>()
-/*compute-pc-binding-group:seed*/ var ComputeMeshGroup.seed by ComputeMeshGroup.BoundFromStructure<UInt>()
+/*compute-pc-binding:seed*/ var ComputeMesh.seed by ComputeMesh.BoundFromStructure<Any>()
+/*compute-pc-binding-group:seed*/ var ComputeMeshGroup.seed by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:mode*/ var Structure.mode by Structure.FromStructure<Any>()
-/*compute-pc-binding:mode*/ var ComputeMesh.mode by ComputeMesh.BoundFromStructure<UInt>()
-/*compute-pc-binding-group:mode*/ var ComputeMeshGroup.mode by ComputeMeshGroup.BoundFromStructure<UInt>()
+/*compute-pc-binding:mode*/ var ComputeMesh.mode by ComputeMesh.BoundFromStructure<Any>()
+/*compute-pc-binding-group:mode*/ var ComputeMeshGroup.mode by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:temperature*/ var Structure.temperature by Structure.FromStructure<Any>()
 /*compute-pc-binding:temperature*/ var ComputeMesh.temperature by ComputeMesh.BoundFromStructure<Float>()
 /*compute-pc-binding-group:temperature*/ var ComputeMeshGroup.temperature by ComputeMeshGroup.BoundFromStructure<Float>()

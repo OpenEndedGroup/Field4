@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -11,12 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["open_dlss_nr"] "properties" {"children" #{#afield/box "open_dlss_nr"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 13 "characters" 358 "sha256" "c4e456234ec75530ebbe09f9662c3d9fbcaae2491dbae893c8e015574657ce7b"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["open_dlss_nr"] "properties" {"children" #{#afield/box "open_dlss_nr"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 13 "characters" 382 "sha256" "9d037ddc52fd70b35dead39351a20e44bfc456ff21896968a15eecf03d43bb41"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
-import afield.four.util.Options
-import afield.Rect
+import afield.graphics.vulkan.util.Options
+import afield.app.protocol.Rect
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableVR=false
@@ -35,20 +35,17 @@ start(renderer::run)
 <!-- field-box id="open_dlss_nr" index="1" -->
 
 ```edn [field-box id="open_dlss_nr" role="properties"]
-{"id" "open_dlss_nr" "index" 1 "name" "neural cubes" "parents" ["root" "agent_graphics_context"] "children" ["nr_record"] "properties" {"children" #{#afield/box "nr_record"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural cubes" "_tombstone" false "frame" #afield/rect [400.0 40.0 350.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "open_dlss_nr_code_.kt" "lines" 55 "characters" 2275 "sha256" "2f35def5aacf0c76e226301d406c066aa992542025467d65d9e27b400beae870"} {"name" "vertex" "language" "glsl" "path" "open_dlss_nr_vertex_.glsl" "lines" 49 "characters" 2564 "sha256" "9cadad82e7d4007c8c6d03b388a58d63a954b8b3ff5eef34b0565904739ca41f"} {"name" "fragment" "language" "glsl" "path" "open_dlss_nr_fragment_.glsl" "lines" 25 "characters" 1353 "sha256" "61c506ca6ed9fc5844bb716b59da41f8ef6c8ad1464d19e0747882a0d7c51b11"}]}
+{"id" "open_dlss_nr" "index" 1 "name" "neural cubes" "parents" ["root" "agent_graphics_context"] "children" ["nr_record"] "properties" {"children" #{#afield/box "nr_record"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural cubes" "_tombstone" false "frame" #afield/rect [400.0 40.0 350.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "open_dlss_nr_code_.kt" "lines" 52 "characters" 2155 "sha256" "ef5082a0f0f2e9cf9684ee864c72dd3de9103bef61c4040dfff1726b1fe1d4ea"} {"name" "vertex" "language" "glsl" "path" "open_dlss_nr_vertex_.glsl" "lines" 49 "characters" 2564 "sha256" "9cadad82e7d4007c8c6d03b388a58d63a954b8b3ff5eef34b0565904739ca41f"} {"name" "fragment" "language" "glsl" "path" "open_dlss_nr_fragment_.glsl" "lines" 25 "characters" 1353 "sha256" "61c506ca6ed9fc5844bb716b59da41f8ef6c8ad1464d19e0747882a0d7c51b11"}]}
 ```
 
 ```kotlin [field-property box="open_dlss_nr" name="code" path="open_dlss_nr_code_.kt"]
-import afield.controlGroup
-import afield.displayOpen
-import afield.four.neuralrendering.*
-import afield.four.modules.fromContext
-import afield.four.modules.fromContextWithNameOrNull
-import afield.stdlib.linalg.Vector4f
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
+import afield.graphics.render.neural.*
 
-val owner = fromContext<Renderer>()
+val owner = renderer
 prop<OpenDlssNrStudy>(lab)
-fromContextWithNameOrNull<OpenDlssNrStudy>("lab")?.close()
+(thisBox.getPropertyRaw("lab") as? OpenDlssNrStudy)?.close()
 lab = OpenDlssNrStudy(owner, size=768, name="nr-cubes", geometry=true,
     vertex=thisBox.getPropertyRaw("vertex") as String,
     fragment=thisBox.getPropertyRaw("fragment") as String)
@@ -181,17 +178,16 @@ void main(){
 <!-- field-box id="nr_record" index="2" -->
 
 ```edn [field-box id="nr_record" role="properties"]
-{"id" "nr_record" "index" 2 "name" "record clip" "parents" ["root" "open_dlss_nr"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "open_dlss_nr"} "name" "record clip" "_tombstone" false "frame" #afield/rect [820.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "nr_record_code_.kt" "lines" 31 "characters" 1215 "sha256" "8a7ebfccfb789268cbe155e3e4cca4159545dbedcd3b285771955b9d977f7724"}]}
+{"id" "nr_record" "index" 2 "name" "record clip" "parents" ["root" "open_dlss_nr"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "open_dlss_nr"} "name" "record clip" "_tombstone" false "frame" #afield/rect [820.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "nr_record_code_.kt" "lines" 30 "characters" 1151 "sha256" "64cf14f70b9d9ff8ff4266d21e6144477024a31d012b811570d0856be4d435ce"}]}
 ```
 
 ```kotlin [field-property box="nr_record" name="code" path="nr_record_code_.kt"]
-import afield.four.neuralrendering.OpenDlssNrStudy
-import afield.four.modules.fromContext
+import afield.graphics.render.neural.OpenDlssNrStudy
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 
 // Run beneath the live study box. The scene remains editable after recording.
-val study=fromContext<OpenDlssNrStudy>()
+val study=lab
 check(study.availability.ready) {study.availability.reason}
 check(!study.recording) {"A recording is already running"}
 val folder=Path.of("build/opendlssnr-cubes/clip").toAbsolutePath().also {it.createDirectories()}
