@@ -1946,11 +1946,13 @@ Walkthrough: [Gesture board: drawing toward a sound](audio_ai_gesture_board.md).
 
 ### audio_ai_analysis
 
+![Nancy’s source waveform above real beat, pYIN pitch and Basic Pitch note panels.](assets/audio_ai_analysis/synchronized_analysis.png)
+
 Resolve a recording by filename, display its exact source window, submit
 librosa beat and pYIN analysis plus Spotify Basic Pitch, follow all three jobs through replaceable
 progress cards and the durable monitor, await their immutable results, then compare onset, tempo,
 confidence, monophonic F0, voicing and polyphonic notes on synchronized timelines. Its first two
-boxes are model-free and remain runnable without the analysis worker.
+boxes show the guide and real cached previews without the analysis worker.
 Walkthrough: [Beat and pitch analysis](audio_ai_analysis.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/audio_ai_analysis/metadata.edn)

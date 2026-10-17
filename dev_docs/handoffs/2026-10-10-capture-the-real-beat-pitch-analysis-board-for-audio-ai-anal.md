@@ -14,3 +14,25 @@ On a machine where the Field Audio worker answers (`FieldAudioClient()` defaults
 3. The transcript's `analysis_visualizer_gallery` box also draws made-up previews. Decide whether it should go.
 
 That fence did not compile before 2026-10-10: `client.watch(id) { event -> … }` bound the lambda to `onError`. `FieldAudioClient.watch` now takes `onEvent` last, so the spectral, speech and corpus-microscope pages' calls compile too. None of them has been run against the worker since.
+
+## Completed — 2026-10-17
+
+The Nancy 18–42 s workflow ran against the real Field Audio API and CPU analysis
+worker. Its `diffstatic_runner` capture shows the source waveform and all three
+completed analysis panels, with `capture-profile="linux-nvidia"` retaining it on
+other machines. The same image is restored on `visualizers.md` and
+`agent_transcripts.md`. The full PNG was inspected after correcting the framing
+that initially clipped the lower panels.
+
+The synthetic gallery has been replaced with previews of these real durable
+results. It was run and captured with the API and worker stopped. The editable
+live Starting Point uses the same code as the page. Generated Starting Points,
+saved-demo consistency, box idioms and transcript-index checks passed.
+The strict HTML build passed all 3,302 local references and all authored fragments.
+
+`tools/export_audio_analysis_capture.py` exports the real service previews, result
+metadata and job records, verifies the full-resolution NPZ content hashes, and
+writes `public/docs/assets/audio_ai_analysis/manifest.json`. It copies no source
+audio. See [capture verification](../ELSEWHERE_CAPTURES.md#beat-and-pitch-board-2026-10-17).
+The originating annotation store is absent on this host; close `27cd487c` there
+after this change lands.

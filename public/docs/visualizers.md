@@ -1555,6 +1555,8 @@ so a bin's min and max rarely land on a peak. Zoom in and it becomes the wavefor
 
 ### Beat and pitch analysis views
 
+![Nancy’s source waveform above real beat, pYIN pitch and Basic Pitch note panels.](assets/audio_ai_analysis/synchronized_analysis.png)
+
 The Field Audio integration keeps full-resolution analysis tensors as immutable NPZ assets and sends
 only bounded preview trajectories to the browser. `analysisVisualizationHtml(...)` presents three
 different operations in the same zoomable, pannable timeline:
