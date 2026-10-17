@@ -1,3 +1,12 @@
+/**
+ * Paces an asynchronous frame set so each frame gets a whole source-frame interval to prepare
+ * before it is due.
+ *
+ * A slow preparation stays the pending demand even when the wall clock has moved past it, which
+ * keeps a slow decoder from being starved; seeks and reconfiguration may still replace it.
+ * `FrameSetBarrierTest` exercises it alongside [FrameSetBarrier].
+ */
+
 package afield.graphics.texture.video
 
 import kotlin.math.abs
