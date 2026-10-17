@@ -1,28 +1,30 @@
-import afield.simulation.particles.ShaderNeuralParticles
-import afield.simulation.particles.blendWith
-
 prop<List<afield.simulation.particles.ShaderNeuralParticles>>(panels)
 
-// 0.5 is the ring. The other two are where the form is buckling -- a ring with the S's
-// spine pressing into it -- and they are the reason this figure is not just "a circle".
-// 0.78 rather than 0.75 because the buckle is deepest a little past three quarters.
-val STOPS = listOf(0.25f, 0.5f, 0.78f)
+/*
+0.5 is the ring. The other two are where the form is buckling -- a ring with the S's
+spine pressing into it -- and they are the reason this figure is not just "a circle".
+0.78 rather than 0.75 because the buckle is deepest a little past three quarters.
+*/
+val STOPS = [0.25f, 0.5f, 0.78f]
 
-// `name` keeps each system's buffers and modules apart; without it the second one would
-// bind over the first. `viewCenter` is subtracted before the divide, so a negative x
-// moves that panel to the right of the screen.
+/*
+`name` keeps each system's buffers and modules apart; without it the second one would
+bind over the first. `viewCenter` is subtracted before the divide, so a negative x
+moves that panel to the right of the screen.
+*/
 once.panels {
     STOPS.mapIndexed { i, _ ->
         ShaderNeuralParticles(fieldA, renderer) {
-            name = "panel$i"
-            particleCount = 150_000
-            stepsPerCycle = 150
-            // Higher than the sweeping scene's: a still wants the arrived distribution
-            // crisp rather than the stream between shapes.
-            dwellCycles = 3f
-            viewScale = 4.6f
-            viewCenter = Vector2f((1 - i) * 5.2f, 0f)
-        }.also { it.installInto() }
+                name = "panel$i"
+                particleCount = 150_000
+                stepsPerCycle = 150
+                // Higher than the sweeping scene's: a still wants the arrived distribution
+                // crisp rather than the stream between shapes.
+                dwellCycles = 3f
+                viewScale = 4.6f
+                viewCenter = Vector2f((1 - i) * 5.2f, 0f)
+            }
+            .also { it.installInto() }
     }
 }
 
