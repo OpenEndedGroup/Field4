@@ -32,6 +32,15 @@ expect:
 */
 
 /**
+ * Response plots of the dough DSP primitives ([PlateReverb], [Phaser] and others), drawn from samples the primitives
+ * actually produce.
+ *
+ * [DoughDspPlotGallery] runs each primitive on the CPU and draws the result to PNG with AWT, with no
+ * browser or GPU. It runs as the `synth.dough-dsp.gallery` FIELD_TEST; given an output directory it
+ * writes the captures under `dev_docs/assets/dough_dsp_gallery/`.
+ */
+
+/**
  * Headless **response-gallery / plot-capture harness** for the dough DSP ports in [DoughDsp].
  * It is the visual companion to `DoughDspSmokeTest` (which asserts the same behaviour numerically):
  * every plotted point comes from actually *running* a primitive on the CPU — an impulse into

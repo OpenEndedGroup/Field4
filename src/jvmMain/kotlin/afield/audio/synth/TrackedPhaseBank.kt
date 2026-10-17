@@ -6,6 +6,14 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 
+/**
+ * An oscillator bank that follows a tracked phase: [TrackedPhaseBank] renders a list of
+ * [PhaseVoice]s, each advancing at a ratio of the pitch a [PhaseTracker] reports.
+ *
+ * Each voice keeps its own continuous phase accumulator, so fractional and irrational ratios stay
+ * continuous, and a [PhaseRenderer] turns that phase into a sample (a sine by default).
+ */
+
 private const val TWO_PI = 2.0 * PI
 
 /**
