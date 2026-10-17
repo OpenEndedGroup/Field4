@@ -10,6 +10,13 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 
 /**
+ * ParallelGeometryPool lets several writers produce geometry for the same frame, each into its own per-swapchain-image buffers, and dispatches a module once per writer that published.
+ *
+ * See [ParallelGeometryPool] for the frame-phase rules, writer publication and how `buffer_reference`
+ * push constants switch a module into fan-out mode.
+ */
+
+/**
  * Per-writer, per-swapchain-image geometry buffers that fan one module invocation out into one
  * invocation per writer published for the current renderer frame.
  *
