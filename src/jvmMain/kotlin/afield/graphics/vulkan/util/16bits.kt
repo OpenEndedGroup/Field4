@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.util
 
+/**
+ * Half-precision (binary16) conversion and packing for data headed to GPU buffers.
+ *
+ * [floatToHalfBits] and [halfBitsToFloat] convert single values, [packHalf1x16] and [packHalf2x16] pack them as GLSL's `packHalf2x16` does, and the `.half` views ([Vec2h], [Vec3h], [Vec4h]) mark a Field vector for 16-bit storage.
+ */
+
 import afield.math.linalg.Vector2f
 import afield.math.linalg.Vector3f
 import afield.math.linalg.Vector4f

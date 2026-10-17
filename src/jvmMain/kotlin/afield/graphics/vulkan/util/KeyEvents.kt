@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.util
 
+/**
+ * Keyboard handlers for a Vulkan window, polled with the renderer.
+ *
+ * [KeyEvents] registers handlers per key; a down handler's [DownResult] says whether it stays registered, runs a callback on the matching release, or starts a per-frame generator that runs while the key is held.
+ */
+
 import afield.graphics.vulkan.Renderer
 import afield.document.context.fromContext
 import afield.app.diagnostics.logging.lprintln
