@@ -1109,6 +1109,14 @@
     "b34623b0e55f-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_36/README.md"
+    },
+    "ca367739ec6d-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_37/README.md"
+    },
+    "403fc75454d9-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_37/README.md"
     }
   },
   "batches": [
@@ -1147,7 +1155,8 @@
     "../box_code_adoption_batch_33/README.md",
     "../box_code_adoption_batch_34/README.md",
     "../box_code_adoption_batch_35/README.md",
-    "../box_code_adoption_batch_36/README.md"
+    "../box_code_adoption_batch_36/README.md",
+    "../box_code_adoption_batch_37/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups."
 }
