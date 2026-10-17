@@ -421,7 +421,7 @@ That makes `@rootExported`/`@metarootExported` the tidy way to define a helper o
 
 ## Generated GLSL accessors: `moduleHere { }`
 
-A shader box's GLSL is also the **contract that shapes the box's Kotlin API**. `moduleHere { }` is a macro: at expansion it introspects the box's vertex/fragment (or compute) shaders and generates typed Kotlin accessors into the preamble, then rewrites itself to the real runtime builder. (The [Field 4 Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
+A shader box's GLSL also decides what Kotlin you can write against it. `moduleHere { }` is a macro: at expansion it reads the box's vertex and fragment (or compute) shaders, writes typed Kotlin accessors into the preamble, then replaces itself with the real runtime builder. (The [Field 4 Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
 
 For a vertex shader with `layout(location = 0) in vec3 pos;` and a push-constant block, expansion generates lines like:
 
