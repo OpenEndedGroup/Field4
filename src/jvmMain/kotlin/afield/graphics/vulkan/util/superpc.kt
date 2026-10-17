@@ -1,77 +1,73 @@
 @file:Suppress("MemberVisibilityCanBePrivate", "unused")
 package afield.graphics.vulkan.util
 
-/*
-    PushConstant DSL + GLSL generator (explicit offsets, real typed variables)
-
-    DESIGN SUMMARY
-    --------------
-    CPU-side:
-      - You define mutable Push Constant classes with `var` properties.
-      - Reflection builds a cached schema per class:
-          * push-constant byte offsets + sizes
-          * register-file float indices
-      - writeTo(ByteBuffer) serializes values by explicit offsets.
-      - operator get/set by field name works by reflective access to real vars.
-
-    Shader-side (generated GLSL):
-      - One push-constant block with explicit `layout(offset=...)` per member.
-      - To avoid macro clashes:
-          * For normal fields, the GLSL push-constant MEMBER NAME is prefixed with "_".
-              Kotlin:  time
-              GLSL PC: _time
-          * For instruction fields (names starting with "_"), the name is left unchanged.
-              Kotlin:  _patch0
-              GLSL PC: _patch0
-      - Fields starting with "_" are treated as instruction payloads:
-          * declared in PC block
-          * NOT loaded into regs[]
-          * NO accessors generated
-      - A float32 register file is loaded from the PC block.
-      - Scalar access: macros with ORIGINAL names
-          #define time (regs[REG_time])
-      - Vector access: functions with ORIGINAL names (no "get" prefix)
-          vec4 baseColor() { ... }
-
-    Types supported for normal fields:
-      - Float
-      - afield.math.linalg.Vector2f / Vector3f / Vector4f
-      - Vec2h / Vec3h / Vec4h (fp16 transit only)
-      - afield.math.linalg.Vector8h (generated 8-lane fp16 vector -> uvec4)
-
-    Instruction payloads:
-      - You said these will always be Vec4h; this file supports that naturally.
-        (Other half types also work if you choose.)
-
-    Half transit ABI in GLSL PC:
-      - Vec2h -> uint  (packed half2)
-      - Vec3h -> uvec2 (x,y in .x; z in low half of .y)
-      - Vec4h -> uvec2 (x,y in .x; z,w in .y)
-      - Vector8h -> uvec4 (two halfs per uint lane)
-
-    NOTE:
-      - Ensure the ByteBuffer uses LITTLE_ENDIAN:
-            bb.order(ByteOrder.LITTLE_ENDIAN)
-
-    Example usage:
-      class MaterialPC : PushConstants<MaterialPC>() {
-          @PcOrder(0)  var time: Float = 0f
-          @PcOrder(1)  var baseColor: Vector4f = Vector4f(1f,1f,1f,1f)
-          @PcOrder(2)  var roughMetal: Vec2h = Vector2f(0.5f, 0.0f).half
-          @PcOrder(3)  var uvScale: Vector2f = Vector2f(1f, 1f)
-
-          @PcOrder(100) var _patch0: Vec4h = Vector4f().half
-          @PcOrder(101) var _patch1: Vec4h = Vector4f().half
-      }
-
-      val pc = MaterialPC().apply {
-          time = 1.0f
-          this["uvScale"] = Vector2f(2f, 2f) // dynamic set
-          otherDeclarations = "layout(offset = ${nextFreeOffset(16)}) uint _manualFlags;"
-      }
-
-      val glsl = pc.glsl()
-*/
+/**
+ * Push constants as a Kotlin class, and the GLSL that reads them back. A subclass of
+ * [PushConstants] declares its members as ordinary `var` properties; reflection turns those into a
+ * byte layout with explicit offsets, `glsl()` emits the push-constant block and accessors that match
+ * it, and `writeTo` serialises the current values into a buffer by those same offsets.
+ *
+ * The reflection runs once per class and the layout is cached, so the per-frame cost is the write.
+ * Members are laid out in `@PcOrder` order where that annotation is given and alphabetically where
+ * it is not, which is what makes a layout stable from one run to the next.
+ *
+ * #### What the generated GLSL looks like
+ *
+ * One push-constant block, a `layout(offset = …)` on every member, a float register file loaded out
+ * of that block by `loadRegs()`, and then accessors under the names the Kotlin class used:
+ *
+ * ```glsl
+ * {{ pc.dec }}
+ * void main() {
+ *     loadRegs();
+ *     uFragColor = baseColor();
+ * }
+ * ```
+ *
+ * A scalar member becomes a macro, so `time` in Kotlin reads as `time` in shader code. A vector
+ * member becomes a function of no arguments under its own name, so `baseColor` reads as
+ * `baseColor()`. To keep those macros clear of the block's own members, a member inside the block
+ * carries a leading underscore: Kotlin's `time` is declared as `_time` and the bare name is the
+ * macro that reads it out of the register file.
+ *
+ * #### Instruction payloads
+ *
+ * A property whose name already begins with an underscore is an instruction payload: it is declared
+ * in the push-constant block under exactly that name and nothing else happens to it. It is not
+ * loaded into the register file and gets no accessor, so a shader reads it from the block itself and
+ * a frame pays nothing for payloads it is not reading.
+ *
+ * #### Member types
+ *
+ * `Float`, `Vector2f`, `Vector3f` and `Vector4f` become a `float`, `vec2`, `vec3` and `vec4`. The
+ * half-precision types travel packed into unsigned integers, to be unpacked in the shader: `Vec2h`
+ * as a `uint`, `Vec3h` and `Vec4h` as a `uvec2`, and the eight-lane `Vector8h` as a `uvec4`. Every
+ * member has to be a `var`, since the layout reads and writes through the property itself, and any
+ * other type fails when the layout is built rather than at draw time. `otherDeclarations` is the way
+ * around all of this: raw GLSL inserted into the block that reflection never sees, which you place
+ * yourself at `nextFreeOffset(…)`.
+ *
+ * ```kotlin
+ * class MaterialPC : PushConstants<MaterialPC>() {
+ *     @PcOrder(0) var time: Float = 0f
+ *     @PcOrder(1) var baseColor: Vector4f = Vector4f(1f, 1f, 1f, 1f)
+ *     @PcOrder(2) var uvScale: Vector2f = Vector2f(1f, 1f)
+ *     @PcOrder(100) var _patch0: Vec4h = Vector4f().half
+ * }
+ *
+ * val pc = MaterialPC()
+ * pc.time = 1.0f
+ * pc["uvScale"] = Vector2f(2f, 2f)
+ *
+ * shaderTemplate["pc"] = mapOf("dec" to Resolver { pc.glsl() })
+ * mesh.push.bindAll { pc }
+ * ```
+ *
+ * The block reaches the shader through the template engine, as above, and the instance is bound by
+ * handing it to a mesh's push-constant structure, which writes it out each time that mesh's push
+ * constants are assembled for a draw. The buffer it is written into has to be little-endian, and a
+ * `ByteBuffer` is big-endian until it is told otherwise.
+ */
 
 import afield.graphics.vulkan.buffers.WritesToBuffer
 import afield.math.linalg.Vector2f

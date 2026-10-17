@@ -12,12 +12,17 @@ import kotlin.math.atan2
 import kotlin.math.hypot
 import kotlin.math.tan
 
-/*
- * Gesture pad -> brush. A take recorded on a `gesture(...)` pad (or its x/y keyframe lanes, edited)
- * becomes a [TimedGesture] on a canvas: the pad's square mapped onto a rectangle of the canvas, the
- * take's own timing kept, so how fast the hand moved is how fast the brush moves. What the pad did
- * not record is filled in the way `PaintCanvas.gesture(line, ...)` fills it from a path. See
- * dev_docs/paint/GESTURE_PAINT_REPLAY.md for which dimensions that is.
+/**
+ * Gesture pad to brush: a take recorded on a `gesture(...)` pad, or its x and y keyframe lanes after
+ * editing, painted onto a canvas as a [TimedGesture]. The pad's square is laid over a rectangle of
+ * the canvas and the take's own timing is kept, so how fast the hand moved is how fast the brush
+ * moves.
+ *
+ * A pad carries pressure, tilt and twist only when it was made with `pen = true`, and only where the
+ * pointer reported them: a mouse reports a flat 0.5 pressure while down and nothing else, and a
+ * dimension that never left its resting value reads as unrecorded. Each one missing is filled the
+ * way `PaintCanvas.gesture(line, …)` fills it from a path, which is to say a steady press, a steady
+ * lean toward where the stroke is going, and a flat held across its path.
  */
 
 /**

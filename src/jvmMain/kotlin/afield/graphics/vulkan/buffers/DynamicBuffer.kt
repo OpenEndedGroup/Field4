@@ -61,7 +61,31 @@ import java.nio.BufferOverflowException
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
 
-/* std430 rules  vec3 -> vec4 _aligned_, vec4 is _aligned_, vec2 is aligned to 2, floats are floats*/
+/**
+ * The cursor a Vulkan buffer is written through: std430 padding, integers packed into float slots,
+ * and a buffer that grows under a write that would run past its end. [DynamicBuffer] is all of it.
+ * FLine geometry on its way to the GPU, the fabricated scene's shapes and a box's own
+ * `VulkanBuffer.write { … }` block all put their floats here.
+ */
+
+/**
+ * A write cursor over GPU memory that pads as std430 does and grows when it runs out. This is what
+ * `VulkanBuffer.write { … }` and `append { … }` hand to their block, so a box streaming geometry or
+ * particle state writes `put(…)` calls and never computes an offset.
+ *
+ * Alignment is std430's: a `vec4` and a `vec3` both start on a four-float boundary, a `vec3` writing
+ * a fourth zero to fill its slot; a `vec2` starts on a two-float boundary; a `float` goes wherever
+ * the cursor is. The bulk overloads pad before writing unless told not to, which is how an array of
+ * structures stays aligned without the caller tracking where it is. `at` is that position.
+ *
+ * Integers share the float buffer: `putInt` stores the integer's bits in a float slot, so a `uint` or
+ * `int` member of the matching shader struct reads back the same thirty-two bits.
+ *
+ * Running out is not an error. Any write past the end calls `onOverrun`, whose job is to produce a
+ * larger buffer holding what the old one held; the write is then replayed into it, and `target` is
+ * the new buffer from then on. `VulkanBuffer.dynamicResizer` is the implementation that reallocates
+ * the GPU allocation and remaps it.
+ */
 class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -> FloatBuffer) {
 
     val at: Int get() = target.position()
