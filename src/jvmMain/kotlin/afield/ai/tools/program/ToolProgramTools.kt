@@ -40,11 +40,13 @@ import com.fasterxml.jackson.databind.JsonNode
  * ## Why JavaScript and not the macro YAML
  *
  * What makes this pay is the middle of the program — filter, loop, branch on a result — and the
- * OperationTranscript YAML has no data flow at all, by design: it is the durable, reversible record of
+ * OperationTranscript YAML has no data flow at all: it is the durable, reversible record of
  * edits, and the edits a program makes still land there. Kotlin would be the house language, but every
  * program would pay a K2 compile, and box code can reach the whole JVM. JS is what models write
  * fluently as glue, and GraalJS is already on the classpath.
  */
+
+/** The `RunToolProgram` tool: a JavaScript program that calls the conversation's other tools and returns one result. */
 @JsonClassDescription(
     "Run a short JavaScript program that calls this conversation's other tools as functions and returns " +
         "one combined result. Use it when a step means four or more similar tool calls (every box, every value of a sweep); a single call is cheaper made directly. tools.NewBox({name, code}), tools.RunBox({box}), tools.ListBoxes({}) ... — the " +

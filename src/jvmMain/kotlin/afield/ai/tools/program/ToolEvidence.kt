@@ -24,6 +24,8 @@ import java.util.zip.GZIPOutputStream
  * `~/.afield/logs/ai4_tool_io/evidence/` (`AFIELD_AI4_TOOL_EVIDENCE_PATH` or
  * `-Dafield.ai4.toolEvidence.path` to move it). Nothing deletes them yet.
  */
+
+/** The evidence store for oversized nested tool results: [store] puts and gets them by content id. */
 object ToolEvidence {
 
     /** Where a result was put: `id` is what [ReadToolEvidenceRequest] takes; [sha256] and [bytes] are of the UTF-8 text. */
