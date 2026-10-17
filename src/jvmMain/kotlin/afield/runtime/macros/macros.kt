@@ -84,6 +84,19 @@ import kotlinx.coroutines.withContext
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
 
+/**
+ * The call-rewriting macro pass that box code goes through before it compiles: a call such as
+ * `prop(...)`, `moduleHere(...)` or `_println(...)` is replaced by source text generated for the box
+ * that contains it.
+ *
+ * [MacroRegistry] maps a call name to its rewrite and returns an [Insert] describing the replacement.
+ * The rest of the file supports that pass: gathering the preamble a box inherits from its parents
+ * ([gatherPreambleUpwards], with conflicts reported by [gatherPreambleUpwardsReport]), tagging
+ * preamble lines with the uid of the box that supplied them, and splitting a box at `//%-` fragment
+ * breaks ([isFragmentBreak], [fragmentBreakIndices]) so that compiler diagnostics can be moved back
+ * to the right line ([rebaseFragmentDiagnostics]).
+ */
+
 /** Compiler locations are relative to the snippet after a `//%-` break. Editor locations are
  * relative to the whole box. Discard the snippet's absolute position, which may also have changed
  * during macro expansion; line and column remain useful in the original source. */
