@@ -59,6 +59,23 @@ class BoxImportsTest {
     }
 
     @Test
+    fun anExplicitImportDisambiguatesAgainstKotlinDefaults() {
+        val code = "import afield.graphics.vulkan.Target\nval target: Target? = null\n"
+        val actual = analyzeBoxImports(code, "import afield.graphics.vulkan.*\n", otherCandidates = {
+            listOf("afield.graphics.vulkan.Target", "kotlin.annotation.Target")
+        }).single()
+        assertEquals(ImportVerdict.NEEDED, actual.verdict)
+    }
+
+    @Test
+    fun theRealFormatterRetainsVulkanTarget() {
+        val code = "import afield.graphics.vulkan.Target\nval target: Target? = null\n"
+        val formatted = formatBoxKotlin(code, useK2 = false)
+        assertTrue(formatted.contains("import afield.graphics.vulkan.Target"), formatted)
+        assertEquals(formatted, formatBoxKotlin(formatted, useK2 = false))
+    }
+
+    @Test
     fun aStarImportIsDroppedOnlyOnCompleteK2Evidence() {
         val code = "import afield.four.fabricated.*\nval b = build()"
         assertEquals(ImportVerdict.KEPT, verdicts(code)["afield.four.fabricated.*"])

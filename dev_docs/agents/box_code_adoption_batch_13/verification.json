@@ -1,0 +1,163 @@
+{
+  "baseline": "9abce375c",
+  "sources": [
+    {
+      "path": "dev_docs/agents/demos/reconstruction_plumbing/vertex.glsl",
+      "kotlinBodies": 0,
+      "collectionLiterals": 0,
+      "glslBodies": 1,
+      "matchesReviewedDraft": true
+    },
+    {
+      "path": "dev_docs/agents/demos/reconstruction_plumbing/fragment.glsl",
+      "kotlinBodies": 0,
+      "collectionLiterals": 0,
+      "glslBodies": 1,
+      "matchesReviewedDraft": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/cubes.vert",
+      "kotlinBodies": 0,
+      "collectionLiterals": 0,
+      "glslBodies": 1,
+      "matchesReviewedDraft": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/cubes.frag",
+      "kotlinBodies": 0,
+      "collectionLiterals": 0,
+      "glslBodies": 1,
+      "matchesReviewedDraft": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/compare.frag",
+      "kotlinBodies": 0,
+      "collectionLiterals": 0,
+      "glslBodies": 1,
+      "matchesReviewedDraft": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/study.vert",
+      "kotlinBodies": 0,
+      "collectionLiterals": 0,
+      "glslBodies": 1,
+      "matchesReviewedDraft": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/rr_plumbing.yaml",
+      "kotlinBodies": 4,
+      "collectionLiterals": 6,
+      "glslBodies": 2,
+      "matchesReviewedDraft": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/reconstruction_plumbing.yaml",
+      "kotlinBodies": 4,
+      "collectionLiterals": 2,
+      "glslBodies": 2,
+      "matchesReviewedDraft": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/neural_reconstruction.yaml",
+      "kotlinBodies": 4,
+      "collectionLiterals": 2,
+      "glslBodies": 2,
+      "matchesReviewedDraft": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/open_dlss_nr_cubes.yaml",
+      "kotlinBodies": 3,
+      "collectionLiterals": 0,
+      "glslBodies": 2,
+      "matchesReviewedDraft": true
+    }
+  ],
+  "shaders": [
+    {
+      "source": "dev_docs/agents/demos/reconstruction_plumbing/vertex.glsl",
+      "stage": "vertex",
+      "compiled": true,
+      "spirvValidated": true
+    },
+    {
+      "source": "dev_docs/agents/demos/reconstruction_plumbing/fragment.glsl",
+      "stage": "fragment",
+      "compiled": true,
+      "spirvValidated": true
+    },
+    {
+      "source": "public/docs/assets/opendlssnr/cubes.vert",
+      "stage": "vertex",
+      "compiled": true,
+      "spirvValidated": true
+    },
+    {
+      "source": "public/docs/assets/opendlssnr/cubes.frag",
+      "stage": "fragment",
+      "compiled": true,
+      "spirvValidated": true
+    },
+    {
+      "source": "public/docs/assets/opendlssnr/compare.frag",
+      "stage": "fragment",
+      "compiled": true,
+      "spirvValidated": true
+    },
+    {
+      "source": "public/docs/assets/opendlssnr/study.vert",
+      "stage": "vertex",
+      "compiled": true,
+      "spirvValidated": true
+    },
+    {
+      "source": "dev_docs/agents/transcripts/rr_plumbing.yaml/operations/3/create/properties/vertex",
+      "stage": "vertex",
+      "compiled": true,
+      "spirvValidated": true
+    },
+    {
+      "source": "dev_docs/agents/transcripts/rr_plumbing.yaml/operations/3/create/properties/fragment",
+      "stage": "fragment",
+      "compiled": true,
+      "spirvValidated": true
+    },
+    {
+      "source": "dev_docs/agents/transcripts/reconstruction_plumbing.yaml/operations/3/create/properties/vertex",
+      "stage": "vertex",
+      "compiled": true,
+      "spirvValidated": true
+    },
+    {
+      "source": "dev_docs/agents/transcripts/reconstruction_plumbing.yaml/operations/3/create/properties/fragment",
+      "stage": "fragment",
+      "compiled": true,
+      "spirvValidated": true
+    },
+    {
+      "source": "dev_docs/agents/transcripts/neural_reconstruction.yaml/operations/3/create/properties/vertex",
+      "stage": "vertex",
+      "compiled": true,
+      "spirvValidated": true
+    },
+    {
+      "source": "dev_docs/agents/transcripts/neural_reconstruction.yaml/operations/3/create/properties/fragment",
+      "stage": "fragment",
+      "compiled": true,
+      "spirvValidated": true
+    },
+    {
+      "source": "public/docs/assets/opendlssnr/open_dlss_nr_cubes.yaml/operations/3/create/properties/vertex",
+      "stage": "vertex",
+      "compiled": true,
+      "spirvValidated": true
+    },
+    {
+      "source": "public/docs/assets/opendlssnr/open_dlss_nr_cubes.yaml/operations/3/create/properties/fragment",
+      "stage": "fragment",
+      "compiled": true,
+      "spirvValidated": true
+    }
+  ],
+  "gpuRenderAcceptance": "not exercised; mathematical operations and ABI preserved by source proof",
+  "rrGuideConversion": "Copied the exact reviewed batch-10 guide body after matching the original shader tokens"
+}

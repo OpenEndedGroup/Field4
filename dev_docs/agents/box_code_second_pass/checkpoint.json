@@ -540,6 +540,50 @@
     "ee1b57fa1953-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_12/README.md"
+    },
+    "589abcc2d706-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "589abcc2d706-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "b03fdbe93779-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "2ca4db3f3487-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "2ca4db3f3487-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "9a4223365d56-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "bf9f959b8774-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "0a33eb54ffdf-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "6d9a970c7e16-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "1609b587b44f-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
+    },
+    "113ffc46da27-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_13/README.md"
     }
   },
   "batches": [
