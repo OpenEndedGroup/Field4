@@ -5,6 +5,13 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * The atlas geometry and page-table encoding for a [MegaTexture], kept free of any GPU calls.
+ *
+ * [MegaTextureLayout] computes per-level page sizes and slot placement and packs page-table entries;
+ * `MegaTextureLayoutTest` checks that arithmetic without a Vulkan device.
+ */
+
+/**
  * Where every page lives in the atlas, and how a page table entry is packed.
  *
  * Split out from [MegaTexture] because it is the part most worth testing and the part least able

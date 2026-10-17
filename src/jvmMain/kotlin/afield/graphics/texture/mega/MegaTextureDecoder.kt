@@ -16,6 +16,14 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
+ * Background decoding of source images into downsampled [MegaTexture] pages.
+ *
+ * [MegaTextureDecoder] runs a prioritised worker pool that turns requests into [MegaDecodedPage]s,
+ * drawing their pixel memory from per-level pools that the consumer returns with
+ * [MegaTextureDecoder.recycle].
+ */
+
+/**
  * One decoded, downsampled page on its way to the GPU.
  *
  * [pixels] is native memory from [MegaTextureDecoder]'s per-level pool; whoever consumes the page
