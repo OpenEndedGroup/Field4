@@ -436,4 +436,16 @@ class ReactivePropsTest {
         assertEquals(listOf(r1), ReactiveRuns.Downstream.dirtyReaders(listOf(change)).keys.toList(),
             "the other document's 'r' ran, not this one's")
     }
+
+    /** A deleted box's run records go with it, rather than pinning the Box for the JVM's life. */
+    @Test
+    fun deletingABoxForgetsItsRunRecords() {
+        val s = session("leak")
+        val a = boxIn(s, "a")
+        ReactiveRuns.runStarted(a, "run")
+        ReactiveRuns.runFinished(a, ok = true, mode = "run")
+        assertTrue(ReactiveRuns.remembers(a))
+        ReactiveRuns.forgetDown(a)
+        assertFalse(ReactiveRuns.remembers(a))
+    }
 }

@@ -497,9 +497,25 @@ object ReactiveRuns {
         return stillThere
     }
 
-    /** Forgets every Down declaration of [box]; for box deletion. */
+    /** Whether any per-box record of [box] is still held; for tests. */
+    internal fun remembers(box: Box): Boolean {
+        val k = docKey(box)
+        return runs.containsKey(box) || lastRunStart.containsKey(k) || pulledOk.containsKey(k) ||
+            lastPull.keys.any { it.startsWith("$k|") } || downDeclared.any { it.startsWith(k + "\u0000") }
+    }
+
+    /**
+     * Forgets every Down declaration of [box], and its run records (which otherwise held the
+     * deleted Box for the life of the JVM); for box deletion. A run still in flight keeps its
+     * state so its end is still seen.
+     */
     fun forgetDown(box: Box) {
-        val prefix = docKey(box) + "\u0000"
+        val key = docKey(box)
+        runs.computeIfPresent(box) { _, st -> if (synchronized(st) { st.depth > 0 || st.waiters.isNotEmpty() }) st else null }
+        lastRunStart.remove(key)
+        pulledOk.remove(key)
+        lastPull.keys.removeIf { it.startsWith("$key|") }
+        val prefix = key + "\u0000"
         downDeclared.removeIf { it.startsWith(prefix) }
         rootDownDeclarers.values.forEach { it.remove(box.id) }
     }
