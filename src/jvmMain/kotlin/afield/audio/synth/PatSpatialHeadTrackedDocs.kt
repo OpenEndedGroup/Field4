@@ -21,6 +21,10 @@ expect:
 */
 
 /**
+ * Renders the head-tracked binaural clip on the spatial patterns page offline through Steam Audio, and checks that it repeats exactly and that leaning moves the level.
+ */
+
+/**
  * The binaural clip on `pat_spatial.md`: `HeadTrackedPatternDemo`'s four movements, through Steam
  * Audio's HRTF, at [MOVEMENT_SECONDS] a movement.
  *
