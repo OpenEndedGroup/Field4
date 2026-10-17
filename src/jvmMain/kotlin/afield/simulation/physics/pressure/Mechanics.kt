@@ -2,6 +2,16 @@ package afield.simulation.physics.pressure
 
 import kotlin.math.*
 
+/**
+ * The membrane energy and its gradient: [Mechanics] evaluates film, tape, tether, gravity, ground
+ * contact and gas work for one set of node positions under a [LoadCase].
+ *
+ * Gas is either held at a regulated pressure or sealed and isothermal ([GasMode]). The
+ * [Evaluation] it returns carries per-triangle [FilmState] and per-tape [TapeState] alongside the
+ * energy, which [InflationSolver] minimises.
+ */
+
+/** How the enclosed gas responds to volume change: held at a set pressure, or sealed at constant temperature. */
 enum class GasMode { REGULATED, SEALED_ISOTHERMAL }
 /** Pressure difference in Pa, gravity in m/s², optional horizontal penalty-contact plane in m. Sealed gas uses the mesh initial volume as its reference. */
 data class LoadCase(val pressure: Double = 0.0, val gasMode: GasMode = GasMode.REGULATED,
