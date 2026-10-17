@@ -953,6 +953,26 @@
     "e70830985ea4-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_25/README.md"
+    },
+    "b163aaf8a676-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_26/README.md"
+    },
+    "d09a17e9a5da-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_26/README.md"
+    },
+    "cb381b342d9e-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_26/README.md"
+    },
+    "208dd36b3e5c-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_26/README.md"
+    },
+    "3c65a5fe4b4b-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_26/README.md"
     }
   },
   "batches": [
