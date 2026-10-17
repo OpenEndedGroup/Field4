@@ -6,22 +6,18 @@ import afield.media.image.util.PngEncoder
 /**
  * A fit, as a picture, with its counterfactual beside it.
  *
- * A residual is a number and a number is easy to be wrong about. The strongest evidence this project
- * produces is a rendered image with the *before* in it: three stacked bands — where the rect was
- * asked to be, where the seed parameters actually put it, and where the solved parameters put it —
- * so the reader can see the miss and then see it closed, in one glance, without taking anyone's word
- * for the arithmetic.
+ * The figure stacks three bands: where the rect was asked to be, where the seed parameters put it,
+ * and where the solved parameters put it. The miss and its correction are visible in one image.
  *
- * This is a CPU raster on purpose. The GPU path renders a RectSL scene beautifully and needs a
- * device, a window and a render target; this needs to run in a unit test and inside a Field box, and
- * what it draws — the actual rects, sampled from the actual tracks, at the actual times — is the
- * same truth. Nothing here is synthesized: every rectangle on the canvas is one [SampledRect]'s
- * worth of geometry, and if the fit had not worked the third band would show it.
+ * It is a CPU raster. The GPU path needs a device, a window and a render target; this runs in a unit
+ * test and inside a Field box. Every rectangle on the canvas is one [SampledRect], sampled from the
+ * fitted tracks at the drawn times, so a failed fit shows in the third band.
  *
- * There is no text primitive anywhere near this code (RectSL has none either — its axis labels are
- * grids of rects), so the band labels are drawn from [PLOT_GLYPHS], the same 3×5 dot-matrix font the
- * plotting words use for tick numerals.
+ * RectSL has no text primitive (its axis labels are grids of rects), so the band labels use the 3×5
+ * dot-matrix font the plotting words use for tick numerals.
  */
+
+/** Renders a fit's target, seed and solved tracks as a three-band PNG. */
 object RectSLFitFigure {
 
     /** One band of the figure: a pair of position tracks, strobed across time in one colour. */
