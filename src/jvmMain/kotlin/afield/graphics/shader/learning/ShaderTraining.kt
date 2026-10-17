@@ -15,6 +15,12 @@ import java.security.MessageDigest
 import java.util.Random
 import java.util.concurrent.CompletableFuture
 
+/**
+ * Offline distillation of a Field render target into a small learned shader: capture samples, then train them in Python.
+ *
+ * [ShaderTraining.capture] renders the source [RenderToTexture] across a parameter range and writes train and held-out sample files, keyed by a digest of the source's shaders. [ShaderTraining.trainAsync] runs `tools/lighting/train_shader.py` through `uv` as a child process and returns a [ShaderTrainingJob] whose `result` completes with the model directory. The source shaders keep running in Vulkan; only their output images reach Python.
+ */
+
 /** Offline image-space distillation of a real Field render target: normalized (x,y,parameter) -> linear RGB.
  * Source shaders and their existing bindings execute in Vulkan; they are never translated to Python.
  * Geometry, camera, textures and other uniforms must stay fixed unless represented by [capture]'s parameter.
