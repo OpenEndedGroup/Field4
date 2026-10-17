@@ -13,6 +13,25 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
+/**
+ * DMX transmission: the frame buffers a box writes into, and the thread that puts them on the wire.
+ *
+ * [DmxUniverse] is one universe of 512 slots, addressed 1-based as consoles and fixture manuals
+ * address them. [DmxOutput] owns a set of those and a daemon sender thread that ticks at up to
+ * 44 Hz, sending a universe whose bytes have changed and re-sending an unchanged one often enough
+ * that no receiver times it out. [DmxProtocol] picks the wire format, encoded by [ArtNet] or
+ * [Sacn]: Art-Net needs a destination host, and sACN goes to each universe's multicast group
+ * unless one is given.
+ *
+ * Nothing here waits on Field's frame clock. `beforeTick` runs at the top of each sender tick,
+ * before the universes are snapshotted, which is where [Patch] `animate` computes the next look, so
+ * a rig keeps running whether or not a renderer is ticking.
+ *
+ * In a box, reach an output through `artnetOut` or `sacnOut` rather than this constructor: those
+ * hand back the same output across re-runs and close it when the box stops. The user-facing page is
+ * [Driving Lights: Art-Net and sACN](../dmx_lighting.md).
+ */
+
 /** Which wire protocol a [DmxOutput] speaks or a [DmxInput] listens for. */
 enum class DmxProtocol { ARTNET, SACN }
 

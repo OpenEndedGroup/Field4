@@ -19,13 +19,21 @@ import java.util.concurrent.ConcurrentHashMap
  * die with the second. So each `artnetOut` / `sacnOut` / `artnetIn` / `sacnIn` call is keyed by
  * box and endpoint: a re-run with the same arguments gets the same, still-sending object back (no
  * rebind, no gap on the wire), different arguments close the old one first, and stopping the box
- * closes it through `Box.registerStopHook` — the teardown path `streamProcess` uses for child
- * processes. This is deliberately *not* the per-port singleton `osc.kt` uses, whose sockets are
- * never released.
+ * closes it through `Box.registerStopHook`. Nothing is cached per port for the life of the process,
+ * so a rig stops when the box driving it stops.
  *
  * Inputs are keyed by protocol and port only, because only one socket can own a UDP port: a second
  * box asking for the same input shares the first one, and stopping either box closes it (the next
  * call reopens it).
+ *
+ * `artPoll` is the one call here that owns nothing. It sends a single ArtPoll and gathers the
+ * replies for a timeout, which is how to find the nodes on a network before patching to them. The
+ * user-facing page is [Driving Lights: Art-Net and sACN](../dmx_lighting.md).
+ */
+
+/**
+ * The registry behind the box-scoped accessors: one [DmxOutput] per box and endpoint, one
+ * [DmxInput] per protocol and port. `open` lists what is live; `closeAll` shuts all of it.
  */
 object DmxSockets {
     private val outputs = ConcurrentHashMap<String, Pair<String, DmxOutput>>()

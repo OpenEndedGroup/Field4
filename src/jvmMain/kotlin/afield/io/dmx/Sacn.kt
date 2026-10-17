@@ -9,8 +9,8 @@ import java.util.UUID
 /**
  * Streaming ACN (ANSI E1.31-2016, "sACN") packet encoding and decoding — the wire format only.
  *
- * sACN carries DMX512 universes over UDP port 5568 in three nested ACN PDUs — root layer, framing
- * layer, DMP layer — each opening with a 16-bit "flags and length" word whose top nibble is `0x7`
+ * sACN carries DMX512 universes over UDP port 5568 in three nested ACN PDUs (root layer, framing
+ * layer, DMP layer), each opening with a 16-bit "flags and length" word whose top nibble is `0x7`
  * and whose low 12 bits count the bytes *from that word to the end of the packet*. All multi-byte
  * fields are big-endian. This file implements:
  *
@@ -20,11 +20,21 @@ import java.util.UUID
  *   A data packet whose `Synchronization Address` is non-zero is held by receivers until a sync
  *   packet for that address arrives.
  * - **Universe discovery packets** (root `0x08`, framing `0x02`, §8): the list of universes a source
- *   is transmitting, sent every 10 s ([DISCOVERY_INTERVAL_MS]) to universe 64214.
+ *   is transmitting, sent every 10 s (`DISCOVERY_INTERVAL_MS`) to universe 64214.
  *
  * Universes are 1..63999; multicast traffic for universe `u` goes to `239.255.(u >> 8).(u & 0xff)`
- * ([multicastAddress]). Every source identifies itself by a 16-byte CID (a UUID), which is also how
+ * (`multicastAddress`). Every source identifies itself by a 16-byte CID (a UUID), which is also how
  * a receiver tells two sources on the same universe apart for priority and merging.
+ *
+ * [SacnSequence] is the §6.7.2 sequence-number rule a receiver applies per source per universe.
+ * [DmxOutput] and [DmxInput] are built on these codecs; a box reaches them through `sacnOut` and
+ * `sacnIn`. The user-facing page is
+ * [Driving Lights: Art-Net and sACN](../dmx_lighting.md).
+ */
+
+/**
+ * The sACN codecs: encoders and decoders for data, synchronization and discovery packets, and the
+ * E1.31 constants (ports, vectors, option bits, timeouts, default priority) they use.
  */
 object Sacn {
     /** UDP port for all E1.31 traffic: 5568 (ACN_SDT_MULTICAST_PORT). */

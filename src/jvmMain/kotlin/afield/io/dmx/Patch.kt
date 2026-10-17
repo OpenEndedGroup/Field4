@@ -15,6 +15,27 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
+/**
+ * A rig as data: what each fixture is, where it sits in DMX space, and where it sits in the room.
+ *
+ * A [Patch] holds [Fixture]s, each a [FixtureProfile] (which [Slot] sits at every offset from the
+ * start address) at some universe and address, with a position. Addresses are given explicitly or
+ * allocated in runs by `strip`, `stripAlong` and `grid`, which roll over to the next universe
+ * rather than let a fixture straddle slot 512.
+ *
+ * Colour goes in through the mappers (`map` from a position and a time, `mapAlong` from distance
+ * along the fixture list, `mapImage` sampled from an [Img]) or straight onto a fixture, and goes
+ * out as slot bytes through `render` into a [DmxOutput]. `writeInto` is where a colour becomes
+ * slots: white and amber are taken out of red, green and blue for the profiles that carry them,
+ * gamma is applied, and a 16-bit slot gets its coarse and fine bytes. `decode` inverts that as far
+ * as the slots allow, so a look that came back off the wire can be compared with the one sent.
+ *
+ * Positions are the room's, in whatever unit the rig is described in; the mappers and the
+ * `toFLines` drawing work in that unit and nothing here fixes it to metres. `colorTemperature`
+ * turns a black-body temperature into a colour to map onto. The user-facing page is
+ * [Driving Lights: Art-Net and sACN](../dmx_lighting.md).
+ */
+
 /** What one DMX slot of a fixture carries. `_FINE` slots are the low byte of the slot before them. */
 enum class Slot {
     RED, GREEN, BLUE, WHITE, AMBER,
