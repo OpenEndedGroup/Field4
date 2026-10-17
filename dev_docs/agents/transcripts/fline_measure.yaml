@@ -38,16 +38,17 @@ operations:
           }
 
           // the circle that matches the bend, at three of them
-          val bends = listOf(stops[3], stops[7], stops[10]).map { loc ->
-              val r = 1.0 / loc.signedCurvature2D
-              fline {
-                  circle(loc.point.x + loc.normal2D.x * r, loc.point.y + loc.normal2D.y * r, kotlin.math.abs(r))
-                  thickness = 1.0
-                  color = vec(1.0, 0.6, 0.2, 0.8)
+          val bends =
+              [stops[3], stops[7], stops[10]].map { loc ->
+                  val r = 1.0 / loc.signedCurvature2D
+                  fline {
+                      circle(loc.point.x + loc.normal2D.x * r, loc.point.y + loc.normal2D.y * r, kotlin.math.abs(r))
+                      thickness = 1.0
+                      color = vec(1.0, 0.6, 0.2, 0.8)
+                  }
               }
-          }
 
-          lines(listOf(curve) + normals + bends, w = 420.0, h = 260.0, fitToSize = true)
+          lines([curve] + normals + bends, w = 420.0, h = 260.0, fitToSize = true)
   - create:
       box: fline-measure-trim
       name: 2 - Trim and split by distance
@@ -76,11 +77,14 @@ operations:
 
           // cut at 100 units: two pieces whose lengths add up to the whole
           val (head, tail) = curve.splitAt(100f)
-          head.apply { thickness = 2.0; color = vec(1.0, 0.6, 0.2, 1.0) }
+          head.apply {
+              thickness = 2.0
+              color = vec(1.0, 0.6, 0.2, 1.0)
+          }
 
           print("total ${"%.1f".format(total)} = ${"%.1f".format(head.length())} + ${"%.1f".format(tail.length())}")
 
-          lines(listOf(curve, head, middle), w = 420.0, h = 260.0, fitToSize = true)
+          lines(curve, head, middle, w = 420.0, h = 260.0, fitToSize = true)
   - create:
       box: fline-measure-cross
       name: 3 - Crossings, bounds, orientation
@@ -105,7 +109,7 @@ operations:
           }
 
           // where the loop crosses the ring, and where it crosses itself
-          val hits = listOf(loop.crossings2D(ring), loop.selfCrossings2D()).flatten().map { it.point }
+          val hits = [loop.crossings2D(ring), loop.selfCrossings2D()].flatten().map { it.point }
           val dots = polylineFrom(hits.map { it.v2 }).apply {
               pointed = true
               pointSize = 3.0
@@ -114,12 +118,20 @@ operations:
           }
 
           // bounds that hug the curve, against the control-point bounds
-          val tight = fline { rect(loop.tightBounds2D()); thickness = 1.0; color = vec(0.4, 1.0, 0.6, 1.0) }
-          val loose = fline { rect(loop.fast2DBounds()); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.25) }
+          val tight = fline {
+              rect(loop.tightBounds2D())
+              thickness = 1.0
+              color = vec(0.4, 1.0, 0.6, 1.0)
+          }
+          val loose = fline {
+              rect(loop.fast2DBounds())
+              thickness = 1.0
+              color = vec(1.0, 1.0, 1.0, 0.25)
+          }
 
           print("${hits.size} crossings; clockwise on screen: ${ring.isClockwise2D()}")
 
-          lines(listOf(loose, tight, ring, loop, dots), w = 420.0, h = 260.0, fitToSize = true)
+          lines(loose, tight, ring, loop, dots, w = 420.0, h = 260.0, fitToSize = true)
   - create:
       box: fline-measure-fill
       name: 4 - Fill rules that follow the curve
@@ -143,7 +155,10 @@ operations:
               val shape = ring(dx)
               for (i in 0..24) for (j in 0..24) {
                   val p = Vec2((15 + dx + i * 8).toFloat(), (25 + j * 8).toFloat())
-                  if (shape.contains2D(p, rule)) { moveTo(p.x, p.y); lineTo(p.x + 0.01, p.y) }
+                  if (shape.contains2D(p, rule)) {
+                      moveTo(p.x, p.y)
+                      lineTo(p.x + 0.01, p.y)
+                  }
               }
               pointed = true
               pointSize = 0.7
@@ -151,8 +166,15 @@ operations:
               color = vec(1.0, 0.6, 0.2, 1.0)
           }
 
-          lines(listOf(ring(0.0), ring(240.0), insideDots(0.0, FLineFillRule.NonZero), insideDots(240.0, FLineFillRule.EvenOdd)),
-              w = 460.0, h = 240.0, fitToSize = true)
+          lines(
+              ring(0.0),
+              ring(240.0),
+              insideDots(0.0, FLineFillRule.NonZero),
+              insideDots(240.0, FLineFillRule.EvenOdd),
+              w = 460.0,
+              h = 240.0,
+              fitToSize = true,
+          )
   - create:
       box: fline-measure-helix
       name: 5 - A 3D frame along a helix
@@ -175,9 +197,15 @@ operations:
                   val z0 = rise * q / 4
                   val z1 = rise * (q + 1) / 4
                   cubicTo(
-                      r * cos(a0) - k * sin(a0), r * sin(a0) + k * cos(a0), z0 + (z1 - z0) / 3,
-                      r * cos(a1) + k * sin(a1), r * sin(a1) - k * cos(a1), z0 + 2 * (z1 - z0) / 3,
-                      r * cos(a1), r * sin(a1), z1,
+                      r * cos(a0) - k * sin(a0),
+                      r * sin(a0) + k * cos(a0),
+                      z0 + (z1 - z0) / 3,
+                      r * cos(a1) + k * sin(a1),
+                      r * sin(a1) - k * cos(a1),
+                      z0 + 2 * (z1 - z0) / 3,
+                      r * cos(a1),
+                      r * sin(a1),
+                      z1,
                   )
               }
           }
@@ -185,26 +213,31 @@ operations:
           // look at it from the side and a little above: x across, z up, y into the page
           fun view(p: Vec3) = vec(p.x + 0.35 * p.y, -p.z - 0.35 * p.y)
 
+          val projected = helix.sampleByNumber(400).map(::view)
           val drawn = fline {
-              helix.sampleByNumber(400).forEachIndexed { i, p -> if (i == 0) moveTo(view(p)) else lineTo(view(p)) }
+              data("m l+", projected)
               thickness = 1.5
               color = vec(1.0, 1.0, 1.0, 1.0)
           }
 
           // the 3D frame at 16 evenly spaced places: tangent orange, normal blue, binormal green
           fun tick(p: Vec3, d: Vec3?, c: Vec4) = fline {
-              if (d != null) { moveTo(view(p)); lineTo(view(p + d * 18.0)) }
+              if (d != null) {
+                  moveTo(view(p))
+                  lineTo(view(p + d * 18.0))
+              }
               thickness = 2.0
               color = c
           }
-          val frames = (0..15).flatMap { i ->
-              val loc = helix.locationAtFraction(i / 15f)!!
-              listOf(
-                  tick(loc.point, loc.tangent, vec(1.0, 0.6, 0.2, 1.0)),
-                  tick(loc.point, loc.normal, vec(0.4, 0.8, 1.0, 1.0)),
-                  tick(loc.point, loc.binormal, vec(0.5, 1.0, 0.5, 1.0)),
-              )
-          }
+          val frames =
+              (0..15).flatMap { i ->
+                  val loc = helix.locationAtFraction(i / 15f)!!
+                  [
+                      tick(loc.point, loc.tangent, vec(1.0, 0.6, 0.2, 1.0)),
+                      tick(loc.point, loc.normal, vec(0.4, 0.8, 1.0, 1.0)),
+                      tick(loc.point, loc.binormal, vec(0.5, 1.0, 0.5, 1.0)),
+                  ]
+              }
 
           // a helix has constant curvature r / (r^2 + c^2), with c the rise per radian
           val c = rise / (2 * PI)
@@ -212,7 +245,7 @@ operations:
           println("curvature %.5f, a true helix %.5f".format(mid.curvature, r / (r * r + c * c)))
           println("normal points at the axis: %.3f".format(mid.normal!!.dot(vec(-mid.point.x, -mid.point.y, 0.0).normalize())))
 
-          lines(listOf(drawn) + frames, w = 420.0, h = 260.0, fitToSize = true)
+          lines([drawn] + frames, w = 420.0, h = 260.0, fitToSize = true)
   - execute:
       box: fline-measure-locate
       property: code

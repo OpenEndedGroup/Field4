@@ -1,0 +1,59 @@
+{
+  "baseline": "befabee7a",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/sorting_networks.yaml",
+      "kotlinBodies": 4,
+      "collectionConversions": 4,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/sorting_networks_examples.md",
+      "kotlinBodies": 4,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/drawn_morph.yaml",
+      "kotlinBodies": 5,
+      "collectionConversions": 2,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/chain_drawn_morph.md",
+      "kotlinBodies": 8,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/colors_examples.md",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/visualizers.md",
+      "kotlinBodies": 43,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/autodiff_worked_example.yaml",
+      "kotlinBodies": 5,
+      "collectionConversions": 3,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fline_measure.yaml",
+      "kotlinBodies": 5,
+      "collectionConversions": 5,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/boolean_networks_examples.md",
+      "kotlinBodies": 4,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

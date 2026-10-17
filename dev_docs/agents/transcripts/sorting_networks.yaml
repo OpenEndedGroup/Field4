@@ -12,29 +12,25 @@ operations:
         "autorun": false
         "code": |
           import afield.geometry.path.FLine
-          
+
           val bubble = SortingNetwork.bubble(10)
           val merge = SortingNetwork.oddEvenMerge(10)
-          
+
           fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
-          
+
           fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
-              moveTo(x, y)
-              lineTo(x + w, y)
-              lineTo(x + w, y + h)
-              lineTo(x, y + h)
-              close()
+              rect(x, y, w, h)
               filled = true
               stroked = true
               thickness = 1.2
               this.color = color
           }
-          
-          val frames = listOf(
+
+          val frames = [
               panel(30.0, 40.0, 1030.0, 390.0, vec(0.08, 0.14, 0.20, 0.55)),
               panel(30.0, 500.0, 1030.0, 390.0, vec(0.18, 0.11, 0.07, 0.52)),
-          )
-          
+          ]
+
           lines(
               frames +
                   shift(bubble.toFLines(wireSpacing = 34.0, layerSpacing = 46.0, margin = 42.0), 70.0, 95.0) +
@@ -182,7 +178,7 @@ operations:
           import afield.ui.visualization.darkMode
           import space.kscience.plotly.*
           import space.kscience.plotly.models.ScatterMode
-          
+
           data class RunConfig(
               val family: String,
               val initial: SortingNetwork,
@@ -191,34 +187,34 @@ operations:
               val seed: Long,
               val hue: String,
           )
-          
+
           data class RunResult(
               val config: RunConfig,
               val counts: List<Pair<Int, Double>>,
               val depths: List<Pair<Int, Double>>,
               val best: SortingNetwork,
           )
-          
+
           val merge = SortingNetwork.oddEvenMerge(8)
           val mergeDense =
               SortingNetwork(
                   8,
                   merge.comparators +
-                      listOf(
+                      [
                           SortingComparator(0, 1),
                           SortingComparator(2, 3),
                           SortingComparator(4, 5),
                           SortingComparator(6, 7),
-                      ),
+                      ],
               )
-          
+
           val configs =
-              listOf(
+              [
                   Triple("bubble", SortingNetwork.bubble(8), "#8ad6ff"),
                   Triple("merge+", mergeDense, "#ffb857"),
                   Triple("merge", merge, "#94ffad"),
-              ).flatMapIndexed { familyIndex, (family, initial, hue) ->
-                  listOf(0.7 to 0.05, 1.5 to 0.02, 3.2 to 0.01).flatMapIndexed { tempIndex, (startTemp, endTemp) ->
+              ].flatMapIndexed { familyIndex, (family, initial, hue) ->
+                  [0.7 to 0.05, 1.5 to 0.02, 3.2 to 0.01].flatMapIndexed { tempIndex, (startTemp, endTemp) ->
                       (0 until 3).map { seed ->
                           RunConfig(
                               family = family,
@@ -231,10 +227,10 @@ operations:
                       }
                   }
               }
-          
+
           val iterations = 2_000
           val progressEvery = 80
-          
+
           val runs = configs.map { config ->
               val countTrace = mutableListOf<Pair<Int, Double>>()
               val depthTrace = mutableListOf<Pair<Int, Double>>()
@@ -258,7 +254,7 @@ operations:
                   best = best,
               )
           }
-          
+
           // One faint line per run, coloured by its starting network.
           fun traces(title: String, pick: (RunResult) -> List<Pair<Int, Double>>) = Plotly.plot {
               for (run in runs) scatter {
@@ -270,10 +266,10 @@ operations:
               }
               layout { this.title = title; xaxis { this.title = "iteration" }; height = 300 }
           }.darkMode()
-          
+
           display("sorting-anneal-counts", traces("Best so far: comparators") { it.counts })
           display("sorting-anneal-depths", traces("Best so far: depth") { it.depths })
-          
+
           // Where each run finished, one marker per run, grouped by starting network.
           display("sorting-anneal-results", Plotly.plot {
               for ((family, group) in runs.groupBy { it.config.family }) scatter {
