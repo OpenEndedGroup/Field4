@@ -1,0 +1,65 @@
+{
+  "baseline": "8784d46dd",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/drawn_paint.yaml",
+      "kotlinBodies": 6,
+      "collectionConversions": 4,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fline_exact_booleans.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 3,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/inertial_movement.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 1,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/autodiff_examples.md",
+      "kotlinBodies": 6,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/chain_drawn_paint.md",
+      "kotlinBodies": 8,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/flow_matching.md",
+      "kotlinBodies": 7,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/paint_canvas.md",
+      "kotlinBodies": 11,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/paint_gestures.md",
+      "kotlinBodies": 7,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/typography_examples.md",
+      "kotlinBodies": 10,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/watercolor.md",
+      "kotlinBodies": 10,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

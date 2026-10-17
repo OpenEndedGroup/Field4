@@ -34,7 +34,11 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Current contracts and formatter coverage](../box_code_adoption_batch_15/README.md) | Seventeen more findings addressed; fourteen transcript routes, empty/constant scalar variants, shader validation and quoted-key formatter regressions verified. |
 
-[Machine checkpoint](checkpoint.json): **170 of 405 findings addressed**, one implemented with
+| [Live control previews](../box_code_adoption_batch_16/README.md) | Five findings resolved; actual browser callbacks/rerun persistence, implicit-receiver distinction and the regenerated docs capture verified. |
+
+| [Drawing and painting path helpers](../box_code_adoption_batch_17/README.md) | Eleven more findings addressed; seventy code bodies, three transcripts and actual geometry checks verified; native paint rendering explicitly unavailable. |
+
+[Machine checkpoint](checkpoint.json): **186 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.

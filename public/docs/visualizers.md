@@ -1058,9 +1058,8 @@ A typed or nudged value is snapped to `step` and clamped to the range, the same 
 A `controlGroup` slider keeps its value across re-runs and in the saved document. A standalone `slider(...)` starts from `initialValue` every run. When the value should belong to the box, bind it to a property:
 
 ```diffstatic {data-lang=kotlin}
+prop<Double>(gain)
 syncToProperty("gain", 0.5, min = 0.0, max = 2.0)
-
-val gain = getPropertyRaw("gain") as Double
 ```
 
 `syncToProperty` starts from the property's current value when it has one, so re-running the box keeps whatever you last dialled in, and the property is saved with the document.
@@ -1087,48 +1086,62 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-mixed-controls.png" alt="two channels. 'surface' holds the same five widgets under different names: BLOOM at 0.62, a WIND pad with its handle up and left at theta 146 degrees and magnitude 0.54, TRAILS checked, LABEL reading 'wake field', and a cyan TINT swatch at alpha 0.90. 'preview' below it holds a wide rendered strip, warm brown at the left and a soft blue bloom left of centre, with the line wind=(-0.45, 0.32), bloom=0.62, trails=true underneath, so the preview and the widgets agree" wait="1.0" capture="box" open-outputs="true" w="1200" h="180" embed=true name="mixed-controls"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-mixed-controls.png" alt="Two channels: surface holds BLOOM, WIND, TRAILS, LABEL and TINT controls. Preview shows the label and current values beneath a solid monochrome circle on black. Wind moves the circle, bloom changes its size, trails changes its outline, and tint sets its luminance and alpha." wait="1.0" capture="box" open-outputs="true" w="1200" h="180" embed=true name="mixed-controls"}
 :::static
-var wind = Vector2f(-0.45f, 0.32f)
+var wind = Vector2f(-0.45f, 0.30f)
 var bloom = 0.62
 var trails = true
 var label = "wake field"
 var tint = Vector4f(0.25f, 0.75f, 1.0f, 0.9f)
 
+// Refresh after each edit. TINT controls monochrome luminance and alpha.
+fun updatePreview() {
+    val gray = (255 * (0.2126 * tint.x + 0.7152 * tint.y + 0.0722 * tint.z)).toInt().coerceIn(0, 255)
+    val x = 160 + wind.x * 120
+    val y = 48 - wind.y * 32
+    val radius = 6 + bloom * 22
+    val dash = if (trails) "4 3" else "none"
+    markdown(
+        "preview",
+        """
+        #### ${label.md}
+
+        <svg width="320" height="96" viewBox="0 0 320 96" style="background:#080808;border:1px solid #555">
+          <circle cx="$x" cy="$y" r="$radius" fill="rgb($gray,$gray,$gray)" fill-opacity="${tint.w}"
+                  stroke="#ddd" stroke-dasharray="$dash"/>
+        </svg>
+
+        wind=(${wind.x}, ${wind.y}) · bloom=$bloom · trails=$trails
+        tint=(${tint.x}, ${tint.y}, ${tint.z}, ${tint.w})
+        """,
+        width = 620,
+    )
+}
+
 controlGroup("surface") {
     slider("bloom", min = 0.0, max = 1.0, step = 0.01, initialValue = bloom) {
         bloom = it
+        updatePreview()
     }
     vec2Control("wind", initialValue = wind, xRange = -1.0 to 1.0, yRange = -1.0 to 1.0, step = 0.05) {
         wind = it
+        updatePreview()
     }
     checkbox("trails", initialValue = trails) {
         trails = it
+        updatePreview()
     }
     stringInput("label", initialValue = label) {
         label = it
+        updatePreview()
     }
     colorPicker("tint", initialValue = tint) {
         tint = it
+        updatePreview()
     }
 }
-
-// The gradient swatch is the bespoke part and stays as HTML; the card around it does not
-// have to be hand-built any more.
-markdown(
-    "preview",
-    """
-    #### ${label.md}
-
-    <div style="height:96px;background:
-      radial-gradient(circle at 35% 45%, rgba(64,190,255,0.65), transparent 22%),
-      linear-gradient(135deg, rgba(255,120,40,0.18), rgba(40,210,255,0.20));
-      border:1px solid rgba(131,230,255,0.35)"></div>
-
-    wind=({accent:${wind.x}}, {accent:${wind.y}}) · bloom={accent:$bloom} · trails={accent:$trails}
-""",
-    width = 620,
-)
+// Cached controls may invoke callbacks during setup; draw once more after all are restored.
+updatePreview()
 
 println("mixed controls ready")
 ```
@@ -1506,7 +1519,8 @@ val ping = { t: Double -> sin(2 * PI * 220 * t) * exp(-2.5 * t) }
 
 // 1. Fn.plot: the envelope, samples embedded in the page (resampled live when you zoom in).
 with(Functions) {
-    fn(0.0..2.0, "envelope  exp(-2.5 t)") { t -> exp(-2.5 * t) }.plot("envelope", syncGroup = sync, xLabel = "seconds")
+    val envelope = fn(0.0..2.0, "envelope  exp(-2.5 t)") { t -> exp(-2.5 * t) }
+    envelope.plot("envelope", syncGroup = sync, xLabel = "seconds")
 }
 
 // 2. displayAudioSamples: the ping itself, playable; click to seek.
