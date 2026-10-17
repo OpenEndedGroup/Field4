@@ -75,6 +75,14 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * Drawing [FLine]s into a box's output as SVG: [Box.lines] and [Box.l] display them, [linesToHTML]
+ * and [drawToSVG] return the markup, and [outputTo] draws one line onto a Skia `Canvas`.
+ *
+ * Lines carrying [FLine.onClick] or [FLine.hoverColor] are drawn as interactive SVG with click
+ * callbacks; everything else goes through Skia's SVG canvas.
+ */
+
+/**
  * The exact HTML a non-editable [Box.lines] would display, without displaying it.
  *
  * Every `lines(...)` overload builds this and hands it to `display`, and the branch it takes is not
