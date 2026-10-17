@@ -1,0 +1,23 @@
+{
+  "baseline": "ac1bd079c",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/studies_rings.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 3,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/studies.md",
+      "kotlinBodies": 13,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/kits.md",
+      "kotlinBodies": 6,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

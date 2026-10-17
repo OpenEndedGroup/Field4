@@ -56,4 +56,3 @@ for row in rows:
    if not re.match(r'\s*\.trim(?:Indent|Margin)\s*\(',x[u.end():]) and u[0]!=v[0]:edits.append((c+v.start(),c+v.end(),u[0]))
  for a,b,code in sorted(edits,reverse=True):actual=actual[:a]+code+actual[b:]
  p.write_text(actual)
-
