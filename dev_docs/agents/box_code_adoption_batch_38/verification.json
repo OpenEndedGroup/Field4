@@ -1,0 +1,11 @@
+{
+  "baseline": "ae3d87d5b",
+  "sources": [
+    {
+      "path": "public/docs/functions_examples.md",
+      "kotlinBodies": 247,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}
