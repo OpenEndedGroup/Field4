@@ -84,7 +84,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Reports, discovery and circuit framing](../box_code_adoption_batch_40/README.md) | Three more findings addressed; actual WFC output, two advertised OSCQuery services and a genuine 280-frame growth recording verified; 28 formatting states. |
 
-[Machine checkpoint](checkpoint.json): **286 of 405 findings addressed**, one implemented with
+| [Labels, chart clipping and private keyframe folders](../box_code_adoption_batch_41/README.md) | Three more findings addressed; actual label failures, native TetGen/Chart geometry and isolated key histories verified; 30 formatting states and three refreshed figures. |
+
+[Machine checkpoint](checkpoint.json): **289 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
