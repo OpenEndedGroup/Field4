@@ -42,6 +42,15 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
+ * The box surface for study builds: [Box.studyBuilds] attaches a named [StudyBuilds] runner to a box,
+ * and [Box.showStudyBuilds] shows its stage buttons, progress and diagnostics in an output channel.
+ *
+ * The runner keeps its history under the document's `studies` directory, is replaced when the box
+ * runs again, and closes when the box stops. Runners on boxes of the same document can depend on each
+ * other's stages through `dependsOn(runner, stage)`.
+ */
+
+/**
  * Attach durable derived stages to this box, discoverable by every AI4 chat in its document.
  *
  * Re-running replaces this named runner and revokes any unfinished publication. Stopping/deleting

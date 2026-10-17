@@ -78,6 +78,19 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration
 
+/**
+ * Durable derived builds for a study: named stages whose results are fingerprinted against their
+ * inputs and recipe, kept on disk with their attempt history, and reported stale when either changes.
+ *
+ * A [StudyBuildStage] declares an id, a `recipeVersion`, the input keys it reads and the stages it
+ * depends on; [StudyBuilds] runs those stages on worker threads under a directory it owns through a
+ * file lock. A [StudyBuildGate] adds an input that exists only while a check passes, and
+ * `dependsOn(runner, stage)` names a stage of another runner in the same document. Reading
+ * [StudyBuilds.stages] recomputes currency, [StudyBuilds.start] and [StudyBuilds.cancel] drive one
+ * attempt, and [StudyBuilds.prune] deletes attempts that no current result, running build or pin needs. From a box, attach a
+ * runner with [Box.studyBuilds] (`BoxStudyBuilds.kt`).
+ */
+
 /** A build's execution state. Currency against the design is reported separately by [StudyStageState]. */
 enum class StudyBuildStatus { QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED, OBSOLETE, INTERRUPTED }
 
