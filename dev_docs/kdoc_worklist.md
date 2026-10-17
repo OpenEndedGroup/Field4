@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 16155 of 32178 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 16165 of 32178 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2306 undocumented entry points** (types, top-level functions and values) and 13046 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2306 undocumented entry points** (types, top-level functions and values) and 13036 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -439,7 +439,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [GpuRadixSort.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/GpuRadixSort.kt) | Graphics | — | 1 | 8 | 7% |
 | [MapOfSequences.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/MapOfSequences.kt) | Graphics | — | 1 | 8 | 35% |
 | [AgentWorktreeManager.kt](../src/jvmMain/kotlin/afield/tools/automation/AgentWorktreeManager.kt) | Workspace | — | 1 | 8 | 0% |
-| [keyframeTypeLibrary.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframeTypeLibrary.kt) | Graphics | — | 1 | 7 | 20% |
 | [terminal.kt](../src/jvmMain/kotlin/afield/app/server/terminal.kt) | Workspace | — | 1 | 7 | 20% |
 | [NewMain6.kt](../src/jvmMain/kotlin/afield/examples/four/NewMain6.kt) | Examples | — | 1 | 7 | 0% |
 | [NewMain7_dynamicNumberOfVerts.kt](../src/jvmMain/kotlin/afield/examples/four/NewMain7_dynamicNumberOfVerts.kt) | Examples | — | 1 | 7 | 0% |
@@ -539,6 +538,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [OutputRequests.kt](../src/jvmMain/kotlin/afield/ui/output/OutputRequests.kt) | Workspace | — | 1 | 1 | 71% |
 | [ChatlogRoutes.kt](../src/jvmMain/kotlin/afield/ai/conversation/chatlog/ChatlogRoutes.kt) | Machine learning | — | 1 | 0 | 0% |
 | [WorkspaceSymbolSearchSupport.kt](../src/jvmMain/kotlin/afield/ai/tools/WorkspaceSymbolSearchSupport.kt) | Machine learning | — | 1 | 0 | 0% |
+| [keyframeTypeLibrary.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframeTypeLibrary.kt) | Graphics | — | 1 | 0 | 90% |
 | [PinnedConsole.kt](../src/jvmMain/kotlin/afield/app/diagnostics/logging/PinnedConsole.kt) | Workspace | — | 1 | 0 | 92% |
 | [Server_notifications.kt](../src/jvmMain/kotlin/afield/app/notifications/Server_notifications.kt) | Workspace | — | 1 | 0 | 0% |
 | [agent_backdoor.kt](../src/jvmMain/kotlin/afield/app/server/agent_backdoor.kt) | Workspace | — | 1 | 0 | 0% |
@@ -791,7 +791,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FilestoreDir.kt](../src/jvmMain/kotlin/afield/ai/knowledge/FilestoreDir.kt) | Machine learning | — | 0 | 3 | 66% |
 | [AnthropicBridge.kt](../src/jvmMain/kotlin/afield/ai/models/AnthropicBridge.kt) | Machine learning | — | 0 | 3 | 40% |
 | [DocsSearchBridge.kt](../src/jvmMain/kotlin/afield/ai/tools/DocsSearchBridge.kt) | Machine learning | — | 0 | 3 | 40% |
-| [keyframeInterpolants.kt](../src/jvmMain/kotlin/afield/animation/interpolation/keyframeInterpolants.kt) | Graphics | — | 0 | 3 | 86% |
 | [MarfGallery.kt](../src/jvmMain/kotlin/afield/audio/synth/MarfGallery.kt) | Patterns | — | 0 | 3 | 72% |
 | [PatSynthDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSynthDocs.kt) | Patterns | — | 0 | 3 | 62% |
 | [GpuSchemaSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/four/GpuSchemaSmokeTest.kt) | Examples | — | 0 | 3 | 25% |
