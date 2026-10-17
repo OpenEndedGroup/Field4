@@ -3,6 +3,14 @@ package afield.ai.conversation
 import afield.ai.models.OpenAiIdeCodexBridge
 
 /**
+ * How a tool result ends a model's turn early so the conversation can wait for study builds without spending model calls.
+ *
+ * A tool result implementing [SuspendsTurn] carries a [TurnSuspension]: the [AwaitedBuild] jobs and a
+ * deadline. The bridge stops after the current round and keeps that round's tool outputs as a
+ * [SuspendedRound], which the resuming turn sends ahead of its own prompt.
+ */
+
+/**
  * A tool result that ends the model's turn when [suspension] is set: the bridge finishes the round it is
  * in, makes no further model request, and returns the suspension in [OpenAiIdeCodexBridge.SendResult].
  * Someone else resumes the conversation later (`StudyBuildAwaits` for `AwaitStudyBuildsRequest`), so the

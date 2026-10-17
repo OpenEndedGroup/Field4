@@ -8,6 +8,13 @@ import kotlinx.serialization.json.contentOrNull
 import java.io.File
 
 /**
+ * Housekeeping for the box states AI4 conversations save under `<document>/ai4_blobs/state/`.
+ *
+ * [AiStatePruning.sweepOrphans] removes states no session tree refers to, and [Box.pruneAiStates]
+ * trims old states along each branch on request, reporting by default rather than deleting.
+ */
+
+/**
  * Keeping `<document>/ai4_blobs/state/` (the box states AI4 conversations save after each request that
  * changes them) from growing without bound, without deleting a state a turn can still be restored to.
  *
