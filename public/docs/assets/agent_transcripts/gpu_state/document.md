@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="gs_sim" index="1" -->
 
 ```edn [field-box id="gs_sim" role="properties"]
-{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 53 "characters" 2046 "sha256" "6f4ee220ee1a16df108d02080761c8364f4ffa3a828acb7271951e03fdaac53f"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 107 "characters" 5188 "sha256" "596fd834b67573b3c07bc271c293d32f7cacb88990e5d91c4cb968db5f7d64b7"}]}
+{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 52 "characters" 1914 "sha256" "edd18ba5250dbf2ddc7e8fb23ae5e8b3c400cb068983745fb0d8f564e38f0c40"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 107 "characters" 5188 "sha256" "596fd834b67573b3c07bc271c293d32f7cacb88990e5d91c4cb968db5f7d64b7"}]}
 ```
 
 ```glsl [field-property box="gs_sim" name="compute" path="gs_sim_compute_.glsl"]
@@ -57,9 +57,8 @@ layout(push_constant) uniform dat {
     float   dt;
 } pc;
 
-// The live slot, and it goes AFTER the push block, not before: a program is free to read
-// `?pc.knobs`, and the generated function is emitted exactly where this line is. Put it above
-// and glslang says `'pc' : undeclared identifier` on a line number inside generated code.
+// The live slot. Field emits the generated function after the push block wherever this line
+// sits, so a program is free to read `?pc.knobs`.
 // Until Kotlin binds it this is `vec4 force(vec4 force_in) { return vec4(0.0); }`, so the
 // shader still compiles and the field simply sits still.
 {{ stack.auto.force }}
