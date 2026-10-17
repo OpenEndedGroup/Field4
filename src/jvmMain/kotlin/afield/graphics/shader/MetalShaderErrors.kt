@@ -6,6 +6,10 @@ import afield.graphics.scene.*
 import java.io.File
 
 /**
+ * Explains shader failures on macOS that come from Metal name collisions rather than from the GLSL.
+ */
+
+/**
  * What a shader failure on macOS means, when the cause is Metal rather than your GLSL.
  *
  * On macOS Field's Vulkan runs through MoltenVK, which translates each shader to the Metal Shading
