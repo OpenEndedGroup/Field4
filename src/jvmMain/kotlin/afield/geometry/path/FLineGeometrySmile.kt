@@ -59,6 +59,14 @@ import afield.ui.visualization.*
 import kotlin.math.abs
 
 /**
+ * Resamples an [FLine] through a fitted curve: [bySmileSplineInterpolating] (Smile cubic spline),
+ * [bySmileGaussianProcessInterpolating] (Gaussian process) and [byAkimaInterpolating].
+ *
+ * Each one samples the line, fits X, Y and Z separately against normalised arc length, and returns
+ * a new line of `samples` points, mixed with the original by `dryWet`.
+ */
+
+/**
  * Smile cubic-spline interpolation along arc-length, applied independently to XYZ.
  */
 fun FLine.bySmileSplineInterpolating(
