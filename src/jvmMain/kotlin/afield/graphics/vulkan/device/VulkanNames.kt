@@ -1,5 +1,16 @@
 package afield.graphics.vulkan.device
 
+/**
+ * Debug names and command-buffer labels for Vulkan objects, as seen in validation messages and
+ * frame debuggers such as RenderDoc.
+ *
+ * [nameObject] attaches a name to a device handle; [beginLabel] and [endLabel] bracket a region of a
+ * command buffer. All three do nothing unless validation is on (`Options.validate`) and their own
+ * toggle (`Options.debugObjectNames`, `Options.debugLabels`) is set, and when the driver does not
+ * expose the `VK_EXT_debug_utils` entry point. Labels are also skipped on macOS. Name strings are
+ * encoded once and cached, so the same name can be passed every frame without allocating.
+ */
+
 import afield.graphics.vulkan.util.Options
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
