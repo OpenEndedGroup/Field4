@@ -35,10 +35,25 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
+/**
+ * A local cache that maps file contents to OpenAI file IDs, so the same bytes are uploaded once per API key.
+ *
+ * [OpenAiFileStoreCache] keys each record by a SHA-256 of the content and a peppered hash of the API key
+ * (the key itself is never stored), keeps the database as JSON, and writes it atomically under a
+ * read-write lock. `uploadIfNeeded` returns an existing file ID when the content is already known, and
+ * [DuplicatePolicy] decides what a second upload of known content does. [OpenAiFileUploader] is the upload
+ * seam; [OkHttpOpenAiFileUploader] is a minimal multipart client for `/v1/files`, and [uploadVirtualFiles]
+ * pushes Field virtual files through the same path.
+ *
+ * [OpenAiKnowledgeStore] is a second, registry-style store over the Files and Vector Stores REST endpoints.
+ * The command-line driver for the cache is `AI4FilestoreCli.kt`.
+ */
+
 /* =============================================================================
    Hash utilities
    ============================================================================= */
 
+/** SHA-256 digests as lowercase hex strings. */
 object Sha256 {
     fun hex(bytes: ByteArray): String {
         val md = MessageDigest.getInstance("SHA-256")
