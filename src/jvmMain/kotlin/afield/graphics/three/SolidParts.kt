@@ -15,6 +15,25 @@ import afield.geometry.solid.manifold.SolidPlanarMesh
 import afield.geometry.mesh.TriMesh
 import afield.geometry.path.planning.Point3D
 
+/**
+ * A set of named solid parts, shown in a Three.js scene as something to inspect rather than
+ * something to look at. One call inside a `three { … }` block lays out every part as its own
+ * pickable mesh, draws each one's creases and open boundaries over it as dark lines, and installs
+ * the inspector: units, the explode slider, per-part visibility, assembly motions and the paths a
+ * part came from.
+ *
+ * A part arrives as a planar mesh whose triangles carry the diagonals the triangulator needed and
+ * the coplanar edges Boolean history left behind, so drawing every edge would bury the shape under
+ * both. What is drawn instead is the geometric outline: creases between faces that meet at a real
+ * angle, and boundaries where a part ends. Edges between separate parts stay visible, since those
+ * are where the assembly is.
+ *
+ * Coordinates stay canonical throughout. Positions reach the GPU as `Float`s relative to one shared
+ * render origin, and `upAxis = ThreeUpAxis.Z` is a rigid display rotation applied on the way out, so
+ * neither large coordinates nor a Z-up convention changes the double-precision data the inspector
+ * reports or the digest that identifies the artifact.
+ */
+
 // solidParts lives apart from SolidInspection.kt on purpose. The house kit pins SolidInspectionKt's class bytes as
 // part of its geometry identity, and a call to ThreeSceneBuilder.mesh() compiles against mesh()'s whole parameter
 // list: while this viewer function sat there, every parameter mesh() gained changed the pinned class and made every

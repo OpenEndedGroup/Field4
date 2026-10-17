@@ -22,28 +22,27 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Locale
 
-/*
+/**
  * What a Three.js view puts on the wire, and what it refuses to.
  *
- * A view's geometry goes out in two parts. The websocket carries a *description*: the payload with every
- * numeric array replaced by a reference into a buffer table, small however large the scene is. The
- * buffers are one binary response from `GET /three-buffers?uid=…&generation=…`, written straight from
- * the payload's own arrays by [writeThreeBuffers] when, and only if, a viewer asks for them. Nothing is
- * formatted as decimal text, nothing the size of the scene is allocated, and the bytes are written on a
- * Ktor IO thread, never on the runloop.
+ * A view's geometry goes out in two parts. The websocket carries a *description*: the payload with
+ * every numeric array replaced by a reference into a buffer table, so the message stays small however
+ * large the scene is. The arrays themselves are one binary response from
+ * `GET /three-buffers?uid=…&generation=…`, written straight out of the payload's own arrays, and only
+ * when a viewer asks for them. Nothing is formatted as decimal text, nothing the size of the scene is
+ * allocated, and the bytes go out on a Ktor IO thread rather than on the runloop.
+ * [ThreeWireBuffers] is the table a description carries and [ThreeWireBuffer] one entry in it.
  *
- * Why: 2026-10-07 00:02, on a private house host, an AI tool styled 224 cut panels in one fabrication
- * view. `styleParts` ended in `update`, which encoded the whole payload as JSON text on the runloop, and
- * with the old generation 99.9% full the encoder's buffer growth thrashed for twenty minutes; every
- * document on the host froze with it. The first fix (`cdca61721`) made a style change a small
- * `three/appearance` message, packed drawable buffers as base64 inside the JSON and added the size guard.
- * Base64 in JSON is still one string the size of the scene at both ends, so this replaced it.
+ * A geometry over `AFIELD_THREE_PAYLOAD_LIMIT_MB`, 512 MB by default, is not sent at all:
+ * [ThreePayloadTooLargeException] names the largest contributors and the view keeps what it was
+ * already showing. That ceiling is for the browser, which has to hold the buffers and then copy them
+ * to the GPU; the server streams arrays it is holding anyway.
  *
- * Clients that do not ask for buffers in their hello — the native visionOS viewer (`FLineWire.swift`,
- * via `subscribe-all`) — get [forNativeClient]: the FLine half as JSON numbers, the format they decode,
- * without the drawables and solid topology they never read. It is encoded only when such a client is
- * connected. The viewer side is the `wire-payload` region of `threejs_viewer.html`.
- * `ThreeGeometryWireTest` holds both sides.
+ * A client that does not ask for buffers in its hello, as the native visionOS viewer does not, is
+ * sent the FLine half of the payload as JSON numbers instead, the format it decodes, without the
+ * drawables and solid topology it never reads. That form is encoded only while such a client is
+ * connected. The viewer side of all this is the `wire-payload` region of `threejs_viewer.html`, and
+ * `ThreeGeometryWireTest` holds the two halves against each other.
  */
 
 /** `Content-Type` of a `/three-buffers` response, excluded from gzip: float data barely compresses. */
