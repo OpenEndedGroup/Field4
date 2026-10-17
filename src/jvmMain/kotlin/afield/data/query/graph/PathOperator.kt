@@ -1,7 +1,7 @@
 package afield.data.query.graph
 
 /**
- * The `/` operator: `rig / "**\/freq"` is [graphPaths] with the ceremony removed.
+ * The `/` operator queries an object graph by path: `rig / "**\/freq"` is shorthand for [graphPaths].
  *
  * ```kotlin
  * (rig / "**\/freq").whereValueIs<Float> { it > 300f }
@@ -13,9 +13,8 @@ package afield.data.query.graph
  *
  * ### What defining this on `Any?` costs
  *
- * It is a deliberately wide extension, in the same spirit as the existing
- * `patch matches "**\/cutoff"`, and it is auto-imported into every box. Three consequences
- * worth knowing:
+ * It is a wide extension, in the same spirit as `patch matches "**\/cutoff"`, and it is
+ * auto-imported into every box. Three consequences:
  *
  * - **Nothing that used to compile changes meaning.** A member operator always beats an
  *   extension, so every `Float / Float`, `Vec3 / Float`, `Signal / Signal` keeps its own
@@ -28,8 +27,10 @@ package afield.data.query.graph
  * - **`div` appears on every receiver in completion.** One extra entry, everywhere.
  *
  * When you need [GraphWalkOptions] — a depth cap, private properties, a custom `descendInto`
- * — call [graphPaths] directly; the operator has nowhere to put them and does not try.
+ * — call [graphPaths] directly; the operator has nowhere to put them.
  */
+
+/** Queries this object's graph with a path [pattern]; the same as `graphPaths(pattern)`. */
 operator fun Any?.div(pattern: String): PathSet = graphPaths(pattern)
 
 private const val LEAF_DIV_MESSAGE =
