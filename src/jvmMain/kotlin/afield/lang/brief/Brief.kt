@@ -6,18 +6,16 @@ import kotlin.math.abs
 import kotlin.math.min
 
 /**
- * Brief: a weighted constraint notation.
+ * Brief is a text notation for weighted geometric constraints: points, lines, planes and panels, and
+ * the relations they should satisfy, each with a strength.
  *
- * A brief is what an architect writes before there is a building — a statement of what has to be
- * true, in an order nobody promised, about things that do not exist yet. That is the shape of this
- * language and the reason for its name. `afield.math.optimization.ceres.ConstraintScope` already holds a
- * complete weighted constraint vocabulary, and until this package the only way to reach a single verb
- * of it was to write Kotlin — a `GeometryModelScope.() -> Unit` receiver lambda that no other
- * language in Field can construct, not even through FieldML's `hostCall`. Brief is that vocabulary as
- * text.
+ * A brief is what an architect writes before there is a building: a statement of what has to be
+ * true, in no particular order, about things that do not exist yet. The vocabulary is the weighted
+ * constraint set of `afield.math.optimization.ceres.ConstraintScope`, which otherwise is reachable
+ * only from a Kotlin receiver lambda; Brief makes it available as text.
  *
- * A program is a `#brief`-tagged region — a Kotlin triple-quoted string whose first line is `#brief`,
- * the same Route-A shape RectSL uses — or any string handed to [compileBrief]:
+ * A program is a `#brief`-tagged region (a Kotlin triple-quoted string whose first line is `#brief`,
+ * the same Route-A shape RectSL uses) or any string handed to [compileBrief]:
  *
  * ```
  * #brief
@@ -29,35 +27,40 @@ import kotlin.math.min
  * insist distance(west, spine) = 6
  * ```
  *
- * Four things about the design, because each is a decision rather than an accident.
+ * #### Weight is a number
  *
- * **Weight is a number, not a mood.** Every constraint statement starts with a *strength*, and the
- * slot takes either a word from a decade ladder ([BriefStrength]) or a bare number. `prefer` and
- * `insist` differ by a factor of a thousand, and the solved answer moves accordingly — that is the
- * whole point, and the fact that the ladder words are only names for numbers is the reason a bare
- * number is accepted in the same position.
+ * Every constraint statement starts with a *strength*, and the slot takes either a word from a decade
+ * ladder ([BriefStrength]) or a bare number. `prefer` and `insist` differ by a factor of a thousand,
+ * and the solved answer moves accordingly. The ladder words are names for numbers, so a bare number
+ * is accepted in the same position.
  *
- * **Forward reference is the normal case.** Lines, planes and panels resolve in a second pass, so a
- * relation may cite geometry declared below it. Points go further and are *declared on use*: naming a
- * point that was never declared creates one, seeded on a deterministic golden-angle circle so a brief
- * of pure relations starts from a non-degenerate spread rather than a pile at the origin. Which points
- * were invented is reported ([BriefProgram.inventedPoints]) rather than left silent.
+ * #### Forward reference is the normal case
  *
- * **Two kinds of relation, one statement shape.** `spine.length = 4` is a relation over a *property*;
- * `spine parallel ridge` is a relation over *elements*. Both are `strength relation`, and a relation
- * is an equation when a top-level `=`, `>=` or `<=` appears and a predicate otherwise. Properties and
- * functions of elements are first-class *terms*, which is what lets `west.length = east.length` and
- * `angle(spine, ridge) = 30deg` sit in one grammar. It is not a total unification: `planar`, `mirrors`
- * and `fix` have no scalar left-hand side, and pretending otherwise would have meant inventing a
- * property nobody would look for. See `dev_docs/brief_notation.md`.
+ * Lines, planes and panels resolve in a second pass, so a relation may cite geometry declared below
+ * it. Points are *declared on use*: naming a point that was never declared creates one, seeded on a
+ * deterministic golden-angle circle so a brief of pure relations starts from a non-degenerate spread
+ * rather than a pile at the origin. The invented points are listed in [BriefProgram.inventedPoints].
  *
- * **Diagnostics are located and named.** Every failure is a [BriefDiagnostic] with a line, a column, a
- * span and — where a name was misspelled — a did-you-mean drawn from the names actually declared.
- * [compileBrief] never throws a bare Kotlin exception at a program that merely reads wrong.
+ * #### Two kinds of relation, one statement shape
  *
- * [compileBrief] is a pure function of text: no `Box`, no output, no server. `BriefLowering.kt` turns
- * the result into a `GeometryModel` and solves it.
+ * `spine.length = 4` is a relation over a *property*; `spine parallel ridge` is a relation over
+ * *elements*. Both are `strength relation`, and a relation is an equation when a top-level `=`, `>=`
+ * or `<=` appears and a predicate otherwise. Properties and functions of elements are terms, so
+ * `west.length = east.length` and `angle(spine, ridge) = 30deg` sit in one grammar. `planar`,
+ * `mirrors` and `fix` have no scalar left-hand side and stay predicates. The grammar is written up in
+ * `dev_docs/brief_notation.md`.
+ *
+ * #### Diagnostics are located and named
+ *
+ * Every failure is a [BriefDiagnostic] with a line, a column, a span and, where a name was
+ * misspelled, a did-you-mean drawn from the names actually declared. [compileBrief] does not throw a
+ * bare Kotlin exception at a program that merely reads wrong.
+ *
+ * [compileBrief] is a pure function of text, with no `Box`, output or server. [toGeometryModel] turns
+ * the result into a `GeometryModel`, and [solve] solves it.
  */
+
+/** The tag and language id that name Brief to the editor and to embedded-region detection. */
 object Brief {
     /** The first-line tag that marks a `#brief` embedded region. */
     const val TAG: String = "#brief"
