@@ -22,7 +22,7 @@
     {
       "path": "dev_docs/agents/demos/pattern_condense/build.yaml",
       "kotlinBodies": 3,
-      "collectionConversions": 1,
+      "collectionConversions": 0,
       "reviewedBodyAndBoundariesPreserved": true
     },
     {

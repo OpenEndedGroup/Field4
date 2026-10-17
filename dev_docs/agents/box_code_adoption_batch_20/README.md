@@ -8,7 +8,7 @@ The optical-flow interface and nested renderer bundle use explicit imports witho
 warning about imports being lost by prop rewriting. The bundle builder copy is updated together.
 
 Actual import/ktfmt processing covers ten bodies across seven source files and converts two
-collection factories. The source proof protects reviewed tokens, fragment boundaries and raw
+collection factory becomes a literal. The source proof protects reviewed tokens, fragment boundaries and raw
 strings. The selected idiom audit is clean. Six full graphs/bodies compile in the actual normal
 box compiler, including both imported prop types and the complete frame-history builder.
 A real Kotlin check compares 100001 old/new training and preview phases exactly. Saved bundle
@@ -22,3 +22,8 @@ in the evidence. No GPU training quality, RR availability or new optical-flow nu
 is claimed by these source/layout changes. Existing lifecycle findings remain open separately.
 
 See `changes.json`, `verification.json`, reusable harnesses and `evidence.tar.gz`.
+
+Landing repair: the broader builder formatting touched three neighboring bodies whose saved sidecars
+have independent content. They are restored byte for byte to the baseline scalar bodies. Only the
+bundle body is owned here; the existing chain/source-consistency findings remain open. The harness
+now preserves those neighbors explicitly, and the source proof accepts their exact unchanged bodies.

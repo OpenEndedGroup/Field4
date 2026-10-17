@@ -5,7 +5,8 @@ streams with `use`; the random-pattern lesson rejects non-positive density/trial
 the search; the momentary button retains six events; both live inertial comparisons retain only
 the displayed 240/300 samples. The pattern builder and saved sidecar change together.
 
-Actual imports/ktfmt cover twelve Kotlin bodies/states and one collection conversion. The reviewed
+Actual imports/ktfmt cover ten Kotlin bodies/states. Two neighboring pattern-builder bodies stay
+byte for byte at baseline to preserve their saved-sidecar agreement. The reviewed
 source-token, fragment-boundary, untrimmed-string and container proof passes, as does the six-file
 idiom audit. All three complete transcript compile routes pass. No GLSL occurs in this group.
 
@@ -21,3 +22,7 @@ Field's own persistence codec refreshes the two saved demos, checking unchanged 
 per-box non-source properties. The existing completion-demo Markdown mirror/digests are updated.
 `changes.json`, `verification.json`, reusable scripts and `evidence.tar.gz` retain the exact sources
 and actual verdicts. No completion-ranking weights, interpolation law or pattern search is changed.
+
+Landing repair: the full builder formatter also reformatted two neighboring lessons. Their exact
+baseline scalar bodies are restored and protected by the harness. The original changed lesson
+stays synchronized with its sidecar. The focused build-script/sidecar suite passes after repair.

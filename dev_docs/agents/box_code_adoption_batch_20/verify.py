@@ -9,6 +9,9 @@ records=[]
 for row in json.loads((HERE/'changes.json').read_text()):
  p=ROOT/row['path'];count=[0,0]
  def code(a,b):
+  if a==b:
+   count[0]+=1
+   return
   a,n=lit.convert(a);count[0]+=1;count[1]+=n
   assert tok.tokens(a)==tok.tokens(b),(p,count,'tokens')
   assert [x.strip() for x in re.findall(r'(?m)^\s*//%-[^\n]*',a)]==[x.strip() for x in re.findall(r'(?m)^\s*//%-[^\n]*',b)],(p,'execution boundaries')

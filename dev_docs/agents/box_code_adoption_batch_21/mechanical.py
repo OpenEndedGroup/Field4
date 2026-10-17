@@ -56,3 +56,25 @@ for row in rows:
    if not re.match(r'\s*\.trim(?:Indent|Margin)\s*\(',x[u.end():]) and u[0]!=v[0]:edits.append((c+v.start(),c+v.end(),u[0]))
  for a,b,code in sorted(edits,reverse=True):actual=actual[:a]+code+actual[b:]
  p.write_text(actual)
+
+# Restore the two neighboring builder bodies outside this batch.
+from pathlib import Path
+import json,yaml
+H=HERE;row=next(r for r in json.loads((H/'changes.json').read_text()) if r['path'].endswith('build.yaml'));p=Path(row['path']);before=row['before'];actual=p.read_text()
+def codes(text):
+ result=[]
+ def visit(n):
+  if isinstance(n,yaml.MappingNode):
+   for k,v in n.value:
+    if k.value=='code' and isinstance(v,yaml.ScalarNode):result.append(v)
+    else:visit(v)
+  elif isinstance(n,yaml.SequenceNode):
+   for v in n.value:visit(v)
+ visit(yaml.compose(text));return result
+old=codes(before);new=codes(actual);assert len(old)==len(new)==3
+for a,b in reversed(list(zip(old,new))):
+ if 'val trials = 300' not in a.value:
+  actual=actual[:b.start_mark.index]+before[a.start_mark.index:a.end_mark.index]+actual[b.end_mark.index:]
+p.write_text(actual)
+assert codes(actual)[0].value==old[0].value and codes(actual)[2].value==old[2].value
+print('restored two neighboring builder bodies to their baseline')

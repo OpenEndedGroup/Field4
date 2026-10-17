@@ -40,7 +40,7 @@
     {
       "path": "dev_docs/agents/demos/frame_history_reprojection/build.yaml",
       "kotlinBodies": 4,
-      "collectionConversions": 1,
+      "collectionConversions": 0,
       "reviewedBodyAndBoundariesPreserved": true
     }
   ]
