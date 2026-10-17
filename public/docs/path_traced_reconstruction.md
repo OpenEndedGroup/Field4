@@ -50,9 +50,7 @@ The scene above starts with Kotlin material values. To edit their appearance in 
 ```diffstatic {data-lang=kotlin}
 val tracer = pathTracingHere(scene, PathTraceEnvironment.constant(.08f, .1f, .15f),
     width = 1920, height = 1080, camera = camera, name = "rr-materials")
-// pathTracingHere installs standalone passes. Hand scheduling over to RR:
-renderer.computeList.others.remove(tracer.name, tracer)
-renderer.renderList.preTargets.remove("${tracer.name}-output")
+// install() takes over the standalone passes pathTracingHere scheduled.
 lab = PathTracedReconstruction(tracer).install()
 ```
 

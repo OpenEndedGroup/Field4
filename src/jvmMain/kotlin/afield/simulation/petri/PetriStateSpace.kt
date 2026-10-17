@@ -54,16 +54,15 @@ import afield.audio.synth.PatQ
  *
  * #### The state key
  *
- * [PetriMarking.signature] is the obvious key and the wrong one here. It compares colours by
- * `toString`, so two distinct `PatPattern`s collide, and it *sorts* the colours within a place, so
- * it loses arrival order; consumption is FIFO, so two markings holding the same multiset in a
- * different order have genuinely different futures.
+ * [PetriMarking.signature] is the obvious key and the wrong one here: it *sorts* the colours within
+ * a place, so it loses arrival order, and consumption is FIFO, so two markings holding the same
+ * multiset in a different order have genuinely different futures.
  *
- * Both of those make the key **coarser** than the state, and a coarse key in a reachability search
- * merges states whose futures differ, which can hide a reachable deadlock behind an already-visited
+ * That makes the key **coarser** than the state, and a coarse key in a reachability search merges
+ * states whose futures differ, which can hide a reachable deadlock behind an already-visited
  * marking and call the net safe. An unsound *safe* is the error that matters, so the key here is
  * strict: places, and the colours in them **in arrival order**, compared by the colours' own
- * `equals` rather than by their rendering.
+ * `equals`.
  *
  * The cost lands in the survivable direction. A net that mints a fresh colour object per firing has
  * an effectively infinite state space and exhausts the budget, and [PetriSearchOutcome.BUDGET]
@@ -273,6 +272,12 @@ class PetriStateGraph internal constructor(
     private val parent: IntArray,
     private val parentVia: Array<String?>,
     private val expanded: BooleanArray,
+    /**
+     * What the search did other than what was asked, in a sentence each: today, a
+     * [PetriReduction.STUBBORN] request on a colour-dependent net, which is searched unreduced.
+     * Empty when it did exactly what was asked. [report] prints these.
+     */
+    val caveats: List<String> = emptyList(),
 ) {
     /** How many distinct markings were found. Exact when [complete]. */
     val stateCount: Int get() = states.size
@@ -558,6 +563,7 @@ class PetriStateGraph internal constructor(
             else -> "the whole state space"
         }
         append("state space: $stateCount markings, $edgeCount firings, $scope\n")
+        caveats.forEach { append("  NOTE: $it\n") }
         if (complete && reduction == PetriReduction.STUBBORN) {
             append("  partial-order reduction: deadlock is exact here, nothing else is\n")
         }
@@ -623,8 +629,9 @@ fun PetriNet.stateSpace(
     // A colour-dependent net cannot be reduced: the closure reasons about arcs, and a guard or an
     // `enabledIf` is an arbitrary predicate no arc analysis can see. Falling back to the full search
     // is the only safe answer, and it is recorded on the graph rather than assumed by the caller.
+    val declined = reduction == PetriReduction.STUBBORN && isColourDependent
     @Suppress("NAME_SHADOWING")
-    val reduction = if (reduction == PetriReduction.STUBBORN && isColourDependent) PetriReduction.NONE else reduction
+    val reduction = if (declined) PetriReduction.NONE else reduction
     val arcs = if (reduction == PetriReduction.STUBBORN) PetriArcIndex(this) else null
 
     val states = ArrayList<PetriMarking>()
@@ -691,6 +698,10 @@ fun PetriNet.stateSpace(
         parent = parent.toIntArray(),
         parentVia = parentVia.toTypedArray(),
         expanded = expanded.toBooleanArray(),
+        caveats = if (declined) listOf(
+            "stubborn-set reduction was asked for but not applied: a guard or enabledIf makes this net " +
+                "colour-dependent, which no arc analysis can see, so every interleaving was searched"
+        ) else emptyList(),
     )
 }
 

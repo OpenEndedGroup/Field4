@@ -789,7 +789,7 @@ integer hash lowered into the shader rather than sampled: the GPU drops the same
 copies the CPU does. See [the cheatsheet's Fidelity section](rectsl_cheatsheet.md#fidelity)
 for how a 64-bit hash fits in a shader that has no 64-bit integers.
 
-??? aside "How the agreement is checked"
+??? aside "Agents: how the GPU and raster agreement is checked"
     Before it draws any of the looks, the harness renders a *probe* shader (the same
     field, reporting `scene(p, t)` as a 24-bit fixed-point number instead of drawing
     it), reads the framebuffer back, and compares it against `program.sample(t)`, the
@@ -1753,7 +1753,7 @@ end-group
 The clips below fill in the rest of the language: together with the gallery above they use
 every operator in the [cheatsheet](rectsl_cheatsheet.md) at least once.
 
-??? aside "The coverage check"
+??? aside "Agents: the cheatsheet coverage check"
     `checkCheatsheetCoverage` in `RectSLExamples.kt` fails if some cheatsheet operator stops
     appearing in an example, treating aliases (`add`/`+`, `lte`/`<=`, `clone`/`copy`, …) as
     one. It needs the Kotlin compiler and the gallery workspace, so it runs as the

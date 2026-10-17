@@ -205,6 +205,10 @@ class FaustPatternRender(
     /** Shared-parameter changes that landed — see [faustParamAutomation]. */
     val automationApplied: Long = 0L
 ) {
+    /** Encode these samples as stereo 16-bit PCM WAV; normalize only when explicitly requested. */
+    fun wav(normalizePeak: Float? = null): ByteArray =
+        afield.audio.engine.WavFloatArrayWriter.encodeStereo16(left, right, sampleRate, normalizePeak)
+
     val frames: Int get() = left.size
 
     val seconds: Double get() = frames.toDouble() / sampleRate

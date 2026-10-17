@@ -363,5 +363,28 @@ fun meshFromFile(path: String): TriMesh {
         else -> throw IllegalArgumentException(
             "mesh_io.kt reads .obj and .stl; got .${file.extension} for $path"
         )
+    }.also { requireGeometryFrom(file, it) }
+}
+
+/**
+ * Throw when a non-empty [file] parsed to no vertices, naming what it looks like instead. A `thing.obj`
+ * that is really a ZIP, a glTF or an HTML error page otherwise reads as an empty mesh and a blank panel.
+ */
+fun requireGeometryFrom(file: File, mesh: TriMesh) {
+    if (mesh.vertexCount > 0 || file.length() == 0L) return
+    val head = file.inputStream().use { it.readNBytes(16) }
+    val text = String(head, Charsets.ISO_8859_1)
+    val looksLike = when {
+        text.startsWith("PK") -> "a ZIP archive (a .3mf, .usdz or zipped download?)"
+        text.startsWith("glTF") -> "a binary glTF (.glb)"
+        text.trimStart().startsWith("{") -> "JSON (a .gltf?)"
+        text.trimStart().startsWith("<") -> "HTML or XML (an error page saved under this name?)"
+        text.startsWith("ply") -> "a PLY file"
+        else -> null
     }
+    throw IllegalArgumentException(
+        "${file.path} is ${file.length()} bytes but contains no ${file.extension} geometry" +
+            (looksLike?.let { "; it looks like $it" } ?: "") +
+            ". meshFromAnyFile reads most formats by content.",
+    )
 }

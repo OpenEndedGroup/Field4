@@ -83,10 +83,8 @@ The backdoor also captures pictures — a single box, the editor, the whole wind
 native Field 4 graphics window — which is how this site's figures are made. It
 records short videos of the first three. The native graphics window is stills only.
 
-Some captures fail without saying so. A `screenshot-box` of a box whose outputs were
-never opened comes back `ok: true`, clipped to the collapsed box rather than to the output
-you wanted. [What a Capture Can and Cannot Show](capture_limits.md) lists these cases and
-the reply field that tells you when you have hit one.
+[What a Capture Can and Cannot Show](capture_limits.md) lists what a capture cannot see, and
+the reply fields that tell you when you have hit one of those limits.
 
 ## Where to go next
 

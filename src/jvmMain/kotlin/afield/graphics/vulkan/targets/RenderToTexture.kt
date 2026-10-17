@@ -1482,12 +1482,12 @@ open class RenderToTexture(
                 mp.current.meshes.values.forEach { mesh ->
                     mesh.prepareForDraw(command)
                     mesh.push.primeBufferReferences(command) {
-                        throw MissingRefException("risk of GPU null ref `$it`")
+                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
                     }
                 }
                 mp.current.liveUniformStructures.values.forEach { structure ->
                     structure.primeBufferReferences(command) {
-                        throw MissingRefException("risk of GPU null ref `$it`")
+                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
                     }
                 }
             }

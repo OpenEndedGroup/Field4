@@ -183,6 +183,24 @@ object StandardRenderer {
 			val postStack: FabricatePostStack = FabricatePostStack(transparentComposite)
 		) {
 		/**
+		 * The targets [attachTo] attached this bundle to, with the graph each one got. A post-stack
+		 * edit after attaching ([setToneMapping], [addBloom], [addShaderEffect]) re-attaches to each,
+		 * so the edit takes effect without the caller attaching again.
+		 */
+		internal val attachedGraphs = LinkedHashMap<RenderTarget, FabricateFrameGraph>()
+
+		init {
+			postStack.changeListeners += {
+				synchronized(attachedGraphs) {
+					attachedGraphs.entries.forEach { entry ->
+						entry.value.detachFrom(entry.key)
+						entry.setValue(frameGraph().also { it.attachTo(entry.key) })
+					}
+				}
+			}
+		}
+
+		/**
 		 * GPU-side buffer of extra (non-key) lights consumed by the deferred lighting pass. Populated by
 		 * [syncLights]; capacity is [maxLights]. The primary shadow-casting directional light does not
 		 * live here — it stays in the built-in `LightData` uniform so it can drive the shadow map.
@@ -337,10 +355,40 @@ object StandardRenderer {
 			 * [FabricateFrameGraph].
 			 */
 			fun attachTo(renderer: Renderer, windowIndex: Int = 0): RenderTarget =
-				frameGraph().attachTo(renderer, windowIndex)
+				remembering(frameGraph()) { it.attachTo(renderer, windowIndex) }
 
 			fun attachTo(renderer: Renderer, window: Window): RenderTarget =
-				frameGraph().attachTo(renderer, window)
+				remembering(frameGraph()) { it.attachTo(renderer, window) }
+
+			private fun remembering(graph: FabricateFrameGraph, attach: (FabricateFrameGraph) -> RenderTarget): RenderTarget {
+				val target = attach(graph)
+				synchronized(attachedGraphs) { attachedGraphs[target] = graph }
+				installAutoSync()
+				return target
+			}
+
+			@Volatile private var autoSyncInstalled = false
+
+			/**
+			 * Once attached, keep lights and transparent order current without the caller's help: each
+			 * frame, re-upload the lights when anything about them changed, and re-sort the transparent
+			 * meshes for the camera. The explicit [syncLights] and [sortTransparentMeshes] still work.
+			 * The hook holds the bundle weakly and ends itself once the bundle is gone or detached.
+			 */
+			private fun installAutoSync() {
+				if (autoSyncInstalled) return
+				autoSyncInstalled = true
+				val ref = java.lang.ref.WeakReference(this)
+				val key = "std-renderer-auto-sync-${System.identityHashCode(this)}"
+				afield.runtime.lifecycle.Runloop.runLoop.preRun[key] = sequence {
+					// The step is a separate call so no strong reference to the bundle survives a yield.
+					var lastLights: String? = ""
+					while (true) {
+						lastLights = standardRendererAutoSyncStep(ref, lastLights) ?: break
+						yield(null)
+					}
+				}
+			}
 
 			/** Present the anti-aliased lighting RTT to the swapchain with optional grading and viewport. */
 			fun present(
@@ -1838,7 +1886,8 @@ object StandardRenderer {
 				vec4 prevWorldPos = push.prevModel * vec4(pos, 1.0);
 				vWorldPos = worldPos.xyz;
 				vNormal = normalize(mat3(push.model) * nrm);
-				vUv = vec2(uv.x, 1.0 - uv.y) * push.uvTransform.zw + push.uvTransform.xy;
+				// glTF UV space; each map applies the material's transform itself (uvOf in the fragment shader).
+				vUv = vec2(uv.x, 1.0 - uv.y);
 				vCurrentClip = uCamera.proj * uCamera.view * worldPos;
 				vPreviousClip = uCamera.prevProj * uCamera.prevView * prevWorldPos;
 				vTangent = vec4(normalize(mat3(push.model) * tangent.xyz), tangent.w);
@@ -1882,7 +1931,9 @@ object StandardRenderer {
 					// Packed into the 212..223 gap so the block ends at 224. It used to run to 288,
 					// over the 256 bytes KosmicKrisp allows (MoltenVK allows 4096), and failed
 					// vkCreatePipelineLayout there. mapFlags bits, set by applyFabricateMaterial:
-					// 1 normal, 2 metallic-roughness, 4 occlusion, 8 emissive, 16 clearcoat.
+					// 1 normal, 2 metallic-roughness, 4 occlusion, 8 emissive, 16 clearcoat; then which maps
+					// sample through uvTransform: 32 base colour, 64 normal, 128 metallic-roughness,
+					// 256 occlusion, 512 emissive, 1024 clearcoat.
 					layout(offset = 212) float clearcoatFactor;
 					layout(offset = 216) float clearcoatRoughness;
 					layout(offset = 220) float mapFlags;
@@ -1890,11 +1941,14 @@ object StandardRenderer {
 				} push;
 
 				bool hasMap(uint bit) { return (uint(push.mapFlags + 0.5) & bit) != 0u; }
+				// A map's UV: transformed (KHR_texture_transform's offset and scale) when its bit says so.
+				vec2 uvOf(uint bit) { return hasMap(bit) ? vUv * push.uvTransform.zw + push.uvTransform.xy : vUv; }
 
 					vec3 mappedNormal(vec3 baseNormal) {
 						vec3 n = normalize(baseNormal);
 						if (!hasMap(1u)) return n;
-						vec3 mapNormal = texture(normalTex, vUv).xyz * 2.0 - 1.0;
+						vec2 normalUv = uvOf(64u);
+						vec3 mapNormal = texture(normalTex, normalUv).xyz * 2.0 - 1.0;
 						mapNormal.xy *= 1.45;
 						if (abs(vTangent.w) > 0.5 && dot(vTangent.xyz, vTangent.xyz) > 1e-8) {
 							vec3 t = normalize(vTangent.xyz - n * dot(vTangent.xyz, n));
@@ -1903,8 +1957,8 @@ object StandardRenderer {
 						}
 						vec3 q0 = dFdx(vWorldPos);
 						vec3 q1 = dFdy(vWorldPos);
-						vec2 st0 = dFdx(vUv);
-						vec2 st1 = dFdy(vUv);
+						vec2 st0 = dFdx(normalUv);
+						vec2 st1 = dFdy(normalUv);
 						vec3 q1perp = cross(q1, n);
 						vec3 q0perp = cross(n, q0);
 						vec3 t = q1perp * st0.x + q0perp * st1.x;
@@ -1921,25 +1975,25 @@ object StandardRenderer {
 				vec2 currentUv = (vCurrentClip.xy / currentW) * vec2(0.5, -0.5) + vec2(0.5);
 				vec2 previousUv = (vPreviousClip.xy / previousW) * vec2(0.5, -0.5) + vec2(0.5);
 				vec2 motion = currentUv - previousUv;
-				vec4 texel = texture(baseColorTex, vUv);
+				vec4 texel = texture(baseColorTex, uvOf(32u));
 				vec3 albedo = texel.rgb * push.baseColor.rgb;
 					float roughness = push.roughness;
 					float metallic = push.metallic;
 						if (hasMap(2u)) {
-							vec4 mr = texture(metallicRoughnessTex, vUv);
+							vec4 mr = texture(metallicRoughnessTex, uvOf(128u));
 							roughness *= mr.g;
 							metallic *= mr.b;
 						}
 						if (hasMap(4u)) {
-							float occlusion = texture(occlusionTex, vUv).r;
+							float occlusion = texture(occlusionTex, uvOf(256u)).r;
 							albedo *= mix(1.0, occlusion, clamp(push.ao, 0.0, 1.0));
 						}
 						if (hasMap(8u)) {
-							albedo += texture(emissiveTex, vUv).rgb * push.emissiveFactor.rgb;
+							albedo += texture(emissiveTex, uvOf(512u)).rgb * push.emissiveFactor.rgb;
 						}
 						float clearcoat = clamp(push.clearcoatFactor, 0.0, 1.0);
 						if (hasMap(16u)) {
-							clearcoat *= texture(clearcoatTex, vUv).r;
+							clearcoat *= texture(clearcoatTex, uvOf(1024u)).r;
 						}
 						float clearcoatRoughness = clamp(push.clearcoatRoughness, 0.0, 1.0);
 					if (push.checkerMix > 0.0) {
@@ -2706,4 +2760,14 @@ fun postEffectTargetParameters(
 	clearColor = vec(0f, 0f, 0f, 1f)
 	debugName = "prefab-post-$name"
 	rtt()
+}
+
+/** One frame of [StandardRenderer.Bundle]'s auto-sync; the lights' state after it, or null when the hook should end. Top level so the hook captures no bundle. */
+internal fun standardRendererAutoSyncStep(ref: java.lang.ref.WeakReference<StandardRenderer.Bundle>, lastLights: String?): String? {
+	val bundle = ref.get() ?: return null
+	if (synchronized(bundle.attachedGraphs) { bundle.attachedGraphs.isEmpty() }) return null
+	val lights = bundle.sceneGraph.lights.toString()
+	if (lights != lastLights) runCatching { bundle.syncLights() }
+	runCatching { bundle.sortTransparentMeshes() }
+	return lights
 }

@@ -1,19 +1,17 @@
-import afield.graphics.vulkan.targets.RenderToTexture
-import afield.document.context.fromContextWithNameOrNull
 import org.lwjgl.vulkan.VK10.*
 
-val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
-prop<RenderToTexture>(paintHalf) = RenderToTexture {
-    width = (source.width/2).coerceAtLeast(1)
-    height = (source.height/2).coerceAtLeast(1)
+val source = paintSource
+propDown<RenderToTexture>(paintHalf) = RenderToTexture {
+    width = (source.width / 2).coerceAtLeast(1)
+    height = (source.height / 2).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
     clearFirst = true
-    clearColor = vec(0,0,0,0)
+    clearColor = vec(0, 0, 0, 0)
     debugName = "paintHalf"
 }
 paintHalf.setDefaultSampler(anisotropyEnable = false)
-val input = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
+val input = paintSource
 var module = moduleHere {
     textures("paintSource" to input)
     paintHalf.apply()

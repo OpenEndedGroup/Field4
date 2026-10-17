@@ -344,6 +344,9 @@ object DemoTranscriptExecSmokeTest {
         // SMPTE timecode (2026-10-08): drop-frame arithmetic, LTC round trip under gain/noise/speed
         // ramp, MTC into a TimecodeClock, a clock following LTC. Pure CPU, no audio or MIDI device.
         "smpte_timecode",
+        // Matrix profile (2026-10-15): motifs/discords, mSTAMP across four channels, and a
+        // contrast profile. Pure CPU, signals generated in the box.
+        "matrix_profile",
         // GP instruments (2026-10-10): GpOptimizer tunes a curve to a target, a GpPreference A/B loop
         // waits on two buttons, and the same loop runs against a simulated judge. Pure CPU, FLines only.
         "gp_instruments",
@@ -659,6 +662,11 @@ object DemoTranscriptExecSmokeTest {
         // its pixels are checked by the `rectsl-sdf` docs capture instead.
         "rectsl_sdf_live",
         "spin_glass",
+        // Each opens its own Window + Renderer and runs a GPU simulation (a lattice Boltzmann wind
+        // tunnel, a forest fire), so compile-only here; their pixels are the
+        // `four-lattice-boltzmann` and `four-forest-fire` docs captures in afield_four_graphics.md.
+        "lattice_boltzmann_cylinder",
+        "forest_fire",
         "imgui_vr_panel",
         // A hidden Electron window renders Field itself into Chromium shared textures; the live
         // macOS replay crosses IOSurface Mach rights and samples them in Vulkan. CI compiles the

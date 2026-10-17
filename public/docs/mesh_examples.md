@@ -1,5 +1,7 @@
 # Meshes and 3D geometry
 
+<!-- capture-sources: src/jvmMain/kotlin/afield/geometry/mesh/ src/jvmMain/kotlin/afield/graphics/three/Three.kt -->
+
 Drawing in three dimensions is one thing. An [`FLine`](fline_examples.md) has a `z`, the renderer
 takes triangles, the [ray tracer](ray_tracing_examples.md) intersects analytic solids. **Computing
 with a surface** is another. Ask a mesh whether it is closed, subdivide it, smooth it without
@@ -73,12 +75,12 @@ assemble. A `ScalarField3D` is a type alias for
 val ball = sdfSphere(0.8)
 val bar = sdfBox(vec(2.2, 0.34, 0.34))
 val sharp = sdfUnion(ball, bar)
-val soft = sdfSmoothUnion(ball, bar, k = 0.3)              // the k is the fillet radius
+val soft = sdfSmoothUnion(ball, bar, k = 0.3) // the k is the fillet radius
 val drilled = sdfSmoothSubtract(soft, sdfCylinder(0.28, 4.0), k = 0.1)
 val twisted = sdfBox(vec(1.2, 1.8, 0.4)).twisted(0.35)
 
-// marchingCubes samples the field once per grid corner and shares one vertex per crossed grid
-// edge, so the surface it emits is closed rather than a triangle soup.
+// marchingCubes samples each grid corner and shares one vertex per crossed grid edge.
+// The result is indexed; closure also requires the surface to stay inside the sampling bounds.
 val window = boundsAround(radius = 1.35)
 val sharpMesh = marchingCubes(sharp, window, 72)
 val softMesh = marchingCubes(soft, window, 72)
@@ -94,8 +96,13 @@ val cutaway = marchingCubes(sdfIntersect(shell, sdfPlane(vec(0, 0, -1), 0.0)), w
 // A fillet only ever ADDS material, so the smooth union must enclose more than the sharp one.
 // That is a property you can assert rather than eyeball.
 println("sharp union  volume %.5f".format(sharpMesh.signedVolume()))
-println("smooth union volume %.5f  (the fillet adds %.5f)".format(
-    softMesh.signedVolume(), softMesh.signedVolume() - sharpMesh.signedVolume()))
+println(
+    "smooth union volume %.5f  (the fillet adds %.5f)"
+        .format(
+            softMesh.signedVolume(),
+            softMesh.signedVolume() - sharpMesh.signedVolume(),
+        ),
+)
 println("drilled      ${drilledMesh.summary()}")
 println("twisted      ${twistedMesh.summary()}")
 println("closed shell ${closedShell.summary()}")
@@ -131,11 +138,10 @@ tiled into viewports rather than one iframe per panel. See [Field's 3D
 output](three_output.md#one-webgl-context-several-panels). Pass `renderer = MeshRenderer.CPU` for a
 static rasterized sheet instead.
 
-Its panels carry a label and no fact line. The counts, extent, χ, genus and volume that the
-single-mesh `showMesh` and the inline card print are not there, because `showMeshGrid` calls
-`threeGrid` with `facts` left off. To get them under every panel, call `threeGrid(..., facts = true)`
-directly, or hand it `ThreeMeshPanel(label, mesh, facts = "…")` cells with a sentence of your own;
-[polytope_examples.md](polytope_examples.md) does the latter throughout.
+Each panel carries its label and the same fact line `showMesh` prints: counts, extent, χ, genus and
+volume (`facts = false` leaves it off). For a sentence of your own under each cell, hand `threeGrid`
+`ThreeMeshPanel(label, mesh, facts = "…")` cells; [polytope_examples.md](polytope_examples.md) does
+that throughout.
 
 The primitives are `sdfSphere`, `sdfBox`, `sdfRoundBox`, `sdfTorus`, `sdfPlane`, `sdfCylinder`,
 `sdfCapsule`, `sdfGyroid` and `sdfMetaballs`. The combinators are `sdfUnion`, `sdfIntersect`,
@@ -166,9 +172,17 @@ println("resolution   tris    volume     relative error")
 for (resolution in [12, 24, 48, 64]) {
     val m = marchingCubes(sdfSphere(1.0), boundsAround(radius = 1.4), resolution)
     val error = abs(m.signedVolume() - exact) / exact
-    println("%10d %7d %10.6f %14.5f   watertight=%s chi=%d".format(
-        resolution, m.triangleCount, m.signedVolume(), error,
-        m.isWatertight(), m.eulerCharacteristic()))
+    println(
+        "%10d %7d %10.6f %14.5f   watertight=%s chi=%d"
+            .format(
+                resolution,
+                m.triangleCount,
+                m.signedVolume(),
+                error,
+                m.isWatertight(),
+                m.eulerCharacteristic(),
+            ),
+    )
 }
 println("the analytic answer is 4/3 pi = $exact")
 
@@ -176,14 +190,17 @@ println("the analytic answer is 4/3 pi = $exact")
 // topology layer telling you something a picture cannot: the two look identical from outside.
 val drilled = marchingCubes(
     sdfSubtract(sdfSphere(1.0), sdfCylinder(0.3, 4.0)),
-    boundsAround(radius = 1.3), 64,
+    boundsAround(radius = 1.3),
+    64,
 )
 println()
 println("drilled sphere: ${drilled.summary()}")
 
-// A gyroid is a triply-periodic minimal surface: one sheet with many handles, so chi goes strongly
-// negative. The marcher does not mind that the gyroid is not a distance function at all — it only
-// ever looks at signs.
+/*
+A gyroid is a triply-periodic minimal surface: one sheet with many handles, so chi goes strongly
+negative. A scalar field need not be a distance function: signs classify corners,
+while the sampled values locate interpolated edge crossings.
+*/
 val gyroid = marchingCubes(sdfGyroid(4.0, 0.3), boundsAround(radius = 1.0), 56)
 println("gyroid: ${gyroid.summary()}")
 :::fold draw the coarse and fine spheres beside the two harder shapes
@@ -248,20 +265,32 @@ for (round in 1..3) {
     control = control.loopSubdivide(1)
     rounds.add(control)
     val v = control.signedVolume()
-    println("%5d %6d %10.5f %9.5f   chi=%d".format(
-        round, control.triangleCount, v, v - previous, control.eulerCharacteristic()))
+    println(
+        "%5d %6d %10.5f %9.5f   chi=%d"
+            .format(
+                round,
+                control.triangleCount,
+                v,
+                v - previous,
+                control.eulerCharacteristic(),
+            ),
+    )
     previous = v
 }
+
 :::endfold
 
 // Now the smoothing comparison. Same input, same iteration count, same lambda — the only
 // difference is Taubin's second, inflating pass.
 val rng = java.util.Random(7)
 val clean = icosphereMesh(3, 0.8)
-val noisy = clean.transformed { p ->
-    val s = 1f + (rng.nextFloat() - 0.5f) * 0.18f          // 18% radial noise
-    vec(p.x * s, p.y * s, p.z * s)
-}.withVertexNormals()
+val noisy =
+    clean
+        .transformed { p ->
+            val s = 1f + (rng.nextFloat() - 0.5f) * 0.18f // 18% radial noise
+            vec(p.x * s, p.y * s, p.z * s)
+        }
+        .withVertexNormals()
 val laplacian = noisy.laplacianSmooth(iterations = 30, lambda = 0.6)
 val taubin = noisy.taubinSmooth(iterations = 30, lambda = 0.6, mu = -0.63)
 :::fold print the four volumes — this is the whole point — and draw the six meshes
@@ -280,16 +309,14 @@ showMeshGrid(
     "taubinSmooth(30) — volume held" to taubin,
     columns = 3,
     cellWidth = 290,
+    // One scale for every panel, so the deflated ball looks deflated.
+    sharedScale = true,
 )
 :::endfold
 ```
 
-![An icosahedron and its first and third Loop subdivisions, then a lumpy noisy ball and the same ball smoothed by 30 Laplacian and 30 Taubin iterations; the last two panels are both smooth round balls at the same apparent size, headed "laplacianSmooth(30) — deflated" and "taubinSmooth(30) — volume held"](assets/mesh_examples/process.png)
+![An icosahedron and its first and third Loop subdivisions, then a lumpy noisy ball and the same ball smoothed by 30 Laplacian and 30 Taubin iterations; the last two panels are both smooth round balls, the Laplacian one visibly smaller, headed "laplacianSmooth(30) — deflated" and "taubinSmooth(30) — volume held"](assets/mesh_examples/process.png)
 
-The picture will not settle the two smoothed balls for you: **look at the printed volumes, not at the
-panels.** Each panel of a `showMeshGrid` frames its own bounds and zoom-to-fits, so the Laplacian
-ball's 20% smaller extent is normalised straight back out and the two come out the same apparent
-size.
 The noisy input encloses **2.1293** across an extent of 1.701. Thirty Laplacian iterations at λ = 0.6
 leave **1.1509** across 1.301: it has thrown away **46% of the volume**. Thirty Taubin iterations of
 the same λ, with μ = −0.63, leave **2.1840** across 1.631, within about 3% of the clean ball this
@@ -319,7 +346,7 @@ symmetrically, so a decimation cannot look good by having simply shrunk inside t
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/decimate.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
 :::static
-val detailed = icosphereMesh(4, 0.8)          // 5120 triangles
+val detailed = icosphereMesh(4, 0.8) // 5120 triangles
 println("start: ${detailed.summary()}")
 println()
 println("target    got   deviation   min angle   watertight")
@@ -329,9 +356,16 @@ for (target in [2000, 600, 150]) {
     val small = detailed.decimate(target)
     // Symmetric: the largest distance either mesh's vertices sit from the other's surface.
     val deviation = maxDeviation(detailed, small)
-    println("%6d %6d %11.5f %11.1f   %s".format(
-        target, small.triangleCount, deviation,
-        small.quality().minAngleDegrees, small.isWatertight()))
+    println(
+        "%6d %6d %11.5f %11.1f   %s"
+            .format(
+                target,
+                small.triangleCount,
+                deviation,
+                small.quality().minAngleDegrees,
+                small.isWatertight(),
+            ),
+    )
     budgets.add("decimate($target) — deviation ${"%.4f".format(deviation)}" to small)
 }
 :::fold draw the original beside the three budgets
@@ -420,12 +454,16 @@ println("tube along an FLine: ${coil.summary()}")
 // A coarse torus, so there really are creases to keep. On a fine one the crease set is empty,
 // which is the correct answer and a dull demonstration.
 val ring = torusMesh(14, 8, 0.6, 0.22)
-println("torus: ${ring.toFLines(MeshLines.EDGES).size} edges, " +
-    "${ring.toFLines(MeshLines.CREASES, creaseAngleDegrees = 30.0).size} creases at 30 degrees, " +
-    "${ring.toFLines(MeshLines.NORMALS).size} normals")
+println(
+    "torus: ${ring.toFLines(MeshLines.EDGES).size} edges, " +
+        "${ring.toFLines(MeshLines.CREASES, creaseAngleDegrees = 30.0).size} creases at 30 degrees, " +
+        "${ring.toFLines(MeshLines.NORMALS).size} normals",
+)
 val patch = planeMesh(6, 6, 1.2, 1.2)
-println("plane patch: ${patch.toFLines(MeshLines.BOUNDARY).size} boundary loop(s), " +
-    "${patch.toFLines(MeshLines.BOUNDARY).firstOrNull()?.nodes?.size} nodes around it")
+println(
+    "plane patch: ${patch.toFLines(MeshLines.BOUNDARY).size} boundary loop(s), " +
+        "${patch.toFLines(MeshLines.BOUNDARY).firstOrNull()?.nodes?.size} nodes around it",
+)
 
 // OBJ keeps the indices; STL is soup and needs a weld. Both must recover the volume exactly.
 val source = icosphereMesh(3, 0.7)
@@ -433,10 +471,18 @@ val viaObj = objToTriMesh(source.toObj("ball"))
 val viaStl = stlToTriMesh(source.toStlBinary())
 println()
 println("source     ${source.vertexCount} verts  volume %.6f".format(source.signedVolume()))
-println("via OBJ    ${viaObj.vertexCount} verts  volume %.6f  watertight ${viaObj.isWatertight()}".format(
-    viaObj.signedVolume()))
-println("via STL    ${viaStl.vertexCount} verts  volume %.6f  watertight ${viaStl.isWatertight()}".format(
-    viaStl.signedVolume()))
+println(
+    "via OBJ    ${viaObj.vertexCount} verts  volume %.6f  watertight ${viaObj.isWatertight()}"
+        .format(
+            viaObj.signedVolume(),
+        ),
+)
+println(
+    "via STL    ${viaStl.vertexCount} verts  volume %.6f  watertight ${viaStl.isWatertight()}"
+        .format(
+            viaStl.signedVolume(),
+        ),
+)
 println("STL welded ${viaStl.weld(1e-5).vertexCount} verts  watertight ${viaStl.weld(1e-5).isWatertight()}")
 :::fold draw the coil beside the coarse torus and the STL round trip
 showMeshGrid(
@@ -476,7 +522,7 @@ a test.
 ```diffstatic {data-lang=kotlin}
 val k = mesh.gaussianCurvature()
 val areas = mesh.mixedVertexAreas()
-val total = (0 until mesh.vertexCount).sumOf { k[it] * areas[it] }   // == 2 * PI * chi
+val total = (0 until mesh.vertexCount).sumOf { k[it] * areas[it] } // == 2 * PI * chi
 ```
 
 `bvh()` builds a bounding-volume hierarchy and turns every useful query from O(*n*) into O(log *n*):
@@ -557,7 +603,7 @@ parameter or an SDF expression, and run it again. To start from boxes that alrea
 **mesh_geometry_examples** from Starting points on the welcome screen, or
 [open it here](offline.html?file=assets/agent_transcripts/mesh_geometry_examples/metadata.edn).
 
-??? aside "Where the pictures come from"
+??? aside "Agents: where the pictures come from"
     The images under the runnable examples are each box's own output, drawn by the Three.js viewer
     `showMeshGrid` uses, and the docs build executes them. The `assets/mesh_gallery/` figures are
     committed captures from the `mesh.gallery` FIELD_TEST
@@ -569,10 +615,6 @@ parameter or an SDF expression, and run it again. To start from boxes that alrea
     The gallery test fails if a generator stops being watertight, if a marched sphere's volume error
     stops falling with resolution, if a decimation misses its budget, if Gauss–Bonnet stops matching
     2πχ, or if the Voronoi cells stop tiling their clip box.
-
-    Neither kind of figure refreshes itself when `mesh_*.kt` changes: the runner's capture digest
-    (`RUNNER_DIGEST_SOURCE_FILES` in `public/docs_hooks.py`) covers no stdlib source, so use
-    `FIELD_DOCS_RUNNER_MODE=always`, and re-run `mesh.gallery` for the committed PNGs.
 
 ## Reference
 
@@ -703,7 +745,7 @@ Define a solid by a scalar field and extract its surface with marching cubes.
 | `fun ScalarField3D.normalAt(p: Vec3, h: Number = 1e-3): Vec3` | The unit outward normal of this field's iso-surface at `p` — `gradient`, normalised. [API](reference/graphics.md#mesh-sdf-kt). |
 | `fun marchingCubes(field: ScalarField3D, bounds: AxisAlignedBoundingBox3D, nx: Int, ny: Int, nz: Int, iso: Double = 0.0, positiveOutside: Boolean = true, vertexNormals: Boolean = true): TriMesh` | `marchingCubes` with the cell count given per axis, when the shape wants an anisotropic grid. [API](reference/graphics.md#mesh-sdf-kt). |
 | `fun ScalarField3D.march(bounds: AxisAlignedBoundingBox3D = boundsAround(), resolution: Int = 48, iso: Double = 0.0, positiveOutside: Boolean = true): TriMesh` | `marchingCubes` as a method on the field, for `sdfSphere(1.0).march(...)`-style chains. [API](reference/graphics.md#mesh-sdf-kt). |
-| `fun Img.asHeightSdf(scale: Number = 0.25, bounds: AxisAlignedBoundingBox3D = boundsAround()): ScalarField3D` | An [`Img`](reference/imaging.md#imaging-kt-img) as a 3D field, one z-slice per… no — this is the *2D* bridge: the image's value at `(x, z)`, independent of `y`, minus `y`. Marching it gives the same surface `Img.toHeightfieldMesh` builds directly, which is a useful cross-check and occasionally a useful modelling primitive (you can subtract a heightfield from a solid). [API](reference/graphics.md#mesh-sdf-kt). |
+| `fun Img.asHeightSdf(scale: Number = 0.25, bounds: AxisAlignedBoundingBox3D = boundsAround()): ScalarField3D` | The image as a 3D height field: the image's value at `(x, z)` minus `y`, the same for every `y`. Marching it gives the same surface `Img.toHeightfieldMesh` builds directly, which is a useful cross-check and occasionally a useful modelling primitive (you can subtract a heightfield from a solid). [API](reference/graphics.md#mesh-sdf-kt). |
 
 </div>
 
@@ -829,6 +871,6 @@ Developer notes, including the measurements behind the Voronoi fix:
 `dev_docs/MESH_GEOMETRY.md`.
 
 Reading a mesh *in* from PLY, glTF or GLB: [Geometry from disk](geometry_from_disk.md), over
-`afield/four/modules/MeshFromDisk.kt`.
+`afield/graphics/scene/MeshFromDisk.kt`.
 
 Build a scene with meshes, lines and points using [`three { … }`](three_output.md#your-first-three-scene). Use [geometry review](geometry_review.md) to select a visible feature and return its coordinates, note and images to Field.

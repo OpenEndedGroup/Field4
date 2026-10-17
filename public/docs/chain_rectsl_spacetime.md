@@ -125,7 +125,7 @@ for (k in 0 until nt) {
 val cutBounds = boundsOf(vec(-halfWall, -halfWall, -halfDepth), vec(halfWall, halfWall, halfDepth))
 val cut = sampledField3D(inner, nx, ny, nt, cutBounds)
 val cutMarch = marchingCubes(cut, cutBounds, resolution = 140)
-val cutSolid = Solid.levelSetOf(cut, cutBounds, edgeLength = 0.12, parallel = false)
+val cutSolid = Solid.levelSetOf(cut, cutBounds, edgeLength = 0.12)
 
 // And with one empty slice each side, a hair outside, so it closes a fraction of a cell beyond.
 val dz = 2 * halfDepth / (nt - 1.0)
@@ -140,7 +140,7 @@ val bounds = boundsOf(
 )
 val closed = sampledField3D(padded, nx, ny, nt + 2, bounds)
 val closedMarch = marchingCubes(closed, bounds, resolution = 140)
-val closedSolid = Solid.levelSetOf(closed, bounds, edgeLength = 0.12, parallel = false)
+val closedSolid = Solid.levelSetOf(closed, bounds, edgeLength = 0.12)
 val parts = closedSolid.decompose()
 
 markdown("spacetime", """

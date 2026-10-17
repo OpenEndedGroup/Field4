@@ -24,7 +24,8 @@ which an agent changes through `SetBoxPropertyRequest` or a study's guarded edit
 
 ```diffstatic {data-lang=kotlin}
 // The room sizes every level of this kind uses, read from this box's roomRules property.
-val rules = thisBox.getPropertyRaw("roomRules", "").toString().lines().filter { "=" in it }
+prop<String?>(roomRules)
+val rules = (roomRules ?: "").lines().filter { "=" in it }
     .associate { it.substringBefore("=").trim() to it.substringAfter("=").trim().toInt() }
 markdown("main", "Rooms are ${rules["minRoom"]} to ${rules["maxRoom"]} cells wide.")
 ```
@@ -47,7 +48,7 @@ uv run --project . --group backdoor python tools/field_kit.py make ~/kits/level-
 ```
 
 ```diffstatic {data-lang=text}
-made kit level-kit dad7f4dc in ~/kits/level-kit: rules (3 properties), plan (1 property); 1 asset
+made kit level-kit b1595510 in ~/kits/level-kit: rules (3 properties), plan (1 property); 1 asset
   level-one is on it
 ```
 
@@ -65,7 +66,7 @@ To see which kit a document runs, and what differs from it, give it a box that s
 showKit()
 ```
 
-![the kit card: 'Kit level-kit · revision dad7f4dc', the sentence 'This document runs kit level-kit at revision dad7f4dc; the kit is at the same revision. Nothing differs from the kit.', and five rows, Rules · code, Rules · roomRules, Rules · rulesBaseline, Plan · code and files/palette.txt, each marked current](assets/kits/made.png)
+![the kit card: 'Kit level-kit · revision b1595510', the sentence 'This document runs kit level-kit at revision b1595510; the kit is at the same revision. Nothing differs from the kit.', and five rows, Rules · code, Rules · roomRules, Rules · rulesBaseline, Plan · code and files/palette.txt, each marked current](assets/kits/made.png)
 
 ## Publish it as a starting point
 
@@ -78,7 +79,7 @@ uv run --project . --group backdoor python tools/field_kit.py publish --document
 ```
 
 ```diffstatic {data-lang=text}
-published level-one as starting point level-kit in ~/.afield/templates (kit level-kit dad7f4dc)
+published level-one as starting point level-kit in ~/.afield/templates (kit level-kit b1595510)
 ```
 
 The starting point appears under **Templates** on the Welcome screen. Opening it gives you a new
@@ -89,16 +90,12 @@ document in your workspace that is on the kit from the start:
 `publish` refuses a document that differs from its kit, or one with a build running. Run it again
 with `--replace` to publish a newer version; the previous one is kept in `~/.afield/templates/.replaced/`.
 
-A document opened from a starting point has not run yet. `activate` runs its roles in launch order:
+The first time a document made from the starting point opens, Field runs its roles in the kit's launch order, so it starts
+working without a separate command. After that it runs only what `autorun` asks for, like any
+document. To run a document's roles in launch order again later, use `activate`:
 
 ```diffstatic {data-lang=bash}
 uv run --project . --group backdoor python tools/field_kit.py activate ~/kits/level-kit --document level-kit
-```
-
-```diffstatic {data-lang=text}
-level-kit: running kit level-kit dad7f4dc in launch order
-  launched rules
-  launched plan
 ```
 
 ## Change the kit
@@ -118,7 +115,7 @@ uv run --project . --group backdoor python tools/field_kit.py rehash ~/kits/leve
 
 ```diffstatic {data-lang=text}
 changed: plan.code
-revision dad7f4dc -> 6e8ee767
+revision b1595510 -> 77b8d0f8
 ```
 
 `rehash --check` changes nothing and exits 1 if `kit.json` is out of date. When the kit is in git and
@@ -128,7 +125,7 @@ index that hashes only what is staged.
 Every document made from the kit still runs its own copy. Its card now says what a migration would
 change:
 
-![the kit card of level-kit: 'This document runs kit level-kit at revision dad7f4dc; the kit is at revision 6e8ee767. Changed in the kit, which a migration installs: Plan · code.', with Plan · code marked 'changed in the kit' in blue and the other four rows current](assets/kits/upgrade.png)
+![the kit card of level-kit: 'This document runs kit level-kit at revision b1595510; the kit is at revision 77b8d0f8. Changed in the kit, which a migration installs: Plan · code.', with Plan · code marked 'changed in the kit' in blue and the other four rows current](assets/kits/upgrade.png)
 
 ## Migrate a document
 
@@ -139,7 +136,7 @@ uv run --project . --group backdoor python tools/field_kit.py migrate ~/kits/lev
 ```
 
 ```diffstatic {data-lang=text}
-level-kit: kit level-kit dad7f4dc -> 6e8ee767
+level-kit: kit level-kit b1595510 -> 77b8d0f8
   install: Plan · code (from the kit)
 ```
 
@@ -151,11 +148,11 @@ uv run --project . --group backdoor python tools/field_kit.py migrate ~/kits/lev
 ```
 
 ```diffstatic {data-lang=text}
-level-kit: kit level-kit dad7f4dc -> 6e8ee767
+level-kit: kit level-kit b1595510 -> 77b8d0f8
   install: Plan · code (from the kit)
   launched rules
   launched plan
-  recorded kit level-kit 6e8ee767
+  recorded kit level-kit 77b8d0f8
 ```
 
 If a role fails to run, the migration stops there and the document still records the old revision.
@@ -206,22 +203,22 @@ uv run --project . --group backdoor python tools/field_kit.py rehash ~/kits/leve
 
 ```diffstatic {data-lang=text}
 changed: rules.roomRules, rules.rulesBaseline
-revision 6e8ee767 -> 9ac4aa45
+revision 77b8d0f8 -> 42fd5c7c
 ```
 
-![the kit card of level-one after the fold, against kit revision 9ac4aa45: Rules · roomRules current, Rules · rulesBaseline marked 'frozen copy out of date' in amber, and Plan · code 'changed in the kit' in blue](assets/kits/folded.png)
+![the kit card of level-one after the fold, against kit revision 42fd5c7c: Rules · roomRules current, Rules · rulesBaseline marked 'frozen copy out of date' in amber, and Plan · code 'changed in the kit' in blue](assets/kits/folded.png)
 
 ```diffstatic {data-lang=bash}
 uv run --project . --group backdoor python tools/field_kit.py migrate ~/kits/level-kit --document level-one
 ```
 
 ```diffstatic {data-lang=text}
-level-one: kit level-kit dad7f4dc -> 9ac4aa45
+level-one: kit level-kit b1595510 -> 42fd5c7c
   install: Plan · code (from the kit)
   frozen copies: Rules · rulesBaseline (replaced with the kit's)
   launched rules
   launched plan
-  recorded kit level-kit 9ac4aa45
+  recorded kit level-kit 42fd5c7c
 ```
 
 ## Ask the agent

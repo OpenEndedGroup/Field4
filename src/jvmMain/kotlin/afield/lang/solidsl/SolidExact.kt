@@ -116,16 +116,12 @@ fun <T> SolidLowering<T>.orThrow(): T = when (this) {
  *   shape's own [SolidExpr.bounds] and [edgeLengthFraction].
  * @param edgeLengthFraction the derived edge length, as a fraction of the shape's longest axis.
  * @param levelSetTolerance passed to `Solid.levelSet`; `-1.0` keeps the full marching resolution.
- * @param parallelLevelSet let Manifold call the field from its own thread pool. Safe here, and
- *   unlike `Solid.levelSetOf`'s default, because [SolidExpr.toLevelSetField] is re-entrant by
- *   construction — it never touches a shared [afield.math.linalg.Vec3].
  */
 data class SolidQuality(
     val segments: Int = 0,
     val edgeLength: Double? = null,
     val edgeLengthFraction: Double = 0.01,
     val levelSetTolerance: Double = -1.0,
-    val parallelLevelSet: Boolean = true,
 ) {
     /** The edge length to march [bounds] at: [edgeLength] if it was given, else a fraction of the longest axis. */
     fun edgeLengthFor(bounds: AxisAlignedBoundingBox3D): Double {
@@ -349,7 +345,7 @@ private fun marchSubtree(
     // open "solid" is the one failure this package exists to make impossible.
     val window = raw.expandedBy(2.0 * edge)
     val field = e.toLevelSetField()
-    val solid = Solid.levelSet(window, edge, 0.0, q.levelSetTolerance, q.parallelLevelSet) { x, y, z ->
+    val solid = Solid.levelSet(window, edge, 0.0, q.levelSetTolerance) { x, y, z ->
         field.at(x, y, z)
     }
     marched += MarchedSubtree(e, e.exactRefusal()?.why ?: "", edge, window)

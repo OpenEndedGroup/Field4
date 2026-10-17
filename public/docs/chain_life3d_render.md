@@ -47,15 +47,14 @@ val populations = mutableListOf(volume.population())
 repeat(generations) { volume = volume.step(LIFE3D_BLOB); populations += volume.population() }
 
 :::fold two marchers on one field, then the census
-// smoothRadius = 0 marches the raw occupancy. See the callout below for why the usual radius of
-// one is wrong here.
+// smoothRadius = 0 marches the raw occupancy, which is why the clusters are faceted at the voxel
+// scale: this rule leaves filaments and isolated cells that a blur would erase.
 val field = volume.asDensityField(smoothRadius = 0, iso = 0.5)
 val bounds = volume.marchBounds()
 
 val marched = volume.toMesh(resolution = 110, smoothRadius = 0, iso = 0.5)
 
-// parallel = false: the parallel path is faster and does not return the same mesh twice.
-val whole = Solid.levelSet(bounds, edgeLength = edgeLength, parallel = false) { x, y, z ->
+val whole = Solid.levelSet(bounds, edgeLength = edgeLength) { x, y, z ->
     field(vec(x, y, z)).toDouble()
 }
 val parts = whole.decompose()
@@ -93,7 +92,7 @@ val sweep = buildString {
     appendLine("|---|---|---|")
     [1.4, 0.7, 0.35].forEach { edge ->
         Solid.scope {
-            val s = Solid.levelSet(bounds, edgeLength = edge, parallel = false) { x, y, z ->
+            val s = Solid.levelSet(bounds, edgeLength = edge) { x, y, z ->
                 field(vec(x, y, z)).toDouble()
             }
             appendLine("| `levelSet` edgeLength ${edge} | ${s.decompose().size} | " +
@@ -141,25 +140,6 @@ is "the" volume of the automaton.
 So report the spacing beside any count. The relation between genus and component count, and the
 pieces adding up to the whole, hold at every spacing, because they describe whatever surface was
 produced.
-
-!!! warning "`parallel = true` is nondeterministic"
-
-    The readout above uses `parallel = false`. Marched repeatedly on one field, the parallel path varies in triangle count, in volume, and in how many
-    components it finds; the sequential path returns the same three numbers every time. Clusters an
-    edge-length across are marginal, and which way a marginal one goes depends on the order the
-    samples arrive in.
-
-    The parallel path is roughly three times faster at this size. Take it when the output is going
-    to a screen; take the sequential one when a number off it is going to be read.
-
-!!! note "Set `smoothRadius = 0` for a sparse automaton, or the surface comes back empty"
-
-    `asDensityField`'s default smooths the occupancy grid by a voxel before marching, which is right
-    for a dense automaton: it turns a box of cubes into a shape, and it drops isolated single voxels
-    that would each contribute a tiny shell. `LIFE3D_BLOB` after eight generations is filaments and
-    isolated cells, and a 27-voxel average over those never reaches an iso of 0.5. The surface comes
-    back **empty**, from both marchers, with no error. `smoothRadius = 0` marches the raw occupancy
-    instead, which is why the clusters above are faceted at the voxel scale.
 
 ## What the render is framed on
 

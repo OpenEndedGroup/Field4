@@ -96,6 +96,13 @@
                 onLinkedDelete() {
                         postLink({ kind: 'linked-delete' });
                 },
+                // Simplify across the lanes that share this run's key times.
+                onLinkedSimplify(request, done) {
+                        linkedSimplify(request, done);
+                },
+                onLinkedSimplifyCommit(session) {
+                        postLink({ kind: 'simplify-commit', session });
+                },
         });
 
         // ── Linked lanes ───────────────────────────────────────────────────────────────
@@ -131,6 +138,57 @@
                 const extent = editor.keyTimeExtent();
                 linkState.extents.set(clientUid, extent);
                 postLink({ kind: 'extent', extent });
+        }
+
+        // Linked Simplify. The lane whose slider moved asks every lane which times it would keep with
+        // [pins] kept, makes the union of the answers the new pins, and asks again until nothing is
+        // added; each lane then keeps exactly the pins. The union only grows, so this ends, and a lane
+        // without keys at all of the run's times does not take part.
+        const simplifyRounds = new Map();
+        let simplifyToken = 0;
+
+        function linkedSimplify({ session, times, amount, kept }, done) {
+                const token = ++simplifyToken;
+                if (!link || amount <= 0) {
+                        postLink({ kind: 'simplify-show', session, times, amount, pins: [] });
+                        setTimeout(() => done([], 1), 0);
+                        return;
+                }
+                const peers = [...linkState.extents.keys()].filter((from) => from !== clientUid).length;
+                let pins = [];
+                const ask = (round) => {
+                        const id = token + ':' + round;
+                        const own = kept(pins);
+                        const answers = [own];
+                        let waiting = peers;
+                        const finish = () => {
+                                if (!simplifyRounds.has(id)) return;
+                                simplifyRounds.delete(id);
+                                clearTimeout(timer);
+                                if (token !== simplifyToken) return;
+                                const union = [...new Map(answers.flat().map((t) => [Math.round(t / 1e-6), t])).values()]
+                                        .sort((a, b) => a - b);
+                                if (union.length > pins.length && round < 64) {
+                                        pins = union;
+                                        ask(round + 1);
+                                        return;
+                                }
+                                postLink({ kind: 'simplify-show', session, times, amount, pins });
+                                done(pins, answers.length);
+                        };
+                        // A lane that has closed without saying so must not hold the slider up.
+                        const timer = setTimeout(finish, 250);
+                        simplifyRounds.set(id, {
+                                session,
+                                answer(kept) {
+                                        if (kept) answers.push(kept);
+                                        if (--waiting <= 0) finish();
+                                },
+                        });
+                        postLink({ kind: 'simplify-ask', session, round: id, times, amount, pins });
+                        if (peers === 0) setTimeout(finish, 0);
+                };
+                ask(0);
         }
 
         if (link) {
@@ -170,6 +228,24 @@
                                         break;
                                 case 'linked-delete':
                                         editor.deleteLinkedSelection();
+                                        break;
+                                case 'simplify-ask':
+                                        postLink({
+                                                kind: 'simplify-kept', to: data.from, session: data.session, round: data.round,
+                                                kept: editor.linkedSimplifyKept(data.session, data.times, data.amount, data.pins),
+                                        });
+                                        break;
+                                case 'simplify-kept': {
+                                        if (data.to !== clientUid) break;
+                                        const round = simplifyRounds.get(data.round);
+                                        if (round && round.session === data.session) round.answer(data.kept);
+                                        break;
+                                }
+                                case 'simplify-show':
+                                        editor.linkedSimplifyShow(data.session, data.times, data.amount, data.pins);
+                                        break;
+                                case 'simplify-commit':
+                                        editor.linkedSimplifyCommit(data.session);
                                         break;
                                 case 'bye':
                                         linkState.extents.delete(data.from);

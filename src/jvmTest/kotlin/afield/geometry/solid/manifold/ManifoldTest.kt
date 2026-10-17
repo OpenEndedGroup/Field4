@@ -9,6 +9,7 @@ import afield.geometry.mesh.icosphereMesh
 import afield.geometry.mesh.isWatertight
 import afield.geometry.mesh.signedVolume
 import afield.geometry.mesh.surfaceArea
+import afield.geometry.mesh.topology
 import afield.geometry.mesh.torusMesh
 import afield.geometry.mesh.weld
 import kotlin.math.PI
@@ -318,11 +319,11 @@ class ManifoldTest {
     @Test
     fun `asking for normals splits vertices at creases`() {
         if (!requireManifold()) return
-        // The surprise worth pinning down, because it makes an honest-looking check lie: a mesh with
-        // per-vertex normals CANNOT share a vertex across a hard edge, since the two faces need
-        // different normals there. So Manifold duplicates the position — and the result is a mesh that
-        // is geometrically closed but whose *index* topology is not, which is what Field's
-        // isWatertight() and genus() read.
+        // A mesh with per-vertex normals CANNOT share a vertex across a hard edge, since the two faces
+        // need different normals there. So Manifold duplicates the position, and the result is
+        // geometrically closed while its *index* topology is not. Field's isWatertight() and genus()
+        // weld an attributed mesh by position first, so they measure the surface; topology() still
+        // reads the indices.
         Solid.cube(2.0, 2.0, 2.0, center = true).use { cube ->
             val plain = cube.toTriMesh()
             assertEquals(8, plain.vertexCount, "a cube is 8 shared vertices")
@@ -331,23 +332,21 @@ class ManifoldTest {
 
             val shaded = cube.toTriMesh(normals = true)
             assertEquals(24, shaded.vertexCount, "each corner splits three ways, one per face")
-            assertTrue(
-                !shaded.isWatertight(),
-                "so the crease-split mesh is NOT index-watertight — this is the trap, not a bug",
-            )
+            assertTrue(!shaded.topology().isWatertight, "so the crease-split mesh is not index-watertight")
+            assertTrue(shaded.isWatertight(), "but the surface it describes is closed")
+            assertEquals(0, shaded.genus())
             assertEquals(plain.signedVolume(), shaded.signedVolume(), 1e-9, "though the geometry is identical")
             // ...and welding puts the topology back, at the cost of the normals that caused the split.
             assertTrue(shaded.weld(1e-6).isWatertight())
             assertEquals(0, shaded.weld(1e-6).genus())
         }
-        // Which is why the topology check in the round-trip test above uses the plain form. Asserted
-        // here rather than implied, so nobody "fixes" it by adding normals.
+        // And a genus-1 part reports 1 either way.
         Solid.scope {
             val part = Solid.cube(6.0, 4.0, 1.0, center = true) -
                 Solid.cylinder(4.0, 0.5, segments = 32, center = true)
             assertEquals(1, part.genus)
             assertEquals(1, part.toTriMesh().genus(), "Field agrees, on the plain mesh")
-            assertTrue(part.toTriMesh(normals = true).genus() != 1, "but not on the crease-split one")
+            assertEquals(1, part.toTriMesh(normals = true).genus(), "and on the crease-split one")
             Unit
         }
     }
@@ -421,17 +420,15 @@ class ManifoldTest {
     }
 
     @Test
-    fun `the parallel and sequential level sets produce identical meshes`() {
+    fun `a level set marched twice gives a bit-identical mesh`() {
         if (!requireManifold()) return
-        // This is the real test of the upcall contract. Manifold calls the lambda from its own TBB
-        // worker threads; if that were racing, or if the upcall stub were not re-entrant, the two runs
-        // would differ. Bit-identical volume is a much stronger statement than "both look like a
-        // sphere".
+        // Manifold's parallel marcher did not pass this, which is why levelSet uses the sequential
+        // one. Bit-identical volume is a much stronger statement than "both look like a sphere".
         val field: (Double, Double, Double) -> Double = { x, y, z ->
             0.9 - sqrt(x * x + y * y + z * z) + 0.05 * kotlin.math.sin(9 * x) * kotlin.math.sin(9 * y)
         }
-        Solid.levelSet(boundsAround(radius = 1.2), edgeLength = 0.045, parallel = true, field = field).use { p ->
-            Solid.levelSet(boundsAround(radius = 1.2), edgeLength = 0.045, parallel = false, field = field).use { s ->
+        Solid.levelSet(boundsAround(radius = 1.2), edgeLength = 0.045, field = field).use { p ->
+            Solid.levelSet(boundsAround(radius = 1.2), edgeLength = 0.045, field = field).use { s ->
                 assertEquals(s.triangleCount, p.triangleCount)
                 assertEquals(s.vertexCount, p.vertexCount)
                 assertEquals(s.volume, p.volume, 0.0, "identical inputs must give a bit-identical volume")
@@ -441,27 +438,15 @@ class ManifoldTest {
     }
 
     @Test
-    fun `a level set really does run the lambda on more than one thread`() {
+    fun `a level set calls its field from one thread`() {
         if (!requireManifold()) return
-        // Not a performance assertion — a *contract* assertion. The documented requirement that the
-        // field be thread-safe is only justified if it is genuinely called concurrently, and if that
-        // ever stopped being true the docs would quietly become wrong.
+        // The contract that lets a field be an ordinary, non-thread-safe closure.
         val threads = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-        Solid.levelSet(boundsAround(radius = 1.2), edgeLength = 0.03) { x, y, z ->
+        Solid.levelSet(boundsAround(radius = 1.2), edgeLength = 0.06) { x, y, z ->
             threads += Thread.currentThread().name
             1.0 - sqrt(x * x + y * y + z * z)
         }.use {
-            assertTrue(
-                threads.size > 1,
-                "the parallel level set should use several threads, saw ${threads.size}: $threads",
-            )
-        }
-        val sequentialThreads = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-        Solid.levelSet(boundsAround(radius = 1.2), edgeLength = 0.06, parallel = false) { x, y, z ->
-            sequentialThreads += Thread.currentThread().name
-            1.0 - sqrt(x * x + y * y + z * z)
-        }.use {
-            assertEquals(1, sequentialThreads.size, "parallel = false must mean exactly one thread")
+            assertEquals(1, threads.size, "levelSet must call its field from exactly one thread")
         }
     }
 
@@ -650,6 +635,26 @@ class ManifoldTest {
 
                 assertEquals(1, tube.genus, "a tube is a torus topologically")
                 assertEquals(PI * (2.0 * 2.0 - 1.0 * 1.0) * 3.0, tube.volume, 1e-2, "an annulus of height 3")
+            }
+        }
+    }
+
+    @Test
+    fun `revolveMesh with axis Z makes the solid Section revolved makes`() {
+        if (!requireManifold()) return
+        val profile = listOf(Vec2(1f, 0f), Vec2(2f, 0f), Vec2(2f, 3f), Vec2(1f, 3f))
+        val mesh = afield.geometry.mesh.revolveMesh(
+            profile + profile.first(), segments = 256, axis = afield.geometry.mesh.RevolveAxis.Z,
+        )
+        mesh.toSolid(weldTolerance = 1e-6).use { lathe ->
+            Section.ofPolygon(profile).use { section ->
+                section.revolved(segments = 256).use { tube ->
+                    assertEquals(tube.volume, lathe.volume, 1e-6 * tube.volume + 1e-3, "same tube, same volume")
+                    for (axis in 0..2) {
+                        assertEquals(tube.bounds.min[axis].toDouble(), lathe.bounds.min[axis].toDouble(), 1e-3)
+                        assertEquals(tube.bounds.max[axis].toDouble(), lathe.bounds.max[axis].toDouble(), 1e-3)
+                    }
+                }
             }
         }
     }

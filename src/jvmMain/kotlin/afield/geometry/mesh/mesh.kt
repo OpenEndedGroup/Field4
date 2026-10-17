@@ -258,22 +258,16 @@ class TriMesh(
             (colors?.all { it.isFinite() } ?: true)
 
     /**
-     * A copy with some arrays replaced. Passing `null` for an attribute **keeps** the existing one;
-     * use [withoutAttributes] to drop them.
+     * A copy with some arrays replaced; anything not passed is kept. Passing `null` for an attribute
+     * drops it, so `copy(normals = null)` is this mesh without normals.
      */
     fun copy(
-        positions: FloatArray? = null,
-        indices: IntArray? = null,
-        normals: FloatArray? = null,
-        uvs: FloatArray? = null,
-        colors: FloatArray? = null,
-    ): TriMesh = TriMesh(
-        positions ?: this.positions,
-        indices ?: this.indices,
-        normals ?: this.normals,
-        uvs ?: this.uvs,
-        colors ?: this.colors,
-    )
+        positions: FloatArray = this.positions,
+        indices: IntArray = this.indices,
+        normals: FloatArray? = this.normals,
+        uvs: FloatArray? = this.uvs,
+        colors: FloatArray? = this.colors,
+    ): TriMesh = TriMesh(positions, indices, normals, uvs, colors)
 
     /** Positions and indices only — drops normals, uvs and colours. */
     fun withoutAttributes(): TriMesh = TriMesh(positions, indices)

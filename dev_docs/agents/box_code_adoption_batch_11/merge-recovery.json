@@ -1,0 +1,20 @@
+{
+  "mergeMain": "43e60453bba0462d2cdc242baa7141a578750707",
+  "generation": "passed; all regenerators completed in 15m14s",
+  "stagingRepair": "Archived an unused, unheld index.lock after staging failed; resumed from completed generation",
+  "fullMergeGuard": "one failure: generated canonical_graphics/LESSONS.md stale after typed streamer target adoption",
+  "pythonSuite": {
+    "passed": 1283,
+    "failed": 1,
+    "skipped": 4,
+    "failure": "tools.test_canonical_graphics_index.CommittedIndexIsCurrentTests.test_lessons_md_matches_freshly_generated_output"
+  },
+  "otherGuards": "passed, including 12 transcripts and all 14 citation suites; tree-write guard clean",
+  "repair": "Regenerated LESSONS.md using the actual generator",
+  "focusedRetest": {
+    "suite": "tools.test_canonical_graphics_index",
+    "tests": 9,
+    "failures": 0
+  },
+  "fullGuardAfterRepair": "lander will execute on requeue; not claimed run locally"
+}

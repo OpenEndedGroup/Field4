@@ -26,18 +26,24 @@ Three things work differently from a static graph:
 ## Six ways to propose an edge
 
 Field has six `DynamicGraphSystem`s, and they differ in what an edge *means*. The example runs all
-six over the same disc of points, for the same number of frames, with the same reinforcement and the
-same ceiling, so every difference between the panels comes from the system.
+six over the same disc of points, for the same number of frames and under the same edge-weight
+ceiling. Reinforcement is not shared: routing reinforces by 1.0, the other update laws by 4.0, and
+the alpha-event system per unit area, so compare the panels by the shape of their edges rather than
+their total weight.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dynamic_graph_systems_examples/six_systems.png" wait="14.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// Six DynamicGraphSystems, one cloud, one clock, one reinforcement budget. The only thing that
-// differs between panels is what the system thinks an edge means.
-val cloud = List(220) { i ->
-    val a = i * 2.39996322972865332
-    val r = 0.5 * Math.sqrt((i + 0.5) / 220.0)
-    Vec3((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat(), 0f)
-}
+/*
+Six systems share a cloud, step count and edge-weight ceiling. Reinforcement is
+system-specific: routing uses 1.0, the other update laws use 4.0, and alpha scales
+reinforcement per unit area. These are not equal reinforcement budgets.
+*/
+val cloud =
+    List(220) { i ->
+        val a = i * 2.39996322972865332
+        val r = 0.5 * Math.sqrt((i + 0.5) / 220.0)
+        Vec3((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat(), 0f)
+    }
 val window = dynamicGraphWindow(cloud, padFraction = 0.06)
 val ceiling = 4.0
 
@@ -50,19 +56,58 @@ fun build(system: DynamicGraphSystem): Pair<DynamicPointState, DynamicEdgeList> 
 }
 
 val systems = listOf<Pair<String, DynamicGraphSystem>>(
-    "kNN k=5" to Vec3BreathingAnisotropicKnnSystem(
-        k = 5, ttl = 10f, reinforce = 4.0, maxWeight = ceiling, mutualOnly = true, queryRadius = 0.12),
-    "flowline" to Vec3FlowlineAdvectionGraphSystem(
-        influenceRadius = 0.10, stepLength = 0.08, ttl = 10f, reinforce = 4.0, maxWeight = ceiling),
-    "tangent fan" to Vec3LocalTangentTriangulationSystem(
-        neighborhoodK = 6, ttl = 10f, reinforce = 4.0, maxWeight = ceiling, maxNeighborRadius = 0.10),
-    "hysteresis" to Vec3PersistentProximityHysteresisSystem(
-        rEnter = 0.055, rExit = 0.075, ttl = 10f, reinforce = 4.0, maxWeight = ceiling),
-    "routing, 1 arc" to Vec3SignalRoutingGraphSystem(
-        neighborhoodK = 6, ttl = 10f, reinforce = 1.0, maxWeight = ceiling, routeCount = 1, maxNeighborRadius = 0.10),
-    "alpha-event" to Vec3AlphaEventHypergraphCollapseSystem(
-        neighborhoodK = 6, alphaRadius = 0.075, ttl = 10f, reinforcePerUnitArea = 4.0, maxWeight = ceiling,
-        maxNeighborRadius = 0.09, minArea = 1e-4)
+    "kNN k=5" to
+        Vec3BreathingAnisotropicKnnSystem(
+            k = 5,
+            ttl = 10f,
+            reinforce = 4.0,
+            maxWeight = ceiling,
+            mutualOnly = true,
+            queryRadius = 0.12,
+        ),
+    "flowline" to
+        Vec3FlowlineAdvectionGraphSystem(
+            influenceRadius = 0.10,
+            stepLength = 0.08,
+            ttl = 10f,
+            reinforce = 4.0,
+            maxWeight = ceiling,
+        ),
+    "tangent fan" to
+        Vec3LocalTangentTriangulationSystem(
+            neighborhoodK = 6,
+            ttl = 10f,
+            reinforce = 4.0,
+            maxWeight = ceiling,
+            maxNeighborRadius = 0.10,
+        ),
+    "hysteresis" to
+        Vec3PersistentProximityHysteresisSystem(
+            rEnter = 0.055,
+            rExit = 0.075,
+            ttl = 10f,
+            reinforce = 4.0,
+            maxWeight = ceiling,
+        ),
+    "routing, 1 arc" to
+        Vec3SignalRoutingGraphSystem(
+            neighborhoodK = 6,
+            ttl = 10f,
+            reinforce = 1.0,
+            maxWeight = ceiling,
+            routeCount = 1,
+            maxNeighborRadius = 0.10,
+        ),
+    "alpha-event" to
+        Vec3AlphaEventHypergraphCollapseSystem(
+            neighborhoodK = 6,
+            alphaRadius = 0.075,
+            ttl = 10f,
+            reinforcePerUnitArea = 4.0,
+            maxWeight = ceiling,
+            maxNeighborRadius = 0.09,
+            minArea = 1e-4,
+        ),
 )
 
 // For each panel: how many edges, what fraction of them close a triangle, and how much of the shared
@@ -70,13 +115,24 @@ val systems = listOf<Pair<String, DynamicGraphSystem>>(
 val panels = systems.map { (name, system) ->
     val (state, edges) = build(system)
     val adjacency = Array(state.pointCount) { HashSet<Int>() }
-    for (e in edges.values()) { adjacency[e.i].add(e.j); adjacency[e.j].add(e.i) }
+    for (e in edges.values()) {
+        adjacency[e.i].add(e.j)
+        adjacency[e.j].add(e.i)
+    }
     val closed = edges.values().count { e -> adjacency[e.i].any { it != e.j && adjacency[e.j].contains(it) } }
     val fraction = if (edges.values().isEmpty()) 0.0 else closed.toDouble() / edges.values().size
     val wmax = edges.values().maxOfOrNull { it.weight } ?: 0.0
-    println("%-16s %4d edges  %5.1f%% in a triangle  mean degree %.2f  wmax %.4f (%.1f%% of ceiling)".format(
-        name, edges.values().size, 100.0 * fraction, 2.0 * edges.values().size / state.pointCount,
-        wmax, 100.0 * wmax / ceiling))
+    println(
+        "%-16s %4d edges  %5.1f%% in a triangle  mean degree %.2f  wmax %.4f (%.1f%% of ceiling)"
+            .format(
+                name,
+                edges.values().size,
+                100.0 * fraction,
+                2.0 * edges.values().size / state.pointCount,
+                wmax,
+                100.0 * wmax / ceiling,
+            ),
+    )
     // One FLine per edge, drawn as vector graphics. Weight sets both colour and stroke width,
     // against `ceiling`.
     "%s: %de %d%%tri".format(name, edges.values().size, Math.round(100.0 * fraction)) to
@@ -86,7 +142,9 @@ val panels = systems.map { (name, system) ->
 // One shared window for all six panels, so nothing but the topology differs between them.
 showPlaneGrid(
     *panels.toTypedArray(),
-    columns = 3, cellWidth = 400, cellHeight = 400,
+    columns = 3,
+    cellWidth = 400,
+    cellHeight = 400,
     window = dynamicGraphPlaneWindow(window),
 )
 ```
@@ -174,11 +232,12 @@ which switches it off. A fold underneath does the same with two points walked ap
 // A 200-point disc, each point wobbling by up to 0.012 a frame: about a fifth of rEnter, enough to
 // cross the threshold without rearranging the neighbourhood.
 val n = 200
-val base = List(n) { i ->
-    val a = i * 2.39996322972865332
-    val r = 0.45 * Math.sqrt((i + 0.5) / n)
-    Vec3((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat(), 0f)
-}
+val base =
+    List(n) { i ->
+        val a = i * 2.39996322972865332
+        val r = 0.45 * Math.sqrt((i + 0.5) / n)
+        Vec3((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat(), 0f)
+    }
 // Both panels share one window, computed from the cloud at rest, so they are drawn at the same scale.
 val window = dynamicGraphWindow(base, padFraction = 0.06)
 
@@ -190,15 +249,23 @@ fun flicker(rExit: Double): Flicker {
     val edges = DynamicEdgeList(n)
     val hash = Vec3SpatialHash(0.06)
     val system = Vec3PersistentProximityHysteresisSystem(
-        rEnter = 0.055, rExit = rExit, ttl = 0.35f, reinforce = 3.0, maxWeight = 3.0)
+        rEnter = 0.055,
+        rExit = rExit,
+        ttl = 0.35f,
+        reinforce = 3.0,
+        maxWeight = 3.0,
+    )
     var appeared = 0
     var vanished = 0
     var present = HashSet<Pair<Int, Int>>()
     repeat(150) { frame ->
         for (i in 0 until n) {
             val phase = 0.31 * i + 0.16 * frame
-            state.points[i] = Vec3(base[i]).add(
-                vec(0.012 * Math.cos(phase), 0.012 * Math.sin(1.7 * phase), 0.0))
+            state.points[i] =
+                Vec3(base[i])
+                    .add(
+                        vec(0.012 * Math.cos(phase), 0.012 * Math.sin(1.7 * phase), 0.0),
+                    )
         }
         stepDynamicGraphWithExponentialDecay(1f / 60f, state, edges, hash, system, 0.9)
         val now = edges.values().map { it.i to it.j }.toHashSet()
@@ -206,20 +273,29 @@ fun flicker(rExit: Double): Flicker {
         vanished += (present - now).size
         present = now
     }
-    return Flicker(appeared, vanished, present.size,
-        dynamicGraphFLines(state.points, edges.values(), maxWeight = 3.0, colormap = "magma"))
+    return Flicker(
+        appeared,
+        vanished,
+        present.size,
+        dynamicGraphFLines(state.points, edges.values(), maxWeight = 3.0, colormap = "magma"),
+    )
 }
 
 // rExit == rEnter switches hysteresis off.
 val on = flicker(rExit = 0.075)
 val off = flicker(rExit = 0.055)
 println("hysteresis on:  ${on.appeared} edges created, ${on.vanished} lost, ${on.standing} standing after 150 frames")
-println("hysteresis off: ${off.appeared} edges created, ${off.vanished} lost, ${off.standing} standing after 150 frames")
+println(
+    "hysteresis off: ${off.appeared} edges created, ${off.vanished} lost, ${off.standing} standing after 150 frames",
+)
 
 showPlaneGrid(
     "rExit 0.075: ${on.appeared} in, ${on.vanished} out" to on.lines,
     "rExit = rEnter: ${off.appeared} in, ${off.vanished} out" to off.lines,
-    columns = 2, cellWidth = 460, cellHeight = 460, window = dynamicGraphPlaneWindow(window),
+    columns = 2,
+    cellWidth = 460,
+    cellHeight = 460,
+    window = dynamicGraphPlaneWindow(window),
 )
 
 :::fold the same thing with two points: walk them apart, past rEnter but inside rExit
@@ -229,7 +305,12 @@ fun walk(rExit: Double): Pair<Boolean, Boolean> {
     val edges = DynamicEdgeList(2)
     val hash = Vec3SpatialHash(0.2)
     val system = Vec3PersistentProximityHysteresisSystem(
-        rEnter = 0.10, rExit = rExit, ttl = 0.2f, reinforce = 4.0, maxWeight = 8.0)
+        rEnter = 0.10,
+        rExit = rExit,
+        ttl = 0.2f,
+        reinforce = 4.0,
+        maxWeight = 8.0,
+    )
     repeat(30) { stepDynamicGraphWithExponentialDecay(1f / 60f, state, edges, hash, system, 0.2) }
     val formedWhileClose = edges.get(0, 1) != null
     state.points[1] = Vec3(0.13f, 0f, 0f)
@@ -261,16 +342,19 @@ cloud that stays still, beside the same system with its clock held at zero.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/dynamic_graph_systems_examples/breathing.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="7" fps="20" timeout="300" w="1000" name="dgs-breathing-video" alt="a k-nearest-neighbour graph over a stationary point cloud rewiring itself as the distance metric stretches and rotates, beside the same cloud under a frozen metric whose edge count never changes"}
 :::static
-// The cloud does not move in this clip. Every edge that appears or disappears comes from the
-// anisotropic metric breathing: an axis that rotates with the clock and a stretch along it between
-// 0.25 and 2.0. The right-hand panel runs the same k, cloud and code with the clock held at zero, so
-// its graph stays still.
+/*
+The cloud does not move in this clip. Every edge that appears or disappears comes from the
+anisotropic metric breathing: an axis that rotates with the clock and a stretch along it between
+0.25 and 2.0. The right-hand panel runs the same k, cloud and code with the clock held at zero, so
+its graph stays still.
+*/
 val n = 260
-val cloud = List(n) { i ->
-    val a = i * 2.39996322972865332
-    val r = 0.5 * Math.sqrt((i + 0.5) / n)
-    Vec3((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat(), 0f)
-}
+val cloud =
+    List(n) { i ->
+        val a = i * 2.39996322972865332
+        val r = 0.5 * Math.sqrt((i + 0.5) / n)
+        Vec3((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat(), 0f)
+    }
 val window = dynamicGraphWindow(cloud, padFraction = 0.06)
 val ceiling = 1.2
 
@@ -279,18 +363,32 @@ class Breath(
     val plain: DynamicPointState,
     val warpedEdges: DynamicEdgeList,
     val plainEdges: DynamicEdgeList,
-    val hash: Vec3SpatialHash
+    val hash: Vec3SpatialHash,
 )
 
 val warpedSystem = Vec3BreathingAnisotropicKnnSystem(
-    k = 5, ttl = 0.25f, reinforce = 6.0, maxWeight = ceiling, mutualOnly = true, queryRadius = 0.13)
+    k = 5,
+    ttl = 0.25f,
+    reinforce = 6.0,
+    maxWeight = ceiling,
+    mutualOnly = true,
+    queryRadius = 0.13,
+)
 val plainSystem = Vec3BreathingAnisotropicKnnSystem(
-    k = 5, ttl = 0.25f, reinforce = 6.0, maxWeight = ceiling, mutualOnly = true, queryRadius = 0.13)
+    k = 5,
+    ttl = 0.25f,
+    reinforce = 6.0,
+    maxWeight = ceiling,
+    mutualOnly = true,
+    queryRadius = 0.13,
+)
 
 val seed = Breath(
     DynamicPointState(cloud.map { Vec3(it) }.toMutableList()),
     DynamicPointState(cloud.map { Vec3(it) }.toMutableList()),
-    DynamicEdgeList(n), DynamicEdgeList(n), Vec3SpatialHash(0.065)
+    DynamicEdgeList(n),
+    DynamicEdgeList(n),
+    Vec3SpatialHash(0.065),
 )
 
 animateEvolution(
@@ -314,9 +412,9 @@ animateEvolution(
             "breathing, t=%.2fs, %d edges".format(s.warped.time, s.warpedEdges.values().size) to
                 dynamicGraphPanel(s.warped.points, s.warpedEdges.values(), window, 460, 460, ceiling, "magma"),
             "frozen, step %d, %d edges".format(step, s.plainEdges.values().size) to
-                dynamicGraphPanel(s.plain.points, s.plainEdges.values(), window, 460, 460, ceiling, "magma")
+                dynamicGraphPanel(s.plain.points, s.plainEdges.values(), window, 460, 460, ceiling, "magma"),
         ]
-    }
+    },
 )
 ```
 
@@ -351,16 +449,19 @@ pipeline beside the same pipeline without `DirectedTipGrowthProcess`. Most of th
 early, so the clip uses a geometric step schedule (`ramp`) to slow the start down and speed up the
 end.
 
-```diffstatic_runner {data-lang=kotlin video="assets/dynamic_graph_systems_examples/morphogenesis.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="13" fps="20" timeout="360" w="1060" name="dgs-morphogenesis-video" alt="a ring of points growing into a branching filamentous structure while its graph is continually rebuilt, beside a control arm with tip growth switched off in which the ring stays a ring"}
+```diffstatic_runner {data-lang=kotlin video="assets/dynamic_graph_systems_examples/morphogenesis.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="360" w="1060" name="dgs-morphogenesis-video" alt="a ring of points growing into a branching filamentous structure while its graph is continually rebuilt, beside a control arm with tip growth switched off in which the ring stays a ring"}
 :::static
-// The full pipeline: diffuse a resource along the edges and climb its gradient, relax the springs,
-// grow tips where the incident edges pull coherently, merge what has collided, smooth, jitter.
-// The right-hand panel is the same pipeline with ONE stage removed -- tip growth -- so the
-// difference between the panels is that stage and nothing else.
-val seedRing = List(64) { i ->
-    val a = 2.0 * Math.PI * i / 64
-    Vec3((0.42 * Math.cos(a)).toFloat(), (0.42 * Math.sin(a)).toFloat(), 0f)
-}
+/*
+The full pipeline: diffuse a resource along the edges and climb its gradient, relax the springs,
+grow tips where the incident edges pull coherently, merge what has collided, smooth, jitter.
+The right-hand panel is the same pipeline with ONE stage removed -- tip growth -- so the
+difference between the panels is that stage and nothing else.
+*/
+val seedRing =
+    List(64) { i ->
+        val a = 2.0 * Math.PI * i / 64
+        Vec3((0.42 * Math.cos(a)).toFloat(), (0.42 * Math.sin(a)).toFloat(), 0f)
+    }
 // A window sized for where the structure ends up, not for the seed. Fitting to the seed would put
 // the whole clip against the frame edge; re-fitting per frame would make the growth invisible.
 val window = doubleArrayOf(-0.95, -0.95, 0.95, 0.95)
@@ -372,7 +473,7 @@ class Morph(
     val edges: DynamicEdgeList,
     val hash: Vec3SpatialHash,
     val pipeline: DynamicProcessPipeline,
-    val system: DynamicGraphSystem
+    val system: DynamicGraphSystem,
 )
 
 fun morph(grow: Boolean): Morph {
@@ -385,20 +486,36 @@ fun morph(grow: Boolean): Morph {
         SignalDiffusionAndChemotaxisProcess(diffusionRate = 0.5, chemoGain = 0.35, maxSpeed = 0.30),
         // rest = restLengthTimesWeight / weight: a rest length of 0.05 at a typical weight of 1.5
         // is 0.075.
-        SpringMotionProcess(springK = 1.2, damping = 3.0, restLengthTimesWeight = 0.075, maxSpeed = 0.30)
+        SpringMotionProcess(springK = 1.2, damping = 3.0, restLengthTimesWeight = 0.075, maxSpeed = 0.30),
     )
-    if (grow) stages += DirectedTipGrowthProcess(
-        coherenceThreshold = 1.6, spawnDistance = 0.035, localDensityRadius = 0.05,
-        localDensityMax = 6, childEdgeWeight = 1.5, childEdgeTtl = 1.5f, maxWeight = ceiling,
-        maxPointCount = 900)
+    if (grow)
+        stages +=
+            DirectedTipGrowthProcess(
+                coherenceThreshold = 1.6,
+                spawnDistance = 0.035,
+                localDensityRadius = 0.05,
+                localDensityMax = 6,
+                childEdgeWeight = 1.5,
+                childEdgeTtl = 1.5f,
+                maxWeight = ceiling,
+                maxPointCount = 900,
+            )
     stages += MergeClosePointsProcess(mergeDistance = 0.012, minCombinedWeight = 2.0)
     stages += RelaxToMidpointProcess(gain = 1.5)
     stages += JitterProcess(amplitude = 0.04)
     return Morph(
-        state, kinetics, DynamicEdgeList(state.pointCount), Vec3SpatialHash(0.05),
+        state,
+        kinetics,
+        DynamicEdgeList(state.pointCount),
+        Vec3SpatialHash(0.05),
         DynamicProcessPipeline(stages),
         Vec3PersistentProximityHysteresisSystem(
-            rEnter = 0.05, rExit = 0.07, ttl = 0.8f, reinforce = 3.0, maxWeight = ceiling)
+            rEnter = 0.05,
+            rExit = 0.07,
+            ttl = 0.8f,
+            reinforce = 3.0,
+            maxWeight = ceiling,
+        ),
     )
 }
 
@@ -424,9 +541,9 @@ animateEvolution(
             "grow ON  s%d  %dpts %de".format(step, grown.state.pointCount, grown.edges.values().size) to
                 dynamicGraphPanel(grown.state.points, grown.edges.values(), window, 490, 490, ceiling, "magma"),
             "grow OFF  s%d  %dpts %de".format(step, flat.state.pointCount, flat.edges.values().size) to
-                dynamicGraphPanel(flat.state.points, flat.edges.values(), window, 490, 490, ceiling, "magma")
+                dynamicGraphPanel(flat.state.points, flat.edges.values(), window, 490, 490, ceiling, "magma"),
         ]
-    }
+    },
 )
 ```
 
@@ -436,12 +553,6 @@ With tip growth, the ring grows into branching filaments. The edge count jumps a
 crowd into the ring's footprint, then falls as the springs push them apart, leaving the branching
 skeleton. Without tip growth the ring stays a ring, and loses a few points as the springs pull
 neighbours together and `MergeClosePointsProcess` merges them.
-
-??? aside "Why the morphogenesis clip records for longer than it runs"
-    [`animateEvolution`](reference/alife.md#alife-animate-kt) with a geometric `ramp` makes the last
-    frames' step batches the largest, so the recorder falls furthest behind at the end. The clip
-    records for `duration = 13` against `seconds = 10` so that it reaches the settled result; at
-    `duration = 11` takes stopped before the final step.
 
 ## Snapshots and the `minWeight` cut
 
@@ -459,11 +570,12 @@ clusters from the background.
 :::static
 // A static background mesh with three rigid clusters crossing it. The minWeight cut has to separate
 // "adjacent for four seconds" from "adjacent in passing" using nothing but accumulated weight.
-fun disc(n: Int, r: Double) = List(n) { i ->
-    val a = i * 2.39996322972865332
-    val rad = r * Math.sqrt((i + 0.5) / n)
-    Vec3((rad * Math.cos(a)).toFloat(), (rad * Math.sin(a)).toFloat(), 0f)
-}
+fun disc(n: Int, r: Double) =
+    List(n) { i ->
+        val a = i * 2.39996322972865332
+        val rad = r * Math.sqrt((i + 0.5) / n)
+        Vec3((rad * Math.cos(a)).toFloat(), (rad * Math.sin(a)).toFloat(), 0f)
+    }
 
 val nBg = 240
 val perCluster = 22
@@ -482,7 +594,12 @@ val edges = DynamicEdgeList(n)
 val hash = Vec3SpatialHash(0.055)
 val ceiling = 3.0
 val system = Vec3PersistentProximityHysteresisSystem(
-    rEnter = 0.062, rExit = 0.075, ttl = 0.4f, reinforce = 2.5, maxWeight = ceiling)
+    rEnter = 0.062,
+    rExit = 0.075,
+    ttl = 0.4f,
+    reinforce = 2.5,
+    maxWeight = ceiling,
+)
 
 repeat(240) { f ->
     val t = f / 60.0
@@ -499,8 +616,19 @@ println(dynamicGraphSummary(state, edges))
 // Connected components of the snapshot, by union-find over the PointGraph the static library sees.
 fun componentSizes(graph: PointGraph): List<Int> {
     val parent = IntArray(graph.pointCount) { it }
-    fun find(a: Int): Int { var x = a; while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x] }; return x }
-    for (e in graph.edges) { val ra = find(e.i); val rb = find(e.j); if (ra != rb) parent[ra] = rb }
+    fun find(a: Int): Int {
+        var x = a
+        while (parent[x] != x) {
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        }
+        return x
+    }
+    for (e in graph.edges) {
+        val ra = find(e.i)
+        val rb = find(e.j)
+        if (ra != rb) parent[ra] = rb
+    }
     val sizes = HashMap<Int, Int>()
     for (v in 0 until graph.pointCount) sizes.merge(find(v), 1) { a, b -> a + b }
     return sizes.values.sortedDescending()
@@ -511,10 +639,12 @@ fun componentSizes(graph: PointGraph): List<Int> {
 val window = doubleArrayOf(-0.60, -0.60, 0.60, 0.60)
 println("points outside that window: ${dynamicGraphOutsideWindow(state.points, window)}")
 
-// A force-directed layout of one snapshot: a spring along every edge it kept, repulsion between every
-// pair of points, and a weak pull to the centre so separate components stay on the page. It starts
-// from where the points physically are and sees nothing but the snapshot's edges, so whatever comes
-// apart here came apart in the graph.
+/*
+A force-directed layout of one snapshot: a spring along every edge it kept, repulsion between every
+pair of points, and a weak pull to the centre so separate components stay on the page. It starts
+from where the points physically are and sees nothing but the snapshot's edges, so whatever comes
+apart here came apart in the graph.
+*/
 fun relaxed(graph: PointGraph, start: List<Vec3>, iterations: Int = 300): List<Vec3> {
     val n = graph.pointCount
     val x = DoubleArray(n) { start[it].x.toDouble() }
@@ -528,47 +658,70 @@ fun relaxed(graph: PointGraph, start: List<Vec3>, iterations: Int = 300): List<V
             val ex = x[i] - x[j]
             val ey = y[i] - y[j]
             val f = k * k / maxOf(ex * ex + ey * ey, 1e-6)
-            fx[i] += ex * f; fy[i] += ey * f; fx[j] -= ex * f; fy[j] -= ey * f
+            fx[i] += ex * f
+            fy[i] += ey * f
+            fx[j] -= ex * f
+            fy[j] -= ey * f
         }
         for (e in graph.edges) {
             val ex = x[e.i] - x[e.j]
             val ey = y[e.i] - y[e.j]
             val f = Math.sqrt(ex * ex + ey * ey) / k
-            fx[e.i] -= ex * f; fy[e.i] -= ey * f; fx[e.j] += ex * f; fy[e.j] += ey * f
+            fx[e.i] -= ex * f
+            fy[e.i] -= ey * f
+            fx[e.j] += ex * f
+            fy[e.j] += ey * f
         }
         for (i in 0 until n) {
-            fx[i] -= 0.6 * x[i]; fy[i] -= 0.6 * y[i]
+            fx[i] -= 0.6 * x[i]
+            fy[i] -= 0.6 * y[i]
             val len = Math.sqrt(fx[i] * fx[i] + fy[i] * fy[i])
-            if (len > 0) { val s = minOf(len, step) / len; x[i] += fx[i] * s; y[i] += fy[i] * s }
+            if (len > 0) {
+                val s = minOf(len, step) / len
+                x[i] += fx[i] * s
+                y[i] += fy[i] * s
+            }
         }
         step *= 0.99
     }
     // Fit to the same window the physical panels use.
-    val cx = (x.max() + x.min()) / 2; val cy = (y.max() + y.min()) / 2
+    val cx = (x.max() + x.min()) / 2
+    val cy = (y.max() + y.min()) / 2
     val half = maxOf(x.max() - x.min(), y.max() - y.min()) / 2
     val s = 0.55 / half
     return List(n) { Vec3(((x[it] - cx) * s).toFloat(), ((y[it] - cy) * s).toFloat(), 0f) }
 }
 
 // Every threshold is measured; two of them are drawn, each as the run left it and relaxed.
-val panels = [0.0, 0.5, 1.2, 2.0].flatMap { cut ->
-    val graph = edges.toPointGraph(minWeight = cut)
-    val groups = componentSizes(graph).filter { it > 1 }
-    val cross = graph.edges.count { group[it.i] != group[it.j] }
-    println("minWeight %.1f -> %4d edges, %3d of them cross a group boundary, components > 1: %s".format(
-        cut, graph.edges.size, cross, groups))
-    if (cut != 0.0 && cut != 1.2) return@flatMap emptyList()
-    val kept = edges.values().filter { it.weight > cut }
-    [
-        "w>%.1f  as it ran".format(cut) to
-            dynamicGraphFLines(state.points, kept, maxWeight = ceiling, colormap = "magma"),
-        "w>%.1f  relaxed, %d groups".format(cut, groups.size) to
-            dynamicGraphFLines(relaxed(graph, state.points), kept, maxWeight = ceiling, colormap = "magma"),
-    ]
-}
+val panels =
+    [0.0, 0.5, 1.2, 2.0].flatMap { cut ->
+        val graph = edges.toPointGraph(minWeight = cut)
+        val groups = componentSizes(graph).filter { it > 1 }
+        val cross = graph.edges.count { group[it.i] != group[it.j] }
+        println(
+            "minWeight %.1f -> %4d edges, %3d of them cross a group boundary, components > 1: %s"
+                .format(
+                    cut,
+                    graph.edges.size,
+                    cross,
+                    groups,
+                ),
+        )
+        if (cut != 0.0 && cut != 1.2) return@flatMap emptyList()
+        val kept = edges.values().filter { it.weight > cut }
+        [
+            "w>%.1f  as it ran".format(cut) to
+                dynamicGraphFLines(state.points, kept, maxWeight = ceiling, colormap = "magma"),
+            "w>%.1f  relaxed, %d groups".format(cut, groups.size) to
+                dynamicGraphFLines(relaxed(graph, state.points), kept, maxWeight = ceiling, colormap = "magma"),
+        ]
+    }
 showPlaneGrid(
     *panels.toTypedArray(),
-    columns = 2, cellWidth = 430, cellHeight = 430, window = dynamicGraphPlaneWindow(window),
+    columns = 2,
+    cellWidth = 430,
+    cellHeight = 430,
+    window = dynamicGraphPlaneWindow(window),
 )
 ```
 

@@ -163,6 +163,27 @@ class ListLiteralTests(unittest.TestCase):
         finally:
             f.close()
 
+    def test_a_listing_copied_from_recorded_source_keeps_its_spelling(self):
+        page = ("<!-- study-source:final -->\n```kotlin\nval xs = listOf(1, 2)\n```\n<!-- /study-source:final -->\n"
+                "```kotlin\nval ys = listOf(3, 4)\n```\n")
+        f = Fixture({self.PATH: page})
+        try:
+            self.assertEqual([(x.line, x.rule) for x in idioms.process(self.PATH, f.root, fix=False)], [(7, "list-literal")])
+        finally:
+            f.close()
+
+    def test_explicit_collection_audit_checks_and_fixes_selected_transcripts(self):
+        code = "operations:\n  - create:\n      box: test\n      code: |\n        val xs = listOf(1, 2)\n"
+        f = Fixture({TRANSCRIPT: code})
+        try:
+            self.assertEqual(f.run("--paths", TRANSCRIPT), 0)
+            self.assertEqual(f.run("--collection-literals", "--paths", TRANSCRIPT), 1)
+            self.assertEqual(f.run("--collection-literals", "--fix", "--paths", TRANSCRIPT), 0)
+            self.assertIn("val xs = [1, 2]", f.read(TRANSCRIPT))
+            self.assertEqual(f.run("--collection-literals", "--paths", TRANSCRIPT), 0)
+        finally:
+            f.close()
+
     def test_a_one_line_call_becomes_a_literal(self):
         self.assertEqual(self.fixed('val xs = listOf("a(", f(1, 2), listOf(3 to 4))\nfor (d in listOf(E, S)) { }\n'),
                          'val xs = ["a(", f(1, 2), [3 to 4]]\nfor (d in [E, S]) { }\n')

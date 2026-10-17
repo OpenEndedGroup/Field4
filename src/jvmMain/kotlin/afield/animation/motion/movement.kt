@@ -166,17 +166,19 @@ object Springs {
      * angle, so a spring at 3 radians chasing -3 turns the short way, onward through π, rather than
      * sweeping back across zero.
      *
-     * The result is always expressed near [goal], which means the *number* can jump by 2π on the
-     * step where the short way crosses ±π even though the angle does not. Feed it to [cos]/[sin] or
-     * a rotation and that is invisible; compare it against a previous value and take the difference
-     * through [wrapAngle].
+     * The result is continuous with [x]: consecutive steps never jump by 2π, even where the short way
+     * crosses ±π, so it can be compared against the previous value directly. It is not wrapped into
+     * `-π..π`; use [wrapAngle] where that matters.
      */
     fun springAngle(x: Float, v: Float, goal: Float, halflife: Float, dt: Float): Step {
         val y = halflifeToDamping(halflife) / 2f
         val j0 = wrapAngle(x - goal)
         val j1 = v + j0 * y
         val eydt = exp(-y * dt)
-        return Step(eydt * (j0 + j1 * dt) + goal, eydt * (v - j1 * y * dt))
+        val next = eydt * (j0 + j1 * dt) + goal
+        // Continuous with [x]: the spring is solved relative to the goal along the short way, and
+        // reporting it there would jump by 2π on the step where the short way crosses ±π.
+        return Step(x + wrapAngle(next - x), eydt * (v - j1 * y * dt))
     }
 
     /**

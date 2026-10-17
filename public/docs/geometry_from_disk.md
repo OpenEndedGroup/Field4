@@ -1,5 +1,7 @@
 # Geometry from disk
 
+<!-- capture-sources: src/jvmMain/kotlin/afield/graphics/scene/MeshFromDisk.kt src/jvmMain/kotlin/afield/geometry/mesh/mesh_io.kt -->
+
 You have a mesh file, and you want to see it in Field and then compute with it. For every format,
 that is one line:
 
@@ -376,19 +378,14 @@ Most of these show up in `summary()`, so print it before you draw anything.
 
 | symptom | cause | what to do |
 |---|---|---|
-| a blank black panel | an empty mesh | A file whose *contents* are not what its extension says parses to `TriMesh.empty` with **no exception at all**. `println(mesh.summary())` — an empty one prints exactly `TriMesh(empty)`. |
+| `contains no obj geometry` | the file is not what its extension says | A ZIP, a glTF or an HTML error page saved as `thing.obj`: the message says what it looks like. `meshFromAnyFile` reads most formats by their contents. |
 | holes, or whole faces missing | inside-out winding, open mesh | Back faces are culled exactly as a GPU culls them, so a wrongly-wound patch is not dark, it is *gone*. `fixWinding()`, then check `topology().isConsistentlyOriented`. |
 | looks fine, every measurement negative | inside-out winding, closed solid | The silhouette is unchanged and both renderers flip inward normals rather than shading them black, so the picture is no help at all. `signedVolume() < 0` is the only tell; `fixWinding()` is the fix. |
-| flat, faceted or oddly uniform shading | no normals, or invented ones | A mesh with *none* is crease-shaded for you; one with wrong ones is not. Recompute with `shadedNormals(35.0)`. To drop them, `withoutAttributes()` — note that `copy(normals = null)` **keeps** them, because `null` there means "unchanged". |
+| flat, faceted or oddly uniform shading | no normals, or invented ones | A mesh with *none* is crease-shaded for you; one with wrong ones is not. Recompute with `shadedNormals(35.0)`. To drop them, `copy(normals = null)`, or `withoutAttributes()` for every attribute. |
 | `isWatertight()` false on a closed solid | it came through STL | Or it was `flatShaded()` before it was written. `weld(1e-5)` recovers the topology, and `meanEdgeLength()` is the scale that tells you 1e-5 is safe rather than a guess. |
 | the vertex count is exactly 3× | STL, or `flatShaded()` | Both un-weld every triangle, and the reader on the other side will not weld it back. `weld`, then `shadedNormals` if you want the hard edges again. |
 
 </div>
-
-The first row is the easiest to lose time on: a file called `thing.obj` that is actually a ZIP, a
-glTF, or an HTML error page parses to zero vertices and zero triangles and raises nothing.
-`meshFromFile` throws for a *missing* file and for an extension it does not read, but not for a file
-whose contents make no sense.
 
 ## From a file on disk to a solid you can cut
 
@@ -424,8 +421,9 @@ others it accepts, though some of them still deserve a look.
 | `UNREFERENCED_VERTEX` | informational | vertices no triangle uses |
 
 The dangerous *suspicious* row is `INVERTED_ORIENTATION`: an inside-out closed mesh is a legal
-manifold, and Manifold hands back a **negative volume** without throwing. The boolean you do next
-computes the complement of what you meant.
+manifold, and Manifold hands back a **negative volume** without throwing, after which a boolean
+computes the complement of what you meant. `toSolid()` refuses it for that reason (pass
+`check = false` to take it anyway); `fixWinding()` flips it.
 
 `UNWALKABLE_BOUNDARY` usually means inconsistent winding rather than anything exotic. Tracing a
 boundary into a ring follows directed half-edges, so a wrongly wound patch breaks the trace and an
@@ -615,20 +613,13 @@ consistently-oriented but inside-out solid looks completely normal in a render (
 unchanged and the rasterizer flips inward normals rather than shading them black) and reports a
 negative volume. `fixWinding()` is the fix.
 
-??? aside "Where the pictures and counts come from"
+??? aside "Agents: where the pictures and counts come from"
 
     Each figure is a box's own output area, captured by the docs build running the fence above it.
     The ToyCar figure reads the committed `assets/fabricate_demo/ToyCar.glb`; replace that file and
     the page's counts describe a different car. The counts are pinned in
     `src/jvmTest/kotlin/afield/geometry/mesh/MeshFromDiskTest.kt`, and `MeshIoTest.kt` covers the reader
     behaviour they rest on.
-
-??? aside "Forcing these captures to re-run"
-    A fence is re-executed only when the build decides its capture is stale, from a digest over the runner
-    machinery plus the **stdlib** source files the fence's code names. `MeshFromDisk.kt` is in
-    `afield.graphics.scene`, not `afield.geometry.mesh`, so editing *it* does not invalidate these captures on its own.
-    Force them with `FIELD_DOCS_RUNNER_MODE=always` after changing the bridges.
-    [`mesh_examples.md`](mesh_examples.md) carries the same caveat.
 
 ## Trying it yourself
 
@@ -646,11 +637,11 @@ Four separate pieces of code read geometry off disk:
 |---|---|---|---|
 | stdlib mesh I/O | `afield/geometry/mesh/mesh_io.kt` | OBJ, STL | `TriMesh` |
 | PLY | `afield/graphics/scene/simplePLYSupport.kt` | PLY, meshes and point clouds | packed 10-float GPU buffer |
-| Assimp / glTF | `afield/four/modules/simpleGLTFSupport.kt` | glTF, GLB, FBX, DAE, 3DS, OBJ, STL, PLY, … | packed 12-float GPU buffer + materials |
-| Fabricate | `afield/four/fabricated/FabricateGltfBridge.kt` | the Assimp model above | [`FabricateScene`](reference/renderers.md#fabricatescene-kt-fabricatescene) for the PBR [`StandardRenderer`](fabricate_renderer.md) |
+| Assimp / glTF | `afield/graphics/scene/simpleGLTFSupport.kt` | glTF, GLB, FBX, DAE, 3DS, OBJ, STL, PLY, … | packed 12-float GPU buffer + materials |
+| Fabricate | `afield/graphics/scene/fabricated/FabricateGltfBridge.kt` | the Assimp model above | [`FabricateScene`](reference/renderers.md#fabricatescene-kt-fabricatescene) for the PBR [`StandardRenderer`](fabricate_renderer.md) |
 
 The PLY and Assimp loaders produce ordinary host memory rather than Vulkan allocations, so their
-*buffers* need no renderer even though their *textures* do. `afield/four/modules/MeshFromDisk.kt`
+*buffers* need no renderer even though their *textures* do. `afield/graphics/scene/MeshFromDisk.kt`
 turns them into a `TriMesh`: `PlyModel.toTriMesh()`, `assimpToTriMesh(path)`, the `meshFromAnyFile`
 dispatcher, and the `showMesh(path)` overload at the top of this page. A box calls all of these with
 no import. The CPU renderer is `VisionGeometryPreview`, a z-buffer whose output is deterministic.

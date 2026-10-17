@@ -195,6 +195,50 @@ class PdLaunch internal constructor(
     /** Call [callback] with what the patch sends out of `[noteout]`/`[ctlout]`, on the main-thread loop. */
     fun onMidi(callback: (PdInstance.Midi) -> Unit): Closeable = pd.onMidi(callback).also { receipts += it }
 
+    /**
+     * Wire hardware MIDI to the patch: notes and controllers from the first input whose name contains
+     * [input] reach its `[notein]`/`[ctlin]`, and what it sends from `[noteout]`/`[ctlout]` goes to
+     * the first output whose name contains [output]. Either may be left null. Channels are 0-based on
+     * both sides, as Java Sound counts them. Closing the result (or the launch) closes the ports.
+     *
+     * ```kotlin
+     * launch.connectMidi(input = "Launchkey", output = "IAC")
+     * ```
+     */
+    fun connectMidi(input: String? = null, output: String? = null): Closeable {
+        require(input != null || output != null) { "connectMidi needs an input or an output name" }
+        val opened = ArrayList<Closeable>()
+        input?.let { name ->
+            val handle = MidiDevices.findInput(name)
+                ?: error("no MIDI input matching \"$name\"; inputs are: ${MidiDevices.inputs().joinToString { it.name }}")
+            val port = MidiDevices.openInput(handle)
+            port.onMessage { message, _ ->
+                val m = message as? javax.sound.midi.ShortMessage ?: return@onMessage
+                when (m.command) {
+                    javax.sound.midi.ShortMessage.NOTE_ON -> noteOn(m.channel, m.data1, m.data2)
+                    javax.sound.midi.ShortMessage.NOTE_OFF -> noteOn(m.channel, m.data1, 0)
+                    javax.sound.midi.ShortMessage.CONTROL_CHANGE -> controlChange(m.channel, m.data1, m.data2)
+                }
+            }
+            opened += Closeable { port.close() }
+        }
+        output?.let { name ->
+            val handle = MidiDevices.findOutput(name)
+                ?: error("no MIDI output matching \"$name\"; outputs are: ${MidiDevices.outputs().joinToString { it.name }}")
+            val port = MidiDevices.openOutput(handle)
+            val listening = onMidi { m ->
+                when (m.kind) {
+                    PdInstance.Midi.NOTE_ON -> if (m.b > 0) port.noteOn(m.a, m.b, m.channel) else port.noteOff(m.a, m.channel)
+                    PdInstance.Midi.CONTROL_CHANGE -> port.controlChange(m.a, m.b, m.channel)
+                }
+            }
+            opened += Closeable { listening.close(); port.close() }
+        }
+        val all = Closeable { opened.forEach { runCatching { it.close() } } }
+        receipts += all
+        return all
+    }
+
     /** Read Pd array `name`. */
     fun readArray(name: String, offset: Int = 0, count: Int = -1): FloatArray = pd.readArray(name, offset, count)
 

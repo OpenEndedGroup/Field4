@@ -713,13 +713,16 @@ class PetriStateSpaceTest {
     @Test
     fun `a colour-dependent net declines the reduction rather than guessing at it`() {
         // The closure reasons about arcs. A guard, an `enabledIf` or a colour-valued production is
-        // an arbitrary predicate it cannot see, so the search silently falls back to exploring
-        // everything — and records that it did, so `exact` stays true and nothing is lost.
+        // an arbitrary predicate it cannot see, so the search falls back to exploring everything,
+        // records that it did, so `exact` stays true and nothing is lost, and says so in report().
         val song = petriSong("verse" to (pat("bd ~ sd ~") to 4), "chorus" to (pat("bd*4 hh*8") to 4))
         assertTrue(song.isColourDependent)
         val graph = song.stateSpace(reduction = PetriReduction.STUBBORN)
         assertEquals(PetriReduction.NONE, graph.reduction, "a coloured net must not be reduced")
         assertTrue(graph.exact, "…and so it is still exact")
         assertEquals(2, graph.stateCount)
+        assertTrue("not applied" in graph.caveats.single(), graph.caveats.toString())
+        assertTrue("NOTE: stubborn-set reduction was asked for but not applied" in graph.report(), graph.report())
+        assertTrue(song.stateSpace().caveats.isEmpty(), "asking for nothing it cannot do gives no caveat")
     }
 }

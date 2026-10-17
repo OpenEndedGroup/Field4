@@ -177,7 +177,7 @@ fun TriMesh.toFLines(
         }
         MeshLines.EDGES -> topology().edges.map { (a, b) -> polylineFrom(listOf(position(a), position(b))) }
         MeshLines.CREASES -> {
-            val topo = topology()
+            val topo = surfaceTopology()
             val cosLimit = kotlin.math.cos(creaseAngleDegrees.coerceIn(0.0, 180.0) * Math.PI / 180.0).toFloat()
             topo.edges.indices.mapNotNull { e ->
                 val faces = topo.edgeTriangles[e]
@@ -477,7 +477,7 @@ fun TriMesh.toFigureHtml(view: MeshView = MeshView(), caption: String? = null, t
     val png = renderPng(view, caption = "", title = null)
     val b64 = Base64.getEncoder().encodeToString(png)
     val b = boundsArray()
-    val topo = topology()
+    val topo = surfaceTopology()
     val facts = buildString {
         append("%d verts · %d tris · extent %.3f × %.3f × %.3f".format(
             vertexCount, triangleCount, b[3] - b[0], b[4] - b[1], b[5] - b[2],
@@ -560,7 +560,7 @@ internal fun meshThumbnailHtml(mesh: TriMesh): String {
     )
     val b64 = Base64.getEncoder().encodeToString(png)
     val b = mesh.boundsArray()
-    val topo = mesh.topology()
+    val topo = mesh.surfaceTopology()
 
     val rows = ArrayList<Pair<String, String>>()
     rows += "size" to "${mesh.vertexCount} verts · ${mesh.triangleCount} tris" +
@@ -637,8 +637,9 @@ enum class MeshRenderer {
  * `renderer = MeshRenderer.CPU` for the static rasterized figure this used to produce. Both paths are
  * AWT-free and safe inside a live box.
  *
- * @param height iframe height in pixels. Ignored by [MeshRenderer.CPU], which takes its size from
- * [view]'s `width` and `height` instead.
+ * @param height iframe height in pixels on the Three.js path. Left out, it is [view]'s `height` when a
+ * view was given and 430 otherwise, so a figure comes out the same shape on either renderer. Ignored
+ * by [MeshRenderer.CPU], which takes its size from [view]'s `width` and `height`.
  */
 fun Box.showMesh(
     mesh: TriMesh,
@@ -647,7 +648,7 @@ fun Box.showMesh(
     caption: String? = null,
     title: String? = null,
     renderer: MeshRenderer = MeshRenderer.GPU,
-    height: Int = 430,
+    height: Int? = null,
 ) {
     when (renderer) {
         MeshRenderer.CPU -> display(channel, mesh.toFigureHtml(view, caption, title))
@@ -655,7 +656,7 @@ fun Box.showMesh(
             subject = mesh,
             channel = channel,
             name = "mesh-$channel",
-            height = height,
+            height = height ?: if (view == MeshView()) 430 else view.height,
             view = view,
             title = title,
             caption = caption,
@@ -671,6 +672,11 @@ fun Box.showMesh(
  * "ball" from the source ([LabelsArgumentsFromSource]); `"a torus" to ring` still sets one by hand.
  *
  * @param columns meshes per row.
+ * @param facts print each mesh's fact line (counts, extent, χ, genus, volume) under its panel, as
+ *   [showMesh] does. On by default for the same reason.
+ * @param sharedScale frame every panel at the scale of the largest mesh, so sizes can be compared by
+ *   eye; by default each panel zoom-to-fits its own mesh. Both apply to the GPU renderer; the CPU one
+ *   always prints the facts and frames each panel itself.
  */
 @LabelsArgumentsFromSource
 fun Box.showMeshGrid(
@@ -680,6 +686,8 @@ fun Box.showMeshGrid(
     cellWidth: Int = 380,
     view: MeshView = MeshView(),
     renderer: MeshRenderer = MeshRenderer.GPU,
+    facts: Boolean = true,
+    sharedScale: Boolean = false,
 ) {
     require(panels.isNotEmpty()) { "showMeshGrid needs at least one panel" }
     if (renderer == MeshRenderer.GPU) {
@@ -693,7 +701,9 @@ fun Box.showMeshGrid(
             height = (rows * cellWidth * 0.75).toInt().coerceAtLeast(200),
             columns = columns,
             view = view,
+            facts = facts,
             cellWidth = cellWidth,
+            sharedScale = sharedScale,
         )
         return
     }
@@ -759,7 +769,7 @@ fun Box.showMeshTurntable(
  */
 fun TriMesh.summary(): String {
     if (triangleCount == 0) return "TriMesh(empty)"
-    val topo = topology()
+    val topo = surfaceTopology()
     val b = boundsArray()
     val q = quality()
     return buildString {
@@ -786,7 +796,7 @@ fun TriMesh.longestEdge(): Double {
 
 /** Mean edge length over the mesh's unique edges. */
 fun TriMesh.meanEdgeLength(): Double {
-    val topo = topology()
+    val topo = surfaceTopology()
     if (topo.edgeCount == 0) return 0.0
     var sum = 0.0
     for ((a, b) in topo.edges) sum += position(a).distance(position(b)).toDouble()

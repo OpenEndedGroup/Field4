@@ -229,14 +229,28 @@ private fun <T> withClojureIO(
     }
 }
 
+/** Flush the bound `*out*` and `*err*`, so what a form printed is delivered before the next one starts. */
+internal fun flushClojureIO() {
+    for (name in listOf("*out*", "*err*")) {
+        runCatching { ((Clojure.`var`("clojure.core", name) as Var).deref() as? java.io.Writer)?.flush() }
+    }
+}
+
 /**
- * Extract line/column from Clojure's nested exceptions if present.
+ * Extract line/column from Clojure's nested exceptions if present, and the message that says what
+ * went wrong.
+ *
+ * A `CompilerException`'s own message is only the place — `Syntax error compiling at (3:1).` — and
+ * the reason (`Unable to resolve symbol: x in this context`) is its cause's message, which Clojure's
+ * REPL prints on the next line. A box shows one message beside one line, so the reason goes first
+ * and the place follows it.
  */
 private fun extractCompilerError(t: Throwable): CompileError {
     // clojure.lang.Compiler$CompilerException exposes line/column; fall back to cause chain
     var cur: Throwable? = t
     var line: Int? = null
     var col: Int? = null
+    var reason: String? = null
     while (cur != null) {
         val cls = cur.javaClass
         if (cls.name.startsWith("clojure.lang.Compiler\$CompilerException")) {
@@ -248,12 +262,15 @@ private fun extractCompilerError(t: Throwable): CompileError {
                 col = (getCol?.invoke(cur) as? Int) ?: col
             } catch (_: Throwable) { /* ignore */
             }
+            reason = cur.cause?.let { it.message ?: it.toString() }?.takeIf { it.isNotBlank() }
             break
         }
         cur = cur.cause
     }
+    val place = t.message ?: t.toString()
     return CompileError(
-        message = t.message ?: t.toString(), line = line, column = col, causeClass = t.javaClass.name
+        message = if (reason != null && reason !in place) "$reason — $place" else place,
+        line = line, column = col, causeClass = t.javaClass.name
     )
 }
 
@@ -411,9 +428,8 @@ class ClojureHost(private val defaultNs: String = "user") {
      *
      * [onStdout] and [onStderr] are handed the text *and the line of the form that was running when
      * it was written*, which is the whole reason this is a read-eval loop rather than one
-     * `load-string` call. Text printed without a newline is buffered by [StreamingWriter] until the
-     * next newline or the end of the run, so a bare `(print …)` is attributed to whichever form was
-     * running when it finally flushed — usually, but not always, its own. [onForm] is the same line
+     * `load-string` call. `*out*` and `*err*` are flushed after every form, so a bare `(print …)`
+     * with no newline is still attributed to its own form. [onForm] is the same line
      * announced *before* the form runs, for a caller that needs it during evaluation rather than
      * after: [ClojureInterface.animate] reads it to remember where a launch was written.
      *
@@ -457,8 +473,12 @@ class ClojureHost(private val defaultNs: String = "user") {
                         try {
                             last = evalFn.invoke(read.form)
                         } catch (t: Throwable) {
+                            flushClojureIO()
                             return@withClojureIO EvalResult.Err(atLine(extractCompilerError(t), read.line))
                         }
+                        // Text this form printed without a newline belongs to this form, so it goes out
+                        // now, while activeLine still says so, rather than with the next form's output.
+                        flushClojureIO()
                         onFormValue?.let { record -> runCatching { record(read.line, read.endLine, last, noteForm(prStr, last)) } }
                     }
                     if (executeIfFn && last is IFn) {

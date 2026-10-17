@@ -49,8 +49,8 @@ Stopping the box stops the voices and the feeder thread. `PatSynthLaunch` is als
 falls in. Its output is therefore the same, sample for sample, whatever buffer size the audio
 engine runs at.
 
-The offline renderer, `patRenderStereo`, works in seconds rather than frames, so a note it plays can
-start or end one frame away from the same note played by `patSynth`.
+The offline renderer, `patRenderStereo`, runs the same voice bank, so a `.wav` it writes is sample
+for sample what `patSynth` plays.
 
 ## What it sounds like
 
@@ -170,9 +170,8 @@ float radius = base * (1.0 + 0.55 * energy) + thickness * (seed.y - 0.5) * 2.0;
     The docs runner cannot record a native Field 4 window, so the page shows one frame and
     the band plot instead of a clip. While capturing, the audio box calls
     `PatSynthLaunch.advanceOffline` once per frame instead of returning the launch for the audio
-    engine, so the figure is the same on a machine with no sound output.
-    `FieldAudioEngine.outputActive` tells a box which of the two it should do; doing both would
-    advance every voice twice.
+    engine, so the figure is the same on a machine with no sound output. While an engine is
+    pulling the launch, `advanceOffline` does nothing, so a box can do both.
 
 ## Where each piece is documented
 

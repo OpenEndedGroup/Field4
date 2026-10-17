@@ -644,7 +644,8 @@ object FieldMLRuntimePrelude {
         val stored = narrowToTheWidthAlreadyThere(inheritedPropertyRaw(target, name), host)
         target.setPropertyRaw(name, stored, true)
         PropertyDependencies.recordWrite(target, name, ContextResolution.Mechanism.INHERITANCE)
-        if (notifyReaders && old != stored) ReactiveRuns.noteChange(target, name)
+        // A propDown property was already noted by setPropertyRaw; notify the rest as asked.
+        if (notifyReaders && old != stored && !ReactiveRuns.isDeclaredDown(target, name)) ReactiveRuns.noteChange(target, name)
         return value
     }
 

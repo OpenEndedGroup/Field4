@@ -1,5 +1,6 @@
 package afield.graphics.scene.fabricated
 
+import kotlinx.serialization.json.jsonObject
 import afield.graphics.scene.GltfSupport
 import afield.document.context.fromContext
 import afield.graphics.scene.sample
@@ -376,7 +377,10 @@ data class FabricateMaterial(
     var emissiveFactor: Vector3f = Vector3f(0f, 0f, 0f),
     var clearcoatFactor: Float = 0f,
     var clearcoatRoughnessFactor: Float = 0f,
+    /** UV offset (xy) and scale (zw), applied to the maps in [uvTransformMaps]. */
     var uvTransform: Vector4f = Vector4f(0f, 0f, 1f, 1f),
+    /** Which maps [uvTransform] applies to, [UV_BASE_COLOR] … [UV_CLEARCOAT]; the rest are sampled at their own UVs. */
+    var uvTransformMaps: Int = UV_ALL_MAPS,
     var alphaMode: FabricateAlphaMode = FabricateAlphaMode.OPAQUE,
     var alphaCutoff: Float = 0.5f,
     var doubleSided: Boolean = false,
@@ -391,6 +395,33 @@ data class FabricateMaterial(
     }
 
         companion object {
+        const val UV_BASE_COLOR = 1
+        const val UV_NORMAL = 2
+        const val UV_METALLIC_ROUGHNESS = 4
+        const val UV_OCCLUSION = 8
+        const val UV_EMISSIVE = 16
+        const val UV_CLEARCOAT = 32
+        const val UV_ALL_MAPS = 63
+
+        /**
+         * A glTF material's `KHR_texture_transform`s as one [uvTransform] and the maps it applies to.
+         * The G-buffer has room for one offset-and-scale per material, so a material whose maps use a
+         * rotation, or two different transforms, keeps the first and says which maps it got wrong.
+         */
+        private fun uvTransformOf(material: GltfSupport.MaterialTextured, roles: List<Pair<Int, GltfSupport.TextureSlot?>>): Pair<Vector4f, Int> {
+            val transformed = roles.mapNotNull { (bit, slot) -> slot?.transform?.takeUnless { it.isIdentity }?.let { bit to it } }
+            if (transformed.isEmpty()) return Vector4f(0f, 0f, 1f, 1f) to UV_ALL_MAPS
+            val chosen = transformed.first().second
+            val applies = transformed.filter { it.second == chosen }
+            val unhandled = transformed.filter { it.second != chosen } + (if (chosen.rotation != 0f) applies else emptyList())
+            if (unhandled.isNotEmpty()) {
+                afield.app.diagnostics.logging.lprintln("warning,gltf",
+                    "material '${material.name}': the StandardRenderer applies one unrotated KHR_texture_transform per material; " +
+                        "${unhandled.size} of its maps use another or a rotation and are sampled with the first")
+            }
+            return Vector4f(chosen.offsetX, chosen.offsetY, chosen.scaleX, chosen.scaleY) to applies.fold(0) { mask, (bit, _) -> mask or bit }
+        }
+
         fun fromGltf(material: GltfSupport.MaterialTextured): FabricateMaterial {
             val emissiveTexture = material.textures.firstOrNull {
                 it.valid && it.type == Assimp.aiTextureType_EMISSIVE
@@ -404,6 +435,16 @@ data class FabricateMaterial(
             val clearcoatTexture = material.textures.firstOrNull {
                 it.valid && it.type == Assimp.aiTextureType_CLEARCOAT
             }?.texture
+            fun slot(vararg types: Int) = material.textures.firstOrNull { it.valid && it.type in types }
+            val (uvTransform, uvTransformMaps) = uvTransformOf(material, listOf(
+                UV_BASE_COLOR to slot(Assimp.aiTextureType_BASE_COLOR, Assimp.aiTextureType_DIFFUSE),
+                UV_NORMAL to slot(Assimp.aiTextureType_NORMALS),
+                UV_METALLIC_ROUGHNESS to slot(Assimp.aiTextureType_GLTF_METALLIC_ROUGHNESS, Assimp.aiTextureType_DIFFUSE_ROUGHNESS, Assimp.aiTextureType_METALNESS),
+                UV_OCCLUSION to (slot(Assimp.aiTextureType_AMBIENT_OCCLUSION, Assimp.aiTextureType_LIGHTMAP)
+                    ?: slot(Assimp.aiTextureType_GLTF_METALLIC_ROUGHNESS, Assimp.aiTextureType_DIFFUSE_ROUGHNESS, Assimp.aiTextureType_METALNESS)),
+                UV_EMISSIVE to slot(Assimp.aiTextureType_EMISSIVE),
+                UV_CLEARCOAT to slot(Assimp.aiTextureType_CLEARCOAT),
+            ))
             val transmission = material.transmissionFactor.coerceIn(0f, 1f)
             val base = Vector4f(material.baseColor)
             if (transmission > 0.001f && base.w >= 0.999f) {
@@ -433,6 +474,8 @@ data class FabricateMaterial(
                 emissiveFactor = if (emissiveTexture != null) Vector3f(1f, 1f, 1f) else Vector3f(0f, 0f, 0f),
                 clearcoatFactor = material.clearcoatFactor,
                 clearcoatRoughnessFactor = material.clearcoatRoughnessFactor,
+                uvTransform = uvTransform,
+                uvTransformMaps = uvTransformMaps,
                 alphaMode = alphaMode,
                 alphaCutoff = material.alphaCutoff,
                 doubleSided = material.doubleSided,
@@ -650,8 +693,40 @@ fun StandardRenderer.Bundle.registerGltf(
     namePrefix: String = "gltf",
     config: GltfSupport.GltfLoadConfig = GltfSupport.GltfLoadConfig(),
     renderer: afield.graphics.vulkan.Renderer = fromContext()
-): FabricateRegisteredGltf =
-    registerGltf(GltfSupport.loadGltfBasic(path, config), namePrefix, renderer)
+): FabricateRegisteredGltf {
+    reportIgnoredGltfExtensions(path)
+    return registerGltf(GltfSupport.loadGltfBasic(path, config), namePrefix, renderer)
+}
+
+/** glTF extensions whose data the StandardRenderer material bridge reads. */
+private val STANDARD_RENDERER_GLTF_EXTENSIONS = setOf("KHR_materials_clearcoat", "KHR_materials_emissive_strength", "KHR_texture_transform")
+
+/**
+ * Say, once per import, which of a file's `extensionsUsed` the StandardRenderer does not evaluate
+ * (texture transforms, sheen, physical transmission…), so a model that looks plainer than it should
+ * is explained in the log rather than left to look like a loader bug.
+ */
+internal fun reportIgnoredGltfExtensions(path: String) {
+    val json = runCatching {
+        val file = java.io.File(path)
+        val text = if (file.extension.equals("glb", ignoreCase = true)) {
+            val bytes = file.readBytes()
+            val buffer = java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+            String(bytes, 20, buffer.getInt(12), Charsets.UTF_8)
+        } else file.readText()
+        kotlinx.serialization.json.Json.parseToJsonElement(text).jsonObject
+    }.getOrNull() ?: return
+    val used = (json["extensionsUsed"] as? kotlinx.serialization.json.JsonArray)
+        ?.mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }.orEmpty()
+    val ignored = used.filter { it !in STANDARD_RENDERER_GLTF_EXTENSIONS }
+    if (ignored.isNotEmpty()) {
+        afield.app.diagnostics.logging.lprintln(
+            "warning,gltf",
+            "${java.io.File(path).name} uses glTF extensions the StandardRenderer does not evaluate: " +
+                ignored.joinToString(", ") + "; those parts of its materials fall back to the base material",
+        )
+    }
+}
 
 fun StandardRenderer.Bundle.registerGltf(
     model: GltfSupport.GltfModel,
@@ -709,7 +784,9 @@ fun StandardRenderer.Bundle.registerGltf(
 private fun FabricateMaterial.mapFlags(): Float =
     ((if (normalTexture != null) 1 else 0) or (if (metallicRoughnessTexture != null) 2 else 0) or
         (if (occlusionTexture != null) 4 else 0) or (if (emissiveTexture != null) 8 else 0) or
-        (if (clearcoatTexture != null) 16 else 0)).toFloat()
+        (if (clearcoatTexture != null) 16 else 0) or
+        // Bits 5–10: which maps sample through uvTransform (FabricateMaterial.UV_BASE_COLOR … UV_CLEARCOAT).
+        ((uvTransformMaps and FabricateMaterial.UV_ALL_MAPS) shl 5)).toFloat()
 
 fun StandardRenderer.Bundle.PullingMeshPair.applyFabricateMaterial(
     material: FabricateMaterial

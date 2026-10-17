@@ -110,7 +110,7 @@ suspend fun standardExecutionPractice(
 ): List<ResultValue?> {
 
     var lines = s.lines()
-    var breaks = lines.mapIndexedNotNull { index, line -> if (isFragmentBreak(line)) index else null } + lines.size
+    var breaks = fragmentBreakIndices(lines)
 
     var at = 0
     var ll = 0
@@ -319,6 +319,25 @@ fun gatherPreambleUpwardsReport(startingAt: Box): GatheredPreamble {
         }
     }
 
+    // An ancestor's prop-family declarations come from its macros, which only write its preamble when
+    // it compiles. Until then a child could not compile against `scale` at all. Expand them from the
+    // ancestor's code instead, for every name nothing nearer has declared.
+    val declared = entries.mapNotNull { declaredExtensionName(it.first) }.toHashSet()
+    for ((box, d) in depthOf) {
+        if (d == 0) continue
+        for (line in propDeclarationsFromCode(box)) {
+            if (line.trim().startsWith("import")) {
+                if (line !in total) total = line + "\n" + total
+                continue
+            }
+            val name = declaredExtensionName(line) ?: continue
+            if (!declared.add(name)) continue
+            val tagged = withPreambleSupplierTag(line, box.id)
+            entries += tagged to d
+            total = total + "\n" + tagged
+        }
+    }
+
     // conflicting declarations of one Receiver.name: keep the nearest, drop the rest
     val conflicts = mutableListOf<PreambleConflict>()
     val byName = LinkedHashMap<String, MutableList<Pair<String, Int>>>()
@@ -344,6 +363,30 @@ fun gatherPreambleUpwardsReport(startingAt: Box): GatheredPreamble {
     total = total.replace("var Mesh.dim by Mesh.BoundFromStructure<afield.math.linalg.Vector2f>()", "\n")
 
     return GatheredPreamble(total, stale, conflicts)
+}
+
+private val propFamilyCall = Regex("""(?m)^\s*(prop|propUp|propDown|propUpDown)\s*(<.*>)\s*(\([^)\n]*\))""")
+
+/**
+ * The preamble lines [box]'s own `prop` / `propUp` / `propDown` / `propUpDown` calls would write when
+ * it compiles: their imports and inherit-marked declarations. Only statement-position calls are read;
+ * a malformed one is skipped, since compiling the box will report it.
+ */
+internal fun propDeclarationsFromCode(box: Box): List<String> {
+    val code = box.getPropertyRaw("code") as? String ?: return emptyList()
+    if (!code.contains("prop")) return emptyList()
+    return propFamilyCall.findAll(code).flatMap { m ->
+        val args = listOf(m.groupValues[2], m.groupValues[3])
+        val insert = runCatching {
+            when (m.groupValues[1]) {
+                "prop" -> box.macro_prop(args)
+                "propUp" -> box.macro_reactive_prop(args, afield.document.properties.Reactive.UP, "propUp")
+                "propDown" -> box.macro_reactive_prop(args, afield.document.properties.Reactive.DOWN, "propDown")
+                else -> box.macro_reactive_prop(args, afield.document.properties.Reactive.UP_DOWN, "propUpDown")
+            }
+        }.getOrNull() ?: return@flatMap emptySequence()
+        (insert.preamble.lines() + insert.preambleAfterImports.lines()).asSequence().filter { it.isNotBlank() }
+    }.toList()
 }
 
 /** The supplier a declaration `@exported` writes into its own box names: itself, whoever that is. */
@@ -645,6 +688,15 @@ object MacroRegistry {
         callRewrite["propUpDown"] = { box, id, args ->
             box.macro_reactive_prop(args, afield.document.properties.Reactive.UP_DOWN, "propUpDown")
         }
+        callRewrite["rootPropUp"] = { box, id, args ->
+            box.macro_reactive_root_prop(args, afield.document.properties.Reactive.UP, "rootPropUp")
+        }
+        callRewrite["rootPropDown"] = { box, id, args ->
+            box.macro_reactive_root_prop(args, afield.document.properties.Reactive.DOWN, "rootPropDown")
+        }
+        callRewrite["rootPropUpDown"] = { box, id, args ->
+            box.macro_reactive_root_prop(args, afield.document.properties.Reactive.UP_DOWN, "rootPropUpDown")
+        }
         callRewrite["_print"] = { box, id, args ->
             box.macro_printHere(args)
         }
@@ -692,5 +744,48 @@ data class Insert(
  * as one fragment with no error to say so.
  */
 fun isFragmentBreak(line: String): Boolean = FRAGMENT_BREAK.containsMatchIn(line)
+
+/**
+ * Where a box's code splits into fragments, as line indices, ending with `lines.size`: every
+ * [isFragmentBreak] line, plus an **implicit** break before a top-level line that calls `moduleHere`
+ * when an earlier top-level `once.vertex { }` / `once.fragment { }` (or another shader stage) sits in
+ * the same fragment. `moduleHere` reads the box's shaders while it *expands*, and `once.vertex` only
+ * sets them when it *runs*, so without the break the module would be built on the default shaders.
+ */
+fun fragmentBreakIndices(lines: List<String>): List<Int> {
+    val breaks = ArrayList<Int>()
+    var depth = 0
+    var inRawString = false
+    var seededShader = false
+    for ((index, line) in lines.withIndex()) {
+        if (isFragmentBreak(line)) {
+            breaks += index
+            seededShader = false
+        } else if (depth == 0 && !inRawString) {
+            if (seededShader && MODULE_HERE_CALL.containsMatchIn(line)) {
+                breaks += index
+                seededShader = false
+            }
+            if (ONCE_SHADER_STAGE.containsMatchIn(line)) seededShader = true
+        }
+        // Track brace depth outside raw strings, so GLSL inside a """ block does not count.
+        var i = 0
+        while (i < line.length) {
+            if (line.startsWith("\"\"\"", i)) { inRawString = !inRawString; i += 3; continue }
+            if (!inRawString) {
+                when (line[i]) {
+                    '/' -> if (i + 1 < line.length && line[i + 1] == '/') break
+                    '{' -> depth++
+                    '}' -> depth = (depth - 1).coerceAtLeast(0)
+                }
+            }
+            i++
+        }
+    }
+    return breaks + lines.size
+}
+
+private val ONCE_SHADER_STAGE = Regex("""^\s*once\.(vertex_fragment|vertex|fragment|task|mesh)\b""")
+private val MODULE_HERE_CALL = Regex("""^\s*(?:val\s+\w+\s*=\s*)?moduleHere\b""")
 
 private val FRAGMENT_BREAK = Regex("""^\s*(?://\s*%-|/\*\s*%-\s*\*/)""")

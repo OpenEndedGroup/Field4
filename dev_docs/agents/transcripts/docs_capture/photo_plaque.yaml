@@ -14,8 +14,8 @@ operations:
       code: |
         import afield.examples.chain.PhotoToSolidChain
 
-        // toReliefMesh is the hop that did not exist until this page: toHeightfieldMesh returns a
-        // *disc* — one boundary loop, chi = 1 — and Manifold refuses an open sheet.
+        // toReliefMesh closes the heightfield into a watertight plaque.
+        // toHeightfieldMesh alone is an open disc: one boundary loop, chi = 1.
         val mount = PhotoToSolidChain.mount()
         val relief = mount.relief
         val topo = relief.topology()

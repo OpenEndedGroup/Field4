@@ -103,6 +103,7 @@ import afield.app.protocol.SetVisibleLayers
 import afield.app.protocol.Set_animated_rect
 import afield.app.protocol.Set_rect
 import afield.app.protocol.Set_rects
+import afield.app.protocol.Rect
 import afield.app.protocol.Set_string
 import afield.app.protocol.SharedUiIntent
 import afield.app.protocol.SlideShowCommand
@@ -112,6 +113,9 @@ import afield.app.protocol.SourceCardResult
 import afield.app.protocol.SourceFileResponse
 import afield.app.protocol.StringUpdate
 import afield.app.protocol.SymbolContextRequest
+import afield.app.protocol.StackSLRegion
+import afield.app.protocol.StackSLRegionsRequest
+import afield.app.protocol.StackSLRegionsResponse
 import afield.app.protocol.Vec2Update
 import afield.app.protocol._send
 import afield.app.protocol.computeIfAbsent
@@ -587,6 +591,14 @@ class SessionInformation(
      */
     val readOnly: Boolean = ReadOnlyDocuments.global
 ) {
+    /** The latest `viewport` a browser reported for this document; see [Box.viewport]. */
+    @Volatile
+    var viewport: Rect? = null
+
+    /** The latest per-pane visible world rects a browser reported; see [Box.viewports]. */
+    @Volatile
+    var viewports: List<Rect> = emptyList()
+
     /**
      * Keep this document's windows and running boxes when its last client leaves; see
      * `AgentOpenDocument.keepRunning`. Set by an automation client that asked for it.
@@ -2881,6 +2893,7 @@ class Server {
             handlers["set-viewport"] = mutableSetOf({ message, reply ->
                 val set = Json.decodeFromJsonElement<Set_rect>(message.payload!!)
                 try {
+                    thisSessionInfo.get().viewport = set.value
                     thisSessionInfo.get().boxes.forEach {
                         it.value.viewport = set.value
                     }
@@ -2890,6 +2903,12 @@ class Server {
                     // this is fine, we're just early on the set-viewport
                     Handled.yes
                 }
+            })
+
+            handlers["set-viewports"] = mutableSetOf({ message, reply ->
+                val set = Json.decodeFromJsonElement<Set_rects>(message.payload!!)
+                thisSessionInfo.get()?.viewports = set.values.map { it.value }
+                Handled.yes
             })
 
             handlers["set-rect"] = mutableSetOf({ message, reply ->
@@ -3027,6 +3046,23 @@ class Server {
                 GlobalScope.launch(Dispatchers.Default) {
                     val result = box.ke.describeSymbolContext(box, exec)
                     reply(Message("symbol-context").payload(result))
+                }
+
+                Handled.yes
+            })
+
+            // Which strings of a box's code are StackSL: `#stacksl` ones and those assigned to its
+            // `stack.auto` slots. The editor colours them; only the server knows the slots.
+            handlers["stacksl-regions"] = mutableSetOf({ message, reply ->
+                val request = Json.decodeFromJsonElement<StackSLRegionsRequest>(message.payload!!)
+                val box = box(request.uid)
+
+                GlobalScope.launch(Dispatchers.Default) {
+                    val regions = runCatching {
+                        afield.lang.stacksl.study.EmbeddedStackSL.regions(request.code, afield.lang.stacksl.study.EmbeddedStackSL.slots(box))
+                            .map { StackSLRegion(it.bodyStart, it.bodyEnd, it.slot) }
+                    }.getOrDefault(emptyList())
+                    reply(Message("stacksl-regions").payload(StackSLRegionsResponse(regions)))
                 }
 
                 Handled.yes
@@ -3344,7 +3380,7 @@ class Server {
                 val info = thisSessionInfo.get()
                 val usedIds = info.boxes.keys
                 val ctx = SavingContext()
-                val transferIds = ctx.readEdnTransfersFromString(req.edn).map { it.id }.toSet()
+                val transferIds = ctx.readEdnTransfersFromString(req.edn, recordInto = info.filename).map { it.id }.toSet()
                 // Keep refs to boxes that already exist in this document, but only remap ids that belong to
                 // the pasted payload itself.
                 val allowedRefIds = transferIds + usedIds + "root"
@@ -3896,6 +3932,7 @@ class Server {
 
             registerTemplate(home)
             persistWorkspacePath(home)
+            installKitFirstOpen()
 
             val preferredPort = System.getenv("PORT")?.trim()?.toIntOrNull() ?: 9092
             val portFallbackCount =

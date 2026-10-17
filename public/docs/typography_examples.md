@@ -358,15 +358,6 @@ Back faces are culled in this render, so an inside-out wall would show up as a *
 than as odd shading. The line of facts under the `word` panel is computed by `showMesh` from the
 mesh it was given ([Field's 3D output](three_output.md#showmesh-and-the-renderer-parameter)).
 
-??? aside "`flatShaded()` and the figure's fact line"
-
-    It un-welds every triangle into its own three vertices, so the copy is no longer topologically
-    anything — and `showMesh` computes `topology()` on whatever you hand it and prints the answer
-    *as fact* in the figure's fact line. Pass it a flat-shaded `o` and that line reads
-    `open (N boundary loop(s))` beside a title stating the mesh is closed. You do not need it in any
-    case: both renderers apply `shadedNormals` to a mesh that arrives without normals, and an
-    extrusion is all creases, so it comes out faceted anyway.
-
 ## Letters in the SDF family
 
 `toSdf` builds a 2D signed-distance grid over the layout, samples it bilinearly and extrudes it in z.
@@ -467,16 +458,6 @@ Typefaces.fromFile("/path/to/Whatever.ttf", 64.0)        // Font.createFont, not
 
 `SansSerif` and `Serif` map to different real fonts on different machines, so the pictures above
 will look a little different on yours. The ring counts, genus and winding do not change.
-
-??? aside "Reading outlines in a JVM you launched yourself"
-
-    A JVM that reads glyph outlines and passes `-XstartOnFirstThread` must also pass
-    `-Djava.awt.headless=true`, set before any AWT class initialises. On macOS
-    `sun.font.CFontManager.loadFonts` dispatches to the process's first thread and waits, and under
-    `-XstartOnFirstThread`, which GLFW requires, that thread only services the dispatch if something is
-    pumping its run loop. `Typefaces.warm()` detects this in four seconds and throws with the flag in the
-    message rather than hanging. Field's own desktop JVM sets it (`build.gradle.kts`, `requiredRunJvmArgs`),
-    so you only meet this in a JVM you launched yourself.
 
 ## Run it yourself
 

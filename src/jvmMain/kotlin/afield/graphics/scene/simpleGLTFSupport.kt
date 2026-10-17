@@ -141,8 +141,23 @@ object GltfSupport {
     data class TextureSlot(
         val type: Int,         // Assimp aiTextureType_*
         val uvSet: Int,        // which UV channel to use
-        val texture: LoadedTexture, val valid: Boolean
+        val texture: LoadedTexture, val valid: Boolean,
+        /** The texture's `KHR_texture_transform`, read from the glTF itself; null when it has none. */
+        val transform: TextureTransform? = null,
     )
+
+    /**
+     * A glTF `KHR_texture_transform`: `uv' = offset + rotate(rotation) * (scale * uv)`, in glTF UV
+     * space. Read off the file rather than Assimp, whose UV-transform pivot and order differ.
+     */
+    data class TextureTransform(
+        val offsetX: Float = 0f, val offsetY: Float = 0f,
+        val scaleX: Float = 1f, val scaleY: Float = 1f,
+        val rotation: Float = 0f,
+        val texCoord: Int? = null,
+    ) {
+        val isIdentity: Boolean get() = offsetX == 0f && offsetY == 0f && scaleX == 1f && scaleY == 1f && rotation == 0f
+    }
 
     data class MaterialTextured(
         val baseColor: Vector4f,            // RGBA (treat as linear in your pipeline)
@@ -236,6 +251,13 @@ object GltfSupport {
         private var heldIndexBuffer: afield.graphics.vulkan.buffers.BufferParameters? = null
 
         /**
+         * `view * model` for this primitive under [camera], with its own node transform as the model:
+         * what to assign to `modelView` each frame when a loop drives the camera, so a part positioned
+         * by its glTF nodes stays where they put it.
+         */
+        fun modelView(camera: Camera = fromContext()): Matrix4f = camera.m().mul(bindMatrix ?: bindPose.toMatrix())
+
+        /**
          * Upload this instance's buffers and set the push constants the bundled shaders expect.
          *
          * @param model the model matrix, composed into `modelView` as `view * model`. The default is
@@ -244,9 +266,8 @@ object GltfSupport {
          *   instead of heaping every part at the origin. Pass `Matrix4f()` for the model-space draw
          *   this used to do unconditionally, or your own matrix to place the part yourself.
          *
-         *   `modelView` is a **push constant**, so a box that writes it again per frame (`loop {
-         *   module.VertexData.modelView = camera.m() }`) overwrites this and gets the origin back.
-         *   Compose the model matrix in there too if you drive the camera that way.
+         *   `modelView` is a **push constant**, so a box that writes it again per frame writes
+         *   [modelView]`(camera)`, which keeps this node transform, rather than `camera.m()` alone.
          *
          * @param reuseBuffers keep this instance's GPU buffers between calls instead of allocating a
          *   fresh pair. **Required for a per-frame call**, and off by default so that no existing
@@ -285,11 +306,13 @@ object GltfSupport {
             fun freshVertexParameters() = defaultBuffer { size = (buffers.vertexCount * 12).floats }
             fun freshIndexParameters() = defaultBuffer { size = buffers.indexCount.ints }
 
-            val vertexData = if (!reuseBuffers) freshVertexParameters().buffer else {
-                (heldVertexBuffer ?: freshVertexParameters().also { heldVertexBuffer = it }).buffer
+            // Allocated on the mesh's own renderer, so this also works from a `main`, where there is
+            // no box context to find one in.
+            val vertexData = if (!reuseBuffers) freshVertexParameters().toBuffer(m.renderer) else {
+                (heldVertexBuffer ?: freshVertexParameters().also { heldVertexBuffer = it }).toBuffer(m.renderer)
             }
-            val indexData = if (!reuseBuffers) freshIndexParameters().buffer else {
-                (heldIndexBuffer ?: freshIndexParameters().also { heldIndexBuffer = it }).buffer
+            val indexData = if (!reuseBuffers) freshIndexParameters().toBuffer(m.renderer) else {
+                (heldIndexBuffer ?: freshIndexParameters().also { heldIndexBuffer = it }).toBuffer(m.renderer)
             }
 
             m.push["vertexBuffer"] = vertexData
@@ -378,7 +401,8 @@ object GltfSupport {
         val skeletonNodes = if (config.loadSkins) GltfSkinning.readNodes(scene) else null
         val clips = if (skeletonNodes != null) GltfSkinning.readClips(scene, skeletonNodes, config.sampleRate) else null
 
-        traverseNode(scene, root!!, identity, meshes, config, baseDir, skeletonNodes, clips)
+        val gltfMaterials = gltfMaterialsOf(path)
+        traverseNode(scene, root!!, identity, meshes, config, baseDir, skeletonNodes, clips, gltfMaterials)
 
         Assimp.aiReleaseImport(scene)
         return GltfModel(meshes)
@@ -393,6 +417,7 @@ object GltfSupport {
         baseDir: Path?,
         skeletonNodes: List<GltfSkinning.SkeletonNode>? = null,
         clips: List<GltfSkinning.AnimationClip>? = null,
+        gltfMaterials: List<kotlinx.serialization.json.JsonObject?>? = null,
     ) {
         val local = aiToMatrix4f(node.mTransformation())
         val world = Matrix4f(parentTransform).mul(local)
@@ -405,7 +430,7 @@ object GltfSupport {
 
                 val buffers = extractMeshBuffers(aiMesh, config.includeVertexColors)
                 val bindTrs = decomposeToTRS(world)
-                val material = extractMaterial(scene, aiMesh, baseDir, config)
+                val material = extractMaterial(scene, aiMesh, baseDir, config, gltfMaterials)
                 val animSamples = buildAnimationSamplesForNode(scene, node, config.sampleRate)
 
                 outMeshes += MeshInstance(
@@ -430,7 +455,7 @@ object GltfSupport {
         if (children != null) {
             for (i in 0 until children.remaining()) {
                 val child = AINode.create(children[i])
-                traverseNode(scene, child, world, outMeshes, config, baseDir, skeletonNodes, clips)
+                traverseNode(scene, child, world, outMeshes, config, baseDir, skeletonNodes, clips, gltfMaterials)
             }
         }
     }
@@ -557,8 +582,55 @@ object GltfSupport {
     // Material extraction (colors + textures)
     // ------------------------------------------------------------------------
 
+    /**
+     * The `materials` of the glTF at [path], in order, or null when it is not glTF or cannot be read.
+     * Assimp keeps glTF material order, so an Assimp material index is an index into this.
+     */
+    private fun gltfMaterialsOf(path: String): List<kotlinx.serialization.json.JsonObject?>? = runCatching {
+        val file = java.io.File(path)
+        val text = when (file.extension.lowercase()) {
+            "glb" -> {
+                val bytes = file.readBytes()
+                val header = java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                String(bytes, 20, header.getInt(12), Charsets.UTF_8)
+            }
+            "gltf" -> file.readText()
+            else -> return null
+        }
+        val json = kotlinx.serialization.json.Json.parseToJsonElement(text) as kotlinx.serialization.json.JsonObject
+        (json["materials"] as? kotlinx.serialization.json.JsonArray)?.map { it as? kotlinx.serialization.json.JsonObject }
+    }.getOrNull()
+
+    /** The glTF `textureInfo` an Assimp texture type of [material] was read from. */
+    private fun gltfTextureInfo(material: kotlinx.serialization.json.JsonObject?, type: Int): kotlinx.serialization.json.JsonObject? {
+        fun obj(o: kotlinx.serialization.json.JsonObject?, key: String) = o?.get(key) as? kotlinx.serialization.json.JsonObject
+        val pbr = obj(material, "pbrMetallicRoughness")
+        return when (type) {
+            Assimp.aiTextureType_BASE_COLOR, Assimp.aiTextureType_DIFFUSE -> obj(pbr, "baseColorTexture")
+            Assimp.aiTextureType_NORMALS -> obj(material, "normalTexture")
+            Assimp.aiTextureType_EMISSIVE -> obj(material, "emissiveTexture")
+            Assimp.aiTextureType_METALNESS, Assimp.aiTextureType_DIFFUSE_ROUGHNESS,
+            Assimp.aiTextureType_GLTF_METALLIC_ROUGHNESS -> obj(pbr, "metallicRoughnessTexture")
+            Assimp.aiTextureType_LIGHTMAP, Assimp.aiTextureType_AMBIENT_OCCLUSION -> obj(material, "occlusionTexture")
+            Assimp.aiTextureType_CLEARCOAT -> obj(obj(obj(material, "extensions"), "KHR_materials_clearcoat"), "clearcoatTexture")
+            else -> null
+        }
+    }
+
+    private fun textureTransformOf(info: kotlinx.serialization.json.JsonObject?): TextureTransform? {
+        val tx = ((info?.get("extensions") as? kotlinx.serialization.json.JsonObject)?.get("KHR_texture_transform")
+            as? kotlinx.serialization.json.JsonObject) ?: return null
+        fun number(element: kotlinx.serialization.json.JsonElement?) =
+            (element as? kotlinx.serialization.json.JsonPrimitive)?.content?.toFloatOrNull()
+        fun pair(key: String, index: Int, default: Float) =
+            number((tx[key] as? kotlinx.serialization.json.JsonArray)?.getOrNull(index)) ?: default
+        return TextureTransform(pair("offset", 0, 0f), pair("offset", 1, 0f), pair("scale", 0, 1f), pair("scale", 1, 1f),
+            number(tx["rotation"]) ?: 0f, number(tx["texCoord"])?.toInt())
+    }
+
     private fun extractMaterial(
-        scene: AIScene, aiMesh: AIMesh, baseDir: Path?, config: GltfLoadConfig
+        scene: AIScene, aiMesh: AIMesh, baseDir: Path?, config: GltfLoadConfig,
+        gltfMaterials: List<kotlinx.serialization.json.JsonObject?>? = null,
     ): MaterialTextured {
         val defaultColor = Vector4f(1f, 1f, 1f, 1f)
 
@@ -707,7 +779,8 @@ object GltfSupport {
                     )
                     if (tex != null) {
                         slots[typeMapping[type]!!] =
-                            TextureSlot(type = type, uvSet = uvIndex[0], texture = tex, valid = true)
+                            TextureSlot(type = type, uvSet = uvIndex[0], texture = tex, valid = true,
+                                transform = textureTransformOf(gltfTextureInfo(gltfMaterials?.getOrNull(matIndex), type)))
                     } else {
                     }
                 }

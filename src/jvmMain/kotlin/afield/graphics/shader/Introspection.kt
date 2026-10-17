@@ -234,7 +234,7 @@ fun parseGlslMemberComments(source: String): Map<String, String> {
                 }
                 '}' -> {
                     // Only a NAMED block has a tail worth waiting for. An unnamed `}` — a function body,
-                    // or the `}` of a `{% include %}` / `{{ slot }}` template marker sitting in the source
+                    // or the `}` of a `{% property %}` / `{{ slot }}` template marker sitting in the source
                     // — must not arm this: the pending state survives to the next `;`, and that `;` is the
                     // first member of whatever block comes next, whose comment would then be eaten.
                     closedBlock = blocks.removeLastOrNull()?.takeIf { it.isNotEmpty() }

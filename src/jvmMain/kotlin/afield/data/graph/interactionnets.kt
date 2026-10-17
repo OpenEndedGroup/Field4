@@ -23,6 +23,8 @@ import afield.geometry.mesh.topology
 import afield.geometry.spatial.closest
 import afield.graphics.render.rangeTo
 import afield.graphics.render.rect
+import afield.graphics.render.arrow
+import afield.graphics.render.toFLine
 import afield.lang.lambda.LambdaTerms
 import afield.lang.stacksl.evolution.render
 import afield.math.autodiff.compareTo
@@ -659,8 +661,9 @@ class Net internal constructor(
      * [ActivePair.canonicalKey].
      *
      * The list is a snapshot, so it is safe to iterate while you rewrite — but every rewrite invalidates it, since
-     * a reaction usually creates and destroys pairs. An empty list means the net is in normal form and a [Reducer]
-     * will stop. Order follows edge creation order, which is why the scheduler exists.
+     * a reaction usually creates and destroys pairs. Order follows edge creation order, which is why the scheduler
+     * exists. It includes pairs no rule covers (a λ net's `ROOT` facing its answer is one), so ask [isNormal] or
+     * [reduciblePairs], not whether this is empty, to know whether a reduction has finished.
      */
     fun activePairs(): List<ActivePair> {
         val seen = LinkedHashSet<Pair<String, String>>()
@@ -676,6 +679,12 @@ class Net internal constructor(
         }
         return pairs
     }
+
+    /** The [activePairs] some rule in [rules] covers: the places a [Reducer] could fire next. */
+    fun reduciblePairs(rules: RuleBook): List<ActivePair> = activePairs().filter { rules.find(it.left, it.right) != null }
+
+    /** Whether no rule in [rules] matches anywhere in the net — what "reduction has finished" means. */
+    fun isNormal(rules: RuleBook): Boolean = activePairs().none { rules.find(it.left, it.right) != null }
 
     internal fun absorb(fragment: NetFragment, placement: Placement): FragmentEmbed {
         val mapping = LinkedHashMap<NodeRef, Node>()
@@ -947,6 +956,7 @@ class Net internal constructor(
             """<div style="margin-top:10px;color:#91a4ba;">No active principal-principal pairs.</div>"""
         } else {
             active.take(6).joinToString(
+                separator = "",
                 prefix = """<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">""",
                 postfix = "</div>"
             ) { pair ->
@@ -2315,6 +2325,75 @@ fun interactionSummaryGrid(vararg cards: String): String {
     """.trimIndent()
 }
 
+/** A captured drawing/summary for a stage in an interaction-net comparison. */
+class InteractionStage internal constructor(
+    val title: String,
+    lines: List<FLine>,
+    val summary: String,
+) {
+    private val snapshot = lines.map(::copyInteractionStageLine)
+    /** Copies keep later layout or caller mutations from changing the captured stage. */
+    val lines: List<FLine> get() = snapshot.map(::copyInteractionStageLine)
+}
+
+private fun copyInteractionStageLine(source: FLine): FLine = source.copy().apply {
+    fun copyColors(properties: MutableMap<String, Any?>) {
+        properties.replaceAll { _, value ->
+            if (value is afield.math.linalg.Vector4f) afield.math.linalg.Vector4f(value) else value
+        }
+    }
+    copyColors(properties)
+    nodes.forEach { copyColors(it.properties) }
+}
+
+/** Capture a stage now, before a later rewrite mutates the net or its drawing. */
+fun stage(title: String, lines: List<FLine>, summary: String): InteractionStage =
+    InteractionStage(title, lines, summary)
+
+/**
+ * Lay out captured stages in order, with arrows between their drawings and summaries above.
+ * Rewriting and snapshot capture remain explicit in the caller. Extra [cards] can describe the
+ * intervening reductions. Uses [showInteractionOverview] for the shared SVG/output rendering.
+ */
+fun Box.showInteractionStages(
+    vararg stages: InteractionStage,
+    cards: List<String> = emptyList(),
+    channel: String = "interaction-net-overview",
+    graphicTitle: String = stages.joinToString(" → ") { it.title },
+    stageWidth: Double = 404.0,
+    stageHeight: Double = 232.0,
+    gap: Double = 128.0,
+    padding: Double = 26.0,
+): String {
+    require(stages.isNotEmpty()) { "at least one stage is required" }
+    require(stageWidth.isFinite() && stageWidth > 0 && stageHeight.isFinite() && stageHeight > 0) {
+        "stage dimensions must be finite and positive"
+    }
+    require(gap.isFinite() && gap >= 0 && padding.isFinite() && padding >= 0 &&
+        padding * 2 < minOf(stageWidth, stageHeight)) { "invalid stage gap or padding" }
+    val frames = stages.indices.map { i -> Rect(52.0 + i * (stageWidth + gap), 54.0, stageWidth, stageHeight) }
+    val lines = mutableListOf<FLine>()
+    stages.forEachIndexed { i, stage ->
+        val frame = frames[i]
+        lines += frame.toFLine(filled = true, color = vec(0.08, 0.08, 0.08, 1.0))
+        lines += stage.lines.fitInto(frame, padding = padding)
+        if (i > 0 && gap > 0) {
+            val middle = frame.y + frame.h / 2
+            val inset = gap * 0.25
+            lines += arrow(frames[i - 1].right + inset, middle, frame.x - inset, middle,
+                color = vec(0.8, 0.8, 0.8, 1.0))
+        }
+    }
+    return showInteractionOverview(
+        graphicLines = lines,
+        cards = stages.map { it.summary } + cards,
+        channel = channel,
+        graphicTitle = graphicTitle,
+        graphicWidth = 104.0 + stages.size * stageWidth + (stages.size - 1) * gap,
+        graphicHeight = stageHeight + 108.0,
+    )
+}
+
 private fun interactionOverviewHtml(
     cards: List<String>,
     graphicHtml: String,
@@ -2322,8 +2401,8 @@ private fun interactionOverviewHtml(
 ): String = """
     <div style="display:flex;flex-direction:column;gap:12px;">
         ${interactionSummaryGrid(*cards.toTypedArray())}
-        <div style="padding:12px;background:linear-gradient(180deg,#0d1219,#090d12);border:1px solid #202b38;border-radius:10px;">
-            <div style="font-family:monospace;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#91a4ba;">${escapeInteractionHtml(graphicTitle)}</div>
+        <div style="padding:12px;background:#000;border:1px solid #202b38;border-radius:10px;">
+            <div style="font-family:Iosevka,monospace;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#91a4ba;">${escapeInteractionHtml(graphicTitle)}</div>
             <div style="margin-top:10px;">$graphicHtml</div>
         </div>
     </div>
@@ -2343,6 +2422,7 @@ fun ReductionStep.summaryHtml(title: String = "Reduction step"): String {
         """<div style="margin-top:10px;color:#91a4ba;">No emitted rewrite events.</div>"""
     } else {
         events.joinToString(
+            separator = "",
             prefix = """<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">""",
             postfix = "</div>"
         ) { event ->
@@ -2402,7 +2482,7 @@ private fun interactionMetric(label: String, value: String): String = """
 """.trimIndent()
 
 private fun interactionSummaryCard(title: String, body: String): String = """
-    <div style="font-family:monospace;background:linear-gradient(180deg,#111720,#0b0f15);color:#e7edf5;border:1px solid #223041;border-radius:10px;padding:14px 16px;">
+    <div style="font-family:Iosevka,monospace;background:#000;color:#e7edf5;border:1px solid #223041;border-radius:10px;padding:14px 16px;">
         <div style="font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#dce6f3;">${escapeInteractionHtml(title)}</div>
         <div style="margin-top:10px;">$body</div>
     </div>
@@ -2458,32 +2538,24 @@ object Lambda {
     val CONST = Types.agent("CONST", 0)
 
     /**
-     * The [NodeState.scalars] key a fan's label lives under.
-     *
-     * A [DUP] plays two roles in a λ-net — the *fan-out* that hands a shared subterm to each of its users, and the
-     * *fan-in* that `dup-lam` leaves on a duplicated abstraction's binder to gather the copies back up — and the only
-     * thing that tells one meeting from another is whether the two fans came from the same duplication. That is the
-     * label. [LambdaTerms.compile] mints a fresh one per fan it builds, and every rule that copies a fan copies its
-     * state, so the label is inherited for free.
+     * The [NodeState.scalars] key a [DUP]'s or [DELIM]'s Lambdascope **level** lives under (the name is older than
+     * the levels). Two agents of one kind meet and cancel when their levels are equal, and copy each other when they
+     * differ; see [rules]. [LambdaTerms.compile] builds every fan and delimiter at level 0, and the rules raise levels
+     * as agents move.
      */
     const val FAN_LABEL: String = "fanLabel"
 
-    /**
-     * The fan label on a node, or **0.0** for a [DUP] built without one.
-     *
-     * That default is deliberate: the hand-wired demos in this file and any net you build with a bare
-     * `node(DUP)` all carry label 0, so two of them annihilate rather than commuting forever.
-     */
+    /** A node's level, or **0.0** for one built without one, so two bare `node(DUP)`s annihilate. */
     fun fanLabelOf(node: Node): Double = node.state.scalars[FAN_LABEL] ?: 0.0
 
     /**
-     * A [NodeState] for a labelled fan — `node(DUP, state = Lambda.fan(3))`.
+     * A [NodeState] for a fan (or a delimiter) at [level] — `node(DUP, state = Lambda.fan(3))`.
      *
-     * Only the label matters to the rules; [energy] is here because every other state in this vocabulary carries one
-     * and the renderer reads it.
+     * Only the level matters to the rules; [energy] is here because every other state in this vocabulary carries
+     * one and the renderer reads it.
      */
-    fun fan(label: Int, energy: Double = 1.0): NodeState =
-        NodeState(energy = energy, scalars = linkedMapOf(FAN_LABEL to label.toDouble()))
+    fun fan(level: Int, energy: Double = 1.0): NodeState =
+        NodeState(energy = energy, scalars = linkedMapOf(FAN_LABEL to level.toDouble()))
 
     private fun PairContext.structuralEcho(nodeOrdinal: Int, branch: Int, attenuation: Double = 0.9): NodeState =
         stateCopy(nodeOrdinal).split(
@@ -2516,39 +2588,91 @@ object Lambda {
         ).evolved(energyBias = 0.05)
 
     /**
-     * The rule book for this vocabulary: linear beta reduction, plus recursive [DUP] and [ERASE] against both atoms and
-     * structure.
+     * A scope delimiter, Lambdascope's one extra agent: principal port outward, toward the context the scope
+     * sits in, and `aux(0)` inward. Beta puts one on the result and one on the argument; [LambdaTerms.compile]
+     * puts one on a variable occurrence for every abstraction between it and its binder.
+     */
+    val DELIM = Types.agent("DELIM", 1)
+
+    /** The level of a [DUP] or [DELIM] (its [FAN_LABEL] scalar, 0 when absent). */
+    fun levelOf(node: Node): Double = fanLabelOf(node)
+
+    /**
+     * The level a copy of [mover] carries once it has passed [passed], Lambdascope's one level rule: a fan or
+     * delimiter moving past an abstraction, or past a delimiter whose level is not above its own, goes one level
+     * up. Anything else keeps its level.
+     */
+    private fun levelAfterPassing(mover: Node, passed: Node): Double {
+        val level = levelOf(mover)
+        if (mover.type != DUP && mover.type != DELIM) return level
+        return when {
+            passed.type == LAM -> level + 1
+            passed.type == DELIM && levelOf(passed) <= level -> level + 1
+            else -> level
+        }
+    }
+
+    /**
+     * Commutation of the pair: a copy of each node for every auxiliary port of the other, crossed, each fan or
+     * delimiter copy at the level [levelAfterPassing] gives it. The one shape every Lambdascope interaction that
+     * is not beta or annihilation takes.
+     */
+    private fun RewriteBuilder.commute(ctx: PairContext, kind: String) {
+        val a = ctx.first
+        val b = ctx.second
+        fun stateFor(ordinal: Int, mover: Node, passed: Node, branch: Int, parts: Int) =
+            ctx.stateCopy(ordinal).split(parts = maxOf(parts, 1), branch = branch.coerceIn(0, maxOf(parts, 1) - 1),
+                attenuation = 0.85, hueSpread = 0.05, phaseSpread = 0.12, ageDelta = 1.0).apply {
+                if (mover.type == DUP || mover.type == DELIM) scalars[FAN_LABEL] = levelAfterPassing(mover, passed)
+            }
+        val aCopies = List(b.type.auxPorts) { k ->
+            node("a$k", a.type, at = vec(-26.0 + 52.0 * k, -30.0), state = stateFor(0, a, b, k, b.type.auxPorts),
+                impulse = ctx.branchImpulse(k))
+        }
+        val bCopies = List(a.type.auxPorts) { j ->
+            node("b$j", b.type, at = vec(-26.0 + 52.0 * j, 30.0), state = stateFor(1, b, a, j, a.type.auxPorts),
+                impulse = ctx.branchImpulse(j))
+        }
+        aCopies.forEachIndexed { k, copy -> reconnect(principal(copy), 1, k) }
+        bCopies.forEachIndexed { j, copy -> reconnect(principal(copy), 0, j) }
+        for (k in aCopies.indices) for (j in bCopies.indices) aux(aCopies[k], j) to aux(bCopies[j], k)
+        emit(kind, magnitude = ctx.pairEnergy, data = mapOf("level" to levelOf(a), "otherLevel" to levelOf(b), "energy" to ctx.pairEnergy))
+    }
+
+    /** Two agents of one kind and level cancel: each pair of matching auxiliary wires is spliced through. */
+    private fun RewriteBuilder.annihilate(ctx: PairContext, kind: String) {
+        for (i in 0 until ctx.first.type.auxPorts) passthrough(ctx.auxPeer(0, i), ctx.auxPeer(1, i))
+        emit(kind, magnitude = ctx.pairEnergy, data = mapOf("level" to levelOf(ctx.first), "energy" to ctx.pairEnergy))
+    }
+
+    /**
+     * The rule book: Lambdascope (van Oostrom, van de Looij and Zwitserlood, *Lambdascope: another optimal
+     * implementation of the lambda-calculus*, 2004), so sharing is optimal and correct on every term, with the
+     * energies as art direction.
      *
-     * A fresh book each call, so it is cheap to keep one in a `val` and cheap to build a variant from. Every rule also
-     * emits an event — the whole vocabulary is `"beta"`, `"erase"`, `"prune"`, `"duplicate"`, `"branch"` and
-     * `"annihilate"` — and splits or attenuates node energy as it goes, which is what
-     * makes a reduction visibly decay rather than merely rewire — so the energies here are art direction, not semantics.
+     * - **Beta** (`APP` meets `LAM`) wires the body to the result and the argument to the binder, each through a
+     *   level-0 [DELIM]: the scope the reduction opened.
+     * - **Annihilation**: two [DUP]s or two [DELIM]s of the same level cancel; two [ERASE]s vanish.
+     * - **Commutation**: everything else that meets copies each node past the other, and a fan or delimiter that
+     *   passes an abstraction, or a delimiter at or below its own level, goes up a level ([levelAfterPassing]).
+     * - A delimiter meeting an atom (a free variable, a constant, the root or an eraser) simply goes.
      *
-     * `fan-fan` is the one rule that is not a fixed template: it reads [FAN_LABEL] off both nodes and **annihilates**
-     * two fans from the same duplication or **commutes** two from different ones. One rule rather than two, because
-     * [RuleBook.findMatch] takes the first signature that matches and a second `(DUP, DUP)` rule would never fire; the
-     * event it emits — `"annihilate"` or `"branch"` — is what tells the two cases apart in a log.
-     *
-     * With `fan-fan` present, and with the [Reducer] chasing wires through a vanished pair, this book has every rule a
-     * closed λ-term's reduction needs. It is still not *optimal* reduction in Lamping's sense — there are no brackets or
-     * croissants, so the sharing is correct but not maximal — and the energies remain art direction.
+     * Every rule emits an event, and the vocabulary is `"beta"`, `"erase"`, `"prune"`, `"duplicate"`, `"branch"`,
+     * `"annihilate"`, `"scope"` (a delimiter moving) and `"unscope"` (a delimiter closing or leaving).
      */
     fun rules(): RuleBook = rules {
-        // Linear beta: APP(fun,arg) ⟂ LAM(binder,body)
-        autoRule("beta-linear", APP, LAM) { ctx ->
-            ext(1, 1) to ext(0, 0) // lambda body becomes the result in the application's context
-            ext(1, 0) to ext(0, 1) // binder is connected to the application argument
-            emit(
-                "beta",
-                magnitude = ctx.pairEnergy,
-                data = mapOf(
-                    "energy" to ctx.pairEnergy,
-                    "age" to ctx.blendedState().age
-                )
-            )
+        // Beta: APP(fun, arg) meets LAM(binder, body). The body becomes the result, the argument the binder,
+        // each inside a fresh scope.
+        rule("beta-linear", APP, LAM) { ctx ->
+            val result = node("scopeResult", DELIM, at = vec(-20.0, -18.0), state = ctx.stateCopy(0).apply { scalars[FAN_LABEL] = 0.0 })
+            val argument = node("scopeArgument", DELIM, at = vec(20.0, 18.0), state = ctx.stateCopy(1).apply { scalars[FAN_LABEL] = 0.0 })
+            reconnect(principal(result), 0, 0)
+            reconnect(aux(result, 0), 1, 1)
+            reconnect(principal(argument), 0, 1)
+            reconnect(aux(argument, 0), 1, 0)
+            emit("beta", magnitude = ctx.pairEnergy, data = mapOf("energy" to ctx.pairEnergy, "age" to ctx.blendedState().age))
         }
 
-        // ERASE against atoms: delete both sides and reconnect nothing.
         autoRule("erase-var", ERASE, VAR) { ctx ->
             emit("erase", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
@@ -2558,15 +2682,9 @@ object Lambda {
         autoRule("erase-root", ERASE, ROOT) { ctx ->
             emit("erase", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
-
-        // Two sinks facing each other. Reachable the moment a binder is erased and the body it bound was
-        // erased too — `(\x. \y. y) k` gets there in three steps — and without this the net is stuck with a
-        // redex nothing covers, which looks exactly like a normal form until you count the nodes.
         autoRule("erase-erase", ERASE, ERASE) { ctx ->
             emit("annihilate", magnitude = ctx.pairEnergy, data = mapOf("energy" to ctx.pairEnergy))
         }
-
-        // ERASE against structure: recursively erase each auxiliary subtree.
         autoRule("erase-app", ERASE, APP) { ctx ->
             val eFun = node(
                 "ef",
@@ -2624,8 +2742,6 @@ object Lambda {
             principal(eRight) to ext(1, 1)
             emit("prune", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
-
-        // DUP against atoms: materialize two copies, one for each duplicate demand.
         autoRule("dup-var", DUP, VAR) { ctx ->
             val v1 = node(
                 "v1",
@@ -2683,8 +2799,6 @@ object Lambda {
             principal(r2) to ext(0, 1)
             emit("duplicate", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
-
-        // DUP against structure: create two copies of the node and recursive DUPs for each field.
         autoRule("dup-app", DUP, APP) { ctx ->
             val appL = node(
                 "appL",
@@ -2728,126 +2842,25 @@ object Lambda {
             emit("branch", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
         }
 
-        autoRule("dup-lam", DUP, LAM) { ctx ->
-            val lamL = node(
-                "lamL",
-                LAM,
-                at = vec(-34.0, 8.0),
-                state = ctx.structuralEcho(1, 0),
-                impulse = ctx.branchImpulse(0)
-            )
-            val lamR = node(
-                "lamR",
-                LAM,
-                at = vec(34.0, 8.0),
-                state = ctx.structuralEcho(1, 1),
-                impulse = ctx.branchImpulse(1)
-            )
-            val dBinder = node(
-                "dBinder",
-                DUP,
-                at = vec(-22.0, -34.0),
-                state = ctx.operatorTrace(0, 0),
-                impulse = Vec2(ctx.axis).mul((-ctx.radius * 0.35).toFloat())
-            )
-            val dBody = node(
-                "dBody",
-                DUP,
-                at = vec(22.0, -34.0),
-                state = ctx.operatorTrace(0, 1),
-                impulse = Vec2(ctx.axis).mul((ctx.radius * 0.35).toFloat())
-            )
+        // A fan copying an abstraction: the copies of the fan inside it go up a level.
+        rule("dup-lam", DUP, LAM) { ctx -> commute(ctx, "branch") }
 
-            principal(lamL) to ext(0, 0)
-            principal(lamR) to ext(0, 1)
-
-            principal(dBinder) to ext(1, 0)
-            principal(dBody) to ext(1, 1)
-
-            aux(dBinder, 0) to aux(lamL, 0)
-            aux(dBinder, 1) to aux(lamR, 0)
-            aux(dBody, 0) to aux(lamL, 1)
-            aux(dBody, 1) to aux(lamR, 1)
-            emit("branch", magnitude = ctx.state(1).energy, data = mapOf("energy" to ctx.state(1).energy))
-        }
-
-        // Fan against fan: the rule this vocabulary was missing, and the one that makes a duplicated
-        // abstraction reduce rather than deadlock. `dup-lam` leaves a fan-in on the binder of the two copies
-        // it makes; the fan-out that was already there, handing the binder to each of the body's uses of it,
-        // is now facing it principal to principal. Whether they cancel or copy each other is the whole
-        // question, and [FAN_LABEL] is the answer: same duplication, or two different ones.
-        //
-        // Written with the `rule` escape hatch rather than `autoRule` because the two cases produce different
-        // shapes, and as one rule rather than two because `RuleBook.findMatch` takes the first matching
-        // signature — a second (DUP, DUP) rule could never fire. The emitted event names the branch taken.
+        // Fan meets fan: one duplication's two halves (same level) cancel; two different ones copy each other.
         rule("fan-fan", DUP, DUP) { ctx ->
-            val firstLabel = fanLabelOf(ctx.first)
-            val secondLabel = fanLabelOf(ctx.second)
-            if (firstLabel == secondLabel) {
-                // Two halves of one duplication. Copy *i* of the fan-out is copy *i* of the fan-in, so the
-                // two fans cancel and each matching pair of copy wires is spliced straight through.
-                passthrough(ctx.auxPeer(0, 0), ctx.auxPeer(1, 0))
-                passthrough(ctx.auxPeer(0, 1), ctx.auxPeer(1, 1))
-                emit(
-                    "annihilate",
-                    magnitude = ctx.pairEnergy,
-                    data = mapOf("label" to firstLabel, "energy" to ctx.pairEnergy)
-                )
-            } else {
-                // Two different duplications, so each has to be applied to the other: four fans, keeping
-                // their own labels, wired in the same 2x2 crossing `dup-app` and `dup-lam` use —
-                // firstCopy[j].aux(i) to secondCopy[i].aux(j).
-                val firstCopies = List(2) { j ->
-                    node(
-                        "fanA$j",
-                        DUP,
-                        at = vec(if (j == 0) -26.0 else 26.0, -32.0),
-                        state = ctx.operatorTrace(0, j),
-                        impulse = Vec2(ctx.axis).mul(((if (j == 0) -1 else 1) * ctx.radius * 0.35).toFloat())
-                    )
-                }
-                val secondCopies = List(2) { i ->
-                    node(
-                        "fanB$i",
-                        DUP,
-                        at = vec(if (i == 0) -26.0 else 26.0, 32.0),
-                        state = ctx.structuralEcho(1, i),
-                        impulse = ctx.branchImpulse(i)
-                    )
-                }
-                for (i in 0..1) reconnect(principal(secondCopies[i]), 0, i)
-                for (j in 0..1) reconnect(principal(firstCopies[j]), 1, j)
-                for (i in 0..1) {
-                    for (j in 0..1) aux(firstCopies[j], i) to aux(secondCopies[i], j)
-                }
-                emit(
-                    "branch",
-                    magnitude = ctx.pairEnergy,
-                    data = mapOf("label" to firstLabel, "otherLabel" to secondLabel, "energy" to ctx.pairEnergy)
-                )
-            }
+            if (levelOf(ctx.first) == levelOf(ctx.second)) annihilate(ctx, "annihilate") else commute(ctx, "branch")
         }
 
-        // A modest custom rule example remains available as the escape hatch. Note that it never fires:
-        // `erase-dup` above covers the same unordered pair of types and was declared first.
-        rule("dup-erase-annihilate", DUP, ERASE) { ctx ->
-            val e0 = node(
-                "e0",
-                ERASE,
-                at = vec(-16.0, 0.0),
-                state = ctx.decayOf(0, 0),
-                impulse = ctx.branchImpulse(0)
-            )
-            val e1 = node(
-                "e1",
-                ERASE,
-                at = vec(16.0, 0.0),
-                state = ctx.decayOf(0, 1),
-                impulse = ctx.branchImpulse(1)
-            )
-            reconnect(principal(e0), 0, 0)
-            reconnect(principal(e1), 0, 1)
-            emit("annihilate", magnitude = ctx.pairEnergy, data = mapOf("energy" to ctx.pairEnergy))
+        // Scope delimiters.
+        rule("delim-delim", DELIM, DELIM) { ctx ->
+            if (levelOf(ctx.first) == levelOf(ctx.second)) annihilate(ctx, "unscope") else commute(ctx, "scope")
+        }
+        rule("delim-app", DELIM, APP) { ctx -> commute(ctx, "scope") }
+        rule("delim-lam", DELIM, LAM) { ctx -> commute(ctx, "scope") }
+        rule("delim-dup", DELIM, DUP) { ctx -> commute(ctx, "scope") }
+        // An eraser, free variable, constant or the root at a delimiter's principal: the delimiter goes, and the
+        // atom takes its inner port.
+        for (atom in listOf(ERASE, VAR, CONST, ROOT)) {
+            rule("delim-${atom.name.lowercase()}", DELIM, atom) { ctx -> commute(ctx, "unscope") }
         }
     }
 

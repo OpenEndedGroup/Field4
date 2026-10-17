@@ -95,8 +95,12 @@ class FrameProfile(
         previous = c; thread = currentThread; start = now; cpu = currentCpu; allocated = currentAllocation
     }
 
-    /** A synchronous stage; do not suspend inside it. Nested scopes retain inclusive and self totals. */
-    inline fun <T> measure(name: String, block: () -> T): T {
+    /**
+     * A synchronous stage. Nested scopes retain inclusive and self totals. [block] is an ordinary
+     * lambda, so a suspension inside it does not compile; a stage that ends on another thread is
+     * marked "moved threads" in the capture, with no CPU or allocation figures.
+     */
+    fun <T> measure(name: String, block: () -> T): T {
         val token = CoroutineProfiles.beginScope(origin, name)
         try { return block() } finally { CoroutineProfiles.endMeasurement(token) }
     }
@@ -109,8 +113,11 @@ class FrameProfile(
 suspend fun frameProfile(name: String = "Frame", targetFps: Double = 60.0, allocationKiB: Double = 512.0): FrameProfile =
     FrameProfile(currentCoroutineContext(), name, targetFps, allocationKiB)
 
-/** A synchronous named stage inside any profiled box or simulation coroutine. */
-inline fun <T> profileScope(name: String, block: () -> T): T {
+/**
+ * A synchronous named stage inside any profiled box or simulation coroutine. [block] cannot suspend
+ * (it is an ordinary lambda), and a stage that ends on another thread is marked in the capture.
+ */
+fun <T> profileScope(name: String, block: () -> T): T {
     val token = CoroutineProfiles.beginScope(null, name)
     try { return block() } finally { CoroutineProfiles.endMeasurement(token) }
 }

@@ -136,8 +136,10 @@ work before relying on them.
 
 - A program is not a transaction. Edits made before a failure stay. They are recorded and undoable
   like any other agent edit, but nothing rolls them back.
-- State a box hands to the conversation is saved after every request that changes it, and nothing
-  deletes old copies yet. A canvas the size of the Studio's takes about 28 MB each.
+- State a box hands to the conversation is saved after every request that changes it: about 28 MB
+  each for a canvas the size of the Studio's. States no conversation refers to are deleted on their
+  own; to free the rest, `pruneAiStates(dryRun = false)` in the box keeps the latest three along every
+  branch and the state at every fork. Without `dryRun = false` it only reports what it would free.
 - A check that must hold, such as a design revision, belongs in the tool that does the work. A
   `beforeTool` guard is a second line, and it sees only calls that go through the chat's tools.
 - The chat is not a place for long jobs. A tool call waits at most as long as the program it is in

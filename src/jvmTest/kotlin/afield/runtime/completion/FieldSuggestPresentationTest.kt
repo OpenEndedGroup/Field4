@@ -878,6 +878,34 @@ class FieldSuggestPresentationTest {
         return entries.filterValues { it > 0 }.keys
     }
 
+    /**
+     * Every category the server can send has a row in `CATEGORY_WEIGHT`, so none falls through to the
+     * `?? 0` by accident. The vocabulary is read from source: every `@CompletionCategory("…")` under
+     * `src/`, plus the names [KotlinCompletionSupport.classifyMetadata] assigns by itself. A weight of 0 is
+     * allowed — `internal` and `generic` are unweighted on purpose — a missing row is not.
+     */
+    @Test
+    fun `every category the server sends has a CATEGORY_WEIGHT row`() {
+        val js = resource("/fieldSuggest.js")
+        val table = Regex("""const CATEGORY_WEIGHT = new Map\(\[(.*?)]\);""", RegexOption.DOT_MATCHES_ALL)
+            .find(js)?.groupValues?.get(1) ?: fail("could not find CATEGORY_WEIGHT in fieldSuggest.js")
+        val keys = Regex("""\["([^"]+)",\s*-?\d+]""").findAll(table).map { it.groupValues[1] }.toSet()
+        val annotation = Regex("""CompletionCategory\s*\(\s*"([^"]+)"""")
+        val src = repoRoot().resolve("src")
+        val declared = Files.walk(src).use { paths ->
+            paths.filter { it.toString().endsWith(".kt") && !it.toString().contains("/jvmTest/") }
+                .toList()
+                .flatMap { f -> annotation.findAll(Files.readString(f)).map { it.groupValues[1] }.toList() }
+        }.map { normalizeForWeight(it) }.toSet()
+        assertTrue(declared.size >= 10, "found only $declared — the @CompletionCategory scan has rotted")
+        val assigned = setOf("kotlin", "external", "generic", "local", "internal", "ai")
+        val missing = (declared + assigned) - keys
+        assertTrue(
+            missing.isEmpty(),
+            "categories the server sends with no CATEGORY_WEIGHT row in fieldSuggest.js: ${missing.sorted()}"
+        )
+    }
+
     private companion object {
         const val PASSED = "field-suggest presentation probe passed"
     }

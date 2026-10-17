@@ -85,16 +85,10 @@ mean and covariance:
 and `alpha = 0.9`; if you ever see *"n + lambda must be positive"*, nudge `alpha`
 or `kappa` up.
 
-### A tiny helper: `diag`
+### Diagonal matrices: `diag`
 
 `Matrix` values are just arrays of arrays, so covariance matrices are easy to
-build inline. Every example defines a one-liner for diagonal matrices — there is
-no library `diag`, and one line is short enough to keep in the box:
-
-```diffstatic {data-lang=kotlin}
-fun diag(vararg values: Double): Matrix =
-    Array(values.size) { r -> DoubleArray(values.size) { c -> if (r == c) values[r] else 0.0 } }
-```
+build inline, and `diag(0.1, 0.1, 0.5)` makes a diagonal one.
 
 The Gaussian noise the examples inject comes from the standard-library
 `randomGaussian()` (a zero-mean, unit-variance draw).
@@ -111,9 +105,6 @@ only the first is ever observed.
 :::static
 import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
-
-fun diag(vararg values: Double): Matrix =
-    Array(values.size) { r -> DoubleArray(values.size) { c -> if (r == c) values[r] else 0.0 } }
 
 fun mackeyGlassStep(state: DoubleArray, beta: Double = 0.28): DoubleArray {
     val x = state[0].coerceIn(0.02, 3.0)
@@ -210,9 +201,6 @@ lets the estimate follow a trajectory that curves.
 :::static
 import afield.ui.visualization.darkMode
 import space.kscience.plotly.*
-
-fun diag(vararg values: Double): Matrix =
-    Array(values.size) { r -> DoubleArray(values.size) { c -> if (r == c) values[r] else 0.0 } }
 
 // State = [position, velocity]. We measure only a noisy position; velocity is
 // never observed and must be reconstructed from the dynamics.
@@ -363,9 +351,6 @@ data class ParticleSnapshot(
     val step: Int,
     val beta: List<Double>
 )
-
-fun diag(vararg values: Double): Matrix =
-    Array(values.size) { r -> DoubleArray(values.size) { c -> if (r == c) values[r] else 0.0 } }
 
 fun mackeyGlassStep(state: DoubleArray, beta: Double): DoubleArray {
     val x = state[0].coerceIn(0.02, 3.0)

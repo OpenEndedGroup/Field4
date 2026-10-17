@@ -12,10 +12,19 @@ import afield.runtime.lifecycle.rem
 
 import afield.document.graph.intro
 import kotlin.test.Test
+import kotlin.test.assertTrue
 import kotlin.test.assertEquals
 
 /** [analyzeBoxImports] and [formatBoxImports], against a small intro of their own. */
 class BoxImportsTest {
+
+    @Test
+    fun remoteHeadKeepsImportsThatOnlyTheJvmIntroProvides() {
+        val code = "// {{ visionmetal }}\nimport kotlin.math.cos\nval sample = cos(0.0)\n"
+        val formatted = formatBoxKotlin(code, useK2 = false)
+        assertTrue(formatted.contains("import kotlin.math.cos"))
+        assertEquals(formatted, formatBoxKotlin(formatted, useK2 = false))
+    }
     private val intro = "import afield.*\nimport afield.stdlib.*\nimport afield.stdlib.Vec2\n"
 
     private fun verdicts(code: String, evidence: K2ImportEvidence? = null, candidates: (String) -> Collection<String> = { emptyList() }) =
@@ -47,6 +56,23 @@ class BoxImportsTest {
         val clash = verdicts(code) { listOf("afield.stdlib.Grid", "afield.Grid") }
         assertEquals(ImportVerdict.NEEDED, clash["afield.stdlib.Grid"])
         assertEquals(ImportVerdict.REDUNDANT, verdicts(code)["afield.stdlib.Grid"])
+    }
+
+    @Test
+    fun anExplicitImportDisambiguatesAgainstKotlinDefaults() {
+        val code = "import afield.graphics.vulkan.Target\nval target: Target? = null\n"
+        val actual = analyzeBoxImports(code, "import afield.graphics.vulkan.*\n", otherCandidates = {
+            listOf("afield.graphics.vulkan.Target", "kotlin.annotation.Target")
+        }).single()
+        assertEquals(ImportVerdict.NEEDED, actual.verdict)
+    }
+
+    @Test
+    fun theRealFormatterRetainsVulkanTarget() {
+        val code = "import afield.graphics.vulkan.Target\nval target: Target? = null\n"
+        val formatted = formatBoxKotlin(code, useK2 = false)
+        assertTrue(formatted.contains("import afield.graphics.vulkan.Target"), formatted)
+        assertEquals(formatted, formatBoxKotlin(formatted, useK2 = false))
     }
 
     @Test

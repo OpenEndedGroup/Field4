@@ -364,6 +364,8 @@ internal class ThreeReviewInbox(private val uid: String) {
             require(feature["kind"]?.jsonPrimitive?.contentOrNull in setOf("point", "vertex", "edge", "face", "region")) { "Unknown feature kind" }
             val point = feature["point"]?.jsonArray ?: error("Feature has no point")
             require(point.size == 3 && point.all { it.jsonPrimitive.doubleOrNull?.isFinite() == true }) { "Invalid feature point" }
+            // A feature picked on a contact sheet names its panel.
+            feature["panel"]?.let { require(it.jsonPrimitive.intOrNull?.let { panel -> panel >= 0 } == true) { "Invalid feature panel" } }
         }
         if (!note) { selection = record.takeIf { feature != null }; return buildJsonObject { put("ok", true) } }
         require(feature != null) { "Pick a feature before saving a note" }

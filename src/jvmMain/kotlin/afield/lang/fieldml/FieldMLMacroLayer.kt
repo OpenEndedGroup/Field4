@@ -198,6 +198,15 @@ object FieldMLMacroLayer {
         Route("propUpDown", Reach.NATIVE_FORM,
             "combines supplier pull and changed-write cascade through ReactiveRuns",
             nativeForm = "propUpDown / setPropUpDown"),
+        Route("rootPropUp", Reach.NEEDS_KOTLIN,
+            "declares a reactive slot on the document root (macro_reactive_root_prop); FieldML has propUp, " +
+                "on the box, but no root form"),
+        Route("rootPropDown", Reach.NEEDS_KOTLIN,
+            "declares a reactive slot on the document root (macro_reactive_root_prop); FieldML has propDown, " +
+                "on the box, but no root form"),
+        Route("rootPropUpDown", Reach.NEEDS_KOTLIN,
+            "declares a reactive slot on the document root (macro_reactive_root_prop); FieldML has propUpDown, " +
+                "on the box, but no root form"),
         Route(
             "sourceBlock", Reach.NEEDS_KOTLIN,
             "rewrites to SourceBackedBlock(…) { <the original Kotlin body> } (source_block_macro.kt:11) — " +

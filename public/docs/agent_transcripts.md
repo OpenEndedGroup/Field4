@@ -34,19 +34,6 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 The source corpus lives in the repository at `dev_docs/agents/transcripts/`, with a companion
 `README.md` covering the op vocabulary, capture commands, and the graphics-topology rule.
 
-### Two things to know before you edit one
-
-Some transcripts ship a `build.yaml` beside the saved document, and the script says, in its own
-words, that re-running it rebuilds that document. Most still do. Two do not: `logging_layer` and
-`frame_history_reprojection` were edited in Field afterwards and re-saved with the build script left
-behind — five boxes between them, and `logging_layer`'s older code has lost an import and no longer
-compiles. **Take the document as the truth for those two.** `tools/test_demo_build_scripts.py` holds
-the rest to it, and lists the known-stale boxes explicitly so an exception cannot outlive its reason.
-
-**Do not hand-edit a `metadata.edn`.** `AgentDemoDriftGuard` requires it to be byte-for-byte what
-Field's own EDN codec writes, so an edit that looks right comes back modified from the next
-regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or change it in Field.
-
 ## How CI checks them
 
 <!-- transcript-index: totals -->
@@ -65,12 +52,15 @@ the box's `// {{ marker }}` selects.
 
 None of the three proves a picture is *right*; that is what the docs captures and the gallery
 FIELD_TESTs are for. What all three prove is that the code in these files still compiles and runs
-against today's stdlib. A second guard, `checkAgentTranscripts`, materializes every transcript into
-a document and compares it byte-for-byte against the committed starting points, so the copy the
-welcome screen opens is the one the yaml produces today.
+against today's stdlib. A separate check makes sure the copy the welcome screen opens is the one
+the yaml produces today.
 
 The saved documents under `dev_docs/agents/demos/` each have a transcript here too, so their box
 Kotlin is compiled on every build.
+
+??? aside "Agents: the starting-point guard"
+    `checkAgentTranscripts` materializes every transcript into a document and compares it
+    byte-for-byte against the committed starting points.
 
 ??? aside "Why the demos are registered here"
     Box code goes through the K2 REPL against a different import set from `jvmMain`, so no Gradle
@@ -164,6 +154,17 @@ Code locate and two seconds of quarter frames driving a `TimecodeClock`, and a c
 in audio-sized blocks. See [SMPTE Timecode](smpte_timecode.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/smpte_timecode/metadata.edn)
+
+### matrix_profile
+
+**Motifs, discords and contrast**, in four pure-CPU boxes on `afield.math.matrixprofile`: a random
+walk with a wiggle hidden three times, found by `matrixProfile(...).motifs()`; a pulse train with one
+malformed beat, found by `discords()`; four noisy channels with a gesture in two of them, found with its channels by
+`multiMatrixProfile`; and two sets of examples where only one has a step, found by
+`contrastProfile(...).platos()`. Each box makes its own signal from a fixed seed, so swap in yours.
+See [Motifs, Discords and Contrast](matrix_profile.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/matrix_profile/metadata.edn)
 
 ### ai4_chat_archive
 
@@ -517,7 +518,8 @@ see it move and then see it stop. Box 3 shows that re-running a box replaces its
 adding a second one: run it twice and the counter restarts in a new colour. It also prints its own
 frame rate, which is a different number on every machine. Box 4 is yours to drive: stop it inside
 its eight seconds, let it run out, or re-run it, and compare which cleanup lines appear. `.end { }`
-runs when the loop is cancelled, not when it finishes.
+runs when the loop is cancelled, not when it finishes. Its cleanup lines collect in a separate channel that keeps the last
+twelve across launches, so an earlier run's lines are still there to compare.
 
 Every box redraws on a clock, 30 times a second at most, rather than on every frame, because the
 loop runs thousands of frames a second and drawing each one floods the output.
@@ -715,7 +717,7 @@ cylinder and prints what each one is: welded, watertight, χ = 2. *Marching cube
 drilled sphere and a gyroid out of scalar fields and shows the surface converging on the analytic
 volume as the resolution doubles. *SDF modelling* writes a shape as an expression (primitives combined
 with union, difference and a smooth minimum) then meshes it. *Subdivide, smooth, decimate* runs one
-mesh through Loop subdivision, then Laplacian against Taubin (watch which one holds its volume), then
+mesh through Loop subdivision, then Laplacian against Taubin (the printed volumes show how much less Taubin shrinks), then
 QEM decimation to a triangle budget with the deviation that costs. *Curvature, rays, closest points,
 inside* queries a torus through the BVH and prints correctly-signed Gaussian curvature. *Bridges* turns
 `voronoi3d` cells into meshes, meshes into `FLine`s, and writes OBJ and STL. The last box needs no view
@@ -943,10 +945,9 @@ independent definition of the same thing*, written out longhand in the box. *pyr
 decimation against blur-then-throw-away, and prints the max elementwise difference so you can see the
 only disagreement is float summation order. *boxBlur* times the running-sum implementation against
 `convolveSeparable(boxKernel1D)`, which shares no code with it, and then prints the two blocks
-together, at radius 2 and at radius 24, because read together they say something the O(1)-beats-O(k)
-story gets wrong: at radius 2 the *kernel* is faster, and only past a crossover of a few pixels does
-the running sum win. A running sum is serial by nature; five taps of separable convolution vectorize
-freely. *bilateral* has no cheap reference, so it probes 3 px either side of a disc boundary at
+at radius 2 and at `comparisonRadius` (24), with how each cost grew and which was faster at radius 2
+in that run. The answer depends on the machine: a running sum is serial by nature, while five taps of
+separable convolution vectorize freely, so at small radii the kernel can win. *bilateral* has no cheap reference, so it probes 3 px either side of a disc boundary at
 `y = 210`, about one `sigmaSpace`, chosen because probing 30 px out would show a preserved step and
 prove nothing, then prints the noise left in a flat patch. The absolute milliseconds here are not the
 published benchmark (that is `:tools:imaging-bench` against OpenCV); what these boxes show is the
@@ -1535,11 +1536,7 @@ Manifold and Field's own divergence-theorem sum agree on to the last digit despi
 *Boolean* checks inclusion–exclusion, `vol(A ∪ B) + vol(A ∩ B) = vol(A) + vol(B)`, rather than
 checking that the union got bigger, and shows the frame's genus going 1 → 0 as the plaque plugs its
 window. *Levelset* marches the same depth field as an independent second construction of the same
-solid — the two agree to about one marching cell — and then puts a recorded claim back on the bench:
-eight runs each way, in three regimes, of `Solid.levelSet`. `parallel = false` returns one distinct
-answer in eight on every row, every time; `parallel = true` never does, and at one floor it returns
-the wrong component count on all eight runs rather than a noisy one. That figure is recaptured on
-every docs build and its last column reads differently each time, which is the claim itself. Every picture is `TriMesh.renderPng`
+solid — the two agree to about one marching cell. Every picture is `TriMesh.renderPng`
 — a CPU rasteriser, AWT-free through `PngEncoder` — so there is no Window and no Renderer.
 
 ![Three renders of the same pale wireframed relief plaque on a dark background: from above, where the room reads as a shallow basin with a raised near edge and raised side walls; from three-quarters, where the flat base slab shows under the relief; and edge-on along the rim, where the slab and the vertical skirt joining it to the surface are clearest](assets/chain_photo_to_solid/plaque.png)
@@ -2165,7 +2162,7 @@ importable from Python, and `fig.show()` landing in the box. The root stays Kotl
 swaps the execution of a root's **children**, never of the root; its `mainLanguage` property is what
 makes the four boxes below Python. This one has a prerequisite the
 other scenes do not — Field must have found an interpreter with JEP's native library in it *before it
-started*, or the four cells stay Kotlin and fail to compile. `public/docs/python.md` has the recipe.
+started*; without one each cell reports "Python unavailable" and how to fix it. [Python in Field](python.md) has the recipe.
 
 `DemoTranscriptExecSmokeTest` compiles the Kotlin root and **skips the four Python cells**, because
 they are not Kotlin, so CI checks one box of five. Run against a real interpreter, the cells print
@@ -2587,7 +2584,7 @@ shaders are box properties with `{{ mega.all }}` interpolated into them, so the 
 and the LOD policy are all editable with `alt/option-r` rather than buried in Kotlin. Flip
 `showResidentLevel` in the fragment shader to watch residency directly: red is the base level, green
 is a full source frame, and flying at the wall turns it green ahead of you. The library is
-`afield/four/texture/mega/`, reached from a box through `megaTextureHere { folder(…) }`.
+`afield/graphics/texture/mega/`, reached from a box through `megaTextureHere { folder(…) }`.
 
 Needs a graphics parent, so replay `graphics_renderer_launch` first, and point the `folder(…)` line
 at images of your own — which together are why this one ships no starting point.
@@ -2600,7 +2597,7 @@ to exist; the whole `GpuProbe` idiom on one screen; the pressure-projection chai
 actually runs — divergence, twelve Jacobi sweeps, project — graded cell by cell against a closed
 form written in Kotlin; and a deliberate half-dispatch, so a reader can watch the sentinel fire and
 read what it says. Every assertion prints the measured value beside the floor it is compared
-against. The library is `afield/four/util/GpuProbe.kt` and the design notes are in the repository at `dev_docs/GPU_PROBE.md`.
+against. The library is `afield/graphics/vulkan/util/GpuProbe.kt` and the design notes are in the repository at `dev_docs/GPU_PROBE.md`.
 
 Registered `COMPILE_ONLY` — box 1 opens a window — so what CI holds is that all four box bodies
 still compile against Field's real K2 import set. The numbers are asserted separately, by the
@@ -2783,10 +2780,42 @@ A 2D Edwards–Anderson spin glass, Vulkan-compute accelerated. A renderer box, 
 cosine simulated annealing, updating in-place buffers), a "measure" compute box (probes
 `vec2(spin, energy)` per site so the stats card's x-mean is the magnetization and y-mean the energy
 per spin), and a "lattice view" draw box whose fragment shader colours each cell. Demonstrates a
-`renderer → update → measure → view` publish/read chain and a two-dispatch red-black update with a
-`computeMemoryBarrier` between passes.
+`renderer → update → measure → view` publish/read chain and a red-black update in two half-sweeps,
+with `computeBarrier()` between them and `computeBarrier(graphics = true)` before the view reads the
+spins. The lattice size must be positive and even; after changing it, rebuild update, measure and
+view.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/spin_glass/metadata.edn)
+
+### lattice_boltzmann_cylinder
+
+A **lattice Boltzmann fluid** in a wind tunnel, with a cylinder in the way. Three boxes: a renderer
+that opens its own window, a fluid box that builds a `ShaderLatticeBoltzmannSystem` and publishes it as
+`lbm`, and a cylinder box beneath it whose fragment shader draws into the fluid's control texture: a
+solid disc, walls top and bottom, and stripes at the left edge that release dye and hold the wind
+steady. Within a minute or so the wake behind the cylinder starts shedding a von Kármán vortex
+street, shown as vorticity. Assign `lbm.settings.previewMode` from another box to see the dye, the
+speed or the velocity instead. The fluid box's `fragment` tab is the collision-and-streaming rule. The
+same two boxes are lessons 10 and 10b of `canonical_graphics`;
+[A fluid: lattice Boltzmann](afield_four_graphics.md#lattice-boltzmann) walks through them.
+
+![Vorticity behind a white cylinder in a dark wind tunnel: the flow divides round it and the shear layers behind it have rolled up into a street of alternating orange and blue vortices](assets/afield_four_graphics/10-lattice-boltzmann.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/lattice_boltzmann_cylinder/metadata.edn)
+
+### forest_fire
+
+A **forest fire** on the GPU, in a square window. A renderer box, a forest box that builds a
+`ShaderForestFireSystem` and publishes it as `fire`, and a fire-starter box beneath it whose fragment
+shader keeps two points lit in the fire's ignition texture, one red and one green. Burnt trees
+recover, so each point sends out a train of ragged rings, one per recovery time, and where the two
+trains meet they interleave. Red recovers faster, so its rings come more often. The forest box's
+`fragment` tab is the spreading rule. The same two boxes are lessons 11 and 11b of
+`canonical_graphics`; [A forest fire](afield_four_graphics.md#forest-fire) walks through them.
+
+![A square forest crowded with ragged concentric rings of red and green fire, the two trains interleaved where they have met](assets/afield_four_graphics/11-forest-fire.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/forest_fire/metadata.edn)
 
 ### recstl_playground
 

@@ -37,6 +37,13 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
 
     val vkDevice: VkDevice
     val supportsPushDescriptors: Boolean
+    /**
+     * The query features GPU profiling can use, enabled whenever the device has them so that
+     * `Options.profiling` can be switched on a running renderer. Performance counters cost something
+     * to enable, so they are only there when profiling was on at startup.
+     */
+    val pipelineStatisticsQueryEnabled: Boolean
+    val performanceQueryEnabled: Boolean
     val pushDescriptorMax: Int
     val supportsExtendedDynamicState3: Boolean
     val supportsExtendedDynamicState: Boolean
@@ -170,8 +177,9 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
             }
             VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice, supportedCoreFeatures)
-            val enablePipelineStatisticsQuery =
-                profilingEnabled && supportedCoreFeatures.features().pipelineStatisticsQuery()
+            val enablePipelineStatisticsQuery = supportedCoreFeatures.features().pipelineStatisticsQuery()
+            pipelineStatisticsQueryEnabled = enablePipelineStatisticsQuery
+            performanceQueryEnabled = profilingEnabled && hasPerfQuery
             if (profilingEnabled && !enablePipelineStatisticsQuery) {
                 lprint(
                     "info,graphics",
@@ -343,9 +351,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                     add(KHRCalibratedTimestamps.VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
                 }
 
+                // Host query reset whatever Options.profiling says now: profiling can be switched on later.
+                addIfSupported(EXTHostQueryReset.VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)
                 if (Options.profiling) {
                     addIfSupported(KHRPerformanceQuery.VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)
-                    addIfSupported(EXTHostQueryReset.VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME)
                     addIfSupported(EXTCalibratedTimestamps.VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
                 }
 
@@ -423,6 +432,8 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
 
                 bufferDeviceAddress(true)
                 timelineSemaphore(true)
+                // Core in 1.2; GPU profiling resets its query pools from the host (see timing.kt).
+                hostQueryReset(true)
                 vulkanMemoryModel(supportsCooperativeVector)
 
                 // Descriptor indexing (promoted to 1.2) — bindless-friendly bits
@@ -615,7 +626,9 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, perf.address()); tail = perf.address()
             }
 
-            if (profilingEnabled && hasHostQueryReset && (nrPlan==null || useSplitVulkan12Features)) {
+            // Only the split chain needs the extension struct: alongside VkPhysicalDeviceVulkan12Features
+            // it is invalid (VUID-VkDeviceCreateInfo-pNext-02830), and that struct carries the bit itself.
+            if (hasHostQueryReset && useSplitVulkan12Features) {
                 val hostReset = VkPhysicalDeviceHostQueryResetFeatures.calloc(stack)
                     .sType(EXTHostQueryReset.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT)
                     .hostQueryReset(true)

@@ -7,7 +7,7 @@ require an enabled `VK_KHR_ray_tracing_pipeline`; Field checks device features, 
 of the operating system or GPU brand. The [path tracer](path_tracing.md) also has a compute
 BVH backend for devices without hardware ray tracing.
 
-??? aside "Capture and test provenance"
+??? aside "Agents: capture and test provenance"
 
     Captured on 25 September 2026, NVIDIA driver 610.43.02. `RayTracingGpuAudit`
     exercises these four captures with GPU pixel assertions, alongside the path tracer's two

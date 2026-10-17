@@ -209,10 +209,10 @@ def source_blocks() -> dict[str, str]:
         assert finals[name] == revision(name, heads[name].split("-")[0]), f"{name}: the box does not hold HEAD"
     ink_before, ink_after = revision("ink", "r4"), revision("ink", "r5")
     tiles_before, tiles_after = revision("tiles", "r3"), revision("tiles", "r4")
-    aurora_before, aurora_after = revision("aurora", "r6"), revision("aurora", "r7")
-    palette = ("# Alternating", "<q polar y")
-    # The three time rates the half-speed edit changed: two in the hem, one in the folds.
-    rates = lambda source: excerpt(source, ": aurora-hem", ";") + "\n\n" + excerpt(source, "# Uneven gathers", "<fold 82")
+    aurora_before, aurora_after = revision("aurora", "r5"), revision("aurora", "r6")
+    palette = ("# Cobalt stars", "\n<color\n")
+    # The five time rates the half-speed edit changed: two in the curtain's edge, three in the folds.
+    rates = lambda source: excerpt(source, "# The curtain's lower edge", "# Emerald lower")
     example = TOOL_EXAMPLE.read_text().split("// example:start\n", 1)[1].split("// example:end", 1)[0]
     return {
         "starter": fence((DEMOS / STARTER / PROGRAM_FILE).read_text()),

@@ -108,7 +108,34 @@ Each neighbour card shows where the window comes from, a bar for each of the fiv
 player that crossfades from the query into the neighbour. The query and neighbour players both start
 at zero, so hovering, zooming, clicking and playback stay aligned between the two recordings. Each
 card also lists the window's timestamps in its source and the ids of the windows before and after
-it. Placing a neighbour on a timeline is not supported.
+it.
+
+## Place a neighbour as a box
+
+Show the microscope with `showCorpusMicroscope` instead of `display`, and every neighbour card gets a
+**place** button. Pressing it makes a new box beside this one, named after the recording and the
+window, whose code plays that window. It is ordinary box code: edit the times to move or stretch the
+window, then run it.
+
+```diffstatic {data-lang=kotlin}
+showCorpusMicroscope(preview, canonical)
+```
+
+`placeCorpusNeighbour(neighbour)` does the same from code. This box places the first neighbour and
+shows the code the new box was given:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_corpus_microscope/placed.png" capture="box" open-outputs="true" wait="2" padding="16" timeout="120" w="900" h="260" embed=true name="corpus-placed" alt="The code of a box placed from the corpus microscope: a comment naming Final Out at Candlestick Park from 21.00 to 27.00 seconds, a corpusClip call for that window, and audio(clip.sampler())"}
+:::static
+import java.io.File
+val folder = File("public/docs/assets/audio_ai_corpus_microscope")
+val preview = FieldAudioClient.json.decodeFromString<CorpusPreview>(File(folder, "corpus.json").readText())
+:::fold show the placed box's name and code
+val placed = placeCorpusNeighbour(preview.neighbours.first())
+markdown("placed", "**${placed.name}**\n\n```kotlin\n${placed.properties["code"]}```")
+```
+
+`corpusClip` fetches the recording from the Field audio service once, keeps it under
+`~/.afield/cache/field-audio`, and cuts out the window; `clip.sampler()` plays it from the start.
 
 See also: the [EnCodec round trip](audio_ai_codec.md) for the token representation,
 and [Short-time spectral spaces](audio_ai_spectral_embeddings.md).

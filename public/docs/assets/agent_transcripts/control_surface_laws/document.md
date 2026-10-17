@@ -23,17 +23,19 @@ posts nothing when you press it, and it is the one control here that reads rathe
 writes.
 
 ```edn [field-box id="control_surface_meter" role="properties"]
-{"id" "control_surface_meter" "index" 0 "name" "a level you can see" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a level you can see" "_tombstone" false "frame" #afield/rect [80.0 520.0 320.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "control_surface_meter_code_.kt" "lines" 30 "characters" 1399 "sha256" "0bc8dee6b33353d050e74395b4b7f815ebcdbadc71ab9ac3c2791f468864c5ba"}]}
+{"id" "control_surface_meter" "index" 0 "name" "a level you can see" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a level you can see" "_tombstone" false "frame" #afield/rect [80.0 520.0 320.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "control_surface_meter_code_.kt" "lines" 32 "characters" 1385 "sha256" "4accb0c4da5ef517213525672c50f834fcdac0b4a4b1e9fa0e27a0c85a76e47a"}]}
 ```
 
 ```kotlin [field-property box="control_surface_meter" name="code" path="control_surface_meter_code_.kt"]
-// Two meters, both fed by a `source` lambda. Nothing here loops: the box says where the
-// number comes from, and a single shared daemon thread samples it at 30 Hz. The sampler is
-// retired when this box runs again without declaring the meter, so it does not outlive it.
-//
-// A meter is an output. It is not cached across a rerun (there is nothing to preserve), it
-// posts nothing when you press it, and it is the one control here that reads rather than
-// writes.
+/*
+Two meters, both fed by a `source` lambda. Nothing here loops: the box says where the
+number comes from, and a single shared daemon thread samples it at 30 Hz. The sampler is
+retired when this box runs again without declaring the meter, so it does not outlive it.
+
+A meter is an output. It is not cached across a rerun (there is nothing to preserve), it
+posts nothing when you press it, and it is the one control here that reads rather than
+writes.
+*/
 val start = System.nanoTime()
 fun envelope(): Double {
     val seconds = (System.nanoTime() - start) / 1.0e9
@@ -49,10 +51,10 @@ controlGroup("levels") {
         min = 0.001,
         max = 1.0,
         law = ControlLaw.LOGARITHMIC,
-        source = { envelope().coerceAtLeast(0.001) }
+        source = { envelope().coerceAtLeast(0.001) },
     )
     // And a slider, so you can see the meter is not one: this posts, the meters do not.
-    slider("trim", min = -24.0, max = 24.0, step = 0.1, initialValue = 0.0) { }
+    slider("trim", min = -24.0, max = 24.0, step = 0.1, initialValue = 0.0) {}
 }
 
 println("two meters, sampled at 30 Hz from a source lambda. Nothing in this box loops.")
@@ -67,8 +69,8 @@ println("the remote tablet polls at 450 ms, so there they are indicators rather 
 
 From `code`
 
-Four sliders over the same four decades, one per law. Click this box, open the output
-disclosure, and drag them.
+Four sliders demonstrate logarithmic, linear, exponential and bipolar laws.
+The cutoff pair spans three decades, 20–20000 Hz. Open the output and drag them.
 
 The point is the pair `cutoff` / `cutoff, linear`: identical ranges, and 1 kHz sits at 57%
 of the log track against 4.9% of the linear one. On the linear slider every note below A2
@@ -76,17 +78,19 @@ is inside the first pixel of travel, which is not a resolution problem — no nu
 pixels fixes a 200 Hz jump per pixel — it is the wrong shape.
 
 ```edn [field-box id="control_surface_laws" role="properties"]
-{"id" "control_surface_laws" "index" 1 "name" "a law for the travel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a law for the travel" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "control_surface_laws_code_.kt" "lines" 48 "characters" 2239 "sha256" "3ef3ab1ae5cf7b0544c401c810c1c786972f0e962c7aa3d5448d3d19419ae1f5"}]}
+{"id" "control_surface_laws" "index" 1 "name" "a law for the travel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a law for the travel" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "control_surface_laws_code_.kt" "lines" 53 "characters" 2318 "sha256" "3e85408e8f8c33aff076cf3b23ee955827912dc8d43093eddacd840d33575483"}]}
 ```
 
 ```kotlin [field-property box="control_surface_laws" name="code" path="control_surface_laws_code_.kt"]
-// Four sliders over the same four decades, one per law. Click this box, open the output
-// disclosure, and drag them.
-//
-// The point is the pair `cutoff` / `cutoff, linear`: identical ranges, and 1 kHz sits at 57%
-// of the log track against 4.9% of the linear one. On the linear slider every note below A2
-// is inside the first pixel of travel, which is not a resolution problem — no number of
-// pixels fixes a 200 Hz jump per pixel — it is the wrong shape.
+/*
+Four sliders demonstrate logarithmic, linear, exponential and bipolar laws.
+The cutoff pair spans three decades, 20–20000 Hz. Open the output and drag them.
+
+The point is the pair `cutoff` / `cutoff, linear`: identical ranges, and 1 kHz sits at 57%
+of the log track against 4.9% of the linear one. On the linear slider every note below A2
+is inside the first pixel of travel, which is not a resolution problem — no number of
+pixels fixes a 200 Hz jump per pixel — it is the wrong shape.
+*/
 var cutoff = 1000.0
 var attack = 0.05
 var pan = 0.0
@@ -115,18 +119,21 @@ controlGroup("laws") {
 // Where each law puts a handle, in percent of the track. The same numbers the browser uses.
 val log = ControlLawSpec(ControlLaw.LOGARITHMIC, 20.0, 20000.0)
 val linear = ControlLawSpec(ControlLaw.LINEAR, 20.0, 20000.0)
-listOf(20.0, 100.0, 440.0, 1000.0, 5000.0, 20000.0).forEach { hz ->
+[20.0, 100.0, 440.0, 1000.0, 5000.0, 20000.0].forEach { hz ->
     println(
-        "%8.1f Hz   log %5.1f%%   linear %5.1f%%".format(
-            hz, log.normalizedFor(hz) * 100, linear.normalizedFor(hz) * 100
-        )
+        "%8.1f Hz   log %5.1f%%   linear %5.1f%%"
+            .format(
+                hz,
+                log.normalizedFor(hz) * 100,
+                linear.normalizedFor(hz) * 100,
+            ),
     )
 }
 println()
 println("a LOGARITHMIC law over a range that starts at zero is refused, not repaired:")
 println(
-    runCatching { ControlLawSpec(ControlLaw.LOGARITHMIC, 0.0, 20000.0).validate("cutoff") }
-        .exceptionOrNull()?.message ?: "(nothing was thrown — that would be the bug)"
+    runCatching { ControlLawSpec(ControlLaw.LOGARITHMIC, 0.0, 20000.0).validate("cutoff") }.exceptionOrNull()?.message
+        ?: "(nothing was thrown — that would be the bug)",
 )
 ```
 
@@ -151,21 +158,23 @@ remembered press would re-fire on every rerun, so editing one character of a DSP
 retrigger the note.
 
 ```edn [field-box id="control_surface_button" role="properties"]
-{"id" "control_surface_button" "index" 2 "name" "hold, don't latch" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "hold, don't latch" "_tombstone" false "frame" #afield/rect [80.0 300.0 320.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "control_surface_button_code_.kt" "lines" 24 "characters" 1146 "sha256" "c0fea6319e1166b7cd202e2d14f2d5cfd55e99aac43d421749529b774ebbd191"}]}
+{"id" "control_surface_button" "index" 2 "name" "hold, don't latch" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "hold, don't latch" "_tombstone" false "frame" #afield/rect [80.0 300.0 320.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "control_surface_button_code_.kt" "lines" 26 "characters" 1121 "sha256" "9f3c4470b8a117c278a1295de51a0ba3a43d6d6e73ebf6bce5f1523624d01f8d"}]}
 ```
 
 ```kotlin [field-property box="control_surface_button" name="code" path="control_surface_button_code_.kt"]
-// A momentary button beside a checkbox, so the difference is visible rather than described.
-//
-// Try this: press the button, drag the pointer well off it, and let go. It still releases.
-// The release is listened for on the *window* — `pointerup`, `pointercancel`, `touchend`,
-// `touchcancel` and `blur` — because a gate that never closes is the defect this control
-// class is famous for. Cmd-tab away mid-press and it releases then too.
-//
-// Also: rerun this box while holding nothing. The checkbox keeps its state (that is the
-// value cache, and it is what live-coding wants). The button does not, on purpose — a
-// remembered press would re-fire on every rerun, so editing one character of a DSP would
-// retrigger the note.
+/*
+A momentary button beside a checkbox, so the difference is visible rather than described.
+
+Try this: press the button, drag the pointer well off it, and let go. It still releases.
+The release is listened for on the *window* — `pointerup`, `pointercancel`, `touchend`,
+`touchcancel` and `blur` — because a gate that never closes is the defect this control
+class is famous for. Cmd-tab away mid-press and it releases then too.
+
+Also: rerun this box while holding nothing. The checkbox keeps its state (that is the
+value cache, and it is what live-coding wants). The button does not, on purpose — a
+remembered press would re-fire on every rerun, so editing one character of a DSP would
+retrigger the note.
+*/
 val log = mutableListOf<String>()
 
 controlGroup("gesture") {

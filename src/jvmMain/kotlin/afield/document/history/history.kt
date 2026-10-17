@@ -953,7 +953,7 @@ object HistoryManager {
         snapshot: VersionSnapshot,
         savingContext: SavingContext
     ): Map<String, HistoryBoxState> {
-        val patterns = Box.ioPersistentProperties.map { it.toRegex() }
+        val patterns = Box.persistentPropertiesFor(snapshot.directory).map { it.toRegex() }
         fun isPersistent(name: String) = patterns.any { name.matches(it) }
 
         return snapshot.transfers
@@ -1313,7 +1313,7 @@ object HistoryManager {
         sessionInfo: SessionInformation,
         preferInlineFiles: Boolean
     ) {
-        val patterns = Box.ioPersistentProperties.map { it.toRegex() }
+        val patterns = Box.persistentPropertiesFor(documentPath).map { it.toRegex() }
         fun isPersistent(name: String) = patterns.any { name.matches(it) }
 
         val sourcePersistentNames = source.properties.keys.filter(::isPersistent).toSet()
@@ -1352,7 +1352,7 @@ object HistoryManager {
         selectedProperties: Set<String>?,
         includeTopology: Boolean
     ): Int {
-        val patterns = Box.ioPersistentProperties.map { it.toRegex() }
+        val patterns = Box.persistentPropertiesFor(documentPath).map { it.toRegex() }
         fun isPersistent(name: String) = patterns.any { name.matches(it) }
         fun canTouch(name: String) =
             isPersistent(name) &&
@@ -2488,7 +2488,7 @@ private fun historyVersionDtos(documentPath: String, indexes: Set<Int>? = null):
         .filter { indexes == null || it.index in indexes }
         .map { v ->
             // A version list read from disk leaves box ids to be filled in lazily, by the history
-            // page's stats stream. The History Lens asks for a few versions by index and never
+            // page's stats stream. Code History asks for a few versions by index and never
             // runs that stream, so without this its header read "0 boxes" for every version.
             val boxIds = if (indexes != null && v.boxIds.isEmpty()) {
                 runCatching { HistoryManager.loadVersionDiffSummary(documentPath, v).boxIds }.getOrDefault(v.boxIds)

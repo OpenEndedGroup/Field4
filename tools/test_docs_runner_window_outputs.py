@@ -57,5 +57,16 @@ class WindowOutputsTests(unittest.TestCase):
         self.assertIn("--open-outputs", parts)
 
 
+class NativeWindowVideoTests(unittest.TestCase):
+    """No recorder records the native window, so asking for one is an error, not a browser video."""
+
+    def test_native_window_with_video_is_refused(self):
+        with self.assertRaisesRegex(RuntimeError, "cannot take video="):
+            _options('capture="native-window" video="assets/x.mp4"')
+
+    def test_native_window_screenshot_still_parses(self):
+        self.assertEqual(_options('capture="native-window" screenshot="assets/x.png"').capture, "native-window")
+
+
 if __name__ == "__main__":
     unittest.main()

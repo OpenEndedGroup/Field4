@@ -306,7 +306,11 @@ exactly what a fresh `keybindings.yaml` says.
 
 <!-- BEGIN generated: default bindings -->
 
-**133 rebindable commands**, 55 of them with a shortcut out of the box. Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.
+**133 rebindable commands**, 56 of them with a shortcut out of the box.
+
+??? aside "Agents: regenerating this table"
+
+    Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.
 
 ### Global
 
@@ -426,7 +430,7 @@ exactly what a fresh `keybindings.yaml` says.
 | `execute-all` | `alt+0` | editor | Run Box |
 | `execute-fragment` | `alt+enter` | editor | Run Line / Selection |
 | `forward-next-property` | `cmd+.` | editor | Next Property |
-| `history-lens-selection` | *(none)* | editor | Show History Lens for Line / Selection |
+| `history-lens-selection` | `alt+shift+h` | editor | Show Code History for Line / Selection |
 | `launch-all` | `alt+up` | editor | Launch Box |
 | `launch-fragment` | `alt+1` | editor | Launch Line / Selection |
 | `paired-shader-definition` | `f12` | editor | Go to Paired Shader Definition |

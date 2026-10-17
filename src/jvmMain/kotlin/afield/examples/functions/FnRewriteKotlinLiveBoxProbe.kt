@@ -20,7 +20,10 @@ timeoutSec: 120
 expect:
   exitCode: 0
   stdoutContains:
-    - "PROBE completed=true"
+    # The hydration is refused before the body can run a second time: one entry, and the error.
+    - "PROBE completed=false entries=1"
+    - "whose code is running now"
+  stdoutNotContains:
     - "whose body it therefore re-runs"
 */
 /**
@@ -275,7 +278,11 @@ object FnRewriteKotlinLiveBoxProbe {
         // Non-zero unless the rewrite either completed cleanly or refused legibly. The runner thread is
         // a daemon and its stack may be hundreds of frames deep and wedged, so exit explicitly rather
         // than trusting a return from main to bring the JVM down.
-        exitProcess(if (completed && (mode != "failurecache" || negativeCacheVerified)) 0 else 1)
+        // Refused legibly: a self-box hydration while the body runs is an error, given before a second run.
+        val refused = entered == 1 && run != null &&
+            (run.errors.any { "whose code is running now" in it.toString() } || "whose code is running now" in run.message)
+        println("PROBE refusedDuringBody=$refused")
+        exitProcess(if ((completed || refused) && (mode != "failurecache" || negativeCacheVerified)) 0 else 1)
     }
 
     /**
@@ -429,7 +436,10 @@ timeoutSec: 120
 expect:
   exitCode: 0
   stdoutContains:
-    - "PROBE completed=true"
+    # The hydration is refused before the body can run a second time: one entry, and the error.
+    - "PROBE completed=false entries=1"
+    - "whose code is running now"
+  stdoutNotContains:
     - "whose body it therefore re-runs"
 */
 /**

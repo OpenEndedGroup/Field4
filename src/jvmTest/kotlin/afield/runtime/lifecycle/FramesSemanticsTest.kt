@@ -672,6 +672,41 @@ class FramesSemanticsTest {
     }
 
     /**
+     * Stopping `a + b` runs up to three end phases through one launcher's hooks. The launcher counts
+     * them: it reports "ending" once, and restores the stop fence only when the *last* has finished,
+     * not when the first does.
+     */
+    @Test
+    fun plusKeepsTheEndFenceUntilTheLastEndPhaseFinishes() {
+        val box = Box("plus-end-fence")
+        var rightEnded = false
+        var leftEnded = false
+        val runloop = Runloop.runLoop.main
+        val combined = eachFrame { }.end { leftEnded = true } +
+            eachFrame { }.end { repeat(8) { frame() }; rightEnded = true }
+
+        ReturnValueRegistry.launch(box, combined, "default") { _, _, _ -> }
+        repeat(4) { runloop.frame() }
+        val beforeStop = combined.shouldCancelAtEnd
+        KotlinExecution().stop(box)
+        var duringEnd: (() -> Boolean)? = null
+        var sawLeftDoneWhileRightRan = false
+        repeat(30) {
+            runloop.frame()
+            if (duringEnd == null && combined.shouldCancelAtEnd !== beforeStop) duringEnd = combined.shouldCancelAtEnd
+            if (leftEnded && !rightEnded) {
+                sawLeftDoneWhileRightRan = true
+                assertTrue(combined.shouldCancelAtEnd === duringEnd, "the end fence must stay up while an end phase runs")
+            }
+        }
+        assertTrue(sawLeftDoneWhileRightRan, "the left end block should finish first")
+        assertTrue(rightEnded, "the right end block runs to completion")
+        assertTrue(combined.shouldCancelAtEnd !== duringEnd, "and is taken down once all have ended")
+        assertEquals(null, box.currentRunningStates["default"])
+        box.stopTrackedJobs()
+    }
+
+    /**
      * **`frame()`'s `Boolean` is not a stop signal — it is never `false`.**
      *
      * Every route that stops a frame body cancels the job *before* the `yield()` that `frame()` is
@@ -803,13 +838,6 @@ class FramesSemanticsTest {
         var v = mapped.start()
         while (v != null) { out += v; v = mapped.next(Unit) }
         assertEquals(listOf("n1", "n2"), out)
-    }
-
-    /** `EndedException` is declared in `Phased.kt`; nothing in the tree throws or catches it. */
-    @Test
-    fun endedExceptionIsADeclaredButUnusedThrowable() {
-        val e: Throwable = EndedException()
-        assertEquals("EndedException", e.javaClass.simpleName)
     }
 
     @Test

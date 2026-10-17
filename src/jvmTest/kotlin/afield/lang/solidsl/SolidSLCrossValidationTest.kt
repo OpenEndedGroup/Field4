@@ -609,7 +609,7 @@ class SolidSLCrossValidationTest {
         val raw = expr.bounds()!!
         val edge = maxOf(raw.size.x, raw.size.y, raw.size.z) * fraction
         val field = expr.toLevelSetField()
-        return afield.geometry.solid.manifold.Solid.levelSet(raw.expandedBy(2.0 * edge), edge, parallel = true) { x, y, z ->
+        return afield.geometry.solid.manifold.Solid.levelSet(raw.expandedBy(2.0 * edge), edge) { x, y, z ->
             field.at(x, y, z)
         }.use { it.triangleCount }
     }

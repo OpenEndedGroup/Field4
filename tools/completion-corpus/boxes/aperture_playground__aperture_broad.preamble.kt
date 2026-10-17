@@ -9,20 +9,20 @@ import afield.graphics.render.*
 import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
 import afield.graphics.vulkan.targets.RenderToTexture
-var Box.paintBroad by Inheritance<RenderToTexture>() /**/
+var Box.paintBroad by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /**/
 val Once.paintBroad by Onceing<RenderToTexture>() /**/
 val Why.paintBroad by Whying() /**/
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*graphics-pc-structure:aperture*/ var Structure.aperture by Structure.FromStructure<Any>()
 /*graphics-pc-binding:aperture*/ var Mesh.aperture by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
 /*graphics-pc-binding-group:aperture*/ var MeshGroup.aperture by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
-var Box.paintQuarter by Inheritance<RenderToTexture>() /*from:aperture_quarter*/ /**/
+var Box.paintQuarter by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /*from:aperture_quarter*/ /**/
 val Once.paintQuarter by Onceing<RenderToTexture>() /*from:aperture_quarter*/ /**/
 val Why.paintQuarter by Whying() /*from:aperture_quarter*/ /**/
-var Box.paintHalf by Inheritance<RenderToTexture>() /*from:aperture_half*/ /**/
+var Box.paintHalf by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /*from:aperture_half*/ /**/
 val Once.paintHalf by Onceing<RenderToTexture>() /*from:aperture_half*/ /**/
 val Why.paintHalf by Whying() /*from:aperture_half*/ /**/
-var Box.paintSource by Inheritance<RenderToTexture>() /*from:aperture_source*/ /**/
+var Box.paintSource by ReactiveInheritance<RenderToTexture>(Reactive.DOWN) /*from:aperture_source*/ /**/
 val Once.paintSource by Onceing<RenderToTexture>() /*from:aperture_source*/ /**/
 val Why.paintSource by Whying() /*from:aperture_source*/ /**/
 var Box.apertureControl by Inheritance<afield.math.linalg.Vec4>() /*from:aperture_source*/ /**/

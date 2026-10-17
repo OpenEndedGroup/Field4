@@ -958,8 +958,7 @@ private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink 
 
     /** First pinned tag (in display order) that appears as a token in [channel], or null. */
     private fun matchedPin(channel: String): String? {
-        val tokens = channel.split(',').mapTo(HashSet(), String::trim)
-        return lock.withLock { pinnedTags.keys.firstOrNull { it in tokens } }
+        return lock.withLock { pinnedTags.keys.firstOrNull { afield.ai.diagnostics.ChannelMatch.matches(channel, it) } }
     }
 
     private fun levelOf(channel: String): String? {

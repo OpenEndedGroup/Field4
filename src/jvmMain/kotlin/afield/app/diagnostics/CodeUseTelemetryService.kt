@@ -721,7 +721,7 @@ object CodeUseTelemetryService {
 
     private fun writerStatusError(): String = if (enabled) writerBusyError else disabledReason
 
-    private fun disabledStatusMessage(): String = "Code-use telemetry is disabled; the writer stopped on: $disabledReason"
+    private fun disabledStatusMessage(): String = "Local code-use history is disabled; the writer stopped on: $disabledReason"
 
     private fun writerBusyMessage(): String? {
         val error = writerBusyError.takeIf { it.isNotEmpty() } ?: return null
@@ -2133,7 +2133,7 @@ object CodeUseTelemetryService {
             enabled = false
             summaryCache = null
             if (disabledMessage.compareAndSet(0, 1)) {
-                lprintln("warning,code-use", "code-use telemetry disabled: $disabledReason")
+                lprintln("warning,code-use", "local code-use history disabled: $disabledReason")
             }
         }
     }

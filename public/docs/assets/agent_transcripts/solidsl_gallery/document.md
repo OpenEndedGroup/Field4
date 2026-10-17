@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="refusals" index="0" -->
 
 ```edn [field-box id="refusals" role="properties"]
-{"id" "refusals" "index" 0 "name" "Solid notation — refusals, and the hybrid build" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — refusals, and the hybrid build" "_tombstone" false "frame" #afield/rect [80.0 280.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 96 "characters" 4319 "sha256" "21bef1158f5f633c4b5928d91ff49f43a88dba193e59ffef060f87d6ee20ff27"}]}
+{"id" "refusals" "index" 0 "name" "Solid notation — refusals, and the hybrid build" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — refusals, and the hybrid build" "_tombstone" false "frame" #afield/rect [80.0 280.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 96 "characters" 4302 "sha256" "028283f5773f8523cbc8d634c46d508e10c32a1dbe5fff426738f2463eadf6c4"}]}
 ```
 
 ```kotlin [field-property box="refusals" name="code" path="refusals_code_.kt"]
@@ -86,7 +86,7 @@ println()
 // What the naive version would have cost: one level set over the whole part, same edge length.
 val raw = part.bounds()!!
 val edge = maxOf(raw.size.x, raw.size.y, raw.size.z) / 90.0
-val naive = afield.geometry.solid.manifold.Solid.levelSet(raw.expandedBy(2.0 * edge), edge, parallel = true) { x, y, z ->
+val naive = afield.geometry.solid.manifold.Solid.levelSet(raw.expandedBy(2.0 * edge), edge) { x, y, z ->
     part.toLevelSetField().at(x, y, z)
 }
 println("hybrid  ${build.solid.triangleCount} triangles")

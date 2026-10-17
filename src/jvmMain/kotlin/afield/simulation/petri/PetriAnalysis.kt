@@ -34,10 +34,9 @@ import afield.audio.synth.PatQ
  *   change. A net whose behaviour turns on an inhibitor arc has invariants that describe a net it is
  *   not. [usesTestArcs] is how you find out, and [report] says so itself.
  *
- * - Recurrence is detected on [PetriMarking.signature], which compares colours by `toString`. Two
- *   different patterns both render as `PatPattern(...)`, so a net that swaps one rhythm for another
- *   looks, to the loop detector, like a net that did nothing. That is usually what you want from a
- *   *structural* period and occasionally not what you want at all.
+ * - Recurrence is detected on [PetriMarking.signature], which compares colours by equality: a net
+ *   that swaps one pattern for another has changed, and one that brings the same pattern object
+ *   round again has recurred. A net that makes a *new* colour on every firing never recurs.
  *
  * - Everything here is bounded. A net with an unbounded place has infinitely many markings and no
  *   loop to find; the answer is null rather than a hang.

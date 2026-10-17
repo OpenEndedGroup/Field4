@@ -158,8 +158,8 @@ function drawLanes(){
 function renderDetail(){
     detail.replaceChildren();const lane=capture?.lanes.find(l=>l.id===(selected?.lane??focusLane));
     if(!lane){detail.append(el("h3","","Inspect a coroutine"),el("p","","Select a lane, then zoom and click an execution span. The bright lower strip is CPU time; the full bar is elapsed execution time."));if(capture?.captureId&&!spans.length)detail.append(el("p","","No box-owned continuations observed. Launch a box with loop { … } or frames { … }, then record again."));return;}
-    detail.append(el("h3","",lane.boxName||lane.boxId),el("p","",`${lane.kind==="scope"?"Scope":"Coroutine"} ${lane.label||"#"+lane.id} · ${lane.strand} · ${lane.state}`),el("p","",`Source revision ${lane.revision}`));
-    detail.append(button("Open current box code",()=>{window.navigateToBoxProperty?.(lane.boxId,"code",null,null);compact();},"profile-open-source"));
+    detail.append(el("h3","",lane.boxName||lane.boxId),el("p","",`${lane.kind==="scope"?"Scope":"Coroutine"} ${lane.label||"#"+lane.id} · ${lane.strand} · ${lane.state}`),el("p","",`Source revision ${lane.revision} of ${lane.property||"code"}${lane.currentRevision&&lane.currentRevision!==lane.revision?" · edited since this capture":""}`));
+    detail.append(button(`Open current ${lane.property||"code"}`,()=>{window.navigateToBoxProperty?.(lane.boxId,lane.property||"code",null,null);compact();},"profile-open-source"));
     if(selected){const s=selected;detail.append(el("p","",`Runloop tick ${s.frame} · ${fmt(s.startMs)} ms`),el("p","",`Execution ${fmt(s.wallMs)} ms`),el("p","",`CPU ${s.cpuMs<0?"unavailable":fmt(s.cpuMs)+" ms"}`),el("p","",`Allocated ${bytes(s.allocatedBytes)} · self ${bytes(s.selfAllocatedBytes??s.allocatedBytes)}`));}
     const records=selectedSpans(spans,brush||windowRange(),lane.id).sort((a,b)=>b.wallMs-a.wallMs).slice(0,6);
     detail.append(el("h4","","Longest inclusive spans in selection"));records.forEach(s=>detail.append(button(`${fmt(s.startMs)} ms → ${fmt(s.wallMs)} ms`,()=>{selected=s;const pad=Math.max(1,s.wallMs);view=[Math.max(0,s.startMs-pad),s.startMs+s.wallMs+pad];render();})));

@@ -45,8 +45,8 @@ The rules are conservative, because a wrongly dropped import is a compile error:
 - An explicit import `a.b.C` (or `a.b.C as D`) is needed when its name appears as an identifier in
   the code, outside comments and strings. Operator-convention names (`plusAssign`, `getValue`,
   `invoke`, ...) are always kept: code uses them without writing them.
-- It is redundant when the intro has the same line, or `a.b.*` and no other intro package offers a
-  `C` it would be disambiguating against. An aliased import is never redundant.
+- It is redundant when the intro has the same line, or `a.b.*` and no other visible package
+  (including Kotlin/JVM defaults) offers a competing `C`. An aliased import is never redundant.
 - A star import `a.b.*` is redundant when the intro has the same star. It is unused only on K2
   evidence: [resolution] resolved every reference in the box and none of them lives in `a.b`.
   Without that evidence a star import is kept.
@@ -142,10 +142,29 @@ private fun starVerdict(imp: BoxImport, resolution: K2ImportEvidence?): ImportFi
     return ImportFinding(imp, ImportVerdict.UNUSED, "K2 resolved every name and none is in ${imp.pkg}")
 }
 
-/** Whether removing [imp] would leave its name to two or more intro star packages to fight over. */
+/** Whether removing [imp] exposes a competing Field or Kotlin/JVM default import. */
 private fun disambiguates(imp: BoxImport, introStars: Set<String>, otherCandidates: (String) -> Collection<String>): Boolean {
     val name = imp.name ?: return false
-    return otherCandidates(name).any { fqn -> fqn != imp.path && fqn.substringBeforeLast('.', "") in introStars }
+    // Kotlin/JVM default imports are visible alongside the Field intro. In particular,
+    // dropping Vulkan's Target imports silently selects kotlin.annotation.Target.
+    val visibleStars = introStars + setOf(
+        "kotlin", "kotlin.annotation", "kotlin.collections", "kotlin.comparisons", "kotlin.io",
+        "kotlin.ranges", "kotlin.sequences", "kotlin.text", "kotlin.jvm", "java.lang",
+    )
+    return otherCandidates(name).any { fqn -> fqn != imp.path && fqn.substringBeforeLast('.', "") in visibleStars }
+}
+
+/**
+ * The type a box already sees under the simple name [name] through [introText]'s imports, as a
+ * fully qualified name, or null when there is none: what a class generated with that name (a shader
+ * block's, say) would hide.
+ */
+fun introProvidedType(name: String, introText: String = intro): String? {
+    val imports = boxImports(introText)
+    imports.firstOrNull { !it.star && it.name == name }?.let { return it.path }
+    val stars = imports.filter { it.star }.map { it.pkg }.toSet()
+    // A star import brings in a package's top-level classes, not the classes nested in them.
+    return classpathCandidates(name).firstOrNull { '$' !in it && it.substringBeforeLast('.', "") in stars }
 }
 
 private fun classpathCandidates(name: String): Collection<String> =
@@ -212,6 +231,10 @@ fun k2ImportEvidence(code: String, timeoutMs: Long = 10_000L): K2ImportEvidence?
  * when the code-use sidecar answers, by name alone when it does not), then format with ktfmt.
  */
 fun formatBoxKotlin(code: String, useK2: Boolean = true): String {
+    // Remote heads compile without the JVM box intro; its implicit imports cannot justify removal.
+    if (runCatching { afield.lang.remotejs.KotlinJsHeadProfiles.resolve(code).explicit }.getOrDefault(false)) {
+        return formatKotlinCode(code)
+    }
     val evidence = if (useK2) k2ImportEvidence(code) else null
     return formatKotlinCode(formatBoxImports(code, analyzeBoxImports(code, resolution = evidence)))
 }

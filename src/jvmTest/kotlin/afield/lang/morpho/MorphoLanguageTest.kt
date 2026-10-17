@@ -16,6 +16,44 @@ import kotlin.test.assertTrue
  */
 class MorphoLanguageTest {
 
+    // ---------------------------------------------------------------- line notes
+
+    @Test
+    fun `a run's line notes say what each cell became`() {
+        val code = """
+            # main ripple_adder(8, 8, 1)
+
+            Xor3 = LUT(3, 0b1001_0110)
+            Maj3 = LUT(3, 0b1110_1000)
+
+            @morpho
+            def full_adder(a, b, c_in):
+                sum = Xor3(a, b, c_in)
+                c_out = Maj3(a, b, c_in)
+                return sum, c_out
+
+            @morpho(fallback=full_adder)
+            def ripple_adder(a, b, c):
+                a0, a1 = SPLIT(a)
+                b0, b1 = SPLIT(b)
+                s0, c_mid = ripple_adder(a0, b0, c)
+                s1, c_out = ripple_adder(a1, b1, c_mid)
+                sum = CAT(s0, s1)
+                return sum, c_out
+        """.trimIndent()
+        val directive = assertNotNull(MorphoExecution.parseDirective(code))
+        MorphoCircuit.compile(source = code, design = directive.design, signature = directive.signature).growFully().use { circuit ->
+            val notes = MorphoExecution(afield.document.graph.Box("morpho-notes")).lineNotes(code, directive, circuit)
+            fun at(line: Int) = notes.single { line in it.firstLine..it.lastLine }.caption
+            assertTrue(at(1).startsWith("ripple_adder(8, 8, 1): 16 gates"), at(1))
+            assertEquals("Xor3: 8 gates in this circuit", at(3))
+            // A def's note covers its decorator and body, so the caret anywhere in the cell finds it.
+            assertEquals(at(6), at(9))
+            assertTrue(at(7).startsWith("full_adder: expanded 8 times ([1,1,1] ×8), 16 gates beneath it"), at(7))
+            assertTrue(at(14).startsWith("ripple_adder: expanded 7 times") && "16 gates beneath it" in at(14), at(14))
+        }
+    }
+
     // ---------------------------------------------------------------- the directive
 
     @Test

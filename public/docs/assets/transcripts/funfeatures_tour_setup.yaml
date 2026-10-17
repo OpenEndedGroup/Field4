@@ -10,7 +10,7 @@ operations:
       frame: { x: 40, y: 40, w: 150, h: 56 }
       properties:
         code: |
-          // a ring of points
+          // Evenly spaced angles in degrees.
           val count = 12
           val ring = (0 until count).map { it * 360.0 / count }
           println(ring.take(3))

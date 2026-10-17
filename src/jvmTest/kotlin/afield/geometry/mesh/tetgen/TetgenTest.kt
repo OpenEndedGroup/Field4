@@ -66,31 +66,42 @@ class TetgenTest {
         assertTrue(abs(finer.volume() - exact) / exact < 1e-6)
     }
 
-    @Test fun anOpenSurfaceIsRefusedWithoutTakingTheProcessDown() {
+    @Test fun aFatalSurfaceIsRefusedWithoutTakingTheProcessDown() {
         if (!available()) return
-        // Five faces of a cube: closed enough to pass our own arity checks and get all the way
-        // into TetGen, which signals a fatal condition by throwing. If that exception were allowed
-        // to unwind through the FFM frames it would abort the VM rather than raise here, so this
-        // test is really about the try/catch in field_tetgen.cpp.
+        // The two inputs that reach TetGen's own fatal handler: built with TETLIBRARY it throws an
+        // int there, and field_tetgen.cpp must catch it, because a C++ exception unwinding through
+        // the FFM frames aborts the VM rather than raising here. (An open surface does not test
+        // this: it comes back through the empty-mesh path, never reaching the throw.)
         val corners = floatArrayOf(
             0f, 0f, 0f, 1f, 0f, 0f, 1f, 1f, 0f, 0f, 1f, 0f,
             0f, 0f, 1f, 1f, 0f, 1f, 1f, 1f, 1f, 0f, 1f, 1f)
         val faces = intArrayOf(
-            0, 1, 2, 0, 2, 3,      // bottom
-            4, 6, 5, 4, 7, 6,      // top
-            0, 4, 5, 0, 5, 1,      // front
-            1, 5, 6, 1, 6, 2,      // right
-            2, 6, 7, 2, 7, 3)      // back — the left face is missing
-        val open = TriMesh(corners, faces)
-        val failure = assertFails { Tetgen.tetrahedralize(open, targetEdgeLength = 0.25) }
-        assertTrue(failure is TetgenException || failure is IllegalStateException,
-            "expected a structured refusal, got ${failure::class.simpleName}: ${failure.message}")
+            0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6, 0, 4, 5, 0, 5, 1,
+            1, 5, 6, 1, 6, 2, 2, 6, 7, 2, 7, 3, 3, 7, 4, 3, 4, 0)
+        val shifted = FloatArray(24) { corners[it] + if (it % 3 == 0) 0.5f else 0f }
+        val interpenetrating = TriMesh(corners + shifted, faces + IntArray(faces.size) { faces[it] + 8 })
+        // The same triangle forwards and backwards: closed, and enclosing nothing.
+        val zeroVolume = TriMesh(
+            floatArrayOf(0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f),
+            intArrayOf(0, 1, 2, 0, 2, 1, 0, 1, 3, 0, 3, 1))
+        for ((name, mesh) in listOf("interpenetrating cubes" to interpenetrating, "zero-volume solid" to zeroVolume)) {
+            val failure = assertFails { Tetgen.tetrahedralize(mesh, targetEdgeLength = 0.25) }
+            assertTrue(failure is TetgenException && "aborted with code" in failure.message.orEmpty(),
+                "$name must come back through the fatal catch, got ${failure::class.simpleName}: ${failure.message}")
+        }
         // And the library still works afterwards: the failure did not corrupt any global state.
         val cube = SimulationBox("c", SimulationBounds(0.0, 0.0, 0.0, 1.0, 1.0, 1.0))
         assertTrue(Tetgen.tetrahedralize(cube.surface(), targetEdgeLength = 0.5).cellCount > 0)
     }
 
-    @Test fun nonsensicalOptionsAreRefusedBeforeTetGenSeesThem() {
+    @Test fun theMedianSurfaceEdgeIsWhatACoarseRequestIsComparedWith() {
+        // A unit cube in twelve triangles: eight edges of 1 per face pair and four diagonals of
+        // sqrt 2, so the median of the 36 per-triangle edges is 1.
+        val cube = SimulationBox("c", SimulationBounds(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)).surface()
+        assertEquals(1.0, Tetgen.medianEdgeLength(cube), 1e-6)
+    }
+
+        @Test fun nonsensicalOptionsAreRefusedBeforeTetGenSeesThem() {
         if (!available()) return
         val cube = SimulationBox("c", SimulationBounds(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)).surface()
         assertFails { Tetgen.tetrahedralize(cube, quality = 0.5) }

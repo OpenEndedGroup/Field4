@@ -1,0 +1,1268 @@
+diff --git a/dev_docs/agents/transcripts/imaging_vector_kernels.yaml b/dev_docs/agents/transcripts/imaging_vector_kernels.yaml
+index 120b7d8d9..213d1aee4 100644
+--- a/dev_docs/agents/transcripts/imaging_vector_kernels.yaml
++++ b/dev_docs/agents/transcripts/imaging_vector_kernels.yaml
+@@ -47,10 +47 @@ operations:
+-          // 1280x720 rather than the benchmark's 1920x1080, so a replay of this file is quick.
+-          // A texture with detail at several scales, so an aliasing bug in the decimation would be
+-          // visible as moire rather than hiding in a smooth gradient.
+-          val src = Img.generate(1280, 720) { x, y ->
+-              (0.5 +
+-                  0.22 * kotlin.math.sin(x * 0.018) * kotlin.math.cos(y * 0.015) +
+-                  0.16 * kotlin.math.sin((x + y) * 0.009) +
+-                  0.12 * kotlin.math.sin(x * 0.31) * kotlin.math.cos(y * 0.27)
+-                  ).toFloat().coerceIn(0f, 1f)
+-          }
++          val sigma = 1.0
+@@ -58,10 +49,13 @@ operations:
+-          // Best-of-N with a warm-up. The minimum is the least-contended sample, which is the only
+-          // statistic worth quoting on a machine that is also doing other things.
+-          val bestMs: (Int, () -> Unit) -> Double = { reps, block ->
+-              repeat(2) { block() }
+-              var best = Double.MAX_VALUE
+-              repeat(reps) {
+-                  val t0 = System.nanoTime()
+-                  block()
+-                  val ms = (System.nanoTime() - t0) / 1e6
+-                  if (ms < best) best = ms
++          /*
++          1280x720 rather than the benchmark's 1920x1080, so a replay of this file is quick.
++          A texture with detail at several scales, so an aliasing bug in the decimation would be
++          visible as moire rather than hiding in a smooth gradient.
++          */
++          val src =
++              Img.generate(1280, 720) { x, y ->
++                  (0.5 +
++                          0.22 * kotlin.math.sin(x * 0.018) * kotlin.math.cos(y * 0.015) +
++                          0.16 * kotlin.math.sin((x + y) * 0.009) +
++                          0.12 * kotlin.math.sin(x * 0.31) * kotlin.math.cos(y * 0.27))
++                      .toFloat()
++                      .coerceIn(0f, 1f)
+@@ -69,4 +62,0 @@ operations:
+-              best
+-          }
+-
+-          val sigma = 1.0
+@@ -90,2 +80,2 @@ operations:
+-          val tFused = bestMs(5) { src.pyrDown(sigma) }
+-          val tNaive = bestMs(5) { naiveOf(src) }
++          val tFused = bestTimeMs(repetitions = 5, warmup = 2) { src.pyrDown(sigma) }
++          val tNaive = bestTimeMs(repetitions = 5, warmup = 2) { naiveOf(src) }
+@@ -93,3 +83,5 @@ operations:
+-          // Same answer? The two differ only in float summation order: the fused version runs
+-          // vertical-then-horizontal, the naive one horizontal-then-vertical. Those commute exactly
+-          // in real arithmetic, including at the borders, because the x and y clamps are independent.
++          /*
++          Same answer? The two differ only in float summation order: the fused version runs
++          vertical-then-horizontal, the naive one horizontal-then-vertical. Those commute exactly
++          in real arithmetic, including at the borders, because the x and y clamps are independent.
++          */
+@@ -101 +93 @@ operations:
+-              "pyrDown(1.0) -> ${fused.width}x${fused.height}" to fused,
++              "pyrDown($sigma) -> ${fused.width}x${fused.height}" to fused,
+@@ -108,3 +100,3 @@ operations:
+-          println("  fused (ships)              ${"%.2f".format(tFused)} ms")
+-          println("  naive blur-then-subsample  ${"%.2f".format(tNaive)} ms")
+-          println("  speed-up                   ${"%.2f".format(tNaive / tFused)}x")
++          println("  fused (ships)              ${tFused.f2} ms")
++          println("  naive blur-then-subsample  ${tNaive.f2} ms")
++          println("  speed-up                   ${(tNaive / tFused).f2}x")
+@@ -121,20 +112,0 @@ operations:
+-          val src = Img.generate(1280, 720) { x, y ->
+-              var v = 0.12f + 0.10f * (y / 720f)
+-              if (hypot(x - 340.0, y - 300.0) <= 170.0) v = 0.85f
+-              if (x in 700..1050 && y in 140..430) v = 0.62f
+-              if (y in 560..585 && x in 100..1179) v = 0.95f
+-              v
+-          }
+-
+-          val bestMs: (Int, () -> Unit) -> Double = { reps, block ->
+-              repeat(2) { block() }
+-              var best = Double.MAX_VALUE
+-              repeat(reps) {
+-                  val t0 = System.nanoTime()
+-                  block()
+-                  val ms = (System.nanoTime() - t0) / 1e6
+-                  if (ms < best) best = ms
+-              }
+-              best
+-          }
+-
+@@ -141,0 +114,10 @@ operations:
++          val comparisonRadius = 24
++
++          val src =
++              Img.generate(1280, 720) { x, y ->
++                  var v = 0.12f + 0.10f * (y / 720f)
++                  if (hypot(x - 340.0, y - 300.0) <= 170.0) v = 0.85f
++                  if (x in 700..1050 && y in 140..430) v = 0.62f
++                  if (y in 560..585 && x in 100..1179) v = 0.95f
++                  v
++              }
+@@ -143,4 +125,6 @@ operations:
+-          // Two genuinely independent implementations of the same mean:
+-          //   boxBlur          — a sliding running sum, O(1) per pixel at any radius
+-          //   convolveSeparable — the box kernel evaluated tap by tap, O(k) per pixel
+-          // They share no code, so the difference below is a real check rather than a tautology.
++          /*
++          Two independent implementations of the same mean:
++            boxBlur          — a sliding running sum, O(1) per pixel at any radius
++            convolveSeparable — the box kernel evaluated tap by tap, O(k) per pixel
++          They share no code, so the difference below is a real check rather than a tautology.
++          */
+@@ -150,2 +134,2 @@ operations:
+-          val tRunning = bestMs(5) { src.boxBlur(r) }
+-          val tKernel = bestMs(5) { src.convolveSeparable(boxKernel1D(r), boxKernel1D(r)) }
++          val tRunning = bestTimeMs(repetitions = 5, warmup = 2) { src.boxBlur(r) }
++          val tKernel = bestTimeMs(repetitions = 5, warmup = 2) { src.convolveSeparable(boxKernel1D(r), boxKernel1D(r)) }
+@@ -156,4 +140,6 @@ operations:
+-          // The radius-independence is the whole claim of a running sum, so show it: r=2 and r=24
+-          // should cost the same, while the kernel version's cost grows with r.
+-          val tRunningBig = bestMs(3) { src.boxBlur(24) }
+-          val tKernelBig = bestMs(3) { src.convolveSeparable(boxKernel1D(24), boxKernel1D(24)) }
++          // Compare two radii on this machine. Running sums do constant work per pixel;
++          // a separable kernel visits more taps as its radius grows.
++          val tRunningBig = bestTimeMs(repetitions = 3, warmup = 2) { src.boxBlur(comparisonRadius) }
++          val tKernelBig = bestTimeMs(repetitions = 3, warmup = 2) {
++              src.convolveSeparable(boxKernel1D(comparisonRadius), boxKernel1D(comparisonRadius))
++          }
+@@ -165 +151 @@ operations:
+-              "boxBlur(24) — same cost as r=2" to src.boxBlur(24),
++              "boxBlur($comparisonRadius)" to src.boxBlur(comparisonRadius),
+@@ -170,2 +156,2 @@ operations:
+-          println("  boxBlur (running sum)      ${"%.2f".format(tRunning)} ms")
+-          println("  convolveSeparable(box)     ${"%.2f".format(tKernel)} ms")
++          println("  boxBlur (running sum)      ${tRunning.f2} ms")
++          println("  convolveSeparable(box)     ${tKernel.f2} ms")
+@@ -173,8 +159,11 @@ operations:
+-          println("radius 24 — the O(1) claim:")
+-          println("  boxBlur(24)                ${"%.2f".format(tRunningBig)} ms " +
+-              "(${"%.2f".format(tRunningBig / tRunning)}x the r=$r cost)")
+-          println("  convolveSeparable(box 24)  ${"%.2f".format(tKernelBig)} ms " +
+-              "(${"%.2f".format(tKernelBig / tKernel)}x the r=$r cost)")
+-          println("The vertical pass used to walk one column at a time — stride width*channels down")
+-          println("a multi-megabyte array, a cache miss per sample. It now advances a whole row of")
+-          println("accumulators together, which is both sequential and vectorized.")
++          println("radius $comparisonRadius — compare with radius $r:")
++          println(
++              "  boxBlur($comparisonRadius)                ${tRunningBig.f2} ms " +
++                  "(${(tRunningBig / tRunning).f2}x the r=$r cost)",
++          )
++          println(
++              "  convolveSeparable(box $comparisonRadius)  ${tKernelBig.f2} ms " +
++                  "(${(tKernelBig / tKernel).f2}x the r=$r cost)",
++          )
++          println("The vertical running-sum pass advances a row of accumulators together,")
++          println("keeping adjacent reads contiguous rather than walking down one column.")
+@@ -182,5 +171,4 @@ operations:
+-          println("Read those two blocks together, because they say something the O(1)-beats-O(k)")
+-          println("story alone would get wrong: at radius $r the KERNEL is the faster of the two, and")
+-          println("only past a crossover of a few pixels does the running sum win. A running sum is")
+-          println("serial by nature — each output waits on the previous one — while 2*$r+1 taps of")
+-          println("separable convolution vectorize freely. O(1) is about the asymptote, not radius 2.")
++          val faster = if (tRunning < tKernel) "running sum" else "separable kernel"
++          println("At radius $r the $faster was faster in this run.")
++          println("A running sum depends on the preceding output; a short kernel can vectorize")
++          println("across taps. Compare the timings at both radii before choosing an implementation.")
+@@ -192,0 +181,3 @@ operations:
++          val sigmaSpace = 3.0
++          val sigmaRange = 0.12
++
+@@ -194,6 +185,7 @@ operations:
+-          val clean = Img.generate(640, 480) { x, y ->
+-              var v = 0.15f + 0.10f * (y / 480f)
+-              if (hypot(x - 190.0, y - 210.0) <= 120.0) v = 0.85f
+-              if (x in 360..560 && y in 90..300) v = 0.62f
+-              v
+-          }
++          val clean =
++              Img.generate(640, 480) { x, y ->
++                  var v = 0.15f + 0.10f * (y / 480f)
++                  if (hypot(x - 190.0, y - 210.0) <= 120.0) v = 0.85f
++                  if (x in 360..560 && y in 90..300) v = 0.62f
++                  v
++              }
+@@ -203,14 +194,0 @@ operations:
+-          val bestMs: (Int, () -> Unit) -> Double = { reps, block ->
+-              repeat(2) { block() }
+-              var best = Double.MAX_VALUE
+-              repeat(reps) {
+-                  val t0 = System.nanoTime()
+-                  block()
+-                  val ms = (System.nanoTime() - t0) / 1e6
+-                  if (ms < best) best = ms
+-              }
+-              best
+-          }
+-
+-          val sigmaSpace = 3.0
+-          val sigmaRange = 0.12
+@@ -220,9 +198,11 @@ operations:
+-          val tBil = bestMs(3) { noisy.bilateral(sigmaSpace, sigmaRange) }
+-          val tGauss = bestMs(3) { noisy.gaussianBlur(sigmaSpace) }
+-
+-          // Edge contrast across the disc boundary, and flatness in a flat patch. The bilateral
+-          // should win the first and roughly tie the second — that is what "edge-preserving" means,
+-          // stated as two numbers rather than left to the eye.
+-          // The disc boundary at y=210 is x=310. Probe 3 px either side of it — about one
+-          // sigmaSpace — because that is where a Gaussian visibly smears and a bilateral does not.
+-          // Probing 30 px out would show both "preserving" the step and prove nothing.
++          val tBil = bestTimeMs(repetitions = 3, warmup = 2) { noisy.bilateral(sigmaSpace, sigmaRange) }
++          val tGauss = bestTimeMs(repetitions = 3, warmup = 2) { noisy.gaussianBlur(sigmaSpace) }
++
++          /*
++          Edge contrast across the disc boundary, and flatness in a flat patch. The bilateral
++          should win the first and roughly tie the second — that is what "edge-preserving" means,
++          stated as two numbers rather than left to the eye.
++          The disc boundary at y=210 is x=310. Probe 3 px either side of it — about one
++          sigmaSpace — because that is where a Gaussian visibly smears and a bilateral does not.
++          Probing 30 px out would show both "preserving" the step and prove nothing.
++          */
+@@ -242,2 +222,2 @@ operations:
+-          println("  bilateral                  ${"%.2f".format(tBil)} ms")
+-          println("  gaussianBlur (same sigma)  ${"%.2f".format(tGauss)} ms  — separable, so far cheaper by right")
++          println("  bilateral                  ${tBil.f2} ms")
++          println("  gaussianBlur (same sigma)  ${tGauss.f2} ms  — separable kernel")
+@@ -245,5 +225,5 @@ operations:
+-          println("  bilateral    ${"%.4f".format(edgeOf(bil))}")
+-          println("  gaussian     ${"%.4f".format(edgeOf(gauss))}   (smeared)")
+-          println("noise left in a flat patch (stdDev), was ${"%.4f".format(flatOf(noisy))}:")
+-          println("  bilateral    ${"%.4f".format(flatOf(bil))}")
+-          println("  gaussian     ${"%.4f".format(flatOf(gauss))}")
++          println("  bilateral    ${(edgeOf(bil)).f4}")
++          println("  gaussian     ${(edgeOf(gauss)).f4}   (smeared)")
++          println("noise left in a flat patch (stdDev), was ${(flatOf(noisy)).f4}:")
++          println("  bilateral    ${(flatOf(bil)).f4}")
++          println("  gaussian     ${(flatOf(gauss)).f4}")
+diff --git a/dev_docs/agents/transcripts/spatial_geometry_examples.yaml b/dev_docs/agents/transcripts/spatial_geometry_examples.yaml
+index a63f98559..fd488a42a 100644
+--- a/dev_docs/agents/transcripts/spatial_geometry_examples.yaml
++++ b/dev_docs/agents/transcripts/spatial_geometry_examples.yaml
+@@ -46,3 +46,5 @@ operations:
+-          // Voronoi and Delaunay are the same object seen twice: the diagram cuts the plane into one
+-          // cell per site, the triangulation joins two sites exactly when their cells share an edge.
+-          // vec2VoronoiDualGraph is literally one line in the source that returns vec2DelaunayGraph.
++          /*
++          Voronoi and Delaunay are the same object seen twice: the diagram cuts the plane into one
++          cell per site, the triangulation joins two sites exactly when their cells share an edge.
++          vec2VoronoiDualGraph is literally one line in the source that returns vec2DelaunayGraph.
++          */
+@@ -50,3 +52,4 @@ operations:
+-          val sites = (0 until 54).map { i ->
+-              vec((i % 9) * 44.0 + rng.nextDouble() * 22.0, (i / 9) * 44.0 + rng.nextDouble() * 22.0)
+-          }
++          val sites =
++              (0 until 54).map { i ->
++                  vec((i % 9) * 44.0 + rng.nextDouble() * 22.0, (i / 9) * 44.0 + rng.nextDouble() * 22.0)
++              }
+@@ -59,3 +62,5 @@ operations:
+-          // Euler's formula pins both counts exactly. A planar triangulation of n points with h of
+-          // them on the convex hull has 2n-2-h triangles and 3n-3-h edges, or it is not a
+-          // triangulation. So this is a complete structural check, not a plausibility check.
++          /*
++          A planar triangulation of n sites with h on its convex hull has 2n-2-h triangles
++          and 3n-3-h edges. These count checks do not establish valid incidences, a noncrossing
++          embedding or Delaunay legality. The dual equality below checks the shared graph API.
++          */
+@@ -69,4 +74,6 @@ operations:
+-          // The cells of the h hull sites are UNBOUNDED, and JTS hands them back clipped to a
+-          // generous envelope rather than to anything you asked for. Print how far it reaches: fit a
+-          // figure to that and the diagram collapses into a speck, which is why showPlaneGrid takes
+-          // an explicit window and clips whatever falls outside it.
++          /*
++          The cells of the h hull sites are UNBOUNDED, and JTS hands them back clipped to a
++          generous envelope rather than to anything you asked for. Print how far it reaches: fit a
++          figure to that and the diagram collapses into a speck, which is why showPlaneGrid takes
++          an explicit window and clips whatever falls outside it.
++          */
+@@ -76,2 +83,7 @@ operations:
+-          println("cell  x range %.1f .. %.1f   <- JTS's clip envelope".format(
+-              allV.minOf { it.x }, allV.maxOf { it.x }))
++          println(
++              "cell  x range %.1f .. %.1f   <- JTS's clip envelope"
++                  .format(
++                      allV.minOf { it.x },
++                      allV.maxOf { it.x },
++                  ),
++          )
+@@ -80 +92,2 @@ operations:
+-              sites.minOf { it.x.toDouble() } - 18.0, sites.minOf { it.y.toDouble() } - 18.0,
++              sites.minOf { it.x.toDouble() } - 18.0,
++              sites.minOf { it.y.toDouble() } - 18.0,
+@@ -84,4 +97,6 @@ operations:
+-          val bounded = voronoi.cells.count { c ->
+-              c.vertices.size >= 3 && c.vertices.all {
+-                  it.x >= window.x && it.x <= window.x + window.w &&
+-                      it.y >= window.y && it.y <= window.y + window.h
++          val bounded =
++              voronoi.cells.count { c ->
++                  c.vertices.size >= 3 &&
++                      c.vertices.all {
++                          it.x >= window.x && it.x <= window.x + window.w && it.y >= window.y && it.y <= window.y + window.h
++                      }
+@@ -89 +103,0 @@ operations:
+-          }
+@@ -101 +115 @@ operations:
+-                  listOf(frame, delaunayTrianglesToFLine(sites, triangles, color = vec(0.55, 0.70, 0.88, 0.6)), cloud),
++                  [frame, delaunayTrianglesToFLine(sites, triangles, color = vec(0.55, 0.70, 0.88, 0.6)), cloud],
+@@ -103 +117 @@ operations:
+-                  listOf(frame, *voronoi.toFLines(palette = okhslSet(n, 0.7, 0.62, 0.9f), thickness = 1.2).toTypedArray(), cloud),
++                  ([frame] + voronoi.toFLines(palette = okhslSet(n, 0.7, 0.62, 0.9f), thickness = 1.2) + cloud),
+@@ -105,7 +119,4 @@ operations:
+-                  listOf(
+-                      frame,
+-                      delaunay.toFLine(sites, color = vec(0.45, 0.58, 0.75, 0.6), thickness = 1.0),
+-                      *voronoi.toFLines(color = vec(0.62, 0.92, 1.0, 0.62), thickness = 1.1).toTypedArray(),
+-                      hullLine,
+-                      cloud,
+-                  ),
++                  ([frame, delaunay.toFLine(sites, color = vec(0.45, 0.58, 0.75, 0.6), thickness = 1.0)] +
++                      voronoi.toFLines(color = vec(0.62, 0.92, 1.0, 0.62), thickness = 1.1) +
++                      hullLine +
++                      cloud),
+@@ -124,7 +135,13 @@ operations:
+-          // CircularDirichlet minimises |x - p|^2 / w^2 — the multiplicatively weighted, or
+-          // Apollonius, diagram. Setting two sites' scores equal and clearing denominators gives the
+-          // equation of a CIRCLE, which degenerates to a line only when the weights match. So a cell
+-          // here is not a polygon: its boundary is made of ArcPieces and LinePieces.
+-          val positions = listOf(
+-              vec(0.0, 0.0), vec(2.2, 0.3), vec(0.9, 2.0), vec(-1.4, 1.1), vec(1.1, -1.6),
+-          )
++          /*
++          CircularDirichlet minimises |x - p|^2 / w^2 — the multiplicatively weighted, or
++          Apollonius, diagram. Setting two sites' scores equal and clearing denominators gives the
++          equation of a CIRCLE, which degenerates to a line only when the weights match. So a cell
++          here is not a polygon: its boundary is made of ArcPieces and LinePieces.
++          */
++          val positions = [
++              vec(0.0, 0.0),
++              vec(2.2, 0.3),
++              vec(0.9, 2.0),
++              vec(-1.4, 1.1),
++              vec(1.1, -1.6),
++          ]
+@@ -137,2 +154,2 @@ operations:
+-          val mixed = diagramOf(listOf(1.0, 1.35, 0.8, 1.1, 1.6))
+-          val swallowed = diagramOf(listOf(1.0, 2.6, 1.0, 1.0, 1.0))
++          val mixed = diagramOf([1.0, 1.35, 0.8, 1.1, 1.6])
++          val swallowed = diagramOf([1.0, 2.6, 1.0, 1.0, 1.0])
+@@ -140,2 +157 @@ operations:
+-          fun arcs(d: CircularDirichlet.Diagram) =
+-              d.cells.sumOf { c -> c.pieces.count { it is CircularDirichlet.ArcPiece } }
++          fun arcs(d: CircularDirichlet.Diagram) = d.cells.sumOf { c -> c.pieces.count { it is CircularDirichlet.ArcPiece } }
+@@ -144,7 +160,8 @@ operations:
+-          fun fullCircles(d: CircularDirichlet.Diagram) = d.cells.sumOf { c ->
+-              c.pieces.count { it is CircularDirichlet.ArcPiece && it.sweepAngle > 6.283 }
+-          }
+-          fun enclosed(d: CircularDirichlet.Diagram) = d.cells.count { c ->
+-              c.pieces.size == 1 &&
+-                  (c.pieces[0] as? CircularDirichlet.ArcPiece)?.let { it.sweepAngle > 6.283 } == true
+-          }
++          fun fullCircles(d: CircularDirichlet.Diagram) =
++              d.cells.sumOf { c ->
++                  c.pieces.count { it is CircularDirichlet.ArcPiece && it.sweepAngle > 6.283 }
++              }
++          fun enclosed(d: CircularDirichlet.Diagram) =
++              d.cells.count { c ->
++                  c.pieces.size == 1 && (c.pieces[0] as? CircularDirichlet.ArcPiece)?.let { it.sweepAngle > 6.283 } == true
++              }
+@@ -160 +177 @@ operations:
+-          val sites = positions.mapIndexed { i, p -> vec(p.x, p.y, listOf(1.0, 1.35, 0.8, 1.1, 1.6)[i]) }
++          val sites = positions.mapIndexed { i, p -> vec(p.x, p.y, [1.0, 1.35, 0.8, 1.1, 1.6][i]) }
+@@ -179 +196,2 @@ operations:
+-              "equal weights — a plain Voronoi diagram\n${straights(equal)} straight bisectors, ${arcs(equal)} arcs" to panel(equal),
++              "equal weights — a plain Voronoi diagram\n${straights(equal)} straight bisectors, ${arcs(equal)} arcs" to
++                  panel(equal),
+@@ -181 +199,2 @@ operations:
+-              "one site at weight 2.6\n${fullCircles(swallowed)} complete circles, ${enclosed(swallowed)} cells enclosed" to panel(swallowed),
++              "one site at weight 2.6\n${fullCircles(swallowed)} complete circles, ${enclosed(swallowed)} cells enclosed" to
++                  panel(swallowed),
+@@ -193,6 +212,13 @@ operations:
+-          // A Voronoi diagram IS the set of ties in argmin |x - p_i|, so contouring the gap between
+-          // the nearest and the second nearest site recovers it from a completely different
+-          // algorithm. Except at exactly zero — see below.
+-          val sites = listOf(
+-              vec(-1.6, -0.9), vec(1.4, -1.2), vec(2.0, 1.1), vec(-0.2, 1.7), vec(-2.1, 0.9), vec(0.4, -0.1),
+-          )
++          /*
++          A Voronoi diagram IS the set of ties in argmin |x - p_i|, so contouring the gap between
++          the nearest and the second nearest site recovers it from a completely different
++          algorithm. Except at exactly zero — see below.
++          */
++          val sites = [
++              vec(-1.6, -0.9),
++              vec(1.4, -1.2),
++              vec(2.0, 1.1),
++              vec(-0.2, 1.7),
++              vec(-2.1, 0.9),
++              vec(0.4, -0.1),
++          ]
+@@ -204,4 +230,6 @@ operations:
+-          // This field is NON-NEGATIVE: it touches zero on the seams and is positive everywhere
+-          // else. Marching squares finds SIGN CHANGES, so iso 0.0 finds nothing at all, and that is
+-          // the right answer rather than a bug. Every min-of-distances or absolute-value field
+-          // behaves this way.
++          /*
++          This field is NON-NEGATIVE: it touches zero on the seams and is positive everywhere
++          else. Marching squares finds SIGN CHANGES, so iso 0.0 finds nothing at all, and that is
++          the right answer rather than a bug. Every min-of-distances or absolute-value field
++          behaves this way.
++          */
+@@ -219 +247 @@ operations:
+-          val levels = listOf(0.05, 0.35, 0.8, 1.4)
++          val levels = [0.05, 0.35, 0.8, 1.4]
+@@ -225,3 +253,5 @@ operations:
+-          // A completely different use of the same machinery: pointEdgeScalarField2D turns an FLine
+-          // into a signed field whose zero set is a tube around it, so contouring at 0.0 outlines a
+-          // stroke and a negative iso fattens it.
++          /*
++          A completely different use of the same machinery: pointEdgeScalarField2D turns an FLine
++          into a signed field whose zero set is a tube around it, so contouring at 0.0 outlines a
++          stroke and a negative iso fattens it.
++          */
+@@ -229 +259,2 @@ operations:
+-              moveTo(-2.4, 1.2); cubicTo(-1.0, -2.2, 1.2, 2.4, 2.6, -1.0)
++              moveTo(-2.4, 1.2)
++              cubicTo(-1.0, -2.2, 1.2, 2.4, 2.6, -1.0)
+@@ -237,3 +268,7 @@ operations:
+-              contours.filter { it.size >= 2 }.map { c ->
+-                  polylineFrom(c, 0, closed = isoContourClosed(c, -3.4, 3.4, -2.9, 2.9, boundaryEpsilon = 0.05)).also {
+-                      it.color = color; it.thickness = thickness
++              contours
++                  .filter { it.size >= 2 }
++                  .map { c ->
++                      polylineFrom(c, 0, closed = isoContourClosed(c, -3.4, 3.4, -2.9, 2.9, boundaryEpsilon = 0.05)).also {
++                          it.color = color
++                          it.thickness = thickness
++                      }
+@@ -241 +275,0 @@ operations:
+-              }
+@@ -245,3 +279,4 @@ operations:
+-          val stacked = byLevel.flatMapIndexed { i, (_, contours) ->
+-              contourLines(contours, ramp[i], 1.5 - i * 0.15)
+-          } + siteDots
++          val stacked =
++              byLevel.flatMapIndexed { i, (_, contours) ->
++                  contourLines(contours, ramp[i], 1.5 - i * 0.15)
++              } + siteDots
+@@ -253,5 +288,19 @@ operations:
+-              "generateSmoothIsoContours on an FLine\ntube radius 0.55 and 0.83" to listOf(
+-                  stroke.also { it.color = vec(1.0, 1.0, 1.0, 0.30); it.thickness = 1.0 },
+-                  *fat.map { it.also { f -> f.color = vec(0.98, 0.55, 0.42, 0.55); f.thickness = 1.3 } }.toTypedArray(),
+-                  *outline.map { it.also { f -> f.color = vec(1.0, 0.82, 0.42, 0.95); f.thickness = 1.6 } }.toTypedArray(),
+-              ),
++              "generateSmoothIsoContours on an FLine\ntube radius 0.55 and 0.83" to
++                  ([
++                      stroke.also {
++                          it.color = vec(1.0, 1.0, 1.0, 0.30)
++                          it.thickness = 1.0
++                      },
++                  ] +
++                      fat.map {
++                          it.also { f ->
++                              f.color = vec(0.98, 0.55, 0.42, 0.55)
++                              f.thickness = 1.3
++                          }
++                      } +
++                      outline.map {
++                          it.also { f ->
++                              f.color = vec(1.0, 0.82, 0.42, 0.95)
++                              f.thickness = 1.6
++                          }
++                      }),
+@@ -275,5 +324,7 @@ operations:
+-          // 1. A sample EXACTLY at iso. With a symmetric strict test such a sample is neither inside
+-          // nor outside and the crossing on every edge out of that corner is suppressed. f(x,y) = x
+-          // at iso 0 on an even grid used to return an empty list; the unit circle over [-2,2] at
+-          // nx = 16 came back severed into four arcs at the points where it passes through a corner.
+-          // The convention now is the one marchingCubes uses: inside iff strictly BELOW iso.
++          /*
++          1. A sample EXACTLY at iso. With a symmetric strict test such a sample is neither inside
++          nor outside and the crossing on every edge out of that corner is suppressed. f(x,y) = x
++          at iso 0 on an even grid used to return an empty list; the unit circle over [-2,2] at
++          nx = 16 came back severed into four arcs at the points where it passes through a corner.
++          The convention now is the one marchingCubes uses: inside iff strictly BELOW iso.
++          */
+@@ -288 +339,2 @@ operations:
+-                  val a = loop[i]; val b = loop[(i + 1) % loop.size]
++                  val a = loop[i]
++                  val b = loop[(i + 1) % loop.size]
+@@ -295,10 +347,12 @@ operations:
+-          // 2. The saddle cell. Four corners alternating inside/outside give four crossings and two
+-          // ways to pair them, and the two choices give different topology — so an arbitrary choice
+-          // lets neighbouring cells disagree and the contour tears. The asymptotic decider settles it
+-          // from the cell's own four corner values, so two cells sharing an edge always agree.
+-          //
+-          // f = x*y is the case where it has nothing to go on: the field is ITSELF bilinear, so the
+-          // cell's interpolant reproduces it and the saddle value is exactly iso. Both pairings are
+-          // then equally correct. Left to floating point that tie flips with resolution, so it is
+-          // broken deterministically towards the pre-decider pairing. Raise nx and watch the branch
+-          // lengths: they are not equal, and with this sampling window they are not meant to be.
++          /*
++          2. The saddle cell. Four corners alternating inside/outside give four crossings and two
++          ways to pair them, and the two choices give different topology — so an arbitrary choice
++          lets neighbouring cells disagree and the contour tears. The asymptotic decider settles it
++          from the cell's own four corner values, so two cells sharing an edge always agree.
++
++          f = x*y is the case where it has nothing to go on: the field is ITSELF bilinear, so the
++          cell's interpolant reproduces it and the saddle value is exactly iso. Both pairings are
++          then equally correct. Left to floating point that tie flips with resolution, so it is
++          broken deterministically towards the pre-decider pairing. Raise nx and watch the branch
++          lengths: they are not equal, and with this sampling window they are not meant to be.
++          */
+@@ -311,2 +365 @@ operations:
+-              for (i in 0..nx) { val x = x0 + (x1 - x0) * i / nx; moveTo(x, y0); lineTo(x, y1) }
+-              for (j in 0..ny) { val y = y0 + (y1 - y0) * j / ny; moveTo(x0, y); lineTo(x1, y) }
++              grid(Rect(x0, y0, x1 - x0, y1 - y0), nx, ny)
+@@ -318,2 +371,7 @@ operations:
+-              contours: List<List<Vec2>>, x0: Double, x1: Double, y0: Double, y1: Double,
+-              colors: List<Vec4>, eps: Double,
++              contours: List<List<Vec2>>,
++              x0: Double,
++              x1: Double,
++              y0: Double,
++              y1: Double,
++              colors: List<Vec4>,
++              eps: Double,
+@@ -322,2 +380,4 @@ operations:
+-                  it.color = colors[i % colors.size]; it.thickness = 2.2
+-                  it.pointed = true; it.pointSize = 1.1
++                  it.color = colors[i % colors.size]
++                  it.thickness = 2.2
++                  it.pointed = true
++                  it.pointSize = 1.1
+@@ -327,2 +387,6 @@ operations:
+-          val warm = listOf(vec(1.0, 0.78, 0.36, 0.95), vec(0.62, 0.92, 1.0, 0.95),
+-                            vec(0.98, 0.55, 0.62, 0.95), vec(0.6, 1.0, 0.72, 0.95))
++          val warm = [
++              vec(1.0, 0.78, 0.36, 0.95),
++              vec(0.62, 0.92, 1.0, 0.95),
++              vec(0.98, 0.55, 0.62, 0.95),
++              vec(0.6, 1.0, 0.72, 0.95),
++          ]
+@@ -332 +396 @@ operations:
+-                  (listOf(gridLines(-1.0, 1.0, -1.0, 1.0, 4, 4)) + dotted(planeContours, -1.0, 1.0, -1.0, 1.0, warm, 0.4)),
++                  ([gridLines(-1.0, 1.0, -1.0, 1.0, 4, 4)] + dotted(planeContours, -1.0, 1.0, -1.0, 1.0, warm, 0.4)),
+@@ -334 +398 @@ operations:
+-                  (listOf(gridLines(-2.0, 2.0, -2.0, 2.0, 16, 16)) + dotted(aligned, -2.0, 2.0, -2.0, 2.0, warm, 0.2)),
++                  ([gridLines(-2.0, 2.0, -2.0, 2.0, 16, 16)] + dotted(aligned, -2.0, 2.0, -2.0, 2.0, warm, 0.2)),
+@@ -336 +400 @@ operations:
+-                  (listOf(gridLines(-1.05, 1.03, -1.02, 1.07, 8, 8)) + dotted(branches, -1.05, 1.03, -1.02, 1.07, warm, 0.2)),
++                  ([gridLines(-1.05, 1.03, -1.02, 1.07, 8, 8)] + dotted(branches, -1.05, 1.03, -1.02, 1.07, warm, 0.2)),
+@@ -348,6 +412,8 @@ operations:
+-          // There is no k-means in Field, on purpose. Every algorithm here returns either a hierarchy
+-          // or a centre that is meaningful for the data it summarises: a medoid is one of your own
+-          // samples, a median is coordinate-wise robust. A k-means centroid is neither.
+-          //
+-          // Well-separated blobs make all four look identical, so this cloud has exactly ONE thing
+-          // wrong with it: three tight blobs of 28, and a single 85th point nine units out.
++          /*
++          There is no k-means in Field, on purpose. Every algorithm here returns either a hierarchy
++          or a centre that is meaningful for the data it summarises: a medoid is one of your own
++          samples, a median is coordinate-wise robust. A k-means centroid is neither.
++
++          Well-separated blobs make all four look identical, so this cloud has exactly ONE thing
++          wrong with it: three tight blobs of 28, and a single 85th point nine units out.
++          */
+@@ -355 +421 @@ operations:
+-          val blobCentres = listOf(vec(0.0, 0.0), vec(2.4, 0.2), vec(1.2, 2.2))
++          val blobCentres = [vec(0.0, 0.0), vec(2.4, 0.2), vec(1.2, 2.2)]
+@@ -361,3 +427,6 @@ operations:
+-          // wins over kotlin.collections.plus on specificity. `+ listOf(stray)` zips instead. Append.
+-          val points = buildList { addAll(blobs); add(stray) }
+-          val window = Rect(-1.4, -1.4, 11.2, 10.2)     // shared, so the four panels are comparable
++          // wins over kotlin.collections.plus on specificity. `+ [stray]` zips instead. Append.
++          val points = buildList {
++              addAll(blobs)
++              add(stray)
++          }
++          val window = Rect(-1.4, -1.4, 11.2, 10.2) // shared, so the four panels are comparable
+@@ -365 +434 @@ operations:
+-          val tree = vec2Agglomerative(points)          // Ward: minimises within-cluster SUM OF SQUARES
++          val tree = vec2Agglomerative(points) // Ward: minimises within-cluster SUM OF SQUARES
+@@ -371,2 +440 @@ operations:
+-          fun sizes(layer: ClusterLayer) =
+-              (0 until layer.clusterCount).map { layer.indices(it).size }.joinToString("/")
++          fun sizes(layer: ClusterLayer) = (0 until layer.clusterCount).map { layer.indices(it).size }.joinToString("/")
+@@ -375,6 +443,7 @@ operations:
+-          fun l1Of(labels: IntArray, k: Int) = (0 until k).sumOf { c ->
+-              val mem = points.indices.filter { labels[it] == c }
+-              val mx = mem.map { points[it].x }.sorted()[mem.size / 2]
+-              val my = mem.map { points[it].y }.sorted()[mem.size / 2]
+-              mem.sumOf { (abs(points[it].x - mx) + abs(points[it].y - my)).toDouble() }
+-          }
++          fun l1Of(labels: IntArray, k: Int) =
++              (0 until k).sumOf { c ->
++                  val mem = points.indices.filter { labels[it] == c }
++                  val mx = mem.map { points[it].x }.sorted()[mem.size / 2]
++                  val my = mem.map { points[it].y }.sorted()[mem.size / 2]
++                  mem.sumOf { (abs(points[it].x - mx) + abs(points[it].y - my)).toDouble() }
++              }
+@@ -385,4 +454,8 @@ operations:
+-          println("kmedoids      k=3  ${medoids.clusterSizes.joinToString("/")}  distortion %.3f  %d rounds  converged=%s"
+-              .format(medoids.distortion, medoids.iterations, medoids.converged))
+-          println("kmedians      k=3  ${medians.clusterSizes.joinToString("/")}  L1 objective %.3f  converged=%s"
+-              .format(medians.objective, medians.converged))
++          println(
++              "kmedoids      k=3  ${medoids.clusterSizes.joinToString("/")}  distortion %.3f  %d rounds  converged=%s"
++                  .format(medoids.distortion, medoids.iterations, medoids.converged),
++          )
++          println(
++              "kmedians      k=3  ${medians.clusterSizes.joinToString("/")}  L1 objective %.3f  converged=%s"
++                  .format(medians.objective, medians.converged),
++          )
+@@ -392,3 +465,4 @@ operations:
+-          val nested = (0 until cut6.clusterCount).all { fine ->
+-              cut6.indices(fine).map { cut3.labels[it] }.toSet().size == 1
+-          }
++          val nested =
++              (0 until cut6.clusterCount).all { fine ->
++                  cut6.indices(fine).map { cut3.labels[it] }.toSet().size == 1
++              }
+@@ -401,5 +475,9 @@ operations:
+-          // The discriminator. Ward spends a whole cluster on the one stray and pays by merging two
+-          // real blobs, because 28/29 * 9.72^2 = 91.2 exceeds 14 * 2.408^2 = 81.2. k-medoids and
+-          // k-medians minimise sums of DISTANCES, where that point costs 9.72 and not 94.5.
+-          println("Ward's cut costs %.2fx k-medians' L1 objective (1.00x on well-separated blobs)"
+-              .format(l1Of(cut3.labels, 3) / medians.objective))
++          /*
++          Ward minimises squared Euclidean merge costs, making a distant stray expensive.
++          These k-medoids and k-medians calls use unsquared Manhattan (L1) distances.
++          Compare their partitions with the same L1 ruler above, rather than mixing metrics.
++          */
++          println(
++              "Ward's cut costs %.2fx k-medians' L1 objective (1.00x on well-separated blobs)"
++                  .format(l1Of(cut3.labels, 3) / medians.objective),
++          )
+@@ -412,2 +490 @@ operations:
+-              "vec2KMedoids(k = 3)\ndistortion %.3f — samples: %s"
+-                  .format(medoids.distortion, areSamples) to
++              "vec2KMedoids(k = 3)\ndistortion %.3f — samples: %s".format(medoids.distortion, areSamples) to
+@@ -430,13 +507,19 @@ operations:
+-          // The animated twin of "When the bisector is a circle". Three stills at three weights argue
+-          // that a straight bisector becomes a circle; sweeping the weight SHOWS it. Launch this box
+-          // (it ends in `animate`, so it runs until you stop it) and watch three things:
+-          //   - only the edges that TOUCH site 1 bow. A bisector between two equally weighted sites
+-          //     stays exactly straight, which is why both counts are in the caption.
+-          //   - the counts JUMP rather than drift: the total piece count falls when a light neighbour
+-          //     is swallowed, because an enclosed cell needs one full circle where it needed several
+-          //     arcs and a line. `enclosed` goes 0 -> 2 between weight 2.02 and 2.45.
+-          //   - at exactly 1.0 the whole diagram snaps to straight lines. The piece type is decided
+-          //     by an EXACT equality of weights, so it really is discontinuous.
+-          val positions = listOf(
+-              vec(0.0, 0.0), vec(2.2, 0.3), vec(0.9, 2.0), vec(-1.4, 1.1), vec(1.1, -1.6),
+-          )
++          /*
++          The animated twin of "When the bisector is a circle". Three stills at three weights argue
++          that a straight bisector becomes a circle; sweeping the weight SHOWS it. Launch this box
++          (it ends in `animate`, so it runs until you stop it) and watch three things:
++            - only the edges that TOUCH site 1 bow. A bisector between two equally weighted sites
++              stays exactly straight, which is why both counts are in the caption.
++            - the counts JUMP rather than drift: the total piece count falls when a light neighbour
++              is swallowed, because an enclosed cell needs one full circle where it needed several
++              arcs and a line. `enclosed` goes 0 -> 2 between weight 2.02 and 2.45.
++            - at exactly 1.0 the whole diagram snaps to straight lines. The piece type is decided
++              by an EXACT equality of weights, so it really is discontinuous.
++          */
++          val positions = [
++              vec(0.0, 0.0),
++              vec(2.2, 0.3),
++              vec(0.9, 2.0),
++              vec(-1.4, 1.1),
++              vec(1.1, -1.6),
++          ]
+@@ -449 +532 @@ operations:
+-          val heavy = 1                 // the site whose weight is swept; the other four stay at 1.0
++          val heavy = 1 // the site whose weight is swept; the other four stay at 1.0
+@@ -463 +546 @@ operations:
+-                  positions.mapIndexed { i, p -> vec(p.x, p.y, if (i == heavy) w else 1.0) }
++                  positions.mapIndexed { i, p -> vec(p.x, p.y, if (i == heavy) w else 1.0) },
+@@ -467,4 +550,4 @@ operations:
+-              val enclosed = diagram.cells.count { c ->
+-                  c.pieces.size == 1 &&
+-                      (c.pieces[0] as? CircularDirichlet.ArcPiece)?.let { it.sweepAngle > 6.283 } == true
+-              }
++              val enclosed =
++                  diagram.cells.count { c ->
++                      c.pieces.size == 1 && (c.pieces[0] as? CircularDirichlet.ArcPiece)?.let { it.sweepAngle > 6.283 } == true
++                  }
+@@ -487,6 +570,8 @@ operations:
+-          // The animated twin of "The two decisions inside marching squares". That box argues about a
+-          // single ambiguous cell; this one shows why the cell matters. Two Gaussian bumps, and the
+-          // iso level swept from 0.18 to 0.78 and back through the saddle between the peaks. Below
+-          // the saddle there is ONE contour around both peaks, above it there are TWO, one per peak,
+-          // and the changeover is a frame where the marcher's four corner values decide the topology.
+-          // Contours are coloured by index, so the merge reads as a colour vanishing.
++          /*
++          The animated twin of "The two decisions inside marching squares". That box argues about a
++          single ambiguous cell; this one shows why the cell matters. Two Gaussian bumps, and the
++          iso level swept from 0.18 to 0.78 and back through the saddle between the peaks. Below
++          the saddle there is ONE contour around both peaks, above it there are TWO, one per peak,
++          and the changeover is a frame where the marcher's four corner values decide the topology.
++          Contours are coloured by index, so the merge reads as a colour vanishing.
++          */
+@@ -496,2 +581,5 @@ operations:
+-          val x0 = -3.2; val x1 = 3.2; val y0 = -1.9; val y1 = 1.9
+-          val window = Rect(-3.0, -1.7, 6.0, 3.4)       // fixed, or the loops never appear to shrink
++          val x0 = -3.2
++          val x1 = 3.2
++          val y0 = -1.9
++          val y1 = 1.9
++          val window = Rect(-3.0, -1.7, 6.0, 3.4) // fixed, or the loops never appear to shrink
+@@ -499 +587,3 @@ operations:
+-              listOf(vec(1.4, 0.0), vec(-1.4, 0.0)), color = vec(1.0, 1.0, 1.0, 0.85), pointSize = 1.4,
++              [vec(1.4, 0.0), vec(-1.4, 0.0)],
++              color = vec(1.0, 1.0, 1.0, 0.85),
++              pointSize = 1.4,
+@@ -502 +592,3 @@ operations:
+-              listOf(vec(0.0, 0.0)), color = vec(1.0, 0.72, 0.32, 0.98), pointSize = 1.9,
++              [vec(0.0, 0.0)],
++              color = vec(1.0, 0.72, 0.32, 0.98),
++              pointSize = 1.9,
+@@ -504 +596 @@ operations:
+-          val byIndex = listOf(vec(0.42, 0.80, 1.0, 0.95), vec(1.0, 0.45, 0.62, 0.95))
++          val byIndex = [vec(0.42, 0.80, 1.0, 0.95), vec(1.0, 0.45, 0.62, 0.95)]
+@@ -530,2 +622,3 @@ operations:
+-                  caption = if (iso > saddle) "above the saddle %.3f — one loop per peak".format(saddle)
+-                  else "below the saddle %.3f — one loop around both".format(saddle),
++                  caption =
++                      if (iso > saddle) "above the saddle %.3f — one loop per peak".format(saddle)
++                      else "below the saddle %.3f — one loop around both".format(saddle),
+diff --git a/public/docs/interaction_nets_examples.md b/public/docs/interaction_nets_examples.md
+index 467468bd5..612c29661 100644
+--- a/public/docs/interaction_nets_examples.md
++++ b/public/docs/interaction_nets_examples.md
+@@ -58,2 +57,0 @@ expect:
+-import afield.app.protocol.Rect
+-
+@@ -77,2 +75,2 @@ net.relax(20)
+-val beforeLines = net.toFLines()
+-val beforeSummary = net.summaryHtml("Before beta", maxNodes = 5)
++// Capture before rewriting; later relaxation must not move this stage.
++val before = stage("Before beta", net.toFLines(), net.summaryHtml("Before beta", maxNodes = 5))
+@@ -81,23 +79,5 @@ net.relax(28)
+-val afterLines = net.toFLines()
+-val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
+-val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
+-val comparisonLines = [
+-    beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
+-    afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
+-    arrow(
+-        beforeFrame.right + 34.0, 170.0,
+-        afterFrame.x - 34.0, 170.0,
+-        color = vec(0.92, 0.90, 0.84, 0.95),
+-        thickness = 2.0
+-    ),
+-] +
+-    beforeLines.fitInto(beforeFrame, padding = 26.0) +
+-    afterLines.fitInto(afterFrame, padding = 26.0)
+-
+-showInteractionOverview(
+-    graphicLines = comparisonLines,
+-    cards = [
+-        beforeSummary,
+-        detail.summaryHtml("Rewrite"),
+-        net.summaryHtml("After beta", maxNodes = 5)
+-    ],
++val after = stage("After beta", net.toFLines(), net.summaryHtml("After beta", maxNodes = 5))
++showInteractionStages(
++    before,
++    after,
++    cards = [detail.summaryHtml("Rewrite")],
+@@ -106,2 +85,0 @@ showInteractionOverview(
+-    graphicWidth = 1040.0,
+-    graphicHeight = 340.0
+@@ -136,2 +113,0 @@ expect:
+-import afield.app.protocol.Rect
+-
+@@ -148 +124,2 @@ val net = net {
+-    val constHigh = node(Lambda.CONST, id = "constHigh", at = vec(340.0, 0.0), state = NodeState(energy = 1.8, hue = 0.14))
++    val constHigh =
++        node(Lambda.CONST, id = "constHigh", at = vec(340.0, 0.0), state = NodeState(energy = 1.8, hue = 0.14))
+@@ -160,2 +137,2 @@ net.relax(20)
+-val beforeLines = net.toFLines()
+-val beforeSummary = net.summaryHtml("Before scheduler step", maxNodes = 5)
++// Capture before rewriting; later relaxation must not move this stage.
++val before = stage("Before scheduler step", net.toFLines(), net.summaryHtml("Before scheduler step", maxNodes = 5))
+@@ -164,23 +141,5 @@ net.relax(28)
+-val afterLines = net.toFLines()
+-val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
+-val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
+-val comparisonLines = [
+-    beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
+-    afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
+-    arrow(
+-        beforeFrame.right + 34.0, 170.0,
+-        afterFrame.x - 34.0, 170.0,
+-        color = vec(0.92, 0.90, 0.84, 0.95),
+-        thickness = 2.0
+-    ),
+-] +
+-    beforeLines.fitInto(beforeFrame, padding = 26.0) +
+-    afterLines.fitInto(afterFrame, padding = 26.0)
+-
+-showInteractionOverview(
+-    graphicLines = comparisonLines,
+-    cards = [
+-        beforeSummary,
+-        detail.summaryHtml("Selected pair"),
+-        net.summaryHtml("After one step", maxNodes = 5)
+-    ],
++val after = stage("After one step", net.toFLines(), net.summaryHtml("After one step", maxNodes = 5))
++showInteractionStages(
++    before,
++    after,
++    cards = [detail.summaryHtml("Selected pair")],
+@@ -189,2 +147,0 @@ showInteractionOverview(
+-    graphicWidth = 1040.0,
+-    graphicHeight = 340.0
+@@ -219,2 +175,0 @@ expect:
+-import afield.app.protocol.Rect
+-
+@@ -225,2 +180,2 @@ net.relax(20)
+-val beforeLines = net.toFLines()
+-val beforeSummary = net.summaryHtml("Before duplication", maxNodes = 5)
++// Capture before rewriting; later relaxation must not move this stage.
++val before = stage("Before duplication", net.toFLines(), net.summaryHtml("Before duplication", maxNodes = 5))
+@@ -229,23 +184,5 @@ net.relax(28)
+-val afterLines = net.toFLines()
+-val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
+-val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
+-val comparisonLines = [
+-    beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
+-    afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
+-    arrow(
+-        beforeFrame.right + 34.0, 170.0,
+-        afterFrame.x - 34.0, 170.0,
+-        color = vec(0.92, 0.90, 0.84, 0.95),
+-        thickness = 2.0
+-    ),
+-] +
+-    beforeLines.fitInto(beforeFrame, padding = 26.0) +
+-    afterLines.fitInto(afterFrame, padding = 26.0)
+-
+-showInteractionOverview(
+-    graphicLines = comparisonLines,
+-    cards = [
+-        beforeSummary,
+-        detail.summaryHtml("Duplicate event"),
+-        net.summaryHtml("After duplication", maxNodes = 5)
+-    ],
++val after = stage("After duplication", net.toFLines(), net.summaryHtml("After duplication", maxNodes = 5))
++showInteractionStages(
++    before,
++    after,
++    cards = [detail.summaryHtml("Duplicate event")],
+@@ -254,2 +190,0 @@ showInteractionOverview(
+-    graphicWidth = 1040.0,
+-    graphicHeight = 340.0
+@@ -284,2 +218,0 @@ expect:
+-import afield.app.protocol.Rect
+-
+@@ -290,2 +223,2 @@ net.relax(20)
+-val beforeLines = net.toFLines()
+-val beforeSummary = net.summaryHtml("Before erase", maxNodes = 5)
++// Capture before rewriting; later relaxation must not move this stage.
++val before = stage("Before erase", net.toFLines(), net.summaryHtml("Before erase", maxNodes = 5))
+@@ -294,23 +227,5 @@ net.relax(28)
+-val afterLines = net.toFLines()
+-val beforeFrame = Rect(52.0, 54.0, 404.0, 232.0)
+-val afterFrame = Rect(584.0, 54.0, 404.0, 232.0)
+-val comparisonLines = [
+-    beforeFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
+-    afterFrame.toFLine(filled = true, color = vec(0.18, 0.11, 0.08, 0.54)),
+-    arrow(
+-        beforeFrame.right + 34.0, 170.0,
+-        afterFrame.x - 34.0, 170.0,
+-        color = vec(0.92, 0.90, 0.84, 0.95),
+-        thickness = 2.0
+-    ),
+-] +
+-    beforeLines.fitInto(beforeFrame, padding = 26.0) +
+-    afterLines.fitInto(afterFrame, padding = 26.0)
+-
+-showInteractionOverview(
+-    graphicLines = comparisonLines,
+-    cards = [
+-        beforeSummary,
+-        detail.summaryHtml("Prune step"),
+-        net.summaryHtml("After erase step", maxNodes = 5)
+-    ],
++val after = stage("After erase step", net.toFLines(), net.summaryHtml("After erase step", maxNodes = 5))
++showInteractionStages(
++    before,
++    after,
++    cards = [detail.summaryHtml("Prune step")],
+@@ -319,2 +233,0 @@ showInteractionOverview(
+-    graphicWidth = 1040.0,
+-    graphicHeight = 340.0
+@@ -351,2 +263,0 @@ expect:
+-import afield.app.protocol.Rect
+-
+@@ -370,2 +281,3 @@ subject.relax(20)
+-val beforeLines = subject.toFLines()
+-val beforeSummary = subject.summaryHtml("Before: labels 1 and 2", maxNodes = 6)
++// Capture before rewriting; later relaxation must not move this stage.
++val before =
++    stage("Before: labels 1 and 2", subject.toFLines(), subject.summaryHtml("Before: labels 1 and 2", maxNodes = 6))
+@@ -376,2 +288 @@ subject.relax(24)
+-val middleLines = subject.toFLines()
+-val middleSummary = subject.summaryHtml("After fan-fan", maxNodes = 8)
++val middle = stage("After fan-fan", subject.toFLines(), subject.summaryHtml("After fan-fan", maxNodes = 8))
+@@ -382,34 +293,8 @@ subject.relax(28)
+-val afterLines = subject.toFLines()
+-
+-val firstFrame = Rect(28.0, 54.0, 296.0, 232.0)
+-val middleFrame = Rect(372.0, 54.0, 296.0, 232.0)
+-val lastFrame = Rect(716.0, 54.0, 296.0, 232.0)
+-val comparisonLines = [
+-    firstFrame.toFLine(filled = true, color = vec(0.08, 0.13, 0.18, 0.56)),
+-    middleFrame.toFLine(filled = true, color = vec(0.16, 0.13, 0.08, 0.54)),
+-    lastFrame.toFLine(filled = true, color = vec(0.08, 0.17, 0.12, 0.54)),
+-    arrow(
+-        firstFrame.right + 12.0, 170.0,
+-        middleFrame.x - 12.0, 170.0,
+-        color = vec(0.92, 0.90, 0.84, 0.95),
+-        thickness = 2.0
+-    ),
+-    arrow(
+-        middleFrame.right + 12.0, 170.0,
+-        lastFrame.x - 12.0, 170.0,
+-        color = vec(0.92, 0.90, 0.84, 0.95),
+-        thickness = 2.0
+-    ),
+-] +
+-    beforeLines.fitInto(firstFrame, padding = 22.0) +
+-    middleLines.fitInto(middleFrame, padding = 22.0) +
+-    afterLines.fitInto(lastFrame, padding = 22.0)
+-
+-showInteractionOverview(
+-    graphicLines = comparisonLines,
+-    cards = [
+-        beforeSummary,
+-        branch.summaryHtml("fan-fan, commuting branch"),
+-        middleSummary,
+-        subject.summaryHtml("Fixed point after $rest more steps", maxNodes = 8)
+-    ],
++val after =
++    stage("Fixed point", subject.toFLines(), subject.summaryHtml("Fixed point after $rest more steps", maxNodes = 8))
++
++showInteractionStages(
++    before,
++    middle,
++    after,
++    cards = [branch.summaryHtml("fan-fan, commuting branch")],
+@@ -418,2 +303,3 @@ showInteractionOverview(
+-    graphicWidth = 1040.0,
+-    graphicHeight = 340.0
++    stageWidth = 296.0,
++    gap = 48.0,
++    padding = 22.0,
+diff --git a/public/docs/interpolants_examples.md b/public/docs/interpolants_examples.md
+index 525f4e587..a82825289 100644
+--- a/public/docs/interpolants_examples.md
++++ b/public/docs/interpolants_examples.md
+@@ -33,2 +32,0 @@ when the next one arrives.
+-import afield.animation.interpolation.NeedsStartingValue
+-
+@@ -41,2 +39 @@ var goal = setPoints[0]
+-fun chaser(steps: Int) = smoothTo<Float>(steps = steps) { goal }
+-    .also { (it as NeedsStartingValue<Float>).startAt(goal) }
++fun chaser(steps: Int) = smoothTo<Float>(steps = steps) { goal }.also { it.startAt(goal) }
+@@ -44,3 +41,3 @@ fun chaser(steps: Int) = smoothTo<Float>(steps = steps) { goal }
+-val snappy  = chaser(20)   // locks on fast
+-val medium  = chaser(60)   // arrives about when the next jump lands
+-val glacial = chaser(160)  // always leaning toward the last set-point
++val snappy = chaser(20) // locks on fast
++val medium = chaser(60) // arrives about when the next jump lands
++val glacial = chaser(160) // always leaning toward the last set-point
+@@ -48 +45,4 @@ val glacial = chaser(160)  // always leaning toward the last set-point
+-val tgt = FloatArray(n); val a = FloatArray(n); val b = FloatArray(n); val c = FloatArray(n)
++val tgt = FloatArray(n)
++val a = FloatArray(n)
++val b = FloatArray(n)
++val c = FloatArray(n)
+@@ -54,3 +54,3 @@ for (i in 0 until n) {
+-        (snappy  as NeedsStartingValue<Float>).startAt(a[i - 1])
+-        (medium  as NeedsStartingValue<Float>).startAt(b[i - 1])
+-        (glacial as NeedsStartingValue<Float>).startAt(c[i - 1])
++        snappy.startAt(a[i - 1])
++        medium.startAt(b[i - 1])
++        glacial.startAt(c[i - 1])
+@@ -60 +60,3 @@ for (i in 0 until n) {
+-    a[i] = snappy(); b[i] = medium(); c[i] = glacial()
++    a[i] = snappy()
++    b[i] = medium()
++    c[i] = glacial()
+@@ -90,3 +91,0 @@ partway through:
+-import afield.geometry.path.FLine
+-import afield.animation.interpolation.NeedsStartingValue
+-
+@@ -94 +93 @@ val q = smoothTo<Float>(steps = 140) { 1.0f }
+-(q as NeedsStartingValue<Float>).startAt(0.0f)
++q.startAt(0.0f)
+@@ -97,0 +97 @@ val f = fline {
++    breakNext()
+@@ -101 +101 @@ val f = fline {
+-        if (i == 0) moveTo(x, yy) else lineTo(x, yy)
++        lineTo(x, yy)
+@@ -108,3 +107,0 @@ lines(f, channel = "interpolants-diff", w = 1080.0, h = 640.0, fitToSize = true)
+-import afield.geometry.path.FLine
+-import afield.animation.interpolation.NeedsStartingValue
+-
+@@ -114 +111 @@ val byStep = smoothTo<Float>(steps = 140) { 1.0f }
+-(byStep as NeedsStartingValue<Float>).startAt(0.0f)
++byStep.startAt(0.0f)
+@@ -117,8 +114,10 @@ var elapsed = 0.0
+-val byTime = smoothTo<Float>(time = 1.2, steps = null, clock = { elapsed }) { 1.0f }
+-(byTime as NeedsStartingValue<Float>).startAt(0.0f)
+-
+-val samples = List(220) { i ->
+-    val sample = Sample(elapsed, byStep(), byTime())
+-    elapsed += if (i < 150) 0.002 else 0.018
+-    sample
+-}
++val duration = 1.2
++val byTime = smoothTo<Float>(time = duration, steps = null, clock = { elapsed }) { 1.0f }
++byTime.startAt(0.0f)
++
++val samples =
++    List(220) { i ->
++        val sample = Sample(elapsed, byStep(), byTime())
++        elapsed += if (i < 150) 0.002 else 0.018
++        sample
++    }
+@@ -127 +125,0 @@ val maxTime = 1.6
+-val duration = 1.2
+@@ -132 +130,2 @@ fun trace(values: List<Pair<Double, Float>>, rgba: Vec4, width: Double) = fline
+-    values.forEachIndexed { i, (t, v) ->
++    breakNext()
++    values.forEach { (t, v) ->
+@@ -135 +134 @@ fun trace(values: List<Pair<Double, Float>>, rgba: Vec4, width: Double) = fline
+-        if (i == 0) moveTo(xx, yy) else lineTo(xx, yy)
++        lineTo(xx, yy)
+@@ -142,3 +141,18 @@ val guides = [
+-    fline { moveTo(40, 560); lineTo(1020, 560); color = vec(1,1,1,0.22); thickness = 1.2 },
+-    fline { moveTo(40, 140); lineTo(1020, 140); color = vec(1,1,1,0.14); thickness = 1.0 },
+-    fline { moveTo(x(duration), 110); lineTo(x(duration), 580); color = vec(1,1,1,0.18); thickness = 1.0 }
++    fline {
++        moveTo(40, 560)
++        lineTo(1020, 560)
++        color = vec(1, 1, 1, 0.22)
++        thickness = 1.2
++    },
++    fline {
++        moveTo(40, 140)
++        lineTo(1020, 140)
++        color = vec(1, 1, 1, 0.14)
++        thickness = 1.0
++    },
++    fline {
++        moveTo(x(duration), 110)
++        lineTo(x(duration), 580)
++        color = vec(1, 1, 1, 0.18)
++        thickness = 1.0
++    },
+@@ -154 +168,3 @@ lines(guides + stepLine + timeLine, channel = "interpolants-diff", w = 1080.0, h
+-markdown("legend", """
++markdown(
++    "legend",
++    """
+@@ -156 +172 @@ markdown("legend", """
+-    <span style='color:#8fffad'>green</span>: 1.2 seconds;
++    <span style='color:#8fffad'>green</span>: $duration seconds;
+@@ -158 +174,2 @@ markdown("legend", """
+-""")
++""",
++)
+@@ -190,2 +206,0 @@ around it:
+-import afield.animation.interpolation.NeedsStartingValue
+-
+@@ -200 +215 @@ val linear = smoothTo<Float>(steps = 64) { goal }
+-(linear as NeedsStartingValue<Float>).startAt(goal)
++linear.startAt(goal)
+@@ -212,2 +227,2 @@ for (i in 0 until n) {
+-        (linear as NeedsStartingValue<Float>).startAt(a[i - 1])
+-        (restarted as NeedsStartingValue<Float>).startAt(b[i - 1])
++        linear.startAt(a[i - 1])
++        restarted.startAt(b[i - 1])
+@@ -287 +302 @@ val shades = [
+-    vec(1.00, 0.62, 0.42, 0.95)
++    vec(1.00, 0.62, 0.42, 0.95),
+@@ -296,0 +312 @@ fun curve(v: Double, overshoot: Double, rgba: Vec4, from: Double, span: Double,
++        breakNext()
+@@ -300 +316 @@ fun curve(v: Double, overshoot: Double, rgba: Vec4, from: Double, span: Double,
+-            if (i == 0) moveTo(x(u, from), y(value, span)) else lineTo(x(u, from), y(value, span))
++            lineTo(x(u, from), y(value, span))
+@@ -307,15 +323,21 @@ fun curve(v: Double, overshoot: Double, rgba: Vec4, from: Double, span: Double,
+-fun guides(from: Double, span: Double, at: List<Double>) = at.map { v ->
+-    fline {
+-        moveTo(x(from, from), y(v, span)); lineTo(x(1.3, from), y(v, span))
+-        color = vec(1, 1, 1, if (v == 0.0 || v == 1.0) 0.22 else 0.10); thickness = 1.2
+-    }
+-} + [
+-    fline {
+-        moveTo(x(0.0, from), y(-0.06 * span, span)); lineTo(x(0.0, from), y(span * 1.04, span))
+-        color = vec(1, 1, 1, 0.16); thickness = 1.0
+-    },
+-    fline {
+-        moveTo(x(1.0, from), y(-0.06 * span, span)); lineTo(x(1.0, from), y(span * 1.04, span))
+-        color = vec(1, 1, 1, 0.16); thickness = 1.0
+-    }
+-]
++fun guides(from: Double, span: Double, at: List<Double>) =
++    at.map { v ->
++        fline {
++            moveTo(x(from, from), y(v, span))
++            lineTo(x(1.3, from), y(v, span))
++            color = vec(1, 1, 1, if (v == 0.0 || v == 1.0) 0.22 else 0.10)
++            thickness = 1.2
++        }
++    } +
++        fline {
++            moveTo(x(0.0, from), y(-0.06 * span, span))
++            lineTo(x(0.0, from), y(span * 1.04, span))
++            color = vec(1, 1, 1, 0.16)
++            thickness = 1.0
++        } +
++        fline {
++            moveTo(x(1.0, from), y(-0.06 * span, span))
++            lineTo(x(1.0, from), y(span * 1.04, span))
++            color = vec(1, 1, 1, 0.16)
++            thickness = 1.0
++        }
+@@ -332 +354,3 @@ lines(guides(-0.6, 6.4, [0.0, 1.0]) + jolt + past, channel = "overshoot", w = 10
+-markdown("legend", """
++markdown(
++    "legend",
++    """
+@@ -342 +366,2 @@ markdown("legend", """
+-""")
++""",
++)
+@@ -373,5 +397,0 @@ the `pos` vector eases linearly, and the `voice` code steps:
+-import afield.geometry.path.FLine
+-import afield.animation.keyframes.KeyframeScope
+-import afield.animation.keyframes.stackSLString
+-import afield.math.linalg.Vector2f
+-
+@@ -379,10 +399,10 @@ val scope = KeyframeScope()
+-val a = scope.Key(mutableMapOf(
+-    "gain"  to 0.12,
+-    "pos"   to Vector2f(80f, 500f),
+-    "voice" to stackSLString("saw 110 *")
+-))
+-val b = scope.Key(mutableMapOf(
+-    "gain"  to 0.94,
+-    "pos"   to Vector2f(960f, 150f),
+-    "voice" to stackSLString("sin 220 * fold")
+-))
++val a = scope.Key(
++    "gain" to 0.12,
++    "pos" to Vector2f(80f, 500f),
++    "voice" to stackSLString("saw 110 *"),
++)
++val b = scope.Key(
++    "gain" to 0.94,
++    "pos" to Vector2f(960f, 150f),
++    "voice" to stackSLString("sin 220 * fold"),
++)
+@@ -391 +411,3 @@ val b = scope.Key(mutableMapOf(
+-scope.remap["gain"] = { t -> t * t * (3.0 - 2.0 * t) }
++scope.remap["gain"] = { t ->
++    t * t * (3.0 - 2.0 * t)
++}
+@@ -394,0 +417 @@ val gain = fline {
++    breakNext()
+@@ -400 +423 @@ val gain = fline {
+-        if (i == 0) moveTo(x, y) else lineTo(x, y)
++        lineTo(x, y)
+@@ -406 +429 @@ val gain = fline {
+-// The position vector traces an eased path across the frame.
++// The position vector traces a linear path across the frame.
+@@ -407,0 +431 @@ val path = fline {
++    breakNext()
+@@ -411 +435 @@ val path = fline {
+-        if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
++        lineTo(p.x, p.y)
+@@ -419,0 +444 @@ val code = fline {
++    breakNext()
+@@ -425 +450 @@ val code = fline {
+-        if (i == 0) moveTo(x, y) else lineTo(x, y)
++        lineTo(x, y)
+@@ -431 +456 @@ val code = fline {
+-lines([path, gain, code], channel = "keyframe-morph", w = 1080.0, h = 640.0, fitToSize = true)
++lines(path, gain, code, channel = "keyframe-morph", w = 1080.0, h = 640.0, fitToSize = true)
+@@ -434 +459,3 @@ lines([path, gain, code], channel = "keyframe-morph", w = 1080.0, h = 640.0, fit
+-markdown("keys", """
++markdown(
++    "keys",
++    """
+@@ -438 +465,2 @@ markdown("keys", """
+-""")
++""",
++)
+@@ -470,5 +498,7 @@ val xs = DoubleArray(n) { sin(it / n.toDouble() * 2.0 * PI * 3.0) }
+-val ys = DoubleArray(n) { i ->
+-    when {
+-        i < 140 -> xs[i] + (-0.05 + random() * 0.10)                    // linear dependence
+-        i < 280 -> -0.9 + random() * 1.8                               // independent noise
+-        else    -> 2.0 * xs[i] * xs[i] - 1.0 + (-0.05 + random() * 0.10) // nonlinear dependence
++val ys =
++    DoubleArray(n) { i ->
++        when {
++            i < 140 -> xs[i] + (-0.05 + random() * 0.10) // linear dependence
++            i < 280 -> -0.9 + random() * 1.8 // independent noise
++            else -> 2.0 * xs[i] * xs[i] - 1.0 + (-0.05 + random() * 0.10) // nonlinear dependence
++        }
+@@ -476 +505,0 @@ val ys = DoubleArray(n) { i ->
+-}
+@@ -478 +507 @@ val dcor = DoubleArray(n) { rollingD.push(xs[it], ys[it]) ?: 0.0 }
+-val xi   = DoubleArray(n) { rollingXi.push(xs[it], ys[it]) ?: 0.0 }
++val xi = DoubleArray(n) { rollingXi.push(xs[it], ys[it]) ?: 0.0 }
+@@ -512 +540,0 @@ then the metrics as bars:
+-import afield.ui.visualization.darkMode
+@@ -525 +553 @@ val metrics = mapOf(
+-    "dcor" to StatsDependence.distanceCorrelation(xs, ys)
++    "dcor" to StatsDependence.distanceCorrelation(xs, ys),
+@@ -528,4 +556,17 @@ val metrics = mapOf(
+-display("source", Plotly.plot {
+-    scatter { mode = ScatterMode.markers; x.set(xs); y.set(ys); marker { size = 4 } }
+-    layout { title = "The source cloud: y = x² + noise"; xaxis { title = "x" }; yaxis { title = "y" } }
+-}.darkMode())
++display(
++    "source",
++    Plotly.plot {
++            scatter {
++                mode = ScatterMode.markers
++                x.set(xs)
++                y.set(ys)
++                marker { size = 4 }
++            }
++            layout {
++                title = "The source cloud: y = x² + noise"
++                xaxis { title = "x" }
++                yaxis { title = "y" }
++            }
++        }
++        .darkMode(),
++)
+@@ -533,4 +574,14 @@ display("source", Plotly.plot {
+-display("metrics", Plotly.plot {
+-    bar { x.set(metrics.keys.toList()); y.set(metrics.values.toList()) }
+-    layout { title = "…and five dependence metrics on it"; yaxis { title = "correlation" } }
+-}.darkMode())
++display(
++    "metrics",
++    Plotly.plot {
++            bar {
++                x.set(metrics.keys.toList())
++                y.set(metrics.values.toList())
++            }
++            layout {
++                title = "…and five dependence metrics on it"
++                yaxis { title = "correlation" }
++            }
++        }
++        .darkMode(),
++)

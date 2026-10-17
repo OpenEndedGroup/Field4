@@ -708,13 +708,26 @@ suspend fun Window.raiseAndScreenshot(
         require(captureTimeoutMs > 0L) { "Native capture timeout must be positive" }
         // One budget covers renderer readiness, settling and capture, not a fresh
         // allowance for each stage. Old clients retain the 15-second default.
-        kotlinx.coroutines.withTimeout(captureTimeoutMs) {
-            val renderer = rendererForDirectCapture(captureTimeoutMs)
-            waitFrames {
-                lprintln("info,doc", " -- waiting for renderer frame capture --")
-                yield()
+        // When it expires, say which stage was running and how far settling got.
+        var stage = "renderer readiness"
+        var settled = 0
+        try {
+            kotlinx.coroutines.withTimeout(captureTimeoutMs) {
+                val renderer = rendererForDirectCapture(captureTimeoutMs)
+                stage = "settle frames"
+                waitFrames {
+                    settled++
+                    lprintln("info,doc", " -- waiting for renderer frame capture --")
+                    yield()
+                }
+                stage = "swapchain copy"
+                renderer.captureWindowToFile(this@raiseAndScreenshot, outPath, timeoutMs = captureTimeoutMs)
             }
-            renderer.captureWindowToFile(this@raiseAndScreenshot, outPath, timeoutMs = captureTimeoutMs)
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            throw IllegalStateException(
+                "Timed out waiting for native renderer after ${captureTimeoutMs} ms, during $stage " +
+                    "($settled of $waitFrames settle steps done)", e
+            )
         }
         return
     }

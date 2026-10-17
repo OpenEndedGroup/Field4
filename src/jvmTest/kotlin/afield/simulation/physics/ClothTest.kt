@@ -1,10 +1,13 @@
 package afield.simulation.physics
 
+import afield.math.linalg.Vec3
+
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 
 /**
  * Covers [Cloth] — the grid wiring it puts into a [SimdVerlet.DirectedConstraints4], the
@@ -320,5 +323,44 @@ class ClothTest {
         }
         // The particles are still there; remove() deliberately doesn't renumber the simulation.
         assertEquals(9, sim.size)
+    }
+
+    @Test
+    fun aClothSteppedThroughTheSimSolvesItsPublishedConstraints() {
+        // sim.step without naming a constraint set solves the cloth's published one, exactly as
+        // naming sim.constraints4 does.
+        fun run(explicit: Boolean): Vec3 {
+            val sim = SimdVerlet(SimdVerlet.State3.empty())
+            val cloth = sim.addCloth(width = 6, height = 6, spacing = 0.2f, pinned = { _, r -> r == 0 })
+            repeat(60) {
+                if (explicit) sim.step(1f / 60f, 0.99f, -9.8f, 16, sim.constraints4) else sim.step(1f / 60f, 0.99f, -9.8f, 16)
+            }
+            return cloth.position(3, 5)
+        }
+        val implicit = run(false)
+        val named = run(true)
+        assertEquals(named.x, implicit.x); assertEquals(named.y, implicit.y); assertEquals(named.z, implicit.z)
+    }
+
+
+    @Test
+    fun aDivergingRunSaysSoOnce() {
+        val sim = SimdVerlet(SimdVerlet.State3.empty())
+        sim.addCloth(width = 3, height = 3, spacing = 0.2f)
+        repeat(3) { sim.step(1f / 60f, 0.99f, -9.8f, 4) }
+        assertFalse(sim.diverged)
+        sim.state.x[4] = Float.NaN
+        sim.step(1f / 60f, 0.99f, -9.8f, 4)
+        assertTrue(sim.diverged)
+    }
+
+    @Test
+    fun removingAParticleBelowAClothIsRefused() {
+        val sim = simWith(3)
+        val cloth = sim.addCloth(width = 3, height = 3, spacing = 0.2f)
+        sim.addZeroed(2)
+        assertFailsWith<IllegalArgumentException> { sim.queueRemove(1) }
+        assertFailsWith<IllegalArgumentException> { sim.queueRemoveRange(cloth.base + 2, 1) }
+        sim.queueRemove(cloth.end)      // above the cloth: fine
     }
 }

@@ -427,7 +427,7 @@ The [`imaging_cv_examples`](agent_transcripts.md#imaging_cv_examples) starting p
 examples on this page as live boxes. Change a sigma, a threshold or the planted motion, re-run the
 box, and watch the picture update.
 
-??? aside "Where the figures come from"
+??? aside "Agents: where the figures come from"
     The images under the code fences are those boxes' own output, captured by the docs build. The
     figures without a fence come from the `imaging.gallery` FIELD_TEST
     (`python3 tools/run_field_tests.py --id imaging.gallery`), which builds each one from real `Img`

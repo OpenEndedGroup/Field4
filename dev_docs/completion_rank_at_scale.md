@@ -232,7 +232,9 @@ gain completely: the pre-fix run reported 0.000. This is not an MRR rounding arg
 foreign-receiver answers cross the 80-row visibility cliff. The harness remains sensitive in the other
 direction too: R1's larger weights lower bare contested recall slightly, so magnitude still matters.
 
-That makes R2 a credible candidate, not an automatic shipment. Its exposure remains 14.4% because
+**Shipped 2026-10-16** (handoff dbf0117a), extended to every category the server sends: `internal` and `generic` get an explicit 0, and `FieldSuggestPresentationTest` fails when a category has no row. The hand-cut `List bare dot` case went off-screen (77 → past 80) under it; its note records why that was accepted.
+
+Before it shipped, R2 was a credible candidate, not an automatic shipment. Its exposure remains 14.4% because
 `other` and uncategorised rows are still unweighted; eliminating exposure is not itself the objective.
 More importantly, the same table raises foreign recall while worsening the median rank among answers
 that remain visible. The next decision should therefore be made on the split below, not on one global

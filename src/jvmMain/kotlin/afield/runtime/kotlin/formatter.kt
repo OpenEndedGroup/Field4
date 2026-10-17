@@ -25,6 +25,7 @@ import afield.media.stream.*
 import afield.media.video.*
 import afield.runtime.lifecycle.end
 import afield.runtime.lifecycle.map
+import afield.runtime.macros.isFragmentBreak
 import afield.tools.docs.format
 import afield.ui.output.templates.filter
 import org.jetbrains.ktfmt.format.FileType
@@ -213,6 +214,9 @@ fun blockifyLineCommentRuns(code: String): String {
         .filter { it.tokenType == KtTokens.EOL_COMMENT }
         .sortedBy { it.startOffset }
         .mapNotNull { comment ->
+            // Fragment markers are execution boundaries. Leave them as line comments,
+            // separating prose runs on either side so the splitter still sees them.
+            if (isFragmentBreak(comment.text)) return@mapNotNull null
             val start = comment.startOffset
             val lineStart = code.lastIndexOf('\n', start - 1) + 1
             val indent = code.substring(lineStart, start)
@@ -275,7 +279,23 @@ fun formatCodeProperty(property: String, code: String): String? = when (property
 }
 
 fun formatGlslCode(code: String): String {
-    val normalized = splitGlslStatements(code)
+    // Keep literal text and comment layout out of spacing/statement rewriting. In particular,
+    // shader headers often contain aligned tables, and string contents are not GLSL whitespace.
+    var marker = "FIELD_GLSL_PROTECTED_"
+    while (code.contains(marker)) marker = "_" + marker
+    val protected = mutableListOf<Pair<String, String>>()
+    val masked = GLSL_PROTECTED.replace(code) { match ->
+        val text = match.value
+        val id = marker + protected.size + "_END"
+        val token = when {
+            text.startsWith("//") -> "//$id"
+            text.startsWith("/*") -> "/*$id*/"
+            else -> "\"$id\""
+        }
+        protected += token to text
+        token
+    }
+    val normalized = splitGlslStatements(masked)
     val out = StringBuilder()
     var indent = 0
     var previousBlank = false
@@ -289,8 +309,9 @@ fun formatGlslCode(code: String): String {
             return@forEach
         }
         previousBlank = false
-        if (line.startsWith("}")) indent = (indent - 1).coerceAtLeast(0)
-        val effectiveIndent = if (line.startsWith("case ") || line.startsWith("default:")) {
+        val structure = line.replace(Regex("""/\*.*?\*/|//.*"""), "").trim()
+        if (structure.startsWith("}")) indent = (indent - 1).coerceAtLeast(0)
+        val effectiveIndent = if (structure.startsWith("case ") || structure.startsWith("default:")) {
             (indent - 1).coerceAtLeast(0)
         } else {
             indent
@@ -302,11 +323,15 @@ fun formatGlslCode(code: String): String {
         val cleaned = cleanGlslSpacing(line)
         out.appendLine(cleaned)
         previousLine = cleaned
-        if (line.endsWith("{")) indent += 1
+        if (structure.endsWith("{")) indent += 1
     }
 
-    return out.toString().trimEnd() + "\n"
+    var formatted = out.toString().trimEnd() + "\n"
+    protected.forEach { (token, original) -> formatted = formatted.replace(token, original) }
+    return formatted
 }
+
+private val GLSL_PROTECTED = Regex("""//[^\r\n]*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'""")
 
 private fun splitGlslStatements(code: String): String {
     val out = StringBuilder()
@@ -377,10 +402,13 @@ private fun splitGlslStatements(code: String): String {
             out.append(code.substring(i, end).trimEnd())
             appendNewlineIfNeeded()
             i = if (end < code.length) end + 1 else end
+            // The directive's source newline was consumed above. A following newline is
+            // an authored blank line, rather than the duplicate of an inserted break.
+            inserted = false
             continue
         }
 
-        // A template span ({% include %}, {{ value }}, {# note #}) is Field's, not GLSL's: copy it as
+        // A template span ({% property %}, {{ value }}, {# note #}) is Field's, not GLSL's: copy it as
         // it stands rather than reading its braces as a block.
         if (c == '{' && (next == '%' || next == '{' || next == '#')) {
             val closer = when (next) { '%' -> "%}"; '#' -> "#}"; else -> "}}" }
@@ -393,6 +421,15 @@ private fun splitGlslStatements(code: String): String {
 
         when {
             c == '/' && next == '/' -> {
+                // A semicolon/brace may just have inserted a newline. A comment authored on
+                // that same source line still belongs to the preceding statement.
+                val sourceLineStart = code.lastIndexOf('\n', i - 1) + 1
+                if (inserted && out.endsWith('\n') && code.substring(sourceLineStart, i).isNotBlank()) {
+                    out.setLength(out.length - 1)
+                    out.append(' ')
+                    inserted = false
+                    atLineStart = false
+                }
                 out.append(c).append(next)
                 inLineComment = true
                 i += 2

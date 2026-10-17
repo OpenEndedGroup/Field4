@@ -1,10 +1,12 @@
-// Two meters, both fed by a `source` lambda. Nothing here loops: the box says where the
-// number comes from, and a single shared daemon thread samples it at 30 Hz. The sampler is
-// retired when this box runs again without declaring the meter, so it does not outlive it.
-//
-// A meter is an output. It is not cached across a rerun (there is nothing to preserve), it
-// posts nothing when you press it, and it is the one control here that reads rather than
-// writes.
+/*
+Two meters, both fed by a `source` lambda. Nothing here loops: the box says where the
+number comes from, and a single shared daemon thread samples it at 30 Hz. The sampler is
+retired when this box runs again without declaring the meter, so it does not outlive it.
+
+A meter is an output. It is not cached across a rerun (there is nothing to preserve), it
+posts nothing when you press it, and it is the one control here that reads rather than
+writes.
+*/
 val start = System.nanoTime()
 fun envelope(): Double {
     val seconds = (System.nanoTime() - start) / 1.0e9
@@ -20,10 +22,10 @@ controlGroup("levels") {
         min = 0.001,
         max = 1.0,
         law = ControlLaw.LOGARITHMIC,
-        source = { envelope().coerceAtLeast(0.001) }
+        source = { envelope().coerceAtLeast(0.001) },
     )
     // And a slider, so you can see the meter is not one: this posts, the meters do not.
-    slider("trim", min = -24.0, max = 24.0, step = 0.1, initialValue = 0.0) { }
+    slider("trim", min = -24.0, max = 24.0, step = 0.1, initialValue = 0.0) {}
 }
 
 println("two meters, sampled at 30 Hz from a source lambda. Nothing in this box loops.")

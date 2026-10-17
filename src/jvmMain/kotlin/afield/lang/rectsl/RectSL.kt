@@ -5276,7 +5276,8 @@ private fun rectSLFrameTimes(duration: Double, fps: Double, includeFinalFrame: B
     }
 }
 
-internal fun WallSpec.worldToClip(): Matrix4f =
+/** Orthographic world-to-clip projection respecting this wall's dimensions and origin. */
+fun WallSpec.worldToClip(): Matrix4f =
     when (origin) {
         Origin.Center -> Matrix4f().ortho(
             (-width * 0.5).toFloat(),

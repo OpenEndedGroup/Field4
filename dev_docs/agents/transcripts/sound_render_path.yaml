@@ -34,9 +34,11 @@ operations:
         h: 130.0
       properties:
         code: |
-          // patVoice: one oscillator, one one-pole lowpass, one exponential-decay envelope, per
-          // event. `bd` is a 62 Hz sine; `sd` and `hh` are filtered white noise. This is the default
-          // everywhere in Field's docs, and it sounds like bursts of white noise because it is.
+          /*
+          patVoice: one oscillator, one one-pole lowpass, one exponential-decay envelope, per
+          event. `bd` is a 62 Hz sine; `sd` and `hh` are filtered white noise. This is the default
+          everywhere in Field's docs, and it sounds like bursts of white noise because it is.
+          */
           val audio = showPatAudio(pat("bd ~ sd ~, hh*8") with gain(0.9), cycles = 4, cps = 2.0)
           println("stand-in: %.2fs, peak %.3f".format(audio.frames / 44100.0, PatSoundDocs.peak(audio.mono)))
           displayOpen("main")
@@ -50,11 +52,13 @@ operations:
         h: 130.0
       properties:
         code: |
-          // The identical pattern, mixed from the genuine Tidal sample library — offline, with no
-          // audio device. Play box 1 and box 2 back to back: that difference is the whole point.
-          //
-          // No library on this machine? You will hear box 1 again, and describe() will say so and
-          // name the override rather than leaving you to guess from the sound.
+          /*
+          The identical pattern, mixed from the genuine Tidal sample library — offline, with no
+          audio device. Compare the synth and Dirt audio boxes to hear the two render paths.
+
+          No library on this machine? The synth fallback plays, and describe() will say so and
+          name the override rather than leaving you to guess from the sound.
+          */
           val played = showDirtAudio(pat("bd ~ sd ~, hh*8") with gain(0.9), cycles = 4, cps = 2.0)
           println(played.describe())
           println("usedSamples = ${played.usedSamples}")
@@ -69,17 +73,20 @@ operations:
         h: 130.0
       properties:
         code: |
-          // The second, finer fallback. `bd` and `hh` are in every Dirt install; `zzzznotadrum` is in
-          // none, so THAT EVENT ALONE is voiced by the synth and mixed on top of the sampled ones.
-          // A pattern must not go silent just because the library loaded successfully.
+          /*
+          The second, finer fallback. `bd` and `hh` are in every Dirt install; `zzzznotadrum` is in
+          none, so THAT EVENT ALONE is voiced by the synth and mixed on top of the sampled ones.
+          A pattern must not go silent just because the library loaded successfully.
+          */
           val mixed = showDirtAudio(
               pat("bd zzzznotadrum bd hh") with gain(0.9),
-              cycles = 4, cps = 2.0,
+              cycles = 4,
+              cps = 2.0,
               voice = patVoice(wave = PatWave.SQUARE, baseHz = 330.0, decay = 0.05, sustain = 0.3),
           )
           println(mixed.describe())
           println("matched   = ${mixed.matched}")
-          println("unmatched = ${mixed.unmatched}")   // <- the tokens that fell back, named
+          println("unmatched = ${mixed.unmatched}") // <- the tokens that fell back, named
           displayOpen("main")
   - create:
       box: sound_path_where
@@ -91,9 +98,11 @@ operations:
         h: 110.0
       properties:
         code: |
-          // The probe order, and what it found here. Dirt-Samples ships as a SuperCollider quark, so
-          // anyone who has run Tidal already has it — hence auto-discovery rather than asking you.
-          // ~400MB of third-party audio with mixed per-folder licensing, so it is NOT vendored.
+          /*
+          The probe order, and what it found here. Dirt-Samples ships as a SuperCollider quark, so
+          anyone who has run Tidal already has it — hence auto-discovery rather than asking you.
+          ~400MB of third-party audio with mixed per-folder licensing, so it is NOT vendored.
+          */
           val root = DirtRender.dirtSampleRoot()
           println(if (root != null) "found: $root" else "not found — set ${DirtRender.ENV_VAR} to a copy of Dirt-Samples")
   - launch:

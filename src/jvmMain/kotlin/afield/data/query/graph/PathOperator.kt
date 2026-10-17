@@ -22,16 +22,31 @@ package afield.data.query.graph
  *   `div`. Between two extensions the more specific receiver wins, so
  *   `kotlin.io.path`'s `Path / "sub"` still builds a `Path`. What this adds is only the case
  *   that was previously a compile error: a *String* on the right of `/`.
- * - **That case is no longer a compile error.** `"a" / "b"` now type-checks and returns an
- *   empty [PathSet] instead of being rejected, and a genuine typo — dividing by a string you
- *   meant to parse — surfaces later as a `PathSet` type mismatch rather than at the `/`.
- *   That is the whole of the risk, and it is the price of the notation.
+ * - **A leaf on the left is still a compile error.** `"a" / "b"`, a number or a boolean over a
+ *   string resolve to deprecated-at-ERROR overloads ([String.div] and its siblings), so the
+ *   typo is caught at the `/` with a message pointing at [graphPaths].
  * - **`div` appears on every receiver in completion.** One extra entry, everywhere.
  *
  * When you need [GraphWalkOptions] — a depth cap, private properties, a custom `descendInto`
  * — call [graphPaths] directly; the operator has nowhere to put them and does not try.
  */
 operator fun Any?.div(pattern: String): PathSet = graphPaths(pattern)
+
+private const val LEAF_DIV_MESSAGE =
+    "A String, Number or Boolean has no slots for a path to walk, so `x / \"pattern\"` here is a mistake " +
+        "(usually a mistyped division); call graphPaths(pattern) on the object you meant to query"
+
+/** Refused at compile time: a string has no slots, so `"a" / "b"` is a typo rather than a query. */
+@Deprecated(LEAF_DIV_MESSAGE, level = DeprecationLevel.ERROR)
+operator fun String.div(pattern: String): PathSet = graphPaths(pattern)
+
+/** Refused at compile time, like [String.div]: a number has no slots. */
+@Deprecated(LEAF_DIV_MESSAGE, level = DeprecationLevel.ERROR)
+operator fun Number.div(pattern: String): PathSet = graphPaths(pattern)
+
+/** Refused at compile time, like [String.div]: a boolean has no slots. */
+@Deprecated(LEAF_DIV_MESSAGE, level = DeprecationLevel.ERROR)
+operator fun Boolean.div(pattern: String): PathSet = graphPaths(pattern)
 
 /**
  * Continue a query from a set: match [pattern] against the graph below *each* ref, with the

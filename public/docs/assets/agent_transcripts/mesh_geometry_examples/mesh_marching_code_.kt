@@ -7,7 +7,7 @@ the output is closed; plain marching cubes leaks exactly there.
 */
 val exact = 4.0 / 3.0 * PI
 println("resolution   tris    volume     relative error")
-for (resolution in listOf(12, 24, 48, 64)) {
+for (resolution in [12, 24, 48, 64]) {
     val m = marchingCubes(sdfSphere(1.0), boundsAround(radius = 1.4), resolution)
     val error = abs(m.signedVolume() - exact) / exact
     println(

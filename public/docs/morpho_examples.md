@@ -191,7 +191,7 @@ and drops upstream's browser rendering:
 | `viewer.js`, `layout_renderer.js`, `swissgl.js`, `hex_layout.js`, `bloom.js`, `figures.js`, `demo.js`, `article.js`, `presets.js` | ~2900 | canvas/WebGL rendering, DOM | **dropped** |
 
 Field's side of the bridge is in
-[`src/jvmMain/kotlin/afield/morpho/`](https://github.com/OpenEndedGroup/Field4/tree/main/src/jvmMain/kotlin/afield/morpho),
+[`src/jvmMain/kotlin/afield/lang/morpho/`](https://github.com/OpenEndedGroup/Field4/tree/main/src/jvmMain/kotlin/afield/lang/morpho),
 and the vendored upstream tree, with a `PROVENANCE.md` saying what was left out, is under
 [`src/jvmMain/resources/morpho/`](https://github.com/OpenEndedGroup/Field4/tree/main/src/jvmMain/resources/morpho).
 

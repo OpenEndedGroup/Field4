@@ -562,7 +562,7 @@ object OperationTranscript {
         val ordered = if (normalizedDirection == "undo") operations.asReversed() else operations
         val targets = targetBoxes.filter { it.isNotBlank() }.ifEmpty { listOf("") }
         val launchCount = ordered.count { operationVerb(it) in launchVerbs }
-        val errors = mutableListOf<String>()
+        val errors = java.util.Collections.synchronizedList(mutableListOf<String>())
         var applied = 0
         var skipped = 0
         val collected = java.util.Collections.synchronizedList(mutableListOf<MacroOutputLine>())
@@ -571,6 +571,17 @@ object OperationTranscript {
             if (msg.name == "execution-dispatched") {
                 val payload = msg.payload as? kotlinx.serialization.json.JsonObject
                 unverified.add(payload?.get("uid")?.toString().orEmpty())
+            }
+            // Every engine answers a dispatched execution with a verdict; that is the receipt that
+            // turns "dispatched" into "completed" (or into an error) for a non-Kotlin box.
+            if (msg.name == "execution-verdict") {
+                val payload = msg.payload as? kotlinx.serialization.json.JsonObject
+                val uid = payload?.get("uid")?.toString().orEmpty()
+                if (unverified.remove(uid)) {
+                    val ok = (payload?.get("success") as? kotlinx.serialization.json.JsonPrimitive)?.content == "true"
+                    if (!ok) errors += "execution of $uid failed: " +
+                        ((payload?.get("error") as? kotlinx.serialization.json.JsonPrimitive)?.content ?: "no message")
+                }
             }
             synchronized(collected) { if (collected.size < 200) captureMacroOutput(msg, collected) }
         }
@@ -649,6 +660,12 @@ object OperationTranscript {
                     break
                 }
             }
+        }
+        // Give non-Kotlin executions a bounded moment to report their verdicts before the receipt is written.
+        val verdictDeadline = System.nanoTime() + 10_000_000_000L
+        // Only off the Runloop: verdicts are delivered through it, so waiting on it would only stall.
+        if (!afield.runtime.lifecycle.Runloop.isMainThread) {
+            while (unverified.isNotEmpty() && System.nanoTime() < verdictDeadline) Thread.sleep(20)
         }
         if (applied > 0) runCatching { doResync() }
         val noChangeMessage = if (errors.isEmpty() && applied == 0) {

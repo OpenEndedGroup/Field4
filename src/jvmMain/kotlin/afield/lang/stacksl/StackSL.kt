@@ -218,7 +218,8 @@ object StackSLCompiler {
             definitions = definitions,
             diagnostics = diagnostics,
             functionWord = null,
-            emittedName = normalized.prefix
+            emittedName = normalized.prefix,
+            entrypointCall = rootTokens.singleOrNull()?.takeIf { rootTokens !== parsed.root },
         ).compile("<root>", rootTokens)
 
         if (functionResults.isNotEmpty()) {
@@ -574,7 +575,9 @@ private class FunctionCompiler(
     private val definitions: Map<String, Definition>,
     private val diagnostics: MutableList<StackSLDiagnostic>,
     private val functionWord: String?,
-    private val emittedName: String
+    private val emittedName: String,
+    /** A root call the compiler synthesised to run an entrypoint; it runs as a root program, so it is not balance-checked. */
+    private val entrypointCall: Token? = null,
 ) {
     private val values = mutableListOf<StackValue>()
     private val wordReferences = mutableListOf<StackSLWordReference>()
@@ -668,7 +671,10 @@ private class FunctionCompiler(
         val requestedAll = arityVariant?.all == true
 
         parseExternalRead(raw)?.let {
-            push(leaf(it, token, "external GLSL read"))
+            // Whatever the host member's GLSL type, the stack holds vec4s: an overloaded helper
+            // widens a float, vec2, vec3 or int the way a swizzle would, and passes a vec4 through.
+            requiredHelpers += "asVec4"
+            push(leaf("${options.prefix}_asVec4($it)", token, "external GLSL read"))
             return
         }
 
@@ -1505,6 +1511,25 @@ private class FunctionCompiler(
             val resultIndex = next.indexOfLast { it == result && !isWordReference(it) }
             if (resultIndex >= 0) next.removeAt(resultIndex)
             remainder = next.toList()
+            // A definition is net zero on the stack: it consumes its input and leaves one result.
+            // Anything else silently feeds the wrong operand to whatever runs next, so it is refused.
+            // Word references are left out of the comparison: a definition that `apply`s one its
+            // caller pushed is consuming an argument, which is the point of passing it.
+            val callerValues = callerStack.filterNot { isWordReference(it) }
+            val remainderValues = remainder.filterNot { isWordReference(it) }
+            if (remainderValues != callerValues && token !== entrypointCall) {
+                val extra = remainderValues.size - callerValues.size
+                val copies = definition.body.filter { it.text.startsWith("=") && it.text.length > 1 }
+                diagnostics += StackSLDiagnostic(
+                    if (options.tolerant) StackSLSeverity.WARNING else StackSLSeverity.ERROR,
+                    "Definition '${definition.name}' is unbalanced, not net zero on the stack: called here it " +
+                        (if (extra > 0) "leaves $extra extra value(s)" else "takes ${-extra} value(s) from its caller") +
+                        ", so whatever runs next gets the wrong operand." +
+                        (copies.firstOrNull()?.let { " `${it.text}` copies the top; open with `>${it.text.drop(1)}` to move it instead." } ?: ""),
+                    definition.location,
+                    definition.name,
+                )
+            }
         } finally {
             inlineCallStack.removeAt(inlineCallStack.lastIndex)
             inputStack.removeAt(inputStack.lastIndex)
@@ -1740,6 +1765,12 @@ private class FunctionCompiler(
         val value = localMarks[key]
         if (value != null) {
             push(value)
+        } else if (key in setOf("x", "y", "z", "w")) {
+            errorOrWarning(
+                token,
+                "No mark '$name' can exist: `>$name` is the word that replaces the $name lane of a value, not a " +
+                    "mark write, so `<$name` has nothing to read. Give the mark another name.",
+            )
         } else {
             errorOrWarning(token, "Unknown StackSL local mark '$name'.")
         }
@@ -3231,6 +3262,15 @@ private val bareSwizzleReservedWords = setOf("ryb")
 private fun helperSource(prefix: String, helpers: Set<String>): String {
     if (helpers.isEmpty()) return ""
     return buildString {
+        if ("asVec4" in helpers) {
+            appendLine("vec4 ${prefix}_asVec4(vec4 v) { return v; }")
+            appendLine("vec4 ${prefix}_asVec4(vec3 v) { return vec4(v, 1.0); }")
+            appendLine("vec4 ${prefix}_asVec4(vec2 v) { return vec4(v, 0.0, 1.0); }")
+            appendLine("vec4 ${prefix}_asVec4(float v) { return vec4(v); }")
+            appendLine("vec4 ${prefix}_asVec4(int v) { return vec4(float(v)); }")
+            appendLine("vec4 ${prefix}_asVec4(uint v) { return vec4(float(v)); }")
+            appendLine()
+        }
         if ("softClamp01" in helpers) {
             appendLine("vec4 ${prefix}_softClamp01(vec4 x) {")
             appendLine("    vec4 k = vec4(5.0);")

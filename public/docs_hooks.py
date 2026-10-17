@@ -1041,14 +1041,17 @@ class RunnerState:
         # Construction alone must not boot Field before power/display are checked.
         atexit.register(self.close)
 
-    def source_refs_digest(self, code: str) -> str:
-        """Digest of the stdlib source this fence's code text reaches. `""` when it reaches none."""
+    def source_refs_digest(self, code: str, page_path: Path | None = None) -> str:
+        """Digest of the stdlib source this fence's code text reaches, plus whatever its page declares
+        with `<!-- capture-sources: ... -->`. `""` when it reaches none."""
+        extra = () if page_path is None or self.source_refs_mode == "off" else page_capture_sources(self.repo_root, page_path)
         return compute_source_refs_digest(
             repo_root=self.repo_root,
             code=code,
             symbol_index=self.source_symbol_index,
             file_digest_cache=self._source_file_digests,
             mode=self.source_refs_mode,
+            extra_files=extra,
         )
 
     def handle_capture_error(
@@ -1766,9 +1769,16 @@ class RunnerState:
             return
 
         if self._http_health_ok(self.backdoor_port):
+            refusal = self._foreign_field_refusal()
+            if refusal is not None:
+                raise RuntimeError(
+                    f"Field docs runner needs a runner-owned Field server for {reason}, but {refusal}. "
+                    "The runner does not shut down a Field it did not start: stop it yourself, or "
+                    "choose a fresh FIELD_DOCS_RUNNER_PORT (unset, the runner picks a free port)."
+                )
             LOG.warning(
                 "Field docs runner needs a fresh runner-owned Field server for %s; "
-                "requesting shutdown of existing server on port %s",
+                "requesting shutdown of this checkout's automation Field on port %s",
                 reason,
                 self.backdoor_port,
             )
@@ -1786,6 +1796,35 @@ class RunnerState:
                 )
 
         self._ensure_shared_field_server()
+
+    def _foreign_field_refusal(self) -> str | None:
+        """Why the Field on the runner's port must not be shut down, or ``None`` when it may be.
+
+        Only a Field this checkout's automation started -- same checkout, serving the runner's own
+        automation workspace -- is the runner's to replace. Anything else (the Field someone is
+        working in, another worktree's) is refused, naming its PID and workspace.
+        """
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        info = field_instance_info(self.backdoor_port, ctx)
+        pids = ", ".join(str(pid) for pid in self._listener_pids()) or "unknown"
+        where = f"the Field on port {self.backdoor_port} (PID {pids})"
+        if info is None:
+            return f"{where} does not report its identity"
+        try:
+            same_checkout = Path(str(info.get("repoRoot"))).resolve() == self.repo_root.resolve()
+            expected_workspace = Path(
+                os.environ.get(RUNNER_WORKSPACE_ENV) or str(automation_workspace(self.repo_root))
+            ).resolve()
+            same_workspace = Path(str(info.get("workspace"))).resolve() == expected_workspace
+        except (OSError, TypeError, ValueError):
+            return f"{where} reported an unreadable identity"
+        if not same_checkout:
+            return f"{where} belongs to {info.get('repoRoot')}"
+        if not same_workspace:
+            return f"{where} serves workspace {info.get('workspace')}, not the runner's {expected_workspace}"
+        return None
 
     def _stop_shared_field_server(self) -> None:
         if not self._shared_field_started_by_runner:
@@ -2367,7 +2406,7 @@ class RunnerState:
         video_path.parent.mkdir(parents=True, exist_ok=True)
         cache_allowed = self.runner_mode != "always"
         scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
-        source_refs = self.source_refs_digest(code)
+        source_refs = self.source_refs_digest(code, page_path)
         cache_metadata = compute_cache_metadata(
             code=code,
             options=video_options,
@@ -2533,7 +2572,7 @@ class RunnerState:
         )
 
         cache_allowed = self.runner_mode != "always"
-        source_refs = self.source_refs_digest(generated_code)
+        source_refs = self.source_refs_digest(generated_code, page_path)
         cache_metadata = compute_cache_metadata(
             code=generated_code,
             options=options,
@@ -2671,7 +2710,7 @@ class RunnerState:
 
         cache_allowed = self.runner_mode != "always"
         scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
-        source_refs = self.source_refs_digest(code)
+        source_refs = self.source_refs_digest(code, page_path)
         cache_metadata = compute_cache_metadata(
             code=code, options=options, page_path=page_path, block_index=block_index,
             runner_source_digest=self.runner_source_digest,
@@ -2800,7 +2839,7 @@ class RunnerState:
         screenshot_path.parent.mkdir(parents=True, exist_ok=True)
         cache_allowed = self.runner_mode != "always"
         scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
-        source_refs = self.source_refs_digest(code)
+        source_refs = self.source_refs_digest(code, page_path)
         cache_metadata = compute_cache_metadata(
             code=code,
             options=options,
@@ -3337,6 +3376,13 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
     capture = (first_attr(attrs, "capture", "mode") or "box").strip().lower()
     if capture not in {"box", "window", "window-editor", "editor", "native-window", "ui"}:
         raise RuntimeError(f"{page_path}:{line_number} unsupported capture={capture!r}")
+    if capture == "native-window" and video:
+        # The video recorders all record the browser page; recording "the native window" through
+        # them would silently capture the wrong surface (capture_limits.md).
+        raise RuntimeError(
+            f"{page_path}:{line_number} capture=\"native-window\" cannot take video=: no recorder "
+            "records the native window; use screenshot= or a browser capture for the video"
+        )
 
     # capture="ui" runs the fence body as a `drive` transcript that scripts the live
     # editor (keypresses/clicks) via Playwright and captures a video and/or still. The
@@ -3669,8 +3715,28 @@ def extract_effective_code(*, lines: list[str], fence_name: str, page_path: Path
 
 def extract_static_code(*, lines: list[str]) -> str:
     code_lines = [line.rstrip("\r\n") for line in lines]
-    # Drop section AND fold markers; keep the code inside a fold region (it must run).
-    filtered = [line for line in code_lines if not is_marker_line(line.strip())]
+    # Drop section AND fold markers; keep the code inside a fold region (it must run). A bare `:::`
+    # is a marker only while a fold is open (it closes it); anywhere else it is the box's own code,
+    # such as a markdown table row closed with `:::`, and runs as it would in a live box.
+    filtered: list[str] = []
+    fold_open = False
+    for line in code_lines:
+        stripped = line.strip()
+        if stripped == ":::":
+            if fold_open:
+                fold_open = False
+                continue
+            filtered.append(line)
+            continue
+        if stripped == ":::fold" or stripped.startswith(":::fold "):
+            fold_open = True
+            continue
+        if stripped == ":::endfold":
+            fold_open = False
+            continue
+        if is_marker_line(stripped):
+            continue
+        filtered.append(line)
     return normalize_code_lines(filtered)
 
 
@@ -3974,6 +4040,32 @@ def fence_source_files(
     return tuple(sorted(reached))
 
 
+CAPTURE_SOURCES_RE = re.compile(r"<!--\s*capture-sources:\s*(?P<paths>.*?)-->", re.S)
+
+
+def page_capture_sources(repo_root: Path, page_path: Path) -> tuple[str, ...]:
+    """Source files a page declares its captures depend on, beyond the ones its fences name.
+
+    A page writes `<!-- capture-sources: src/.../contours.kt src/.../mesh/ -->` (whitespace-separated,
+    repo-relative; a trailing `/` means every `.kt` under that directory). The per-fence digest only
+    sees the files whose symbols a fence's code names directly, so a helper reached through another
+    call, or a bridge in a different package, needs saying here for an incremental build to notice it.
+    """
+    try:
+        text = page_path.read_text(encoding="utf-8")
+    except OSError:
+        return ()
+    files: set[str] = set()
+    for match in CAPTURE_SOURCES_RE.finditer(text):
+        for entry in match.group("paths").split():
+            target = repo_root / entry
+            if entry.endswith("/") and target.is_dir():
+                files.update(str(path.relative_to(repo_root)) for path in target.rglob("*.kt"))
+            else:
+                files.add(entry)
+    return tuple(sorted(files))
+
+
 def compute_source_refs_digest(
     *,
     repo_root: Path,
@@ -3981,6 +4073,7 @@ def compute_source_refs_digest(
     symbol_index: dict[str, tuple[str, ...]],
     file_digest_cache: dict[str, str] | None = None,
     mode: str = "direct",
+    extra_files: tuple[str, ...] = (),
 ) -> str:
     """Hash the contents of every source file this fence reaches.
 
@@ -3988,7 +4081,7 @@ def compute_source_refs_digest(
     the key out of the digest payload entirely so such a fence hashes exactly as it did before this
     existed.
     """
-    files = fence_source_files(code=code, symbol_index=symbol_index, mode=mode)
+    files = tuple(sorted(set(fence_source_files(code=code, symbol_index=symbol_index, mode=mode)) | set(extra_files)))
     if not files:
         return ""
     cache = file_digest_cache if file_digest_cache is not None else {}
@@ -4583,7 +4676,31 @@ def runner_code_expects_svg(code: str) -> bool:
     # Only a bare call to Field's own `lines(...)` FLine renderer counts, so a member call is excluded.
     # The cost is that an explicit `someBox.lines(...)` no longer implies SVG; a snippet written that way
     # can say so with a FIELD_DOCS_EXPECT_SVG codegen expectation.
-    return re.search(r"(?<![.\w])lines\s*\(", code) is not None
+    # A `lines(...)` inside a `three { }` / `threeLines { }` builder adds FLines to the Three.js scene
+    # and makes no SVG, so those blocks do not count.
+    return re.search(r"(?<![.\w])lines\s*\(", without_three_blocks(code)) is not None
+
+
+_THREE_BLOCK_OPEN = re.compile(r"(?<![.\w])three(?:Lines)?\b[^{\n]*\{")
+
+
+def without_three_blocks(code: str) -> str:
+    """[code] with the body of every `three ... { }` / `threeLines ... { }` builder block removed."""
+    out = []
+    i = 0
+    while True:
+        m = _THREE_BLOCK_OPEN.search(code, i)
+        if not m:
+            out.append(code[i:])
+            return "".join(out)
+        out.append(code[i:m.end()])
+        depth = 1
+        j = m.end()
+        while j < len(code) and depth:
+            depth += {"{": 1, "}": -1}.get(code[j], 0)
+            j += 1
+        out.append("}")
+        i = j
 
 
 def runner_code_expects_output_area(code: str) -> bool:

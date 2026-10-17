@@ -17,7 +17,7 @@ They differ in where the statistics are computed:
 | Cost | a read-back per snapshot (throttled, off-thread) | one extra compute dispatch; read-back optional |
 
 Both are wired the same way. Call one setup function on the box, add
-`{% include "…" %}` to the shader, and call the recording function wherever the
+`{% property "…" %}` to the shader, and call the recording function wherever the
 value is in scope. Field resolves the include, allocates the buffers and reads
 them back, so there are no descriptor sets or SSBOs to set up by hand.
 
@@ -61,7 +61,7 @@ layout(push_constant) uniform dat {
     float   something;      // a slowly-advancing angle, set from Kotlin
 } pc;
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
@@ -143,7 +143,7 @@ Add the include once, then call `fieldProbe(...)` wherever the value is in scope
 The include defines overloads for scalars, vectors, and their integer forms:
 
 ```diffstatic {data-lang=glsl}
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 void fieldProbe(float value);   void fieldProbe(int  value);   void fieldProbe(uint value);
 void fieldProbe(vec2  value);   void fieldProbe(vec3 value);   void fieldProbe(vec4 value);
@@ -197,11 +197,9 @@ val snap: FieldProbeSnapshot? = probe.readLatest()
 box; `onSnapshot { }` hands you the raw `FieldProbeSnapshot` on the read-back
 thread if you would rather build your own UI or drive control logic. Read-back
 always happens off the render thread, so a slow front end never stalls the GPU.
-`maxDisplayHz` always limits how often the card is sent, but it limits the
-GPU-to-CPU read only for a probe that has a display channel and no callback.
-With `onSnapshot` registered, or with `readLatest()` and no display channel,
-the read runs every frame, so a callback that does real work runs at full frame
-rate.
+`maxDisplayHz` limits how often the card is sent. `maxReadHz` limits the
+GPU-to-CPU read for every kind of probe; left unset, a display-only probe reads at
+`maxDisplayHz` and one with `onSnapshot` or `readLatest()` reads every frame.
 
 ### The snapshot
 
@@ -295,7 +293,7 @@ helper combines values across the subgroup and writes one partial record per
 subgroup, which keeps atomic operations few:
 
 ```diffstatic {data-lang=glsl}
-{% include "fieldStats" %}
+{% property "fieldStats" %}
 
 void fieldStatsRecord(uint channel, float value);
 void fieldStatsRecord(int  channel, float value);
@@ -409,7 +407,7 @@ control loop and switch on `fieldProbe` only while you are looking.
   discrete GPU. A host-visible-but-uncached (write-combined) buffer maps fine but
   its CPU reads are very slow. If you build your own read-back buffer, ask for the same: `storage(); streamReads()`.
 - **Throttling.** `fieldProbe` reads back off the render thread, at most
-  `maxDisplayHz` times a second when it only has a `display(...)` channel;
+  `maxReadHz` times a second when that is set, else `maxDisplayHz` when it only has a `display(...)` channel;
   raising it updates the card more often at the cost of more read-backs. `fieldStats` reads back once per frame
   when `cpuSnapshotsEnabled` is true; set it to `false` when only the GPU consumes
   the results.

@@ -41,6 +41,16 @@ interface WritesToBuffer {
 
 class MissingRefException(override val message: String) : Exception(message)
 
+/**
+ * The message for a shader member that has nothing bound when a dispatch or draw needs it. It is
+ * not a missing buffer: nothing has been assigned to the member yet, and the usual reason is a
+ * binding written inside `loop {}`, which takes effect a frame after the first dispatch.
+ */
+fun unassignedMemberMessage(member: Any?): String =
+    "shader member `$member` has not been assigned yet, so this dispatch would read a null GPU reference. " +
+        "Bindings set inside loop {} take effect a frame late; assign it once at the top level of the box."
+
+
 fun <T : Structure> HasBuffer.asStructure(structure: T, members: List<Introspected.Member>): T {
     structure.setMembers(members)
     structure.proxyTo(this)
@@ -66,7 +76,17 @@ fun <T> Structure.getPushConstant(name: String, notFound: () -> Nothing): T =
 
 /** Binds a live push-constant supplier by name, or invokes [notFound] if [name] isn't a known offset. */
 fun Structure.bindPushConstant(name: String, value: Function0<*>, notFound: () -> Nothing) {
-    if (offsets.containsKey(name)) bind(name, value) else notFound()
+    if (!offsets.containsKey(name)) notFound()
+    val unsigned = members.firstOrNull { it.name == name }?.type?.fold(
+        { it == afield.graphics.shader.PrimitiveType.uint }, { false }
+    ) == true
+    bind(name, if (unsigned) {
+        {
+            val next = value()
+            require(next is Int || next is UInt) { "uint push member '$name' needs an Int or UInt, got ${next?.javaClass?.simpleName}" }
+            next
+        }
+    } else value)
 }
 
 /** Reads a bound push-constant supplier by name, or invokes [notFound] if [name] isn't a known offset. */
@@ -208,7 +228,12 @@ open class Structure(
         return true
     }
 
-    var proxying: FrameBufferGroup? = null
+    /** Legacy group binding, sharing the backing buffer used by mapping and nested structures. */
+    var proxying: FrameBufferGroup?
+        get() = rootStructure().proxyBuffer as? FrameBufferGroup
+        set(value) {
+            rootStructure().proxyBuffer = value
+        }
     private var proxyBuffer: HasBuffer? = null
 
     private fun rootStructure(): Structure = root?.rootStructure() ?: this
@@ -357,7 +382,6 @@ open class Structure(
      */
     fun proxyTo(p: HasBuffer): Structure {
         rootStructure().proxyBuffer = p
-        if (p is FrameBufferGroup) rootStructure().proxying = p
         return this
     }
 

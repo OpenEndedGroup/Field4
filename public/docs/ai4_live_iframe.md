@@ -31,5 +31,5 @@ work that does not fit the named tools.
 To use your own page, change the iframe's `src` in the hosting box to its URL and run the box
 again. The bridge evaluates code *inside* that iframe, including pages on another localhost port;
 it does not change Chromium's normal web security. A page must be visible in the Field Electron
-app for these AI4 tools to reach it. For a screenshot, reveal the output area first if it is
+app for these AI4 tools to reach it. A screenshot pans the canvas to an output area that is
 offscreen.

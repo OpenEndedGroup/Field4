@@ -230,17 +230,49 @@ fun makeInterpreter() {
 @RunsAt(early, priority = -10)
 fun installPython() {
     Box.ioPersistentProperties.add("isPythonRoot")
-    if (PythonInterface.pythonConfigAvailable) {
-        registerMainLanguageRuntime(
-            MainLanguageRuntime(
-                id = "python",
-                label = "Python",
-                runtimeClass = PythonExecution::class,
-                setLegacyRoot = { box, enabled -> box.isPythonRoot = enabled },
-                applyTopology = ::pythonTopologyNeedsUpdating,
-            ),
-        )
+    // Registered with or without JEP: without it a Python box gets [PythonUnavailableExecution],
+    // which says why, instead of falling through to Kotlin and failing to compile its Python.
+    registerMainLanguageRuntime(
+        MainLanguageRuntime(
+            id = "python",
+            label = "Python",
+            runtimeClass = pythonRuntimeClass(),
+            setLegacyRoot = { box, enabled -> box.isPythonRoot = enabled },
+            applyTopology = ::pythonTopologyNeedsUpdating,
+        ),
+    )
+}
+
+private fun pythonRuntimeClass() =
+    if (PythonInterface.pythonConfigAvailable) PythonExecution::class else PythonUnavailableExecution::class
+
+/**
+ * The Python runtime when no interpreter with JEP was found at startup: every run reports one error
+ * naming the problem and the fix, and the box's verdict fails.
+ */
+class PythonUnavailableExecution : BoxExecution {
+    private fun refuse(inside: Box, execute: Execute, mode: String, reply: (Message) -> Unit) {
+        val trace = ExecutionTrace.forEngine(inside, execute, mode, reply)
+        val origin = thisSession.get()
+        inMain {
+            configureOutputProxies(inside, trace.reply, origin)
+            val message = "Python unavailable: no interpreter with JEP was found when Field started. " +
+                PythonInterface.pythonConfigMessage + " (see the Python page, python.md)"
+            inside.error(message)
+            trace.finish(false, message)
+        }
     }
+
+    override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) =
+        refuse(inside, execute, "run", reply)
+    override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) =
+        refuse(inside, execute, "run", reply)
+    override fun launchAll(inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit) =
+        refuse(inside, execute, "launch", reply)
+    override fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: (Message) -> Unit) {}
+    override fun stop(inside: Box) {}
+    override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {}
+    override val languageName: String get() = "Python"
 }
 
 @RunsAt(plugins)
@@ -252,9 +284,9 @@ fun install() {
 fun pythonTopologyNeedsUpdating(values: Collection<Box>) {
     applyRuntimeToggle(
         boxes = values,
-        isRoot = { PythonInterface.pythonConfigAvailable && (it.isPythonRoot == true || it.isMainLanguage("python")) },
-        runtimeClass = PythonExecution::class,
-        newExecution = { _ -> PythonExecution() },
+        isRoot = { it.isPythonRoot == true || it.isMainLanguage("python") },
+        runtimeClass = pythonRuntimeClass(),
+        newExecution = { _ -> if (PythonInterface.pythonConfigAvailable) PythonExecution() else PythonUnavailableExecution() },
         language = "Python",
         customization = "",
         notifyCategory = "python"
@@ -1926,9 +1958,12 @@ class PythonInterface {
             add("executable", System.getProperty("afield.python.executable"), "system property afield.python.executable")
             add("venv", System.getenv("FIELD_PYTHON_VENV"), "env FIELD_PYTHON_VENV")
             add("executable", System.getenv("FIELD_PYTHON_EXECUTABLE"), "env FIELD_PYTHON_EXECUTABLE")
-            readPersistedPythonChoice()?.let { choices += it.copy(source = "welcome settings") }
+            // An environment activated in the shell that launched Field is the most recent choice anyone
+            // made, so it outranks the one /welcome saved; an active env without JEP is skipped and the
+            // saved choice is tried next.
             add("venv", System.getenv("VIRTUAL_ENV"), "env VIRTUAL_ENV")
             add("venv", System.getenv("CONDA_PREFIX"), "env CONDA_PREFIX")
+            readPersistedPythonChoice()?.let { choices += it.copy(source = "welcome settings") }
             add("executable", "python3", "PATH python3")
             add("executable", "python", "PATH python")
             return choices.distinctBy { it.kind to it.path }
@@ -1987,6 +2022,11 @@ class PythonInterface {
                 emit("basePrefix", getattr(sys, "base_prefix", ""))
                 emit("sitePackages", jep_site or (site_paths[0] if site_paths else ""))
                 emit("jepLibrary", libs[0] if libs else "")
+                try:
+                    from importlib import metadata
+                    emit("jepVersion", metadata.version("jep"))
+                except Exception:
+                    pass
             """.trimIndent()
             val process = ProcessBuilder(executable, "-c", script)
                 .redirectErrorStream(true)
@@ -2004,6 +2044,16 @@ class PythonInterface {
                 .toMap()
             val jep = values["jepLibrary"]?.takeIf { it.isNotBlank() } ?: return null
             val home = values["home"]?.takeIf { it.isNotBlank() } ?: return null
+            // JEP does not check that its native library and its jar come from one release, and a
+            // mismatch fails somewhere unrelated, so it is refused here, naming both.
+            val nativeVersion = values["jepVersion"]?.takeIf { it.isNotBlank() }
+            val jarVersion = shippedJepJarVersion()
+            if (nativeVersion != null && jarVersion != null && nativeVersion != jarVersion) {
+                throw IllegalStateException(
+                    "$executable has jep $nativeVersion, but Field ships the jep $jarVersion jar; " +
+                        "install the matching native library with `pip install 'jep==$jarVersion'`",
+                )
+            }
             val py = values["executable"]?.takeIf { it.isNotBlank() } ?: executable
             val prefix = values["prefix"]?.takeIf { it.isNotBlank() }
             val basePrefix = values["basePrefix"]?.takeIf { it.isNotBlank() }
@@ -2023,6 +2073,10 @@ class PythonInterface {
                 venvPath = venvPath,
             )
         }
+
+        /** The version of the `jep-x.y.z.jar` on this JVM's classpath, or null if it cannot be told. */
+        private fun shippedJepJarVersion(): String? =
+            Regex("""jep-(\d+(?:\.\d+)+)\.jar""").find(System.getProperty("java.class.path").orEmpty())?.groupValues?.get(1)
 
         private fun readPersistedPythonChoice(): PythonConfigChoice? {
             val file = pythonSettingsFile()

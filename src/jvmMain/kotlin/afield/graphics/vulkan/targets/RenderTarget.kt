@@ -214,12 +214,12 @@ class RenderTarget(
                 mp.current.meshes.values.forEach { mesh ->
                     mesh.prepareForDraw(command)
                     mesh.push.primeBufferReferences(command) {
-                        throw MissingRefException("risk of GPU null ref `$it`")
+                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
                     }
                 }
                 mp.current.liveUniformStructures.values.forEach { structure ->
                     structure.primeBufferReferences(command) {
-                        throw MissingRefException("risk of GPU null ref `$it`")
+                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
                     }
                 }
             }
@@ -227,12 +227,12 @@ class RenderTarget(
             meshModules.forEach { (_, mp) ->
                 mp.current.meshes.values.forEach { mesh ->
                     mesh.push.primeBufferReferences(command) {
-                        throw MissingRefException("risk of GPU null ref `$it`")
+                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
                     }
                 }
                 mp.current.liveUniformStructures.values.forEach { structure ->
                     structure.primeBufferReferences(command) {
-                        throw MissingRefException("risk of GPU null ref `$it`")
+                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
                     }
                 }
             }
@@ -299,7 +299,8 @@ class RenderTarget(
             )
         }
 
-        // Render any chained targets after we've finished this one
+        // Render any chained targets after we've finished this one, each RendersAfter pass after its target.
+        orderRendersAfter(others)
         others.forEach { it.value.render(command, index) }
     }
 
@@ -320,5 +321,29 @@ class RenderTarget(
             )
             .offset(VkOffset2D.calloc(stack).x(rect.x.toInt()).y(rect.y.toInt()))
         VK10.vkCmdSetScissor(cmd, 0, scissor)
+    }
+}
+
+/**
+ * A pass that has to render after another [Target] in the same list: a publisher after the texture it
+ * publishes. Wherever it was added, [RenderTarget] moves it behind [rendersAfter] before it iterates.
+ */
+interface RendersAfter {
+    val rendersAfter: Target
+}
+
+/** Moves each [RendersAfter] entry of [list] behind its target, when the target comes later. */
+internal fun orderRendersAfter(list: MutableMap<String, Target>) {
+    if (list.values.none { it is RendersAfter }) return
+    repeat(list.size) {
+        val keys = list.keys.toList()
+        val values = list.values.toList()
+        val late = keys.indices.firstOrNull { i ->
+            val after = (values[i] as? RendersAfter)?.rendersAfter ?: return@firstOrNull false
+            values.indexOfFirst { it === after } > i
+        } ?: return
+        val key = keys[late]
+        val value = list.remove(key)!!
+        list[key] = value
     }
 }

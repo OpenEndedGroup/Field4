@@ -18,6 +18,13 @@ import kotlin.system.exitProcess
 
 /** A reusable live-coding scene. Camera is [bundle.scene.camera]; call animate from the box frame loop. */
 class DirectLightingDemo(val renderer: Renderer, width: Int=640,height: Int=360) : AutoCloseable {
+    /**
+     * The box that built this study. A re-run of that box builds a new one, which closes this first,
+     * so box code can simply write `val study = DirectLightingDemo(renderer, …)` and re-run it.
+     */
+    private val owner: afield.document.graph.Box? = afield.document.graph.Box.context.get()
+        .also { box -> box?.let { synchronized(byBox) { byBox[it] }?.close() } }
+
     val bundle=StandardRenderer.build(renderer,StandardRenderer.Config(renderWidth=width,renderHeight=height,
         shadowWidth=256,shadowHeight=256,positionFormat=VK_FORMAT_R32G32B32A32_SFLOAT))
     val visibility=OpaqueRayScene(renderer)
@@ -40,6 +47,7 @@ class DirectLightingDemo(val renderer: Renderer, width: Int=640,height: Int=360)
         lighting.emitter.center.set(-2.2f,4.5f,1.5f)
         lighting.emitter.radiance.set(60f)
         lighting.output.blitToScreen(name="direct-light-demo")
+        owner?.let { synchronized(byBox) { byBox[it] = this } }
     }
     fun animate(seconds: Double) { lighting.emitter.center.set((sin(seconds)*2.8).toFloat(),4.5f,(cos(seconds)*1.5).toFloat()) }
     fun moveObject(index: Int, transform: Matrix4f) {
@@ -47,10 +55,20 @@ class DirectLightingDemo(val renderer: Renderer, width: Int=640,height: Int=360)
         visibility.commit(next) // build first; only then switch the raster transform
         instances.clear();instances.addAll(next);meshes[index].setModel(transform)
     }
+    @Volatile private var closed = false
+
     override fun close() {
+        if (closed) return
+        closed = true
+        owner?.let { synchronized(byBox) { if (byBox[it] === this) byBox.remove(it) } }
         renderer.renderList.modules.remove("direct-light-demo")
         lighting.close();visibility.close()
         bundle.frameGraph().passNames().forEach { renderer.renderList.preTargets.remove(it) }
+    }
+
+    private companion object {
+        /** The live study each box built, so that box's next one can close it. */
+        val byBox = java.util.WeakHashMap<afield.document.graph.Box, DirectLightingDemo>()
     }
 }
 

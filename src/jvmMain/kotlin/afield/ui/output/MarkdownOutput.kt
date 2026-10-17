@@ -511,8 +511,10 @@ object FieldMarkdown {
  * @param open reveal the disclosure, so the figure is visible without a click
  */
 fun Box.markdown(channel: String, text: String, width: Int? = null, open: Boolean = true) {
-    display(channel, FieldMarkdown.card(text, width))
-    if (open) displayOpen(channel)
+    MarkdownAppendHistory.replace(this, channel, text) {
+        display(channel, FieldMarkdown.card(text, width))
+        if (open) displayOpen(channel)
+    }
 }
 
 /**

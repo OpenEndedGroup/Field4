@@ -117,7 +117,7 @@ object PortableOpticalFlowSmoke {
                 val grids=JSONObject()
                 // AUTO must pick the class that matches this device.
                 opticalFlow(renderer,demo.pair.imageViewArray[0],demo.pair.imageViewArray[1]).use { auto ->
-                    check((auto is OpticalFlow)==renderer.device.supportsOpticalFlow && (auto is PyramidOpticalFlow)!=renderer.device.supportsOpticalFlow) { "AUTO chose ${auto.backend}" }
+                    check((auto is HardwareOpticalFlow)==renderer.device.supportsOpticalFlow && (auto is PyramidOpticalFlow)!=renderer.device.supportsOpticalFlow) { "AUTO chose ${auto.backend}" }
                 }
                 for(g in listOf(2,8)) opticalFlow(renderer,demo.pair.imageViewArray[0],demo.pair.imageViewArray[1],grid=g,backend=OpticalFlowBackend.PYRAMID).use { other ->
                     check(other is PyramidOpticalFlow)

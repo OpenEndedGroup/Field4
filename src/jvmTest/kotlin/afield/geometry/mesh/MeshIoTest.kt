@@ -169,6 +169,23 @@ class MeshIoTest {
     }
 
     @Test
+    fun aFileWhoseContentsAreNotItsExtensionIsRefusedByName() {
+        val dir = kotlin.io.path.createTempDirectory("mesh-sniff").toFile()
+        try {
+            val html = java.io.File(dir, "thing.obj").apply { writeText("<!doctype html><title>404</title>") }
+            val refusal = kotlin.test.assertFailsWith<IllegalArgumentException> { meshFromFile(html.path) }
+            assertTrue("HTML" in refusal.message.orEmpty(), refusal.message)
+            val zip = java.io.File(dir, "thing.stl").apply { writeBytes(byteArrayOf(0x50, 0x4b, 3, 4) + ByteArray(120)) }
+            assertTrue("ZIP" in kotlin.test.assertFailsWith<IllegalArgumentException> { meshFromFile(zip.path) }.message.orEmpty())
+            // A zero-byte file is an empty mesh, not a mislabelled one.
+            val empty = java.io.File(dir, "nothing.obj").apply { writeText("") }
+            assertTrue(meshFromFile(empty.path).isEmpty)
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
     fun objOfAnEmptyMeshReadsBackAsEmpty() {
         assertTrue(objToTriMesh(TriMesh.empty.toObj()).isEmpty)
         assertTrue(objToTriMesh("# nothing at all\n").isEmpty)

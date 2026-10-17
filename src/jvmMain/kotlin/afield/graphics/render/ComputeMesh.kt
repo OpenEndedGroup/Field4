@@ -38,6 +38,18 @@ fun computeTask(c: (inside: ComputeModule, cmd: CommandBuffer, pushConstantBuffe
     }
 }
 
+/**
+ * Publish preceding compute shader writes to subsequent compute work on the same queue.
+ * With [graphics] true, also publish to graphics shader reads/writes. Optional [buffer] limits
+ * the dependency to that buffer; null is a global memory dependency. This does not transfer
+ * ownership between queues and does not make results visible to host reads.
+ */
+fun computeBarrier(graphics: Boolean = false, buffer: VulkanBuffer? = null): ComputeTask =
+    computeTask { _, cmd, _ ->
+        computeMemoryBarrier(cmd, buffer)
+        if (graphics) graphicsMemoryBarrier(cmd, buffer)
+    }
+
 fun zeroBuffer(v: VulkanBuffer, barrier: Boolean = true) = computeTask { _, cmd, _ ->
     v.zero(cmd)
     transferMemoryBarrier(cmd, v)
@@ -368,7 +380,7 @@ class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
                 try {
                     pushConstantBuffer.clear()
                     push.writeToBuffer(pushConstantBuffer, cmd) {
-                        throw MissingRefException("risk of GPU null ref `$it`")
+                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
                     }
                 } catch (e: Exception) {
                     inside.parameters.errorHandler(e.message ?: "push constant error", e)

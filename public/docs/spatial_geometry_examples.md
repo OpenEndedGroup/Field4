@@ -1,5 +1,7 @@
 # Points into structure — Voronoi, Apollonius, contours and clusters
 
+<!-- capture-sources: src/jvmMain/kotlin/afield/geometry/path/contours.kt src/jvmMain/kotlin/afield/geometry/spatial/ -->
+
 *Every public declaration used below is listed, with its KDoc, in the codebase reference:
 [Graphics](reference/graphics.md) and [Data](reference/data.md).*
 
@@ -56,37 +58,45 @@ hull, and draws all three in a grid of panels whose captions report the counts.
 // A jittered lattice: structured enough that you can see the answer is right, irregular enough
 // that the triangulation has something to decide.
 val rng = java.util.Random(17)
-val sites = (0 until 54).map { i ->
-    vec((i % 9) * 44.0 + rng.nextDouble() * 22.0, (i / 9) * 44.0 + rng.nextDouble() * 22.0)
-}
+val sites =
+    (0 until 54).map { i ->
+        vec((i % 9) * 44.0 + rng.nextDouble() * 22.0, (i / 9) * 44.0 + rng.nextDouble() * 22.0)
+    }
 
-val delaunay = vec2DelaunayGraph(sites)          // a PointGraph: index pairs
-val triangles = vec2DelaunayTriangles(sites)     // List<Triple<Int, Int, Int>>: the faces
-val voronoi = vec2VoronoiDiagram(sites)          // one VoronoiCell per site, each a vertex ring
-val hull = vec2ConvexHull(sites)                 // ConvexHull2D: hullPoints + hullIndices
+val delaunay = vec2DelaunayGraph(sites) // a PointGraph: index pairs
+val triangles = vec2DelaunayTriangles(sites) // List<Triple<Int, Int, Int>>: the faces
+val voronoi = vec2VoronoiDiagram(sites) // one VoronoiCell per site, each a vertex ring
+val hull = vec2ConvexHull(sites) // ConvexHull2D: hullPoints + hullIndices
 
-// Euler's formula pins both counts exactly, so this is an assertion and not an observation:
-// a triangulation of n points with h of them on the convex hull has 2n - 2 - h triangles and
-// 3n - 3 - h edges. Nothing else is a valid triangulation.
+/*
+Euler's formula pins both counts exactly, so this is an assertion and not an observation:
+a triangulation of n points with h of them on the convex hull has 2n - 2 - h triangles and
+3n - 3 - h edges. Nothing else is a valid triangulation.
+*/
 val n = sites.size
 val h = hull.hullIndices.size
 val trianglesExpected = 2 * n - 2 - h
 val edgesExpected = 3 * n - 3 - h
 
-// The cells of the h hull sites are *unbounded*, and JTS returns them clipped to a generous
-// envelope rather than to anything you asked for: measured here, the cell vertices span
-// -423..799 in x while the sites only span 7..369. Fit a figure to that and the diagram
-// collapses into a speck. So pin the window explicitly and let showPlaneGrid cut the rest.
+/*
+The cells of the h hull sites are *unbounded*, and JTS returns them clipped to a generous
+envelope rather than to anything you asked for: measured here, the cell vertices span
+-423..799 in x while the sites only span 7..369. Fit a figure to that and the diagram
+collapses into a speck. So pin the window explicitly and let showPlaneGrid cut the rest.
+*/
 val window = Rect(
-    sites.minOf { it.x.toDouble() } - 18.0, sites.minOf { it.y.toDouble() } - 18.0,
+    sites.minOf { it.x.toDouble() } - 18.0,
+    sites.minOf { it.y.toDouble() } - 18.0,
     sites.maxOf { it.x.toDouble() } - sites.minOf { it.x.toDouble() } + 36.0,
     sites.maxOf { it.y.toDouble() } - sites.minOf { it.y.toDouble() } + 36.0,
 )
-val bounded = voronoi.cells.count { c ->
-    c.vertices.size >= 3 && c.vertices.all {
-        it.x >= window.x && it.x <= window.x + window.w && it.y >= window.y && it.y <= window.y + window.h
+val bounded =
+    voronoi.cells.count { c ->
+        c.vertices.size >= 3 &&
+            c.vertices.all {
+                it.x >= window.x && it.x <= window.x + window.w && it.y >= window.y && it.y <= window.y + window.h
+            }
     }
-}
 :::fold draw the three panels
 val cloud = pointCloudFLine(sites, color = vec(1.0, 1.0, 1.0, 0.9), pointSize = 1.1)
 val frame = window.toFLine(color = vec(0.35, 0.44, 0.56, 0.55), thickness = 1.0)
@@ -162,11 +172,11 @@ weighted Voronoi cell is **not a polygon**: its boundary is made of circular arc
 you those arcs rather than flattening them:
 
 ```diffstatic {data-lang=kotlin}
-val diagram = CircularDirichlet.build(sites)     // sites are Vec3 of (x, y, weight)
-val cell = diagram[0]                            // a CellBoundary
-cell.pieces                                      // ArcPiece | LinePiece, angularly sorted
-piece.support                                    // SupportCircle(center, radius) or SupportLine
-piece.samplePoint()                              // a point known to be on this boundary
+val diagram = CircularDirichlet.build(sites) // sites are Vec3 of (x, y, weight)
+val cell = diagram[0] // a CellBoundary
+cell.pieces // ArcPiece | LinePiece, angularly sorted
+piece.support // SupportCircle(center, radius) or SupportLine
+piece.samplePoint() // a point known to be on this boundary
 piece.toPolyline(maxChordError = 0.02f, clip = box)
 ```
 
@@ -177,7 +187,11 @@ and one site much heavier than the rest.
 :::static
 // Sites are (x, y, weight). Same five positions in all three panels; only the weights change.
 val positions = [
-    vec(0.0, 0.0), vec(2.2, 0.3), vec(0.9, 2.0), vec(-1.4, 1.1), vec(1.1, -1.6),
+    vec(0.0, 0.0),
+    vec(2.2, 0.3),
+    vec(0.9, 2.0),
+    vec(-1.4, 1.1),
+    vec(1.1, -1.6),
 ]
 val clip = CircularDirichlet.Aabb(vec(-3.4, -3.4), vec(4.6, 4.6))
 
@@ -190,19 +204,20 @@ val swallowed = diagramOf([1.0, 2.6, 1.0, 1.0, 1.0])
 
 // With equal weights every bisector degenerates to a straight line: a line only when the weights
 // match. These two counts go into the captions below.
-fun arcCount(d: CircularDirichlet.Diagram) =
-    d.cells.sumOf { c -> c.pieces.count { it is CircularDirichlet.ArcPiece } }
+fun arcCount(d: CircularDirichlet.Diagram) = d.cells.sumOf { c -> c.pieces.count { it is CircularDirichlet.ArcPiece } }
 fun lineCount(d: CircularDirichlet.Diagram) =
     d.cells.sumOf { c -> c.pieces.count { it is CircularDirichlet.LinePiece } }
 
 // A full-sweep arc is a *complete circle*: that cell is a disc, entirely enclosed by one neighbour.
-fun fullCircles(d: CircularDirichlet.Diagram) = d.cells.sumOf { c ->
-    c.pieces.count { it is CircularDirichlet.ArcPiece && it.sweepAngle > 6.283 }
-}
+fun fullCircles(d: CircularDirichlet.Diagram) =
+    d.cells.sumOf { c ->
+        c.pieces.count { it is CircularDirichlet.ArcPiece && it.sweepAngle > 6.283 }
+    }
 // …and a cell bounded by exactly one full circle is a cell that has been entirely enclosed.
-fun enclosedCells(d: CircularDirichlet.Diagram) = d.cells.count { c ->
-    c.pieces.size == 1 && (c.pieces[0] as? CircularDirichlet.ArcPiece)?.let { it.sweepAngle > 6.283 } == true
-}
+fun enclosedCells(d: CircularDirichlet.Diagram) =
+    d.cells.count { c ->
+        c.pieces.size == 1 && (c.pieces[0] as? CircularDirichlet.ArcPiece)?.let { it.sweepAngle > 6.283 } == true
+    }
 :::fold draw the three diagrams
 val palette = okhslSet(5, saturation = 0.8, lightness = 0.66)
 val cloud = pointCloudFLine(positions, color = vec(1.0, 1.0, 1.0, 0.95), pointSize = 1.6)
@@ -211,9 +226,11 @@ fun panel(d: CircularDirichlet.Diagram) =
     d.toFLines(clip = clip, maxChordError = 0.01f, palette = palette, thickness = 1.6) + cloud
 
 showPlaneGrid(
-    "equal weights — a plain Voronoi diagram\n${lineCount(equal)} straight bisectors, ${arcCount(equal)} arcs" to panel(equal),
+    "equal weights — a plain Voronoi diagram\n${lineCount(equal)} straight bisectors, ${arcCount(equal)} arcs" to
+        panel(equal),
     "weights 1.0 / 1.35 / 0.8 / 1.1 / 1.6\n${arcCount(mixed)} arcs, ${lineCount(mixed)} straight" to panel(mixed),
-    "one site at weight 2.6\n${fullCircles(swallowed)} pieces are COMPLETE circles; ${enclosedCells(swallowed)} cells wholly enclosed" to panel(swallowed),
+    "one site at weight 2.6\n${fullCircles(swallowed)} pieces are COMPLETE circles; ${enclosedCells(swallowed)} cells wholly enclosed" to
+        panel(swallowed),
     columns = 2,
     cellWidth = 430,
     cellHeight = 280,
@@ -272,42 +289,51 @@ The sweep below is an `animate { }` reading `AnimationClock`, described in
 :::static
 :::fold the same five sites, a fixed window, the palette, and the clock
 val positions = [
-    vec(0.0, 0.0), vec(2.2, 0.3), vec(0.9, 2.0), vec(-1.4, 1.1), vec(1.1, -1.6),
+    vec(0.0, 0.0),
+    vec(2.2, 0.3),
+    vec(0.9, 2.0),
+    vec(-1.4, 1.1),
+    vec(1.1, -1.6),
 ]
 val clip = CircularDirichlet.Aabb(vec(-3.4, -3.4), vec(4.6, 4.6))
-// A FIXED window, not the default fit-to-contents. Left to fit each frame's own bounds the picture
-// would rescale as the arcs swell, and the sweep would appear to stand still — the same trap that
-// makes an auto-ranging heatmap of a WFC collapse look like it is going nowhere.
+/*
+A FIXED window, not the default fit-to-contents. Left to fit each frame's own bounds the picture
+would rescale as the arcs swell, and the sweep would appear to stand still — the same trap that
+makes an auto-ranging heatmap of a WFC collapse look like it is going nowhere.
+*/
 val window = Rect(-3.4, -3.4, 8.0, 8.0)
 val palette = okhslSet(5, saturation = 0.8, lightness = 0.66)
 val cloud = pointCloudFLine(positions, color = vec(1.0, 1.0, 1.0, 0.95), pointSize = 1.6)
-val heavy = 1              // the site whose weight is swept; the other four stay at 1.0
+val heavy = 1 // the site whose weight is swept; the other four stay at 1.0
 // The recorder makes AnimationClock exactly frameIndex / fps, so matching this to the fence's
 // duration produces one complete, repeatable there-and-back sweep.
 val sweepSeconds = 8.0
 val started = AnimationClock.nowSeconds()
+
 :::endfold
 
-// The line that turns elapsed time into the swept parameter — the one line worth reading, and the one
-// you would change. A triangle ramp rather than a saw, so the clip runs out to 2.7 and back to 1.0
-// and loops with no jump at the seam.
+/*
+The line that turns elapsed time into the swept parameter — the one line worth reading, and the one
+you would change. A triangle ramp rather than a saw, so the clip runs out to 2.7 and back to 1.0
+and loops with no jump at the seam.
+*/
 fun weightAt(elapsed: Double): Double {
     val phase = (elapsed / sweepSeconds) % 1.0
-    return 1.0 + 1.7 * (1.0 - abs(1.0 - 2.0 * phase))          // 1.0 -> 2.7 -> 1.0
+    return 1.0 + 1.7 * (1.0 - abs(1.0 - 2.0 * phase)) // 1.0 -> 2.7 -> 1.0
 }
 
 animate {
     val w = weightAt(AnimationClock.nowSeconds() - started)
     val diagram = CircularDirichlet.build(
-        positions.mapIndexed { i, p -> vec(p.x, p.y, if (i == heavy) w else 1.0) }
+        positions.mapIndexed { i, p -> vec(p.x, p.y, if (i == heavy) w else 1.0) },
     )
     val arcs = diagram.cells.sumOf { c -> c.pieces.count { it is CircularDirichlet.ArcPiece } }
     val straight = diagram.cells.sumOf { c -> c.pieces.count { it is CircularDirichlet.LinePiece } }
     // A cell bounded by one full-sweep arc is a cell that has been entirely swallowed.
-    val enclosed = diagram.cells.count { c ->
-        c.pieces.size == 1 &&
-            (c.pieces[0] as? CircularDirichlet.ArcPiece)?.let { it.sweepAngle > 6.283 } == true
-    }
+    val enclosed =
+        diagram.cells.count { c ->
+            c.pieces.size == 1 && (c.pieces[0] as? CircularDirichlet.ArcPiece)?.let { it.sweepAngle > 6.283 } == true
+        }
     showPlane(
         // 0.005 rather than the stills' 0.01: a swallowed cell is a whole circle at this scale, and a
         // coarser chord error makes it visibly a dodecagon.
@@ -353,17 +379,24 @@ uses the same machinery to outline a stroke.
 // Six sites; the field is "how much nearer is the closest site than the second closest", which is
 // zero exactly on the Voronoi seams and grows into the middle of each cell.
 val sites = [
-    vec(-1.6, -0.9), vec(1.4, -1.2), vec(2.0, 1.1), vec(-0.2, 1.7), vec(-2.1, 0.9), vec(0.4, -0.1),
+    vec(-1.6, -0.9),
+    vec(1.4, -1.2),
+    vec(2.0, 1.1),
+    vec(-0.2, 1.7),
+    vec(-2.1, 0.9),
+    vec(0.4, -0.1),
 ]
 val gap: ScalarField2D = { x, y ->
     val d = sites.map { s -> kotlin.math.hypot(x - s.x, y - s.y) }.sorted()
     d[1] - d[0]
 }
 
-// This field is NON-NEGATIVE: it touches zero exactly on the seams and is positive everywhere else.
-// Marching squares finds *sign changes*, so iso = 0.0 finds no contours, which is
-// correct. A small positive level instead traces each cell shrunk inwards by that margin,
-// and raising it shrinks them further. That is the useful knob.
+/*
+This field is NON-NEGATIVE: it touches zero exactly on the seams and is positive everywhere else.
+Marching squares finds *sign changes*, so iso = 0.0 finds no contours, which is
+correct. A small positive level instead traces each cell shrunk inwards by that margin,
+and raising it shrinks them further. That is the useful knob.
+*/
 val levels = [0.05, 0.35, 0.8, 1.4]
 val byLevel = levels.map { iso -> iso to generateIsoContours(gap, -3.4, 3.4, -2.9, 2.9, 120, 120, iso) }
 val atZero = generateIsoContours(gap, -3.4, 3.4, -2.9, 2.9, 120, 120, 0.0)
@@ -371,34 +404,57 @@ val atZero = generateIsoContours(gap, -3.4, 3.4, -2.9, 2.9, 120, 120, 0.0)
 // A completely different use of the same machinery: pointEdgeScalarField2D turns an FLine into a
 // signed field whose zero set is a tube around it, so contouring at 0.0 outlines a stroke.
 val stroke = fline {
-    moveTo(-2.4, 1.2); cubicTo(-1.0, -2.2, 1.2, 2.4, 2.6, -1.0)
+    moveTo(-2.4, 1.2)
+    cubicTo(-1.0, -2.2, 1.2, 2.4, 2.6, -1.0)
 }
 val outline = generateSmoothIsoContours(stroke, radius = 0.55, spatialStep = 0.05)
 val fat = generateSmoothIsoContours(stroke, radius = 0.55, spatialStep = 0.05, iso = -0.28)
 :::fold draw the levels and the tube
 fun contourLines(contours: List<List<Vec2>>, color: Vec4, thickness: Double) =
-    contours.filter { it.size >= 2 }.map { c ->
-        polylineFrom(c, 0, closed = isoContourClosed(c, -3.4, 3.4, -2.9, 2.9, boundaryEpsilon = 0.05)).also {
-            it.color = color; it.thickness = thickness
+    contours
+        .filter { it.size >= 2 }
+        .map { c ->
+            polylineFrom(c, 0, closed = isoContourClosed(c, -3.4, 3.4, -2.9, 2.9, boundaryEpsilon = 0.05)).also {
+                it.color = color
+                it.thickness = thickness
+            }
         }
-    }
 
 val siteDots = pointCloudFLine(sites, color = vec(1.0, 1.0, 1.0, 0.9), pointSize = 1.4)
 val ramp = okhslSet(levels.size, saturation = 0.82, lightness = 0.66, startHue = 0.55f)
 
-val stacked = byLevel.flatMapIndexed { i, (_, contours) ->
-    contourLines(contours, ramp[i], 1.5 - i * 0.15)
-} + siteDots
+val stacked =
+    byLevel.flatMapIndexed { i, (_, contours) ->
+        contourLines(contours, ramp[i], 1.5 - i * 0.15)
+    } + siteDots
 
 showPlaneGrid(
     "iso 0.05 — the cells, minus a hairline\n${byLevel[0].second.size} contours, ${byLevel[0].second.sumOf { it.size }} points; at iso 0.0 exactly: ${atZero.size}" to
         (contourLines(byLevel[0].second, vec(0.62, 0.9, 1.0, 0.85), 1.6) + siteDots),
-    "iso 0.05 / 0.35 / 0.8 / 1.4 together\ncells shrinking inwards: ${byLevel.map { it.second.size }.joinToString("/")} contours" to stacked,
-    "generateSmoothIsoContours on an FLine\ntube radius 0.55 and 0.83, ${outline.size} + ${fat.size} outlines" to listOf(
-        stroke.also { it.color = vec(1.0, 1.0, 1.0, 0.30); it.thickness = 1.0 },
-        *fat.map { it.also { f -> f.color = vec(0.98, 0.55, 0.42, 0.55); f.thickness = 1.3 } }.toTypedArray(),
-        *outline.map { it.also { f -> f.color = vec(1.0, 0.82, 0.42, 0.95); f.thickness = 1.6 } }.toTypedArray(),
-    ),
+    "iso 0.05 / 0.35 / 0.8 / 1.4 together\ncells shrinking inwards: ${byLevel.map { it.second.size }.joinToString("/")} contours" to
+        stacked,
+    "generateSmoothIsoContours on an FLine\ntube radius 0.55 and 0.83, ${outline.size} + ${fat.size} outlines" to
+        listOf(
+            stroke.also {
+                it.color = vec(1.0, 1.0, 1.0, 0.30)
+                it.thickness = 1.0
+            },
+            *fat.map {
+                    it.also { f ->
+                        f.color = vec(0.98, 0.55, 0.42, 0.55)
+                        f.thickness = 1.3
+                    }
+                }
+                .toTypedArray(),
+            *outline
+                .map {
+                    it.also { f ->
+                        f.color = vec(1.0, 0.82, 0.42, 0.95)
+                        f.thickness = 1.6
+                    }
+                }
+                .toTypedArray(),
+        ),
     columns = 2,
     cellWidth = 430,
     cellHeight = 280,
@@ -452,10 +508,12 @@ lost. A symmetric field on a symmetric grid does this all the time.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/grid_corner.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
 :::static
-// Three inputs whose exact answer you already know, each arranged so that grid samples land ON the
-// iso level. A strict sign-change test returns no contour for the first and cuts the third into
-// four disconnected arcs.
-val plane: ScalarField2D = { x, _ -> x }                              // zero set: the y axis
+/*
+Three inputs whose exact answer you already know, each arranged so that grid samples land ON the
+iso level. A strict sign-change test returns no contour for the first and cuts the third into
+four disconnected arcs.
+*/
+val plane: ScalarField2D = { x, _ -> x } // zero set: the y axis
 val circle: ScalarField2D = { x, y -> kotlin.math.hypot(x, y) - 1.0 } // zero set: the unit circle
 
 // nx = 4 over [-1, 1] puts a whole column of samples exactly on x = 0.
@@ -471,7 +529,8 @@ val branches = generateIsoContours(saddle, -1.05, 1.03, -1.02, 1.07, 8, 8, 0.0)
 fun perimeter(loop: List<Vec2>): Double {
     var total = 0.0
     for (i in loop.indices) {
-        val a = loop[i]; val b = loop[(i + 1) % loop.size]
+        val a = loop[i]
+        val b = loop[(i + 1) % loop.size]
         total += kotlin.math.hypot((a.x - b.x).toDouble(), (a.y - b.y).toDouble())
     }
     return total
@@ -480,30 +539,41 @@ fun perimeter(loop: List<Vec2>): Double {
 // One helper: the sampling grid as faint lines, so you can SEE which samples the level set runs
 // through. That is the whole subject of this figure.
 fun gridLines(x0: Double, x1: Double, y0: Double, y1: Double, nx: Int, ny: Int) = fline {
-    for (i in 0..nx) { val x = x0 + (x1 - x0) * i / nx; moveTo(x, y0); lineTo(x, y1) }
-    for (j in 0..ny) { val y = y0 + (y1 - y0) * j / ny; moveTo(x0, y); lineTo(x1, y) }
+    grid(Rect(x0, y0, x1 - x0, y1 - y0), nx, ny)
     color = vec(0.34, 0.42, 0.54, 0.55)
     thickness = 0.8
 }
 
 // …and the contours, dot per marched crossing, closed only if they really are loops.
 fun dotted(
-    contours: List<List<Vec2>>, x0: Double, x1: Double, y0: Double, y1: Double,
-    colors: List<Vec4>, eps: Double,
+    contours: List<List<Vec2>>,
+    x0: Double,
+    x1: Double,
+    y0: Double,
+    y1: Double,
+    colors: List<Vec4>,
+    eps: Double,
 ) = contours.mapIndexed { i, c ->
     polylineFrom(c, 0, closed = isoContourClosed(c, x0, x1, y0, y1, eps)).also {
-        it.color = colors[i % colors.size]; it.thickness = 2.2
-        it.pointed = true; it.pointSize = 1.1
+        it.color = colors[i % colors.size]
+        it.thickness = 2.2
+        it.pointed = true
+        it.pointSize = 1.1
     }
 }
 
-val warm = [vec(1.0, 0.78, 0.36, 0.95), vec(0.62, 0.92, 1.0, 0.95),
-                  vec(0.98, 0.55, 0.62, 0.95), vec(0.6, 1.0, 0.72, 0.95)]
+val warm = [
+    vec(1.0, 0.78, 0.36, 0.95),
+    vec(0.62, 0.92, 1.0, 0.95),
+    vec(0.98, 0.55, 0.62, 0.95),
+    vec(0.6, 1.0, 0.72, 0.95),
+]
 
 showPlaneGrid(
     "f(x,y) = x at iso 0, grid aligned on x = 0\n${planeContours.size} contour of ${planeContours.sumOf { it.size }} points" to
         ([gridLines(-1.0, 1.0, -1.0, 1.0, 4, 4)] + dotted(planeContours, -1.0, 1.0, -1.0, 1.0, warm, 0.4)),
-    "unit circle at nx = 16, aligned\n1 loop of ${aligned[0].size} points, perimeter %.4f vs 2pi = %.4f".format(perimeter(aligned[0]), 2 * PI) to
+    "unit circle at nx = 16, aligned\n1 loop of ${aligned[0].size} points, perimeter %.4f vs 2pi = %.4f"
+        .format(perimeter(aligned[0]), 2 * PI) to
         ([gridLines(-2.0, 2.0, -2.0, 2.0, 16, 16)] + dotted(aligned, -2.0, 2.0, -2.0, 2.0, warm, 0.2)),
     "f = x*y at iso 0 — the saddle cell\n${branches.size} branches of ${branches.map { it.size }.joinToString(" and ")} points" to
         ([gridLines(-1.05, 1.03, -1.02, 1.07, 8, 8)] + dotted(branches, -1.05, 1.03, -1.02, 1.07, warm, 0.2)),
@@ -574,8 +644,9 @@ the bottom row is `x·y` at two resolutions.
 :::static
 // A field whose four corner samples are prescribed, on a 1x1 grid: the decider is then the only
 // thing under test. v0 bottom-left, v1 bottom-right, v2 top-right, v3 top-left.
-fun oneCell(v: List<Double>): ScalarField2D =
-    { x, y -> if (x < 0.5) (if (y < 0.5) v[0] else v[3]) else (if (y < 0.5) v[1] else v[2]) }
+fun oneCell(v: List<Double>): ScalarField2D = { x, y ->
+    if (x < 0.5) (if (y < 0.5) v[0] else v[3]) else (if (y < 0.5) v[1] else v[2])
+}
 
 // The value the decider looks at: the cell's bilinear interpolant has exactly one saddle, and this
 // is it. Its SIGN says which diagonal pair of corners the centre of the cell belongs to.
@@ -585,32 +656,42 @@ fun saddleValue(v: List<Double>, iso: Double = 0.0): Double {
 }
 
 // Same sign pattern in both, but the DEEP diagonal moves. That is what the decider reads.
-val deepInside = [-3.0, 1.0, -3.0, 1.0]   // saddle -1: the inside joins through the centre
-val deepOutside = [-1.0, 3.0, -1.0, 3.0]  // saddle +1: the outside joins, so the cuts move
+val deepInside = [-3.0, 1.0, -3.0, 1.0] // saddle -1: the inside joins through the centre
+val deepOutside = [-1.0, 3.0, -1.0, 3.0] // saddle +1: the outside joins, so the cuts move
 
 val insideCut = generateIsoContours(oneCell(deepInside), 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0)
 val outsideCut = generateIsoContours(oneCell(deepOutside), 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0)
 
-// The other-direction invariant: {f = 0} and {-f = 0} are the same set of points, so negating every
-// corner value must NOT move the crossing. It cancels — negation swaps inside/outside AND flips the
-// saddle's sign, and the decider compares the two.
-fun cutCentres(cuts: List<List<Vec2>>) = cuts.map { c ->
-    "%.2f,%.2f".format((c[0].x + c[1].x) / 2.0, (c[0].y + c[1].y) / 2.0)
-}.sorted()
-val negationIsInvariant = [deepInside, deepOutside].all { v ->
-    cutCentres(generateIsoContours(oneCell(v), 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0)) ==
-        cutCentres(generateIsoContours(oneCell(v.map { -it }), 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0))
-}
+/*
+The other-direction invariant: {f = 0} and {-f = 0} are the same set of points, so negating every
+corner value must NOT move the crossing. It cancels — negation swaps inside/outside AND flips the
+saddle's sign, and the decider compares the two.
+*/
+fun cutCentres(cuts: List<List<Vec2>>) =
+    cuts
+        .map { c ->
+            "%.2f,%.2f".format((c[0].x + c[1].x) / 2.0, (c[0].y + c[1].y) / 2.0)
+        }
+        .sorted()
+val negationIsInvariant =
+    [deepInside, deepOutside].all { v ->
+        cutCentres(generateIsoContours(oneCell(v), 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0)) ==
+            cutCentres(generateIsoContours(oneCell(v.map { -it }), 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0))
+    }
 
-// f = x*y is the tie, and it is the common case rather than the exotic one: the field is ITSELF
-// bilinear, so the cell's interpolant reproduces it and the saddle value is exactly iso. Locate the
-// saddle cell at a given resolution and report the numerator that is supposed to decide it.
+/*
+f = x*y is the tie, and it is the common case rather than the exotic one: the field is ITSELF
+bilinear, so the cell's interpolant reproduces it and the saddle value is exactly iso. Locate the
+saddle cell at a given resolution and report the numerator that is supposed to decide it.
+*/
 fun tieNumerator(nx: Int): Double {
     val dx = (1.03 - -1.05) / nx
     val dy = (1.07 - -1.02) / nx
     for (i in 0 until nx) for (j in 0 until nx) {
-        val a = -1.05 + i * dx; val c = a + dx
-        val b = -1.02 + j * dy; val d = b + dy
+        val a = -1.05 + i * dx
+        val c = a + dx
+        val b = -1.02 + j * dy
+        val d = b + dy
         val v = [a * b, c * b, c * d, a * d]
         val alternates = (v[0] < 0) != (v[1] < 0) && (v[1] < 0) != (v[2] < 0) && (v[2] < 0) != (v[3] < 0)
         if (alternates) return v[0] * v[2] - v[1] * v[3]
@@ -622,36 +703,40 @@ val saddleField: ScalarField2D = { x, y -> x * y }
 val tie8 = generateIsoContours(saddleField, -1.05, 1.03, -1.02, 1.07, 8, 8, 0.0)
 val tie32 = generateIsoContours(saddleField, -1.05, 1.03, -1.02, 1.07, 32, 32, 0.0)
 :::fold draw the cell, its corners by sign, and the crossing it chose
-val insideColor = vec(0.42, 0.72, 1.0, 0.95)    // strictly below iso — inside
-val outsideColor = vec(1.0, 0.62, 0.36, 0.95)   // at or above iso — outside
+val insideColor = vec(0.42, 0.72, 1.0, 0.95) // strictly below iso — inside
+val outsideColor = vec(1.0, 0.62, 0.36, 0.95) // at or above iso — outside
 val cutColor = vec(0.6, 1.0, 0.72, 0.95)
 
 fun cellFigure(v: List<Double>, cuts: List<List<Vec2>>): List<FLine> {
     val out = ArrayList<FLine>()
     out += fline {
-        moveTo(0.0, 0.0); lineTo(1.0, 0.0); lineTo(1.0, 1.0); lineTo(0.0, 1.0); lineTo(0.0, 0.0)
+        rect(0.0, 0.0, 1.0, 1.0)
         color = vec(0.34, 0.42, 0.54, 0.7)
         thickness = 1.0
     }
     val corners = [vec(0.0, 0.0), vec(1.0, 0.0), vec(1.0, 1.0), vec(0.0, 1.0)]
     corners.forEachIndexed { i, p ->
-        out += pointCloudFLine(
-            [p],
-            color = if (v[i] < 0.0) insideColor else outsideColor,
-            pointSize = 3.0,
-        )
+        out +=
+            pointCloudFLine(
+                [p],
+                color = if (v[i] < 0.0) insideColor else outsideColor,
+                pointSize = 3.0,
+            )
     }
     cuts.forEach { c ->
-        out += polylineFrom(c, 0, closed = false).also {
-            it.color = cutColor; it.thickness = 3.2; it.pointed = true; it.pointSize = 1.4
-        }
+        out +=
+            polylineFrom(c, 0, closed = false).also {
+                it.color = cutColor
+                it.thickness = 3.2
+                it.pointed = true
+                it.pointSize = 1.4
+            }
     }
     return out
 }
 
 fun gridLines(x0: Double, x1: Double, y0: Double, y1: Double, n: Int) = fline {
-    for (i in 0..n) { val x = x0 + (x1 - x0) * i / n; moveTo(x, y0); lineTo(x, y1) }
-    for (j in 0..n) { val y = y0 + (y1 - y0) * j / n; moveTo(x0, y); lineTo(x1, y) }
+    grid(Rect(x0, y0, x1 - x0, y1 - y0), n, n)
     color = vec(0.34, 0.42, 0.54, 0.45)
     thickness = 0.7
 }
@@ -660,8 +745,10 @@ fun branchLines(contours: List<List<Vec2>>): List<FLine> {
     val palette = [vec(1.0, 0.78, 0.36, 0.95), vec(0.62, 0.92, 1.0, 0.95)]
     return contours.mapIndexed { i, c ->
         polylineFrom(c, 0, closed = false).also {
-            it.color = palette[i % palette.size]; it.thickness = 2.4
-            it.pointed = true; it.pointSize = 1.1
+            it.color = palette[i % palette.size]
+            it.thickness = 2.4
+            it.pointed = true
+            it.pointSize = 1.1
         }
     }
 }
@@ -726,13 +813,20 @@ val field: ScalarField2D = { x, y ->
 }
 // The sampled rectangle, and a FIXED display window so the picture does not rescale as the loops
 // shrink — the contours would otherwise stay the same size on screen and the sweep would look still.
-val x0 = -3.2; val x1 = 3.2; val y0 = -1.9; val y1 = 1.9
+val x0 = -3.2
+val x1 = 3.2
+val y0 = -1.9
+val y1 = 1.9
 val window = Rect(-3.0, -1.7, 6.0, 3.4)
 val peakDots = pointCloudFLine(
-    [vec(1.4, 0.0), vec(-1.4, 0.0)], color = vec(1.0, 1.0, 1.0, 0.85), pointSize = 1.4,
+    [vec(1.4, 0.0), vec(-1.4, 0.0)],
+    color = vec(1.0, 1.0, 1.0, 0.85),
+    pointSize = 1.4,
 )
 val saddleDot = pointCloudFLine(
-    [vec(0.0, 0.0)], color = vec(1.0, 0.72, 0.32, 0.98), pointSize = 1.9,
+    [vec(0.0, 0.0)],
+    color = vec(1.0, 0.72, 0.32, 0.98),
+    pointSize = 1.9,
 )
 val byIndex = [vec(0.42, 0.80, 1.0, 0.95), vec(1.0, 0.45, 0.62, 0.95)]
 // Match the eight-second fence: offline capture advances this clock by exactly 1 / fps per frame.
@@ -743,12 +837,14 @@ val started = AnimationClock.nowSeconds()
 // The saddle level is the field's own value at the col between the peaks.
 val saddle = field(0.0, 0.0)
 
-// The line that turns elapsed time into the swept parameter. A triangle ramp over a range that
-// straddles `saddle` with room either side, so the topology change happens twice per loop, once each
-// way.
+/*
+The line that turns elapsed time into the swept parameter. A triangle ramp over a range that
+straddles `saddle` with room either side, so the topology change happens twice per loop, once each
+way.
+*/
 fun isoAt(elapsed: Double): Double {
     val phase = (elapsed / sweepSeconds) % 1.0
-    return 0.18 + 0.60 * (1.0 - abs(1.0 - 2.0 * phase))        // 0.18 -> 0.78 -> 0.18
+    return 0.18 + 0.60 * (1.0 - abs(1.0 - 2.0 * phase)) // 0.18 -> 0.78 -> 0.18
 }
 
 animate {
@@ -764,8 +860,9 @@ animate {
     showPlane(
         lines + peakDots + saddleDot,
         title = "iso %.3f — %d contour(s)".format(iso, contours.size),
-        caption = if (iso > saddle) "above the saddle %.3f — one loop per peak".format(saddle)
-        else "below the saddle %.3f — one loop around both".format(saddle),
+        caption =
+            if (iso > saddle) "above the saddle %.3f — one loop per peak".format(saddle)
+            else "below the saddle %.3f — one loop around both".format(saddle),
         width = 660,
         height = 374,
         window = window,
@@ -785,13 +882,13 @@ coordinate-wise robust. A k-means centroid is neither, and on a cloud with one o
 that moves. The three entry points:
 
 ```diffstatic {data-lang=kotlin}
-val tree = vec2Agglomerative(points, AgglomerativeLinkage.WARD)  // the whole merge hierarchy
-tree.partition(k)                     // cut it at k clusters -> ClusterLayer
-tree.partitionByHeight(h)             // …or at a merge distance
-tree.layers(2..6)                     // …or at several k at once
+val tree = vec2Agglomerative(points, AgglomerativeLinkage.WARD) // the whole merge hierarchy
+tree.partition(k) // cut it at k clusters -> ClusterLayer
+tree.partitionByHeight(h) // …or at a merge distance
+tree.layers(2..6) // …or at several k at once
 
-vec2KMedoids(points, k, KMedoidsOptions(randomSeed = 11L))   // centres ARE samples
-vec2KMedians(points, k, KMediansOptions(randomSeed = 11L))   // L1 Lloyd, robust centres
+vec2KMedoids(points, k, KMedoidsOptions(randomSeed = 11L)) // centres ARE samples
+vec2KMedians(points, k, KMediansOptions(randomSeed = 11L)) // L1 Lloyd, robust centres
 ```
 
 Each of `Float`, `Vec2`, `Vec3` and `Vec4` has all three (`floatKMedoids`, `vec3Agglomerative`, …),
@@ -820,42 +917,43 @@ val window = Rect(-1.4, -1.4, 11.2, 10.2)   // shared by all four panels, so the
 :::endfold
 :::static
 // Four strategies, one question: partition these 85 points into three groups.
-val tree = vec2Agglomerative(points)     // Ward: minimises within-cluster sum of SQUARES
+val tree = vec2Agglomerative(points) // Ward: minimises within-cluster sum of SQUARES
 val cut3 = tree.partition(3)
 val cut6 = tree.partition(6)
-val medoids = vec2KMedoids(points, 3, KMedoidsOptions(randomSeed = 11L))  // centres ARE samples
-val medians = vec2KMedians(points, 3, KMediansOptions(randomSeed = 11L))  // L1 Lloyd
+val medoids = vec2KMedoids(points, 3, KMedoidsOptions(randomSeed = 11L)) // centres ARE samples
+val medians = vec2KMedians(points, 3, KMediansOptions(randomSeed = 11L)) // L1 Lloyd
 
 // One ruler for all of them: score ANY partition by the objective k-medians optimises — the sum of
 // |dx| + |dy| from each point to its own cluster's median. That makes the four answers comparable.
-fun l1Of(labels: IntArray, k: Int) = (0 until k).sumOf { c ->
-    val mem = points.indices.filter { labels[it] == c }
-    val mx = mem.map { points[it].x }.sorted()[mem.size / 2]
-    val my = mem.map { points[it].y }.sorted()[mem.size / 2]
-    mem.sumOf { (abs(points[it].x - mx) + abs(points[it].y - my)).toDouble() }
-}
+fun l1Of(labels: IntArray, k: Int) =
+    (0 until k).sumOf { c ->
+        val mem = points.indices.filter { labels[it] == c }
+        val mx = mem.map { points[it].x }.sorted()[mem.size / 2]
+        val my = mem.map { points[it].y }.sorted()[mem.size / 2]
+        mem.sumOf { (abs(points[it].x - mx) + abs(points[it].y - my)).toDouble() }
+    }
 fun sizes(layer: ClusterLayer) = (0 until layer.clusterCount).map { layer.indices(it).size }.sorted()
 
 // THE DISCRIMINATORS. Every one of these is boring on well-separated blobs and decisive here.
-val wardSpendsAClusterOnTheStray = sizes(cut3).first() == 1        // [1, 28, 56]
-val medoidsKeepEveryBlobWhole = medoids.clusterSizes.min() >= 28   // [28, 28, 29]
-val wardCostsThisMuchMore = l1Of(cut3.labels, 3) / medians.objective  // 1.86x, not 1.00x
+val wardSpendsAClusterOnTheStray = sizes(cut3).first() == 1 // [1, 28, 56]
+val medoidsKeepEveryBlobWhole = medoids.clusterSizes.min() >= 28 // [28, 28, 29]
+val wardCostsThisMuchMore = l1Of(cut3.labels, 3) / medians.objective // 1.86x, not 1.00x
 
 // …and the invariants that hold whatever the data, which is why they are the backbone.
 val medoidsAreSamples = medoids.medoids.all { m -> points.any { it.x == m.x && it.y == m.y } }
-val nested = (0 until cut6.clusterCount).all { fine ->
-    cut6.indices(fine).map { cut3.labels[it] }.toSet().size == 1
-}
+val nested =
+    (0 until cut6.clusterCount).all { fine ->
+        cut6.indices(fine).map { cut3.labels[it] }.toSet().size == 1
+    }
 val mediansBeatMedoids = medians.objective < medoids.distortion
 :::fold draw the four partitions
 // Only the FIRST newline splits a panel label into title + caption; later ones render as spaces, and
 // the grid's max-content columns are sized by the longest caption. So: one short caption line each.
 showPlaneGrid(
     "vec2Agglomerative().partition(3)\nsizes ${sizes(cut3).joinToString("/")} — L1 %.3f. one stray, one whole cluster"
-        .format(l1Of(cut3.labels, 3)) to
-        cut3.toFLines(points, drawSpokes = false, pointSize = 1.6),
-    "…the SAME tree, cut at 6\nsizes ${sizes(cut6).joinToString("/")} — nested: $nested. the blobs are back"
-        to cut6.toFLines(points, drawSpokes = false, pointSize = 1.6),
+        .format(l1Of(cut3.labels, 3)) to cut3.toFLines(points, drawSpokes = false, pointSize = 1.6),
+    "…the SAME tree, cut at 6\nsizes ${sizes(cut6).joinToString("/")} — nested: $nested. the blobs are back" to
+        cut6.toFLines(points, drawSpokes = false, pointSize = 1.6),
     "vec2KMedoids(k = 3)\nsizes ${medoids.clusterSizes.toList().sorted().joinToString("/")} — distortion %.3f. samples: %s"
         .format(medoids.distortion, medoidsAreSamples) to
         medoids.asLayer().toFLines(points, centers = medoids.medoids, pointSize = 1.6),
@@ -932,16 +1030,19 @@ the second.
 // Two long bands with a narrow gap, plus three stragglers sitting in the gap — a chain waiting to
 // happen. n = 83, and there is no "right" answer, which is the point.
 val rng = java.util.Random(23)
-val band = { y0: Double -> (0 until 40).map { i -> vec(i * 0.25 + rng.nextDouble() * 0.1, y0 + rng.nextDouble() * 0.28) } }
+val band = { y0: Double ->
+    (0 until 40).map { i -> vec(i * 0.25 + rng.nextDouble() * 0.1, y0 + rng.nextDouble() * 0.28) }
+}
 val bridge = [vec(4.4, 0.62), vec(4.9, 0.78), vec(5.4, 0.95)]
 // NB `flatten()`, not `+`: on List<Vec2> the plus operator is *elementwise vector addition*, so
 // `band(0.0) + bridge` is an IllegalArgumentException about mismatched list sizes, not a concat.
 val banded = [band(0.0), band(1.5), bridge].flatten()
 
 // Every linkage, cut at the same k. The ONLY thing that varies between panels is the linkage.
-val cuts = AgglomerativeLinkage.entries.map { linkage ->
-    linkage to vec2Agglomerative(banded, linkage).partition(3)
-}
+val cuts =
+    AgglomerativeLinkage.entries.map { linkage ->
+        linkage to vec2Agglomerative(banded, linkage).partition(3)
+    }
 
 // The discriminator, as a number rather than an impression: how big is the largest cluster? A
 // chaining linkage swallows nearly everything into one, and leaves singletons behind.
@@ -952,9 +1053,11 @@ val singletons = cuts.associate { (l, cut) ->
     l to (0 until cut.clusterCount).count { cut.indices(it).size == 1 }
 }
 
-// Single linkage's notorious failure mode is chaining across a gap. Does it happen HERE? Drop to
-// k = 2 and read the largest cluster: 82-ish would mean the chain crossed the gap through the
-// stragglers, 43 means it did not and the two bands survived.
+/*
+Single linkage's notorious failure mode is chaining across a gap. Does it happen HERE? Drop to
+k = 2 and read the largest cluster: 82-ish would mean the chain crossed the gap through the
+stragglers, 43 means it did not and the two bands survived.
+*/
 val singleAtTwo = vec2Agglomerative(banded, AgglomerativeLinkage.SINGLE).partition(2)
 val singleAtTwoLargest = (0 until singleAtTwo.clusterCount).maxOf { singleAtTwo.indices(it).size }
 :::fold draw the input and all seven cuts
@@ -965,19 +1068,23 @@ val frame = Rect(-0.4, -0.4, 10.6, 2.6)
 
 showPlaneGrid(
     "the input — 83 points, k = 3\ntwo bands of 40 plus 3 stragglers in the gap" to inputPanel,
-    *cuts.map { (linkage, cut) ->
-        // The k=2 note rides on SINGLE's own caption, so the number the prose quotes is visible in
-        // the figure rather than only in a printed line the screenshot crop may not reach.
-        val extra = if (linkage == AgglomerativeLinkage.SINGLE)
-            "; at k=2, $singleAtTwoLargest" else ""
-        "$linkage\nlargest cluster ${largest[linkage]} of 83, ${singletons[linkage]} singleton(s)$extra" to panel(cut)
-    }.toTypedArray(),
+    *cuts
+        .map { (linkage, cut) ->
+            // The k=2 note rides on SINGLE's own caption, so the number the prose quotes is visible in
+            // the figure rather than only in a printed line the screenshot crop may not reach.
+            val extra = if (linkage == AgglomerativeLinkage.SINGLE) "; at k=2, $singleAtTwoLargest" else ""
+            "$linkage\nlargest cluster ${largest[linkage]} of 83, ${singletons[linkage]} singleton(s)$extra" to
+                panel(cut)
+        }
+        .toTypedArray(),
     columns = 2,
     cellWidth = 430,
     cellHeight = 132,
     window = frame,
 )
-println("SINGLE at k=2: largest cluster $singleAtTwoLargest of ${banded.size} — the chain crossed the gap")
+println(
+    "SINGLE at k=2: largest cluster $singleAtTwoLargest of ${banded.size} — the chain crossed the gap",
+)
 :::endfold
 ```
 
@@ -1025,11 +1132,11 @@ polyhedron. `voronoi3d(points)` returns a `VoronoiLattice` of `VoronoiCell3`s, e
 `VoronoiFace`s with a `polygon` and the neighbour it faces.
 
 ```diffstatic {data-lang=kotlin}
-val lattice = voronoi3d(sites)              // or Voronoi3d.build(sites, tolerance, clipPadding)
-lattice[7].faces                            // List<VoronoiFace>
-face.neighborSite                           // null for a clip-box face
-face.polygon                                // wound CCW along face.plane.normal
-cell.bounded                                // false if any face is a clip face or touches the box
+val lattice = voronoi3d(sites) // or Voronoi3d.build(sites, tolerance, clipPadding)
+lattice[7].faces // List<VoronoiFace>
+face.neighborSite // null for a clip-box face
+face.polygon // wound CCW along face.plane.normal
+cell.bounded // false if any face is a clip face or touches the box
 ```
 
 **A 3D diagram is a different object from the 2D one.** The two live in different files and the
@@ -1045,36 +1152,46 @@ beside it, and slices a cubic lattice whose answer is known in advance.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/voronoi3d_slice.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
 :::static
-// 48 sites in a 3-cube, and the 3D diagram of them. The 3-cube is chosen so that the cubic lattice
-// below — 4x4x4 sites one unit apart — occupies exactly the same window, and all three panels of the
-// figure can therefore share one scale.
+/*
+48 sites in a 3-cube, and the 3D diagram of them. The 3-cube is chosen so that the cubic lattice
+below — 4x4x4 sites one unit apart — occupies exactly the same window, and all three panels of the
+figure can therefore share one scale.
+*/
 val rng = java.util.Random(11)
 val sites3 = List(48) { vec(rng.nextDouble() * 3.0, rng.nextDouble() * 3.0, rng.nextDouble() * 3.0) }
 val lattice = voronoi3d(sites3)
 
 // Every cell must contain its own site — the defining property, and cheap to check: the site is on
 // the inside of every one of the cell's face planes.
-val siteInsideOwnCell = lattice.cells.all { cell ->
-    cell.faces.all { f ->
-        val n = f.plane.normal
-        n.x * cell.site.x + n.y * cell.site.y + n.z * cell.site.z <= f.plane.d + 1e-3f
+val siteInsideOwnCell =
+    lattice.cells.all { cell ->
+        cell.faces.all { f ->
+            val n = f.plane.normal
+            n.x * cell.site.x + n.y * cell.site.y + n.z * cell.site.z <= f.plane.d + 1e-3f
+        }
     }
-}
 
-// A cubic lattice is the case with an answer known in advance: 4x4x4 sites one unit apart, so the
-// eight interior cells must be exact unit cubes — six faces each — and any plane through one of them
-// must cut it in a 1x1 square. z = 1.2 is chosen to pass through the middle of the lower layer of
-// them rather than along the boundary between layers, which z = 1.5 would.
-val cubic = (0 until 4).flatMap { i -> (0 until 4).flatMap { j -> (0 until 4).map { k ->
-    vec(i.toDouble(), j.toDouble(), k.toDouble())
-} } }
+/*
+A cubic lattice is the case with an answer known in advance: 4x4x4 sites one unit apart, so the
+eight interior cells must be exact unit cubes — six faces each — and any plane through one of them
+must cut it in a 1x1 square. z = 1.2 is chosen to pass through the middle of the lower layer of
+them rather than along the boundary between layers, which z = 1.5 would.
+*/
+val cubic =
+    (0 until 4).flatMap { i ->
+        (0 until 4).flatMap { j ->
+            (0 until 4).map { k ->
+                vec(i.toDouble(), j.toDouble(), k.toDouble())
+            }
+        }
+    }
 val cubicLattice = voronoi3d(cubic)
 val interiorCubes = cubicLattice.cells.count { c -> c.bounded && c.faces.size == 6 }
 
 // …and the 2D diagram of the same sites, flattened. Different object, and the picture says so.
 val flattened = sites3.map { vec(it.x.toDouble(), it.y.toDouble()) }
 val flat2d = vec2VoronoiDiagram(flattened)
-:::fold slice each 3D cell with the plane z = 5, and draw
+:::fold slice each 3D cell at the selected z levels, and draw
 // A convex polygon meets a plane in at most one segment: walk its edges, keep the two crossings.
 fun sliceOf(cell: VoronoiCell3, z0: Double): FLine? {
     val segments = ArrayList<Pair<Vec2, Vec2>>()
@@ -1095,18 +1212,25 @@ fun sliceOf(cell: VoronoiCell3, z0: Double): FLine? {
     }
     if (segments.isEmpty()) return null
     return fline {
-        segments.forEach { (a, b) -> moveTo(a.x.toDouble(), a.y.toDouble()); lineTo(b.x.toDouble(), b.y.toDouble()) }
+        segments.forEach { (a, b) ->
+            moveTo(a.x.toDouble(), a.y.toDouble())
+            lineTo(b.x.toDouble(), b.y.toDouble())
+        }
         thickness = 1.6
     }
 }
 
-// Bounded cells only. An unbounded cell's clip-box faces are as large as the clip box (which is
-// `clipPadding * scale + 1` on every side, so much larger than the sites), and slicing them draws
-// rays across the whole panel that say nothing about the tiling.
+/*
+Bounded cells only. An unbounded cell's clip-box faces are as large as the clip box (which is
+`clipPadding * scale + 1` on every side, so much larger than the sites), and slicing them draws
+rays across the whole panel that say nothing about the tiling.
+*/
 fun sliceLines(l: VoronoiLattice, z0: Double, palette: List<Vec4>): List<FLine> =
-    l.cells.filter { it.bounded }.mapIndexedNotNull { i, cell ->
-        sliceOf(cell, z0)?.also { it.color = palette[i % palette.size] }
-    }
+    l.cells
+        .filter { it.bounded }
+        .mapIndexedNotNull { i, cell ->
+            sliceOf(cell, z0)?.also { it.color = palette[i % palette.size] }
+        }
 
 // "The slice is a square grid", as a check: every slice of an interior cube must have a
 // 1x1 bounding box.
@@ -1124,10 +1248,12 @@ val cool = okhslSet(9, saturation = 0.5, lightness = 0.72)
 val sliced = sliceLines(lattice, 1.5, warm)
 val cubicSlice = sliceLines(cubicLattice, 1.2, cool)
 
-val flatLines = [
-    flat2d.toFLines(),
-    [pointCloudFLine(flattened, color = vec(1.0, 0.9, 0.5, 0.9), pointSize = 1.6)],
-].flatten()
+val flatLines =
+    [
+            flat2d.toFLines(),
+            [pointCloudFLine(flattened, color = vec(1.0, 0.9, 0.5, 0.9), pointSize = 1.6)],
+        ]
+        .flatten()
 // One window for all three panels, so they are directly comparable and no stray clip-box line can
 // set the scale.
 val sliceWindow = Rect(-0.25, -0.25, 3.5, 3.5)
@@ -1135,8 +1261,7 @@ val sliceWindow = Rect(-0.25, -0.25, 3.5, 3.5)
 showPlaneGrid(
     "voronoi3d(48 sites), sliced at z = 1.5\n${sliced.size} bounded cells meet the plane, of ${lattice.cells.size}" to
         sliced,
-    "vec2VoronoiDiagram, same sites flattened\n${flat2d.cells.size} cells — a different partition" to
-        flatLines,
+    "vec2VoronoiDiagram, same sites flattened\n${flat2d.cells.size} cells — a different partition" to flatLines,
     "4x4x4 unit cubic lattice, sliced at z = 1.2\n${cubicSlice.size} slices, each a 1x1 square: $allUnitSquares" to
         cubicSlice,
     columns = 2,
@@ -1145,7 +1270,9 @@ showPlaneGrid(
     window = sliceWindow,
 )
 println("every cell contains its own site: $siteInsideOwnCell")
-println("interior cells that are bounded six-face cubes: $interiorCubes of ${cubicLattice.cells.size}")
+println(
+    "interior cells that are bounded six-face cubes: $interiorCubes of ${cubicLattice.cells.size}",
+)
 :::endfold
 ```
 
@@ -1219,19 +1346,12 @@ bridge does its own repair.
 
 </div>
 
-??? aside "How these figures are captured"
+??? aside "Agents: how these figures are captured"
     The numbers the figures above carry are asserted in
     `src/jvmTest/kotlin/afield/geometry/spatial/SpatialGeometryTest.kt`, including the Apollonius circle
     centres and the marcher's negation invariant, with a control arm confirming that a
     strict-sign-change marcher fails the exact-iso case. The 3D closure-failure counts are pinned
     with `<=` in `VoronoiFaceTopologyTest.kt`, so they can improve but not regress.
-
-    A `diffstatic_runner` fence is re-executed only when the build decides its capture is out of
-    date, and that decision comes from a fixed digest list (`RUNNER_DIGEST_SOURCE_FILES` in
-    `public/docs_hooks.py`) which covers the runner's own machinery and no stdlib source at all. So
-    editing `contours.kt` leaves every digest unchanged and an incremental build is a cache hit.
-    These figures were generated with `FIELD_DOCS_RUNNER_MODE=always`, which forces them;
-    `dev_docs/docs_capture_staleness.md` has the rest.
 
 ## Reference
 
@@ -1402,5 +1522,6 @@ Convert graphs, cells or clusters into Field drawings and interactive views.
 
 </div>
 
-Source: `src/jvmMain/kotlin/afield/geometry/path/contours.kt`, `dirichlet.kt`, `voronoi.kt`,
-`clustering.kt`, `spatial_field.kt`, and the JTS-backed corner of `graph_connectivity.kt`.
+Source: `src/jvmMain/kotlin/afield/geometry/path/contours.kt`,
+`afield/geometry/spatial/voronoi.kt` and `spatial_field.kt`, `afield/math/statistics/dirichlet.kt`
+and `clustering.kt`, and the JTS-backed corner of `afield/data/graph/graph_connectivity.kt`.

@@ -1,0 +1,119 @@
+{
+  "runtime_checks": {
+    "format_fixed": true,
+    "dataframe_formatter_probe": true,
+    "original_frames_lifecycle_forever": true,
+    "original_frames_lifecycle_rerun": true,
+    "revised_frames_lifecycle_forever": true,
+    "revised_frames_lifecycle_rerun": true,
+    "revised_self_stop": true,
+    "cleanup_cancel_assert": true,
+    "cleanup_return_assert": true,
+    "dataframe": true,
+    "dataframe_query_1": true,
+    "dataframe_query_2": true,
+    "dataframe_rerun": true
+  },
+  "images": {
+    "trail": {
+      "size": [
+        1234,
+        686
+      ],
+      "pixel_identical": true,
+      "sha256": {
+        "original": "6edceadf996b271896be5ab8b4f528171a03134b77fc88a908e0f3758a411efb",
+        "revised": "6edceadf996b271896be5ab8b4f528171a03134b77fc88a908e0f3758a411efb"
+      }
+    },
+    "progress": {
+      "size": [
+        1234,
+        686
+      ],
+      "pixel_identical": true,
+      "sha256": {
+        "original": "f1a5de63172dac499e7404e91febd09bf08a1830b3e40a109fa58478b16366b6",
+        "revised": "f1a5de63172dac499e7404e91febd09bf08a1830b3e40a109fa58478b16366b6"
+      }
+    }
+  },
+  "formatter_tests": {
+    "tests": 24,
+    "failures": 0,
+    "errors": 0
+  },
+  "base": "c51633025",
+  "sources": {
+    "frames_lifecycle": {
+      "before_sha256": "fee61c9d959175121a1a6f0c2f26f5d1bc0d1641b85cc669d7c2e5cb558128ed",
+      "after_sha256": "8765733000cefdfa452e0fcceeb00dca96644e7f6038f551e15d34e6733122ec",
+      "boxes": [
+        {
+          "box": "frames_lifecycle_forever",
+          "before_sha256": "50f818e6294762b194bd2da1fa494aee726224c81d798d4bfc8ed8e92955d1d9",
+          "after_sha256": "0a5e718f1080349852796506a5ae5d658eececf7cce8cb77ff7d224e59b9ff3e",
+          "fragment_markers": []
+        },
+        {
+          "box": "frames_lifecycle_stops",
+          "before_sha256": "ef60cfd03479ae5ea45a0e6e4e2b8859a26370d4a0ab27abc53237eaaa146c06",
+          "after_sha256": "c681f8682e866f7f7602c2b103070cd22581e0aa9a550f1e0ad28f00ab9e4ea0",
+          "fragment_markers": []
+        },
+        {
+          "box": "frames_lifecycle_rerun",
+          "before_sha256": "21e8fce8d5a93561009f6bf185ed2b0a907a344327165614455c98a3e9436ad4",
+          "after_sha256": "a324c8f045748d66157d4950a71b162a55c5721df2c11d3d24aceb9be52a2e2f",
+          "fragment_markers": []
+        },
+        {
+          "box": "frames_lifecycle_cleanup",
+          "before_sha256": "d0f212d635a7408d864c0a70a19402f36514ab247d05cf7b30666320b296f321",
+          "after_sha256": "e6cc078c3dd42333986f192e14f02917d257a665a0fbdfbbffcd4785ab21c124",
+          "fragment_markers": []
+        }
+      ]
+    },
+    "dataframe_typed_columns": {
+      "before_sha256": "609850b469ab9c856c45bd02bb23b1618bac51ca1950a3b27666f115e11d444a",
+      "after_sha256": "f7bdca3ddba4e1de4c59a593405c716a3059aeacc797727e06c2b3e4e08bf2fa",
+      "boxes": [
+        {
+          "box": "dataframe_typed",
+          "before_sha256": "e8770b348fcd4a66af8a968d6514797ed03c91c3ff22c1afb174931b3a1d8bf1",
+          "after_sha256": "e8770b348fcd4a66af8a968d6514797ed03c91c3ff22c1afb174931b3a1d8bf1",
+          "fragment_markers": []
+        },
+        {
+          "box": "dataframe_derived",
+          "before_sha256": "895bf5da759ccf41b313766afe301daa95ea9116999d3eb7842048ce847c1d43",
+          "after_sha256": "895bf5da759ccf41b313766afe301daa95ea9116999d3eb7842048ce847c1d43",
+          "fragment_markers": []
+        },
+        {
+          "box": "dataframe_one_pass",
+          "before_sha256": "1f0a1684a215fc6c0eb50991b56cd00fed3cd0756f691545ec6b5d2d3c537a8f",
+          "after_sha256": "1f0a1684a215fc6c0eb50991b56cd00fed3cd0756f691545ec6b5d2d3c537a8f",
+          "fragment_markers": []
+        },
+        {
+          "box": "dataframe_live",
+          "before_sha256": "5b854d7e58211bb4b9279d78034b70e60ef61ddc1ec50962d103de909f84b3b1",
+          "after_sha256": "da64cf7634e7578e65e50e427394d72167e606767ea47803aea344069bca9691",
+          "fragment_markers": [
+            "//%-"
+          ]
+        }
+      ]
+    }
+  },
+  "verification": {
+    "transcript_compile_replay": "2 passed",
+    "layout_guard": "264 transcripts;38 demo documents;10 demo transcripts;1107 create frames",
+    "materializer": "224 documents;changes limited to the two reviewed documents",
+    "idioms": "2 files clean",
+    "raw_artifacts": "build/box-code-revision/batch-2/",
+    "formatter_layout_exception": "retain authored name/age row pairs in DataFrame literals"
+  }
+}

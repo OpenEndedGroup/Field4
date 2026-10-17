@@ -101,6 +101,14 @@ class PolytopeSelectiveTransformsTest {
     }
 
     @Test
+    fun aProvenanceSelectorRefusesABareObjectSoItsNegationCannotMatchEverything() {
+        val kisCube = cube().kis()
+        val negated = ElementSelectors.vertexDegree(4) and !ElementSelectors.provenanceRole("face-apex")
+        kotlin.test.assertFailsWith<IllegalStateException> { kisCube.polyhedron.selectElements(negated) }
+        assertEquals(0, kisCube.selectElements(negated).size, "on the transform result the apexes are excluded")
+    }
+
+    @Test
     fun lineageAndDegreeSelectorsExpressIndexedConwayOperations() {
         val indexedKis = conway("k4aC")
         assertCounts(indexedKis.polyhedron.topology, vertices = 18, edges = 48, faces = 32)

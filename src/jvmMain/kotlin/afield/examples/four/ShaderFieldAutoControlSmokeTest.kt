@@ -57,7 +57,7 @@ class ShaderFieldAutoControlSmokeTest {
                         float skew;
                     } controls;
 
-                    {% include "fieldProbe" %}
+                    {% property "fieldProbe" %}
 
                     const float PI = 3.14159265358979323846;
 

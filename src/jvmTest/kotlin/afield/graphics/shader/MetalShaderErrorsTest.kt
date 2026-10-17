@@ -35,7 +35,7 @@ class MetalShaderErrorsTest {
     }
 
     @Test
-    fun aSlotNamedLikeSomethingInMetalIsRefusedBeforeItBreaksTheShader() {
+    fun aSlotNamedLikeSomethingInMetalIsRenamedSoTheShaderBuilds() {
         // Only where the Metal headers are, which is only macOS.
         if (MetalShaderErrors.reservedNames.isEmpty()) return
         assertTrue(listOf("decay", "enable_if", "array").all { it in MetalShaderErrors.reservedNames })
@@ -44,9 +44,9 @@ class MetalShaderErrorsTest {
         assertTrue("explode" !in MetalShaderErrors.reservedNames && "face_decay" !in MetalShaderErrors.reservedNames)
         val box = Box("metal_names_test")
         box.stackAutoShaderSources["decay"] = "uv fbm"
-        val refused = assertFailsWith<IllegalArgumentException> {
-            preprocess(box, "#version 450\nlayout(location = 0) out vec4 c;\n{{ stack.auto.decay }}\nvoid main() { c = decay(vec4(0.0)); }\n", ShaderKind.FRAGMENT_SHADER)
-        }
-        assertTrue("metal::decay" in (refused.message ?: "") + (refused.cause?.message ?: ""), refused.toString())
+        // Renamed on the way rather than refused: the user's `decay(...)` call still reads `decay`.
+        val out = preprocess(box, "#version 450\nlayout(location = 0) out vec4 c;\n{{ stack.auto.decay }}\nvoid main() { c = decay(vec4(0.0)); }\n", ShaderKind.FRAGMENT_SHADER)
+        assertTrue("#define decay stackauto_decay" in out, out)
+        ShaderSPIRVUtils.compileShader("metal_names_test.frag", out, ShaderKind.FRAGMENT_SHADER)
     }
 }

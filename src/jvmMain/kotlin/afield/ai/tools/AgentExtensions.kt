@@ -420,15 +420,24 @@ object AiStateBlobs {
         java.nio.file.Files.createTempDirectory("afield-ai4-state").toFile().apply { deleteOnExit() }
     }
 
-    private fun dir(box: Box): java.io.File =
-        runCatching { box.inside.takeIf { it.writesToDisk }?.filename?.let { java.io.File(it, "ai4_blobs/state") } }.getOrNull() ?: scratch
+    private fun dir(box: Box): java.io.File = folderFor(box) ?: scratch
+
+    /** The document's state folder, or null for a document that does not write to disk. */
+    internal fun folderFor(box: Box): java.io.File? =
+        runCatching { box.inside.takeIf { it.writesToDisk }?.filename?.let { java.io.File(it, "ai4_blobs/state") } }.getOrNull()
+
+    private val swept = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     /**
      * Keep [file]'s bytes, gzipped, under their content hash, and return the hash. A paint canvas's state is
      * tens of megabytes and its ground texture does not compress much (49 MB to 28 MB measured), so each
-     * turn that changes it costs that much disk; nothing prunes the folder yet.
+     * turn that changes it costs that much disk. The first put in a document each session also sweeps the
+     * states no conversation refers to ([AiStatePruning.sweepOrphans]).
      */
     fun put(file: java.io.File, box: Box): String {
+        folderFor(box)?.let { folder ->
+            if (swept.add(folder.path)) runCatching { afield.ai.conversation.AiStatePruning.sweepOrphans(box) }
+        }
         val digest = java.security.MessageDigest.getInstance("SHA-256")
         val folder = dir(box).apply { mkdirs() }
         val tmp = java.io.File.createTempFile("state-", ".gz.tmp", folder)

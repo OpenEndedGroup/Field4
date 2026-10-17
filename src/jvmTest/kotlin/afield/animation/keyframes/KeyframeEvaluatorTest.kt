@@ -143,6 +143,27 @@ class KeyframeEvaluatorTest {
     }
 
     @Test
+    fun simplifyTogetherKeepsLinkedLanesOnTheSameKeyTimes() {
+        // Two lanes of one take: same times, different shapes, so alone they simplify differently.
+        fun lane(f: (Double) -> Double) = KeyframeEvaluator((0..40).joinToString(",", "[", "]") { i ->
+            val t = i / 10.0
+            """{"time":$t,"value":${f(t)},"type":"linear"}"""
+        })
+        val x = lane { kotlin.math.sin(it * 1.3) }
+        val y = lane { if (it < 2.0) 0.0 else (it - 2.0) * (it - 2.0) * 0.3 }
+        val alone = listOf(lane { kotlin.math.sin(it * 1.3) }, lane { if (it < 2.0) 0.0 else (it - 2.0) * (it - 2.0) * 0.3 })
+        alone.forEach { it.simplify(0.01) }
+        assertTrue(alone[0].getKeyframeTimes() != alone[1].getKeyframeTimes(), "alone, the lanes keep different times")
+        val before = listOf(x, y).map { c -> (0..400).map { c.evaluateValueAt(it / 100.0) } }
+        KeyframeEvaluator.simplifyTogether(listOf(x, y), 0.01)
+        assertEquals(x.getKeyframeTimes(), y.getKeyframeTimes())
+        assertTrue(x.getKeyframeCount() < 41, "it still simplified: ${x.getKeyframeCount()} keys")
+        listOf(x, y).forEachIndexed { k, c ->
+            (0..400).forEach { i -> near(before[k][i], c.evaluateValueAt(i / 100.0), 0.0101) }
+        }
+    }
+
+    @Test
     fun editingFromCodeSavesWithTheBox() {
         val box = Box("kf_api")
         val k = KeyframeEvaluator("[]")

@@ -67,7 +67,7 @@
 <main>
     <header>
         <div>
-            <h1>Code-use telemetry</h1>
+            <h1>Local code-use history</h1>
             <p>Executed snippets, runtime outcomes, launch lifecycle, and background symbol-use analysis.</p>
             <div class="chips" aria-label="Summary">
                 <span class="chip">telemetry <b id="metric-status">checking</b></span>
@@ -108,7 +108,7 @@
                 </form>
             </div>
             <div class="prompt-list" aria-label="Prompt starters">
-                <button type="button" data-prompt="Summarize the most recent compiler/runtime failures in the code-use telemetry. Which look like Field source or documentation growth points?">Recent failures</button>
+                <button type="button" data-prompt="Summarize the most recent compiler/runtime failures in the local code-use history. Which look like Field source or documentation growth points?">Recent failures</button>
                 <button type="button" data-prompt="What Field source symbols are hot this week? Include confidence and explain whether the result is resolved or textual fallback.">Hot this week</button>
                 <button type="button" data-prompt="Find symbols that appear early when documents open and then rarely afterward. What might they be doing?">Open-time helpers</button>
                 <button type="button" data-prompt="Show me how to use CodeUseSemanticAnalyzeCodeRequest on a Field box snippet, and explain how the sidecar and source-index fallback enrich the result with related src/ code and peer callers.">Semantic lookup</button>
@@ -642,10 +642,10 @@
             state.symbols = Array.isArray(symbols) ? symbols : [];
             state.unresolved = Array.isArray(unresolved) ? unresolved : [];
         } catch (error) {
-            console.error("Could not load code-use telemetry", error);
+            console.error("Could not load local code-use history", error);
             state.summary = {
                 enabled: false,
-                message: error?.message || "Could not load code-use telemetry."
+                message: error?.message || "Could not load local code-use history."
             };
             state.snippets = [];
             state.failures = [];

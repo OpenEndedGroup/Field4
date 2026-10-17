@@ -169,7 +169,7 @@ program's render and the fitted wire vector's render. If the literal rewriting w
 column off by one, a token mismatched — it would not be small, it would be a different picture.
 
 ```edn [field-box id="stacksl-roundtrip" role="properties"]
-{"id" "stacksl-roundtrip" "index" 1 "name" "The round trip — the fit's output is a program you can paste back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The round trip — the fit's output is a program you can paste back" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-roundtrip_code_.kt" "lines" 91 "characters" 4072 "sha256" "f064fd2305a3256d031167f6533d6d0aea60f1246b2b3a7490198bb137dbe3df"}]}
+{"id" "stacksl-roundtrip" "index" 1 "name" "The round trip — the fit's output is a program you can paste back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The round trip — the fit's output is a program you can paste back" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-roundtrip_code_.kt" "lines" 90 "characters" 3914 "sha256" "e2d9e4a4c294152220ed5b5291d489fcbb853c59735ed391c10497c7fef36eb8"}]}
 ```
 
 ```kotlin [field-property box="stacksl-roundtrip" name="code" path="stacksl-roundtrip_code_.kt"]
@@ -258,11 +258,10 @@ run {
     println("panels: rendered from the fitted WIRES | rendered from the re-emitted SOURCE")
     display(PngEncoder.encode(strip, width, panel))
 
-    // The one lossy step in the trip is the printing: `%.8f` is eight significant decimals and
-    // binary32 needs nine to round-trip in general, so a fitted value can land one ulp away in the
-    // source. Both outcomes have been seen and both are fine: `StackSLFitFigureTest`'s 64x64 fit
-    // round-trips at exactly 0, and this box at 48x48 measured 5.96e-08, which is one ulp of a
-    // Float near 1. That is why the guard allows 1e-4 rather than demanding zero.
+    // Printing with %.8f keeps eight decimal places, not eight significant digits.
+    // Its round-trip error depends on magnitude: a fitted Float may change in source.
+    // This 48x48 example previously measured 5.96e-08; the 1e-4 guard checks the actual
+    // error above instead of requiring an exact zero.
 }
 ```
 

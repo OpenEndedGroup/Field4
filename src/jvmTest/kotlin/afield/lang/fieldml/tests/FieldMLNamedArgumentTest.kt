@@ -281,28 +281,13 @@ class FieldMLNamedArgumentTest {
     }
 
     @Test
-    fun aLambdaInsideANamedRecordIsNotGivenItsParameterTypes() {
-        // Positionally, `p` is a `BufferParameters` and `getVec5s` is a compile error —
-        // FieldMLLambdaExpectedTypeTest pins that. Inside a record it is not, because
-        // `Inferencer.preInferHostSpine` looks for a lambda *literal* among a spine's arguments and a
-        // record is one argument with a lambda inside it. That is a real cost of the record spelling
-        // and the reason to keep reaching for the positional form when a callback is involved.
-        assertTrue(
-            FieldMLCompiler.compile(
-                """
-                hostStaticCall "defaultBuffer" {parameters = fun p -> p |> hostCall1 "getVec5s" 100000}
-                  (hostClass "afield.graphics.vulkan.buffers.MagicKt")
-                """.trimIndent(),
-            ).successful,
-            "expected the named form to leave the callback untyped, which is the documented hole",
-        )
-        assertRefused(
-            """
-            hostStaticCall "defaultBuffer" (hostNull, "inData", fun p -> p |> hostCall1 "getVec5s" 100000)
-              (hostClass "afield.graphics.vulkan.buffers.MagicKt")
-            """,
-            "has no method 'getVec5s'",
-        )
+    fun aLambdaInsideANamedRecordIsGivenItsParameterTypes() {
+        // The record field is matched to the parameter of the same name, so `p` is a
+        // `BufferParameters` in both spellings and `getVec5s` is a compile error in both.
+        for (source in listOf(
+            """hostStaticCall "defaultBuffer" {parameters = fun p -> p |> hostCall1 "getVec5s" 100000} (hostClass "afield.graphics.vulkan.buffers.MagicKt")""",
+            """hostStaticCall "defaultBuffer" (hostNull, "inData", fun p -> p |> hostCall1 "getVec5s" 100000) (hostClass "afield.graphics.vulkan.buffers.MagicKt")""",
+        )) assertRefused(source, "has no method 'getVec5s'")
     }
 
     // ---- harness ----------------------------------------------------------------------------------

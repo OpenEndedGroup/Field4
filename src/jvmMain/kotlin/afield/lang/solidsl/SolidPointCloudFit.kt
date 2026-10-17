@@ -226,8 +226,8 @@ data class SolidCloudFit(
     val fitted: SolidExpr,
     val run: OptimizeRun,
     /**
-     * Parameters whose gradient was negligible across the *whole cloud* at the start — the ones this
-     * data cannot see.
+     * Parameters whose gradient was negligible across the *whole cloud* at the start, or that the
+     * descent never moved off their seed — the ones this data cannot see.
      *
      * The point-cloud analogue of [SolidFit.deadParameters], and the more important of the two,
      * because a partial view produces them routinely and by construction. "Negligible" is relative
@@ -321,6 +321,7 @@ fun SolidTemplate.fitToPointCloud(
 
     val run = minimizeWithGradient(start, options.toOptimizeOptions(), valueAndGradient)
     val end = valueAndGradient(run.x)
+    val stuck = neverMoved(start, run).map { names[it] }
 
     return SolidCloudFit(
         template = this,
@@ -330,6 +331,6 @@ fun SolidTemplate.fitToPointCloud(
         loss = end.value,
         fitted = withValues(run.x),
         run = run,
-        unconstrainedParameters = unconstrained,
+        unconstrainedParameters = names.filter { it in unconstrained || it in stuck },
     )
 }

@@ -15,8 +15,10 @@ what you are looking at and never the document itself.
 - **Reset Canvas Zoom** in the command palette returns to 100%, keeping the centre of the window
   where it is.
 - **`alt/option-H`** (**Reset View** in the command palette, and a button at the top of the bookmarks
-  panel) also returns to 100%, and closes every output panel. Use it when a panel has grown to fill
-  the window: the wheel and pinch then go to the panel, so you cannot zoom or scroll away from it.
+  panel) also returns to 100%, and closes every output panel.
+
+Over an output panel, the wheel scrolls the panel while it has room to scroll that way and pans
+the canvas once it does not; a pinch zooms the canvas unless the panel's content uses it.
 
 ## Splitting the canvas
 
@@ -176,6 +178,17 @@ palette("relink pane")
 val linked = ui.eval("return String(window.canvasPanesState().panes[2].freeY)").toString()
 check("false" in linked) { "the labels pane was not relinked: " + linked }
 ui.pause(1500)
+```
+
+### What box code sees
+
+A box reads what the canvas shows from two properties, both in world units at any zoom.
+`viewport` is the main (bottom-right) pane, the world rect `(-x, -y, w, h)`, and
+`onViewportChange` callbacks fire when it moves. `viewports` lists every pane's visible world rect
+`(x, y, w, h)`, main pane last.
+
+```diffstatic {data-lang=kotlin}
+viewports.forEach { println("${it.x}, ${it.y}: ${it.w} × ${it.h}") }
 ```
 
 ## Stepping between boxes
@@ -431,8 +444,6 @@ are hidden, deleted, or drawn at zero size are not candidates.
 - a slot with no saved zoom restores the pan position at whatever zoom you are at now
 - there are nine slots and the numbering is fixed
 - restoring a slot you have not set yet shows a notification and leaves the view alone
-- box code that reads `viewport`, or reacts to it with `onViewportChange`, sees the bottom-right
-  pane of a split canvas only
 
 ## Related features
 

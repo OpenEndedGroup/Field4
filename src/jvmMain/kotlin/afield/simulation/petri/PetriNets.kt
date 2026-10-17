@@ -263,10 +263,8 @@ class PetriMarking private constructor(private val byPlace: Map<String, SharedTo
      *
      * Birth times are what make two otherwise identical markings unequal, and a net whose markings
      * are never equal has no detectable period — every bar would look brand new. Colours are
-     * compared by their `toString`, which is exactly as coarse as it sounds: two different
-     * `PatPattern`s both render as `PatPattern(...)` and so compare the same. That is the right
-     * coarseness here (a section swap that substitutes one rhythm for another has not changed the
-     * *structure* of the piece) but it is a real limit, and `PetriAnalysis` says so where it bites.
+     * compared by equality, so a section swap that substitutes one pattern for another is a change,
+     * and the same pattern object coming round again is a recurrence.
      */
     fun signature(): String = byPlace.entries
         .sortedBy { it.key }
@@ -297,8 +295,13 @@ class PetriMarking private constructor(private val byPlace: Map<String, SharedTo
         return total
     }
 
-    /** How [signature] and [signatureHash] both see a token: its colour rendered, birth time dropped. */
-    private fun colourKey(token: PetriToken): String = token.colour?.toString() ?: "•"
+    /**
+     * How [signature] and [signatureHash] both see a token: its colour by equality (its `hashCode`,
+     * with the rendering for reading), birth time dropped. Two different patterns that both print
+     * as `PatPattern(...)` are two different colours; the same pattern object fired again is one.
+     */
+    private fun colourKey(token: PetriToken): String =
+        token.colour?.let { "${it.hashCode().toString(16)}:$it" } ?: "•"
 
     override fun equals(other: Any?): Boolean = other is PetriMarking && other.byPlace == byPlace
 

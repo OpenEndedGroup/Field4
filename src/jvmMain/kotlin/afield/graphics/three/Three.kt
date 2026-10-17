@@ -20,8 +20,8 @@ import afield.geometry.mesh.MeshView
 import afield.geometry.mesh.TriMesh
 import afield.math.linalg.Vec4
 import afield.geometry.mesh.boundsArray
+import afield.geometry.mesh.surfaceTopology
 import afield.geometry.mesh.signedVolume
-import afield.geometry.mesh.topology
 import kotlin.math.abs
 
 /**
@@ -100,7 +100,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * is on in [MeshView]: it turns "a smooth blob" into "a mesh you can count the triangles in".
      * @param cullBackFaces on by default, so an inside-out face is a *missing* face — the diagnostic
      * the rasterizer has always given and the switch of renderer must not silently drop.
-     * @param panel which viewport draws it; `-1` for all of them.
+     * @param panel which viewport draws it; `-1` for all of them. Left out, the panel declared most recently.
      * @param id a stable name for the solid, echoed back on every hit as [ThreeSurfaceHit.id]. Free,
      * and the thing a shared `onClick` closure switches on.
      * @param onClick called with a [ThreeSurfaceHit] naming the triangle, edge or vertex that was
@@ -138,7 +138,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         cullBackFaces: Boolean = true,
         flatShading: Boolean = false,
         opacity: Double = 1.0,
-        panel: Int = 0,
+        panel: Int? = null,
         id: String = "",
         onClick: ((ThreeSurfaceHit) -> Unit)? = null,
         hoverColor: Vec4? = null,
@@ -154,6 +154,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         require(solidOpacity == null || (solidOpacity.isFinite() && solidOpacity in 0.0..1.0)) {
             "solidOpacity must be between 0 and 1, got $solidOpacity"
         }
+        // Left out, the mesh goes into the panel declared most recently (the first, before any).
+        @Suppress("NAME_SHADOWING") val panel = panel ?: (panels.size - 1).coerceAtLeast(0)
         drawables += mesh.toThreeDrawable(
             style = ThreeDrawStyle.surface(
                 wireframe = wireframe,
@@ -205,14 +207,15 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         pitch: Double = 18.0,
         distance: Double = 2.7,
         fieldOfView: Double = 40.0,
+        padding: Double = 1.06,
     ) {
-        camera = ThreeCameraSpec(yaw, pitch, distance, fieldOfView)
+        camera = ThreeCameraSpec(yaw, pitch, distance, fieldOfView, padding)
         autoFrame = false
     }
 
     /** The camera as a [MeshView] already describes it — the migration path for existing figures. */
-    fun camera(view: MeshView) {
-        camera = view.toThreeCameraSpec()
+    fun camera(view: MeshView, padding: Double = 1.06) {
+        camera = view.toThreeCameraSpec(padding)
         autoFrame = false
     }
 
@@ -306,15 +309,21 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         shot = ThreeShotSpec(periodSeconds, keys.toList(), resumeAfterSeconds)
     }
 
-    /** A titled viewport. Call it once per panel, in order; [columns] lays them out. */
+    /**
+     * A titled viewport. Call it once per panel, in order; [columns] lays them out. A [mesh] that
+     * names no `panel` goes into the panel declared most recently.
+     */
     fun panel(
         title: String? = null,
         caption: String? = null,
         facts: String? = null,
         camera: ThreeCameraSpec? = null,
         bounds: ThreeBounds? = null,
+        fitBounds: Boolean = false,
     ) {
-        panels += ThreePanel(camera = camera, title = title, caption = caption, facts = facts, bounds = bounds)
+        panels += ThreePanel(
+            camera = camera, title = title, caption = caption, facts = facts, bounds = bounds, fitBounds = fitBounds,
+        )
     }
 
     /** Panels per row. */
@@ -458,9 +467,12 @@ internal fun BoundsTracker.include(d: ThreeDrawable) {
     }
 }
 
-/** [MeshView]'s four camera numbers, which [ThreeCameraSpec] deliberately mirrors one for one. */
-fun MeshView.toThreeCameraSpec(): ThreeCameraSpec =
-    ThreeCameraSpec(yawDegrees, pitchDegrees, distance, fieldOfViewDegrees)
+/**
+ * [MeshView]'s four camera numbers, which [ThreeCameraSpec] deliberately mirrors one for one, plus the
+ * viewer's own [ThreeCameraSpec.padding], which [MeshView] has no use for.
+ */
+fun MeshView.toThreeCameraSpec(padding: Double = 1.06): ThreeCameraSpec =
+    ThreeCameraSpec(yawDegrees, pitchDegrees, distance, fieldOfViewDegrees, padding)
 
 /**
  * One cell of a [threeGrid]: a mesh, its heading, and whatever you want written under it.
@@ -495,7 +507,7 @@ fun TriMesh.toThreeBounds(): ThreeBounds {
  */
 fun TriMesh.threeFacts(): String {
     val b = boundsArray()
-    val topo = topology()
+    val topo = surfaceTopology()
     return buildString {
         append(
             "%d verts · %d tris · extent %.3f × %.3f × %.3f".format(
@@ -577,6 +589,7 @@ fun Box.three(
     title: String? = null,
     caption: String? = null,
     facts: Boolean = true,
+    padding: Double = 1.06,
 ): ThreeGeometryViewState = three(
     channel = channel,
     name = name,
@@ -584,7 +597,7 @@ fun Box.three(
     width = view.width,
 ) {
     mesh(subject, wireframe = view.wireframe, cullBackFaces = view.cullBackFaces)
-    camera(view)
+    camera(view, padding)
     panel(title = title, caption = caption, facts = if (facts) subject.threeFacts() else null)
 }
 
@@ -635,7 +648,9 @@ fun Box.threeTurntable(
 }
 
 /**
- * Several meshes side by side, each in its own panel and each framing its own bounds.
+ * Several meshes side by side, each in its own panel and each framing its own bounds — unless
+ * [sharedScale], when every panel frames a box the size of the largest, so a smaller mesh *looks*
+ * smaller. Use that whenever the panels are there to compare sizes.
  *
  * The replacement for `showMeshGrid` and for the galleries in `polytope_examples.md`. One WebGL
  * context however many panels there are — see [ThreePanel].
@@ -649,6 +664,8 @@ fun Box.threeGrid(
     view: MeshView = MeshView(),
     facts: Boolean = false,
     cellWidth: Int = view.width,
+    sharedScale: Boolean = false,
+    padding: Double = 1.06,
 ): ThreeGeometryViewState = threeGrid(
     panels = panels.map { (label, m) ->
         ThreeMeshPanel(label, m, facts = if (facts) m.threeFacts() else null)
@@ -659,9 +676,23 @@ fun Box.threeGrid(
     columns = columns,
     view = view,
     cellWidth = cellWidth,
+    sharedScale = sharedScale,
+    padding = padding,
 )
 
-/** [threeGrid] with a caller-supplied fact line per cell. */
+/**
+ * Each of [bounds] re-centred on itself but grown to the largest extent of any of them on every
+ * axis, so panels that zoom-to-fit their bounds all end up at one scale.
+ */
+internal fun sharedScaleBounds(bounds: List<ThreeBounds>): List<ThreeBounds> {
+    val half = FloatArray(3) { axis -> bounds.maxOf { (it.max[axis] - it.min[axis]) / 2f } }
+    return bounds.map { b ->
+        val centre = FloatArray(3) { (b.min[it] + b.max[it]) / 2f }
+        ThreeBounds(FloatArray(3) { centre[it] - half[it] }, FloatArray(3) { centre[it] + half[it] })
+    }
+}
+
+/** [threeGrid] with a caller-supplied fact line per cell, and [sharedScale] as in the other overload. */
 fun Box.threeGrid(
     panels: List<ThreeMeshPanel>,
     channel: String = "main",
@@ -670,8 +701,12 @@ fun Box.threeGrid(
     columns: Int = 2,
     view: MeshView = MeshView(),
     cellWidth: Int = view.width,
+    sharedScale: Boolean = false,
+    padding: Double = 1.06,
 ): ThreeGeometryViewState {
     require(panels.isNotEmpty()) { "threeGrid needs at least one panel" }
+    val bounds = panels.map { it.mesh.toThreeBounds() }
+    val framed = if (!sharedScale) bounds else sharedScaleBounds(bounds)
     return three(
         channel = channel,
         name = name,
@@ -690,8 +725,9 @@ fun Box.threeGrid(
             )
             panel(
                 title = cell.label,
-                camera = view.toThreeCameraSpec(),
-                bounds = cell.mesh.toThreeBounds(),
+                camera = view.toThreeCameraSpec(padding),
+                bounds = framed[index],
+                fitBounds = sharedScale,
                 facts = cell.facts,
                 caption = cell.caption,
             )

@@ -541,7 +541,7 @@ Material shadeMaterial(Material material, PathTraceSurface surface) {
 
 The templates supply types, buffer declarations and the integrator. The middle is
 ordinary Field shader source: edit it, link the compute property, include shared
-box properties with `{% include "paint.compute" %}` (box name plus property), and use the normal **Reload Compute
+box properties with `{% property "paint.compute" %}` (box name plus property), and use the normal **Reload Compute
 Shader** / **Update Compute Shader** actions. Failed compilation keeps the last
 working pipeline. Successful shader replacement resets accumulation automatically.
 
@@ -883,18 +883,12 @@ Both of these are 256 samples per pixel at 480 × 360, three bounces, two lamps 
 The extra shadow ray costs one traversal per surface interaction. A scene with no
 emissive triangle is bit-for-bit identical with the control on or off.
 
-Four things are excluded from the table, and in each case the consequence is
+Each emissive triangle is weighted by its area times its emitted brightness: the emission factor, times the mean of its emission texture when it has one. Three things are excluded from the table, and in each case the consequence is
 that emission from them is found by BSDF sampling alone, exactly as before:
 
 - **Emitters behind stochastic alpha coverage** (`AlphaMode.MASK` or `BLEND`). The
   two strategies would otherwise disagree about whether the emitter is there at all.
 - **Emissive glass.** Transmissive materials are shaded on the dielectric path.
-- **Emission that comes only from a texture.** The table's weight reads the
-  material's emission factor, so a triangle whose factor is black and whose emissive
-  *texture* is bright carries weight zero. Where the factor is non-zero the texture
-  is fully honoured: the direct sampler reads radiance through the same texture
-  lookup, and the same box-authored `shadeMaterial` hook, that a BSDF hit does. If
-  those two disagreed about one point, their combination would be biased.
 - **Zero-area triangles**, which cannot be sampled by area at all.
 
 `maxBounces` is a path length limit, and a shadow ray reaches one segment past it: the connection from the
@@ -1000,12 +994,11 @@ Rows at their default are dropped rather than shown as zeros, so a plain tracer 
 rows and each of the five optional groups — a non-agreeing up, a lens, temporal reuse,
 fog, an attached convergence log — adds one. Ten is the ceiling.
 
-**The tracer does not use `camera.up`.** It
-builds its own up as `right × forward`: the component of the declared up that is
-perpendicular to the view direction, normalised. So a declared up that is not already
-unit-length and perpendicular gives a different vector from the one the image is made
-with, and the row says how far apart they are. The shipped material study's camera is
-11.94° out. The row appears only when they disagree.
+**`up` is the part of `camera.up` perpendicular to the view direction**, normalised: the
+same up the raster camera's `lookAt` builds its image with. A camera that looks up or down
+with the default up of (0, 1, 0), as the material study's does, has an effective up that
+differs from the declared one, here by 11.94°, and the row says by how much. Both renderers
+use the effective up, so their images agree. The row appears only when the two differ.
 
 `samples` counts within a **generation**, and `resetGeneration` counts the generations.
 Two sample counts are comparable only if the generation between them has not advanced;
@@ -1066,10 +1059,8 @@ will not reflect your edit until the next build. Either way the backend's `#defi
 HARDWARE_QUERY` is applied for you, and applied idempotently: source that already carries
 one, or lacks one, both come out right for this device.
 
-`reloadIntegrator` reports one of three outcomes. (The underlying
-`ComputeModulePointer.reload` answers `false` both for "this source is already compiled"
-and for "this source does not compile", so code wrapping it in `check(…)` throws on a
-no-op.)
+`reloadIntegrator` reports one of three outcomes, as `ComputeModulePointer.reloadOutcome` does for
+any compute module.
 
 | `IntegratorReload.status` | meaning | `ok` | `reloaded` |
 | --- | --- | --- | --- |
@@ -1080,9 +1071,7 @@ no-op.)
 A failed reload is invisible in the window — the image carries on from where it was — which
 is the same guarantee the material-shader path gives.
 
-The swap takes effect a frame after it is requested: `reloadIntegrator` replaces the module, and the
-next frame is what notices the new pipeline and discards accumulation. So waiting on a
-sample count immediately after a reload is satisfied by the count the **old** integrator
-left behind. Wait for `samples` to fall first, or for `lastResetReason` to change.
+A successful reload sets `samples` back to 0 at once, so waiting on a sample count afterwards waits
+for the new integrator's samples.
 
 The opaque path tracer can also feed [Ray Reconstruction](path_traced_reconstruction.md), with raw and progressive views retained.

@@ -478,10 +478,43 @@ object FieldMLHostBridge {
             .mapNotNull { candidate -> scoreCandidate(candidate, arguments)?.let { candidate to it } }
             .minWithOrNull(
                 compareBy<Pair<T, Int>> { it.second }
+                    .thenBy { callbackArityMismatches(it.first, arguments) }
                     .thenByDescending { inheritanceDepth(it.first.declaringClass) }
                     .thenBy { it.first.parameterCount },
             )
             ?.first
+
+    /**
+     * How many FieldML functions among [arguments] would be handed a different number of arguments
+     * than they were written with, were [candidate] chosen. It breaks the tie between overloads that
+     * differ only in a callback's arity — `start(suspend Frames.() -> Unit)` and
+     * `start(suspend () -> Unit)` both take any function — so `fun f -> …` gets the one that hands it
+     * `f`. `FieldMLHostTypes.parametersOf` breaks the same tie the same way, so the type the checker
+     * gives `f` is the one it is called with.
+     */
+    private fun callbackArityMismatches(candidate: Executable, arguments: List<Any?>): Int {
+        if (candidate.isVarArgs) return 0
+        return arguments.indices.count { index ->
+            val written = (arguments[index] as? FieldMLValue)?.let { writtenArity(it) } ?: return@count false
+            val parameter = candidate.parameterTypes.getOrNull(index) ?: return@count false
+            val method = functionalMethod(parameter) ?: return@count false
+            val handed = suspendShape(parameter, candidate.genericParameterTypes.getOrNull(index))?.parameterCount ?: method.parameterCount
+            handed != written
+        }
+    }
+
+    /** How many parameters a FieldML function was written with: `fun a b -> …` is two, however it was curried. */
+    private fun writtenArity(value: FieldMLValue): Int? =
+        when (value) {
+            is FieldMLValue.ClosureValue -> {
+                var count = 1
+                var body = value.body
+                while (body is CLam) { count++; body = body.body }
+                count
+            }
+            is FieldMLValue.ConstructorValue -> value.arity - value.arguments.size
+            else -> null
+        }
 
     /** Total conversion cost of calling [candidate] with [arguments], or null if it cannot be. */
     fun scoreCandidate(candidate: Executable, arguments: List<Any?>): Int? {

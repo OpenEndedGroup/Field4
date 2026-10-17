@@ -1,0 +1,160 @@
+[
+  {
+    "path": "dev_docs/agents/transcripts/alife_worked_example.yaml",
+    "old": "          // The R-pentomino. The textbook figures -- peak 319 at generation 821, then 116 cells from\n          // generation 1103 -- are facts about an UNBOUNDED board: six of those 116 cells are gliders still\n          // in flight. So it needs room. 620 wide gives every glider more than the 1103/4 cells it can\n          // travel, and liveBounds() confirms nothing reached an edge rather than assuming it.",
+    "new": "          // The unbounded R-pentomino reaches a peak of 319 cells at generation 821 and settles to\n          // 116 cells from generation 1103, including six gliders (30 live cells) still in flight.\n          // A 620-wide board leaves room for their travel. The measurements below report population,\n          // peak and final left clearance; final bounds cannot rule out earlier edge contact.",
+    "findingIds": [
+      "60adf96b2454-01",
+      "60adf96b2454-02"
+    ]
+  },
+  {
+    "path": "dev_docs/agents/transcripts/midi_clip.yaml",
+    "old": "          // The pattern is ordinary mini-notation. `toMidiClip` renders it over two cycles, and\n          // one cycle is one bar of 4/4 by default, so this is eight bars-worth of quarter notes\n          // at 104 BPM. Tidal's octave convention applies: c5 is middle C, MIDI 60.",
+    "new": "          // The pattern is ordinary mini-notation: two cycles at eight quarter-note beats per cycle\n          // give sixteen beats, or four bars of 4/4, at 104 BPM.\n          // Tidal's octave convention applies: c5 is middle C, MIDI 60.",
+    "findingIds": [
+      "1792195c9f35-01"
+    ]
+  },
+  {
+    "path": "dev_docs/agents/transcripts/solidsl_inverse.yaml",
+    "old": "          // one. At the ball's own centre sqrt(x2+y2+z2) has an infinite derivative, so the analytic\n          // answer is not a number and the check reports 0/3 usable rather than pretending. The",
+    "new": "          // one. The position gradient of the Euclidean norm is undefined at the ball's centre.\n          // The analytic result is non-finite, so the check reports 0/3 usable components. The",
+    "findingIds": [
+      "ee1b57fa1953-01"
+    ]
+  },
+  {
+    "path": "public/docs/assets/stacksl_cpu_demo/stacksl-cpu-feedback_code_.kt",
+    "old": "    // frame, read back through a nine-tap `blur`, faded by `0.975 *`, ninety-six times over. If",
+    "new": "    // frame, read back through a nine-tap `blur`, faded by `0.975 *` on each iteration. If",
+    "findingIds": [
+      "b495b962cd41-01"
+    ]
+  },
+  {
+    "path": "public/docs/assets/transcripts/document_history_setup.yaml",
+    "old": "          // A ring of points, saved three times.",
+    "new": "          // Successive radius values, saved as three source versions.",
+    "findingIds": [
+      "c51c8c35b71e-01"
+    ]
+  },
+  {
+    "path": "public/docs/assets/transcripts/funfeatures_tour_setup.yaml",
+    "old": "          // a ring of points",
+    "new": "          // Evenly spaced angles in degrees.",
+    "findingIds": [
+      "a07e76d1a20a-01"
+    ]
+  },
+  {
+    "path": "dev_docs/agents/transcripts/aperture_playground.yaml",
+    "old": "        // Screen composite. B and G in the paint box control this shared vector.",
+    "new": "        // Screen composite: apertureControl.x is gain; y selects the display mode.\n        // Edit and rerun controls.set below to update the vector read by the push supplier.",
+    "findingIds": [
+      "a6aa1047e7f5-03"
+    ]
+  },
+  {
+    "path": "dev_docs/agents/transcripts/aperture_playground.yaml",
+    "old": "        // x = defocus radius in framebuffer pixels, y = energy, z = sprite radius, w = guide mix.",
+    "new": "        // x = requested maximum defocus pixels (capped at 24), y = source energy; z/w are unused.",
+    "findingIds": [
+      "a6aa1047e7f5-04"
+    ]
+  },
+  {
+    "path": "dev_docs/assets/stacksl_volumetric_noise/stacksl_volumetric_noise.yaml",
+    "old": "          // curl3 is the expensive one: every sample is 18 fbm3 evaluations. The tracer row\n          // therefore uses fewer slices, seeds every `tracerStride`-th pixel, and takes short\n          // walks. At tile=96 that is ~80k curl3 calls and about a second; raising these to\n          // 6 slices, stride 1 and 24 steps is ~40x the work and turns the box into a coffee\n          // break. Numbers, not vibes: measure before you raise them.",
+    "new": "          // curl3 is expensive: each sample evaluates fbm3 eighteen times. Tracer cost scales\n          // with curlSlices * ceil(tile / tracerStride)^2 * tracerSteps. These defaults make\n          // 124416 curl3 calls; six slices, stride one and 24 steps make 1327104 calls.\n          // Measure elapsed time on your machine before increasing the sampling controls.",
+    "findingIds": [
+      "dc7b44b35a5c-02"
+    ]
+  },
+  {
+    "path": "dev_docs/assets/stacksl_volumetric_noise/stacksl_volumetric_noise.yaml",
+    "old": "          // curl3 as tracer density. Divergence-free means the density stays even.",
+    "new": "          // Visitation density of normalized XY streamlines at fixed Z. Projection and\n          // normalization need not preserve divergence; the full 3D check below measures it.",
+    "findingIds": [
+      "dc7b44b35a5c-01"
+    ]
+  },
+  {
+    "path": "dev_docs/assets/stacksl_volumetric_noise/stacksl_volumetric_noise.yaml",
+    "old": "closed swirls, no sources, no sinks",
+    "new": "normalized XY streamlines",
+    "findingIds": [
+      "dc7b44b35a5c-01"
+    ],
+    "caption": true
+  },
+  {
+    "path": "dev_docs/agents/transcripts/skinned_characters.yaml",
+    "old": "          // This box needs a renderer in scope. Under `field_backdoor.py --graphics-context` that is the\n          // agent's context box, which sets `renderer` as a raw property but does not declare it with the\n          // `prop<Renderer>(renderer)` macro a hand-built renderer box uses -- so the bare name does not\n          // resolve and fromContext() finds it by type instead. In a document with your own renderer box as\n          // the parent, `renderer` resolves directly and this line is redundant but harmless.",
+    "new": "          // Run the connected renderer box first; this child inherits its renderer and window.",
+    "findingIds": [
+      "184894c9ac87-02"
+    ]
+  },
+  {
+    "path": "dev_docs/agents/transcripts/pat_fn_graph_fit.yaml",
+    "old": "              // The same two heights, swapped. Getting to the target needs 0.9 to move from the\n              // second atom to the first: a permutation, not a direction.",
+    "new": "              // The high/low arrangement is reversed, and the amplitudes differ too.\n              // This seed tests fitting across atom order as well as adjusting heights.",
+    "findingIds": [
+      "182e2a3a7d40-01"
+    ]
+  },
+  {
+    "path": "dev_docs/agents/transcripts/path_tracer_instrument.yaml",
+    "old": "          // This is the whole instrument. One line.\n          //\n          // Until tonight it produced\n          //   PathTracingRenderer afield.graphics.scene.fabricated.PathTracingRenderer@19266ca3\n          // and nothing else -- 376 bytes, ~330 of them the wrapper div. `PathTracingRenderer` is not a\n          // data class and had no value printer registered, so `ValueVisualizer` fell all the way through\n          // to `formatFallbackObject`, which is a class name and a `toString()`. Every one of the 26\n          // Field 4 types the tracer is built out of -- `Renderer`, `Camera`, `ComputeModulePointer`,\n          // `RenderToTexture`, `VulkanBuffer` -- has had a printer since it was written.\n          //\n          // Re-run this box at any time; it reads the live tracer.\n          //\n          // The row to read is `up`. This scene's camera declares an up of (0, 1, 0), and the tracer\n          // builds its own as `right x forward`, which on this camera is 11.94 degrees away -- so the\n          // declared vector is not the one the image is made with. Two of last night's four scratch boxes\n          // were printing `camera.up` and its three components as `toRawBits()`, hunting exactly this, and\n          // no property tree could have shown it to them: the value is a local inside a private method.\n          // The row only appears when the two disagree.\n",
+    "new": "          // Re-run to inspect the live tracer, its camera and render state.\n          // The optional `up` row compares the declared camera up with the orthogonal\n          // right \u00d7 forward vector used for rendering; it appears when they disagree.\n",
+    "findingIds": [
+      "170e901a1e79-01"
+    ]
+  },
+  {
+    "path": "dev_docs/agents/transcripts/alife_worked_example.yaml",
+    "old": "          val runs = listOf(\n              \"spots 0.030/0.062\" to GRAY_SCOTT_SPOTS,\n              \"worms 0.037/0.060\" to GRAY_SCOTT_WORMS,\n              \"maze 0.029/0.057\" to GRAY_SCOTT_MAZE,\n              \"holes 0.039/0.058\" to GRAY_SCOTT_HOLES\n          ).map { (label, p) -> label to grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L).stepTimes(p, steps) }\n",
+    "new": "          val regimes: List<Pair<String, GrayScottParams>> = listOf(\n              \"spots 0.030/0.062\" to GRAY_SCOTT_SPOTS,\n              \"worms 0.037/0.060\" to GRAY_SCOTT_WORMS,\n              \"maze 0.029/0.057\" to GRAY_SCOTT_MAZE,\n              \"holes 0.039/0.058\" to GRAY_SCOTT_HOLES\n          )\n          val runs = regimes.map { (label, p) -> label to grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L).stepTimes(p, steps) }\n",
+    "findingIds": [],
+    "replayRepair": true
+  },
+  {
+    "path": "dev_docs/agents/transcripts/alife_worked_example.yaml",
+    "old": "          showImg(\n              montage(\n                  (runs + listOf(\"CONTROL no seed\" to unseeded, \"CONTROL Du == Dv\" to equalD))",
+    "new": "          val controls: List<Pair<String, GrayScottState>> = listOf(\n              \"CONTROL no seed\" to unseeded,\n              \"CONTROL Du == Dv\" to equalD\n          )\n          showImg(\n              montage(\n                  (runs + controls)",
+    "findingIds": [],
+    "replayRepair": true
+  },
+  {
+    "path": "dev_docs/agents/transcripts/fn_rewrite_kotlin_boxes.yaml",
+    "old": "          // THE WRONG WAY, kept runnable so you can watch it refuse. `rewriteKotlin` takes its box\n          // from `Box.context`, i.e. THIS box, so the first `@{...}` asks this engine to evaluate\n          // while it is already mid-evaluation and the engine re-runs this body.\n          //\n          // Unguarded that was 172 nested entries and 285 snippet compiles, ending in\n          //   Unable to instantiate class ...__code__81: java.lang.StackOverflowError\n          // with the same 115-character snippet taking 1.58s, 2.14s, 2.69s as the chain grew.\n          //\n          // The FnRewriteSelfBoxReentry guard now refuses the second hydration, which breaks the\n          // recursion: this body runs exactly TWICE (watch for two \"one box:\" lines), the second run\n          // dies at the first @{...}, and the rewrite then completes with the right answer. Look in\n          // the log, channel `error,fn-rewrite`, for the refusal and the three ways out.\n          //\n          // Twice is still once too many -- anything this body does before the rewrite happens twice,\n          // which is why the box above is the form to copy. dev_docs/FN_REWRITE_SELF_BOX_REENTRY.md.\n          import afield.math.functions.Functions\n          import afield.math.functions.rewriteKotlin\n          \n          val spec = listOf(\n              \"#fnrewrite\",\n              \"sin/*/saw => op=triangle\",\n              \"sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}\",\n              \"**/[role=amplitude] => *= @{if (parentOp == \\\"sin\\\") 0.75 else 1.0}\"\n          ).joinToString(\"\\n\")\n          \n          println(\"one box: body entered\")\n          \n          with(Functions) {\n              val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)\n              val changed = base.rewriteKotlin(spec)\n              println(\"one box: f(1.0) = \" + changed.eval(1.0) + \" (correct, but the body ran twice)\")\n          }\n",
+    "new": "          // Intentionally wrong: source hydration would compile in this running box's own engine.\n          // The runtime refuses before replaying the body. Run this box to see that refusal;\n          // copy the two-box example above, whose parent host is idle.\n          import afield.math.functions.Functions\n          import afield.math.functions.rewriteKotlin\n\n          import afield.math.functions.Functions\n          import afield.math.functions.rewriteKotlin\n\n          val spec = listOf(\n              \"#fnrewrite\",\n              \"sin/*/saw => op=triangle\",\n              \"sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}\",\n              \"**/[role=amplitude] => *= @{if (parentOp == \\\"sin\\\") 0.75 else 1.0}\"\n          ).joinToString(\"\\n\")\n\n          println(\"one box: body entered\")\n\n          with(Functions) {\n              val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)\n              base.rewriteKotlin(spec)\n          }\n",
+    "findingIds": [
+      "b56688721388-01"
+    ],
+    "replayRepair": true
+  },
+  {
+    "path": "dev_docs/agents/transcripts/fn_rewrite_kotlin_boxes.yaml",
+    "old": "        import afield.math.functions.Functions\n        import afield.math.functions.rewriteKotlin\n        \n        val spec = listOf(\n            \"#fnrewrite\",\n            \"sin/*/saw => op=triangle\",\n            \"sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}\",\n            \"**/[role=amplitude] => *= @{if (parentOp == \\\"sin\\\") 0.75 else 1.0}\"\n        ).joinToString(\"\\n\")\n        \n        println(\"one box: body entered\")\n        \n        with(Functions) {\n            val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)\n            val changed = base.rewriteKotlin(spec)\n            println(\"one box: f(1.0) = \" + changed.eval(1.0) + \" (correct, but the body ran twice)\")\n        }\n",
+    "new": "        import afield.math.functions.Functions\n        import afield.math.functions.rewriteKotlin\n\n        val spec = listOf(\n            \"#fnrewrite\",\n            \"sin/*/saw => op=triangle\",\n            \"sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}\",\n            \"**/[role=amplitude] => *= @{if (parentOp == \\\"sin\\\") 0.75 else 1.0}\"\n        ).joinToString(\"\\n\")\n\n        println(\"one box: body entered\")\n\n        var refused = false\n        try {\n            with(Functions) {\n                val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)\n                base.rewriteKotlin(spec)\n            }\n        } catch (refusal: afield.study.source.SourceBackedBlockDuringOwnBody) {\n            refused = true\n            println(\"expected self-box refusal: \" + refusal.message)\n        }\n        check(refused) { \"Source hydration in the running owner must be refused before replay.\" }\n",
+    "findingIds": [],
+    "replayRepair": true
+  },
+  {
+    "path": "dev_docs/agents/transcripts/fn_rewrite_kotlin_boxes.yaml",
+    "old": "description: >\n  The two ways to run a `@{...}` Kotlin right-hand side in an Fn rewrite spec, side by side: one box\n  (does not work \u2014 the rewrite hydrates on the running box's own engine and re-runs the body once per\n  level until the stack goes) and two boxes (works \u2014 the snippet compiles in a second, idle box).\n  The broken box is created and deliberately NOT executed; run it by hand to watch it fail.\n",
+    "new": "description: >\n  Compare Kotlin right-hand sides compiled in an idle parent host with the deliberately wrong\n  self-box call. The two-box example succeeds. The transcript checks that source hydration in\n  the running owner is refused before replay; running the wrong box manually shows that refusal.\n",
+    "findingIds": [],
+    "replayRepair": true
+  },
+  {
+    "path": "dev_docs/agents/transcripts/alife_worked_example.yaml",
+    "old": "+ listOf(\"wide sigma: saturation\" to sat.field.colormap(\"inferno\", 0f, 1f).upscaleNearest(3))",
+    "new": "+ (\"wide sigma: saturation\" to sat.field.colormap(\"inferno\", 0f, 1f).upscaleNearest(3))",
+    "findingIds": [],
+    "replayRepair": true
+  }
+]

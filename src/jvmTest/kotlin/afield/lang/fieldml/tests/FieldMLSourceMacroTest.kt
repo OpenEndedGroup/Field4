@@ -225,7 +225,7 @@ class FieldMLSourceMacroTest {
             "only $reachable of $total source macros are reachable, expected at least 18\n$report",
         )
         assertEquals(
-            setOf("sourceBlock", "interpolant", "jsonParser", "graphLens", "ai"),
+            setOf("sourceBlock", "interpolant", "jsonParser", "graphLens", "ai", "rootPropUp", "rootPropDown", "rootPropUpDown"),
             byReach[FieldMLMacroLayer.Reach.NEEDS_KOTLIN].orEmpty().map { it.macro }.toSet(),
             "the macros that currently need Kotlin expansion " +
                 "are pinned by name\n$report",

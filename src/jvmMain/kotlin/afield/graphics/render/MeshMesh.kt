@@ -128,7 +128,7 @@ class MeshMesh(var renderer: Renderer = fromContext()) : MeshTask {
                 try {
                     pushConstantBuffer.clear()
                     push.writeToBuffer(pushConstantBuffer, cmd) {
-                        throw MissingRefException("risk of GPU null ref `$it`")
+                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
                     }
                 } catch (e: Exception) {
                     inside.parameters.errorHandler(e.message ?: "push constant error", e)

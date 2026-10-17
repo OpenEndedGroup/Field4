@@ -127,6 +127,8 @@ def main(argv):
         for lineno, target, slug in links_of(page):
             if target == "":
                 where, label = page, "this page"
+            elif "://" in target:
+                continue   # an absolute URL (a GitHub blob link ending in `.md` included); not ours to check
             elif target.endswith(".md"):
                 where, label = (page.parent / target).resolve(), target
             else:

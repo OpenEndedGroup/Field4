@@ -73,3 +73,12 @@ class ComputeMeshGroup : ArrayList<ComputeMesh>() {
             }
     }
 }
+
+/**
+ * Apply the same live push bindings to each mesh: `bindPush(even, odd) { count = { n } }`.
+ * The receiver retains its concrete mesh type and generated shader properties. The block executes
+ * once per target; suppliers assigned inside it remain live rather than being sampled here.
+ */
+fun <T> bindPush(vararg targets: T, bindings: T.() -> Unit) {
+    targets.forEach { target -> target.bindings() }
+}

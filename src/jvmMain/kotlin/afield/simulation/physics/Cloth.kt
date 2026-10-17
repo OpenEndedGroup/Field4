@@ -56,7 +56,7 @@ import kotlin.math.sqrt
  * accumulator without moving anything in between), so the effective spring constant is
  * `stiffness * iterations`, and the curvature force has to be within an order of magnitude or two
  * of *that* to bend anything. Measured on a 20 x 10 sheet at `stiffness = 60`, `iterations = 16`:
- * the 0.05 default is indistinguishable from off, 20 is visible, and 100 takes about 40 % of the
+ * 0.05 is indistinguishable from off, 20 (the default, a third of the stiffness) is visible, and 100 takes about 40 % of the
  * kink out. The same product decides stability — 60 x 16 settles, 150 x 16 diverges to NaN at
  * `dt = 1/60`.
  *
@@ -425,7 +425,8 @@ class Cloth private constructor(
          * @param stiffness per-slot distance-constraint stiffness.
          * @param mass particle mass; unpinned particles get inverse mass `1 / mass`.
          * @param curvatureStrength flattening force toward the mean of the four axis neighbors;
-         *   `0f` registers nothing.
+         *   `0f` registers nothing. Defaults to a third of [stiffness], which is on the scale
+         *   the constraint solve works at, so the default visibly flattens the sheet.
          * @param position initial position of node (col, row); defaults to a flat grid in `z = 0`
          *   with `x` along the columns and `y` along the rows.
          * @param restLengthFromLayout measure each edge's rest length from [position] rather than
@@ -444,7 +445,7 @@ class Cloth private constructor(
             spacing: Float = 0.5f,
             stiffness: Float = 0.8f,
             mass: Float = 1f,
-            curvatureStrength: Float = 0.05f,
+            curvatureStrength: Float = stiffness / 3f,
             position: (col: Int, row: Int) -> Vector3fc = { col, row -> vec(col * spacing, row * spacing, 0f) },
             restLengthFromLayout: Boolean = false,
             pinned: (col: Int, row: Int) -> Boolean = { _, row -> row == height - 1 },
@@ -541,6 +542,7 @@ class Cloth private constructor(
                 name = name ?: "cloth@$base",
                 curvatureStrength = curvatureStrength
             )
+            sim.clothRanges += cloth.name to (base until base + width * height)
 
             if (curvatureStrength != 0f && width >= 3 && height >= 3) {
                 cloth.enableCurvature()
@@ -558,7 +560,7 @@ fun SimdVerlet.addCloth(
     spacing: Float = 0.5f,
     stiffness: Float = 0.8f,
     mass: Float = 1f,
-    curvatureStrength: Float = 0.05f,
+    curvatureStrength: Float = stiffness / 3f,
     position: (col: Int, row: Int) -> Vector3fc = { col, row -> vec(col * spacing, row * spacing, 0f) },
     restLengthFromLayout: Boolean = false,
     pinned: (col: Int, row: Int) -> Boolean = { _, row -> row == height - 1 },

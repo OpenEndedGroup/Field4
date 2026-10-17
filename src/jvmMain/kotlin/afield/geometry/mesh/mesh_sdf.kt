@@ -866,8 +866,8 @@ fun ScalarField3D.march(
 ): TriMesh = marchingCubes(this, bounds, resolution, iso, positiveOutside)
 
 /**
- * An [Img] as a 3D field, one z-slice per… no — this is the *2D* bridge: the image's value at
- * `(x, z)`, independent of `y`, minus `y`. Marching it gives the same surface [Img.toHeightfieldMesh]
+ * The image as a 3D height field: the image's value at `(x, z)` minus `y`, the same for every `y`.
+ * Marching it gives the same surface [Img.toHeightfieldMesh]
  * builds directly, which is a useful cross-check and occasionally a useful modelling primitive (you
  * can subtract a heightfield from a solid).
  *

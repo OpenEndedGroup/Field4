@@ -158,28 +158,27 @@ externally only stops the watcher tracking it; the in-memory property is left al
 (`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:326#External deletion of sidecar`). This is the
 supported way to edit a box's code from outside Field.
 
-**A `metadata.edn` edit is reconciled at box granularity, not merged.** An external modification runs
+**A `metadata.edn` edit is reconciled.** An external modification runs
 `src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:500#private fun reconcileMetadata(workspaceDir: File)`,
 which adds boxes present on disk and absent from the session, and tombstones boxes that were in the
 last `metadata.edn` Field wrote or loaded and are absent from the new one
 (`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:578#box.setPropertyRaw("_tombstone", true, doResync = true)`).
 A box created in the session since that write is left alone: it was never in the file, so the edit
-cannot have removed it. The properties of boxes already present in the session are left alone
-(`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:496#properties of boxes already present in the`).
-So *adding* or *removing* a box by editing `metadata.edn` under a live Field
-works, and *changing a property of a box that is already open* does not — that edit is not applied,
-and the next save overwrites it from memory. Hand-edit the sidecar instead.
+cannot have removed it. A property of a box already open is applied when the new file's value
+differs from that box's value in the last `metadata.edn` Field wrote or read
+(`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:734#private fun applyExternalPropertyEdits(`),
+so a value you changed in Field since the last save, and the file did not touch, is kept. Two things
+the reconcile does not do: it does not rewire the connections of a box already open (`children`,
+`parents`, nesting), and it does not remove a property you delete from the file, because the next save
+writes it back.
 
 **A `document.md` edit does nothing**, for the reason above: nothing reads it, and the watcher does
 not decode it either.
 
-Two more details of the watcher account for an edit that looks lost. Field marks
-its own writes, and a watch event whose size and modification time still match a recorded internal
-save is discarded — a 15-second grace window on the timestamp and a 120-second window on the
-signature
-(`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:161#private fun isInternalSaveEvent(file: File, currentTime: Long): Boolean`).
-An external edit that happens to leave the file exactly the same length, moments after Field's own
-save, is therefore invisible. And the watcher registers the document directory itself and no
+Field recognises its own writes by content: a watch event is discarded only while the file still
+hashes to what Field wrote
+(`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:260#private fun isInternalSaveEvent(file: File): Boolean`),
+so an edit made moments after a save is seen. The watcher registers the document directory itself and no
 subdirectory
 (`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:175#val key = path.register(`), so nothing under
 `files/` is watched at all.
@@ -248,9 +247,9 @@ a longer fence rather than escaped
 code property is lifted out as narrative prose above the fence
 (`src/jvmMain/kotlin/afield/document/persistence/saving.kt:860#private fun extractLeadingNarrative(property: String, language: String, text: String): ExtractedNarrative?`).
 
-## The persistent-property list is sticky, and process-global
+## Which properties a document saves
 
-`Box.ioPersistentProperties` is a `mutableSetOf`, not a `val` of constants, and three things add to
+`Box.ioPersistentProperties` is a `mutableSetOf`, not a `val` of constants, and two things add to
 it while Field runs. Each small language adds its own root markers when it installs — Nano's
 `isNanoRoot`, `nanoLaunchDelayMs` and `nanoMemoryInit` in one call at
 `src/jvmMain/kotlin/afield/lang/nano/NanoInterface.kt:502#Box.ioPersistentProperties.addAll(setOf("isNanoRoot", "nanoLaunchDelayMs", "nanoMemoryInit"))`,
@@ -258,24 +257,21 @@ and the other language roots the same way. `Box.syncToProperty`, the helper that
 output-panel control to a box property, marks that property persistable in each of its five type
 branches
 (`src/jvmMain/kotlin/afield/ui/output/outputs.kt:2465#fun Box.syncToProperty(propertyName: String, initialValue: Any`).
-And **loading any document merges that document's own list into the global set**:
-
-```diffstatic {data-lang=kotlin}
-// Merge the saved properties with the current global set
-Box.ioPersistentProperties.addAll(propsList)
-```
-
-`src/jvmMain/kotlin/afield/document/persistence/saving.kt:1215#Box.ioPersistentProperties.addAll(propsList)`, reached from
-`readEdnTransfers` on every open. The set is on the `Box` companion, so it is per *process*, not per
-document: open a document whose header lists a property name, and every other document open in that
-Field will persist that name too, until the process exits. Nothing removes a name.
+A document's own header counts too, but only for that document. Loading one records its
+`:persistentProperties` list against the document's folder
+(`src/jvmMain/kotlin/afield/document/persistence/saving.kt:1329#Box.recordDocumentPersistentProperties(directory, propsList)`),
+and a save writes the global set plus that document's names
+(`src/jvmMain/kotlin/afield/document/graph/Boxes.kt:809#fun persistentPropertiesFor(directory: String?): Set<String>`).
+A property one document's header lists keeps being saved in that document, even before any code in
+this session has declared it, and opening it does not change what any other document saves.
+Inserting a template or pasting boxes brings their header's names into the receiving document.
 
 That is why the list in a saved header is usually longer than the one declared in
 `src/jvmMain/kotlin/afield/document/graph/Boxes.kt:428#var ioPersistentProperties = mutableSetOf(`. Most of the
 extra names are language-root markers registered by the first mechanism above (the `is…Root` flags,
-`mainLanguage`, Nano's configuration properties); the rest entered the set in some earlier session
-and have been carried in the header ever since. A saved header records what that process had
-learned, not a fixed declaration.
+`mainLanguage`, Nano's configuration properties); the rest were declared in an earlier session and
+have been carried in that document's header ever since. The names the first two mechanisms add are
+still process-wide: they are declarations by code, not by a document.
 
 ## What `metadata.edn` is mostly made of
 
@@ -294,10 +290,6 @@ a persistent pattern.
 `src/jvmMain/kotlin/afield/examples/SidecarPropertyRegistrationSmokeTest.kt:50#object SidecarPropertyRegistrationSmokeTest`
 (`examples.saving.sidecar-property-registration`) checks that across the whole registry, then drives a save
 through `toTransfer` and asserts that a property in neither list leaves no sidecar and no EDN key.
-
-`remote_js` looks like a sidecar-backed property but is not one: it is the name of the RemoteJS/WebXR
-language root box in `templates/remote/metadata.json`. The Javascript in that template lives in the
-root's children, under `code` and `customization`, and no `*_remote_js_.js` sidecar is ever written.
 
 The root box is excluded from the sidecar branch by id, so the root's `metadata` property stays
 inline in `metadata.edn` — that is the property

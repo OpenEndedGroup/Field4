@@ -33,9 +33,9 @@ package afield.geometry.polytope
  * ## Lineage is not always there
  *
  * [ElementSelectors.provenanceRole] is the one selector that needs transform history.
- * [PolyhedralObject.selectElements] builds a context without lineage, so on a bare object every
- * provenance test is false — and a *negated* provenance test is therefore vacuously true, which is
- * the standing trap in this file. Ask a [PolytopeTransformResult] when a role matters.
+ * [PolyhedralObject.selectElements] builds a context without lineage, so a provenance test there
+ * throws rather than answering `false` — which `!` would have turned into a vacuous `true`. Ask a
+ * [PolytopeTransformResult] when a role matters.
  */
 
 /** Everything a selector or parameter field may inspect without coupling topology to rendering. */
@@ -93,9 +93,9 @@ infix fun ElementSelector.or(other: ElementSelector): ElementSelector = ElementS
 /**
  * Logical negation, so `!selector` reads as it should.
  *
- * Negating a selector that cannot be evaluated in the current context inverts *that*, not what you
- * meant: `!ElementSelectors.provenanceRole("face-apex")` on a bare [PolyhedralObject] negates a
- * predicate that matched nothing and so matches everything.
+ * A selector that cannot be evaluated in its context throws instead of answering, so there is no
+ * vacuous result for this to invert: `!ElementSelectors.provenanceRole("face-apex")` on a bare
+ * [PolyhedralObject] refuses, as the unnegated one does.
  */
 operator fun ElementSelector.not(): ElementSelector = ElementSelector { !matches(it) }
 
@@ -154,13 +154,18 @@ object ElementSelectors {
      *
      * The roles are the fixed vocabulary the primitives emit — `face-center`, `face-apex`,
      * `original-vertex`, `edge-midpoint`, `directed-edge-point` and so on — which is the only way to
-     * say "the apexes kis just raised" without naming indices. Matches nothing where there is no
-     * lineage, and nothing on a seed element, whose lineage is [ElementLineage.Source]; see the file
-     * overview for why negating it there is a trap.
+     * say "the apexes kis just raised" without naming indices. Matches nothing on a seed element,
+     * whose lineage is [ElementLineage.Source], and **throws** where there is no lineage at all (a
+     * bare [PolyhedralObject]), because `false` there would make `!provenanceRole(...)` match
+     * everything.
      */
     fun provenanceRole(role: String, recursive: Boolean = false): ElementSelector = ElementSelector { context ->
+        val lineage = context.lineage ?: throw IllegalStateException(
+            "provenanceRole(\"$role\") needs transform history, and a bare PolyhedralObject has none; " +
+                "select on the PolytopeTransformResult the transform returned instead",
+        )
         val pending = ArrayDeque<ElementLineage>()
-        context.lineage?.let(pending::addLast)
+        pending.addLast(lineage)
         var found = false
         while (pending.isNotEmpty() && !found) {
             when (val lineage = pending.removeFirst()) {

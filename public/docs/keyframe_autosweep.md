@@ -291,12 +291,6 @@ approaches zero, including under extrapolation, where some weights *are* negativ
     every fill in the manifest; `FILL_FROM_ANCHOR`, `INTERSECT` and `REQUIRE_ALL` are the
     alternatives, and `REQUIRE_ALL` reports how many keys it excluded.
 
-    **Numeric type.** `interpolate` returns `Double` unless *both* sides were `Float`, so an `Int`
-    lane comes back as a `Double` an `Int` uniform will refuse. `preserveNumericKind` rounds each
-    lane back to the anchor's type — rounded, but *not* clamped, because an extrapolated blend can
-    put an `Int` lane outside the range its `intTarget` declares and the clamp belongs in the target,
-    on apply. The key then records the point actually visited and still reproduces the render.
-
 ## Blending past the saved keys
 
 An extrapolated look is the one nobody would have authored: past the end of every key you saved rather
@@ -420,9 +414,10 @@ four boxes: a renderer, the rig, the sweep and the morning box. Replace the rig 
 to start a real sweep against it. Its entry in
 [Agent transcripts](agent_transcripts.md#keyframe_autosweep) lists what each box does.
 
-??? aside "Tests"
-    Two suites stand behind this page. `afield.animation.keyframes.KeyframeSweepTest` is CPU-only and pins the provenance
-    contract, the resume, the lane policies, the failure isolation, the disk floor and the sampling
+??? aside "Agents: the tests behind this page"
+
+    Two suites stand behind this page. `afield.animation.keyframes.KeyframeSweepTest` is CPU-only
+    and pins the provenance contract, the resume, the lane policies, the failure isolation, the disk floor and the sampling
     distribution; `tools/run_field_tests.py --id keyframe.sweep.smoke` runs a real six-render sweep on a
     GPU and pins that the picture actually follows the blend. Which claim belongs to which, and the gap
     between them, is in `dev_docs/KEYFRAME_SWEEP_AGREEMENT.md`.

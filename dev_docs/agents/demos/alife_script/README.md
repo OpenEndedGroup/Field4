@@ -61,19 +61,17 @@ Two things in that box's comments are worth more than the figure, because both w
   disordered, it is cancelling — the sibling of "rest is not disordered, it is empty", which is why
   `spawn` takes an initial velocity.
 
-## One sharp edge you will hit
+## Targets inside a steering block
 
-Targets are built by the behaviour scope (`point`, `actor`, `nearest`, `centroid`), and inside a
-steering block the receiver is the steering builder, which does not expose them. So this does not
-compile:
+Targets are built by the behaviour scope (`point`, `actor`, `nearest`, `centroid`), and the steering
+block forwards `point(...)`, so a target can be written where it is used:
 
 ```kotlin
-moveFor(4.0) { orbit(point(100.0, 100.0), distance = 40.0) }   // "cannot be called in this
-                                                               //  context with an implicit receiver"
+moveFor(4.0) { orbit(point(100.0, 100.0), distance = 40.0) }
 ```
 
-Hoist the target to where the program can see it and pass it in — box 1 does this with `centre`.
-Worth fixing in the API rather than in every script; noted in the branch worklog.
+Box 1 declares its target once, as `centre`, outside the repeating block instead. That is optional: it
+names the point, and every repeat reuses the same target rather than building a new one.
 
 ## What is not here
 

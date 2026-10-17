@@ -246,7 +246,7 @@ transcribing when the first pass says the material is not one line.
 It does not promise a correct answer, but it never gives a wrong one silently: a wrong output
 carries a warning that says where it is wrong. Check the warnings before you trust the result.
 
-To try it, open the [pitch_transcription_roundtrip](agent_transcripts.md) starting point.
+To try it, open the [`pitch_transcription_roundtrip`](agent_transcripts.md#pitch_transcription_roundtrip) starting point.
 
 ### What that looks like
 
@@ -264,7 +264,9 @@ cents. The bars sit on the outlines, and in the third panel they sit off them by
 Splitting audio into notes is harder. The two ways of finding where a note starts fail on
 opposite material. A flat-envelope Dough render has no energy transients to cut on
 (energy recall 0.13) but clean pitch steps (0.86); a line that strikes each pitch
-twice has the transients but no pitch change at half of them (energy 0.13, pitch 0.81, 0.88 merged):
+twice has transients at every note but no pitch change at half of them. Field's pitch detector
+still finds most of those at the dip where the note is struck again (energy 0.00, pitch 0.88, 0.88
+merged), and merging the two never loses a note start the pitch detector found:
 
 ![Two panels: a legato Dough render where the energy detector finds almost nothing while the pitch steps are clean, and a repeated-pitch line where the reverse holds](assets/pat_transcription/pat-transcription-opposite-failures.svg)
 
@@ -276,7 +278,7 @@ wrong one:
 
 ![Three panels: a chord triad recovering zero of twelve notes and emitting pat tilde, a fast line recovering 23 of 32 when told its register, and the same audio recovering zero of 32 when not told, its whole span struck out by a declined band](assets/pat_transcription/pat-transcription-refusals-and-limits.svg)
 
-??? aside "Regenerating the transcription figures"
+??? aside "Agents: regenerating the transcription figures"
     The three figures above come from the `synth.pat.transcription` smoke test:
 
     ```diffstatic {data-lang=bash}
@@ -286,7 +288,7 @@ wrong one:
 
 <a id="what-a-voice-caption-promises"></a>
 
-??? aside "Where the \"Voice:\" captions come from"
+??? aside "Agents: where the \"Voice:\" captions come from"
     The *"Voice: …"* captions on this page are written by the docs build, not by hand. A clip
     captioned as the stand-in has to match a fresh synth render, and one captioned as real samples
     has to *not* match one. That shows an asset did not come from the synth; it does not show it

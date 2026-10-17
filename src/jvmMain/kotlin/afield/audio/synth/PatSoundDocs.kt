@@ -793,8 +793,9 @@ internal fun patDrumHz(atom: String, baseHz: Double): Pair<Double, PatWave?> = w
 /**
  * Schedules [pattern] over [cycles] whole cycles at [cps] and renders it through [voice].
  *
- * This is the core of [PatSoundDocs]: nothing here knows anything about the operators. It
- * asks the pattern for its events, reads their parameters, and adds one voice per event.
+ * This is the core of [PatSoundDocs]: nothing here knows anything about the operators. It renders
+ * through [patSynthRenderStereo], the realtime [PatSynthBank] path, with a voice for every note that
+ * sounds at once, so nothing is stolen and a note lands on the same frame [patSynth] plays it on.
  */
 fun patRenderStereo(
     pattern: PatPattern<String>,
@@ -805,84 +806,16 @@ fun patRenderStereo(
 ): PatSoundDocs.Stereo {
     require(cycles > 0) { "cycles must be > 0" }
     require(cps > 0.0) { "cps must be > 0" }
-    val secondsPerCycle = 1.0 / cps
-    val frames = (cycles * secondsPerCycle * sampleRate).toInt()
-    val left = FloatArray(frames)
-    val right = FloatArray(frames)
-
-    val events = pattern.events(PatArc(PatQ.ZERO, PatQ.of(cycles)))
-        .sortedWith(compareBy({ it.arc.start }, { it.arc.end }))
-
-    for (event in events) {
-        val startSec = event.arc.start.toDouble() * secondsPerCycle
-        val arcSec = (event.arc.end - event.arc.start).toDouble() * secondsPerCycle
-        val sustainFrac = event.annotations["sustain"]?.toDoubleOrNull() ?: voice.sustain
-        // The note rings for its sustain fraction of the arc plus the envelope's own tail, so a
-        // short arc still gets a natural decay rather than a click.
-        val holdSec = arcSec * sustainFrac.coerceIn(0.0, 1.0)
-        val tailSec = voice.decay * 4.0
-        val startFrame = (startSec * sampleRate).toInt()
-        val lengthFrames = ((holdSec + tailSec) * sampleRate).toInt().coerceAtLeast(1)
-        if (startFrame >= frames) continue
-
-        val explicitNote = event.annotations["note"]?.toDoubleOrNull()
-        val atomNote = event.value.trim().toDoubleOrNull()
-        val drum = patDrumHz(event.value.trim(), voice.baseHz)
-        val hz = when {
-            explicitNote != null -> patMidiToHz(explicitNote)
-            atomNote != null -> patMidiToHz(atomNote)
-            else -> drum.first
-        }
-        val wave = if (explicitNote == null && atomNote == null) (drum.second ?: voice.wave) else voice.wave
-
-        val gain = (event.annotations["gain"]?.toDoubleOrNull() ?: 1.0).coerceIn(0.0, 4.0)
-        val pan = (event.annotations["pan"]?.toDoubleOrNull() ?: 0.5).coerceIn(0.0, 1.0)
-        val speed = event.annotations["speed"]?.toDoubleOrNull() ?: 1.0
-        val cutoffHz = event.annotations["cutoff"]?.toDoubleOrNull()
-
-        // Per-voice deterministic noise seed and filter state — no shared mutable state, so the
-        // render does not depend on the order events happen to arrive in.
-        var noiseState = splitmix64(
-            (event.arc.start.n.toLong() * 1_000_003L) xor (event.arc.start.d.toLong() * 7_919L) xor
-                event.value.hashCode().toLong()
-        )
-        var lowpass = 0.0
-        val alpha = if (cutoffHz == null) 1.0 else {
-            val rc = 1.0 / (2.0 * PI * cutoffHz.coerceIn(20.0, sampleRate / 2.2))
-            val dt = 1.0 / sampleRate
-            dt / (rc + dt)
-        }
-
-        val leftGain = gain * sqrt(1.0 - pan)
-        val rightGain = gain * sqrt(pan)
-        val freq = hz * speed
-        val phaseStep = freq / sampleRate
-
-        for (i in 0 until lengthFrames) {
-            val frame = startFrame + i
-            if (frame >= frames) break
-            val t = i.toDouble() / sampleRate
-            val env = patVoiceEnvelope(t, holdSec, voice.attack, voice.decay)
-            if (env <= 1e-6 && t > holdSec) break
-            val phase = (phaseStep * i) % 1.0
-            val raw = when (wave) {
-                PatWave.SINE -> sin(2.0 * PI * phase)
-                PatWave.SAW -> 2.0 * phase - 1.0
-                PatWave.SQUARE -> if (phase < 0.5) 1.0 else -1.0
-                PatWave.TRIANGLE -> if (phase < 0.5) 4.0 * phase - 1.0 else 3.0 - 4.0 * phase
-                PatWave.NOISE -> {
-                    noiseState = splitmix64(noiseState)
-                    toUnitDouble(noiseState) * 2.0 - 1.0
-                }
-            }
-            lowpass += alpha * (raw - lowpass)
-            val sample = lowpass * env
-            left[frame] += (sample * leftGain).toFloat()
-            right[frame] += (sample * rightGain).toFloat()
-        }
+    val notes = (0 until cycles).flatMap { cycle ->
+        patSynthNotesForArc(pattern, PatArc(PatQ.of(cycle), PatQ.of(cycle + 1)), cps, sampleRate, voice)
     }
-
-    return PatSoundDocs.Stereo(left, right)
+    // The most notes sounding at once: +1 at each start, -1 at each end, ends before starts.
+    var sounding = 0
+    var voices = 1
+    notes.flatMap { listOf(it.startFrame to 1, it.startFrame + it.frames to -1) }
+        .sortedWith(compareBy({ it.first }, { it.second }))
+        .forEach { (_, step) -> sounding += step; voices = maxOf(voices, sounding) }
+    return patSynthRenderStereo(pattern, cycles, cps, voice, voices = voices, sampleRate = sampleRate)
 }
 
 /**

@@ -103,17 +103,30 @@ class PathTraceScene {
     internal val triangles = mutableListOf<Triangle>()
     fun material(value: PathTraceMaterial): Int = materials.size.also { materials += value }
 
+    /** Triangles [triangle] skipped for zero area or a non-finite coordinate, over this scene's life. */
+    var degenerateCount: Int = 0
+        private set
+
+    /**
+     * Append one triangle. A zero-area triangle, or one with a non-finite coordinate, is skipped and
+     * counted in [degenerateCount] rather than aborting the scene — Manifold's Booleans leave a few
+     * such slivers. A missing or zero-length vertex normal falls back to the face normal.
+     */
     fun triangle(a: Vector3f, b: Vector3f, c: Vector3f, material: Int,
                  na: Vector3f? = null, nb: Vector3f? = null, nc: Vector3f? = null): PathTraceScene {
         require(material in materials.indices) { "Unknown material $material" }
         val p = listOf(a, b, c).map(::Vector3f)
-        require(p.all { it.x.isFinite() && it.y.isFinite() && it.z.isFinite() })
         val face = Vector3f(b).sub(a).cross(Vector3f(c).sub(a))
-        require(face.lengthSquared() > 1e-16f) { "Degenerate triangle" }
+        if (!p.all { it.x.isFinite() && it.y.isFinite() && it.z.isFinite() } ||
+            !(face.lengthSquared() > 1e-16f) || !face.lengthSquared().isFinite()) {
+            degenerateCount++
+            return this
+        }
         face.normalize()
-        val normals = listOf(na ?: face, nb ?: face, nc ?: face).map { Vector3f(it) }
-        require(normals.all { it.lengthSquared().isFinite() && it.lengthSquared() > 1e-16f })
-        triangles += Triangle(p, normals.map { it.normalize() }, material)
+        val normals = listOf(na, nb, nc).map { n ->
+            if (n != null && n.lengthSquared().isFinite() && n.lengthSquared() > 1e-16f) Vector3f(n).normalize() else Vector3f(face)
+        }
+        triangles += Triangle(p, normals, material)
         return this
     }
 
@@ -164,12 +177,21 @@ class PathTraceScene {
             // transmissive emitter is shaded on the glass path; both keep weight zero, which leaves
             // the BSDF-hit arm at MIS weight one and the estimate unchanged.
             fun visible(m: PathTraceMaterial) = m.alphaMode == PathTraceMaterial.AlphaMode.OPAQUE && !m.transmission
+            // Each texture's mean RGB, for weighting a textured emitter by what it actually emits.
+            val textureMeans = textures.map { t ->
+                val sum = DoubleArray(3)
+                for (i in 0 until t.width * t.height) for (c in 0..2) sum[c] += t.pixels[4 * i + c]
+                DoubleArray(3) { sum[it] / (t.width * t.height) }
+            }
             fun area(t: Triangle) = 0.5 * Vector3f(t.p[1]).sub(t.p[0]).cross(Vector3f(t.p[2]).sub(t.p[0])).length()
             // Emitted power: area times emitted luminance, doubled when both faces radiate.
             fun power(t: Triangle): Double {
                 val m = materials[t.material]
                 if (!visible(m)) return 0.0
-                val luminance = 0.2126 * m.emissionRed + 0.7152 * m.emissionGreen + 0.0722 * m.emissionBlue
+                // The shader multiplies the factor by the emission texture, so weight by its mean too.
+                val texture = textureMeans.getOrNull(m.emissionTexture)
+                val luminance = if (texture == null) 0.2126 * m.emissionRed + 0.7152 * m.emissionGreen + 0.0722 * m.emissionBlue
+                    else 0.2126 * m.emissionRed * texture[0] + 0.7152 * m.emissionGreen * texture[1] + 0.0722 * m.emissionBlue * texture[2]
                 return luminance * area(t) * (if (m.doubleSided) 2.0 else 1.0)
             }
             val ids = triangles.indices.filter { power(triangles[it]) > 0.0 }

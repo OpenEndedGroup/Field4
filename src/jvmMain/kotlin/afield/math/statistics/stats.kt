@@ -1729,9 +1729,8 @@ fun seriesPlotToSvg(
  * metrics, then a [histogramToSvg] and a [seriesPlotToSvg] of the same window, all inline. No `<img>`,
  * no `<script>`, nothing to fetch — hand it to `display` and it draws.
  *
- * **The metric labels mix the two variance conventions**, faithfully, because [SummaryStats] does:
- * `stddev` and `variance` are the sample (n−1) forms while `skew` and `kurtosis(ex)` on the same card
- * are the population (n) forms. `dropped(non-finite)` and `window-evicted` are the buffer's two
+ * Each label names its convention, because [SummaryStats] mixes them: `stddev (n−1)` and
+ * `variance (n−1)` are the sample forms, `skew (pop.)` and `kurtosis(ex, pop.)` the population forms. `dropped(non-finite)` and `window-evicted` are the buffer's two
  * distinct counters.
  *
  * Pass [previousSummary] and every number that moved is tinted by the *sign and relative size* of the
@@ -1824,13 +1823,13 @@ fun summaryStatsBoxToHtml(
         ),
         statMetric("range", formatNumber(s.range, decimals), deltaStyle(s.range, p?.range), keyTextOpacity),
         statMetric("mean", formatNumber(s.mean, decimals), deltaStyle(s.mean, p?.mean), keyTextOpacity),
-        statMetric("stddev", formatNumber(s.sampleStdDev, decimals), deltaStyle(s.sampleStdDev, p?.sampleStdDev), keyTextOpacity),
-        statMetric("variance", formatNumber(s.sampleVariance, decimals), deltaStyle(s.sampleVariance, p?.sampleVariance), keyTextOpacity),
+        statMetric("stddev (n−1)", formatNumber(s.sampleStdDev, decimals), deltaStyle(s.sampleStdDev, p?.sampleStdDev), keyTextOpacity),
+        statMetric("variance (n−1)", formatNumber(s.sampleVariance, decimals), deltaStyle(s.sampleVariance, p?.sampleVariance), keyTextOpacity),
         statMetric("IQR", formatNumber(s.iqr, decimals), deltaStyle(s.iqr, p?.iqr), keyTextOpacity),
         statMetric("MAD", formatNumber(s.mad, decimals), deltaStyle(s.mad, p?.mad), keyTextOpacity),
-        statMetric("skew", formatNumber(s.skewness, decimals), deltaStyle(s.skewness, p?.skewness), keyTextOpacity),
+        statMetric("skew (pop.)", formatNumber(s.skewness, decimals), deltaStyle(s.skewness, p?.skewness), keyTextOpacity),
         statMetric(
-            "kurtosis(ex)",
+            "kurtosis(ex, pop.)",
             formatNumber(s.kurtosisExcess, decimals),
             deltaStyle(s.kurtosisExcess, p?.kurtosisExcess),
             keyTextOpacity

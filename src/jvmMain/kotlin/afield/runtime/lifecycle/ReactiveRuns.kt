@@ -391,6 +391,14 @@ object ReactiveRuns {
 
         // 0. the box being asked, when it is someone else's
         if (asking !== reader && declaresInOwnCodeOrPreamble(asking)) out += asking
+        // 0b. a root slot: the boxes whose code declares it with rootPropUp / rootPropUpDown
+        if (asking === info.root) {
+            val rootCall = Regex("""\brootPropUp(?:Down)?\s*<.*>\s*\(\s*${Regex.escape(name)}\s*[,)]""")
+            info.boxes.values
+                .filter { it !== reader && !it.getPropertyRaw("_tombstone").isTrue() }
+                .filter { rootCall.containsMatchIn((it.getPropertyRaw("code") as? String).orEmpty()) }
+                .forEach { out += it }
+        }
         // 1. who the gathered preamble says declared it
         val gathered = runCatching { gatherPreambleUpwardsReport(asking).text }.getOrDefault("")
         for (line in gathered.lineSequence()) {
@@ -436,14 +444,60 @@ object ReactiveRuns {
         downDeclared.add(downKey(box, name))
     }
 
+    /** For a root slot: the boxes whose `rootPropDown` / `rootPropUpDown` declared it, by [downKey] of the root. */
+    private val rootDownDeclarers = ConcurrentHashMap<String, MutableSet<String>>()
+
+    /** [declarer]'s code declared [name] on [root] with `rootPropDown` / `rootPropUpDown`. */
+    fun declaredDownOnRoot(declarer: Box, root: Box, name: String) {
+        val key = downKey(root, name)
+        downDeclared.add(key)
+        rootDownDeclarers.getOrPut(key) { ConcurrentHashMap.newKeySet() }.add(declarer.id)
+    }
+
     /**
      * A write that did not go through the `propDown` delegate (a control bound with
      * `syncToProperty`, which calls `setPropertyRaw`): if [holder] declared [name] Down and the
      * value changed, its readers rerun as they would after `holder.name = v`.
      */
     fun noteRawWrite(holder: Box, name: String, old: Any?, new: Any?) {
-        if (old != new && downDeclared.contains(downKey(holder, name))) noteChange(holder, name)
+        if (old != new && downDeclared.isNotEmpty() && isDeclaredDown(holder, name)) noteChange(holder, name)
     }
+
+    /**
+     * Whether [box] still declares [name] Down. A declaration is recorded when the macro expands
+     * and is dropped here, lazily, once the box is deleted (tombstoned) or its code no longer
+     * contains a `propDown` / `propUpDown` of that name — so editing the macro out, or deleting the
+     * box, stops raw writes from rerunning readers.
+     */
+    fun isDeclaredDown(box: Box, name: String): Boolean {
+        val key = downKey(box, name)
+        if (!downDeclared.contains(key)) return false
+        rootDownDeclarers[key]?.let { declarers ->
+            // A root slot: still declared while some declaring box is alive and still says so.
+            val boxes = if (box.isInsideInitialized()) box.inside.boxes else emptyMap()
+            declarers.removeIf { id ->
+                val d = boxes[id]
+                d == null || d.getPropertyRaw("_tombstone").isTrue() ||
+                    !downMacroPattern(name).containsMatchIn((d.getPropertyRaw("code") as? String).orEmpty())
+            }
+            if (declarers.isEmpty()) { rootDownDeclarers.remove(key); downDeclared.remove(key); return false }
+            return true
+        }
+        val code = box.getPropertyRaw("code") as? String
+        val stillThere = !box.getPropertyRaw("_tombstone").isTrue() &&
+            (code == null || downMacroPattern(name).containsMatchIn(code))
+        if (!stillThere) downDeclared.remove(key)
+        return stillThere
+    }
+
+    /** Forgets every Down declaration of [box]; for box deletion. */
+    fun forgetDown(box: Box) {
+        val prefix = box.id + "\u0000"
+        downDeclared.removeIf { it.startsWith(prefix) }
+    }
+
+    private fun downMacroPattern(name: String) =
+        Regex("""(?:prop|rootProp)U?p?Down\s*<[^\n]*>\s*\(\s*""" + Regex.escape(name) + """\b""")
 
     /** A `propDown` value changed: hold it to the end of the writer's run, or send it on now. */
     fun noteChange(holder: Box, name: String) {
@@ -468,7 +522,8 @@ object ReactiveRuns {
      * when no other box still waiting to rerun can reach it through recorded flows, so a diamond's
      * bottom runs once, after both sides. A reader is waiting while its last read of the value (and
      * its last run) began before the change; a box that ran or read since is up to date. Each box
-     * reruns at most [MAX_RUNS_PER_CASCADE] times per cascade, which is what stops a cycle.
+     * reruns at most [MAX_RUNS_PER_CASCADE] times per cascade, which is what stops a cycle. Readers
+     * with no order between them rerun in the order their last runs started.
      */
     internal object Downstream {
         private val pending = ConcurrentLinkedQueue<Change>()
@@ -542,11 +597,13 @@ object ReactiveRuns {
             while ((isRunning(box) || isBlocked(box)) && System.currentTimeMillis() < deadline) delay(5)
         }
 
+        /** Relaunches [box] on the strand it is running on (its first, if several), else `default`. */
         private fun launchQueued(box: Box) {
             val source = box.getPropertyRaw("code") as? String ?: ""
-            val execute = Execute(box.id, "launch", 1, source, false, strand = "default")
-            FlightRecorder.recordLaunchEntrypoint("propDown.cascade", box, execute, strand = "default")
-            box.ke.launchAll(box, execute, source, "default", documentReply(box))
+            val strand = box.currentRunningStates.keys.firstOrNull { !it.startsWith("__") } ?: "default"
+            val execute = Execute(box.id, "launch", 1, source, false, strand = strand)
+            FlightRecorder.recordLaunchEntrypoint("propDown.cascade", box, execute, strand = strand)
+            box.ke.launchAll(box, execute, source, strand, documentReply(box))
         }
 
         /** Each reader still to rerun, with the earliest change it has not seen. */
@@ -566,7 +623,11 @@ object ReactiveRuns {
                     out.merge(reader, c.seq, ::minOf)
                 }
             }
-            return out.entries.sortedBy { it.value }.associate { it.key to it.value }
+            // Readers rerun in the order they last ran (pickNext still puts a reader after any waiting
+            // box that feeds it): a set of passes launched in pipeline order, whose modules dispatch in
+            // the order they were added, keeps that order. Then by the earliest change each missed.
+            return out.entries.sortedWith(compareBy({ lastRunStart[it.key.id] ?: Long.MAX_VALUE }, { it.value }))
+                .associate { it.key to it.value }
         }
 
         /** The first waiting reader that no other waiting reader can reach through recorded flows. */

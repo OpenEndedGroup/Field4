@@ -45,7 +45,8 @@ than a score; [Limits of a transcription](#limits-of-a-transcription) says how f
 
 MuScriptor's source code is MIT licensed. The model weights are gated under **CC BY-NC 4.0**, with
 additional access terms requiring the operator to have the necessary rights to the input and output.
-Accept the terms for the model size you intend to use on Hugging Face, then authenticate locally:
+Accept the terms for the model size you intend to use on Hugging Face, then authenticate locally and
+start the worker. These scripts run from `services/field-audio-ai` in the Field checkout:
 
 ```diffstatic {data-lang=bash}
 uvx hf auth login
@@ -62,7 +63,8 @@ it also downloads and runs a real model:
 
 Start the ordinary API separately with `./scripts/run-api.sh`. That script points
 `FIELD_AUDIO_MUSCRIPTOR_URL` at `http://127.0.0.1:8769`. Device, dtype, cache location, local
-checkpoint overrides, and revision override variables are documented in the worker README.
+checkpoint overrides, and revision override variables are documented in the
+[worker README](https://github.com/OpenEndedGroup/field-audio-ai/blob/main/worker-environments/muscriptor/README.md).
 
 ## Transcribing a recording
 

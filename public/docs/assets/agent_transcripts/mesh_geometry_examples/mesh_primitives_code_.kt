@@ -14,14 +14,14 @@ val horn = coneMesh(32, 0.45, 0.9)
 val d12 = dodecahedronMesh(0.6)
 
 for ((label, m) in
-    listOf(
+    [
         "cube" to cube,
         "icosphere" to ball,
         "torus" to ring,
         "capsule" to pill,
         "cone" to horn,
         "dodecahedron" to d12,
-    )) {
+    ]) {
     val t = m.topology()
     println(
         "%-13s %5d verts %5d tris  chi=%2d genus=%s watertight=%s  volume=%.5f"
@@ -41,20 +41,8 @@ for ((label, m) in
 // sphere is an inscribed polyhedron, so it is always a little under.
 println()
 println("unit cube      volume ${cube.signedVolume()}  area ${cube.surfaceArea()}")
-println(
-    "icosphere(3)   volume %.6f against 4/3 pi r^3 = %.6f"
-        .format(
-            ball.signedVolume(),
-            4.0 / 3.0 * PI * r * r * r,
-        ),
-)
-println(
-    "icosphere(3)   area   %.6f against 4 pi r^2   = %.6f"
-        .format(
-            ball.surfaceArea(),
-            4.0 * PI * r * r,
-        ),
-)
+compare("icosphere(3) volume", ball.signedVolume(), 4.0 / 3.0 * PI * r * r * r)
+compare("icosphere(3) area", ball.surfaceArea(), 4.0 * PI * r * r)
 
 /*
 The generators are already welded, so weld() finds nothing to merge and returns the

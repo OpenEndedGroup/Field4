@@ -562,16 +562,23 @@ fun capsuleMesh(segments: Int = 32, rings: Int = 8, radius: Number = 0.4, height
  * is a radius in the XY plane and its `y` becomes `z`. Measured on the same profile, this one gives
  * bounds `(-1.6, 0, -1.6)…(1.6, 0.8, 1.6)` where that one gives `(-1.6, -1.6, 0.2)…(1.6, 1.6, 1.0)`.
  *
- * Neither convention is wrong, but nothing used to say they differed, so carrying a profile from the
- * [TriMesh] path over to the CSG path silently produced a model lying on its side. Swap `y` and `z`
- * in the profile, or rotate the result 90° about X.
+ * Neither convention is wrong, but a profile carried between them lands on its side, so pass
+ * `axis = RevolveAxis.Z` to sweep this one the Manifold way: the profile's `y` becomes `z`, and the
+ * same profile gives the same solid down both paths.
  *
  * @param profile `(x = radius >= 0, y)`, in order along the surface. At least 2 points.
  * @param segments divisions around the axis (>= 3).
  * @param turns fraction of a full revolution. `1.0` closes the sweep; anything less leaves it open
  *   (and open sweeps are surfaces, not solids — no caps are added).
+ * @param axis the axis to sweep around: [RevolveAxis.Y] (the default), or [RevolveAxis.Z] to match
+ *   `Section.revolved` / SolidSL's `Profile.revolved`, which sweep from +x toward +y.
  */
-fun revolveMesh(profile: List<Vec2>, segments: Int = 48, turns: Double = 1.0): TriMesh {
+fun revolveMesh(
+    profile: List<Vec2>,
+    segments: Int = 48,
+    turns: Double = 1.0,
+    axis: RevolveAxis = RevolveAxis.Y,
+): TriMesh {
     require(profile.size >= 2) { "revolveMesh needs >= 2 profile points, got ${profile.size}" }
     require(segments >= 3) { "revolveMesh needs >= 3 segments, got $segments" }
     require(profile.all { it.x >= -1e-6f }) { "revolveMesh profile radii must be >= 0" }
@@ -586,9 +593,14 @@ fun revolveMesh(profile: List<Vec2>, segments: Int = 48, turns: Double = 1.0): T
             for (j in profile.indices) {
                 val rad = profile[j].x
                 grid[i][j] = if (rad <= 1e-6f) {
-                    poles.getOrPut(j) { vertex(0f, profile[j].y, 0f) }
-                } else {
+                    poles.getOrPut(j) {
+                        if (axis == RevolveAxis.Y) vertex(0f, profile[j].y, 0f) else vertex(0f, 0f, profile[j].y)
+                    }
+                } else if (axis == RevolveAxis.Y) {
                     vertex(rad * cu, profile[j].y, rad * su)
+                } else {
+                    // The Y sweep turned +90° about X, a rotation, so the winding is unchanged.
+                    vertex(rad * cu, -rad * su, profile[j].y)
                 }
             }
         }
@@ -605,6 +617,14 @@ fun revolveMesh(profile: List<Vec2>, segments: Int = 48, turns: Double = 1.0): T
             }
         }
     }.removeDegenerateTriangles()
+}
+
+/** Which axis [revolveMesh] sweeps a `(radius, height)` profile around. */
+enum class RevolveAxis {
+    /** Height along Y, radius in the XZ plane: [revolveMesh]'s own convention. */
+    Y,
+    /** Height along Z, radius in the XY plane: Manifold's, so `Section.revolved` and SolidSL's `Profile.revolved`. */
+    Z,
 }
 
 // ==============================================================================================

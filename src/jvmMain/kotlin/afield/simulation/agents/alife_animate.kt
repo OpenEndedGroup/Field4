@@ -128,6 +128,9 @@ import kotlin.math.roundToInt
  */
 private const val CATCH_UP = 2.0
 
+/** The fraction of `seconds` by which [Box.animateEvolution]'s schedule is complete; the rest holds the result. */
+private const val FINISH_AT = 0.95
+
 /**
  * Animate a stateful system in a box: step it toward a schedule, draw it, repeat, forever.
  *
@@ -137,6 +140,8 @@ private const val CATCH_UP = 2.0
  * rather than asserted. The result is a [Frames], so a box whose last expression is a call to this
  * function animates when it is **launched** (`animate`/`loop` semantics; a `Frames` that is merely built is
  * never run).
+ *
+ * The schedule completes at 95% of `seconds`, so a recording exactly `seconds` long ends on the result.
  *
  * The returned animation **never ends**. Once `done == totalSteps` it stops stepping and stops
  * re-encoding, holding the final frame — which is the right behaviour for a recording of fixed duration
@@ -226,7 +231,10 @@ fun <S> Box.animateEvolution(
     return loop {
         val elapsed = AnimationClock.nowSeconds() - startedAt
         // In a docs recording elapsed time is frameIndex / fps. In a live box it is monotonic wall time.
-        val allowedByClock = (progress(min(1.0, elapsed / seconds)) * totalSteps).toInt()
+        // The schedule completes at FINISH_AT of `seconds` and holds the result for the rest, so the last
+        // frame of a recording `seconds` long shows the last step: under a geometric ramp the final frame
+        // interval alone is dozens of steps, and the montage reaches the page a frame after it is drawn.
+        val allowedByClock = (progress(min(1.0, elapsed / (seconds * FINISH_AT))) * totalSteps).toInt()
         val advance = min(perPass, max(0, allowedByClock - done))
         repeat(advance) {
             state = step(state)

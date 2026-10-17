@@ -19,21 +19,24 @@ none, so THAT EVENT ALONE is voiced by the synth and mixed on top of the sampled
 A pattern must not go silent just because the library loaded successfully.
 
 ```edn [field-box id="sound_path_fallback" role="properties"]
-{"id" "sound_path_fallback" "index" 0 "name" "3 · The per-event fallback" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · The per-event fallback" "_tombstone" false "frame" #afield/rect [60.0 540.0 420.0 130.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sound_path_fallback_code_.kt" "lines" 12 "characters" 625 "sha256" "3158a004267bb94d3f5bb4cd8bc234767e8e1ab1c2997e703b1fe5222f0db684"}]}
+{"id" "sound_path_fallback" "index" 0 "name" "3 · The per-event fallback" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · The per-event fallback" "_tombstone" false "frame" #afield/rect [60.0 540.0 420.0 130.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sound_path_fallback_code_.kt" "lines" 15 "characters" 624 "sha256" "7d9ead7f64a18362cdfd50e92bcbb273cf14194723fa8039eae4e0ab032659a3"}]}
 ```
 
 ```kotlin [field-property box="sound_path_fallback" name="code" path="sound_path_fallback_code_.kt"]
-// The second, finer fallback. `bd` and `hh` are in every Dirt install; `zzzznotadrum` is in
-// none, so THAT EVENT ALONE is voiced by the synth and mixed on top of the sampled ones.
-// A pattern must not go silent just because the library loaded successfully.
+/*
+The second, finer fallback. `bd` and `hh` are in every Dirt install; `zzzznotadrum` is in
+none, so THAT EVENT ALONE is voiced by the synth and mixed on top of the sampled ones.
+A pattern must not go silent just because the library loaded successfully.
+*/
 val mixed = showDirtAudio(
     pat("bd zzzznotadrum bd hh") with gain(0.9),
-    cycles = 4, cps = 2.0,
+    cycles = 4,
+    cps = 2.0,
     voice = patVoice(wave = PatWave.SQUARE, baseHz = 330.0, decay = 0.05, sustain = 0.3),
 )
 println(mixed.describe())
 println("matched   = ${mixed.matched}")
-println("unmatched = ${mixed.unmatched}")   // <- the tokens that fell back, named
+println("unmatched = ${mixed.unmatched}") // <- the tokens that fell back, named
 displayOpen("main")
 ```
 
@@ -76,13 +79,15 @@ event. `bd` is a 62 Hz sine; `sd` and `hh` are filtered white noise. This is the
 everywhere in Field's docs, and it sounds like bursts of white noise because it is.
 
 ```edn [field-box id="sound_path_stand_in" role="properties"]
-{"id" "sound_path_stand_in" "index" 2 "name" "1 · The stand-in voice" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · The stand-in voice" "_tombstone" false "frame" #afield/rect [60.0 220.0 420.0 130.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sound_path_stand_in_code_.kt" "lines" 6 "characters" 473 "sha256" "ba862e741aea9081238ea9e78fb74258796de2dc0c5d91a47b8b45521fa6d138"}]}
+{"id" "sound_path_stand_in" "index" 2 "name" "1 · The stand-in voice" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · The stand-in voice" "_tombstone" false "frame" #afield/rect [60.0 220.0 420.0 130.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sound_path_stand_in_code_.kt" "lines" 8 "characters" 470 "sha256" "5b0301191529de12194dafc9d271431ffc9ca7b0782245379ae75098147b89c8"}]}
 ```
 
 ```kotlin [field-property box="sound_path_stand_in" name="code" path="sound_path_stand_in_code_.kt"]
-// patVoice: one oscillator, one one-pole lowpass, one exponential-decay envelope, per
-// event. `bd` is a 62 Hz sine; `sd` and `hh` are filtered white noise. This is the default
-// everywhere in Field's docs, and it sounds like bursts of white noise because it is.
+/*
+patVoice: one oscillator, one one-pole lowpass, one exponential-decay envelope, per
+event. `bd` is a 62 Hz sine; `sd` and `hh` are filtered white noise. This is the default
+everywhere in Field's docs, and it sounds like bursts of white noise because it is.
+*/
 val audio = showPatAudio(pat("bd ~ sd ~, hh*8") with gain(0.9), cycles = 4, cps = 2.0)
 println("stand-in: %.2fs, peak %.3f".format(audio.frames / 44100.0, PatSoundDocs.peak(audio.mono)))
 displayOpen("main")
@@ -97,21 +102,23 @@ displayOpen("main")
 From `code`
 
 The identical pattern, mixed from the genuine Tidal sample library — offline, with no
-audio device. Play box 1 and box 2 back to back: that difference is the whole point.
+audio device. Compare the synth and Dirt audio boxes to hear the two render paths.
 
-No library on this machine? You will hear box 1 again, and describe() will say so and
+No library on this machine? The synth fallback plays, and describe() will say so and
 name the override rather than leaving you to guess from the sound.
 
 ```edn [field-box id="sound_path_dirt" role="properties"]
-{"id" "sound_path_dirt" "index" 3 "name" "2 · The real Dirt samples" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · The real Dirt samples" "_tombstone" false "frame" #afield/rect [60.0 380.0 420.0 130.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sound_path_dirt_code_.kt" "lines" 9 "characters" 522 "sha256" "d04555a21b03b7ff59b20e7acd518201e7213dbae52004b9b732b86d598715a6"}]}
+{"id" "sound_path_dirt" "index" 3 "name" "2 · The real Dirt samples" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · The real Dirt samples" "_tombstone" false "frame" #afield/rect [60.0 380.0 420.0 130.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sound_path_dirt_code_.kt" "lines" 11 "characters" 511 "sha256" "1bf9bac2c0c74c8941c52aa6b7a509e18906ccdb03c3feca03ae736afc450d4b"}]}
 ```
 
 ```kotlin [field-property box="sound_path_dirt" name="code" path="sound_path_dirt_code_.kt"]
-// The identical pattern, mixed from the genuine Tidal sample library — offline, with no
-// audio device. Play box 1 and box 2 back to back: that difference is the whole point.
-//
-// No library on this machine? You will hear box 1 again, and describe() will say so and
-// name the override rather than leaving you to guess from the sound.
+/*
+The identical pattern, mixed from the genuine Tidal sample library — offline, with no
+audio device. Compare the synth and Dirt audio boxes to hear the two render paths.
+
+No library on this machine? The synth fallback plays, and describe() will say so and
+name the override rather than leaving you to guess from the sound.
+*/
 val played = showDirtAudio(pat("bd ~ sd ~, hh*8") with gain(0.9), cycles = 4, cps = 2.0)
 println(played.describe())
 println("usedSamples = ${played.usedSamples}")
@@ -131,13 +138,15 @@ anyone who has run Tidal already has it — hence auto-discovery rather than ask
 ~400MB of third-party audio with mixed per-folder licensing, so it is NOT vendored.
 
 ```edn [field-box id="sound_path_where" role="properties"]
-{"id" "sound_path_where" "index" 4 "name" "4 · Where is the library?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Where is the library?" "_tombstone" false "frame" #afield/rect [60.0 700.0 420.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sound_path_where_code_.kt" "lines" 5 "characters" 421 "sha256" "f337453b6a0e637e0f81939f30d6356c04e6146af314f35ae598cd7c731ce275"}]}
+{"id" "sound_path_where" "index" 4 "name" "4 · Where is the library?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Where is the library?" "_tombstone" false "frame" #afield/rect [60.0 700.0 420.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sound_path_where_code_.kt" "lines" 7 "characters" 418 "sha256" "99864b2c034d7ec1324ec5ca71f04aa30ec6f01bcea3f0fc77427f5adb674970"}]}
 ```
 
 ```kotlin [field-property box="sound_path_where" name="code" path="sound_path_where_code_.kt"]
-// The probe order, and what it found here. Dirt-Samples ships as a SuperCollider quark, so
-// anyone who has run Tidal already has it — hence auto-discovery rather than asking you.
-// ~400MB of third-party audio with mixed per-folder licensing, so it is NOT vendored.
+/*
+The probe order, and what it found here. Dirt-Samples ships as a SuperCollider quark, so
+anyone who has run Tidal already has it — hence auto-discovery rather than asking you.
+~400MB of third-party audio with mixed per-folder licensing, so it is NOT vendored.
+*/
 val root = DirtRender.dirtSampleRoot()
 println(if (root != null) "found: $root" else "not found — set ${DirtRender.ENV_VAR} to a copy of Dirt-Samples")
 ```

@@ -1,19 +1,17 @@
-import afield.graphics.vulkan.targets.RenderToTexture
-import afield.document.context.fromContextWithNameOrNull
 import org.lwjgl.vulkan.VK10.*
 
-val source = fromContextWithNameOrNull<RenderToTexture>("paintSource")!!
-prop<RenderToTexture>(paintBroad) = RenderToTexture {
-    width = (source.width/4).coerceAtLeast(1)
-    height = (source.height/4).coerceAtLeast(1)
+val source = paintSource
+propDown<RenderToTexture>(paintBroad) = RenderToTexture {
+    width = (source.width / 4).coerceAtLeast(1)
+    height = (source.height / 4).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
     clearFirst = true
-    clearColor = vec(0,0,0,0)
+    clearColor = vec(0, 0, 0, 0)
     debugName = "paintBroad"
 }
 paintBroad.setDefaultSampler(anisotropyEnable = false)
-val input = fromContextWithNameOrNull<RenderToTexture>("paintQuarter")!!
+val input = paintQuarter
 var module = moduleHere {
     textures("paintQuarter" to input)
     paintBroad.apply()
@@ -29,4 +27,4 @@ paintBroad += "filter" to module
 renderer.renderList.preTargets["paintBroad"] = paintBroad
 
 // x/y stretch the aperture; z changes its rim softness; w is gain.
-mesh.aperture = { vec(1.0,1.0,1.0,1.0) }
+mesh.aperture = { vec(1.0, 1.0, 1.0, 1.0) }

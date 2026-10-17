@@ -1,5 +1,8 @@
 #version 450
-layout(push_constant) uniform push { vec4 size; vec4 look; } pc;
+layout(push_constant) uniform push {
+    vec4 size;
+    vec4 look;
+} pc;
 layout(location=0) in vec2 local;
 layout(location=1) flat in vec2 appearance; // visible energy, aperture radius
 layout(location=0) out vec4 color;

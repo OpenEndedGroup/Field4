@@ -2,6 +2,7 @@
 
 package afield.audio.ai
 
+import afield.document.graph.Box
 import afield.ui.visualization.AudioVisualizer
 import afield.ui.visualization.AudioVisualizerOptions
 import afield.ui.visualization.AudioVisualizerSource
@@ -48,6 +49,9 @@ private fun corpusTime(value: Double): String = String.format(Locale.US, "%.2f",
  * The general audio visualizer's event bus can therefore share hover, zoom, seeking and playheads
  * across recordings with unrelated file timelines. The splice player remains independent: it is a
  * short query-tail to neighbour-head judgement rather than another aligned view.
+ *
+ * @param placeControlIds one control id per neighbour, for a **place** button on its card;
+ *   [showCorpusMicroscope] supplies them.
  */
 fun corpusMicroscopeHtml(
     preview: CorpusPreview,
@@ -56,6 +60,7 @@ fun corpusMicroscopeHtml(
     width: Int = 1100,
     cardWidth: Int = 510,
     syncGroup: String = "corpus-${preview.query.assetId.takeLast(12)}-${preview.query.startSeconds}",
+    placeControlIds: List<String>? = null,
 ): String {
     require(preview.operation == "analysis.find_neighbours") {
         "corpus microscope requires an analysis.find_neighbours preview"
@@ -125,6 +130,7 @@ fun corpusMicroscopeHtml(
           $neighbourPlayer
           <div class="fcm-groups">$groupBars</div>
           $splicePlayer
+          ${placeControlIds?.getOrNull(index)?.let { afield.ui.output.buildButtonHtml(it, "a box that plays this window", hit = "place") }.orEmpty()}
           <footer>
             <span>${segment.scaleSeconds} s scale</span>
             <span>${if (segment.previousSegmentId != null) "← source neighbour" else "source beginning"}</span>
@@ -162,4 +168,24 @@ fun corpusMicroscopeHtml(
       <div class="fcm-grid">$cards</div>
     </section>
     """.trimIndent()
+}
+
+/**
+ * [corpusMicroscopeHtml] in [channel], with a **place** button on every neighbour card: pressing it makes a
+ * box beside this one whose code plays that neighbour's window ([placeCorpusNeighbour]).
+ */
+fun Box.showCorpusMicroscope(
+    preview: CorpusPreview,
+    queryAudio: AssetRepresentation,
+    channel: String = "microscope",
+    width: Int = 1100,
+    cardWidth: Int = 510,
+) {
+    var placed = 0
+    val ids = preview.neighbours.map { neighbour ->
+        "button-${java.util.UUID.randomUUID()}".also { id ->
+            afield.ui.output.registerButtonCallback(id) { down -> if (down) this@showCorpusMicroscope.placeCorpusNeighbour(neighbour, placed++) }
+        }
+    }
+    display(channel, corpusMicroscopeHtml(preview, queryAudio, width = width, cardWidth = cardWidth, placeControlIds = ids))
 }

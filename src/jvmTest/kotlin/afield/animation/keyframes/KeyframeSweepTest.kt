@@ -415,7 +415,7 @@ class KeyframeSweepTest {
         assertTrue(values.all { it is Int }, "preserveNumericKind rounds back to the anchor's Int; got $values")
         assertTrue(values.all { (it as Int) in 3..8 }, "…and stays between the parents; got $values")
 
-        // Turned off, the same lane widens to a Double, which is what an Int uniform would refuse.
+        // Turned off, the lane still comes back an Int: interpolation keeps a lane's numeric kind.
         val wide = root.resolve("wide")
         runBlocking {
             KeyframeSweep(
@@ -427,10 +427,10 @@ class KeyframeSweepTest {
             ).run(Counting().body)
         }
         assertTrue(
-            readSweepArchive(wide).any {
-                scope.loadKey(wide.resolve("renders/${it.id}/key.json"))["layers"] is Double
+            readSweepArchive(wide).all {
+                scope.loadKey(wide.resolve("renders/${it.id}/key.json"))["layers"] is Int
             },
-            "without preserveNumericKind the blend widens to Double"
+            "without preserveNumericKind the blend is still an Int"
         )
     }
 

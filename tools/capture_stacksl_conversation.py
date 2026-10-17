@@ -133,15 +133,15 @@ async def capture(port: int, workspace: Path) -> None:
         await shoot("card", "card.png")
 
         # The window held at one stage, as a click on the stage's tile in the card holds it: the line
-        # that stores the aurora's curtain, which the tile — and so the window — shows by the value
+        # that stores the aurora's curtain over the sky (`>night`, else `>lit` or `>folds`), which the tile — and so the window — shows by the value
         # stored; failing that, the last stage the card shows that stores anything.
         held = await evaluate("""(async () => {
           const cells = [...document.querySelectorAll('.stacksl-study .cell.stage')];
           const stores = cells.filter(c => c.textContent.includes('\u2192'));
-          const cell = cells.find(c => c.textContent.includes('\u2192 curtain')) || stores[stores.length - 1] || cells[Math.floor(cells.length / 2)];
+          const cell = ['night', 'lit', 'folds'].map(n => cells.find(c => c.querySelector('span').textContent.endsWith('\u2192 ' + n))).find(Boolean) || stores[stores.length - 1] || cells[Math.floor(cells.length / 2)];
           cell.click(); await new Promise(r => setTimeout(r, 2500));
           return {stage: cell.querySelector('span').textContent, text: cell.querySelector('span.muted').textContent,
-                  pinned: cell.classList.contains('pinned')}; })()""")
+                  pinned: cell.classList.contains('pinned'), offered: stores.map(c => c.querySelector('span').textContent)}; })()""")
         assert held["pinned"], f"the stage tile did not take the click: {held}"
         await command(f"native-screenshot {ASSETS / 'stage.png'} --uid stacksl_window")
         with Image.open(ASSETS / "stage.png") as shot:
@@ -164,7 +164,7 @@ async def capture(port: int, workspace: Path) -> None:
               content.style.width = '640px'; content.style.height = '900px';
               content.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
               await new Promise(r => setTimeout(r, 800));
-              const reply = [...panel.querySelectorAll('.ai-chat-turn.ai')].find(t => t.textContent.includes('negative space'));
+              const reply = [...panel.querySelectorAll('.ai-chat-turn.ai')].find(t => t.textContent.includes('abrupt lower cutoff'));
               if (!reply) throw new Error('The recorded mound reply is missing');
               reply.scrollIntoView({block: 'start'});
               return {turns: 5, images: images.length};

@@ -1,0 +1,16 @@
+{
+  "id" : "r2-fafd8168ed0f",
+  "parent" : "r1-4d2baeb1ffda",
+  "description" : "Still cobalt-and-white eight-point zellige rosettes with saffron centers and fine grout",
+  "created" : "2026-10-16T09:54:46.632996Z",
+  "sourceHash" : "fafd8168ed0fa1a03a67f58c0e2eed3f8407823937ff271646445a69a1703dae",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : false,
+    "nonFiniteFraction" : 0.0,
+    "words" : 124,
+    "knobs" : 63,
+    "stages" : 14
+  }
+}

@@ -388,6 +388,9 @@ function disclosureInterface(container) {
                 return !hasConcreteCssSize(iframe.style.width) &&
                         !hasConcreteCssSize(iframe.getAttribute("width") || "");
         }
+        // The one fill-frame test: the screenshot preparation in Main.kt asks this rather than
+        // keeping a copy of its own.
+        window.fieldIsFillWidthIframe = isFillWidthIframe;
 
         // The honest natural width for a fill frame is the room the owning box gives the panel:
         // from the panel's own left edge to the box's right edge. Measuring outwards like this is

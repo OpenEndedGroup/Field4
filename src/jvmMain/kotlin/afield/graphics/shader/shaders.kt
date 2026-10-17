@@ -199,7 +199,7 @@ import afield.ui.output.FieldMarkdown
  * `MacroNotExpandedException` if actually called, because `MacroRegistry` is expected to rewrite it
  * into the real `_moduleHere`-family call.
  *
- * Before compilation every stage goes through [preprocess], which resolves `{% include %}` template
+ * Before compilation every stage goes through [preprocess], which resolves `{% property %}` template
  * tags against other boxes' shader properties (with cycle detection and `#line` fixups) and against
  * built-in includes such as the field probe, field stats and quantile warp. Registered include roots —
  * [registerShaderFilesystemIncludeRoot] for a directory, [registerLygiaIncludeRoot] /
@@ -544,12 +544,16 @@ private fun validateStackAutoShaderName(name: String) {
     require(stackAutoShaderNameRegex.matches(name)) {
         "stack.auto name '$name' must be a GLSL identifier."
     }
-    // The name is the slot's GLSL function's; on macOS a name Metal already has breaks the shader's build.
-    require(name !in afield.graphics.shader.MetalShaderErrors.reservedNames) {
-        "stack.auto name '$name' is also metal::$name in Metal's standard library. On macOS the shader runs through MoltenVK, " +
-            "which puts both in scope, and the shader will not build. Choose another name."
-    }
 }
+
+/**
+ * The slot's GLSL function is called by its name, and on macOS the shader goes through Metal, where a
+ * name such as `decay` or `array` is already taken. For those names a `#define` renames the function
+ * and every later call to it before SPIR-V is made, so the user's spelling still works and Metal never
+ * sees the clash.
+ */
+private fun withMetalSafeName(name: String, glsl: String): String =
+    if (name in afield.graphics.shader.MetalShaderErrors.reservedNames) "\n#define $name stackauto_$name\n$glsl" else glsl
 
 private fun validateStackAutoEntrypointName(name: String) {
     require(stackAutoEntrypointNameRegex.matches(name)) {
@@ -870,14 +874,15 @@ private fun publishStackAutoReport(box: Box, report: StackAutoReport?) {
 private fun stackAutoShaderFunctionFor(box: Box, target: StackAutoShaderTarget, kind: ShaderKind? = null): String {
     validateStackAutoShaderName(target.name)
     box.stackAutoShaderSources.putIfAbsent(target.name, "")
-    if (kind != null && kind in STACK_AUTO_LIVE_STAGES && stackAutoLiveNumbersEnabled()) return liveStackAutoShaderFunctionFor(box, target)
+    if (kind != null && kind in STACK_AUTO_LIVE_STAGES && stackAutoLiveNumbersEnabled())
+        return withMetalSafeName(target.name, liveStackAutoShaderFunctionFor(box, target))
     val (glsl, report) = compileStackAutoShaderFunctionReporting(
         target, box.stackAutoShaderSources[target.name] ?: ""
     )
     // Also here, not only on the live-coding setter: a slot bound before its shader existed is compiled
     // for the first time during preprocessing, and that is the compile whose warnings matter most.
     publishStackAutoReport(box, report)
-    return glsl
+    return withMetalSafeName(target.name, glsl)
 }
 
 /** The stages whose modules reflect uniform blocks into live structures, so a slot's numbers can live in one ([StackAutoNumbers]). */
@@ -947,6 +952,33 @@ private fun liveStackAutoShaderFunctionFor(box: Box, target: StackAutoShaderTarg
     StackAutoNumbers.compiled(box, name, source, target.entrypoint, result.analysis.danglingWires)
     publishStackAutoReport(box, stackAutoReportFor(name, result))
     return block + glsl
+}
+
+private val stackAutoSlotLine = Regex("""^[ \t]*\{\{\s*stack\.auto\.[^}]*\}\}[ \t]*$""")
+private val pushConstantBlockEnd = Regex("""layout\s*\(\s*push_constant[^)]*\)\s*uniform\s+\w+\s*\{[^}]*\}[^;]*;""")
+
+/**
+ * [source] with any `{{ stack.auto.x }}` slot line that sits above the push-constant block moved to
+ * just below it. The slot's generated function may read the block (`?pc.knobs`), so it has to come
+ * after it; written above, glslang used to report `'pc' : undeclared identifier` inside generated code.
+ * `#line` keeps the lines after the moved slot numbered as written.
+ */
+internal fun stackAutoSlotsAfterPushConstants(source: String): String {
+    val block = pushConstantBlockEnd.find(source) ?: return source
+    val lines = source.split("\n")
+    val blockStartLine = source.substring(0, block.range.first).count { it == '\n' }
+    val blockEndLine = source.substring(0, block.range.last).count { it == '\n' }
+    val moved = (0 until blockStartLine).filter { stackAutoSlotLine.matches(lines[it]) }
+    if (moved.isEmpty()) return source
+    val out = ArrayList<String>(lines.size + moved.size * 2)
+    lines.forEachIndexed { index, line ->
+        out += if (index in moved) "" else line
+        if (index == blockEndLine) {
+            moved.forEach { out += lines[it].trim() }
+            out += "#line ${index + 2}"
+        }
+    }
+    return out.joinToString("\n")
 }
 
 private fun stackAutoTemplateResolverFor(box: Box, emitted: MutableMap<String, StackAutoShaderTarget>, kind: ShaderKind? = null): Resolver =
@@ -1161,8 +1193,8 @@ private val shaderIncludeRoots = ConcurrentHashMap<String, ShaderIncludeRootReso
  * but an embedded `/` throws, as does an empty name.
  *
  * The trap worth knowing: roots are honoured by the `#include` path (resolved by shaderc while
- * compiling) but **not** by the template engine's `{% include "…" %}` tag, which only knows about
- * built-in includes and `box.property` references. A `{% include "lygia/math/const.glsl" %}` fails
+ * compiling) but **not** by the template engine's `{% property "…" %}` tag, which only knows about
+ * built-in includes and `box.property` references. A `{% property "lygia/math/const.glsl" %}` fails
  * with "no box named …" no matter what you have registered here.
  */
 fun registerShaderIncludeRoot(root: String, resolver: ShaderIncludeRootResolver) {
@@ -2399,7 +2431,7 @@ private fun preprocess(
     }
 
     return runShaderTemplate(
-        sourceWithCopiedPushConstants,
+        stackAutoSlotsAfterPushConstants(sourceWithCopiedPushConstants),
         listOf(stackAutoTemplateResolverFor(inside, stackAutoEmitted, kind)) + getShaderTemplateResolverForBox(inside),
         includeResolver
     )
@@ -2411,7 +2443,7 @@ private fun preprocess(
  * `moduleHere`-family macro.
  *
  * Three expansions happen here, all resolved against [inside] and its ancestors: `{{ slot }}` template
- * expressions (from [Box.shaderTemplate] and the global registry), `{% include "box.property" %}` tags
+ * expressions (from [Box.shaderTemplate] and the global registry), `{% property "box.property" %}` tags
  * (recursively preprocessed, cycle-detected, and fitted with `#line` directives so error line numbers
  * still point at your text), and `{{ stack.auto.name }}` slots compiled from StackSL. Built-in
  * includes — `fieldProbe`, `fieldStats`, `quantileWarp` — resolve here too, and asking for `fieldStats`
@@ -2419,7 +2451,7 @@ private fun preprocess(
  *
  * Two things this overload cannot do, because it has no notion of a previous stage or a
  * registered root: `{% copyPC %}` throws (there is no prior stage to copy a push-constant block from),
- * and `{% include "someRoot/file.glsl" %}` fails as "no box named …" — registered include roots are
+ * and `{% property "someRoot/file.glsl" %}` fails as "no box named …" — registered include roots are
  * only reachable from a real `#include` during compilation, not from the template tag.
  *
  * Failures throw rather than being reported onto the box; the reload path catches them for you, a
@@ -3140,7 +3172,9 @@ private data class GeneratedShaderStructure(
     val members: List<Introspected.Member>,
     val byteSize: Int,
     val signature: String,
-    val bufferReference: Boolean
+    val bufferReference: Boolean,
+    /** The type the box already imports under the block's own name, which [className] steps around. */
+    val wouldHide: String? = null,
 )
 
 private fun shaderMemberSignature(member: Introspected.Member): String =
@@ -3199,10 +3233,15 @@ private fun collectGeneratedShaderStructures(introspections: List<Introspection>
         val signature = shaderMembersSignature(candidate.members)
         if (!seenByNameAndSignature.add(candidate.name to signature)) return@forEach
 
-        val baseClassName = sanitizeKotlinTypeName(candidate.name)
+        // A block named after a type every box imports (`camera` -> `Camera`) would hide it: `Camera()`
+        // would build the block and `camera.at` stop resolving. Such a block's class is `CameraBlock`.
+        val plainName = sanitizeKotlinTypeName(candidate.name)
+        val wouldHide = afield.runtime.kotlin.introProvidedType(plainName)
+        val baseClassName = if (wouldHide != null) "${plainName}Block" else plainName
         var className = baseClassName
         var suffix = 2
-        while (signatureByClassName[className] != null && signatureByClassName[className] != signature) {
+        while ((signatureByClassName[className] != null && signatureByClassName[className] != signature) ||
+            (className != plainName && className != baseClassName && afield.runtime.kotlin.introProvidedType(className) != null)) {
             className = "$baseClassName$suffix"
             suffix += 1
         }
@@ -3214,7 +3253,8 @@ private fun collectGeneratedShaderStructures(introspections: List<Introspection>
             members = candidate.members,
             byteSize = maxOf(candidate.size, candidate.members.membersLayoutSizeInBytes()),
             signature = signature,
-            bufferReference = candidate.bufferReference
+            bufferReference = candidate.bufferReference,
+            wouldHide = wouldHide,
         )
     }
 
@@ -3297,6 +3337,9 @@ private fun buildShaderStructurePreamble(prefix: String, introspections: List<In
         val layoutFunctionName = "${structure.className}LayoutMembers"
         val byteSizeFunctionName = "${structure.className}ByteSize"
         val body = buildString {
+            structure.wouldHide?.let {
+                appendLine("// GLSL block `${structure.glslName}` is ${structure.className} here: ${sanitizeKotlinTypeName(structure.glslName)} would hide $it.")
+            }
             appendLine("class ${structure.className}(")
             appendLine("    members: List<Introspected.Member> = $layoutFunctionName(),")
             appendLine("    baseOffset: Int = 0,")
@@ -3945,6 +3988,12 @@ private fun kotlinBindingTypeName(member: Introspected.Member): String =
     if (member.physicalPointer) "afield.graphics.vulkan.buffers.HasBuffer"
     else member.type.fold({ it.kotlinTypeName }, { "Any" })
 
+// Kotlin has no Int | UInt type. Only scalar uint push suppliers use Any; Structure validates
+// their evaluated values. Uniform/attribute types keep their existing UInt declarations.
+private fun kotlinPushBindingTypeName(member: Introspected.Member): String =
+    if (!member.physicalPointer && member.type.fold({ it == PrimitiveType.uint }, { false })) "Any"
+    else kotlinBindingTypeName(member)
+
 /**
  * The `// …` note the shader source carried at the end of a member's declaration line, formatted to
  * append to the generated preamble declaration for it — `""` when the source said nothing.
@@ -3983,7 +4032,7 @@ internal fun buildComputeInsert(ci: Introspection, box: Box? = null): Insert {
                 "compute-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()$note"
             ) + "\n"
-            val ty = kotlinBindingTypeName(member)
+            val ty = kotlinPushBindingTypeName(member)
             postImport += prefixed(
                 "compute-pc-binding:${member.name}",
                 "var ComputeMesh.${member.name} by ComputeMesh.BoundFromStructure<$ty>()$note"
@@ -4191,7 +4240,7 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
                 "mesh-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()$note"
             ) + "\n"
-            val ty = kotlinBindingTypeName(member)
+            val ty = kotlinPushBindingTypeName(member)
             postImport += prefixed(
                 "mesh-pc-binding:${member.name}",
                 "var MeshMesh.${member.name} by MeshMesh.BoundFromStructure<$ty>()$note"
@@ -4399,7 +4448,7 @@ private fun buildRayTracingInsert(introspections: List<Introspection>): Insert {
                 "ray-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()$note"
             ) + "\n"
-            val ty = kotlinBindingTypeName(member)
+            val ty = kotlinPushBindingTypeName(member)
             postImport += prefixed(
                 "ray-pc-binding:${member.name}",
                 "var RayTracingDispatch.${member.name} by RayTracingDispatch.BoundFromStructure<$ty>()$note"
@@ -4973,7 +5022,7 @@ fun insertForShader(
                 "graphics-pc-structure:${member.name}",
                 "var Structure.${member.name} by Structure.FromStructure<Any>()$note"
             ) + "\n"
-            val ty = kotlinBindingTypeName(member)
+            val ty = kotlinPushBindingTypeName(member)
             postImport += prefixed(
                 "graphics-pc-binding:${member.name}",
                 "var Mesh.${member.name} by Mesh.BoundFromStructure<$ty>()$note"

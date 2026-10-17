@@ -451,4 +451,29 @@ class GlslCoreTest {
         assertEquals(listOf(1f, 2f, 3f, 4f), evalExpr("abs(vec4(-1.0, 2.0, -3.0, 4.0))").toList())
         assertEquals(0f, abs(scalar("length(vec2(3.0, 4.0))") - 5f), 0f)
     }
+
+    /**
+     * GLSL overloads by parameter type, and the emitter relies on it: an external read goes
+     * through `_asVec4`, defined for vec4, vec3, vec2, float, int and uint. Keyed by name alone,
+     * the last definition won and a vec4 argument failed with "cannot store vec4 in a int".
+     */
+    @Test
+    fun `overloaded functions resolve by argument type`() {
+        val source = """
+            #version 450
+            layout(location = 0) out vec4 outColor;
+            vec4 w(vec4 v) { return v; }
+            vec4 w(vec2 v) { return vec4(v, 0.0, 1.0); }
+            vec4 w(float v) { return vec4(v); }
+            vec4 w(int v) { return vec4(float(v) + 10.0); }
+            vec4 probe4() { return w(vec4(1.0, 2.0, 3.0, 4.0)); }
+            vec4 probe2() { return w(vec2(5.0, 6.0)); }
+            vec4 probe1() { return w(7.0); }
+            void main() { outColor = vec4(0.0); }
+        """.trimIndent()
+        val invocation = parseGlslShader(source).newInvocation()
+        assertEquals(listOf(1f, 2f, 3f, 4f), invocation.call("probe4", emptyList()).c.toList())
+        assertEquals(listOf(5f, 6f, 0f, 1f), invocation.call("probe2", emptyList()).c.toList())
+        assertEquals(listOf(7f, 7f, 7f, 7f), invocation.call("probe1", emptyList()).c.toList())
+    }
 }

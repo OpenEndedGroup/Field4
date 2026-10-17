@@ -174,14 +174,19 @@ object D2Layout {
      * The helper's reported d2 version, or null if it is unusable.
      *
      * Probed once and remembered, including the negative answer: a missing binary must not cost a
-     * process spawn on every frame. The protocol number is checked rather than trusted. A stale
+     * process spawn on every frame. The answer is keyed on the binary's modification time, so a
+     * helper built (or rebuilt) under a running Field is picked up on the next draw for the cost of
+     * one `stat`. The protocol number is checked rather than trusted. A stale
      * helper left over from an older checkout would otherwise accept requests and quietly ignore
      * fields it does not know about — the failure this repo already hit with `field-encode`.
      */
     @Volatile
     private var probe: Probe? = null
 
-    private class Probe(val version: String?)
+    private class Probe(val version: String?, val stamp: Long)
+
+    /** The helper's modification time, or 0 when it is absent. */
+    private fun binaryStamp(): Long = File(binaryPath()).let { if (it.isFile) it.lastModified() else 0L }
 
     /**
      * Forgets the availability probe and every memoised layout.
@@ -228,7 +233,13 @@ object D2Layout {
     }
 
     val version: String?
-        get() = (probe ?: Probe(computeVersion()).also { probe = it }).version
+        get() {
+            val stamp = binaryStamp()
+            val known = probe
+            if (known != null && known.stamp == stamp) return known.version
+            if (known != null) clearCache()
+            return Probe(computeVersion(), stamp).also { probe = it }.version
+        }
 
     private fun computeVersion(): String? {
         val bin = File(binaryPath())

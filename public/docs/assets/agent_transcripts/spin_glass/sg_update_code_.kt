@@ -1,12 +1,12 @@
-import afield.graphics.render.computeMemoryBarrier
-import afield.graphics.render.computeTask
-
-val L = 128
-val N = L * L
+// Rebuild update, measure and view after changing the lattice size or bond model.
+// Periodic checkerboard neighbours need a positive, even side length.
+val latticeSide = 128
+require(latticeSide > 0 && latticeSide % 2 == 0) { "L must be positive and even" }
+val N = latticeSide * latticeSide
 val groups = (N + 63) / 64
 
-// simulation parameters, published so the measure + view boxes can read them
-prop<Int>(sgL) = L
+// Published controls. To set temperature live, first run sgAnneal = false.
+prop<Int>(sgL) = latticeSide
 prop<Double>(sgTemperature) = 3.0
 prop<Double>(sgField) = 0.0
 prop<Int>(sgMode) = 0 // 0 = Metropolis, 1 = heat-bath
@@ -18,12 +18,12 @@ prop<Boolean>(sgAnneal) = true
 val Thi = 3.0
 val Tlo = 0.04
 val period = 6000
-val model = sgModel
+val model = sgModel // Sampled while building bonds; changing it requires rebuilding.
 
 // in-place lattice state (single, persistent copy — not per-frame)
-var spins = defaultBuffer { size = N.floats }.buffer
-var jRight = defaultBuffer { size = N.floats }.buffer
-var jDown = defaultBuffer { size = N.floats }.buffer
+val spinData = defaultBuffer { size = N.floats }.buffer
+val rightBonds = defaultBuffer { size = N.floats }.buffer
+val downBonds = defaultBuffer { size = N.floats }.buffer
 
 val rng = java.util.Random(20260720L)
 /*
@@ -31,17 +31,17 @@ random initial spins, then bonds: Gaussian when sgModel == 1, else +/-1.
 The bond draw is written out twice because a local `fun` that reads a prop
 fails K2 codegen in a box script.
 */
-spins.write { for (i in 0 until N) put(if (rng.nextBoolean()) 1f else -1f) }
-jRight.write {
+spinData.write { for (i in 0 until N) put(if (rng.nextBoolean()) 1f else -1f) }
+rightBonds.write {
     for (i in 0 until N) put(if (model == 1) rng.nextGaussian().toFloat() else if (rng.nextBoolean()) 1f else -1f)
 }
-jDown.write {
+downBonds.write {
     for (i in 0 until N) put(if (model == 1) rng.nextGaussian().toFloat() else if (rng.nextBoolean()) 1f else -1f)
 }
 
-prop<FrameBufferGroup>(sgSpins) = spins
-prop<FrameBufferGroup>(sgJRight) = jRight
-prop<FrameBufferGroup>(sgJDown) = jDown
+prop<FrameBufferGroup>(sgSpins) = spinData
+prop<FrameBufferGroup>(sgJRight) = rightBonds
+prop<FrameBufferGroup>(sgJDown) = downBonds
 
 var sweep = 0
 var seed = 1
@@ -68,29 +68,29 @@ module +=
             }
         }
 module += "even" to even
-module += "barrierE" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
+module += "barrierE" to computeBarrier()
 module += "odd" to odd
-module += "barrierO" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
+// Publish the completed sweep to the measure pass and the fragment shader.
+module += "barrierO" to computeBarrier(graphics = true)
 renderer += "spinGlassUpdate" to module
 
 // both half-sweeps share bindings; they differ only in checkerboard colour and seed
-for (m in listOf(even, odd)) {
-    m.x = groups
-    m.y = 1
-    m.z = 1
-    m.spins = { spins }
-    m.jRight = { jRight }
-    m.jDown = { jDown }
-    m.L = { L.toUInt() } // uint push members need UInt-returning lambdas
-    m.mode = { sgMode.toUInt() }
-    m.field = { sgField.toFloat() }
-    m.temperature = { T.toFloat() }
+bindPush(even, odd) {
+    x = groups
+    y = 1
+    z = 1
+    spins = { spinData }
+    jRight = { rightBonds }
+    jDown = { downBonds }
+    L = { latticeSide }
+    mode = { sgMode }
+    field = { sgField.toFloat() }
+    temperature = { T.toFloat() }
 }
-even.color = { 0u }
-odd.color = { 1u }
+even.color = { 0 }
+odd.color = { 1 }
 even.seed = { seed.toUInt() }
-odd.seed = {
-    (seed + 100003).toUInt()
-} // offset so the two passes draw different randoms
+// Offset the seed so the two passes draw different randoms.
+odd.seed = { (seed + 100003).toUInt() }
 
-println("update launched L=" + L + " N=" + N + " groups=" + groups)
+println("update launched L=" + latticeSide + " N=" + N + " groups=" + groups)

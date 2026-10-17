@@ -175,7 +175,7 @@ class SavingContext {
         val payload = linkedMapOf<String, Any?>(
             "version" to 2,
             "boxes" to payloadBoxes,
-            "persistentProperties" to Box.ioPersistentProperties.toList()
+            "persistentProperties" to Box.persistentPropertiesFor(directory).toList()
         )
         return Edn.write(payload, ednCustom)
     }
@@ -184,7 +184,7 @@ class SavingContext {
         val transfers = toTransferInline(boxes, directory)
         val snapshot = SaveSnapshot(
             transfers = transfers,
-            persistentProperties = Box.ioPersistentProperties.toList(),
+            persistentProperties = Box.persistentPropertiesFor(directory).toList(),
             fileWatchManager = null,
             propertyCount = transfers.sumOf { it.properties.size },
             sidecarCount = transfers.sumOf { transfer -> transfer.properties.values.count { it is FileInline } },
@@ -237,7 +237,7 @@ class SavingContext {
 
     /**
      * Serializes each box's persistent properties for save. Only properties whose name matches
-     * one of [Box.ioPersistentProperties] (regex-matched) are written; others are dropped.
+     * one of [Box.persistentPropertiesFor] `directory` (regex-matched) are written; others are dropped.
      * [Box.ioNeverPersistedProperties] then vetoes what survived, which is how Monaco view state
      * stays off disk despite `mergePersistentProperties` re-adding `".*_editorState"` from every
      * older `metadata.edn` this process loads.
@@ -249,7 +249,8 @@ class SavingContext {
      * SessionInformation.root (Boxes.kt) and `setPropertyRaw` restores the property onto it.
      */
     fun toTransfer(boxes: Set<Box>, directory: String): List<BoxTransferEdn> {
-        val patterns = Box.ioPersistentProperties.map { it.toRegex() }
+        val persistent = Box.persistentPropertiesFor(directory)
+        val patterns = persistent.map { it.toRegex() }
         return boxes.map { box ->
             val properties = LinkedHashMap<String, Any?>()
             box.properties.forEach { (name, rawValue) ->
@@ -275,7 +276,8 @@ class SavingContext {
     }
 
     private fun toTransferInline(boxes: Set<Box>, directory: String): List<BoxTransferEdn> {
-        val patterns = Box.ioPersistentProperties.map { it.toRegex() }
+        val persistent = Box.persistentPropertiesFor(directory)
+        val patterns = persistent.map { it.toRegex() }
         return boxes.map { box ->
             val properties = LinkedHashMap<String, Any?>()
             box.properties.forEach { (name, rawValue) ->
@@ -445,7 +447,8 @@ class SavingContext {
      * This is a quick operation that just reads properties without any I/O.
      */
     private fun snapshotBoxes(boxes: Set<Box>, directory: String): SaveSnapshot {
-        val patterns = Box.ioPersistentProperties.map { it.toRegex() }
+        val persistent = Box.persistentPropertiesFor(directory)
+        val patterns = persistent.map { it.toRegex() }
         var propertyCount = 0
         var sidecarCount = 0
         var sidecarChars = 0L
@@ -484,7 +487,7 @@ class SavingContext {
 
         return SaveSnapshot(
             transfers = boxSnapshots,
-            persistentProperties = Box.ioPersistentProperties.toList(),
+            persistentProperties = persistent.toList(),
             fileWatchManager = watchManager,
             propertyCount = propertyCount,
             sidecarCount = sidecarCount,
@@ -601,7 +604,8 @@ class SavingContext {
                     snapshot.fileWatchManager?.markMetadataWrite(
                         File(metadataPath),
                         snapshot.transfers.map { it.id },
-                        written = metadataChanged
+                        written = metadataChanged,
+                        text = ednText
                     )
                     altered = altered || metadataChanged
                     if (metadataChanged) alteredFiles.add(metadataPath)
@@ -1179,13 +1183,13 @@ class SavingContext {
                 val savedProps = mapLookup(rootValue, "persistentProperties")
                 when (savedProps) {
                     is Collection<*> -> savedProps.mapNotNull { it?.toString() }
-                        .ifEmpty { Box.ioPersistentProperties.toList() }
+                        .ifEmpty { Box.persistentPropertiesFor(directory).toList() }
 
-                    else -> Box.ioPersistentProperties.toList()
+                    else -> Box.persistentPropertiesFor(directory).toList()
                 }
             }
 
-            else -> Box.ioPersistentProperties.toList()
+            else -> Box.persistentPropertiesFor(directory).toList()
         }
 
         val transfers = readEdnTransfers(directory)
@@ -1306,17 +1310,16 @@ class SavingContext {
     }
 
     /**
-     * Merges persistent properties from a document with the current global set.
-     * This ensures that all properties that were previously saved in a document
-     * continue to be saved, even if they're not in the current global set.
+     * Records a document's `:persistentProperties` header against [directory], so every property that
+     * document saved before keeps being saved, even if nothing has declared it in this process yet.
      *
-     * Note: This function intentionally modifies global state (Box.ioPersistentProperties).
-     * This is by design to ensure all loaded documents' properties are preserved across saves.
-     * Documents are loaded sequentially in this application, so concurrent access is not a concern.
+     * Recorded per document ([Box.recordDocumentPersistentProperties]), not merged into the global
+     * [Box.ioPersistentProperties]: one document's header must not change what another saves. A read
+     * with no [directory] (a template scan, a history version) records nothing.
      *
      * @param rootValue The root EDN value from metadata.edn (should be a Map)
      */
-    private fun mergePersistentProperties(rootValue: Map<*, *>) {
+    private fun mergePersistentProperties(rootValue: Map<*, *>, directory: String?) {
         val savedProps = mapLookup(rootValue, "persistentProperties")
         if (savedProps != null) {
             val propsList = when (savedProps) {
@@ -1324,9 +1327,7 @@ class SavingContext {
                 is Set<*> -> savedProps.mapNotNull { it?.toString() }
                 else -> emptyList()
             }
-            // Merge the saved properties with the current global set
-            // mapNotNull ensures only valid string values are added
-            Box.ioPersistentProperties.addAll(propsList)
+            if (directory != null) Box.recordDocumentPersistentProperties(directory, propsList)
         }
     }
 
@@ -1336,8 +1337,8 @@ class SavingContext {
         afield.document.workspace.Kits.declareRecorded(File(directory))
         val boxesValue = when (rootValue) {
             is Map<*, *> -> {
-                // Merge persistent properties from the document with the current global set
-                mergePersistentProperties(rootValue)
+                // Record the document's own persistent-property names against it
+                mergePersistentProperties(rootValue, directory)
                 mapLookup(rootValue, "boxes")
             }
 
@@ -1442,12 +1443,13 @@ class SavingContext {
         return InlineMetadata(refreshedPaths, Edn.write(refresh(decoded), ednCustom))
     }
 
-    fun readEdnTransfersFromString(ednText: String): List<BoxTransferEdn> {
+    /** Reads EDN text; [recordInto] is the document its header's persistent-property names belong to. */
+    fun readEdnTransfersFromString(ednText: String, recordInto: String? = null): List<BoxTransferEdn> {
         val rootValue = Edn.read(ednText, ednCustom)
         val boxesValue = when (rootValue) {
             is Map<*, *> -> {
-                // Merge persistent properties from the document with the current global set
-                mergePersistentProperties(rootValue)
+                // Record the header's persistent-property names against the receiving document
+                mergePersistentProperties(rootValue, recordInto)
                 mapLookup(rootValue, "boxes")
             }
 
@@ -1647,7 +1649,7 @@ class SavingContext {
         preferInlineFiles: Boolean = false,
         initIfCreated: Boolean = true
     ): Set<Box> {
-        val transfers = readEdnTransfersFromString(ednText)
+        val transfers = readEdnTransfersFromString(ednText, recordInto = directory)
         return instantiateTransfers(
             transfers,
             directory,

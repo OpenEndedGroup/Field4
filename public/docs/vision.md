@@ -450,7 +450,7 @@ per-eye separation, controller input, and every latency span on this page.
 The pose path runs across two machines, so the table lists the Swift files on the headset beside
 the Kotlin on the Mac.
 
-??? aside "How this table is kept current"
+??? aside "Agents: how this table is kept current"
     The table is cross-checked against source on every `docsGates` run, so a rename breaks the build.
     How the list is derived, and the two things that sit outside every census it draws on, are in
     `dev_docs/vision_frontend.md`.

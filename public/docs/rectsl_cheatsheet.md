@@ -16,7 +16,8 @@ A RectSL string starts with `#rectsl` when embedded in Kotlin:
 ```diffstatic {data-lang=kotlin}
 import afield.lang.rectsl.*
 
-val source = """
+val source =
+    """
 #rectsl
 ->wall 4 4 meters
 ->duration 4
@@ -1138,10 +1139,10 @@ import afield.lang.rectsl.*
 val program = RectAnimationOracle.compile(source).program
 val sdf = RectSLGlsl.emitSdf(program, functionName = "scene")
 
-sdf.glsl                 // float scene(vec2 p, float t) { … }, plus its helpers
-sdf.rectCount            // how many rects the field unions
-sdf.trackFunctionCount   // distinct animation curves it had to emit
-sdf.notes                // fidelity caveats; empty means nothing was approximated
+sdf.glsl // float scene(vec2 p, float t) { … }, plus its helpers
+sdf.rectCount // how many rects the field unions
+sdf.trackFunctionCount // distinct animation curves it had to emit
+sdf.notes // fidelity caveats; empty means nothing was approximated
 ```
 
 ### Why so little of the language has to come along
@@ -1181,7 +1182,7 @@ float rectslTrack1(float t) {
         float u2 = u * u;
         float u3 = u2 * u;
         return (2.0 * u3 - 3.0 * u2 + 1.0) * 0.0 + (u3 - 2.0 * u2 + u) * 0.55
-             + (-2.0 * u3 + 3.0 * u2) * 1.1 + (u3 - u2) * 0.0;
+        + (-2.0 * u3 + 3.0 * u2) * 1.1 + (u3 - u2) * 0.0;
     }
     // ... the 2..4 span, same shape, different constants
     return 0.0;
@@ -1228,10 +1229,13 @@ All of these are one line over the same float:
 ```diffstatic {data-lang=glsl}
 float d = scene(p, t);
 
-float fill    = 1.0 - smoothstep(0.0, 0.01, d);     // antialiased at any zoom
+float fill = 1.0 - smoothstep(0.0, 0.01, d);
+// fixed 0.01 scene-unit feather
 float outline = 1.0 - smoothstep(0.0, 0.01, abs(d) - 0.03);
-float glow    = exp(-8.0 * max(d, 0.0));            // falls off outside the shape
-vec2  normal  = normalize(vec2(dFdx(d), dFdy(d)));  // for beveling or lighting
+float glow = exp(-8.0 * max(d, 0.0));
+// falls off outside the shape
+vec2 normal = normalize(vec2(dFdx(d), dFdy(d)));
+// for beveling or lighting
 ```
 
 Because `t` is an argument rather than a frame index, and every track is
@@ -1309,7 +1313,7 @@ The shape is exact and the arithmetic is not quite, in a way you can plan around
 On a GPU the sampler works in `double` and the shader in `float`, so expect the
 two to part company at about `1e-6` of a wall unit.
 
-??? aside "What the build checks"
+??? aside "Agents: what the build checks"
     The emitted geometry is checked against the CPU sampler to `1e-9` across the
     whole gallery, every gallery scene is compiled through shaderc as part of the
     build, and the GPU agreement guard is `1e-5`. `dev_docs/RECTSL_SDF_AGREEMENT.md`

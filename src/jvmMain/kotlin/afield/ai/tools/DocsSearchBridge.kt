@@ -114,10 +114,17 @@ class DocsSearchBridge(
             .getOrNull()
 
         if (hits.isEmpty() && glsl == null) {
-            warn("no local retrieval context for query; answering ungrounded")
-        } else {
-            info("retrieved ${hits.size} hit(s)${if (glsl != null) " + glsl includes" else ""}")
+            // An answer with nothing behind it reads exactly like one with sources. Refuse instead.
+            warn("no local retrieval context for query; refusing to answer ungrounded")
+            val why = if (retrieval == null) "the local search index could not be queried"
+                else "nothing in Field's indexed documentation, source or workspace matched"
+            return SearchResult(
+                success = false,
+                text = "No answer: $why. Try other words, or name a function, class or page.",
+                newState = state,
+            )
         }
+        info("retrieved ${hits.size} hit(s)${if (glsl != null) " + glsl includes" else ""}")
 
         val context = buildContext(hits, glsl?.code)
         val prompt = buildString {
@@ -125,9 +132,6 @@ class DocsSearchBridge(
                 appendLine("Retrieved Field4 context for the question below. Ground your answer in it and cite file paths.")
                 appendLine()
                 appendLine(context)
-                appendLine()
-            } else {
-                appendLine("No local retrieval context was found for this question. Answer from general Field4 knowledge and say clearly what you could not verify.")
                 appendLine()
             }
             append("Question: ")

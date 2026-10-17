@@ -17,7 +17,7 @@ The document itself: moving around it, finding things in it, and getting back wh
 
 - [Moving Around the Canvas](moving_around_the_canvas.md) is the one to read first: panning and zooming, `Cmd Cmd`-and-hold to see every box an arrow key can reach, and the function keys that jump to saved views.
 - [File Management](files_and_paths.md) is short and saves a lot of time: `"data.csv".file` resolves inside the document folder first and the workspace project second, so a path keeps working after the document is moved or handed to somebody else.
-- [Your History with Field](history_overview.md) says which of Field's kinds of history holds what, and which tool opens each. [Document History](document_history.md) is whole-document recovery from saved versions; the [History Lens](history_lens.md) shows what *this line* said a few saves ago, without leaving the editor.
+- [Your History with Field](history_overview.md) says which of Field's kinds of history holds what, and which tool opens each. [Document History](document_history.md) is whole-document recovery from saved versions; [Code History](history_lens.md) shows what *this line* said a few saves ago, without leaving the editor.
 - [Snapping](snapping.md) is a toggle rather than a mode, for a moment of layout cleanup.
 - [The Semantic Index](semantic_index.md) is the second of the two searches that `/welcome` runs over your workspace as you type.
 - [Profiling](profiling_timeline.md) is the page to open when a piece stops keeping up. It covers the panel that records what each box cost, what its numbers mean, and [simulation time](profiling_timeline.md#simulation-time), which runs coroutine code against a clock you advance yourself instead of the wall clock.
@@ -90,4 +90,4 @@ Neither section is a worked example. The reference is for looking something up; 
 
 The pictures and videos on these pages come from running each page's code in Field when the docs are built, so an example pasted into a box gives the same result.
 
-[Building the Docs & Running the Tests](building_and_testing.md) has the build command and its capture modes. Read what it says about ports before you start a build: the runner shuts down whatever Field is answering on its port, including the one you are working in. [Code Diff Player](diff-player.md) lists the attributes a single capture fence can carry, and [Automating Field](automating_field.md) covers the transcript format the graphics captures replay.
+[Building the Docs & Running the Tests](building_and_testing.md) has the build command and its capture modes. [Code Diff Player](diff-player.md) lists the attributes a single capture fence can carry, and [Automating Field](automating_field.md) covers the transcript format the graphics captures replay.

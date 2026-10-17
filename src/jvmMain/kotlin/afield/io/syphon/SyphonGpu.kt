@@ -31,7 +31,10 @@ class SyphonGpuPublisher internal constructor(
     val server: SyphonServer,
     val source: RenderToTexture,
     private val renderer: Renderer,
-) : Target, AutoCloseable {
+) : Target, afield.graphics.vulkan.targets.RendersAfter, AutoCloseable {
+    /** Renders after [source] whatever order the two were added in. */
+    override val rendersAfter: Target get() = source
+
     private class Slot(val ref: Long, val host: IOSurfaceHostBuffer) {
         val busy = AtomicBoolean(false)
     }

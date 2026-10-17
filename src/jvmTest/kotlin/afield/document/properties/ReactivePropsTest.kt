@@ -21,6 +21,7 @@ import afield.document.graph.needsResync
 import afield.runtime.lifecycle.ReactiveRuns
 import afield.runtime.lifecycle.Runloop
 import afield.runtime.lifecycle.map
+import afield.runtime.macros.MacroRegistry
 import afield.document.properties.MissingInheritedPropertyException
 import afield.document.properties.Reactive
 import afield.document.properties.ReactiveInheritance
@@ -30,6 +31,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 private var Box.reactiveTestDown: Int? by ReactiveInheritance<Int?>(Reactive.DOWN)
@@ -205,6 +207,103 @@ class ReactivePropsTest {
         assertTrue(ReactiveRuns.recentEvents().none { it.contains("changed") }, "unchanged value noted")
         ReactiveRuns.noteRawWrite(a, "gain", 0.5, 0.8)
         assertTrue(ReactiveRuns.recentEvents().any { it.contains("changed a.gain") }, ReactiveRuns.recentEvents().joinToString("\n"))
+    }
+
+    @Test
+    fun setPropertyRawOnADeclaredDownPropertyIsAChange() {
+        val s = session("raw-set")
+        val a = boxIn(s, "a", "propDown<Double>(gain)")
+        a.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        a.setPropertyRaw("gain", 0.5)
+        ReactiveRuns.clearEvents()
+        a.setPropertyRaw("gain", 0.5)
+        assertTrue(ReactiveRuns.recentEvents().none { it.contains("changed") }, "an unchanged value is not a change")
+        a.setPropertyRaw("gain", 0.9)
+        assertEquals(1, ReactiveRuns.recentEvents().count { it.contains("changed a.gain") }, ReactiveRuns.recentEvents().joinToString("\n"))
+    }
+
+    @Test
+    fun aRootPropDownSlotRerunsItsReadersWhileItsDeclarerSaysSo() {
+        val s = session("root-down")
+        val w = boxIn(s, "w", "rootPropDown<Double>(level)\nroot.level = 1.0")
+        w.macro_reactive_root_prop(listOf("<Double>", "(level)"), Reactive.DOWN, "rootPropDown")
+        assertTrue(ReactiveRuns.isDeclaredDown(s.root, "level"))
+        ReactiveRuns.clearEvents()
+        s.root.setPropertyRaw("level", 2.0)
+        assertTrue(ReactiveRuns.recentEvents().any { it.contains("changed") && it.contains("level") }, ReactiveRuns.recentEvents().joinToString("\n"))
+        w.setPropertyRaw("code", "rootProp<Double>(level)")
+        assertFalse(ReactiveRuns.isDeclaredDown(s.root, "level"), "editing the declaration out forgets it")
+    }
+
+    @Test
+    fun aRootPropUpSlotIsSuppliedByItsDeclarer() {
+        val s = session("root-up")
+        val supplier = boxIn(s, "supplier", "rootPropUp<Double>(level)\nroot.level = 3.0")
+        val reader = boxIn(s, "reader", "println(root.level)")
+        assertEquals(listOf(supplier), ReactiveRuns.suppliersFor(s.root, reader, "level"))
+    }
+
+    @Test
+    fun aChildCompilesAgainstAParentsPropUpBeforeTheParentHasRun() {
+        val s = session("gather")
+        val parent = boxIn(s, "scale", "propUp<Double>(scale)\nscale = 2.0")
+        val child = boxIn(s, "plot", "println(scale)")
+        parent.connect(child)
+        val gathered = afield.runtime.macros.gatherPreambleUpwards(child)
+        assertTrue(gathered.lines().any { "var Box.scale by ReactiveInheritance<Double>(Reactive.UP)" in it && "from:scale" in it }, gathered)
+        // The child's own declaration still wins, and is not duplicated by the parent's.
+        child.setPropertyRaw("preamble", "var Box.scale by ReactiveInheritance<Double>(Reactive.UP) /**/")
+        val again = afield.runtime.macros.gatherPreambleUpwards(child)
+        assertEquals(1, again.lines().count { "var Box.scale" in it }, again)
+    }
+
+    @Test
+    fun aDownDeclarationEditedOutOfTheCodeIsForgotten() {
+        val s = session("edited")
+        val a = boxIn(s, "a", "propDown<Double>(gain)\ngain = 1.0")
+        a.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        assertTrue(ReactiveRuns.isDeclaredDown(a, "gain"))
+        a.setPropertyRaw("code", "prop<Double>(gain)\ngain = 1.0")
+        ReactiveRuns.clearEvents()
+        ReactiveRuns.noteRawWrite(a, "gain", 0.5, 0.8)
+        assertTrue(ReactiveRuns.recentEvents().none { it.contains("changed") }, ReactiveRuns.recentEvents().joinToString("\n"))
+        assertFalse(ReactiveRuns.isDeclaredDown(a, "gain"))
+    }
+
+    /**
+     * Kotlin `propDown` always carries its type: without one the macro refuses to expand, so
+     * the code check in [ReactiveRuns.isDeclaredDown] only needs the `<T>(name...)` form, with
+     * any spacing and an optional default.
+     */
+    @Test
+    fun aDownDeclarationNeedsItsTypeAndToleratesSpacingAndDefaults() {
+        val s = session("forms")
+        val a = boxIn(s, "a", "propDown(gain)")
+        assertFailsWith<MacroRegistry.MacroExpansionProblem> {
+            a.macro_reactive_prop(listOf("(gain)"), Reactive.DOWN, "propDown")
+        }
+        assertFalse(ReactiveRuns.isDeclaredDown(a, "gain"))
+        val b = boxIn(s, "b", "propDown< Map<String, Double> >( gain , mapOf() )")
+        b.macro_reactive_prop(listOf("<Map<String, Double>>", "(gain, mapOf())"), Reactive.DOWN, "propDown")
+        assertTrue(ReactiveRuns.isDeclaredDown(b, "gain"))
+        b.setPropertyRaw("code", "propDown<Double>(gainTrim)")
+        assertFalse(ReactiveRuns.isDeclaredDown(b, "gain"), "a longer name is not the same declaration")
+    }
+
+    @Test
+    fun aDeletedBoxsDownDeclarationIsForgotten() {
+        val s = session("deleted")
+        val a = boxIn(s, "a", "propUpDown<Double>(gain)")
+        a.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.UP_DOWN, "propUpDown")
+        assertTrue(ReactiveRuns.isDeclaredDown(a, "gain"))
+        a.setPropertyRaw("_tombstone", true)
+        ReactiveRuns.clearEvents()
+        ReactiveRuns.noteRawWrite(a, "gain", 0.5, 0.8)
+        assertTrue(ReactiveRuns.recentEvents().none { it.contains("changed") })
+        val b = boxIn(s, "b", "propDown<Double>(gain)")
+        b.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        ReactiveRuns.forgetDown(b)
+        assertFalse(ReactiveRuns.isDeclaredDown(b, "gain"))
     }
 
     @Test

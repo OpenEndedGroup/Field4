@@ -236,7 +236,17 @@ private fun createDelegate(
     spec: ExternalBrowserSurfaceSpec,
     cpuBitmapFallback: Boolean,
     releaseListener: BrowserFrameReleaseListener,
-): ExternalBrowserSurface =
-    if (cpuBitmapFallback) BitmapBrowserSurface(renderer, spec, releaseListener)
-    else ExternalBrowserSurfaces.create(renderer, spec, releaseListener)
+): ExternalBrowserSurface {
+    if (cpuBitmapFallback) return BitmapBrowserSurface(renderer, spec, releaseListener)
+    // Only the macOS handle transfer has been validated live; the Windows (D3D11 NT handle) and Linux
+    // (dma-buf) receivers compile but their Electron bridges are unfinished, so they are refused
+    // here, with the route that does work, rather than left to show a blank texture.
+    if (OS != OSType.MACOS) {
+        throw UnsupportedOperationException(
+            "FieldUiBrowserTexture's GPU handle transfer is only working on macOS so far; on $OS pass " +
+                "cpuBitmapFallback = true, which reads frames back and uploads them",
+        )
+    }
+    return ExternalBrowserSurfaces.create(renderer, spec, releaseListener)
+}
 

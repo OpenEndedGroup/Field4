@@ -478,9 +478,8 @@ Two optional interfaces, both worth implementing:
 - `CarriesToolImages`: pictures. Both agent loops send them as real images:
   OpenAI and OpenRouter as a message following the tool output, Anthropic as
   image blocks inside the tool result itself. This is how a tool lets a model
-  *look* at what it just did. The exception is a tool called over the MCP
-  backdoor: that reply is JSON, so it carries the numbers and not the picture. Put anything the model must not miss in the
-  result as well as in the image.
+  *look* at what it just did. A tool called over the MCP bridge returns them too, as MCP image
+  content beside the JSON result (up to eight per call).
 
 ```diffstatic {data-lang=kotlin}
 data class RoomReport(
@@ -605,8 +604,9 @@ search roots: it canonicalises the requested path and then walks up the parent
 chain, which refuses a `..` that escapes, a symlink that points out, and a
 sibling directory whose name merely starts with a root's name.
 
-How the two bridges (the chat and MCP) use your registration is described in
-`dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`.
+??? aside "Agents: how the chat and MCP bridges use a registration"
+    How the two bridges (the chat and MCP) use your registration is described in
+    `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`.
 
 A tool set that edits something which draws — a program, a scene, numbers in a
 property — does not have to be written from scratch. [Studies](studies.md) shows a
@@ -672,8 +672,8 @@ setup finished. A Kotlin macro whose later steps depend on a launch stops when s
 fails, and keeps the changes made so far so you can inspect them; undoing them is up
 to you.
 
-Macros in other languages run as before, and their receipts say
-`setupVerified: false` with a message that completion was not checked.
+Macros in other languages wait (up to ten seconds) for each engine's execution verdict, so their
+receipts report completion too, and a failed execution is an error.
 The external backdoor's awaited `run`, `launch` and `continue` commands get a receipt
 from every engine, not only Kotlin. A box that printed an error comes back failed even
 when its engine reported success.

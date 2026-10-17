@@ -60,6 +60,8 @@ const DEFAULT_TYPES = {
 };
 
 const EPSILON = 1e-6;
+/** [time] as an exact key, so the same moment in two lanes matches whatever its rounding. */
+const timeKey = (time) => Math.round(time / EPSILON);
 
 const STYLE_BLOCK = `
 .kf-editor {
@@ -1585,15 +1587,20 @@ export class KeyframeEditor {
                 return this.getHandleModeForType(type) ? "bezier" : "linear";
         }
 
-        /** Plans simplifying [scope]; see planSimplify. */
-        planSimplify(scope) {
+        /**
+         * Plans simplifying [scope]; see planSimplify. Keys at [pins] (times) stay, reshaped: that is how
+         * linked lanes end up keeping the same key times.
+         */
+        planSimplify(scope, pins = null) {
                 const { ordered, first, last, chosen } = scope;
+                const pinned = new Set((pins || []).map(timeKey));
                 const run = ordered.slice(first, last + 1).map((kf) => ({ ...kf, handles: this.createHandlePayload(kf.handles) }));
                 const special = (kf) => kf.locked || ["hold", "custom"].includes(this._kindOf(kf.type));
                 // Locked, hold and custom keys stay as they are, and so do keys inside the run that were
                 // not chosen; the key a hold or a custom segment arrives at stays too, reshaped.
                 const asIs = run.map((kf, i) => special(kf) || (i > 0 && i < run.length - 1 && !chosen.has(kf.id)));
-                const keep = run.map((kf, i) => asIs[i] || (i > 0 && ["hold", "custom"].includes(this._kindOf(run[i - 1].type))));
+                const keep = run.map((kf, i) => asIs[i] || pinned.has(timeKey(kf.time))
+                        || (i > 0 && ["hold", "custom"].includes(this._kindOf(run[i - 1].type))));
                 return planSimplify(run, {
                         keep,
                         asIs,
@@ -1604,6 +1611,56 @@ export class KeyframeEditor {
                         after: last < ordered.length - 1,
                         floor: SIMPLIFY_FINEST,
                 });
+        }
+
+        /** [scope]'s plan for [pins], made once per pin set. */
+        _simplifyPlan(scope, pins) {
+                scope.plans ??= new Map();
+                const key = (pins || []).map(timeKey).sort((a, b) => a - b).join(",");
+                if (!scope.plans.has(key)) scope.plans.set(key, this.planSimplify(scope, pins));
+                return scope.plans.get(key);
+        }
+
+        /** The keys of [scope] simplified by slider [amount] (0..1] with [pins] kept. */
+        _simplifiedAt(scope, amount, pins) {
+                const plan = this._simplifyPlan(scope, pins);
+                return { plan, keys: plan.at(plan.valueRange * SIMPLIFY_FINEST * Math.pow(400, amount)).keys };
+        }
+
+        // Linked lanes simplify together: a lane holding keys at every time of the moving slider's run
+        // joins in, and the host (keyframe_editor.html) iterates pins, the union of the times each lane
+        // keeps, until no lane keeps more. Then every lane keeps exactly the same times.
+
+        /** The run of this curve at [times], for linked [session]; null if a time has no key here. */
+        _linkedScope(session, times) {
+                if (this._linkedTidy?.session === session) return this._linkedTidy.scope;
+                const byTime = new Map(this.keyframes.map((kf) => [timeKey(kf.time), kf.id]));
+                const ids = times.map((t) => byTime.get(timeKey(t)));
+                const scope = ids.every((id) => id !== undefined) ? this.tidyScope(ids) : null;
+                this._linkedTidy = { session, scope };
+                return scope;
+        }
+
+        /** The times this curve keeps at slider [amount] with [pins] kept; null if it is not linked. */
+        linkedSimplifyKept(session, times, amount, pins) {
+                const scope = this._linkedScope(session, times);
+                return scope ? this._simplifiedAt(scope, amount, pins).keys.map((kf) => kf.time) : null;
+        }
+
+        /** Shows linked [session] at [amount] with [pins]; amount 0 shows the run as it was. */
+        linkedSimplifyShow(session, times, amount, pins) {
+                const scope = this._linkedScope(session, times);
+                if (!scope) return;
+                const keys = amount > 0 ? this._simplifiedAt(scope, amount, pins).keys : scope.ordered.slice(scope.first, scope.last + 1);
+                this._linkedTidy.keys = keys;
+                this.replaceRun(scope, keys);
+        }
+
+        /** Keeps what linked [session] last showed, as one undo step. */
+        linkedSimplifyCommit(session) {
+                const tidy = this._linkedTidy;
+                if (tidy?.session !== session || !tidy.scope || !tidy.keys) return;
+                this.replaceRun(tidy.scope, tidy.keys, { commit: true, coalesce: `linked-${session}` });
         }
 
         /** The keys of [scope] smoothed over [width] (in time); see smoothRunValues. */
@@ -1705,7 +1762,7 @@ export class KeyframeEditor {
                         const session = `tidy-${(this._tidySessions = (this._tidySessions ?? 0) + 1)}`;
                         const tools = [];
                         let pending = null;
-                        const tool = (label, idle, apply) => {
+                        const tool = (label, idle, apply, { onCommit = null, onZero = null } = {}) => {
                                 const row = doc.createElement("label");
                                 row.className = "kfm-tool";
                                 row.innerHTML = `<span></span><input type="range" min="0" max="1000" value="0"><span class="kfm-hint"></span>`;
@@ -1720,12 +1777,21 @@ export class KeyframeEditor {
                                         if (!origin) origin = this.tidyScope(ids);
                                         if (!origin) return;
                                         const amount = Number(input.value) / 1000;
-                                        const result = amount > 0 ? apply(origin, amount) : { keys: origin.ordered.slice(origin.first, origin.last + 1), text: idle };
+                                        const scope = origin;
+                                        scope.amount = amount;
+                                        let result;
+                                        const show = (keys, text) => {
+                                                result = { keys, text };
+                                                readout.textContent = text;
+                                                this.replaceRun(scope, keys);
+                                        };
+                                        result = amount > 0 ? apply(origin, amount, show) : { keys: origin.ordered.slice(origin.first, origin.last + 1), text: idle };
+                                        if (amount <= 0) onZero?.();
                                         readout.textContent = result.text;
                                         this.replaceRun(origin, result.keys);
-                                        const scope = origin;
                                         pending = () => {
                                                 this.replaceRun(scope, result.keys, { commit: true, coalesce: session });
+                                                onCommit?.();
                                                 tools.forEach((other) => { if (other !== state) other.reset(); });
                                                 live.forEach((update) => update());
                                         };
@@ -1735,10 +1801,26 @@ export class KeyframeEditor {
                                 menu.appendChild(row);
                                 tools.push(state);
                         };
-                        tool("Simplify", `${probe.chosen.size} keys`, (scope, amount) => {
-                                scope.plan ??= this.planSimplify(scope);
-                                const { keys } = scope.plan.at(scope.plan.valueRange * SIMPLIFY_FINEST * Math.pow(400, amount));
-                                return { keys, text: `${scope.plan.size} → ${keys.length} keys` };
+                        const linked = typeof this.options.onLinkedSimplify === "function";
+                        const linkSession = `${(this._linkId ??= Math.random().toString(36).slice(2))}-${session}`;
+                        tool("Simplify", `${probe.chosen.size} keys`, (scope, amount, show) => {
+                                const { plan, keys } = this._simplifiedAt(scope, amount, null);
+                                if (linked && show) {
+                                        // The other lanes answer asynchronously; until they do this shows the
+                                        // lane on its own, then the pins every lane agreed on.
+                                        const times = scope.ordered.slice(scope.first, scope.last + 1)
+                                                .filter((kf) => scope.chosen.has(kf.id)).map((kf) => kf.time);
+                                        const kept = (pins) => this._simplifiedAt(scope, amount, pins).keys.map((kf) => kf.time);
+                                        this.options.onLinkedSimplify({ session: linkSession, times, amount, kept }, (pins, lanes) => {
+                                                if (scope.amount !== amount || lanes < 2) return;
+                                                show(this._simplifiedAt(scope, amount, pins).keys, `${plan.size} → ${pins.length} keys, ${lanes} lanes`);
+                                        });
+                                }
+                                return { keys, text: `${plan.size} → ${keys.length} keys` };
+                        }, {
+                                onCommit: () => { if (linked) this.options.onLinkedSimplifyCommit?.(linkSession); },
+                                // Back at zero: the other lanes go back to their keys as they were.
+                                onZero: () => { if (linked) this.options.onLinkedSimplify({ session: linkSession, times: [], amount: 0 }, () => {}); },
                         });
                         tool("Smooth", "off", (scope, amount) => {
                                 const span = scope.ordered[scope.last].time - scope.ordered[scope.first].time;

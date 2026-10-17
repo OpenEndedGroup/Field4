@@ -56,7 +56,7 @@ When the box is under a renderer, `out.followOnGpu(target)` skips the read-back:
 GPU, on the same command buffer that drew it, into an IOSurface (the macOS shared image Syphon
 passes between applications). Nothing is read back to the CPU. It needs a `B8G8R8A8` target (the
 default) and a driver with `VK_EXT_external_memory_host`, which both drivers Field uses on Apple
-silicon have. Call it after the target is in the renderer's list.
+silicon have.
 
 ## Receiving
 

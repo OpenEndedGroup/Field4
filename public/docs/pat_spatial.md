@@ -155,13 +155,7 @@ Once the head can move, `az`, `elev` and `dist` place a source in the room rathe
 the listener: lean toward a source and it gets nearer, step past one and it crosses your ears. With
 the listener at the origin and facing ahead, the two readings are the same.
 
-Two things to know before using a real headset:
-
-* With `OpenXRHmdTarget`, update the pose from the frame rather than a timer: construct the listener
-  with `hz = 0.0` and call `pump()` inside the frame callback. Read on a timer, the pose can mix the
-  position from one frame with the orientation from the next. A `StereoPoseSource` is fine on the
-  timer, which is the default.
-* If tracking is lost, the sound field stays where it was rather than snapping back to face ahead.
+If tracking is lost, the sound field stays where it was rather than snapping back to face ahead.
 
 Here is a kick two metres ahead, a hat hard left and a snare hard right, heard from a head that moves
 through four movements of five seconds each: still, turning once to the right, stepping two metres to
@@ -203,7 +197,7 @@ its own filter darkens the sound.
 The direction is not in this signal at all: Steam Audio adds it afterwards. Changing `az` leaves the
 mono source exactly as it was.
 
-??? aside "What the clip renderer checks"
+??? aside "Agents: what the clip renderer checks"
     `run_field_tests.py --id synth.pat-spatial.sound` renders both clips and measures the
     un-normalised buffers. Dough mixes to stereo, so every event is sent `pan/0`, which puts the whole
     signal in the left channel; that channel is copied as the mono source, and the right channel is
@@ -238,13 +232,10 @@ are rendered on their own thread into a ring buffer, and the audio thread only c
 The ring holds 341 ms by default, enough to ride out the scheduling stalls of a busy machine. That
 delay only affects how soon a start or stop is heard; notes stay in time with one another.
 
-Two mistakes to avoid:
-
-* Match the sample rates. The ring's two sides run on separate clocks, so a render at 44.1 kHz
-  played at 48 kHz both runs dry and plays sharp. `registerPatSpatialReturnValue` refuses a mismatch
-  and names the rate to pass.
-* Call `awaitReady()` before handing a launch to an audio engine yourself. It returns once Steam
-  Audio is up, the prescanned engines have booted and the ring has filled.
+Match the sample rates. The ring's two sides run on separate clocks, so a render at 44.1 kHz
+played at 48 kHz both runs dry and plays sharp. `registerPatSpatialReturnValue` refuses a mismatch
+and names the rate to pass. A launch handed to an audio engine before it is ready plays silence
+until Steam Audio is up and the ring has filled.
 
 ### The fields to read while it plays
 
@@ -278,4 +269,4 @@ to schedule the render thread; if it is near the elapsed time, the work does not
 
 - [Making a sound in Field](sound_paths.md) compares this with every other sound path.
 - [Pattern language](pattern_language.md) covers `pat`, `with` and mini-notation.
-- The full API is in [`afield.audio.synth` in the generated reference](reference/patterns.md#patspatial-kt).
+- The full API is in [`PatSpatial.kt` in the generated reference](reference/patterns.md#patspatial-kt).

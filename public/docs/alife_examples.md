@@ -78,9 +78,11 @@ Limits:
 
 - **CPU only.** These are reference implementations you can read. The GPU story is
   [Field 4](reference/graphics.md), [StackSL](stacksl_examples.md) and
-  [RectSL](rectsl_examples.md). Two systems from this family's neighbourhood do run on the GPU, as
-  shaders you can edit: [diffusion-limited aggregation](afield_four_graphics.md#diffusion-limited-aggregation)
-  and [Biham–Middleton–Levine traffic](afield_four_graphics.md#bml-traffic).
+  [RectSL](rectsl_examples.md). Four systems from this family's neighbourhood do run on the GPU, as
+  shaders you can edit: [diffusion-limited aggregation](afield_four_graphics.md#diffusion-limited-aggregation),
+  [Biham–Middleton–Levine traffic](afield_four_graphics.md#bml-traffic), a
+  [lattice Boltzmann fluid](afield_four_graphics.md#lattice-boltzmann) and a
+  [forest fire](afield_four_graphics.md#forest-fire).
 - **No named Lenia lifeform.** Reproducing Orbium needs its exact published initial array, which this
   family does not ship. What it does instead is [prove the discrete limit](#5-lenia) and report a
   measured phase trichotomy.
@@ -716,9 +718,8 @@ than it gains and runs down to nothing. Same code, same seed, one number.
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/lenia.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-lenia-video" alt="two Lenia fields from the same seed under different growth-window centres: one breaks into self-maintaining ring cells, the other runs down to nothing"}
 :::static
 :::fold the two fields, on a fixed 0..1 inferno range
-// inferno on a FIXED 0..1 scale, and the mean field recomputed every frame so the phase verdict
-// is measured while you watch. An auto-ranged field that saturates renders black and looks
-// the same as one that has died.
+// inferno on a fixed 0..1 scale, so the two panels share one, and the mean field recomputed
+// every frame so the phase verdict is measured while you watch.
 fun fields(x: Img, y: Img, n: Int) = [
     "mu=0.06 " + n + " mean " + "%.3f".format(x.mean()) to x.colormap("inferno", 0f, 1f).upscaleNearest(4),
     "mu=0.14 " + n + " mean " + "%.3f".format(y.mean()) to y.colormap("inferno", 0f, 1f).upscaleNearest(4)
@@ -742,11 +743,6 @@ animateEvolution(
     panels = { (x, y), n -> fields(x, y, n) }
 )
 ```
-
-??? aside "One rendering trap"
-    A saturated field is *constant* at 1, so an auto-ranged colour map draws it at the dark end of the
-    ramp, so a `SATURATION` panel renders as black, indistinguishable from `DEATH`. The panels above
-    use a fixed `0..1` range for exactly that reason.
 
 ## 6. Boids
 

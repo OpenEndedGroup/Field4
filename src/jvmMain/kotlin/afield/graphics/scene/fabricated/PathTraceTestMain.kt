@@ -56,7 +56,7 @@ object PathTraceTestMain {
         check(bytes.getFloat(12).toInt() == material)
         check(runCatching { PathTraceMaterial(roughness = Float.NaN) }.isFailure)
         check(runCatching { PathTraceScene().pack() }.isFailure)
-        check(runCatching { scene.triangle(Vector3f(),Vector3f(),Vector3f(),material) }.isFailure)
+        run { val before = scene.degenerateCount; scene.triangle(Vector3f(),Vector3f(),Vector3f(),material); check(scene.degenerateCount == before + 1) }
         packed.triangles.forEach { t ->
             check(Vector3f(t.p[1]).sub(t.p[0]).cross(Vector3f(t.p[2]).sub(t.p[0])).dot(t.p[0]) > 0f) {
                 "Sphere winding must point outward for medium transitions"

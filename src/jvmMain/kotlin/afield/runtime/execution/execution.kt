@@ -1,5 +1,6 @@
 package afield.runtime.execution
 
+import afield.runtime.mainLanguage
 import afield.app.protocol.handle
 import afield.app.server.Server
 import afield.app.server.documents
@@ -1586,9 +1587,14 @@ class KotlinExecution : BoxExecution {
                 clearPendingLaunch(request)
             }
 
+            var reactiveStarted = false
             try {
                 if (!box.isLaunchEpochCurrent(request.launchEpoch)) return
 
+                // As executeInBox does: propUp pulls and propDown cascades need to know this box is
+                // running, and in what order boxes last ran.
+                ReactiveRuns.runStarted(box, "launch")
+                reactiveStarted = true
                 withContext(request.runScope.element) {
                 Box.withBoxContext(box) {
                     box.resetStdlibRandom()
@@ -1643,9 +1649,7 @@ class KotlinExecution : BoxExecution {
                     }
 
                     val lines = request.normalizedCode.lines()
-                    val breaks = lines.mapIndexedNotNull { index, line ->
-                        if (afield.runtime.macros.isFragmentBreak(line)) index else null
-                    } + lines.size
+                    val breaks = afield.runtime.macros.fragmentBreakIndices(lines)
 
                     var at = 0
                     var lineCounter = 0
@@ -1702,7 +1706,7 @@ class KotlinExecution : BoxExecution {
                         //    setting the box's shader-source property) are visible to the NEXT fragment's
                         //    macro expansion — which is the whole point of the `//%-` fragment break.
                         var fragmentFailed = false
-                        val result = withContext(Runloop.runLoop.main) {
+                        val result = withContext(Runloop.runLoop.main) { BoxBodyRun.during(box) {
                             snippet.eval(
                                 // Commit this snippet's declarations to the REPL context, exactly as the
                                 // exec path (`standardExecutionPractice` -> `KotlinInterface2.exec`) does.
@@ -1738,7 +1742,7 @@ class KotlinExecution : BoxExecution {
                                     )
                                 }
                             )
-                        }
+                        } }
                         results += result
                         if (fragmentFailed) break
                     }
@@ -1781,6 +1785,7 @@ class KotlinExecution : BoxExecution {
                 box.runScopes.supersede(request.runScope)
                 clearPendingOnce()
                 trace.finish(executionSucceeded && box.isLaunchEpochCurrent(request.launchEpoch))
+                if (reactiveStarted) ReactiveRuns.runFinished(box, executionSucceeded && box.isLaunchEpochCurrent(request.launchEpoch), "launch")
             }
         }
 
@@ -2383,6 +2388,7 @@ class KotlinExecution : BoxExecution {
         resetLaunchSetupState(inside)
 
         val normalizedCode = normalizedLaunchCode(execute)
+        afield.app.diagnostics.ProfileOrigin.launched(inside, strand, execute.property, inside.properties[execute.property] as? String ?: normalizedCode)
         val pendingLaunchMode = PENDING_LAUNCH_MODE
         val launchMode = ACTIVE_LAUNCH_MODE
         val pendingWatermark = inside.runGeneration.incrementAndGet(strand)
@@ -2723,7 +2729,7 @@ class KotlinExecution : BoxExecution {
                 // Clear any stale pinned compile error before re-running; re-pinned below on failure.
                 PinnedConsole.clearError(box.id)
                 beginExecutionErrorScope(box)
-                val returnValues: List<ResultValue?> = box.ki.withSourceProperty(property) {
+                val returnValues: List<ResultValue?> = BoxBodyRun.during(box) { box.ki.withSourceProperty(property) {
                     standardExecutionPractice(box.ki, code, { compileError ->
                         hasError = true
                         lprintln("error,execution", "compiler error")
@@ -2857,7 +2863,7 @@ class KotlinExecution : BoxExecution {
                             )
                         }
                     )
-                }
+                } }
 
                 if (!hasError) {
                     var size = 0
@@ -2992,6 +2998,8 @@ class KotlinExecution : BoxExecution {
 
                     }
                     executionSucceeded = true
+                    // What its declarations came to, for the editor's line notes.
+                    afield.runtime.kotlin.KotlinLineNotes.record(box, property, sourceText, ln)
                 } else {
                     lprintln("error,execution", "execution finished with errors")
                     finishTelemetry("execute-error")
@@ -3309,9 +3317,7 @@ class KotlinExecution : BoxExecution {
         val lines = allCode.lines()
         if (line !in 1..lines.size) return null
 
-        val breaks = lines.mapIndexedNotNull { index, rawLine ->
-            if (afield.runtime.macros.isFragmentBreak(rawLine)) index else null
-        } + lines.size
+        val breaks = afield.runtime.macros.fragmentBreakIndices(lines)
 
         var at = 0
         for (breakIndex in breaks) {
@@ -3879,6 +3885,36 @@ private fun MutableMap<String, Int>.incrementAndGet(name: String): Int {
     return this[name]!!
 }
 
+/**
+ * `sim.force = "…"` on a mesh resolves against the two `ModulePointer` slot setters and fails as a
+ * receiver mismatch naming both, which does not say the actual mistake: a `stack.auto` slot belongs to
+ * the compiled shader, so it is set on the module, not on the mesh that only carries push constants.
+ */
+internal fun stackAutoSlotOnMeshHint(errorMessage: String, slots: Set<String> = emptySet()): String? {
+    val namesModuleSetters = "ModulePointer" in errorMessage && errorMessage.contains("receiver", ignoreCase = true)
+    // Without the slot's setters in scope the same mistake reads "Unresolved reference 'force' on a
+    // ComputeMesh"; it is this mistake when the box's own shaders declare that slot.
+    val unresolved = Regex("""Unresolved reference '(\w+)' on receiver of type '(?:ComputeMesh|Mesh|MeshMesh)'""")
+        .find(errorMessage.replace("&#39;", "'"))?.groupValues?.get(1)
+    val namesADeclaredSlot = unresolved != null && unresolved in slots
+    if (!namesModuleSetters && !namesADeclaredSlot) return null
+    return "A stack.auto slot is a property of the compiled shader, so it is set on the module " +
+        "(simModule.force = \"…\"), not on the mesh, which only carries push constants."
+}
+
+/**
+ * A language root's own code is still Kotlin (only its children run in the language), so Python typed
+ * into the Python root fails as Kotlin with a message about Kotlin. Say which box this is instead.
+ */
+internal fun languageRootHint(b: Box): String? {
+    val language = b.mainLanguage?.takeIf { it.isNotBlank() && !it.equals("kotlin", ignoreCase = true) }
+        ?: if ((b.getPropertyRaw("isPythonRoot", null) as? Boolean) == true) "python" else null
+    return language?.let {
+        "This box is the $it root: the boxes connected under it run as $it, but its own code is Kotlin. " +
+            "Put the $it in a child box."
+    }
+}
+
 fun improveMessage(
     b: Box,
     errorMessage: String,
@@ -3891,6 +3927,8 @@ fun improveMessage(
     // They are surfaced as structured, actionable rows via suggestionsFor() (Apply / Ask AI4
     // buttons in the error output area). The numeric-mismatch hint stays as explanatory context.
     numericMismatchHint(errorMessage)?.let { hints += escapeNotifyHtml(it) }
+    languageRootHint(b)?.let { hints += escapeNotifyHtml(it) }
+    stackAutoSlotOnMeshHint(errorMessage, runCatching { afield.lang.stacksl.study.EmbeddedStackSL.slots(b) }.getOrDefault(emptySet()))?.let { hints += escapeNotifyHtml(it) }
 
     val escapedMessage = escapeNotifyHtml(errorMessage)
     if (hints.isEmpty()) return escapedMessage

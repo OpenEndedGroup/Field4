@@ -3,12 +3,53 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
-## 1. one spectrum (chirp + tones)
+## 1. filter chains as layered curves
 
-<!-- field-box id="spectral_one_spectrum" index="0" -->
+<!-- field-box id="spectral_filter_chains" index="0" -->
+
+```edn [field-box id="spectral_filter_chains" role="properties"]
+{"id" "spectral_filter_chains" "index" 0 "name" "filter chains as layered curves" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "filter chains as layered curves" "_tombstone" false "frame" #afield/rect [520.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_filter_chains_code_.kt" "lines" 30 "characters" 947 "sha256" "49594cf134d47884fb84da8a6dde2c0c71b309ab3ee1bf8660704ca18200dc12"}]}
+```
+
+```kotlin [field-property box="spectral_filter_chains" name="code" path="spectral_filter_chains_code_.kt"]
+val raw = mutableListOf<Float>()
+val smooth = mutableListOf<Float>()
+val filtered = mutableListOf<Float>()
+
+val ema = EMAFilter(alpha = 0.08f)
+val oneEuro = OneEuroFilter(minCutoff = 1.0f, beta = 0.02f, sampleRate = 120f)
+val band = BandPassFilter(frequency = 5f, sampleRate = 120f, q = 0.8f)
+
+for (i in 0 until 420) {
+    val t = i / 120f
+    val signal = (
+        sin(2.0 * PI * 1.2 * t).toFloat() * 0.7f +
+        sin(2.0 * PI * 4.7 * t + 0.3).toFloat() * 0.22f +
+        (-0.12f + random().toFloat() * 0.24f)
+    )
+    raw += signal
+    val s = oneEuro(ema(signal))
+    smooth += s
+    filtered += band(s)
+}
+
+// One call puts all three streams on one axis — raw, the smoothed chain, and the band-passed
+// component each get their own trace (dark theme + cyan/orange palette applied).
+showSignals(
+    "raw" to raw,
+    "EMA + One-Euro (smoothed)" to smooth,
+    "band-pass (5 Hz)" to filtered,
+    channel = "main",
+    xTitle = "sample",
+)
+```
+
+## 2. one spectrum (chirp + tones)
+
+<!-- field-box id="spectral_one_spectrum" index="1" -->
 
 ### Narrative
 
@@ -17,7 +58,7 @@ From `code`
 Synthesise a rising linear chirp + two steady tones, FFT it, draw the one-sided spectrum.
 
 ```edn [field-box id="spectral_one_spectrum" role="properties"]
-{"id" "spectral_one_spectrum" "index" 0 "name" "one spectrum (chirp + tones)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one spectrum (chirp + tones)" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_one_spectrum_code_.kt" "lines" 32 "characters" 1155 "sha256" "bfd8527fb96230b683d680dc379c43a374a93efd47cc3674c88e6135529a58e5"}]}
+{"id" "spectral_one_spectrum" "index" 1 "name" "one spectrum (chirp + tones)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one spectrum (chirp + tones)" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_one_spectrum_code_.kt" "lines" 32 "characters" 1155 "sha256" "bfd8527fb96230b683d680dc379c43a374a93efd47cc3674c88e6135529a58e5"}]}
 ```
 
 ```kotlin [field-property box="spectral_one_spectrum" name="code" path="spectral_one_spectrum_code_.kt"]
@@ -55,12 +96,12 @@ showSignals(
 println("peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rolloff=${"%.0f".format(rolloff)}Hz bins=${mag.size}")
 ```
 
-## 2. spectrogram of a chirp
+## 3. spectrogram of a chirp
 
-<!-- field-box id="spectral_spectrogram" index="1" -->
+<!-- field-box id="spectral_spectrogram" index="2" -->
 
 ```edn [field-box id="spectral_spectrogram" role="properties"]
-{"id" "spectral_spectrogram" "index" 1 "name" "spectrogram of a chirp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spectrogram of a chirp" "_tombstone" false "frame" #afield/rect [80.0 440.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_spectrogram_code_.kt" "lines" 30 "characters" 1325 "sha256" "a0d46a0fce786cece96b8591c65ccdbe6168e32793626440c14614a456bfcf1f"}]}
+{"id" "spectral_spectrogram" "index" 2 "name" "spectrogram of a chirp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spectrogram of a chirp" "_tombstone" false "frame" #afield/rect [80.0 440.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_spectrogram_code_.kt" "lines" 30 "characters" 1325 "sha256" "a0d46a0fce786cece96b8591c65ccdbe6168e32793626440c14614a456bfcf1f"}]}
 ```
 
 ```kotlin [field-property box="spectral_spectrogram" name="code" path="spectral_spectrogram_code_.kt"]
@@ -96,12 +137,12 @@ showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 840, vmin = -80.
     transpose = true, flipY = true, overlay = trace, overlayThickness = 3)
 ```
 
-## 3. streaming spectral features
+## 4. streaming spectral features
 
-<!-- field-box id="spectral_streaming" index="2" -->
+<!-- field-box id="spectral_streaming" index="3" -->
 
 ```edn [field-box id="spectral_streaming" role="properties"]
-{"id" "spectral_streaming" "index" 2 "name" "streaming spectral features" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "streaming spectral features" "_tombstone" false "frame" #afield/rect [80.0 1540.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_streaming_code_.kt" "lines" 30 "characters" 1219 "sha256" "3d68032177ecde40aec99dbcbe9cc1229c5ee308bab7d26ac9935ff481177796"}]}
+{"id" "spectral_streaming" "index" 3 "name" "streaming spectral features" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "streaming spectral features" "_tombstone" false "frame" #afield/rect [80.0 1540.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_streaming_code_.kt" "lines" 30 "characters" 1219 "sha256" "3d68032177ecde40aec99dbcbe9cc1229c5ee308bab7d26ac9935ff481177796"}]}
 ```
 
 ```kotlin [field-property box="spectral_streaming" name="code" path="spectral_streaming_code_.kt"]
@@ -137,12 +178,49 @@ showSignals(
 println("centroid ${"%.0f".format(cTrace[3000])} -> ${"%.0f".format(cTrace[n - 200])} Hz, flux peak ${"%.3f".format(fTrace.maxOrNull() ?: 0f)}")
 ```
 
-## 4. mel spectrogram (crossing chirps)
+## 5. distribution-aware event flags
 
-<!-- field-box id="spectral_mel" index="3" -->
+<!-- field-box id="spectral_distribution_events" index="4" -->
+
+```edn [field-box id="spectral_distribution_events" role="properties"]
+{"id" "spectral_distribution_events" "index" 4 "name" "distribution-aware event flags" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "distribution-aware event flags" "_tombstone" false "frame" #afield/rect [520.0 440.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_distribution_events_code_.kt" "lines" 26 "characters" 949 "sha256" "60c065f258d5aa2281c4197d1ab04f1b40e692f534ddad1e23a8766d5aa56ce6"}]}
+```
+
+```kotlin [field-property box="spectral_distribution_events" name="code" path="spectral_distribution_events_code_.kt"]
+val gammaEvents = GammaEventDetector(windowSize = 64, tailProbabilityThreshold = 0.03f, influence = 0.15f)
+val betaEvents = BetaEventDetector(windowSize = 64, supportMin = -1f, supportMax = 1f, lowerTailThreshold = 0.04f, upperTailThreshold = 0.04f)
+
+val raw = mutableListOf<Float>()
+val eg = mutableListOf<Float>()
+val eb = mutableListOf<Float>()
+
+for (i in 0 until 360) {
+    val t = i / 120f
+    var x = (sin(2.0 * PI * 1.1 * t) * 0.55 + (-0.08 + random() * 0.16)).toFloat()
+    if (i % 83 == 0) x += 0.95f
+    if (i % 127 == 0) x -= 0.8f
+    raw += x
+    eg += gammaEvents(kotlin.math.abs(x))
+    eb += betaEvents(x)
+}
+
+// The raw stream and both detectors' verdicts on one axis — the event traces flag their tail
+// crossings (beta fires either way, ±1) over the raw motion, so which departures triggered is clear.
+showSignals(
+    "raw" to raw,
+    "gamma events" to eg,
+    "beta events" to eb,
+    channel = "main",
+    xTitle = "sample",
+)
+```
+
+## 6. mel spectrogram (crossing chirps)
+
+<!-- field-box id="spectral_mel" index="5" -->
 
 ```edn [field-box id="spectral_mel" role="properties"]
-{"id" "spectral_mel" "index" 3 "name" "mel spectrogram (crossing chirps)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mel spectrogram (crossing chirps)" "_tombstone" false "frame" #afield/rect [80.0 820.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_mel_code_.kt" "lines" 27 "characters" 1053 "sha256" "e7d28152ef16413d6bd94d5b35b03f4fecc685de783197b2d5fc814a04c3ca5a"}]}
+{"id" "spectral_mel" "index" 5 "name" "mel spectrogram (crossing chirps)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mel spectrogram (crossing chirps)" "_tombstone" false "frame" #afield/rect [80.0 820.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_mel_code_.kt" "lines" 27 "characters" 1053 "sha256" "e7d28152ef16413d6bd94d5b35b03f4fecc685de783197b2d5fc814a04c3ca5a"}]}
 ```
 
 ```kotlin [field-property box="spectral_mel" name="code" path="spectral_mel_code_.kt"]
@@ -175,12 +253,12 @@ showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.
     transpose = true, flipY = true)
 ```
 
-## 5. resonator bank (no transform)
+## 7. resonator bank (no transform)
 
-<!-- field-box id="spectral_resonator" index="4" -->
+<!-- field-box id="spectral_resonator" index="6" -->
 
 ```edn [field-box id="spectral_resonator" role="properties"]
-{"id" "spectral_resonator" "index" 4 "name" "resonator bank (no transform)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "resonator bank (no transform)" "_tombstone" false "frame" #afield/rect [80.0 1180.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_resonator_code_.kt" "lines" 41 "characters" 1554 "sha256" "2d3dfa33caa047094bc211367adc23e0533b7cd15657524e7db17b09dc53cca7"}]}
+{"id" "spectral_resonator" "index" 6 "name" "resonator bank (no transform)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "resonator bank (no transform)" "_tombstone" false "frame" #afield/rect [80.0 1180.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_resonator_code_.kt" "lines" 41 "characters" 1554 "sha256" "2d3dfa33caa047094bc211367adc23e0533b7cd15657524e7db17b09dc53cca7"}]}
 ```
 
 ```kotlin [field-property box="spectral_resonator" name="code" path="spectral_resonator_code_.kt"]

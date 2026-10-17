@@ -290,7 +290,7 @@ the file, and the reach is described per file below in prose that a human checke
 
 | declaring file | commands |
 | --- | --- |
-| `Server.kt` | 51 |
+| `Server.kt` | 53 |
 | `agent_backdoor.kt` | 24 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
@@ -473,10 +473,12 @@ in-route same-site check stops a web page.
 | `set-rects` | `Server.kt` |
 | `set-string` | `Server.kt` |
 | `set-viewport` | `Server.kt` |
+| `set-viewports` | `Server.kt` |
 | `set-visible-layers` | `Server.kt` |
 | `shared-ui-intent` | `Server.kt` |
 | `slider-update` | `Server.kt` |
 | `slideshow-command` | `Server.kt` |
+| `stacksl-regions` | `Server.kt` |
 | `stop-all` | `executing.kt` |
 | `stop-box` | `executing.kt` |
 | `store-history-screenshot` | `history.kt` |

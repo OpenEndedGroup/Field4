@@ -44,6 +44,7 @@ import afield.runtime.kotlin.formatBoxKotlin
 import afield.runtime.kotlin.formatCodeProperty
 import afield.runtime.lifecycle.BoxRunScopes
 import afield.runtime.lifecycle.LazyVar
+import afield.runtime.lifecycle.ReactiveRuns
 import afield.runtime.lifecycle.inMain
 import afield.runtime.lifecycle.lazyVar
 import afield.runtime.lifecycle.map
@@ -418,7 +419,25 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     }
 
     var frame by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onFrameChange)
-    var viewport by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onViewportChange)
+    private val viewportDelegation = Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onViewportChange)
+
+    /**
+     * What the canvas's main pane shows: the world rect `(-x, -y, w, h)`, in world units at any
+     * zoom. Sent by the browser; [onViewportChange] callbacks fire when it moves. A box that has not
+     * been told yet (made after the document loaded) reads its document's latest value.
+     */
+    var viewport: Rect
+        get() = (getPropertyRaw("viewport") as? Rect)
+            ?: (if (isInsideInitialized()) inside.viewport else null)
+            ?: Rect(0.0, 0.0, 0.0, 0.0)
+        set(value) = viewportDelegation.setValue(this, ::viewport, value)
+
+    /**
+     * Every pane's visible world rect `(x, y, w, h)` on a split canvas, the main (bottom-right) pane
+     * last; a single rect when the canvas is not split, and empty before a browser has reported.
+     */
+    val viewports: List<Rect>
+        get() = if (isInsideInitialized()) inside.viewports else emptyList()
     var name by Delegation<String>(defaultValue = { "" }, hook = ::onNameChange)
     /** No `code` property on an untouched box is distinct from an explicitly empty script. */
     var code by Delegation<String?>()
@@ -769,14 +788,38 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         )
 
         /**
+         * Names a document's own `:persistentProperties` header adds to [ioPersistentProperties], keyed by
+         * the document's canonical directory. Kept per document so that opening one document cannot change
+         * what another saves: these names used to be added to the global set, where they stayed until the
+         * process exited. Template scans, history versions and workspace listings read headers too, and
+         * they no longer leak into every open document.
+         */
+        private val documentPersistentProperties = ConcurrentHashMap<String, Set<String>>()
+
+        private fun documentKey(directory: String): String =
+            runCatching { java.io.File(directory).canonicalPath }.getOrElse { java.io.File(directory).absolutePath }
+
+        /** Record [names] from the header of the document in [directory]; adds to what is already recorded. */
+        fun recordDocumentPersistentProperties(directory: String, names: Collection<String>) {
+            if (names.isEmpty()) return
+            documentPersistentProperties.merge(documentKey(directory), names.toSet()) { old, new -> old + new }
+        }
+
+        /** The names a save into [directory] persists: [ioPersistentProperties] plus that document's own. */
+        fun persistentPropertiesFor(directory: String?): Set<String> {
+            val global = LinkedHashSet(ioPersistentProperties)
+            if (directory == null) return global
+            return global + documentPersistentProperties[documentKey(directory)].orEmpty()
+        }
+
+        /**
          * Properties that never reach disk, whatever [ioPersistentProperties] says.
          *
          * This is a deny-list rather than a deletion from [ioPersistentProperties] for one
-         * concrete reason: `SavingContext.mergePersistentProperties` does
-         * `Box.ioPersistentProperties.addAll(...)` with the list stored in every `metadata.edn`
-         * it loads. Every document written before this change carries `".*_editorState"` in
-         * that list, so removing the entry from the initialiser above would last exactly until
-         * the first document load put it straight back. A deny-list applied at the write filter
+         * concrete reason: `SavingContext.mergePersistentProperties` records the list stored in
+         * every `metadata.edn` it loads ([recordDocumentPersistentProperties]). Every document
+         * written before this change carries `".*_editorState"` in that list, so removing the
+         * entry from the initialiser above would last exactly until that document was loaded. A deny-list applied at the write filter
          * cannot be undone that way.
          *
          * `<property>_editorState` is Monaco view state — cursor line and column, scroll offset,
@@ -955,6 +998,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                         }
                         target.setPropertyRaw("_tombstone", true)
                         root.disconnect(target)
+                        ReactiveRuns.forgetDown(target)
                     }
                     // Stop what the deleted boxes were running, dispose any renderer they own, and
                     // release their K2 compilation state; a deleted box is never re-run.
@@ -1010,6 +1054,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         }
 
         FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, incoming)
+        // A raw write to a property declared `propDown` reruns its readers, exactly as assigning it does.
+        afield.runtime.lifecycle.ReactiveRuns.noteRawWrite(this, name, oldValue, incoming)
     }
 
     override fun getPropertyRaw(name: String, default: Any?): Any? {
@@ -2027,6 +2073,8 @@ inline fun <reified T> Box.findWithNameOrNull(start: Box, name: String): T? {
     visitParents {
         val v = it.getPropertyRaw(name)
         if (v is T) {
+            // A read of another box's slot, so a propDown write to it reruns this box.
+            afield.document.properties.PropertyDependencies.recordNamedRead(this, it, name)
             return@findWithNameOrNull v
         }
     }

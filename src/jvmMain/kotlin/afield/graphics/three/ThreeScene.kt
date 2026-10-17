@@ -335,10 +335,18 @@ data class ThreeCameraSpec(
     val yawDegrees: Double = 28.0,
     /** Lift above the horizon, in degrees. Positive looks down on the geometry. */
     val pitchDegrees: Double = 18.0,
-    /** Eye distance in multiples of the bounding-sphere radius. */
+    /**
+     * Eye distance in multiples of the bounding-sphere radius, as the rasterizer ([MeshView]) uses it. The
+     * Three.js viewer fits the shape to the view instead and ignores it; its framing is [padding].
+     */
     val distance: Double = 2.7,
     /** Vertical field of view in degrees. */
     val fieldOfViewDegrees: Double = 40.0,
+    /**
+     * The Three.js viewer's fit margin around the shape's on-screen outline: `1.0` touches the edges, the
+     * default `1.06` leaves a little air. The rasterizer ignores it.
+     */
+    val padding: Double = 1.06,
 )
 
 /**
@@ -443,6 +451,12 @@ data class ThreePanel(
      * panel must frame the *same* bounds or the shape appears to breathe as it rotates.
      */
     val bounds: ThreeBounds? = null,
+    /**
+     * Frame [bounds] itself rather than the panel's geometry. The viewer normally fits the camera to
+     * the mesh's own points, which is what a contact sheet wants; a size comparison wants every
+     * panel framed at one scale, so `threeGrid(sharedScale = true)` sets this.
+     */
+    val fitBounds: Boolean = false,
 )
 
 /**

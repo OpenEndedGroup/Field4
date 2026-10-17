@@ -328,7 +328,7 @@ class Mesh(var renderer: Renderer = fromContext()) {
                 try {
                     pushConstantBuffer.clear()
                     push.writeToBuffer(pushConstantBuffer, cmd) {
-                        throw MissingRefException("risk of GPU null ref `$it`")
+                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
                     }
                 } catch (mre: Exception) {
                     inside.parameters.errorHandler(mre.message ?: "push constant error", mre)
@@ -416,4 +416,17 @@ class Mesh(var renderer: Renderer = fromContext()) {
     override fun toString(): String {
         return "Mesh(${numVert}v, ${numTriangle}t)"
     }
+}
+
+/**
+ * Three non-indexed vertices for a fullscreen shader that derives positions from `gl_VertexIndex`.
+ * [module] defaults to the current box's graphics module. No vertex attributes are allocated and
+ * nothing is attached or presented: add the returned mesh to the module under your chosen name.
+ */
+fun fullscreenTriangle(module: ModulePointer = fromContext()): Mesh {
+    require(module.current.vi.inputs.isEmpty()) { "fullscreenTriangle needs a vertex shader without attributes" }
+    require(module.current.parameters.primitiveType == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) {
+        "fullscreenTriangle needs triangle-list topology"
+    }
+    return Mesh(module.current.parameters.renderer, module).resize(3)
 }
