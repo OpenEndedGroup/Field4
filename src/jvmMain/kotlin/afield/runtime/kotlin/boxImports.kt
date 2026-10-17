@@ -31,26 +31,27 @@ import org.jetbrains.kotlin.psi.KtSimpleNameExpression
 import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
 
-/*
-Which of a box's imports it needs.
-
-A box is compiled with [intro] prepended, so an import already provided by that preamble adds nothing, and agents
-write such lines all the time. This reads a box's own import lines and says, for each one, whether
-it is redundant (the intro already provides it), unused (nothing in the code names it), needed, or
-kept because the evidence is not good enough to drop it. [formatBoxImports] removes the first two
-kinds and sorts the rest; nothing here ever adds an import.
-
-The rules are conservative, because a wrongly dropped import is a compile error:
-
-- An explicit import `a.b.C` (or `a.b.C as D`) is needed when its name appears as an identifier in
-  the code, outside comments and strings. Operator-convention names (`plusAssign`, `getValue`,
-  `invoke`, ...) are always kept: code uses them without writing them.
-- It is redundant when the intro has the same line, or `a.b.*` and no other visible package
-  (including Kotlin/JVM defaults) offers a competing `C`. An aliased import is never redundant.
-- A star import `a.b.*` is redundant when the intro has the same star. It is unused only on K2
-  evidence: [resolution] resolved every reference in the box and none of them lives in `a.b`.
-  Without that evidence a star import is kept.
-*/
+/**
+ * Which of a box's imports it needs.
+ *
+ * A box is compiled with the `intro` preamble prepended (`Boxes.kt`), so an import already provided
+ * by that preamble adds nothing, and agents write such lines all the time. This reads a box's own
+ * import lines and says, for each one, whether it is redundant (the intro already provides it),
+ * unused (nothing in the code names it), needed, or kept because the evidence is not good enough to
+ * drop it. `formatBoxImports` removes the first two kinds and sorts the rest; nothing here ever adds
+ * an import.
+ *
+ * The rules are conservative, because a wrongly dropped import is a compile error:
+ *
+ * - An explicit import `a.b.C` (or `a.b.C as D`) is needed when its name appears as an identifier in
+ *   the code, outside comments and strings. Operator-convention names (`plusAssign`, `getValue`,
+ *   `invoke`, ...) are always kept: code uses them without writing them.
+ * - It is redundant when the intro has the same line, or `a.b.*` and no other visible package
+ *   (including Kotlin/JVM defaults) offers a competing `C`. An aliased import is never redundant.
+ * - A star import `a.b.*` is redundant when the intro has the same star. It is unused only on the
+ *   evidence `k2ImportEvidence` collects: K2 resolved every reference in the box and none of them
+ *   lives in `a.b`. Without that evidence a star import is kept.
+ */
 
 /** One `import` line of a box. */
 data class BoxImport(val line: Int, val text: String, val path: String, val alias: String?) {

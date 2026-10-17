@@ -56,9 +56,22 @@ import org.jetbrains.kotlin.psi.psiUtil.startOffset
 import org.jetbrains.ktfmt.format.ParseError
 
 /**
+ * Kotlin source to a parse tree, without compiling it.
+ *
+ * Several things in Field need to look at the shape of box code rather than run it: reformat it,
+ * find which imports it names, rewrite a call, translate it to JavaScript. Compiling is the
+ * expensive way to get that, and it fails on code that does not yet make sense, which is most code
+ * while it is being typed. This file holds the one parser they share: a `KotlinCoreEnvironment`
+ * built once and reused, and a `parse` that returns the tree or throws on the first syntax error.
+ *
+ * It is derived from ktfmt's own parser, and the Apache 2.0 notice above is ktfmt's.
+ */
+
+/**
  * Parses Kotlin source as a script (which box code is) and returns its parse tree, for Field code
- * that wants PSI without compiling: the comment pass in `formatter.kt`, the RemoteJS instrumenter,
- * and the pattern-rewrite smoke test.
+ * that wants PSI without compiling: the comment pass in `formatter.kt`, the import analysis in
+ * `boxImports.kt`, the labelled-argument macro, the RemoteJS instrumenter, and the pattern-rewrite
+ * smoke test.
  *
  * Until 2026-09-30 this was a copy of ktfmt's `Parser` under ktfmt's own class name, meant to
  * replace it on the classpath. It did not: ktfmt's jar won, and the copy only worked because
