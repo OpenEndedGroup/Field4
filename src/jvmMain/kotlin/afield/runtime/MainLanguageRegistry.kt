@@ -11,6 +11,18 @@ import afield.document.properties.Delegation
 import afield.app.commands.actions
 import kotlin.reflect.KClass
 
+/**
+ * The registry that lets a box choose the language its children run in, such as Python instead of
+ * Kotlin.
+ *
+ * A language runtime registers itself with [registerMainLanguageRuntime]. Every registered runtime
+ * then gets a "Set Main Language: ..." command in the palette, next to "Set Main Language: Kotlin".
+ * Running one on a selected box records the choice in the box's persistent `mainLanguage` property
+ * and converts the box's children to that runtime. Choosing Kotlin clears the property and converts
+ * them back.
+ */
+
+/** One language a box can give its children: an id, a palette label, and the hooks that convert them. */
 data class MainLanguageRuntime(
     val id: String,
     val label: String,
