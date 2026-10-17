@@ -60,6 +60,16 @@ import java.util.Base64
 import java.util.concurrent.CancellationException
 
 /**
+ * A complete study for any text that draws, so a document can offer an agent the standard study verbs
+ * without writing a study class.
+ *
+ * [SourceFramesStudy] keeps revisions of the source, draws frames through a [StudyFrames], and
+ * answers every [LiveStudy] verb. [Box.sourceFramesStudy] builds one for a box property,
+ * [studyFrames] turns a single-frame drawing function into a [StudyFrames], and [StudyKnobs] finds
+ * and rewrites the plainly written numbers in a source.
+ */
+
+/**
  * A study of any text that draws, built entirely from the shared pieces — [SourceStudy] for
  * revisions, [StudyFrames] for pictures, [StudyEvidence] for measurements and sheets,
  * [StudyCompare] and [StudyVariants] for comparing and speculating — so a document can have a study as
