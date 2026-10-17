@@ -64,7 +64,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [SolidSL measurements and native ownership](../box_code_adoption_batch_30/README.md) | Five more findings addressed; actual native handles close on both exits, exact/fallback viewers and inverse fit captions verified. |
 
-[Machine checkpoint](checkpoint.json): **253 of 405 findings addressed**, one implemented with
+| [Shared-memory overlay clearing and quad layout](../box_code_adoption_batch_31/README.md) | Four more findings addressed; actual shared buffers, native line/empty/resume, pixel widths and relaunch verified. |
+
+[Machine checkpoint](checkpoint.json): **257 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
