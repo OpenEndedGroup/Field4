@@ -11,7 +11,7 @@ Every node also carries an energy, and every rule splits or reduces the energy o
 
 ## Reducing a λ-term end to end
 
-`LambdaTerms.normalise("(\\x. x x) (\\y. y)")` parses a term, compiles it to a net, reduces it and reads the answer back as a term. `parse` accepts `\x. x x` or `λx. x x`, with `\x y. e` as shorthand, and `format` prints a term that parses back to the same thing. When two `DUP` fans meet, the `fan-fan` rule compares their labels: two fans from the same duplication cancel, and two from different duplications pass through each other. `erase-erase` does the same for two erasers. Pass `Reducer(relaxIterations = 0)` when nothing will be drawn, so the reduction skips the layout work; the figure below passes 8.
+`LambdaTerms.normalise("(\\x. x x) (\\y. y)")` parses a term, compiles it to a net, reduces it and reads the answer back as a term. `parse` accepts `\x. x x` or `λx. x x`, with `\x y. e` as shorthand, and `format` prints a term that parses back to the same thing. When two `DUP` fans meet, the `fan-fan` rule compares their levels: two fans at the same level cancel, and two at different levels pass through each other. `erase-erase` does the same for two erasers. Pass `Reducer(relaxIterations = 0)` when nothing will be drawn, so the reduction skips the layout work; the figure below passes 8.
 
 ![Five panels, left to right, following one reduction: the compiled net of six agents, then the four reactions beta-linear, dup-lam, beta-linear and fan-fan, ending in two agents — a ROOT holding a single abstraction](assets/interaction_nets_lambda/lambda_reduction.svg)
 
@@ -21,11 +21,11 @@ A term with no normal form never finishes reducing, so `normalise` takes a `maxS
 
 For the test terms in `LambdaTerms.corpus()`, the order in which active pairs are chosen changes neither the result nor the amount of work: under every `ActivationOrder` each term takes the same number of reactions and fires the same rules. [A λ-term you can hear](chain_lambda_sound.md) measures and draws this.
 
-## When the answer is wrong
+## Reading back a shared answer
 
-The rule book is Lambdascope (van Oostrom, van de Looij and Zwitserlood): optimal reduction, with a `DUP` and a `DELIM` (a scope delimiter) carrying a level, so sharing is correct on every term. It gives the same answer as substitution on the corpus and on every simply-typed term tried. On a small share of untyped terms, about one in a hundred, `readback` cannot work out which copy a shared part of the answer is, and leaves a `⋈` mark where it is.
+The rule book is Lambdascope (van Oostrom, van de Looij and Zwitserlood), an optimal reduction in which each `DUP` and each `DELIM` (a scope delimiter) carries a level, so shared structure is handled correctly on every term. On the terms in `LambdaTerms.corpus()` and on simply-typed terms it gives the same answer as substitution. On a small share of untyped terms, `readback` cannot tell which copy a shared part of the answer belongs to, and leaves a `⋈` mark in its place.
 
-An answer that could not be read back carries a mark. `LambdaTerms.marksOf` returns the marks `readback` left in a result: an empty list means the net read back as an ordinary term, and anything else means the reducer could not give a trustworthy answer. A `?` mark means a variable was found outside the body of its binder, so the net no longer describes a term.
+`LambdaTerms.marksOf` returns the marks `readback` left in a result: an empty list means the net read back as an ordinary term, and anything else means the reducer could not give a trustworthy answer. A `?` mark means a variable was found outside the body of its binder, so the net no longer describes a term.
 
 `Run.finished` answers a different question: whether the reduction stopped because nothing was left to fire. Check both: a finished run with marks is still not an answer you should trust.
 
@@ -238,7 +238,7 @@ println("interaction erase ready")
 
 ## Two fans that commute, run to a fixed point
 
-The examples above each take one step. Fans and erasers usually meet near the end of a reduction, so to see `fan-fan` this example keeps stepping until nothing more can fire. Two `DUP` fans face each other with **different** labels, 1 and 2, so `fan-fan` takes its commuting branch rather than its annihilating one: each duplication has to be applied to the other, and one fan pair becomes four fans wired in a 2×2 crossing. The count goes up before it goes down. Those four fans are then facing the four constants, so four `dup-const` reactions follow and the four constants come out as eight copies — five reactions in total, 6 agents to 8, and not one fan left standing. Give the two fans the *same* label and the first step is an annihilation instead: two reactions, and the constants are spliced straight through in pairs.
+The examples above each take one step. Fans and erasers usually meet near the end of a reduction, so to see `fan-fan` this example keeps stepping until nothing more can fire. Two `DUP` fans face each other at different levels, 1 and 2, so `fan-fan` takes its commuting branch rather than its annihilating one: each duplication has to be applied to the other, and one fan pair becomes four fans wired in a 2×2 crossing. The count goes up before it goes down. Those four fans are then facing the four constants, so four `dup-const` reactions follow and the four constants come out as eight copies — five reactions in total, 6 agents to 8, and not one fan left standing. Give the two fans the *same* label and the first step is an annihilation instead: two reactions, and the constants are spliced straight through in pairs.
 
 The last card says **4 active pairs** and is nevertheless finished. The eight constants are wired principal to principal in four pairs, and no rule in the book covers `CONST ⟂ CONST`, so `stepDetailed` returns null. An active pair only reduces when a rule matches it.
 
@@ -351,7 +351,9 @@ Looking at it:
 | `net.relax(iterations, config)` | Runs the force-directed layout for the requested number of iterations. `LayoutConfig` controls spring forces, repulsion and damping; layout changes positions, not the reduction rules. |
 | `net.toFLines(…)` | Converts the current graph layout into `FLine` geometry. Draw those lines in a Field output or combine them with other geometry. |
 | `net.summaryHtml(title, maxNodes)` | Builds an HTML summary of counts, energy and the first `maxNodes` nodes. Limit the node list to keep large nets inspectable. |
-| `showInteractionOverview(graphicLines, cards, …)` | Displays summary cards above one shared graph drawing. Use it to compare states in a single output panel. |
+| `stage(title, lines, summary)` | Captures a net's drawing and summary card as it is now, before a later rewrite changes it. |
+| `showInteractionStages(stages…, cards)` | Lays captured stages out left to right with arrows between them, their cards above, plus any extra `cards` describing the rewrites. The examples on this page use it. |
+| `showInteractionOverview(graphicLines, cards, …)` | Displays summary cards above one graph drawing you have laid out yourself. |
 | `net.toSvg(width, height, padding)` | Exports the current layout as a standalone SVG. Width, height and padding control the exported view. |
 | `net.totalEnergy()` / `.averageAge()` | Returns aggregate energy or mean node age. These are the same quantities shown in the summary cards. |
 | `net.incrementAges(dt)` | Adds `dt` to node ages. Call it on the simulation clock whose units you want age to represent. |
