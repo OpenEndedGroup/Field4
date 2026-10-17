@@ -1,5 +1,10 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * The [SteamAudioContext] every Steam Audio object is created from, with the [LogCallback] and
+ * [MemoryAllocator] hooks it can install.
+ */
+
 import afield.audio.spatial.steamaudio.raw.IPLAllocateFunction
 import afield.audio.spatial.steamaudio.raw.IPLContextSettings
 import afield.audio.spatial.steamaudio.raw.IPLFreeFunction

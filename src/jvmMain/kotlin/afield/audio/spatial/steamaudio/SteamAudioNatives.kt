@@ -1,5 +1,9 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * Locates and loads the Steam Audio shared library, through [SteamAudioNatives].
+ */
+
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
