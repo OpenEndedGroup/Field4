@@ -82,7 +82,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Rerunnable reprojection and stable motion](../box_code_adoption_batch_39/README.md) | Five more findings addressed; real native modes, assignment controls, 900 bounded poses and fresh saved-document reruns verified. |
 
-[Machine checkpoint](checkpoint.json): **283 of 405 findings addressed**, one implemented with
+| [Reports, discovery and circuit framing](../box_code_adoption_batch_40/README.md) | Three more findings addressed; actual WFC output, two advertised OSCQuery services and a genuine 280-frame growth recording verified; 28 formatting states. |
+
+[Machine checkpoint](checkpoint.json): **286 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
