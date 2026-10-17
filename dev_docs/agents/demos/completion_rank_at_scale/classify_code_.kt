@@ -42,7 +42,7 @@ fun findRepoRoot(): File {
 val repo: File = findRepoRoot()
 
 val gz = File(repo, "src/jvmTest/resources/fieldSuggest/rank-corpus.tsv.gz")
-val lines = GZIPInputStream(gz.inputStream()).bufferedReader().readLines()
+val lines = GZIPInputStream(gz.inputStream()).bufferedReader().use { it.readLines() }
 val rows = lines.filter { it.startsWith("R\t") }.map { it.split('\t').drop(1) }
 val case =
     lines.filter { it.startsWith("C\t") }.map { it.split('\t').drop(1) }.first { it[2] == RECEIVER && it[1] == "bare" }

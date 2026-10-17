@@ -857,6 +857,22 @@
     "c69d11328023-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_20/README.md"
+    },
+    "529867af68d6-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_21/README.md"
+    },
+    "771fe021c5ec-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_21/README.md"
+    },
+    "c1345019b329-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_21/README.md"
+    },
+    "d020fbb89ce4-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_21/README.md"
     }
   },
   "batches": [

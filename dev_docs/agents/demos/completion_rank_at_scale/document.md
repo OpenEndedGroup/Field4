@@ -24,25 +24,29 @@ weighting decision now rests on. Nothing here is a summary written by hand.
 Run me (cmd-Enter / the run gutter). See dev_docs/completion_rank_at_scale.md.
 
 ```edn [field-box id="corpus" role="properties"]
-{"id" "corpus" "index" 0 "name" "1 - the corpus" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - the corpus" "frame" #afield/rect [60.0 60.0 340.0 136.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "corpus_code_.kt" "lines" 65 "characters" 3375 "sha256" "62342e3482faa056f7a2d4f5a5c410f18e57f4060b5f6636b2f828c496380ed7"}]}
+{"id" "corpus" "index" 0 "name" "1 - the corpus" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - the corpus" "frame" #afield/rect [60.0 60.0 340.0 136.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "corpus_code_.kt" "lines" 77 "characters" 3452 "sha256" "7faba0a482c638966b1dbad51e9d6376ad7336daffe8980ba6d8570eedabf13a"}]}
 ```
 
 ```kotlin [field-property box="corpus" name="code" path="corpus_code_.kt"]
-// 1 / Where the corpus is, and what is in it.
-//
-// `src/jvmTest/resources/fieldSuggest/rank-corpus.tsv.gz` is 578 real completion carets, each one
-// recorded from the code-use semantic sidecar's own `/complete` -- the endpoint the editor posts to
-// per keystroke. This box reads the checked-in recording and shows you the population that a
-// weighting decision now rests on. Nothing here is a summary written by hand.
-//
-// Run me (cmd-Enter / the run gutter). See dev_docs/completion_rank_at_scale.md.
+/*
+1 / Where the corpus is, and what is in it.
+
+`src/jvmTest/resources/fieldSuggest/rank-corpus.tsv.gz` is 578 real completion carets, each one
+recorded from the code-use semantic sidecar's own `/complete` -- the endpoint the editor posts to
+per keystroke. This box reads the checked-in recording and shows you the population that a
+weighting decision now rests on. Nothing here is a summary written by hand.
+
+Run me (cmd-Enter / the run gutter). See dev_docs/completion_rank_at_scale.md.
+*/
 
 import java.io.File
 import java.util.zip.GZIPInputStream
 
-// Field's working directory is the checkout it was started from; walk up to its root.
-// Spelled with explicit types on purpose: in the REPL a `generateSequence(...).firstOrNull { } ?: error(...)`
-// chain infers `Any` here, and the first `File(repo, ...)` below then fails to resolve a constructor.
+/*
+Field's working directory is the checkout it was started from; walk up to its root.
+Spelled with explicit types on purpose: in the REPL a `generateSequence(...).firstOrNull { } ?: error(...)`
+chain infers `Any` here, and the first `File(repo, ...)` below then fails to resolve a constructor.
+*/
 fun findRepoRoot(): File {
     var at: File? = File(".").absoluteFile
     while (at != null) {
@@ -57,7 +61,7 @@ fun findRepoRoot(): File {
 val repo: File = findRepoRoot()
 val corpus = File(repo, "src/jvmTest/resources/fieldSuggest/rank-corpus.tsv.gz")
 
-val lines = GZIPInputStream(corpus.inputStream()).bufferedReader().readLines()
+val lines = GZIPInputStream(corpus.inputStream()).bufferedReader().use { it.readLines() }
 val rows = lines.filter { it.startsWith("R\t") }.map { it.split('\t').drop(1) }
 val cases = lines.filter { it.startsWith("C\t") }.map { it.split('\t').drop(1) }
 
@@ -68,19 +72,27 @@ val byForm = cases.groupBy { it[1] }
 // The last expression is what the box shows in its output panel.
 val report = buildString {
     appendLine("${corpus.name}  ${corpus.length() / 1024} KB on disk")
-    appendLine("${cases.size} carets, ${payloadSize.sum()} payload rows, ${rows.size} distinct " +
-        "(${"%.1f".format(payloadSize.sum().toDouble() / rows.size)}x interning)")
+    appendLine(
+        "${cases.size} carets, ${payloadSize.sum()} payload rows, ${rows.size} distinct " +
+            "(${"%.1f".format(payloadSize.sum().toDouble() / rows.size)}x interning)",
+    )
     appendLine()
     for ((form, group) in byForm) {
         val sizes = group.map { it[5].split(',').size }.sorted()
-        appendLine("  $form: ${group.size} carets, payload median ${sizes[sizes.size / 2]}, " +
-            "max ${sizes.last()}, ${group.count { it[5].split(',').size > 80 }} contested (> 80 rows, " +
-            "so the popup had to leave something out)")
+        appendLine(
+            "  $form: ${group.size} carets, payload median ${sizes[sizes.size / 2]}, " +
+                "max ${sizes.last()}, ${group.count { it[5].split(',').size > 80 }} contested (> 80 rows, " +
+                "so the popup had to leave something out)",
+        )
     }
     appendLine()
     appendLine("  the receivers a person is actually completing on, most-recorded first:")
-    cases.groupingBy { it[2].ifBlank { "(no receiver resolved)" } }.eachCount()
-        .entries.sortedByDescending { it.value }.take(12)
+    cases
+        .groupingBy { it[2].ifBlank { "(no receiver resolved)" } }
+        .eachCount()
+        .entries
+        .sortedByDescending { it.value }
+        .take(12)
         .forEach { appendLine("    ${it.value.toString().padStart(4)}  ${it.key}") }
 }
 
@@ -88,7 +100,7 @@ val report = buildString {
 // decides what a person can see and what they cannot.
 showSignals(
     "payload rows per caret, sorted" to payloadSize.sorted().map { it.toDouble() },
-    channel = "plot",  // its own channel: `display` REPLACES one, and the report below owns "output"
+    channel = "plot", // its own channel: `display` REPLACES one, and the report below owns "output"
     title = "what the 80-row cut acts on",
 )
 
@@ -122,7 +134,7 @@ index declines rather than borrowing -- which is exactly the population the defe
 about. `afield.geometry.mesh.TriMesh` is another Field type.
 
 ```edn [field-box id="classify" role="properties"]
-{"id" "classify" "index" 1 "name" "2 - category + prior" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - category + prior" "frame" #afield/rect [493.5 60.0 358.4 136.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "classify_code_.kt" "lines" 93 "characters" 5001 "sha256" "2a431bfa672bc3359aa5a9a03cfc0c57b1ded6c293a4cb36be97525de0febaea"}]}
+{"id" "classify" "index" 1 "name" "2 - category + prior" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - category + prior" "frame" #afield/rect [493.5 60.0 358.4 136.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "classify_code_.kt" "lines" 93 "characters" 5012 "sha256" "9224854c20adb096f3be170c8f02317f428a43efecb11f9079c1ad8a48587a17"}]}
 ```
 
 ```kotlin [field-property box="classify" name="code" path="classify_code_.kt"]
@@ -170,7 +182,7 @@ fun findRepoRoot(): File {
 val repo: File = findRepoRoot()
 
 val gz = File(repo, "src/jvmTest/resources/fieldSuggest/rank-corpus.tsv.gz")
-val lines = GZIPInputStream(gz.inputStream()).bufferedReader().readLines()
+val lines = GZIPInputStream(gz.inputStream()).bufferedReader().use { it.readLines() }
 val rows = lines.filter { it.startsWith("R\t") }.map { it.split('\t').drop(1) }
 val case =
     lines.filter { it.startsWith("C\t") }.map { it.split('\t').drop(1) }.first { it[2] == RECEIVER && it[1] == "bare" }

@@ -1,0 +1,41 @@
+{
+  "baseline": "a8a5d6e4f",
+  "sources": [
+    {
+      "path": "dev_docs/agents/demos/completion_rank_at_scale/corpus_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/completion_rank_at_scale/classify_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/pattern_condense/condense_invents_nothing_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/pattern_condense/build.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 1,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/control_surface_laws.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/inertial_movement.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}
