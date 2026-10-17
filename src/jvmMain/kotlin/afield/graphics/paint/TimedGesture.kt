@@ -2,6 +2,11 @@
 package afield.graphics.paint
 
 /**
+ * A hand movement sampled in time, with pressure and pen orientation, which drives a brush:
+ * [TimedGesture] and its [TimedGesture.Sample].
+ */
+
+/**
  * A movement of the hand in time: where the tool is, when, how hard it presses, and how the handle
  * is held. An [afield.geometry.path.FLine] gives only a path; flicking, dragging slowly, pausing, pressing
  * and lifting need the time and the orientation too. [PaintCanvas.gesture] makes one from an FLine at a
