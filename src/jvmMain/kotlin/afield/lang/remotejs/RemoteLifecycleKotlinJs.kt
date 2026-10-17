@@ -6,6 +6,14 @@ import afield.geometry.path.plus
 import afield.geometry.path.times
 
 /**
+ * The `onStart` / `onFrame` / `onStop` / `keepAlive` callbacks that every remote Kotlin/JS head shares.
+ *
+ * [RemoteLifecycleKotlinJs] supplies them, with the `HeadFrame` timing record, as compiler
+ * declarations and as a completion mirror. Callbacks register only during a Launch; a launched box
+ * stays active until relaunch, error or Stop, and its `onStop` callbacks then run once.
+ */
+
+/**
  * Head-neutral lifecycle surface shared by remote Kotlin/JS profiles.
  *
  * The host opens a lifecycle registration scope only for Field's Launch operation. Consequently:
