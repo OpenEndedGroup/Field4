@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="tb_renderer" index="0" -->
 
 ```edn [field-box id="tb_renderer" role="properties"]
-{"id" "tb_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["tb_compute"] "properties" {"children" #{#afield/box "tb_compute"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tb_renderer_code_.kt" "lines" 11 "characters" 266 "sha256" "93f966e8792950c56252d1bbacac93a357c34c29b928062d570684d94393c978"}]}
+{"id" "tb_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["tb_compute"] "properties" {"children" #{#afield/box "tb_compute"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tb_renderer_code_.kt" "lines" 12 "characters" 267 "sha256" "5adb4383d6451544289629b5958e7ac4767f497841dc5b8c0797e2c4f4ea53af"}]}
 ```
 
 ```kotlin [field-property box="tb_renderer" name="code" path="tb_renderer_code_.kt"]
 import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -33,27 +34,40 @@ start(renderer::run)
 <!-- field-box id="tb_compute" index="1" -->
 
 ```edn [field-box id="tb_compute" role="properties"]
-{"id" "tb_compute" "index" 1 "name" "compute particles" "parents" ["root" "tb_renderer"] "children" ["tb_draw"] "properties" {"children" #{#afield/box "tb_draw"} "parents" #{#afield/box "root" #afield/box "tb_renderer"} "name" "compute particles" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "tb_compute_compute_.glsl" "lines" 19 "characters" 828 "sha256" "1e1db9697ab4a882ab7940df21dd05281b0738b8f5f8b0eeef3ab08041e87dab"} {"name" "code" "language" "kotlin" "path" "tb_compute_code_.kt" "lines" 25 "characters" 1127 "sha256" "11b1082659d88972a7b42fc5a292b50be5893a3be76d7f0f73b0ce45f2ed296d"}]}
+{"id" "tb_compute" "index" 1 "name" "compute particles" "parents" ["root" "tb_renderer"] "children" ["tb_draw"] "properties" {"children" #{#afield/box "tb_draw"} "parents" #{#afield/box "root" #afield/box "tb_renderer"} "name" "compute particles" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "tb_compute_compute_.glsl" "lines" 32 "characters" 959 "sha256" "817c9f667f61952741d442d986e0004318c9bfef7c510faf1d5fb933751e40ab"} {"name" "code" "language" "kotlin" "path" "tb_compute_code_.kt" "lines" 28 "characters" 1154 "sha256" "f3d046be8037154031c0c6c163dd6b3c162f3181b7fde1f88172684cdaa88bc1"}]}
 ```
 
 ```glsl [field-property box="tb_compute" name="compute" path="tb_compute_compute_.glsl"]
 #version 450
 #extension GL_EXT_buffer_reference : require
 layout(local_size_x = 64) in;
-layout(std430, buffer_reference) buffer inData { vec4 a[]; };
-layout(std430, buffer_reference) buffer outData { vec4 a[]; };
+layout(std430, buffer_reference) buffer inData {
+    vec4 a[];
+};
+layout(std430, buffer_reference) buffer outData {
+    vec4 a[];
+};
 layout(push_constant) uniform dat {
     inData inData;
     outData outData;
     float something;
+    uint particleCount;
 } pc;
 {% property "fieldProbe" %}
 void main() {
     uint idx = gl_GlobalInvocationID.x;
-    pc.outData.a[idx].x = pc.inData.a[idx].x*cos(pc.something*pc.inData.a[idx].z) + pc.inData.a[idx].y*sin(pc.something*pc.inData.a[idx].w);
-    pc.outData.a[idx].y = -pc.inData.a[idx].x*sin(pc.something*pc.inData.a[idx].w) + pc.inData.a[idx].y*cos(pc.something*pc.inData.a[idx].z*0.03);
-    pc.outData.a[idx].zw = pc.inData.a[idx].zw;
-    vec2 delta = pc.outData.a[idx].xy - pc.inData.a[idx].xy;
+    if (idx >= pc.particleCount) return;
+    vec4 seed = pc.inData.a[idx]; // xy position, zw modulation and size.
+    float phaseZ = pc.something * seed.z;
+    float phaseW = pc.something * seed.w;
+    // The y cosine alone uses the slow phase.
+    float slowPhaseZ = phaseZ * 0.03;
+    vec2 moved = vec2(
+    seed.x * cos(phaseZ) + seed.y * sin(phaseW),
+    -seed.x * sin(phaseW) + seed.y * cos(slowPhaseZ)
+    );
+    pc.outData.a[idx] = vec4(moved, seed.zw);
+    vec2 delta = moved - seed.xy;
     fieldProbe(length(delta));
 }
 ```
@@ -68,15 +82,18 @@ var inData = defaultBuffer { size = N.vec4s }.buffer
 var outData = defaultBuffer { size = N.vec4s }.buffer
 m.inData = { inData }
 m.outData = { outData }
+m.particleCount = { N }
 // The live renderer uses monotonic time; frame-synchronous docs capture replaces this
 // with frameIndex/fps, so an already-running multi-box scene still restarts at movie t=0.
 m.something = { (AnimationClock.nowSeconds() * 0.6).f }
 // Full coverage makes the published probe card independent of GPU workgroup ordering;
 // summaryHtml canonicalizes the scalar display order before plotting it.
 fieldProbeHere(samples = 100000).display("probe")
-displayOpen("probe")   // mark the channel open so the card starts expanded when it arrives
+displayOpen("probe") // mark the channel open so the card starts expanded when it arrives
 prop<FrameBufferGroup>(outputPositions) = outData
-m.x = N / 64; m.y = 1; m.z = 1
+m.x = (N + 63) / 64
+m.y = 1
+m.z = 1
 val seeded = kotlin.random.Random(0x4f1e1d)
 inData.write {
     for (i in 0 until N) {
@@ -91,13 +108,15 @@ println("compute launched, N=" + N)
 <!-- field-box id="tb_draw" index="2" -->
 
 ```edn [field-box id="tb_draw" role="properties"]
-{"id" "tb_draw" "index" 2 "name" "draw particles" "parents" ["root" "tb_compute"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "tb_compute"} "name" "draw particles" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "tb_draw_vertex_.glsl" "lines" 17 "characters" 643 "sha256" "0d85756a2e212600c96f1f99aa3a4ed39a26169880a2d89c9cc1f87d174ae514"} {"name" "fragment" "language" "glsl" "path" "tb_draw_fragment_.glsl" "lines" 10 "characters" 312 "sha256" "739c6e5b6ad0ac8fd506d6926fe7af6eac86d734807a1a8c121ca6d00585c25e"} {"name" "code" "language" "kotlin" "path" "tb_draw_code_.kt" "lines" 9 "characters" 267 "sha256" "1177cb983bc71460b886db49c592c2bc76d06703433390fcabda1d9da76d55c9"}]}
+{"id" "tb_draw" "index" 2 "name" "draw particles" "parents" ["root" "tb_compute"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "tb_compute"} "name" "draw particles" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "tb_draw_vertex_.glsl" "lines" 19 "characters" 647 "sha256" "2c8e11634cdf55e1666a96f3bd1411949e77074c7a19dbac24f48c5380aa07f1"} {"name" "fragment" "language" "glsl" "path" "tb_draw_fragment_.glsl" "lines" 10 "characters" 312 "sha256" "739c6e5b6ad0ac8fd506d6926fe7af6eac86d734807a1a8c121ca6d00585c25e"} {"name" "code" "language" "kotlin" "path" "tb_draw_code_.kt" "lines" 9 "characters" 273 "sha256" "60e8d9bb841f8f308e594ff0e9e44b06c4eb33880e976247aef79e5945573461"}]}
 ```
 
 ```glsl [field-property box="tb_draw" name="vertex" path="tb_draw_vertex_.glsl"]
 #version 450
 #extension GL_EXT_buffer_reference : require
-layout(std430, buffer_reference) buffer inData { vec4 pos[]; };
+layout(std430, buffer_reference) buffer inData {
+    vec4 pos[];
+};
 layout(location = 0) out vec2 tc;
 layout(push_constant) uniform push {
     inData inData;
@@ -134,8 +153,8 @@ module += "mesh" to m
 renderer += "draw" to module
 val N = 100000
 m.inData = { outputPositions }
-m.aspectRatio = { window.width/window.height.toFloat() }
-m.set(N*2*3, 0) {}
+m.aspectRatio = { window.width / window.height.toFloat() }
+m.set(N * 2 * 3, 0) {}
 println("draw launched")
 ```
 
