@@ -59,11 +59,10 @@ val pass = object : Target {
         mesh.push["times"] = vec(time, previousTime, 0, 0)
         mesh.push["settings"] = vec(0, 1, 0, 0)
 
-        // Record producer, then consumer, on this same command buffer.
-        source.render(command, index)
-        if (!bypass)
-            neural?.evaluate(
-                command,
+        // Evaluation owns source rendering; bypass records just the source.
+        if (bypass || neural == null) source.render(command, index)
+        else neural.evaluate(
+                command, index, source,
                 ReconstructionInputs(source.imageViewArray[0], source.imageViewArray[1], source.imageViewArray[2]),
                 ReconstructionFrame(frameIndex, jitter, revision = revision),
             )

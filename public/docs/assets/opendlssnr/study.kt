@@ -4,13 +4,12 @@ import afield.graphics.render.neural.*
 
 val owner = renderer
 prop<OpenDlssNrStudy>(lab)
-(thisBox.getPropertyRaw("lab") as? OpenDlssNrStudy)?.close()
 // Leave null for the editable fragment shader; try the bundled drawing or your own image.
 val imagePath: String? = null
 // val imagePath: String? = "public/docs/assets/opendlssnr/ink-input.png"
 lab = OpenDlssNrStudy(owner, size=768, imagePath=imagePath,
-    vertex=thisBox.getPropertyRaw("vertex") as String,
-    fragment=thisBox.getPropertyRaw("fragment") as String)
+    vertex=requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+    fragment=requireNotNull(fragment) { "Missing fragment shader on this box or its parents" })
 println(lab.availability.reason)
 var style=1
 var tone=0f
@@ -44,8 +43,8 @@ frames {
             owned.grade=Vector4f(red,green,blue,1f)
             owned.animate=animate && !owned.recording
             if(reload) {
-                owned.reload(thisBox.getPropertyRaw("vertex") as String,
-                    thisBox.getPropertyRaw("fragment") as String)
+                owned.reload(requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+                    requireNotNull(fragment) { "Missing fragment shader on this box or its parents" })
                     .onFailure {println("Keeping working shaders: ${it.message}")}
                 reload=false
             }

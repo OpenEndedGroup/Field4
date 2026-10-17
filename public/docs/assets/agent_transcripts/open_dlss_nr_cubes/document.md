@@ -35,7 +35,7 @@ start(renderer::run)
 <!-- field-box id="open_dlss_nr" index="1" -->
 
 ```edn [field-box id="open_dlss_nr" role="properties"]
-{"id" "open_dlss_nr" "index" 1 "name" "neural cubes" "parents" ["root" "agent_graphics_context"] "children" ["nr_record"] "properties" {"children" #{#afield/box "nr_record"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural cubes" "_tombstone" false "frame" #afield/rect [400.0 40.0 350.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "open_dlss_nr_code_.kt" "lines" 52 "characters" 2155 "sha256" "ef5082a0f0f2e9cf9684ee864c72dd3de9103bef61c4040dfff1726b1fe1d4ea"} {"name" "vertex" "language" "glsl" "path" "open_dlss_nr_vertex_.glsl" "lines" 49 "characters" 2564 "sha256" "9cadad82e7d4007c8c6d03b388a58d63a954b8b3ff5eef34b0565904739ca41f"} {"name" "fragment" "language" "glsl" "path" "open_dlss_nr_fragment_.glsl" "lines" 25 "characters" 1353 "sha256" "61c506ca6ed9fc5844bb716b59da41f8ef6c8ad1464d19e0747882a0d7c51b11"}]}
+{"id" "open_dlss_nr" "index" 1 "name" "neural cubes" "parents" ["root" "agent_graphics_context"] "children" ["nr_record"] "properties" {"children" #{#afield/box "nr_record"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural cubes" "_tombstone" false "frame" #afield/rect [400.0 40.0 350.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "open_dlss_nr_code_.kt" "lines" 51 "characters" 2238 "sha256" "b443ef6dd69945a48f2d31c12c1108b1da7a1e2a45f8c8b22adf7171079642e6"} {"name" "vertex" "language" "glsl" "path" "open_dlss_nr_vertex_.glsl" "lines" 49 "characters" 2564 "sha256" "9cadad82e7d4007c8c6d03b388a58d63a954b8b3ff5eef34b0565904739ca41f"} {"name" "fragment" "language" "glsl" "path" "open_dlss_nr_fragment_.glsl" "lines" 25 "characters" 1353 "sha256" "61c506ca6ed9fc5844bb716b59da41f8ef6c8ad1464d19e0747882a0d7c51b11"}]}
 ```
 
 ```kotlin [field-property box="open_dlss_nr" name="code" path="open_dlss_nr_code_.kt"]
@@ -45,10 +45,9 @@ import afield.graphics.render.neural.*
 
 val owner = renderer
 prop<OpenDlssNrStudy>(lab)
-(thisBox.getPropertyRaw("lab") as? OpenDlssNrStudy)?.close()
 lab = OpenDlssNrStudy(owner, size=768, name="nr-cubes", geometry=true,
-    vertex=thisBox.getPropertyRaw("vertex") as String,
-    fragment=thisBox.getPropertyRaw("fragment") as String)
+    vertex=requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+    fragment=requireNotNull(fragment) { "Missing fragment shader on this box or its parents" })
 println(lab.availability.reason)
 var style=1
 var tone=0f
@@ -82,8 +81,8 @@ frames {
             owned.grade=Vector4f(red,green,blue,1f)
             owned.animate=animate && !owned.recording
             if(reload) {
-                owned.reload(thisBox.getPropertyRaw("vertex") as String,
-                    thisBox.getPropertyRaw("fragment") as String)
+                owned.reload(requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+                    requireNotNull(fragment) { "Missing fragment shader on this box or its parents" })
                     .onFailure {println("Keeping working shaders: ${it.message}")}
                 reload=false
             }

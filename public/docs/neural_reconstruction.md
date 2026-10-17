@@ -126,9 +126,16 @@ Each input must follow these conventions:
 | Jitter | Projection displacement in input pixels, matching the rendered image |
 | Reset | Camera cuts, live edits, new resources, skipped frames and context recreation |
 
-Field's direct-lighting motion texture stores current-minus-previous **UV** displacement, so it needs
-both a sign and unit conversion before this adapter can use it. Merely passing that texture through
-would produce incorrect history.
+For Field's direct-lighting motion texture, declare its current-minus-previous UV convention:
+
+```diffstatic {data-lang=kotlin}
+ReconstructionInputs(color, depth, motion,
+    motionCurrentMinusPrevious = true,
+    motionInPixels = false)
+```
+
+The adapter supplies the sign and input dimensions to NGX for both Super Resolution and Ray
+Reconstruction. The motion texture stays on the GPU and needs no conversion pass.
 
 ??? aside "Inspect the input guides"
 

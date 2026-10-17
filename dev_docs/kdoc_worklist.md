@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 16237 of 32233 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 16240 of 32238 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2299 undocumented entry points** (types, top-level functions and values) and 13024 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2299 undocumented entry points** (types, top-level functions and values) and 13026 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -89,9 +89,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Functions.kt](../src/jvmMain/kotlin/afield/math/functions/Functions.kt) | Math | functions_examples | 1 | 47 | 84% |
 | [GaussianProcess.kt](../src/jvmMain/kotlin/afield/math/gp/GaussianProcess.kt) | Math | gaussian_processes | 1 | 21 | 52% |
 | [FunctionStudy.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionStudy.kt) | Function | function_conversation | 1 | 12 | 51% |
-| [OpenDlssNrPass.kt](../src/jvmMain/kotlin/afield/graphics/render/neural/OpenDlssNrPass.kt) | Graphics | open_dlss_nr | 1 | 11 | 33% |
+| [OpenDlssNrPass.kt](../src/jvmMain/kotlin/afield/graphics/render/neural/OpenDlssNrPass.kt) | Graphics | open_dlss_nr | 1 | 11 | 36% |
+| [DlssReconstruction.kt](../src/jvmMain/kotlin/afield/media/reconstruction/DlssReconstruction.kt) | Imaging | reconstruction_plumbing, neural_reconstruction, ray_reconstruction | 1 | 11 | 29% |
 | [GpPaths.kt](../src/jvmMain/kotlin/afield/math/gp/GpPaths.kt) | Math | gaussian_processes | 1 | 10 | 31% |
-| [DlssReconstruction.kt](../src/jvmMain/kotlin/afield/media/reconstruction/DlssReconstruction.kt) | Imaging | reconstruction_plumbing, neural_reconstruction, ray_reconstruction | 1 | 10 | 26% |
 | [pf.kt](../src/jvmMain/kotlin/afield/math/estimation/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
 | [GpFit.kt](../src/jvmMain/kotlin/afield/math/gp/GpFit.kt) | Math | gaussian_processes | 1 | 7 | 33% |
 | [CoroutineProfiling.kt](../src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt) | Workspace | profiling_timeline | 1 | 4 | 44% |
@@ -1039,6 +1039,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StackSLStudyShader.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLStudyShader.kt) | Languages | — | 0 | 1 | 97% |
 | [NeuralToolsFallbackSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/NeuralToolsFallbackSmoke.kt) | Imaging | — | 0 | 1 | 50% |
 | [PathTracedReconstructionSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/PathTracedReconstructionSmoke.kt) | Imaging | — | 0 | 1 | 50% |
+| [ReconstructionMotionGpuSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/ReconstructionMotionGpuSmoke.kt) | Imaging | — | 0 | 1 | 50% |
 | [ReconstructionSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/ReconstructionSmoke.kt) | Imaging | — | 0 | 1 | 50% |
 | [WaylandReconstructionSmoke.kt](../src/jvmMain/kotlin/afield/media/reconstruction/WaylandReconstructionSmoke.kt) | Imaging | — | 0 | 1 | 50% |
 | [LinuxElectronImportProbe.kt](../src/jvmMain/kotlin/afield/media/stream/LinuxElectronImportProbe.kt) | Imaging | — | 0 | 1 | 50% |

@@ -1,8 +1,26 @@
 package afield.media.reconstruction
 
 import kotlin.test.*
+import afield.graphics.texture.HasImageView
+import afield.graphics.texture.ImageView
 
 class ReconstructionTest {
+    @Test fun declaredMotionConventionConvertsKnownTranslationToPreviousPixels() {
+        val image=object : HasImageView {
+            override val imageView: ImageView get()=error("Motion scaling must not access GPU images")
+        }
+        val size=ReconstructionSize(1280,720)
+        for(currentMinusPrevious in listOf(false,true))for(inPixels in listOf(false,true)) {
+            val inputs=ReconstructionInputs(image,image,image,currentMinusPrevious,inPixels)
+            val (sx,sy)=inputs.motionScale(size)
+            val sign=if(currentMinusPrevious)1f else -1f
+            val x=sign*8f/(if(inPixels)1f else size.width.toFloat())
+            val y=sign*-4f/(if(inPixels)1f else size.height.toFloat())
+            assertEquals(-8f,x*sx)
+            assertEquals(4f,y*sy)
+        }
+        assertEquals(1f to 1f,ReconstructionInputs(image,image,image).motionScale(size))
+    }
     @Test fun motionIsCurrentToPreviousInInputPixels() {
         // A point moves from x=320 to x=328 in a 1280-wide input. Field UV velocity is positive.
         val fieldVelocity=(328f-320f)/1280f

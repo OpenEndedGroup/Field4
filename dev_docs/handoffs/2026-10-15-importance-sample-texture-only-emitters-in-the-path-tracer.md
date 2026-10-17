@@ -10,3 +10,9 @@ Sharp edge (rule 25) on public/docs/path_tracing.md, emitter-sampling exclusions
 > - **Emission that comes only from a texture.** The table's weight reads the material's emission factor, so a triangle whose factor is black and whose emissive *texture* is bright carries weight zero. ...
 
 Fix in code: weight the emitter table by the emission factor times the emissive texture's mean (or max) so texture-only emitters are sampled. Delete this bullet in the same change.
+
+## Completed on Linux/NVIDIA, 2026-10-17
+
+The texture-mean weighting was already implemented upstream in 336d59c8d. Added distribution regressions and verified textured-emitter furnace/composition plus convergence on both compute and ray-query backends. Black emission factors remain non-emissive under the real multiplicative material semantics.
+
+Evidence and reproduction: [Linux/NVIDIA verification](../lighting/ELSEWHERE_20261017.md). The originating annotation store is absent on this host; this tracked record carries the outcome for closing there after landing.

@@ -12,6 +12,7 @@ import afield.graphics.texture.LoadedTexture
 import afield.graphics.texture.TextureSampler
 import afield.graphics.texture.HasImageViewArray
 import afield.graphics.texture.PreparesSampledImages
+import afield.runtime.lifecycle.RunScope
 import afield.math.linalg.Vector4f
 import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
@@ -20,7 +21,9 @@ import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 
 /** Editable source -> native NR -> graded comparison. Source mode works without the optional library.
- * The comparison and capture use the very same targets as the live Starting Point. */
+ * The current box run owns the study: stopping or rerunning it closes the old resources. The renderer
+ * also closes the study before destroying its device. The comparison and capture use the very same
+ * targets as the live Starting Point. */
 class OpenDlssNrStudy(
     val renderer: Renderer,
     val size: Int = 768,
@@ -75,6 +78,7 @@ class OpenDlssNrStudy(
     private var screen: ModulePointer?=null
     private var frame=0L
     private var closed=false
+    private val ownerScope=RunScope.current()
     /** Closes this study when its renderer tears its device down, so the boxes using it need not stop first. */
     private val closeWithRenderer=Runnable { close() }
     /** Whether [close] has run, by the box or by the renderer going away. */
@@ -91,6 +95,7 @@ class OpenDlssNrStudy(
         output.modules["compare"]=compareModule.pointer()
         renderer.beforeDeviceCleanup+=closeWithRenderer
         if(attach)attach()
+        ownerScope?.own(this)
     }
     private fun triangle(module: Module, vertices: Int=3): Mesh = Mesh(renderer,module.pointer()).also {
         it.resize(vertices,0,module.pointer()); it.push.setMembers(module.fi.pushConstants.single().members)
@@ -146,9 +151,10 @@ class OpenDlssNrStudy(
     override fun close() {
         if(closed)return
         closed=true
+        ownerScope?.disown(this)
         renderer.beforeDeviceCleanup.remove(closeWithRenderer)
         renderer.renderList.preTargets.remove(name,this)
-        renderer.renderList.modules.remove(name)
+        screen?.let { renderer.renderList.modules.remove(name,it) }
         pass?.close()
         renderer.cleanup+=Runnable {
             screen?.current?.cleanup(); sourceModule.cleanup(); compareModule.cleanup()
