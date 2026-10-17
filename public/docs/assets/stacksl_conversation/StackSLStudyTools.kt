@@ -16,14 +16,20 @@ import afield.study.ui.numbers
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
-// The tools an AI4 conversation gets when it is opened on a StackSL program's `stackSL` property.
-// Each works on the focused box's own study (see StackSLPrograms), so nothing here is per document.
-// A document can still add tools of its own from a box: AgentToolExtensions.register with its
-// document as the scope.
+/**
+ * The tools an AI4 conversation gets when it is opened on a StackSL program's `stackSL` property.
+ *
+ * Each works on the focused box's own study (see [StackSLPrograms]), so nothing here is per
+ * document. A document can still add tools of its own from a box: [AgentToolExtensions.register]
+ * with its document as the scope.
+ */
 
+/** The working guide for StackSL studies, or the words guide's entries matching a search term. */
 @JsonClassDescription("Read how to work on a StackSL study: the frame, idioms that hold, traps, the tools and the style a person expects. Call it once, before your first edit in a conversation. With search, return the words guide's entries matching a word or phrase instead.")
 data class StackSLStudyGuide(
-    @JsonPropertyDescription("A word or phrase to look up in the StackSL words guide; empty returns the working guide") val search: String = ""
+    /** A word or phrase to look up in the words guide; empty returns the working guide. */
+    @JsonPropertyDescription("A word or phrase to look up in the StackSL words guide; empty returns the working guide")
+    val search: String = ""
 )
 
 @JsonClassDescription("Read this StackSL study: the checked program, whether the editor holds an unchecked human edit (dirty; then liveSource is what is in the box and liveCheck says whether it compiles), revision history, compiler warnings, stages (one per line), knobs (the numbers a person typed, one line each: index, line:column, as typed, the operand the compiler took it as — 'mix amount', 'multiply b'), and personAt — the line the person's editor cursor is on, so 'this line' usually means it. Inspect once before editing and reuse liveSourceHash. Historical revisions are immutable. Renders come from the GPU of the window above the program (the CPU reference, slowly, when there is none). The window also shows the program live at whatever time it has reached; prefer ObserveStackSLStudy, which renders exact times. ReloadShaders does not apply: an accepted edit reaches the window by itself.")
