@@ -41,12 +41,14 @@ stop.
 | `alife_lsystem.kt` | `LSystem`, `turtleDraw`, `rasterizeFLines`, `spaceColonization` |
 | `alife_dla.kt` | `ShaderDlaSettings`, `ShaderDlaSystem` — the GPU aggregation, and not the same thing as `alife_agents.kt`'s CPU `dlaCluster` |
 | `alife_bml.kt` | `ShaderBmlSettings`, `ShaderBmlSystem` — the Biham–Middleton–Levine traffic model as one fragment pass over a ping-pong texture; GPU only, no CPU counterpart |
+| `alife_lbm.kt` | `ShaderLatticeBoltzmannSettings`, `ShaderLatticeBoltzmannSystem`, `FluidVisualizationMode` — a D2Q9 lattice Boltzmann fluid with a drawable control texture and advected dye; GPU only |
+| `alife_fire.kt` | `ShaderForestFireSettings`, `ShaderForestFireSystem`, `FireChannels` — a four-kind forest-fire excitable medium lit by drawing into an ignition texture; GPU only |
 | `alife_evolve.kt` | `LifeRuleGenome`, `LeniaGenome`, `caEdgeOfChaosObjective`, `leniaSolitonObjective` — the genomes and objectives `PopulationSearch` searches over |
 | `alife_script.kt` | `ScriptWorld`, `BehaviourScope`, `BehaviourSteering`, `ScriptActor` — one program per agent (see below) |
 | `alife_field.kt` | the inline `ToHTML` views for `IntGrid`, `GrayScottState` and `LeniaRun` |
 | `alife_animate.kt` | `Box.animateEvolution` and four "show a prefix of something" helpers |
 
-The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All eleven
+The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All thirteen
 carry `@file:afield.runtime.completion.CompletionCategory("ALife")`. Without it the generator falls back to the category
 `Uncategorised` (`StdlibReferenceGenerator.kt:819#private fun inferredCategory`) — which is how
 `alife_field.kt` first failed the reference drift guard, and how the gesture board came to be

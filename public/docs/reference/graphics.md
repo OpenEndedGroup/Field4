@@ -6252,7 +6252,7 @@ What a model gets back — and, separately, what it gets to see.
 
 `src/jvmMain/kotlin/afield/graphics/render/Mesh.kt` — [read the source](source/jvmMain/afield/graphics/render/Mesh/)
 
-**Used in:** [Field Probes: instrumenting shaders](../field_probes.md), [FieldML's JVM bridge](../fieldml_host_bridge.md), [Computer vision in Python](../python_cv.md)
+**Used in:** [Field 4 Graphics](../afield_four_graphics.md), [Field Probes: instrumenting shaders](../field_probes.md), [FieldML's JVM bridge](../fieldml_host_bridge.md)
 
 ### Top-level functions { #mesh-kt-src-jvmmain-kotlin-afield-graphics-render-functions }
 
