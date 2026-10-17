@@ -15,11 +15,11 @@ The limits sort into three kinds:
 | **Quiet** | the capture times out | an hour, guessing why |
 | **Silent** | the capture succeeds and shows the wrong thing | a published figure that is wrong |
 
-The loud ones tell you what to fix. This page is mostly about the other two.
+The loud ones tell you what to fix. The quiet and silent ones need the checks below.
 
 ---
 
-## Refused: a box whose output never appeared
+## Loud: a box with no output to show
 
 `screenshot-box` opens a box's outputs before it shoots, and requires visible, populated content
 and settled geometry. A box with nothing to show fails with `ok: false` and says so, rather than
@@ -153,7 +153,7 @@ Some practical points:
 
 - **Any page with a committed native-window capture is a control.**
 - **For box captures, the `clip` is the control.** You do not need a second run: compare the clip
-  in the reply against the size you expected, as the two figures at the top of this page do.
+  in the reply against the size you expected.
 - **Run the control in the same invocation.** A separate run is a different session, a different
    browser context and a different scratch document, so a control run later has already changed the
    variable you were holding still.
@@ -164,8 +164,8 @@ Some practical points:
 
     | limit | recorded in |
     |---|---|
-    | outputs closed with no client → a box-handle-sized capture, `ok: true` | `dev_docs/MARF_DEMO.md`, `dev_docs/OUTPUT_PANEL_SIZING.md`, `dev_docs/path_tracer_instrument.md` |
-    | stale selection blurs a box capture; repeats are flaky | `dev_docs/chart_primitive.md` |
+    | outputs closed with no client → refused with `ok: false` (it used to return a handle-sized picture with `ok: true`) | `dev_docs/MARF_DEMO.md`, `dev_docs/OUTPUT_PANEL_SIZING.md`, `dev_docs/path_tracer_instrument.md` |
+    | stale selection blurs a box capture | `dev_docs/chart_primitive.md` |
     | neighbouring panels inside the clip | `dev_docs/chart_bad_separation.md` |
     | box capture pans and drops the selection | [Moving around the canvas](moving_around_the_canvas.md#what-the-overlay-draws) |
     | per-frame vertex re-upload and property read time out the native capture | `dev_docs/SKINNED_CHARACTERS.md`, `dev_docs/GPU_SKINNING.md` |
