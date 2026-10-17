@@ -88,6 +88,8 @@ val pose = MotionPose()
 val previous = FloatArray(8)
 
 // Once per render, after updating pose in place:
+// Supply the current viewProjection, target width/height and sceneEpoch from your renderer.
+history.capture(renderer.frameCounter, viewProjection, width, height, sceneEpoch)
 objects.begin(renderer.frameCounter)
 objects.write("emitter", pose, previous, allow = history.available, revision = geometryRevision)
 ```

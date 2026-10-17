@@ -52,28 +52,40 @@ how far each particle moved this step (its speed).
 #extension GL_EXT_buffer_reference : require
 layout(local_size_x = 64) in;
 
-layout(std430, buffer_reference) buffer inData  { vec4 a[]; };
-layout(std430, buffer_reference) buffer outData { vec4 a[]; };
+layout(std430, buffer_reference) buffer inData {
+    vec4 a[];
+};
+layout(std430, buffer_reference) buffer outData {
+    vec4 a[];
+};
 
 layout(push_constant) uniform dat {
-    inData  inData;
+    inData inData;
     outData outData;
-    float   something;      // a slowly-advancing angle, set from Kotlin
+    float something; // a slowly-advancing angle, set from Kotlin
+    uint particleCount; // valid entries; the final workgroup can include padding
 } pc;
 
 {% property "fieldProbe" %}
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
+    if (idx >= pc.particleCount) return;
 
-    // rotate / mix each particle's position by the current angle
-    pc.outData.a[idx].x =  pc.inData.a[idx].x*cos(pc.something*pc.inData.a[idx].z) + pc.inData.a[idx].y*sin(pc.something*pc.inData.a[idx].w);
-    pc.outData.a[idx].y = -pc.inData.a[idx].x*sin(pc.something*pc.inData.a[idx].w) + pc.inData.a[idx].y*cos(pc.something*pc.inData.a[idx].z*0.03);
-    pc.outData.a[idx].zw = pc.inData.a[idx].zw;      // carry seed + size
+    vec4 seed = pc.inData.a[idx];
+    float phaseZ = pc.something * seed.z;
+    float phaseW = pc.something * seed.w;
+    // Only the y cosine uses the slow phase; the other three trigonometric terms do not.
+    float slowPhaseZ = phaseZ * 0.03;
+    vec2 moved = vec2(
+    seed.x * cos(phaseZ) + seed.y * sin(phaseW),
+    -seed.x * sin(phaseW) + seed.y * cos(slowPhaseZ)
+    );
+    pc.outData.a[idx] = vec4(moved, seed.zw); // Carry seed and size unchanged.
 
-    // the one quantity we cannot otherwise see: how far each particle moved
-    vec2 delta = pc.outData.a[idx].xy - pc.inData.a[idx].xy;
-    fieldProbe(length(delta));   // <-- the only instrumentation
+    // Distance moved this step, rather than distance per second.
+    vec2 delta = moved - seed.xy;
+    fieldProbe(length(delta)); // <-- the only instrumentation
 }
 ```
 
@@ -91,19 +103,25 @@ module += "step" to m
 renderer += "compute" to module
 
 val N = 100000
-var inData  = defaultBuffer { size = N.vec4s }.buffer
+var inData = defaultBuffer { size = N.vec4s }.buffer
 var outData = defaultBuffer { size = N.vec4s }.buffer
-m.inData  = { inData }
+m.inData = { inData }
 m.outData = { outData }
 var x = 0.0
-m.something = { x += 0.01; x.f }         // the advancing angle
+m.particleCount = { N }
+m.something = {
+    x += 0.01
+    x.f
+} // the advancing angle
 
 // Turn the CPU probe on: keep 4096 live samples and show the card.
 fieldProbeHere(samples = 4096).display("probe")
-displayOpen("probe")                     // start the card expanded, not collapsed
+displayOpen("probe") // start the card expanded, not collapsed
 
-prop<FrameBufferGroup>(outputPositions) = outData   // publish for the draw box
-m.x = N / 64; m.y = 1; m.z = 1
+prop<FrameBufferGroup>(outputPositions) = outData // publish for the draw box
+m.x = (N + 63) / 64
+m.y = 1
+m.z = 1
 inData.write { for (i in 0 until N) put(vec(Math.random(), Math.random(), Math.random(), Math.random())) }
 ```
 
@@ -115,7 +133,9 @@ module += "mesh" to m
 renderer += "draw" to module
 
 val N = 100000
-m.inData      = { outputPositions }      // read the published buffer
+m.inData = {
+    outputPositions
+} // read the published buffer
 m.aspectRatio = { window.width / window.height.toFloat() }
 m.set(N * 2 * 3, 0) {}
 ```
@@ -145,10 +165,18 @@ The include defines overloads for scalars, vectors, and their integer forms:
 ```diffstatic {data-lang=glsl}
 {% property "fieldProbe" %}
 
-void fieldProbe(float value);   void fieldProbe(int  value);   void fieldProbe(uint value);
-void fieldProbe(vec2  value);   void fieldProbe(vec3 value);   void fieldProbe(vec4 value);
-void fieldProbe(ivec2 value);   void fieldProbe(ivec3 value);  void fieldProbe(ivec4 value);
-void fieldProbe(uvec2 value);   void fieldProbe(uvec3 value);  void fieldProbe(uvec4 value);
+void fieldProbe(float value);
+void fieldProbe(int value);
+void fieldProbe(uint value);
+void fieldProbe(vec2 value);
+void fieldProbe(vec3 value);
+void fieldProbe(vec4 value);
+void fieldProbe(ivec2 value);
+void fieldProbe(ivec3 value);
+void fieldProbe(ivec4 value);
+void fieldProbe(uvec2 value);
+void fieldProbe(uvec3 value);
+void fieldProbe(uvec4 value);
 ```
 
 Each call keeps exact, lock-free counts in one std430
@@ -168,29 +196,31 @@ for further configuration:
 
 ```diffstatic {data-lang=kotlin}
 fun Box.fieldProbeHere(
-    samples: Int = 1024,          // reservoir size pulled back to the CPU
-    binding: Int = 63,            // SSBO binding for FieldProbeBuffer
+    samples: Int = 1024, // reservoir size pulled back to the CPU
+    binding: Int = 63, // SSBO binding for FieldProbeBuffer
     descriptorSet: Int = 0,
     enabled: Boolean = true,
-    ordinalRange: UIntRange? = null   // probe only a slice of invocations
+    ordinalRange: UIntRange? = null, // probe only a slice of invocations
 ): ShaderFieldProbe
 ```
 
 The returned `ShaderFieldProbe` has chained setters and a few controls:
 
 ```diffstatic {data-lang=kotlin}
-fieldProbeHere(samples = 4096)
-    .display("probe")                 // render the card on this display channel
-    .onSnapshot { snap -> ... }        // or receive each snapshot yourself
+val probe = fieldProbeHere(samples = 4096).display("probe")
 
 // tuning knobs
-probe.maxDisplayHz = 12.0             // throttle card refreshes (default 5 Hz)
-probe.ordinalRange(0u until 1000u)    // restrict which invocations are sampled
-probe.configure(samples = 256)        // reconfigure live
-probe.deregister()                    // stop and close the display channel
+probe.maxDisplayHz = 12.0 // throttle card refreshes (default 5 Hz)
+probe.ordinalRange(0u until 1000u) // restrict which invocations are sampled
+probe.configure(samples = 256) // reconfigure live
+
+// When finished: probe.deregister()    // stop and close the display channel
 
 // pull the latest result without a display channel
 val snap: FieldProbeSnapshot? = probe.readLatest()
+
+// Optional alternative to polling: receive each snapshot on the read-back thread.
+// probe.onSnapshot { snapshot -> println(snapshot.scalarSummary()) }
 ```
 
 `display(channel)` pushes the rendered HTML card to that output channel on the
@@ -210,22 +240,28 @@ sample:
 
 ```diffstatic {data-lang=kotlin}
 data class FieldProbeSnapshot(
-    val dimensions: Int,          // 1=scalar, 2=vec2, 3=vec3, 4=vec4
-    val invocationCount: Long,    // total fieldProbe(...) calls
-    val acceptedCount: Long,      // within ordinalRange and matching type
-    val finiteCount: Long,        // non-NaN, non-Inf
-    val sampleCount: Int,         // reservoir samples actually returned
-    val nanCount: Long, val infCount: Long,
-    val nonZeroCount: Long, val typeMismatchCount: Long,
-    val exactMin: DoubleArray,    // per component, exact over all invocations
+    val dimensions: Int, // 1=scalar, 2=vec2, 3=vec3, 4=vec4
+    val invocationCount: Long, // total fieldProbe(...) calls
+    val acceptedCount: Long, // within ordinalRange and matching type
+    val finiteCount: Long, // non-NaN, non-Inf
+    val sampleCount: Int, // reservoir samples actually returned
+    val nanCount: Long,
+    val infCount: Long,
+    val nonZeroCount: Long,
+    val typeMismatchCount: Long,
+    val exactMin: DoubleArray, // per component, exact over all invocations
     val exactMax: DoubleArray,
-    val samples: List<Vec4>
+    val samples: List<Vec4>,
 )
 
 // derived, on demand:
-snap.anyNaN; snap.anyInf; snap.anyNonZero
-snap.percentile(0.95)             // from the sample
-snap.scalarValues(); snap.scalarSummary(); snap.vec3Summary()
+snap.anyNaN
+snap.anyInf
+snap.anyNonZero
+snap.percentile(0.95) // from the sample
+snap.scalarValues()
+snap.scalarSummary()
+snap.vec3Summary()
 snap.summaryHtml(previous = last) // the card (histogram + chips)
 ```
 
@@ -248,13 +284,13 @@ CPU.
 
 ```diffstatic {data-lang=kotlin}
 fun Box.fieldStatsHere(
-    channels: Int = 1,        // independent distributions (1..64)
-    sketchSize: Int = 256,    // quantile-sketch resolution (pow2, 16..256)
+    channels: Int = 1, // independent distributions (1..64)
+    sketchSize: Int = 256, // quantile-sketch resolution (pow2, 16..256)
     maxPartials: Int = 65_536,
     descriptorSet: Int = 0,
     partialBinding: Int = 61,
     resultBinding: Int = 62,
-    stateSlots: Int = 8       // GPU-side smoothed/EMA slots
+    stateSlots: Int = 8, // GPU-side smoothed/EMA slots
 ): ShaderFieldStats
 ```
 
@@ -265,25 +301,42 @@ them (set `stats.cpuSnapshotsEnabled = false` to skip the read-back entirely):
 val stats = fieldStatsHere(channels = 1)
 // ... run the dispatch ...
 
-val s = stats.read(0)          // blocking exact read of channel 0
-val s = stats.latest(0)        // most recent async read-back (or null)
+val s = stats.read(0) // blocking exact read of channel 0
 
-s.mean; s.standardDeviation; s.min; s.max; s.finiteCount
-s.quantile(0.5)                // median from the GPU sketch
-s.cdf(1.0)                     // fraction of samples <= 1.0
+s.mean
+s.standardDeviation
+s.min
+s.max
+s.finiteCount
+s.quantile(0.5) // median from the GPU sketch
+s.cdf(1.0) // fraction of samples <= 1.0
+
+// Alternative: use the most recent asynchronous snapshot when one is available.
+stats.latest(0)?.let { recent ->
+    println("Latest async mean: ${recent.mean}")
+}
 ```
 
 ```diffstatic {data-lang=kotlin}
 data class FieldScalarStatsSnapshot(
-    val calls: Long, val finiteCount: Long,
-    val invalidCount: Long, val nonZeroCount: Long,
-    val min: Double, val max: Double,
-    val mean: Double, val variance: Double,
-    val sum: Double, val sumSquares: Double,
+    val calls: Long,
+    val finiteCount: Long,
+    val invalidCount: Long,
+    val nonZeroCount: Long,
+    val min: Double,
+    val max: Double,
+    val mean: Double,
+    val variance: Double,
+    val sum: Double,
+    val sumSquares: Double,
     val standardDeviation: Double,
-    val droppedPartials: Long,                 // >0 means raise maxPartials
-    val centroids: List<Pair<Double, Double>>  // (value, weight) sketch
-) { fun quantile(q: Double): Double; fun cdf(value: Double): Double }
+    val droppedPartials: Long, // >0 means raise maxPartials
+    val centroids: List<Pair<Double, Double>>, // (value, weight) sketch
+) {
+    fun quantile(q: Double): Double
+
+    fun cdf(value: Double): Double
+}
 ```
 
 ### GLSL side: recording
@@ -296,8 +349,8 @@ subgroup, which keeps atomic operations few:
 {% property "fieldStats" %}
 
 void fieldStatsRecord(uint channel, float value);
-void fieldStatsRecord(int  channel, float value);
-void fieldStatsRecordVec4(uint firstChannel, vec4 value);   // 4 consecutive channels
+void fieldStatsRecord(int channel, float value);
+void fieldStatsRecordVec4(uint firstChannel, vec4 value); // 4 consecutive channels
 ```
 
 ```diffstatic {data-lang=glsl}
@@ -313,8 +366,8 @@ example, colouring each particle by its speed relative to the live median, with
 no trip through the CPU:
 
 ```diffstatic {data-lang=glsl}
-FieldScalarStats fieldStatsRead(uint channel);            // .mean .min .max .finiteCount ...
-float fieldStatsQuantile(uint channel, float q);          // e.g. median = q 0.5
+FieldScalarStats fieldStatsRead(uint channel); // .mean .min .max .finiteCount ...
+float fieldStatsQuantile(uint channel, float q); // e.g. median = q 0.5
 float fieldStatsCdf(uint channel, float value);
 float fieldStatsSmoothedMean(uint slot, uint channel, float halfLife);
 float fieldStatsSmoothedQuantile(uint slot, uint channel, float q, float halfLife);
@@ -329,7 +382,7 @@ A shader in a different box from the one recording, which only reads the stats, 
 
 ```diffstatic {data-lang=kotlin}
 val stats = producerBox.fieldStatsHere(channels = 1)
-consumerBox.useFieldStats(stats)     // include "fieldStats" now resolves as a reader
+consumerBox.useFieldStats(stats) // include "fieldStats" now resolves as a reader
 ```
 
 ### Reading it back on the CPU
@@ -338,12 +391,46 @@ If you do want the numbers in Kotlin (for logging, tests, or a custom readout),
 the read-back is a few numbers per channel, not an array of samples.
 This box runs a compute step under `fieldStats` and shows channel 0 as a table:
 
+Install this exact shader in that box's **compute** property before running its Kotlin.
+It uses its own position/velocity layout and records velocity magnitude in world units per second:
+
+```diffstatic {data-lang=glsl}
+#version 450
+#extension GL_EXT_buffer_reference : require
+layout(local_size_x = 64) in;
+layout(std430, buffer_reference) buffer Positions {
+    vec4 a[];
+};
+layout(std430, buffer_reference) buffer Velocities {
+    vec4 a[];
+};
+layout(push_constant) uniform Step {
+    Positions positions;
+    Velocities velocities;
+    float dt; // seconds per step
+    uint particleCount;
+} pc;
+{% property "fieldStats" %}
+
+void main() {
+    uint i = gl_GlobalInvocationID.x;
+    if (i >= pc.particleCount) return;
+    vec4 p = pc.positions.a[i];
+    vec3 acceleration = vec3(-p.y, p.x, 0.0) * 0.15 - p.xyz * 0.03;
+    vec3 velocity = (pc.velocities.a[i].xyz + acceleration * pc.dt) * 0.995;
+    pc.positions.a[i] = vec4(p.xyz + velocity * pc.dt, p.w);
+    pc.velocities.a[i] = vec4(velocity, 0.0);
+    fieldStatsRecord(0u, length(velocity));
+}
+```
+
 ```diffstatic {data-lang=kotlin}
+// Requires the matching compute property above and an inherited renderer.
 val N = 16384
 
 val stats = fieldStatsHere(channels = 1)
 
-val positions  = defaultBuffer { size = N.vec4s }.buffer
+val positions = defaultBuffer { size = N.vec4s }.buffer
 val velocities = defaultBuffer { size = N.vec4s }.buffer
 positions.write {
     for (i in 0 until N) {
@@ -354,32 +441,36 @@ positions.write {
 }
 velocities.write { for (i in 0 until N) put(vec(0.0, 0.0, 0.0, 0.0)) }
 
-val compute = computeModuleHere { }
+val compute = computeModuleHere {}
 val step = ComputeMesh()
 compute += "step" to step
 renderer += "compute" to compute
 // Reflected push-constant members resolve once the mesh is attached to its module.
-step.positions  = { positions }
+step.positions = { positions }
 step.velocities = { velocities }
 step.dt = { 0.016f }
-step.x = N / 64; step.y = 1; step.z = 1
+step.particleCount = { N }
+step.x = (N + 63) / 64
+step.y = 1
+step.z = 1
 
 // show the GPU-computed aggregates as a small table
-var t = 0.0
 frames {
     while (true) {
         stats.latest(0)?.let { s ->
             :::fold render the aggregates as a small table
-            markdown("stats", """
+            markdown(
+                "stats",
+                """
                 #### speed — channel 0 (GPU)
 
                 | n | mean | σ | min | median | max |
                 |---|------|---|-----|--------|-----|
                 | ${s.finiteCount} | ${"%.4f".format(s.mean)} | ${"%.4f".format(s.standardDeviation)} | ${"%.4f".format(s.min)} | ${"%.4f".format(s.quantile(0.5))} | ${"%.4f".format(s.max)} |
-            """)
+            """,
+            )
             :::endfold
         }
-        t += 0.016
         frame()
     }
 }
