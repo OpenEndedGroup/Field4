@@ -39,6 +39,16 @@ import org.lwjgl.vulkan.VkClearColorValue
 import org.lwjgl.vulkan.VkImageSubresourceRange
 
 /**
+ * Feedback rendering: [PingPongRenderToTexture] keeps a ring of images per color attachment, so a
+ * module can sample the previous frame while drawing the next.
+ *
+ * Each frame renders into one slot of the ring and exposes the earlier, completed slots as
+ * textures, which is the shape of trails, reaction-diffusion and other effects that read their own
+ * last output. [FrameCadencedPingPongRenderToTexture] advances the ring only every few frames, for
+ * a slow sequence that downstream code crossfades between.
+ */
+
+/**
  * RenderToTexture variant that ring-buffers every color attachment.
  * Each frame it renders into one image set while exposing previous completed frames
  * via [otherImageView] and [previousFrameImageViews], so modules can sample
