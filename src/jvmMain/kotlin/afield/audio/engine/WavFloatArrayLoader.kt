@@ -1,5 +1,11 @@
 package afield.audio.engine
 
+/**
+ * Reads a WAV file into a mono `FloatArray`: [WavFloatArrayLoader.loadWavToFloatArray] accepts PCM (8, 16, 24 and 32 bit) and IEEE float (32 and 64 bit) files and keeps the left channel of a stereo file.
+ *
+ * The result, [WavFloatData], carries the sample rate and can report RMS at a time and apply a filter.
+ */
+
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

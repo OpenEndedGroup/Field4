@@ -2,6 +2,12 @@
 
 package afield.audio.engine
 
+/**
+ * Vectorized resonator banks for spectral analysis without an FFT: [ResonatorBank] is a fixed-frequency EMA resonator bank, and [TrackingResonatorBank] retunes each resonator toward the frequency it hears.
+ *
+ * Both store resonator state as split-complex arrays and use the JVM incubator Vector API for the linear passes. [resonate] and [trackingResonate] run a bank over a whole signal, and the `resonatorAlphaHeuristic` and `trackingResonatorGammaHeuristic` functions choose smoothing coefficients from frequency and sample rate.
+ */
+
 import jdk.incubator.vector.FloatVector
 import jdk.incubator.vector.VectorOperators
 import jdk.incubator.vector.VectorSpecies
