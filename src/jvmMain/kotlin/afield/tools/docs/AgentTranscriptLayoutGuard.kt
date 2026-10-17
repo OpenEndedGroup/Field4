@@ -5,7 +5,8 @@ import java.io.File
 import kotlin.system.exitProcess
 
 /**
- * Keeps OperationTranscript boxes visible and compact without outlawing deliberately composed boards.
+ * Keeps OperationTranscript and demo boxes visible and compact, while allowing larger boards that
+ * have a recorded reason.
  *
  * A Field box frame is the labelled canvas rectangle, not its Monaco editor or output viewport. Ordinary
  * boxes therefore start near the positive canvas origin at roughly `300 x 100`; see
@@ -15,30 +16,27 @@ import kotlin.system.exitProcess
  * ### The corpus this ceiling is stated over
  *
  * Both halves: every `create` op under `dev_docs/agents/transcripts`, *and* every box in every
- * `metadata.edn` under `dev_docs/agents/demos`. The two are named here because the failure message names
- * a ceiling and not a subset, and a message that says "the ordinary ceiling" while enforcing over
- * half the boxes is the defect this guard shipped with: on 2026-09-18 a demo document went out at
- * `700 x 900` and twice `1180 x 900` — 6.6x the demo corpus's median box height and 1.9x this
- * width ceiling — and everything was green. [AuditResult] therefore reports the two populations
+ * `metadata.edn` under `dev_docs/agents/demos`. [AuditResult] reports the two populations
  * separately and [main] prints both, so "no violations" can never be read off a corpus of zero.
  *
  * ### A demo's transcript and its document must agree
  *
  * A demo directory can hold a `build.yaml` OperationTranscript beside its `metadata.edn`, and the
  * transcript is what *rebuilds* the document. Those transcripts are a third population, parsed like
- * the corpus, and each `create` must name a box the document carries at the geometry it carries
- * ([checkDemoReplayAgreement]). Agreement is what keeps a replay from writing roomy authoring frames
+ * the corpus, and each `create` must name a box the document carries at the geometry it carries.
+ * Agreement is what keeps a replay from writing roomy authoring frames
  * back over a compacted document, and it is also why those frames are not held to the ceiling a second
  * time: an agreeing frame *is* the document's frame, which is audited (and grandfathered) once, under
  * its `metadata.edn` key.
  *
- * The ceiling was `520 x 120` until 2026-09-13, when the whole corpus grew by `+100 w` / `+50 h`: the
- * compaction that brought these boxes down to `200 x 50` had overshot, leaving labels cramped. Growing
- * the boxes without growing the ceiling would have turned every name-widened box into a violation, so
- * the two move together and the ratio between an ordinary box and the ceiling is unchanged.
+ * The ceiling is `620 x 170` ([MAX_ORDINARY_WIDTH], [MAX_ORDINARY_HEIGHT]). It moves together with the
+ * ordinary box size, so a change to the house box size keeps the ratio between an ordinary box and the
+ * ceiling the same.
  *
  * Run with `./gradlew checkAgentTranscriptLayouts` (also part of `check` and `docsGates`).
  */
+
+/** Audits transcript and demo box frames against the ordinary size ceiling and its exceptions. */
 object AgentTranscriptLayoutGuard {
     const val MAX_ORDINARY_WIDTH = 620.0
     const val MAX_ORDINARY_HEIGHT = 170.0

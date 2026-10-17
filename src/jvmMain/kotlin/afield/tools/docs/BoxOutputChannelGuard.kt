@@ -17,47 +17,45 @@ import kotlin.system.exitProcess
  * The rule: **two figures in one box means two channels.** This guard reports any box that emits to
  * one channel twice.
  *
- * ## What counts as emitting
+ * #### What counts as emitting
  *
  * `display(…)` itself, plus every `fun Box.<name>(… channel: String = "…" …)` helper found in
  * `src/jvmMain/kotlin` — the table is read from the source rather than hardcoded, so a new `show*`
  * helper is covered the day it is written. A helper whose overloads disagree about the default is
  * skipped rather than guessed at (`logs`, `inspect`).
  *
- * ## Why only top-level calls
+ * #### Why only top-level calls
  *
  * Only calls at brace depth 0 of the box's code are counted. Replacing a channel repeatedly is the
  * *correct* way to animate — `Box.showImg`'s KDoc calls one `display` per frame "the path an
  * animation wants" — so an `animate { }` body, a `for` loop or any other nested emitter is
- * deliberate refresh, not loss.
+ * treated as refresh, not loss.
  *
  * Two emitters at depth 0 are a loss **only when that channel is not animated at all**. The
- * establish-animate-settle shape writes the same channel three times on purpose: once before the
+ * establish-animate-settle shape writes the same channel three times: once before the
  * loop to put the first state on screen, once per iteration inside it, and once after it so the
  * settled state is not up to one iteration stale. Its two depth-0 writes are the ends of one
  * animation, not two figures, and the first one's pixels very much do reach a screen — in
  * `confluence_grid` there is a `Thread.sleep(300)` immediately after it for exactly that reason.
  * So a channel that also receives a *nested* emission in the same box is treated as animated and
- * its depth-0 writes are not reported. (This guard reported that demo as a loss until 2026-09-19;
- * the rule above is what it was missing, not the depth-0 premise itself.)
+ * its depth-0 writes are not reported.
  *
  * The cost of that narrowness is a known blind spot: `for (…) { showImg(…) }` followed by a
  * top-level `showMeshGrid(…)` on the same channel is a real collision this will not report, because
- * depth 0 sees only one emitter — and the animated-channel rule above deliberately widens that same
- * quiet spot rather than guessing which loops terminate. Both are the same trade: this guard reports
+ * depth 0 sees only one emitter. The animated-channel rule widens that same blind spot rather than
+ * guessing which loops terminate. Both are the same trade: this guard reports
  * a channel only when nothing in the box could have been refreshing it.
  *
- * ## Populations
+ * #### Populations
  *
  * Three: the `.yaml` box code under `dev_docs/agents/transcripts`, the `_code_.kt` box code under
  * `dev_docs/agents/demos`, and the library helpers themselves — a collision inside a `fun Box.…` is
  * worse than one in a transcript, since it ships to every caller.
  *
- * (Globs are spelled out in prose here on purpose: a `/` followed by a `*` inside a KDoc comment
- * opens a nested block comment, and Kotlin's nest, so one would swallow the rest of this file.)
- *
  * Run with `./gradlew checkBoxOutputChannels` (also part of `check` and `docsGates`).
  */
+
+/** Reports boxes whose code emits two figures to one output channel at the top level. */
 object BoxOutputChannelGuard {
     private const val TRANSCRIPTS_REL = "dev_docs/agents/transcripts"
     private const val DEMOS_REL = "dev_docs/agents/demos"
