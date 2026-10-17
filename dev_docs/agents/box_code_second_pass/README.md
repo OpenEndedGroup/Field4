@@ -66,7 +66,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Shared-memory overlay clearing and quad layout](../box_code_adoption_batch_31/README.md) | Four more findings addressed; actual shared buffers, native line/empty/resume, pixel widths and relaunch verified. |
 
-[Machine checkpoint](checkpoint.json): **257 of 405 findings addressed**, one implemented with
+| [Typed polytope push and KotlinJS sum](../box_code_adoption_batch_32/README.md) | Three more findings addressed; identical native RGB captures, advancing time and actual KotlinJS arithmetic verified. |
+
+[Machine checkpoint](checkpoint.json): **260 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
