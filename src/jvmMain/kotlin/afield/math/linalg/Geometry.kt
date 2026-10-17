@@ -1,5 +1,17 @@
 package afield.math.linalg
 
+/**
+ * Closest-point, containment and intersection tests for segments, triangles, boxes, spheres and rays.
+ *
+ * Each function takes read-only vectors and writes its answer into a caller-supplied `dest`, or
+ * returns a `Boolean` or distance, so none of them allocates. Boxes are axis-aligned and given as a
+ * `minimum` and `maximum` corner. Segment and triangle functions handle a zero-length segment or a
+ * collapsed triangle explicitly instead of dividing by zero.
+ *
+ * `afield.math.linalg.arena` has allocation-free versions of some of these that work on arena
+ * vectors inside `frameScratch`.
+ */
+
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
