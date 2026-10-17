@@ -54,7 +54,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Correct color, chirp and null-reference math](../box_code_adoption_batch_25/README.md) | Four more findings addressed; 99 GPU ramp values, real FFT windows, 200 held-out null windows and forced docs captures verified. |
 
-[Machine checkpoint](checkpoint.json): **234 of 405 findings addressed**, one implemented with
+| [Failure diagnostics and live callback state](../box_code_adoption_batch_26/README.md) | Five more findings addressed; native Ceres, glyph rejection, concurrent logging, real ranking child failures and browser slideshow callbacks verified. |
+
+[Machine checkpoint](checkpoint.json): **239 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
