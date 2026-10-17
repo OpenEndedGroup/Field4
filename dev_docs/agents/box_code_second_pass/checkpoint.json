@@ -985,6 +985,18 @@
     "36a34426dbf8-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_27/README.md"
+    },
+    "75fde331e73a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_28/README.md"
+    },
+    "75fde331e73a-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_28/README.md"
+    },
+    "75fde331e73a-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_28/README.md"
     }
   },
   "batches": [

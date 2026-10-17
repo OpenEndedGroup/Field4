@@ -58,7 +58,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Shader inputs and WFC edge layout](../box_code_adoption_batch_27/README.md) | Three more findings addressed; seeded WFC grids/atlas pixels match, and actual native triangle/spark rendering and rerun are inspected. |
 
-[Machine checkpoint](checkpoint.json): **242 of 405 findings addressed**, one implemented with
+| [Shared paint spline and tool limits/effects](../box_code_adoption_batch_28/README.md) | Three more findings addressed; actual spline comparisons, registered scribble calls and native progress PNG verified. |
+
+[Machine checkpoint](checkpoint.json): **245 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
