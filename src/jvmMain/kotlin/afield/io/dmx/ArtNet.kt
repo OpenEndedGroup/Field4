@@ -7,9 +7,9 @@ package afield.io.dmx
  *
  * Art-Net (Artistic Licence, "Art-Net 4 Specification", protocol version 14) carries DMX512 over
  * UDP port 6454 (`0x1936`). Every packet starts with the 8-byte id `"Art-Net\0"` followed by a
- * 16-bit OpCode sent **low byte first**; most other multi-byte fields are sent high byte first,
- * which is the single most common way hand-rolled Art-Net goes wrong. This file implements the
- * four packets a lighting bridge needs:
+ * 16-bit OpCode sent **low byte first**, as is the `Port` field of an ArtPollReply; the ArtDmx slot
+ * count, and every other multi-byte field here, is sent high byte first. This file implements the
+ * four packets Field uses:
  *
  * - **ArtDmx** (`0x5000`) — one universe of slot data, 2..512 bytes, even length.
  * - **ArtSync** (`0x5200`) — "latch the frames you have buffered now", for tear-free multi-universe
@@ -21,6 +21,16 @@ package afield.io.dmx
  * sender can reuse one buffer per universe for its whole life; nothing on the send path allocates.
  * Decoders return small immutable values, or `null` for a packet that is not Art-Net or not one of
  * these OpCodes.
+ *
+ * [PortAddress] is the 15-bit universe number those packets carry, split Net : SubNet : Universe.
+ * [DmxOutput] and [DmxInput] are built on these codecs; a box reaches them through `artnetOut` and
+ * `artnetIn`. The user-facing page is
+ * [Driving Lights: Art-Net and sACN](../dmx_lighting.md).
+ */
+
+/**
+ * The Art-Net codecs: four encoders, their decoders, and the OpCodes, packet lengths and node
+ * fields they use.
  */
 object ArtNet {
     /** UDP port every Art-Net packet is sent to and received on: 6454 (`0x1936`). */

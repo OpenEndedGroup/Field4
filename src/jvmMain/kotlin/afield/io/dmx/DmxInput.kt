@@ -13,6 +13,26 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicLong
 
+/**
+ * DMX reception: Field as an Art-Net or sACN node on the network.
+ *
+ * [DmxInput] binds a UDP port, keeps the most recent frame from every source on every universe, and
+ * merges them on demand. [MergeMode] chooses highest-takes-precedence or latest-takes-precedence,
+ * under sACN's priority rule, its sequence-number rule ([SacnSequence]) and both protocols' source
+ * timeouts. `universe(n)` returns the merged 512 slots, `channel(u, c)` a single slot, and
+ * `version(n)` a counter that moves whenever a universe does, which is how a loop or a test waits
+ * for the next frame without sleeping for a guessed interval.
+ *
+ * Field also answers the discovery traffic it hears: an ArtPoll gets back an ArtPollReply
+ * describing `ArtNet.NodeInfo`, so consoles and discovery tools list Field alongside real nodes,
+ * and sACN universe-discovery pages from other sources are kept rather than dropped.
+ *
+ * What arrived is slots, not colours; [Fixture] `decode` reads a fixture's look back out of them in
+ * its own profile, which is what makes a round trip measurable ([SceneOnARig]). In a box, use
+ * `artnetIn` or `sacnIn`, which close the socket when the box stops. The user-facing page is
+ * [Driving Lights: Art-Net and sACN](../dmx_lighting.md).
+ */
+
 /** How a [DmxInput] combines several sources sending the same universe. */
 enum class MergeMode {
     /** Highest takes precedence: each slot is the maximum over live sources. */
