@@ -480,7 +480,7 @@ Receiver for suspend message handlers. Provides [`frame`](internal.md#actors-kt-
 
 [<code class="highlight"><span class="k">class</span> <span class="nf">Once</span><span class="p">(</span><span class="k">val</span> <span class="n">inside</span> <span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/lifecycle/scratch/#L44)
 
-Property-delegate namespace bound to one `Box`; normally reached as `box.once`.
+Property-delegate namespace bound to one [`Box`](workspace.md#boxes-kt-box); normally reached as `box.once`.
 
 ### Onceing { #scratch-kt-onceing }
 

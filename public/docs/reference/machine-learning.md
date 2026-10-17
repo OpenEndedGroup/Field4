@@ -2610,7 +2610,7 @@ A command-line tool that uploads files to OpenAI through the content-hash cache 
 `main` reads `--file`, `--dir`, `--vfs-root` and `--vfs-file` targets (run it with `--help` for the
 full list), uploads each through [`OpenAiFileStoreCache`](machine-learning.md#ai4-filestore-kt-openaifilestorecache) so unchanged content keeps its file ID, and
 creates a vector store and file batch for the results when there are any. It then opens an interactive
-chat thread through `afield.ai.models.OpenAiIdeCodexBridge`, with file search when a vector store was
+chat thread through [`afield.ai.models.OpenAiIdeCodexBridge`](machine-learning.md#ai4-kt-openaiidecodexbridge), with file search when a vector store was
 made and workspace symbol search when the Kotlin source index has definitions. The cache directory
 defaults to [`FilestoreDir`](machine-learning.md#filestoredir-kt-filestoredir); the API key comes from `--api-key` or `OPENAI_API_KEY`.
 
@@ -3122,7 +3122,7 @@ A multi-output regression MLP, which is the one thing Smile's own `smile.regress
 | <a id="flowmatching-kt--vectormlp--configure"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">configure</span><span class="p">(</span><span class="n">learningRate</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">momentum</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">rho</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">7</span><span class="p">)</span></code>](source/jvmMain/afield/ai/learning/flowmatching/#L245) | Configures RMSProp, momentum and learning rate together, the combination [`flowMatch`](machine-learning.md#flowmatching-kt--flowmatch) uses. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">configure</span><span class="p">(</span><span class="n">learningRate</span><span class="p">:</span> <span class="nc">TimeFunction</span><span class="p">,</span> <span class="n">momentum</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">rho</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">7</span><span class="p">)</span></code>](source/jvmMain/afield/ai/learning/flowmatching/#L257) | As [`configure`](machine-learning.md#flowmatching-kt--vectormlp--configure), but with a learning-rate *schedule* — `TimeFunction.linear(from, steps, to)` and friends, indexed by the [`step`](machine-learning.md#flowmatching-kt--vectormlp--step) count. |
 | <a id="flowmatching-kt--vectormlp--parametercount"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">parameterCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/ai/learning/flowmatching/#L264) | How many parameters — weights plus biases — the network is fitting. |
-| <a id="flowmatching-kt--vectormlp--exportweights"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">exportWeights</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">MlpWeights</span></code>](source/jvmMain/afield/ai/learning/flowmatching/#L297) | A flat snapshot of every weight and bias, in the layout [`MlpWeights`](machine-learning.md#neuralparticles-kt-mlpweights) documents — which is what `afield.ai.learning.glsl` turns into a shader. |
+| <a id="flowmatching-kt--vectormlp--exportweights"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">exportWeights</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">MlpWeights</span></code>](source/jvmMain/afield/ai/learning/flowmatching/#L297) | A flat snapshot of every weight and bias, in the layout [`MlpWeights`](machine-learning.md#neuralparticles-kt-mlpweights) documents — which is what [`afield.ai.learning.glsl`](machine-learning.md#deepsets-kt--glsl) turns into a shader. |
 
 ### FlowCoupling { #flowmatching-kt-flowcoupling }
 
@@ -3272,7 +3272,7 @@ Box-scoped Kotlin code tools (CompileKotlin, EvaluateKotlin), extracted from the
 
 The Anthropic (Claude) implementation of [`LlmBridge`](machine-learning.md#llmbridge-kt-llmbridge), running Field's agent loop over the Messages API.
 
-It uses the same `ToolRegistry` and tool definitions as `OpenAiIdeCodexBridge`. The Messages API
+It uses the same `ToolRegistry` and tool definitions as [`OpenAiIdeCodexBridge`](machine-learning.md#openaiidecodexbridge-kt-openaiidecodexbridge). The Messages API
 keeps no server-side conversation, so [`AnthropicBridge`](machine-learning.md#anthropicbridge-kt-anthropicbridge) holds each thread's history locally and
 marks the system prompt and tool list for prompt caching.
 
@@ -3282,7 +3282,7 @@ marks the system prompt and tool list for prompt caching.
 
 [<code class="highlight"><span class="k">class</span> <span class="nf">AnthropicBridge</span><span class="p">(</span><span class="k">private</span> <span class="k">var</span> <span class="n">client</span><span class="p">:</span> <span class="nc">AnthropicClient</span> <span class="o">=</span> <span class="nf">anthropicClientFromFieldConfig</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">model</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">Ai4ModelDefaults</span><span class="p">.</span><span class="nf">flagshipModel</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">log</span><span class="p">:</span> <span class="nc">LogSink</span> <span class="o">=</span> <span class="nc">StdoutLog</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">baseUrl</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nf">configuredAnthropicBaseUrl</span><span class="p">(</span><span class="p">)</span> <span class="o">?</span><span class="p">:</span> <span class="nc">ANTHROPIC&#95;DEFAULT&#95;BASE&#95;URL</span><span class="p">)</span> <span class="p">:</span> <span class="nc">LlmBridge</span></code>](source/jvmMain/afield/ai/models/AnthropicBridge/#L81)
 
-Anthropic (Claude) implementation of [`LlmBridge`](machine-learning.md#llmbridge-kt-llmbridge), mirroring `OpenAiIdeCodexBridge`'s agent loop over the Messages API.
+Anthropic (Claude) implementation of [`LlmBridge`](machine-learning.md#llmbridge-kt-llmbridge), mirroring [`OpenAiIdeCodexBridge`](machine-learning.md#openaiidecodexbridge-kt-openaiidecodexbridge)'s agent loop over the Messages API.
 
 | Declaration | Summary |
 | --- | --- |
@@ -3363,12 +3363,12 @@ Resolved Anthropic auth for one request. [`isOAuth`](machine-learning.md#anthrop
 
 Provider-neutral seam for the IDE agent loop.
 
-Both the OpenAI/OpenRouter engine (`OpenAiIdeCodexBridge`, via [`OpenAiLlmBridge`](machine-learning.md#llmbridge-kt-openaillmbridge))
-and the Anthropic engine ([`AnthropicBridge`](machine-learning.md#anthropicbridge-kt-anthropicbridge)) implement this, so `IdeChatHelpers`
+Both the OpenAI/OpenRouter engine ([`OpenAiIdeCodexBridge`](machine-learning.md#openaiidecodexbridge-kt-openaiidecodexbridge), via [`OpenAiLlmBridge`](machine-learning.md#llmbridge-kt-openaillmbridge))
+and the Anthropic engine ([`AnthropicBridge`](machine-learning.md#anthropicbridge-kt-anthropicbridge)) implement this, so [`IdeChatHelpers`](machine-learning.md#idechathelpers-kt-idechathelpers)
 and the installer can drive whichever provider is selected on /welcome without
 caring which one is behind the interface.
 
-The state/result types are the ones `OpenAiIdeCodexBridge` already defines — they
+The state/result types are the ones [`OpenAiIdeCodexBridge`](machine-learning.md#openaiidecodexbridge-kt-openaiidecodexbridge) already defines — they
 carry no OpenAI-SDK types in their signatures, so they double as the neutral
 currency here. The typealiases below give them provider-neutral names without
 moving the declarations (which 13 files reference).
@@ -3419,7 +3419,7 @@ Constants: `LOW`, `MEDIUM`, `HIGH`.
 
 [<code class="highlight"><span class="k">class</span> <span class="nf">OpenAiLlmBridge</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="k">inner</span><span class="p">:</span> <span class="nc">OpenAiIdeCodexBridge</span><span class="p">)</span> <span class="p">:</span> <span class="nc">LlmBridge</span></code>](source/jvmMain/afield/ai/models/LlmBridge/#L107)
 
-Adapter that presents the existing (untouched) `OpenAiIdeCodexBridge` as an [`LlmBridge`](machine-learning.md#llmbridge-kt-llmbridge). Overrides carry no default values (Kotlin forbids that on an override); the defaults live on the interface and reach every call site typed as [`LlmBridge`](machine-learning.md#llmbridge-kt-llmbridge). A blank `startThread` instruction defers to the inner bridge's own default so existing behaviour is preserved exactly.
+Adapter that presents the existing (untouched) [`OpenAiIdeCodexBridge`](machine-learning.md#openaiidecodexbridge-kt-openaiidecodexbridge) as an [`LlmBridge`](machine-learning.md#llmbridge-kt-llmbridge). Overrides carry no default values (Kotlin forbids that on an override); the defaults live on the interface and reach every call site typed as [`LlmBridge`](machine-learning.md#llmbridge-kt-llmbridge). A blank `startThread` instruction defers to the inner bridge's own default so existing behaviour is preserved exactly.
 
 | Declaration | Summary |
 | --- | --- |

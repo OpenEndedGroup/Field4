@@ -858,6 +858,10 @@ object StdlibReferenceGenerator {
          * line, the source page renders them as one signature, so only the class itself has an anchor.
          */
         val sourceAnchors: Set<Int>,
+        /** The file's `package`, empty for the default package. */
+        val packageName: String = "",
+        /** The file's `import` targets, as written (`a.b.C`, `a.b.*`); aliased imports are dropped. */
+        val imports: List<String> = emptyList(),
     ) {
         fun allSymbols(): List<Symbol> =
             types.map { it.symbol } + types.flatMap { it.members } + topLevelFunctions + topLevelValues
@@ -1014,6 +1018,8 @@ object StdlibReferenceGenerator {
             topLevelFunctions = functions,
             topLevelValues = values,
             sourceAnchors = sourceAnchors,
+            packageName = Regex("""(?m)^\s*package\s+([\w.]+)""").find(text)?.groupValues?.get(1).orEmpty(),
+            imports = Regex("""(?m)^\s*import\s+([\w.]+(?:\.\*)?)\s*$""").findAll(text).map { it.groupValues[1] }.toList(),
         )
     }
 
@@ -1655,9 +1661,15 @@ object StdlibReferenceGenerator {
         val receiver: String?,
         val isType: Boolean,
         val target: String,
+        val pkg: String = "",
     )
 
-    internal class TypeAnchors(entries: List<AnchorEntry>) {
+    /** What a file can see without qualifying: its own package and its imports. */
+    internal data class FileScope(val pkg: String, val imports: List<String>)
+
+    internal class TypeAnchors(entries: List<AnchorEntry>, private val scopes: Map<String, FileScope> = emptyMap()) {
+        /** Every top-level declaration of an ambiguous bare name, for [scoped]. */
+        private val candidates = mutableMapOf<String, MutableList<AnchorEntry>>()
         private val corpus = mutableMapOf<String, AnchorEntry>()
         private val byFile = mutableMapOf<String, MutableMap<String, AnchorEntry>>()
         private val qualifiedCorpus = mutableMapOf<String, AnchorEntry>()
@@ -1680,6 +1692,8 @@ object StdlibReferenceGenerator {
                     val prior = corpus.putIfAbsent(e.name, e)
                     if (prior != null && prior.file != e.file) ambiguous += e.name
                     local.putIfAbsent(e.name, e)
+                    val list = candidates.getOrPut(e.name) { mutableListOf() }
+                    if (list.none { it.file == e.file }) list += e
                 } else {
                     fileMembers.getOrPut(e.file) { mutableMapOf() }
                         .getOrPut(e.name) { mutableSetOf() } += e.owner
@@ -1703,11 +1717,33 @@ object StdlibReferenceGenerator {
             // A name that two files both define cannot be linked unambiguously from a third, so from
             // a third it is not linked at all. From either of the two it still resolves.
             ambiguous.forEach { corpus.remove(it) }
+            candidates.keys.retainAll(ambiguous)
             ambiguousQualified.forEach { qualifiedCorpus.remove(it) }
         }
 
         private fun lookup(name: String, file: String?): AnchorEntry? =
-            file?.let { byFile[it]?.get(name) } ?: corpus[name]
+            file?.let { byFile[it]?.get(name) } ?: corpus[name] ?: scoped(name, file)
+
+        /**
+         * An ambiguous bare name, settled the way Kotlin would settle it from [file]: a declaration in
+         * the file's own package, else an explicit import of it, else a star import of its package.
+         * Each step links only when it picks exactly one; otherwise the name stays unlinked.
+         */
+        private fun scoped(name: String, file: String?): AnchorEntry? {
+            val scope = file?.let { scopes[it] } ?: return null
+            val all = candidates[name] ?: return null
+            val steps = listOf<(AnchorEntry) -> Boolean>(
+                { it.pkg == scope.pkg },
+                { "${it.pkg}.$name" in scope.imports },
+                { "${it.pkg}.*" in scope.imports },
+            )
+            for (step in steps) {
+                val hits = all.filter(step)
+                if (hits.size == 1) return hits.single()
+                if (hits.size > 1) return null
+            }
+            return null
+        }
 
         /**
          * A whole KDoc reference — `Symbol`, `Owner.member`, `Receiver.extension`, `Outer.Nested` or
@@ -1776,17 +1812,18 @@ object StdlibReferenceGenerator {
             val page = "${slug(doc.category)}.md#"
             doc.types.forEach { type ->
                 entries += AnchorEntry(doc.relativePath, type.symbol.simpleName, null, null, true,
-                    page + typeAnchor(doc, type.symbol))
+                    page + typeAnchor(doc, type.symbol), doc.packageName)
             }
             val anchors = rowAnchors(doc)
             (doc.topLevelFunctions + doc.topLevelValues + doc.types.flatMap { it.members }).forEach { s ->
                 val anchor = anchors[s.owner to s.simpleName] ?: return@forEach
                 // A nested type listed as a member keeps its member row: `[Outer.Nested]` lands there.
                 entries += AnchorEntry(doc.relativePath, s.simpleName, s.owner,
-                    if (s.owner == null) receiverOf(s.signature, s.simpleName) else null, false, page + anchor)
+                    if (s.owner == null) receiverOf(s.signature, s.simpleName) else null, false, page + anchor,
+                    doc.packageName)
             }
         }
-        return TypeAnchors(entries)
+        return TypeAnchors(entries, documents.associate { it.relativePath to FileScope(it.packageName, it.imports) })
     }
 
     /**

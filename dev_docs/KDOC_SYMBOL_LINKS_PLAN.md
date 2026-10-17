@@ -71,6 +71,20 @@ regeneration (an anchor that changes on reorder breaks inbound links). `check_kd
 - Reference pages: 18,507,073 → 20,311,168 bytes (+1.80 MB, +9.7%). Two regenerations diff empty;
   no duplicate ids on any page.
 
+**Follow-up (branch `docs/kdoc-symbol-links-2`): scoped resolution of ambiguous names.** Nested
+types already stayed out of the corpus-wide bare-name index (they carry an owner) and typealiases are
+indexed as types; the `Box` and `Vec3` collisions were between *top-level* declarations
+(`Boxes.kt` vs steamaudio `Geometry.kt`; `linalg.kt` vs `CeresGeometry.kt`). A bare name still
+ambiguous corpus-wide now resolves from the referencing file's own package, then its explicit
+imports, then its star imports, linking only when a step picks exactly one (`SymbolAnchorScopeTest`).
+
+- Sweep: 4715 → **4748 / 4975 (95%)** resolved; unlinked 260 in 156 files → 227 in 135; MISMATCH 0.
+- `Box` / `Vec3`: 12 unlinked overview references (4 + 8) → 0; linked `` [`Box`] ``/`` [`Vec3`] `` on
+  the reference pages 14 → 49.
+- Residue by kind: member-ref 85, not-declared-in-src 67, public-but-unlinked 38, internal-only 26,
+  private-only 11.
+- Pages 20,315,024 bytes; two regenerations diff empty.
+
 ### Phase 2 — the residue blast (only after Phase 1 lands)
 
 Rerun the classification on the new tree; only references still unlinked go to agents. Expected

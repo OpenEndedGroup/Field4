@@ -1839,7 +1839,7 @@ The exception a stage throws to stop where it stands, carrying the [`Diagnostic`
 
 ## Lexer.kt { #lexer-kt }
 
-FieldML's first stage: source text in, a flat list of `Token`s out, and a diagnostic for anything
+FieldML's first stage: source text in, a flat list of [`Token`](languages.md#token-kt-token)s out, and a diagnostic for anything
 that could not be read.
 
 The scan never stops early. A character the lexer cannot use costs one diagnostic and no token,

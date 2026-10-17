@@ -3169,7 +3169,7 @@ Diagnostics on computed triangles, independent of shading and viewer explosion.
 
 ## Solver.kt { #solver-kt }
 
-[`InflationSolver`](simulation.md#solver-kt-inflationsolver) relaxes an `Envelope` to equilibrium by raising pressure in steps and
+[`InflationSolver`](simulation.md#solver-kt-inflationsolver) relaxes an [`Envelope`](simulation.md#model-kt-envelope) to equilibrium by raising pressure in steps and
 minimising the [`Mechanics`](simulation.md#mechanics-kt-mechanics) energy at each one with Field's L-BFGS.
 
 A step is accepted on free-force residuals in newtons, not on optimiser step size, and the

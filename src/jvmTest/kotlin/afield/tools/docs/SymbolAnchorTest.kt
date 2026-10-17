@@ -1,6 +1,7 @@
 package afield.tools.docs
 
 import afield.tools.docs.StdlibReferenceGenerator.AnchorEntry
+import afield.tools.docs.StdlibReferenceGenerator.FileScope
 import afield.tools.docs.StdlibReferenceGenerator.TypeAnchors
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -83,5 +84,54 @@ class SymbolAnchorTest {
         assertEquals("List", StdlibReferenceGenerator.receiverOf("fun <T> List<T>.prefix(n: Int): List<T>", "prefix"))
         assertEquals("Vec", StdlibReferenceGenerator.receiverOf("val afield.math.Vec?.len: Double", "len"))
         assertNull(StdlibReferenceGenerator.receiverOf("fun polarization(v: Box.Thing): Double", "polarization"))
+    }
+}
+
+/** An ambiguous bare name settled by the referencing file's package and imports. */
+class SymbolAnchorScopeTest {
+    private val boxes = "afield/document/graph/Boxes.kt"
+    private val steam = "afield/audio/spatial/steamaudio/Geometry.kt"
+    private val dyn = "afield/simulation/physics/Dyn4jScene.kt"
+    private val linalg = "afield/math/linalg/linalg.kt"
+    private val ceres = "afield/math/optimization/ceres/CeresGeometry.kt"
+
+    private fun entry(file: String, pkg: String, name: String, owner: String? = null) =
+        AnchorEntry(file, name, owner, null, true, "$file#$name", pkg)
+
+    private val anchors = TypeAnchors(
+        listOf(
+            entry(boxes, "afield.document.graph", "Box"),
+            entry(steam, "afield.audio.spatial.steamaudio", "Box"),
+            entry(dyn, "afield.simulation.physics", "Dyn4jScene"),
+            AnchorEntry(dyn, "Box", "Dyn4jScene", null, false, "$dyn#nested-box", "afield.simulation.physics"),
+            entry(linalg, "afield.math.linalg", "Vec3"),
+            entry(ceres, "afield.math.optimization.ceres", "Vec3"),
+        ),
+        mapOf(
+            "a/samePackage.kt" to FileScope("afield.document.graph", emptyList()),
+            "a/explicit.kt" to FileScope("afield.agents", listOf("afield.document.graph.Box", "afield.math.linalg.Vec3")),
+            "a/star.kt" to FileScope("afield.agents", listOf("afield.math.optimization.ceres.*")),
+            "a/both.kt" to FileScope("afield.agents", listOf("afield.math.linalg.*", "afield.math.optimization.ceres.*")),
+            "a/none.kt" to FileScope("afield.agents", emptyList()),
+        ),
+    )
+
+    @Test
+    fun `a nested type never claims the bare name`() {
+        assertEquals("$dyn#nested-box", anchors.resolveReference("Dyn4jScene.Box", "a/none.kt"))
+        assertEquals("$boxes#Box", anchors.resolveReference("Box", "a/samePackage.kt"))
+    }
+
+    @Test
+    fun `an ambiguous name resolves by package, then explicit import, then star import`() {
+        assertEquals("$boxes#Box", anchors.resolveReference("Box", "a/explicit.kt"))
+        assertEquals("$linalg#Vec3", anchors.resolveReference("Vec3", "a/explicit.kt"))
+        assertEquals("$ceres#Vec3", anchors.resolveReference("Vec3", "a/star.kt"))
+    }
+
+    @Test
+    fun `an ambiguous name stays unlinked when scope picks none or two`() {
+        assertNull(anchors.resolveReference("Box", "a/none.kt"))
+        assertNull(anchors.resolveReference("Vec3", "a/both.kt"))
     }
 }
