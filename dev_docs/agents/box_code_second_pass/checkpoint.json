@@ -973,6 +973,18 @@
     "3c65a5fe4b4b-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_26/README.md"
+    },
+    "9b47909795cf-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_27/README.md"
+    },
+    "26520a320a82-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_27/README.md"
+    },
+    "36a34426dbf8-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_27/README.md"
     }
   },
   "batches": [

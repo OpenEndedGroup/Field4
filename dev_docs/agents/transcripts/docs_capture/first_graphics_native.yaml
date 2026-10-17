@@ -34,12 +34,19 @@ operations:
         \ strip consisting of 3 indices\nm.set(3, 3) {\n    pos.add(0,0,0, 0.5,0,0,\
         \ 0.5,0.5,0)\n\n    // for a flourish, we have some color as well\n    3 {\n\
         \        col.add(0,it/3.0,1-it/3.0,1)\n    }\n    tri.add(0,1,2)\n}\n"
-      vertex: "#version 450\nlayout (location = 0) in vec3 pos;\n\nlayout (location\
-        \ = 1) in vec4 col;\nlayout (location = 0) out vec4 fcol;\n\n// layout(push_constant)\
-        \ uniform matrices {\n//     mat4 projectionMatrix;\n//     mat4 modelMatrix;\n\
-        // } push_constants;\n\nvoid main()\n{\n    // gl_Position = push_constants.projectionMatrix\
-        \ * push_constants.modelMatrix * vec4(pos, 1);\n\n    fcol = col;\n    gl_Position\
-        \ = vec4(pos, 1);\n}"
+      vertex: |
+        #version 450
+        layout (location = 0) in vec3 pos;
+
+        layout (location = 1) in vec4 col;
+        layout (location = 0) out vec4 fcol;
+
+        void main()
+        {
+            fcol = col;
+            // pos is already in clip space; this triangle needs no camera transform.
+            gl_Position = vec4(pos, 1);
+        }
       fragment: "#version 450\nlayout(location = 0) out vec4 uFragColor;\n\nlayout(location\
         \ = 0) in vec4 fcol;\nvoid main()\n{\n    uFragColor = vec4(1.0, 0.8, 0.4,\
         \ 1.0)* fcol;\n}"

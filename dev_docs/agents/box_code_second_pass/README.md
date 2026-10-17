@@ -56,7 +56,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Failure diagnostics and live callback state](../box_code_adoption_batch_26/README.md) | Five more findings addressed; native Ceres, glyph rejection, concurrent logging, real ranking child failures and browser slideshow callbacks verified. |
 
-[Machine checkpoint](checkpoint.json): **239 of 405 findings addressed**, one implemented with
+| [Shader inputs and WFC edge layout](../box_code_adoption_batch_27/README.md) | Three more findings addressed; seeded WFC grids/atlas pixels match, and actual native triangle/spark rendering and rerun are inspected. |
+
+[Machine checkpoint](checkpoint.json): **242 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
