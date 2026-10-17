@@ -13,3 +13,7 @@ full 30-line control setup unfolded (rule 8). Rewrite the fences together with t
 assets (`assets/opendlssnr/study.kt`, `cubes.kt`, `record.kt`) and the transcripts
 `dev_docs/agents/transcripts/open_dlss_nr.yaml` / `open_dlss_nr_cubes.yaml`, then recapture on
 linux-nvidia (`--page open_dlss_nr.md`, `FIELD_DOCS_CAPTURE_PROFILES=linux-nvidia`).
+
+## Verified on Linux/NVIDIA, 2026-10-17
+
+The study boxes use the inherited renderer and typed shader properties. Downloadable studies and transcripts now agree with the authored examples; all three real native-model captures passed. See [verification](../lighting/ELSEWHERE_20261017.md). The originating annotation store is absent here.

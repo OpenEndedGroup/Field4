@@ -14,3 +14,9 @@ lab = OpenDlssNrStudy(owner, ..., vertex=thisBox.getPropertyRaw("vertex") as Str
 ```
 
 `getPropertyRaw` is an escape hatch, and closing the previous instance by hand is boilerplate every reader must copy. Fix in code: give the box a typed accessor for its `vertex`/`fragment` properties, and have a relaunch-safe owner (`once`-style or a lifecycle-released prop) close the previous study automatically. Then rewrite the fences and transcripts, and recapture (linux-nvidia profile). Fences are byte-pinned, so this is not a prose edit.
+
+## Completed on Linux/NVIDIA, 2026-10-17
+
+Study examples use typed inherited shader properties and run-owned teardown. All three Linux/NVIDIA page captures ran with the native NR model; superseded-run teardown passed.
+
+Evidence and reproduction: [Linux/NVIDIA verification](../lighting/ELSEWHERE_20261017.md). The originating annotation store is absent on this host; this tracked record carries the outcome for closing there after landing.

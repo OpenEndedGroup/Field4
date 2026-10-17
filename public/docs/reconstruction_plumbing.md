@@ -113,8 +113,7 @@ A shader can change color without moving a surface. Motion vectors cannot descri
 The starting point installs one `Target` in `renderer.renderList.preTargets`. Its `render` method owns the sequence:
 
 ```diffstatic {data-lang=kotlin}
-source.render(command, index)
-neural.evaluate(command,
+neural.evaluate(command, index, source,
     ReconstructionInputs(
         source.imageViewArray[0],
         source.imageViewArray[1],
@@ -124,13 +123,16 @@ neural.evaluate(command,
 )
 ```
 
-`source.render` ends its render pass and leaves the attachments available for sampled reads. `evaluate` runs **outside** a render pass, on the same graphics queue, and handles the NGX output's storage/read transitions. It validates sizes, formats, sampled usage and the single mip/layer contract. Its output is an ordinary Field `RenderToTexture`:
+This overload of `evaluate` renders `source` first, then reconstructs its completed attachments on
+the same graphics queue. It rejects a source independently registered in `preTargets`, so that the
+source is rendered once. Evaluation handles the NGX output's storage/read transitions and validates
+sizes, formats, sampled usage and the single mip/layer contract. Its output is an ordinary Field `RenderToTexture`:
 
 ```diffstatic {data-lang=kotlin}
 neural.output.blitToScreen(name = "finished image")
 ```
 
-To use the output in another module, bind it through the usual `fromViews` texture resolver and schedule that consumer after evaluation. Keep tone mapping, UI and later compositing there. Do not also register `source` independently in `preTargets`: that would render it twice. Likewise, binding `neural.output` alone will not call `evaluate` for you.
+To use the output in another module, bind it through the usual `fromViews` texture resolver and schedule that consumer after evaluation. Keep tone mapping, UI and later compositing there.
 
 Advance the frame index and previous transforms when this target actually records a frame. A coroutine tick while a window is minimized is not a new rendered observation.
 

@@ -35,7 +35,7 @@ start(renderer::run)
 <!-- field-box id="open_dlss_nr" index="1" -->
 
 ```edn [field-box id="open_dlss_nr" role="properties"]
-{"id" "open_dlss_nr" "index" 1 "name" "neural ink" "parents" ["root" "agent_graphics_context"] "children" ["nr_record"] "properties" {"children" #{#afield/box "nr_record"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural ink" "_tombstone" false "frame" #afield/rect [400.0 40.0 350.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "open_dlss_nr_code_.kt" "lines" 55 "characters" 2335 "sha256" "a6e968d243cf4cb7c7a5d1eed00c2a87a974883436d42897418193cb55c4405f"} {"name" "vertex" "language" "glsl" "path" "open_dlss_nr_vertex_.glsl" "lines" 7 "characters" 195 "sha256" "0ca9a483205f4c8f54843729e3a6d077be2ab8791b1327f8abdf8932429363af"} {"name" "fragment" "language" "glsl" "path" "open_dlss_nr_fragment_.glsl" "lines" 52 "characters" 2047 "sha256" "60222eb317cdb66daadd30f266a1900c4df9d21fc3ff3694a70af26a073589ce"}]}
+{"id" "open_dlss_nr" "index" 1 "name" "neural ink" "parents" ["root" "agent_graphics_context"] "children" ["nr_record"] "properties" {"children" #{#afield/box "nr_record"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural ink" "_tombstone" false "frame" #afield/rect [400.0 40.0 350.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "open_dlss_nr_code_.kt" "lines" 54 "characters" 2418 "sha256" "a952ba2a9c63014e280d71d4ff8bc19cfffd2d036790b7f87bf13be470a5c0f0"} {"name" "vertex" "language" "glsl" "path" "open_dlss_nr_vertex_.glsl" "lines" 7 "characters" 195 "sha256" "0ca9a483205f4c8f54843729e3a6d077be2ab8791b1327f8abdf8932429363af"} {"name" "fragment" "language" "glsl" "path" "open_dlss_nr_fragment_.glsl" "lines" 52 "characters" 2047 "sha256" "60222eb317cdb66daadd30f266a1900c4df9d21fc3ff3694a70af26a073589ce"}]}
 ```
 
 ```kotlin [field-property box="open_dlss_nr" name="code" path="open_dlss_nr_code_.kt"]
@@ -45,13 +45,12 @@ import afield.graphics.render.neural.*
 
 val owner = renderer
 prop<OpenDlssNrStudy>(lab)
-(thisBox.getPropertyRaw("lab") as? OpenDlssNrStudy)?.close()
 // Leave null for the editable fragment shader; try the bundled drawing or your own image.
 val imagePath: String? = null
 // val imagePath: String? = "public/docs/assets/opendlssnr/ink-input.png"
 lab = OpenDlssNrStudy(owner, size=768, imagePath=imagePath,
-    vertex=thisBox.getPropertyRaw("vertex") as String,
-    fragment=thisBox.getPropertyRaw("fragment") as String)
+    vertex=requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+    fragment=requireNotNull(fragment) { "Missing fragment shader on this box or its parents" })
 println(lab.availability.reason)
 var style=1
 var tone=0f
@@ -85,8 +84,8 @@ frames {
             owned.grade=Vector4f(red,green,blue,1f)
             owned.animate=animate && !owned.recording
             if(reload) {
-                owned.reload(thisBox.getPropertyRaw("vertex") as String,
-                    thisBox.getPropertyRaw("fragment") as String)
+                owned.reload(requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+                    requireNotNull(fragment) { "Missing fragment shader on this box or its parents" })
                     .onFailure {println("Keeping working shaders: ${it.message}")}
                 reload=false
             }
