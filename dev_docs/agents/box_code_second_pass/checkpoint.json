@@ -997,6 +997,18 @@
     "75fde331e73a-03": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_28/README.md"
+    },
+    "5e4f699ab6f2-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_29/README.md"
+    },
+    "5e4f699ab6f2-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_29/README.md"
+    },
+    "5e4f699ab6f2-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_29/README.md"
     }
   },
   "batches": [
@@ -1006,7 +1018,29 @@
     "../box_code_adoption_batch_4/README.md",
     "../box_code_adoption_batch_5/README.md",
     "../box_code_adoption_batch_6/README.md",
-    "../box_code_adoption_batch_7/README.md"
+    "../box_code_adoption_batch_7/README.md",
+    "../box_code_adoption_batch_8/README.md",
+    "../box_code_adoption_batch_9/README.md",
+    "../box_code_adoption_batch_10/README.md",
+    "../box_code_adoption_batch_11/README.md",
+    "../box_code_adoption_batch_12/README.md",
+    "../box_code_adoption_batch_13/README.md",
+    "../box_code_adoption_batch_14/README.md",
+    "../box_code_adoption_batch_15/README.md",
+    "../box_code_adoption_batch_16/README.md",
+    "../box_code_adoption_batch_17/README.md",
+    "../box_code_adoption_batch_18/README.md",
+    "../box_code_adoption_batch_19/README.md",
+    "../box_code_adoption_batch_20/README.md",
+    "../box_code_adoption_batch_21/README.md",
+    "../box_code_adoption_batch_22/README.md",
+    "../box_code_adoption_batch_23/README.md",
+    "../box_code_adoption_batch_24/README.md",
+    "../box_code_adoption_batch_25/README.md",
+    "../box_code_adoption_batch_26/README.md",
+    "../box_code_adoption_batch_27/README.md",
+    "../box_code_adoption_batch_28/README.md",
+    "../box_code_adoption_batch_29/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups."
 }
