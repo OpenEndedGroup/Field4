@@ -15,12 +15,18 @@ expect:
     - "ReplRerunCompileCache tests passed"
 */
 /**
- * [RerunCompileCache]: a rerun of an unchanged snippet is evaluated again without compiling, its
- * body really runs, and every change that would make a recompile bind differently compiles.
+ * Smoke test of the rerun compile cache: a rerun of an unchanged snippet is evaluated again
+ * without compiling, its body really runs, and every change that would make a recompile bind
+ * differently compiles.
  *
  * The launch path runs the regathered preamble and then the box code through
- * [KotlinInterface2.exec] on every rerun; this drives the same calls on one engine.
+ * [KotlinInterface2.exec] on every rerun; this test drives the same calls on one engine. It covers an
+ * edited body, a changed preamble, a changed expansion, the snippet evaluated last, a different
+ * property, a new engine, a disposed engine, and the cache switched off with
+ * `KotlinEngineConfig.rerunCompileCache`.
  */
+
+/** Runs each rerun-cache case in turn on its own engine. */
 object ReplRerunCompileCacheSmokeTest {
 
     /** Incremented by snippet bodies, so a test can see that a re-evaluated body ran. */

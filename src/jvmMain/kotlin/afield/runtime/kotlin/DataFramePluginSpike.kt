@@ -42,39 +42,39 @@ expect:
     - "DataFrame plugin spike complete"
 */
 /**
- * Measures what the Kotlin DataFrame compiler plugin can actually do inside Field's K2 REPL.
+ * Spike that measures what the Kotlin DataFrame compiler plugin can do inside Field's K2 REPL.
  *
- * The plugin hangs off [FirFunctionCallRefinementExtension][org.jetbrains.kotlin.fir.extensions.FirFunctionCallRefinementExtension],
- * which the compiler itself documents as "highly unstable and not recommended to use". At a call to
- * a `@Refine`-annotated function it statically interprets the arguments, computes the resulting
- * schema, and rewrites `call()` into `run { class Token; class Scope; call() as DataFrame<Token> }` —
- * with **local** classes, because the extension runs at body-resolve and cannot create top-level
- * declarations. The column accessors are not declarations anywhere: they are a per-call-site local
- * type plus an implicit extension receiver injected by `ReturnTypeBasedReceiverInjector`.
+ * The plugin hangs off the compiler's function-call refinement extension, which the compiler
+ * documents as "highly unstable and not recommended to use". At a call to a `@Refine`-annotated
+ * function it interprets the arguments statically, computes the resulting schema, and rewrites the
+ * call into a `run` block that casts it to `DataFrame<Token>` over **local** classes, because the
+ * extension runs at body resolution and cannot create top-level declarations. The column accessors
+ * are not declarations anywhere: they are a per-call-site local type plus an implicit extension
+ * receiver injected by the plugin.
  *
- * That design is what makes the REPL question interesting rather than obvious:
+ * The probes ask how far that survives the REPL:
  *
- *  - [probeWithinOneSnippet] — does refinement fire at all here? A `dataFrameOf(...)` and the column
- *    access in the *same* snippet. If this fails, nothing else is worth reading.
- *  - [probeAcrossSnippets] — THE measurement. The same two statements split across two evaluations
- *    of one engine, which is the boundary Field actually has: box re-execution, not cross-box (boxes
- *    have separate engines entirely — see [SharedTypes]). `addReceiversFromExtensions` bails unless
- *    the enclosing container is a `FirCallableSymbol` or `FirCodeFragmentSymbol`, and
- *    `FirReplSnippetSymbol` is neither, so the injected receiver is expected NOT to survive. Worth
- *    measuring rather than asserting: the schema state rides on the FIR declaration via
- *    `FirDeclarationDataRegistry` rather than a session component, which is the mechanism that could
- *    make it work anyway.
- *  - [probeRefinedOperation] — `add("c") { a + b }`, the case the plugin exists for: a schema that
- *    *changes*, with the new column named only in the returned type.
+ * - within one snippet: a `dataFrameOf(...)` and a column access in the same evaluation, which
+ *   shows whether refinement fires at all;
+ * - a refined operation: `add("c") { a + b }`, a schema that changes, with the new column named
+ *   only in the returned type;
+ * - across snippets: the same two statements split across two evaluations of one engine, the
+ *   boundary a box rerun has (boxes have separate engines, see [SharedTypes]). The receiver
+ *   injection only looks inside callable and code-fragment containers and a REPL snippet is
+ *   neither, so the injected receiver is expected not to survive; the schema state rides on the FIR
+ *   declaration itself, which is the mechanism that could carry it anyway;
+ * - a shared `@DataSchema` interface, and one declared in a snippet.
  *
- * Upstream's own REPL work targets the Jupyter kernel, where cross-cell persistence is done by
- * runtime codegen of real top-level `@DataSchema` interfaces and the plugin's top-level generator is
- * switched off to avoid duplicating them (KT-77437). So a within-snippet-only result here would match
- * their design rather than contradict it.
+ * Upstream's REPL work targets the Jupyter kernel, where cross-cell persistence comes from runtime
+ * codegen of real top-level `@DataSchema` interfaces and the plugin's top-level generator is
+ * switched off to avoid duplicating them (KT-77437). A within-snippet-only result here matches that
+ * design.
  *
- * A spike: the two invariants fail loudly (no plugin, no runtime = measuring nothing), the probes
- * report either way.
+ * The two invariants, that the plugin is passed to the compiler and its runtime is on the
+ * classpath, fail the spike; the probes report either way.
  */
+
+/** Runs the DataFrame plugin invariants and probes and prints what each probe found. */
 object DataFramePluginSpike {
 
     private const val IMPORTS = "import org.jetbrains.kotlinx.dataframe.api.*"

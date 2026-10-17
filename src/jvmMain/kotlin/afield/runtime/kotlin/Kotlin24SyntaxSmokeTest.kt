@@ -26,6 +26,16 @@ expect:
   stdoutContains:
     - "Kotlin 2.4 syntax smoke passed"
 */
+/**
+ * Smoke test that a box compiles Kotlin 2.4 syntax: collection literals, positional
+ * destructuring with square brackets, and name-based destructuring with renamed entries.
+ *
+ * One snippet on a fresh [KotlinInterface2] declares a data class, a `[1, 2, 3]` list literal and
+ * both destructuring forms, and the test checks the result string. It runs in the smoke catalog
+ * as `core.kotlin-2-4-syntax.smoke`.
+ */
+
+/** Compiles and evaluates the Kotlin 2.4 syntax snippet; `main` fails if the result differs. */
 object Kotlin24SyntaxSmokeTest {
 
     @JvmStatic
