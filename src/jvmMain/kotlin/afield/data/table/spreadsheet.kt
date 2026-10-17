@@ -69,6 +69,21 @@ import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.math.round
 import kotlin.math.sqrt
 
+/**
+ * A spreadsheet that lives in a box property, shown in the box's output area, whose formulas are
+ * Kotlin expressions.
+ *
+ * [Box.spreadsheet] (alias [Box.sheet]) stores the sheet as a [SpreadsheetStoredState] in a box
+ * property (`spreadsheet` by default) and displays an editor for it in an output channel. A cell
+ * whose input starts with `=` is a formula, compiled with the same K2 engine as box code; inside
+ * it, [SpreadsheetEvalHelpers] supplies `cell("A1")`, `range("A1:A3")`, `box("name")` and
+ * aggregates such as `sum` and `avg`. The sheet records which members of another box a formula
+ * reads through `box(...)`, and open sheets are polled once per frame so they follow those values.
+ *
+ * From box code, build or edit the stored state with [spreadsheetState] / [Box.editSpreadsheet],
+ * and read evaluated values with [Box.getSpreadsheetSnapshot] and [Box.getSpreadsheetCellValue].
+ */
+
 private const val SPREADSHEET_CHANNEL = "__spreadsheet__"
 private const val DEFAULT_SHEET_ROWS = 20
 private const val DEFAULT_SHEET_COLS = 12
