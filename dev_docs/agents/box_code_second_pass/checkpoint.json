@@ -717,6 +717,50 @@
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_16/README.md",
       "resolution": "Explicit Box receiver retained: bare named resolves a script-value reference; actual compile/replay demonstrates the distinction."
+    },
+    "5cf07a2fc9d7-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "fe178e5f2f54-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "fe178e5f2f54-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "d020fbb89ce4-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "265c63dc2aac-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "aa7515688d96-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "2f347d18c2a9-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "f82901d657cb-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "b3b75a3d0757-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "fd42702d1541-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "f1708701b118-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_17/README.md"
     }
   },
   "batches": [
