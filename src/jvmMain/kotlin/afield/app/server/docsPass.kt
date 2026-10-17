@@ -28,27 +28,27 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
-// ─────────────────────────────────────────────────────────────────────────────
-// The documentation revision pass, as a page: /docs-pass.html
-//
-// Everything a pass does — make a worktree, drain the notes queue with one agent per page, show
-// the handoffs and the diff, rebuild the docs, commit, land on main, remove the worktree — is
-// `tools/docs_notes.py pass …`, and works the same from a terminal. This file only runs those
-// commands for the page: one long job at a time, its complete output kept on disk, the last part
-// of it in memory for the page to poll.
-//
-// Every route here is loopback + same-site and nothing else: a browser on this machine, on one of
-// Field's own pages. That is the boundary drawn in DOCS_IMPROVEMENT_AGENT.md ("this machine's own
-// user"), and it is what stops the two real attacks — another device on the network, and a web
-// page open in your browser. There is no feature switch and no token, because a token scrolls out
-// of the terminal it is printed in, and the page is used from inside Field itself. What that gives
-// up is a backstop for a *future* change to the CORS or same-site code; the checks themselves are
-// the ones `DocsAnnotationRouteSecurityTest` pins.
-//
-// Both annotation hatches are forced shut for these routes (see [docsPassPolicy]). With only two
-// checks left, `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE` — set for taking notes from a tablet — must
-// not turn out to let the tablet start agents, commit, and move main.
-// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * The documentation revision pass, as a page: `/docs-pass.html`.
+ *
+ * Everything a pass does is `tools/docs_notes.py pass …`, and works the same from a terminal: make
+ * a worktree, drain the notes queue with one agent per page, show the handoffs and the diff,
+ * rebuild the docs, commit, land on `main`, remove the worktree. This file only runs those
+ * commands for the page, one long job at a time, keeping the complete output on disk and the last
+ * part of it in memory for the page to poll.
+ *
+ * Every route here is loopback and same-site and nothing else: a browser on this machine, on one
+ * of Field's own pages. The boundary is this machine's own user rather than this machine, and it
+ * is what stops the two real attacks, another device on the network and a web page open in your
+ * browser. There is no feature switch and no token, because a token scrolls out of the terminal it
+ * is printed in, and the page is used from inside Field itself. What that gives up is a backstop
+ * for a future change to the CORS or same-site code; the checks themselves are the ones
+ * `DocsAnnotationRouteSecurityTest` pins.
+ *
+ * Both annotation hatches are forced shut for these routes. With only two checks left,
+ * `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE`, which is set for taking notes from a tablet, must not
+ * turn out to let the tablet start agents, commit, and move `main`.
+ */
 
 /** One request from the page. Only the fields its [action] uses are read, and all of them are checked. */
 @Serializable

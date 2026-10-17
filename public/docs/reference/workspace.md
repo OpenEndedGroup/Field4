@@ -916,6 +916,15 @@ connect/disconnect, `__m` markers); execution control (`begin`, `end`, `start`, 
 
 ## ButtonControlHandler.kt { #buttoncontrolhandler-kt }
 
+The server side of `button(...)`: the `button-update` websocket command, which carries one press
+or release from the browser and runs the box's callback with it.
+
+A button is the one control in the family whose value is not worth keeping. The handler updates
+the in-memory control registry so other clients see the press, broadcasts that, and calls the
+callback; nothing reaches the box's saved value cache, so re-running the box does not replay the
+press. Everything else about a button is in the controls DSL in `outputs.kt` and in
+`sliders.js`.
+
 `src/jvmMain/kotlin/afield/app/server/ButtonControlHandler.kt` — [read the source](source/jvmMain/afield/app/server/ButtonControlHandler/)
 
 ## CustomMarking.kt { #custommarking-kt }
@@ -1329,11 +1338,41 @@ Register custom HTML renderers for non-Browsable values (leaf fallback).
 
 ## docsAnnotations.kt { #docsannotations-kt }
 
+Notes written on a documentation page, and the `/field-docs/` mirror those pages are read
+through.
+
+Three things live here. The access policy and its guards, which every docs route in Field is
+checked against. The annotation notebook: the types a note is made of, the store that keeps them
+in one JSON file, and the `/api/docs-annotations…` routes the panel reads and writes. And the
+mirror itself, which by default serves this checkout's built site when there is one and
+otherwise proxies the published site, injecting the annotation panel into each page either way.
+`AFIELD_DOCS_MIRROR_SOURCE` pins it to one or the other.
+
+### Access control
+
+Two groups of routes are installed here, into the same Ktor application as an SSL connector that
+binds `0.0.0.0` (see `Server.kt`, `httpsHost`), because Field genuinely does serve browsers and
+the visionOS shell on other devices:
+
+ - the annotation routes, `/api/docs-annotations…`. A note is not a private notepad: it is the
+   prompt the revision pass hands its agents, so whoever can write one can steer a run the human
+   later starts. Loopback and same-site by default, with two hatches
+   (`AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE`, `AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE`) that
+   re-open them to other devices and other websites respectively;
+ - the revision pass, `/api/docs-improvement/pass…` and `/docs-pass-site/…` (`docsPass.kt`),
+   which runs coding agents with write access to the checkout `docsImprovementCheckout` names.
+   Loopback and same-site with both hatches forced shut, so a hatch named for annotations can
+   never open it.
+
+What this does not claim to defend against is another process running as the same user on the
+same machine. It can reach loopback, and in any case already has whatever access the coding
+agents would be given. The boundary drawn here is this machine's own user, not this machine.
+
 `src/jvmMain/kotlin/afield/app/server/docsAnnotations.kt` — [read the source](source/jvmMain/afield/app/server/docsAnnotations/)
 
 ### DocsAnnotationAnchor { #docsannotations-kt-docsannotationanchor }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DocsAnnotationAnchor</span><span class="p">(</span><span class="k">val</span> <span class="n">exact</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">suffix</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">startOffset</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">endOffset</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">xRatio</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">yRatio</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">sourceCommit</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">docsSource</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">heading</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">region</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/docsAnnotations/#L332)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DocsAnnotationAnchor</span><span class="p">(</span><span class="k">val</span> <span class="n">exact</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">suffix</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">startOffset</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">endOffset</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">xRatio</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">yRatio</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">sourceCommit</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">docsSource</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">heading</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">region</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/docsAnnotations/#L338)
 
 | Declaration | Summary |
 | --- | --- |
@@ -1351,7 +1390,7 @@ Register custom HTML renderers for non-Browsable values (leaf fallback).
 
 ### DocsAnnotationEntry { #docsannotations-kt-docsannotationentry }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DocsAnnotationEntry</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;comment&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">author</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;human&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">atEpochMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">runId</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">commit</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">changedFiles</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">handoff</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/docsAnnotations/#L362)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DocsAnnotationEntry</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;comment&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">author</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;human&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">atEpochMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">runId</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">commit</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">changedFiles</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">handoff</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/docsAnnotations/#L368)
 
 One entry in a note's thread: a human reply, an agent's question, resolution or memory, or the harness recording a run that left the note untouched. Written by `tools/docs_notes.py` and by the routes below; the panel renders them.
 
@@ -1369,7 +1408,7 @@ One entry in a note's thread: a human reply, an agent's question, resolution or 
 
 ### DocsAnnotation { #docsannotations-kt-docsannotation }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DocsAnnotation</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">pageUrl</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">tags</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">anchor</span><span class="p">:</span> <span class="nc">DocsAnnotationAnchor</span> <span class="o">=</span> <span class="nc">DocsAnnotationAnchor</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">createdAtEpochMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">updatedAtEpochMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">resolvedAtEpochMs</span><span class="p">:</span> <span class="nc">Long</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">resolution</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;note&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">thread</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DocsAnnotationEntry</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">handoff</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">recordedAtCommit</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">recordedInCheckout</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/docsAnnotations/#L385)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DocsAnnotation</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">pageUrl</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">tags</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">anchor</span><span class="p">:</span> <span class="nc">DocsAnnotationAnchor</span> <span class="o">=</span> <span class="nc">DocsAnnotationAnchor</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">createdAtEpochMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">updatedAtEpochMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">resolvedAtEpochMs</span><span class="p">:</span> <span class="nc">Long</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">resolution</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;note&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">thread</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DocsAnnotationEntry</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">handoff</span><span class="p">:</span> <span class="nc">JsonObject</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">recordedAtCommit</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">recordedInCheckout</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/docsAnnotations/#L391)
 
 The note is shared with `tools/docs_notes.py`, which reads and writes this same file. Every top-level key that tool writes must be a property here, because `DocsAnnotationStore` rewrites the whole file from these data classes and `ignoreUnknownKeys` would silently drop anything else; `tools/test_docs_notes.py` (`KotlinSchemaTest`) fails when the two disagree. What only the tool understands lives inside `source`, which is kept verbatim.
 
@@ -1393,15 +1432,35 @@ The note is shared with `tools/docs_notes.py`, which reads and writes this same 
 
 ### DocsAnnotationUpsert { #docsannotations-kt-docsannotationupsert }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DocsAnnotationUpsert</span><span class="p">(</span><span class="k">val</span> <span class="k">annotation</span><span class="p">:</span> <span class="nc">DocsAnnotation</span><span class="p">,</span> <span class="k">val</span> <span class="n">reply</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/docsAnnotations/#L435)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DocsAnnotationUpsert</span><span class="p">(</span><span class="k">val</span> <span class="k">annotation</span><span class="p">:</span> <span class="nc">DocsAnnotation</span><span class="p">,</span> <span class="k">val</span> <span class="n">reply</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/docsAnnotations/#L441)
 
 `reply` is how the panel answers an agent's question without a route of its own: post the note's id with the reply, and it is appended to the thread as the human's, which puts the note back in the queue (see `awaiting_human` in `tools/docs_notes.py`).
 
 ### DocsAnnotationResolve { #docsannotations-kt-docsannotationresolve }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DocsAnnotationResolve</span><span class="p">(</span><span class="k">val</span> <span class="n">resolved</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">resolution</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/docsAnnotations/#L436)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DocsAnnotationResolve</span><span class="p">(</span><span class="k">val</span> <span class="n">resolved</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">resolution</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/docsAnnotations/#L442)
 
 ## docsPass.kt { #docspass-kt }
+
+The documentation revision pass, as a page: `/docs-pass.html`.
+
+Everything a pass does is `tools/docs_notes.py pass …`, and works the same from a terminal: make
+a worktree, drain the notes queue with one agent per page, show the handoffs and the diff,
+rebuild the docs, commit, land on `main`, remove the worktree. This file only runs those
+commands for the page, one long job at a time, keeping the complete output on disk and the last
+part of it in memory for the page to poll.
+
+Every route here is loopback and same-site and nothing else: a browser on this machine, on one
+of Field's own pages. The boundary is this machine's own user rather than this machine, and it
+is what stops the two real attacks, another device on the network and a web page open in your
+browser. There is no feature switch and no token, because a token scrolls out of the terminal it
+is printed in, and the page is used from inside Field itself. What that gives up is a backstop
+for a future change to the CORS or same-site code; the checks themselves are the ones
+`DocsAnnotationRouteSecurityTest` pins.
+
+Both annotation hatches are forced shut for these routes. With only two checks left,
+`AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE`, which is set for taking notes from a tablet, must not
+turn out to let the tablet start agents, commit, and move `main`.
 
 `src/jvmMain/kotlin/afield/app/server/docsPass.kt` — [read the source](source/jvmMain/afield/app/server/docsPass/)
 
@@ -1460,6 +1519,21 @@ What `GET /api/docs-improvement/pass` answers. Classes rather than `buildJsonObj
 A quick action's outcome: the command's exit code and everything it printed.
 
 ## docsSourceFile.kt { #docssourcefile-kt }
+
+A repo source file, from this checkout, for the docs pane.
+
+The docs build links a code span that is exactly a tracked repo path under `src/`, `tools/`,
+`server/` or `public/` to GitHub (`link_repo_source_paths_html` in `public/docs_hooks.py`).
+Inside Field's own docs pane that is the wrong copy: the file is on this machine, and may be
+ahead of `main`. So `docsAnnotations.js`, which the `/field-docs/` mirror injects into each page,
+intercepts the click and shows the file this route returns.
+
+It is a read of source text, which is exactly the exposure `GET /api/source` has without a guard
+(see `installFieldApiSameSiteGuard` in `Server.kt`). This one is guarded like the revision pass's
+routes: loopback and same-site, with both annotation hatches forced shut, so it answers only a
+browser on this machine, on one of Field's own pages. It serves the four roots the docs link and
+nothing else: no `dev_docs/`, no `config/`, no build output, no path that leaves its root through
+`..` or a symlink.
 
 `src/jvmMain/kotlin/afield/app/server/docsSourceFile.kt` — [read the source](source/jvmMain/afield/app/server/docsSourceFile/)
 
@@ -1751,17 +1825,39 @@ Capture all log events (while still emitting to stdout) and expose a lightweight
 
 ## terminal.kt { #terminal-kt }
 
+A real terminal in the browser: `/terminal.html` (xterm.js) over the `/pty/<id>` WebSocket, with
+a pseudo-terminal (pty4j) on this side.
+
+Its first job is running an interactive agent (`claude` or `codex`) on one handoff batch of the
+documentation revision pass, started from that batch on `/docs-pass.html` with one sentence of
+direction, so the agent works through the batch's handoffs and the human answers it in place
+instead of copying a command into a terminal of their own.
+
+This hands out a process on this machine, so the boundary is the revision pass's and nothing
+looser: loopback and same-site, with the annotation hatches forced shut, on every route here and
+on the WebSocket upgrade. And the client never names a command or a directory: it picks one of
+the [`TerminalLaunch`](workspace.md#terminal-kt-terminallaunch) kinds, and the server builds the argv and finds the directory. There is no
+"run this shell line".
+
+### Protocol on `/pty/<id>`
+
+Server to client, binary frames are terminal output, the scrollback first on every connect so a
+reload re-attaches; a text frame `{"type":"exit","code":N}` ends it. Client to server, binary or
+text frames are keystrokes, except a text frame that is a JSON object with `"type":"resize"`,
+which carries `cols` and `rows`. Closing the page detaches; the process keeps running until it
+exits or is killed through `POST /api/terminal/<id>/kill`.
+
 `src/jvmMain/kotlin/afield/app/server/terminal.kt` — [read the source](source/jvmMain/afield/app/server/terminal/)
 
 ### TerminalLaunch { #terminal-kt-terminallaunch }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TerminalLaunch</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">batch</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">cols</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">120</span><span class="p">,</span> <span class="k">val</span> <span class="n">rows</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">36</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/terminal/#L68)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TerminalLaunch</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">batch</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">cols</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">120</span><span class="p">,</span> <span class="k">val</span> <span class="n">rows</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">36</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/terminal/#L72)
 
-What the page may start. `kind` is `claude` (in the checkout, `text` as an optional first message), `handoff-batch` (in `batch`'s open session worktree, `text` as the human's direction), or `land-watch` (`tools/land.py status --watch` in the checkout, for /land.html; `text` is ignored; plain glyphs, since xterm.js has no Nerd Font).
+What the page may start. `kind` is `claude` (in the checkout, `text` as an optional first message), `handoff-batch` (in `batch`'s open session worktree, `text` as the human's direction), `land-watch` (`tools/land.py status --watch` in the checkout, for /land.html; `text` is ignored; plain glyphs, since xterm.js has no Nerd Font), or `refactor-batch`, which `refactorPass.kt` plans instead and which needs an imported refactor plan.
 
 ### TerminalInfo { #terminal-kt-terminalinfo }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TerminalInfo</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">startedAtEpochMs</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">running</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">exitCode</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">batch</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/terminal/#L71)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TerminalInfo</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">startedAtEpochMs</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">running</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">exitCode</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">batch</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/terminal/#L75)
 
 | Declaration | Summary |
 | --- | --- |
@@ -4646,18 +4742,28 @@ Carries a suspend function type, which `typeOf` cannot express directly.
 
 ## FieldKtParser.kt { #fieldktparser-kt }
 
+Kotlin source to a parse tree, without compiling it.
+
+Several things in Field need to look at the shape of box code rather than run it: reformat it,
+find which imports it names, rewrite a call, translate it to JavaScript. Compiling is the
+expensive way to get that, and it fails on code that does not yet make sense, which is most code
+while it is being typed. This file holds the one parser they share: a `KotlinCoreEnvironment`
+built once and reused, and a `parse` that returns the tree or throws on the first syntax error.
+
+It is derived from ktfmt's own parser, and the Apache 2.0 notice above is ktfmt's.
+
 `src/jvmMain/kotlin/afield/runtime/kotlin/FieldKtParser.kt` — [read the source](source/jvmMain/afield/runtime/FieldKtParser/)
 
 ### FieldKtParser { #fieldktparser-kt-fieldktparser }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">FieldKtParser</span></code>](source/jvmMain/afield/runtime/FieldKtParser/#L68)
+[<code class="highlight"><span class="k">object</span> <span class="nc">FieldKtParser</span></code>](source/jvmMain/afield/runtime/FieldKtParser/#L81)
 
-Parses Kotlin source as a script (which box code is) and returns its parse tree, for Field code that wants PSI without compiling: the comment pass in `formatter.kt`, the RemoteJS instrumenter, and the pattern-rewrite smoke test.
+Parses Kotlin source as a script (which box code is) and returns its parse tree, for Field code that wants PSI without compiling: the comment pass in `formatter.kt`, the import analysis in `boxImports.kt`, the labelled-argument macro, the RemoteJS instrumenter, and the pattern-rewrite smoke test.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">env</span><span class="p">:</span> <span class="nc">KotlinCoreEnvironment</span></code>](source/jvmMain/afield/runtime/FieldKtParser/#L76) | The environment used to open a KtFile. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">parse</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">KtFile</span></code>](source/jvmMain/afield/runtime/FieldKtParser/#L87) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">env</span><span class="p">:</span> <span class="nc">KotlinCoreEnvironment</span></code>](source/jvmMain/afield/runtime/FieldKtParser/#L89) | The environment used to open a KtFile. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">parse</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">KtFile</span></code>](source/jvmMain/afield/runtime/FieldKtParser/#L100) |  |
 
 ## Kotlin24SyntaxSmokeTest.kt { #kotlin24syntaxsmoketest-kt }
 
@@ -5130,45 +5236,65 @@ Smoke for the experiment that wires the Wither compiler plugin (kyay10/wither) i
 
 ## boxImports.kt { #boximports-kt }
 
+Which of a box's imports it needs.
+
+A box is compiled with the `intro` preamble prepended (`Boxes.kt`), so an import already provided
+by that preamble adds nothing, and agents write such lines all the time. This reads a box's own
+import lines and says, for each one, whether it is redundant (the intro already provides it),
+unused (nothing in the code names it), needed, or kept because the evidence is not good enough to
+drop it. `formatBoxImports` removes the first two kinds and sorts the rest; nothing here ever adds
+an import.
+
+The rules are conservative, because a wrongly dropped import is a compile error:
+
+- An explicit import `a.b.C` (or `a.b.C as D`) is needed when its name appears as an identifier in
+  the code, outside comments and strings. Operator-convention names (`plusAssign`, `getValue`,
+  `invoke`, ...) are always kept: code uses them without writing them.
+- It is redundant when the intro has the same line, or `a.b.*` and no other visible package
+  (including Kotlin/JVM defaults) offers a competing `C`. An aliased import is never redundant.
+- A star import `a.b.*` is redundant when the intro has the same star. It is unused only on the
+  evidence `k2ImportEvidence` collects: K2 resolved every reference in the box and none of them
+  lives in `a.b`. Without that evidence a star import is kept.
+
 `src/jvmMain/kotlin/afield/runtime/kotlin/boxImports.kt` — [read the source](source/jvmMain/afield/runtime/boxImports/)
 
 ### Top-level functions { #boximports-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">boxImports</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BoxImport</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/boxImports/#L84) | The box's own import lines, in order. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">referencedNames</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/boxImports/#L90) | Every identifier the code refers to, outside import and package lines, comments and strings. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">analyzeBoxImports</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">introText</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">intro</span><span class="p">,</span> <span class="n">resolution</span><span class="p">:</span> <span class="nc">K2ImportEvidence</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">otherCandidates</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">:</span><span class="p">:</span><span class="n">classpathCandidates</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ImportFinding</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/boxImports/#L108) | The verdict for each of `code`'s imports, against the box intro `introText`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">introProvidedType</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">introText</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">intro</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/boxImports/#L162) | The type a box already sees under the simple name `name` through `introText`'s imports, as a fully qualified name, or null when there is none: what a class generated with that name (a shader block's, say) would hide. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">formatBoxImports</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">findings</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ImportFinding</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">analyzeBoxImports</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/boxImports/#L178) | `code` with its redundant and unused imports removed and the remaining import lines sorted, in place of the original block. The rest of the code is untouched, comment lines among the imports included; returns `code` itself when nothing would change. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">k2ImportEvidence</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">timeoutMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">10</span><span class="n">&#95;000L</span><span class="p">)</span><span class="p">:</span> <span class="nc">K2ImportEvidence</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/boxImports/#L209) | Ask the code-use K2 sidecar what `code` resolves to, for `analyzeBoxImports`. The box's own import lines go to the sidecar as imports and the rest as the snippet, which is how it expects box code. Null when no sidecar answered (`AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL` unset, or it timed out): the source-index fallback is a guess about names, not a resolution, so it is no evidence here. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">formatBoxKotlin</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">useK2</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/boxImports/#L233) | What Format Kotlin does to a box's `code`: drop its redundant and unused imports (with K2 evidence when the code-use sidecar answers, by name alone when it does not), then format with ktfmt. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">boxImports</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BoxImport</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/boxImports/#L85) | The box's own import lines, in order. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">referencedNames</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/boxImports/#L91) | Every identifier the code refers to, outside import and package lines, comments and strings. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">analyzeBoxImports</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">introText</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">intro</span><span class="p">,</span> <span class="n">resolution</span><span class="p">:</span> <span class="nc">K2ImportEvidence</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">otherCandidates</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">:</span><span class="p">:</span><span class="n">classpathCandidates</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ImportFinding</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/boxImports/#L109) | The verdict for each of `code`'s imports, against the box intro `introText`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">introProvidedType</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">introText</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">intro</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/boxImports/#L163) | The type a box already sees under the simple name `name` through `introText`'s imports, as a fully qualified name, or null when there is none: what a class generated with that name (a shader block's, say) would hide. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">formatBoxImports</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">findings</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ImportFinding</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">analyzeBoxImports</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/boxImports/#L179) | `code` with its redundant and unused imports removed and the remaining import lines sorted, in place of the original block. The rest of the code is untouched, comment lines among the imports included; returns `code` itself when nothing would change. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">k2ImportEvidence</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">timeoutMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">10</span><span class="n">&#95;000L</span><span class="p">)</span><span class="p">:</span> <span class="nc">K2ImportEvidence</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/boxImports/#L210) | Ask the code-use K2 sidecar what `code` resolves to, for `analyzeBoxImports`. The box's own import lines go to the sidecar as imports and the rest as the snippet, which is how it expects box code. Null when no sidecar answered (`AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL` unset, or it timed out): the source-index fallback is a guess about names, not a resolution, so it is no evidence here. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">formatBoxKotlin</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">useK2</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/boxImports/#L234) | What Format Kotlin does to a box's `code`: drop its redundant and unused imports (with K2 evidence when the code-use sidecar answers, by name alone when it does not), then format with ktfmt. |
 
 ### BoxImport { #boximports-kt-boximport }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BoxImport</span><span class="p">(</span><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">alias</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/boxImports/#L56)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BoxImport</span><span class="p">(</span><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">alias</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/boxImports/#L57)
 
 One `import` line of a box.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">star</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/boxImports/#L57) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">pkg</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/boxImports/#L58) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/boxImports/#L60) | The name the import brings into scope: the alias, the last segment, or null for a star. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">star</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/runtime/boxImports/#L58) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">pkg</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/runtime/boxImports/#L59) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/boxImports/#L61) | The name the import brings into scope: the alias, the last segment, or null for a star. |
 
 ### ImportVerdict { #boximports-kt-importverdict }
 
-[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">ImportVerdict</span></code>](source/jvmMain/afield/runtime/boxImports/#L63)
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">ImportVerdict</span></code>](source/jvmMain/afield/runtime/boxImports/#L64)
 
 Constants: `NEEDED`, `REDUNDANT`, `UNUSED`, `KEPT`.
 
 ### ImportFinding { #boximports-kt-importfinding }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ImportFinding</span><span class="p">(</span><span class="k">val</span> <span class="n">import</span><span class="p">:</span> <span class="nc">BoxImport</span><span class="p">,</span> <span class="k">val</span> <span class="n">verdict</span><span class="p">:</span> <span class="nc">ImportVerdict</span><span class="p">,</span> <span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/boxImports/#L65)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ImportFinding</span><span class="p">(</span><span class="k">val</span> <span class="n">import</span><span class="p">:</span> <span class="nc">BoxImport</span><span class="p">,</span> <span class="k">val</span> <span class="n">verdict</span><span class="p">:</span> <span class="nc">ImportVerdict</span><span class="p">,</span> <span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/boxImports/#L66)
 
 ### K2ImportEvidence { #boximports-kt-k2importevidence }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">K2ImportEvidence</span><span class="p">(</span><span class="k">val</span> <span class="n">resolvedFqns</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">unresolvedCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/boxImports/#L71)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">K2ImportEvidence</span><span class="p">(</span><span class="k">val</span> <span class="n">resolvedFqns</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">unresolvedCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/boxImports/#L72)
 
 What K2 resolved in a box's code: every resolved reference's fully qualified name, and how many references it could not resolve. Produced by `k2ImportEvidence`; null when no analyzer ran.
 

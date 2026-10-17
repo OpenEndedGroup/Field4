@@ -42,35 +42,41 @@ import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
+/**
+ * Notes written on a documentation page, and the `/field-docs/` mirror those pages are read
+ * through.
+ *
+ * Three things live here. The access policy and its guards, which every docs route in Field is
+ * checked against. The annotation notebook: the types a note is made of, the store that keeps them
+ * in one JSON file, and the `/api/docs-annotations…` routes the panel reads and writes. And the
+ * mirror itself, which by default serves this checkout's built site when there is one and
+ * otherwise proxies the published site, injecting the annotation panel into each page either way.
+ * `AFIELD_DOCS_MIRROR_SOURCE` pins it to one or the other.
+ *
+ * #### Access control
+ *
+ * Two groups of routes are installed here, into the same Ktor application as an SSL connector that
+ * binds `0.0.0.0` (see `Server.kt`, `httpsHost`), because Field genuinely does serve browsers and
+ * the visionOS shell on other devices:
+ *
+ *  - the annotation routes, `/api/docs-annotations…`. A note is not a private notepad: it is the
+ *    prompt the revision pass hands its agents, so whoever can write one can steer a run the human
+ *    later starts. Loopback and same-site by default, with two hatches
+ *    (`AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE`, `AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE`) that
+ *    re-open them to other devices and other websites respectively;
+ *  - the revision pass, `/api/docs-improvement/pass…` and `/docs-pass-site/…` (`docsPass.kt`),
+ *    which runs coding agents with write access to the checkout `docsImprovementCheckout` names.
+ *    Loopback and same-site with both hatches forced shut, so a hatch named for annotations can
+ *    never open it.
+ *
+ * What this does not claim to defend against is another process running as the same user on the
+ * same machine. It can reach loopback, and in any case already has whatever access the coding
+ * agents would be given. The boundary drawn here is this machine's own user, not this machine.
+ */
+
 private const val DOCS_ORIGIN = "https://openendedgroup.com"
 private const val DOCS_ROOT = "/field4/"
 private const val PROXY_ROOT = "/field-docs/"
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Access control
-//
-// Two groups of routes are installed here, into the same Ktor application as an SSL
-// connector that binds `0.0.0.0` (see `Server.kt`, `httpsHost`), because Field genuinely
-// does serve browsers and the visionOS shell on other devices:
-//
-//  - the annotation routes, `/api/docs-annotations…`. A note is not a private notepad: it
-//    is the prompt the revision pass hands its agents, so whoever can write one can steer
-//    a run the human later starts. Loopback + same-site by default, with two hatches
-//    (`AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE`, `AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE`)
-//    that re-open them to other devices and other websites respectively;
-//  - the revision pass, `/api/docs-improvement/pass…` and `/docs-pass-site/…`
-//    (`docsPass.kt`), which runs coding agents with write access to the checkout written
-//    down in [docsImprovementCheckout]. Loopback + same-site with both hatches forced shut
-//    ([docsPassPolicy]), so a hatch named for annotations can never open it.
-//
-// The older agent-spawning route, `POST /api/docs-improvement`, and its enable switch and
-// token were removed on 2026-10-02.
-//
-// What this deliberately does *not* claim to defend against: another process running
-// as the same user on the same machine. It can reach loopback, and in any case already
-// has whatever access the coding agents would be given. The boundary drawn here is
-// "this machine's own user", not "this machine".
-// ─────────────────────────────────────────────────────────────────────────────
 
 /** The checkout the revision pass is allowed to edit. Unset means the server's own working directory. */
 internal const val DOCS_IMPROVEMENT_DIRECTORY_ENV = "AFIELD_DOCS_IMPROVEMENT_DIR"

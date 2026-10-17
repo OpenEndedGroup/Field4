@@ -45,6 +45,17 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
+ * The server side of `button(...)`: the `button-update` websocket command, which carries one press
+ * or release from the browser and runs the box's callback with it.
+ *
+ * A button is the one control in the family whose value is not worth keeping. The handler updates
+ * the in-memory control registry so other clients see the press, broadcasts that, and calls the
+ * callback; nothing reaches the box's saved value cache, so re-running the box does not replay the
+ * press. Everything else about a button is in the controls DSL in `outputs.kt` and in
+ * `sliders.js`.
+ */
+
+/**
  * The websocket command behind a momentary button, in its own file for two unrelated reasons.
  *
  * The first is a merge concern: `handlers` is a plain top-level map (`src/commonMain/kotlin/afield/app/protocol/Messages.kt`),

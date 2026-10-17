@@ -17,22 +17,22 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
-// ─────────────────────────────────────────────────────────────────────────────
-// A repo source file, from this checkout, for the docs pane.
-//
-// The docs build links a code span that is exactly a tracked repo path under src/, tools/,
-// server/ or public/ to GitHub (`link_repo_source_paths_html` in public/docs_hooks.py; Marc,
-// 2026-10-01, handoff 9b508085). Inside Field's own docs pane that is the wrong copy: the file is
-// on this machine, and may be ahead of main. So `docsAnnotations.js`, which the /field-docs/
-// mirror injects into each page, intercepts the click and shows the file this route returns.
-//
-// It is a read of source text, which is exactly the exposure `GET /api/source` has without a
-// guard (see `installFieldApiSameSiteGuard`). This one is guarded like the revision pass's routes:
-// loopback + same-site with both annotation hatches shut ([docsPassPolicy]), so it answers only a
-// browser on this machine, on one of Field's own pages. It serves the four roots the docs link
-// and nothing else: no dev_docs/, no config/, no build output, no path that leaves its root
-// through `..` or a symlink.
-// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * A repo source file, from this checkout, for the docs pane.
+ *
+ * The docs build links a code span that is exactly a tracked repo path under `src/`, `tools/`,
+ * `server/` or `public/` to GitHub (`link_repo_source_paths_html` in `public/docs_hooks.py`).
+ * Inside Field's own docs pane that is the wrong copy: the file is on this machine, and may be
+ * ahead of `main`. So `docsAnnotations.js`, which the `/field-docs/` mirror injects into each page,
+ * intercepts the click and shows the file this route returns.
+ *
+ * It is a read of source text, which is exactly the exposure `GET /api/source` has without a guard
+ * (see `installFieldApiSameSiteGuard` in `Server.kt`). This one is guarded like the revision pass's
+ * routes: loopback and same-site, with both annotation hatches forced shut, so it answers only a
+ * browser on this machine, on one of Field's own pages. It serves the four roots the docs link and
+ * nothing else: no `dev_docs/`, no `config/`, no build output, no path that leaves its root through
+ * `..` or a symlink.
+ */
 
 /** The repo roots whose files the docs link, and so the only ones this route serves. */
 internal val DOCS_SOURCE_ROOTS = setOf("src", "tools", "server", "public")

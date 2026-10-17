@@ -37,32 +37,36 @@ import java.nio.file.Paths
 import java.util.UUID
 import kotlin.concurrent.thread
 
-// ─────────────────────────────────────────────────────────────────────────────
-// A real terminal in the browser: /terminal.html (xterm.js) over the /pty/<id> WebSocket, with a
-// pseudo-terminal (pty4j) on this side. Its first job is running an interactive agent ([fieldAgent]:
-// `claude` or `codex`) on one
-// handoff batch of the documentation revision pass, started from that batch on /docs-pass.html
-// with one sentence of direction — so the agent works through the batch's handoffs and the human
-// answers it in place, instead of copying a command into a terminal of their own.
-//
-// This hands out a process on this machine, so the boundary is the revision pass's and nothing
-// looser: loopback and same-site, annotation hatches shut ([docsPassPolicy]), on the launch and
-// list routes and on the WebSocket upgrade. And the client never names a command or a directory:
-// it picks one of the [TerminalLaunch] kinds, and the server builds the argv and finds the
-// directory. There is no "run this shell line".
-//
-// Protocol on /pty/<id>: server → client binary frames are terminal output (the scrollback first,
-// on every connect, so a reload re-attaches); a text frame `{"type":"exit","code":N}` ends it.
-// Client → server binary or text frames are keystrokes, except a text frame that is a JSON object
-// with `"type":"resize"`, which carries `cols` and `rows`. Closing the page detaches; the process
-// keeps running until it exits or is killed through POST /api/terminal/<id>/kill.
-// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * A real terminal in the browser: `/terminal.html` (xterm.js) over the `/pty/<id>` WebSocket, with
+ * a pseudo-terminal (pty4j) on this side.
+ *
+ * Its first job is running an interactive agent (`claude` or `codex`) on one handoff batch of the
+ * documentation revision pass, started from that batch on `/docs-pass.html` with one sentence of
+ * direction, so the agent works through the batch's handoffs and the human answers it in place
+ * instead of copying a command into a terminal of their own.
+ *
+ * This hands out a process on this machine, so the boundary is the revision pass's and nothing
+ * looser: loopback and same-site, with the annotation hatches forced shut, on every route here and
+ * on the WebSocket upgrade. And the client never names a command or a directory: it picks one of
+ * the [TerminalLaunch] kinds, and the server builds the argv and finds the directory. There is no
+ * "run this shell line".
+ *
+ * #### Protocol on `/pty/<id>`
+ *
+ * Server to client, binary frames are terminal output, the scrollback first on every connect so a
+ * reload re-attaches; a text frame `{"type":"exit","code":N}` ends it. Client to server, binary or
+ * text frames are keystrokes, except a text frame that is a JSON object with `"type":"resize"`,
+ * which carries `cols` and `rows`. Closing the page detaches; the process keeps running until it
+ * exits or is killed through `POST /api/terminal/<id>/kill`.
+ */
 
 /**
  * What the page may start. [kind] is `claude` (in the checkout, [text] as an optional first
  * message), `handoff-batch` (in [batch]'s open session worktree, [text] as the human's direction),
- * or `land-watch` (`tools/land.py status --watch` in the checkout, for /land.html; [text] is ignored;
- * plain glyphs, since xterm.js has no Nerd Font).
+ * `land-watch` (`tools/land.py status --watch` in the checkout, for /land.html; [text] is ignored;
+ * plain glyphs, since xterm.js has no Nerd Font), or `refactor-batch`, which `refactorPass.kt`
+ * plans instead and which needs an imported refactor plan.
  */
 @Serializable
 data class TerminalLaunch(val kind: String, val text: String = "", val batch: String = "", val cols: Int = 120, val rows: Int = 36)
