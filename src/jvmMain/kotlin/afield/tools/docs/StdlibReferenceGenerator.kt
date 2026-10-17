@@ -1624,8 +1624,8 @@ object StdlibReferenceGenerator {
      *
      * ### Why a *qualified* reference is checked against its qualifier
      *
-     * Only top-level types get an anchor here, so a KDoc reference to a nested one — `[Outer.Nested]`
-     * — has nothing to resolve to, and [linkify] used to fall back to the last segment alone. That is
+     * Before every row had an anchor only top-level types did, so a KDoc reference to a nested one —
+     * `[Outer.Nested]` — had nothing to resolve to, and [linkify] used to fall back to the last segment alone. That is
      * a false link waiting for a name collision, and adding the simulation roots supplied one:
      * `afield.stdlib/tuio.kt` documents `[TuioReceiver.Frame]`, `TuioReceiver.Frame` is a nested
      * `data class` with no anchor, and `afield.simulation.physics/CSVReader.kt` declares a top-level
@@ -1639,58 +1639,154 @@ object StdlibReferenceGenerator {
      * package name, a JDK type — still falls back to the last segment, so `[java.nio.ByteBuffer]`
      * behaves exactly as before.
      */
-    private class TypeAnchors(
-        private val corpus: Map<String, String>,
-        private val corpusOwner: Map<String, String>,
-        private val byFile: Map<String, Map<String, String>>,
-    ) {
-        /** [name]'s anchor as seen from [doc], or null when it resolves nowhere this reference emits. */
-        fun resolve(name: String, doc: SourceDocument?): String? =
-            doc?.let { byFile[it.relativePath]?.get(name) } ?: corpus[name]
+    /**
+     * One published declaration as [TypeAnchors] sees it: where it lives, what a KDoc reference
+     * may call it, and the `page.md#anchor` its row carries.
+     *
+     * @param owner the type a member is declared in (`Owner` of `Owner.member`), null at top level
+     * @param receiver an extension's receiver type, simple name, null for anything else
+     * @param isType a type heading rather than a table row; only these resolve through an unknown
+     *   capitalised qualifier, see [TypeAnchors.resolveReference]
+     */
+    internal data class AnchorEntry(
+        val file: String,
+        val name: String,
+        val owner: String?,
+        val receiver: String?,
+        val isType: Boolean,
+        val target: String,
+    )
 
-        /** The source file [resolve] would have taken [name]'s anchor from, by the same two steps. */
-        private fun owner(name: String, doc: SourceDocument?): String? =
-            doc?.takeIf { byFile[it.relativePath]?.containsKey(name) == true }?.relativePath
-                ?: corpusOwner[name]
+    internal class TypeAnchors(entries: List<AnchorEntry>) {
+        private val corpus = mutableMapOf<String, AnchorEntry>()
+        private val byFile = mutableMapOf<String, MutableMap<String, AnchorEntry>>()
+        private val qualifiedCorpus = mutableMapOf<String, AnchorEntry>()
+        private val qualifiedByFile = mutableMapOf<String, MutableMap<String, AnchorEntry>>()
+
+        init {
+            val ambiguous = mutableSetOf<String>()
+            val ambiguousQualified = mutableSetOf<String>()
+            val fileMembers = mutableMapOf<String, MutableMap<String, MutableSet<String>>>()
+            // Types first, then top level, then members, so within one file a type outranks the
+            // factory function sharing its name and a top-level name outranks a member's.
+            val ordered = entries.filter { it.isType } +
+                entries.filter { !it.isType && it.owner == null } +
+                entries.filter { !it.isType && it.owner != null }
+            ordered.forEach { e ->
+                val local = byFile.getOrPut(e.file) { mutableMapOf() }
+                if (e.owner == null) {
+                    // A bare name resolves corpus-wide only for top-level declarations: Kotlin never
+                    // resolves `[member]` from outside the member's own scope.
+                    val prior = corpus.putIfAbsent(e.name, e)
+                    if (prior != null && prior.file != e.file) ambiguous += e.name
+                    local.putIfAbsent(e.name, e)
+                } else {
+                    fileMembers.getOrPut(e.file) { mutableMapOf() }
+                        .getOrPut(e.name) { mutableSetOf() } += e.owner
+                    local.putIfAbsent(e.name, e)
+                }
+                val qualifier = e.owner ?: e.receiver
+                if (qualifier != null) {
+                    val key = "${qualifier.substringAfterLast('.')}.${e.name}"
+                    val prior = qualifiedCorpus.putIfAbsent(key, e)
+                    if (prior != null && prior.file != e.file) ambiguousQualified += key
+                    qualifiedByFile.getOrPut(e.file) { mutableMapOf() }.putIfAbsent(key, e)
+                }
+            }
+            // A bare member name two types of one file share is ambiguous inside that file too.
+            fileMembers.forEach { (file, names) ->
+                names.filterValues { it.size > 1 }.keys.forEach { name ->
+                    val local = byFile[file] ?: return@forEach
+                    if (local[name]?.owner != null) local.remove(name)
+                }
+            }
+            // A name that two files both define cannot be linked unambiguously from a third, so from
+            // a third it is not linked at all. From either of the two it still resolves.
+            ambiguous.forEach { corpus.remove(it) }
+            ambiguousQualified.forEach { qualifiedCorpus.remove(it) }
+        }
+
+        private fun lookup(name: String, file: String?): AnchorEntry? =
+            file?.let { byFile[it]?.get(name) } ?: corpus[name]
 
         /**
-         * A whole KDoc reference — `Symbol`, `Outer.Nested` or `some.package.Symbol` — resolved.
+         * A whole KDoc reference — `Symbol`, `Owner.member`, `Receiver.extension`, `Outer.Nested` or
+         * `some.package.Symbol` — resolved to its `page.md#anchor`, or null.
          *
          * Null both when nothing matches and when the qualifier contradicts the match; the caller
-         * renders inline code either way, which is the honest answer for a nested type this
-         * reference does not emit an anchor for.
+         * renders inline code either way.
          */
-        fun resolveReference(raw: String, doc: SourceDocument?): String? {
+        fun resolveReference(raw: String, file: String?): String? {
             val simple = raw.substringAfterLast('.')
-            val target = resolve(simple, doc) ?: return null
-            if (simple == raw) return target
+            if (simple == raw) return lookup(simple, file)?.target
             val qualifier = raw.substringBeforeLast('.').substringAfterLast('.')
-            val qualifierOwner = owner(qualifier, doc) ?: return target
-            return target.takeIf { qualifierOwner == owner(simple, doc) }
+            val key = "$qualifier.$simple"
+            (file?.let { qualifiedByFile[it]?.get(key) } ?: qualifiedCorpus[key])?.let { return it.target }
+            val target = lookup(simple, file)?.takeIf { it.owner == null } ?: return null
+            val qualifierOwner = lookup(qualifier, file)?.takeIf { it.isType }?.file
+            if (qualifierOwner != null) return target.target.takeIf { qualifierOwner == target.file }
+            // An unknown qualifier. A package (`afield.foo.bar`) is lowercase and falls back to the
+            // last segment as it always has; an unknown *type* (`List.add`, `ByteBuffer.flip`) names
+            // a member of something this reference does not emit, so only a type may match it.
+            return target.target.takeIf { target.isType || qualifier.first().isLowerCase() }
         }
     }
 
-    /** Type simple name -> the `page.md#anchor` that documents it, for KDoc `[Symbol]` linkification. */
+    /**
+     * An extension's receiver type, simple name, from its signature, or null for a non-extension.
+     * `fun <T> List<T>.foo(` gives `List`; `val Box.bar` gives `Box`.
+     */
+    internal fun receiverOf(signature: String, name: String): String? {
+        val m = Regex("""\b(?:fun|va[lr])\s+(?:<[^=(]*?>\s+)?([\w.<>?,* ]+?)\.`?""" + Regex.escape(name) + """`?\s*[(:=<]?""")
+            .find(signature) ?: return null
+        val receiver = m.groupValues[1].trim().removeSuffix("?").replace(Regex("<.*>"), "").trim()
+        return receiver.substringAfterLast('.').takeIf { it.matches(Regex("""[A-Za-z_]\w*""")) }
+    }
+
+    /**
+     * Every row anchor of one file, keyed by `owner to name`: the first row of an overload family
+     * carries it, so `[name]` lands on the family. A slug collision (case, `_` vs `-`) is resolved by
+     * a `-2`, `-3` suffix in source order, so an anchor changes only when its own colliding twin moves.
+     */
+    private fun rowAnchors(doc: SourceDocument): Map<Pair<String?, String>, String> =
+        rowAnchorCache.getOrPut(doc.relativePath) {
+            val taken = doc.types.map { typeAnchor(doc, it.symbol) }.toMutableSet()
+            val out = LinkedHashMap<Pair<String?, String>, String>()
+            (doc.topLevelFunctions + doc.topLevelValues + doc.types.flatMap { it.members }).forEach { s ->
+                val key = s.owner to s.simpleName
+                if (key in out) return@forEach
+                val base = if (s.owner == null) "${fileAnchor(doc)}--${slug(s.simpleName)}"
+                    else "${fileAnchor(doc)}--${slug(s.owner)}--${slug(s.simpleName)}"
+                var anchor = base
+                var n = 2
+                while (!taken.add(anchor)) anchor = "$base-${n++}"
+                out[key] = anchor
+            }
+            out
+        }
+
+    private val rowAnchorCache = mutableMapOf<String, Map<Pair<String?, String>, String>>()
+
+    private val emittedRowAnchors = mutableMapOf<String, MutableSet<Pair<String?, String>>>()
+
+    /** Every published declaration -> the `page.md#anchor` that documents it, for KDoc `[Symbol]` linkification. */
     private fun buildTypeAnchorIndex(documents: List<SourceDocument>): TypeAnchors {
-        val corpus = mutableMapOf<String, String>()
-        val corpusOwner = mutableMapOf<String, String>()
-        val ambiguous = mutableSetOf<String>()
-        val byFile = mutableMapOf<String, MutableMap<String, String>>()
+        val entries = mutableListOf<AnchorEntry>()
         documents.forEach { doc ->
+            val page = "${slug(doc.category)}.md#"
             doc.types.forEach { type ->
-                val name = type.symbol.simpleName
-                val target = "${slug(doc.category)}.md#${typeAnchor(doc, type.symbol)}"
-                if (corpus.putIfAbsent(name, target) != null) ambiguous += name
-                corpusOwner.putIfAbsent(name, doc.relativePath)
-                // Two types with one simple name in one file does not compile, so first-wins here is a
-                // formality rather than a policy.
-                byFile.getOrPut(doc.relativePath) { mutableMapOf() }.putIfAbsent(name, target)
+                entries += AnchorEntry(doc.relativePath, type.symbol.simpleName, null, null, true,
+                    page + typeAnchor(doc, type.symbol))
+            }
+            val anchors = rowAnchors(doc)
+            (doc.topLevelFunctions + doc.topLevelValues + doc.types.flatMap { it.members }).forEach { s ->
+                val anchor = anchors[s.owner to s.simpleName] ?: return@forEach
+                // A nested type listed as a member keeps its member row: `[Outer.Nested]` lands there.
+                entries += AnchorEntry(doc.relativePath, s.simpleName, s.owner,
+                    if (s.owner == null) receiverOf(s.signature, s.simpleName) else null, false, page + anchor)
             }
         }
-        // A name that two files both define cannot be linked unambiguously from a third, so from a
-        // third it is not linked at all. From either of the two it still resolves — see [TypeAnchors].
-        ambiguous.forEach { corpus.remove(it); corpusOwner.remove(it) }
-        return TypeAnchors(corpus, corpusOwner, byFile)
+        return TypeAnchors(entries)
     }
 
     /**
@@ -1882,11 +1978,16 @@ object StdlibReferenceGenerator {
     ): String = buildString {
         appendLine("| Declaration | Summary |")
         appendLine("| --- | --- |")
+        val anchors = rowAnchors(doc)
+        // Per file, not per table: a `fun pulse` and a `val pulse` share one key and one anchor.
+        val emitted = emittedRowAnchors.getOrPut(doc.relativePath) { mutableSetOf() }
         coalesce(symbols).forEach { row ->
             val signature = row.symbol.signature.ifBlank { row.symbol.simpleName }
             val declaration = linkToSource(doc, row.symbol.line, highlightSignature(signature))
+            val key = row.symbol.owner to row.symbol.simpleName
+            val anchor = anchors[key]?.takeIf { emitted.add(key) }?.let { "<a id=\"$it\"></a>" }.orEmpty()
             appendLine(
-                "| $declaration${overloadBadge(row)} | " +
+                "| $anchor$declaration${overloadBadge(row)} | " +
                     "${escapeCell(linkify(row.summary, typeAnchors, doc))} |"
             )
         }
@@ -2469,12 +2570,12 @@ object StdlibReferenceGenerator {
         val alternate = Regex("""\[([^\]\[]+)]\[([A-Za-z_][\w.]*)]""")
         val simple = Regex("""\[([A-Za-z_][\w.]*)](?!\()""")
         var out = alternate.replace(text) { m ->
-            val target = typeAnchors.resolveReference(m.groupValues[2], doc)
+            val target = typeAnchors.resolveReference(m.groupValues[2], doc?.relativePath)
             if (target != null) "[${m.groupValues[1]}]($target)" else "`${m.groupValues[1]}`"
         }
         out = simple.replace(out) { m ->
             val raw = m.groupValues[1]
-            val target = typeAnchors.resolveReference(raw, doc)
+            val target = typeAnchors.resolveReference(raw, doc?.relativePath)
             if (target != null) "[`$raw`]($target)" else "`$raw`"
         }
         return out

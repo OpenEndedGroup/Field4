@@ -14,7 +14,7 @@ Box actions: named commands a box registers in its `actions` map, which resync g
 box and its ancestors and sends to the UI.
 
 An [`Action`](internal.md#extensions-kt-action) carries a short description, a detail line, optional HTML or JavaScript
-documentation, and a `target` callback that receives the boxes it was invoked on. `action` builds
+documentation, and a `target` callback that receives the boxes it was invoked on. [`action`](internal.md#extensions-kt--action) builds
 one with the callback as a trailing lambda.
 
 `src/jvmMain/kotlin/afield/app/commands/extensions.kt` — [read the source](source/jvmMain/afield/app/commands/extensions/)
@@ -23,13 +23,13 @@ one with the callback as a trailing lambda.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">action</span><span class="p">(</span><span class="n">desc</span> <span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">detail</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">docHtml</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">docJs</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">payload</span> <span class="p">:</span> <span class="p">(</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/app/commands/extensions/#L55) | Builds an [`Action`](internal.md#extensions-kt-action) with `payload` as its target. |
+| <a id="extensions-kt--action"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">action</span><span class="p">(</span><span class="n">desc</span> <span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">detail</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">docHtml</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">docJs</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">payload</span> <span class="p">:</span> <span class="p">(</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/app/commands/extensions/#L55) | Builds an [`Action`](internal.md#extensions-kt-action) with `payload` as its target. |
 
 ### Top-level values { #extensions-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">Box</span><span class="p">.</span><span class="n">actions</span><span class="p">:</span> <span class="nc">MutableMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Action</span><span class="p">&gt;</span></code>](source/jvmMain/afield/app/commands/extensions/#L64) | This box's actions by key; reading it marks the box for resync so the UI picks up changes. |
+| <a id="extensions-kt--actions"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">Box</span><span class="p">.</span><span class="n">actions</span><span class="p">:</span> <span class="nc">MutableMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Action</span><span class="p">&gt;</span></code>](source/jvmMain/afield/app/commands/extensions/#L64) | This box's actions by key; reading it marks the box for resync so the UI picks up changes. |
 
 ### Action { #extensions-kt-action }
 
@@ -39,11 +39,11 @@ A named command shown for a box; `target` runs with the boxes it was invoked on.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">desc</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">detail</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">docHtml</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">docJs</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="p">(</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code> |  |
+| <a id="extensions-kt--action--desc"></a><code class="highlight"><span class="k">val</span> <span class="n">desc</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="extensions-kt--action--detail"></a><code class="highlight"><span class="k">val</span> <span class="n">detail</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="extensions-kt--action--dochtml"></a><code class="highlight"><span class="k">val</span> <span class="n">docHtml</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="extensions-kt--action--docjs"></a><code class="highlight"><span class="k">val</span> <span class="n">docJs</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="extensions-kt--action--target"></a><code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="p">(</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code> |  |
 
 ## binding.kt { #binding-kt }
 
@@ -51,7 +51,7 @@ Binds a property or one-argument function to a source of values with the `<` ope
 `::speed < { mouseX }` or `::speed < sequenceOf(1.0, 2.0, 3.0)`.
 
 The callable reference must be bound to a receiver implementing [`BoundContext`](internal.md#binding-kt-boundcontext); the binding is
-stored there under the callable's name, replacing any earlier one. Each `BoundContext.bindNow`
+stored there under the callable's name, replacing any earlier one. Each [`BoundContext.bindNow`](internal.md#binding-kt--boundcontext--bindnow)
 pulls the next value from every source, type-checks it against the property or parameter type,
 and applies it only when it differs from the last value applied. A sequence that runs out removes
 its binding; `clear()` on the reference removes it by hand.
@@ -65,12 +65,12 @@ without a host.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">boundReceiverForCallable</span><span class="p">(</span><span class="n">k</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span></code>](source/jvmMain/afield/document/properties/binding/#L52) | Binds a property or one-argument function to a source of values with the `<` operator: `::speed < { mouseX }` or `::speed < sequenceOf(1.0, 2.0, 3.0)`. |
-| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">A</span><span class="p">,</span> <span class="nc">B</span><span class="p">&gt;</span> <span class="nc">KFunction1</span><span class="p">&lt;</span><span class="nc">A</span><span class="p">,</span> <span class="nc">B</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">compareTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">A</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/document/properties/binding/#L201) |  |
+| <a id="binding-kt--boundreceiverforcallable"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">boundReceiverForCallable</span><span class="p">(</span><span class="n">k</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span></code>](source/jvmMain/afield/document/properties/binding/#L52) | Binds a property or one-argument function to a source of values with the `<` operator: `::speed < { mouseX }` or `::speed < sequenceOf(1.0, 2.0, 3.0)`. |
+| <a id="binding-kt--compareto"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">A</span><span class="p">,</span> <span class="nc">B</span><span class="p">&gt;</span> <span class="nc">KFunction1</span><span class="p">&lt;</span><span class="nc">A</span><span class="p">,</span> <span class="nc">B</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">compareTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">A</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/document/properties/binding/#L201) |  |
 | [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">A</span><span class="p">,</span> <span class="nc">B</span><span class="p">&gt;</span> <span class="nc">KFunction1</span><span class="p">&lt;</span><span class="nc">A</span><span class="p">,</span> <span class="nc">B</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">compareTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Sequence</span><span class="p">&lt;</span><span class="nc">A</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/document/properties/binding/#L215) |  |
 | [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">KMutableProperty0</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">compareTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/document/properties/binding/#L229) |  |
 | [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">KMutableProperty0</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">compareTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Sequence</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/document/properties/binding/#L242) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">KFunction1</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">,</span> <span class="o">&#42;</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">clear</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/document/properties/binding/#L255) |  |
+| <a id="binding-kt--clear"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">KFunction1</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">,</span> <span class="o">&#42;</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">clear</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/document/properties/binding/#L255) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nc">KMutableProperty0</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">clear</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/document/properties/binding/#L260) |  |
 
 ### BoundContext { #binding-kt-boundcontext }
@@ -79,10 +79,10 @@ without a host.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">bindings</span><span class="p">:</span> <span class="nc">MutableMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">BoundBinding</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/properties/binding/#L59) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">previousValues</span><span class="p">:</span> <span class="nc">MutableMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/properties/binding/#L60) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">bindNow</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/document/properties/binding/#L61) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">clearBinding</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/document/properties/binding/#L87) |  |
+| <a id="binding-kt--boundcontext--bindings"></a>[<code class="highlight"><span class="k">val</span> <span class="n">bindings</span><span class="p">:</span> <span class="nc">MutableMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">BoundBinding</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/properties/binding/#L59) |  |
+| <a id="binding-kt--boundcontext--previousvalues"></a>[<code class="highlight"><span class="k">val</span> <span class="n">previousValues</span><span class="p">:</span> <span class="nc">MutableMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span></code>](source/jvmMain/afield/document/properties/binding/#L60) |  |
+| <a id="binding-kt--boundcontext--bindnow"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">bindNow</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/document/properties/binding/#L61) |  |
+| <a id="binding-kt--boundcontext--clearbinding"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">clearBinding</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/document/properties/binding/#L87) |  |
 
 ### BoundNext { #binding-kt-boundnext }
 
@@ -90,8 +90,8 @@ without a host.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Value</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BoundNext</span></code>](source/jvmMain/afield/document/properties/binding/#L94) |  |
-| [<code class="highlight"><span class="k">object</span> <span class="nc">Done</span> <span class="p">:</span> <span class="nc">BoundNext</span></code>](source/jvmMain/afield/document/properties/binding/#L95) |  |
+| <a id="binding-kt--boundnext--value"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Value</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="p">:</span> <span class="nc">BoundNext</span></code>](source/jvmMain/afield/document/properties/binding/#L94) |  |
+| <a id="binding-kt--boundnext--done"></a>[<code class="highlight"><span class="k">object</span> <span class="nc">Done</span> <span class="p">:</span> <span class="nc">BoundNext</span></code>](source/jvmMain/afield/document/properties/binding/#L95) |  |
 
 ### BoundSource { #binding-kt-boundsource }
 
@@ -99,7 +99,7 @@ without a host.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">next</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">BoundNext</span></code>](source/jvmMain/afield/document/properties/binding/#L99) |  |
+| <a id="binding-kt--boundsource--next"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">next</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">BoundNext</span></code>](source/jvmMain/afield/document/properties/binding/#L99) |  |
 
 ### FunctionSource { #binding-kt-functionsource }
 
@@ -107,7 +107,7 @@ without a host.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">next</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">BoundNext</span></code>](source/jvmMain/afield/document/properties/binding/#L103) |  |
+| <a id="binding-kt--functionsource--next"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">next</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">BoundNext</span></code>](source/jvmMain/afield/document/properties/binding/#L103) |  |
 
 ### SequenceSource { #binding-kt-sequencesource }
 
@@ -115,7 +115,7 @@ without a host.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">next</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">BoundNext</span></code>](source/jvmMain/afield/document/properties/binding/#L107) |  |
+| <a id="binding-kt--sequencesource--next"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">next</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">BoundNext</span></code>](source/jvmMain/afield/document/properties/binding/#L107) |  |
 
 ### BoundBinding { #binding-kt-boundbinding }
 
@@ -123,9 +123,9 @@ without a host.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">BoundSource</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">check</span><span class="p">:</span> <span class="p">(</span><span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Any</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">apply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code> |  |
+| <a id="binding-kt--boundbinding--source"></a><code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">BoundSource</span></code> |  |
+| <a id="binding-kt--boundbinding--check"></a><code class="highlight"><span class="k">val</span> <span class="n">check</span><span class="p">:</span> <span class="p">(</span><span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Any</span><span class="o">?</span></code> |  |
+| <a id="binding-kt--boundbinding--apply"></a><code class="highlight"><span class="k">val</span> <span class="n">apply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code> |  |
 
 ## ManifoldNative.kt { #manifoldnative-kt }
 
@@ -146,13 +146,13 @@ Where `libmanifoldc` is, and what to do when it is not there.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L782) | `libmanifoldc.dylib` / `.so` / `manifoldc.dll`, chosen for the platform actually running. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">searchedPaths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Path</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L790) | Every path `resolvedPath` tries, in order — quoted in the "not installed" error. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">resolvedPath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L811) | The first path that exists, or `null`. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L815) | `true` when [`Solid`](graphics.md#solid-kt-solid) and [`Section`](graphics.md#section-kt-section) will work. Cheap enough to branch on in a box. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">reportedVersion</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L826) | The upstream version, read off the `.dylib`/`.so` filename that the SO-versioned symlink points at — `libmanifoldc.3.5.2.dylib` reports `3.5.2`. |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;INSTALL</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L834) | What to tell someone who has not got it, in the package manager they are likely to have. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L843) | One line for a box or a smoke test to print: what was found, or why not. |
+| <a id="manifoldnative-kt--manifoldlibrary--filename"></a>[<code class="highlight"><span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L782) | `libmanifoldc.dylib` / `.so` / `manifoldc.dll`, chosen for the platform actually running. |
+| <a id="manifoldnative-kt--manifoldlibrary--searchedpaths"></a>[<code class="highlight"><span class="k">val</span> <span class="n">searchedPaths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Path</span><span class="p">&gt;</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L790) | Every path [`resolvedPath`](internal.md#manifoldnative-kt--manifoldlibrary--resolvedpath) tries, in order — quoted in the "not installed" error. |
+| <a id="manifoldnative-kt--manifoldlibrary--resolvedpath"></a>[<code class="highlight"><span class="k">val</span> <span class="n">resolvedPath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L811) | The first path that exists, or `null`. |
+| <a id="manifoldnative-kt--manifoldlibrary--isavailable"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L815) | `true` when [`Solid`](graphics.md#solid-kt-solid) and [`Section`](graphics.md#section-kt-section) will work. Cheap enough to branch on in a box. |
+| <a id="manifoldnative-kt--manifoldlibrary--reportedversion"></a>[<code class="highlight"><span class="k">val</span> <span class="n">reportedVersion</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L826) | The upstream version, read off the `.dylib`/`.so` filename that the SO-versioned symlink points at — `libmanifoldc.3.5.2.dylib` reports `3.5.2`. |
+| <a id="manifoldnative-kt--manifoldlibrary--how-to-install"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;INSTALL</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L834) | What to tell someone who has not got it, in the package manager they are likely to have. |
+| <a id="manifoldnative-kt--manifoldlibrary--describe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L843) | One line for a box or a smoke test to print: what was found, or why not. |
 
 ### ManifoldStatus { #manifoldnative-kt-manifoldstatus }
 
@@ -164,7 +164,7 @@ Constants: `NO_ERROR`, `NON_FINITE_VERTEX`, `NOT_MANIFOLD`, `VERTEX_INDEX_OUT_OF
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">isError</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L875) | `true` for everything except `NO_ERROR`. |
+| <a id="manifoldnative-kt--manifoldstatus--iserror"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isError</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L875) | `true` for everything except `NO_ERROR`. |
 
 ### BooleanOp { #manifoldnative-kt-booleanop }
 
@@ -178,7 +178,7 @@ Constants: `UNION`, `DIFFERENCE`, `INTERSECTION`.
 
 [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">JoinType</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L893)
 
-`ManifoldJoinType` — how `Section.offset` treats a convex corner.
+`ManifoldJoinType` — how [`Section.offset`](graphics.md#section-kt--section--offset) treats a convex corner.
 
 Constants: `SQUARE`, `ROUND`, `MITER`, `BEVEL`.
 
@@ -194,18 +194,18 @@ Constants: `EVEN_ODD`, `NON_ZERO`, `POSITIVE`, `NEGATIVE`.
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RayHit</span><span class="p">(</span><span class="k">val</span> <span class="n">faceId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalX</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalY</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalZ</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/manifold/ManifoldNative/#L905)
 
-One intersection from `Solid.raycast`.
+One intersection from [`Solid.raycast`](graphics.md#solid-kt--solid--raycast).
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">faceId</span><span class="p">:</span> <span class="nc">Long</span></code> | Which triangle of the solid was hit, as Manifold's face id. |
-| <code class="highlight"><span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span></code> | Distance from the ray origin, in the units the solid is in. |
-| <code class="highlight"><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">normalX</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">normalY</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">normalZ</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="manifoldnative-kt--rayhit--faceid"></a><code class="highlight"><span class="k">val</span> <span class="n">faceId</span><span class="p">:</span> <span class="nc">Long</span></code> | Which triangle of the solid was hit, as Manifold's face id. |
+| <a id="manifoldnative-kt--rayhit--distance"></a><code class="highlight"><span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span></code> | Distance from the ray origin, in the units the solid is in. |
+| <a id="manifoldnative-kt--rayhit--x"></a><code class="highlight"><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="manifoldnative-kt--rayhit--y"></a><code class="highlight"><span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="manifoldnative-kt--rayhit--z"></a><code class="highlight"><span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="manifoldnative-kt--rayhit--normalx"></a><code class="highlight"><span class="k">val</span> <span class="n">normalX</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="manifoldnative-kt--rayhit--normaly"></a><code class="highlight"><span class="k">val</span> <span class="n">normalY</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="manifoldnative-kt--rayhit--normalz"></a><code class="highlight"><span class="k">val</span> <span class="n">normalZ</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ## GestureReplayMain.kt { #gesturereplaymain-kt }
 
@@ -225,8 +225,8 @@ The gesture -> brush replay for an agent, without a browser: a take (or its keyf
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/paint/GestureReplayMain/#L41) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">GestureReplayRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">GestureReplayReport</span></code>](source/jvmMain/afield/graphics/paint/GestureReplayMain/#L55) |  |
+| <a id="gesturereplaymain-kt--gesturereplaymain--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/paint/GestureReplayMain/#L41) |  |
+| <a id="gesturereplaymain-kt--gesturereplaymain--run"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">req</span><span class="p">:</span> <span class="nc">GestureReplayRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">GestureReplayReport</span></code>](source/jvmMain/afield/graphics/paint/GestureReplayMain/#L55) |  |
 
 ### GestureReplayRequest { #gesturereplaymain-kt-gesturereplayrequest }
 
@@ -236,26 +236,26 @@ What [`GestureReplayMain`](internal.md#gesturereplaymain-kt-gesturereplaymain) r
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="k">out</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">lanes</span><span class="p">:</span> <span class="nc">GestureReplayLanes</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">bake</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">lanesOut</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">xRange</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">yRange</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">into</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">widthPx</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">aspect</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">sizeMm</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">brush</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">brushWidth</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">dynamic</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">pressure</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">pressureScale</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">tilt</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">timeScale</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--out"></a><code class="highlight"><span class="k">val</span> <span class="k">out</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--samples"></a><code class="highlight"><span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--lanes"></a><code class="highlight"><span class="k">val</span> <span class="n">lanes</span><span class="p">:</span> <span class="nc">GestureReplayLanes</span><span class="o">?</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--bake"></a><code class="highlight"><span class="k">val</span> <span class="n">bake</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--lanesout"></a><code class="highlight"><span class="k">val</span> <span class="n">lanesOut</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--xrange"></a><code class="highlight"><span class="k">val</span> <span class="n">xRange</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--yrange"></a><code class="highlight"><span class="k">val</span> <span class="n">yRange</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--into"></a><code class="highlight"><span class="k">val</span> <span class="n">into</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--widthpx"></a><code class="highlight"><span class="k">val</span> <span class="n">widthPx</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--aspect"></a><code class="highlight"><span class="k">val</span> <span class="n">aspect</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--sizemm"></a><code class="highlight"><span class="k">val</span> <span class="n">sizeMm</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--seed"></a><code class="highlight"><span class="k">val</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--brush"></a><code class="highlight"><span class="k">val</span> <span class="n">brush</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--brushwidth"></a><code class="highlight"><span class="k">val</span> <span class="n">brushWidth</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--dynamic"></a><code class="highlight"><span class="k">val</span> <span class="n">dynamic</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--color"></a><code class="highlight"><span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--pressure"></a><code class="highlight"><span class="k">val</span> <span class="n">pressure</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--pressurescale"></a><code class="highlight"><span class="k">val</span> <span class="n">pressureScale</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--tilt"></a><code class="highlight"><span class="k">val</span> <span class="n">tilt</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayrequest--timescale"></a><code class="highlight"><span class="k">val</span> <span class="n">timeScale</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ### GestureReplayLanes { #gesturereplaymain-kt-gesturereplaylanes }
 
@@ -265,8 +265,8 @@ Keyframe lanes as the keyframe editor stores them.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Keyframe</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Keyframe</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">pressure</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Keyframe</span><span class="p">&gt;</span><span class="o">?</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplaylanes--x"></a><code class="highlight"><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Keyframe</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Keyframe</span><span class="p">&gt;</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplaylanes--pressure"></a><code class="highlight"><span class="k">val</span> <span class="n">pressure</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Keyframe</span><span class="p">&gt;</span><span class="o">?</span></code> |  |
 
 ### GestureReplayReport { #gesturereplaymain-kt-gesturereplayreport }
 
@@ -276,17 +276,17 @@ What [`GestureReplayMain`](internal.md#gesturereplaymain-kt-gesturereplaymain) p
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">ok</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">error</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="k">out</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">fromLanes</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">keys</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">fit</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">brush</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">pressure</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">tilt</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayreport--ok"></a><code class="highlight"><span class="k">val</span> <span class="n">ok</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayreport--error"></a><code class="highlight"><span class="k">val</span> <span class="n">error</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayreport--out"></a><code class="highlight"><span class="k">val</span> <span class="k">out</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayreport--samples"></a><code class="highlight"><span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayreport--seconds"></a><code class="highlight"><span class="k">val</span> <span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayreport--fromlanes"></a><code class="highlight"><span class="k">val</span> <span class="n">fromLanes</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayreport--keys"></a><code class="highlight"><span class="k">val</span> <span class="n">keys</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayreport--fit"></a><code class="highlight"><span class="k">val</span> <span class="n">fit</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayreport--brush"></a><code class="highlight"><span class="k">val</span> <span class="n">brush</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayreport--pressure"></a><code class="highlight"><span class="k">val</span> <span class="n">pressure</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <a id="gesturereplaymain-kt--gesturereplayreport--tilt"></a><code class="highlight"><span class="k">val</span> <span class="n">tilt</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
 
 ## PaintNative.kt { #paintnative-kt }
 
@@ -303,12 +303,12 @@ Where `native/field-paint` is. Searched in order: `-Dafield.paint.library`, `AFI
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L31) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">searchedPaths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Path</span><span class="p">&gt;</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L38) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">resolvedPath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L47) | Not cached: building it during a live session is picked up by the next box run. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L49) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HOW&#95;TO&#95;BUILD</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L51) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L53) |  |
+| <a id="paintnative-kt--paintlibrary--filename"></a>[<code class="highlight"><span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L31) |  |
+| <a id="paintnative-kt--paintlibrary--searchedpaths"></a>[<code class="highlight"><span class="k">val</span> <span class="n">searchedPaths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Path</span><span class="p">&gt;</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L38) |  |
+| <a id="paintnative-kt--paintlibrary--resolvedpath"></a>[<code class="highlight"><span class="k">val</span> <span class="n">resolvedPath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L47) | Not cached: building it during a live session is picked up by the next box run. |
+| <a id="paintnative-kt--paintlibrary--isavailable"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L49) |  |
+| <a id="paintnative-kt--paintlibrary--how-to-build"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HOW&#95;TO&#95;BUILD</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L51) |  |
+| <a id="paintnative-kt--paintlibrary--describe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/paint/PaintNative/#L53) |  |
 
 ## OpenDlssNrDiagnostics.kt { #opendlssnrdiagnostics-kt }
 
@@ -340,14 +340,14 @@ Locates `libfield_syphon.dylib` and reports whether it is available.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">isMac</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L31) |  |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="n">fileName</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L33) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">searchedPaths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Path</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L35) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">resolvedPath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L44) | Not cached: building it during a live session is picked up by the next box run. |
-| [<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L46) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">probePath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L49) | The cross-process test peer built next to the library (`field_syphon_probe`). |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HOW&#95;TO&#95;BUILD</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L51) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L53) |  |
+| <a id="syphonnative-kt--syphonlibrary--ismac"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isMac</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L31) |  |
+| <a id="syphonnative-kt--syphonlibrary--filename"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="n">fileName</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L33) |  |
+| <a id="syphonnative-kt--syphonlibrary--searchedpaths"></a>[<code class="highlight"><span class="k">val</span> <span class="n">searchedPaths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Path</span><span class="p">&gt;</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L35) |  |
+| <a id="syphonnative-kt--syphonlibrary--resolvedpath"></a>[<code class="highlight"><span class="k">val</span> <span class="n">resolvedPath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L44) | Not cached: building it during a live session is picked up by the next box run. |
+| <a id="syphonnative-kt--syphonlibrary--isavailable"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isAvailable</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L46) |  |
+| <a id="syphonnative-kt--syphonlibrary--probepath"></a>[<code class="highlight"><span class="k">val</span> <span class="n">probePath</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L49) | The cross-process test peer built next to the library (`field_syphon_probe`). |
+| <a id="syphonnative-kt--syphonlibrary--how-to-build"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HOW&#95;TO&#95;BUILD</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L51) |  |
+| <a id="syphonnative-kt--syphonlibrary--describe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/io/syphon/SyphonNative/#L53) |  |
 
 ## FfmCeresBackend.kt { #ffmceresbackend-kt }
 
@@ -355,7 +355,7 @@ The Ceres solver backend that calls the native `ken_ceres_jvm` wrapper through t
 foreign-function API (`java.lang.foreign`), with no JNI glue.
 
 [`FfmCeresBackend`](internal.md#ffmceresbackend-kt-ffmceresbackend) loads the library, binds its `ken_ceres_*` entry points as downcall handles and
-reports `FfmCeresBackend.abiVersion`; `FfmCeresBackend.compile` turns a seed [`PointCloud`](solvers.md#ceresgeometry-kt-pointcloud) and a
+reports [`FfmCeresBackend.abiVersion`](internal.md#ffmceresbackend-kt--ffmceresbackend--abiversion); [`FfmCeresBackend.compile`](internal.md#ffmceresbackend-kt--ffmceresbackend--compile) turns a seed [`PointCloud`](solvers.md#ceresgeometry-kt-pointcloud) and a
 [`CeresProgram`](solvers.md#ceresgeometry-kt-ceresprogram) into a reusable compiled solver whose input, output and prior buffers are allocated
 once in a confined arena and reused across solves. [`CeresNativeLibrary`](internal.md#ffmceresbackend-kt-ceresnativelibrary) says where the library is
 expected and how to build it.
@@ -366,12 +366,12 @@ expected and how to build it.
 
 [<code class="highlight"><span class="k">class</span> <span class="nf">FfmCeresBackend</span><span class="p">(</span><span class="n">libraryPath</span><span class="p">:</span> <span class="nc">Path</span> <span class="o">=</span> <span class="nc">CeresNativeLibrary</span><span class="p">.</span><span class="n">defaultPath</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">reusableMetricCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CeresSolverBackend</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L32)
 
-A [`CeresSolverBackend`](solvers.md#ceresgeometry-kt-ceressolverbackend) backed by the native library at `libraryPath`, by default `CeresNativeLibrary.defaultPath`. Construction fails with `UnsatisfiedLinkError` when an expected symbol is missing, and with `IllegalArgumentException` when the library reports an ABI version other than the one Field needs.
+A [`CeresSolverBackend`](solvers.md#ceresgeometry-kt-ceressolverbackend) backed by the native library at `libraryPath`, by default [`CeresNativeLibrary.defaultPath`](internal.md#ffmceresbackend-kt--ceresnativelibrary--defaultpath). Construction fails with `UnsatisfiedLinkError` when an expected symbol is missing, and with `IllegalArgumentException` when the library reports an ABI version other than the one Field needs.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">abiVersion</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L53) | The `ken_ceres_jvm_abi_v*` string the loaded library reports. |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">compile</span><span class="p">(</span><span class="n">seedPoints</span><span class="p">:</span> <span class="nc">PointCloud</span><span class="p">,</span> <span class="n">program</span><span class="p">:</span> <span class="nc">CeresProgram</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompiledCeresSolver</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L138) |  |
+| <a id="ffmceresbackend-kt--ffmceresbackend--abiversion"></a>[<code class="highlight"><span class="k">val</span> <span class="n">abiVersion</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L53) | The `ken_ceres_jvm_abi_v*` string the loaded library reports. |
+| <a id="ffmceresbackend-kt--ffmceresbackend--compile"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">compile</span><span class="p">(</span><span class="n">seedPoints</span><span class="p">:</span> <span class="nc">PointCloud</span><span class="p">,</span> <span class="n">program</span><span class="p">:</span> <span class="nc">CeresProgram</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompiledCeresSolver</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L138) |  |
 
 ### CeresNativeLibrary { #ffmceresbackend-kt-ceresnativelibrary }
 
@@ -381,8 +381,8 @@ Where to find the native wrapper.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">defaultPath</span><span class="p">:</span> <span class="nc">Path</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L460) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;BUILD</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L470) | What to tell someone whose `defaultPath` is not there, in the shell they are actually in. |
+| <a id="ffmceresbackend-kt--ceresnativelibrary--defaultpath"></a>[<code class="highlight"><span class="k">val</span> <span class="n">defaultPath</span><span class="p">:</span> <span class="nc">Path</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L460) |  |
+| <a id="ffmceresbackend-kt--ceresnativelibrary--how-to-build"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;BUILD</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L470) | What to tell someone whose [`defaultPath`](internal.md#ffmceresbackend-kt--ceresnativelibrary--defaultpath) is not there, in the shell they are actually in. |
 
 ## NgxNative.kt { #ngxnative-kt }
 
@@ -394,13 +394,13 @@ Where to find the native wrapper.
 
 ## actors.kt { #actors-kt }
 
-Typed messages between boxes: a box registers a handler with `onMessage`, and other code delivers
-to it with `send` (fire-and-forget) or `sendAndAwait` (suspend for a reply).
+Typed messages between boxes: a box registers a handler with [`onMessage`](internal.md#actors-kt--onmessage), and other code delivers
+to it with [`send`](internal.md#actors-kt--send) (fire-and-forget) or [`sendAndAwait`](internal.md#actors-kt--sendandawait) (suspend for a reply).
 
 Messages are queued per box and delivered on the next RunLoop frame. Handlers run as coroutines
-on the RunLoop's dispatcher, so one can call `MessageScope.frame` to wait a frame or
-`MessageScope.reply` to answer. A box with no handler for a payload type passes it to its
-ancestors. `go` launches a suspendable block owned by a box, so stopping the box cancels it and
+on the RunLoop's dispatcher, so one can call [`MessageScope.frame`](internal.md#actors-kt--messagescope--frame) to wait a frame or
+[`MessageScope.reply`](internal.md#actors-kt--messagescope--reply) to answer. A box with no handler for a payload type passes it to its
+ancestors. [`go`](internal.md#actors-kt--go) launches a suspendable block owned by a box, so stopping the box cancels it and
 its errors appear in the box's editor.
 
 ```diffstatic {data-lang=kotlin}
@@ -414,12 +414,12 @@ go { println(thisBox.sendAndAwait<String, Int>("hello")) }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">onMessage</span><span class="p">(</span><span class="k">noinline</span> <span class="n">handler</span><span class="p">:</span> <span class="k">suspend</span> <span class="nc">MessageScope</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L213) | Register a typed, suspendable message handler on this box. |
+| <a id="actors-kt--onmessage"></a>[<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">onMessage</span><span class="p">(</span><span class="k">noinline</span> <span class="n">handler</span><span class="p">:</span> <span class="k">suspend</span> <span class="nc">MessageScope</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L213) | Register a typed, suspendable message handler on this box. |
 | [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">onMessage</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">KClass</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">handler</span><span class="p">:</span> <span class="k">suspend</span> <span class="nc">MessageScope</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L218) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">send</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L230) | Enqueue `payload` for delivery to this box on the next RunLoop frame. The sender is inferred from `Box.context` (may be null if called outside a box execution context). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">go</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="k">suspend</span> <span class="nc">CoroutineScope</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L253) | Launch a suspendable block on the RunLoop's Framer dispatcher, owned by this box. Stopping the box cancels the block; uncaught errors appear in the editor. |
-| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">delay</span><span class="p">(</span><span class="n">ms</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L292) | Wait `ms` milliseconds inside `go { }` (or any coroutine) without holding the runloop. |
-| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">,</span> <span class="nc">R</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">sendAndAwait</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">SendResult</span><span class="p">&lt;</span><span class="nc">R</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/execution/actors/#L346) | Send `payload` and suspend until the handler finishes (or is not found). |
+| <a id="actors-kt--send"></a>[<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">send</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L230) | Enqueue `payload` for delivery to this box on the next RunLoop frame. The sender is inferred from `Box.context` (may be null if called outside a box execution context). |
+| <a id="actors-kt--go"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">go</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="k">suspend</span> <span class="nc">CoroutineScope</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L253) | Launch a suspendable block on the RunLoop's Framer dispatcher, owned by this box. Stopping the box cancels the block; uncaught errors appear in the editor. |
+| <a id="actors-kt--delay"></a>[<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">delay</span><span class="p">(</span><span class="n">ms</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L292) | Wait `ms` milliseconds inside `go { }` (or any coroutine) without holding the runloop. |
+| <a id="actors-kt--sendandawait"></a>[<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">,</span> <span class="nc">R</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">sendAndAwait</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">SendResult</span><span class="p">&lt;</span><span class="nc">R</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/execution/actors/#L346) | Send `payload` and suspend until the handler finishes (or is not found). |
 
 ### Envelope { #actors-kt-envelope }
 
@@ -429,25 +429,25 @@ Envelope wrapping a user payload with sender/receiver metadata.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">payload</span><span class="p">:</span> <span class="nc">T</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">Box</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <a id="actors-kt--envelope--payload"></a><code class="highlight"><span class="k">val</span> <span class="n">payload</span><span class="p">:</span> <span class="nc">T</span></code> |  |
+| <a id="actors-kt--envelope--from"></a><code class="highlight"><span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span></code> |  |
+| <a id="actors-kt--envelope--to"></a><code class="highlight"><span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">Box</span></code> |  |
+| <a id="actors-kt--envelope--time"></a><code class="highlight"><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
 
 ### MessageScope { #actors-kt-messagescope }
 
 [<code class="highlight"><span class="k">class</span> <span class="nc">MessageScope</span><span class="p">&lt;</span><span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span><span class="p">(</span><span class="k">val</span> <span class="n">envelope</span><span class="p">:</span> <span class="nc">Envelope</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">deferred</span><span class="p">:</span> <span class="nc">CompletableDeferred</span><span class="p">&lt;</span><span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="o">?</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">handlerBox</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L117)
 
-Receiver for suspend message handlers. Provides `frame` to suspend until the next RunLoop tick and `reply` to send a value back to a waiting `sendAndAwait` caller.
+Receiver for suspend message handlers. Provides [`frame`](internal.md#actors-kt--messagescope--frame) to suspend until the next RunLoop tick and [`reply`](internal.md#actors-kt--messagescope--reply) to send a value back to a waiting [`sendAndAwait`](internal.md#actors-kt--sendandawait) caller.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">payload</span><span class="p">:</span> <span class="nc">T</span></code>](source/jvmMain/afield/runtime/execution/actors/#L119) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/execution/actors/#L120) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">Box</span></code>](source/jvmMain/afield/runtime/execution/actors/#L121) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/runtime/execution/actors/#L122) |  |
-| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">frame</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L130) | Suspend until the next RunLoop frame. Because the handler coroutine is dispatched on `Runloop.runLoop.main` (the [`afield.runtime.lifecycle.Framer`](workspace.md#phased-kt-framer)), calling `kotlinx.coroutines.yield` parks it until the Framer is pumped again. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">reply</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L139) | Provide a return value to a `sendAndAwait` caller. If the message was sent with plain `send`, this is a no-op. Can be called at most once; subsequent calls are ignored. |
+| <a id="actors-kt--messagescope--payload"></a>[<code class="highlight"><span class="k">val</span> <span class="n">payload</span><span class="p">:</span> <span class="nc">T</span></code>](source/jvmMain/afield/runtime/execution/actors/#L119) |  |
+| <a id="actors-kt--messagescope--from"></a>[<code class="highlight"><span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/execution/actors/#L120) |  |
+| <a id="actors-kt--messagescope--to"></a>[<code class="highlight"><span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">Box</span></code>](source/jvmMain/afield/runtime/execution/actors/#L121) |  |
+| <a id="actors-kt--messagescope--time"></a>[<code class="highlight"><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/runtime/execution/actors/#L122) |  |
+| <a id="actors-kt--messagescope--frame"></a>[<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">frame</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L130) | Suspend until the next RunLoop frame. Because the handler coroutine is dispatched on `Runloop.runLoop.main` (the [`afield.runtime.lifecycle.Framer`](workspace.md#phased-kt-framer)), calling `kotlinx.coroutines.yield` parks it until the Framer is pumped again. |
+| <a id="actors-kt--messagescope--reply"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">reply</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L139) | Provide a return value to a [`sendAndAwait`](internal.md#actors-kt--sendandawait) caller. If the message was sent with plain [`send`](internal.md#actors-kt--send), this is a no-op. Can be called at most once; subsequent calls are ignored. |
 
 ### SendResult { #actors-kt-sendresult }
 
@@ -455,14 +455,14 @@ Receiver for suspend message handlers. Provides `frame` to suspend until the nex
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nc">Ok</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">T</span><span class="o">?</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SendResult</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L298) | Handler ran to completion. `value` is whatever `MessageScope.reply` provided (null if reply was never called). |
-| [<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">NoHandler</span> <span class="p">:</span> <span class="nc">SendResult</span><span class="p">&lt;</span><span class="nc">Nothing</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L300) | No handler was found for this message type on the target box or any of its ancestors. |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Error</span><span class="p">(</span><span class="k">val</span> <span class="n">exception</span><span class="p">:</span> <span class="nc">Throwable</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SendResult</span><span class="p">&lt;</span><span class="nc">Nothing</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L302) | The handler threw an exception. |
-| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">R</span><span class="p">&gt;</span> <span class="nf">map</span><span class="p">(</span><span class="n">transform</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">R</span><span class="p">)</span><span class="p">:</span> <span class="nc">SendResult</span><span class="p">&lt;</span><span class="nc">R</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/execution/actors/#L305) | Transform the value if Ok, otherwise pass through the failure unchanged. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">getOrNull</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/execution/actors/#L312) | Return the value if Ok, otherwise null. |
-| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nf">getOrElse</span><span class="p">(</span><span class="n">default</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">@</span><span class="nc">UnsafeVariance</span> <span class="nc">T</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/execution/actors/#L318) | Return the value if Ok, otherwise `default`. |
-| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nf">onOk</span><span class="p">(</span><span class="n">action</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">SendResult</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/execution/actors/#L324) | Run `action` if Ok, return this for chaining. |
-| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nf">onFailure</span><span class="p">(</span><span class="n">action</span><span class="p">:</span> <span class="p">(</span><span class="nc">SendResult</span><span class="p">&lt;</span><span class="p">@</span><span class="nc">UnsafeVariance</span> <span class="nc">T</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">SendResult</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/execution/actors/#L330) | Run `action` if not Ok, return this for chaining. |
+| <a id="actors-kt--sendresult--ok"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nc">Ok</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">T</span><span class="o">?</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SendResult</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L298) | Handler ran to completion. `value` is whatever [`MessageScope.reply`](internal.md#actors-kt--messagescope--reply) provided (null if reply was never called). |
+| <a id="actors-kt--sendresult--nohandler"></a>[<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">NoHandler</span> <span class="p">:</span> <span class="nc">SendResult</span><span class="p">&lt;</span><span class="nc">Nothing</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L300) | No handler was found for this message type on the target box or any of its ancestors. |
+| <a id="actors-kt--sendresult--error"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Error</span><span class="p">(</span><span class="k">val</span> <span class="n">exception</span><span class="p">:</span> <span class="nc">Throwable</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SendResult</span><span class="p">&lt;</span><span class="nc">Nothing</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/execution/actors/#L302) | The handler threw an exception. |
+| <a id="actors-kt--sendresult--map"></a>[<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">R</span><span class="p">&gt;</span> <span class="nf">map</span><span class="p">(</span><span class="n">transform</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">R</span><span class="p">)</span><span class="p">:</span> <span class="nc">SendResult</span><span class="p">&lt;</span><span class="nc">R</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/execution/actors/#L305) | Transform the value if Ok, otherwise pass through the failure unchanged. |
+| <a id="actors-kt--sendresult--getornull"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">getOrNull</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/execution/actors/#L312) | Return the value if Ok, otherwise null. |
+| <a id="actors-kt--sendresult--getorelse"></a>[<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nf">getOrElse</span><span class="p">(</span><span class="n">default</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">@</span><span class="nc">UnsafeVariance</span> <span class="nc">T</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/execution/actors/#L318) | Return the value if Ok, otherwise `default`. |
+| <a id="actors-kt--sendresult--onok"></a>[<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nf">onOk</span><span class="p">(</span><span class="n">action</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">SendResult</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/execution/actors/#L324) | Run [`action`](internal.md#extensions-kt--action) if Ok, return this for chaining. |
+| <a id="actors-kt--sendresult--onfailure"></a>[<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nf">onFailure</span><span class="p">(</span><span class="n">action</span><span class="p">:</span> <span class="p">(</span><span class="nc">SendResult</span><span class="p">&lt;</span><span class="p">@</span><span class="nc">UnsafeVariance</span> <span class="nc">T</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">SendResult</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/runtime/execution/actors/#L330) | Run [`action`](internal.md#extensions-kt--action) if not Ok, return this for chaining. |
 
 ## scratch.kt { #scratch-kt }
 
@@ -474,7 +474,7 @@ Receiver for suspend message handlers. Provides `frame` to suspend until the nex
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">Box</span><span class="p">.</span><span class="n">once</span></code>](source/jvmMain/afield/runtime/lifecycle/scratch/#L40) |  |
+| <a id="scratch-kt--once"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">Box</span><span class="p">.</span><span class="n">once</span></code>](source/jvmMain/afield/runtime/lifecycle/scratch/#L40) |  |
 
 ### Once { #scratch-kt-once }
 
@@ -490,7 +490,7 @@ Returns a lazy initializer for the generated property named by `property`.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">getValue</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="nc">Once</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">KProperty</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span></code>](source/jvmMain/afield/runtime/lifecycle/scratch/#L66) |  |
+| <a id="scratch-kt--onceing--getvalue"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">getValue</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="nc">Once</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">KProperty</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span></code>](source/jvmMain/afield/runtime/lifecycle/scratch/#L66) |  |
 
 ## SourceBackedBlock.kt { #sourcebackedblock-kt }
 
@@ -509,8 +509,8 @@ messages says where to invoke the block instead.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">sourceBackedBlock</span><span class="p">(</span><span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">SourceBackedBlock</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L214) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">sourceBackedBlockBox</span><span class="p">(</span><span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L217) |  |
+| <a id="sourcebackedblock-kt--sourcebackedblock"></a>[<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">sourceBackedBlock</span><span class="p">(</span><span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">SourceBackedBlock</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L214) |  |
+| <a id="sourcebackedblock-kt--sourcebackedblockbox"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">sourceBackedBlockBox</span><span class="p">(</span><span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L217) |  |
 
 ### SourceBackedBlockSelfBoxReentry { #sourcebackedblock-kt-sourcebackedblockselfboxreentry }
 
@@ -532,10 +532,10 @@ A callable block that keeps the Kotlin source used to create it.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">invoke</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L140) |  |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L210) |  |
+| <a id="sourcebackedblock-kt--sourcebackedblock--boxid"></a><code class="highlight"><span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="sourcebackedblock-kt--sourcebackedblock--source"></a><code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <a id="sourcebackedblock-kt--sourcebackedblock--invoke"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">invoke</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L140) |  |
+| <a id="sourcebackedblock-kt--sourcebackedblock--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/study/source/SourceBackedBlock/#L210) |  |
 
 ## PrettyStrings.kt { #prettystrings-kt }
 
