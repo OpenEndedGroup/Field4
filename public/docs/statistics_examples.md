@@ -4,9 +4,12 @@
 [Math](reference/math.md) and [Data](reference/data.md).*
 
 You have two streams of numbers and want to know whether they are related. Field's tools for that
-live in `afield/math/statistics/stats.kt`, `afield/math/statistics/correlations.kt` and
-`afield/math/statistics/quantilewarp.kt` (package `afield.math.statistics`), and this page works through all three. Each dependence coefficient
-answers a slightly different version of the question, so the page shows which one to use for which
+live in the `afield.math.statistics` package, in three files:
+[`stats.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/statistics/stats.kt),
+[`correlations.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/statistics/correlations.kt)
+and
+[`quantilewarp.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/statistics/quantilewarp.kt).
+This page works through all three. Each dependence coefficient answers a slightly different version of the question, so the page shows which one to use for which
 kind of relationship.
 
 `stats.kt` has the summary statistics: count, quartiles, IQR, MAD, skew, kurtosis, histograms and
@@ -83,8 +86,7 @@ markdown("read this off the card", "{muted:$note}", width = 620)
 
 Each label on the card names its convention: `stddev (n−1)` and `variance (n−1)` are the
 **sample** forms, `skew (pop.)` and `kurtosis(ex, pop.)` the **population** forms, with no bias
-correction. If you are comparing against
-another tool, the mapping onto NumPy and SciPy is exact: `q1`/`median`/`q3` are
+correction. If you are comparing against another tool, the mapping onto NumPy and SciPy is exact: `q1`/`median`/`q3` are
 `numpy.percentile`'s default linear interpolation, `mad` is `median(|y − median(y)|)` unscaled,
 `sampleStdDev` is `numpy.std(ddof=1)`, and `skewness`/`kurtosisExcess` are `scipy.stats.skew` and
 `scipy.stats.kurtosis` at their *default* `bias=True`. `StatsSummaryTest` pins that mapping to ten
