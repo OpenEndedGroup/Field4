@@ -1,3 +1,12 @@
+/**
+ * The GPU side of Slug filled-path rendering: [SlugBuffer] holds one [SlugPath]'s atlas words in a
+ * Vulkan storage buffer that a slug shader reads.
+ *
+ * [SlugBuffer.replace] swaps in new geometry behind the same buffer supplier, so existing shader
+ * bindings keep working, and [SlugBuffer.close] falls back to a shared empty atlas that draws
+ * nothing. `SlugRenderSmoke` exercises it against a live renderer.
+ */
+
 package afield.graphics.text.slug
 
 import afield.graphics.vulkan.Renderer
