@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="imaging_perf_boxblur" index="0" -->
 
 ```edn [field-box id="imaging_perf_boxblur" role="properties"]
-{"id" "imaging_perf_boxblur" "index" 0 "name" "boxBlur — running sum vs the box kernel, two independent definitions" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "boxBlur — running sum vs the box kernel, two independent definitions" "_tombstone" false "frame" #afield/rect [80.0 540.0 550.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_perf_boxblur_code_.kt" "lines" 62 "characters" 2764 "sha256" "81327fda7a0546acf2e39c81db1094be2c2439ef7fb077678c9ea734930571e0"}]}
+{"id" "imaging_perf_boxblur" "index" 0 "name" "boxBlur — running sum vs the box kernel, two independent definitions" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "boxBlur — running sum vs the box kernel, two independent definitions" "_tombstone" false "frame" #afield/rect [80.0 540.0 550.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_perf_boxblur_code_.kt" "lines" 62 "characters" 2748 "sha256" "002fe5795affb9320b535fe45c1043a52a8aa9f6f1f0f1282d946aa27f19ff56"}]}
 ```
 
 ```kotlin [field-property box="imaging_perf_boxblur" name="code" path="imaging_perf_boxblur_code_.kt"]
@@ -52,7 +52,7 @@ val tKernelBig = bestTimeMs(repetitions = 3, warmup = 2) {
 showImgGrid(
     "source ${src.width}x${src.height}" to src,
     "boxBlur($r)" to running,
-    "convolveSeparable(boxKernel1D($r))" to kernelled,
+    "box kernel, r = $r" to kernelled,
     "boxBlur($comparisonRadius)" to src.boxBlur(comparisonRadius),
     columns = 2,
     cellSide = 300,
@@ -84,7 +84,7 @@ println("across taps. Compare the timings at both radii before choosing an imple
 <!-- field-box id="imaging_perf_bilateral" index="1" -->
 
 ```edn [field-box id="imaging_perf_bilateral" role="properties"]
-{"id" "imaging_perf_bilateral" "index" 1 "name" "bilateral — a tabulated range weight instead of 169 exp() per pixel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "bilateral — a tabulated range weight instead of 169 exp() per pixel" "_tombstone" false "frame" #afield/rect [80.0 1000.0 550.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_perf_bilateral_code_.kt" "lines" 52 "characters" 2511 "sha256" "0f1aa2c2fc9cceac011439ecc59c4d5389fd6254b8a0155e0af71467b033767b"}]}
+{"id" "imaging_perf_bilateral" "index" 1 "name" "bilateral — a tabulated range weight instead of 169 exp() per pixel" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "bilateral — a tabulated range weight instead of 169 exp() per pixel" "_tombstone" false "frame" #afield/rect [80.0 1000.0 550.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_perf_bilateral_code_.kt" "lines" 52 "characters" 2468 "sha256" "bf515991330e39258b7be4007d680721dad4eb982b623beb932b4c7fc869dadf"}]}
 ```
 
 ```kotlin [field-property box="imaging_perf_bilateral" name="code" path="imaging_perf_bilateral_code_.kt"]
@@ -122,8 +122,8 @@ val flatOf: (Img) -> Float = { img -> img.crop(430, 340, 120, 100).stdDev() }
 showImgGrid(
     "clean" to clean,
     "+ uniform noise" to noisy,
-    "bilateral($sigmaSpace, $sigmaRange) — edges kept" to bil,
-    "gaussianBlur($sigmaSpace) — edges gone too" to gauss,
+    "bilateral — edges kept" to bil,
+    "gaussianBlur — edges lost" to gauss,
     columns = 2,
     cellSide = 300,
 )
@@ -147,7 +147,7 @@ println("distance — no abs, no sqrt — read with linear interpolation, worth 
 <!-- field-box id="imaging_perf_pyrdown" index="2" -->
 
 ```edn [field-box id="imaging_perf_pyrdown" role="properties"]
-{"id" "imaging_perf_pyrdown" "index" 2 "name" "pyrDown — fused decimation vs blur-then-throw-away" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pyrDown — fused decimation vs blur-then-throw-away" "_tombstone" false "frame" #afield/rect [80.0 80.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_perf_pyrdown_code_.kt" "lines" 60 "characters" 2568 "sha256" "5b1164d67bd82016e76d721657a93f2e3a800b855d8ddac1fe48ea01c14a3f93"}]}
+{"id" "imaging_perf_pyrdown" "index" 2 "name" "pyrDown — fused decimation vs blur-then-throw-away" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pyrDown — fused decimation vs blur-then-throw-away" "_tombstone" false "frame" #afield/rect [80.0 80.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_perf_pyrdown_code_.kt" "lines" 60 "characters" 2555 "sha256" "1ffe5dc11126f6533a2041ee02930bccd5ea2597b7e481d9cd2f030b4c6bb47e"}]}
 ```
 
 ```kotlin [field-property box="imaging_perf_pyrdown" name="code" path="imaging_perf_pyrdown_code_.kt"]
@@ -197,8 +197,8 @@ for (i in fused.data.indices) worst = maxOf(worst, kotlin.math.abs(fused.data[i]
 
 showImgGrid(
     "source ${src.width}x${src.height}" to src,
-    "pyrDown($sigma) -> ${fused.width}x${fused.height}" to fused,
-    "naive blur-then-subsample" to naive,
+    "pyrDown -> ${fused.width}x${fused.height}" to fused,
+    "blur, then subsample" to naive,
     "|fused - naive|, x2000" to fused.zip(naive) { a, b -> kotlin.math.abs(a - b) * 2000f },
     columns = 2,
     cellSide = 300,

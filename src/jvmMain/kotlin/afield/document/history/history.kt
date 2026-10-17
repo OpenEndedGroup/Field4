@@ -2488,7 +2488,7 @@ private fun historyVersionDtos(documentPath: String, indexes: Set<Int>? = null):
         .filter { indexes == null || it.index in indexes }
         .map { v ->
             // A version list read from disk leaves box ids to be filled in lazily, by the history
-            // page's stats stream. The History Lens asks for a few versions by index and never
+            // page's stats stream. Code History asks for a few versions by index and never
             // runs that stream, so without this its header read "0 boxes" for every version.
             val boxIds = if (indexes != null && v.boxIds.isEmpty()) {
                 runCatching { HistoryManager.loadVersionDiffSummary(documentPath, v).boxIds }.getOrDefault(v.boxIds)

@@ -41,3 +41,14 @@ ran the actual descriptor example through the published map/write/read API succe
 All runtime work uses private Field/browser port 9700 and private native windows. The user's
 Electron document is untouched. Failed harness attempts and the real adapter failure are retained
 in the evidence, followed by the repaired results. Prose alignment has a separate handoff.
+
+## Merge recovery
+
+[Recovery record](merge-recovery.json), [generation log](merge-generation.log.gz),
+[guard log](merge-guard.log.gz). Main changed the shader property-template spelling; its canonical
+metadata was retained and the edited sidecars were refreshed through Field’s codec. Generation
+passed; an unused Git index lock interrupted staging and was archived before resuming. The full
+merge guard passed every task except the canonical lesson index: the typed streamer target adds a
+real RenderToTexture reference. Regenerating LESSONS.md repairs that drift; all nine index tests
+then pass. The repaired branch is requeued for the lander’s full guard. No local green full-guard
+run after that one-line generated repair is claimed.

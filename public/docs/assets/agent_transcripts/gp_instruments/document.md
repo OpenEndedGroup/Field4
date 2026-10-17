@@ -18,7 +18,7 @@ A rosette with four dials: petals, depth, curl and hue. Say which of two you
 like better, and the model proposes the next two.
 
 ```edn [field-box id="gp_duel" role="properties"]
-{"id" "gp_duel" "index" 0 "name" "2 - A or B? (you choose)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A or B? (you choose)" "_tombstone" false "frame" #afield/rect [800.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_duel_code_.kt" "lines" 42 "characters" 1555 "sha256" "e08432cb1f08051cf60454f9cc9a320201c6535e4a493e0272b8b86c96f318f7"}]}
+{"id" "gp_duel" "index" 0 "name" "2 - A or B? (you choose)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A or B? (you choose)" "_tombstone" false "frame" #afield/rect [800.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_duel_code_.kt" "lines" 43 "characters" 1545 "sha256" "c1eb2da49b084d205972ff247d5d1459756ad291f7bfd95348540081b8855ffc"}]}
 ```
 
 ```kotlin [field-property box="gp_duel" name="code" path="gp_duel_code_.kt"]
@@ -27,12 +27,13 @@ like better, and the model proposes the next two.
 fun rosette(p: Map<String, Double>, dx: Double) =
     FLine().also { f ->
         val petals = p["petals"]!!.roundToInt()
+        f.breakNext()
         for (i in 0..600) {
             val t = 2 * PI * i / 600
             val r = 1 + p["depth"]!! * cos(petals * t) + 0.15 * p["depth"]!! * cos(2 * petals * t + 3 * p["curl"]!!)
             val x = dx + 90 * r * cos(t + p["curl"]!! * sin(petals * t) * 0.3)
             val y = -90 * r * sin(t + p["curl"]!! * sin(petals * t) * 0.3)
-            if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+            f.lineTo(x, y)
         }
         f.color = okhsl(p["hue"]!!, 0.8, 0.55, 1.0)
         f.thickness = 2.0
@@ -80,7 +81,7 @@ model's favourite after every six, then - past a dividing line - the judge's ide
 own colour, so shape and colour can both be compared.
 
 ```edn [field-box id="gp_judge" role="properties"]
-{"id" "gp_judge" "index" 1 "name" "3 - A or B? (a simulated judge)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A or B? (a simulated judge)" "_tombstone" false "frame" #afield/rect [1540.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_judge_code_.kt" "lines" 82 "characters" 3583 "sha256" "ddb73ee602a087d5cf6b4a417fd7a942a48be151c23191fd43ea6df5436f4e19"}]}
+{"id" "gp_judge" "index" 1 "name" "3 - A or B? (a simulated judge)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A or B? (a simulated judge)" "_tombstone" false "frame" #afield/rect [1540.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_judge_code_.kt" "lines" 83 "characters" 3573 "sha256" "1889b1d965b6bfa46fd8a9c1644d894106d191d9f6a7b18526d22b4887b51742"}]}
 ```
 
 ```kotlin [field-property box="gp_judge" name="code" path="gp_judge_code_.kt"]
@@ -93,12 +94,13 @@ own colour, so shape and colour can both be compared.
 fun rosette(p: Map<String, Double>, dx: Double) =
     FLine().also { f ->
         val petals = p["petals"]!!.roundToInt()
+        f.breakNext()
         for (i in 0..600) {
             val t = 2 * PI * i / 600
             val r = 1 + p["depth"]!! * cos(petals * t) + 0.15 * p["depth"]!! * cos(2 * petals * t + 3 * p["curl"]!!)
             val x = dx + 90 * r * cos(t + p["curl"]!! * sin(petals * t) * 0.3)
             val y = -90 * r * sin(t + p["curl"]!! * sin(petals * t) * 0.3)
-            if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+            f.lineTo(x, y)
         }
         f.color = okhsl(p["hue"]!!, 0.8, 0.55, 1.0)
         f.thickness = 2.0
@@ -180,7 +182,7 @@ A closed curve with three dials: how far it wobbles, where the wobble starts, an
 it is squashed sideways. One setting of the dials is the target; pretend we cannot see it.
 
 ```edn [field-box id="gp_tune" role="properties"]
-{"id" "gp_tune" "index" 2 "name" "1 - Tune a curve to a target" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Tune a curve to a target" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_tune_code_.kt" "lines" 53 "characters" 2095 "sha256" "2727479d983aecf6918c933cfaf20c2bf0548bd854e82ebc8fc5430b89f4e042"}]}
+{"id" "gp_tune" "index" 2 "name" "1 - Tune a curve to a target" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Tune a curve to a target" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_tune_code_.kt" "lines" 52 "characters" 2037 "sha256" "b8e171252ac1eff25c954e0151a53b94bcd58d29c1fb51c34afb37419067fd75"}]}
 ```
 
 ```kotlin [field-property box="gp_tune" name="code" path="gp_tune_code_.kt"]
@@ -205,9 +207,8 @@ repeat(30) { opt.step { misfit(it) } }
 
 fun draw(pts: List<Pair<Double, Double>>, dx: Double, colour: Vec4, width: Double) =
     FLine().also { f ->
-        pts.forEachIndexed { i, (x, y) ->
-            if (i == 0) f.moveTo(dx + 100 * x, -100 * y) else f.lineTo(dx + 100 * x, -100 * y)
-        }
+        f.breakNext()
+        pts.forEach { (x, y) -> f.lineTo(dx + 100 * x, -100 * y) }
         f.color = colour
         f.thickness = width
     }

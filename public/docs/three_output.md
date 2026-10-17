@@ -270,7 +270,7 @@ println("open boundary loops: " + rims.size)
 three(channel = "gyroid", height = 470, width = 760) {
     mesh(surface, wireframe = false)
     lines(rims)
-    camera(yaw = 32.0, pitch = 20.0, distance = 2.05)
+    camera(yaw = 32.0, pitch = 20.0, padding = 1.02)
     title("marched gyroid, with its " + rims.size + " open boundary loops drawn in the same scene")
     caption("the solid and the annotation are one scene in model space, so orbiting moves both")
 }
@@ -302,27 +302,12 @@ CPU rasterizer's camera:
 - **`yawDegrees`** — orbit around `+y`. `0` looks straight down `−z`.
 - **`pitchDegrees`** — lift above the horizon. Positive looks down on the geometry.
 - **`distance`** — in multiples of the bounding-sphere radius, so one spec frames a 2 cm mesh and a
-  2 m one.
+  2 m one. The rasterizer uses it; the viewer zooms to fit instead.
+- **`padding`** — the viewer's margin around the shape's outline when it zooms to fit: `1.0`
+  touches the frame's edges, the default `1.06` leaves a little air. The rasterizer ignores it.
 - **`fieldOfViewDegrees`** — vertical. Smaller is a longer lens and less perspective.
 
 The names and meanings match, so one camera can be handed to either renderer.
-
-??? aside "In the viewer, `distance` is a padding factor"
-    The preset supplies the camera's **direction**; the viewer supplies its own distance. Having
-    placed the eye, it runs a zoom-to-fit (`fitCameraToBounds`) that slides the eye along the view
-    direction until the geometry's sampled points fit the frame the viewer was actually given — a box
-    output is as wide as its column, and a figure written for a 560 × 420 canvas arrives in a much
-    wider band.
-
-    So `distance` reaches the viewer as `max(1.02, distance / 2.7 × 1.06)`. Below about 2.6 that
-    clamps to the floor and every value frames identically; above it, raising `distance` shrinks the
-    mesh in the frame.
-
-    It is also why one figure is a different composition on the two renderers at an identical
-    viewpoint: the rasterizer frames the bounding *sphere* in a canvas it chose, the viewer fits the
-    real points to the frame it was handed, so the subject comes out noticeably larger. The toy car
-    in [Geometry from disk](geometry_from_disk.md#a-real-glb-in-a-real-output-area) is the case to
-    look at.
 
 ## Contact sheets
 
@@ -531,8 +516,8 @@ The same mesh, `MeshView` and 520 × 400 frame give two visibly different pictur
 - **Shading differs, and is not meant to match.** The rasterizer is a simple two-light Lambert
   model over the vertex colours. The viewer is three.js's `MeshStandardMaterial` under an ambient,
   key and rim light.
-- **Framing differs**, as the camera aside above explains. The viewer zooms to fit; the rasterizer
-  places the eye exactly where the camera says.
+- **Framing differs**: the rasterizer places the eye at `distance`; the viewer zooms to fit with
+  `padding`.
 - **The input is the same.** Both renderers compute missing normals with `shadedNormals` at a 35°
   crease angle, so hard edges stay hard, and both use `TriMesh.colors` or the same default grey.
 - **Back-face culling is the same**, which matters for diagnosis; the next section shows it.

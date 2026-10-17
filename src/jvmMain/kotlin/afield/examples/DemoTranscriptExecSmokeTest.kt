@@ -662,6 +662,11 @@ object DemoTranscriptExecSmokeTest {
         // its pixels are checked by the `rectsl-sdf` docs capture instead.
         "rectsl_sdf_live",
         "spin_glass",
+        // Each opens its own Window + Renderer and runs a GPU simulation (a lattice Boltzmann wind
+        // tunnel, a forest fire), so compile-only here; their pixels are the
+        // `four-lattice-boltzmann` and `four-forest-fire` docs captures in afield_four_graphics.md.
+        "lattice_boltzmann_cylinder",
+        "forest_fire",
         "imgui_vr_panel",
         // A hidden Electron window renders Field itself into Chromium shared textures; the live
         // macOS replay crosses IOSurface Mach rights and samples them in Vulkan. CI compiles the

@@ -120,7 +120,7 @@ internal class GlslMachine<V> internal constructor(
 
     /** Call a function by name with already-evaluated arguments. */
     fun call(name: String, args: List<V>): V {
-        val fn = shader.functions[name] ?: throw GlslEvalError("no function '$name' in this shader")
+        val fn = resolve(name, args) ?: throw GlslEvalError("no function '$name' in this shader")
         if (fn.params.size != args.size) {
             throw GlslEvalError("$name expects ${fn.params.size} argument(s), got ${args.size}")
         }
@@ -139,6 +139,17 @@ internal class GlslMachine<V> internal constructor(
             returnValue = savedReturn
             depth--
         }
+    }
+
+    // GLSL overloads by parameter type (the emitter's `_asVec4` set, for one): prefer the definition
+    // whose parameter types match the arguments exactly, else the last one with the right arity.
+    private fun resolve(name: String, args: List<V>): GFunction? {
+        val candidates = shader.overloads[name] ?: return shader.functions[name]
+        if (candidates.size == 1) return candidates[0]
+        val types = args.map { s.typeOf(it) }
+        return candidates.firstOrNull { f -> f.params.map { it.first } == types }
+            ?: candidates.lastOrNull { it.params.size == args.size }
+            ?: shader.functions[name]
     }
 
     /** Run `main()`. Returns whether it completed without `discard`. */

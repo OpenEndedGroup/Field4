@@ -1689,6 +1689,8 @@ fun openStartingPointIntoWorkspace(base: String, name: String): DuplicateDocumen
         targetDir.deleteRecursively()
         throw e
     }
+    // A copy on a kit runs its roles, in launch order, the first time it opens (KitFirstOpen).
+    if (File(targetDir, Kits.RECORD).isFile) File(targetDir, KitFirstOpen.MARKER).writeText("")
 
     val metadataFile = when {
         File(targetDir, SavingContext.METADATA_EDN).isFile -> File(targetDir, SavingContext.METADATA_EDN)

@@ -22,7 +22,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The History Lens lists the *values* a line had, read from the versions that changed it. Those
+ * Code History lists the *values* a line had, read from the versions that changed it. Those
  * versions never include the one holding the line's first value, so before the fix a line saved as
  * `radius = 40.0`, then `64.0`, then `80.0` showed only `#1` and `#2` in the lens: its first value
  * could be neither seen nor rolled back to from there.

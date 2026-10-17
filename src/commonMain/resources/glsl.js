@@ -76,7 +76,7 @@ define("bithero/glsl", ["require", "vs/editor/editor.api"], function (require, m
 
     const templateWords = [
         "if", "else", "elif", "elseif", "endif", "for", "endfor", "while", "endwhile",
-        "include", "copyPC"
+        "property", "include", "copyPC"
     ];
 
     monaco.languages.register({

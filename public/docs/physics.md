@@ -436,7 +436,7 @@ into the block above. It is cheap, and it goes wrong long before the drawing doe
 
 ---
 
-## Curvature and the size of its default
+## Curvature
 
 Distance constraints alone give you a net, not a fabric. Nothing in them resists *bending*: a sheet
 can fold to a crease and every spring is still at rest length. `Cloth` adds an optional curvature
@@ -524,13 +524,13 @@ other particles**, wires the four slots, pins what `pinned` selects, registers t
 hands back a handle that speaks grid coordinates: `cloth[col, row]` is a particle index, `position`,
 `pin`, `teleport`, `grabNearest` and `lines()` all address the grid rather than the flat arrays.
 
-Three things about that shape are contracts rather than conveniences.
+Three rules follow from that shape.
 
 **One constraint set per simulation, not per cloth.** The solver walks `0 until state.size` and
 indexes the slot arrays by *particle* index, so a set cannot cover only part of a simulation. A cloth
 adopts `sim.constraints4` if there already is one and otherwise publishes the one it creates. Two
-cloths in one simulation therefore share a single set. `sim.step(dt, damping, gravity, iterations)` solves that
-shared set too.
+cloths in one simulation therefore share a single set, and `sim.step(dt, damping, gravity,
+iterations)` solves it.
 
 **`cloth.step(...)` steps the whole simulation.** It is a convenience for the common case where the
 cloth *is* the simulation. With other systems in the same `SimdVerlet`, drive it yourself.

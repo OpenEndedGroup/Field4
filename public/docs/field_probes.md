@@ -17,7 +17,7 @@ They differ in where the statistics are computed:
 | Cost | a read-back per snapshot (throttled, off-thread) | one extra compute dispatch; read-back optional |
 
 Both are wired the same way. Call one setup function on the box, add
-`{% include "…" %}` to the shader, and call the recording function wherever the
+`{% property "…" %}` to the shader, and call the recording function wherever the
 value is in scope. Field resolves the include, allocates the buffers and reads
 them back, so there are no descriptor sets or SSBOs to set up by hand.
 
@@ -61,7 +61,7 @@ layout(push_constant) uniform dat {
     float   something;      // a slowly-advancing angle, set from Kotlin
 } pc;
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
@@ -143,7 +143,7 @@ Add the include once, then call `fieldProbe(...)` wherever the value is in scope
 The include defines overloads for scalars, vectors, and their integer forms:
 
 ```diffstatic {data-lang=glsl}
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 void fieldProbe(float value);   void fieldProbe(int  value);   void fieldProbe(uint value);
 void fieldProbe(vec2  value);   void fieldProbe(vec3 value);   void fieldProbe(vec4 value);
@@ -293,7 +293,7 @@ helper combines values across the subgroup and writes one partial record per
 subgroup, which keeps atomic operations few:
 
 ```diffstatic {data-lang=glsl}
-{% include "fieldStats" %}
+{% property "fieldStats" %}
 
 void fieldStatsRecord(uint channel, float value);
 void fieldStatsRecord(int  channel, float value);

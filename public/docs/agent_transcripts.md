@@ -518,7 +518,8 @@ see it move and then see it stop. Box 3 shows that re-running a box replaces its
 adding a second one: run it twice and the counter restarts in a new colour. It also prints its own
 frame rate, which is a different number on every machine. Box 4 is yours to drive: stop it inside
 its eight seconds, let it run out, or re-run it, and compare which cleanup lines appear. `.end { }`
-runs when the loop is cancelled, not when it finishes.
+runs when the loop is cancelled, not when it finishes. Its cleanup lines collect in a separate channel that keeps the last
+twelve across launches, so an earlier run's lines are still there to compare.
 
 Every box redraws on a clock, 30 times a second at most, rather than on every frame, because the
 loop runs thousands of frames a second and drawing each one floods the output.
@@ -716,7 +717,7 @@ cylinder and prints what each one is: welded, watertight, χ = 2. *Marching cube
 drilled sphere and a gyroid out of scalar fields and shows the surface converging on the analytic
 volume as the resolution doubles. *SDF modelling* writes a shape as an expression (primitives combined
 with union, difference and a smooth minimum) then meshes it. *Subdivide, smooth, decimate* runs one
-mesh through Loop subdivision, then Laplacian against Taubin (watch which one holds its volume), then
+mesh through Loop subdivision, then Laplacian against Taubin (the printed volumes show how much less Taubin shrinks), then
 QEM decimation to a triangle budget with the deviation that costs. *Curvature, rays, closest points,
 inside* queries a torus through the BVH and prints correctly-signed Gaussian curvature. *Bridges* turns
 `voronoi3d` cells into meshes, meshes into `FLine`s, and writes OBJ and STL. The last box needs no view
@@ -944,10 +945,9 @@ independent definition of the same thing*, written out longhand in the box. *pyr
 decimation against blur-then-throw-away, and prints the max elementwise difference so you can see the
 only disagreement is float summation order. *boxBlur* times the running-sum implementation against
 `convolveSeparable(boxKernel1D)`, which shares no code with it, and then prints the two blocks
-together, at radius 2 and at radius 24, because read together they say something the O(1)-beats-O(k)
-story gets wrong: at radius 2 the *kernel* is faster, and only past a crossover of a few pixels does
-the running sum win. A running sum is serial by nature; five taps of separable convolution vectorize
-freely. *bilateral* has no cheap reference, so it probes 3 px either side of a disc boundary at
+at radius 2 and at `comparisonRadius` (24), with how each cost grew and which was faster at radius 2
+in that run. The answer depends on the machine: a running sum is serial by nature, while five taps of
+separable convolution vectorize freely, so at small radii the kernel can win. *bilateral* has no cheap reference, so it probes 3 px either side of a disc boundary at
 `y = 210`, about one `sigmaSpace`, chosen because probing 30 px out would show a preserved step and
 prove nothing, then prints the noise left in a flat patch. The absolute milliseconds here are not the
 published benchmark (that is `:tools:imaging-bench` against OpenCV); what these boxes show is the
@@ -2780,10 +2780,42 @@ A 2D Edwards–Anderson spin glass, Vulkan-compute accelerated. A renderer box, 
 cosine simulated annealing, updating in-place buffers), a "measure" compute box (probes
 `vec2(spin, energy)` per site so the stats card's x-mean is the magnetization and y-mean the energy
 per spin), and a "lattice view" draw box whose fragment shader colours each cell. Demonstrates a
-`renderer → update → measure → view` publish/read chain and a two-dispatch red-black update with a
-`computeMemoryBarrier` between passes.
+`renderer → update → measure → view` publish/read chain and a red-black update in two half-sweeps,
+with `computeBarrier()` between them and `computeBarrier(graphics = true)` before the view reads the
+spins. The lattice size must be positive and even; after changing it, rebuild update, measure and
+view.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/spin_glass/metadata.edn)
+
+### lattice_boltzmann_cylinder
+
+A **lattice Boltzmann fluid** in a wind tunnel, with a cylinder in the way. Three boxes: a renderer
+that opens its own window, a fluid box that builds a `ShaderLatticeBoltzmannSystem` and publishes it as
+`lbm`, and a cylinder box beneath it whose fragment shader draws into the fluid's control texture: a
+solid disc, walls top and bottom, and stripes at the left edge that release dye and hold the wind
+steady. Within a minute or so the wake behind the cylinder starts shedding a von Kármán vortex
+street, shown as vorticity. Assign `lbm.settings.previewMode` from another box to see the dye, the
+speed or the velocity instead. The fluid box's `fragment` tab is the collision-and-streaming rule. The
+same two boxes are lessons 10 and 10b of `canonical_graphics`;
+[A fluid: lattice Boltzmann](afield_four_graphics.md#lattice-boltzmann) walks through them.
+
+![Vorticity behind a white cylinder in a dark wind tunnel: the flow divides round it and the shear layers behind it have rolled up into a street of alternating orange and blue vortices](assets/afield_four_graphics/10-lattice-boltzmann.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/lattice_boltzmann_cylinder/metadata.edn)
+
+### forest_fire
+
+A **forest fire** on the GPU, in a square window. A renderer box, a forest box that builds a
+`ShaderForestFireSystem` and publishes it as `fire`, and a fire-starter box beneath it whose fragment
+shader keeps two points lit in the fire's ignition texture, one red and one green. Burnt trees
+recover, so each point sends out a train of ragged rings, one per recovery time, and where the two
+trains meet they interleave. Red recovers faster, so its rings come more often. The forest box's
+`fragment` tab is the spreading rule. The same two boxes are lessons 11 and 11b of
+`canonical_graphics`; [A forest fire](afield_four_graphics.md#forest-fire) walks through them.
+
+![A square forest crowded with ragged concentric rings of red and green fire, the two trains interleaved where they have met](assets/afield_four_graphics/11-forest-fire.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/forest_fire/metadata.edn)
 
 ### recstl_playground
 

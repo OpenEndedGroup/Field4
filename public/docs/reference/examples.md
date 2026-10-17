@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-209 source file(s), 673 public symbol(s), 295 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+210 source file(s), 675 public symbol(s), 296 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -321,7 +321,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L785) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L790) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -1359,6 +1359,20 @@ Runs the shipped `faust.js` under node against the shipped vocabulary.
 | --- | --- |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/forth/ForthInterpreterSmokeTest/#L19) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">runTests</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/examples/forth/ForthInterpreterSmokeTest/#L23) |  |
+
+## AlifeShaderSystemsSmoke.kt { #alifeshadersystemssmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/AlifeShaderSystemsSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/AlifeShaderSystemsSmoke/)
+
+### AlifeShaderSystemsSmoke { #alifeshadersystemssmoke-kt-alifeshadersystemssmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">AlifeShaderSystemsSmoke</span></code>](source/jvmMain/afield/examples/four/AlifeShaderSystemsSmoke/#L51)
+
+Runs `ShaderLatticeBoltzmannSystem` and `ShaderForestFireSystem` on a real renderer and reads their textures back, the way the `lattice_boltzmann_cylinder` and `forest_fire` starting points drive them: a module built on the system's own `controlsParameters` / `fireInputParameters`, added with `addControls` / `addFireInput`, drawn by a `fullscreenTriangle`.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/AlifeShaderSystemsSmoke/#L57) |  |
 
 ## DualQuaternionfSmokeTest.kt { #dualquaternionfsmoketest-kt }
 

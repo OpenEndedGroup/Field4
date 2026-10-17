@@ -6,14 +6,17 @@ description: >
   compute box (checkerboard / red-black Monte Carlo over Ising spins with random
   +/-J or Gaussian bonds, cosine simulated annealing, in-place buffer_reference
   buffers published as props), a "measure" compute box (probes vec2(spin, energy)
-  for every site with {% include "fieldProbe" %} so the stats card's x-mean is the
+  for every site with {% property "fieldProbe" %} so the stats card's x-mean is the
   magnetization and the y-mean is the energy per spin), and a "lattice view" draw
   box (a fullscreen triangle whose fragment shader reads the shared spins buffer
   and colours each cell). Requires a GPU/Vulkan window (like threebox.yaml).
   Demonstrates: cross-box property publish/read down a renderer -> update ->
-  measure -> view chain; a red-black compute update split into two dispatches per
-  frame with a computeMemoryBarrier task between them; and per-frame simulation
-  state advanced from a leading computeTask "tick". The transcript produces no
+  measure -> view chain; a red-black compute update split into two half-sweeps per
+  frame, with computeBarrier() between them so the second sees the first, and
+  computeBarrier(graphics = true) after the sweep so the view reads it complete; and
+  per-frame simulation state advanced from a leading computeTask "tick". The lattice
+  size must be positive and even (the checkerboard needs both colours); after
+  changing it, rebuild update -> measure -> view so every box allocates to the new size. The transcript produces no
   image artifact itself — capture its native window with a follow-on
   `native-screenshot <path>` backdoor command (run with --with-playwright).
 operations:
@@ -250,7 +253,7 @@ operations:
               float field;
           } pc;
 
-          {% include "fieldProbe" %}
+          {% property "fieldProbe" %}
 
           void main() {
               uint L = pc.L;

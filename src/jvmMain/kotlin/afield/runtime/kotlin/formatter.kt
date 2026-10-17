@@ -408,7 +408,7 @@ private fun splitGlslStatements(code: String): String {
             continue
         }
 
-        // A template span ({% include %}, {{ value }}, {# note #}) is Field's, not GLSL's: copy it as
+        // A template span ({% property %}, {{ value }}, {# note #}) is Field's, not GLSL's: copy it as
         // it stands rather than reading its braces as a block.
         if (c == '{' && (next == '%' || next == '{' || next == '#')) {
             val closer = when (next) { '%' -> "%}"; '#' -> "#}"; else -> "}}" }

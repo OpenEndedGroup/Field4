@@ -39,7 +39,7 @@ class FieldStatsSmokeTest {
                     """
                         #version 450
                         layout(local_size_x = 64) in;
-                        {% include "fieldStats" %}
+                        {% property "fieldStats" %}
 
                         void main() {
                             float smoothedMedian =
@@ -74,7 +74,7 @@ class FieldStatsSmokeTest {
                     """
                         #version 450
                         layout(local_size_x = 1) in;
-                        {% include "fieldStats" %}
+                        {% property "fieldStats" %}
 
                         void main() {
                             float median = fieldStatsQuantile(0u, 0.5);

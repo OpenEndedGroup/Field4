@@ -242,7 +242,7 @@ than either endpoint, because a circle is the shortest closed curve there is.
 
     **The same source cloud.** Both fields must be trained from one shared cloud, so a particle
     has one start point and two destinations. That is also what makes the two normalisation frames
-    agree, and this one the API does enforce: `blendWith` refuses to blend fields normalised
+    agree, and the API enforces it: `blendWith` refuses to blend fields normalised
     differently, because `t = 1` meaning "B's weights read in A's coordinates" is a different field
     from B and would look exactly like an interesting result.
 
@@ -254,8 +254,9 @@ than either endpoint, because a circle is the shortest closed curve there is.
     problems are nearly the same problem. `blendWith` does not check seeds. For a wider network,
     harder targets or another coupling, train both with the same `seed` to be safe.
 
-The `letter_interpolation` transcript sweeps `t` slowly and continuously, forty seconds there and
-back, and `letter_interpolation_panels` is the still above. Both need letters that are a **single
+The [`letter_interpolation`](agent_transcripts.md#letter_interpolation) starting point sweeps `t`
+slowly and continuously, forty seconds there and back, and
+[`letter_interpolation_panels`](agent_transcripts.md#letter_interpolation_panels) is the still above. Both need letters that are a **single
 closed contour** in the typeface: C, S, E, F, L, T, V, Z and so on. An O or a D has two, and one
 circle cannot be paired with two contours at once.
 

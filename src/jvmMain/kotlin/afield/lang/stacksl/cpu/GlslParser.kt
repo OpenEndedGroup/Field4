@@ -82,6 +82,8 @@ internal class GFunction(
  */
 class GlslShader internal constructor(
     internal val functions: Map<String, GFunction>,
+    /** Every definition of each name, in source order; [functions] holds the last one. */
+    internal val overloads: Map<String, List<GFunction>>,
     internal val globals: List<GlslGlobal>,
     internal val samplers: List<String>,
     internal val blocks: List<GlslBlock>,
@@ -246,6 +248,7 @@ private class GlslShaderParser(source: String) {
 
     fun parseShader(): GlslShader {
         val functions = LinkedHashMap<String, GFunction>()
+        val overloads = LinkedHashMap<String, MutableList<GFunction>>()
         val globals = ArrayList<GlslGlobal>()
         val samplers = ArrayList<String>()
         val blocks = ArrayList<GlslBlock>()
@@ -303,7 +306,9 @@ private class GlslShaderParser(source: String) {
                 val params = parseParameters()
                 if (accept(";")) continue // a prototype; the definition follows
                 val body = parseBlock()
-                functions[name] = GFunction(name, type ?: GlslType.FLOAT, params, body)
+                val fn = GFunction(name, type ?: GlslType.FLOAT, params, body)
+                functions[name] = fn
+                overloads.getOrPut(name) { ArrayList() } += fn
                 continue
             }
 
@@ -319,7 +324,7 @@ private class GlslShaderParser(source: String) {
             expect(";")
         }
 
-        return GlslShader(functions, globals, samplers, blocks, preprocessor)
+        return GlslShader(functions, overloads, globals, samplers, blocks, preprocessor)
     }
 
     /** Consume a balanced `( … )` and return its text, for `layout(...)` whose contents are flags. */

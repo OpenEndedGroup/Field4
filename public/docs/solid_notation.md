@@ -748,7 +748,7 @@ threeGrid(
     "fitted  ·  right = %.6f".format(fit.values[right]) to m(fit.fitted),
     "truth  ·  right = %.2f".format(truth[right]) to m(template.withValues(truth)),
     channel = "one_sided", columns = 4, height = 230,
-    view = MeshView(width = 250, height = 190, yawDegrees = 0.0, pitchDegrees = 30.0, distance = 3.6, wireframe = false),
+    view = MeshView(width = 250, height = 190, yawDegrees = 0.0, pitchDegrees = 30.0, distance = 3.6, wireframe = false), padding = 1.41,
 )
 ```
 

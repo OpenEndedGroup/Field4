@@ -92,7 +92,7 @@ nav:
     # that explain what that past is; nothing about the split was deliberate.
     - Your History with Field: history_overview.md
     - Document History: document_history.md
-    - Inline History (History Lens): history_lens.md
+    - Code History: history_lens.md
     - The Semantic Index: semantic_index.md
     # One page in three parts, merged on 2026-10-01 from three: the panel's controls
     # (profiling_timeline.md, the filename that survives), Simulation time (was simulation_clock.md)

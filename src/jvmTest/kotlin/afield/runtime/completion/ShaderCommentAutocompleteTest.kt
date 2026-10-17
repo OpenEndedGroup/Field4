@@ -138,7 +138,7 @@ class ShaderCommentAutocompleteTest {
     fun theFirstMemberAfterAnUnnamedBlockCloseKeepsItsComment() {
         // A `}` arms a one-shot "the block's tail is coming" state, so that `} pc;` is read as an alias
         // rather than as a member declaration. An UNNAMED block — a function body, or the `}` of a
-        // `{% include %}` / `{{ slot }}` template marker still sitting in the source string — closes
+        // `{% property %}` / `{{ slot }}` template marker still sitting in the source string — closes
         // without a `;`, so that state used to survive to the next `;`. That `;` is the FIRST member of
         // the next block, and its comment was swallowed. `state` below is exactly the member the
         // `gpu_state` transcript lost: its push block follows a template marker and a probe include.
@@ -148,7 +148,7 @@ class ShaderCommentAutocompleteTest {
             layout(std430, buffer_reference) buffer State { vec4 a[]; };
 
             void probe(float v) { /* a function body: an unnamed block, closed with no semicolon */ }
-            {% include "fieldProbe" %}
+            {% property "fieldProbe" %}
             {{ stack.auto.force }}
 
             layout(push_constant) uniform dat {

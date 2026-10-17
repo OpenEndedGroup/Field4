@@ -5563,10 +5563,10 @@ function applyCameraSpec(cam, spec, bounds, fit, points) {
     cam.far = derived.far;
     cam.updateProjectionMatrix();
     if (fit) {
-        // 2.7 is MeshView's default distance and frames the bounding sphere with a little air, so it
-        // is the multiple that means "no extra padding" here.
-        const requested = spec.distance === undefined ? 2.7 : spec.distance;
-        fitCameraToBounds(cam, bounds, derived.target, Math.max(1.02, requested / 2.7 * 1.06), points);
+        // The fit margin is the spec's viewer-only padding; distance is the rasterizer's and does not
+        // move the fitted camera.
+        const padding = spec.padding === undefined ? 1.06 : spec.padding;
+        fitCameraToBounds(cam, bounds, derived.target, Math.max(1.0, padding), points);
     }
     return derived;
 }
@@ -6690,7 +6690,8 @@ function updatePanelCameras() {
             // Polar is measured from +y down, so a positive polar delta is a *lower* pitch.
             pitchDegrees: (spec.pitchDegrees || 0) - dPolar,
             distance: spec.distance === undefined ? 2.7 : spec.distance,
-            fieldOfViewDegrees: spec.fieldOfViewDegrees
+            fieldOfViewDegrees: spec.fieldOfViewDegrees,
+            padding: spec.padding
         };
         if (turning) placeTurningPanel(entry, view);
         else applyCameraSpec(entry.camera, view, entry.bounds, true, entry.fitPoints);

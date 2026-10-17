@@ -131,8 +131,9 @@ class Mark internal constructor(
     val start: Vec2? get() = points.firstOrNull()
     val end: Vec2? get() = points.lastOrNull()
 
-    val stroke: String get() = json.string("strokeColor") ?: "#1e1e1e"
-    val fill: String get() = json.string("backgroundColor") ?: "transparent"
+    /** The colour code asked for (kept in `customData`); a hand-drawn mark's stored colour. */
+    val stroke: String get() = json.obj("customData")?.string("fieldStroke") ?: json.string("strokeColor") ?: "#1e1e1e"
+    val fill: String get() = json.obj("customData")?.string("fieldFill") ?: json.string("backgroundColor") ?: "transparent"
     val strokeWidth: Double get() = json.double("strokeWidth") ?: 1.0
     val opacity: Double get() = json.double("opacity") ?: 100.0
 
@@ -497,12 +498,20 @@ class MarkEditor internal constructor(private val original: JsonObject) {
     var angle: Double
         get() = (changes["angle"] as? JsonPrimitive)?.doubleOrNull ?: original.double("angle") ?: 0.0
         set(v) { changes["angle"] = JsonPrimitive(v) }
+    /** The colour asked for; stored compensated for the dark theme ([DarkThemeColour]). */
     var stroke: String
-        get() = (changes["strokeColor"] as? JsonPrimitive)?.content ?: original.string("strokeColor") ?: "#1e1e1e"
-        set(v) { changes["strokeColor"] = JsonPrimitive(v) }
+        get() = custom["fieldStroke"]?.stringOrNull() ?: (changes["strokeColor"] as? JsonPrimitive)?.content ?: original.string("strokeColor") ?: "#1e1e1e"
+        set(v) {
+            changes["strokeColor"] = JsonPrimitive(DarkThemeColour.compensate(v))
+            custom = JsonObject(custom + ("fieldStroke" to JsonPrimitive(v)))
+        }
     var fill: String
-        get() = (changes["backgroundColor"] as? JsonPrimitive)?.content ?: original.string("backgroundColor") ?: "transparent"
-        set(v) { changes["backgroundColor"] = JsonPrimitive(v); if (v != "transparent") changes.putIfAbsent("fillStyle", JsonPrimitive("solid")) }
+        get() = custom["fieldFill"]?.stringOrNull() ?: (changes["backgroundColor"] as? JsonPrimitive)?.content ?: original.string("backgroundColor") ?: "transparent"
+        set(v) {
+            changes["backgroundColor"] = JsonPrimitive(DarkThemeColour.compensate(v))
+            custom = JsonObject(custom + ("fieldFill" to JsonPrimitive(v)))
+            if (v != "transparent") changes.putIfAbsent("fillStyle", JsonPrimitive("solid"))
+        }
     var strokeWidth: Double
         get() = (changes["strokeWidth"] as? JsonPrimitive)?.doubleOrNull ?: original.double("strokeWidth") ?: 1.0
         set(v) { changes["strokeWidth"] = JsonPrimitive(v) }
@@ -563,19 +572,12 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
     fun line(points: List<Vec2>, name: String? = null, stroke: String = this.stroke): MarkRef =
         add(linear("line", nextId(name), points, name, stroke))
 
-    /** [line] through the points of an [FLine] (curves are sampled). */
-    fun line(fline: FLine, name: String? = null, stroke: String = this.stroke): MarkRef =
-        line(sample(fline), name, stroke)
-
     /**
      * A freehand stroke — the same kind of mark as one drawn with the pen tool. Give [pressure]
      * (a function of the fraction of the way along the stroke, 0..1, returning 0..1) to record
      * pen pressure the way a tablet does; without it the stroke is like a mouse stroke, and
      * [Mark.pressures] reads back empty.
      */
-    fun stroke(fline: FLine, name: String? = null, stroke: String = this.stroke, pressure: ((Double) -> Double)? = null): MarkRef =
-        stroke(sample(fline), name, stroke, pressure)
-
     fun stroke(points: List<Vec2>, name: String? = null, stroke: String = this.stroke, pressure: ((Double) -> Double)? = null): MarkRef {
         val pressures = if (pressure == null || points.isEmpty()) emptyList() else {
             val arc = DoubleArray(points.size)
@@ -697,6 +699,9 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
             put("fieldOwner", JsonPrimitive(owner.id))
             put("fieldKey", JsonPrimitive(key))
             if (name != null) put("fieldName", JsonPrimitive(name))
+            // The colours asked for; the element stores them compensated for the dark theme's filter.
+            put("fieldStroke", JsonPrimitive(stroke))
+            put("fieldFill", JsonPrimitive(fill))
         }
         val e = buildJsonObject {
             put("id", JsonPrimitive(id))
@@ -704,8 +709,8 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
             put("x", JsonPrimitive(x)); put("y", JsonPrimitive(y))
             put("width", JsonPrimitive(w)); put("height", JsonPrimitive(h))
             put("angle", JsonPrimitive(0))
-            put("strokeColor", JsonPrimitive(stroke))
-            put("backgroundColor", JsonPrimitive(fill))
+            put("strokeColor", JsonPrimitive(DarkThemeColour.compensate(stroke)))
+            put("backgroundColor", JsonPrimitive(DarkThemeColour.compensate(fill)))
             put("fillStyle", JsonPrimitive(if (fill == "transparent") "hachure" else "solid"))
             put("strokeWidth", JsonPrimitive(strokeWidth))
             put("strokeStyle", JsonPrimitive(if (dashed) "dashed" else "solid"))
@@ -766,7 +771,7 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
         return (lines.maxOf { it.length } * size * 0.55).coerceAtLeast(size) to lines.size * size * 1.25
     }
 
-    private fun sample(fline: FLine): List<Vec2> {
+    internal fun sample(fline: FLine): List<Vec2> {
         val out = ArrayList<Vec2>()
         var last: afield.math.linalg.Vec3? = null
         for (node in fline.nodes) {
@@ -868,3 +873,14 @@ internal object NotationStore {
     fun setSelection(info: SessionInformation, ids: List<String>) { selections[info] = ids }
     fun selection(info: SessionInformation): List<String> = selections[info] ?: emptyList()
 }
+
+// The FLine overloads are extensions so that a `[a, b]` literal, which could build either a List or an
+// FLine, resolves to the member List overload instead of being ambiguous: a member that applies wins.
+
+/** [NotationBuilder.line] through the points of an [FLine] (curves are sampled). */
+fun NotationBuilder.line(fline: FLine, name: String? = null, stroke: String = this.stroke): MarkRef =
+    line(sample(fline), name, stroke)
+
+/** [NotationBuilder.stroke] along an [FLine] (curves are sampled). */
+fun NotationBuilder.stroke(fline: FLine, name: String? = null, stroke: String = this.stroke, pressure: ((Double) -> Double)? = null): MarkRef =
+    stroke(sample(fline), name, stroke, pressure)

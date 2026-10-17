@@ -259,8 +259,8 @@ class DocumentedApiEvaluationTest {
                 "matrix a caller passes in, not a Field entry point — the same shape as modelWorld " +
                 "above. The lexical census sees the name; the containing graphics transcripts are " +
                 "COMPILE_ONLY.",
-        "computeMemoryBarrier" to
-            "agent_transcripts.md; a Vulkan command-buffer barrier. Its compiled graphics " +
+        "computeBarrier" to
+            "agent_transcripts.md; a Vulkan compute barrier task. Its compiled graphics " +
                 "transcripts need a live device to submit and observe the dependency.",
         "flowSmoothVelocity" to
             "flow_grain.md; a GLSL helper evaluated in the native flow_grain capture. " +

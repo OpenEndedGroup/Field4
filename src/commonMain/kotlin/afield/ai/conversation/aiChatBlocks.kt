@@ -1,6 +1,7 @@
 package afield.ai.conversation
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 
 /**
  * # An `ai4_chat_history` transcript, block by block
@@ -28,6 +29,11 @@ data class AiChatBlock(
      * one to every block it hands the lens viewer, so a line can be drawn to it; ordinary chats have none.
      */
     val address: String? = null,
+    /**
+     * [model] came from the chat's `<<run-model:…>>` line, the model the whole run is recorded as using, and
+     * not from this block: the block predates per-response model records.
+     */
+    val modelFromRun: Boolean = false,
 ) {
     val isProgress: Boolean get() = role.startsWith("progress")
     val title: String get() = content.lines().firstOrNull()?.trim().orEmpty()
@@ -82,8 +88,18 @@ fun splitLensMarkers(content: String): AiChatLensMarkers {
 
 private val chatMarkers = listOf("<<you>>", "<<ai>>", "<<summary>>", "<<progress>>", "<<progress-open>>", "<<queued>>")
 
+/** The `<<run-model:{json}>>` line a saved chat may open with: the model its run is recorded as using. */
+private const val RUN_MODEL = "<<run-model:"
+
 fun parseAiChatBlocks(history: String?): List<AiChatBlock> {
-    val text = (history ?: "").replace("\r\n", "\n")
+    var text = (history ?: "").replace("\r\n", "\n")
+    val runModel = if (text.startsWith(RUN_MODEL)) {
+        val line = text.substringBefore('\n')
+        text = text.substringAfter('\n', "")
+        runCatching {
+            kotlinx.serialization.json.Json.decodeFromString<AiChatModelIdentity>(line.removePrefix(RUN_MODEL).removeSuffix(">>"))
+        }.getOrNull()
+    } else null
     val tokens = mutableListOf<String>()
     var idx = 0
     while (idx < text.length) {
@@ -111,8 +127,10 @@ fun parseAiChatBlocks(history: String?): List<AiChatBlock> {
         if (content.isNotEmpty()) {
             val (model, rest) = if (role == "ai") AiChatModelIdentity.splitFromContent(content) else null to content
             val markers = splitLensMarkers(rest)
+            // An ai block with no model of its own takes the run's, marked as such; a lens block keeps none.
+            val fromRun = model == null && role == "ai" && runModel != null && markers.sources.isEmpty()
             // A block that was only marker lines still renders (a model badge with no text yet), as it always has.
-            blocks.add(AiChatBlock(role, markers.body, model, markers.sources, markers.address))
+            blocks.add(AiChatBlock(role, markers.body, if (fromRun) runModel else model, markers.sources, markers.address, fromRun))
         }
         buffer.clear()
     }

@@ -207,14 +207,15 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         pitch: Double = 18.0,
         distance: Double = 2.7,
         fieldOfView: Double = 40.0,
+        padding: Double = 1.06,
     ) {
-        camera = ThreeCameraSpec(yaw, pitch, distance, fieldOfView)
+        camera = ThreeCameraSpec(yaw, pitch, distance, fieldOfView, padding)
         autoFrame = false
     }
 
     /** The camera as a [MeshView] already describes it — the migration path for existing figures. */
-    fun camera(view: MeshView) {
-        camera = view.toThreeCameraSpec()
+    fun camera(view: MeshView, padding: Double = 1.06) {
+        camera = view.toThreeCameraSpec(padding)
         autoFrame = false
     }
 
@@ -466,9 +467,12 @@ internal fun BoundsTracker.include(d: ThreeDrawable) {
     }
 }
 
-/** [MeshView]'s four camera numbers, which [ThreeCameraSpec] deliberately mirrors one for one. */
-fun MeshView.toThreeCameraSpec(): ThreeCameraSpec =
-    ThreeCameraSpec(yawDegrees, pitchDegrees, distance, fieldOfViewDegrees)
+/**
+ * [MeshView]'s four camera numbers, which [ThreeCameraSpec] deliberately mirrors one for one, plus the
+ * viewer's own [ThreeCameraSpec.padding], which [MeshView] has no use for.
+ */
+fun MeshView.toThreeCameraSpec(padding: Double = 1.06): ThreeCameraSpec =
+    ThreeCameraSpec(yawDegrees, pitchDegrees, distance, fieldOfViewDegrees, padding)
 
 /**
  * One cell of a [threeGrid]: a mesh, its heading, and whatever you want written under it.
@@ -585,6 +589,7 @@ fun Box.three(
     title: String? = null,
     caption: String? = null,
     facts: Boolean = true,
+    padding: Double = 1.06,
 ): ThreeGeometryViewState = three(
     channel = channel,
     name = name,
@@ -592,7 +597,7 @@ fun Box.three(
     width = view.width,
 ) {
     mesh(subject, wireframe = view.wireframe, cullBackFaces = view.cullBackFaces)
-    camera(view)
+    camera(view, padding)
     panel(title = title, caption = caption, facts = if (facts) subject.threeFacts() else null)
 }
 
@@ -660,6 +665,7 @@ fun Box.threeGrid(
     facts: Boolean = false,
     cellWidth: Int = view.width,
     sharedScale: Boolean = false,
+    padding: Double = 1.06,
 ): ThreeGeometryViewState = threeGrid(
     panels = panels.map { (label, m) ->
         ThreeMeshPanel(label, m, facts = if (facts) m.threeFacts() else null)
@@ -671,6 +677,7 @@ fun Box.threeGrid(
     view = view,
     cellWidth = cellWidth,
     sharedScale = sharedScale,
+    padding = padding,
 )
 
 /**
@@ -695,6 +702,7 @@ fun Box.threeGrid(
     view: MeshView = MeshView(),
     cellWidth: Int = view.width,
     sharedScale: Boolean = false,
+    padding: Double = 1.06,
 ): ThreeGeometryViewState {
     require(panels.isNotEmpty()) { "threeGrid needs at least one panel" }
     val bounds = panels.map { it.mesh.toThreeBounds() }
@@ -717,7 +725,7 @@ fun Box.threeGrid(
             )
             panel(
                 title = cell.label,
-                camera = view.toThreeCameraSpec(),
+                camera = view.toThreeCameraSpec(padding),
                 bounds = framed[index],
                 fitBounds = sharedScale,
                 facts = cell.facts,

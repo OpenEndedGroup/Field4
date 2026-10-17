@@ -337,6 +337,22 @@ def fix_block(lines: list[str], start: int, end: int, literals: bool = False) ->
     return out
 
 
+RECORDED_OPEN = re.compile(r"^<!-- (?P<marker>[\w-]+-source):(?P<name>[\w-]+) -->\s*$")
+
+
+def recorded_regions(lines: list[str]) -> list[tuple[int, int]]:
+    """Line ranges between `<!-- X-source:N -->` and `<!-- /X-source:N -->`, which `conversation_demo.sync_blocks` fills."""
+    regions, open_at = [], {}
+    for i, line in enumerate(lines):
+        if (m := RECORDED_OPEN.match(line)):
+            open_at[(m["marker"], m["name"])] = i
+        elif line.startswith("<!-- /"):
+            key = tuple(line[6:].removesuffix(" -->").strip().split(":", 1))
+            if key in open_at:
+                regions.append((open_at.pop(key), i))
+    return regions
+
+
 def process(path: str, root: Path, fix: bool, collection_literals: bool = False) -> list[Finding]:
     file = root / path
     try:
@@ -346,14 +362,18 @@ def process(path: str, root: Path, fix: bool, collection_literals: bool = False)
     lines = original.split("\n")
     blocks = kotlin_blocks(path, lines)
     literals = collection_literals or lists_as_literals(path)
+    recorded = recorded_regions(lines)
+    # A listing a packager copies from saved source (between `<!-- NAME-source:BLOCK -->` markers) shows the
+    # recorded bytes; rewriting its lists would make the page disagree with the record it quotes.
+    spelled = lambda start: literals and not any(a <= start < b for a, b in recorded)
     findings = [
         Finding(path, i + 1, rule, message, fixable, blocking=fixable or rule not in NOTE_RULES)
         for start, end in blocks
-        for i, rule, message, fixable in check_block(lines, start, end, literals)
+        for i, rule, message, fixable in check_block(lines, start, end, spelled(start))
     ]
     if fix and any(f.fixable for f in findings):
         for start, end in reversed(blocks):
-            lines[start:end] = fix_block(lines, start, end, literals)
+            lines[start:end] = fix_block(lines, start, end, spelled(start))
         file.write_text("\n".join(lines), encoding="utf-8")
     return findings
 

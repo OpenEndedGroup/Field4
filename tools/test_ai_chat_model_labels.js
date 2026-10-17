@@ -24,6 +24,17 @@
         'claude-opus-4-8 · Anthropic (requested)', 'Model not recorded'];
     if (JSON.stringify(labels) !== JSON.stringify(expected)) throw new Error('Wrong model labels: ' + JSON.stringify(labels));
     if (panel.textContent.includes('<<model:')) throw new Error('Raw metadata leaked into chat');
+    // A saved chat may open with the model its whole run is recorded as using: turns without their own take it,
+    // marked as the run's; a turn that recorded its own model keeps it.
+    const run = window.aiChatHistoryToHtml(['<<run-model:' + JSON.stringify({provider: 'openai', requestedModel: 'gpt-6-astra', responseModel: 'gpt-6-astra'}) + '>>',
+        '<<you>>', 'Old turn?', '<<ai>>', 'An older entry.', '<<ai>>', marker('anthropic', 'claude-opus-4-8', 'claude-opus-4-8'), 'Its own.'].join('\n'));
+    const runPanel = document.createElement('div');
+    runPanel.innerHTML = run;
+    const runLabels = [...runPanel.querySelectorAll('.ai-chat-model')].map(e => e.textContent);
+    if (JSON.stringify(runLabels) !== JSON.stringify(["gpt-6-astra · OpenAI (from the run's record)", 'claude-opus-4-8 · Anthropic'])) {
+        throw new Error('Wrong run-model labels: ' + JSON.stringify(runLabels));
+    }
+    if (runPanel.textContent.includes('<<run-model:')) throw new Error('Raw run-model line leaked into chat');
     if ([...panel.querySelectorAll('.ai-chat-turn.ai')].some(e => !['none', 'normal', '""'].includes(getComputedStyle(e, '::before').content))) {
         throw new Error('A hardcoded pseudo-element badge is still present');
     }

@@ -79,7 +79,7 @@ the property that makes STEPS a clock rather than a re-spelling of the address �
 the address and the duration walk their OWN grids, one entry each per stage.
 
 ```edn [field-box id="marf_clocks_steps" role="properties"]
-{"id" "marf_clocks_steps" "index" 1 "name" "marf clocks — STEPS" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "marf clocks — STEPS" "_tombstone" false "frame" #afield/rect [900.0 60.0 430.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "marf_clocks_steps_code_.kt" "lines" 93 "characters" 3357 "sha256" "14d185a5f5c35fc064c0630c3e9cc37211f73d76e2e76900ebe3a4c3b3d38ff3"}]}
+{"id" "marf_clocks_steps" "index" 1 "name" "marf clocks — STEPS" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "marf clocks — STEPS" "_tombstone" false "frame" #afield/rect [900.0 60.0 430.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "marf_clocks_steps_code_.kt" "lines" 94 "characters" 3345 "sha256" "21240039d7aba8d58ed3ff34b15f6e63fca2923a55e1da60c987113a64c3ad71"}]}
 ```
 
 ```kotlin [field-property box="marf_clocks_steps" name="code" path="marf_clocks_steps_code_.kt"]
@@ -148,11 +148,12 @@ readers.forEachIndexed { lane, entry ->
         color = vec(0.32, 0.35, 0.43, 0.9)
     }
     out += fline {
+        breakNext()
         for (i in 0..1200) {
             val t = i / 1200.0 * cycles
             val px = 60.0 + (t / cycles) * W
             val py = top + laneH - reader.value(t) * (laneH - 6.0)
-            if (i == 0) moveTo(px, py) else lineTo(px, py)
+            lineTo(px, py)
         }
         stroked = true
         thickness = 1.8

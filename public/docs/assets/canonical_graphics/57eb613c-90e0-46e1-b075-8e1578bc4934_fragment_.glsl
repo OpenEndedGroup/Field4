@@ -4,8 +4,8 @@ layout(location = 1) in vec2 ftc;
 
 layout(set = 0, binding = 0) uniform sampler2D bbc;
 
-{% include "fieldProbe" %}
-{% include "quantileWarp" %}
+{% property "fieldProbe" %}
+{% property "quantileWarp" %}
 
 layout(push_constant) uniform Controls {
     mat4 p;

@@ -234,7 +234,7 @@ println("update launched L=" + latticeSide + " N=" + N + " groups=" + groups)
 <!-- field-box id="sg_measure" index="2" -->
 
 ```edn [field-box id="sg_measure" role="properties"]
-{"id" "sg_measure" "index" 2 "name" "measure (energy / magnetization)" "parents" ["root" "sg_update"] "children" ["sg_draw"] "properties" {"children" #{#afield/box "sg_draw"} "parents" #{#afield/box "root" #afield/box "sg_update"} "name" "measure (energy / magnetization)" "_tombstone" false "frame" #afield/rect [670.0 40.0 330.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_measure_compute_.glsl" "lines" 37 "characters" 902 "sha256" "93f4b4399393367312771380d909f55e43ef0dc2df3087fc25bb9bb7c1266bd2"} {"name" "code" "language" "kotlin" "path" "sg_measure_code_.kt" "lines" 27 "characters" 792 "sha256" "05d24758f9ea6e4a58b717c2a600c639ade3a0ad1fe1afe2a5db1be591d6a083"}]}
+{"id" "sg_measure" "index" 2 "name" "measure (energy / magnetization)" "parents" ["root" "sg_update"] "children" ["sg_draw"] "properties" {"children" #{#afield/box "sg_draw"} "parents" #{#afield/box "root" #afield/box "sg_update"} "name" "measure (energy / magnetization)" "_tombstone" false "frame" #afield/rect [670.0 40.0 330.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_measure_compute_.glsl" "lines" 37 "characters" 903 "sha256" "53d305de3f3250291bdf1a07f547bed39682fc93930853911f43d14d6b8aa734"} {"name" "code" "language" "kotlin" "path" "sg_measure_code_.kt" "lines" 27 "characters" 792 "sha256" "05d24758f9ea6e4a58b717c2a600c639ade3a0ad1fe1afe2a5db1be591d6a083"}]}
 ```
 
 ```glsl [field-property box="sg_measure" name="compute" path="sg_measure_compute_.glsl"]
@@ -257,7 +257,7 @@ layout(push_constant) uniform PushC {
     float field;
 } pc;
 
-{% include "fieldProbe" %}
+{% property "fieldProbe" %}
 
 void main() {
     uint L = pc.L;

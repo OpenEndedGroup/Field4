@@ -34,7 +34,7 @@ class FieldProbeSmokeTest {
             val rawShader = """
                 #version 450
                 layout(local_size_x = 64) in;
-                {% include "fieldProbe" %}
+                {% property "fieldProbe" %}
                 void main() {
                     uint idx = gl_GlobalInvocationID.x;
                     float value = sin(float(idx) * 0.1) * 100.0;

@@ -59,7 +59,7 @@ class ShaderFieldQuantileWarpSmokeTest {
                         float time;
                     } controls;
 
-                    {% include "fieldProbe" %}
+                    {% property "fieldProbe" %}
 
                     const float PI = 3.14159265358979323846;
 
@@ -110,8 +110,8 @@ class ShaderFieldQuantileWarpSmokeTest {
                         vec4 warpYHi;
                     } controls;
 
-                    {% include "fieldProbe" %}
-                    {% include "quantileWarp" %}
+                    {% property "fieldProbe" %}
+                    {% property "quantileWarp" %}
 
                     const float PI = 3.14159265358979323846;
 
