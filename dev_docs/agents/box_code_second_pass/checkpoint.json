@@ -761,6 +761,26 @@
     "f1708701b118-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_17/README.md"
+    },
+    "81ba569c56dd-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_18/README.md"
+    },
+    "b03fdbe93779-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_18/README.md"
+    },
+    "ae09b7bae9fc-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_18/README.md"
+    },
+    "1609b587b44f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_18/README.md"
+    },
+    "a0a84eb67e15-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_18/README.md"
     }
   },
   "batches": [

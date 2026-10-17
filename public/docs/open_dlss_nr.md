@@ -77,59 +77,70 @@ testing and draws 3 + 39 × 36 vertices: one background triangle and 39 boxes (g
 36 thin bars), all generated in the vertex shader.
 
 ```diffstatic {data-lang=kotlin}
-import afield.ui.output.controlGroup
-import afield.ui.output.displayOpen
 import afield.graphics.render.neural.*
 
 val owner = renderer
 prop<OpenDlssNrStudy>(lab)
 (thisBox.getPropertyRaw("lab") as? OpenDlssNrStudy)?.close()
-lab = OpenDlssNrStudy(owner, size=768, name="nr-cubes", geometry=true,
-    vertex=thisBox.getPropertyRaw("vertex") as String,
-    fragment=thisBox.getPropertyRaw("fragment") as String)
+lab = OpenDlssNrStudy(
+    owner,
+    size = 768,
+    name = "nr-cubes",
+    geometry = true,
+    vertex = requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+    fragment = requireNotNull(fragment) { "Missing fragment shader on this box or its parents" },
+)
 println(lab.availability.reason)
 :::fold the controls: network style, tone, structure, intensity and grade
-var style=1
-var tone=0f
-var structure=10f
-var intensity=1f
-var animate=false
-var reload=false
-var red=.65f
-var green=1.1f
-var blue=1.4f
+var style = 1
+var tone = 0f
+var structure = 10f
+var intensity = 1f
+var animate = false
+var reload = false
+var red = .65f
+var green = 1.1f
+var blue = 1.4f
 controlGroup("neural cubes") {
-    if(lab.availability.ready) {
-        slider("Network style",min=0.0,max=2.0,step=1.0,initialValue=1.0) {style=it.toInt()}
-        slider("Tone",min=-10.0,max=30.0,initialValue=0.0) {tone=it.toFloat()}
-        slider("Structure",min=-10.0,max=30.0,initialValue=10.0) {structure=it.toFloat()}
-        slider("NR intensity (0 = source)",min=0.0,max=1.0,initialValue=1.0) {intensity=it.toFloat()}
+    if (lab.availability.ready) {
+        slider("Network style", min = 0.0, max = 2.0, step = 1.0, initialValue = 1.0) { style = it.toInt() }
+        slider("Tone", min = -10.0, max = 30.0, initialValue = 0.0) { tone = it.toFloat() }
+        slider("Structure", min = -10.0, max = 30.0, initialValue = 10.0) { structure = it.toFloat() }
+        slider("NR intensity (0 = source)", min = 0.0, max = 1.0, initialValue = 1.0) { intensity = it.toFloat() }
     }
-    checkbox("Animate source",initialValue=false) {animate=it}
-    slider("Grade red",min=0.0,max=2.0,initialValue=.65) {red=it.toFloat()}
-    slider("Grade green",min=0.0,max=2.0,initialValue=1.1) {green=it.toFloat()}
-    slider("Grade blue",min=0.0,max=2.0,initialValue=1.4) {blue=it.toFloat()}
-    button("Reload edited shaders") {if(it)reload=true}
+    checkbox("Animate source", initialValue = false) { animate = it }
+    slider("Grade red", min = 0.0, max = 2.0, initialValue = .65) { red = it.toFloat() }
+    slider("Grade green", min = 0.0, max = 2.0, initialValue = 1.1) { green = it.toFloat() }
+    slider("Grade blue", min = 0.0, max = 2.0, initialValue = 1.4) { blue = it.toFloat() }
+    button("Reload edited shaders") { if (it) reload = true }
 }
 displayOpen("neural cubes")
 :::endfold
-println("SOURCE | NR | GRADE · 768 × 768 per panel. Edit fragment, then reload. Run record clip for six seconds of GPU frames.")
-val owned=lab
+println(
+    "SOURCE | NR | GRADE · 768 × 768 per panel. Edit fragment, then reload. Run record clip for six seconds of GPU frames.",
+)
+val owned = lab
 frames {
     try {
-        while(!owner.isClosed) {
-            owned.controls=OpenDlssNrControls(style=style,tone=tone,structure=structure,intensity=intensity)
-            owned.grade=Vector4f(red,green,blue,1f)
-            owned.animate=animate && !owned.recording
-            if(reload) {
-                owned.reload(thisBox.getPropertyRaw("vertex") as String,
-                    thisBox.getPropertyRaw("fragment") as String)
-                    .onFailure {println("Keeping working shaders: ${it.message}")}
-                reload=false
+        while (!owner.isClosed) {
+            owned.controls =
+                OpenDlssNrControls(style = style, tone = tone, structure = structure, intensity = intensity)
+            owned.grade = Vector4f(red, green, blue, 1f)
+            owned.animate = animate && !owned.recording
+            if (reload) {
+                owned
+                    .reload(
+                        requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+                        requireNotNull(fragment) { "Missing fragment shader on this box or its parents" },
+                    )
+                    .onFailure { println("Keeping working shaders: ${it.message}") }
+                reload = false
             }
             frame()
         }
-    } finally {owned.close()}
+    } finally {
+        owned.close()
+    }
 }
 ```
 
@@ -224,7 +235,7 @@ With **neural cubes** running at its defaults, run **record clip**. It uses the 
 shown below, with the output folder changed to:
 
 ```diffstatic {data-lang=kotlin}
-val folder=Path.of("build/opendlssnr-cubes/clip").toAbsolutePath().also {it.createDirectories()}
+val folder = Path.of("build/opendlssnr-cubes/clip").toAbsolutePath().also { it.createDirectories() }
 ```
 
 Don't change controls or reload shaders while recording. Encode the resulting GPU frames with:
@@ -255,14 +266,14 @@ The renderer box is complete:
 
 ```diffstatic {data-lang=kotlin}
 import afield.graphics.vulkan.util.Options
-import afield.app.protocol.Rect
+
 prop<Window>(window)
 prop<Renderer>(renderer)
-Options.enableVR=false
-Options.enableHDR=false
-Options.profiling=false
+Options.enableVR = false
+Options.enableHDR = false
+Options.profiling = false
 once.renderer {
-    window=Window("Field · neural ink", initialDimensions=Rect(40.0,40.0,2304.0,832.0))
+    window = Window("Field · neural ink", initialDimensions = Rect(40.0, 40.0, 2304.0, 832.0))
     Renderer(window)
 }
 start(renderer::run)
@@ -274,8 +285,6 @@ source → NR → comparison in that order in the caller's command buffer, befor
 Its [comparison shader](assets/opendlssnr/compare.frag) implements the headings and grade.
 
 ```diffstatic {data-lang=kotlin}
-import afield.ui.output.controlGroup
-import afield.ui.output.displayOpen
 import afield.graphics.render.neural.*
 
 val owner = renderer
@@ -284,52 +293,64 @@ prop<OpenDlssNrStudy>(lab)
 // Leave null for the editable fragment shader; try the bundled drawing or your own image.
 val imagePath: String? = null
 // val imagePath: String? = "public/docs/assets/opendlssnr/ink-input.png"
-lab = OpenDlssNrStudy(owner, size=768, imagePath=imagePath,
-    vertex=thisBox.getPropertyRaw("vertex") as String,
-    fragment=thisBox.getPropertyRaw("fragment") as String)
+lab = OpenDlssNrStudy(
+    owner,
+    size = 768,
+    imagePath = imagePath,
+    vertex = requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+    fragment = requireNotNull(fragment) { "Missing fragment shader on this box or its parents" },
+)
 println(lab.availability.reason)
 :::fold the controls: network style, tone, structure, intensity and grade
-var style=1
-var tone=0f
-var structure=10f
-var intensity=1f
-var animate=false
-var reload=false
-var red=.65f
-var green=1.1f
-var blue=1.4f
+var style = 1
+var tone = 0f
+var structure = 10f
+var intensity = 1f
+var animate = false
+var reload = false
+var red = .65f
+var green = 1.1f
+var blue = 1.4f
 controlGroup("neural ink") {
-    if(lab.availability.ready) {
-        slider("Network style",min=0.0,max=2.0,step=1.0,initialValue=1.0) {style=it.toInt()}
-        slider("Tone",min=-10.0,max=30.0,initialValue=0.0) {tone=it.toFloat()}
-        slider("Structure",min=-10.0,max=30.0,initialValue=10.0) {structure=it.toFloat()}
-        slider("NR intensity (0 = source)",min=0.0,max=1.0,initialValue=1.0) {intensity=it.toFloat()}
+    if (lab.availability.ready) {
+        slider("Network style", min = 0.0, max = 2.0, step = 1.0, initialValue = 1.0) { style = it.toInt() }
+        slider("Tone", min = -10.0, max = 30.0, initialValue = 0.0) { tone = it.toFloat() }
+        slider("Structure", min = -10.0, max = 30.0, initialValue = 10.0) { structure = it.toFloat() }
+        slider("NR intensity (0 = source)", min = 0.0, max = 1.0, initialValue = 1.0) { intensity = it.toFloat() }
     }
-    checkbox("Animate source",initialValue=false) {animate=it}
-    slider("Grade red",min=0.0,max=2.0,initialValue=.65) {red=it.toFloat()}
-    slider("Grade green",min=0.0,max=2.0,initialValue=1.1) {green=it.toFloat()}
-    slider("Grade blue",min=0.0,max=2.0,initialValue=1.4) {blue=it.toFloat()}
-    button("Reload edited shaders") {if(it)reload=true}
+    checkbox("Animate source", initialValue = false) { animate = it }
+    slider("Grade red", min = 0.0, max = 2.0, initialValue = .65) { red = it.toFloat() }
+    slider("Grade green", min = 0.0, max = 2.0, initialValue = 1.1) { green = it.toFloat() }
+    slider("Grade blue", min = 0.0, max = 2.0, initialValue = 1.4) { blue = it.toFloat() }
+    button("Reload edited shaders") { if (it) reload = true }
 }
 displayOpen("neural ink")
 :::endfold
-println("SOURCE | NR | GRADE · 768 × 768 per panel. Edit fragment, then reload. Run record clip for six seconds of GPU frames.")
-val owned=lab
+println(
+    "SOURCE | NR | GRADE · 768 × 768 per panel. Edit fragment, then reload. Run record clip for six seconds of GPU frames.",
+)
+val owned = lab
 frames {
     try {
-        while(!owner.isClosed) {
-            owned.controls=OpenDlssNrControls(style=style,tone=tone,structure=structure,intensity=intensity)
-            owned.grade=Vector4f(red,green,blue,1f)
-            owned.animate=animate && !owned.recording
-            if(reload) {
-                owned.reload(thisBox.getPropertyRaw("vertex") as String,
-                    thisBox.getPropertyRaw("fragment") as String)
-                    .onFailure {println("Keeping working shaders: ${it.message}")}
-                reload=false
+        while (!owner.isClosed) {
+            owned.controls =
+                OpenDlssNrControls(style = style, tone = tone, structure = structure, intensity = intensity)
+            owned.grade = Vector4f(red, green, blue, 1f)
+            owned.animate = animate && !owned.recording
+            if (reload) {
+                owned
+                    .reload(
+                        requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+                        requireNotNull(fragment) { "Missing fragment shader on this box or its parents" },
+                    )
+                    .onFailure { println("Keeping working shaders: ${it.message}") }
+                reload = false
             }
             frame()
         }
-    } finally {owned.close()}
+    } finally {
+        owned.close()
+    }
 }
 ```
 
@@ -428,11 +449,15 @@ and runs the same comparison at tone 0 / structure 10:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/opendlssnr/image-study.png" capture="native-window" capture-profile="linux-nvidia" macro-file="../../dev_docs/agents/demos/opendlssnr/image-study.yaml" capture-box="open_dlss_nr" wait-output=true wait-output-kind="all" wait-output-contains="NR Vulkan features enabled" wait="1" native-wait-frames="10" timeout="300" name="nr-image-study" embed=true alt="The original ink drawing, the tone-zero structure-ten Field NR result, and the same output graded cyan"}
 import afield.graphics.render.neural.OpenDlssNrStudy
-val study=OpenDlssNrStudy(renderer, imagePath="public/docs/assets/opendlssnr/ink-input.png")
-study.animate=false
+
+val study = OpenDlssNrStudy(renderer, imagePath = "public/docs/assets/opendlssnr/ink-input.png")
+study.animate = false
 frames {
-    try { while(true)frame() }
-    finally {study.close()}
+    try {
+        while (true) frame()
+    } finally {
+        study.close()
+    }
 }
 ```
 
@@ -448,34 +473,35 @@ or readback changes capture time, not the animation's 30 fps clock. Don't change
 records. The record box contains all of this code:
 
 ```diffstatic {data-lang=kotlin}
-import afield.graphics.render.neural.OpenDlssNrStudy
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 
 // Run beneath the live study box. The scene remains editable after recording.
-val study=lab
-check(study.availability.ready) {study.availability.reason}
-check(!study.recording) {"A recording is already running"}
-val folder=Path.of("build/opendlssnr-study/clip").toAbsolutePath().also {it.createDirectories()}
-val controls=study.controls.copy()
-val grade=study.grade.toString()
-val previousTime=study.time
-study.recording=true
-study.animate=false
+val study = lab
+check(study.availability.ready) { study.availability.reason }
+check(!study.recording) { "A recording is already running" }
+val folder = Path.of("build/opendlssnr-study/clip").toAbsolutePath().also { it.createDirectories() }
+val controls = study.controls.copy()
+val grade = study.grade.toString()
+val previousTime = study.time
+study.recording = true
+study.animate = false
 frames {
     try {
-        for(i in 0 until 180) {
-            check(study.controls==controls && study.grade.toString()==grade) {"Controls changed during capture; record again"}
-            study.time=i/30f
-            val saved=study.saveFrame(folder.resolve("frame-%03d.png".format(i)))
-            while(!saved.isDone)frame()
+        for (i in 0 until 180) {
+            check(study.controls == controls && study.grade.toString() == grade) {
+                "Controls changed during capture; record again"
+            }
+            study.time = i / 30f
+            val saved = study.saveFrame(folder.resolve("frame-%03d.png".format(i)))
+            while (!saved.isDone) frame()
             saved.join()
-            if(i%30==0)println("Recorded $i / 180")
+            if (i % 30 == 0) println("Recorded $i / 180")
         }
         println("NR STUDY RECORD DONE: 180 frames at 30 fps, 2304 × 832; $folder")
     } finally {
-        study.time=previousTime
-        study.recording=false
+        study.time = previousTime
+        study.recording = false
     }
 }
 ```
@@ -501,11 +527,16 @@ render pass, record the network and sample its output in a later shader:
 
 ```diffstatic {data-lang=kotlin}
 import afield.graphics.render.neural.*
-val pass=OpenDlssNrPass(renderer, width, height)
-pass.controls=OpenDlssNrControls(style=1, tone=0f, structure=10f)
+
+val pass = OpenDlssNrPass(renderer, width, height)
+pass.controls = OpenDlssNrControls(style = 1, tone = 0f, structure = 10f)
 // Inside Target.render(command, index), after rendering color:
-pass.evaluate(command, OpenDlssNrInputs(color, OpenDlssNrColorEncoding.LINEAR_LDR),
-    OpenDlssNrFrame(frameIndex))
+pass.evaluate(
+    command,
+    OpenDlssNrInputs(color, OpenDlssNrColorEncoding.LINEAR_LDR),
+    OpenDlssNrFrame(frameIndex),
+)
+
 // pass.output is a sampled linear RGBA16F texture. Close the pass when its owner stops.
 ```
 
