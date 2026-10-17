@@ -6,7 +6,9 @@ import afield.simulation.petri.petri
 prop<PetriNet>(sparkNet)
 prop<PetriRun>(sparkRun)
 
-sparkNet = petri("""
+sparkNet =
+    petri(
+        """
     #petri
     !grid 1/8
 
@@ -34,7 +36,8 @@ sparkNet = petri("""
     // four kicks fill charge, and emptying it is a clap
     charge : 0 ^4
     4*charge -[ clap : cp ]->
-""")
+""",
+    )
 
 // One run, shared: a run remembers the steps it has taken, so every query below reuses them.
 sparkRun = sparkNet.run()

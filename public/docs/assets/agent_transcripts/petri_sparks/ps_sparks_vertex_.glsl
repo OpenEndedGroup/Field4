@@ -39,12 +39,19 @@ const vec3[5] tint = {
 };
 
 // snare ring, kick ring, hat ring, from the centre out
-const float[3] ringRadius = { 0.36, 0.56, 0.76 };
-const vec3[3] ringTint = { vec3(0.30, 0.78, 1.00), vec3(1.00, 0.52, 0.18), vec3(1.00, 0.86, 0.40) };
+const float[3] ringRadius = {
+    0.36, 0.56, 0.76
+};
+const vec3[3] ringTint = {
+    vec3(0.30, 0.78, 1.00), vec3(1.00, 0.52, 0.18), vec3(1.00, 0.86, 0.40)
+};
+
 
 float hash(uint x) {
-    x ^= x >> 16; x *= 0x7feb352du;
-    x ^= x >> 15; x *= 0x846ca68bu;
+    x ^= x >> 16;
+    x *= 0x7feb352du;
+    x ^= x >> 15;
+    x *= 0x846ca68bu;
     x ^= x >> 16;
     return float(x) / 4294967295.0;
 }
@@ -85,7 +92,8 @@ void main() {
         float fade = 1.0 - age / lifetime;
         float twinkle = 0.55 + 0.45 * sin(age * 47.0 + hash(seed + 3u) * 6.2831853);
         colour = mix(vec3(1.0), tint[kind], clamp(age * 3.0, 0.0, 1.0)) * fade * fade * twinkle * 0.9;
-    } else {
+    }
+    else {
         uint q = p - SLOTS * PER;
         uint ring = min(q / DUST, 2u);
         uint j = q % DUST;

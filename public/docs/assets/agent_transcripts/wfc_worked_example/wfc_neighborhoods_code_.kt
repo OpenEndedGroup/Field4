@@ -1,6 +1,8 @@
-// Section 4: the neighborhood is a modelling decision, not a performance knob.
-// Diagonal stripes two cells wide: colour depends on (x + y) mod 4, so along the anti-diagonal
-// offset (1, -1) the colour never changes, while east and south change only half the time.
+/*
+Section 4: the neighborhood is a modelling decision, not a performance knob.
+Diagonal stripes two cells wide: colour depends on (x + y) mod 4, so along the anti-diagonal
+offset (1, -1) the colour never changes, while east and south change only half the time.
+*/
 val stripeA = Triple(0.17f, 0.25f, 0.45f)
 val stripeB = Triple(0.91f, 0.71f, 0.29f)
 val source = Img.generateRGB(24, 16) { x, y -> if ((x + y) % 4 < 2) stripeA else stripeB }
@@ -29,5 +31,5 @@ showImgGrid(
     "von Neumann (4)" to vn.first.upscaleNearest(7),
     "Moore (8)" to moore.first.upscaleNearest(7),
     columns = 3,
-    cellSide = 340
+    cellSide = 340,
 )
