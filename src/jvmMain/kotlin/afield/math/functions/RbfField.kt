@@ -7,6 +7,11 @@ import org.ejml.simple.SimpleMatrix
 import kotlin.math.sqrt
 
 /**
+ * Scattered-data interpolation over two or more dimensions with radial basis functions: [RbfField]
+ * and its [rbfField] builder, the multi-dimensional counterpart of `Functions.rbf`.
+ */
+
+/**
  * Radial basis function interpolation in two or more dimensions: a smooth surface through values
  * scattered at points in a plane, or a volume, with no grid. The 1D version, [RbfInterpolator] behind
  * `Functions.rbf`, fits a curve through `(x, y)` samples; this one fits `f(point)` through
