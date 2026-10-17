@@ -158,7 +158,7 @@ remembered press would re-fire on every rerun, so editing one character of a DSP
 retrigger the note.
 
 ```edn [field-box id="control_surface_button" role="properties"]
-{"id" "control_surface_button" "index" 2 "name" "hold, don't latch" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "hold, don't latch" "_tombstone" false "frame" #afield/rect [80.0 300.0 320.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "control_surface_button_code_.kt" "lines" 26 "characters" 1121 "sha256" "9f3c4470b8a117c278a1295de51a0ba3a43d6d6e73ebf6bce5f1523624d01f8d"}]}
+{"id" "control_surface_button" "index" 2 "name" "hold, don't latch" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "hold, don't latch" "_tombstone" false "frame" #afield/rect [80.0 300.0 320.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "control_surface_button_code_.kt" "lines" 27 "characters" 1151 "sha256" "7352dfd642d0d7f6fdef7188f40fd24b4798725681168c5d5c5e1beafb71d1c3"}]}
 ```
 
 ```kotlin [field-property box="control_surface_button" name="code" path="control_surface_button_code_.kt"]
@@ -180,7 +180,8 @@ val log = mutableListOf<String>()
 controlGroup("gesture") {
     button("gate") { down ->
         log += if (down) "gate down" else "gate up"
-        println(log.takeLast(6).joinToString("  "))
+        if (log.size > 6) log.removeAt(0)
+        println(log.joinToString("  "))
     }
     checkbox("bypass", initialValue = false) { on ->
         println("bypass ${if (on) "on" else "off"}")

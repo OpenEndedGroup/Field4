@@ -19,7 +19,7 @@ line: restarting a blend throws away the speed it had, which is what any one-sho
 does every time you re-aim it. Left alone, `inertialTo` re-solves and keeps that speed.
 
 ```edn [field-box id="inertial_vs_restarting" role="properties"]
-{"id" "inertial_vs_restarting" "index" 0 "name" "what restarting a blend costs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what restarting a blend costs" "_tombstone" false "frame" #afield/rect [80.0 900.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inertial_vs_restarting_code_.kt" "lines" 30 "characters" 1054 "sha256" "52a6d24d57ff733ea25d5f597cf4dcc2d57e969cce86590c6c8ebe3b98c66efc"}]}
+{"id" "inertial_vs_restarting" "index" 0 "name" "what restarting a blend costs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what restarting a blend costs" "_tombstone" false "frame" #afield/rect [80.0 900.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inertial_vs_restarting_code_.kt" "lines" 35 "characters" 1132 "sha256" "bb691322ebe32922ff617ee9e9a7b9e6b2633ab0d4e2181b01a3fec0f85ac680"}]}
 ```
 
 ```kotlin [field-property box="inertial_vs_restarting" name="code" path="inertial_vs_restarting_code_.kt"]
@@ -44,11 +44,16 @@ loop {
     target += goal
     reSolved += carried()
     fromRest += restarted()
+    if (target.size > 300) {
+        target.removeAt(0)
+        reSolved.removeAt(0)
+        fromRest.removeAt(0)
+    }
 
     showSignals(
-        "goal" to target.takeLast(300),
-        "left to re-solve" to reSolved.takeLast(300),
-        "restarted every frame" to fromRest.takeLast(300),
+        "goal" to target,
+        "left to re-solve" to reSolved,
+        "restarted every frame" to fromRest,
         title = "re-solving a blend against restarting it",
         xTitle = "frame",
     )
@@ -205,7 +210,7 @@ Launch it (Alt-R). `goal` jumps between two values; reading `eased` arrives ther
 inertia instead of snapping, and re-aims mid-flight without losing the speed it had.
 
 ```edn [field-box id="inertial_hello" role="properties"]
-{"id" "inertial_hello" "index" 2 "name" "inertialTo — the whole idea" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "inertialTo — the whole idea" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inertial_hello_code_.kt" "lines" 18 "characters" 609 "sha256" "816cb237174d1b1b731c8d210088a93a5591008b7bfcebcc06b0886e8b049809"}]}
+{"id" "inertial_hello" "index" 2 "name" "inertialTo — the whole idea" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "inertialTo — the whole idea" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inertial_hello_code_.kt" "lines" 22 "characters" 668 "sha256" "98d39c4477929f5ede9fd4f5ef9b6dfa8f0ad854450edc73d5a9277434dd9fc5"}]}
 ```
 
 ```kotlin [field-property box="inertial_hello" name="code" path="inertial_hello_code_.kt"]
@@ -220,9 +225,13 @@ loop {
     goal = if ((frameNumber / 40) % 2 == 0) 1.0 else -1.0
     target += goal
     seen += eased()
+    if (target.size > 240) {
+        target.removeAt(0)
+        seen.removeAt(0)
+    }
     showSignals(
-        "goal" to target.takeLast(240),
-        "inertialTo" to seen.takeLast(240),
+        "goal" to target,
+        "inertialTo" to seen,
         title = "one value, chasing a square wave",
         xTitle = "frame",
     )
