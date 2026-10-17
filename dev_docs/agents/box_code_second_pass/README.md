@@ -32,7 +32,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Drawing helpers and explicit path starts](../box_code_adoption_batch_14/README.md) | Eleven more findings addressed; 80 Kotlin bodies, four transcripts, actual geometry comparisons and browser captures pass. |
 
-[Machine checkpoint](checkpoint.json): **153 of 405 findings addressed**, one implemented with
+| [Current contracts and formatter coverage](../box_code_adoption_batch_15/README.md) | Seventeen more findings addressed; fourteen transcript routes, empty/constant scalar variants, shader validation and quoted-key formatter regressions verified. |
+
+[Machine checkpoint](checkpoint.json): **170 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.

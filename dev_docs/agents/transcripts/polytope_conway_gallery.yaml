@@ -16,48 +16,49 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 370.0, h: 100.0 }
       properties:
         code: |
-
-          // ***** CHANGE THIS LINE *****  Any prefix expression over the seeds T C O I D and the
-          // operators d a k t g j n z o e s m b, with optional kN / tN degree indices. Re-run and
-          // the whole contact sheet rebuilds — including the captions, which are read off the
-          // topology and not off the pictures.
-          val expressions = listOf("C", "dC", "aC", "kC", "tC", "gC", "bC", "k4aC", "sD")
+          /*
+          ***** CHANGE THIS LINE *****  Any prefix expression over the seeds T C O I D and the
+          operators d a k t g j n z o e s m b, with optional kN / tN degree indices. Re-run and
+          the whole contact sheet rebuilds — including the captions, which are read off the
+          topology and not off the pictures.
+          */
+          val expressions = ["C", "dC", "aC", "kC", "tC", "gC", "bC", "k4aC", "sD"]
 
           val view = MeshView(wireframe = false, distance = 2.3)
           val cells = expressions.map { source ->
               val result = conway(source)
               val topology = result.polyhedron.topology
-              val faces = topology.elements(2)
-                  .groupingBy { topology.faceCycle(it.id).size }
-                  .eachCount()
-                  .toSortedMap()
+              val faces = topology.elements(2).groupingBy { topology.faceCycle(it.id).size }.eachCount().toSortedMap()
               ThreeMeshPanel(
                   label = "$source  ${result.history.joinToString("") { it.symbol.toString() }}",
                   mesh = result.polyhedron.toTriMesh(),
-                  facts = "${topology.elements(0).size}v ${topology.elements(1).size}e ${topology.elements(2).size}f" +
-                      " · ${faces.entries.joinToString(" ") { "${it.value}×${it.key}-gon" }}" +
-                      " · χ=${topology.eulerCharacteristic()}",
+                  facts =
+                      "${topology.elements(0).size}v ${topology.elements(1).size}e ${topology.elements(2).size}f" +
+                          " · ${faces.entries.joinToString(" ") { "${it.value}×${it.key}-gon" }}" +
+                          " · χ=${topology.eulerCharacteristic()}",
               )
           }
           threeGrid(cells, channel = "gallery", name = "gallery", columns = 3, height = 756, cellWidth = 300, view = view)
 
           // Second column of the caption is `history`: the PRIMITIVES that actually ran, seed
           // outward. Composites are rewritten, never reimplemented, so `bC` reports `at`.
-          println(expressions.joinToString("\n") { source ->
-              val r = conway(source)
-              "%-6s  notationHistory %-6s  history %-6s".format(
-                  source,
-                  r.notationHistory.joinToString("") { it.symbol.toString() },
-                  r.history.joinToString("") { it.symbol.toString() },
-              )
-          })
+          println(
+              expressions.joinToString("\n") { source ->
+                  val r = conway(source)
+                  "%-6s  notationHistory %-6s  history %-6s"
+                      .format(
+                          source,
+                          r.notationHistory.joinToString("") { it.symbol.toString() },
+                          r.history.joinToString("") { it.symbol.toString() },
+                      )
+              },
+          )
   - create:
       box: polytope_abstract_dual
       name: "2 — a dual with no coordinates"
       frame: { x: 1120.0, y: 80.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-
           // Take the cube's coordinates away. The topology is untouched, and every combinatorial
           // question about the dual is still decidable.
           val abstractCube = PolyhedralObject(cube().topology)
@@ -65,17 +66,25 @@ operations:
 
           // Ask the abstract object for geometry anyway, and keep whatever it actually says.
           // These are real caught exceptions; nothing here paraphrases an error message.
-          val flineRefusal = runCatching { abstract.toFaceFLines() }
+          val flineRefusal = runCatching {
+              abstract.toFaceFLines()
+          }
               .fold({ "no exception — unexpected" }, { "${it::class.simpleName}: ${it.message}" })
-          val triangleRefusal = runCatching { abstract.triangulate() }
+          val triangleRefusal = runCatching {
+              abstract.triangulate()
+          }
               .fold({ "no exception — unexpected" }, { "${it::class.simpleName}: ${it.message}" })
 
-          // ***** CHANGE THIS *****  Swap DualCentroidRealization for any RealizationPolicy3 —
-          // `RealizationPolicy3 { _, _ -> null }` keeps the object abstract forever, which is a
-          // perfectly legal thing for a polytope to be.
+          /*
+          ***** CHANGE THIS ***** Try a realization policy that supplies coordinates.
+          The right-hand column draws that geometry; policies returning null belong in the
+          abstract comparison above, where geometry refusals are caught and displayed.
+          */
           val realized = cube().dual(DualCentroidRealization).polyhedron
 
-          markdown("dual", """
+          markdown(
+              "dual",
+              """
               #### The dual of `cube()` with and without an embedding
 
               | | abstract | after a realization policy |
@@ -88,7 +97,10 @@ operations:
               | `triangulate()` | `$triangleRefusal` | ${realized.triangulate().triangleCount} triangles |
 
               The left column is a complete, valid, checkable octahedron. It has nowhere to be.
-          """.trimIndent(), width = 900)
+          """
+                  .trimIndent(),
+              width = 900,
+          )
 
           // The registered value printer reduces this to a public data class from Summaries.kt.
           abstract.topology
@@ -98,15 +110,13 @@ operations:
       frame: { x: 80.0, y: 1000.0, w: 420.0, h: 100.0 }
       properties:
         code: |
-
           // A scalar per face, written as an ordinary attribute. Selection and deployment are
           // separate concerns: `band` decides WHERE kis happens, `spike` decides HOW MUCH.
           var source = dodecahedron()
           val realization = source.realization!!
           val vertexIndex = source.topology.elements(0).mapIndexed { i, v -> v.id.value to i }.toMap()
           for (face in source.topology.elements(2)) {
-              val centre = source.topology.faceCycle(face.id)
-                  .map { realization[vertexIndex.getValue(it)] }
+              val centre = source.topology.faceCycle(face.id).map { realization[vertexIndex.getValue(it)] }
               val x = centre.map { it.x }.average()
               val y = centre.map { it.y }.average()
               source = source.withAttributes(
@@ -125,31 +135,36 @@ operations:
           val deployment = result.deployments.single()
           val deployed = deployment.scalarParameters.values.mapNotNull { it["heightScale"] }
 
+          val scalarRange = if (deployed.isEmpty()) "no selected faces" else "%.3f .. %.3f".format(deployed.min(), deployed.max())
           println(
               """
               kis deployed over ${deployment.selectedSources?.size} of ${source.topology.elements(2).size} faces
-              heightScale resolved over ${deployed.size} sources, %.3f .. %.3f
+              heightScale resolved over ${deployed.size} sources: $scalarRange
               output ${out.topology.elements(0).size}v ${out.topology.elements(1).size}e ${out.topology.elements(2).size}f
               hover a face; click it to read the lineage that produced it
-              """.trimIndent().format(deployed.min(), deployed.max()),
+              """
+                  .trimIndent(),
           )
 
           val card: (String) -> Unit = { message -> markdown("face provenance", message) }
 
           // One FLine per authoritative polygon. The colour is the deployed scalar, carried on the
           // face by the attribute propagation policy — no coordinate is consulted to choose it.
-          val lo = deployed.min()
-          val hi = deployed.max()
+          val lo = deployed.minOrNull()
+          val hi = deployed.maxOrNull()
           val faceLines = out.toFaceFLines { face, line ->
               val spike = (out.attributes[face.id]["spike"] as? Number)?.toDouble()
-              val u = if (spike == null) null else ((spike - lo) / (hi - lo)).coerceIn(0.0, 1.0)
+              val u = when {
+                  spike == null || lo == null || hi == null -> null
+                  hi == lo -> 0.5 // A constant scalar field uses the middle of the palette.
+                  else -> ((spike - lo) / (hi - lo)).coerceIn(0.0, 1.0)
+              }
               val role = (result.lineage(face.id) as? ElementLineage.Derived)?.role ?: "source"
               line.filled = true
               line.stroked = true
               line.thickness = if (u == null) 1.1 else 1.7
               line.color =
-                  if (u == null) vec(0.30, 0.34, 0.40, 0.55)
-                  else vec(0.20 + 0.78 * u, 0.84 - 0.28 * u, 0.98 - 0.72 * u, 0.80)
+                  if (u == null) vec(0.30, 0.34, 0.40, 0.55) else vec(0.20 + 0.78 * u, 0.84 - 0.28 * u, 0.98 - 0.72 * u, 0.80)
               line.hoverColor = vec(0.96, 0.98, 1.00, 0.98)
               line.onClick = { hit ->
                   card(
@@ -160,7 +175,8 @@ operations:
                       - deployed spike: `${spike?.let { "%.3f".format(it) } ?: "not selected"}`
                       - source: ${result.sourceElements(face.id).joinToString { "rank ${it.rank} / id ${it.id.value}" }}
                       - clicked at: `${hit.position}`
-                      """.trimIndent(),
+                      """
+                          .trimIndent(),
                   )
               }
           }
@@ -180,9 +196,8 @@ operations:
       frame: { x: 1120.0, y: 1000.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.math.linalg.Vec3
           import kotlin.random.Random
-          
+
           // A real Conway output, then every vertex jittered. The topology is not touched: the
           // solver only ever returns copy(realization = ...).
           val clean = conway("aC").polyhedron
@@ -190,50 +205,64 @@ operations:
           // ***** CHANGE THIS *****  the jitter amplitude. Push it far enough and the solver stops
           // converging, and `reason` will say so instead of quietly returning something wrong.
           val amplitude = 0.62f
-          val jittered = clean.copy(realization = Realization3(
-              clean.realization!!.vertexCoordinates.map {
-                  Vec3(it).add(
-                      (rng.nextDouble() - 0.5).toFloat() * amplitude,
-                      (rng.nextDouble() - 0.5).toFloat() * amplitude,
-                      (rng.nextDouble() - 0.5).toFloat() * amplitude,
-                  )
-              },
-          ))
-          
+          val jittered = clean.copy(
+              realization = Realization3(
+                  clean.realization!!.vertexCoordinates.map {
+                      Vec3(it)
+                          .add(
+                              (rng.nextDouble() - 0.5).toFloat() * amplitude,
+                              (rng.nextDouble() - 0.5).toFloat() * amplitude,
+                              (rng.nextDouble() - 0.5).toFloat() * amplitude,
+                          )
+                  },
+              ),
+          )
+
           val solved = jittered.solveRealization()
-          
+
           val view = MeshView(wireframe = false, distance = 2.5)
           threeGrid(
               "aC as built" to clean.toTriMesh(),
               "jittered" to jittered.toTriMesh(),
               "solveRealization()" to solved.polyhedron.toTriMesh(),
-              channel = "relax", name = "relax", columns = 3, height = 360, cellWidth = 420, view = view,
+              channel = "relax",
+              name = "relax",
+              columns = 3,
+              height = 360,
+              cellWidth = 420,
+              view = view,
           )
-          
+
           fun row(label: String, d: RealizationDiagnostics) =
-              "| $label | %.5f | %.3e | %.3e | %.3e | ${d.degenerateFaces.size} |".format(
-                  d.edgeLengthMean,
-                  d.edgeLengthRmsDeviation,
-                  d.maxFacePlanarityError,
-                  d.facePlanarityRmsError,
-              )
-          
-          markdown("diagnostics", """
+              "| $label | %.5f | %.3e | %.3e | %.3e | ${d.degenerateFaces.size} |"
+                  .format(
+                      d.edgeLengthMean,
+                      d.edgeLengthRmsDeviation,
+                      d.maxFacePlanarityError,
+                      d.facePlanarityRmsError,
+                  )
+
+          markdown(
+              "diagnostics",
+              """
               | embedding | edge mean | edge RMS dev | max planarity err | planarity RMS | degenerate |
               |---|---|---|---|---|---|
               ${row("as built", clean.geometryDiagnostics())}
               ${row("jittered", solved.initialDiagnostics)}
               ${row("solved", solved.finalDiagnostics)}
-          
+
               converged = **${solved.converged}** &middot; iterations = ${solved.iterations} &middot;
               reason = `${solved.reason}` &middot;
               topology object identical = **${solved.polyhedron.topology === jittered.topology}**
-          
+
               This is constraint relaxation, not canonicalisation. It has no symmetry model and it
               cannot tell you the shape you wish you had given it — only how far the shape you did
               give it is from a common edge length, a common radius and planar faces.
-          """.trimIndent(), width = 940)
-          
+          """
+                  .trimIndent(),
+              width = 940,
+          )
+
           // The solve result is already a data class, so it visualizes without a registered printer.
           solved
   - execute:
