@@ -1,4 +1,5 @@
-/** DLSS super resolution, DLAA and Ray Reconstruction through NVIDIA NGX, as a pass recorded into a Vulkan command buffer.
+/**
+ * DLSS super resolution, DLAA and Ray Reconstruction through NVIDIA NGX, as a pass recorded into a Vulkan command buffer.
  *
  * [DlssReconstruction] takes render-resolution color, depth and motion ([ReconstructionInputs]), plus
  * [RayReconstructionGuides] when ray reconstruction is on, and writes an output-resolution texture.

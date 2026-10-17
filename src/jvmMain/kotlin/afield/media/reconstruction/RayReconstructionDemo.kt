@@ -1,4 +1,5 @@
-/** A direct-lighting scene lit by RTXDI whose output can be switched between raw, spatially denoised and DLSS Ray Reconstruction paths.
+/**
+ * A direct-lighting scene lit by RTXDI whose output can be switched between raw, spatially denoised and DLSS Ray Reconstruction paths.
  *
  * [RayReconstructionDemo] reuses `DirectLightingDemo` for the G-buffer and lighting, builds the
  * guide images ray reconstruction needs, and runs two [DlssReconstruction] instances at native

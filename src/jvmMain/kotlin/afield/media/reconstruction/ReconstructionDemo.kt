@@ -1,4 +1,5 @@
-/** A small editable raster scene for trying DLAA and DLSS super resolution without ray tracing.
+/**
+ * A small editable raster scene for trying DLAA and DLSS super resolution without ray tracing.
  *
  * [ReconstructionDemo] renders color, depth and motion at the input resolution recommended for its
  * [ReconstructionMode] and hands them to [DlssReconstruction]. Leave `mode` null to see the

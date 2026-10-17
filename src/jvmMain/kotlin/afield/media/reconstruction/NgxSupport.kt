@@ -1,4 +1,5 @@
-/** Detection of NVIDIA NGX support and the sizes and modes DLSS reconstruction accepts.
+/**
+ * Detection of NVIDIA NGX support and the sizes and modes DLSS reconstruction accepts.
  *
  * [NgxSupport] reports whether DLAA, DLSS super resolution and Ray Reconstruction are available on
  * a device; ordinary rendering never requires NGX. [ReconstructionMode] lists the quality modes,

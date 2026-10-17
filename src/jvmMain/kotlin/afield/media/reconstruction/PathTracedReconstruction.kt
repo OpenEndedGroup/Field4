@@ -1,4 +1,5 @@
-/** Runs a path tracer, converts its output into ray reconstruction guides, and denoises it with DLSS Ray Reconstruction, in one ordered pass.
+/**
+ * Runs a path tracer, converts its output into ray reconstruction guides, and denoises it with DLSS Ray Reconstruction, in one ordered pass.
  *
  * [PathTracedReconstruction] takes an uninstalled `PathTracingRenderer`, owns its dispatch and
  * closes it. `view` selects the raw, progressive or reconstructed image, and `gpuMilliseconds`
