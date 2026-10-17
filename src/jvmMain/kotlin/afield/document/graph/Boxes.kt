@@ -82,6 +82,20 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.script.experimental.api.KotlinType
 
+/**
+ * The [Box] model: a box's properties, its `children`/`parents` graph, and the property sets that
+ * decide what is saved and what is sent to the browser.
+ *
+ * [Box] holds its properties in a property bag and implements [HasProperties] and [HasHierarchy].
+ * [Box.connect] and [Box.disconnect] edit the edge sets (`children` by default). The companion's
+ * `ioPersistentProperties` lists what is written to `metadata.edn`, `ioSeparateProperties` maps the
+ * properties written as sidecar files to their extensions (`code` to `kt`, shader stages to `glsl`),
+ * and `uiResyncProperties` lists what is pushed to connected clients when it changes.
+ */
+
+/**
+ * Pending (box, property name) pairs that [doResync] will send to the box's connected clients.
+ */
 var needsResync = ConcurrentSet<Pair<Box, String>>()
 
 /**
