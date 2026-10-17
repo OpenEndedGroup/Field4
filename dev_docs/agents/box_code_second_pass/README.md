@@ -38,7 +38,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Drawing and painting path helpers](../box_code_adoption_batch_17/README.md) | Eleven more findings addressed; seventy code bodies, three transcripts and actual geometry checks verified; native paint rendering explicitly unavailable. |
 
-[Machine checkpoint](checkpoint.json): **186 of 405 findings addressed**, one implemented with
+| [Typed shader-source reads](../box_code_adoption_batch_18/README.md) | Five more findings addressed; 21 code bodies, six compiled graphs/full examples and live inherited-source reads verified. |
+
+[Machine checkpoint](checkpoint.json): **191 of 405 findings addressed**, one implemented with
 external-service verification pending; all other findings stay open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
