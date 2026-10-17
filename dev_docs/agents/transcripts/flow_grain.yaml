@@ -311,8 +311,10 @@ operations:
             vec2 grid = p / H - .5;
             ivec2 cell = ivec2(floor(grid));
             vec2 f = fract(grid);
-            return mix(mix(readCell(field, cell), readCell(field, cell + ivec2(1,0)), f.x),
-            mix(readCell(field, cell + ivec2(0,1)), readCell(field, cell + ivec2(1)), f.x), f.y);
+            // Cell-centred bilinear interpolation; readCell rejects stale tile generations.
+            vec4 lower = mix(readCell(field, cell), readCell(field, cell + ivec2(1, 0)), f.x);
+            vec4 upper = mix(readCell(field, cell + ivec2(0, 1)), readCell(field, cell + ivec2(1)), f.x);
+            return mix(lower, upper, f.y);
         }
         void storeCell(int index, vec3 value) {
             pc.target.v[index] = vec4(value, intBitsToFloat(pc.tiles.v[index / (N * N)].z));
@@ -341,12 +343,7 @@ operations:
         mesh.tiles = { tileHeaders }
         mesh.clock = { flowClock }
         mesh.emitter = { flowEmitter }
-        module +=
-            "barrier" to
-                computeTask { _, cmd, _ ->
-                    computeMemoryBarrier(cmd, null as VulkanBuffer?)
-                    graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
-                }
+        module += "barrier" to computeBarrier(graphics = true)
         flowSimulation += "advect" to module
         loop { true }
             .end {
@@ -400,12 +397,7 @@ operations:
         mesh.tiles = { tileHeaders }
         mesh.clock = { flowClock }
         mesh.emitter = { flowEmitter }
-        module +=
-            "barrier" to
-                computeTask { _, cmd, _ ->
-                    computeMemoryBarrier(cmd, null as VulkanBuffer?)
-                    graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
-                }
+        module += "barrier" to computeBarrier(graphics = true)
         flowSimulation += "divergence" to module
         loop { true }
             .end {
@@ -450,11 +442,7 @@ operations:
             mesh.tiles = { tileHeaders }
             mesh.clock = { flowClock }
             mesh.emitter = { flowEmitter }
-            module +=
-                "barrier-$i" to
-                    computeTask { _, cmd, _ ->
-                        computeMemoryBarrier(cmd, null as VulkanBuffer?)
-                    }
+            module += "barrier-$i" to computeBarrier()
         }
         flowSimulation += "pressure" to module
         loop { true }
@@ -499,12 +487,7 @@ operations:
         mesh.tiles = { tileHeaders }
         mesh.clock = { flowClock }
         mesh.emitter = { flowEmitter }
-        module +=
-            "barrier" to
-                computeTask { _, cmd, _ ->
-                    computeMemoryBarrier(cmd, null as VulkanBuffer?)
-                    graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
-                }
+        module += "barrier" to computeBarrier(graphics = true)
         flowSimulation += "project" to module
         loop { true }
             .end {
@@ -554,12 +537,7 @@ operations:
         mesh.tiles = { tileHeaders }
         mesh.clock = { flowClock }
         mesh.emitter = { flowEmitter }
-        module +=
-            "barrier" to
-                computeTask { _, cmd, _ ->
-                    computeMemoryBarrier(cmd, null as VulkanBuffer?)
-                    graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
-                }
+        module += "barrier" to computeBarrier(graphics = true)
         flowSimulation += "particles" to module
         loop { true }
             .end {
@@ -582,21 +560,28 @@ operations:
             int id = int(gl_GlobalInvocationID.x);
             if (id >= 16000) return;
             int slot = id / 640;
-            vec4 old = pc.source.v[id*2];
-            vec4 smoothVelocity = pc.source.v[id*2+1];
+            vec4 old = pc.source.v[id * 2];
+            vec4 smoothVelocity = pc.source.v[id * 2 + 1];
             int generation = pc.tiles.v[slot].z;
             vec2 lower = vec2(pc.tiles.v[slot].xy) * TILE;
             vec2 p = old.xy;
-            if (floatBitsToInt(old.w) != generation || any(lessThan(p,lower)) || any(greaterThanEqual(p,lower+TILE))) {
-                p = lower + vec2(flowRandom(ivec2(id % 640, pc.tiles.v[slot].x), pc.tiles.v[slot].y), flowRandom(ivec2(id % 640 + 9923, pc.tiles.v[slot].x), pc.tiles.v[slot].y)) * TILE;
+            bool staleGeneration = floatBitsToInt(old.w) != generation;
+            bool outsideTile = any(lessThan(p, lower)) || any(greaterThanEqual(p, lower + TILE));
+            // Relocation invalidates both the old position and its smoothed velocity.
+            if (staleGeneration || outsideTile) {
+                vec2 randomInTile = vec2(
+                flowRandom(ivec2(id % 640, pc.tiles.v[slot].x), pc.tiles.v[slot].y),
+                flowRandom(ivec2(id % 640 + 9923, pc.tiles.v[slot].x), pc.tiles.v[slot].y)
+                );
+                p = lower + randomInTile * TILE;
                 smoothVelocity = vec4(0);
             }
             vec2 velocity = flowVelocity(p) + vec2(0,-.18);
             vec2 next = p + velocity * pc.clock.y;
             if (!rock(next)) p = next;
             else velocity *= 0.;
-            pc.target.v[id*2] = vec4(p, 0, intBitsToFloat(generation));
-            pc.target.v[id*2+1] = vec4(flowSmoothVelocity(smoothVelocity.xy, velocity, pc.clock.y, .12),0,0);
+            pc.target.v[id * 2] = vec4(p, 0, intBitsToFloat(generation));
+            pc.target.v[id * 2 + 1] = vec4(flowSmoothVelocity(smoothVelocity.xy, velocity, pc.clock.y, .12),0,0);
         }
 - create:
     box: flow_grain
@@ -687,7 +672,10 @@ operations:
         vec2 flowVelocity(vec2 p) {
             vec2 grid = p / H - .5, f = fract(grid);
             ivec2 c = ivec2(floor(grid));
-            return mix(mix(atCell(c),atCell(c+ivec2(1,0)),f.x),mix(atCell(c+ivec2(0,1)),atCell(c+ivec2(1)),f.x),f.y);
+            // The same cell-centred interpolation used by the simulation pass.
+            vec2 lower = mix(atCell(c), atCell(c + ivec2(1, 0)), f.x);
+            vec2 upper = mix(atCell(c + ivec2(0, 1)), atCell(c + ivec2(1)), f.x);
+            return mix(lower, upper, f.y);
         }
         void main() {
             vec2 world = flowUVToWorld(uv, pc.history.frame.inverseCurrent);
@@ -800,7 +788,9 @@ operations:
         renderer += "flow-strokes" to module
         loop { true }
             .end {
-                if (renderer.renderList.modules["flow-strokes"] === module) renderer.renderList.modules.remove("flow-strokes")
+                if (renderer.renderList.modules["flow-strokes"] === module) {
+                    renderer.renderList.modules.remove("flow-strokes")
+                }
             }
       vertex: |
         #version 450
@@ -914,7 +904,16 @@ operations:
             var recording = false
             try {
                 val ticket = resetFlow.request()
-                while (frame() && resetFlow.completed < ticket) {}
+                val resetStarted = System.nanoTime()
+                val resetTimeoutNanos = 30_000_000_000L
+                while (resetFlow.completed < ticket) {
+                    // Ignore a prior failure while this new request is still pending.
+                    if (!resetFlow.pending) check(resetFlow.failure == null) { "Reset failed: ${resetFlow.failure}" }
+                    check(System.nanoTime() - resetStarted < resetTimeoutNanos) {
+                        "Timed out waiting for reset $ticket: ${resetFlow.failure ?: "no frame-boundary consumer"}"
+                    }
+                    if (!frame()) return@frames
+                }
                 println("Profile settings: $settings; reset ticket=${resetFlow.completed}")
                 val start = renderer.frameCounter
                 while (frame() && renderer.frameCounter - start < 60) {} // Warm shaders and caches.
