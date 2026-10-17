@@ -18,6 +18,14 @@ expect:
     - "KDocAttachmentGuard ok"
 */
 /**
+ * A check over the repository's `.kt` files under `src/` (not `src/personal/`) for KDoc blocks that would publish against the wrong declaration.
+ *
+ * It reports a block whose next line the extractor cannot parse as a declaration (the block slides onto
+ * a later symbol) and two blocks stacked with nothing between them. It runs as the smoke test
+ * `docs.kdoc-attachment.guard`.
+ */
+
+/**
  * Fails the build for a KDoc comment that does not attach to the declaration its author meant.
  *
  * ### The failure this exists to stop
