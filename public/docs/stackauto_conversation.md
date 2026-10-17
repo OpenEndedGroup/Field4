@@ -61,13 +61,15 @@ The two programs are strings at the end of the box's Kotlin, and both start iner
 <!-- stackauto-study-source:starter-slots -->
 ```diffstatic {data-lang=kotlin}
 // The vertex shader's slot: where each face goes. Talk to it in this box's AI4 chat.
-module.explode = """
+module.explode =
+    """
 # (start) every face where it belongs: pushed nowhere, shrunk not at all
 [0,0,0,0]
 """
 
 // The fragment shader's slot: each face's colour, and where it burns through.
-module.face_decay = """
+module.face_decay =
+    """
 # (start) one warm grey on every face, nothing burned
 [0.75,0.72,0.68,1]
 """
