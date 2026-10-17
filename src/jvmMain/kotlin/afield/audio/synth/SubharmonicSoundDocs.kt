@@ -34,6 +34,8 @@ expect:
  * few hertz of each bass note, that the zero-crossing tracker jumps around on unfiltered speech and
  * stops when the speech is lowpassed, and so on.
  */
+
+/** Renders and checks the subharmonic page's audio scenes; see the file overview. */
 object SubharmonicSoundDocs {
 
     internal const val SR = 48_000

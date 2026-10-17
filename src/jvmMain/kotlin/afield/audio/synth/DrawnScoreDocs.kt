@@ -52,6 +52,8 @@ expect:
  * back through the same `NotationSpace`. As the `synth.drawn.score` FIELD_TEST everything renders
  * to a temporary directory and nothing committed is written.
  */
+
+/** Renders and measures the drawn-score page's audio; see the file overview. */
 object DrawnScoreDocs {
 
     const val SR: Int = PatSoundDocs.SR
