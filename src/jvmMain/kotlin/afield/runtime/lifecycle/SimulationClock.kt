@@ -27,6 +27,13 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.min
 
+/**
+ * A manually stepped coroutine clock, so `delay` and `withTimeout` inside a box follow simulation time.
+ *
+ * [withSimulationClock] opens a [SimulationClock] inside ordinary [frames] code; each [SimulationClock.advance]
+ * moves simulation time forward and resumes the coroutines that are due, within a resume budget.
+ */
+
 /** Work performed by [SimulationClock.advance]; discarded elapsed time is reported explicitly. */
 data class SimulationAdvance(val steps: Int, val resumed: Int, val deferred: Int, val droppedSeconds: Double)
 
