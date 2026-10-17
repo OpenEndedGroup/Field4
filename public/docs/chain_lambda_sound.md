@@ -16,7 +16,9 @@ what changes when you change the scheduler.
 
 `three two` is Church exponentiation the other way round: the numeral three applied to the numeral
 two, which is 2³. Most of its reactions are not β-steps but the bookkeeping that keeps sharing
-correct: fans copying, and the scope delimiters of the reducer's Lambdascope rules moving and closing. The box below reduces it and plots the size of the net after each reaction.
+correct: fans copying, and scope delimiters (the agents that mark where a shared function body
+begins and ends) moving and closing. The box below reduces it and plots the size of the net after
+each reaction.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/one_reduction.png" wait="10" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="180" name="chain-lambda-one" embed=true alt="A two-trace plot over eighty-six reactions: an agent count that climbs from about nineteen to a peak of forty-six around reactions thirty-five and forty-five and then falls, in steps, to twenty-six, and a lower trace of covered pairs that rises to fifteen and comes back down to zero, above a table giving the term, nineteen agents and three fans compiled, eighty-six reactions of which eight are beta, the rule tally led by delim-delim, and the answer λa. λb. a applied eight times to b"}
 :::static
