@@ -5,6 +5,13 @@ import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VkPipelineCacheCreateInfo
 import afield.graphics.vulkan.util.vkCheck
 
+/**
+ * A Vulkan pipeline cache that the renderer passes to the pipelines it builds on one [Device].
+ *
+ * [PipelineCache] is created empty and lives only for the device's lifetime; nothing is saved to or
+ * loaded from disk.
+ */
+
 class PipelineCache(device: Device) {
     val device: Device
     var vkPipelineCache: Long = 0
