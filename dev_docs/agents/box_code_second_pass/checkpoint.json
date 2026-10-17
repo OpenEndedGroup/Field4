@@ -829,6 +829,34 @@
     "e8c0554946df-02": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_19/README.md"
+    },
+    "df987c0112a5-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_20/README.md"
+    },
+    "d55fb0a37340-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_20/README.md"
+    },
+    "d9dc73469897-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_20/README.md"
+    },
+    "12be272acb49-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_20/README.md"
+    },
+    "12be272acb49-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_20/README.md"
+    },
+    "3d9b91c39265-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_20/README.md"
+    },
+    "c69d11328023-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_20/README.md"
     }
   },
   "batches": [

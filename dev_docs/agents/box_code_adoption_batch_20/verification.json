@@ -1,0 +1,47 @@
+{
+  "baseline": "68c5d6fa3",
+  "sources": [
+    {
+      "path": "dev_docs/agents/demos/optical_flow/example.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/ray_reconstruction/example.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/gpu_shader_learning/example.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/tool-pool/tools.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 1,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/optical_flow_pingpong/example.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/frame_history_reprojection/rp_bundle_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/frame_history_reprojection/build.yaml",
+      "kotlinBodies": 4,
+      "collectionConversions": 1,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}
