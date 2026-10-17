@@ -11,6 +11,11 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
+ * Completion and line notes for RectSL written inside a Kotlin box's `code`, as a string whose first
+ * line is `#rectsl` ([EmbeddedRectSL]).
+ */
+
+/**
  * RectSL written inside a Kotlin box's `code`, as a string whose first line is `#rectsl` (the convention
  * the editor already highlights): the RectSL vocabulary when completion opens inside it, and each line's
  * scene-so-far as a line note — the help a `rectSL` property has, where the scene sits in Kotlin. The
