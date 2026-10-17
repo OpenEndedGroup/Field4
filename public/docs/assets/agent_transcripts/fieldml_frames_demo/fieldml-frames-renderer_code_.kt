@@ -1,12 +1,5 @@
-// Scaffolding, and it is Kotlin for two reasons worth naming.
-//
-// `prop` and `once` are SOURCE MACROS -- mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md.
-// They rewrite Kotlin source before it is compiled, so there is no JVM member for a
-// reflective bridge to reach. And `Renderer.run` is a `suspend` member: on the JVM it is
-// `run(Continuation)`, and FieldML can now *satisfy* a suspend function type but still
-// cannot *call into* one, because it has no continuation to pass and nowhere to resume.
-//
-// Everything that actually draws, and everything that moves, is in the FieldML box.
+// Kotlin owns the renderer loop: FieldML cannot call the suspend member Renderer.run.
+// The FieldML child builds the scene; launch this parent first to publish its renderer.
 prop<Window>(window)
 prop<Renderer>(renderer)
 once.renderer {

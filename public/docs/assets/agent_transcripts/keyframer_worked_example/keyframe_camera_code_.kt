@@ -4,10 +4,6 @@ the focus distance — rather than a position and a target point. Interpolating 
 SCREW MOTION, and between two cameras looking at the same subject it is a very different
 move from lerping the two positions. Draw both and the argument makes itself.
 */
-import afield.graphics.vulkan.util.CameraPose
-import afield.animation.keyframes.KeyframeScope
-import afield.math.linalg.Vector3f
-
 // The two camera positions; both look at the subject at the origin. Move one and rerun.
 var fromPos = Vector3f(8f, 2f, 0f)
 var toPos = Vector3f(0f, 2f, 8f)
@@ -99,7 +95,7 @@ println("worst-case aiming error:    %.6f world units".format(worstAim))
 showPlaneGrid(
     ("plan view, looking down y\n" +
         "blue: sclerp, a quarter circle. orange: the straight line between the same two positions") to
-        listOf(sight, sightLerp, subject, chord, screw),
+        [sight, sightLerp, subject, chord, screw],
     ("distance to the subject, over the move\n" +
         "sclerp holds %.4f..%.4f; the straight line dips to %.4f — %.1f%% nearer"
             .format(
@@ -107,7 +103,7 @@ showPlaneGrid(
                 rMax,
                 lerpMid,
                 closer,
-            )) to listOf(dScrew, dChord),
+            )) to [dScrew, dChord],
     columns = 2,
     cellWidth = 440,
     cellHeight = 380,

@@ -1,5 +1,3 @@
-import afield.graphics.vulkan.buffers.FrameBufferGroup
-
 val N = 24000
 // How hard each band energy pushes its ring (radius, thickness, particle size).
 val gain = 2.4

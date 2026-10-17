@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="fline-measure-cross" index="0" -->
 
 ```edn [field-box id="fline-measure-cross" role="properties"]
-{"id" "fline-measure-cross" "index" 0 "name" "3 - Crossings, bounds, orientation" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Crossings, bounds, orientation" "_tombstone" false "frame" #afield/rect [60.0 520.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-measure-cross_code_.kt" "lines" 29 "characters" 973 "sha256" "f47cf1ed4594277fef686866f5a2e41fecbbf5406f118070e4704bb492ad900b"}]}
+{"id" "fline-measure-cross" "index" 0 "name" "3 - Crossings, bounds, orientation" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Crossings, bounds, orientation" "_tombstone" false "frame" #afield/rect [60.0 520.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-measure-cross_code_.kt" "lines" 37 "characters" 979 "sha256" "474db65f62ce864a897bf849077332769752ab37793a625f4be51d82c39f28d2"}]}
 ```
 
 ```kotlin [field-property box="fline-measure-cross" name="code" path="fline-measure-cross_code_.kt"]
@@ -29,7 +29,7 @@ val ring = fline {
 }
 
 // where the loop crosses the ring, and where it crosses itself
-val hits = listOf(loop.crossings2D(ring), loop.selfCrossings2D()).flatten().map { it.point }
+val hits = [loop.crossings2D(ring), loop.selfCrossings2D()].flatten().map { it.point }
 val dots = polylineFrom(hits.map { it.v2 }).apply {
     pointed = true
     pointSize = 3.0
@@ -38,12 +38,20 @@ val dots = polylineFrom(hits.map { it.v2 }).apply {
 }
 
 // bounds that hug the curve, against the control-point bounds
-val tight = fline { rect(loop.tightBounds2D()); thickness = 1.0; color = vec(0.4, 1.0, 0.6, 1.0) }
-val loose = fline { rect(loop.fast2DBounds()); thickness = 1.0; color = vec(1.0, 1.0, 1.0, 0.25) }
+val tight = fline {
+    rect(loop.tightBounds2D())
+    thickness = 1.0
+    color = vec(0.4, 1.0, 0.6, 1.0)
+}
+val loose = fline {
+    rect(loop.fast2DBounds())
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.25)
+}
 
 print("${hits.size} crossings; clockwise on screen: ${ring.isClockwise2D()}")
 
-lines(listOf(loose, tight, ring, loop, dots), w = 420.0, h = 260.0, fitToSize = true)
+lines(loose, tight, ring, loop, dots, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ## 2. 2 - Trim and split by distance
@@ -51,7 +59,7 @@ lines(listOf(loose, tight, ring, loop, dots), w = 420.0, h = 260.0, fitToSize = 
 <!-- field-box id="fline-measure-trim" index="1" -->
 
 ```edn [field-box id="fline-measure-trim" role="properties"]
-{"id" "fline-measure-trim" "index" 1 "name" "2 - Trim and split by distance" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Trim and split by distance" "_tombstone" false "frame" #afield/rect [520.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-measure-trim_code_.kt" "lines" 23 "characters" 735 "sha256" "02f9c7f059da7d32c0b9b9cd8c6ec4c2152d0e5179d963c4067c33fb08edb3c2"}]}
+{"id" "fline-measure-trim" "index" 1 "name" "2 - Trim and split by distance" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Trim and split by distance" "_tombstone" false "frame" #afield/rect [520.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-measure-trim_code_.kt" "lines" 26 "characters" 734 "sha256" "5dec0ceb98280f2eaf9731f2ce08151934463491e3c120127372d1b0f7053c7a"}]}
 ```
 
 ```kotlin [field-property box="fline-measure-trim" name="code" path="fline-measure-trim_code_.kt"]
@@ -73,11 +81,14 @@ val middle = curve.trim(0.25f * total, 0.6f * total).apply {
 
 // cut at 100 units: two pieces whose lengths add up to the whole
 val (head, tail) = curve.splitAt(100f)
-head.apply { thickness = 2.0; color = vec(1.0, 0.6, 0.2, 1.0) }
+head.apply {
+    thickness = 2.0
+    color = vec(1.0, 0.6, 0.2, 1.0)
+}
 
 print("total ${"%.1f".format(total)} = ${"%.1f".format(head.length())} + ${"%.1f".format(tail.length())}")
 
-lines(listOf(curve, head, middle), w = 420.0, h = 260.0, fitToSize = true)
+lines(curve, head, middle, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ## 3. 5 - A 3D frame along a helix
@@ -91,7 +102,7 @@ From `code`
 a helix of radius 80 rising 30 units per turn, one cubic per quarter turn
 
 ```edn [field-box id="fline-measure-helix" role="properties"]
-{"id" "fline-measure-helix" "index" 2 "name" "5 - A 3D frame along a helix" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - A 3D frame along a helix" "_tombstone" false "frame" #afield/rect [60.0 980.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-measure-helix_code_.kt" "lines" 50 "characters" 1856 "sha256" "b4dca32c900e12426d55d4b42d9a5e9e4ace2aa31147d175c77aaa59c897f5fb"}]}
+{"id" "fline-measure-helix" "index" 2 "name" "5 - A 3D frame along a helix" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - A 3D frame along a helix" "_tombstone" false "frame" #afield/rect [60.0 980.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-measure-helix_code_.kt" "lines" 61 "characters" 1943 "sha256" "7e5733e1dbfbe38f1bee76bd6eac8d888214b7a99161396aad336b072e32e022"}]}
 ```
 
 ```kotlin [field-property box="fline-measure-helix" name="code" path="fline-measure-helix_code_.kt"]
@@ -107,9 +118,15 @@ val helix = fline {
         val z0 = rise * q / 4
         val z1 = rise * (q + 1) / 4
         cubicTo(
-            r * cos(a0) - k * sin(a0), r * sin(a0) + k * cos(a0), z0 + (z1 - z0) / 3,
-            r * cos(a1) + k * sin(a1), r * sin(a1) - k * cos(a1), z0 + 2 * (z1 - z0) / 3,
-            r * cos(a1), r * sin(a1), z1,
+            r * cos(a0) - k * sin(a0),
+            r * sin(a0) + k * cos(a0),
+            z0 + (z1 - z0) / 3,
+            r * cos(a1) + k * sin(a1),
+            r * sin(a1) - k * cos(a1),
+            z0 + 2 * (z1 - z0) / 3,
+            r * cos(a1),
+            r * sin(a1),
+            z1,
         )
     }
 }
@@ -117,26 +134,31 @@ val helix = fline {
 // look at it from the side and a little above: x across, z up, y into the page
 fun view(p: Vec3) = vec(p.x + 0.35 * p.y, -p.z - 0.35 * p.y)
 
+val projected = helix.sampleByNumber(400).map(::view)
 val drawn = fline {
-    helix.sampleByNumber(400).forEachIndexed { i, p -> if (i == 0) moveTo(view(p)) else lineTo(view(p)) }
+    data("m l+", projected)
     thickness = 1.5
     color = vec(1.0, 1.0, 1.0, 1.0)
 }
 
 // the 3D frame at 16 evenly spaced places: tangent orange, normal blue, binormal green
 fun tick(p: Vec3, d: Vec3?, c: Vec4) = fline {
-    if (d != null) { moveTo(view(p)); lineTo(view(p + d * 18.0)) }
+    if (d != null) {
+        moveTo(view(p))
+        lineTo(view(p + d * 18.0))
+    }
     thickness = 2.0
     color = c
 }
-val frames = (0..15).flatMap { i ->
-    val loc = helix.locationAtFraction(i / 15f)!!
-    listOf(
-        tick(loc.point, loc.tangent, vec(1.0, 0.6, 0.2, 1.0)),
-        tick(loc.point, loc.normal, vec(0.4, 0.8, 1.0, 1.0)),
-        tick(loc.point, loc.binormal, vec(0.5, 1.0, 0.5, 1.0)),
-    )
-}
+val frames =
+    (0..15).flatMap { i ->
+        val loc = helix.locationAtFraction(i / 15f)!!
+        [
+            tick(loc.point, loc.tangent, vec(1.0, 0.6, 0.2, 1.0)),
+            tick(loc.point, loc.normal, vec(0.4, 0.8, 1.0, 1.0)),
+            tick(loc.point, loc.binormal, vec(0.5, 1.0, 0.5, 1.0)),
+        ]
+    }
 
 // a helix has constant curvature r / (r^2 + c^2), with c the rise per radian
 val c = rise / (2 * PI)
@@ -144,7 +166,7 @@ val mid = helix.locationAtFraction(0.5f)!!
 println("curvature %.5f, a true helix %.5f".format(mid.curvature, r / (r * r + c * c)))
 println("normal points at the axis: %.3f".format(mid.normal!!.dot(vec(-mid.point.x, -mid.point.y, 0.0).normalize())))
 
-lines(listOf(drawn) + frames, w = 420.0, h = 260.0, fitToSize = true)
+lines([drawn] + frames, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ## 4. 4 - Fill rules that follow the curve
@@ -158,7 +180,7 @@ From `code`
 two circles drawn the same way round: a ring
 
 ```edn [field-box id="fline-measure-fill" role="properties"]
-{"id" "fline-measure-fill" "index" 3 "name" "4 - Fill rules that follow the curve" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Fill rules that follow the curve" "_tombstone" false "frame" #afield/rect [520.0 520.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-measure-fill_code_.kt" "lines" 23 "characters" 838 "sha256" "58a1401545a5229ed264c0eb06ce346f9935b0967f57f867ca44f4a0e86129bb"}]}
+{"id" "fline-measure-fill" "index" 3 "name" "4 - Fill rules that follow the curve" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Fill rules that follow the curve" "_tombstone" false "frame" #afield/rect [520.0 520.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-measure-fill_code_.kt" "lines" 33 "characters" 888 "sha256" "73a9d01602ffef55613bb272b364aa38e412104b123c57237b6dc6f07636d7aa"}]}
 ```
 
 ```kotlin [field-property box="fline-measure-fill" name="code" path="fline-measure-fill_code_.kt"]
@@ -175,7 +197,10 @@ fun insideDots(dx: Double, rule: FLineFillRule) = fline {
     val shape = ring(dx)
     for (i in 0..24) for (j in 0..24) {
         val p = Vec2((15 + dx + i * 8).toFloat(), (25 + j * 8).toFloat())
-        if (shape.contains2D(p, rule)) { moveTo(p.x, p.y); lineTo(p.x + 0.01, p.y) }
+        if (shape.contains2D(p, rule)) {
+            moveTo(p.x, p.y)
+            lineTo(p.x + 0.01, p.y)
+        }
     }
     pointed = true
     pointSize = 0.7
@@ -183,8 +208,15 @@ fun insideDots(dx: Double, rule: FLineFillRule) = fline {
     color = vec(1.0, 0.6, 0.2, 1.0)
 }
 
-lines(listOf(ring(0.0), ring(240.0), insideDots(0.0, FLineFillRule.NonZero), insideDots(240.0, FLineFillRule.EvenOdd)),
-    w = 460.0, h = 240.0, fitToSize = true)
+lines(
+    ring(0.0),
+    ring(240.0),
+    insideDots(0.0, FLineFillRule.NonZero),
+    insideDots(240.0, FLineFillRule.EvenOdd),
+    w = 460.0,
+    h = 240.0,
+    fitToSize = true,
+)
 ```
 
 ## 5. 1 - Locations along a line
@@ -192,7 +224,7 @@ lines(listOf(ring(0.0), ring(240.0), insideDots(0.0, FLineFillRule.NonZero), ins
 <!-- field-box id="fline-measure-locate" index="4" -->
 
 ```edn [field-box id="fline-measure-locate" role="properties"]
-{"id" "fline-measure-locate" "index" 4 "name" "1 - Locations along a line" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Locations along a line" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-measure-locate_code_.kt" "lines" 31 "characters" 967 "sha256" "6538171a704de2347b5153c970836247dd3530b7d80616fcb2a161797b89d24d"}]}
+{"id" "fline-measure-locate" "index" 4 "name" "1 - Locations along a line" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Locations along a line" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-measure-locate_code_.kt" "lines" 32 "characters" 987 "sha256" "fc713c531d9270fc28367cbbfd8ebad8ea9a7d849fce1affec4cbb78a21c7f99"}]}
 ```
 
 ```kotlin [field-property box="fline-measure-locate" name="code" path="fline-measure-locate_code_.kt"]
@@ -217,15 +249,16 @@ val normals = stops.map { loc ->
 }
 
 // the circle that matches the bend, at three of them
-val bends = listOf(stops[3], stops[7], stops[10]).map { loc ->
-    val r = 1.0 / loc.signedCurvature2D
-    fline {
-        circle(loc.point.x + loc.normal2D.x * r, loc.point.y + loc.normal2D.y * r, kotlin.math.abs(r))
-        thickness = 1.0
-        color = vec(1.0, 0.6, 0.2, 0.8)
+val bends =
+    [stops[3], stops[7], stops[10]].map { loc ->
+        val r = 1.0 / loc.signedCurvature2D
+        fline {
+            circle(loc.point.x + loc.normal2D.x * r, loc.point.y + loc.normal2D.y * r, kotlin.math.abs(r))
+            thickness = 1.0
+            color = vec(1.0, 0.6, 0.2, 0.8)
+        }
     }
-}
 
-lines(listOf(curve) + normals + bends, w = 420.0, h = 260.0, fitToSize = true)
+lines([curve] + normals + bends, w = 420.0, h = 260.0, fitToSize = true)
 ```
 

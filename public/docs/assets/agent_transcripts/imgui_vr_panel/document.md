@@ -47,25 +47,28 @@ SideBySideStereoTarget, packed side-by-side, and blitted to the window. The pane
 interactive: the mock controller (here driven by the mouse) casts a ray, the hit is
 converted to panel UV, and injected into ImGui.
 
-Move the mouse to aim the ray; left-click to press. To bind the panel to a hand instead
-of a fixed point, call panel.place(handPos, handRight, handUp) each frame (see ImGuiPanel).
+Move the mouse to aim the ray; left-click to press.
+For a custom hand-attached panel, use the ImGuiPanel construction and registration in
+afield.examples.four.ImGuiVrPanelDemo.build. Its private panel is not exposed by demo.
 
 ```edn [field-box id="imgui_vr_panel" role="properties"]
-{"id" "imgui_vr_panel" "index" 1 "name" "imgui vr panel" "parents" ["root" "imgui_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "imgui_vr_renderer"} "name" "imgui vr panel" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_panel_code_.kt" "lines" 21 "characters" 1052 "sha256" "341e526f3feb4862fcf67af4a143c45038ab84a6e3fc8d891618328437b115c8"}]}
+{"id" "imgui_vr_panel" "index" 1 "name" "imgui vr panel" "parents" ["root" "imgui_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "imgui_vr_renderer"} "name" "imgui vr panel" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_panel_code_.kt" "lines" 23 "characters" 1014 "sha256" "11eb402eee2fa7beaf7eec9c47ff4b296ed97e8a18103ef52f981d9166d0ca91"}]}
 ```
 
 ```kotlin [field-property box="imgui_vr_panel" name="code" path="imgui_vr_panel_code_.kt"]
-// ImGui as a VR panel.
-//
-// ImGuiVrPanelDemo wires the whole pipeline: an ImGuiRenderToTexture drawn into an RTT,
-// textured onto a world-space ImGuiPanel quad, rendered once per eye by
-// SideBySideStereoTarget, packed side-by-side, and blitted to the window. The panel is
-// interactive: the mock controller (here driven by the mouse) casts a ray, the hit is
-// converted to panel UV, and injected into ImGui.
-//
-// Move the mouse to aim the ray; left-click to press. To bind the panel to a hand instead
-// of a fixed point, call panel.place(handPos, handRight, handUp) each frame (see ImGuiPanel).
-import afield.graphics.vulkan.targets.SideBySideStereoTarget
+/*
+ImGui as a VR panel.
+
+ImGuiVrPanelDemo wires the whole pipeline: an ImGuiRenderToTexture drawn into an RTT,
+textured onto a world-space ImGuiPanel quad, rendered once per eye by
+SideBySideStereoTarget, packed side-by-side, and blitted to the window. The panel is
+interactive: the mock controller (here driven by the mouse) casts a ray, the hit is
+converted to panel UV, and injected into ImGui.
+
+Move the mouse to aim the ray; left-click to press.
+For a custom hand-attached panel, use the ImGuiPanel construction and registration in
+afield.examples.four.ImGuiVrPanelDemo.build. Its private panel is not exposed by demo.
+*/
 import afield.examples.four.ImGuiVrPanelDemo
 
 val sbs = SideBySideStereoTarget(renderer)

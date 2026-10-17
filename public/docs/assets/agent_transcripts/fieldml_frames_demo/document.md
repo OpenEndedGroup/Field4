@@ -14,30 +14,16 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 From `code`
 
-Scaffolding, and it is Kotlin for two reasons worth naming.
-
-`prop` and `once` are SOURCE MACROS -- mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md.
-They rewrite Kotlin source before it is compiled, so there is no JVM member for a
-reflective bridge to reach. And `Renderer.run` is a `suspend` member: on the JVM it is
-`run(Continuation)`, and FieldML can now *satisfy* a suspend function type but still
-cannot *call into* one, because it has no continuation to pass and nowhere to resume.
-
-Everything that actually draws, and everything that moves, is in the FieldML box.
+Kotlin owns the renderer loop: FieldML cannot call the suspend member Renderer.run.
+The FieldML child builds the scene; launch this parent first to publish its renderer.
 
 ```edn [field-box id="fieldml-frames-renderer" role="properties"]
-{"id" "fieldml-frames-renderer" "index" 0 "name" "window and renderer" "parents" ["root"] "children" ["fieldml-frames-root"] "properties" {"children" #{#afield/box "fieldml-frames-root"} "parents" #{#afield/box "root"} "name" "window and renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-frames-renderer_code_.kt" "lines" 17 "characters" 809 "sha256" "562bfbf01c8a5da70cf7f7b1a99016deb0418e3f923a271c32273535abdd5377"}]}
+{"id" "fieldml-frames-renderer" "index" 0 "name" "window and renderer" "parents" ["root"] "children" ["fieldml-frames-root"] "properties" {"children" #{#afield/box "fieldml-frames-root"} "parents" #{#afield/box "root"} "name" "window and renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-frames-renderer_code_.kt" "lines" 10 "characters" 389 "sha256" "0fe8c080298fe1351eb5c6d25538f0ab5b6f1b5bbeac5d86caf34224a8bd7e41"}]}
 ```
 
 ```kotlin [field-property box="fieldml-frames-renderer" name="code" path="fieldml-frames-renderer_code_.kt"]
-// Scaffolding, and it is Kotlin for two reasons worth naming.
-//
-// `prop` and `once` are SOURCE MACROS -- mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md.
-// They rewrite Kotlin source before it is compiled, so there is no JVM member for a
-// reflective bridge to reach. And `Renderer.run` is a `suspend` member: on the JVM it is
-// `run(Continuation)`, and FieldML can now *satisfy* a suspend function type but still
-// cannot *call into* one, because it has no continuation to pass and nowhere to resume.
-//
-// Everything that actually draws, and everything that moves, is in the FieldML box.
+// Kotlin owns the renderer loop: FieldML cannot call the suspend member Renderer.run.
+// The FieldML child builds the scene; launch this parent first to publish its renderer.
 prop<Window>(window)
 prop<Renderer>(renderer)
 once.renderer {

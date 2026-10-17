@@ -32,21 +32,18 @@ start(renderer::run)
 
 <!-- field-box id="pp_audio" index="1" -->
 
+### Narrative
+
+From `code`
+
+The numbers the compute box reads. An inherited property rather than a global, so the
+box graph is what says which shader is listening to which pattern.
+
 ```edn [field-box id="pp_audio" role="properties"]
-{"id" "pp_audio" "index" 1 "name" "pattern, played and analysed" "parents" ["root" "pp_renderer"] "children" ["pp_compute"] "properties" {"children" #{#afield/box "pp_compute"} "parents" #{#afield/box "root" #afield/box "pp_renderer"} "name" "pattern, played and analysed" "_tombstone" false "frame" #afield/rect [260.0 40.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pp_audio_code_.kt" "lines" 46 "characters" 1785 "sha256" "9c6dd1b5b32ec114801ba43b427aaed8c6254c3b5fb9837c6fcae59b0593668d"}]}
+{"id" "pp_audio" "index" 1 "name" "pattern, played and analysed" "parents" ["root" "pp_renderer"] "children" ["pp_compute"] "properties" {"children" #{#afield/box "pp_compute"} "parents" #{#afield/box "root" #afield/box "pp_renderer"} "name" "pattern, played and analysed" "_tombstone" false "frame" #afield/rect [260.0 40.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pp_audio_code_.kt" "lines" 36 "characters" 1469 "sha256" "7a9a7670b44bd39dc29f3772ebec5eed75f79532664161abaf328e96958a6aba"}]}
 ```
 
 ```kotlin [field-property box="pp_audio" name="code" path="pp_audio_code_.kt"]
-import afield.audio.synth.PatSynthLaunch
-import afield.audio.synth.PatWave
-import afield.audio.synth.audioEngine
-import afield.audio.synth.logBands
-import afield.audio.synth.pat
-import afield.audio.synth.patSynth
-import afield.audio.synth.patVoice
-import afield.audio.synth.snapshot
-import afield.audio.synth.stack
-
 // The numbers the compute box reads. An inherited property rather than a global, so the
 // box graph is what says which shader is listening to which pattern.
 prop<DoubleArray>(bandEnergy)
@@ -90,7 +87,7 @@ frames {
 <!-- field-box id="pp_compute" index="2" -->
 
 ```edn [field-box id="pp_compute" role="properties"]
-{"id" "pp_compute" "index" 2 "name" "four bands into four push constants" "parents" ["root" "pp_audio"] "children" ["pp_draw"] "properties" {"children" #{#afield/box "pp_draw"} "parents" #{#afield/box "root" #afield/box "pp_audio"} "name" "four bands into four push constants" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "pp_compute_compute_.glsl" "lines" 55 "characters" 1669 "sha256" "f63ce0dd8a89ed96688dd9938874ce24fa5b74c82d4e6d9497b0fbfc150de1dc"} {"name" "code" "language" "kotlin" "path" "pp_compute_code_.kt" "lines" 51 "characters" 1590 "sha256" "b3334a936cf2b6f5eb66a6ad9d8f0a954656967c4edd651d11eb73717f36c366"}]}
+{"id" "pp_compute" "index" 2 "name" "four bands into four push constants" "parents" ["root" "pp_audio"] "children" ["pp_draw"] "properties" {"children" #{#afield/box "pp_draw"} "parents" #{#afield/box "root" #afield/box "pp_audio"} "name" "four bands into four push constants" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "pp_compute_compute_.glsl" "lines" 53 "characters" 1760 "sha256" "c7c2433f6d573147bfb67cd9b0abc11e49a2a38289d4414701aedd0f5af0b9af"} {"name" "code" "language" "kotlin" "path" "pp_compute_code_.kt" "lines" 49 "characters" 1534 "sha256" "9329ba4157011ae566548a63b276bb65e9cd79f9d3204463dc6829ab265d5e93"}]}
 ```
 
 ```glsl [field-property box="pp_compute" name="compute" path="pp_compute_compute_.glsl"]
@@ -106,20 +103,18 @@ layout(std430, buffer_reference) buffer Out {
 };
 
 layout(push_constant) uniform dat {
+    // Written once: x = random phase, y = thickness variation per particle.
     Seeds seeds;
-    // written once: one random phase and radius per particle
+    // This frame's output: xy = position, z = ring index, w = particle size.
     Out outData;
-    // this frame's positions, read by the draw box
+    // Elapsed seconds.
     float time;
-    // seconds
+    // Band energies: 70 Hz kick, 340 Hz, 1.6 kHz stab harmonics, 8 kHz hats.
     float band0;
-    // 70 Hz — the kick
     float band1;
-    // 340 Hz
     float band2;
-    // 1.6 kHz — the square stab's harmonics
     float band3;
-    // 8 kHz — the hats
+    // Valid particle count; the final workgroup may include padding.
     uint count;
 } pc;
 
@@ -152,8 +147,6 @@ void main() {
 ```
 
 ```kotlin [field-property box="pp_compute" name="code" path="pp_compute_code_.kt"]
-import afield.graphics.vulkan.buffers.FrameBufferGroup
-
 val N = 24000
 // How hard each band energy pushes its ring (radius, thickness, particle size).
 val gain = 2.4

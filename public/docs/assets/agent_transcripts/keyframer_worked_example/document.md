@@ -19,7 +19,7 @@ write to. The simplest is a uniform Structure — and none of this needs a GPU, 
 Structure is constructible bare and bind/bindings are plain maps.
 
 ```edn [field-box id="keyframe_targets" role="properties"]
-{"id" "keyframe_targets" "index" 0 "name" "What a scope watches — capture, edit, apply" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a scope watches — capture, edit, apply" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_targets_code_.kt" "lines" 95 "characters" 3391 "sha256" "b110531a6aa86b1853667ca780f560f6c99a5543fbec67ac0c441644ea3759f0"}]}
+{"id" "keyframe_targets" "index" 0 "name" "What a scope watches — capture, edit, apply" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a scope watches — capture, edit, apply" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_targets_code_.kt" "lines" 92 "characters" 3287 "sha256" "f700b7811c1caa0ca068cb9ab2157e4d288fffd8d157cddc1a4ece464880f0ad"}]}
 ```
 
 ```kotlin [field-property box="keyframe_targets" name="code" path="keyframe_targets_code_.kt"]
@@ -28,9 +28,6 @@ A KeyframeScope holds no values of its own. It holds *targets*: places to read f
 write to. The simplest is a uniform Structure — and none of this needs a GPU, because
 Structure is constructible bare and bind/bindings are plain maps.
 */
-import afield.graphics.vulkan.buffers.Structure
-import afield.animation.keyframes.KeyframeScope
-
 val glow = Structure()
 val blur = Structure()
 glow.bind("radius") { 4.0f }
@@ -103,12 +100,12 @@ markdown(
     | blur.radius | ${bound(blur, "radius")} |
     | glow.glow@radius | ${(glow.bindings["glow@radius"]?.invoke() ?: "<unbound>").md} |
 
-    #### 4 — the bindings/values trap
+    #### 4 — capture reads bindings and plain values
 
     | binding | value |
     | --- | --- |
     | bound (via bind) | ${trap["bound"].md} |
-    | set (via values) | ${trap["set"].md} {warn:← captured as null, silently} |
+    | set (via values) | ${trap["set"].md} (plain value) |
 
     #### 5 — captured() again, then re-captured
 
@@ -133,7 +130,7 @@ saveKey writes pretty JSON — and, every single time, ALSO appends a numbered c
 hundred files. What survives the trip is a closed set; everything else is dropped silently.
 
 ```edn [field-box id="keyframe_persist" role="properties"]
-{"id" "keyframe_persist" "index" 1 "name" "Saving is always additive history" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Saving is always additive history" "_tombstone" false "frame" #afield/rect [1100.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_persist_code_.kt" "lines" 110 "characters" 3465 "sha256" "2bd27dba2c38db679ea28de10c089757cc054231757d46db7b39192185bcc7f3"}]}
+{"id" "keyframe_persist" "index" 1 "name" "Saving is always additive history" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Saving is always additive history" "_tombstone" false "frame" #afield/rect [1100.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_persist_code_.kt" "lines" 107 "characters" 3328 "sha256" "269a651935f1a84ce36743954a85282070b51120947d441271cd36c6c04afdfd"}]}
 ```
 
 ```kotlin [field-property box="keyframe_persist" name="code" path="keyframe_persist_code_.kt"]
@@ -142,9 +139,6 @@ saveKey writes pretty JSON — and, every single time, ALSO appends a numbered c
 <file>.versions directory with a manifest. Nothing prunes it, so a hundred saves leave a
 hundred files. What survives the trip is a closed set; everything else is dropped silently.
 */
-import afield.animation.keyframes.KeyframeScope
-import afield.math.linalg.Vector3f
-import afield.animation.keyframes.stackSLString
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframer-demo")
@@ -180,7 +174,7 @@ val lossy = scope.Key(
     mutableMapOf(
         "gain" to 0.90f,
         "enabled" to true, // a Boolean is outside the union
-        "taps" to listOf(1, 2, 3), // so is a list
+        "taps" to [1, 2, 3], // so is a list
         "absent" to null, // and a null is dropped too
     ),
 )
@@ -262,7 +256,7 @@ Kotlin, so a state you arrived at by fiddling becomes a diff you can commit. Eve
 literal is chosen so the paste round-trips as the same TYPE, not merely the same number.
 
 ```edn [field-box id="keyframe_updatecode" role="properties"]
-{"id" "keyframe_updatecode" "index" 2 "name" "A captured look becomes source" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A captured look becomes source" "_tombstone" false "frame" #afield/rect [1100.0 640.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_updatecode_code_.kt" "lines" 44 "characters" 1889 "sha256" "27e68d52064bbc4ae150565a669e899f4ef79967cf5c25f10615631313732d12"}]}
+{"id" "keyframe_updatecode" "index" 2 "name" "A captured look becomes source" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A captured look becomes source" "_tombstone" false "frame" #afield/rect [1100.0 640.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_updatecode_code_.kt" "lines" 39 "characters" 1722 "sha256" "039958d95c92df04be873ac5f55ec63466ee7a24b731b42979157f242e4b4c4d"}]}
 ```
 
 ```kotlin [field-property box="keyframe_updatecode" name="code" path="keyframe_updatecode_code_.kt"]
@@ -271,13 +265,8 @@ The last step of the loop closes it: Key.updateCode() emits the snapshot as past
 Kotlin, so a state you arrived at by fiddling becomes a diff you can commit. Every
 literal is chosen so the paste round-trips as the same TYPE, not merely the same number.
 */
-import afield.animation.keyframes.KeyframeScope
-import afield.study.source.SourceBackedBlock
-import afield.math.linalg.Quaternionf
-import afield.math.linalg.Vector3f
-import afield.animation.keyframes.stackSLString
-
 val scope = KeyframeScope()
+val unsupportedNotes: List<String> = ["unsupported", "on purpose"]
 val key = scope.Key(
     mutableMapOf(
         "gain" to 0.65f, // a Float — and the 'f' suffix is load-bearing
@@ -291,7 +280,7 @@ val key = scope.Key(
         would interpolate at paste time, so it must come out escaped.
         */
         "block" to SourceBackedBlock<Any?>("box-1", "val total = 2\nprintln(\"sum: \$total\")"),
-        "notes" to listOf("unsupported", "on purpose"),
+        "notes" to unsupportedNotes,
     ),
 )
 
@@ -325,8 +314,10 @@ the focus distance — rather than a position and a target point. Interpolating 
 SCREW MOTION, and between two cameras looking at the same subject it is a very different
 move from lerping the two positions. Draw both and the argument makes itself.
 
+The two camera positions; both look at the subject at the origin. Move one and rerun.
+
 ```edn [field-box id="keyframe_camera" role="properties"]
-{"id" "keyframe_camera" "index" 3 "name" "A camera move is a screw motion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A camera move is a screw motion" "_tombstone" false "frame" #afield/rect [80.0 540.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_camera_code_.kt" "lines" 119 "characters" 4358 "sha256" "7381dc03329be552a16944f056b3d9a8476f1ce963e73f6069174cd0b9c7e529"}]}
+{"id" "keyframe_camera" "index" 3 "name" "A camera move is a screw motion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A camera move is a screw motion" "_tombstone" false "frame" #afield/rect [80.0 540.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_camera_code_.kt" "lines" 115 "characters" 4216 "sha256" "6c311feacda5a4d87c1080a51ff0fc14c171459ccc895872078545a6826eb27e"}]}
 ```
 
 ```kotlin [field-property box="keyframe_camera" name="code" path="keyframe_camera_code_.kt"]
@@ -336,10 +327,6 @@ the focus distance — rather than a position and a target point. Interpolating 
 SCREW MOTION, and between two cameras looking at the same subject it is a very different
 move from lerping the two positions. Draw both and the argument makes itself.
 */
-import afield.graphics.vulkan.util.CameraPose
-import afield.animation.keyframes.KeyframeScope
-import afield.math.linalg.Vector3f
-
 // The two camera positions; both look at the subject at the origin. Move one and rerun.
 var fromPos = Vector3f(8f, 2f, 0f)
 var toPos = Vector3f(0f, 2f, 8f)
@@ -431,7 +418,7 @@ println("worst-case aiming error:    %.6f world units".format(worstAim))
 showPlaneGrid(
     ("plan view, looking down y\n" +
         "blue: sclerp, a quarter circle. orange: the straight line between the same two positions") to
-        listOf(sight, sightLerp, subject, chord, screw),
+        [sight, sightLerp, subject, chord, screw],
     ("distance to the subject, over the move\n" +
         "sclerp holds %.4f..%.4f; the straight line dips to %.4f — %.1f%% nearer"
             .format(
@@ -439,7 +426,7 @@ showPlaneGrid(
                 rMax,
                 lerpMid,
                 closer,
-            )) to listOf(dScrew, dChord),
+            )) to [dScrew, dChord],
     columns = 2,
     cellWidth = 440,
     cellHeight = 380,

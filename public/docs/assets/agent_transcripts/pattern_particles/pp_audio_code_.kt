@@ -1,13 +1,3 @@
-import afield.audio.synth.PatSynthLaunch
-import afield.audio.synth.PatWave
-import afield.audio.synth.audioEngine
-import afield.audio.synth.logBands
-import afield.audio.synth.pat
-import afield.audio.synth.patSynth
-import afield.audio.synth.patVoice
-import afield.audio.synth.snapshot
-import afield.audio.synth.stack
-
 // The numbers the compute box reads. An inherited property rather than a global, so the
 // box graph is what says which shader is listening to which pattern.
 prop<DoubleArray>(bandEnergy)

@@ -1,11 +1,11 @@
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.util.Window
-import afield.simulation.particles.ShaderNeuralParticles
+import afield.simulation.particles.FlowMatchExport
 var Box.particles by Inheritance<afield.simulation.particles.ShaderNeuralParticles>() /**/
 val Once.particles by Onceing<afield.simulation.particles.ShaderNeuralParticles>() /**/
 val Why.particles by Whying() /**/
-var Box.neuralExport by Inheritance<afield.simulation.particles.FlowMatchExport>() /*from:np_field*/ /**/
-val Once.neuralExport by Onceing<afield.simulation.particles.FlowMatchExport>() /*from:np_field*/ /**/
+var Box.neuralExport by Inheritance<FlowMatchExport>() /*from:np_field*/ /**/
+val Once.neuralExport by Onceing<FlowMatchExport>() /*from:np_field*/ /**/
 val Why.neuralExport by Whying() /*from:np_field*/ /**/
 var Box.window by Inheritance<Window>() /*from:np_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:np_renderer*/ /**/
