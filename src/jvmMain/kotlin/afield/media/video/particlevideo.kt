@@ -59,6 +59,21 @@ import java.nio.channels.FileChannel
 import java.nio.file.StandardOpenOption
 import kotlin.math.floor
 
+/**
+ * Reads particle-tracking results (PVTRACK1 files) as scrubbable frames and per-identity tracks,
+ * with no Python or Torch at load time.
+ *
+ * [loadParticleVideo] memory-maps a finalized file (a gzip-compressed copy is inflated into memory
+ * instead) and validates every lifecycle before returning a [ParticleVideo]. [ParticleVideo.frame] decodes one recorded frame;
+ * [ParticleVideo.at] scrubs by time and interpolates only between samples of the same identity.
+ * Each [ParticleSample] carries position, velocity, sampled RGB and [ParticleFlags]; each
+ * [ParticleTrack] records one trajectory and why it was retired.
+ *
+ * The files come from `particletracker.kt` and are drawn by `particlevideoview.kt`. Ordering,
+ * interpolation, rejection of broken files and the compressed round trip are covered by
+ * `ParticleVideoTest`.
+ */
+
 /** Loads a finalized PVTRACK1 file (or a gzip-compressed copy), without Python or Torch. */
 fun loadParticleVideo(path: String): ParticleVideo = loadParticleVideo(File(path))
 
