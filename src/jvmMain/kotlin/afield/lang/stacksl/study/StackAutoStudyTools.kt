@@ -27,7 +27,8 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription
 @JsonClassDescription("Read how to work on a stack.auto slot: StackSL inside someone's own shader. Call it once, before your first edit in a conversation; with search, look a word up in the StackSL words guide instead.")
 data class StackAutoSlotGuide(
     /** A word or phrase to look up in the StackSL words guide; empty returns how to work on a slot. */
-    @JsonPropertyDescription("A word or phrase to look up in the StackSL words guide; empty returns how to work on a slot") val search: String = ""
+    @JsonPropertyDescription("A word or phrase to look up in the StackSL words guide; empty returns how to work on a slot")
+    val search: String = ""
 )
 
 @JsonClassDescription("Read a stack.auto slot's study: its program, the host shader's lines that declare and call it (what its input and output mean — the host decides, not StackSL's own frame), where the module is drawn (the window, a render target), the compiler's problems and warnings, its numbers (knobs: index, line:column, as typed, the operand the compiler took it as, the card's name in brackets, and whether it is turned live but not kept), keys, and history. slot may be empty when the box has only one. Inspect once before editing and reuse sourceHash.")
