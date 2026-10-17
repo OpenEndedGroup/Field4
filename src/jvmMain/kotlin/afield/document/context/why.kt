@@ -39,6 +39,14 @@ import afield.document.context.WhyAnswer
 import kotlin.reflect.KProperty
 
 /**
+ * `why.speed`, a completable way to ask where a box's `prop`-declared value comes from.
+ *
+ * Every `prop<T>(name)` also declares `name` on [Why], so typing `why.` in a box lists the names it
+ * inherits; each one returns a [WhyAnswer]. For any other name, or to ask by type, call
+ * [ContextResolution.explain] directly.
+ */
+
+/**
  * `why.speed`: where this box's `speed` comes from, as [ContextResolution.explain] answers it.
  *
  * `why` is a namespace bound to the box, the way [once] is. `prop<Double>(speed)` writes

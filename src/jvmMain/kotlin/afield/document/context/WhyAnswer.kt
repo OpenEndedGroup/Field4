@@ -33,6 +33,14 @@ import afield.ui.visualization.ToHTML
 import afield.ui.visualization.registerH2Value
 
 /**
+ * The value a box gets back when it asks where one of its inputs comes from.
+ *
+ * [ContextResolution.explain] and `why.<name>` both return a [WhyAnswer]. Printing it gives a
+ * one-sentence summary, `.h` shows it as a card, and `.h2` lays out its fields to explore. The full
+ * JSON answer stays available as [WhyAnswer.json].
+ */
+
+/**
  * One answer from [ContextResolution.explain], with the fields a person reads first pulled out.
  *
  * [json] is the whole answer, unchanged — the same object the backdoor's `why`, MCP `field_why` and the
