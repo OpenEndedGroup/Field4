@@ -13,8 +13,9 @@ mesh.tiles = { tileHeaders }
 mesh.clock = { flowClock }
 mesh.emitter = { flowEmitter }
 module += "barrier" to computeBarrier(graphics = true)
-flowSimulation += "advect" to module
-loop { true }
+val simulation = flowSimulation
+simulation += "advect" to module
+loop {}
     .end {
-        if (flowSimulation.modules["advect"] === module) flowSimulation.modules.remove("advect")
+        if (simulation.modules["advect"] === module) simulation.modules.remove("advect")
     }

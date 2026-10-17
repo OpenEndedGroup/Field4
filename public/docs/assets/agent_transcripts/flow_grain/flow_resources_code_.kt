@@ -1,6 +1,5 @@
 import afield.simulation.flow.*
 
-val render: Renderer = fromContext()
 fun grid() = defaultBuffer {
     size = 14400.vec4s
     zeroInit()
@@ -63,7 +62,7 @@ flowClock = vec(0, 1.0 / 60, 0, 0) // Time, fixed step, reset generation, reserv
 propDown<afield.math.linalg.Vec4>(flowEmitter)
 flowEmitter = vec(0, 0, 2.5, 0) // World position and force strength.
 propDown<ComputeTarget>(flowSimulation)
-flowSimulation = ComputeTarget(render)
+flowSimulation = ComputeTarget(renderer)
 propDown<java.util.concurrent.atomic.AtomicLong>(flowStep)
 flowStep = java.util.concurrent.atomic.AtomicLong()
 propDown<java.util.concurrent.atomic.AtomicBoolean>(travel)
@@ -86,11 +85,13 @@ flowSurface = RenderToTexture {
     clearColor = vec(0, 0, 0, 0)
     debugName = "flow-correspondence"
 }
-val targets = render.renderList.preTargets
-targets["flow-simulation"] = flowSimulation
-targets["flow-surface"] = flowSurface
-loop { true }
+val simulation = flowSimulation
+val surface = flowSurface
+val targets = renderer.renderList.preTargets
+targets["flow-simulation"] = simulation
+targets["flow-surface"] = surface
+loop {}
     .end {
-        if (targets["flow-simulation"] === flowSimulation) targets.remove("flow-simulation")
-        if (targets["flow-surface"] === flowSurface) targets.remove("flow-surface")
+        if (targets["flow-simulation"] === simulation) targets.remove("flow-simulation")
+        if (targets["flow-surface"] === surface) targets.remove("flow-surface")
     }
