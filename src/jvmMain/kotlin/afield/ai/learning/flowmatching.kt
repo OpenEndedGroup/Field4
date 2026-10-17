@@ -90,7 +90,7 @@ import afield.simulation.particles.MlpActivation
 import afield.simulation.particles.MlpWeights
 import afield.ui.output.h
 import afield.geometry.path.FLine
-import afield.geometry.path.HungarianAssignment
+import afield.geometry.spatial.HungarianAssignment
 import smile.base.mlp.Layer
 import smile.base.mlp.LayerBuilder
 import smile.base.mlp.MultilayerPerceptron

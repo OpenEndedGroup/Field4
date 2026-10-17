@@ -171,6 +171,8 @@ import kotlin.math.*
  * [RbfKernel], [RbfKernels] and [RbfInterpolator] at the top of the file are the scattered-data
  * fitter behind `Functions.rbf`; it solves a dense n×n system per construction, so it is sized
  * for handfuls of control points, not thousands.
+ * Its counterpart in two or more dimensions, [RbfField] in `RbfField.kt`, fits a surface through
+ * values at scattered points with the same kernels.
  */
 
 /**

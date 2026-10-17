@@ -73,7 +73,7 @@ import kotlin.math.sqrt
  * total squared travel distance kept small.
  *
  * The exact answer to that problem is an assignment problem, and the Hungarian method that
- * `flowmatching.kt` uses for its minibatches is `O(n³)` time over an `n × n` cost matrix. At a
+ * [assignment] in `transport.kt` solves it with is `O(n³)` time over an `n × n` cost matrix. At a
  * thousand points that is fine. At a million the matrix alone is four terabytes. BSP-OT gives up
  * provable optimality to get to `O(n log n)`:
  *
