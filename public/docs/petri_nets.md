@@ -589,9 +589,9 @@ for TALA still opens, and `D2Layout.available` tells you which one you got.
 - **Invariants only see token counts.** Read and inhibitor arcs don't change token counts, so the
   invariants can't see them. `net.report()` says so when a net uses them and suggests
   `stateSpace()`, which does see them.
-- **A net that makes a new colour on every firing has no loop.** Loop detection and `stateSpace()`
-  both compare colours by equality, so such a net never repeats a marking, and `stateSpace()` runs
-  out of search budget.
+- **A net that makes a new colour on every firing never repeats.** Loop detection and `stateSpace()`
+  both compare colours by equality, so such a net finds no loop, and `stateSpace()` runs out of
+  search budget.
 - **The editor checks spelling, not behaviour.** The editor marks `@1/0` as a bad duration and
   `=> wobble` as an unknown combinator as you type. It can't tell that a transition will never
   fire; the Kotlin parser reports that when the box runs.
@@ -664,7 +664,7 @@ Three limits bound what it will answer:
 ??? aside "How the reduction is checked"
     A differential test runs both searches over generated nets and compares the set of reachable
     terminal markings, the length of the counterexample, containment of the reduced state set in the
-    full one, and that every accessor gated on `exact` refuses. `dev_docs/PETRI_REDUCTION_AGREEMENT.md`
+    full one, and that every accessor gated on `exact` refuses. [`PETRI_REDUCTION_AGREEMENT.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/PETRI_REDUCTION_AGREEMENT.md)
     has the corpus, the floors and a run's numbers.
 
     Half of that corpus uses read arcs, inhibitor arcs, capacities and arc weights. A stubborn set
