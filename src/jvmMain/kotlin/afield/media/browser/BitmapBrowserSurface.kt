@@ -18,6 +18,10 @@ import org.lwjgl.vulkan.VkMemoryRequirements
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties
 
 /**
+ * A browser-frame receiver that uploads CPU pixels to the GPU, as a fallback where Chromium's shared-texture export delivers an empty frame.
+ */
+
+/**
  * The deliberately non-zero-copy browser receiver: frames arrive as CPU pixels and are uploaded,
  * instead of arriving as a shared GPU allocation and being imported.
  *
