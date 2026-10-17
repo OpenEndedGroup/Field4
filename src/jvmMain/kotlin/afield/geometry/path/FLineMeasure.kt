@@ -12,77 +12,90 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
 
-/*
+/**
  * Measuring, locating, trimming and crossing an [FLine].
  *
  * There is one measurer: [FLine.cursor]. A cursor walks a line by distance (`setD`) or by node
  * parameter (`setT`), and everything it reports about the point under it — position, unit tangent,
- * Frenet frame, curvature — comes from the one segment evaluator in this file ([FLineSeg]: exact
- * cubic first and second derivatives, lines degree-elevated, degenerate ends handled). `location()`
- * hands the lot back as an [FLineLocation].
+ * Frenet frame, curvature — comes from the one segment evaluator in this file: exact cubic first
+ * and second derivatives, straight runs degree-elevated to cubics, degenerate ends handled.
+ * `location()` hands the lot back as an [FLineLocation].
  *
  * The FLine-level functions here are front doors onto a cursor for the common one-shot questions:
  * [length], [locationAt], [locationAtFraction], [nearestLocation], [trim], [splitAt]. Use a cursor
  * yourself when you walk a line step by step.
  *
  * Two parameterisations run through all of it:
+ *
  *  - **distance** (`d`), in drawing units along the line, from 0 to [length]. Use it when you want
  *    things evenly spaced.
  *  - **`t`**, the node parameter: `t = i + u` is fraction `u` of the way (by curve parameter, not by
  *    distance) along the segment that ends at node `i + 1`.
- * Every FLineLocation carries both.
+ *
+ * Every [FLineLocation] carries both.
  *
  * Everything whose answer only exists in the xy plane says so in its name: [FLineLocation.normal2D],
  * [FLineLocation.signedCurvature2D], [tightBounds2D], [area2D], [isClockwise2D], [windingNumber2D],
  * [contains2D], [crossings2D], [selfCrossings2D]. Everything else is 3D.
  */
+
 private const val EPS = 1e-9
 
 /**
  * A point on an [FLine] with its local frame.
  *
  * At a node, the frame is the outgoing segment's (the incoming one's at the very end of the line).
- *
- * @property point where on the line
- * @property tangent unit direction of travel. At a degenerate end — a cubic whose control point sits
- *   on its end point, where the derivative vanishes — it is the limiting direction. Zero only on a
- *   segment of zero length.
- * @property normal the unit principal normal: perpendicular to [tangent], towards the centre of
- *   curvature, in whatever plane the line is bending. `null` on straight runs, where there is no
- *   such direction — there is no sensible fallback in 3D, and in 2D you want [normal2D] anyway.
- * @property binormal `tangent × normal`, the axis the line is turning about; `null` where [normal] is.
- * @property curvature unsigned 3D curvature `|r' × r''| / |r'|³`, i.e. `1 / radius`; 0 on straight runs.
- * @property normal2D [tangent]'s xy part turned a quarter turn, `(tangent.y, -tangent.x)`, unit
- *   length. On Field's canvas (y down) that is to the **left** of the direction of travel; with y up,
- *   to the right. It is defined on straight runs too, and is the zero vector only where the line runs
- *   straight along z. This is the normal to offset a 2D drawing along.
- * @property signedCurvature2D curvature of the line's xy projection, positive when it bends towards
- *   [normal2D]; 0 on straight runs.
- * @property distance distance along the line from its start, in drawing units
- * @property t the node parameter of this point (see the file overview)
- * @property segment index of the node that ends the segment this point is on
  */
 data class FLineLocation(
+    /** Where on the line. */
     val point: Vec3,
+    /**
+     * Unit direction of travel. At a degenerate end — a cubic whose control point sits on its end
+     * point, where the derivative vanishes — it is the limiting direction. Zero only on a segment of
+     * zero length.
+     */
     val tangent: Vec3,
+    /**
+     * The unit principal normal: perpendicular to [tangent], towards the centre of curvature, in
+     * whatever plane the line is bending. `null` on straight runs, where there is no such
+     * direction — there is no sensible fallback in 3D, and in 2D you want [normal2D] anyway.
+     */
     val normal: Vec3?,
+    /** `tangent × normal`, the axis the line is turning about; `null` where [normal] is. */
     val binormal: Vec3?,
+    /** Unsigned 3D curvature `|r' × r''| / |r'|³`, i.e. `1 / radius`; 0 on straight runs. */
     val curvature: Float,
+    /**
+     * [tangent]'s xy part turned a quarter turn, `(tangent.y, -tangent.x)`, unit length. On Field's
+     * canvas (y down) that is to the **left** of the direction of travel; with y up, to the right.
+     * It is defined on straight runs too, and is the zero vector only where the line runs straight
+     * along z. This is the normal to offset a 2D drawing along.
+     */
     val normal2D: Vec2,
+    /**
+     * Curvature of the line's xy projection, positive when it bends towards [normal2D]; 0 on
+     * straight runs.
+     */
     val signedCurvature2D: Float,
+    /** Distance along the line from its start, in drawing units. */
     val distance: Float,
+    /** The node parameter of this point (see the file overview). */
     val t: Float,
+    /** Index of the node that ends the segment this point is on. */
     val segment: Int,
 )
 
 /**
  * One place where two lines (or one line with itself) cross in the xy plane.
- *
- * @property point the crossing point
- * @property t the node parameter on the line the method was called on
- * @property otherT the node parameter on the other line (on the same line, for [selfCrossings2D])
  */
-data class FLineCrossing(val point: Vec3, val t: Float, val otherT: Float)
+data class FLineCrossing(
+    /** The crossing point. */
+    val point: Vec3,
+    /** The node parameter on the line the method was called on. */
+    val t: Float,
+    /** The node parameter on the other line (on the same line, for [selfCrossings2D]). */
+    val otherT: Float,
+)
 
 /** How [contains2D] decides "inside" when contours overlap or nest — the SVG / canvas `fill-rule`. */
 enum class FLineFillRule {

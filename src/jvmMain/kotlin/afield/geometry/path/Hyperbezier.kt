@@ -18,30 +18,36 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * The curve family behind [afield.geometry.path.fitHyperbezierCubics] — a port of Raph Levien's
- * hyperbezier (linebender.org/blog/hyperbezier/, August 2026).
+ * The hyperbezier curve family, ported from Raph Levien's hyperbezier
+ * (linebender.org/blog/hyperbezier/, August 2026); [fitHyperbezierCubics] is what draws one into an
+ * [FLine].
  *
  * A hyperbezier is the plane curve traced at unit speed whose curvature is a rational function of
  * arc length `s`:
  *
- * ```
+ * ```text
  *     kappa(s) = (a*s + b) / q(s)^1.5,     q(s) = c*s^2 + d*s + 1
  * ```
  *
- * over `s` in `[0, 1]`, then similarity-transformed so it runs from `(0, 0)` to `(1, 0)` — what the
- * rest of this file calls the **chord frame**. The point of the family is that `q` is a dial
- * between two regimes a single cubic has to compromise between: `q` constant gives circular arcs
- * and Euler spirals *exactly*, while `q` dipping towards zero gives a corner-like curvature spike.
- * It also contains the log-aesthetic curves and the circle involute exactly, and it has at most one
- * inflection — the one thing it gives up relative to a cubic, and the reason
- * [fitHyperbezierCubics] emits several cubics rather than consuming them.
+ * over `s` in `[0, 1]`, then similarity-transformed so it runs from `(0, 0)` to `(1, 0)`, which is
+ * what the rest of this file calls the **chord frame**. `q` is a dial between two regimes a single
+ * cubic has to compromise between: `q` constant gives circular arcs and Euler spirals *exactly*,
+ * while `q` dipping towards zero gives a corner-like curvature spike. The family also contains the
+ * log-aesthetic curves and the circle involute exactly. Its curvature numerator is linear in `s`, so
+ * it has at most one inflection, and that is what it gives up relative to a cubic: following a cubic
+ * with two inflections takes more than one hyperbezier.
  *
- * `theta(s)`, the integral of `kappa`, has a closed form ([ThetaFn]). The position integral of
- * `e^(i*theta)` does not — it is Fresnel-like — so [positionIntegral] does that part numerically
- * with Gauss-Legendre quadrature.
+ * `theta(s)`, the integral of `kappa`, has a closed form. The position integral of `e^(i*theta)`
+ * does not, being Fresnel-like, so that part is done numerically with Gauss-Legendre quadrature.
  *
- * Construct one from a cubic-shaped control polygon with [hyperbezierFor]; it is rarely useful to
- * pick `a`, `b`, `c` and `d` by hand.
+ * Construct a curve from a cubic-shaped control polygon with [hyperbezierFor]; it is rarely useful
+ * to pick `a`, `b`, `c` and `d` by hand.
+ */
+
+/**
+ * One hyperbezier, as the four coefficients of its curvature function, evaluated in the chord frame.
+ *
+ * Build one with [hyperbezierFor] rather than by choosing the coefficients directly.
  */
 class Hyperbezier(
     /** Linear coefficient of the curvature numerator. */
