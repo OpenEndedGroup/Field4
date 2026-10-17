@@ -1,3 +1,13 @@
+/**
+ * Windows import path for Electron browser frames: wraps a D3D11 shared texture, passed as an NT
+ * handle, in a Vulkan image that Field can copy from.
+ *
+ * [WindowsExternalBrowserSurface] imports each frame that carries a handle through
+ * `VK_KHR_external_memory_win32`, closes the NT handle after the import, replaces that slot's earlier
+ * image, and retires every slot when the stream id changes. It requires Windows and a device that supports that extension. It has
+ * been compiled but not yet run on Windows.
+ */
+
 package afield.media.browser
 
 import afield.graphics.vulkan.Renderer
@@ -12,9 +22,9 @@ import org.lwjgl.vulkan.VK11.VK_QUEUE_FAMILY_EXTERNAL
  * process-local NT handle into Field before constructing
  * [ExternalBrowserImageHandle.WindowsD3D11NtHandle].
  *
- * This implementation is compile-reviewed from macOS and deliberately retains the proven shape of
- * the `src/personal` prototype. It still needs a Windows Vulkan validation/readback smoke before it
- * should be called runtime-proven.
+ * This implementation is compile-reviewed from macOS and keeps the shape of the `src/personal`
+ * prototype. It still needs a Windows Vulkan validation/readback smoke before it should be called
+ * runtime-proven.
  */
 class WindowsExternalBrowserSurface(
     renderer: Renderer,
