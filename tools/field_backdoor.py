@@ -3653,6 +3653,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     set_parser.add_argument("property")
     set_parser.add_argument("value", nargs="?")
     set_parser.add_argument("--file")
+    set_parser.add_argument("--value-escapes", action="store_true", help=VALUE_ESCAPES_HELP)
     set_parser.add_argument("--timeout", type=float)
 
     for command_name in ("macro", "transcript"):
@@ -3679,6 +3680,7 @@ def build_command_parser() -> argparse.ArgumentParser:
         # None: the box's own default_property (a StackSL program box runs its stackSL), else code.
         exec_parser.add_argument("--property", default=None)
         exec_parser.add_argument("--value")
+        exec_parser.add_argument("--value-escapes", action="store_true", help=VALUE_ESCAPES_HELP)
         exec_parser.add_argument("--file")
         exec_parser.add_argument("--timeout", type=float)
         exec_parser.add_argument(
@@ -3815,6 +3817,31 @@ def default_property_of(client: "FieldBackdoor", uid: str | None) -> str:
     except BackdoorError:
         return "code"
     return target.get("default_property") or "code"
+
+
+VALUE_ESCAPES_HELP = (
+    "Decode \\n, \\t, \\r and \\\\ in the value before sending it, so multi-line box code fits "
+    "on one command line. Off by default: a value is sent as written, which keeps a Kotlin "
+    "string's own \\n escape intact. For anything long, --file <path> (or --file - for stdin) "
+    "avoids quoting altogether."
+)
+
+_VALUE_ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "\\": "\\"}
+
+
+def decode_value_escapes(text: str) -> str:
+    """`\\n`, `\\t`, `\\r` and `\\\\` in [text] decoded; any other backslash is kept as written."""
+    out: list[str] = []
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "\\" and i + 1 < len(text) and text[i + 1] in _VALUE_ESCAPES:
+            out.append(_VALUE_ESCAPES[text[i + 1]])
+            i += 2
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
 
 
 def parse_command(command_line: str) -> argparse.Namespace:
@@ -4372,10 +4399,12 @@ async def dispatch_command(
     if args.command == "set":
         if (args.value is None) == (args.file is None):
             raise BackdoorError("set requires exactly one of a literal value or --file")
+        if args.value_escapes and args.file:
+            raise BackdoorError("set: --value-escapes decodes a literal value; a --file is sent as written")
         if args.file:
             value = client.read_text_source(args.file, command_line=command_line)
         else:
-            value = args.value
+            value = decode_value_escapes(args.value) if args.value_escapes else args.value
         timeout = args.timeout or client.default_timeout
         data = await client.set_property(
             uid=args.uid,
@@ -4432,7 +4461,11 @@ async def dispatch_command(
             )
         if args.value is not None and args.file is not None:
             raise BackdoorError(f"{args.command} accepts --value or --file, not both")
+        if args.value_escapes and args.value is None:
+            raise BackdoorError(f"{args.command}: --value-escapes decodes --value; a --file is sent as written")
         value = args.value
+        if value is not None and args.value_escapes:
+            value = decode_value_escapes(value)
         if args.file:
             value = client.read_text_source(args.file, command_line=command_line)
         timeout = args.timeout or client.default_timeout
