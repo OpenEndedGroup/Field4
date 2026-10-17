@@ -1,0 +1,17 @@
+{
+  "baseline": "9708e07ed",
+  "sources": [
+    {
+      "path": "python/fieldcv/examples/shared_memory.yaml",
+      "codeBodiesChecked": 6,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "python/fieldcv/examples/webcam_demo.yaml",
+      "codeBodiesChecked": 7,
+      "collectionConversions": 1,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}
