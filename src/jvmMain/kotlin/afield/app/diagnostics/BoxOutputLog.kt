@@ -1,5 +1,13 @@
 package afield.app.diagnostics
 
+/**
+ * A bounded server-side record of each box's printed text, errors, `display(...)` channels and
+ * execution verdicts, readable without a websocket.
+ *
+ * Readers take [BoxOutputLog.mark] before acting and read [BoxOutputLog.since] afterwards to see
+ * what one run produced. The bounds and the feed points are described on [BoxOutputLog].
+ */
+
 import afield.app.protocol._send
 import afield.data.table.div
 import afield.data.table.minus
