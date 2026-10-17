@@ -106,22 +106,23 @@ renderer += module
 var vertexData = defaultBuffer {
     perFrame = true
     size = 9.vec4s
-}.buffer
+}
+    .buffer
 
 m.vertexData = { vertexData }
 
 vertexData.write {
     put(vec(-0.8, -0.6, 0.0, 1.0))
     put(vec(-0.2, -0.6, 0.0, 1.0))
-    put(vec(-0.5,  0.2, 0.0, 1.0))
+    put(vec(-0.5, 0.2, 0.0, 1.0))
 
     put(vec(-0.1, -0.4, 0.0, 1.0))
-    put(vec( 0.5, -0.4, 0.0, 1.0))
-    put(vec( 0.2,  0.5, 0.0, 1.0))
+    put(vec(0.5, -0.4, 0.0, 1.0))
+    put(vec(0.2, 0.5, 0.0, 1.0))
 
-    put(vec( 0.2, -0.8, 0.0, 1.0))
-    put(vec( 0.8, -0.8, 0.0, 1.0))
-    put(vec( 0.5,  0.0, 0.0, 1.0))
+    put(vec(0.2, -0.8, 0.0, 1.0))
+    put(vec(0.8, -0.8, 0.0, 1.0))
+    put(vec(0.5, 0.0, 0.0, 1.0))
 }
 
 m.resize(9)
@@ -156,10 +157,10 @@ void main()
 {
     gl_Position = vec4(pc.vertexData.positions[gl_VertexIndex].xyz, 1);
     localColor = vec4(
-        wrap(gl_VertexIndex, 3),
-        wrap(gl_VertexIndex, 5),
-        wrap(gl_VertexIndex, 11),
-        1.0);
+    wrap(gl_VertexIndex, 3),
+    wrap(gl_VertexIndex, 5),
+    wrap(gl_VertexIndex, 11),
+    1.0);
 }
 ```
 
@@ -190,7 +191,7 @@ module += "mainMesh" to m
 renderer += module
 
 val camera = Camera()
-camera.at = vec(-8,2,7)
+camera.at = vec(-8, 2, 7)
 
 module.view.m = camera.m()
 module.view.p = camera.p()
@@ -199,11 +200,11 @@ for (n in 1..80) {
     m.set(3 * n, 1 * n) {
         n {
             val z = 0.0 + it
-            pos.add(0,0,-1+z, 1.0,0.1,z, 1,1,z)
+            pos.add(0, 0, -1 + z, 1.0, 0.1, z, 1, 1, z)
             3 {
-                col.add(10-it*0,it/3.0,1-it/3.0,1)
+                col.add(10 - it * 0, it / 3.0, 1 - it / 3.0, 1)
             }
-            tri.add(0+3*it,1+3*it,2+3*it)
+            tri.add(0 + 3 * it, 1 + 3 * it, 2 + 3 * it)
         }
     }
 }
@@ -245,7 +246,7 @@ module += "mainMesh" to m
 renderer += "boo" to module
 
 val camera = Camera()
-camera.at = vec(-8,2,7)
+camera.at = vec(-8, 2, 7)
 
 m.p = camera.p
 m.m = camera.m
@@ -254,11 +255,11 @@ for (n in 1..80) {
     m.set(3 * n, 1 * n) {
         n {
             val z = 0.0 + it
-            pos.add(0,0,-1+z, 1.0,0.1,z, 1,1,z)
+            pos.add(0, 0, -1 + z, 1.0, 0.1, z, 1, 1, z)
             3 {
-                col.add(0,it/3.0,1-it/3.0,1)
+                col.add(0, it / 3.0, 1 - it / 3.0, 1)
             }
-            tri.add(0+3*it,1+3*it,2+3*it)
+            tri.add(0 + 3 * it, 1 + 3 * it, 2 + 3 * it)
         }
     }
 }
@@ -303,11 +304,11 @@ m.m = camera.m
 
 m.set(3, 1) {
     val z = 0.0
-    pos.add(0,0,0+z, 1.0,0.1,z, 1,1,z)
-    tri.add(0,1,2)
+    pos.add(0, 0, 0 + z, 1.0, 0.1, z, 1, 1, z)
+    tri.add(0, 1, 2)
 }
 
-var kc by keyCamera(camera=camera)
+var kc by keyCamera(camera = camera)
 ```
 
 The shader is the same push-constant shape as the previous section, just without the color attribute. Camera control is ordinary Kotlin state around the same rendering contract.
@@ -327,7 +328,8 @@ var module = computeModuleHere {
 
 var m = ComputeMesh()
 var localSize = 16
-m.x = numVec4 / localSize
+// Include a partial final group; the shader guards both buffer lengths.
+m.x = (numVec4 + localSize - 1) / localSize
 m.y = 1
 m.z = 1
 
@@ -344,12 +346,11 @@ module.InputBuffer.mapAndWrite {
 
 var fr = 0
 frames {
-    while(true) {
+    while (true) {
         module.OutputBuffer.mapAndRead {
             var s = "${fr}:: "
             this.clear()
-            for(n in 0 until 10)
-                s += this.get(n).toString() + " "
+            for (n in 0 until 10) s += this.get(n).toString() + " "
             print(s)
         }
 
@@ -373,11 +374,13 @@ layout(set=0, binding = 1) readonly buffer InputBuffer {
     vec4 inData[];
 };
 
+
 void main() {
     uint idx = gl_GlobalInvocationID.x;
-    if (idx < 256)
-        outData[idx] = inData[idx] * vec4(1,1,1,1) +
-            vec4(3 + idx * 1, -(idx * 21.0), idx * 3, idx * 4);
+    // Array lengths reflect the actual SSBO allocation, including edited element counts.
+    if (idx >= uint(min(inData.length(), outData.length()))) return;
+    outData[idx] = inData[idx] * vec4(1,1,1,1) +
+    vec4(3 + idx * 1, -(idx * 21.0), idx * 3, idx * 4);
 }
 ```
 
@@ -399,6 +402,7 @@ var m = ComputeMesh()
 module += "mainMesh" to m
 renderer += "module" to module
 
+// N changes buffer allocation. Stop the draw child first; rerun compute, then draw.
 val N = 100000
 var inData = defaultBuffer { size = N.vec4s }.buffer
 var outData = defaultBuffer { size = N.vec4s }.buffer
@@ -413,8 +417,12 @@ m.something = {
 }
 
 prop<FrameBufferGroup>(outputPositions) = outData
+prop<Int>(particleCount) = N
 
-m.x = N / 64
+// uint push members accept Int lambdas; the shader checks the tail group.
+m.count = { N }
+
+m.x = (N + 63) / 64
 m.y = 1
 m.z = 1
 
@@ -425,7 +433,11 @@ inData.write {
 }
 ```
 
-`prop<FrameBufferGroup>(outputPositions) = outData` is the publication. `m.something = { ... }` is a reflected push-constant member fed by a Kotlin lambda re-evaluated every dispatch, which is how the animation clock reaches the shader.
+`prop<FrameBufferGroup>(outputPositions) = outData
+prop<Int>(particleCount) = N
+
+// uint push members accept Int lambdas; the shader checks the tail group.
+m.count = { N }` is the publication. `m.something = { ... }` is a reflected push-constant member fed by a Kotlin lambda re-evaluated every dispatch, which is how the animation clock reaches the shader.
 
 The compute shader takes both buffers as buffer references through its push-constant block, and calls `fieldProbe` to sample a value for the probe display:
 
@@ -434,8 +446,12 @@ The compute shader takes both buffers as buffer references through its push-cons
 #extension GL_EXT_buffer_reference : require
 layout(local_size_x = 64) in;
 
-layout(std430, buffer_reference) buffer inData { vec4 a[]; };
-layout(std430, buffer_reference) buffer outData { vec4 a[]; };
+layout(std430, buffer_reference) buffer inData {
+    vec4 a[];
+};
+layout(std430, buffer_reference) buffer outData {
+    vec4 a[];
+};
 
 {% include "fieldProbe" %}
 
@@ -443,10 +459,13 @@ layout(push_constant) uniform dat {
     inData inData;
     outData outData;
     float something;
+    uint count;
 } pc;
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
+    // Ceiling dispatch includes extra lanes; none may access the particle buffers.
+    if (idx >= pc.count) return;
     pc.outData.a[idx].x = pc.inData.a[idx].x*cos(pc.something*pc.inData.a[idx].z) + pc.inData.a[idx].y*sin(pc.something*pc.inData.a[idx].w);
     pc.outData.a[idx].y = -pc.inData.a[idx].x*sin(pc.something*pc.inData.a[idx].w) + pc.inData.a[idx].y*cos(pc.something*pc.inData.a[idx].z*0.03);
 
@@ -472,10 +491,11 @@ renderer += "boo2" to module
 
 m.inData = { outputPositions }
 
-val N = 100000
+// Inherit the count from the same parent that owns the buffers.
+val N = particleCount
 
-m.aspectRatio = { window.width/window.height.toFloat() }
-m.set(N*2*3, 0) {}
+m.aspectRatio = { window.width / window.height.toFloat() }
+m.set(N * 2 * 3, 0) {}
 
 m
 ```
@@ -486,7 +506,9 @@ m
 #version 450
 #extension GL_EXT_buffer_reference : require
 
-layout(std430, buffer_reference) buffer inData { vec4 pos[]; };
+layout(std430, buffer_reference) buffer inData {
+    vec4 pos[];
+};
 
 layout(location = 0) out vec2 tc;
 
@@ -535,22 +557,38 @@ val camera = Camera()
 m.p = camera.p
 m.m = camera.m
 
-var kc by keyCamera(camera=camera)
+var kc by keyCamera(camera = camera)
 m.set(4, 2) {
     val z = 0.0
 
-    pos.add(0,0,0+z,
-            1.0,0.1,z,
-            1,1,z,
-            0,1,z)
+    pos.add(
+        0,
+        0,
+        0 + z,
+        1.0,
+        0.1,
+        z,
+        1,
+        1,
+        z,
+        0,
+        1,
+        z,
+    )
 
-    tc.add(0,0,
-           1,0,
-           1,1,
-           0,1)
+    tc.add(
+        0,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        1,
+    )
 
-    tri.add(0,1,2)
-    tri.add(0,2,3)
+    tri.add(0, 1, 2)
+    tri.add(0, 2, 3)
 }
 ```
 
@@ -597,8 +635,6 @@ The name `bbc` is the bridge. Kotlin creates `prop<LoadedTexture>(bbc)`, the sha
 A shader can declare an *array* of samplers, and the Kotlin side binds it by publishing an array of image views under the array's name. The reflected-name contract is the same as the single texture above; only the type changes.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04b-multi-texture.png" alt="the same multicoloured checkerboard quad with its white and black crossing diagonals. It is pixel-identical to the single-texture figure on purpose: all three entries of the sampler array point at the same image file, so what the figure shows is that the array binds, links and draws at all" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-multi-texture" source-box="assets/canonical_graphics/3cbcadc0-b279-470d-9a5f-afc120518829" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.graphics.texture.*
-
 var bbc = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 bbc.transferNow()
 
@@ -608,7 +644,7 @@ bbc2.transferNow()
 var bbc3 = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 bbc3.transferNow()
 
-var asArray : Array<ImageView> = arrayOf(bbc.imageView, bbc2.imageView, bbc3.imageView)
+var asArray: Array<ImageView> = arrayOf(bbc.imageView, bbc2.imageView, bbc3.imageView)
 
 prop<Array<ImageView>>(ta) = asArray
 
@@ -622,22 +658,38 @@ val camera = Camera()
 m.p = camera.p
 m.m = camera.m
 
-var kc by keyCamera(camera=camera)
+var kc by keyCamera(camera = camera)
 m.set(4, 2) {
     val z = 0.0
 
-    pos.add(0,0,0+z,
-            1.0,0.1,z,
-            1,1,z,
-            0,1,z)
+    pos.add(
+        0,
+        0,
+        0 + z,
+        1.0,
+        0.1,
+        z,
+        1,
+        1,
+        z,
+        0,
+        1,
+        z,
+    )
 
-    tc.add(0,0,
-           1,0,
-           1,1,
-           0,1)
+    tc.add(
+        0,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        1,
+    )
 
-    tri.add(0,1,2)
-    tri.add(0,2,3)
+    tri.add(0, 1, 2)
+    tri.add(0, 2, 3)
 }
 ```
 
@@ -666,8 +718,7 @@ The declared array length (`ta[3]`) is the descriptor count, and the count must 
 Everything so far built its geometry in Kotlin. `gltfModelHere(path)` instead reads a glTF file and hands back a module *and* the meshes it found, with the shaders already matched to how that data is laid out:
 
 ```diffstatic {data-lang=kotlin}
-var (module, meshes) =
-    gltfModelHere("glTF-Sample-Models/2.0/Box/glTF/Box.gltf")
+var (module, meshes) = gltfModelHere("glTF-Sample-Models/2.0/Box/glTF/Box.gltf")
 
 var m = Mesh()
 
@@ -678,10 +729,10 @@ val camera = Camera()
 camera.p.orthoness = 0.3
 camera.p.matchDepth = 2.0
 
-KeyCamera(camera=camera)
+KeyCamera(camera = camera)
 meshes[0].meshes[0].applyToMesh(m, camera)
 
-camera.at = vec(0,0,-10)
+camera.at = vec(0, 0, -10)
 camera.p()
 
 loop {
@@ -707,15 +758,15 @@ layout(std430, buffer_reference) readonly buffer IndexBuffer {
 };
 
 layout (binding = 0) uniform VertexData {
-    mat4 modelView;        // view * model
-    mat4 proj;             // projection
+    mat4 modelView; // view * model
+    mat4 proj; // projection
 
     vec4 materialBaseColor;
 
-    uint vertexOffset;     // in floats
-    uint indexOffset;      // in indices
-    uint vertexStride;     // in floats
-    uint useVertexColor;   // bool as uint
+    uint vertexOffset; // in floats
+    uint indexOffset; // in indices
+    uint vertexStride; // in floats
+    uint useVertexColor; // bool as uint
 } data;
 
 void main()
@@ -724,9 +775,9 @@ void main()
     uint base = data.vertexOffset + idx * data.vertexStride;
 
     vec3 pos = vec3(
-        pc.vertexBuffer.vertexData[base + 0],
-        pc.vertexBuffer.vertexData[base + 1],
-        pc.vertexBuffer.vertexData[base + 2]
+    pc.vertexBuffer.vertexData[base + 0],
+    pc.vertexBuffer.vertexData[base + 1],
+    pc.vertexBuffer.vertexData[base + 2]
     );
     // … normal at +3, uv at +6, colour at +8 …
 }
@@ -742,7 +793,7 @@ layout(set = 0, binding = 1) uniform sampler2D uTextures[6];
 
 void main()
 {
-   uFragColor = texture(uTextures[0], vUV);
+    uFragColor = texture(uTextures[0], vUV);
 }
 ```
 
@@ -775,17 +826,17 @@ target += "boo" to module
 val camera = Camera()
 m.p = camera.p
 m.m = camera.m
-m.finalColor = { vec(Math.random(),Math.random(),Math.random(),1.0) }
+m.finalColor = { vec(Math.random(), Math.random(), Math.random(), 1.0) }
 
 // we can set this live and after the fact
 target.parameters.clearFirst = true
 
-var kc by keyCamera(camera=camera)
+var kc by keyCamera(camera = camera)
 loop {
     m.set(3, 1) {
-        val z = Math.random()*0.0
-        pos.add(-3,1,-1+z, 1.0,-20.3,z, 3,3,z)
-        tri.add(0,1,2)
+        val z = Math.random() * 0.0
+        pos.add(-3, 1, -1 + z, 1.0, -20.3, z, 3, 3, z)
+        tri.add(0, 1, 2)
     }
     true
 }
@@ -807,16 +858,26 @@ val camera = Camera()
 mesh.p = camera.p
 mesh.m = camera.m
 
-var kc by keyCamera(camera=camera)
+var kc by keyCamera(camera = camera)
 mesh.set(4, 2) {
     val z = 0.0
-    pos.add(-1,-1, z,
-            1.0,-1.0,z,
-            1,1,z,
-            -1.0, 1, z)
-    tc.add(0,0, 1,0, 1,1, 0,1)
-    tri.add(0,1,2)
-    tri.add(0,2,3)
+    pos.add(
+        -1,
+        -1,
+        z,
+        1.0,
+        -1.0,
+        z,
+        1,
+        1,
+        z,
+        -1.0,
+        1,
+        z,
+    )
+    tc.add(0, 0, 1, 0, 1, 1, 0, 1)
+    tri.add(0, 1, 2)
+    tri.add(0, 2, 3)
 }
 ```
 
@@ -846,8 +907,6 @@ A target you can read *and* write in the same pass is a contradiction, so feedba
 
 ```diffstatic {data-lang=kotlin}
 import org.lwjgl.vulkan.VK10.*
-import afield.graphics.vulkan.targets.*
-import afield.graphics.texture.*
 
 prop<PingPongRenderToTexture>(target) = PingPongRenderToTexture {
     clearFirst = false
@@ -884,8 +943,6 @@ void main()
 Reading `otherView` at a slightly offset coordinate and writing the channels back swapped (`c.gr`) is what makes the image drift and recolour over time rather than settle. The consuming box then displays `target.thisImageView`, the half that was just written:
 
 ```diffstatic {data-lang=kotlin}
-import afield.graphics.texture.*
-
 prop<HasImageView>(bbc) = target.thisImageView
 ```
 
@@ -900,7 +957,7 @@ The blur chain is the longest topology in the corpus (`window → 5. Bluring →
 ```diffstatic {data-lang=glsl}
 void main()
 {
-   uFragColor = vec4(int(gl_FragCoord.x/32) % 2,int(gl_FragCoord.y/32) % 2,0,1);
+    uFragColor = vec4(int(gl_FragCoord.x/32) % 2,int(gl_FragCoord.y/32) % 2,0,1);
 }
 ```
 
@@ -946,9 +1003,9 @@ float gauss(float x, float sigma) {
 
 void main()
 {
-    float r1 = blur.radius * 0.275;   // near
-    float r2 = blur.radius * 0.65;    // mid
-    float r3 = blur.radius * 0.95;    // far
+    float r1 = blur.radius * 0.275; // near
+    float r2 = blur.radius * 0.65; // mid
+    float r3 = blur.radius * 0.95; // far
 
     float w0 = gauss(0.0, blur.sigma);
     float w1 = gauss(r1, blur.sigma);
@@ -980,10 +1037,10 @@ void main()
     vec2 dx3 = texel * vec2(radii.z, 0.0);
 
     vec4 c =
-          weights.x * texture(b0, ftc)
-        + weights.y * (texture(b0, ftc + dx1) + texture(b0, ftc - dx1))
-        + weights.z * (texture(b0, ftc + dx2) + texture(b0, ftc - dx2))
-        + weights.w * (texture(b0, ftc + dx3) + texture(b0, ftc - dx3));
+    weights.x * texture(b0, ftc)
+    + weights.y * (texture(b0, ftc + dx1) + texture(b0, ftc - dx1))
+    + weights.z * (texture(b0, ftc + dx2) + texture(b0, ftc - dx2))
+    + weights.w * (texture(b0, ftc + dx3) + texture(b0, ftc - dx3));
 
     uFragColor = vec4(c.rgb / radii.w, 1.0);
     uFragColor1 = vec4(c.bgr / radii.w, 1.0);
@@ -1056,8 +1113,8 @@ void main()
 
     float n = fbm(uv*2 + f.yx * 0.75);
     float n2 = fbm(uv * 2.0 -
-                    f.yx * 0.5 +
-                    vec2(-f.y, f.x)*n*9);
+    f.yx * 0.5 +
+    vec2(-f.y, f.x)*n*9);
 
     vec3 col = abs(f) * (0.6 + 0.8 * n) + vec3(n2 * 0.25, n * 0.2, n * 0.35);
     uFragColor = vec4(col, 1.0);
@@ -1072,7 +1129,7 @@ Beyond includes, a shader property is a template with values supplied from Kotli
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/05b-templating.png" alt="one right triangle filling a black window, its right angle at the bottom right, in flat saturated yellow with no gradient. The colour is not written into the shader: it is the value Kotlin substituted into the template slot" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-templating" source-box="assets/canonical_graphics/1103f132-7484-4440-8102-5bd159a29fbf" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 // we can define this first
-shaderTemplate["col"] = mapOf("fixedColor" to Resolver { "vec4(1,0.75,0,1)" } )
+shaderTemplate["col"] = mapOf("fixedColor" to Resolver { "vec4(1,0.75,0,1)" })
 
 // then there's an execution break here
 //%-
@@ -1086,8 +1143,8 @@ module += m named "my mesh"
 renderer += module
 
 m.set(3, 3) {
-    pos.add(0,0,0, 0.5,0,0, 0.5,0.5,0)
-    tri.add(0,1,2)
+    pos.add(0, 0, 0, 0.5, 0, 0, 0.5, 0.5, 0)
+    tri.add(0, 1, 2)
 }
 ```
 
@@ -1111,19 +1168,17 @@ In the corpus this box also carries a `//%-` line, which is Field's execution br
 Templating gets more interesting when the substituted source is itself generated from a Kotlin type. `PushConstants<T>` reflects a Kotlin class into a GLSL push-constant declaration:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/05c-push-constants.png" alt="one right triangle filling a black window in flat dark crimson, the same geometry as the templating figure with a different colour. The value arrives through a push-constant block GLSL never declared by hand, reflected out of a Kotlin class" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-push-constants" source-box="assets/canonical_graphics/42056e8d-ec8b-4bf8-b84a-1cd1d8524510" source-box-properties="vertex,fragment" source-box-wait="0.1"}
-import afield.graphics.vulkan.util.*
-
 class MyPC(
-    var a : Vec4,
-    var b : Vec4,
-    var c : Vec4
+    var a: Vec4,
+    var b: Vec4,
+    var c: Vec4,
 ) : PushConstants<MyPC>()
 
-var pc = MyPC(vec(1,0,0,1),vec(1,2,3,4),vec(1,2,3,4))
+var pc = MyPC(vec(1, 0, 0, 1), vec(1, 2, 3, 4), vec(1, 2, 3, 4))
 
 shaderTemplate["pc"] = mapOf("dec" to Resolver { pc.glsl() })
 
-pc.a.x=0.3f
+pc.a.x = 0.3f
 pc.otherDeclarations = "layout(offset=${pc.nextFreeOffset(16)}) uint foo;"
 
 // then there's an execution break here
@@ -1141,8 +1196,8 @@ m.push.bindAll { pc }
 m.foo = { 10u }
 
 m.set(3, 3) {
-    pos.add(0,0,0, 0.5,0,0, 0.5,0.5,0)
-    tri.add(0,1,2)
+    pos.add(0, 0, 0, 0.5, 0, 0, 0.5, 0.5, 0)
+    tri.add(0, 1, 2)
 }
 ```
 
@@ -1176,14 +1231,15 @@ renderer += module
 var vertexData = defaultBuffer {
     perFrame = true
     size = 3.vec4s
-}.buffer
+}
+    .buffer
 
 m.vertexData = { vertexData }
 
 vertexData.write {
-    put(vec(0,0,0))
-    put(vec(1,0,0))
-    put(vec(0,1,0))
+    put(vec(0, 0, 0))
+    put(vec(1, 0, 0))
+    put(vec(0, 1, 0))
 }
 
 m.resize(3)
@@ -1231,25 +1287,41 @@ val camera = Camera()
 m.p = camera.p
 m.m = camera.m
 
-var kc by keyCamera(camera=camera)
+var kc by keyCamera(camera = camera)
 val n = 100
-m.set(4*n, 2*n) {
+m.set(4 * n, 2 * n) {
     n {
-        val z = it+0.0
+        val z = it + 0.0
 
-        pos.add(0,0,0+z,
-                1.0,0.1,z,
-                1,1,z,
-            0,1,z)
+        pos.add(
+            0,
+            0,
+            0 + z,
+            1.0,
+            0.1,
+            z,
+            1,
+            1,
+            z,
+            0,
+            1,
+            z,
+        )
 
-        tc.add(0,0,
-            1,0,
-            1,1,
-            0,1)
+        tc.add(
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+        )
 
-        val b = it*4
-        tri.add(b+0,b+1,b+2)
-        tri.add(b+0,b+2,b+3)
+        val b = it * 4
+        tri.add(b + 0, b + 1, b + 2)
+        tri.add(b + 0, b + 2, b + 3)
     }
 }
 ```
@@ -1282,18 +1354,17 @@ In the Vulkan window the 100 quads stack along z, so from the camera they land o
 `FieldRTTStreamer` turns a render target into an encoded video stream, which is how a Field sketch drives a display it is not attached to. Its largest consumer is the Vision Pro front end; see [Apple Vision Pro](vision.md), which covers the stereo side-by-side layout, the media wire's pose tail, and `tagPosesFrom` for stamping a frame with the head pose it was rendered from:
 
 ```diffstatic {data-lang=kotlin}
+import afield.media.stream.FieldRTTStreamer
 import org.lwjgl.vulkan.VK10.*
-import afield.four.stream.FieldRTTStreamer
 
 // Streamer allocates + imports the surface and hands back the RTT to render into.
 
 prop<FieldRTTStreamer>(streamer)
 once.streamer {
-     = FieldRTTStreamer(renderer, dest = "127.0.0.1:9001", width = 1280, height = 720, fps = 15)
+    FieldRTTStreamer(renderer, dest = "127.0.0.1:9001", width = 1280, height = 720, fps = 15)
 }
 
-@exported
-val target = streamer.start().first()
+prop<RenderToTexture>(target) = streamer.start().first()
 
 renderer.renderList += "target" to target
 
@@ -1320,11 +1391,12 @@ var sourceBuffer = buffer {
     addressable()
     hosted()
     dest()
-}.buffer
+}
+    .buffer
 
 sourceBuffer.write {
     200 {
-        putInt(2000-it)
+        putInt(2000 - it)
     }
 }
 
@@ -1357,25 +1429,26 @@ renderer += module
 var vertexData = defaultBuffer {
     perFrame = true
     size = 3.vec4s
-}.buffer
+}
+    .buffer
 
 m.vertexData = { vertexData }
 
 var t = 0.0
-fun polar(t : Double, r : Double) = vec(Math.sin(t), Math.cos(t)) * r.f
+fun polar(t: Double, r: Double) = vec(Math.sin(t), Math.cos(t)) * r.f
 
 loop {
     t += 0.01
     var num = 0
 
-    var numVertToWrite = (Math.sin(t*0.1)*20 + 30).i
+    var numVertToWrite = (Math.sin(t * 0.1) * 20 + 30).i
 
     vertexData.write {
-        for(x in 0 until numVertToWrite) {
-            val offset = vec(x*0.02, 0, 0)
+        for (x in 0 until numVertToWrite) {
+            val offset = vec(x * 0.02, 0, 0)
             put(vec(polar(t, 0.5), 0) + offset)
-            put(vec(polar(t+0.4, 0.4), 0) + offset)
-            put(vec(polar(t+0.9, 0.3), 0) + offset)
+            put(vec(polar(t + 0.4, 0.4), 0) + offset)
+            put(vec(polar(t + 0.9, 0.3), 0) + offset)
 
             num += 3
         }
@@ -1423,19 +1496,21 @@ void main() {
     if (mode != 0u) {
         positionPx = randomPosition(rng, dims);
         mode = 0u;
-    } else {
+    }
+    else {
         ivec2 center = clamp(ivec2(round(positionPx)), ivec2(0), dims - 1);
         int probe = max(int(round(push.sampleStepPx)), 1);
         bool solidNeighbor =
-            isSolidAt(center + ivec2(probe, 0), dims, push.solidThreshold) ||
-            isSolidAt(center + ivec2(-probe, 0), dims, push.solidThreshold) ||
-            isSolidAt(center + ivec2(0, probe), dims, push.solidThreshold) ||
-            isSolidAt(center + ivec2(0, -probe), dims, push.solidThreshold);
+        isSolidAt(center + ivec2(probe, 0), dims, push.solidThreshold) ||
+        isSolidAt(center + ivec2(-probe, 0), dims, push.solidThreshold) ||
+        isSolidAt(center + ivec2(0, probe), dims, push.solidThreshold) ||
+        isSolidAt(center + ivec2(0, -probe), dims, push.solidThreshold);
 
         if (solidNeighbor) {
             mode = 1u;
             becameSolid = true;
-        } else {
+        }
+        else {
             positionPx = clamp(positionPx + randomWalkStep(rng, push.walkStepPx), vec2(0.0), maxPos);
         }
     }
@@ -1474,7 +1549,8 @@ int next = here;
 if (here == mover && cellAt(p + ahead, dims) == 0) {
     next = 0;
     // a car moves out of this cell this half-step ...
-} else if (here == 0 && cellAt(p - ahead, dims) == mover) {
+}
+else if (here == 0 && cellAt(p - ahead, dims) == mover) {
     next = mover;
 }
 
@@ -1523,8 +1599,10 @@ const vec4 EAST = vec4(1.0, 0.0, 0.0, 1.0);
 const vec4 SOUTH = vec4(0.0, 0.0, 1.0, 1.0);
 
 uint hash(uint x) {
-    x ^= x >> 16u; x *= 0x7feb352du;
-    x ^= x >> 15u; x *= 0x846ca68bu;
+    x ^= x >> 16u;
+    x *= 0x7feb352du;
+    x ^= x >> 15u;
+    x *= 0x846ca68bu;
     x ^= x >> 16u;
     return x;
 }
@@ -1553,7 +1631,8 @@ void main() {
         uvec2 u = uvec2(p);
         if (random01(u, 1u) < push.density) {
             outColor = random01(u, 2u) < push.eastboundFraction ? EAST : SOUTH;
-        } else {
+        }
+        else {
             outColor = EMPTY;
         }
         return;
@@ -1575,7 +1654,8 @@ void main() {
         fieldProbe(float(p.x + p.y));
         // a car moves out of this cell this half-step: one invocation per moving car,
         // which is where to tap it (fieldProbe, fieldStats) without counting it twice
-    } else if (here == 0 && cellAt(p - ahead, dims) == mover) {
+    }
+    else if (here == 0 && cellAt(p - ahead, dims) == mover) {
         next = mover;
     }
 
