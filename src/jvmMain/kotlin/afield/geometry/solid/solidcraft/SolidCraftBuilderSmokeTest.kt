@@ -1,6 +1,9 @@
 package afield.geometry.solid.solidcraft
 
 import afield.geometry.path.FLine
+import afield.geometry.mesh.weld
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
 import org.json.JSONObject
 import kotlin.math.PI
 import kotlin.math.abs
@@ -108,6 +111,18 @@ object SolidCraftBuilderSmokeTest {
             val section = sketch(planeSquareTo(knot)) { circle(0.0, 0.0, 2.5) }
             sweep(section, sketch("XY") { wire(knot, spacing = 0.5f) })
         }) { d -> near("trefoil tube volume", body(d).getDouble("volume"), PI * 2.5 * 2.5 * knotLength, 3e-2) }
+
+        // A sweep caps both ends even when its path closes, so a ring is two half sweeps joined:
+        // the join removes the touching caps, leaving exactly a torus's area, genus 1. (The same join
+        // on the trefoil's freeform halves fails in SolidCraft v0.15.0 after minutes: "no result".)
+        case("ring from two joined half sweeps", solidCraft {
+            sweep(sketch("XZ") { circle(20.0, 0.0, 2.5) }, sketch("XY") { arc(0.0, 0.0, 20.0, 0.0, -20.0, 0.0) })
+            sweep(sketch("XZ") { circle(-20.0, 0.0, 2.5) }, sketch("XY") { arc(0.0, 0.0, -20.0, 0.0, 20.0, 0.0) }, operation = SolidCraftOperation.JOIN)
+        }) { d ->
+            near("torus area", body(d).getDouble("area"), 4 * PI * PI * 20.0 * 2.5, 1e-3)
+            val m = d.mesh(0, 0.05).toTriMesh().weld()
+            check(m.isWatertight() && m.genus() == 1) { "ring is not a closed genus-1 solid: genus ${m.genus()}" }
+        }
 
         case("loft", solidCraft {
             val a = sketch("XY") { rectangle(-10.0, -10.0, 10.0, 10.0) }
