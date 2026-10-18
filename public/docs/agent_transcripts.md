@@ -2345,6 +2345,17 @@ CI compiles the boxes; new inference requires that separate environment.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/particle_video/metadata.edn)
 
+### morse_smale_explorer
+
+[Morse–Smale complexes](morse_smale.md), three ways. The first box draws the ridges of a
+photograph under a persistence slider. The complex is built once and the slider only re-reads it,
+so dragging is instant. The second, launched, moves six hills around a 200 × 150 grid and
+recomputes the field and its complex on every frame, colouring each critical point by its id; a peak
+keeps its colour while it stays on the same grid cell. The third prints one saddle's four
+separatrices as a table. Needs the optional native library: `./gradlew buildMorseSmaleNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/morse_smale_explorer/metadata.edn)
+
 ## FieldML scenes
 
 <!-- transcript-index: verified-by = compile -->
