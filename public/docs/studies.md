@@ -427,6 +427,24 @@ fingerprints, acceptance, or whether downstream stages can use the result. A req
 must meet belongs in the recipe or in a [gate](#wait-until-a-measurement-passes). A stale result
 drops its notes from the current-result view; inspecting that attempt still shows them.
 
+`resultNotes` explains successes only. To explain a failure as well, give the stage a `failureNotes`
+adapter: it takes the failed `StudyBuildRecord`, usually reads its `problem.details`, and returns
+notes under the same rules. A route stage that fails because some routes were held can name a view
+of them, so a chat that waited for the build resumes with a close-up of the held routes:
+
+```diffstatic {data-lang=kotlin}
+failureNotes = { failed ->
+    val held = failed.problem?.details?.get("held") as? List<*>
+    if (held.isNullOrEmpty()) emptyList()
+    else [StudyBuildNotice("${held.size} routes were held.", StudyBuildNoticeKind.ERROR,
+        StudyBuildView("Held routes", "each held route, close up") { showHeld(held) })]
+}
+```
+
+The card shows these notes under the failure, agent inspection and the completion stream carry
+them, and a resumed chat gets their pictures, as it would a success's. A failed attempt is never
+current: its notes are not the current result's, and they leave the card once the inputs change.
+
 An edit during a build leaves the old attempt available for inspection, marked **obsolete**.
 It cannot become the current result. Changing a dependency result or `recipeVersion` also
 invalidates downstream results. Use `builds.currentFile(stage, path)` when a viewer or export
