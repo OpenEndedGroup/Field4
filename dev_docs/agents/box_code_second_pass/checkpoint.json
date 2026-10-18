@@ -1281,6 +1281,30 @@
     "6291dfc415aa-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_48/README.md"
+    },
+    "e8da8e8fdcb8-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_49/README.md"
+    },
+    "ab4732b75877-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_49/README.md"
+    },
+    "a96d6bf12ad1-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_49/README.md"
+    },
+    "6caa5d8a54fe-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_49/README.md"
+    },
+    "956a69992e2a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_49/README.md"
+    },
+    "ae09b7bae9fc-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_49/README.md"
     }
   },
   "batches": [
@@ -1330,7 +1354,8 @@
     "../box_code_adoption_batch_45/README.md",
     "../box_code_adoption_batch_46/README.md",
     "../box_code_adoption_batch_47/README.md",
-    "../box_code_adoption_batch_48/README.md"
+    "../box_code_adoption_batch_48/README.md",
+    "../box_code_adoption_batch_49/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1349,10 +1374,10 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 48,
-    "branch": "codex/box-code-readability-48",
-    "baseline": "0cd246f01",
-    "state": "Two responsiveness findings verified: real StudyBuilds worker exits 7ms after cancellation within billion-sample batch; reduced seeded completion facts identical. Both Phased after states yield to real Runloop under controlled held input, then stop. Nine Kotlin states formatted. Full guards delegated to lander. Batch47 queued 20261018-132606-codex-box-code-readability-47. Field9718 CPU-only; renderer stopped.",
-    "evidence": "../box_code_adoption_batch_48/README.md"
+    "batch": 49,
+    "branch": "codex/box-code-readability-49",
+    "baseline": "df883e149",
+    "state": "Six teaching/shader-contract findings verified: ten Kotlin bodies, five shaders, five collection conversions, unchanged baseline executable tokens/interfaces and container semantics. Field codec refreshed two skin shader fallbacks preserving graph. Batch45 landing; batch48 queued 20261018-133031-codex-box-code-readability-48. Full guards delegated to lander. Field9718 CPU-only.",
+    "evidence": "../box_code_adoption_batch_49/README.md"
   }
 }
