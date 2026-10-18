@@ -15,8 +15,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-UPSTREAM = "https://github.com/bherbruck/solidcraft.git"
-REVISION = "e519fbd14dce22e7d03b44d1125da0bdaec2935c"
+UPSTREAM = "https://github.com/tangency-labs/solidcraft.git"
+# v0.15.0, pinned by commit because a tag can move.
+REVISION = "fa691707c224cae580c42201ed3a22d5e4b8c716"
 SOURCE = ROOT / "build" / "solidcraft-src"
 ADAPTER = ROOT / "native" / "field-solidcraft"
 STAGED = SOURCE / "crates" / "field4-bridge"
@@ -32,11 +33,23 @@ def main() -> None:
     if not SOURCE.exists():
         SOURCE.parent.mkdir(parents=True, exist_ok=True)
         run("git", "clone", "--filter=blob:none", "--no-checkout", UPSTREAM, str(SOURCE))
-        run("git", "fetch", "--depth=1", "origin", REVISION, cwd=SOURCE)
-        run("git", "checkout", REVISION, cwd=SOURCE)
-    actual = run("git", "rev-parse", "HEAD", cwd=SOURCE)
+    actual = subprocess.run(["git", "rev-parse", "-q", "--verify", "HEAD"], cwd=SOURCE, text=True, capture_output=True).stdout.strip()
     if actual != REVISION:
-        raise SystemExit(f"SolidCraft checkout is {actual}, expected {REVISION}; move it aside to rebuild")
+        # An older pin (or a fresh --no-checkout clone): move it to this one. The checkout is
+        # build output; only local edits to tracked upstream files would stop it. Cargo.lock is
+        # not one: building the staged bridge adds it to the workspace lockfile.
+        checked_out = run("git", "ls-files", cwd=SOURCE) != ""
+        if checked_out:
+            run("git", "checkout", "--", "Cargo.lock", cwd=SOURCE)
+        dirty =checked_out and run("git", "status", "--porcelain", "--untracked-files=no", cwd=SOURCE)
+        if dirty:
+            raise SystemExit(f"SolidCraft checkout {SOURCE} has local edits; commit or discard them to move to {REVISION}")
+        run("git", "remote", "set-url", "origin", UPSTREAM, cwd=SOURCE)
+        run("git", "fetch", "--depth=1", "origin", REVISION, cwd=SOURCE)
+        run("git", "checkout", "--detach", REVISION, cwd=SOURCE)
+        actual = run("git", "rev-parse", "HEAD", cwd=SOURCE)
+        if actual != REVISION:
+            raise SystemExit(f"SolidCraft checkout is {actual}, expected {REVISION}")
     if STAGED.exists():
         shutil.rmtree(STAGED)
     shutil.copytree(ADAPTER, STAGED)

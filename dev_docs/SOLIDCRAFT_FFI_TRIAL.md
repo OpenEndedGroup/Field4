@@ -1,7 +1,7 @@
 # Optional SolidCraft FFM trial
 
 Field keeps its existing Manifold binding. This trial adds a separate, optional path to SolidCraft's
-document and B-rep engine at pinned upstream commit `e519fbd14dce22e7d03b44d1125da0bdaec2935c`.
+document and B-rep engine at pinned upstream release v0.15.0 (commit `fa691707c224cae580c42201ed3a22d5e4b8c716`).
 Ordinary `compileKotlinJvm`, `check`, and Field startup do not download or load SolidCraft.
 
 ## Try it
@@ -20,7 +20,9 @@ reopens the design, and checks that a failed edit preserves the previous model.
 
 The adapter must build *inside* the SolidCraft workspace. That repository patches upstream truck
 crates at the workspace root; a Cargo Git dependency outside the workspace would not inherit
-those patches. The build script refuses a source checkout at any other revision.
+those patches. An existing source checkout at another revision (an earlier pin) is moved to this one; the build
+refuses only if it has local edits to upstream files. Cargo.lock is restored first, since building
+the staged bridge rewrites it.
 
 ## Kotlin API
 
