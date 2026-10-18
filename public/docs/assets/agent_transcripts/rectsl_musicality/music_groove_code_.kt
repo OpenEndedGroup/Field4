@@ -1,20 +1,23 @@
-// RectSL's musical layer: the pattern language as scene structure.
-//
-// Two facts do all the work. A RectSL track is `sample(t)` and a pattern is
-// `events(arc)` — both pure functions of time — so (1) a pattern IS a track,
-// which is why `saw ->rotate` needs no conversion word, and (2) a pattern
-// event carries an onset and a real duration, which is exactly what
-// `->live birth life` wants, so an event IS a life window. `pat` is `array`
-// indexed by rhythm instead of by ordinal.
-//
-// Nothing below is written in seconds. Edit `rectsl` and re-run to change the
-// groove live. See rectsl_cheatsheet.md ("Musicality") / rectsl_examples.md.
+/*
+RectSL's musical layer: the pattern language as scene structure.
+
+Two facts do all the work. A RectSL track is `sample(t)` and a pattern is
+`events(arc)` — both pure functions of time — so (1) a pattern IS a track,
+which is why `saw ->rotate` needs no conversion word, and (2) a pattern
+event carries an onset and a real duration, which is exactly what
+`->live birth life` wants, so an event IS a life window. `pat` is `array`
+indexed by rhythm instead of by ordinal.
+
+Nothing below is written in seconds. Edit `rectsl` and re-run to change the
+groove live. See rectsl_cheatsheet.md ("Musicality") / rectsl_examples.md.
+*/
+import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 import afield.lang.rectsl.RectAnimationOracle
 import afield.lang.rectsl.rectMaterialShaderCode
 import afield.lang.rectsl.writeFrameToMesh
-import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
-val rectsl = """
+val rectsl =
+    """
 #rectsl
 ->wall 16 9 abstract
 ->tempo 120
@@ -72,11 +75,13 @@ end
 """
 
 val program = RectAnimationOracle.compile(rectsl).program!!
-val shader  = rectMaterialShaderCode(program)
+val shader = rectMaterialShaderCode(program)
 
-// Seed this box's shader-source properties before `moduleHere {}` runs; the
-// `//%-` fragment break makes this fragment execute first (see the playground
-// transcript for the why).
+/*
+Seed this box's shader-source properties before `moduleHere {}` runs; the
+`//%-` fragment break makes this fragment execute first (see the playground
+transcript for the why).
+*/
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
 once.fragment { shader.exampleFragmentShader!! }
 

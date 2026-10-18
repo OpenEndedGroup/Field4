@@ -25,19 +25,21 @@ evolve_crossbreed breeds with any population the conversation has been in, on an
 StackSLTarget.of("logo", imgFromFile("/path/to/logo.png"))
 
 ```edn [field-box id="stacksl_evolve_studio" role="properties"]
-{"id" "stacksl_evolve_studio" "index" 0 "name" "Evolve" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Evolve" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl_evolve_studio_code_.kt" "lines" 12 "characters" 957 "sha256" "03b9c32b6d94df4973067ae3a52310d58a585c0d45ade6b83cb7413ec4b6cc0b"}]}
+{"id" "stacksl_evolve_studio" "index" 0 "name" "Evolve" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Evolve" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl_evolve_studio_code_.kt" "lines" 14 "characters" 936 "sha256" "64bf70da18e1d5a152026d8184ae0139791dce7d08706863cebd01a5d5c46c6e"}]}
 ```
 
 ```kotlin [field-property box="stacksl_evolve_studio" name="code" path="stacksl_evolve_studio_code_.kt"]
-// A StackSL search toward a picture, steered from this box's AI panel. Ask, for instance:
-// "evolve toward the target, and bring the watchmaker in when it stalls".
-// The chat runs generations (evolve_step), looks at the leaders (evolve_look), proposes programs
-// (evolve_propose), asks the fast model for a round of edits (evolve_watchmaker), takes a gradient
-// step on a leader's numbers (evolve_fit) and changes the metric or the population (evolve_configure).
-// The population belongs to the conversation: rewind the chat and the search goes back with it, and
-// evolve_crossbreed breeds with any population the conversation has been in, on any branch.
-// /population and /sheet show the leaders. For your own picture:
-//   StackSLTarget.of("logo", imgFromFile("/path/to/logo.png"))
+/*
+A StackSL search toward a picture, steered from this box's AI panel. Ask, for instance:
+"evolve toward the target, and bring the watchmaker in when it stalls".
+The chat runs generations (evolve_step), looks at the leaders (evolve_look), proposes programs
+(evolve_propose), asks the fast model for a round of edits (evolve_watchmaker), takes a gradient
+step on a leader's numbers (evolve_fit) and changes the metric or the population (evolve_configure).
+The population belongs to the conversation: rewind the chat and the search goes back with it, and
+evolve_crossbreed breeds with any population the conversation has been in, on any branch.
+/population and /sheet show the leaders. For your own picture:
+  StackSLTarget.of("logo", imgFromFile("/path/to/logo.png"))
+*/
 val evolution = stackSLEvolution(StackSLTargets.rings(32))
 stackSLEvolveStudio(evolution)
 display("ai-chat", afield.ai.conversation.AiBoxConversation.read(thisBox))

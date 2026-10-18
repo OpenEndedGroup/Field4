@@ -1,8 +1,6 @@
 // `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
 import afield.graphics.scene.fabricated.StandardRenderer
 import afield.graphics.scene.fabricated.applyScenePlan
-import afield.math.linalg.Matrix4f
-import afield.math.linalg.Vector3f
 
 prop<StandardRenderer.Bundle>(bundle)
 
@@ -14,8 +12,8 @@ once.bundle {
         StandardRenderer.Config(
             renderWidth = 1024,
             renderHeight = 1024,
-            backgroundColor = Vector3f(0.09f, 0.10f, 0.13f)
-        )
+            backgroundColor = Vector3f(0.09f, 0.10f, 0.13f),
+        ),
     )
     b.scene.camera.at.set(0f, 1.5f, -4.2f)
     b.scene.camera.target.set(0f, 0f, 0f)

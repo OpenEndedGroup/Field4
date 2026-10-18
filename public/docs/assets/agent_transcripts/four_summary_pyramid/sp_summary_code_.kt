@@ -7,10 +7,13 @@ import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
 
 prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(summary)
 
-// The field being summarised: three anisotropic blobs that drift and rotate, with the
-// mass in alpha and a value ramp in red. A chain head that synthesises its own input is
-// self-contained whatever the post stack looked like before it.
-val fieldFragment = """
+/*
+The field being summarised: three anisotropic blobs that drift and rotate, with the
+mass in alpha and a value ramp in red. A chain head that synthesises its own input is
+self-contained whatever the post stack looked like before it.
+*/
+val fieldFragment =
+    """
     #version 450
     layout(location = 0) in vec2 vUv;
     layout(push_constant) uniform FieldPush {
@@ -44,12 +47,15 @@ val fieldFragment = """
     }
 """
 
-// The field as a *picture*, which is not the same thing as the field. `field` carries a
-// value in red over the whole frame because that is what the pyramid weighs and averages;
-// looking at it directly is looking at a red wash, because the mass that says which part
-// of the frame matters is in the alpha channel. One pass turns it into something to draw
-// on: the value's colour, where the mass is.
-val viewFragment = """
+/*
+The field as a *picture*, which is not the same thing as the field. `field` carries a
+value in red over the whole frame because that is what the pyramid weighs and averages;
+looking at it directly is looking at a red wash, because the mass that says which part
+of the frame matters is in the alpha channel. One pass turns it into something to draw
+on: the value's colour, where the mass is.
+*/
+val viewFragment =
+    """
     #version 450
     layout(location = 0) in vec2 vUv;
     layout(set = 0, binding = 0) uniform sampler2D sourceTex;
@@ -62,78 +68,94 @@ val viewFragment = """
     }
 """
 
-// Declared every run. `addPassChain` replaces passes of the same name and reuses a target
-// whose shape has not changed, so editing a number and hitting run remakes the chain
-// without reallocating anything — which is why there is no `once` here. Wrapping the
-// declaration in one would mean a `resolution` you edited never took effect.
+/*
+Declared every run. `addPassChain` replaces passes of the same name and reuses a target
+whose shape has not changed, so editing a number and hitting run remakes the chain
+without reallocating anything — which is why there is no `once` here. Wrapping the
+declaration in one would mean a `resolution` you edited never took effect.
+*/
 summary = bundle.addPassChain(
     listOf(
         FabricatePassSpec(
             name = "field",
             fragment = fieldFragment,
             size = FabricatePassSize.Absolute(256, 256),
-            // fp32, and it matters here rather than being caution: the second moments are
-            // differences that need every bit of the first ones, and an 8-bit field would
-            // quantise the mass before the pyramid ever saw it.
+            /*
+            fp32, and it matters here rather than being caution: the second moments are
+            differences that need every bit of the first ones, and an 8-bit field would
+            quantise the mass before the pyramid ever saw it.
+            */
             format = VK_FORMAT_R32G32B32A32_SFLOAT,
             source = FabricatePassChain.CHAIN_INPUT,
-            push = mapOf("time" to 0f)
+            push = mapOf("time" to 0f),
         ),
         FabricatePassSpec(
             name = "field-view",
             fragment = viewFragment,
             size = FabricatePassSize.Absolute(512, 512),
-            source = "field"
-        )
-    ) + FabricatePassLibrary.summaryPyramid(
-        // Nine levels per plane, three planes: the leaf is 256² and the root is one cell
-        // holding the statistics of the whole field.
-        prefix = "summary",
-        resolution = 256,
-        source = "field",
-        weightChannel = 3,
-        valueChannel = 0
-    ) + FabricatePassLibrary.adaptiveSummaryCells(
-        // The half that makes it a quadtree rather than a pyramid: descend from depth 1,
-        // stop wherever the cell already describes its contents well enough, and draw the
-        // cells you stopped at. Empty space keeps its big cells and the blobs' edges are
-        // resolved six levels down, in one pass chain, from one tree.
-        //
-        // Two passes per level and two *resolutions* per level: the decision runs at the
-        // tree's scale (one texel per cell) and the drawing at the picture's.
-        prefix = "summary",
-        name = "cut",
-        over = "field-view",
-        coarsest = 1,
-        finest = 6,
-        // Refine where the cell is partly full — so the cut tracks the blobs' boundaries
-        // and leaves both the inside and the outside coarse. Try SPREAD instead to refine
-        // where the mass is narrower than its cell, or VALUE_VARIANCE for the classic
-        // image quadtree, which here follows the value ramp rather than the blobs.
-        criterion = FabricatePassLibrary.SubdivisionCriterion.OCCUPANCY,
-        threshold = 0.02f,
-        weightGain = 3f
-    ),
-    printReport = true
+            source = "field",
+        ),
+    ) +
+        FabricatePassLibrary.summaryPyramid(
+            // Nine levels per plane, three planes: the leaf is 256² and the root is one cell
+            // holding the statistics of the whole field.
+            prefix = "summary",
+            resolution = 256,
+            source = "field",
+            weightChannel = 3,
+            valueChannel = 0,
+        ) +
+        FabricatePassLibrary.adaptiveSummaryCells(
+            /*
+            The half that makes it a quadtree rather than a pyramid: descend from depth 1,
+            stop wherever the cell already describes its contents well enough, and draw the
+            cells you stopped at. Empty space keeps its big cells and the blobs' edges are
+            resolved six levels down, in one pass chain, from one tree.
+
+            Two passes per level and two *resolutions* per level: the decision runs at the
+            tree's scale (one texel per cell) and the drawing at the picture's.
+            */
+            prefix = "summary",
+            name = "cut",
+            over = "field-view",
+            coarsest = 1,
+            finest = 6,
+            /*
+            Refine where the cell is partly full — so the cut tracks the blobs' boundaries
+            and leaves both the inside and the outside coarse. Try SPREAD instead to refine
+            where the mass is narrower than its cell, or VALUE_VARIANCE for the classic
+            image quadtree, which here follows the value ramp rather than the blobs.
+            */
+            criterion = FabricatePassLibrary.SubdivisionCriterion.OCCUPANCY,
+            threshold = 0.02f,
+            weightGain = 3f,
+        ),
+    printReport = true,
 )
 // The frame graph has to re-sync before the new passes are scheduled.
 bundle.attachTo(renderer)
 bundle.present(renderer = renderer)
 
-// ── live knobs ──
-//
-// A lambda *binds*: the supplier is re-read every time the push buffer is written, so
-// this one line is the whole animation and there is nothing to call per frame. The whole
-// pyramid is rebuilt from the field every frame — twenty-seven passes over 256² and down,
-// which is cheaper than the blur in four_pass_chain.
+/*
+── live knobs ──
+
+A lambda *binds*: the supplier is re-read every time the push buffer is written, so
+this one line is the whole animation and there is nothing to call per frame. The whole
+pyramid is rebuilt from the field every frame — twenty-seven passes over 256² and down,
+which is cheaper than the blur in four_pass_chain.
+*/
 summary["time"] = { renderer.frameCounter * 0.01f }
-summary["sigma"] = 1f           // the ellipse's radius, in standard deviations
-summary["weightGain"] = 3f      // a mean coverage is a small number; this lifts the fill
-// `threshold` reaches every level of the descent at once, because the cut's select
-// passes all declare it — so turning this one number re-cuts the whole tree on the next
-// frame with nothing rebuilt and nothing reallocated.
+summary["sigma"] = 1f // the ellipse's radius, in standard deviations
+summary["weightGain"] = 3f // a mean coverage is a small number; this lifts the fill
+/*
+`threshold` reaches every level of the descent at once, because the cut's select
+passes all declare it — so turning this one number re-cuts the whole tree on the next
+frame with nothing rebuilt and nothing reallocated.
+*/
 summary["threshold"] = 0.02f
 
-println("summary pyramid: ${summary.names().size} passes, " +
+println(
+    "summary pyramid: ${summary.names().size} passes, " +
         "root ${summary.targetOf("summary-value-0")?.width}x" +
-        "${summary.targetOf("summary-value-0")?.height}")
+        "${summary.targetOf("summary-value-0")?.height}",
+)

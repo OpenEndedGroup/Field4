@@ -38,42 +38,61 @@ start(renderer::run)
 <!-- field-box id="optical_flow" index="1" -->
 
 ```edn [field-box id="optical_flow" role="properties"]
-{"id" "optical_flow" "index" 1 "name" "optical flow" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical flow" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_code_.kt" "lines" 33 "characters" 1671 "sha256" "22b070ca4faf380dbfd4131e88c00faa9f400c544ea0fe02ce9872860f29d838"}]}
+{"id" "optical_flow" "index" 1 "name" "optical flow" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical flow" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_code_.kt" "lines" 52 "characters" 1779 "sha256" "d0d736d7a9fbcaa7dd48ff424349ab0440d8ecc2f5cba3288986c20f5ff6a618"}]}
 ```
 
 ```kotlin [field-property box="optical_flow" name="code" path="optical_flow_code_.kt"]
-import afield.ui.output.controlGroup
-import afield.ui.output.displayOpen
 import afield.media.vision.*
-import afield.document.context.fromContextWithNameOrNull
 
 prop<OpticalFlowDemo>(lab)
 fromContextWithNameOrNull<OpticalFlowDemo>("lab")?.close()
 // AUTO: the VK_NV_optical_flow engine where the device has one, portable pyramidal Lucas–Kanade everywhere else.
-lab=OpticalFlowDemo(renderer,backend=OpticalFlowBackend.AUTO)
+lab = OpticalFlowDemo(renderer, backend = OpticalFlowBackend.AUTO)
 println("Optical flow backend: ${lab.flow.backend}")
-var gain=1f
-var damping=.98f
-// The two backends report cost on different scales, so the rejection threshold starts at the demo's per-backend default.
-var cost=lab.costThreshold
-var deform=true
-var reset=false
+var gain = 1f
+var damping = .98f
+// The two backends report cost on different scales, so the rejection threshold starts at the demo's per-backend
+// default.
+var cost = lab.costThreshold
+var deform = true
+var reset = false
 controlGroup("optical flow") {
-    slider("Advection gain",min=0.0,max=3.0,initialValue=1.0) { gain=it.toFloat() }
-    slider("Feedback retention",min=0.0,max=.995,initialValue=.98) { damping=it.toFloat() }
-    slider("Reject cost above",min=0.0,max=6.0*lab.costDisplayRange,initialValue=lab.costThreshold.toDouble()) { cost=it.toFloat() }
-    checkbox("Consecutive-frame wiggle",initialValue=true) { deform=it;reset=true }
-    button("Reset feedback and motion hints") { if(it)reset=true }
+    slider("Advection gain", min = 0.0, max = 3.0, initialValue = 1.0) { gain = it.toFloat() }
+    slider("Feedback retention", min = 0.0, max = .995, initialValue = .98) { damping = it.toFloat() }
+    slider(
+        "Reject cost above",
+        min = 0.0,
+        max = 6.0 * lab.costDisplayRange,
+        initialValue = lab.costThreshold.toDouble(),
+    ) {
+        cost = it.toFloat()
+    }
+    checkbox("Consecutive-frame wiggle", initialValue = true) {
+        deform = it
+        reset = true
+    }
+    button("Reset feedback and motion hints") { if (it) reset = true }
 }
 displayOpen("optical flow")
-println("Top: consecutive frames. Below: motion/cost and advected feedback. Turn off wiggle for the (+12, -8) translation check.")
+println(
+    "Top: consecutive frames. Below: motion/cost and advected feedback. Turn off wiggle for the (+12, -8) translation check.",
+)
 frames {
-    var time=0f
-    while(true) {
-        lab.dx=if(deform)0f else 12f;lab.dy=if(deform)0f else -8f;lab.displayRange=if(deform)3f else 20f;lab.gain=gain;lab.damping=damping;lab.costThreshold=cost;lab.deformation=deform
-        lab.update(time,reset);reset=false;time+=lab.pairStep
+    var time = 0f
+    while (true) {
+        lab.dx = if (deform) 0f else 12f
+        lab.dy = if (deform) 0f else -8f
+        lab.displayRange = if (deform) 3f else 20f
+        lab.gain = gain
+        lab.damping = damping
+        lab.costThreshold = cost
+        lab.deformation = deform
+        lab.update(time, reset)
+        reset = false
+        time += lab.pairStep
         frame()
     }
-}.end { lab.close() }
+}
+    .end { lab.close() }
 ```
 

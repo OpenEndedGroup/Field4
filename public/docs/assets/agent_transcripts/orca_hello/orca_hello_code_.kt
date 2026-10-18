@@ -1,6 +1,10 @@
 // Click the grid to type into ORCA. Space plays and pauses; Cmd-G shows every operator.
 val synth = PatSynthBank()
-val o = orca(rows = 12, grid = """
+val o =
+    orca(
+        rows = 12,
+        grid =
+            """
     #.ORCA.IN.FIELD.#
     .
     .2C8
@@ -9,7 +13,8 @@ val o = orca(rows = 12, grid = """
     .
     D8
     .:12C
-""")
+""",
+    )
 o.onNote {
     synth.play(it)
     markdown("heard", "`${it.note}${it.octave}` on channel ${it.channel}, MIDI ${it.midi}")

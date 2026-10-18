@@ -10,27 +10,33 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 <!-- field-box id="agent_vision_metal_cube" index="0" -->
 
+### Narrative
+
+From `code`
+
+`geometry` is explicit: there is no fallback to the head's cube, so a program that
+neither ships vertices nor builds them in Kotlin/JS would draw nothing. This one asks
+for the built-in cube by name.
+
 ```edn [field-box id="agent_vision_metal_cube" role="properties"]
-{"id" "agent_vision_metal_cube" "index" 0 "name" "Vision Metal Cube" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision Metal Cube" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_metal_cube_code_.kt" "lines" 17 "characters" 726 "sha256" "14d6676929e8f3c54bdc02297d7b28aec38d0344efb0ecf001f48e63d276226c"}]}
+{"id" "agent_vision_metal_cube" "index" 0 "name" "Vision Metal Cube" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision Metal Cube" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_metal_cube_code_.kt" "lines" 15 "characters" 539 "sha256" "4129f4c4c434453cc86c7339b26a4c9579f21e73b868ce692056c4e7804e262c"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_metal_cube" name="code" path="agent_vision_metal_cube_code_.kt"]
-import afield.graphics.visionos.VisionMetalGeometryOrigin
-import afield.graphics.visionos.visionMetal
-import afield.graphics.visionos.visionMetalExampleScript
-import afield.graphics.visionos.visionMetalExampleShader
-
-// `geometry` is explicit: there is no fallback to the head's cube, so a program that
-// neither ships vertices nor builds them in Kotlin/JS would draw nothing. This one asks
-// for the built-in cube by name.
+/*
+`geometry` is explicit: there is no fallback to the head's cube, so a program that
+neither ships vertices nor builds them in Kotlin/JS would draw nothing. This one asks
+for the built-in cube by name.
+*/
 visionMetal(
-    shader = visionMetalExampleShader,
-    script = visionMetalExampleScript,
-    uniforms = listOf("phase", "amount", "tint"),
-    geometry = VisionMetalGeometryOrigin.BUILTIN,
-).onStatus {
-    println("vision-metal ${it.phase}: ${it.message}")
-}
+        shader = visionMetalExampleShader,
+        script = visionMetalExampleScript,
+        uniforms = listOf("phase", "amount", "tint"),
+        geometry = VisionMetalGeometryOrigin.BUILTIN,
+    )
+    .onStatus {
+        println("vision-metal ${it.phase}: ${it.message}")
+    }
 println("vision-metal cube published")
 ```
 

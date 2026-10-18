@@ -1,14 +1,14 @@
-// A feedback StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot, and the program in this box's `stackSL` property samples `source`: the
-// frame this box drew last time, so the picture feeds back into itself.
-//
-// A window cannot be read back like that, so this box draws into a ping-pong
-// target instead. It holds two images, draws into one while `source` reads the
-// other, and swaps them every frame; `blitToScreen` puts the newest in the window.
-//
-// [[property stackSL]]
+/*
+A feedback StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot, and the program in this box's `stackSL` property samples `source`: the
+frame this box drew last time, so the picture feeds back into itself.
 
-import afield.graphics.vulkan.targets.PingPongRenderToTexture
+A window cannot be read back like that, so this box draws into a ping-pong
+target instead. It holds two images, draws into one while `source` reads the
+other, and swaps them every frame; `blitToScreen` puts the newest in the window.
+
+[[property stackSL]]
+*/
 
 prop<afield.graphics.vulkan.targets.PingPongRenderToTexture>(target)
 prop<afield.graphics.texture.HasImageView>(source)

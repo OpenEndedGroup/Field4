@@ -8,22 +8,24 @@ prop<FabricateBuiltChain>(chain)
 val r: Renderer = fromContext()
 val b: StandardRenderer.Bundle = fromContext()
 
-// Declared once. Six passes, each with its own resolution: reduce to a half, reduce to a
-// quarter, two aperture discs on the cheap quarter-resolution image, and a composite that
-// rejoins at full resolution while sampling the small blur. `printReport` prints the plan
-// — sizes, sampler wiring, shared targets, and the memory cost against one full-resolution
-// target per pass. Read it before believing the picture: a chain planned at the wrong
-// resolution renders something that looks perfectly plausible.
+/*
+Declared once. Six passes, each with its own resolution: reduce to a half, reduce to a
+quarter, two aperture discs on the cheap quarter-resolution image, and a composite that
+rejoins at full resolution while sampling the small blur. `printReport` prints the plan
+— sizes, sampler wiring, shared targets, and the memory cost against one full-resolution
+target per pass. Read it before believing the picture: a chain planned at the wrong
+resolution renders something that looks perfectly plausible.
+*/
 once.chain {
     val c = b.addPassChain(
         FabricatePassLibrary.apertureChain(
             nearRadius = 4f,
             farRadius = 12f,
             taps = 40,
-            blend = 0.92f
+            blend = 0.92f,
         ),
         renderer = r,
-        printReport = true
+        printReport = true,
     )
     b.attachTo(r)
     b.present(renderer = r)

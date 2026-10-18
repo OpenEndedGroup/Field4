@@ -20,18 +20,16 @@ range (`0.2_0.5`). No mix expression can be written at either position, so a run
 blend cannot reach them and says so rather than pretending.
 
 ```edn [field-box id="kfb_static" role="properties"]
-{"id" "kfb_static" "index" 0 "name" "Where a runtime blend cannot reach" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Where a runtime blend cannot reach" "_tombstone" false "frame" #afield/rect [80.0 720.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_static_code_.kt" "lines" 26 "characters" 1243 "sha256" "cb59da17413f8273ddf6e0a71a709e13f4945c1c448289bca13214e8a41d1330"}]}
+{"id" "kfb_static" "index" 0 "name" "Where a runtime blend cannot reach" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Where a runtime blend cannot reach" "_tombstone" false "frame" #afield/rect [80.0 720.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_static_code_.kt" "lines" 26 "characters" 1076 "sha256" "7762d2e8c054ac132cb86587e1322931fded11a387b2c453eb8573f3fa968210"}]}
 ```
 
 ```kotlin [field-property box="kfb_static" name="code" path="kfb_static_code_.kt"]
-// Two StackSL token forms carry their numbers inside a grammar that wants literals: a
-// modifier chain (`0.35s3` — an amount modulated by a sine at frequency 3) and a random
-// range (`0.2_0.5`). No mix expression can be written at either position, so a runtime
-// blend cannot reach them and says so rather than pretending.
-import afield.animation.keyframes.CodeBlendMode
-import afield.animation.keyframes.CodeBlendOptions
-import afield.animation.keyframes.planStackSLCodeBlend
-
+/*
+Two StackSL token forms carry their numbers inside a grammar that wants literals: a
+modifier chain (`0.35s3` — an amount modulated by a sine at frequency 3) and a random
+range (`0.2_0.5`). No mix expression can be written at either position, so a runtime
+blend cannot reach them and says so rather than pretending.
+*/
 val quiet = "uv 0.35s3 * fbm 0.2_0.5 +"
 val loud = "uv 0.80s3 * fbm 0.6_0.9 +"
 
@@ -41,10 +39,12 @@ println("asked for RUNTIME, will run " + plan.effectiveMode)
 println("because " + plan.downgradeReason)
 println()
 
-// A different program per t, and therefore a compile per t: fine for a scrub, not for a
-// frame loop. Note the modifier's frequency: unchanged between the two, so it comes back
-// as `3` rather than `3.0`. A site is atomic — one moving component rewrites the whole
-// token — and keeping an untouched number's spelling is what stops that showing.
+/*
+A different program per t, and therefore a compile per t: fine for a scrub, not for a
+frame loop. Note the modifier's frequency: unchanged between the two, so it comes back
+as `3` rather than `3.0`. A site is atomic — one moving component rewrites the whole
+token — and keeping an untouched number's spelling is what stops that showing.
+*/
 listOf(0.0, 0.5, 1.0).forEach { t ->
     println("t=" + t + "   " + plan.bake(t))
 }
@@ -65,22 +65,19 @@ nothing else. Then the blended expression is handed to a SourceBackedBlock whose
 kfb_kotlin, so it compiles and runs *there* while this box is the one evaluating.
 
 ```edn [field-box id="kfb_kotlin_run" role="properties"]
-{"id" "kfb_kotlin_run" "index" 1 "name" "The generated Kotlin, evaluated" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The generated Kotlin, evaluated" "_tombstone" false "frame" #afield/rect [80.0 1360.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_run_code_.kt" "lines" 27 "characters" 1142 "sha256" "42fba9db58c667cf058a545be6d582606b8a53f0699800c3b188e30130692748"}]}
+{"id" "kfb_kotlin_run" "index" 1 "name" "The generated Kotlin, evaluated" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The generated Kotlin, evaluated" "_tombstone" false "frame" #afield/rect [80.0 1360.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_run_code_.kt" "lines" 24 "characters" 941 "sha256" "ab2bbd9168768f381d910357bcdaed9e96b88c230d0354413d90f68d124d607c"}]}
 ```
 
 ```kotlin [field-property box="kfb_kotlin_run" name="code" path="kfb_kotlin_run_code_.kt"]
-// The same plan, rebuilt here — building one is pure, so it costs an alignment and
-// nothing else. Then the blended expression is handed to a SourceBackedBlock whose box is
-// kfb_kotlin, so it compiles and runs *there* while this box is the one evaluating.
-import afield.animation.keyframes.CodeBlendMode
-import afield.animation.keyframes.CodeBlendOptions
-import afield.study.source.SourceBackedBlock
-import afield.animation.keyframes.planKotlinCodeBlend
-
+/*
+The same plan, rebuilt here — building one is pure, so it costs an alignment and
+nothing else. Then the blended expression is handed to a SourceBackedBlock whose box is
+kfb_kotlin, so it compiles and runs *there* while this box is the one evaluating.
+*/
 val plan = planKotlinCodeBlend(
     "2.0f * 3.0f + 1.0f",
     "8.0f * 3.0f + 5.0f",
-    CodeBlendOptions(mode = CodeBlendMode.RUNTIME)
+    CodeBlendOptions(mode = CodeBlendMode.RUNTIME),
 )
 val block = SourceBackedBlock<Any?>("kfb_kotlin", plan.runtimeSource)
 println(plan.runtimeSource)
@@ -112,18 +109,16 @@ which is the case worth finding, because that is the case a person authoring two
 for one patch keeps producing.
 
 ```edn [field-box id="kfb_breakdown" role="properties"]
-{"id" "kfb_breakdown" "index" 2 "name" "What the alignment finds, and what it refuses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What the alignment finds, and what it refuses" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_breakdown_code_.kt" "lines" 31 "characters" 1556 "sha256" "c0d90599efc5c27707d1e4eee96c1736cc758f5c0a55b8bde8c30027df17b55c"}]}
+{"id" "kfb_breakdown" "index" 2 "name" "What the alignment finds, and what it refuses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What the alignment finds, and what it refuses" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_breakdown_code_.kt" "lines" 33 "characters" 1389 "sha256" "c052a08b57783c87dd8d2839c1604776944a38a9f8776ca9d0470ac4ef0aa767"}]}
 ```
 
 ```kotlin [field-property box="kfb_breakdown" name="code" path="kfb_breakdown_code_.kt"]
-// A code keyframe is a program. Two of them have no midpoint in general — half a program
-// is not a program — so a keyframe blend steps them. Unless they differ only in numbers,
-// which is the case worth finding, because that is the case a person authoring two looks
-// for one patch keeps producing.
-import afield.animation.keyframes.CodeBlendMode
-import afield.animation.keyframes.CodeBlendOptions
-import afield.animation.keyframes.planStackSLCodeBlend
-
+/*
+A code keyframe is a program. Two of them have no midpoint in general — half a program
+is not a program — so a keyframe blend steps them. Unless they differ only in numbers,
+which is the case worth finding, because that is the case a person authoring two looks
+for one patch keeps producing.
+*/
 val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
 val cool = "uv 8.0 * fbm 0.45 + [0.2,0.5,1.0] *"
 
@@ -132,16 +127,20 @@ println(plan.describe())
 println("blendable=" + plan.blendable + "  runtimeCapable=" + plan.runtimeCapable)
 println()
 
-// One program, for every t. Each moving literal became a push of both endpoints, a read of
-// the blend push constant, and `mix` — which leaves one value on the stack, exactly as the
-// literal it replaced did, so the surrounding stack arithmetic is untouched.
+/*
+One program, for every t. Each moving literal became a push of both endpoints, a read of
+the blend push constant, and `mix` — which leaves one value on the stack, exactly as the
+literal it replaced did, so the surrounding stack arithmetic is untouched.
+*/
 println("the one program a runtime blend runs:")
 println(plan.runtimeSource)
 println()
 
-// And the refusal. `elsewhere` swaps one token, `noise` for `fbm`: that is a different op,
-// not a moving literal, and a push constant can only mix values, so the blend steps
-// from one program to the other instead of interpolating.
+/*
+And the refusal. `elsewhere` swaps one token, `noise` for `fbm`: that is a different op,
+not a moving literal, and a push constant can only mix values, so the blend steps
+from one program to the other instead of interpolating.
+*/
 val elsewhere = "uv 3.0 * noise 0.15 + [1.0,0.55,0.2] *"
 val stepped = planStackSLCodeBlend(warm, elsewhere, CodeBlendOptions(mode = CodeBlendMode.RUNTIME))
 println(stepped.describe())
@@ -164,20 +163,17 @@ and a generated Kotlin expression reads a registry slot addressed by an integer 
 into its text, because generated text cannot close over a value.
 
 ```edn [field-box id="kfb_kotlin" role="properties"]
-{"id" "kfb_kotlin" "index" 3 "name" "The same blend, in Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The same blend, in Kotlin" "_tombstone" false "frame" #afield/rect [80.0 1040.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_code_.kt" "lines" 36 "characters" 1735 "sha256" "69998bebd24866a40fd79a168bb768484ebb2bc6897a7dafbf173c449f00f92c"}]}
+{"id" "kfb_kotlin" "index" 3 "name" "The same blend, in Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The same blend, in Kotlin" "_tombstone" false "frame" #afield/rect [80.0 1040.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_code_.kt" "lines" 35 "characters" 1533 "sha256" "19e48fb2d211f15a787ba7b8b78e7405e85930569901110bfd9c1f0347616a71"}]}
 ```
 
 ```kotlin [field-property box="kfb_kotlin" name="code" path="kfb_kotlin_code_.kt"]
-// A Kotlin keyframe is a `sourceBlock { }`: a callable that remembers its own source. Two
-// of them blend the same way, and for the same reason — the interesting pair is the one
-// that differs only in numbers. The transport differs: a shader reads a push constant,
-// and a generated Kotlin expression reads a registry slot addressed by an integer written
-// into its text, because generated text cannot close over a value.
-import afield.animation.keyframes.CodeBlendMode
-import afield.animation.keyframes.CodeBlendOptions
-import afield.animation.keyframes.KeyframeScope
-import afield.study.source.sourceBlock
-
+/*
+A Kotlin keyframe is a `sourceBlock { }`: a callable that remembers its own source. Two
+of them blend the same way, and for the same reason — the interesting pair is the one
+that differs only in numbers. The transport differs: a shader reads a push constant,
+and a generated Kotlin expression reads a registry slot addressed by an integer written
+into its text, because generated text cannot close over a value.
+*/
 val quiet = sourceBlock { 2.0f * 3.0f + 1.0f }
 val loud = sourceBlock { 8.0f * 3.0f + 5.0f }
 println("left  source: " + quiet.source)
@@ -199,10 +195,12 @@ println(plan.runtimeSource)
 println()
 println("the middle literal is unchanged between the two, so it is left alone.")
 
-// The invocation is in kfb_kotlin_run, not here. A SourceBackedBlock hydrates by
-// compiling and evaluating its source in its own box, and asking for that from inside
-// this box's own running code re-enters: the nested evaluation replays this snippet,
-// which hydrates again. Invoke one from a frame loop, a control callback, or another box.
+/*
+The invocation is in kfb_kotlin_run, not here. A SourceBackedBlock hydrates by
+compiling and evaluating its source in its own box, and asking for that from inside
+this box's own running code re-enters: the nested evaluation replays this snippet,
+which hydrates again. Invoke one from a frame loop, a control callback, or another box.
+*/
 display(plan)
 ```
 
@@ -220,25 +218,26 @@ is checkable, and this box checks it: one program, five draws, and the two ends
 compared pixel for pixel against the programs they are supposed to be.
 
 ```edn [field-box id="kfb_runtime" role="properties"]
-{"id" "kfb_runtime" "index" 4 "name" "The push-constant convention, rendered" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The push-constant convention, rendered" "_tombstone" false "frame" #afield/rect [80.0 400.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_runtime_code_.kt" "lines" 82 "characters" 3413 "sha256" "bcf5fadedc292ceff5dd278b05aacb17b5b51b9ddf2a3cf208c040882ea3762e"}]}
+{"id" "kfb_runtime" "index" 4 "name" "The push-constant convention, rendered" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The push-constant convention, rendered" "_tombstone" false "frame" #afield/rect [80.0 400.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_runtime_code_.kt" "lines" 89 "characters" 3283 "sha256" "3462c017144f23eff5e110e001a9f605523f573a768b8e264d75301efffafc54"}]}
 ```
 
 ```kotlin [field-property box="kfb_runtime" name="code" path="kfb_runtime_code_.kt"]
-// The claim a runtime blend makes is not that it produces a plausible picture in the
-// middle. It is that at 0 it *is* the left keyframe and at 1 it *is* the right one. That
-// is checkable, and this box checks it: one program, five draws, and the two ends
-// compared pixel for pixel against the programs they are supposed to be.
+/*
+The claim a runtime blend makes is not that it produces a plausible picture in the
+middle. It is that at 0 it *is* the left keyframe and at 1 it *is* the right one. That
+is checkable, and this box checks it: one program, five draws, and the two ends
+compared pixel for pixel against the programs they are supposed to be.
+*/
 import afield.lang.stacksl.cpu.GlslValue
 import afield.lang.stacksl.cpu.StackSLCpu
-import afield.animation.keyframes.CodeBlendMode
-import afield.animation.keyframes.CodeBlendOptions
-import afield.animation.keyframes.keyframeBlendVector
-import afield.animation.keyframes.planStackSLCodeBlend
 
-// The convention, in a shader: a vec4 called keyframeBlend in the push-constant block.
-// Nothing declares it for you — a `stack.auto` slot cannot declare a uniform of its own,
-// which is why the parameter arrives by agreement rather than by machinery.
-val template = """
+/*
+The convention, in a shader: a vec4 called keyframeBlend in the push-constant block.
+Nothing declares it for you — a `stack.auto` slot cannot declare a uniform of its own,
+which is why the parameter arrives by agreement rather than by machinery.
+*/
+val template =
+    """
     #version 450
     layout(location = 0) in vec2 fragUV;
     layout(location = 0) out vec4 outColor;
@@ -253,7 +252,8 @@ val template = """
         vec4 stackInput = vec4(fragUV, 0.0, 0.0);
         outColor = vec4(clamp(program(stackInput).rgb, 0.0, 1.0), 1.0);
     }
-""".trimIndent()
+"""
+        .trimIndent()
 
 val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
 val cool = "uv 8.0 * fbm 0.45 + [0.2,0.5,1.0] *"
@@ -268,8 +268,10 @@ val rasters = mutableMapOf<Double, FloatArray>()
 for (t in listOf(0.0, 0.25, 0.5, 0.75, 1.0)) {
     val v = keyframeBlendVector(t)
     val raster = StackSLCpu.renderFragment(
-        expanded, dim, dim,
-        uniforms = mapOf("pc.keyframeBlend" to GlslValue.vec4(v.x, v.y, v.z, v.w))
+        expanded,
+        dim,
+        dim,
+        uniforms = mapOf("pc.keyframeBlend" to GlslValue.vec4(v.x, v.y, v.z, v.w)),
     )
     rasters[t] = raster.rgba
     val b64 = java.util.Base64.getEncoder().encodeToString(raster.toPngBytes())
@@ -289,14 +291,17 @@ strip.append("</div>")
 display("blend-strip", strip.toString())
 
 // The endpoints, drawn from the endpoint programs themselves.
-val ends = listOf(0.0 to warm, 1.0 to cool).map { (t, program) ->
-    val v = keyframeBlendVector(t)
-    val raster = StackSLCpu.renderFragment(
-        StackSLCpu.expandStackAuto(template, program), dim, dim,
-        uniforms = mapOf("pc.keyframeBlend" to GlslValue.vec4(v.x, v.y, v.z, v.w))
-    )
-    t to raster.rgba
-}
+val ends =
+    listOf(0.0 to warm, 1.0 to cool).map { (t, program) ->
+        val v = keyframeBlendVector(t)
+        val raster = StackSLCpu.renderFragment(
+            StackSLCpu.expandStackAuto(template, program),
+            dim,
+            dim,
+            uniforms = mapOf("pc.keyframeBlend" to GlslValue.vec4(v.x, v.y, v.z, v.w)),
+        )
+        t to raster.rgba
+    }
 ends.forEach { (t, want) ->
     val got = rasters.getValue(t)
     var worst = 0.0f

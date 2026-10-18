@@ -11,11 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="youtube_kaleidoscope_renderer" index="0" -->
 
 ```edn [field-box id="youtube_kaleidoscope_renderer" role="properties"]
-{"id" "youtube_kaleidoscope_renderer" "index" 0 "name" "kaleidoscope window + renderer" "parents" ["root"] "children" ["youtube_kaleidoscope_shards"] "properties" {"children" #{#afield/box "youtube_kaleidoscope_shards"} "parents" #{#afield/box "root"} "name" "kaleidoscope window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_renderer_code_.kt" "lines" 20 "characters" 437 "sha256" "d5ed34ad58159938ae0055263d9cec00e142d9fc75d72c105767f9d65d8ca4fe"}]}
+{"id" "youtube_kaleidoscope_renderer" "index" 0 "name" "kaleidoscope window + renderer" "parents" ["root"] "children" ["youtube_kaleidoscope_shards"] "properties" {"children" #{#afield/box "youtube_kaleidoscope_shards"} "parents" #{#afield/box "root"} "name" "kaleidoscope window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_renderer_code_.kt" "lines" 19 "characters" 406 "sha256" "64daf720c8211e7d59a3a79723fda489d4f33749164253020cbd975c0f8b9170"}]}
 ```
 
 ```kotlin [field-property box="youtube_kaleidoscope_renderer" name="code" path="youtube_kaleidoscope_renderer_code_.kt"]
-import afield.app.protocol.Rect
 import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
@@ -28,7 +27,7 @@ Options.profiling = false
 once.renderer {
     window = Window(
         "YouTube · Vulkan kaleidoscope",
-        initialDimensions = Rect(80.0, 80.0, 1280.0, 720.0)
+        initialDimensions = Rect(80.0, 80.0, 1280.0, 720.0),
     )
     Renderer(window)
 }
@@ -42,7 +41,7 @@ start(renderer::run)
 <!-- field-box id="youtube_kaleidoscope_shards" index="1" -->
 
 ```edn [field-box id="youtube_kaleidoscope_shards" role="properties"]
-{"id" "youtube_kaleidoscope_shards" "index" 1 "name" "YouTube — 224 Vulkan shards" "parents" ["root" "youtube_kaleidoscope_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_kaleidoscope_renderer"} "name" "YouTube — 224 Vulkan shards" "_tombstone" false "frame" #afield/rect [430.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_shards_code_.kt" "lines" 102 "characters" 3919 "sha256" "953a39f9a3c6d2fec3b89b01972b9788a56664fe72d633d42a3ea70d9317a288"}]}
+{"id" "youtube_kaleidoscope_shards" "index" 1 "name" "YouTube — 224 Vulkan shards" "parents" ["root" "youtube_kaleidoscope_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_kaleidoscope_renderer"} "name" "YouTube — 224 Vulkan shards" "_tombstone" false "frame" #afield/rect [430.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_shards_code_.kt" "lines" 113 "characters" 4089 "sha256" "9daffa57e27565815cbd521262a396c4d666eb56d8e437e196a7b4b06baca997"}]}
 ```
 
 ```kotlin [field-property box="youtube_kaleidoscope_shards" name="code" path="youtube_kaleidoscope_shards_code_.kt"]
@@ -60,19 +59,20 @@ val browser = FieldUiBrowserTexture(
     width = 1280,
     height = 720,
     // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
-    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
+    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
 )
 browserControl = browser
 
-renderer.renderList.preTargets["youtube-kaleidoscope-upload"] =
-    Target { command, _ -> browser.prepareSampledImagesFor(command) }
+renderer.renderList.preTargets["youtube-kaleidoscope-upload"] = Target { command, _ ->
+    browser.prepareSampledImagesFor(command)
+}
 
 val shards = PuppetBrowserKaleidoscope(
     renderer = renderer,
     browser = browser,
     name = "youtube-kaleidoscope",
     columns = 14,
-    rows = 8
+    rows = 8,
 )
 shards.motion = 1.0f
 shards.facets = 5.0f
@@ -92,13 +92,20 @@ loop {
         println("Kaleidoscope online: ${shards.triangleCount} independently animated Vulkan triangles")
     }
 
-    // A userGesture JavaScript evaluation first accepts Google's EU consent page, then
-    // retries until the real HTMLVideoElement is advancing. Navigation during consent
-    // deliberately looks like a failed attempt; the next one runs in the new document.
-    if (browser.pageReady && !playbackConfirmed.get() &&
-        frameNumber >= nextAttempt.get() && requestInFlight.compareAndSet(false, true)) {
-        browser.evaluate(
-            """
+    /*
+    A userGesture JavaScript evaluation first accepts Google's EU consent page, then
+    retries until the real HTMLVideoElement is advancing. Navigation during consent
+    deliberately looks like a failed attempt; the next one runs in the new document.
+    */
+    if (
+        browser.pageReady &&
+            !playbackConfirmed.get() &&
+            frameNumber >= nextAttempt.get() &&
+            requestInFlight.compareAndSet(false, true)
+    ) {
+        browser
+            .evaluate(
+                """
             (async () => {
                 const buttons = Array.from(document.querySelectorAll('button'))
                 const consent = buttons.find(button =>
@@ -123,19 +130,21 @@ loop {
                     title: document.title
                 }
             })()
-            """.trimIndent(),
-            userGesture = true,
-            timeoutMillis = 15_000
-        ).whenComplete { result, error ->
-            requestInFlight.set(false)
-            val report = if (error == null) result.value.toString() else error.message.orEmpty()
-            if (error == null && "playing" in report) {
-                playbackConfirmed.set(true)
-                println("YouTube playback confirmed by Chromium: $report")
-            } else {
-                nextAttempt.set(frameNumber + 120L)
+            """
+                    .trimIndent(),
+                userGesture = true,
+                timeoutMillis = 15_000,
+            )
+            .whenComplete { result, error ->
+                requestInFlight.set(false)
+                val report = if (error == null) result.value.toString() else error.message.orEmpty()
+                if (error == null && "playing" in report) {
+                    playbackConfirmed.set(true)
+                    println("YouTube playback confirmed by Chromium: $report")
+                } else {
+                    nextAttempt.set(frameNumber + 120L)
+                }
             }
-        }
     }
     if (playbackConfirmed.get() && browser.state.audible && !audibleAnnounced) {
         audibleAnnounced = true
@@ -143,10 +152,11 @@ loop {
     }
     frameNumber++
     frame()
-}.end {
-    renderer.renderList.preTargets.remove("youtube-kaleidoscope-upload")
-    shards.close()
-    browser.close()
 }
+    .end {
+        renderer.renderList.preTargets.remove("youtube-kaleidoscope-upload")
+        shards.close()
+        browser.close()
+    }
 ```
 

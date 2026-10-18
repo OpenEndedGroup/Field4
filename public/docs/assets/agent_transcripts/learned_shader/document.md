@@ -38,47 +38,53 @@ start(renderer::run)
 <!-- field-box id="learned_shader" index="1" -->
 
 ```edn [field-box id="learned_shader" role="properties"]
-{"id" "learned_shader" "index" 1 "name" "learned shader" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "learned shader" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_shader_code_.kt" "lines" 37 "characters" 1489 "sha256" "79fa58d4631f8e5a60235b862d678babaf44733f2aa89429b29415ee7f4a7bac"}]}
+{"id" "learned_shader" "index" 1 "name" "learned shader" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "learned shader" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_shader_code_.kt" "lines" 43 "characters" 1553 "sha256" "3c14bdbde865b8640951be931ea5788a64232d758ebffa2758f433425b415405"}]}
 ```
 
 ```kotlin [field-property box="learned_shader" name="code" path="learned_shader_code_.kt"]
-import afield.ui.output.controlGroup
-import afield.ui.output.displayOpen
 import afield.graphics.shader.learning.*
-import afield.document.context.fromContextWithNameOrNull
 
 prop<LearnedShader>(lab)
 fromContextWithNameOrNull<LearnedShader>("lab")?.close()
-var cooperative=renderer.device.supportsCooperativeVector
-var active=cooperative
-var requestedView=2
-var animate=true
-var reload=false
-lab=LearnedShader(renderer,cooperative=cooperative)
+var cooperative = renderer.device.supportsCooperativeVector
+var active = cooperative
+var requestedView = 2
+var animate = true
+var reload = false
+lab = LearnedShader(renderer, cooperative = cooperative)
 controlGroup("learned shader") {
-    checkbox("Cooperative vectors",initialValue=cooperative) { cooperative=it }
-    slider("0: Original · 1: Learned · 2: Compare",min=0.0,max=2.0,step=1.0,initialValue=2.0) { requestedView=it.toInt() }
-    checkbox("Animate time",initialValue=true) { animate=it }
-    button("Reload trained weights") { if(it)reload=true }
+    checkbox("Cooperative vectors", initialValue = cooperative) { cooperative = it }
+    slider("0: Original · 1: Learned · 2: Compare", min = 0.0, max = 2.0, step = 1.0, initialValue = 2.0) {
+        requestedView = it.toInt()
+    }
+    checkbox("Animate time", initialValue = true) { animate = it }
+    button("Reload trained weights") { if (it) reload = true }
 }
 displayOpen("learned shader")
 println("Compare: original / learned / absolute RGB error × 8. Weights describe a 16 → 32 → 32 → 3 network.")
 frames {
-    var time=0.0
-    while(true) {
-        if(cooperative!=active || reload) {
+    var time = 0.0
+    while (true) {
+        if (cooperative != active || reload) {
             runCatching {
-                val next=LearnedShader(renderer,cooperative=cooperative,attach=false)
-                lab.close();lab=next.attach();active=cooperative
-            }.onFailure { println("Keeping working shader: ${it.message}");cooperative=active }
-            reload=false
+                val next = LearnedShader(renderer, cooperative = cooperative, attach = false)
+                lab.close()
+                lab = next.attach()
+                active = cooperative
+            }
+                .onFailure {
+                    println("Keeping working shader: ${it.message}")
+                    cooperative = active
+                }
+            reload = false
         }
-        lab.view=requestedView
-        if(animate)time+=.01
-        lab.time=kotlin.math.sin(time).toFloat()
+        lab.view = requestedView
+        if (animate) time += .01
+        lab.time = kotlin.math.sin(time).toFloat()
         frame()
     }
-}.end { lab.close() }
+}
+    .end { lab.close() }
 ```
 
 ## 3. editable learned material
@@ -86,45 +92,50 @@ frames {
 <!-- field-box id="learned_material" index="2" -->
 
 ```edn [field-box id="learned_material" role="properties"]
-{"id" "learned_material" "index" 2 "name" "editable learned material" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "editable learned material" "_tombstone" false "frame" #afield/rect [400.0 340.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_material_code_.kt" "lines" 35 "characters" 1494 "sha256" "2fc2d3c4a16d4a99fa47f0065adbbb55df1fd4c2262154496bf92ff86b7d38a6"} {"name" "vertex" "language" "glsl" "path" "learned_material_vertex_.glsl" "lines" 7 "characters" 175 "sha256" "1e43f7ca1494c90d2072d80eb62e4118246e249203b45177e5d04315758f8538"} {"name" "fragment" "language" "glsl" "path" "learned_material_fragment_.glsl" "lines" 12 "characters" 437 "sha256" "bc8a710aa843e8bb6e8b66e697d8ed3e2fe8680ac3af0677f7f5c2804bf3a0c9"}]}
+{"id" "learned_material" "index" 2 "name" "editable learned material" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "editable learned material" "_tombstone" false "frame" #afield/rect [400.0 340.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_material_code_.kt" "lines" 40 "characters" 1501 "sha256" "95009f63277f0a57ecc804b2f9ac5dc66883a82606a77ce567271d094d6aa18e"} {"name" "vertex" "language" "glsl" "path" "learned_material_vertex_.glsl" "lines" 7 "characters" 175 "sha256" "1e43f7ca1494c90d2072d80eb62e4118246e249203b45177e5d04315758f8538"} {"name" "fragment" "language" "glsl" "path" "learned_material_fragment_.glsl" "lines" 12 "characters" 437 "sha256" "bc8a710aa843e8bb6e8b66e697d8ed3e2fe8680ac3af0677f7f5c2804bf3a0c9"}]}
 ```
 
 ```kotlin [field-property box="learned_material" name="code" path="learned_material_code_.kt"]
 import afield.graphics.shader.learning.LearnedShader
-import afield.document.context.fromContextWithNameOrNull
 
 // A separate scene: stop the original learned-shader box before launching this one.
 // Edit this box's fragment property while it runs; the network stays allocated.
 prop<AutoCloseable>(materialSession)
 fromContextWithNameOrNull<AutoCloseable>("materialSession")?.close()
-val owner=renderer
-val passName="editable learned material"
-val learned=LearnedShader(owner,name=passName,attach=false)
-learned.view=1
+val owner = renderer
+val passName = "editable learned material"
+val learned = LearnedShader(owner, name = passName, attach = false)
+learned.view = 1
 learned.setParameter(.25f)
-prop<RenderToTexture>(learnedImage)=learned.output
-val material=moduleHere { depthTest=false; depthWrite=false; blend=false }
-val triangle=Mesh(owner,material)
-triangle.resize(3,0,material)
+prop<RenderToTexture>(learnedImage) = learned.output
+val material = moduleHere {
+    depthTest = false
+    depthWrite = false
+    blend = false
+}
+val triangle = Mesh(owner, material)
+triangle.resize(3, 0, material)
 material += "fullscreen" to triangle
 
 // Compute and resolve run before this ordinary fragment shader samples their RTT.
-owner.renderList.preTargets[passName]=learned
-owner.renderList.modules[passName]=material
-var closed=false
-materialSession=AutoCloseable {
-    if(!closed) {
-        closed=true
-        owner.renderList.modules.remove(passName,material)
-        if(!owner.isClosed) {
+owner.renderList.preTargets[passName] = learned
+owner.renderList.modules[passName] = material
+var closed = false
+materialSession = AutoCloseable {
+    if (!closed) {
+        closed = true
+        owner.renderList.modules.remove(passName, material)
+        if (!owner.isClosed) {
             learned.close()
-            owner.cleanup+=Runnable { material.current.cleanup() }
+            owner.cleanup += Runnable { material.current.cleanup() }
         }
     }
 }
-val ownedSession=materialSession
-println("Edit fragment: the learnedImage texture comes from the unchanged network. Stop the original comparison box to avoid rendering it too.")
-frames { while(!closed && !owner.isClosed)frame() }.end { ownedSession.close() }
+val ownedSession = materialSession
+println(
+    "Edit fragment: the learnedImage texture comes from the unchanged network. Stop the original comparison box to avoid rendering it too.",
+)
+frames { while (!closed && !owner.isClosed) frame() }.end { ownedSession.close() }
 ```
 
 ```glsl [field-property box="learned_material" name="vertex" path="learned_material_vertex_.glsl"]

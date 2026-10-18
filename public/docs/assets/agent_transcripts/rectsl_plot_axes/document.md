@@ -49,24 +49,27 @@ and re-run to change it live. See rectsl_cheatsheet.md ("Plotting layer")
 / rectsl_examples.md ("A plotted figure").
 
 ```edn [field-box id="plot_figure" role="properties"]
-{"id" "plot_figure" "index" 1 "name" "rectsl plot + axes" "parents" ["root" "plot_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "plot_renderer"} "name" "rectsl plot + axes" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "plot_figure_code_.kt" "lines" 68 "characters" 2195 "sha256" "76279baea2975bfa5ca375b1ad1634da1f2b8db881724f43998a7152c87376ff"}]}
+{"id" "plot_figure" "index" 1 "name" "rectsl plot + axes" "parents" ["root" "plot_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "plot_renderer"} "name" "rectsl plot + axes" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "plot_figure_code_.kt" "lines" 73 "characters" 2178 "sha256" "21e5808c151ea49863fbad09d523317a440e0ccbd4433f4f99a2461812b080ea"}]}
 ```
 
 ```kotlin [field-property box="plot_figure" name="code" path="plot_figure_code_.kt"]
-// RectSL plotting-layer demo.
-//
-// The #rectsl program sets ONE shared domain (`->domain` + `->frame`), draws
-// `axes` (rules, nice-number ticks, numeric rect-numeral labels, gridlines),
-// then overlays three series in that domain (`area`, `line`, `points`) and
-// finishes with a `colorbar` and a discrete swatch `legend`. Edit `rectsl`
-// and re-run to change it live. See rectsl_cheatsheet.md ("Plotting layer")
-// / rectsl_examples.md ("A plotted figure").
+/*
+RectSL plotting-layer demo.
+
+The #rectsl program sets ONE shared domain (`->domain` + `->frame`), draws
+`axes` (rules, nice-number ticks, numeric rect-numeral labels, gridlines),
+then overlays three series in that domain (`area`, `line`, `points`) and
+finishes with a `colorbar` and a discrete swatch `legend`. Edit `rectsl`
+and re-run to change it live. See rectsl_cheatsheet.md ("Plotting layer")
+/ rectsl_examples.md ("A plotted figure").
+*/
+import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 import afield.lang.rectsl.RectAnimationOracle
 import afield.lang.rectsl.rectMaterialShaderCode
 import afield.lang.rectsl.writeFrameToMesh
-import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
-val rectsl = """
+val rectsl =
+    """
 #rectsl
 ->wall 16 10 abstract
 ->duration 3
@@ -88,11 +91,13 @@ axes
 """
 
 val program = RectAnimationOracle.compile(rectsl).program!!
-val shader  = rectMaterialShaderCode(program)
+val shader = rectMaterialShaderCode(program)
 
-// Seed this box's shader-source properties before `moduleHere {}` runs; the
-// `//%-` fragment break makes this fragment execute first (see the playground
-// transcript for the why).
+/*
+Seed this box's shader-source properties before `moduleHere {}` runs; the
+`//%-` fragment break makes this fragment execute first (see the playground
+transcript for the why).
+*/
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
 once.fragment { shader.exampleFragmentShader!! }
 

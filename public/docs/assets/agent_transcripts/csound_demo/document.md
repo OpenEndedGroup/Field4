@@ -49,29 +49,40 @@ From `code`
 A wavetable computed in Kotlin, copied into ftable 1, played by poscil, and read back.
 
 ```edn [field-box id="cs_table" role="properties"]
-{"id" "cs_table" "index" 1 "name" "a table from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a table from Kotlin" "_tombstone" false "frame" #afield/rect [610.0 180.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_table_code_.kt" "lines" 20 "characters" 1026 "sha256" "00df8e88e2ff0e6f60acdfaf53e0bb825eb2c0d2484b1b19b1480f595d6c6c19"}]}
+{"id" "cs_table" "index" 1 "name" "a table from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a table from Kotlin" "_tombstone" false "frame" #afield/rect [610.0 180.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_table_code_.kt" "lines" 31 "characters" 1087 "sha256" "84db6c767bec8178534252dc7111635b8a5f6bcce72f17693db3ae8525e82a0b"}]}
 ```
 
 ```kotlin [field-property box="cs_table" name="code" path="cs_table_code_.kt"]
 // A wavetable computed in Kotlin, copied into ftable 1, played by poscil, and read back.
-val cs = afield.audio.csound.CsoundInstance("""
+val cs =
+    afield.audio.csound.CsoundInstance(
+        """
 giWave  ftgen  1, 0, 4096, 10, 1
 instr Play
   asig  poscil  0.3, 220, giWave
   outs    asig, asig
 endin
-""", "i \"Play\" 0 0.1")
-val partials = listOf(1.0, 0.0, 0.33, 0.0, 0.2, 0.0, 0.14)     // odd harmonics: a square-ish wave
-val wave = DoubleArray(cs.tableLength(1)) { i ->
-    val ph = 2 * PI * i / 4096
-    partials.withIndex().sumOf { (k, a) -> a * sin((k + 1) * ph) }
-}
+""",
+        "i \"Play\" 0 0.1",
+    )
+val partials = listOf(1.0, 0.0, 0.33, 0.0, 0.2, 0.0, 0.14) // odd harmonics: a square-ish wave
+val wave =
+    DoubleArray(cs.tableLength(1)) { i ->
+        val ph = 2 * PI * i / 4096
+        partials.withIndex().sumOf { (k, a) -> a * sin((k + 1) * ph) }
+    }
 cs.writeTable(1, wave)
 val back = cs.table(1)!!
 val (left, _) = cs.renderOffline()
 cs.close()
-println("wrote ${wave.size} values; read back equal: ${wave.contentEquals(back)}; rendered ${left.size} frames, peak ${"%.3f".format(left.maxOf { abs(it) })}")
-showSignals("ftable 1, read back" to (0 until 4096 step 8).map { back[it] }, channel = "table", title = "ftable 1, written from Kotlin")
+println(
+    "wrote ${wave.size} values; read back equal: ${wave.contentEquals(back)}; rendered ${left.size} frames, peak ${"%.3f".format(left.maxOf { abs(it) })}",
+)
+showSignals(
+    "ftable 1, read back" to (0 until 4096 step 8).map { back[it] },
+    channel = "table",
+    title = "ftable 1, written from Kotlin",
+)
 showSignals("poscil 220 Hz" to (0 until 480).map { left[it] }, channel = "played", title = "what poscil plays from it")
 ```
 
@@ -292,27 +303,39 @@ From `code`
 Offline: a Field 1 kHz sine through Csound's butterlp at 500 Hz, and back.
 
 ```edn [field-box id="cs_measured" role="properties"]
-{"id" "cs_measured" "index" 8 "name" "through Csound, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "through Csound, measured" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_measured_code_.kt" "lines" 18 "characters" 1016 "sha256" "4d92947c243bb7e1b4a44daba040b3e8307e218ad7ecc6687f709e7092cf257e"}]}
+{"id" "cs_measured" "index" 8 "name" "through Csound, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "through Csound, measured" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_measured_code_.kt" "lines" 30 "characters" 1070 "sha256" "9aabcc8fad3cf726011ca1deeb6684109871e9027f8f092e1985d98127de2ef4"}]}
 ```
 
 ```kotlin [field-property box="cs_measured" name="code" path="cs_measured_code_.kt"]
 // Offline: a Field 1 kHz sine through Csound's butterlp at 500 Hz, and back.
-val cs = afield.audio.csound.CsoundInstance("""
+val cs =
+    afield.audio.csound.CsoundInstance(
+        """
 instr Filter
   ain   chnget    "in"
   alow  butterlp  ain, 500
   chnset    alow, "low"
 endin
-""", "i \"Filter\" 0 z")
+""",
+        "i \"Filter\" 0 z",
+    )
 val node = cs.node(audioIn = mapOf("in" to SineOsc(Param(1000f))))
 val (dry, low) = renderSignalsOffline(0.5, SineOsc(Param(1000f)), node.audioOut("low"))
 cs.close()
 
 fun rms(x: FloatArray) = sqrt(x.drop(4800).sumOf { it.toDouble() * it } / (x.size - 4800))
-val expected = 1.0 / sqrt(1.0 + 16.0)    // a 2nd-order Butterworth at twice its cutoff
-println("in rms ${"%.4f".format(rms(dry))}, out rms ${"%.4f".format(rms(low))}: gain ${"%.4f".format(rms(low) / rms(dry))}, Butterworth says ${"%.4f".format(expected)}")
+val expected = 1.0 / sqrt(1.0 + 16.0) // a 2nd-order Butterworth at twice its cutoff
+println(
+    "in rms ${"%.4f".format(rms(dry))}, out rms ${"%.4f".format(rms(low))}: gain ${"%.4f".format(rms(low) / rms(dry))}, Butterworth says ${"%.4f".format(expected)}",
+)
 val window = 4800 until 5040
-showSignals("Field sine" to window.map { dry[it] }, "after Csound's butterlp" to window.map { low[it] },
-    x = window.map { it / 48.0 }, channel = "signals", title = "1 kHz in, butterlp 500 Hz, back to Field", xTitle = "ms")
+showSignals(
+    "Field sine" to window.map { dry[it] },
+    "after Csound's butterlp" to window.map { low[it] },
+    x = window.map { it / 48.0 },
+    channel = "signals",
+    title = "1 kHz in, butterlp 500 Hz, back to Field",
+    xTitle = "ms",
+)
 ```
 

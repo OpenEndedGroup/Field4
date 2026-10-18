@@ -8,10 +8,11 @@ val worst = truth.maxOf { (ex, ey) -> harris.minOf { hypot(it.x - ex, it.y - ey)
 
 // Three lines at exactly known (rho, theta), plus a decoy ring Hough must not fit.
 val lineMask = Img.zeros(2000, 2000, 1)
-for (x in 100 until 1900) lineMask.set(x, 400, 0, 1f)        // rho = 400,  theta = pi/2
-for (y in 100 until 1900) lineMask.set(1500, y, 0, 1f)       // rho = 1500, theta = 0
+for (x in 100 until 1900) lineMask.set(x, 400, 0, 1f) // rho = 400,  theta = pi/2
+for (y in 100 until 1900) lineMask.set(1500, y, 0, 1f) // rho = 1500, theta = 0
 for (t in 0 until 2400) {
-    val x = 200 + t * 0.6; val y = 600 + t * 0.6
+    val x = 200 + t * 0.6
+    val y = 600 + t * 0.6
     if (x < 1999 && y < 1999) lineMask.set(x.toInt(), y.toInt(), 0, 1f)
 }
 for (i in 0 until 3600) {
@@ -32,16 +33,22 @@ showImgGrid(
     cellSide = 260,
 )
 println("harris ${harris.size} corners, worst ${"%.2f".format(worst)} px from the true square corners")
-println("fast ${fast.size} corners at " + fast.sortedBy { it.y * 1000 + it.x }
-    .joinToString(", ") { "(${it.x.toInt()},${it.y.toInt()})" })
-println("hough " + houghs.joinToString(", ") {
-    "(rho=${"%.0f".format(it.rho)}, theta=${"%.2f".format(it.theta)}, votes=${it.votes})"
-})
+println(
+    "fast ${fast.size} corners at " +
+        fast.sortedBy { it.y * 1000 + it.x }.joinToString(", ") { "(${it.x.toInt()},${it.y.toInt()})" },
+)
+println(
+    "hough " +
+        houghs.joinToString(", ") {
+            "(rho=${"%.0f".format(it.rho)}, theta=${"%.2f".format(it.theta)}, votes=${it.votes})"
+        },
+)
 
-// A HoughLine is an INFINITE line — (rho, theta) names a whole line, not a segment — so
-// it has no drawable form until you say which rectangle you are drawing it into. That is
-// what toFLine(w, h) is for, and why it is nullable: a peak can name a line that misses.
+/*
+A HoughLine is an INFINITE line — (rho, theta) names a whole line, not a segment — so
+it has no drawable form until you say which rectangle you are drawing it into. That is
+what toFLine(w, h) is for, and why it is nullable: a peak can name a line that misses.
+*/
 lines(
-    cornersToFLines(harris, size = 40.0) +
-        houghs.mapNotNull { it.toFLine(lineMask.width, lineMask.height) }
+    cornersToFLines(harris, size = 40.0) + houghs.mapNotNull { it.toFLine(lineMask.width, lineMask.height) },
 )

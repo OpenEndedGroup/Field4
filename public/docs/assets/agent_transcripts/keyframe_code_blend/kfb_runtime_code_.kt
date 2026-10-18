@@ -1,18 +1,19 @@
-// The claim a runtime blend makes is not that it produces a plausible picture in the
-// middle. It is that at 0 it *is* the left keyframe and at 1 it *is* the right one. That
-// is checkable, and this box checks it: one program, five draws, and the two ends
-// compared pixel for pixel against the programs they are supposed to be.
+/*
+The claim a runtime blend makes is not that it produces a plausible picture in the
+middle. It is that at 0 it *is* the left keyframe and at 1 it *is* the right one. That
+is checkable, and this box checks it: one program, five draws, and the two ends
+compared pixel for pixel against the programs they are supposed to be.
+*/
 import afield.lang.stacksl.cpu.GlslValue
 import afield.lang.stacksl.cpu.StackSLCpu
-import afield.animation.keyframes.CodeBlendMode
-import afield.animation.keyframes.CodeBlendOptions
-import afield.animation.keyframes.keyframeBlendVector
-import afield.animation.keyframes.planStackSLCodeBlend
 
-// The convention, in a shader: a vec4 called keyframeBlend in the push-constant block.
-// Nothing declares it for you — a `stack.auto` slot cannot declare a uniform of its own,
-// which is why the parameter arrives by agreement rather than by machinery.
-val template = """
+/*
+The convention, in a shader: a vec4 called keyframeBlend in the push-constant block.
+Nothing declares it for you — a `stack.auto` slot cannot declare a uniform of its own,
+which is why the parameter arrives by agreement rather than by machinery.
+*/
+val template =
+    """
     #version 450
     layout(location = 0) in vec2 fragUV;
     layout(location = 0) out vec4 outColor;
@@ -27,7 +28,8 @@ val template = """
         vec4 stackInput = vec4(fragUV, 0.0, 0.0);
         outColor = vec4(clamp(program(stackInput).rgb, 0.0, 1.0), 1.0);
     }
-""".trimIndent()
+"""
+        .trimIndent()
 
 val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
 val cool = "uv 8.0 * fbm 0.45 + [0.2,0.5,1.0] *"
@@ -42,8 +44,10 @@ val rasters = mutableMapOf<Double, FloatArray>()
 for (t in listOf(0.0, 0.25, 0.5, 0.75, 1.0)) {
     val v = keyframeBlendVector(t)
     val raster = StackSLCpu.renderFragment(
-        expanded, dim, dim,
-        uniforms = mapOf("pc.keyframeBlend" to GlslValue.vec4(v.x, v.y, v.z, v.w))
+        expanded,
+        dim,
+        dim,
+        uniforms = mapOf("pc.keyframeBlend" to GlslValue.vec4(v.x, v.y, v.z, v.w)),
     )
     rasters[t] = raster.rgba
     val b64 = java.util.Base64.getEncoder().encodeToString(raster.toPngBytes())
@@ -63,14 +67,17 @@ strip.append("</div>")
 display("blend-strip", strip.toString())
 
 // The endpoints, drawn from the endpoint programs themselves.
-val ends = listOf(0.0 to warm, 1.0 to cool).map { (t, program) ->
-    val v = keyframeBlendVector(t)
-    val raster = StackSLCpu.renderFragment(
-        StackSLCpu.expandStackAuto(template, program), dim, dim,
-        uniforms = mapOf("pc.keyframeBlend" to GlslValue.vec4(v.x, v.y, v.z, v.w))
-    )
-    t to raster.rgba
-}
+val ends =
+    listOf(0.0 to warm, 1.0 to cool).map { (t, program) ->
+        val v = keyframeBlendVector(t)
+        val raster = StackSLCpu.renderFragment(
+            StackSLCpu.expandStackAuto(template, program),
+            dim,
+            dim,
+            uniforms = mapOf("pc.keyframeBlend" to GlslValue.vec4(v.x, v.y, v.z, v.w)),
+        )
+        t to raster.rgba
+    }
 ends.forEach { (t, want) ->
     val got = rasters.getValue(t)
     var worst = 0.0f

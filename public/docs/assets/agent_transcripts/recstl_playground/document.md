@@ -51,26 +51,29 @@ time  — scrub to a frame (while paused); moving it freezes the clock there
 See the "RectSL examples" docs page / rectsl_cheatsheet.md for the language.
 
 ```edn [field-box id="recstl_playground" role="properties"]
-{"id" "recstl_playground" "index" 1 "name" "recstl" "parents" ["root" "recstl_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "recstl_renderer"} "name" "recstl" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "recstl_playground_code_.kt" "lines" 96 "characters" 3043 "sha256" "36160dfe384544489578457d7e6b633c4b29e80f995de8fcbaef4cf24e70d65c"}]}
+{"id" "recstl_playground" "index" 1 "name" "recstl" "parents" ["root" "recstl_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "recstl_renderer"} "name" "recstl" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "recstl_playground_code_.kt" "lines" 101 "characters" 3012 "sha256" "d083aad872b86770b9d2076ccda10f7000eac0eb316b0921a40337e62cf775f3"}]}
 ```
 
 ```kotlin [field-property box="recstl_playground" name="code" path="recstl_playground_code_.kt"]
-// RectSL playground.
-//
-// Edit the `rectsl` program below and re-run this box to change it live.
-// The transport controls in this box's output area drive the clock:
-//   play  — advance time every frame and loop the animation
-//   loop  — wrap at the end (off = run once and hold on the last frame)
-//   speed — playback rate multiplier
-//   time  — scrub to a frame (while paused); moving it freezes the clock there
-//
-// See the "RectSL examples" docs page / rectsl_cheatsheet.md for the language.
+/*
+RectSL playground.
+
+Edit the `rectsl` program below and re-run this box to change it live.
+The transport controls in this box's output area drive the clock:
+  play  — advance time every frame and loop the animation
+  loop  — wrap at the end (off = run once and hold on the last frame)
+  speed — playback rate multiplier
+  time  — scrub to a frame (while paused); moving it freezes the clock there
+
+See the "RectSL examples" docs page / rectsl_cheatsheet.md for the language.
+*/
+import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 import afield.lang.rectsl.RectAnimationOracle
 import afield.lang.rectsl.rectMaterialShaderCode
 import afield.lang.rectsl.writeFrameToMesh
-import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
-val rectsl = """
+val rectsl =
+    """
 #rectsl
 ->wall 16 9 meters
 ->duration 6
@@ -96,14 +99,16 @@ material spectrum '(
 """
 
 val program = RectAnimationOracle.compile(rectsl).program!!
-val shader  = rectMaterialShaderCode(program)
+val shader = rectMaterialShaderCode(program)
 
-// Seed this box's shader-source properties before `moduleHere {}` runs.
-// moduleHere builds its module from the box's `vertex`/`fragment` properties
-// (not from assignments in the lambda); `once.vertex`/`once.fragment` set them
-// once. Fragments separated by `//%-` run one at a time, each expanded only after the
-// previous one ran, so this fragment executes first and the moduleHere fragment then
-// prepares its shaders from what was set here.
+/*
+Seed this box's shader-source properties before `moduleHere {}` runs.
+moduleHere builds its module from the box's `vertex`/`fragment` properties
+(not from assignments in the lambda); `once.vertex`/`once.fragment` set them
+once. Fragments separated by `//%-` run one at a time, each expanded only after the
+previous one ran, so this fragment executes first and the moduleHere fragment then
+prepares its shaders from what was set here.
+*/
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
 once.fragment { shader.exampleFragmentShader!! }
 

@@ -1,14 +1,16 @@
-// A wall of panels, seen plan-oblique, that you can ASK questions of.
-//
-// Run this box, then click a panel. The "what you clicked" output names the
-// element under the pointer -- which panel, whether you hit its face, one of its
-// edges or a corner, and WHERE on it (u across the panel, v up it) -- in the
-// wall's own coordinates, with z the real distance along the wall. Hovering
-// highlights the panel the pointer is over. Clicking the amber ridge line names
-// that instead, with u along its length.
-//
-// This is `Box.inspect`, which is `lines(...)` plus a hit record wide enough to
-// build on: see FLineIntersection and dev_docs/fline_hit_records.md.
+/*
+A wall of panels, seen plan-oblique, that you can ASK questions of.
+
+Run this box, then click a panel. The "what you clicked" output names the
+element under the pointer -- which panel, whether you hit its face, one of its
+edges or a corner, and WHERE on it (u across the panel, v up it) -- in the
+wall's own coordinates, with z the real distance along the wall. Hovering
+highlights the panel the pointer is over. Clicking the amber ridge line names
+that instead, with u along its length.
+
+This is `Box.inspect`, which is `lines(...)` plus a hit record wide enough to
+build on: see FLineIntersection and dev_docs/fline_hit_records.md.
+*/
 
 val columns = 5
 val rows = 3
@@ -47,7 +49,9 @@ figure += fline {
     color = vec(1.0, 0.76, 0.36, 1.0)
 }
 
-// `inspect` sets hoverColor and onClick on every line and writes a card naming
-// whatever you click. The lambda is the extra thing to do with each hit -- here,
-// print it, so the box's text output becomes a log of what you asked the figure.
+/*
+`inspect` sets hoverColor and onClick on every line and writes a card naming
+whatever you click. The lambda is the extra thing to do with each hit -- here,
+print it, so the box's text output becomes a log of what you asked the figure.
+*/
 inspect(figure, w = 620.0, h = 420.0, onHit = { hit -> println(hit.describe()) })

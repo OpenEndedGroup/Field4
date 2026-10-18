@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="underfit_mancini_generate" index="0" -->
 
 ```edn [field-box id="underfit_mancini_generate" role="properties"]
-{"id" "underfit_mancini_generate" "index" 0 "name" "2 · generate and audition" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · generate and audition" "_tombstone" false "frame" #afield/rect [500.0 40.0 420.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "underfit_mancini_generate_code_.kt" "lines" 31 "characters" 1276 "sha256" "d1c13a51436617c579f039752c094a05e55917af680766da6b2595c859272509"}]}
+{"id" "underfit_mancini_generate" "index" 0 "name" "2 · generate and audition" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · generate and audition" "_tombstone" false "frame" #afield/rect [500.0 40.0 420.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "underfit_mancini_generate_code_.kt" "lines" 35 "characters" 1429 "sha256" "1115a5c42b55706274e349ddfeb263d4245c3761c9a0be45f94662a3df167f68"}]}
 ```
 
 ```kotlin [field-property box="underfit_mancini_generate" name="code" path="underfit_mancini_generate_code_.kt"]
@@ -28,23 +28,27 @@ val checkpoint = UnderfitLoraCheckpoint.fromFile(
 )
 val source = client.importWav(sourcePath).get()
 val region = AssetRegion(source.id, startSeconds = 0.0, durationSeconds = 12.0)
-client.submit(underfitCandidates(
-    source = region,
-    prompt = "mancini-eit, suspenseful nocturnal orchestral jazz, flute, vibraphone and muted brass",
-    negativePrompt = "vocals, speech, harsh distortion",
-    durationSeconds = 30.0,
-    checkpoints = listOf(checkpoint),
-    model = UnderfitModel.SMALL_MUSIC_BASE,
-    controls = UnderfitGenerationControls(
-        steps = 50,
-        cfg = 1.5,
-        initNoiseLevel = 0.65,
-        durationPaddingSeconds = 2.0,
-        chunkedDecode = true,
-    ),
-    seeds = 1962L..1962L,
-    requestedBy = "field:audio-ai-underfit-mancini",
-)).thenCompose(client::awaitCandidates)
+client
+    .submit(
+        underfitCandidates(
+            source = region,
+            prompt = "mancini-eit, suspenseful nocturnal orchestral jazz, flute, vibraphone and muted brass",
+            negativePrompt = "vocals, speech, harsh distortion",
+            durationSeconds = 30.0,
+            checkpoints = listOf(checkpoint),
+            model = UnderfitModel.SMALL_MUSIC_BASE,
+            controls = UnderfitGenerationControls(
+                steps = 50,
+                cfg = 1.5,
+                initNoiseLevel = 0.65,
+                durationPaddingSeconds = 2.0,
+                chunkedDecode = true,
+            ),
+            seeds = 1962L..1962L,
+            requestedBy = "field:audio-ai-underfit-mancini",
+        ),
+    )
+    .thenCompose(client::awaitCandidates)
     .thenAccept { display("Mancini LoRA", candidateBoardHtml(it)) }
 ```
 
@@ -53,17 +57,20 @@ client.submit(underfitCandidates(
 <!-- field-box id="underfit_mancini_guide" index="1" -->
 
 ```edn [field-box id="underfit_mancini_guide" role="properties"]
-{"id" "underfit_mancini_guide" "index" 1 "name" "1 · Mancini LoRA guide" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · Mancini LoRA guide" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "underfit_mancini_guide_code_.kt" "lines" 8 "characters" 921 "sha256" "81ab0374fbc1bb8d8f704b8e76d87e9415fde6ba1902cfd7326c76428d388492"}]}
+{"id" "underfit_mancini_guide" "index" 1 "name" "1 · Mancini LoRA guide" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · Mancini LoRA guide" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "underfit_mancini_guide_code_.kt" "lines" 11 "characters" 940 "sha256" "23be342cf305c5bf11c6e74e7e54d299b0ba4457d91f12047153312120bfcb52"}]}
 ```
 
 ```kotlin [field-property box="underfit_mancini_guide" name="code" path="underfit_mancini_guide_code_.kt"]
-
-display("guide", """
+display(
+    "guide",
+    """
   <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
     <h2 style="margin:0 0 8px;color:#7fcbd7">Experiment in Terror · Underfit LoRA</h2>
     <p>This request uses 165 twelve-second chunks from the complete Henry Mancini album as training material. The pinned rank-16 DoRA checkpoint is applied to Stable Audio 3's small-music base model, with a 12-second source window extended to a 30-second candidate.</p>
     <p>Set <code>FIELD_AUDIO_UNDERFIT_LORA_ROOT</code> and start the Underfit worker before running box 2. The worker must have the staged base model and the checkpoint beneath that root. The request retains its model revisions, checkpoint digest, seed, and sampling controls in the durable candidate provenance.</p>
   </section>
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 

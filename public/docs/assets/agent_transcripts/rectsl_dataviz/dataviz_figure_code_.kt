@@ -1,15 +1,18 @@
-// RectSL data-visualization demo.
-//
-// The #rectsl program draws a viridis colour-bar legend (array + colormap)
-// and a bar chart bound to a data list (data / normalize / bars), animated in
-// with a staggered eased `->alpha`. Edit `rectsl` and re-run to change it live.
-// See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
+/*
+RectSL data-visualization demo.
+
+The #rectsl program draws a viridis colour-bar legend (array + colormap)
+and a bar chart bound to a data list (data / normalize / bars), animated in
+with a staggered eased `->alpha`. Edit `rectsl` and re-run to change it live.
+See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
+*/
+import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 import afield.lang.rectsl.RectAnimationOracle
 import afield.lang.rectsl.rectMaterialShaderCode
 import afield.lang.rectsl.writeFrameToMesh
-import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
-val rectsl = """
+val rectsl =
+    """
 #rectsl
 ->wall 20 10 meters
 ->duration 6
@@ -27,11 +30,13 @@ val rectsl = """
 """
 
 val program = RectAnimationOracle.compile(rectsl).program!!
-val shader  = rectMaterialShaderCode(program)
+val shader = rectMaterialShaderCode(program)
 
-// Seed this box's shader-source properties before `moduleHere {}` runs; the
-// `//%-` fragment break makes this fragment execute first (see the playground
-// transcript for the why).
+/*
+Seed this box's shader-source properties before `moduleHere {}` runs; the
+`//%-` fragment break makes this fragment execute first (see the playground
+transcript for the why).
+*/
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
 once.fragment { shader.exampleFragmentShader!! }
 

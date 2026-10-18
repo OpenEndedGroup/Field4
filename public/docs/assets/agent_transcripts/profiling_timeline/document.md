@@ -20,14 +20,16 @@ Open current box code returns you to the code behind a measured coroutine.
 Hot code adds sampled classes, methods and box lines, including background threads.
 
 ```edn [field-box id="profile_capture" role="properties"]
-{"id" "profile_capture" "index" 0 "name" "4. Record and explore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4. Record and explore" "_tombstone" false "frame" #afield/rect [520.0 250.0 350.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "profile_capture_code_.kt" "lines" 7 "characters" 567 "sha256" "dbe699abfb5eb962f26b41b4911d42cb4a1cedd163cbe133b20b1ed226f858df"}]}
+{"id" "profile_capture" "index" 0 "name" "4. Record and explore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4. Record and explore" "_tombstone" false "frame" #afield/rect [520.0 250.0 350.0 105.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "profile_capture_code_.kt" "lines" 9 "characters" 561 "sha256" "2ce00f21038e4a310f35842edc16aba6e6cc47e175ed2c03e5dd47424f018b34"}]}
 ```
 
 ```kotlin [field-property box="profile_capture" name="code" path="profile_capture_code_.kt"]
-// Run the three workload boxes first, then run this box. The macro does that for you.
-// Drag the overview, Zoom to selection, choose Allocated bytes, and click a lane.
-// Open current box code returns you to the code behind a measured coroutine.
-// Hot code adds sampled classes, methods and box lines, including background threads.
+/*
+Run the three workload boxes first, then run this box. The macro does that for you.
+Drag the overview, Zoom to selection, choose Allocated bytes, and click a lane.
+Open current box code returns you to the code behind a measured coroutine.
+Hot code adds sampled classes, methods and box lines, including background threads.
+*/
 CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("start", 3.0, stacks = true))
 thisBox.inBrowser("window.showProfilingTimeline()")
 println("Recording three seconds. The timeline will latch automatically.")

@@ -45,11 +45,13 @@ particleVideoView(video, initialSeconds = 7.2, scale = 1, pointRadius = 1.5)
 <!-- field-box id="particle_video_guide" index="2" -->
 
 ```edn [field-box id="particle_video_guide" role="properties"]
-{"id" "particle_video_guide" "index" 2 "name" "1 · video particles" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · video particles" "_tombstone" false "frame" #afield/rect [40.0 40.0 400.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "particle_video_guide_code_.kt" "lines" 11 "characters" 528 "sha256" "c3eda6f2487862f66d082dd19041e356e9b786bd026cb71e05b42a5589f2f3d5"}]}
+{"id" "particle_video_guide" "index" 2 "name" "1 · video particles" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · video particles" "_tombstone" false "frame" #afield/rect [40.0 40.0 400.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "particle_video_guide_code_.kt" "lines" 15 "characters" 548 "sha256" "cae0456e31f71fdbc88c609442374cb1f60367cb60fff250db4ce3121cff4d9a"}]}
 ```
 
 ```kotlin [field-property box="particle_video_guide" name="code" path="particle_video_guide_code_.kt"]
-markdown("guide", """
+markdown(
+    "guide",
+    """
 # Video particles
 Box 2 scrubs recorded tracks without Python. Its portable example retains complete
 trajectories from a representative subset of the 24,000-particle dance run.
@@ -59,6 +61,8 @@ Prepare the optional environment before launching box 3, or set
 Replace the movie filename to track your own footage. Width 0 retains native resolution.
 
 [Video tracking and setup](https://openendedgroup.com/Field4/particle_video/)
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 

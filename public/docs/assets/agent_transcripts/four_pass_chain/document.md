@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pc_renderer" index="0" -->
 
 ```edn [field-box id="pc_renderer" role="properties"]
-{"id" "pc_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["pc_scene"] "properties" {"children" #{#afield/box "pc_scene"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_renderer_code_.kt" "lines" 11 "characters" 261 "sha256" "e4db4ddb0df79f9f886e9dc24d719fc6e9609a6d4eb47eb1f7e07273cbc6fe54"}]}
+{"id" "pc_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["pc_scene"] "properties" {"children" #{#afield/box "pc_scene"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_renderer_code_.kt" "lines" 12 "characters" 262 "sha256" "14f14fd87bcf7e8004fe4bb64ff7f32ffeffbcf3aff4ee6d31db577da7d49af7"}]}
 ```
 
 ```kotlin [field-property box="pc_renderer" name="code" path="pc_renderer_code_.kt"]
 import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -39,15 +40,13 @@ From `code`
 `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
 
 ```edn [field-box id="pc_scene" role="properties"]
-{"id" "pc_scene" "index" 1 "name" "scene" "parents" ["root" "pc_renderer"] "children" ["pc_chain"] "properties" {"children" #{#afield/box "pc_chain"} "parents" #{#afield/box "root" #afield/box "pc_renderer"} "name" "scene" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_scene_code_.kt" "lines" 38 "characters" 1234 "sha256" "a22d2b6e0464c4160b4cac584769beb47d66d94990e84521c2d4d479e6d3eca2"}]}
+{"id" "pc_scene" "index" 1 "name" "scene" "parents" ["root" "pc_renderer"] "children" ["pc_chain"] "properties" {"children" #{#afield/box "pc_chain"} "parents" #{#afield/box "root" #afield/box "pc_renderer"} "name" "scene" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_scene_code_.kt" "lines" 36 "characters" 1166 "sha256" "747358d77293c99a200fe09d3cfc4d23a3a872e2747ddb19cd4d092d005ad38f"}]}
 ```
 
 ```kotlin [field-property box="pc_scene" name="code" path="pc_scene_code_.kt"]
 // `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
 import afield.graphics.scene.fabricated.StandardRenderer
 import afield.graphics.scene.fabricated.applyScenePlan
-import afield.math.linalg.Matrix4f
-import afield.math.linalg.Vector3f
 
 prop<StandardRenderer.Bundle>(bundle)
 
@@ -59,8 +58,8 @@ once.bundle {
         StandardRenderer.Config(
             renderWidth = 1024,
             renderHeight = 1024,
-            backgroundColor = Vector3f(0.09f, 0.10f, 0.13f)
-        )
+            backgroundColor = Vector3f(0.09f, 0.10f, 0.13f),
+        ),
     )
     b.scene.camera.at.set(0f, 1.5f, -4.2f)
     b.scene.camera.target.set(0f, 0f, 0f)
@@ -88,7 +87,7 @@ println("scene ready: ${bundle.postStack.names()}")
 <!-- field-box id="pc_chain" index="2" -->
 
 ```edn [field-box id="pc_chain" role="properties"]
-{"id" "pc_chain" "index" 2 "name" "pass chain" "parents" ["root" "pc_scene"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pc_scene"} "name" "pass chain" "_tombstone" false "frame" #afield/rect [640.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_chain_code_.kt" "lines" 38 "characters" 1411 "sha256" "39a684eda8bc9e594bacdcb397857764a016f4d4550611b6f3256f575940a6d4"}]}
+{"id" "pc_chain" "index" 2 "name" "pass chain" "parents" ["root" "pc_scene"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pc_scene"} "name" "pass chain" "_tombstone" false "frame" #afield/rect [640.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pc_chain_code_.kt" "lines" 40 "characters" 1401 "sha256" "deef1a6ba7e4a4c059349b6da8c4d2d1cfd678e04b5279bff8d712224d263810"}]}
 ```
 
 ```kotlin [field-property box="pc_chain" name="code" path="pc_chain_code_.kt"]
@@ -102,22 +101,24 @@ prop<FabricateBuiltChain>(chain)
 val r: Renderer = fromContext()
 val b: StandardRenderer.Bundle = fromContext()
 
-// Declared once. Six passes, each with its own resolution: reduce to a half, reduce to a
-// quarter, two aperture discs on the cheap quarter-resolution image, and a composite that
-// rejoins at full resolution while sampling the small blur. `printReport` prints the plan
-// — sizes, sampler wiring, shared targets, and the memory cost against one full-resolution
-// target per pass. Read it before believing the picture: a chain planned at the wrong
-// resolution renders something that looks perfectly plausible.
+/*
+Declared once. Six passes, each with its own resolution: reduce to a half, reduce to a
+quarter, two aperture discs on the cheap quarter-resolution image, and a composite that
+rejoins at full resolution while sampling the small blur. `printReport` prints the plan
+— sizes, sampler wiring, shared targets, and the memory cost against one full-resolution
+target per pass. Read it before believing the picture: a chain planned at the wrong
+resolution renders something that looks perfectly plausible.
+*/
 once.chain {
     val c = b.addPassChain(
         FabricatePassLibrary.apertureChain(
             nearRadius = 4f,
             farRadius = 12f,
             taps = 40,
-            blend = 0.92f
+            blend = 0.92f,
         ),
         renderer = r,
-        printReport = true
+        printReport = true,
     )
     b.attachTo(r)
     b.present(renderer = r)

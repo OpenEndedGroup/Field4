@@ -19,13 +19,15 @@ Scaffolding, and Kotlin for two reasons named in the FieldML box next door:
 member*, which the bridge can satisfy the type of but cannot call into.
 
 ```edn [field-box id="fieldml-mesh-renderer" role="properties"]
-{"id" "fieldml-mesh-renderer" "index" 0 "name" "window and renderer" "parents" ["root"] "children" ["fieldml-mesh-root"] "properties" {"children" #{#afield/box "fieldml-mesh-root"} "parents" #{#afield/box "root"} "name" "window and renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-mesh-renderer_code_.kt" "lines" 11 "characters" 461 "sha256" "be983f43db7e9f0b57105a9f3907fff273e5e38e22c3fae9dcead4643f80c168"}]}
+{"id" "fieldml-mesh-renderer" "index" 0 "name" "window and renderer" "parents" ["root"] "children" ["fieldml-mesh-root"] "properties" {"children" #{#afield/box "fieldml-mesh-root"} "parents" #{#afield/box "root"} "name" "window and renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-mesh-renderer_code_.kt" "lines" 13 "characters" 458 "sha256" "4bd915bf455170e001327a3502d0dae362439a6a0ade809695d8a738a109ae17"}]}
 ```
 
 ```kotlin [field-property box="fieldml-mesh-renderer" name="code" path="fieldml-mesh-renderer_code_.kt"]
-// Scaffolding, and Kotlin for two reasons named in the FieldML box next door:
-// `prop`/`once` are SOURCE MACROS (mechanism A), and `Renderer.run` is a suspend
-// *member*, which the bridge can satisfy the type of but cannot call into.
+/*
+Scaffolding, and Kotlin for two reasons named in the FieldML box next door:
+`prop`/`once` are SOURCE MACROS (mechanism A), and `Renderer.run` is a suspend
+*member*, which the bridge can satisfy the type of but cannot call into.
+*/
 prop<Window>(window)
 prop<Renderer>(renderer)
 once.renderer {
