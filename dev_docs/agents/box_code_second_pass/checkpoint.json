@@ -1261,6 +1261,18 @@
     "9be027ca01a6-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "ed3814a2e496-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_47/README.md"
+    },
+    "2ef873951f77-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_47/README.md"
+    },
+    "2ef873951f77-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_47/README.md"
     }
   },
   "batches": [
@@ -1308,7 +1320,8 @@
     "../box_code_adoption_batch_42/README.md",
     "../box_code_adoption_batch_43/README.md",
     "../box_code_adoption_batch_45/README.md",
-    "../box_code_adoption_batch_46/README.md"
+    "../box_code_adoption_batch_46/README.md",
+    "../box_code_adoption_batch_47/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1327,10 +1340,10 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 46,
-    "branch": "codex/box-code-readability-46",
-    "baseline": "d54d91aa6",
-    "state": "Eight teaching findings verified; 80 Kotlin states/two shaders formatted; baseline executable tokens, markers, strings and YAML operation contracts preserved. Full guards delegated to lander. Batch45 queued 20261018-131653-codex-box-code-readability-45.",
-    "evidence": "../box_code_adoption_batch_46/README.md"
+    "batch": 47,
+    "branch": "codex/box-code-readability-47",
+    "baseline": "a637751ae",
+    "state": "Three CV findings verified: actual camera pixels identical, eight real shared-buffer/native overlay phases and both relaunches pass. Kotlin/import formatting three bodies, one collection conversion, mixed Python unchanged. Full gates delegated to lander. Field9718 renderer stopped; CPU-only. Batch45 queued 20261018-131653-codex-box-code-readability-45; batch46 queued 20261018-131929-codex-box-code-readability-46.",
+    "evidence": "../box_code_adoption_batch_47/README.md"
   }
 }
