@@ -128,7 +128,7 @@ operations:
           val curves = Polyvector.vectorize(drawing).toFLines().map { it.bySimplifying(2f) }.filter { it.length() > 12f }
 
           // From here on the drawing is geometry: FLines, which anything that works on FLines works on.
-// (byWaving's frequency is per node interval; this asks for one wave every 16 pixels.)
+          // (byWaving's frequency is per node interval; this asks for one wave every 16 pixels.)
           val light = Vec4(0.92f, 0.9f, 0.85f, 1f)
           fun styled(lines: List<FLine>, thickness: Double) = lines.onEach { it.properties["color"] = light; it.properties["thickness"] = thickness }
           val engraved = styled(curves.flatMap { c -> [c] + [3f, 6f, 9f].flatMap { d -> c.byCreatingParallelCurves(d, 120).toList() } }, 1.0)
