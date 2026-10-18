@@ -62,6 +62,13 @@ object BoxOutputChannelGuard {
     private const val LIBRARY_REL = "src/jvmMain/kotlin"
     private val CREATE_VERBS = setOf("create", "new-box", "box")
 
+    /**
+     * Python's `slider`/`checkbox` queue a spec instead of displaying, and `PythonInterface` renders
+     * every queued spec of one channel into a single `controlGroup`, so two of them on one channel
+     * are one panel, not a lost figure.
+     */
+    private val PYTHON_GROUPED_CONTROLS = setOf("slider", "checkbox")
+
     private val CALL_AT = Regex("""([A-Za-z_]\w*)\s*\(""")
     private val BOX_FUN = Regex("""\bfun\s+Box\.(\w+)\s*\(""")
     private val CHANNEL_DEFAULT = Regex("""channel:\s*String\s*=\s*"([^"]*)"""")
@@ -115,9 +122,11 @@ object BoxOutputChannelGuard {
 
         var boxes = 0
         var emissions = 0
+        val pythonSources = mutableSetOf<String>()
         fun check(source: String, code: String, forwardedChannelName: String? = null) {
             boxes++
-            val found = topLevelEmissions(code, helpers, channelFirst, forwardedChannelName)
+            val boxHelpers = if (source in pythonSources) helpers - PYTHON_GROUPED_CONTROLS else helpers
+            val found = topLevelEmissions(code, boxHelpers, channelFirst, forwardedChannelName)
             emissions += found.topLevel.size
             found.topLevel.groupBy { it.channel }
                 .filterValues { it.size > 1 }
@@ -132,7 +141,7 @@ object BoxOutputChannelGuard {
                 }
         }
 
-        for ((source, code) in transcriptBoxCode(File(repo, TRANSCRIPTS_REL), problems)) check(source, code)
+        for ((source, code) in transcriptBoxCode(File(repo, TRANSCRIPTS_REL), problems, pythonSources)) check(source, code)
         for ((source, code) in demoBoxCode(File(repo, DEMOS_REL))) check(source, code)
         for ((source, code, param) in libraryHelperBodies(File(repo, LIBRARY_REL))) check(source, code, param)
 
@@ -332,7 +341,11 @@ object BoxOutputChannelGuard {
 
     // ---- populations ------------------------------------------------------------------------------
 
-    private fun transcriptBoxCode(dir: File, problems: MutableList<String>): List<Pair<String, String>> {
+    private fun transcriptBoxCode(
+        dir: File,
+        problems: MutableList<String>,
+        pythonSources: MutableSet<String>,
+    ): List<Pair<String, String>> {
         if (!dir.isDirectory) {
             problems.add("no transcript corpus at ${dir.absolutePath}")
             return emptyList()
@@ -360,6 +373,8 @@ object BoxOutputChannelGuard {
                     // scanned, but its comments start with `--`, which maskCommentsAndStrings does
                     // not know: `-- lines(...) draws them` read as a second lines() call.
                     val lua = properties["code_language"]?.toString()?.trim()?.equals("lua", ignoreCase = true) == true
+                    val python = properties["code_language"]?.toString()?.trim()?.equals("python", ignoreCase = true) == true
+                    if (python) pythonSources.add("${file.name}#$box")
                     result.add("${file.name}#$box" to if (lua) blankLuaLineComments(raw) else raw)
                 }
             }

@@ -1049,7 +1049,6 @@ internal fun polylines3d(line: FLine, spacing: Double): List<List<Vec3>> {
                         (p0.z * w0 + c1.z * w1 + c2.z * w2 + p.z * w3).toFloat())
                 }
             }
-            else -> start?.let { if (out.isNotEmpty()) to(it) }
         }
     }
     return out
