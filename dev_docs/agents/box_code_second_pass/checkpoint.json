@@ -1272,13 +1272,15 @@
     "analysisEnvironment": "build/box-code-revision/adoption-43/analysis-env",
     "analysisInstallSession": 44411,
     "state": "Real worker analyses, three Smile fits, corpus fragments and whole-box Stop/relaunch pass. Explicit private ONNX portability adaptation and backend duplicate-request race documented in batch43.",
-    "analysisWorkerSession": 59206
+    "analysisWorkerSession": 59206,
+    "fieldPort": 9714,
+    "fieldSession": 32839
   },
   "inProgress": {
     "batch": 43,
     "branch": "codex/box-code-readability-44",
     "baseline": "5e02bad8c",
-    "state": "Batch43 initially bounced on four source conflicts with newer real cached galleries/capture configuration on main. Integrated incoming captures, folds, output cleanup and real gallery with owned live analyses via merge_regen.py main. Formatting, verification and merge_regen --continue remain before requeue. CPU Field9713 predates merged runtime sources and must be refreshed before additional execution.",
+    "state": "Batch43 source-conflict repair complete via merge_regen.py main/--continue, merge commit5d89ff9e3. All required merged-tree guards pass. Fresh Field9714 replays incoming real cached gallery, both beat/pitch bodies, three spectral fits and all corpus fragments. Repair commit/queue follows; original queue20261018-065111-codex-box-code-readability-43 bounced. No findings newly counted by this repair.",
     "evidence": "../box_code_adoption_batch_43/README.md"
   }
 }

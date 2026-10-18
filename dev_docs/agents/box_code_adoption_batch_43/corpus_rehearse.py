@@ -2,7 +2,7 @@
 from pathlib import Path
 import asyncio,importlib.util,json,re,sys,wave,numpy as np
 R=Path(__file__).resolve().parents[3];H=Path(__file__).resolve().parent;OUT=R/'build/box-code-revision/adoption-43'
-s=importlib.util.spec_from_file_location('rig43',H.parent/'box_code_adoption_batch_26/rehearse.py');n=importlib.util.module_from_spec(s);s.loader.exec_module(n);m=n.m;m.PORT=9713;m.OUT=OUT/'corpus-runtime';m.OUT.mkdir(parents=True,exist_ok=True)
+s=importlib.util.spec_from_file_location('rig43',H.parent/'box_code_adoption_batch_26/rehearse.py');n=importlib.util.module_from_spec(s);s.loader.exec_module(n);m=n.m;m.PORT=int(__import__("os").environ.get("FIELD_TEST_PORT","9713"));m.OUT=OUT/('corpus-runtime-merged' if __import__('os').environ.get('FIELD_MERGED_CHECK') else 'corpus-runtime');m.OUT.mkdir(parents=True,exist_ok=True)
 p=OUT/'readability43-second.wav'
 if not p.exists():
  sr=48000;t=np.arange(sr*9)/sr;signal=.3*np.sin(2*np.pi*247*t)+.2*np.sin(2*np.pi*370*t)+.1*np.sin(2*np.pi*494*t)
