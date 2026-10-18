@@ -16,12 +16,10 @@ val teacher = moduleHere {
     depthWrite = false
     blend = false
 }
-val mesh = Mesh(renderer, teacher)
-mesh.resize(3, 0, teacher)
-mesh.push.setMembers(teacher.current.fi.pushConstants.single().members)
+val mesh = fullscreenTriangle(teacher)
 teacher += "fullscreen" to mesh
 source += "teacher" to teacher
-val setTime: (Float) -> Unit = { t -> mesh.push["state"] = vec(source.width, source.height, t, 0) }
+val setTime: (Float) -> Unit = { t -> mesh.state = { vec(source.width, source.height, t, 0) } }
 lab = ShaderLearningView(renderer, source, setSourceParameter = setTime)
 var capture = false
 var requestedView = 0
