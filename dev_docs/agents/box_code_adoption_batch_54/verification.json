@@ -1,0 +1,17 @@
+{
+  "baseline": "3bcffcdfd",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/paint_canvas.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/gpu_schema.md",
+      "kotlinBodies": 6,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

@@ -9,13 +9,11 @@
 This example declares a `Particle` with a nested `Material`, and publishes its schema to the box's shader template:
 
 ```diffstatic {data-lang=kotlin}
-import afield.graphics.vulkan.buffers.*
-
 @GpuStruct
 data class Material(
     val color: Vector4f,
     val roughness: Float,
-    val metallic: Float
+    val metallic: Float,
 )
 
 @GpuStruct
@@ -23,7 +21,7 @@ data class Particle(
     val position: Vector3f,
     val radius: Float,
     val material: Material,
-    val flags: UInt
+    val flags: UInt,
 )
 
 val particle = gpuSchema<Particle>()
@@ -98,14 +96,15 @@ A GLSL struct named `Particle` always gets the reference names `ParticleRef` and
 
 ```diffstatic {data-lang=kotlin}
 val values = [
-    Particle(vec(-0.7f, -0.5f, 0f), 0.2f, Material(vec(1,0,0,1), .4f, 0f), 1u),
-    Particle(vec( 0.0f,  0.5f, 0f), 0.2f, Material(vec(0,1,0,1), .6f, 0f), 2u),
-    Particle(vec( 0.7f, -0.5f, 0f), 0.2f, Material(vec(0,0,1,1), .8f, 0f), 3u)
+    Particle(vec(-0.7f, -0.5f, 0f), 0.2f, Material(vec(1, 0, 0, 1), 0.4f, 0f), 1u),
+    Particle(vec(0.0f, 0.5f, 0f), 0.2f, Material(vec(0, 1, 0, 1), 0.6f, 0f), 2u),
+    Particle(vec(0.7f, -0.5f, 0f), 0.2f, Material(vec(0, 0, 1, 1), 0.8f, 0f), 3u),
 ]
 
 val particleBuffer = defaultBuffer {
     size = (values.size * particle.strideBytes).bytes
-}.buffer
+}
+    .buffer
 
 particleBuffer.mapAndWrite_bytes {
     particle.writeArray(values, this)
@@ -155,7 +154,7 @@ A small value can also be the entire reflected push block. `GpuSchema.writer` ad
 @GpuStruct
 data class DrawParams(
     val color: Vector4f,
-    val scale: Float
+    val scale: Float,
 )
 
 val draw = gpuSchema<DrawParams>()
