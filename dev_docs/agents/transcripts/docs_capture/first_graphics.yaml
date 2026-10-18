@@ -11,9 +11,15 @@ operations:
       w: 350.0
       h: 100.0
     properties:
-      code: "// Launch this box first: Alt+Up (Option+Up on macOS).\nprop<Window>(window)\n\
-        prop<Renderer>(renderer)\nonce.renderer {\n    window = Window(\"Field · first\
-        \ native graphics\")\n    Renderer(window)\n}\nstart(renderer::run)\n"
+      code: |-
+        // Launch this box first: Alt+Up (Option+Up on macOS).
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+        once.renderer {
+            window = Window("Field · first native graphics")
+            Renderer(window)
+        }
+        start(renderer::run)
 - create:
     box: first_graphics_triangle
     name: 2 · Launch the triangle
@@ -23,26 +29,52 @@ operations:
       w: 350.0
       h: 100.0
     properties:
-      code: "// this is almost as simple as drawing a triangle gets here. First a\
-        \ shader:\nvar module = moduleHere {\n    primitiveType = triangle_strip\n\
-        }\n\n    // then a mesh\nvar m  = Mesh()\n\n    // then some connection\n\
-        module += m named \"my mesh\"\nrenderer += module\n\n/*\nThis gets us everything\
-        \ we need to start rendering things. In particular, we get a vertex shader:\n\
-        \n[[property vertex]]\n*/\n\n    // and a fragment shader:\n\n/*\n[[property\
-        \ fragment]]\n*/\n\n// you can edit these by switching to these properties\
-        \ in the editor `f1` or `ctrl-P`.\n\n// and then 3 vertices and one triangle\
-        \ strip consisting of 3 indices\nm.set(3, 3) {\n    pos.add(0,0,0, 0.5,0,0,\
-        \ 0.5,0.5,0)\n\n    // for a flourish, we have some color as well\n    3 {\n\
-        \        col.add(0,it/3.0,1-it/3.0,1)\n    }\n    tri.add(0,1,2)\n}\n"
-      vertex: "#version 450\nlayout (location = 0) in vec3 pos;\n\nlayout (location\
-        \ = 1) in vec4 col;\nlayout (location = 0) out vec4 fcol;\n\n// layout(push_constant)\
-        \ uniform matrices {\n//     mat4 projectionMatrix;\n//     mat4 modelMatrix;\n\
-        // } push_constants;\n\nvoid main()\n{\n    // gl_Position = push_constants.projectionMatrix\
-        \ * push_constants.modelMatrix * vec4(pos, 1);\n\n    fcol = col;\n    gl_Position\
-        \ = vec4(pos, 1);\n}"
-      fragment: "#version 450\nlayout(location = 0) out vec4 uFragColor;\n\nlayout(location\
-        \ = 0) in vec4 fcol;\nvoid main()\n{\n    uFragColor = vec4(1.0, 0.8, 0.4,\
-        \ 1.0)* fcol;\n}"
+      code: |-
+        // A module connects this box's vertex and fragment shaders to its meshes.
+        // Re-launching replaces the module under this box's name.
+        renderer += moduleHere {
+            primitiveType = triangle_strip
+            +Mesh("triangle") {
+                // Three clip-space positions (-1..1), three RGBA colours and one triangle.
+                set(3, 3) {
+                    pos.add(0, 0, 0, 0.5, 0, 0, 0.5, 0.5, 0)
+                    3 {
+                        col.add(0, it / 3.0, 1 - it / 3.0, 1)
+                    }
+                    tri.add(0, 1, 2)
+                }
+            }
+        }
+
+        /*
+         Switch to the shaders with F1 or Ctrl+P:
+         [[property vertex]]
+         [[property fragment]]
+         */
+      vertex: |-
+        #version 450
+        layout (location = 0) in vec3 pos;
+
+        layout (location = 1) in vec4 col;
+        layout (location = 0) out vec4 fcol;
+
+        // pos is already in clip space; col is passed to the fragment shader.
+
+        void main()
+        {
+
+            fcol = col;
+            gl_Position = vec4(pos, 1);
+        }
+      fragment: |-
+        #version 450
+        layout(location = 0) out vec4 uFragColor;
+
+        layout(location = 0) in vec4 fcol;
+        void main()
+        {
+            uFragColor = vec4(1.0, 0.8, 0.4, 1.0)* fcol;
+        }
 - connect:
     parent: first_graphics_renderer
     child: first_graphics_triangle
