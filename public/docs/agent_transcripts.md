@@ -1044,6 +1044,18 @@ middle of the chord and re-run to watch the two columns converge.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/arclength_spacing_demo/metadata.edn)
 
+### lp_curves
+
+Linear-programming algorithms as curve generators, the companion to
+[Linear programs as curves](lp_curves.md). *Every route* draws one pentagon and one objective
+direction seven ways: the central path, a fan of central paths, the primal-dual iterates, a PDHG
+spiral, the ellipsoid method with its ellipses, the simplex walk and cutting planes, each captioned
+with its own numbers. *A turning objective* is launched: the direction turns once every twelve
+seconds while the hexagon's vertices breathe, and the central path, the PDHG spiral and the simplex
+walk are recomputed twenty times a second. Change the weights or the PDHG step size and run it again.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/lp_curves/metadata.edn)
+
 ### close_node_demo
 
 Two boxes about the `Close` node in the middle of an `FLine`, which is a shape
