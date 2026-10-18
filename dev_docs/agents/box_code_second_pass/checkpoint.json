@@ -1401,6 +1401,10 @@
     "aff7b1698617-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_59/README.md"
+    },
+    "7f180cbab721-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_60/README.md"
     }
   },
   "batches": [
@@ -1461,7 +1465,8 @@
     "../box_code_adoption_batch_56/README.md",
     "../box_code_adoption_batch_57/README.md",
     "../box_code_adoption_batch_58/README.md",
-    "../box_code_adoption_batch_59/README.md"
+    "../box_code_adoption_batch_59/README.md",
+    "../box_code_adoption_batch_60/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1480,11 +1485,11 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 59,
-    "branch": "codex/box-code-readability-59",
-    "baseline": "72ce0a610",
-    "state": "Batch 59 verified with native source rendering, real recording completion and Stop; 347 addressed, 58 open.",
-    "evidence": "../box_code_adoption_batch_59/README.md"
+    "batch": 60,
+    "branch": "codex/box-code-readability-60",
+    "baseline": "9eae518d7",
+    "state": "Batch 60 native before/after and live-knob checks passed; 348 addressed, 57 open.",
+    "evidence": "../box_code_adoption_batch_60/README.md"
   },
   "mechanical": {
     "status": "applied_for_valid_kotlin_glsl_with_explicit_retained_cases",

@@ -120,7 +120,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Restore recording animation and expose procedural-only study controls](../box_code_adoption_batch_59/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **347 of 405 findings addressed**; 58 remain open. These counts do not claim
+| [Use inherited renderer and bundle in the live pass-chain example](../box_code_adoption_batch_60/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **348 of 405 findings addressed**; 57 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 

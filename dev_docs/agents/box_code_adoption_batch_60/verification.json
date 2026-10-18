@@ -1,0 +1,11 @@
+{
+  "baseline": "9eae518d7",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/four_pass_chain.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}
