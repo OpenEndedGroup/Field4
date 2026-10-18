@@ -139,6 +139,13 @@ object ReactiveRuns {
 
     private fun label(b: Box?): String = b?.let { it.name.ifBlank { it.id } } ?: "?"
 
+    /**
+     * [box] in its document: the uid alone is not unique across open documents (a copied document
+     * keeps its uids), so every per-box record here is keyed by document file and uid.
+     */
+    internal fun docKey(box: Box): String =
+        (if (box.isInsideInitialized()) box.inside.filename else "") + "\u0000" + box.id
+
     // ---------------------------------------------------------------------------------------------
     // Run tracking (called by KotlinExecution.executeInBox)
 
@@ -167,7 +174,7 @@ object ReactiveRuns {
                 st.startSeq = PropertyDependencies.clock.incrementAndGet()
                 st.pulled.clear()
                 st.changes.clear()
-                lastRunStart[box.id] = st.startSeq
+                lastRunStart[docKey(box)] = st.startSeq
             }
         }
         event("start ${label(box)} $mode")
@@ -260,7 +267,7 @@ object ReactiveRuns {
                 problems += "'${label(s)}' was already running for another read and did not set '$name' (${ok ?: "timeout"})"
                 continue
             }
-            val key = "${s.id}|$name"
+            val key = "${docKey(s)}|$name"
             val st = runs[reader]
             val readerInRun = st != null && synchronized(st) { st.depth > 0 }
             if (readerInRun) {
@@ -296,7 +303,7 @@ object ReactiveRuns {
     fun stamp(): Long = PropertyDependencies.clock.incrementAndGet()
 
     /** True when a pull ran [box] successfully, launched after [stamp]. */
-    fun pulledSince(box: Box, stamp: Long): Boolean = (pulledOk[box.id] ?: 0L) > stamp
+    fun pulledSince(box: Box, stamp: Long): Boolean = (pulledOk[docKey(box)] ?: 0L) > stamp
 
     /** Pulls under way, by supplier: completed with the supplier's verdict when its run finishes. */
     private val inFlight = ConcurrentHashMap<Box, CompletableDeferred<Boolean>>()
@@ -313,7 +320,7 @@ object ReactiveRuns {
                 launchNow(s)
             }
             val ok = waitFor(done, reader)
-            if (ok == true) pulledOk[s.id] = launchedAt
+            if (ok == true) pulledOk[docKey(s)] = launchedAt
             return ok
         } finally {
             inFlight.remove(s, done)
@@ -386,7 +393,7 @@ object ReactiveRuns {
         fun lookup(uid: String): Box? = info.boxes[uid] ?: asking.parents.firstOrNull { it.id == uid }
         val declaration = declarationOf.getOrPut(name) { Regex("""\b(?:val|var)\s+Box\.${Regex.escape(name)}\s+by\b""") }
         val propCall = propCallOf.getOrPut(name) {
-            Regex("""\b(?:prop|propUp|propDown|propUpDown)\s*<.*>\s*\(\s*${Regex.escape(name)}\s*\)|\bsetProp(?:Up|UpDown)\s+"${Regex.escape(name)}"""")
+            Regex("""\b(?:prop|propUp|propDown|propUpDown)\s*<.*>\s*\(\s*${Regex.escape(name)}\s*[,)]|\bsetProp(?:Up|UpDown)\s+"${Regex.escape(name)}"""")
         }
 
         fun declaresInOwnCodeOrPreamble(b: Box): Boolean {
@@ -394,7 +401,7 @@ object ReactiveRuns {
             val ownDeclares = own.lineSequence().any { line ->
                 declaration.containsMatchIn(line) && preambleSupplierTag(line).let { it == null || it == PREAMBLE_SELF_SUPPLIER }
             }
-            return ownDeclares || propCall.containsMatchIn((b.getPropertyRaw("code") as? String).orEmpty())
+            return ownDeclares || propCall.containsMatchIn(withoutComments((b.getPropertyRaw("code") as? String).orEmpty()))
         }
 
         // 0. the box being asked, when it is someone else's
@@ -404,7 +411,7 @@ object ReactiveRuns {
             val rootCall = Regex("""\brootPropUp(?:Down)?\s*<.*>\s*\(\s*${Regex.escape(name)}\s*[,)]""")
             info.boxes.values
                 .filter { it !== reader && !it.getPropertyRaw("_tombstone").isTrue() }
-                .filter { rootCall.containsMatchIn((it.getPropertyRaw("code") as? String).orEmpty()) }
+                .filter { rootCall.containsMatchIn(withoutComments((it.getPropertyRaw("code") as? String).orEmpty())) }
                 .forEach { out += it }
         }
         // 1. who the gathered preamble says declared it
@@ -445,7 +452,7 @@ object ReactiveRuns {
 
     private val downDeclared: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
-    private fun downKey(box: Box, name: String) = box.id + "\u0000" + name
+    private fun downKey(box: Box, name: String) = docKey(box) + "\u0000" + name
 
     /** [box]'s code declared [name] with `propDown` / `propUpDown`; recorded when the macro expands. */
     fun declaredDown(box: Box, name: String) {
@@ -486,26 +493,85 @@ object ReactiveRuns {
             declarers.removeIf { id ->
                 val d = boxes[id]
                 d == null || d.getPropertyRaw("_tombstone").isTrue() ||
-                    !downMacroPattern(name).containsMatchIn((d.getPropertyRaw("code") as? String).orEmpty())
+                    !codeDeclaresDown((d.getPropertyRaw("code") as? String).orEmpty(), name)
             }
             if (declarers.isEmpty()) { rootDownDeclarers.remove(key); downDeclared.remove(key); return false }
             return true
         }
         val code = box.getPropertyRaw("code") as? String
         val stillThere = !box.getPropertyRaw("_tombstone").isTrue() &&
-            (code == null || downMacroPattern(name).containsMatchIn(code))
+            (code == null || codeDeclaresDown(code, name))
         if (!stillThere) downDeclared.remove(key)
         return stillThere
     }
 
-    /** Forgets every Down declaration of [box]; for box deletion. */
+    /** Whether any per-box record of [box] is still held; for tests. */
+    internal fun remembers(box: Box): Boolean {
+        val k = docKey(box)
+        return runs.containsKey(box) || lastRunStart.containsKey(k) || pulledOk.containsKey(k) ||
+            lastPull.keys.any { it.startsWith("$k|") } || downDeclared.any { it.startsWith(k + "\u0000") }
+    }
+
+    /**
+     * Forgets every Down declaration of [box], and its run records (which otherwise held the
+     * deleted Box for the life of the JVM); for box deletion. A run still in flight keeps its
+     * state so its end is still seen.
+     */
     fun forgetDown(box: Box) {
-        val prefix = box.id + "\u0000"
+        val key = docKey(box)
+        runs.computeIfPresent(box) { _, st -> if (synchronized(st) { st.depth > 0 || st.waiters.isNotEmpty() }) st else null }
+        lastRunStart.remove(key)
+        pulledOk.remove(key)
+        lastPull.keys.removeIf { it.startsWith("$key|") }
+        val prefix = key + "\u0000"
         downDeclared.removeIf { it.startsWith(prefix) }
+        rootDownDeclarers.values.forEach { it.remove(box.id) }
     }
 
     private fun downMacroPattern(name: String) =
-        Regex("""(?:prop|rootProp)U?p?Down\s*<[^\n]*>\s*\(\s*""" + Regex.escape(name) + """\b""")
+        Regex("""\b(?:propDown|propUpDown|rootPropDown|rootPropUpDown)\s*<[^\n]*>\s*\(\s*""" + Regex.escape(name) + """\s*[,)]""")
+
+    /** Whether [code], outside its comments, declares [name] Down. */
+    private fun codeDeclaresDown(code: String, name: String): Boolean =
+        downMacroPattern(name).containsMatchIn(withoutComments(code))
+
+    /**
+     * [code] with its `//` and (nesting) `/* */` comments blanked, so a declaration commented out
+     * is not one; a `//` inside a string literal is left alone. Both Kotlin and FieldML comment with
+     * `//`, which is the case that matters (commenting out a line).
+     */
+    internal fun withoutComments(code: String): String {
+        if ("//" !in code && "/*" !in code) return code
+        val out = StringBuilder(code.length)
+        var i = 0
+        var inString = false
+        var depth = 0
+        while (i < code.length) {
+            val c = code[i]
+            val next = if (i + 1 < code.length) code[i + 1] else '\u0000'
+            when {
+                depth > 0 -> {
+                    if (c == '*' && next == '/') { depth--; i += 2; out.append("  "); continue }
+                    if (c == '/' && next == '*') { depth++; i += 2; out.append("  "); continue }
+                    out.append(if (c == '\n') '\n' else ' ')
+                }
+                inString -> {
+                    out.append(c)
+                    if (c == '\\' && i + 1 < code.length) { out.append(next); i += 2; continue }
+                    if (c == '"' || c == '\n') inString = false
+                }
+                c == '"' -> { inString = true; out.append(c) }
+                c == '/' && next == '/' -> {
+                    while (i < code.length && code[i] != '\n') { out.append(' '); i++ }
+                    continue
+                }
+                c == '/' && next == '*' -> { depth = 1; i += 2; out.append("  "); continue }
+                else -> out.append(c)
+            }
+            i++
+        }
+        return out.toString()
+    }
 
     /** A `propDown` value changed: hold it to the end of the writer's run, or send it on now. */
     fun noteChange(holder: Box, name: String) {
@@ -626,7 +692,7 @@ object ReactiveRuns {
                     if (e.key.supplier != c.holder.id || e.key.name != c.name) continue
                     val reader = info.boxes[e.key.reader] ?: continue
                     if (reader === c.writer || reader.getPropertyRaw("_tombstone").isTrue()) continue
-                    val seen = maxOf(e.lastSeq, lastRunStart[reader.id] ?: 0L)
+                    val seen = maxOf(e.lastSeq, lastRunStart[docKey(reader)] ?: 0L)
                     if (seen >= c.seq) continue
                     out.merge(reader, c.seq, ::minOf)
                 }
@@ -634,7 +700,7 @@ object ReactiveRuns {
             // Readers rerun in the order they last ran (pickNext still puts a reader after any waiting
             // box that feeds it): a set of passes launched in pipeline order, whose modules dispatch in
             // the order they were added, keeps that order. Then by the earliest change each missed.
-            return out.entries.sortedWith(compareBy({ lastRunStart[it.key.id] ?: Long.MAX_VALUE }, { it.value }))
+            return out.entries.sortedWith(compareBy({ lastRunStart[docKey(it.key)] ?: Long.MAX_VALUE }, { it.value }))
                 .associate { it.key to it.value }
         }
 

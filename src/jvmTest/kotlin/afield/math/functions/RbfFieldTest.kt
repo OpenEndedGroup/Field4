@@ -54,8 +54,8 @@ class RbfFieldTest {
         val noisy = points.map { it to f(it) + (r.nextDouble() - 0.5) * 0.2 }
         val exact = rbfField(noisy)
         val smooth = rbfField(noisy, smoothing = 0.5)
-        val missExact = noisy.maxOf { (p, v) -> kotlin.math.abs(exact(p) - v.toDouble()) }
-        val missSmooth = noisy.maxOf { (p, v) -> kotlin.math.abs(smooth(p) - v.toDouble()) }
+        val missExact = noisy.maxOf { (p, v) -> kotlin.math.abs(exact(p) - v) }
+        val missSmooth = noisy.maxOf { (p, v) -> kotlin.math.abs(smooth(p) - v) }
         assertTrue(missExact < 1e-6 && missSmooth > 0.01, "exact $missExact, smoothed $missSmooth")
     }
 

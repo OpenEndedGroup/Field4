@@ -1,0 +1,134 @@
+name: lp_curves
+description: >
+  Linear-programming algorithms as curve generators — the companion to `public/docs/lp_curves.md`.
+  Two pure-CPU boxes over `LpPolygon` (src/jvmMain/kotlin/afield/geometry/spatial/lp_trajectories.kt),
+  both drawing through showPlane / showPlaneGrid, so no Window and no Renderer.
+
+    1. lp_routes — one pentagon and one objective direction, and every route there: the barrier
+       method's central path, a fan of central paths, the primal-dual iterates, a PDHG spiral, the
+       ellipsoid method with its ellipses, the simplex walk and analytic-centre cutting planes,
+       drawn with +y up.
+       Captions carry each method's own numbers. Change `c` or the weights and re-run.
+    2. lp_turning — launched. The objective direction turns once every twelve seconds while the
+       hexagon's vertices breathe, and the central path, the PDHG spiral and the simplex walk are
+       recomputed for every picture (twenty a second), the central path warm-started from the last
+       picture's through an LpContinuation. Watch the routes swing from vertex to vertex.
+       Change `tau`, the weights or the period and run it again; re-running replaces the loop.
+operations:
+  - create:
+      box: lp_routes
+      name: every route to the same vertex
+      frame: { x: 80.0, y: 80.0, w: 420.0, h: 120.0 }
+      properties:
+        code: |
+          val polygon = LpPolygon([vec(-2.0, -1.0), vec(1.5, -1.5), vec(3.0, 1.0), vec(0.5, 2.5), vec(-2.5, 1.5)])
+          val c = vec(1.0, 0.4)
+          val weights = doubleArrayOf(1.0, 1.0, 1.0, 1.0, 1.0)
+
+          val central = polygon.centralPath(c, weights)
+          val fan = polygon.centralFan(angles = 48, samples = 80, weights = weights)
+          val pd = polygon.primalDual(c)
+          val spiral = polygon.pdhg(c, iterations = 600, tau = 0.3, sigma = 0.3)
+          val ellipsoid = polygon.ellipsoid(c, iterations = 30)
+          val walk = polygon.simplexWalk(c, startVertex = 4)
+          val cuts = polygon.cuttingPlanes(c, iterations = 12)
+
+          val outline = polygon.toFLine()
+          val answer = pointCloudFLine([polygon.optimalVertex(c)], vec(1.0, 0.4, 0.4, 1.0), 2.0)
+          val dots = { t: LpTrajectory -> pointCloudFLine(t.positions, vec(1.0, 1.0, 1.0, 0.9), 1.0) }
+
+          showPlaneGrid(
+              "centralPath\nμ %.0e → %.0e, ${central.samples.size} samples".format(central.samples.first().scale, central.last.scale) to
+                  [outline, central.toFLine(), answer],
+              "centralFan\n${fan.size} directions" to [outline] + fan.toFLines(),
+              "primalDual\n${pd.samples.size - 1} Newton steps" to [outline, pd.toFLine(vec(0.55, 0.9, 0.6, 0.95)), dots(pd), answer],
+              "pdhg, tau = sigma = 0.3\n${spiral.trajectory.samples.count { it.violation > 0.0 }} of ${spiral.trajectory.samples.size} iterates outside" to
+                  [outline, spiral.trajectory.toFLine(vec(1.0, 0.55, 0.85, 0.85), 1.0), answer],
+              "ellipsoid\n${ellipsoid.ellipses.size} ellipses, each %.2f of the last's area".format(kotlin.math.sqrt(ellipsoid.ellipses[1].determinant / ellipsoid.ellipses[0].determinant)) to
+                  [outline] + ellipsoid.ellipses.take(16).map { it.toFLine() } + ellipsoid.trajectory.toFLine(vec(1.0, 1.0, 1.0, 0.6), 0.8),
+              "simplexWalk\n${walk.samples.size - 1} pivots" to [outline, walk.toFLine(vec(0.6, 0.75, 1.0, 0.95), 2.4), dots(walk), answer],
+              "cuttingPlanes (analytic centres)\narea %.2f → %.1e".format(cuts.trajectory.samples.first().scale, cuts.trajectory.last.scale) to
+                  [outline] + cuts.regions.map { r -> polylineFrom(r, closed = true).also { it.color = vec(0.6, 0.8, 1.0, 0.4) } } +
+                      cuts.trajectory.toFLine(),
+              columns = 4,
+              yUp = true,
+              cellWidth = 260,
+              cellHeight = 230,
+          )
+
+          "every route ends at %s".format(polygon.optimalVertex(c))
+  - create:
+      box: lp_turning
+      name: a turning objective (launch me)
+      frame: { x: 80.0, y: 560.0, w: 420.0, h: 120.0 }
+      properties:
+        code: |
+          import kotlin.math.*
+
+          // The objective turns once every `period` seconds while the hexagon breathes. Every route is
+          // recomputed for each picture; they are cheap.
+          val period = 12.0
+          val tau = 0.3
+          val weights = doubleArrayOf(1.0, 1.0, 3.0, 1.0, 1.0, 1.0)
+          val window = Rect(-3.6, -3.4, 7.2, 6.8)
+
+          // Each vertex's radius wanders between 1.9 and 2.9, which keeps the hexagon convex.
+          val shape = { t: Double ->
+              LpPolygon((0 until 6).map { k ->
+                  val a = 2.0 * PI * k / 6 + 0.25
+                  val r = 2.4 + 0.5 * sin(t * 0.9 + k * 1.7)
+                  vec(r * cos(a), r * sin(a))
+              })
+          }
+
+          // Each frame's central path starts Newton from the previous frame's: same path, fewer steps.
+          val continuation = LpContinuation()
+          val started = AnimationClock.nowSeconds()
+          var nextDraw = 0.0
+          val draw: (Double) -> Unit = { t ->
+              val polygon = shape(t)
+              val theta = 2.0 * PI * t / period
+              val c = vec(cos(theta), sin(theta))
+              val central = continuation.centralPath(polygon, c, weights, samples = 90)
+              val spiral = polygon.pdhg(c, iterations = 300, tau = tau, sigma = tau)
+              val walk = polygon.simplexWalk(c)
+              val o = polygon.center
+              val arrow = fline {
+                  moveTo(o.x, o.y)
+                  lineTo(o.x + 0.9 * c.x, o.y + 0.9 * c.y)
+                  color = vec(1.0, 1.0, 1.0, 0.5)
+                  thickness = 1.0
+              }
+              showPlane(
+                  [
+                      polygon.toFLine(),
+                      arrow,
+                      spiral.trajectory.toFLine(vec(1.0, 0.55, 0.85, 0.7), 0.9),
+                      walk.toFLine(vec(0.6, 0.75, 1.0, 0.95), 2.4),
+                      central.toFLine(vec(1.0, 0.72, 0.32, 1.0), 2.0),
+                  ],
+                  title = "θ = %3.0f°".format(Math.toDegrees(theta) % 360.0),
+                  caption = "orange: central path · pink: PDHG · blue: simplex walk",
+                  width = 520,
+                  height = 500,
+                  window = window,
+                  interactive = false,
+                  yUp = true,
+              )
+          }
+
+          animate {
+              val t = AnimationClock.nowSeconds() - started
+              // Draw twenty pictures a second; the loop itself runs much faster than that.
+              if (t >= nextDraw) {
+                  draw(t)
+                  nextDraw = t + 1.0 / 20.0
+              }
+          }
+  - execute:
+      box: lp_routes
+  - launch:
+      box: lp_turning
+      property: code
+  - wait:
+      millis: 1500

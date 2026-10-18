@@ -90,7 +90,23 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Tracked real analyses and usable corpus fragments](../box_code_adoption_batch_43/README.md) | Seven findings addressed, including the pending fresh-service helper proof; actual beat/pitch jobs, three Smile fits, corpus index/query/placement and whole-box Stop/relaunch verified; eleven formatting states. |
 
-[Machine checkpoint](checkpoint.json): **300 of 405 findings addressed**; 105 remain open. These counts do not claim
+| [Beginner graphics, live speed and quoted-code formatting](../box_code_adoption_batch_45/README.md) | Four findings addressed; identical native triangle/reruns, live speed assignment and Stop, saved fallbacks and two genuine docs captures; ten Kotlin and six GLSL bodies formatted. |
+
+| [Teaching comments and accurate controls](../box_code_adoption_batch_46/README.md) | Eight findings addressed; 80 Kotlin states and two GLSL shaders mechanically checked, baseline executable tokens preserved; full guards delegated to the lander. |
+
+| [Clear the remaining CV overlays](../box_code_adoption_batch_47/README.md) | Three findings addressed; real SharedImage camera equality, eight native SharedLines phases and both relaunches; three Kotlin bodies formatted with Python preserved. |
+
+| [Responsive long loops](../box_code_adoption_batch_48/README.md) | Two findings addressed; actual worker exits within 7ms of cancellation, seeded completion unchanged and both drawing after-states yield to the Runloop; nine Kotlin states formatted. |
+
+| [Teaching headers and explicit shader contracts](../box_code_adoption_batch_49/README.md) | Six findings addressed; ten Kotlin bodies, five shader bodies, five collection conversions; unchanged baseline calculations/interfaces and codec-verified saved fallbacks. |
+
+| [Synchronize statistics lesson copies](../box_code_adoption_batch_50/README.md) | Three findings addressed; actual three-cycle dependence and calibrated rolling transcripts; existing alife layout proof reused; five Kotlin bodies and five collection conversions. |
+
+| [Named defaults and live band gain](../box_code_adoption_batch_51/README.md) | Four findings addressed; six real browser control groups, both callback variants with assignment/reset-only relaunch proof, 24 Kotlin states mechanically checked. |
+
+| [Keep downloaded examples local and preserve their sampling contracts](../box_code_adoption_batch_52/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **333 of 405 findings addressed**; 72 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 

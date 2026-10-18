@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-210 source file(s), 675 public symbol(s), 296 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+211 source file(s), 677 public symbol(s), 297 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -152,14 +152,14 @@ The landing guard that box code still compiles: each named transcript goes down 
 
 ### BoxCodeFormat { #boxcodeformat-kt-boxcodeformat }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">BoxCodeFormat</span></code>](source/jvmMain/afield/examples/BoxCodeFormat/#L22)
+[<code class="highlight"><span class="k">object</span> <span class="nc">BoxCodeFormat</span></code>](source/jvmMain/afield/examples/BoxCodeFormat/#L30)
 
 Formats the box code in transcripts and `*_code_.kt` sidecars with the formatter the editor uses ([`formatCodeProperty`](workspace.md#formatter-kt--formatcodeproperty): ktfmt for `code`, Field's GLSL formatter for shader properties), in place.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="boxcodeformat-kt--boxcodeformat--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/BoxCodeFormat/#L29) |  |
-| <a id="boxcodeformat-kt--boxcodeformat--formatyaml"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">formatYaml</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/examples/BoxCodeFormat/#L55) |  |
+| <a id="boxcodeformat-kt--boxcodeformat--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/BoxCodeFormat/#L37) |  |
+| <a id="boxcodeformat-kt--boxcodeformat--formatyaml"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">formatYaml</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/examples/BoxCodeFormat/#L63) |  |
 
 ## BoxImportCensus.kt { #boximportcensus-kt }
 
@@ -321,7 +321,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L791) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L804) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -948,6 +948,20 @@ Characterization guard for the two-list contract behind sidecar files, and for t
 | Declaration | Summary |
 | --- | --- |
 | <a id="sidecarpropertyregistrationsmoketest-kt--sidecarpropertyregistrationsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/SidecarPropertyRegistrationSmokeTest/#L55) |  |
+
+## SidecarReeditSmokeTest.kt { #sidecarreeditsmoketest-kt }
+
+`src/jvmMain/kotlin/afield/examples/SidecarReeditSmokeTest.kt` — [read the source](source/jvmMain/afield/examples/SidecarReeditSmokeTest/)
+
+### SidecarReeditSmokeTest { #sidecarreeditsmoketest-kt-sidecarreeditsmoketest }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">SidecarReeditSmokeTest</span></code>](source/jvmMain/afield/examples/SidecarReeditSmokeTest/#L38)
+
+Regression guard for a second external sidecar edit being lost.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="sidecarreeditsmoketest-kt--sidecarreeditsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/SidecarReeditSmokeTest/#L41) |  |
 
 ## SimdVerletBulkKernelsExample.kt { #simdverletbulkkernelsexample-kt }
 

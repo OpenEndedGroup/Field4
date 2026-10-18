@@ -1,0 +1,17 @@
+{
+  "baseline": "0cd246f01",
+  "sources": [
+    {
+      "path": "public/docs/ai4_long_builds.md",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/diff-player.md",
+      "kotlinBodies": 8,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

@@ -31,12 +31,12 @@ description: |
       divergence creates and destroys mass.
     - `dyeDissipation` at the top of the `sim_fluid` box, from `0.99f` down to `0.9f` for trails that fade fast, or up to `1.0f` for dye
       that never leaves.
-    - `println(chain.plan.report())`. The two `x2 (ping-pong)` slots at the bottom are the state; the
+    - `println(fluid.plan.report())`. The two `x2 (ping-pong)` slots at the bottom are the state; the
       twenty pressure iterates alternate between two slots, which is a ping-pong the planner
       *discovered* rather than was told about.
 
-  **The distance box: move the shape.** A mask pass draws a disc and a bar, then thirteen passes
-  flood it into a signed distance field, and a bands pass makes it visible — blue inside, orange out,
+  **The distance box: move the shape.** A mask pass draws a disc and a bar, then the jump-flood passes
+  turn it into a signed distance field, and a bands pass makes it visible — blue inside, orange out,
   a dark isoline exactly on the edge, with evenly spaced contours either side. Even spacing is the
   check: a field whose bands crowd or stretch is not a distance.
 
@@ -47,14 +47,15 @@ description: |
 
   Things worth trying in the distance box:
 
-    - `maskCentre` and `maskRadius`. The whole field re-floods every frame from scratch, so the
+    - `sdf["centre"]` and `sdf["radius"]`. The whole field re-floods every frame from scratch, so the
       contours track the shape with no history and no settling.
     - `signed = false` in the `jumpFloodDistance(...)` call. The interior goes flat — an unsigned
       transform measures distance to the *shape*, so everything inside it is zero.
-    - `spacing` on the bands pass, down to `0.01f`. Thirty-odd contours instead of ten, and they stay
+    - `sdf["spacing"]` on the bands pass, down to `0.01f`. Thirty-odd contours instead of ten, and they stay
       evenly spaced, which is what makes this a distance field rather than a glow.
-    - `resolution = 512`. Fifteen passes instead of thirteen — the stride sequence is the halvings of
-      the resolution, so the pass count is `1 + log2(N)` and the planner derives it for you.
+    - `resolution = 512` in `jumpFloodDistance(...)`. Doubling resolution adds one halving-stride
+      flood round. Seed, JFA+1 and distance passes are additional; inspect `sdf.plan.report()`
+      for the complete chain, including the mask, bands and inset passes.
 
   `dev_docs/FOUR_PASS_CHAIN.md` is the write-up, and
   `tools/run_field_tests.py --id four.simulation-chain.smoke` is the same two chains driven headlessly

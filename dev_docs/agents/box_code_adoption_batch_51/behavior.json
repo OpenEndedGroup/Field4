@@ -1,0 +1,154 @@
+{
+  "actualControlGroupAndBrowserDom": [
+    {
+      "fixture": "nr-0-0",
+      "measuredDefaults": {
+        "Network style": 1,
+        "Tone": 0,
+        "Structure": 10,
+        "NR intensity (0 = source)": 1,
+        "Grade red": 0.6499999761581421,
+        "Grade green": 1.100000023841858,
+        "Grade blue": 1.399999976158142,
+        "Animate source": false
+      },
+      "expected": {
+        "Network style": 1,
+        "Tone": 0,
+        "Structure": 10,
+        "NR intensity (0 = source)": 1,
+        "Animate source": false,
+        "Grade red": 0.65,
+        "Grade green": 1.1,
+        "Grade blue": 1.4
+      }
+    },
+    {
+      "fixture": "nr-0-1",
+      "measuredDefaults": {
+        "Network style": 2,
+        "Tone": 3,
+        "Structure": 4,
+        "NR intensity (0 = source)": 0.6000000238418579,
+        "Grade red": 0.5,
+        "Grade green": 0.6000000238418579,
+        "Grade blue": 0.699999988079071,
+        "Animate source": true
+      },
+      "expected": {
+        "Network style": 2,
+        "Tone": 3,
+        "Structure": 4,
+        "NR intensity (0 = source)": 0.6,
+        "Animate source": true,
+        "Grade red": 0.5,
+        "Grade green": 0.6,
+        "Grade blue": 0.7
+      }
+    },
+    {
+      "fixture": "nr-1-0",
+      "measuredDefaults": {
+        "Network style": 1,
+        "Tone": 0,
+        "Structure": 10,
+        "NR intensity (0 = source)": 1,
+        "Grade red": 0.6499999761581421,
+        "Grade green": 1.100000023841858,
+        "Grade blue": 1.399999976158142,
+        "Animate source": false
+      },
+      "expected": {
+        "Network style": 1,
+        "Tone": 0,
+        "Structure": 10,
+        "NR intensity (0 = source)": 1,
+        "Animate source": false,
+        "Grade red": 0.65,
+        "Grade green": 1.1,
+        "Grade blue": 1.4
+      }
+    },
+    {
+      "fixture": "nr-1-1",
+      "measuredDefaults": {
+        "Network style": 2,
+        "Tone": 3,
+        "Structure": 4,
+        "NR intensity (0 = source)": 0.6000000238418579,
+        "Grade red": 0.5,
+        "Grade green": 0.6000000238418579,
+        "Grade blue": 0.699999988079071,
+        "Animate source": true
+      },
+      "expected": {
+        "Network style": 2,
+        "Tone": 3,
+        "Structure": 4,
+        "NR intensity (0 = source)": 0.6,
+        "Animate source": true,
+        "Grade red": 0.5,
+        "Grade green": 0.6,
+        "Grade blue": 0.7
+      }
+    },
+    {
+      "fixture": "light-0",
+      "measuredDefaults": {
+        "Spatial neighbors": 8,
+        "Area lights": 16,
+        "Samples": 16,
+        "Effect weight": 1,
+        "Radiance": 60,
+        "Light phase": 0,
+        "View (0: lit, 9: raw)": 0,
+        "Original renderer": false,
+        "Ray-query shadows": true,
+        "RTXDI": true,
+        "Reference estimator": false,
+        "Reconstruct lighting": true,
+        "Temporal reuse": true,
+        "Animate light": true
+      },
+      "expected": {
+        "Spatial neighbors": 8,
+        "Area lights": 16,
+        "Effect weight": 1,
+        "Radiance": 60,
+        "Light phase": 0,
+        "View (0: lit, 9: raw)": 0
+      }
+    },
+    {
+      "fixture": "light-1",
+      "measuredDefaults": {
+        "Spatial neighbors": 3,
+        "Area lights": 6,
+        "Samples": 16,
+        "Effect weight": 0.4000000059604645,
+        "Radiance": 25,
+        "Light phase": 1.5,
+        "View (0: lit, 9: raw)": 2,
+        "Original renderer": false,
+        "Ray-query shadows": true,
+        "RTXDI": true,
+        "Reference estimator": false,
+        "Reconstruct lighting": true,
+        "Temporal reuse": true,
+        "Animate light": true
+      },
+      "expected": {
+        "Spatial neighbors": 3,
+        "Area lights": 6,
+        "Effect weight": 0.4,
+        "Radiance": 25,
+        "Light phase": 1.5,
+        "View (0: lit, 9: raw)": 2
+      }
+    }
+  ],
+  "authoredCallbackVariants": 2,
+  "actualAssignmentFragmentsAndFullRerun": true,
+  "limits": "Controls are isolated from hardware setup; availability branches enabled in the fixture. No NR/RTXDI inference, audio engine or GPU rendering claimed. Band callbacks execute with controlled energy values.",
+  "resetOnlyEditVerified": true
+}

@@ -158,4 +158,43 @@ class BoxOutputChannelGuardTest {
         assertEquals(1, problems.size, problems.toString())
         assertTrue(problems.single().contains("lua_fixture.yaml#lua_box") && problems.single().contains("'thing'"), problems.single())
     }
+
+    /** A repo whose transcript corpus holds one box in [language] and whose library has `Box.slider`/`Box.checkbox`. */
+    private fun repoWithControlsBox(language: String, code: String): File {
+        val repo = repoWithDemo("display(\"only\", one())")
+        File(repo, "src/jvmMain/kotlin/FakeControls.kt").writeText(
+            "fun Box.slider(label: String, channel: String = \"controls\") {\n}\n" +
+                "fun Box.checkbox(label: String, channel: String = \"controls\") {\n}\n"
+        )
+        val body = code.lines().joinToString("\n") { "          $it" }
+        File(repo, "dev_docs/agents/transcripts/controls_fixture.yaml").writeText(
+            "- create:\n" +
+                "    box: controls_box\n" +
+                "    properties:\n" +
+                "      code_language: $language\n" +
+                "      code: |\n" +
+                body + "\n"
+        )
+        return repo
+    }
+
+    /**
+     * 2026-10-18: `python_box_parity.yaml#parity_controls` was reported for a slider and a checkbox
+     * on 'controls'. Python's controls queue a spec and `PythonInterface` renders one channel's specs
+     * as a single `controlGroup`, so both are seen.
+     */
+    @Test
+    fun pythonControlsOnOneChannelShareAPanel() {
+        val repo = repoWithControlsBox("Python", "slider(\"frequency\")\ncheckbox(\"square wave\")")
+        assertEquals(emptyList(), BoxOutputChannelGuard.audit(repo).problems)
+    }
+
+    /** The counterfactual: the same two calls outside a Python box are still two figures. */
+    @Test
+    fun kotlinControlsOnOneChannelAreStillReported() {
+        val repo = repoWithControlsBox("Kotlin", "slider(\"frequency\")\ncheckbox(\"square wave\")")
+        val problems = BoxOutputChannelGuard.audit(repo).problems
+        assertEquals(1, problems.size, problems.toString())
+        assertTrue(problems.single().contains("'controls'"), problems.single())
+    }
 }

@@ -352,4 +352,100 @@ class ReactivePropsTest {
         assertEquals(4, child.running { child.reactiveTestUp })
         assertTrue(ReactiveRuns.recentEvents().none { it.contains("pull") })
     }
+
+    // ---------------------------------------------------------------------------------------------
+    // Declarations the code no longer makes (nightly 2026-10-18)
+
+    /** A declaration commented out is not a declaration: the macro does not expand it. */
+    @Test
+    fun aCommentedOutDownDeclarationIsForgotten() {
+        val s = session("commented")
+        val a = boxIn(s, "a", "propDown<Double>(gain)\ngain = 1.0")
+        a.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        a.setPropertyRaw("code", "// propDown<Double>(gain)\ngain = 1.0")
+        assertFalse(ReactiveRuns.isDeclaredDown(a, "gain"), "a line comment")
+        val b = boxIn(s, "b", "propDown<Double>(gain)")
+        b.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        b.setPropertyRaw("code", "/* propDown<Double>(gain) /* nested */ still a comment */\nval url = \"http://x\"")
+        assertFalse(ReactiveRuns.isDeclaredDown(b, "gain"), "a nested block comment")
+        val c = boxIn(s, "c", "val u = \"http://x\"; propDown<Double>(gain)")
+        c.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        assertTrue(ReactiveRuns.isDeclaredDown(c, "gain"), "// inside a string does not start a comment")
+    }
+
+    @Test
+    fun aDownDeclarationIsAWholeWord() {
+        val s = session("word")
+        val a = boxIn(s, "a", "propDown<Double>(gain)")
+        a.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        a.setPropertyRaw("code", "mypropDown<Double>(gain)")
+        assertFalse(ReactiveRuns.isDeclaredDown(a, "gain"), "mypropDown is not propDown")
+        val b = boxIn(s, "b", "propDown<Double>(gain)")
+        b.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        b.setPropertyRaw("code", "propUDown<Double>(gain)")
+        assertFalse(ReactiveRuns.isDeclaredDown(b, "gain"), "propUDown is no macro")
+    }
+
+    /** `propUp<T>(name, default)` declares [name] as much as `propUp<T>(name)` does. */
+    @Test
+    fun anAncestorDeclaringWithADefaultSuppliesIt() {
+        val s = session("default-supplier")
+        val parent = boxIn(s, "parent", "propUp<Double>(speed, 1.0)\nspeed = 3.0")
+        val child = boxIn(s, "child", "println(1)")
+        parent.connect(child)
+        assertEquals(listOf("parent"), ReactiveRuns.suppliersFor(child, child, "speed").map { it.id })
+    }
+
+    @Test
+    fun aCommentedOutUpDeclarationSuppliesNothing() {
+        val s = session("commented-supplier")
+        val parent = boxIn(s, "parent", "// propUp<Double>(speed)\nprintln(2)")
+        val child = boxIn(s, "child", "println(1)")
+        parent.connect(child)
+        assertTrue(ReactiveRuns.suppliersFor(child, child, "speed").isEmpty())
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Two open documents holding the same uid (a copied document) (nightly 2026-10-18)
+
+    @Test
+    fun aDownDeclarationBelongsToItsDocument() {
+        val one = session("doc-one")
+        val two = session("doc-two")
+        val a1 = boxIn(one, "a", "propDown<Double>(gain)")
+        a1.macro_reactive_prop(listOf("<Double>", "(gain)"), Reactive.DOWN, "propDown")
+        val a2 = boxIn(two, "a", "println(1)")
+        assertFalse(ReactiveRuns.isDeclaredDown(a2, "gain"), "the copy never declared it")
+        assertTrue(ReactiveRuns.isDeclaredDown(a1, "gain"), "asking the copy must not forget the original's declaration")
+        ReactiveRuns.forgetDown(a2)
+        assertTrue(ReactiveRuns.isDeclaredDown(a1, "gain"), "deleting the copy must not forget the original's declaration")
+    }
+
+    @Test
+    fun aRunInAnotherDocumentDoesNotMakeAReaderUpToDate() {
+        val one = session("run-one")
+        val two = session("run-two")
+        val h1 = boxIn(one, "h")
+        val r1 = boxIn(one, "r")
+        val r2 = boxIn(two, "r")
+        PropertyDependencies.recordNamedRead(r1, h1, "gain")
+        val change = ReactiveRuns.Change(h1, "gain", PropertyDependencies.clock.incrementAndGet(), null)
+        assertEquals(listOf(r1), ReactiveRuns.Downstream.dirtyReaders(listOf(change)).keys.toList())
+        ReactiveRuns.runStarted(r2, "run")
+        ReactiveRuns.runFinished(r2, ok = true, mode = "run")
+        assertEquals(listOf(r1), ReactiveRuns.Downstream.dirtyReaders(listOf(change)).keys.toList(),
+            "the other document's 'r' ran, not this one's")
+    }
+
+    /** A deleted box's run records go with it, rather than pinning the Box for the JVM's life. */
+    @Test
+    fun deletingABoxForgetsItsRunRecords() {
+        val s = session("leak")
+        val a = boxIn(s, "a")
+        ReactiveRuns.runStarted(a, "run")
+        ReactiveRuns.runFinished(a, ok = true, mode = "run")
+        assertTrue(ReactiveRuns.remembers(a))
+        ReactiveRuns.forgetDown(a)
+        assertFalse(ReactiveRuns.remembers(a))
+    }
 }

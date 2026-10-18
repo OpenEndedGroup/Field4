@@ -192,26 +192,26 @@ operations:
         layout(location = 0) out vec4 uFragColor;
         void main() { uFragColor = fcol; }
       code: |
-        import afield.lang.python.NumpyShared
-        
         // every polyline channel box 1 publishes, and the colour it is drawn in
-        val channels = listOf(
-            "tracks" to vec(0.2, 1.0, 0.3, 0.8),
-            "skeleton" to vec(1.0, 0.3, 0.8, 1.0),
-            "hands" to vec(1.0, 0.9, 0.2, 1.0),
-            "face" to vec(0.3, 0.9, 1.0, 0.9),
-            "contours" to vec(1.0, 0.55, 0.1, 1.0),
-            "strokes" to vec(1.0, 1.0, 1.0, 1.0),
-        ).map { (name, colour) -> NumpyShared.lines(name) to colour }
-        
-        var module = moduleHere { }
+        val channels =
+            [
+                    "tracks" to vec(0.2, 1.0, 0.3, 0.8),
+                    "skeleton" to vec(1.0, 0.3, 0.8, 1.0),
+                    "hands" to vec(1.0, 0.9, 0.2, 1.0),
+                    "face" to vec(0.3, 0.9, 1.0, 0.9),
+                    "contours" to vec(1.0, 0.55, 0.1, 1.0),
+                    "strokes" to vec(1.0, 1.0, 1.0, 1.0),
+                ]
+                .map { (name, colour) -> NumpyShared.lines(name) to colour }
+
+        var module = moduleHere {}
         var m = Mesh()
         module += m named "overlay"
         renderer += module
-        
-        val width = 0.003   // half the line's width, in NDC
+
+        val width = 0.003 // half the line's width, in NDC
         val strokeWidth = 0.008
-        
+
         frames {
             while (frame()) {
                 // one segment per pair of consecutive nodes, in normalized image coordinates
@@ -219,7 +219,11 @@ operations:
                     val w = if (shared.name == "strokes") strokeWidth else width
                     shared.lines().flatMap { f -> f.nodes.zipWithNext().map { Triple(it, colour, w) } }
                 }
-                if (segs.isEmpty()) continue
+                if (segs.isEmpty()) {
+                    // Publish an empty draw when detections disappear; retain no old overlay.
+                    m.resize(0, 0)
+                    continue
+                }
                 // each segment is a thin quad, two triangles, since GPU lines are a single pixel wide
                 m.set(4 * segs.size, 2 * segs.size) {
                     for ((i, s) in segs.withIndex()) {

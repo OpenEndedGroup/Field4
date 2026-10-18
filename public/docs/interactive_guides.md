@@ -37,8 +37,9 @@ val show = slideShow {
             Follow the link at the bottom to move on.
 
             [[next]]
-            """.trimIndent(),
-            animated = true
+            """
+                .trimIndent(),
+            animated = true,
         )
         selectBox(guide)
     }
@@ -49,7 +50,8 @@ val show = slideShow {
             The editor now shows this box's code.
 
             [[back]] [[next]]
-            """.trimIndent()
+            """
+                .trimIndent(),
         )
         selectBox(guide, property = "code", line = 5, highlight = 5)
     }
@@ -58,7 +60,8 @@ val show = slideShow {
             """
             ## That is the whole tour
             [[home:Start again]] [[finish]]
-            """.trimIndent()
+            """
+                .trimIndent(),
         )
     }
 }
@@ -109,7 +112,8 @@ val show = slideShow {
             Step two of three. Each link below came from a `[[...]]` shortcut.
 
             [[back]] [[home:First step]] [[next:Onward →]] [[stop]]
-            """.trimIndent()
+            """
+                .trimIndent(),
         )
         selectBox(guide, property = "code", line = 13, highlight = 13)
     }
@@ -158,7 +162,8 @@ val show = slideShow {
 
             Count: **{{clickCount}}**
             Choice: **{{userChoice}}**
-            """.trimIndent()
+            """
+                .trimIndent(),
         )
 
         linkCallback("incrementCounter") {
@@ -190,6 +195,9 @@ runBlocking {
 }
 ```
 
+Run the state declarations (`clickCount`, `userChoice` and `version`) before building the show,
+so its template callbacks can read those values.
+
 A template value can come from `this.properties[...]`, from a Kotlin variable the box has already run, or from the shared template helpers the slideshow runtime exposes.
 
 When a callback changes state, call `show.goToStep(show.currentStepIndex)` to rerender the current step immediately. That updates `{{clickCount}}` and `{{userChoice}}` without leaving the slide.
@@ -219,8 +227,9 @@ val show = slideShow {
 
             - the green line targets the box,
             - the orange dashed line targets line 17 in this guide box.
-            """.trimIndent(),
-            animated = true
+            """
+                .trimIndent(),
+            animated = true,
         )
 
         selectBox(host, property = "code", line = 17, highlight = 17)
@@ -229,7 +238,7 @@ val show = slideShow {
             id = "target-box",
             targetBox = host,
             color = "rgba(128, 255, 164, 0.8)",
-            strokeWidth = 2.5
+            strokeWidth = 2.5,
         )
 
         annotateToLine(
@@ -239,7 +248,7 @@ val show = slideShow {
             line = 17,
             color = "rgba(255, 180, 100, 0.8)",
             strokeWidth = 2.0,
-            dashed = true
+            dashed = true,
         )
     }
 }
@@ -276,7 +285,8 @@ val show = slideShow {
             Use `withChat(id = "templateId")` when multiple template instances should share one thread.
 
             [[back]] [[next]]
-            """.trimIndent()
+            """
+                .trimIndent(),
         )
 
         withChat(id = "templateId")

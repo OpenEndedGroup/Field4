@@ -2,10 +2,13 @@
 var petals = 5
 petals = 5 // Change this 5 to 8, then press Alt+Enter on this line while the drawing runs.
 println(petals) // Field shows this value beside the code.
+// Phase advances once per Runloop iteration; this is a frame-based speed.
+var phaseStep = 0.045
+phaseStep = 0.045 // Change this value and Alt+Enter this line to change the running speed.
 var phase = 0.0
 
 loop {
-    phase += 0.045
+    phase += phaseStep
     // Each curve is a little further into the wave: together they make a ribbon.
     val ribbon =
         (0..23).map { layer ->

@@ -74,7 +74,7 @@ val gaps = (1..12).map {
     step - st.inputKnots[4]
 }
 println("median knot chasing a step to $step (smoothingAlpha=${QuantileWarpConfig().smoothingAlpha}):")
-listOf(1, 2, 4, 8, 12).forEach { k ->
+[1, 2, 4, 8, 12].forEach { k ->
     println(
         "  after $k updates gap=${"%.3f".format(gaps[k - 1])}  vs closed form ${step}*0.8^$k=" +
             "${"%.3f".format(step * 0.8.pow(k))}",
@@ -90,7 +90,7 @@ showSignals(
     xTitle = "quantile of the fitting sample",
     yTitle = "warped value",
 )
-val svgs = listOf(
+val svgs = [
     histogramToSvg(
         buildHistogram(held.toList()),
         widthPx = 380,
@@ -107,5 +107,5 @@ val svgs = listOf(
         decimals = 2,
         title = "after the warp: skew ${"%.3f".format(after.skewness)}",
     ),
-)
+]
 showRow("distributions", svgs)

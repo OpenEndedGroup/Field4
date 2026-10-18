@@ -1044,6 +1044,29 @@ middle of the chord and re-run to watch the two columns converge.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/arclength_spacing_demo/metadata.edn)
 
+### lp_curves
+
+Linear-programming algorithms as curve generators, the companion to
+[Linear programs as curves](lp_curves.md). *Every route* draws one pentagon and one objective
+direction seven ways: the central path, a fan of central paths, the primal-dual iterates, a PDHG
+spiral, the ellipsoid method with its ellipses, the simplex walk and cutting planes, each captioned
+with its own numbers. *A turning objective* is launched: the direction turns once every twelve
+seconds while the hexagon's vertices breathe, and the central path, the PDHG spiral and the simplex
+walk are recomputed twenty times a second. Change the weights or the PDHG step size and run it again.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/lp_curves/metadata.edn)
+
+### lp_curves_3d
+
+The same methods in three dimensions, the companion to
+[Linear programs in three dimensions](lp_curves_3d.md). *Every route* takes the convex hull of a
+seeded point cloud as an `LpPolytope` and draws the central path, the primal-dual iterates, the
+simplex walk along the hull's edges and a PDHG spiral to one vertex, in a `three { }` scene you can
+orbit. *A fan of central paths* draws one path per direction over the sphere and turns it on a
+turntable. Change the direction or the seed and run it again.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/lp_curves_3d/metadata.edn)
+
 ### close_node_demo
 
 Two boxes about the `Close` node in the middle of an `FLine`, which is a shape
@@ -2187,6 +2210,22 @@ the box. Same prerequisite as `python_cells`: Field must have found a Python wit
 box of three. [Python in Field](python.md) shows both cells' output.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/python_box_parity/metadata.edn)
+
+### clojure_box_parity
+
+**Clojure boxes doing what Kotlin and Python boxes do: errors on the right line, live controls, and
+values from the parent.** Four boxes: a Kotlin language root and three Clojure boxes under it. Run
+the first and the red error marker sits on line 6, inside `mean`, where the division by zero
+happened, not on the call on line 8. The second draws a slider and a checkbox whose handlers are a
+Clojure fn and an atom; ticking the box redraws its `main` panel, and running it again keeps the
+tick. The third prints the root's `speed` property and its Kotlin `palette` variable, both read with
+`(context ...)`. Run the root first. Nothing to install: Clojure ships inside Field.
+
+`DemoTranscriptExecSmokeTest` compiles the Kotlin root and skips the three Clojure boxes, so CI checks
+one box of four; `ClojureFieldCoreTest` and `ClojureHostTest` run what the Clojure boxes use.
+[Clojure in a box](clojure.md) teaches the same calls.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/clojure_box_parity/metadata.edn)
 
 ### fieldcv_webcam
 

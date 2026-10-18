@@ -4,7 +4,7 @@
 
 Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. Dependency-free CPU float math built on one value type, `Img`, with the separable-convolution core vectorized to roughly OpenCV's single-threaded speed. Every detector hands back geometry, so results go straight to `lines()`.
 
-46 source file(s), 740 public symbol(s), 338 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+47 source file(s), 741 public symbol(s), 339 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1327,6 +1327,16 @@ The result of a sparse optical-flow run.
 | <a id="imaging-geometry-kt--flowfield--medianmagnitude"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">medianMagnitude</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/media/image/imaging_geometry/#L614) | Median displacement magnitude over the converged tracks — a robust "how much moved". |
 | <a id="imaging-geometry-kt--flowfield--mediandisplacement"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">medianDisplacement</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/media/image/imaging_geometry/#L621) | Component-wise median displacement — a robust global translation estimate. |
 | <a id="imaging-geometry-kt--flowfield--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/media/image/imaging_geometry/#L629) |  |
+
+## imaging_overlay.kt { #imaging-overlay-kt }
+
+`src/jvmMain/kotlin/afield/media/image/imaging_overlay.kt` — [read the source](source/jvmMain/afield/media/image/imaging_overlay/)
+
+### Top-level functions { #imaging-overlay-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="imaging-overlay-kt--drawflines"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">drawFLines</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nc">Vec4</span><span class="p">(</span><span class="mi">1f</span><span class="p">,</span> <span class="mf">0.3f</span><span class="p">,</span> <span class="mf">0.1f</span><span class="p">,</span> <span class="mi">1f</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code>](source/jvmMain/afield/media/image/imaging_overlay/#L27) | This image as RGB with [`lines`](visualization.md#someskiko-kt--lines) drawn over it, antialiased and without AWT. Line coordinates are in this image's pixels; the result is `scale` times larger, so thin curves over a small image stay crisp. |
 
 ## imaging_simd.kt { #imaging-simd-kt }
 

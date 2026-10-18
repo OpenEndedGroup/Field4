@@ -20,7 +20,8 @@ val png: ByteArray? = painting.pngBytes()
 val layeredPsd: ByteArray? = painting.psdBytes()
 ```
 
-Those values update after Submit. Strokes not yet submitted are kept in the browser, so running the
+Each call returns the last submitted image. The local `png` and `layeredPsd` values are snapshots;
+rerun their retrieval lines after another Submit to read the new image. Strokes not yet submitted are kept in the browser, so running the
 box again or reopening the page brings them back until you Submit. Each PSD and PNG is limited to about 24 MB;
 the panel reports a save error if either exceeds that limit. The image data is stored with the
 box as document sidecars, and Field's normal document save writes it to disk.
