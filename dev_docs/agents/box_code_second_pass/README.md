@@ -98,7 +98,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Responsive long loops](../box_code_adoption_batch_48/README.md) | Two findings addressed; actual worker exits within 7ms of cancellation, seeded completion unchanged and both drawing after-states yield to the Runloop; nine Kotlin states formatted. |
 
-[Machine checkpoint](checkpoint.json): **317 of 405 findings addressed**; 88 remain open. These counts do not claim
+| [Teaching headers and explicit shader contracts](../box_code_adoption_batch_49/README.md) | Six findings addressed; ten Kotlin bodies, five shader bodies, five collection conversions; unchanged baseline calculations/interfaces and codec-verified saved fallbacks. |
+
+[Machine checkpoint](checkpoint.json): **323 of 405 findings addressed**; 82 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 

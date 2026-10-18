@@ -1,0 +1,67 @@
+{
+  "baseline": "df883e149",
+  "sources": [
+    {
+      "path": "dev_docs/agents/artifacts/petri_state_graph_bound/state_graph_bound_demo/metadata.edn",
+      "changedKotlinBodies": 1,
+      "shaderBodies": 0,
+      "collectionConversions": 1,
+      "foreignBodiesPreserved": 3,
+      "baselineCodeAndContainerPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/artifacts/tessellate_facing/multi_plane_fill_demo/metadata.edn",
+      "changedKotlinBodies": 1,
+      "shaderBodies": 0,
+      "collectionConversions": 4,
+      "foreignBodiesPreserved": 0,
+      "baselineCodeAndContainerPreserved": true
+    },
+    {
+      "path": "public/docs/assets/fieldml_macro_module_demo/metadata.edn",
+      "changedKotlinBodies": 1,
+      "shaderBodies": 0,
+      "collectionConversions": 0,
+      "foreignBodiesPreserved": 2,
+      "baselineCodeAndContainerPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/c82c404d-a15d-4f51-a06f-66dfc2a00364_vertex_.glsl",
+      "changedKotlinBodies": 0,
+      "shaderBodies": 1,
+      "collectionConversions": 0,
+      "foreignBodiesPreserved": 0,
+      "baselineCodeAndContainerPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/gpu_skin_vertex_.glsl",
+      "changedKotlinBodies": 0,
+      "shaderBodies": 1,
+      "collectionConversions": 0,
+      "foreignBodiesPreserved": 0,
+      "baselineCodeAndContainerPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/computed_ray_geometry.yaml",
+      "changedKotlinBodies": 4,
+      "shaderBodies": 1,
+      "collectionConversions": 0,
+      "foreignBodiesPreserved": 0,
+      "baselineCodeAndContainerPreserved": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/open_dlss_nr.yaml",
+      "changedKotlinBodies": 3,
+      "shaderBodies": 2,
+      "collectionConversions": 0,
+      "foreignBodiesPreserved": 0,
+      "baselineCodeAndContainerPreserved": true
+    }
+  ],
+  "contractsChecked": [
+    "ClusterGeometry record writer",
+    "OpenDlssNrStudy frame and LINEAR_LDR inputs",
+    "paired fragments do not consume vViewPos"
+  ],
+  "runtimeReplay": "Not repeated: only comments/layout/imports and an expression-preserving local rename."
+}
