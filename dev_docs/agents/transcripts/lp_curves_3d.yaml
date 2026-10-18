@@ -1,7 +1,7 @@
 name: lp_curves_3d
 description: >
   Linear-programming algorithms as curve generators in three dimensions — the companion to
-  `public/docs/lp_curves_3d.md`. Two boxes over `LpPolytope`
+  `public/docs/lp_curves.md` (In three dimensions). Two boxes over `LpPolytope`
   (src/jvmMain/kotlin/afield/geometry/spatial/lp_polytope.kt), both drawing through `three { }`, so
   no Window and no Renderer: the solid and the routes are FLines and a TriMesh in the Three.js viewer.
 

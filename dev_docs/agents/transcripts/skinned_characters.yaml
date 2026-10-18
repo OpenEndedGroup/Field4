@@ -311,32 +311,34 @@ operations:
           val maxY = (0 until out.vertexCount).maxOf { out.position[it * 3 + 1] }
           println("gpu skinned at t = %.2f -> tip x %.4f, top y %.4f".format(poseTime, minX, maxY))
 
-          loop { frame() }
+          loop {
+              frame()
+          }
 
           /*
-          ----------------------------------------------------------------------------------------------
-          Why this poses ONCE rather than animating, and what was measured
+           ----------------------------------------------------------------------------------------------
+           Why this poses ONCE rather than animating, and what was measured
 
-          An animating version is three lines:
+           An animating version is three lines:
 
-              var n = 0
-              loop { skinner.pose("bend", (n % 120) / 60f)
-                     inst.applyToMesh(m, camera, Matrix4f(), reuseBuffers = true); n++; frame() }
+               var n = 0
+               loop { skinner.pose("bend", (n % 120) / 60f)
+                      inst.applyToMesh(m, camera, Matrix4f(), reuseBuffers = true); n++; frame() }
 
-          and it runs. What it does NOT survive is the agent screenshot path: `native-screenshot` times
-          out after 15 s against it, so no agent can photograph the result, and a demo nobody has looked
-          at is a claim. Bisected on 2026-09-19, one variable at a time, against the same scene:
+           and it runs. What it does NOT survive is the agent screenshot path: `native-screenshot` times
+           out after 15 s against it, so no agent can photograph the result, and a demo nobody has looked
+           at is a claim. Bisected on 2026-09-19, one variable at a time, against the same scene:
 
-            nothing in the loop                                        capture OK
-            skinner.pose() every frame, 118 fps, no upload             capture OK
-            getPropertyRaw() every frame                               capture TIMES OUT
-            inst.applyToMesh() every frame, reuseBuffers = true        capture TIMES OUT
+             nothing in the loop                                        capture OK
+             skinner.pose() every frame, 118 fps, no upload             capture OK
+             getPropertyRaw() every frame                               capture TIMES OUT
+             inst.applyToMesh() every frame, reuseBuffers = true        capture TIMES OUT
 
-          So the deformation is innocent -- posing 60 vertices every frame costs nothing and photographs
-          fine. It is the per-frame re-upload (and, separately, a per-frame box-property read) that the
-          direct window capture cannot get past. Left as a named finding rather than a fix, because
-          diagnosing the renderer's capture path is a different job from skinning.
-          */
+           So the deformation is innocent -- posing 60 vertices every frame costs nothing and photographs
+           fine. It is the per-frame re-upload (and, separately, a per-frame box-property read) that the
+           direct window capture cannot get past. Left as a named finding rather than a fix, because
+           diagnosing the renderer's capture path is a different job from skinning.
+           */
         fragment: |-
           #version 450
           layout(location = 0) out vec4 uFragColor;
@@ -595,6 +597,7 @@ operations:
           EDIT `count` AND RE-RUN. The per-frame CPU cost is `count x bones` matrices, so 2 here.
           */
           val count = 64
+          require(count > 0) { "count must be positive; use 1 for a single character" }
 
           /*
           `renderer` and `window` come from box 0, which publishes them with `prop<Renderer>(renderer)`.
@@ -663,7 +666,8 @@ operations:
                           (t + i * 0.09f) % 2f,
                           "curl",
                           (t * 0.7f + i * 0.05f) % 2f,
-                          mix = i / (count - 1f),
+                          // One character uses the first clip; there is no blend span to divide by.
+                          mix = if (count == 1) 0f else i / (count - 1f),
                       )
                   },
               )

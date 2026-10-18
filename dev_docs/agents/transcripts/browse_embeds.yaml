@@ -18,15 +18,25 @@ operations:
           // Type **/tag into the filter: it runs scene.graphPaths("**/tag") and lists the matching paths.
           // Press p on a row to copy its path, e.g. particle/age, then scene.graphPath("particle/age") reads it.
           data class Particle(val position: Vec3, val age: Double, val tag: String)
-          class Node(val name: String) { var next: Node? = null }
+          class Node(val name: String) {
+              var next: Node? = null
+          }
 
-          val a = Node("a"); val b = Node("b"); a.next = b; b.next = a      // a loop: shown with ↺, not opened forever
+          val a = Node("a")
+          val b = Node("b")
+          a.next = b
+          b.next = a // a loop: shown with ↺, not opened forever
 
           val scene = linkedMapOf(
               "particle" to Particle(Vec3(1f, 2f, 0.5f), 0.25, "spark"),
               "weights" to doubleArrayOf(0.1, 0.4, 0.5),
-              "many" to List(5000) { it * it },                               // arrives 200 rows at a time
-              "byKey" to mapOf(Particle(Vec3(0f, 0f, 0f), 0.0, "origin") to "an object as a key", 1 to "one", "1" to "the string one"),
+              "many" to List(5000) { it * it }, // arrives 200 rows at a time
+              "byKey" to
+                  mapOf(
+                      Particle(Vec3(0f, 0f, 0f), 0.0, "origin") to "an object as a key",
+                      1 to "one",
+                      "1" to "the string one",
+                  ),
               "ring" to a,
               "missing" to null,
           )
@@ -77,11 +87,25 @@ operations:
           // logs(...) streams Field's log into a panel; this one only shows the "demo" channel.
           // Type in its find box (or press /) to narrow it; scroll up and new rows wait behind "↓ N new".
           logs("logs") { channel("demo") }
-          
+
           val log = afield.ai.diagnostics.LogDispatcher
-          log.log(afield.ai.diagnostics.LogEvent("demo", "starting a job", blockId = "job (1)", boundary = afield.ai.diagnostics.BlockBoundary.BEGIN))
+          log.log(
+              afield.ai.diagnostics.LogEvent(
+                  "demo",
+                  "starting a job",
+                  blockId = "job (1)",
+                  boundary = afield.ai.diagnostics.BlockBoundary.BEGIN,
+              ),
+          )
           for (i in 1..3) log.log(afield.ai.diagnostics.LogEvent("demo", "step $i of 3", blockId = "job (1)"))
-          log.log(afield.ai.diagnostics.LogEvent("demo", "done", blockId = "job (1)", boundary = afield.ai.diagnostics.BlockBoundary.END))
+          log.log(
+              afield.ai.diagnostics.LogEvent(
+                  "demo",
+                  "done",
+                  blockId = "job (1)",
+                  boundary = afield.ai.diagnostics.BlockBoundary.END,
+              ),
+          )
           log.log(afield.ai.diagnostics.LogEvent("demo warning", "a warning row is coloured"))
   - execute: { box: tree_box, property: code }
   - execute: { box: column_box, property: code }

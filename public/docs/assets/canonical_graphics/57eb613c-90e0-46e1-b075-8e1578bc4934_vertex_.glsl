@@ -16,11 +16,9 @@ layout(push_constant) uniform matrices {
     vec4 warpYHi;
 } pc;
 
-
 void main()
 {
     gl_Position = pc.p * pc.m * vec4(pos, 1);
-
 
     ftc = tc;
 }

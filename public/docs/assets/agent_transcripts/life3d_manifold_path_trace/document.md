@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["life3d_manifold_trace"] "properties" {"children" #{#afield/box "life3d_manifold_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 231 "sha256" "285956a05c5130ec22296e474edf82cea52a6a177e40f7e9410029ec0f549cb7"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["life3d_manifold_trace"] "properties" {"children" #{#afield/box "life3d_manifold_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 10 "characters" 232 "sha256" "9f947f49cfb9c2dff659b8094cfac775809c0eb5669195595de3c65908d7cb35"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
 import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,27 +32,18 @@ start(renderer::run)
 <!-- field-box id="life3d_manifold_trace" index="1" -->
 
 ```edn [field-box id="life3d_manifold_trace" role="properties"]
-{"id" "life3d_manifold_trace" "index" 1 "name" "3D life, decomposed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "3D life, decomposed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "life3d_manifold_trace_code_.kt" "lines" 159 "characters" 7297 "sha256" "7e6b28285af210598fd364ff2f713a47448e6e403453c82221c006c3634209d1"}]}
+{"id" "life3d_manifold_trace" "index" 1 "name" "3D life, decomposed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "3D life, decomposed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "life3d_manifold_trace_code_.kt" "lines" 174 "characters" 7388 "sha256" "2ed9fc6cac8c388e455ae0589f3f9249171a6e027f82f4e3b58b572ad2911c4e"}]}
 ```
 
 ```kotlin [field-property box="life3d_manifold_trace" name="code" path="life3d_manifold_trace_code_.kt"]
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
 import afield.graphics.scene.fabricated.PathTraceEnvironment
 import afield.graphics.scene.fabricated.PathTraceMaterial
 import afield.graphics.scene.fabricated.PathTraceScene
 import afield.graphics.scene.fabricated.PathTracingRenderer
 import afield.graphics.scene.fabricated.importTriMesh
 import afield.graphics.vulkan.util.Camera
-import afield.geometry.solid.manifold.ManifoldLibrary
-import afield.geometry.solid.manifold.Solid
-import afield.simulation.automata.IntVolume
-import afield.simulation.automata.LIFE3D_BLOB
-import afield.simulation.automata.asDensityField
-import afield.geometry.mesh.genus
-import afield.geometry.mesh.isWatertight
-import afield.math.linalg.Vector3f
-import afield.simulation.automata.marchBounds
-import afield.simulation.automata.step
-import afield.simulation.automata.toMesh
 import java.io.File
 import kotlin.random.Random
 
@@ -63,8 +55,8 @@ require(ManifoldLibrary.isAvailable) {
 
 // ---- the three parameters ------------------------------------------------------
 val generations = 8
-val edgeLength = 0.7    // level-set triangle size, in voxels
-val iso = 0.5           // occupancy level taken as the surface
+val edgeLength = 0.7 // level-set triangle size, in voxels
+val iso = 0.5 // occupancy level taken as the surface
 // --------------------------------------------------------------------------------
 
 // ---- stage one: the automaton --------------------------------------------------
@@ -80,7 +72,10 @@ for (z in lo until lo + 2 * half) for (y in lo until lo + 2 * half) for (x in lo
 
 var volume = volume0
 val populations = mutableListOf(volume.population())
-repeat(generations) { volume = volume.step(LIFE3D_BLOB); populations += volume.population() }
+repeat(generations) {
+    volume = volume.step(LIFE3D_BLOB)
+    populations += volume.population()
+}
 println("LIFE3D_BLOB populations: ${populations.joinToString(" -> ")}")
 
 // smoothRadius = 0 marches the raw occupancy, which is why the clusters are faceted at
@@ -90,75 +85,94 @@ val bounds = volume.marchBounds()
 
 // ---- stage two: two marchers on one field --------------------------------------
 val marched = volume.toMesh(resolution = 110, smoothRadius = 0, iso = iso)
-println("Field's marchingCubes: ${marched.triangleCount} triangles, " +
-    "watertight ${marched.isWatertight()}, genus ${marched.genus()}")
+println(
+    "Field's marchingCubes: ${marched.triangleCount} triangles, " +
+        "watertight ${marched.isWatertight()}, genus ${marched.genus()}",
+)
 
 // Manifold's convention is positive inside, which is what asDensityField already gives, so
 // this is levelSet rather than levelSetOf: the latter negates for Field's SDF family.
 val t0 = System.nanoTime()
-val whole = Solid.levelSet(bounds, edgeLength = edgeLength) { x, y, z ->
-    field(vec(x, y, z)).toDouble()
+// Census and mesh import share a native scope, including the decomposed parts.
+val (scene, sceneLo, sceneHi) = Solid.scope {
+    val whole =
+        Solid.levelSet(bounds, edgeLength = edgeLength) { x, y, z ->
+            field(vec(x, y, z)).toDouble()
+        }
+    val levelSetMs = (System.nanoTime() - t0) / 1e6
+    println(
+        "Manifold's levelSet:   ${whole.triangleCount} triangles, status ${whole.status}, " +
+            "genus ${whole.genus}, volume ${"%.4f".format(whole.volume)}, " +
+            "${"%.0f".format(levelSetMs)} ms",
+    )
+
+    /*
+    ---- stage three: the census ---------------------------------------------------
+    The two genus numbers disagree, and the reason is components rather than holes: Field's
+    genus() reads one Euler characteristic and solves 2 - 2g for g, which is the genus of a
+    connected surface. decompose() is the operation that says how many surfaces there are.
+    */
+    val parts = whole.decompose()
+    val volumes = parts.map { it.volume }
+    println()
+    println("${parts.size} separate clusters survived ${generations} generations")
+    println(
+        "  largest ${"%.2f".format(volumes.first())}, smallest ${"%.3f".format(volumes.last())}, " +
+            "median ${"%.3f".format(volumes[volumes.size / 2])}",
+    )
+    println(
+        "  they sum to ${"%.2f".format(volumes.sum())} against the whole solid's " +
+            "${"%.2f".format(whole.volume)}",
+    )
+    println("  and each one on its own has genus ${parts.take(6).map { it.genus }} ...")
+
+    // ---- stage four: the render ----------------------------------------------------
+    val scene = PathTraceScene()
+    val gold = scene.material(PathTraceMaterial.metal(1.0f, 0.74f, 0.33f, 0.22f))
+    // Plastic rather than glass for the other forty-seven. At a tenth of a unit across, a
+    // transparent fragment over a pale floor is a fragment you cannot see.
+    val body = scene.material(PathTraceMaterial.plastic(0.06f, 0.13f, 0.42f, 0.28f))
+
+    // Centre the volume on the origin and scale it into view: the field is in voxels.
+    val centre = Vector3f(n / 2f, n / 2f, n / 2f)
+    val scale = 2.4f / n
+    val placement =
+        afield.math.linalg.Matrix4f().scale(scale, scale, scale).translate(-centre.x, -centre.y, -centre.z)
+
+    var appended = 0
+    var dropped = 0
+    val sceneLo = Vector3f(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)
+    val sceneHi = Vector3f(-Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE)
+    parts.forEachIndexed { index, part ->
+        val added = scene.importTriMesh(
+            part.toTriMesh(normals = true, minSharpAngle = 25.0),
+            if (index == 0) gold else body,
+            transform = placement,
+            warning = {},
+        )
+        appended += added.triangleCount
+        dropped += added.degenerateCount
+        if (added.triangleCount > 0) {
+            sceneLo.min(added.boundsMin)
+            sceneHi.max(added.boundsMax)
+        }
+    }
+    println()
+    println("scene: $appended triangles from ${parts.size} clusters, $dropped dropped")
+    println(
+        "  occupying ${"%.2f".format(sceneHi.x - sceneLo.x)} x " +
+            "${"%.2f".format(sceneHi.y - sceneLo.y)} x ${"%.2f".format(sceneHi.z - sceneLo.z)} " +
+            "of the 2.40-unit cube the volume was scaled into",
+    )
+    Triple(scene, sceneLo, sceneHi)
 }
-val levelSetMs = (System.nanoTime() - t0) / 1e6
-println("Manifold's levelSet:   ${whole.triangleCount} triangles, status ${whole.status}, " +
-    "genus ${whole.genus}, volume ${"%.4f".format(whole.volume)}, " +
-    "${"%.0f".format(levelSetMs)} ms")
-
-// ---- stage three: the census ---------------------------------------------------
-// The two genus numbers disagree, and the reason is components rather than holes: Field's
-// genus() reads one Euler characteristic and solves 2 - 2g for g, which is the genus of a
-// connected surface. decompose() is the operation that says how many surfaces there are.
-val parts = whole.decompose()
-val volumes = parts.map { it.volume }
-println()
-println("${parts.size} separate clusters survived ${generations} generations")
-println("  largest ${"%.2f".format(volumes.first())}, smallest ${"%.3f".format(volumes.last())}, " +
-    "median ${"%.3f".format(volumes[volumes.size / 2])}")
-println("  they sum to ${"%.2f".format(volumes.sum())} against the whole solid's " +
-    "${"%.2f".format(whole.volume)}")
-println("  and each one on its own has genus ${parts.take(6).map { it.genus }} ...")
-
-// ---- stage four: the render ----------------------------------------------------
-val scene = PathTraceScene()
-val gold = scene.material(PathTraceMaterial.metal(1.0f, 0.74f, 0.33f, 0.22f))
-// Plastic rather than glass for the other forty-seven. At a tenth of a unit across, a
-// transparent fragment over a pale floor is a fragment you cannot see.
-val body = scene.material(PathTraceMaterial.plastic(0.06f, 0.13f, 0.42f, 0.28f))
 val floor = scene.material(PathTraceMaterial.plastic(0.30f, 0.31f, 0.33f, 0.5f))
 
-// Centre the volume on the origin and scale it into view: the field is in voxels.
-val centre = Vector3f(n / 2f, n / 2f, n / 2f)
-val scale = 2.4f / n
-val placement = afield.math.linalg.Matrix4f()
-    .scale(scale, scale, scale)
-    .translate(-centre.x, -centre.y, -centre.z)
-
-var appended = 0
-var dropped = 0
-val sceneLo = Vector3f(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)
-val sceneHi = Vector3f(-Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE)
-parts.forEachIndexed { index, part ->
-    val added = scene.importTriMesh(
-        part.toTriMesh(normals = true, minSharpAngle = 25.0),
-        if (index == 0) gold else body,
-        transform = placement,
-        warning = {},
-    )
-    appended += added.triangleCount
-    dropped += added.degenerateCount
-    if (added.triangleCount > 0) { sceneLo.min(added.boundsMin); sceneHi.max(added.boundsMax) }
-}
-println()
-println("scene: $appended triangles from ${parts.size} clusters, $dropped dropped")
-println("  occupying ${"%.2f".format(sceneHi.x - sceneLo.x)} x " +
-    "${"%.2f".format(sceneHi.y - sceneLo.y)} x ${"%.2f".format(sceneHi.z - sceneLo.z)} " +
-    "of the 2.40-unit cube the volume was scaled into")
-parts.forEach { it.close() }
-whole.close()
-
-// The frame comes off the import reports rather than off the voxel grid: eight
-// generations of a decaying rule leave a cloud much smaller than the volume it started
-// in, and a camera placed for the grid puts it in the middle distance.
+/*
+The frame comes off the import reports rather than off the voxel grid: eight
+generations of a decaying rule leave a cloud much smaller than the volume it started
+in, and a camera placed for the grid puts it in the middle distance.
+*/
 val middle = Vector3f(sceneLo).add(sceneHi).mul(0.5f)
 val span = maxOf(sceneHi.x - sceneLo.x, sceneHi.y - sceneLo.y, sceneHi.z - sceneLo.z)
 val reach = span * 3f
@@ -191,7 +205,9 @@ tracer.indirectClamp = 10f
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
 frames {
-    while (tracer.samples < 700) { frame() }
+    while (tracer.samples < 700) {
+        frame()
+    }
     println("life3d study converged: ${tracer.samples} samples")
 }
 ```

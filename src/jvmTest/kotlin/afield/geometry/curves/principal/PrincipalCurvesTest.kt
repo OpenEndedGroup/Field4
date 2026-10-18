@@ -53,6 +53,15 @@ class PrincipalCurvesTest {
     }
 
     @Test
+    fun drawingHelpersProduceLines() {
+        if (!available()) return
+        PrincipalCurves.fit(yShape(), nodes = 22, allowBranching = true).use { f ->
+            assertTrue(f.widthFLines().isNotEmpty(), "width bands")
+            assertTrue(f.pointsFLine(pointSize = 1.5).nodes.isNotEmpty(), "input points")
+        }
+    }
+
+    @Test
     fun curvesOnlyNeverBranch() {
         if (!available()) return
         PrincipalCurves.fit(yShape(), nodes = 22).use { f ->

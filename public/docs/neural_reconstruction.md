@@ -90,10 +90,11 @@ import afield.media.reconstruction.*
 val experiment = ReconstructionDemo(
     renderer,
     ReconstructionMode.DLAA,
-    ReconstructionSize(1920, 1080)
+    ReconstructionSize(1920, 1080),
 )
 experiment.abstractScene = true
 experiment.reset("material edit")
+
 // experiment.close() when replacing it
 ```
 
@@ -129,9 +130,13 @@ Each input must follow these conventions:
 For Field's direct-lighting motion texture, declare its current-minus-previous UV convention:
 
 ```diffstatic {data-lang=kotlin}
-ReconstructionInputs(color, depth, motion,
+ReconstructionInputs(
+    color,
+    depth,
+    motion,
     motionCurrentMinusPrevious = true,
-    motionInPixels = false)
+    motionInPixels = false,
+)
 ```
 
 The adapter supplies the sign and input dimensions to NGX for both Super Resolution and Ray

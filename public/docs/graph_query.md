@@ -122,13 +122,16 @@ whatever your graph is made of.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/lenses.png" alt="an output panel holding a LensSet of Mode with 2 rows, and a third column beyond path and value: lamp/mode is a Mode and writable, strip/mode is a Mode and writable" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-lenses" w="760" h="300"}
 :::static
-enum class Mode { OFF, ON }
+enum class Mode {
+    OFF,
+    ON,
+}
 class Light(var name: String, var on: Boolean, var mode: Mode, var level: Float)
 class Room(val lamp: Light, val strip: Light)
 
 val room = Room(
     Light("lamp", true, Mode.ON, 0.4f),
-    Light("strip", false, Mode.OFF, 0.9f)
+    Light("strip", false, Mode.OFF, 0.9f),
 )
 
 // flip every boolean in the graph, then read back the enums
@@ -155,9 +158,22 @@ var reads = 0
 class Node(val label: String) : LiveGraphInspectable {
     val kids = linkedMapOf<String, Node>()
     var leaf: Float = 1f
+
     override fun liveGraphChildren(): Iterable<LiveGraphEdge> =
-        kids.map { (name, child) -> LiveGraphEdge(name) { reads++; child } } +
-            LiveGraphEdge("leaf", { reads++; leaf }, { v -> leaf = (v as Number).toFloat() })
+        kids.map { (name, child) ->
+            LiveGraphEdge(name) {
+                reads++
+                child
+            }
+        } +
+            LiveGraphEdge(
+                "leaf",
+                {
+                    reads++
+                    leaf
+                },
+                { v -> leaf = (v as Number).toFloat() },
+            )
 }
 
 fun build(depth: Int, breadth: Int): Node {
@@ -176,8 +192,10 @@ reads = 0
 val all = root.graphPaths("**")
 val everything = reads
 
-display("main", "naming a path: $named edge reads — " +
-        "walking all ${all.size} slots: $everything edge reads")
+display(
+    "main",
+    "naming a path: $named edge reads — " + "walking all ${all.size} slots: $everything edge reads",
+)
 ```
 
 A within-segment glob (`"osc*"`), a literal spelled in a different case from the

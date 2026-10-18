@@ -143,9 +143,26 @@ data class StudyBuildInputHelp(val label: String, val message: String) {
 /** Presentation of retained result evidence, separate from execution and dependency currency. */
 enum class StudyBuildNoticeKind { INFO, WARNING, ERROR }
 
-/** A recipe's explanation of a result and the next action; never an acceptance override. */
-data class StudyBuildNotice(val message: String, val kind: StudyBuildNoticeKind = StudyBuildNoticeKind.WARNING) {
+/**
+ * A recipe's explanation of a result and the next action; never an acceptance override. [view] names a picture of
+ * the result to look at alongside the words: an agent that waited for the build is shown it when its chat resumes.
+ */
+data class StudyBuildNotice(val message: String, val kind: StudyBuildNoticeKind = StudyBuildNoticeKind.WARNING,
+    val view: StudyBuildView? = null) {
     init { require(message.isNotBlank()) { "Result feedback needs an explanation" } }
+}
+
+/**
+ * A view of a result: [box] (a uid or unique name) shows it once [show] has drawn it, and [caption] says what to look
+ * for. When a chat that awaited the build resumes (`afield.ai.agent.StudyBuildAwaits`), Field runs [show], captures
+ * the box's output and attaches the picture to the resumed message, so the agent sees the result as well as reading
+ * its facts and notes. [show] runs off the Runloop and only displays; it must not change the design or the record.
+ * Only [box] and [caption] are reported in tool results.
+ */
+class StudyBuildView(val box: String, val caption: String = "",
+    @get:com.fasterxml.jackson.annotation.JsonIgnore val show: (() -> Unit)? = null) {
+    init { require(box.isNotBlank()) { "A result view names the box that shows it" } }
+    override fun toString() = "StudyBuildView(box=$box, caption=$caption)"
 }
 
 /**

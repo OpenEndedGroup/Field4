@@ -19,6 +19,7 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
+
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -34,6 +35,7 @@ operations:
       properties:
         code: |
           import afield.graphics.scene.fabricated.PathTraceMediumGpuSmoke
+
           val r = renderer
           val verify: suspend () -> Unit = {
               PathTraceMediumGpuSmoke.run(r, "build/medium-check")

@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["polytope_manifold_trace"] "properties" {"children" #{#afield/box "polytope_manifold_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 232 "sha256" "c2a1e4830e417be8ec9f5aacacc7bccb051e9d50e64bb61d002be6cfdd577ece"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["polytope_manifold_trace"] "properties" {"children" #{#afield/box "polytope_manifold_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 10 "characters" 233 "sha256" "3d30b4aaa2a68c976d08d4a335fabaff6a0dca2e09a68985a0a19b361d8f710b"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
 import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,24 +32,19 @@ start(renderer::run)
 <!-- field-box id="polytope_manifold_trace" index="1" -->
 
 ```edn [field-box id="polytope_manifold_trace" role="properties"]
-{"id" "polytope_manifold_trace" "index" 1 "name" "polytope, eroded into a shell, cut open, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope, eroded into a shell, cut open, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_manifold_trace_code_.kt" "lines" 108 "characters" 5370 "sha256" "96e1059de12263d6ede7ad2ab47ac133fd31ad60c923dbc486ae45bf27967d73"}]}
+{"id" "polytope_manifold_trace" "index" 1 "name" "polytope, eroded into a shell, cut open, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope, eroded into a shell, cut open, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_manifold_trace_code_.kt" "lines" 126 "characters" 5408 "sha256" "f4c811d7f918af481add9f85fc4d90ebd2ef4e5cf745434abba0419de866dd50"}]}
 ```
 
 ```kotlin [field-property box="polytope_manifold_trace" name="code" path="polytope_manifold_trace_code_.kt"]
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+import afield.geometry.solid.manifold.toSolid
 import afield.graphics.scene.fabricated.PathTraceEnvironment
 import afield.graphics.scene.fabricated.PathTraceMaterial
 import afield.graphics.scene.fabricated.PathTraceScene
 import afield.graphics.scene.fabricated.PathTracingRenderer
 import afield.graphics.scene.fabricated.importTriMesh
 import afield.graphics.vulkan.util.Camera
-import afield.geometry.solid.manifold.ManifoldLibrary
-import afield.geometry.solid.manifold.Solid
-import afield.geometry.solid.manifold.toSolid
-import afield.geometry.mesh.genus
-import afield.geometry.mesh.isWatertight
-import afield.math.linalg.Vector3f
-import afield.geometry.mesh.signedVolume
-import afield.geometry.mesh.weld
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)
@@ -60,52 +56,72 @@ require(ManifoldLibrary.isAvailable) {
 }
 
 // ---- one parameter -------------------------------------------------------------
-val thickness = 0.09   // wall thickness, in the polytope's own units (it spans about 2)
+val thickness = 0.09 // wall thickness, in the polytope's own units (it spans about 2)
 // --------------------------------------------------------------------------------
 
 // ---- stage one: topology to a mesh ---------------------------------------------
 val chain = canonicalConway("bD")
 val geometry = chain.polyhedron.triangulate(normals = NormalPolicy.Flat)
-// The triangulator cuts each polygon on its own, so a corner shared by three faces comes
-// out as three vertices. Weld before handing it over: a manifold is an index property, and
-// 360 unwelded vertices describe the same surface without sharing an edge anywhere.
+/*
+The triangulator cuts each polygon on its own, so a corner shared by three faces comes
+out as three vertices. Weld before handing it over: a manifold is an index property, and
+360 unwelded vertices describe the same surface without sharing an edge anywhere.
+*/
 val plain = geometry.mesh.weld(1e-6)
-println("bD: ${geometry.triangleCount} triangles, " +
-    "${geometry.mesh.vertexCount} vertices unwelded, ${plain.vertexCount} welded")
+println(
+    "bD: ${geometry.triangleCount} triangles, " +
+        "${geometry.mesh.vertexCount} vertices unwelded, ${plain.vertexCount} welded",
+)
 println("   watertight ${plain.isWatertight()}, genus ${plain.genus()}")
 
 // ---- stage two: the Booleans ---------------------------------------------------
-val cut = Solid.scope {
+// The native shell stays scoped; only its copied triangle mesh escapes.
+val shaded = Solid.scope {
     val solid = plain.toSolid()
-    println("Manifold: status ${solid.status}, genus ${solid.genus}, " +
-        "volume ${"%.4f".format(solid.volume)}, area ${"%.4f".format(solid.surfaceArea)}")
-    println("   Field says volume ${"%.4f".format(plain.signedVolume())}, " +
-        "differing by ${"%.2e".format(kotlin.math.abs(plain.signedVolume() - solid.volume))}")
+    println(
+        "Manifold: status ${solid.status}, genus ${solid.genus}, " +
+            "volume ${"%.4f".format(solid.volume)}, area ${"%.4f".format(solid.surfaceArea)}",
+    )
+    println(
+        "   Field says volume ${"%.4f".format(plain.signedVolume())}, " +
+            "differing by ${"%.2e".format(kotlin.math.abs(plain.signedVolume() - solid.volume))}",
+    )
 
-    // Erode by a ball, then subtract: the wall left behind is the set of points within
-    // `thickness` of the surface, so its thickness is the same everywhere. Scaling the
-    // solid down instead would give a wall that is thicker at the vertices than at the
-    // face centres, which looks similar and is not the same shape.
+    /*
+    Erode by a ball, then subtract: the wall left behind is the set of points within
+    `thickness` of the surface, so its thickness is the same everywhere. Scaling the
+    solid down instead would give a wall that is thicker at the vertices than at the
+    face centres, which looks similar and is not the same shape.
+    */
     val ball = Solid.sphere(thickness, segments = 24)
     val inner = solid.minkowskiDifference(ball)
     val wall = solid - inner
-    println("shell: volume ${"%.4f".format(wall.volume)}, genus ${wall.genus}, " +
-        "${wall.triangleCount} triangles")
+    println(
+        "shell: volume ${"%.4f".format(wall.volume)}, genus ${wall.genus}, " + "${wall.triangleCount} triangles",
+    )
     // A constant-thickness wall over a convex body has volume area*t minus a curvature
     // term, so the ratio lands a little under one and says how much the corners take back.
-    println("   area * thickness = ${"%.4f".format(solid.surfaceArea * thickness)}, " +
-        "ratio ${"%.3f".format(wall.volume / (solid.surfaceArea * thickness))}")
+    println(
+        "   area * thickness = ${"%.4f".format(solid.surfaceArea * thickness)}, " +
+            "ratio ${"%.3f".format(wall.volume / (solid.surfaceArea * thickness))}",
+    )
 
-    // Open it up. trimByPlane keeps the side the normal points toward, so this keeps the
-    // lower half and the camera looks down into it. A rim seen across rather than
-    // end-on is what makes the wall's thickness a thing you can see.
-    wall.trimByPlane(0.0, -1.0, 0.0, 0.0).checked("cut shell")
+    /*
+    Open it up. trimByPlane keeps the side the normal points toward, so this keeps the
+    lower half and the camera looks down into it. A rim seen across rather than
+    end-on is what makes the wall's thickness a thing you can see.
+    */
+    val cut = wall.trimByPlane(0.0, -1.0, 0.0, 0.0).checked("cut shell")
+    // A 20-degree crease rather than the default 60: this surface is all facets, and at 60 the
+    // shallow ones average together and the polytope stops reading as one.
+    val shaded = cut.toTriMesh(normals = true, minSharpAngle = 20.0)
+    println(
+        "cut: genus ${cut.genus}, volume ${"%.4f".format(cut.volume)}, " +
+            "${shaded.triangleCount} triangles for the render",
+    )
+
+    shaded
 }
-// A 20-degree crease rather than the default 60: this surface is all facets, and at 60 the
-// shallow ones average together and the polytope stops reading as one.
-val shaded = cut.toTriMesh(normals = true, minSharpAngle = 20.0)
-println("cut: genus ${cut.genus}, volume ${"%.4f".format(cut.volume)}, " +
-    "${shaded.triangleCount} triangles for the render")
 
 // ---- stage three: the render ---------------------------------------------------
 val scene = PathTraceScene()
@@ -117,8 +133,10 @@ println("scene: ${added.triangleCount} triangles appended, ${added.degenerateCou
 val low = added.boundsMin.y - 0.02f
 val reach = 6f
 scene.quad(
-    Vector3f(-reach, low, -reach), Vector3f(reach, low, -reach),
-    Vector3f(reach, low, reach), Vector3f(-reach, low, reach),
+    Vector3f(-reach, low, -reach),
+    Vector3f(reach, low, -reach),
+    Vector3f(reach, low, reach),
+    Vector3f(-reach, low, reach),
     floor,
 )
 
@@ -138,9 +156,10 @@ tracer.environmentRotation = 2.1f
 tracer.indirectClamp = 10f
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
-cut.close()
 frames {
-    while (tracer.samples < 900) { frame() }
+    while (tracer.samples < 900) {
+        frame()
+    }
     println("shell study converged: ${tracer.samples} samples")
 }
 ```

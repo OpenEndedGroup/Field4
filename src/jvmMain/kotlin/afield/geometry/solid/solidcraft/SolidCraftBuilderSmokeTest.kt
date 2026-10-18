@@ -1,6 +1,9 @@
 package afield.geometry.solid.solidcraft
 
 import afield.geometry.path.FLine
+import afield.geometry.mesh.weld
+import afield.geometry.mesh.genus
+import afield.geometry.mesh.isWatertight
 import org.json.JSONObject
 import kotlin.math.PI
 import kotlin.math.abs
@@ -95,14 +98,31 @@ object SolidCraftBuilderSmokeTest {
             check(v > 8.0 * 8.0 * 60.0 * 1.2) { "rail did not widen the sweep: $v" }
         }
 
-        // Sweep along a 3D wire made from a Field FLine (a helix quarter-turn rising in z).
-        case("sweep along FLine wire", solidCraft {
-            val section = sketch("XZ") { circle(20.0, 0.0, 1.5) }
-            val helix = FLine().moveTo(20f, 0f, 0f).also { l ->
-                for (i in 1..48) { val t = i / 48.0 * PI / 2; l.lineTo((20 * cos(t)).toFloat(), (20 * sin(t)).toFloat(), (i / 48.0 * 15).toFloat()) }
+        // Sweep along a 3D wire made from a Field FLine: a closed trefoil knot. The profile is drawn
+        // on the plane square to the knot's start, so the tube is true: volume = πr² × length.
+        val knot = FLine().moveTo(0f, -8f, 0f).also { l ->
+            for (i in 1..240) {
+                val t = i / 240.0 * 2 * PI
+                l.lineTo(8 * (sin(t) + 2 * sin(2 * t)), 8 * (cos(t) - 2 * cos(2 * t)), -8 * sin(3 * t))
             }
-            sweep(section, sketch("XY") { wire(helix, spacing = 1f) })
-        }) { d -> check(body(d).getDouble("volume") > 0.0) }
+        }
+        val knotLength = knot.cursor().lengthD().toDouble()
+        case("sweep along FLine trefoil", solidCraft {
+            val section = sketch(planeSquareTo(knot)) { circle(0.0, 0.0, 2.5) }
+            sweep(section, sketch("XY") { wire(knot, spacing = 0.5f) })
+        }) { d -> near("trefoil tube volume", body(d).getDouble("volume"), PI * 2.5 * 2.5 * knotLength, 3e-2) }
+
+        // A sweep caps both ends even when its path closes, so a ring is two half sweeps joined:
+        // the join removes the touching caps, leaving exactly a torus's area, genus 1. (The same join
+        // on the trefoil's freeform halves fails in SolidCraft v0.15.0 after minutes: "no result".)
+        case("ring from two joined half sweeps", solidCraft {
+            sweep(sketch("XZ") { circle(20.0, 0.0, 2.5) }, sketch("XY") { arc(0.0, 0.0, 20.0, 0.0, -20.0, 0.0) })
+            sweep(sketch("XZ") { circle(-20.0, 0.0, 2.5) }, sketch("XY") { arc(0.0, 0.0, -20.0, 0.0, 20.0, 0.0) }, operation = SolidCraftOperation.JOIN)
+        }) { d ->
+            near("torus area", body(d).getDouble("area"), 4 * PI * PI * 20.0 * 2.5, 1e-3)
+            val m = d.mesh(0, 0.05).toTriMesh().weld()
+            check(m.isWatertight() && m.genus() == 1) { "ring is not a closed genus-1 solid: genus ${m.genus()}" }
+        }
 
         case("loft", solidCraft {
             val a = sketch("XY") { rectangle(-10.0, -10.0, 10.0, 10.0) }

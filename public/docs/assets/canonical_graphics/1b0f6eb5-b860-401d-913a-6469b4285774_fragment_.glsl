@@ -16,8 +16,10 @@ const vec4 EAST = vec4(1.0, 0.0, 0.0, 1.0);
 const vec4 SOUTH = vec4(0.0, 0.0, 1.0, 1.0);
 
 uint hash(uint x) {
-    x ^= x >> 16u; x *= 0x7feb352du;
-    x ^= x >> 15u; x *= 0x846ca68bu;
+    x ^= x >> 16u;
+    x *= 0x7feb352du;
+    x ^= x >> 15u;
+    x *= 0x846ca68bu;
     x ^= x >> 16u;
     return x;
 }
@@ -46,7 +48,8 @@ void main() {
         uvec2 u = uvec2(p);
         if (random01(u, 1u) < push.density) {
             outColor = random01(u, 2u) < push.eastboundFraction ? EAST : SOUTH;
-        } else {
+        }
+        else {
             outColor = EMPTY;
         }
         return;
@@ -67,7 +70,8 @@ void main() {
         next = 0;
         // a car moves out of this cell this half-step: one invocation per moving car,
         // which is where to tap it (fieldProbe, fieldStats) without counting it twice
-    } else if (here == 0 && cellAt(p - ahead, dims) == mover) {
+    }
+    else if (here == 0 && cellAt(p - ahead, dims) == mover) {
         next = mover;
     }
 

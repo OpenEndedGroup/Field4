@@ -256,18 +256,23 @@ Three readers of one bank become where the sound is, how open its filter is, and
 Nothing about the bank knows it is being read three times, or heard rather than drawn.
 
 ```edn [field-box id="b38c3ac4-b5fc-4642-9543-c9e37c0c41f7" role="properties"]
-{"id" "b38c3ac4-b5fc-4642-9543-c9e37c0c41f7" "index" 4 "name" "marf_sound" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "marf_sound" "frame" #afield/rect [440.0 226.0 340.0 136.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "b38c3ac4-b5fc-4642-9543-c9e37c0c41f7_code_.kt" "lines" 25 "characters" 1218 "sha256" "a7d0bd74643f956595f319a6c3ef81572a59c8a90d6c984910e8d7ca34b67c0a"}]}
+{"id" "b38c3ac4-b5fc-4642-9543-c9e37c0c41f7" "index" 4 "name" "marf_sound" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "marf_sound" "frame" #afield/rect [440.0 226.0 340.0 136.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "b38c3ac4-b5fc-4642-9543-c9e37c0c41f7_code_.kt" "lines" 32 "characters" 1282 "sha256" "d5c8682dc59abd9d80fdee3be562570ee4d2b083fb636bf7f026cd988518569e"}]}
 ```
 
 ```kotlin [field-property box="b38c3ac4-b5fc-4642-9543-c9e37c0c41f7" name="code" path="b38c3ac4-b5fc-4642-9543-c9e37c0c41f7_code_.kt"]
-// MARF as control voltage into a real synth: pat -> Dough -> Steam Audio HRTF, realtime.
-// Three readers of one bank become where the sound is, how open its filter is, and how far away.
-// Nothing about the bank knows it is being read three times, or heard rather than drawn.
+/*
+MARF as control voltage into a real synth: pat -> Dough -> Steam Audio HRTF, realtime.
+Three readers of one bank become where the sound is, how open its filter is, and how far away.
+Nothing about the bank knows it is being read three times, or heard rather than drawn.
+*/
 displayClearAll()
 
 val b = marfBank(
-    rampTo(0.05, 1.0), rampTo(0.95, 0.5), holdAt(0.45, 2.0),
-    oscTo(0.80, 1.0, cycles = 3.0), curveTo(0.15, 0.25, amount = 4.0)
+    rampTo(0.05, 1.0),
+    rampTo(0.95, 0.5),
+    holdAt(0.45, 2.0),
+    oscTo(0.80, 1.0, cycles = 3.0),
+    curveTo(0.15, 0.25, amount = 4.0),
 )
 
 // a fractional address, so the source glides rather than stepping between slots
@@ -277,12 +282,14 @@ val cutoff = b.read(pat("<0 1 2 1 3 4>").nums(), fields = MarfFieldClock.STAGES,
 // held addresses, so distance moves in steps and then sits still
 val near = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES, name = "near")
 
-val voice = pat("bd ~ sd ~, hh*8").with(
-    param("az", azR.signal().range(-80.0, 80.0)),
-    param("lpf", cutoff.signal().rangex(250.0, 7000.0)),
-    param("dist", near.signal().range(1.0, 5.0)),
-    gain(0.9)
-)
+val voice =
+    pat("bd ~ sd ~, hh*8")
+        .with(
+            param("az", azR.signal().range(-80.0, 80.0)),
+            param("lpf", cutoff.signal().rangex(250.0, 7000.0)),
+            param("dist", near.signal().range(1.0, 5.0)),
+            gain(0.9),
+        )
 
 patSpatial(voice, cps = 2.0)
 ```

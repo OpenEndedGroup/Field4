@@ -31,39 +31,41 @@ analysis and shows each job's progress, then the combined view. Swap `renderDirt
 renderer in the table below and the rest stays the same.
 
 ```diffstatic {data-lang=kotlin}
-import afield.audio.synth.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()
 display("all jobs", fieldAudioJobMonitor(heightPixels = 330))
 
-val music = (pat("{60 64 67 71, bd ~ sd ~, hh*8}")
-    with gain(sine().range(0.22, 0.72))
-    with pan("0.2 0.8"))
+val music = (pat("{60 64 67 71, bd ~ sd ~, hh*8}") with gain(sine().range(0.22, 0.72)) with pan("0.2 0.8"))
 
 val render = renderDirtWav(
     Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "pat-study.wav"),
-    music, cycles = 12, cps = 1.6,
+    music,
+    cycles = 12,
+    cps = 1.6,
     provenance = mapOf("field_box" to "pat-study"),
 )
 
-client.analyzeRenderedAudio(
-    render,
-    requests = { region ->
-        standardAudioAnalyses(region, requestedBy = "field:pat-study")
-    },
-    onAccepted = { named, accepted ->
-        display("${named.label} job", fieldAudioJobStatusHtml(accepted))
-    },
-    onProgress = { named, accepted, event ->
-        display("${named.label} job", fieldAudioJobStatusHtml(accepted, event))
-    },
-).thenAccept { completed ->
-    display("analysis", completed.visualizationHtml(panelHeight = 230))
-}.exceptionally { error ->
-    display("analysis error", error.cause?.message ?: error.message ?: error.toString())
-    null
-}
+client
+    .analyzeRenderedAudio(
+        render,
+        requests = { region ->
+            standardAudioAnalyses(region, requestedBy = "field:pat-study")
+        },
+        onAccepted = { named, accepted ->
+            display("${named.label} job", fieldAudioJobStatusHtml(accepted))
+        },
+        onProgress = { named, accepted, event ->
+            display("${named.label} job", fieldAudioJobStatusHtml(accepted, event))
+        },
+    )
+    .thenAccept { completed ->
+        display("analysis", completed.visualizationHtml(panelHeight = 230))
+    }
+    .exceptionally { error ->
+        display("analysis error", error.cause?.message ?: error.message ?: error.toString())
+        null
+    }
 ```
 
 This captured drum pattern uses `pat("{bd ~ sd ~, hh*8}")` with the pinned Dirt samples. Its
@@ -73,15 +75,25 @@ This captured drum pattern uses `pat("{bd ~ sd ~, hh*8}")` with the pinned Dirt 
 :::static
 import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
-import java.nio.file.Path
+
 val json = FieldAudioClient.json
 val folder = File("public/docs/assets/audio_render_analysis")
 val wav = WavFloatArrayLoader.loadWavToFloatArray(File(folder, "pat-dirt-study.wav").absolutePath)
-val previews = ["beats", "pitch_mono", "pitch_poly"].map { json.decodeFromString<AnalysisPreview>(File(folder, "$it-preview.json").readText()) }
+val previews = ["beats", "pitch_mono", "pitch_poly"].map {
+    json.decodeFromString<AnalysisPreview>(File(folder, "$it-preview.json").readText())
+}
 val sync = "docs-real-pat"
-val source = AudioVisualizer.renderSamplesHtml(wav.samples, wav.sampleRate, options = AudioVisualizerOptions(width = 1040, waveformHeight = 130, syncGroup = sync), wavBytes = File(folder, "pat-dirt-study.wav").readBytes(), label = "Pat through pinned Dirt samples · 12 cycles at 1.6 cps")
-display("analysis", source + analysisPreviewDashboardHtml(previews, width = 1040, panelHeight = 210, syncGroup = sync))
-
+val source = AudioVisualizer.renderSamplesHtml(
+    wav.samples,
+    wav.sampleRate,
+    options = AudioVisualizerOptions(width = 1040, waveformHeight = 130, syncGroup = sync),
+    wavBytes = File(folder, "pat-dirt-study.wav").readBytes(),
+    label = "Pat through pinned Dirt samples · 12 cycles at 1.6 cps",
+)
+display(
+    "analysis",
+    source + analysisPreviewDashboardHtml(previews, width = 1040, panelHeight = 210, syncGroup = sync),
+)
 ```
 
 Listen to the Dirt render while comparing the analysis lanes.
@@ -125,12 +137,14 @@ client.analyzeRenderedAudio(
     render,
     startSeconds = 4.0,
     durationSeconds = 12.0,
-    requests = { region -> standardAudioAnalyses(
-        region,
-        requestedBy = "field:rhythm-only",
-        includeMonophonicPitch = false,
-        includePolyphonicPitch = false,
-    ) },
+    requests = { region ->
+        standardAudioAnalyses(
+            region,
+            requestedBy = "field:rhythm-only",
+            includeMonophonicPitch = false,
+            includePolyphonicPitch = false,
+        )
+    },
 )
 ```
 
@@ -161,14 +175,18 @@ This view requests the same render through Field Audio's waveform-summary endpoi
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_render_analysis/service_waveform.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-waveform" alt="Real service waveform envelopes of a Pat Dirt render" capture-profile="linux-nvidia"}
 :::static
-import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
-import java.nio.file.Path
+
 val json = FieldAudioClient.json
 val asset = json.decodeFromString<AudioAsset>(File("public/docs/assets/audio_render_analysis/asset.json").readText())
 val audio = asset.representations.first { it.mediaType == "audio/wav" }
-display("waveform", audio.audioVisualizerHtml(label = "Pat through Dirt · service waveform envelope", options = AudioVisualizerOptions(width = 1040, waveformHeight = 170)))
-
+display(
+    "waveform",
+    audio.audioVisualizerHtml(
+        label = "Pat through Dirt · service waveform envelope",
+        options = AudioVisualizerOptions(width = 1040, waveformHeight = 170),
+    ),
+)
 ```
 
 ## See also

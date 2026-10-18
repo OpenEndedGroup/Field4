@@ -59,7 +59,7 @@ Often your code does something — draws a line, loads a model, makes a sound. B
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/funFeatures-print-here.png" capture="editor" outputs="inline" wait="2" padding="10" timeout="90" embed=true name="funfeatures-print-here" w="900" h="300" alt="Field's editor holding the snippet. Beside the print(x+y) line sits 30; under the last println is a small block with six rows of squares."}
 var x = 10
 var y = 20
-print(x+y)
+print(x + y)
 var z = 30
 println((1..6).joinToString("\n") { "row $it: ${it * it}" })
 ```
@@ -102,7 +102,7 @@ The highlighted colors are showing you the 'unusually' low and high values at a 
 We can also 'print' to the canvas using `display`. For example:
 
 ```diffstatic {data-lang=kotlin}
-var l = [1,2,3,4, 8, 7.2]
+var l = [1, 2, 3, 4, 8, 7.2]
 var m = mapOf("a" to "b", "c" to l)
 display("m is equal to ", m.h)
 ```
@@ -116,7 +116,7 @@ Subsequent calls to `display` overwrites the previous one, giving you a way of '
 While the `.h` and `.h2` visualizers try hard to make things pretty, all they are really doing is making some complex HTML in response to what they are trying to visualize. You can make your own as well:
 
 ```diffstatic {data-lang=kotlin}
-var l = [1,2,3,4, 8, 7.2]
+var l = [1, 2, 3, 4, 8, 7.2]
 var m = mapOf("a" to "b", "c" to l)
 
 display("m is equal to ", m.h)
@@ -133,7 +133,7 @@ That's also how a lot of this documentation gets made: the docs build runs the e
 There are a few more elaborate visualizers for more tangled structures. The "column" visualizer is loosely modelled after Smalltalk's browser:
 
 ```diffstatic {data-lang=kotlin}
-var l = [1,2,3,4, 8, 7.2]
+var l = [1, 2, 3, 4, 8, 7.2]
 var m2 = mapOf("foo" to "bar", "gux" to l)
 var m = mapOf("a" to "b", "c" to l, "m" to m2)
 
@@ -160,7 +160,6 @@ Field has _extensive_ support for generating 2d and 3d geometry and adding this 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/lines_editable2.png" embed=true}
 :::static
-
 val petal = fline {
     moveTo(0, -120)
     cubicTo(90, -100, 140, -20, 0, 120)
@@ -230,7 +229,7 @@ And output areas without contents are handy — progress bars are useful for sho
 var z = 0
 loop {
     z += 1
-    progressBar("progress", (z%10000)/10000.0)
+    progressBar("progress", (z % 10000) / 10000.0)
 }
 ```
 
@@ -250,12 +249,17 @@ for (i in tqdm(0 until 10000)) {
 
 // For routines: report a fraction (with a tqdm-style rate + ETA)...
 withProgress("solving") { p ->
-    repeat(steps) { i -> /* ...work... */; p.update(i + 1L, steps.toLong()) }
+    repeat(steps) { i -> /* ...work... */
+        p.update(i + 1L, steps.toLong())
+    }
 }
 
 // ...or .pulse() when there's no known total (an indeterminate "still working" bar):
 val p = progressReporter("reducing")
-while (notDone()) { stepOnce(); p.pulse() }
+while (notDone()) {
+    stepOnce()
+    p.pulse()
+}
 p.finish()
 ```
 
@@ -286,9 +290,12 @@ To cure some of the challenges deploying Kotlin in a live-coding context we've g
 This isn't just internal gymnastics, you can write your own macros. A `rewrite { }` block in a box is a rule over the *shape* of your source:
 
 ```diffstatic {data-lang=kotlin}
-rewrite { x: Expr -> from { neg(x) }; to { -x } }
+rewrite { x: Expr ->
+    from { neg(x) }
+    to { -x }
+}
 
-neg(10)          // →  -10
+neg(10) // →  -10
 ```
 
 Rules can have guards, bind runs of arguments, run Kotlin at expansion time, and are inherited by child boxes; [Rewriting your own syntax](pattern_rewrite.md) is the whole story.
@@ -573,7 +580,7 @@ There's a whole page on it: [Drawing and Notation](drawing_and_notation.md).
 One of the reason that Field even has a 2D infinite canvas for code is so that the space of the boxes can become meaningful. Traditionally, in 'time-goes-from-left-to-right' apps (Premier, AfterEffects, Davinci, Motion, etc) somewhere there's an idea of directly editing a function over time with the mouse. Field has a really _very_ fully featured keyframe editor available for boxes to use:
 
 ```diffstatic {data-lang=kotlin}
-keyframes(channel="k", name="keyframe", defaults=[vec(0.2, 0.5), vec(0.5, 2.0)])
+keyframes(channel = "k", name = "keyframe", defaults = [vec(0.2, 0.5), vec(0.5, 2.0)])
 ```
 
 Gets you started. With some mouse clicks you can get to here:
@@ -609,8 +616,8 @@ Once you have a keyframe, you can do a few things with it:
 val k = keyframes(channel = "k", name = "bob", [0.0, 1.0])
 
 k.setTime(0.5) // move the orange playhead
-val v : Double = k.evaluateValueAt(0.5)
-val dv : Double = k.evaluateDerivativeAt(0.5)
+val v: Double = k.evaluateValueAt(0.5)
+val dv: Double = k.evaluateDerivativeAt(0.5)
 ```
 
 Edited keyframes are stored inside the box — the `defaults` is just there in case the box is new. [The keyframe editor](keyframe_editor.md) has the rest: every gesture, the five key types, overlays, and a starting point to open.
@@ -629,16 +636,16 @@ For the extra curious, this slider is just a regular box with some customization
 // export this box so that any box can now write 'execution' to talk about this box
 rootProp<Box>(execution) = thisBox
 
-fun launchFrom(was : Double, now : Double) {
+fun launchFrom(was: Double, now: Double) {
 
     val all = root.children - thisBox // candidates for execution
     val a = all.filter { it.frame.intersects(was) }
     val b = all.filter { it.frame.intersects(was, now) }
     val c = all.filter { it.frame.intersects(now) }
 
-    val incoming = c-a
-    val outgoing = a-c
-    val onlyOnce = b-(a+c) // starting and stopping
+    val incoming = c - a
+    val outgoing = a - c
+    val onlyOnce = b - (a + c) // starting and stopping
 
     incoming.forEach(Box::begin)
     outgoing.forEach(Box::end)
@@ -653,21 +660,26 @@ fun launchFrom(was : Double, now : Double) {
 }
 
 // whenever the viewport changes run this to keep the line covering the view
-onViewportChange += "lock_x" to { inside, a, b ->
-    frame = frame.copy(y = -b.y-100, h = b.h*2-50, w = 40.0)
-}
+onViewportChange +=
+    "lock_x" to
+        { inside, a, b ->
+            frame = frame.copy(y = -b.y - 100, h = b.h * 2 - 50, w = 40.0)
+        }
 
 // whenever the frame of the box changes run this
-onFrameChange += "lock_x" to { inside, a, b ->
-    launchFrom(a.x, b.x)
-    b.copy(y = -inside.viewport.y-100, w = 40.0)
-}
+onFrameChange +=
+    "lock_x" to
+        { inside, a, b ->
+            launchFrom(a.x, b.x)
+            b.copy(y = -inside.viewport.y - 100, w = 40.0)
+        }
 
 // just set the width to be 40.0
-frame = frame.copy(w=40.0)
+frame = frame.copy(w = 40.0)
 
 // set a custom border, and lock the height
-customization = """
+customization =
+    """
     this.style.border = "0px solid transparent"
     this.style.borderLeft = "3px solid red"
     this.style.background = "transparent"
@@ -692,7 +704,9 @@ There are lots of other ways of customizing Field's front end from within Field.
 ```diffstatic {data-lang=kotlin}
 customMarking["N" to "bob"] = { print("North!") }
 customMarking["SE" to "something"] = { print("se!") }
-customMarking["W2" to "the end"] = { print("W!")}  // outer ring
+customMarking["W2" to "the end"] = {
+    print("W!")
+} // outer ring
 ```
 
 You can open and swipe around these callbacks with `alt/option-shift-click`:
@@ -750,7 +764,7 @@ prop<Vec2>(myVec)
 
 once.myVec {
     // `myVec` will stay the same for this whole session
-    vec(1,2).noise(10.0)
+    vec(1, 2).noise(10.0)
 }
 ```
 

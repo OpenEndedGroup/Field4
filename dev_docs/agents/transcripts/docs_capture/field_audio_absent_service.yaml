@@ -33,26 +33,23 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 480.0, h: 100.0 }
       properties:
         code: |
-          import afield.audio.synth.Param
-          import afield.audio.synth.SineOsc
-          import afield.audio.ai.FieldAudioClient
-          import afield.audio.ai.FieldAudioTransportException
-          import afield.audio.ai.RenderedAudioFile
-          import afield.audio.ai.analyzeRenderedAudio
-          import afield.audio.ai.renderDoughWav
           import java.nio.file.Path
           import java.util.concurrent.CompletionException
-          
+
           // A real render: Dough writes real RIFF bytes, faster than real time.
           val rendered = renderDoughWav(
               Path.of(System.getProperty("java.io.tmpdir"), "field-audio-demo", "tone.wav"),
-              SineOsc(Param(220f)), seconds = 1.0,
+              SineOsc(Param(220f)),
+              seconds = 1.0,
           )
-          // Re-wrapped through `existing`, so the sample rate, channels and duration printed below
-          // are read back out of the file's own header rather than restated by the renderer that
-          // already knew them. Before 2026-08-14 all three of them came back null here.
+          /*
+          Re-wrapped through `existing`, so the sample rate, channels and duration printed below
+          are read back out of the file's own header rather than restated by the renderer that
+          already knew them. Before 2026-08-14 all three of them came back null here.
+          */
           val render = RenderedAudioFile.existing(
-              rendered.path, "Dough",
+              rendered.path,
+              "Dough",
               provenance = mapOf("field_box" to "audio_absent_service"),
           )
           display(
@@ -60,12 +57,13 @@ operations:
               "rendered ${render.path} · ${render.channels}ch @ ${render.sampleRate} Hz · " +
                   "${"%.3f".format(render.durationSeconds)} s",
           )
-          
+
           // The default address. Nothing is listening on it unless you started the Python service.
           val client = FieldAudioClient()
           display("service", "asking ${client.baseUri}")
-          
-          client.analyzeRenderedAudio(render)
+
+          client
+              .analyzeRenderedAudio(render)
               .thenAccept { completed ->
                   display(
                       "what a box sees",

@@ -44,9 +44,9 @@ Three choices change what the numbers mean:
 Build one from a function, a file, a `BufferedImage`, PNG bytes or a plain `FloatArray`:
 
 ```diffstatic {data-lang=kotlin}
-val ramp   = Img.generate(64, 64) { x, _ -> x / 63f }
-val photo  = imgFromFile("cat.png")            // javax.imageio under the hood
-val fromGl = floatsToImg(heights, w, h)        // a heightfield, a spectrogram, any scalar grid
+val ramp = Img.generate(64, 64) { x, _ -> x / 63f }
+val photo = imgFromFile("cat.png") // javax.imageio under the hood
+val fromGl = floatsToImg(heights, w, h) // a heightfield, a spectrogram, any scalar grid
 ```
 
 ## Basics — resample, luma, HSV, threshold
@@ -59,23 +59,24 @@ than making you guess a number.
 :::static
 // An Img is width x height x channels floats, interleaved, origin top-left.
 // Build one straight from a function of (x, y) — the usual way to make a test image.
-val card = Img.generateRGB(240, 180) { x, y ->
-    val u = x / 239f
-    val v = y / 179f
-    val disc = if (hypot(x - 60.0, y - 60.0) <= 34.0) 1f else 0f
-    val bar = if (y in 130..142 && x in 20..219) 1f else 0f
-    Triple(
-        (0.15f + 0.7f * u * (1f - disc) + disc * 0.9f + bar).coerceIn(0f, 1f),
-        (0.15f + 0.6f * v + disc * 0.25f + bar).coerceIn(0f, 1f),
-        (0.55f - 0.4f * u + disc * 0.1f + bar).coerceIn(0f, 1f)
-    )
-}
+val card =
+    Img.generateRGB(240, 180) { x, y ->
+        val u = x / 239f
+        val v = y / 179f
+        val disc = if (hypot(x - 60.0, y - 60.0) <= 34.0) 1f else 0f
+        val bar = if (y in 130..142 && x in 20..219) 1f else 0f
+        Triple(
+            (0.15f + 0.7f * u * (1f - disc) + disc * 0.9f + bar).coerceIn(0f, 1f),
+            (0.15f + 0.6f * v + disc * 0.25f + bar).coerceIn(0f, 1f),
+            (0.55f - 0.4f * u + disc * 0.1f + bar).coerceIn(0f, 1f),
+        )
+    }
 
-val gray = card.luma()                 // BT.709 perceptual grayscale
-val hsv = card.rgbToHsv()              // h, s, v each in 0..1
-val small = card.resize(60, 45)        // area-averaged (anti-aliased) downsample
-val backUp = small.resize(240, 180)    // bilinear upsample: the detail is really gone
-val t = gray.otsuThreshold()           // computed, not guessed
+val gray = card.luma() // BT.709 perceptual grayscale
+val hsv = card.rgbToHsv() // h, s, v each in 0..1
+val small = card.resize(60, 45) // area-averaged (anti-aliased) downsample
+val backUp = small.resize(240, 180) // bilinear upsample: the detail is really gone
+val t = gray.otsuThreshold() // computed, not guessed
 
 showImgGrid(
     "source RGB (${card.width}x${card.height})" to card,
@@ -87,8 +88,10 @@ showImgGrid(
     columns = 3,
     cellSide = 260,
 )
-println("Img ${card.width}x${card.height} x${card.channels} ch, mean ${"%.3f".format(card.mean())}, " +
-    "otsu ${"%.3f".format(t)}, foreground ${gray.threshold(t).data.count { it > 0.5f }} px")
+println(
+    "Img ${card.width}x${card.height} x${card.channels} ch, mean ${"%.3f".format(card.mean())}, " +
+        "otsu ${"%.3f".format(t)}, foreground ${gray.threshold(t).data.count { it > 0.5f }} px",
+)
 ```
 
 ![](assets/imaging_examples/basics.png)
@@ -109,21 +112,22 @@ far away in *range* and so keeps its own weight.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/imaging_examples/filters.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
 // A clean synthetic source, and the same source with 4% salt-and-pepper corruption.
-val clean = Img.generate(240, 180) { x, y ->
-    var v = 0.12f + 0.10f * (y / 180f)
-    if (hypot(x - 60.0, y - 70.0) <= 34.0) v = 0.85f
-    if (x in 120..185 && y in 30..95) v = 0.65f
-    if (y in 135..142 && x in 20..219) v = 0.95f
-    v
-}
+val clean =
+    Img.generate(240, 180) { x, y ->
+        var v = 0.12f + 0.10f * (y / 180f)
+        if (hypot(x - 60.0, y - 70.0) <= 34.0) v = 0.85f
+        if (x in 120..185 && y in 30..95) v = 0.65f
+        if (y in 135..142 && x in 20..219) v = 0.95f
+        v
+    }
 val rng = kotlin.random.Random(11)
 val noisy = clean.copy()
 repeat((noisy.pixelCount * 0.04).toInt()) {
     noisy.data[rng.nextInt(noisy.pixelCount)] = if (rng.nextBoolean()) 0f else 1f
 }
 
-val gauss = noisy.gaussianBlur(2.0)     // separable, normalised: preserves the image mean
-val med = noisy.median(2)               // the right tool for impulse noise
+val gauss = noisy.gaussianBlur(2.0) // separable, normalised: preserves the image mean
+val med = noisy.median(2) // the right tool for impulse noise
 val bil = noisy.bilateral(sigmaSpace = 3.0, sigmaRange = 0.12)
 val sharp = clean.gaussianBlur(2.0).unsharpMask(sigma = 2.0, amount = 1.4)
 
@@ -140,7 +144,7 @@ showImgGrid(
 println(
     "residual vs clean — gaussian ${"%.4f".format(gauss.meanAbsDiff(clean))}, " +
         "median ${"%.4f".format(med.meanAbsDiff(clean))}, " +
-        "bilateral ${"%.4f".format(bil.meanAbsDiff(clean))}"
+        "bilateral ${"%.4f".format(bil.meanAbsDiff(clean))}",
 )
 ```
 
@@ -160,19 +164,21 @@ becomes a handful of straight runs.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/imaging_examples/edges.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
-val src = Img.generate(240, 180) { x, y ->
-    var v = 0.12f + 0.08f * (y / 180f)
-    if (hypot(x - 62.0, y - 70.0) <= 34.0) v = 0.85f
-    if (x in 120..185 && y in 30..95) v = 0.68f
-    val tx = x - 210.0; val ty = y - 40.0
-    if (ty in 0.0..60.0 && kotlin.math.abs(tx) <= ty * 0.5) v = 0.95f
-    v
-}
+val src =
+    Img.generate(240, 180) { x, y ->
+        var v = 0.12f + 0.08f * (y / 180f)
+        if (hypot(x - 62.0, y - 70.0) <= 34.0) v = 0.85f
+        if (x in 120..185 && y in 30..95) v = 0.68f
+        val tx = x - 210.0
+        val ty = y - 40.0
+        if (ty in 0.0..60.0 && kotlin.math.abs(tx) <= ty * 0.5) v = 0.95f
+        v
+    }
 
 // Sobel here is scaled to true units-per-pixel: a unit step edge integrates to 1.
 val grad = src.sobel()
 val edges = src.canny(low = 0.05, high = 0.11, sigma = 1.2)
-val auto = src.cannyAuto()          // thresholds derived from this image's own gradients
+val auto = src.cannyAuto() // thresholds derived from this image's own gradients
 
 // Edges are geometry, and geometry in Field is an FLine.
 val flines = edges.toContourFLines(minPerimeter = 12, simplifyTolerance = 1.2)
@@ -190,7 +196,7 @@ showImgGrid(
 println(
     "|grad| max ${"%.3f".format(grad.magnitude().max())}; " +
         "canny ${edges.data.count { it > 0.5f }} px, cannyAuto ${auto.data.count { it > 0.5f }} px; " +
-        "${flines.size} FLines, ${flines.sumOf { it.nodes.size }} nodes total"
+        "${flines.size} FLines, ${flines.sumOf { it.nodes.size }} nodes total",
 )
 ```
 
@@ -262,9 +268,10 @@ Felzenszwalb–Huttenlocher two-pass algorithm, not a chamfer approximation).
 :::static
 // Three disjoint discs of known radius, then noise on top of them.
 val discs = [Triple(55.0, 60.0, 28.0), Triple(150.0, 55.0, 20.0), Triple(110.0, 135.0, 14.0)]
-val clean = Img.generate(220, 180) { x, y ->
-    if (discs.any { (cx, cy, r) -> hypot(x - cx, y - cy) <= r }) 0.85f else 0.15f
-}
+val clean =
+    Img.generate(220, 180) { x, y ->
+        if (discs.any { (cx, cy, r) -> hypot(x - cx, y - cy) <= r }) 0.85f else 0.15f
+    }
 val rng = kotlin.random.Random(3)
 val noisy = clean.copy()
 repeat((noisy.pixelCount * 0.03).toInt()) {
@@ -287,10 +294,14 @@ showImgGrid(
     cellSide = 250,
 )
 println("${cc.count} components after cleaning (planted ${discs.size} discs):")
-cc.components.sortedByDescending { it.area }.forEach {
-    println("  area=${it.area} centroid=(${"%.1f".format(it.centroidX)}, ${"%.1f".format(it.centroidY)}) " +
-        "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${"%.2f".format(it.fillRatio)}")
-}
+cc.components
+    .sortedByDescending { it.area }
+    .forEach {
+        println(
+            "  area=${it.area} centroid=(${"%.1f".format(it.centroidX)}, ${"%.1f".format(it.centroidY)}) " +
+                "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${"%.2f".format(it.fillRatio)}",
+        )
+    }
 println("distance-transform peak ${"%.1f".format(dt.max())} (largest planted radius ${discs.maxOf { it.third }})")
 ```
 
@@ -349,21 +360,27 @@ a single level cannot recover comes back to within half a pixel with four.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/imaging_examples/motion.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
 :::static
 // Two frames related by a transform we choose, so the answer is known in advance.
-val a = Img.generate(200, 200) { x, y ->
-    (0.5 + 0.24 * kotlin.math.sin(x * 0.21) * kotlin.math.cos(y * 0.17) +
-        0.16 * kotlin.math.sin((x + y) * 0.11)).toFloat().coerceIn(0f, 1f)
-}
+val a =
+    Img.generate(200, 200) { x, y ->
+        (0.5 + 0.24 * kotlin.math.sin(x * 0.21) * kotlin.math.cos(y * 0.17) + 0.16 * kotlin.math.sin((x + y) * 0.11))
+            .toFloat()
+            .coerceIn(0f, 1f)
+    }
 val planted = Affine2D.rotationAbout(0.05, 100.0, 100.0).compose(Affine2D.translation(5.0, -3.0))
 val b = a.warpAffine(planted, border = Border.CLAMP)
 
 // Seed only where the 2x2 tracking system is well conditioned.
-val seeds = a.goodFeaturesToTrack(maxCount = 200, minDistance = 9)
-    .filter { it.x in 24.0..176.0 && it.y in 24.0..176.0 }
-    .map { it.toVec2() }
+val seeds =
+    a.goodFeaturesToTrack(maxCount = 200, minDistance = 9)
+        .filter { it.x in 24.0..176.0 && it.y in 24.0..176.0 }
+        .map { it.toVec2() }
 val flow = opticalFlowLK(a, b, seeds, windowRadius = 8, levels = 3)
 val fit = findHomographyRansac(
-    flow.sourcePoints(), flow.targetPoints(),
-    threshold = 1.5, iterations = 1200, seed = 3L
+    flow.sourcePoints(),
+    flow.targetPoints(),
+    threshold = 1.5,
+    iterations = 1200,
+    seed = 3L,
 )
 
 // How far is the recovered model from the one we planted, in pixels, on a probe grid?
@@ -383,8 +400,10 @@ showImgGrid(
     cellSide = 280,
 )
 val (mdx, mdy) = flow.medianDisplacement()
-println("${flow.tracked().size}/${seeds.size} tracked; median displacement " +
-    "(${"%.2f".format(mdx)}, ${"%.2f".format(mdy)}) px")
+println(
+    "${flow.tracked().size}/${seeds.size} tracked; median displacement " +
+        "(${"%.2f".format(mdx)}, ${"%.2f".format(mdy)}) px",
+)
 println("RANSAC ${fit.inlierCount} inliers of ${flow.tracked().size} after ${fit.iterations} iterations")
 println("recovered model agrees with the planted transform to ${"%.3f".format(worst)} px over the probe grid")
 println(fit.homography.toString())

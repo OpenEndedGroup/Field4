@@ -1,0 +1,8 @@
+{
+  "actualChromiumTable": true,
+  "successRemovesPageAndTerminatesProcess": true,
+  "missingRuntimeConstructorRemovesPage": true,
+  "actualInvalidSelectorRemovesPageAndTerminatesProcess": true,
+  "library": "Electron 44.5.1 from the primary installation, checkout-local producer",
+  "limits": "Local HTML only; no network or Vulkan. Constructor failure uses an actually missing project runtime. Diagnostic capture is a separate browser view and does not replace public media."
+}

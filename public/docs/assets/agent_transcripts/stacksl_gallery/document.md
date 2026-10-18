@@ -45,17 +45,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="uv-coordinates" role="properties"]
-{"id" "uv-coordinates" "index" 1 "name" "uv-coordinates" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "uv-coordinates" "_tombstone" false "frame" #afield/rect [400.0 170.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "uv-coordinates_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "uv-coordinates_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "uv-coordinates_stackSL_.stacksl" "lines" 1 "characters" 12 "sha256" "cf2b3eea89fb2e78fd9a151568c2c019789d75c0161e0e874ca6ecd9b34d7ff2"} {"name" "vertex" "language" "glsl" "path" "uv-coordinates_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "uv-coordinates" "index" 1 "name" "uv-coordinates" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "uv-coordinates" "_tombstone" false "frame" #afield/rect [400.0 170.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "uv-coordinates_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "uv-coordinates_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "uv-coordinates_stackSL_.stacksl" "lines" 1 "characters" 12 "sha256" "cf2b3eea89fb2e78fd9a151568c2c019789d75c0161e0e874ca6ecd9b34d7ff2"} {"name" "vertex" "language" "glsl" "path" "uv-coordinates_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="uv-coordinates" name="code" path="uv-coordinates_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -122,17 +124,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="tiled-grid" role="properties"]
-{"id" "tiled-grid" "index" 2 "name" "tiled-grid" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "tiled-grid" "_tombstone" false "frame" #afield/rect [1120.0 690.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tiled-grid_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "tiled-grid_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "tiled-grid_stackSL_.stacksl" "lines" 1 "characters" 31 "sha256" "19af1a5e67280731e90c88d1cb28db45eeb0af67d66ff8fba2dcc59701ec8639"} {"name" "vertex" "language" "glsl" "path" "tiled-grid_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "tiled-grid" "index" 2 "name" "tiled-grid" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "tiled-grid" "_tombstone" false "frame" #afield/rect [1120.0 690.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tiled-grid_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "tiled-grid_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "tiled-grid_stackSL_.stacksl" "lines" 1 "characters" 31 "sha256" "19af1a5e67280731e90c88d1cb28db45eeb0af67d66ff8fba2dcc59701ec8639"} {"name" "vertex" "language" "glsl" "path" "tiled-grid_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="tiled-grid" name="code" path="tiled-grid_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -199,17 +203,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="posterize-shaper" role="properties"]
-{"id" "posterize-shaper" "index" 3 "name" "posterize-shaper" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "posterize-shaper" "_tombstone" false "frame" #afield/rect [760.0 300.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "posterize-shaper_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "posterize-shaper_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "posterize-shaper_stackSL_.stacksl" "lines" 5 "characters" 54 "sha256" "03f3355169b1d27dcf1d7c3162975562a36e4dac3986bd0ba068e0e24ca311d2"} {"name" "vertex" "language" "glsl" "path" "posterize-shaper_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "posterize-shaper" "index" 3 "name" "posterize-shaper" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "posterize-shaper" "_tombstone" false "frame" #afield/rect [760.0 300.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "posterize-shaper_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "posterize-shaper_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "posterize-shaper_stackSL_.stacksl" "lines" 5 "characters" 54 "sha256" "03f3355169b1d27dcf1d7c3162975562a36e4dac3986bd0ba068e0e24ca311d2"} {"name" "vertex" "language" "glsl" "path" "posterize-shaper_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="posterize-shaper" name="code" path="posterize-shaper_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -280,17 +286,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="fbm-palette" role="properties"]
-{"id" "fbm-palette" "index" 4 "name" "fbm-palette" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "fbm-palette" "_tombstone" false "frame" #afield/rect [760.0 170.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fbm-palette_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "fbm-palette_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "fbm-palette_stackSL_.stacksl" "lines" 6 "characters" 44 "sha256" "858cb35927c5438a0577343d17a472076579a14c908ad36b5dbd1a63156a221e"} {"name" "vertex" "language" "glsl" "path" "fbm-palette_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "fbm-palette" "index" 4 "name" "fbm-palette" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "fbm-palette" "_tombstone" false "frame" #afield/rect [760.0 170.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fbm-palette_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "fbm-palette_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "fbm-palette_stackSL_.stacksl" "lines" 6 "characters" 44 "sha256" "858cb35927c5438a0577343d17a472076579a14c908ad36b5dbd1a63156a221e"} {"name" "vertex" "language" "glsl" "path" "fbm-palette_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="fbm-palette" name="code" path="fbm-palette_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -362,17 +370,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="tonemap-grade" role="properties"]
-{"id" "tonemap-grade" "index" 5 "name" "tonemap-grade" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "tonemap-grade" "_tombstone" false "frame" #afield/rect [400.0 1080.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tonemap-grade_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "tonemap-grade_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "tonemap-grade_stackSL_.stacksl" "lines" 1 "characters" 49 "sha256" "79a15396f3d9d28835dcd234e773f4974af25f937e96534a6e7f1e1f91cff517"} {"name" "vertex" "language" "glsl" "path" "tonemap-grade_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "tonemap-grade" "index" 5 "name" "tonemap-grade" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "tonemap-grade" "_tombstone" false "frame" #afield/rect [400.0 1080.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tonemap-grade_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "tonemap-grade_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "tonemap-grade_stackSL_.stacksl" "lines" 1 "characters" 49 "sha256" "79a15396f3d9d28835dcd234e773f4974af25f937e96534a6e7f1e1f91cff517"} {"name" "vertex" "language" "glsl" "path" "tonemap-grade_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="tonemap-grade" name="code" path="tonemap-grade_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -439,17 +449,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="sigmoid-punch" role="properties"]
-{"id" "sigmoid-punch" "index" 6 "name" "sigmoid-punch" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "sigmoid-punch" "_tombstone" false "frame" #afield/rect [760.0 820.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sigmoid-punch_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "sigmoid-punch_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "sigmoid-punch_stackSL_.stacksl" "lines" 1 "characters" 38 "sha256" "50dc6a6ce24cce7551eb372b7cdade151acf43a1febb9d9169e230aaf8f29b3c"} {"name" "vertex" "language" "glsl" "path" "sigmoid-punch_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "sigmoid-punch" "index" 6 "name" "sigmoid-punch" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "sigmoid-punch" "_tombstone" false "frame" #afield/rect [760.0 820.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sigmoid-punch_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "sigmoid-punch_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "sigmoid-punch_stackSL_.stacksl" "lines" 1 "characters" 38 "sha256" "50dc6a6ce24cce7551eb372b7cdade151acf43a1febb9d9169e230aaf8f29b3c"} {"name" "vertex" "language" "glsl" "path" "sigmoid-punch_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="sigmoid-punch" name="code" path="sigmoid-punch_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -516,17 +528,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="soft-ring" role="properties"]
-{"id" "soft-ring" "index" 7 "name" "soft-ring" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "soft-ring" "_tombstone" false "frame" #afield/rect [1120.0 170.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "soft-ring_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "soft-ring_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "soft-ring_stackSL_.stacksl" "lines" 1 "characters" 32 "sha256" "5c243cb73f6bc721674e28e9bbbc62e230d2a036e7cb8298516375f0a7914305"} {"name" "vertex" "language" "glsl" "path" "soft-ring_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "soft-ring" "index" 7 "name" "soft-ring" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "soft-ring" "_tombstone" false "frame" #afield/rect [1120.0 170.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "soft-ring_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "soft-ring_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "soft-ring_stackSL_.stacksl" "lines" 1 "characters" 32 "sha256" "5c243cb73f6bc721674e28e9bbbc62e230d2a036e7cb8298516375f0a7914305"} {"name" "vertex" "language" "glsl" "path" "soft-ring_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="soft-ring" name="code" path="soft-ring_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -593,17 +607,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="polar-sigmoid" role="properties"]
-{"id" "polar-sigmoid" "index" 8 "name" "polar-sigmoid" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "polar-sigmoid" "_tombstone" false "frame" #afield/rect [400.0 300.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polar-sigmoid_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "polar-sigmoid_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "polar-sigmoid_stackSL_.stacksl" "lines" 6 "characters" 49 "sha256" "881cd83550cfe22b9f0323889856f1215cfe0532f48e1bcafbde5442fecacc2f"} {"name" "vertex" "language" "glsl" "path" "polar-sigmoid_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "polar-sigmoid" "index" 8 "name" "polar-sigmoid" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "polar-sigmoid" "_tombstone" false "frame" #afield/rect [400.0 300.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polar-sigmoid_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "polar-sigmoid_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "polar-sigmoid_stackSL_.stacksl" "lines" 6 "characters" 49 "sha256" "881cd83550cfe22b9f0323889856f1215cfe0532f48e1bcafbde5442fecacc2f"} {"name" "vertex" "language" "glsl" "path" "polar-sigmoid_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="polar-sigmoid" name="code" path="polar-sigmoid_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -675,17 +691,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="radial-waves" role="properties"]
-{"id" "radial-waves" "index" 9 "name" "radial-waves" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "radial-waves" "_tombstone" false "frame" #afield/rect [400.0 690.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "radial-waves_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "radial-waves_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "radial-waves_stackSL_.stacksl" "lines" 1 "characters" 25 "sha256" "e085d4d22327d213016a801fbfe78ebe7148d3f1290c6cfe511a36647751fbe8"} {"name" "vertex" "language" "glsl" "path" "radial-waves_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "radial-waves" "index" 9 "name" "radial-waves" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "radial-waves" "_tombstone" false "frame" #afield/rect [400.0 690.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "radial-waves_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "radial-waves_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "radial-waves_stackSL_.stacksl" "lines" 1 "characters" 25 "sha256" "e085d4d22327d213016a801fbfe78ebe7148d3f1290c6cfe511a36647751fbe8"} {"name" "vertex" "language" "glsl" "path" "radial-waves_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="radial-waves" name="code" path="radial-waves_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -752,17 +770,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="local-marks" role="properties"]
-{"id" "local-marks" "index" 10 "name" "local-marks" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "local-marks" "_tombstone" false "frame" #afield/rect [760.0 1080.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "local-marks_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "local-marks_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "local-marks_stackSL_.stacksl" "lines" 5 "characters" 54 "sha256" "09a23e4188179827a7b0d6f3f914e65a902b173007f277911656f1b1a77f3bf1"} {"name" "vertex" "language" "glsl" "path" "local-marks_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "local-marks" "index" 10 "name" "local-marks" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "local-marks" "_tombstone" false "frame" #afield/rect [760.0 1080.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "local-marks_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "local-marks_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "local-marks_stackSL_.stacksl" "lines" 5 "characters" 54 "sha256" "09a23e4188179827a7b0d6f3f914e65a902b173007f277911656f1b1a77f3bf1"} {"name" "vertex" "language" "glsl" "path" "local-marks_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="local-marks" name="code" path="local-marks_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -833,17 +853,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="mirror-tiles" role="properties"]
-{"id" "mirror-tiles" "index" 11 "name" "mirror-tiles" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "mirror-tiles" "_tombstone" false "frame" #afield/rect [760.0 690.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mirror-tiles_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "mirror-tiles_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "mirror-tiles_stackSL_.stacksl" "lines" 1 "characters" 35 "sha256" "424cfbb402d0a5f4822acb224d161c9e5b1858d92ce9c995cb40439fd6e10ea2"} {"name" "vertex" "language" "glsl" "path" "mirror-tiles_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "mirror-tiles" "index" 11 "name" "mirror-tiles" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "mirror-tiles" "_tombstone" false "frame" #afield/rect [760.0 690.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mirror-tiles_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "mirror-tiles_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "mirror-tiles_stackSL_.stacksl" "lines" 1 "characters" 35 "sha256" "424cfbb402d0a5f4822acb224d161c9e5b1858d92ce9c995cb40439fd6e10ea2"} {"name" "vertex" "language" "glsl" "path" "mirror-tiles_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="mirror-tiles" name="code" path="mirror-tiles_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -910,17 +932,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="auto-before" role="properties"]
-{"id" "auto-before" "index" 12 "name" "auto-before" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "auto-before" "_tombstone" false "frame" #afield/rect [400.0 560.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "auto-before_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "auto-before_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "auto-before_stackSL_.stacksl" "lines" 1 "characters" 30 "sha256" "d8979753d374066ff1673a35f73797ad374f363bf3c5f2b798aa8de866a11198"} {"name" "vertex" "language" "glsl" "path" "auto-before_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "auto-before" "index" 12 "name" "auto-before" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "auto-before" "_tombstone" false "frame" #afield/rect [400.0 560.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "auto-before_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "auto-before_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "auto-before_stackSL_.stacksl" "lines" 1 "characters" 30 "sha256" "d8979753d374066ff1673a35f73797ad374f363bf3c5f2b798aa8de866a11198"} {"name" "vertex" "language" "glsl" "path" "auto-before_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="auto-before" name="code" path="auto-before_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -991,21 +1015,21 @@ other, and swaps them every frame; `blitToScreen` puts the newest in the window.
 [[property stackSL]]
 
 ```edn [field-box id="diffusion-feedback" role="properties"]
-{"id" "diffusion-feedback" "index" 13 "name" "diffusion-feedback" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "diffusion-feedback" "_tombstone" false "frame" #afield/rect [1120.0 1080.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion-feedback_code_.kt" "lines" 39 "characters" 1770 "sha256" "6ae37b30e2ace587b5d86479b8cec8df13b7ddfa5b960389f676fe0123a3f3a8"} {"name" "fragment" "language" "glsl" "path" "diffusion-feedback_fragment_.glsl" "lines" 23 "characters" 696 "sha256" "b3bd19fe34573fcd02d2e805818e25da08311388465d75194e06acd6d7fe923c"} {"name" "stackSL" "language" "stacksl" "path" "diffusion-feedback_stackSL_.stacksl" "lines" 5 "characters" 71 "sha256" "e18e980bfc936cea82a4cb965734f8ef26df1c511987a5b6cb8ff21e6c5de88b"} {"name" "vertex" "language" "glsl" "path" "diffusion-feedback_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "diffusion-feedback" "index" 13 "name" "diffusion-feedback" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "diffusion-feedback" "_tombstone" false "frame" #afield/rect [1120.0 1080.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion-feedback_code_.kt" "lines" 39 "characters" 1688 "sha256" "c7354c5f3fabd93e50beb794c26bfea621c8cc4351cef77c798e580b3ec43d8c"} {"name" "fragment" "language" "glsl" "path" "diffusion-feedback_fragment_.glsl" "lines" 25 "characters" 700 "sha256" "e43cfb61fe9d5bf8b931da43c8bb979760cb015dbeffb18949bf59d5141ccaed"} {"name" "stackSL" "language" "stacksl" "path" "diffusion-feedback_stackSL_.stacksl" "lines" 5 "characters" 71 "sha256" "e18e980bfc936cea82a4cb965734f8ef26df1c511987a5b6cb8ff21e6c5de88b"} {"name" "vertex" "language" "glsl" "path" "diffusion-feedback_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="diffusion-feedback" name="code" path="diffusion-feedback_code_.kt"]
-// A feedback StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot, and the program in this box's `stackSL` property samples `source`: the
-// frame this box drew last time, so the picture feeds back into itself.
-//
-// A window cannot be read back like that, so this box draws into a ping-pong
-// target instead. It holds two images, draws into one while `source` reads the
-// other, and swaps them every frame; `blitToScreen` puts the newest in the window.
-//
-// [[property stackSL]]
+/*
+A feedback StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot, and the program in this box's `stackSL` property samples `source`: the
+frame this box drew last time, so the picture feeds back into itself.
 
-import afield.graphics.vulkan.targets.PingPongRenderToTexture
+A window cannot be read back like that, so this box draws into a ping-pong
+target instead. It holds two images, draws into one while `source` reads the
+other, and swaps them every frame; `blitToScreen` puts the newest in the window.
+
+[[property stackSL]]
+*/
 
 prop<afield.graphics.vulkan.targets.PingPongRenderToTexture>(target)
 prop<afield.graphics.texture.HasImageView>(source)
@@ -1043,7 +1067,9 @@ layout(location = 0) out vec4 outColor;
 
 // Feedback: `source` is the previous frame (bound by a ping-pong host).
 layout(set = 0, binding = 0) uniform sampler2D source;
-layout(push_constant) uniform Push { vec4 params; } pc;
+layout(push_constant) uniform Push {
+    vec4 params;
+} pc;
 
 float gallery_hash12(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -1097,17 +1123,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="value-noise" role="properties"]
-{"id" "value-noise" "index" 14 "name" "value-noise" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "value-noise" "_tombstone" false "frame" #afield/rect [400.0 950.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "value-noise_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "value-noise_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "value-noise_stackSL_.stacksl" "lines" 1 "characters" 30 "sha256" "d858bed53064799e49aed60aa23a00b955528fe877893bb37d6fb1619acdba66"} {"name" "vertex" "language" "glsl" "path" "value-noise_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "value-noise" "index" 14 "name" "value-noise" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "value-noise" "_tombstone" false "frame" #afield/rect [400.0 950.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "value-noise_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "value-noise_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "value-noise_stackSL_.stacksl" "lines" 1 "characters" 30 "sha256" "d858bed53064799e49aed60aa23a00b955528fe877893bb37d6fb1619acdba66"} {"name" "vertex" "language" "glsl" "path" "value-noise_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="value-noise" name="code" path="value-noise_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1174,17 +1202,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="word-reference" role="properties"]
-{"id" "word-reference" "index" 15 "name" "word-reference" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "word-reference" "_tombstone" false "frame" #afield/rect [1120.0 950.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "word-reference_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "word-reference_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "word-reference_stackSL_.stacksl" "lines" 2 "characters" 66 "sha256" "3ade34dc358cde038a9a2121aa773dc6cd4cdb47426e1587e9ad954ce9d9022a"} {"name" "vertex" "language" "glsl" "path" "word-reference_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "word-reference" "index" 15 "name" "word-reference" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "word-reference" "_tombstone" false "frame" #afield/rect [1120.0 950.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "word-reference_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "word-reference_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "word-reference_stackSL_.stacksl" "lines" 2 "characters" 66 "sha256" "3ade34dc358cde038a9a2121aa773dc6cd4cdb47426e1587e9ad954ce9d9022a"} {"name" "vertex" "language" "glsl" "path" "word-reference_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="word-reference" name="code" path="word-reference_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1252,17 +1282,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="kaleido-twist" role="properties"]
-{"id" "kaleido-twist" "index" 16 "name" "kaleido-twist" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "kaleido-twist" "_tombstone" false "frame" #afield/rect [1480.0 170.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kaleido-twist_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "kaleido-twist_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "kaleido-twist_stackSL_.stacksl" "lines" 6 "characters" 49 "sha256" "4fe4765d0dd94c86660342d18c7e5e959ca54324125ed6440fd940f22cc53051"} {"name" "vertex" "language" "glsl" "path" "kaleido-twist_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "kaleido-twist" "index" 16 "name" "kaleido-twist" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "kaleido-twist" "_tombstone" false "frame" #afield/rect [1480.0 170.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kaleido-twist_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "kaleido-twist_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "kaleido-twist_stackSL_.stacksl" "lines" 6 "characters" 49 "sha256" "4fe4765d0dd94c86660342d18c7e5e959ca54324125ed6440fd940f22cc53051"} {"name" "vertex" "language" "glsl" "path" "kaleido-twist_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="kaleido-twist" name="code" path="kaleido-twist_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1334,17 +1366,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="oklab-shift" role="properties"]
-{"id" "oklab-shift" "index" 17 "name" "oklab-shift" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "oklab-shift" "_tombstone" false "frame" #afield/rect [760.0 430.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oklab-shift_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "oklab-shift_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "oklab-shift_stackSL_.stacksl" "lines" 6 "characters" 81 "sha256" "d626c44b66c7cbd2ff1d97e1bdb1061e924c6ec63b4f8b65fcbdcd37ed21c6f2"} {"name" "vertex" "language" "glsl" "path" "oklab-shift_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "oklab-shift" "index" 17 "name" "oklab-shift" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "oklab-shift" "_tombstone" false "frame" #afield/rect [760.0 430.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oklab-shift_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "oklab-shift_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "oklab-shift_stackSL_.stacksl" "lines" 6 "characters" 81 "sha256" "d626c44b66c7cbd2ff1d97e1bdb1061e924c6ec63b4f8b65fcbdcd37ed21c6f2"} {"name" "vertex" "language" "glsl" "path" "oklab-shift_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="oklab-shift" name="code" path="oklab-shift_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1416,17 +1450,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="custom-palette" role="properties"]
-{"id" "custom-palette" "index" 18 "name" "custom-palette" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "custom-palette" "_tombstone" false "frame" #afield/rect [400.0 820.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "custom-palette_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "custom-palette_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "custom-palette_stackSL_.stacksl" "lines" 6 "characters" 97 "sha256" "05b8a3becbd5f5d3a8b019db9562addcb27e4678a32e077476d794db8bb7e286"} {"name" "vertex" "language" "glsl" "path" "custom-palette_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "custom-palette" "index" 18 "name" "custom-palette" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "custom-palette" "_tombstone" false "frame" #afield/rect [400.0 820.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "custom-palette_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "custom-palette_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "custom-palette_stackSL_.stacksl" "lines" 6 "characters" 97 "sha256" "05b8a3becbd5f5d3a8b019db9562addcb27e4678a32e077476d794db8bb7e286"} {"name" "vertex" "language" "glsl" "path" "custom-palette_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="custom-palette" name="code" path="custom-palette_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1498,17 +1534,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="grade-fields" role="properties"]
-{"id" "grade-fields" "index" 19 "name" "grade-fields" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "grade-fields" "_tombstone" false "frame" #afield/rect [1480.0 430.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "grade-fields_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "grade-fields_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "grade-fields_stackSL_.stacksl" "lines" 6 "characters" 109 "sha256" "b5171b6fc7192589d10a4c5a9b0b84a325600e16501e126c29077327b88182c2"} {"name" "vertex" "language" "glsl" "path" "grade-fields_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "grade-fields" "index" 19 "name" "grade-fields" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "grade-fields" "_tombstone" false "frame" #afield/rect [1480.0 430.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "grade-fields_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "grade-fields_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "grade-fields_stackSL_.stacksl" "lines" 6 "characters" 109 "sha256" "b5171b6fc7192589d10a4c5a9b0b84a325600e16501e126c29077327b88182c2"} {"name" "vertex" "language" "glsl" "path" "grade-fields_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="grade-fields" name="code" path="grade-fields_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1580,17 +1618,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="definitions" role="properties"]
-{"id" "definitions" "index" 20 "name" "definitions" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "definitions" "_tombstone" false "frame" #afield/rect [1480.0 300.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "definitions_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "definitions_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "definitions_stackSL_.stacksl" "lines" 11 "characters" 98 "sha256" "38791744841ffeac30cefae6ab289780f8269a2136d7920fb5e00a0a7326a8ce"} {"name" "vertex" "language" "glsl" "path" "definitions_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "definitions" "index" 20 "name" "definitions" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "definitions" "_tombstone" false "frame" #afield/rect [1480.0 300.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "definitions_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "definitions_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "definitions_stackSL_.stacksl" "lines" 11 "characters" 98 "sha256" "38791744841ffeac30cefae6ab289780f8269a2136d7920fb5e00a0a7326a8ce"} {"name" "vertex" "language" "glsl" "path" "definitions_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="definitions" name="code" path="definitions_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1667,17 +1707,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="sample-hold" role="properties"]
-{"id" "sample-hold" "index" 21 "name" "sample-hold" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "sample-hold" "_tombstone" false "frame" #afield/rect [760.0 950.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sample-hold_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "sample-hold_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "sample-hold_stackSL_.stacksl" "lines" 1 "characters" 30 "sha256" "2acebe5a9e46259d333e2fc612c2dce03d6db607d3416307d8869335171ba695"} {"name" "vertex" "language" "glsl" "path" "sample-hold_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "sample-hold" "index" 21 "name" "sample-hold" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "sample-hold" "_tombstone" false "frame" #afield/rect [760.0 950.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sample-hold_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "sample-hold_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "sample-hold_stackSL_.stacksl" "lines" 1 "characters" 30 "sha256" "2acebe5a9e46259d333e2fc612c2dce03d6db607d3416307d8869335171ba695"} {"name" "vertex" "language" "glsl" "path" "sample-hold_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="sample-hold" name="code" path="sample-hold_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1744,17 +1786,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="ryb-paint" role="properties"]
-{"id" "ryb-paint" "index" 22 "name" "ryb-paint" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "ryb-paint" "_tombstone" false "frame" #afield/rect [1120.0 430.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ryb-paint_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "ryb-paint_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "ryb-paint_stackSL_.stacksl" "lines" 1 "characters" 22 "sha256" "53fcdd224ca56855b1bf0896a69e018de6e74ea7df023b6e1c1944fe4ce1e734"} {"name" "vertex" "language" "glsl" "path" "ryb-paint_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "ryb-paint" "index" 22 "name" "ryb-paint" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "ryb-paint" "_tombstone" false "frame" #afield/rect [1120.0 430.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ryb-paint_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "ryb-paint_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "ryb-paint_stackSL_.stacksl" "lines" 1 "characters" 22 "sha256" "53fcdd224ca56855b1bf0896a69e018de6e74ea7df023b6e1c1944fe4ce1e734"} {"name" "vertex" "language" "glsl" "path" "ryb-paint_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="ryb-paint" name="code" path="ryb-paint_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1821,17 +1865,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="subroutine-ridges" role="properties"]
-{"id" "subroutine-ridges" "index" 23 "name" "subroutine-ridges" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "subroutine-ridges" "_tombstone" false "frame" #afield/rect [400.0 430.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "subroutine-ridges_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "subroutine-ridges_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "subroutine-ridges_stackSL_.stacksl" "lines" 8 "characters" 92 "sha256" "62917c21b71486926b7f33fea2db6758f0997315dc64e98e24a6a15f141a9457"} {"name" "vertex" "language" "glsl" "path" "subroutine-ridges_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "subroutine-ridges" "index" 23 "name" "subroutine-ridges" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "subroutine-ridges" "_tombstone" false "frame" #afield/rect [400.0 430.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "subroutine-ridges_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "subroutine-ridges_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "subroutine-ridges_stackSL_.stacksl" "lines" 8 "characters" 92 "sha256" "62917c21b71486926b7f33fea2db6758f0997315dc64e98e24a6a15f141a9457"} {"name" "vertex" "language" "glsl" "path" "subroutine-ridges_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="subroutine-ridges" name="code" path="subroutine-ridges_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1909,21 +1955,21 @@ other, and swaps them every frame; `blitToScreen` puts the newest in the window.
 [[property stackSL]]
 
 ```edn [field-box id="feedback-trails" role="properties"]
-{"id" "feedback-trails" "index" 24 "name" "feedback-trails" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "feedback-trails" "_tombstone" false "frame" #afield/rect [1120.0 560.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "feedback-trails_code_.kt" "lines" 39 "characters" 1772 "sha256" "3c18f08e03b1170ad62685ff3e2f57511e8d66e2d81a400d57f83908ed73c7b3"} {"name" "fragment" "language" "glsl" "path" "feedback-trails_fragment_.glsl" "lines" 23 "characters" 696 "sha256" "b3bd19fe34573fcd02d2e805818e25da08311388465d75194e06acd6d7fe923c"} {"name" "stackSL" "language" "stacksl" "path" "feedback-trails_stackSL_.stacksl" "lines" 5 "characters" 95 "sha256" "fc9d5528c51ed054d52c4b83e6c1c459e479f2c27d310105dea5c25bc3eba6e4"} {"name" "vertex" "language" "glsl" "path" "feedback-trails_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "feedback-trails" "index" 24 "name" "feedback-trails" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "feedback-trails" "_tombstone" false "frame" #afield/rect [1120.0 560.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "feedback-trails_code_.kt" "lines" 39 "characters" 1690 "sha256" "cb245b3c782e89a76caaf96c51a21888e0dc70dc47922372abd3fdcf626678ae"} {"name" "fragment" "language" "glsl" "path" "feedback-trails_fragment_.glsl" "lines" 25 "characters" 700 "sha256" "e43cfb61fe9d5bf8b931da43c8bb979760cb015dbeffb18949bf59d5141ccaed"} {"name" "stackSL" "language" "stacksl" "path" "feedback-trails_stackSL_.stacksl" "lines" 5 "characters" 95 "sha256" "fc9d5528c51ed054d52c4b83e6c1c459e479f2c27d310105dea5c25bc3eba6e4"} {"name" "vertex" "language" "glsl" "path" "feedback-trails_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="feedback-trails" name="code" path="feedback-trails_code_.kt"]
-// A feedback StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot, and the program in this box's `stackSL` property samples `source`: the
-// frame this box drew last time, so the picture feeds back into itself.
-//
-// A window cannot be read back like that, so this box draws into a ping-pong
-// target instead. It holds two images, draws into one while `source` reads the
-// other, and swaps them every frame; `blitToScreen` puts the newest in the window.
-//
-// [[property stackSL]]
+/*
+A feedback StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot, and the program in this box's `stackSL` property samples `source`: the
+frame this box drew last time, so the picture feeds back into itself.
 
-import afield.graphics.vulkan.targets.PingPongRenderToTexture
+A window cannot be read back like that, so this box draws into a ping-pong
+target instead. It holds two images, draws into one while `source` reads the
+other, and swaps them every frame; `blitToScreen` puts the newest in the window.
+
+[[property stackSL]]
+*/
 
 prop<afield.graphics.vulkan.targets.PingPongRenderToTexture>(target)
 prop<afield.graphics.texture.HasImageView>(source)
@@ -1961,7 +2007,9 @@ layout(location = 0) out vec4 outColor;
 
 // Feedback: `source` is the previous frame (bound by a ping-pong host).
 layout(set = 0, binding = 0) uniform sampler2D source;
-layout(push_constant) uniform Push { vec4 params; } pc;
+layout(push_constant) uniform Push {
+    vec4 params;
+} pc;
 
 float gallery_hash12(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -2015,17 +2063,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="fm-palette" role="properties"]
-{"id" "fm-palette" "index" 25 "name" "fm-palette" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "fm-palette" "_tombstone" false "frame" #afield/rect [1120.0 300.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fm-palette_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "fm-palette_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "fm-palette_stackSL_.stacksl" "lines" 3 "characters" 28 "sha256" "f81e245d6855034cbaf9c14a14de55904d6cf53b19cb4da7ad1fc4eca4d432f4"} {"name" "vertex" "language" "glsl" "path" "fm-palette_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "fm-palette" "index" 25 "name" "fm-palette" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "fm-palette" "_tombstone" false "frame" #afield/rect [1120.0 300.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fm-palette_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "fm-palette_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "fm-palette_stackSL_.stacksl" "lines" 3 "characters" 28 "sha256" "f81e245d6855034cbaf9c14a14de55904d6cf53b19cb4da7ad1fc4eca4d432f4"} {"name" "vertex" "language" "glsl" "path" "fm-palette_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="fm-palette" name="code" path="fm-palette_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -2094,17 +2144,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="spiral-flow" role="properties"]
-{"id" "spiral-flow" "index" 26 "name" "spiral-flow" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "spiral-flow" "_tombstone" false "frame" #afield/rect [1480.0 820.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spiral-flow_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "spiral-flow_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "spiral-flow_stackSL_.stacksl" "lines" 1 "characters" 32 "sha256" "23b46ead7dae42fc8109772addcf298feca8c6fadf84aaa2de896eedfefd2e23"} {"name" "vertex" "language" "glsl" "path" "spiral-flow_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "spiral-flow" "index" 26 "name" "spiral-flow" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "spiral-flow" "_tombstone" false "frame" #afield/rect [1480.0 820.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spiral-flow_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "spiral-flow_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "spiral-flow_stackSL_.stacksl" "lines" 1 "characters" 32 "sha256" "23b46ead7dae42fc8109772addcf298feca8c6fadf84aaa2de896eedfefd2e23"} {"name" "vertex" "language" "glsl" "path" "spiral-flow_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="spiral-flow" name="code" path="spiral-flow_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -2171,17 +2223,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="hard-threshold" role="properties"]
-{"id" "hard-threshold" "index" 27 "name" "hard-threshold" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "hard-threshold" "_tombstone" false "frame" #afield/rect [1480.0 690.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "hard-threshold_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "hard-threshold_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "hard-threshold_stackSL_.stacksl" "lines" 1 "characters" 44 "sha256" "e226f8eb632e78fb113cfa696e48fa604793106f0da210122af62ff7c05e0b5e"} {"name" "vertex" "language" "glsl" "path" "hard-threshold_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "hard-threshold" "index" 27 "name" "hard-threshold" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "hard-threshold" "_tombstone" false "frame" #afield/rect [1480.0 690.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "hard-threshold_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "hard-threshold_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "hard-threshold_stackSL_.stacksl" "lines" 1 "characters" 44 "sha256" "e226f8eb632e78fb113cfa696e48fa604793106f0da210122af62ff7c05e0b5e"} {"name" "vertex" "language" "glsl" "path" "hard-threshold_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="hard-threshold" name="code" path="hard-threshold_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -2248,17 +2302,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="stripe-bands" role="properties"]
-{"id" "stripe-bands" "index" 28 "name" "stripe-bands" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "stripe-bands" "_tombstone" false "frame" #afield/rect [1480.0 950.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stripe-bands_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "stripe-bands_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "stripe-bands_stackSL_.stacksl" "lines" 1 "characters" 43 "sha256" "b4d5a47bc490b4bddc01cc9b9112612b90e828ea855a7eea0174cb9e18c64a9c"} {"name" "vertex" "language" "glsl" "path" "stripe-bands_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "stripe-bands" "index" 28 "name" "stripe-bands" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "stripe-bands" "_tombstone" false "frame" #afield/rect [1480.0 950.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stripe-bands_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "stripe-bands_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "stripe-bands_stackSL_.stacksl" "lines" 1 "characters" 43 "sha256" "b4d5a47bc490b4bddc01cc9b9112612b90e828ea855a7eea0174cb9e18c64a9c"} {"name" "vertex" "language" "glsl" "path" "stripe-bands_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="stripe-bands" name="code" path="stripe-bands_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -2325,17 +2381,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="auto-after" role="properties"]
-{"id" "auto-after" "index" 29 "name" "auto-after" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "auto-after" "_tombstone" false "frame" #afield/rect [760.0 560.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "auto-after_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "auto-after_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "auto-after_stackSL_.stacksl" "lines" 1 "characters" 33 "sha256" "aefa374559280126449873b6a04cb88cceca900de94bfbf411c87ab2b8737312"} {"name" "vertex" "language" "glsl" "path" "auto-after_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "auto-after" "index" 29 "name" "auto-after" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "auto-after" "_tombstone" false "frame" #afield/rect [760.0 560.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "auto-after_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "auto-after_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "auto-after_stackSL_.stacksl" "lines" 1 "characters" 33 "sha256" "aefa374559280126449873b6a04cb88cceca900de94bfbf411c87ab2b8737312"} {"name" "vertex" "language" "glsl" "path" "auto-after_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="auto-after" name="code" path="auto-after_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -2402,17 +2460,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="phasor-noise" role="properties"]
-{"id" "phasor-noise" "index" 30 "name" "phasor-noise" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "phasor-noise" "_tombstone" false "frame" #afield/rect [1480.0 560.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "phasor-noise_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "phasor-noise_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "phasor-noise_stackSL_.stacksl" "lines" 1 "characters" 32 "sha256" "89f660beff66db64cd9e977de3c1ad0d54cdc3292db83e6c9bd1683fbbde0e60"} {"name" "vertex" "language" "glsl" "path" "phasor-noise_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "phasor-noise" "index" 30 "name" "phasor-noise" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "phasor-noise" "_tombstone" false "frame" #afield/rect [1480.0 560.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "phasor-noise_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "phasor-noise_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "phasor-noise_stackSL_.stacksl" "lines" 1 "characters" 32 "sha256" "89f660beff66db64cd9e977de3c1ad0d54cdc3292db83e6c9bd1683fbbde0e60"} {"name" "vertex" "language" "glsl" "path" "phasor-noise_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="phasor-noise" name="code" path="phasor-noise_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -2479,17 +2539,19 @@ shader re-binds in place.
 [[property stackSL]]
 
 ```edn [field-box id="twist-swirl" role="properties"]
-{"id" "twist-swirl" "index" 31 "name" "twist-swirl" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "twist-swirl" "_tombstone" false "frame" #afield/rect [1120.0 820.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "twist-swirl_code_.kt" "lines" 18 "characters" 772 "sha256" "d6fbc2aa9eb5a571f36c6f9721ff1aaf978b56295cec491f4adbf29a9f2e759e"} {"name" "fragment" "language" "glsl" "path" "twist-swirl_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "twist-swirl_stackSL_.stacksl" "lines" 1 "characters" 33 "sha256" "029af66f3e51ce8f489f59ce6e90d0dd08ff8d025976dfc3dd3de63fce253f94"} {"name" "vertex" "language" "glsl" "path" "twist-swirl_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "twist-swirl" "index" 31 "name" "twist-swirl" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "twist-swirl" "_tombstone" false "frame" #afield/rect [1120.0 820.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "twist-swirl_code_.kt" "lines" 20 "characters" 763 "sha256" "e1764712e1244c6c3d52da01d7efbc62cf329d050637f59655a85784b0d8692f"} {"name" "fragment" "language" "glsl" "path" "twist-swirl_fragment_.glsl" "lines" 19 "characters" 506 "sha256" "7a6b03f7f6d7537a3a20920b336c7c9271bb9616f9c6f1a8c0056a733b57a138"} {"name" "stackSL" "language" "stacksl" "path" "twist-swirl_stackSL_.stacksl" "lines" 1 "characters" 33 "sha256" "029af66f3e51ce8f489f59ce6e90d0dd08ff8d025976dfc3dd3de63fce253f94"} {"name" "vertex" "language" "glsl" "path" "twist-swirl_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="twist-swirl" name="code" path="twist-swirl_code_.kt"]
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle

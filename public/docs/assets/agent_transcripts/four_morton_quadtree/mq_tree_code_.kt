@@ -7,12 +7,13 @@ import org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT
 
 prop<afield.graphics.scene.fabricated.FabricateBuiltChain>(tree)
 
-val grid = 16      // 16x16 = 256 points, one per texel of the point texture
-val depth = 4      // 16x16 leaf cells, so 8 bits of Morton code
+val grid = 16 // 16x16 = 256 points, one per texel of the point texture
+val depth = 4 // 16x16 leaf cells, so 8 bits of Morton code
 
 // The point set: three orbiting clusters, two of them stretched and leaning. One point
 // per texel, as (x, y, weight, value) — the layout `mortonPointQuadtree` reads.
-val pointsFragment = """
+val pointsFragment =
+    """
     #version 450
     layout(location = 0) in vec2 vUv;
     layout(push_constant) uniform PointPush {
@@ -48,10 +49,13 @@ val pointsFragment = """
     }
 """
 
-// A picture of the points to draw the tree over. Every texel gathers every point, which
-// is a scatter turned inside out — the only way a fragment shader draws a point set, and
-// the same reason the sort below is a gather.
-val splatFragment = """
+/*
+A picture of the points to draw the tree over. Every texel gathers every point, which
+is a scatter turned inside out — the only way a fragment shader draws a point set, and
+the same reason the sort below is a gather.
+*/
+val splatFragment =
+    """
     #version 450
     layout(location = 0) in vec2 vUv;
     layout(set = 0, binding = 0) uniform sampler2D sourceTex;
@@ -88,52 +92,62 @@ tree = bundle.addPassChain(
             name = "points",
             fragment = pointsFragment,
             size = FabricatePassSize.Absolute(grid, grid),
-            // fp32 throughout: a Morton code and a point index are exact integers rather
-            // than quantities, and a code that rounds is a point that changes cell at
-            // the *top* of the tree.
+            /*
+            fp32 throughout: a Morton code and a point index are exact integers rather
+            than quantities, and a code that rounds is a point that changes cell at
+            the *top* of the tree.
+            */
             format = VK_FORMAT_R32G32B32A32_SFLOAT,
             source = FabricatePassChain.CHAIN_INPUT,
-            push = mapOf("time" to 0f)
+            push = mapOf("time" to 0f),
         ),
         FabricatePassSpec(
             name = "view",
             fragment = splatFragment,
             size = FabricatePassSize.Absolute(512, 512),
             format = VK_FORMAT_R32G32B32A32_SFLOAT,
-            source = "points"
-        )
-    ) + FabricatePassLibrary.mortonPointQuadtree(
-        prefix = "quadtree",
-        points = "points",
-        pointGrid = grid,
-        depth = depth,
-        // A quarter of the points can land in one leaf cell, whose density against a
-        // uniform spread is then about 64. Correct, and four hundred times what an 8-bit
-        // preview of that plane could show; this only affects looking at it.
-        densityScale = 1f / 64f
-    ) + FabricatePassLibrary.adaptiveSummaryCells(
-        // The descent: from depth 1 down, stopping where a node already describes its
-        // points well enough. SPREAD refines where the mass is *narrower than the cell
-        // holding it* — which needs the second moments, and is therefore a criterion an
-        // occupancy quadtree cannot express at all. Empty space stops at depth 1; a tight
-        // cluster is chased to the leaves.
-        prefix = "quadtree",
-        name = "cut",
-        over = "view",
-        coarsest = 1,
-        finest = depth,
-        criterion = FabricatePassLibrary.SubdivisionCriterion.SPREAD,
-        threshold = 0.2f,
-        weightGain = 40f
-    ),
-    printReport = true
+            source = "points",
+        ),
+    ) +
+        FabricatePassLibrary.mortonPointQuadtree(
+            prefix = "quadtree",
+            points = "points",
+            pointGrid = grid,
+            depth = depth,
+            /*
+            A quarter of the points can land in one leaf cell, whose density against a
+            uniform spread is then about 64. Correct, and four hundred times what an 8-bit
+            preview of that plane could show; this only affects looking at it.
+            */
+            densityScale = 1f / 64f,
+        ) +
+        FabricatePassLibrary.adaptiveSummaryCells(
+            /*
+            The descent: from depth 1 down, stopping where a node already describes its
+            points well enough. SPREAD refines where the mass is *narrower than the cell
+            holding it* — which needs the second moments, and is therefore a criterion an
+            occupancy quadtree cannot express at all. Empty space stops at depth 1; a tight
+            cluster is chased to the leaves.
+            */
+            prefix = "quadtree",
+            name = "cut",
+            over = "view",
+            coarsest = 1,
+            finest = depth,
+            criterion = FabricatePassLibrary.SubdivisionCriterion.SPREAD,
+            threshold = 0.2f,
+            weightGain = 40f,
+        ),
+    printReport = true,
 )
 bundle.attachTo(renderer)
 bundle.present(renderer = renderer)
 
-// ── live knobs. One bound lambda moves the points, and everything downstream — codes,
-//    ranks, the sorted array, every node's range and every level of the summary — is
-//    recomputed from them on each frame.
+/*
+── live knobs. One bound lambda moves the points, and everything downstream — codes,
+   ranks, the sorted array, every node's range and every level of the summary — is
+   recomputed from them on each frame.
+*/
 tree["time"] = { renderer.frameCounter * 0.01f }
 tree["sigma"] = 1.2f
 tree["weightGain"] = 40f
@@ -142,5 +156,7 @@ tree["underGain"] = 0.5f
 // next frame, with nothing rebuilt and nothing reallocated.
 tree["threshold"] = 0.2f
 
-println("morton quadtree: ${tree.names().size} passes over ${grid * grid} points, " +
-        "leaf level ${tree.targetOf("quadtree-range-$depth")?.width}² nodes")
+println(
+    "morton quadtree: ${tree.names().size} passes over ${grid * grid} points, " +
+        "leaf level ${tree.targetOf("quadtree-range-$depth")?.width}² nodes",
+)

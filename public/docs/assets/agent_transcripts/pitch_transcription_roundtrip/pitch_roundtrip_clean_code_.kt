@@ -1,5 +1,3 @@
-import afield.audio.synth.*
-
 // The notation, and the ground truth Field already owns because it wrote it.
 val notation = "60 62 64 65 67 69 71 72"
 val cycles = 2
@@ -22,6 +20,10 @@ val heard = showPatTranscriptionOf(
 
 display("authored", "pat(\"$notation\") × $cycles cycles at cps $cps")
 display("recovered", "pat(\"${heard.miniNotation}\") at cps ${"%.3f".format(heard.cps)}")
-display("pitch error", heard.notes
-    .joinToString("\n") { "MIDI ${it.midi}  ${"%+.1f".format(it.centsOffset)} cents  conf ${"%.2f".format(it.confidence)}" })
+display(
+    "pitch error",
+    heard.notes.joinToString("\n") {
+        "MIDI ${it.midi}  ${"%+.1f".format(it.centsOffset)} cents  conf ${"%.2f".format(it.confidence)}"
+    },
+)
 display("summary", heard.describe())

@@ -11,18 +11,21 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="speech_embedding_guide" index="0" -->
 
 ```edn [field-box id="speech_embedding_guide" role="properties"]
-{"id" "speech_embedding_guide" "index" 0 "name" "1 · speech embedding guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · speech embedding guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "speech_embedding_guide_code_.kt" "lines" 9 "characters" 1178 "sha256" "b0cd5f058d91aa688b732130e6b46887ad8fe4cf70d3572a5fd86e1b74693946"}]}
+{"id" "speech_embedding_guide" "index" 0 "name" "1 · speech embedding guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · speech embedding guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "speech_embedding_guide_code_.kt" "lines" 12 "characters" 1197 "sha256" "335333efedcc678bd6257bb10163c8e86577b4fbadf87f1913145eee70c7ebf9"}]}
 ```
 
 ```kotlin [field-property box="speech_embedding_guide" name="code" path="speech_embedding_guide_code_.kt"]
-
-display("guide", """
+display(
+    "guide",
+    """
 <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
   <h2 style="margin:0 0 8px;color:#7fcbd7">Speech-reactive learned spaces</h2>
   <p><b>emotion2vec</b> emphasizes vocal affect, prosody and texture. <b>WavLM Base+</b> supplies a broader self-supervised speech representation; layer 6 is a useful acoustic/phonetic compromise. Both produce 50 Hz frame vectors, explicit WebRTC voice activity, energy, novelty, and a compact binary MessagePack artifact.</p>
   <p>Run box 2 to inspect the synchronized visualizer without a worker. Run box 3 for the complete local path: find or import <code>~/Downloads/near_drowning.wav</code> → submit two durable jobs → watch progress → retrieve cached results → pool 500 ms of acoustic evidence every 40 ms (25 Hz) → run fixed-seed cosine t-SNE in Field through Smile → play the recording through axes 0×1 and 2×3. Hover a path to inspect its time; click it to seek the audio.</p>
 </section>
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 ```
 
@@ -31,13 +34,10 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="analyse_near_drowning_speech" index="1" -->
 
 ```edn [field-box id="analyse_near_drowning_speech" role="properties"]
-{"id" "analyse_near_drowning_speech" "index" 1 "name" "3 · import, submit, monitor, audition near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, audition near_drowning" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_speech_code_.kt" "lines" 98 "characters" 4503 "sha256" "e87d39c131fe9a7c136ab882791fe8dcc5ed2b276fcffe0cdb642be50c336f05"}]}
+{"id" "analyse_near_drowning_speech" "index" 1 "name" "3 · import, submit, monitor, audition near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, audition near_drowning" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_speech_code_.kt" "lines" 124 "characters" 5171 "sha256" "4d1f751760b16f03b28f0633be3ce38d6606fdab722ae450dd0856464448bf5c"}]}
 ```
 
 ```kotlin [field-property box="analyse_near_drowning_speech" name="code" path="analyse_near_drowning_speech_code_.kt"]
-import afield.document.graph.Box
-import afield.ui.visualization.AudioVisualizerOptions
-import afield.math.statistics.SmileMdsDistance
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
@@ -67,72 +67,101 @@ fun Box.trackedSpeech(label: String, request: ModelOperation): CompletableFuture
         }
     }
 
-client.assetsByFilename("*near_drowning*").thenCompose { matches ->
-    when {
-        matches.size == 1 -> CompletableFuture.completedFuture(matches.single())
-        matches.isEmpty() && Files.isRegularFile(localPath) -> client.importWav(localPath)
-        matches.isEmpty() -> CompletableFuture.failedFuture(
-            IllegalStateException("near_drowning.wav is neither imported nor present at $localPath")
-        )
-        else -> CompletableFuture.failedFuture(
-            IllegalStateException("near_drowning filename matched ${matches.size} assets")
-        )
+client
+    .assetsByFilename("*near_drowning*")
+    .thenCompose { matches ->
+        when {
+            matches.size == 1 -> CompletableFuture.completedFuture(matches.single())
+            matches.isEmpty() && Files.isRegularFile(localPath) -> client.importWav(localPath)
+            matches.isEmpty() ->
+                CompletableFuture.failedFuture(
+                    IllegalStateException("near_drowning.wav is neither imported nor present at $localPath"),
+                )
+            else ->
+                CompletableFuture.failedFuture(
+                    IllegalStateException("near_drowning filename matched ${matches.size} assets"),
+                )
+        }
     }
-}.thenCompose { source ->
-    val audio = source.representations.firstOrNull { it.role == "canonical_project" }
-        ?: source.representations.first { it.mediaType in setOf("audio/wav", "audio/x-wav") }
-    val duration = requireNotNull(audio.durationSeconds) { "source audio has no duration" }
-    val region = AssetRegion(source.id, startSeconds = 0.0, durationSeconds = duration)
-    display("source", audio.audioVisualizerHtml(
-        label = "near_drowning.wav · ${"%.2f".format(duration)} s · ${audio.sampleRate} Hz",
-        options = AudioVisualizerOptions(
-            width = 1100, waveformHeight = 150,
-            initialStartSeconds = 0.0,
-            initialDurationSeconds = minOf(projectionDurationSeconds, duration),
-            initialPositionSeconds = 0.0,
-            syncGroup = timeSync,
-        ),
-    ))
+    .thenCompose { source ->
+        val audio =
+            source.representations.firstOrNull { it.role == "canonical_project" }
+                ?: source.representations.first { it.mediaType in setOf("audio/wav", "audio/x-wav") }
+        val duration = requireNotNull(audio.durationSeconds) { "source audio has no duration" }
+        val region = AssetRegion(source.id, startSeconds = 0.0, durationSeconds = duration)
+        display(
+            "source",
+            audio.audioVisualizerHtml(
+                label = "near_drowning.wav · ${"%.2f".format(duration)} s · ${audio.sampleRate} Hz",
+                options = AudioVisualizerOptions(
+                    width = 1100,
+                    waveformHeight = 150,
+                    initialStartSeconds = 0.0,
+                    initialDurationSeconds = minOf(projectionDurationSeconds, duration),
+                    initialPositionSeconds = 0.0,
+                    syncGroup = timeSync,
+                ),
+            ),
+        )
 
-    val results = listOf(
-        "emotion2vec" to emotion2VecEmbeddingAnalysis(
-            region, requestedBy = "field:speech-embeddings/near-drowning",
-        ),
-        "WavLM Base+" to wavlmBasePlusEmbeddingAnalysis(
-            region, layer = 6, requestedBy = "field:speech-embeddings/near-drowning",
-        ),
-    ).map { (label, request) -> trackedSpeech(label, request) }
-    CompletableFuture.allOf(*results.toTypedArray()).thenApply { results.map { it.join() } }
-}.thenCompose { results ->
-    display("projection", "fitting 500 ms context windows at 25 Hz from 0–10 s with Field Smile t-SNE…")
-    val previews = results.map { result ->
-        client.speechEmbeddingSmileTsnePreview(
-            result,
-            maxFrames = 600,
-            startSeconds = projectionStartSeconds,
-            durationSeconds = projectionDurationSeconds,
-            poolMillis = projectionPoolMillis,
-            hopMillis = projectionHopMillis,
-            dimensions = 4,
-            distance = SmileMdsDistance.COSINE,
-            perplexity = 30.0,
-            seed = 184921L,
-            previewPoints = 1800,
+        val results =
+            listOf(
+                    "emotion2vec" to
+                        emotion2VecEmbeddingAnalysis(
+                            region,
+                            requestedBy = "field:speech-embeddings/near-drowning",
+                        ),
+                    "WavLM Base+" to
+                        wavlmBasePlusEmbeddingAnalysis(
+                            region,
+                            layer = 6,
+                            requestedBy = "field:speech-embeddings/near-drowning",
+                        ),
+                )
+                .map { (label, request) -> trackedSpeech(label, request) }
+        CompletableFuture.allOf(*results.toTypedArray()).thenApply { results.map { it.join() } }
+    }
+    .thenCompose { results ->
+        display("projection", "fitting 500 ms context windows at 25 Hz from 0–10 s with Field Smile t-SNE…")
+        val previews = results.map { result ->
+            client.speechEmbeddingSmileTsnePreview(
+                result,
+                maxFrames = 600,
+                startSeconds = projectionStartSeconds,
+                durationSeconds = projectionDurationSeconds,
+                poolMillis = projectionPoolMillis,
+                hopMillis = projectionHopMillis,
+                dimensions = 4,
+                distance = SmileMdsDistance.COSINE,
+                perplexity = 30.0,
+                seed = 184921L,
+                previewPoints = 1800,
+            )
+        }
+        CompletableFuture.allOf(*previews.toTypedArray()).thenApply {
+            previews.map { it.join() }
+        }
+    }
+    .thenAccept { previews ->
+        display("projection", "Field Smile t-SNE complete · 500 ms pool · 40 ms hop · ${previews.size} spaces")
+        display(
+            "speech spaces",
+            speechEmbeddingPreviewDashboardHtml(
+                previews,
+                width = 1100,
+                phaseHeight = 270,
+                syncGroup = timeSync,
+            ),
         )
     }
-    CompletableFuture.allOf(*previews.toTypedArray()).thenApply {
-        previews.map { it.join() }
+    .exceptionally { error ->
+        val message = error.cause?.message ?: error.message ?: error.toString()
+        display(
+            "speech analysis error",
+            """<pre style="color:#f1aaaa;background:#28191b;padding:12px;white-space:pre-wrap">$message</pre>""",
+        )
+        null
     }
-}.thenAccept { previews ->
-    display("projection", "Field Smile t-SNE complete · 500 ms pool · 40 ms hop · ${previews.size} spaces")
-    display("speech spaces", speechEmbeddingPreviewDashboardHtml(
-        previews, width = 1100, phaseHeight = 270, syncGroup = timeSync,
-    ))
-}.exceptionally { error ->
-    val message = error.cause?.message ?: error.message ?: error.toString()
-    display("speech analysis error", """<pre style="color:#f1aaaa;background:#28191b;padding:12px;white-space:pre-wrap">$message</pre>""")
-    null
-}
 ```
 
 ## 3. 2 · real cached synchronized MDS gallery
@@ -140,15 +169,12 @@ client.assetsByFilename("*near_drowning*").thenCompose { matches ->
 <!-- field-box id="speech_embedding_visualizer_gallery" index="2" -->
 
 ```edn [field-box id="speech_embedding_visualizer_gallery" role="properties"]
-{"id" "speech_embedding_visualizer_gallery" "index" 2 "name" "2 · real cached synchronized MDS gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · real cached synchronized MDS gallery" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "speech_embedding_visualizer_gallery_code_.kt" "lines" 11 "characters" 551 "sha256" "17f3b7403797755b2414203277e212426a1c6da762d9b989716fd4299aede769"}]}
+{"id" "speech_embedding_visualizer_gallery" "index" 2 "name" "2 · real cached synchronized MDS gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · real cached synchronized MDS gallery" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "speech_embedding_visualizer_gallery_code_.kt" "lines" 8 "characters" 378 "sha256" "a99534383884ba00829023d270e67da59c434a1f08d72d97ac4bb04414f1bbe0"}]}
 ```
 
 ```kotlin [field-property box="speech_embedding_visualizer_gallery" name="code" path="speech_embedding_visualizer_gallery_code_.kt"]
-import afield.ui.visualization.AudioVisualizer
-import afield.ui.visualization.AudioVisualizerOptions
-import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
-import java.nio.file.Path
+
 val json = FieldAudioClient.json
 val folder = File("public/docs/assets/audio_ai_speech_embeddings")
 val previews = listOf("emotion2vec", "wavlm_base_plus").map {

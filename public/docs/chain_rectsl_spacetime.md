@@ -74,15 +74,9 @@ one returns.
 import afield.geometry.solid.manifold.Solid
 import afield.lang.rectsl.compileRectSL
 import afield.lang.rectsl.toAdField
-import afield.geometry.mesh.boundsOf
-import afield.geometry.mesh.diagnose
-import afield.geometry.mesh.genus
-import afield.geometry.mesh.isWatertight
-import afield.geometry.mesh.marchingCubes
-import afield.geometry.mesh.sampledField3D
-import afield.math.linalg.vec
 
-val source = """
+val source =
+    """
 #rectsl
 ->wall 8 8 abstract
 ->duration 4
@@ -97,7 +91,8 @@ val source = """
   1.2 1.2 ->wh
   1.6 -1.4 ->xy
   '( 0=0.3  4=2.2 ) ->w
-""".trimIndent()
+"""
+        .trimIndent()
 
 val program = compileRectSL(source).program
 val field = program.toAdField()
@@ -143,7 +138,9 @@ val closedMarch = marchingCubes(closed, bounds, resolution = 140)
 val closedSolid = Solid.levelSetOf(closed, bounds, edgeLength = 0.12)
 val parts = closedSolid.decompose()
 
-markdown("spacetime", """
+markdown(
+    "spacetime",
+    """
 #### One RectSL scene, ${field.rectCount} of ${program.nodes.size} rects lowered, ${program.duration}s over an ${program.wall.width} x ${program.wall.height} wall
 
 `${inner.size}` samples on ${nt} tapes; `${inner.count { it < 0f }}` of them inside; the worst
@@ -158,7 +155,9 @@ disagreement between the autodiff channels and `Fn.eval` was `${field.worstChann
 
 `decompose()` finds **${parts.size}** component, because the bar passes over the square at some
 frame and two shapes that touch on screen are one solid in space-time.
-""", width = 1040)
+""",
+    width = 1040,
+)
 
 parts.forEach { it.close() }
 cutSolid.close()

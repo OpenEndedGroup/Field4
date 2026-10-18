@@ -35,16 +35,21 @@ val programs = [
     "uv 5 * fbm 0.45 threshold orange * saturate",
 ]
 val sizes = [64, 16, 4, 2, 1]
-val table = Table(["program"] + sizes.map { "${it}×$it" },
-    title = "widest channel of the bound, for a square centred on pixel (64, 8) of a 128×128 render")
+val table = Table(
+    ["program"] + sizes.map { "${it}×$it" },
+    title = "widest channel of the bound, for a square centred on pixel (64, 8) of a 128×128 render",
+)
 for (program in programs) {
     val glsl = StackSLCpu.expandStackAuto(StackSLCpu.stillTemplate(), program)
-    table.row([program] + sizes.map { n ->
-        val x0 = 64 - n / 2
-        val y0 = (8 - n / 2).coerceIn(0, 128 - n)
-        val b = StackSLIntervals.enclosePixels(glsl, x0, y0, x0 + n - 1, y0 + n - 1, 128, 128)
-        if (b.certified) "%.4f".format(b.width) else "refused"
-    })
+    table.row(
+        [program] +
+            sizes.map { n ->
+                val x0 = 64 - n / 2
+                val y0 = (8 - n / 2).coerceIn(0, 128 - n)
+                val b = StackSLIntervals.enclosePixels(glsl, x0, y0, x0 + n - 1, y0 + n - 1, 128, 128)
+                if (b.certified) "%.4f".format(b.width) else "refused"
+            },
+    )
 }
 display("widths", table)
 ```
@@ -70,7 +75,8 @@ A comparison between two overlapping intervals is neither true nor false. When a
 :::static
 import afield.lang.stacksl.cpu.StackSLIntervals
 
-val shader = """
+val shader =
+    """
     #version 450
     layout(location = 0) in vec2 fragUV;
     layout(location = 0) out vec4 outColor;
@@ -79,21 +85,43 @@ val shader = """
         if (fragUV.x < 0.5) v = 0.75;
         outColor = vec4(v, v, v, 1.0);
     }
-""".trimIndent()
+"""
+        .trimIndent()
 
-val early = """
+val early =
+    """
     #version 450
     layout(location = 0) in vec2 fragUV;
     layout(location = 0) out vec4 outColor;
     float f(float x) { if (x < 0.5) return 1.0; x = x * 2.0; return x; }
     void main() { outColor = vec4(f(fragUV.x)); }
-""".trimIndent()
+"""
+        .trimIndent()
 
-display("branches", Table(["shader", "pixels", "red channel"], title = "an undecided if runs both arms")
-    .row("if (x < 0.5) v = 0.75", "left third", StackSLIntervals.enclosePixels(shader, 0, 0, 20, 63, 64, 64).let { "${it.lo[0]}..${it.hi[0]}" })
-    .row("if (x < 0.5) v = 0.75", "right third", StackSLIntervals.enclosePixels(shader, 43, 0, 63, 63, 64, 64).let { "${it.lo[0]}..${it.hi[0]}" })
-    .row("if (x < 0.5) v = 0.75", "a row across the middle", StackSLIntervals.enclosePixels(shader, 0, 0, 63, 0, 64, 64).let { "${it.lo[0]}..${it.hi[0]}" })
-    .row("return from one arm only", "a row across the middle", StackSLIntervals.enclosePixels(early, 0, 0, 63, 0, 64, 64).refusal))
+display(
+    "branches",
+    Table(["shader", "pixels", "red channel"], title = "an undecided if runs both arms")
+        .row(
+            "if (x < 0.5) v = 0.75",
+            "left third",
+            StackSLIntervals.enclosePixels(shader, 0, 0, 20, 63, 64, 64).let { "${it.lo[0]}..${it.hi[0]}" },
+        )
+        .row(
+            "if (x < 0.5) v = 0.75",
+            "right third",
+            StackSLIntervals.enclosePixels(shader, 43, 0, 63, 63, 64, 64).let { "${it.lo[0]}..${it.hi[0]}" },
+        )
+        .row(
+            "if (x < 0.5) v = 0.75",
+            "a row across the middle",
+            StackSLIntervals.enclosePixels(shader, 0, 0, 63, 0, 64, 64).let { "${it.lo[0]}..${it.hi[0]}" },
+        )
+        .row(
+            "return from one arm only",
+            "a row across the middle",
+            StackSLIntervals.enclosePixels(early, 0, 0, 63, 0, 64, 64).refusal,
+        ),
+)
 ```
 
 Two arms that leave by different routes, one returning and one carrying on, can't be merged into one continuation, so that run is refused, and the refusal says why. A loop whose condition is undecided is refused the same way, and so is an array index that isn't a single value. StackSL's emitted loops count octaves to a fixed number, so they never hit this.

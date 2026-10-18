@@ -38,12 +38,12 @@ flat base and floors it, the way a lithophane, a relief map or a stamp is made:
 
 ```diffstatic {data-lang=kotlin}
 // before: two calls that do not compose
-val open = depth.toHeightfieldMesh(scale = 0.35)   // χ = 1, one boundary loop
-open.toSolid()                                     // refused: not a closed manifold
+val open = depth.toHeightfieldMesh(scale = 0.35) // χ = 1, one boundary loop
+open.toSolid() // refused: not a closed manifold
 
 // after
-val plaque = depth.toReliefMesh(scale = 0.35, baseThickness = 0.12)  // χ = 2, no boundary loops
-plaque.toSolid()                                                     // legal
+val plaque = depth.toReliefMesh(scale = 0.35, baseThickness = 0.12) // χ = 2, no boundary loops
+plaque.toSolid() // legal
 ```
 
 You can predict the size of the mesh before you build it. With `P = 2·nx + 2·nz` rim vertices, a

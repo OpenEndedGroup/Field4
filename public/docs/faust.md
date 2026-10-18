@@ -14,14 +14,16 @@ This box plays a sawtooth through a low-pass filter, with three sliders:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-faust("""
+faust(
+    """
 #faust
 import("stdfaust.lib");
 freq   = hslider("freq [unit:Hz] [scale:log]", 220, 50, 2000, 0.01);
 cutoff = hslider("cutoff [unit:Hz]", 1200, 50, 8000, 1);
 gain   = hslider("gain", 0.2, 0, 1, 0.001);
 process = os.sawtooth(freq) : fi.lowpass(2, cutoff) * gain <: _,_;
-""")
+""",
+)
 ```
 
 Returning the result as the box's last expression ties the sound to the box. The box stays lit
@@ -43,11 +45,13 @@ Faust's compiler errors appear as markers in the editor. Running this misspelled
 
 ```diffstatic {data-lang=kotlin}
 :::static
-faust("""
+faust(
+    """
 #faust
 import("stdfaust.lib");
 process = os.sawtoothX(440);
-""")
+""",
+)
 ```
 
 puts `undefined symbol : sawtoothX` on the `process` line, and the box reports the run as failed.
@@ -107,14 +111,17 @@ the frequency:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val voice = faust("""
+val voice =
+    faust(
+        """
 #faust
 import("stdfaust.lib");
 gate = button("gate");
 freq = hslider("freq [unit:Hz]", 220, 50, 1000, 0.01);
 env  = en.adsr(0.01, 0.1, 0.7, 0.4, gate);
 process = os.sawtooth(freq) * env * 0.3 <: _,_;
-""")
+""",
+    )
 
 // Play it from code rather than by hand.
 voice.press("gate", holdMs = 250)
@@ -131,7 +138,9 @@ the filter cutoff as well:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val inst = faustPoly("""
+val inst =
+    faustPoly(
+        """
 #faust
 import("stdfaust.lib");
 cutoff = hslider("cutoff [unit:Hz]", 2600, 120, 9000, 1);
@@ -140,12 +149,14 @@ gain   = hslider("gain", 0.22, 0, 1, 0.001);
 gate   = button("gate");
 env = en.adsr(0.004, 0.09, 0.55, 0.03, gate);
 process = os.sawtooth(freq) : fi.resonlp(cutoff, 1.4, 1) * env * gain <: _,_;
-""", voices = 8)
+""",
+        voices = 8,
+    )
 
 inst.play(
     pat("[c4,ef4,g4] [af3,c4,ef4] [bf3,d4,f4] [ef4,g4,bf4]"),
     cps = 0.5,
-    automate = mapOf("cutoff" to pat("900 2600 1400 5200").nums())
+    automate = mapOf("cutoff" to pat("900 2600 1400 5200").nums()),
 )
 
 inst
@@ -162,9 +173,11 @@ Two offline renders of the example above. The first is the example as written, w
 The second changes only that argument, to `voices = 1`, so you can hear what the extra voices do.
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/faust/poly-chord-eight-voices.wav" audio-spec="poly-chord-eight-voices" audio-renderer="afield.audio.synth.FaustPolySoundDocs" embed=true hidden=true name="faust-poly-eight-voices"}
-// FaustPolySoundDocs.render("poly-chord-eight-voices")
-// faustPatternRender(program, pat("[c4,ef4,g4] [af3,c4,ef4] [bf3,d4,f4] [ef4,g4,bf4]"),
-//                    cycles = 2, cps = 0.5, voices = 8, automation = cutoff steps)
+/*
+FaustPolySoundDocs.render("poly-chord-eight-voices")
+faustPatternRender(program, pat("[c4,ef4,g4] [af3,c4,ef4] [bf3,d4,f4] [ef4,g4,bf4]"),
+                   cycles = 2, cps = 0.5, voices = 8, automation = cutoff steps)
+*/
 ```
 
 With eight voices, the four triads play one per cycle, and all three notes of each chord sound
@@ -287,11 +300,14 @@ it in the box's output:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-faust("""
+faust(
+    """
 #faust
 import("stdfaust.lib");
 process = os.sawtooth(220) : fi.lowpass(2, 1200) * 0.2 <: _,_;
-""", diagram = true)
+""",
+    diagram = true,
+)
 ```
 
 Only the top level is shown. Faust draws each sub-expression as a separate linked diagram, and Field
@@ -307,12 +323,15 @@ detuned pair of sawtooths goes through a reverb:
 // `input` takes any StereoRenderable — another Faust program, a Field oscillator, a pattern voice.
 val dry: StereoRenderable = StereoSignal(SawOsc(Param(110f)) * 0.2f, SawOsc(Param(110.5f)) * 0.2f)
 
-faust("""
+faust(
+    """
 #faust
 import("stdfaust.lib");
 room = hslider("room", 0.5, 0, 1, 0.01);
 process = _,_ : re.zita_rev1_stereo(20, 200, 2000, 3.0, 2.0, 48000) : *(room), *(room);
-""", input = dry)
+""",
+    input = dry,
+)
 ```
 
 Without an `input` argument the effect hears silence, and so does not make a sound.

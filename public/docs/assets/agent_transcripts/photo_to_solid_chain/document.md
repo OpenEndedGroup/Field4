@@ -11,13 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="photo_levelset" index="0" -->
 
 ```edn [field-box id="photo_levelset" role="properties"]
-{"id" "photo_levelset" "index" 0 "name" "the same solid, marched" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the same solid, marched" "_tombstone" false "frame" #afield/rect [60.0 3100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_levelset_code_.kt" "lines" 20 "characters" 1088 "sha256" "2fe2514e859d47da5d8ab61d7f36c32ab0f1c117ee54fe10a405472840b38e9e"}]}
+{"id" "photo_levelset" "index" 0 "name" "the same solid, marched" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the same solid, marched" "_tombstone" false "frame" #afield/rect [60.0 3100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_levelset_code_.kt" "lines" 24 "characters" 1120 "sha256" "ba635a6c736c969c97c75750e95ba6f342f05e68156dfab1cdd2a9f99f720bf8"}]}
 ```
 
 ```kotlin [field-property box="photo_levelset" name="code" path="photo_levelset_code_.kt"]
 import afield.examples.chain.PhotoToSolidChain
 import afield.geometry.solid.manifold.Solid
-import afield.geometry.solid.manifold.toSolid
 
 // Two independent constructions of the same object: the grid triangulation, and a marched
 // level set of the same depth field. Compared against EACH OTHER, not against a constant.
@@ -28,12 +27,17 @@ Solid.scope {
     // UNION the frame. Comparing against the wrong one of those reads as a 7% disagreement.
     val marched = PhotoToSolidChain.marchedPlaque(mount.depth, mount.footprintZ, edge)
     val apart = kotlin.math.abs(marched.volume - mount.plaqueVolume) / mount.plaqueVolume
-    markdown(buildString {
-        appendLine("grid volume %.9f, marched %.9f — **%.3f%%** apart at edgeLength %.4f"
-            .format(mount.plaqueVolume, marched.volume, apart * 100, edge))
-        appendLine()
-        appendLine("Two constructions that share no code, agreeing to about one marching cell.")
-    }, width = 760)
+    markdown(
+        buildString {
+            appendLine(
+                "grid volume %.9f, marched %.9f — **%.3f%%** apart at edgeLength %.4f"
+                    .format(mount.plaqueVolume, marched.volume, apart * 100, edge),
+            )
+            appendLine()
+            appendLine("Two constructions that share no code, agreeing to about one marching cell.")
+        },
+        width = 760,
+    )
 }
 ```
 
@@ -77,7 +81,7 @@ showImgGrid(
 <!-- field-box id="photo_boolean" index="2" -->
 
 ```edn [field-box id="photo_boolean" role="properties"]
-{"id" "photo_boolean" "index" 2 "name" "mounted in a frame, and what the Boolean owes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mounted in a frame, and what the Boolean owes" "_tombstone" false "frame" #afield/rect [60.0 2100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_boolean_code_.kt" "lines" 33 "characters" 1682 "sha256" "75e62fae4428626983e01e068ae808c68a5010ae34decb040446d6816397e75d"}]}
+{"id" "photo_boolean" "index" 2 "name" "mounted in a frame, and what the Boolean owes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mounted in a frame, and what the Boolean owes" "_tombstone" false "frame" #afield/rect [60.0 2100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_boolean_code_.kt" "lines" 43 "characters" 1768 "sha256" "ea063be77e69236caa15686306a17f82449f3a977c4a347bd171c1c199dc5f8e"}]}
 ```
 
 ```kotlin [field-property box="photo_boolean" name="code" path="photo_boolean_code_.kt"]
@@ -98,19 +102,29 @@ Solid.scope {
     println("mounted genus ${union.genus} in ${union.decompose().size} part — the plaque plugs it")
     println("union %.9f + meet %.9f = %.9f".format(union.volume, meet.volume, union.volume + meet.volume))
     println("plaque %.9f + frame %.9f = %.9f".format(plaque.volume, frame.volume, plaque.volume + frame.volume))
-    println("inclusion-exclusion holds to ${"%.2e".format(kotlin.math.abs((union.volume + meet.volume) - (plaque.volume + frame.volume)))}")
+    println(
+        "inclusion-exclusion holds to ${"%.2e".format(kotlin.math.abs((union.volume + meet.volume) - (plaque.volume + frame.volume)))}",
+    )
 }
 
-// mount()'s meshes carry NO normals on purpose — splitting a vertex at a crease is what a
-// renderer wants and is exactly what stops toSolid() accepting the mesh back. renderPng
-// adds them itself, so nothing here has to care.
+/*
+mount()'s meshes carry NO normals on purpose — splitting a vertex at a crease is what a
+renderer wants and is exactly what stops toSolid() accepting the mesh back. renderPng
+adds them itself, so nothing here has to care.
+*/
 fun draw(m: TriMesh, yaw: Double = 30.0, pitch: Double = 34.0) =
     imgFromBytes(m.renderPng(MeshView(yawDegrees = yaw, pitchDegrees = pitch, width = 760, height = 560)))
 
 showImgGrid(
     "relief = plaque - frame" to draw(mount.relief),
     "the frame, genus 1" to draw(mount.frame),
-    "assembled, genus 0" to draw(triMesh { add(mount.relief); add(mount.frame) }),
+    "assembled, genus 0" to
+        draw(
+            triMesh {
+                add(mount.relief)
+                add(mount.frame)
+            },
+        ),
     columns = 3,
     cellSide = 460,
 )
@@ -121,7 +135,7 @@ showImgGrid(
 <!-- field-box id="photo_depth" index="3" -->
 
 ```edn [field-box id="photo_depth" role="properties"]
-{"id" "photo_depth" "index" 3 "name" "a photograph, and how far away everything in it is" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a photograph, and how far away everything in it is" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_depth_code_.kt" "lines" 18 "characters" 905 "sha256" "952d1b198e3d8a428619be9b62a28883192ceb0c3fd24aa24ee048201382a7d3"}]}
+{"id" "photo_depth" "index" 3 "name" "a photograph, and how far away everything in it is" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a photograph, and how far away everything in it is" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_depth_code_.kt" "lines" 20 "characters" 902 "sha256" "77d7f55c3d34e46fe3b9e535f5749743d7e2e0c427b9ed43b898f55ed86c2954"}]}
 ```
 
 ```kotlin [field-property box="photo_depth" name="code" path="photo_depth_code_.kt"]
@@ -131,9 +145,11 @@ import afield.examples.chain.PhotoToSolidChain
 val photo = imgFromFile(PhotoToSolidChain.PHOTO, 3).scaleBy(0.45)
 val (depth, model) = PhotoToSolidChain.depthMapOf(photo)
 
-// The output is inverse *relative* depth in arbitrary units, so it has to be normalised
-// against a window; depthMapOf does that against this frame's own range and prints it.
-// Larger means NEARER, which is why the near floor is the bright band at the bottom.
+/*
+The output is inverse *relative* depth in arbitrary units, so it has to be normalised
+against a window; depthMapOf does that against this frame's own range and prints it.
+Larger means NEARER, which is why the near floor is the bright band at the bottom.
+*/
 println("photo ${photo.width}x${photo.height} -> depth ${depth.width}x${depth.height}")
 println("${model.lastInferenceMs}ms on ${model.activeProvider}, input forced to a multiple of 14")
 

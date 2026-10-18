@@ -1,16 +1,20 @@
-// Pat plays Sonic Pi — the program, before you hear it.
-//
-// Field's pattern algebra keeps musical structure exact in rational cycle space. Sonic Pi has 66
-// synths, 42 FX, 206 samples and a sample-accurate scheduler. This is the join: a pattern is
-// lowered to ordinary Sonic Pi source that you can read, paste into a #sonicpi region, and edit.
-//
-//   public/docs/sonic_pi.md — "Field patterns as a Sonic Pi sequencer"
-//
-// Nothing here needs Sonic Pi installed. It is a text transformation.
+/*
+Pat plays Sonic Pi — the program, before you hear it.
 
-// A triplet inside a binary bar — three even hits inside the third quarter. This is exactly where
-// a lowering that wrote `sleep 0.333` would start drifting, and it is why the emitter writes
-// Rational(1, 3) instead.
+Field's pattern algebra keeps musical structure exact in rational cycle space. Sonic Pi has 66
+synths, 42 FX, 206 samples and a sample-accurate scheduler. This is the join: a pattern is
+lowered to ordinary Sonic Pi source that you can read, paste into a #sonicpi region, and edit.
+
+  public/docs/sonic_pi.md — "Field patterns as a Sonic Pi sequencer"
+
+Nothing here needs Sonic Pi installed. It is a text transformation.
+*/
+
+/*
+A triplet inside a binary bar — three even hits inside the third quarter. This is exactly where
+a lowering that wrote `sleep 0.333` would start drifting, and it is why the emitter writes
+Rational(1, 3) instead.
+*/
 val groove = pat("bd ~ [bd bd bd] bd")
 
 println(groove.sonicPiSource(cps = 0.5, cycles = 1, name = "groove"))

@@ -1,7 +1,9 @@
 #version 460
 layout(location=0) in vec2 uv;
 layout(location=0) out vec4 color;
-layout(push_constant) uniform Study { vec4 frame; } pc;
+layout(push_constant) uniform Study {
+    vec4 frame;
+} pc;
 
 float hash(vec2 p) {
     return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);
@@ -10,7 +12,7 @@ float noise(vec2 p) {
     vec2 i=floor(p), f=fract(p);
     f=f*f*(3-2*f);
     return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),
-               mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);
+    mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);
 }
 vec3 linearize(vec3 c) {
     return mix(c/12.92,pow((c+.055)/1.055,vec3(2.4)),step(vec3(.04045),c));

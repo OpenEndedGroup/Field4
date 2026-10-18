@@ -9,13 +9,12 @@ layout(push_constant) uniform matrices {
 
 layout(set=0, binding = 0) uniform sampler2D otherView;
 
-
 void main()
 {
-    
+
     vec2 tc = gl_FragCoord.xy / 1024.0;
     vec4 c = texture(otherView, tc.xy + vec2(0.001));
 
     // uFragColor = pc.finalColor;
-   uFragColor = vec4(c.gr+vec2(0.001),1,1);
+    uFragColor = vec4(c.gr+vec2(0.001),1,1);
 }

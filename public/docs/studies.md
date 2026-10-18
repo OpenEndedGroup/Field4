@@ -416,7 +416,12 @@ Warnings show **Current · Needs review**; `StudyBuildNoticeKind.ERROR` shows
 **Current · Needs correction**, with red explanatory text. `INFO` supplies context without
 implying a problem. The same notes appear in native agent inspection and the completion stream.
 The adapter must be fast and pure: read the supplied record's retained facts, never the live
-design, and perform no build work. It also works over existing attempt history. A formatter
+design, and perform no build work.
+
+A note can also name a picture of the result: `StudyBuildNotice(message, view = StudyBuildView(box, caption) { draw() })`.
+`box` is the box (uid or name) that shows it, and `draw` displays the result there; nothing runs while
+the notes are read. An [AI4 chat that waited for the build](ai4_long_builds.md) is shown the
+picture when it resumes: Field runs `draw`, captures the box's output and attaches it to the message. It also works over existing attempt history. A formatter
 failure shows a review notice and keeps the result. Notes only explain: they do not change
 fingerprints, acceptance, or whether downstream stages can use the result. A requirement a result
 must meet belongs in the recipe or in a [gate](#wait-until-a-measurement-passes). A stale result

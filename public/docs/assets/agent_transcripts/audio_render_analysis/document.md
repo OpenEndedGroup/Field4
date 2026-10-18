@@ -11,15 +11,15 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="analyse_sonic_pi_recording" index="0" -->
 
 ```edn [field-box id="analyse_sonic_pi_recording" role="properties"]
-{"id" "analyse_sonic_pi_recording" "index" 0 "name" "5 · Sonic Pi recording → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · Sonic Pi recording → analysis" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_sonic_pi_recording_code_.kt" "lines" 38 "characters" 1458 "sha256" "4b3e84d9a6e8fa35aaaad79fdb6d732d3d470751e94122b718046521be891f46"}]}
+{"id" "analyse_sonic_pi_recording" "index" 0 "name" "5 · Sonic Pi recording → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · Sonic Pi recording → analysis" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_sonic_pi_recording_code_.kt" "lines" 46 "characters" 1574 "sha256" "d694652965e6704f45359963d52e8c2c22c1facd526ece6fadeef9b4b4699322"}]}
 ```
 
 ```kotlin [field-property box="analyse_sonic_pi_recording" name="code" path="analyse_sonic_pi_recording_code_.kt"]
-import afield.audio.synth.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()
-val ruby = """
+val ruby =
+    """
     use_bpm 92
     live_loop :analysis_drums do
       sample :bd_haus, amp: 0.55
@@ -32,27 +32,35 @@ val ruby = """
       play (scale :e3, :minor_pentatonic).tick, release: 0.7, amp: 0.35
       sleep 1
     end
-""".trimIndent()
+"""
+        .trimIndent()
 
 recordSonicPiWav(
-    sonicPi(),
-    Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "sonic-pi-study.wav"),
-    ruby, seconds = 18.0, workspace = "field_audio_analysis",
-    provenance = mapOf("field_box" to "analyse_sonic_pi_recording", "bpm" to "92"),
-).thenCompose { render ->
-    display("render", "recorded ${render.path}")
-    client.analyzeRenderedAudio(
-        render,
-        requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/sonic-pi") },
-        onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
-        onProgress = { named, accepted, event -> display("${named.label} job", fieldAudioJobStatusHtml(accepted, event)) },
+        sonicPi(),
+        Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "sonic-pi-study.wav"),
+        ruby,
+        seconds = 18.0,
+        workspace = "field_audio_analysis",
+        provenance = mapOf("field_box" to "analyse_sonic_pi_recording", "bpm" to "92"),
     )
-}.thenAccept { completed ->
-    display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
-}.exceptionally { error ->
-    display("analysis error", error.cause?.message ?: error.message ?: error.toString())
-    null
-}
+    .thenCompose { render ->
+        display("render", "recorded ${render.path}")
+        client.analyzeRenderedAudio(
+            render,
+            requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/sonic-pi") },
+            onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
+            onProgress = { named, accepted, event ->
+                display("${named.label} job", fieldAudioJobStatusHtml(accepted, event))
+            },
+        )
+    }
+    .thenAccept { completed ->
+        display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
+    }
+    .exceptionally { error ->
+        display("analysis error", error.cause?.message ?: error.message ?: error.toString())
+        null
+    }
 ```
 
 ## 2. 1 · render → analyse guide and jobs
@@ -60,19 +68,22 @@ recordSonicPiWav(
 <!-- field-box id="render_analysis_guide" index="1" -->
 
 ```edn [field-box id="render_analysis_guide" role="properties"]
-{"id" "render_analysis_guide" "index" 1 "name" "1 · render → analyse guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · render → analyse guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "render_analysis_guide_code_.kt" "lines" 10 "characters" 1186 "sha256" "b0c2d75dec45c7accaecb717c08cb01f5601807b08dd1fe1fa45d33221acbf91"}]}
+{"id" "render_analysis_guide" "index" 1 "name" "1 · render → analyse guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · render → analyse guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "render_analysis_guide_code_.kt" "lines" 13 "characters" 1205 "sha256" "b2b3b40d579d771018f5f78ac2e4e56742afe416e2ae81fdf2d869c0e354bde7"}]}
 ```
 
 ```kotlin [field-property box="render_analysis_guide" name="code" path="render_analysis_guide_code_.kt"]
-
-display("guide", """
+display(
+    "guide",
+    """
 <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
   <h2 style="margin:0 0 8px;color:#7fcbd7">Field synthesis → Field Audio analysis</h2>
   <p>Each box below contains the whole loop: make sound, write WAV, import immutable bytes, submit named jobs, stream progress, await results, and draw a synchronized waveform/beat/pitch board. Re-run unchanged code and the content-addressed import plus operation cache return the same results.</p>
   <p><b>Pat, Dirt and Dough</b> render offline. <b>Faust</b> compiles and renders on a daemon future because its first compiler warm-up is slow. <b>Sonic Pi</b> records in real time on that same background executor. None blocks Field's run loop.</p>
   <p>The local <code>RenderedAudioFile.provenance</code> records the producing box and render parameters. The server asset id remains a hash of the WAV bytes; the Field document remains the authority for source code and arrangement.</p>
 </section>
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 display("all durable jobs", fieldAudioJobMonitor(heightPixels = 390))
 ```
 
@@ -81,39 +92,47 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 390))
 <!-- field-box id="analyse_faust_render" index="2" -->
 
 ```edn [field-box id="analyse_faust_render" role="properties"]
-{"id" "analyse_faust_render" "index" 2 "name" "4 · Faust render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Faust render → analysis" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_faust_render_code_.kt" "lines" 29 "characters" 1313 "sha256" "2bdd098b200ae252f2d46df2f7e5a7fe423589bc7d98dadcfd390ca13e2dea0d"}]}
+{"id" "analyse_faust_render" "index" 2 "name" "4 · Faust render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Faust render → analysis" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_faust_render_code_.kt" "lines" 37 "characters" 1425 "sha256" "84693120a06b8216a14bc4ff7e3fb1d80245dddbaf3fe803f6791d28b7eb61fb"}]}
 ```
 
 ```kotlin [field-property box="analyse_faust_render" name="code" path="analyse_faust_render_code_.kt"]
-import afield.audio.synth.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()
-val faustSource = """
+val faustSource =
+    """
     import("stdfaust.lib");
     sweep = 240 + 170 * os.osc(0.11);
     voice = os.sawtooth(sweep) : fi.lowpass(3, 900 + 650 * os.osc(0.07));
     process = voice * 0.18 <: _,_;
-""".trimIndent()
+"""
+        .trimIndent()
 
 renderFaustWavAsync(
-    Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "faust-sweep-study.wav"),
-    name = "faust-sweep-study", source = faustSource, seconds = 18.0,
-    provenance = mapOf("field_box" to "analyse_faust_render"),
-).thenCompose { render ->
-    display("render", "rendered ${render.path} · ${render.sampleRate} Hz stereo")
-    client.analyzeRenderedAudio(
-        render,
-        requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/faust") },
-        onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
-        onProgress = { named, accepted, event -> display("${named.label} job", fieldAudioJobStatusHtml(accepted, event)) },
+        Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "faust-sweep-study.wav"),
+        name = "faust-sweep-study",
+        source = faustSource,
+        seconds = 18.0,
+        provenance = mapOf("field_box" to "analyse_faust_render"),
     )
-}.thenAccept { completed ->
-    display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
-}.exceptionally { error ->
-    display("analysis error", error.cause?.message ?: error.message ?: error.toString())
-    null
-}
+    .thenCompose { render ->
+        display("render", "rendered ${render.path} · ${render.sampleRate} Hz stereo")
+        client.analyzeRenderedAudio(
+            render,
+            requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/faust") },
+            onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
+            onProgress = { named, accepted, event ->
+                display("${named.label} job", fieldAudioJobStatusHtml(accepted, event))
+            },
+        )
+    }
+    .thenAccept { completed ->
+        display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
+    }
+    .exceptionally { error ->
+        display("analysis error", error.cause?.message ?: error.message ?: error.toString())
+        null
+    }
 ```
 
 ## 4. 3 · Dough render → analysis
@@ -121,37 +140,47 @@ renderFaustWavAsync(
 <!-- field-box id="analyse_dough_render" index="3" -->
 
 ```edn [field-box id="analyse_dough_render" role="properties"]
-{"id" "analyse_dough_render" "index" 3 "name" "3 · Dough render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · Dough render → analysis" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_dough_render_code_.kt" "lines" 27 "characters" 1233 "sha256" "50f9016a076ed7e205b0458da03e8c82250e458c7501933be4e8010ae41a7a1b"}]}
+{"id" "analyse_dough_render" "index" 3 "name" "3 · Dough render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · Dough render → analysis" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_dough_render_code_.kt" "lines" 37 "characters" 1327 "sha256" "a40237a052212d2d0c5bf3427d09a9903c8a20b5d5f8b7209894252ddb224785"}]}
 ```
 
 ```kotlin [field-property box="analyse_dough_render" name="code" path="analyse_dough_render_code_.kt"]
-import afield.audio.synth.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()
 val source = ZawOsc(Param(110f)) * 0.35f
-val voice = source.through(Phaser(
-    rate = Param(0.23f), depth = Param(0.78f),
-    center = Param(540f), sweep = Param(1800f), mix = Param(0.92f),
-))
+val voice = source.through(
+    Phaser(
+        rate = Param(0.23f),
+        depth = Param(0.78f),
+        center = Param(540f),
+        sweep = Param(1800f),
+        mix = Param(0.92f),
+    ),
+)
 val render = renderDoughWav(
     Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "dough-phaser-study.wav"),
-    voice, seconds = 18.0,
+    voice,
+    seconds = 18.0,
     provenance = mapOf("field_box" to "analyse_dough_render", "voice" to "ZawOsc → Phaser"),
 )
 display("render", "rendered ${render.path} · ${render.sampleRate} Hz mono")
 
-client.analyzeRenderedAudio(
-    render,
-    requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/dough") },
-    onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
-    onProgress = { named, accepted, event -> display("${named.label} job", fieldAudioJobStatusHtml(accepted, event)) },
-).thenAccept { completed ->
-    display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
-}.exceptionally { error ->
-    display("analysis error", error.cause?.message ?: error.message ?: error.toString())
-    null
-}
+client
+    .analyzeRenderedAudio(
+        render,
+        requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/dough") },
+        onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
+        onProgress = { named, accepted, event ->
+            display("${named.label} job", fieldAudioJobStatusHtml(accepted, event))
+        },
+    )
+    .thenAccept { completed ->
+        display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
+    }
+    .exceptionally { error ->
+        display("analysis error", error.cause?.message ?: error.message ?: error.toString())
+        null
+    }
 ```
 
 ## 5. 2 · Pat / Dirt render → analysis
@@ -159,39 +188,41 @@ client.analyzeRenderedAudio(
 <!-- field-box id="analyse_pat_render" index="4" -->
 
 ```edn [field-box id="analyse_pat_render" role="properties"]
-{"id" "analyse_pat_render" "index" 4 "name" "2 · Pat / Dirt render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Pat / Dirt render → analysis" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_pat_render_code_.kt" "lines" 30 "characters" 1315 "sha256" "95b60d7cf4e90fea3f169d7c1cae5e3a21dcdede5c0f11534a4527dca7c68a6b"}]}
+{"id" "analyse_pat_render" "index" 4 "name" "2 · Pat / Dirt render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Pat / Dirt render → analysis" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_pat_render_code_.kt" "lines" 32 "characters" 1362 "sha256" "97bf29fbaebf498fc121bf5bef94a4639ca1997e605a97b1743e146fb336a272"}]}
 ```
 
 ```kotlin [field-property box="analyse_pat_render" name="code" path="analyse_pat_render_code_.kt"]
-import afield.audio.synth.*
 import java.nio.file.Path
 
 val client = FieldAudioClient()
-val pattern = (pat("{60 64 67 71, bd ~ sd ~, hh*8}")
-    with gain(sine().range(0.22, 0.72))
-    with pan("0.2 0.8"))
+val pattern = (pat("{60 64 67 71, bd ~ sd ~, hh*8}") with gain(sine().range(0.22, 0.72)) with pan("0.2 0.8"))
 val render = renderDirtWav(
     Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "pat-dirt-study.wav"),
-    pattern, cycles = 12, cps = 1.6,
+    pattern,
+    cycles = 12,
+    cps = 1.6,
     provenance = mapOf("field_box" to "analyse_pat_render", "pattern" to "pitched chord + drums"),
 )
 display("render", "rendered ${render.path} · ${"%.2f".format(render.durationSeconds)} s")
 
-client.analyzeRenderedAudio(
-    render,
-    requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/pat") },
-    onAccepted = { named, accepted ->
-        display("${named.label} job", fieldAudioJobStatusHtml(accepted))
-    },
-    onProgress = { named, accepted, event ->
-        display("${named.label} job", fieldAudioJobStatusHtml(accepted, event))
-    },
-    onProgressError = { named, error -> display("${named.label} stream", error.message ?: error.toString()) },
-).thenAccept { completed ->
-    display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
-}.exceptionally { error ->
-    display("analysis error", error.cause?.message ?: error.message ?: error.toString())
-    null
-}
+client
+    .analyzeRenderedAudio(
+        render,
+        requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/pat") },
+        onAccepted = { named, accepted ->
+            display("${named.label} job", fieldAudioJobStatusHtml(accepted))
+        },
+        onProgress = { named, accepted, event ->
+            display("${named.label} job", fieldAudioJobStatusHtml(accepted, event))
+        },
+        onProgressError = { named, error -> display("${named.label} stream", error.message ?: error.toString()) },
+    )
+    .thenAccept { completed ->
+        display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
+    }
+    .exceptionally { error ->
+        display("analysis error", error.cause?.message ?: error.message ?: error.toString())
+        null
+    }
 ```
 

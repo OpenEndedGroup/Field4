@@ -1,4 +1,3 @@
-import afield.app.protocol.Rect
 import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
@@ -11,7 +10,7 @@ Options.profiling = false
 once.renderer {
     window = Window(
         "YouTube · mouse + keyboard",
-        initialDimensions = Rect(80.0, 80.0, 1280.0, 720.0)
+        initialDimensions = Rect(80.0, 80.0, 1280.0, 720.0),
     )
     Renderer(window)
 }

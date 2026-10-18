@@ -16,10 +16,14 @@ operations:
         code: |
           // Four seconds of a wobbling hand, a key every 60th of a second.
           val rnd = java.util.Random(4)
-          val take = keyframes(name = "take", keys = (0..240).map { i ->
-              val t = i / 60.0
-              Keyframe(t, 0.5 + 0.35 * sin(t * 2.1) + 0.1 * sin(t * 7) + 0.04 * (rnd.nextDouble() - 0.5), "linear")
-          })
+          val take = keyframes(
+              name = "take",
+              keys =
+                  (0..240).map { i ->
+                      val t = i / 60.0
+                      Keyframe(t, 0.5 + 0.35 * sin(t * 2.1) + 0.1 * sin(t * 7) + 0.04 * (rnd.nextDouble() - 0.5), "linear")
+                  },
+          )
 
           val start = System.nanoTime()
           loop {

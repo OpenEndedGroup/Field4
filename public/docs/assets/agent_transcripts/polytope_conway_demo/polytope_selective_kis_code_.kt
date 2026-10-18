@@ -1,4 +1,3 @@
-
 // Topology is the source of truth. Coordinates and the FLine viewer only arrive after
 // selection and the abstract Conway operation have decided what the new faces are.
 var source = cube()
@@ -29,7 +28,8 @@ println(
     transform = ${result.summary()}
     triangles = ${triangles.summary()}
     orbit the view; hover and click a face to inspect its lineage
-    """.trimIndent(),
+    """
+        .trimIndent(),
 )
 
 val status: (String) -> Unit = { message -> markdown("face provenance", message) }
@@ -41,8 +41,7 @@ val faceLines = polyhedron.toFaceFLines { face, line ->
     val height = (attributes["height"] as? Number)?.toDouble()
     val lineage = result.lineage(face.id)
     val role = (lineage as? ElementLineage.Derived)?.role ?: "source"
-    val sources = result.sourceElements(face.id)
-        .joinToString { "rank ${it.rank} / id ${it.id.value}" }
+    val sources = result.sourceElements(face.id).joinToString { "rank ${it.rank} / id ${it.id.value}" }
 
     line.filled = true
     line.stroked = true
@@ -63,7 +62,8 @@ val faceLines = polyhedron.toFaceFLines { face, line ->
             - deployed height: `$deployed`
             - source: $sources
             - clicked at: `${hit.position}`
-            """.trimIndent(),
+            """
+                .trimIndent(),
         )
     }
 }

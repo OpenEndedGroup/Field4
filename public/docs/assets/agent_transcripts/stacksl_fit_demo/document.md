@@ -30,86 +30,99 @@ The gradient flows through the emitted GLSL itself, interpreted node by node on
 `afield.math.autodiff`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
 
 ```edn [field-box id="stacksl-fit" role="properties"]
-{"id" "stacksl-fit" "index" 0 "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-fit_code_.kt" "lines" 112 "characters" 4558 "sha256" "dcc2fa2d255833376db5aa4e15c434148a7505068ab15bbe6a03f8f5e400a7a7"}]}
+{"id" "stacksl-fit" "index" 0 "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-fit_code_.kt" "lines" 127 "characters" 4598 "sha256" "b372d956a2887553e3419e29df22b718ddc30f947817005806b40595884f71af"}]}
 ```
 
 ```kotlin [field-property box="stacksl-fit" name="code" path="stacksl-fit_code_.kt"]
-// Gradient descent on a shader's own literals.
-//
-// The target is the SAME program with twelve different palette numbers, so this fit has a known
-// answer and "did it work" is a question you can settle by looking: panels are target, seed,
-// fitted, and the residual amplified eight times.
-//
-// What makes this exact rather than approximate: StackSL is a per-pixel field. `main()` runs once
-// per pixel with `fragUV` as its only spatial input, so d(pixel)/d(literal) is the ordinary chain
-// rule. There is no rasteriser in the pipeline, no coverage approximation and therefore no bias to
-// characterise — which is exactly why the same idea was correctly abandoned for RectSL, where a
-// pixel depends on a parameter through coverage.
-//
-// The gradient flows through the emitted GLSL itself, interpreted node by node on
-// `afield.math.autodiff`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
+/*
+Gradient descent on a shader's own literals.
+
+The target is the SAME program with twelve different palette numbers, so this fit has a known
+answer and "did it work" is a question you can settle by looking: panels are target, seed,
+fitted, and the residual amplified eight times.
+
+What makes this exact rather than approximate: StackSL is a per-pixel field. `main()` runs once
+per pixel with `fragUV` as its only spatial input, so d(pixel)/d(literal) is the ordinary chain
+rule. There is no rasteriser in the pipeline, no coverage approximation and therefore no bias to
+characterise — which is exactly why the same idea was correctly abandoned for RectSL, where a
+pixel depends on a parameter through coverage.
+
+The gradient flows through the emitted GLSL itself, interpreted node by node on
+`afield.math.autodiff`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
+*/
 
 import afield.lang.stacksl.cpu.CpuRaster
 import afield.lang.stacksl.cpu.StackSLCpu
 import afield.lang.stacksl.cpu.StackSLFit
 import afield.media.image.util.PngEncoder
-import kotlin.math.abs
 
 run {
-
-    val seedProgram = """
+    val seedProgram =
+        """
         uv 3.0 * fbm
         0.5 0.5 0.5 1 vec4
         0.5 0.5 0.5 1 vec4
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
         palette
-    """.trimIndent()
+    """
+            .trimIndent()
 
-    val targetProgram = """
+    val targetProgram =
+        """
         uv 3.0 * fbm
         0.62 0.41 0.35 1 vec4
         0.31 0.45 0.52 1 vec4
         1.0 1.0 1.0 1 vec4
         0.12 0.55 0.88 1 vec4
         palette
-    """.trimIndent()
+    """
+            .trimIndent()
 
     val template = StackSLCpu.stillTemplate()
     val dim = 64
 
-    // 64 square is sized from the measured cost, not from optimism: this interpreter does about
-    // 1.3e4 pixel-shader invocations per second per core and 4.4e4 across ten, so one forward
-    // image pass is a tenth of a second and eighty gradient steps are a handful.
+    /*
+    64 square is sized from the measured cost, not from optimism: this interpreter does about
+    1.3e4 pixel-shader invocations per second per core and 4.4e4 across ten, so one forward
+    image pass is a tenth of a second and eighty gradient steps are a handful.
+    */
     val target = StackSLCpu.renderProgram(targetProgram, template, dim, dim)
 
     val started = System.nanoTime()
     val result = StackSLFit.fit(
-        seedProgram, target, template,
-        dim = dim, iterations = 80, learningRate = 0.05
+        seedProgram,
+        target,
+        template,
+        dim = dim,
+        iterations = 80,
+        learningRate = 0.05,
     )
     val seconds = (System.nanoTime() - started) / 1e9
 
     println("${result.wired.wires.size} wires, ${result.fittedIndices.size} fitted")
     println(
         "loss %.4e -> %.4e (%.0fx) in 80 Adam steps, ${dim}x$dim, %.1fs"
-            .format(result.seedLoss, result.fittedLoss, result.lossRatio, seconds)
+            .format(result.seedLoss, result.fittedLoss, result.lossRatio, seconds),
     )
     println()
     println("what moved:")
     result.report().forEach { println("    $it") }
 
-    // The four alpha wires do not move, and that is correct: the `w` component of a `palette`
-    // operand never reaches RGB, so its gradient is exactly zero. A fit cannot invent a reason to
-    // change a parameter the image does not depend on.
+    /*
+    The four alpha wires do not move, and that is correct: the `w` component of a `palette`
+    operand never reaches RGB, so its gradient is exactly zero. A fit cannot invent a reason to
+    change a parameter the image does not depend on.
+    */
 
     val seed = result.loss.render(result.seedWires)
     val fitted = result.loss.render(result.fittedWires)
     val residual = CpuRaster(
-        dim, dim,
+        dim,
+        dim,
         FloatArray(fitted.rgba.size) { i ->
             if (i % 4 == 3) 1f else (abs(fitted.rgba[i] - target.rgba[i]) * 8f).coerceIn(0f, 1f)
-        }
+        },
     )
 
     var sum = 0.0
@@ -141,10 +154,12 @@ run {
     println("the fitted program, which is a program:")
     println(result.fittedProgram.prependIndent("    "))
 
-    // The residual is the panel that decides this, not the loss number. A sum-of-squares objective
-    // rewards colour and luminance statistics, so a fit can drive the loss a long way down while
-    // producing an image that does not resemble the target at all. Here the residual is nearly
-    // black, which is what "it found the picture" looks like.
+    /*
+    The residual is the panel that decides this, not the loss number. A sum-of-squares objective
+    rewards colour and luminance statistics, so a fit can drive the loss a long way down while
+    producing an image that does not resemble the target at all. Here the residual is nearly
+    black, which is what "it found the picture" looks like.
+    */
 }
 ```
 
@@ -169,46 +184,50 @@ program's render and the fitted wire vector's render. If the literal rewriting w
 column off by one, a token mismatched — it would not be small, it would be a different picture.
 
 ```edn [field-box id="stacksl-roundtrip" role="properties"]
-{"id" "stacksl-roundtrip" "index" 1 "name" "The round trip — the fit's output is a program you can paste back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The round trip — the fit's output is a program you can paste back" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-roundtrip_code_.kt" "lines" 90 "characters" 3914 "sha256" "e2d9e4a4c294152220ed5b5291d489fcbb853c59735ed391c10497c7fef36eb8"}]}
+{"id" "stacksl-roundtrip" "index" 1 "name" "The round trip — the fit's output is a program you can paste back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The round trip — the fit's output is a program you can paste back" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-roundtrip_code_.kt" "lines" 96 "characters" 3909 "sha256" "1f739a8ccd823187e6403cd33cb51dcb696d1dcc325bb124e941ae923452f693"}]}
 ```
 
 ```kotlin [field-property box="stacksl-roundtrip" name="code" path="stacksl-roundtrip_code_.kt"]
-// The step that turns a number into a capability: the fit's output is StackSL SOURCE.
-//
-// A fitted wire vector is a `DoubleArray` and nobody can run a `DoubleArray`. So the fitted values
-// are written back into the program at the token positions the compiler recorded, and the result
-// is an ordinary StackSL program — which this box then compiles from scratch through the ORDINARY
-// non-wired path and renders at 256. Paste the text it prints into a `stackSL` box and a GPU will
-// draw it.
-//
-// The number to watch is the last one: the maximum per-channel difference between the re-emitted
-// program's render and the fitted wire vector's render. If the literal rewriting were wrong — a
-// column off by one, a token mismatched — it would not be small, it would be a different picture.
+/*
+The step that turns a number into a capability: the fit's output is StackSL SOURCE.
+
+A fitted wire vector is a `DoubleArray` and nobody can run a `DoubleArray`. So the fitted values
+are written back into the program at the token positions the compiler recorded, and the result
+is an ordinary StackSL program — which this box then compiles from scratch through the ORDINARY
+non-wired path and renders at 256. Paste the text it prints into a `stackSL` box and a GPU will
+draw it.
+
+The number to watch is the last one: the maximum per-channel difference between the re-emitted
+program's render and the fitted wire vector's render. If the literal rewriting were wrong — a
+column off by one, a token mismatched — it would not be small, it would be a different picture.
+*/
 
 import afield.lang.stacksl.cpu.StackSLCpu
 import afield.lang.stacksl.cpu.StackSLFit
 import afield.media.image.util.PngEncoder
-import kotlin.math.abs
 
 run {
-
-    val seedProgram = """
+    val seedProgram =
+        """
         uv 3.0 * fbm
         0.5 0.5 0.5 1 vec4
         0.5 0.5 0.5 1 vec4
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
         palette
-    """.trimIndent()
+    """
+            .trimIndent()
 
-    val targetProgram = """
+    val targetProgram =
+        """
         uv 3.0 * fbm
         0.62 0.41 0.35 1 vec4
         0.31 0.45 0.52 1 vec4
         1.0 1.0 1.0 1 vec4
         0.12 0.55 0.88 1 vec4
         palette
-    """.trimIndent()
+    """
+            .trimIndent()
 
     val template = StackSLCpu.stillTemplate()
 
@@ -258,10 +277,12 @@ run {
     println("panels: rendered from the fitted WIRES | rendered from the re-emitted SOURCE")
     display(PngEncoder.encode(strip, width, panel))
 
-    // Printing with %.8f keeps eight decimal places, not eight significant digits.
-    // Its round-trip error depends on magnitude: a fitted Float may change in source.
-    // This 48x48 example previously measured 5.96e-08; the 1e-4 guard checks the actual
-    // error above instead of requiring an exact zero.
+    /*
+    Printing with %.8f keeps eight decimal places, not eight significant digits.
+    Its round-trip error depends on magnitude: a fitted Float may change in source.
+    This 48x48 example previously measured 5.96e-08; the 1e-4 guard checks the actual
+    error above instead of requiring an exact zero.
+    */
 }
 ```
 
@@ -284,33 +305,36 @@ Read the table below against the program above it. Wire #0 is the `3.0` you can 
 #1..#16 are the four `vec4` operands of `palette`. Nothing here invented syntax for a parameter.
 
 ```edn [field-box id="stacksl-wires" role="properties"]
-{"id" "stacksl-wires" "index" 2 "name" "The wires — every literal in a StackSL program, made addressable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The wires — every literal in a StackSL program, made addressable" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-wires_code_.kt" "lines" 65 "characters" 2940 "sha256" "d92690bd38824ef1a546b095337588e17b881018869646fa70529dfd3f60eb17"}]}
+{"id" "stacksl-wires" "index" 2 "name" "The wires — every literal in a StackSL program, made addressable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The wires — every literal in a StackSL program, made addressable" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-wires_code_.kt" "lines" 73 "characters" 2988 "sha256" "348f5c5e6a666dc180c68db967afe5bfcf4f805ba55bae77cc8b3272fa4432fc"}]}
 ```
 
 ```kotlin [field-property box="stacksl-wires" name="code" path="stacksl-wires_code_.kt"]
-// Every number you typed in a StackSL program is a free parameter. Here they are.
-//
-// `StackSLCompileOptions.externalizeConstants` lifts each numeric literal out of a program into a
-// wire, and records where it came from: the token, the line, the column. `StackSLWires.lift` turns
-// that into something the CPU backend can actually run — the emitted array becomes scalar globals,
-// so a new parameter vector costs a `setGlobal` rather than a recompile.
-//
-// Read the table below against the program above it. Wire #0 is the `3.0` you can see; wires
-// #1..#16 are the four `vec4` operands of `palette`. Nothing here invented syntax for a parameter.
+/*
+Every number you typed in a StackSL program is a free parameter. Here they are.
+
+`StackSLCompileOptions.externalizeConstants` lifts each numeric literal out of a program into a
+wire, and records where it came from: the token, the line, the column. `StackSLWires.lift` turns
+that into something the CPU backend can actually run — the emitted array becomes scalar globals,
+so a new parameter vector costs a `setGlobal` rather than a recompile.
+
+Read the table below against the program above it. Wire #0 is the `3.0` you can see; wires
+#1..#16 are the four `vec4` operands of `palette`. Nothing here invented syntax for a parameter.
+*/
 
 import afield.lang.stacksl.cpu.StackSLCpu
 import afield.lang.stacksl.cpu.StackSLWires
 
 run {
-
-    val program = """
+    val program =
+        """
         uv 3.0 * fbm
         0.5 0.5 0.5 1 vec4
         0.5 0.5 0.5 1 vec4
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
         palette
-    """.trimIndent()
+    """
+            .trimIndent()
 
     println("The StackSL program:")
     println(program.prependIndent("    "))
@@ -321,21 +345,24 @@ run {
     println("    idx  token   at      initial  note")
     wired.wires.forEach { wire ->
         println(
-            "    #%-3d %-7s %-7s %-8s %s".format(
-                wire.index,
-                wire.token ?: "-",
-                if (wire.line != null) "${wire.line}:${wire.column}" else "-",
-                wire.initial,
-                wire.note
-            )
+            "    #%-3d %-7s %-7s %-8s %s"
+                .format(
+                    wire.index,
+                    wire.token ?: "-",
+                    if (wire.line != null) "${wire.line}:${wire.column}" else "-",
+                    wire.initial,
+                    wire.note,
+                ),
         )
     }
 
-    // The distinction that matters for writing a fitted value BACK into the source: a wire noted
-    // "number" stands for a literal a human typed, so it has a token to replace. A wire noted
-    // "optional default ..." is a default the emitter supplied for a word that was given no
-    // operand — there is nothing in the source to rewrite. This program has 17 of the first kind
-    // and 0 of the second, which is why it is the one the fit uses.
+    /*
+    The distinction that matters for writing a fitted value BACK into the source: a wire noted
+    "number" stands for a literal a human typed, so it has a token to replace. A wire noted
+    "optional default ..." is a default the emitter supplied for a word that was given no
+    operand — there is nothing in the source to rewrite. This program has 17 of the first kind
+    and 0 of the second, which is why it is the one the fit uses.
+    */
     println()
     println("The lowered GLSL starts with the wires as ordinary globals:")
     println(wired.glsl.lines().take(4).joinToString("\n").prependIndent("    "))
@@ -349,9 +376,11 @@ run {
     println("rendered ${raster.width}x${raster.height} in %.2fs".format((System.nanoTime() - started) / 1e9))
     display(raster.toPngBytes())
 
-    // Try it: change the `3.0`, or any of the twelve palette numbers, and run again. Then look at
-    // the table — the token and the column move with your edit, because they are read off the
-    // compiler's own record of where it found each number.
+    /*
+    Try it: change the `3.0`, or any of the twelve palette numbers, and run again. Then look at
+    the table — the token and the column move with your edit, because they are read off the
+    compiler's own record of where it found each number.
+    */
 }
 ```
 

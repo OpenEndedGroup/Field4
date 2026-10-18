@@ -22,32 +22,38 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 620.0, h: 1040.0 }
       properties:
         code: |
-          // Chebyshev waveshaper — the canonical harmonic generator.
-          // Feeding a unit cosine through the order-n Chebyshev polynomial Tₙ yields
-          // the pure n-th harmonic: Tₙ(cos θ) = cos(nθ). chebyshev is first-class —
-          // a rebuildable graph node, a composable FnTransform, and an OpRegistry
-          // transmutation target reachable by op= and evolution.
-          import afield.math.functions.Functions
-          
+          /*
+          Chebyshev waveshaper — the canonical harmonic generator.
+          Feeding a unit cosine through the order-n Chebyshev polynomial Tₙ yields
+          the pure n-th harmonic: Tₙ(cos θ) = cos(nθ). chebyshev is first-class —
+          a rebuildable graph node, a composable FnTransform, and an OpRegistry
+          transmutation target reachable by op= and evolution.
+          */
           with(Functions) {
               // A single-cycle sine fundamental across the domain.
               val fundamental = sin(1.0) over (0.0..1.0)
-          
-              fundamental.withName("fundamental (harmonic 1)").plot(channel = "fund", title = "input: sine, 1 cycle", heightPx = 150)
+
+              fundamental
+                  .withName("fundamental (harmonic 1)")
+                  .plot(channel = "fund", title = "input: sine, 1 cycle", heightPx = 150)
               (fundamental / chebyshev(2)).plot(channel = "h2", title = "chebyshev(2) — 2nd harmonic", heightPx = 150)
               (fundamental / chebyshev(3)).plot(channel = "h3", title = "chebyshev(3) — 3rd harmonic", heightPx = 150)
               (fundamental / chebyshev(4)).plot(channel = "h4", title = "chebyshev(4) — 4th harmonic", heightPx = 150)
               (fundamental / chebyshev(5)).plot(channel = "h5", title = "chebyshev(5) — 5th harmonic", heightPx = 150)
-          
-              // Because `order` is a param CHILD (an Fn), it can vary over x, sweeping
-              // the harmonic content across the window. `ramp(1.0, 6.0)` is a value
-              // line — 1 at x=0, 6 at x=1 — and the order is CONTINUOUS (Tₙ = cos(n·acos
-              // v) for real n), so the harmonic glides smoothly from the 1st to the 6th
-              // rather than stepping. (For normalizing an x-window down to 0..1 instead,
-              // that's `remap`.)
+
+              /*
+              Because `order` is a param CHILD (an Fn), it can vary over x, sweeping
+              the harmonic content across the window. `ramp(1.0, 6.0)` is a value
+              line — 1 at x=0, 6 at x=1 — and the order is CONTINUOUS (Tₙ = cos(n·acos
+              v) for real n), so the harmonic glides smoothly from the 1st to the 6th
+              rather than stepping. (For normalizing an x-window down to 0..1 instead,
+              that's `remap`.)
+              */
               val order = ramp(1.0, 6.0) over (0.0..1.0)
               val sweep = (sin(1.0) over (0.0..1.0)).chebyshev(order)
-              sweep.withName("chebyshev(order 1..6)").plot(channel = "sweep", title = "chebyshev(order = ramp 1..6) — harmonic sweep", heightPx = 160)
+              sweep
+                  .withName("chebyshev(order 1..6)")
+                  .plot(channel = "sweep", title = "chebyshev(order = ramp 1..6) — harmonic sweep", heightPx = 160)
           }
   - launch:
       box: chebyshev-waveshaper
@@ -58,18 +64,18 @@ operations:
       frame: { x: 700.0, y: 40.0, w: 620.0, h: 680.0 }
       properties:
         code: |
-          // Chebyshev waveshaping of a Perlin-noise source.
-          // The same first-class chebyshev(order) op, but the input is band-limited
-          // Perlin noise instead of a clean sine. A waveshaper reshapes a signal's
-          // amplitude, so Tₙ pushes a noise source's energy toward the rails and
-          // multiplies its zero-crossings — a cheap way to "colour" noise. The input
-          // is amplified toward [-1, 1] first so the shaper has full range to work in
-          // (chebyshev clamps to [-1, 1] internally, as every waveshaper does).
-          import afield.math.functions.Functions
-          
+          /*
+          Chebyshev waveshaping of a Perlin-noise source.
+          The same first-class chebyshev(order) op, but the input is band-limited
+          Perlin noise instead of a clean sine. A waveshaper reshapes a signal's
+          amplitude, so Tₙ pushes a noise source's energy toward the rails and
+          multiplies its zero-crossings — a cheap way to "colour" noise. The input
+          is amplified toward [-1, 1] first so the shaper has full range to work in
+          (chebyshev clamps to [-1, 1] internally, as every waveshaper does).
+          */
           with(Functions) {
               val noise = perlinNoise(seed = 7L, frequency = 6.0, amplitude = 1.6) over (0.0..1.0)
-          
+
               noise.withName("perlin noise").plot(channel = "n", title = "input: perlin noise (freq 6)", heightPx = 150)
               (noise / chebyshev(2)).plot(channel = "n2", title = "perlin / chebyshev(2)", heightPx = 150)
               (noise / chebyshev(3)).plot(channel = "n3", title = "perlin / chebyshev(3)", heightPx = 150)

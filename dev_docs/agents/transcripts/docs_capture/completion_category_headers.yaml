@@ -28,9 +28,11 @@ operations:
         h: 150.0
       properties:
         code: |
-          // Caret at the end of the next line, then Ctrl+Space.
-          // Every completion offered here is declared `@file:CompletionCategory("ALife")`, so the
-          // group header above the rows must read exactly "ALife".
+          /*
+          Caret at the end of the next line, then Ctrl+Space.
+          Every completion offered here is declared `@file:CompletionCategory("ALife")`, so the
+          group header above the rows must read exactly "ALife".
+          */
           lenia
   - create:
       box: agent_completion_header_audio_ai
@@ -42,13 +44,13 @@ operations:
         h: 150.0
       properties:
         code: |
-          // The import is load-bearing: nothing in the audioai package is in the REPL intro, so
-          // without it the popup correctly offers nothing here at all (measured, not guessed).
-          import afield.audio.ai.*
-          
-          // Caret at the end of the next line, then Ctrl+Space.
-          // These come from `@file:CompletionCategory("Audio AI")`, so the group header must read
-          // exactly "Audio AI" — two capitals, no "Audio Ai".
+          /*
+          The import is load-bearing: nothing in the audioai package is in the REPL intro, so
+          without it the popup correctly offers nothing here at all (measured, not guessed).
+          Caret at the end of the next line, then Ctrl+Space.
+          These come from `@file:CompletionCategory("Audio AI")`, so the group header must read
+          exactly "Audio AI" — two capitals, no "Audio Ai".
+          */
           fieldAudio
   - wait:
       millis: 200

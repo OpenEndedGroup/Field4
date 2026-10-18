@@ -41,27 +41,26 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.Target
-          import afield.graphics.render.TexturePreviewCache
           import afield.media.browser.*
           import afield.media.stream.FieldRTTStreamer
-          import afield.graphics.texture.MetalIOSurface
-          import afield.math.linalg.vec
-          import org.lwjgl.system.MemoryUtil
-          import org.lwjgl.vulkan.VK10.*
           import java.io.ByteArrayInputStream
           import java.util.Base64
           import java.util.concurrent.CopyOnWriteArrayList
           import javax.imageio.ImageIO
-          
+          import org.lwjgl.system.MemoryUtil
+          import org.lwjgl.vulkan.VK10.*
+
           val device = renderer.device
-          println("iosurface-ring driver=${device.physicalDevice.driverName} metalObjects=${device.supportsMetalObjects} externalMemoryHost=${device.supportsExternalMemoryHost}")
-          
+          println(
+              "iosurface-ring driver=${device.physicalDevice.driverName} metalObjects=${device.supportsMetalObjects} externalMemoryHost=${device.supportsExternalMemoryHost}",
+          )
+
           // BGRA bytes of this clear colour: B=223 G=128 R=32.
           val streamer = FieldRTTStreamer(renderer, dest = "127.0.0.1:59123", width = 64, height = 64, ringSize = 2, fps = 30)
           val ring = streamer.start()
           require(ring.size == 2) { "streamer did not start: ${ring.size} ring surfaces" }
           ring.forEach { it.parameters.clearColor = vec(0.125, 0.5, 0.875, 1.0) }
-          
+
           val releases = CopyOnWriteArrayList<BrowserFrameRelease>()
           var surface: MacExternalBrowserSurface? = null
           var ticks = 0
@@ -83,14 +82,18 @@ operations:
                           MetalIOSurface.unlock(ref, MetalIOSurface.LOCK_READ_ONLY)
                           MetalIOSurface.release(ref)
                           println("iosurface-ring stream slot=$slot id=$id bgr=$b,$g,$r")
-                          require(r in 28..36 && g in 124..132 && b in 219..227) { "ring slot $slot IOSurface holds $b,$g,$r, not the rendered colour" }
+                          require(r in 28..36 && g in 124..132 && b in 219..227) {
+                              "ring slot $slot IOSurface holds $b,$g,$r, not the rendered colour"
+                          }
                       }
                       println("iosurface-ring stream PASS encoded=${streamer.framesEncoded}")
-          
+
                       val s = MacExternalBrowserSurface(
                           renderer,
-                          ExternalBrowserSurfaceSpec(64, 64, BrowserSurfacePixelFormat.BGRA8_UNORM, slotCount = 2)
-                      ) { releases.add(it) }
+                          ExternalBrowserSurfaceSpec(64, 64, BrowserSurfacePixelFormat.BGRA8_UNORM, slotCount = 2),
+                      ) {
+                              releases.add(it)
+                          }
                       surface = s
                       val ref = MetalIOSurface.lookup(streamer.ioSurfaceIds[0])
                       val port = MetalIOSurface.createMachPort(ref)
@@ -99,13 +102,19 @@ operations:
                       require(
                           s.offerFrame(
                               ExternalBrowserFrame(
-                                  streamId = 1, frameId = 1, slot = 0, width = 64, height = 64,
+                                  streamId = 1,
+                                  frameId = 1,
+                                  slot = 0,
+                                  width = 64,
+                                  height = 64,
                                   pixelFormat = BrowserSurfacePixelFormat.BGRA8_UNORM,
-                                  handle = ExternalBrowserImageHandle.MacIOSurfaceMachPort(port)
-                              )
-                          ) == BrowserFrameOfferResult.ACCEPTED
+                                  handle = ExternalBrowserImageHandle.MacIOSurfaceMachPort(port),
+                              ),
+                          ) == BrowserFrameOfferResult.ACCEPTED,
                       )
-                      renderer.renderList.others["iosurface-ring-browser-copy"] = Target { command, _ -> s.prepareSampledImagesFor(command) }
+                      renderer.renderList.others["iosurface-ring-browser-copy"] = Target { command, _ ->
+                          s.prepareSampledImagesFor(command)
+                      }
                       phase = 1
                   }
                   frame()
@@ -117,27 +126,36 @@ operations:
                       require(release != null) { "no browser release after $ticks ticks" }
                       require(release.reason == BrowserFrameReleaseReason.PRESENTED) { "browser frame release failed: $release" }
                       val html: String = TexturePreviewCache.capture(
-                          renderer, surface!!.imageView.image, VK_FORMAT_B8G8R8A8_UNORM, 64, 64,
-                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 64
+                          renderer,
+                          surface!!.imageView.image,
+                          VK_FORMAT_B8G8R8A8_UNORM,
+                          64,
+                          64,
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                          64,
                       ) ?: throw IllegalStateException("resident texture readback failed")
-                      val encoded = Regex("base64,([^']+)").find(html)?.groupValues?.get(1)
-                          ?: throw IllegalStateException("PNG payload missing")
+                      val encoded =
+                          Regex("base64,([^']+)").find(html)?.groupValues?.get(1)
+                              ?: throw IllegalStateException("PNG payload missing")
                       val image = ImageIO.read(ByteArrayInputStream(Base64.getDecoder().decode(encoded)))
                       val argb = image.getRGB(32, 32)
                       val red = (argb ushr 16) and 255
                       val green = (argb ushr 8) and 255
                       val blue = argb and 255
                       println("iosurface-ring browser rgb=$red,$green,$blue release=$release")
-                      require(red in 28..36 && green in 124..132 && blue in 219..227) { "unexpected copied pixel $red,$green,$blue" }
+                      require(red in 28..36 && green in 124..132 && blue in 219..227) {
+                          "unexpected copied pixel $red,$green,$blue"
+                      }
                       println("iosurface-ring PASS")
                       end()
                   }
               }
-          }.end {
-              renderer.renderList.others.remove("iosurface-ring-browser-copy")
-              surface?.close()
-              streamer.stop()
           }
+              .end {
+                  renderer.renderList.others.remove("iosurface-ring-browser-copy")
+                  surface?.close()
+                  streamer.stop()
+              }
   - connect: { parent: iosurface_ring_renderer, child: iosurface_ring_smoke }
   - launch: { box: iosurface_ring_renderer, property: code, strand: renderer }
   - await: { wait: pending }

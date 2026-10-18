@@ -85,28 +85,31 @@ operations:
         layout(location = 0) in vec3 pos;
         layout(location = 1) in vec2 tc;
         layout(location = 0) out vec2 ftc;
-        void main() { ftc = tc; gl_Position = vec4(pos, 1); }
+        void main() {
+            ftc = tc;
+            gl_Position = vec4(pos, 1);
+        }
       fragment: |
         #version 450
         layout(location = 0) in vec2 ftc;
         layout(location = 0) out vec4 uFragColor;
         layout(set = 0, binding = 0) uniform sampler2D camera;
-        void main() { uFragColor = vec4(texture(camera, ftc).rgb, 1.0); }
+        void main() {
+            uFragColor = vec4(texture(camera, ftc).rgb, 1.0);
+        }
       code: |
-        import afield.lang.python.NumpyShared
-        
         prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()
-        
-        var module = moduleHere { }
+
+        var module = moduleHere {}
         var m = Mesh()
         module += m named "camera quad"
         renderer += module
-        
+
         // the image fills the window. Field's NDC is y-up, image v is y-down: v = 0 is the top edge
         m.set(4, 6) {
-            pos.add(-1, -1, 0.9,  1, -1, 0.9,  1, 1, 0.9,  -1, 1, 0.9)
-            tc.add(0, 1,  1, 1,  1, 0,  0, 0)
-            tri.add(0, 1, 2,  0, 2, 3)
+            pos.add(-1, -1, 0.9, 1, -1, 0.9, 1, 1, 0.9, -1, 1, 0.9)
+            tc.add(0, 1, 1, 1, 1, 0, 0, 0)
+            tri.add(0, 1, 2, 0, 2, 3)
         }
 - connect:
     parent: agent_graphics_context
@@ -116,20 +119,18 @@ operations:
     property: code
     type: fragment
     code: |
-      import afield.lang.python.NumpyShared
-      
       prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()
-      
-      var module = moduleHere { }
+
+      var module = moduleHere {}
       var m = Mesh()
       module += m named "camera quad"
       renderer += module
-      
+
       // the image fills the window. Field's NDC is y-up, image v is y-down: v = 0 is the top edge
       m.set(4, 6) {
-          pos.add(-1, -1, 0.9,  1, -1, 0.9,  1, 1, 0.9,  -1, 1, 0.9)
-          tc.add(0, 1,  1, 1,  1, 0,  0, 0)
-          tri.add(0, 1, 2,  0, 2, 3)
+          pos.add(-1, -1, 0.9, 1, -1, 0.9, 1, 1, 0.9, -1, 1, 0.9)
+          tc.add(0, 1, 1, 1, 1, 0, 0, 0)
+          tri.add(0, 1, 2, 0, 2, 3)
       }
 - create:
     box: cv_overlay_lines
@@ -145,12 +146,17 @@ operations:
         layout(location = 0) in vec3 pos;
         layout(location = 1) in vec4 col;
         layout(location = 0) out vec4 fcol;
-        void main() { fcol = col; gl_Position = vec4(pos, 1); }
+        void main() {
+            fcol = col;
+            gl_Position = vec4(pos, 1);
+        }
       fragment: |
         #version 450
         layout(location = 0) in vec4 fcol;
         layout(location = 0) out vec4 uFragColor;
-        void main() { uFragColor = fcol; }
+        void main() {
+            uFragColor = fcol;
+        }
       code: |
         val tracks = NumpyShared.lines("tracks")
         val skeleton = NumpyShared.lines("skeleton")

@@ -1,0 +1,29 @@
+{
+  "baseline": "7eee8eb47",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/skinned_characters.yaml",
+      "kotlinBodies": 8,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/gpu_crowd_code_.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/metadata.edn",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/document.md",
+      "kotlinBodies": 8,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

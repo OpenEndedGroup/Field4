@@ -310,10 +310,14 @@ void main() {
             val ring = topology.faceCycle(face.id).map { xyz[topology.vertexMap.getValue(it)] }
             for (k in ring.indices) {
                 for ((p, r) in [c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f]) {
-                    pos.add(p.x, p.y, p.z); nrm.add(n.x, n.y, n.z); cen.add(c.x, c.y, c.z)
-                    fid.add(face.id.value.toFloat()); faceRadius.add(r)
+                    pos.add(p.x, p.y, p.z)
+                    nrm.add(n.x, n.y, n.z)
+                    cen.add(c.x, c.y, c.z)
+                    fid.add(face.id.value.toFloat())
+                    faceRadius.add(r)
                 }
-                tri.add(3 * t, 3 * t + 1, 3 * t + 2); t++
+                tri.add(3 * t, 3 * t + 1, 3 * t + 2)
+                t++
             }
         }
     }

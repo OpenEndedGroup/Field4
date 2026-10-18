@@ -15,26 +15,25 @@ val duration = 4.0
 
 :::fold build each axis as amp · trig(rate · t + phase) + centre, with amp, phase and centre unknown
 // A clamped identity in time: RectSL's way of saying "follow the clock".
-fun clock(d: Double): Track<Double> =
-    LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(d, d)])
+fun clock(d: Double): Track<Double> = LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(d, d)])
 
-fun channel(axis: String, rate: Double, op: TrackOp1): Track<Double> =
+fun channel(axis: String, rate: Double, op: TrackOp1): Track<Double> = BinaryDoubleTrack(
     BinaryDoubleTrack(
-        BinaryDoubleTrack(
-            MappedDoubleTrack(
-                BinaryDoubleTrack(
-                    BinaryDoubleTrack(clock(duration), constantTrack(rate), TrackOp2.MUL),
-                    FreeParamTrack("$axis-phase", 0.0),
-                    TrackOp2.ADD
-                ),
-                op
+        MappedDoubleTrack(
+            BinaryDoubleTrack(
+                BinaryDoubleTrack(clock(duration), constantTrack(rate), TrackOp2.MUL),
+                FreeParamTrack("$axis-phase", 0.0),
+                TrackOp2.ADD,
             ),
-            FreeParamTrack("$axis-amp", 1.0),
-            TrackOp2.MUL
+            op,
         ),
-        FreeParamTrack("$axis-centre", 0.0),
-        TrackOp2.ADD
-    )
+        FreeParamTrack("$axis-amp", 1.0),
+        TrackOp2.MUL,
+    ),
+    FreeParamTrack("$axis-centre", 0.0),
+    TrackOp2.ADD,
+)
+
 :::endfold
 
 val seedX = channel("x", 1.1, TrackOp1.COS)
@@ -44,42 +43,58 @@ val seedY = channel("y", 1.1, TrackOp1.SIN)
 val waypoints = [
     RectSLFitFigure.Marker(0.4, -6.5, 2.6),
     RectSLFitFigure.Marker(1.8, 0.5, -2.4),
-    RectSLFitFigure.Marker(3.4, 6.2, 1.8)
+    RectSLFitFigure.Marker(3.4, 6.2, 1.8),
 ]
 val window = Functions.Domain(0.0, duration)
 val fitX = seedX.fitParameters(waypoints.map { TrackFitTarget(it.time, it.x) }, window, iterations = 1500)
 val fitY = seedY.fitParameters(waypoints.map { TrackFitTarget(it.time, it.y) }, window, iterations = 1500)
 
-fun miss(x: Track<Double>, y: Track<Double>): Double =
-    waypoints.maxOf { hypot(x.sample(it.time) - it.x, y.sample(it.time) - it.y) }
+fun miss(x: Track<Double>, y: Track<Double>): Double = waypoints.maxOf {
+    hypot(x.sample(it.time) - it.x, y.sample(it.time) - it.y)
+}
 
 :::fold draw the target, the seed and the fit as three strips
-display("figure", RectSLFitFigure.render(
-    bands = [
-        RectSLFitFigure.Band(
-            "target", constantTrack(0.0), constantTrack(0.0),
-            Color4(0.86, 0.88, 0.91), note = "3 waypoints", strobe = false
-        ),
-        RectSLFitFigure.Band(
-            "seed", seedX, seedY, Color4(1.0, 0.42, 0.28),
-            note = "worst miss %.2fm".format(miss(seedX, seedY))
-        ),
-        RectSLFitFigure.Band(
-            "fitted", fitX.fitted, fitY.fitted, Color4(0.29, 0.83, 0.7),
-            note = "worst miss %.1em".format(miss(fitX.fitted, fitY.fitted))
-        )
-    ],
-    markers = waypoints,
-    wall = WallSpec(18.0, 8.0, UnitKind.Meters),
-    rectSize = Vec2d(1.5, 1.5),
-    times = (0..32).map { it * duration / 32.0 }
-))
+display(
+    "figure",
+    RectSLFitFigure.render(
+        bands = [
+            RectSLFitFigure.Band(
+                "target",
+                constantTrack(0.0),
+                constantTrack(0.0),
+                Color4(0.86, 0.88, 0.91),
+                note = "3 waypoints",
+                strobe = false,
+            ),
+            RectSLFitFigure.Band(
+                "seed",
+                seedX,
+                seedY,
+                Color4(1.0, 0.42, 0.28),
+                note = "worst miss %.2fm".format(miss(seedX, seedY)),
+            ),
+            RectSLFitFigure.Band(
+                "fitted",
+                fitX.fitted,
+                fitY.fitted,
+                Color4(0.29, 0.83, 0.7),
+                note = "worst miss %.1em".format(miss(fitX.fitted, fitY.fitted)),
+            ),
+        ],
+        markers = waypoints,
+        wall = WallSpec(18.0, 8.0, UnitKind.Meters),
+        rectSize = Vec2d(1.5, 1.5),
+        times = (0..32).map { it * duration / 32.0 },
+    ),
+)
+
 :::endfold
 
 """x: ${fitX.initialParameters} -> ${fitX.parameters}
 |   residual ${fitX.initialResidual} -> ${fitX.finalResidual}
 |y: ${fitY.initialParameters} -> ${fitY.parameters}
-|   residual ${fitY.initialResidual} -> ${fitY.finalResidual}""".trimMargin()
+|   residual ${fitY.initialResidual} -> ${fitY.finalResidual}"""
+    .trimMargin()
 ```
 
 The top band shows where the rect was asked to go: three waypoints at three instants. The middle
@@ -115,17 +130,19 @@ val track = BinaryDoubleTrack(
     BinaryDoubleTrack(
         LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(4.0, 4.0)]),
         FreeParamTrack("gain", 1.0),
-        TrackOp2.MUL
+        TrackOp2.MUL,
     ),
     FreeParamTrack("bias", 0.0),
-    TrackOp2.ADD
+    TrackOp2.ADD,
 )
 
 val targets = [TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0)]
 
 val fit = track.fitParameters(targets)
 
-markdown("fit", """
+markdown(
+    "fit",
+    """
     ~~~
     fit.parameters       ${fit.parameters}
     fit.initialResidual  ${fit.initialResidual}
@@ -133,7 +150,9 @@ markdown("fit", """
     fit.converged        ${fit.converged} after ${fit.steps.size} steps
     fit.fitted           ${fit.fitted.describe()}
     ~~~
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 
 The next box does the same from RectSL source. It compiles a scene with two `free-param` numbers in
@@ -147,8 +166,9 @@ import afield.lang.rectsl.*
 
 // `free-param` marks a number to be solved for. Until it is, every backend reads it as the
 // constant it is now, so the scene plays as written.
-val program = RectAnimationOracle.compile(
-    """
+val program =
+    RectAnimationOracle.compile(
+            """
     #rectsl
     ->wall 18 8 meters
     ->duration 4
@@ -162,8 +182,10 @@ val program = RectAnimationOracle.compile(
       "sweep" track-ref 1.0 free-param gain * 0.0 free-param bias + ->x
       0x44d4b4 solid ->fill
     ;
-    """.trimIndent()
-).program
+    """
+                .trimIndent(),
+        )
+        .program
 
 val node = program.nodes.filterIsInstance<RectNode>().single()
 val x = node.x
@@ -173,29 +195,40 @@ val x = node.x
 val targets = [TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0)]
 val fit = x.fitParameters(targets, Functions.Domain(0.0, 4.0), iterations = 2000)
 
-fun missOf(track: Track<Double>): Double =
-    targets.maxOf { abs(track.sample(it.time) - it.value) }
+fun missOf(track: Track<Double>): Double = targets.maxOf { abs(track.sample(it.time) - it.value) }
 
 :::fold draw the scene as written and as solved; only ->x has unknowns, so both bands share the node's y
-display("before / after", RectSLFitFigure.render(
-    bands = [
-        RectSLFitFigure.Band(
-            "authored", x, node.y, Color4(1.0, 0.42, 0.28),
-            note = "${x.freeParameters()} — worst miss %.2fm".format(missOf(x))
-        ),
-        RectSLFitFigure.Band(
-            "solved", fit.fitted, node.y, Color4(0.29, 0.83, 0.7),
-            note = "${fit.parameters} — worst miss %.1em".format(missOf(fit.fitted))
-        )
-    ],
-    markers = targets.map { RectSLFitFigure.Marker(it.time, it.value, 0.0) },
-    wall = WallSpec(18.0, 8.0, UnitKind.Meters),
-    rectSize = Vec2d(1.4, 1.4),
-    times = (0..32).map { it * 4.0 / 32.0 }
-))
+display(
+    "before / after",
+    RectSLFitFigure.render(
+        bands = [
+            RectSLFitFigure.Band(
+                "authored",
+                x,
+                node.y,
+                Color4(1.0, 0.42, 0.28),
+                note = "${x.freeParameters()} — worst miss %.2fm".format(missOf(x)),
+            ),
+            RectSLFitFigure.Band(
+                "solved",
+                fit.fitted,
+                node.y,
+                Color4(0.29, 0.83, 0.7),
+                note = "${fit.parameters} — worst miss %.1em".format(missOf(fit.fitted)),
+            ),
+        ],
+        markers = targets.map { RectSLFitFigure.Marker(it.time, it.value, 0.0) },
+        wall = WallSpec(18.0, 8.0, UnitKind.Meters),
+        rectSize = Vec2d(1.4, 1.4),
+        times = (0..32).map { it * 4.0 / 32.0 },
+    ),
+)
+
 :::endfold
 
-markdown("fit", """
+markdown(
+    "fit",
+    """
     ~~~
     IR before:   ${x.describe()}
     free params: ${x.freeParameters()}
@@ -204,7 +237,9 @@ markdown("fit", """
     residual:    ${fit.initialResidual} -> ${fit.finalResidual}
     x(1.0) = ${fit.fitted.sample(1.0)}   x(3.0) = ${fit.fitted.sample(3.0)}
     ~~~
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 
 `fitParameters` moves only the named `free-param`s. The general `fitGradient`, which moves every
@@ -262,10 +297,13 @@ is evaluated at x, so a zero-frequency oscillator is a composition. The box belo
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-sin-identity.png" alt="an output panel labelled identity, comparing sin with frequency 0, phase u, amplitude 1 and offset 0 against a plain sin of u of x. It reports 4001 samples over x in the range -2 to 2, a worst difference of 0.0, and 0 samples not bit-equal" wait="4.0" capture="box" open-outputs="true" w="1000" h="330" padding="14" name="inverse-animation-sin-identity" embed=true}
 // A zero-frequency oscillator whose phase is u(x): 0 + 1·sin(2π·0·x + u) is sin(u(x)).
 val (composed, u) = with(Functions) {
-    val u = identity(Functions.Domain.ALL)                     // any inner function will do; u(x) = x
+    val u = identity(Functions.Domain.ALL) // any inner function will do; u(x) = x
     sin(
-        frequency = 0.0.c, phase = u, amplitude = 1.0.c, offset = 0.0.c,
-        domain = Functions.Domain.ALL
+        frequency = 0.0.c,
+        phase = u,
+        amplitude = 1.0.c,
+        offset = 0.0.c,
+        domain = Functions.Domain.ALL,
     ) to u
 }
 
@@ -273,14 +311,18 @@ val xs = (0..4000).map { -2.0 + it * 4.0 / 4000.0 }
 val worst = xs.maxOf { x -> abs(composed.eval(x) - sin(u.eval(x))) }
 val notBitEqual = xs.count { x -> composed.eval(x) != sin(u.eval(x)) }
 
-markdown("identity", """
+markdown(
+    "identity",
+    """
     ~~~
     sin(frequency = 0, phase = u, amplitude = 1, offset = 0)   vs   sin(u(x))
     samples:               ${xs.size} over x in [-2, 2]
     worst difference:      $worst
     samples not bit-equal: $notBitEqual
     ~~~
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 
 The two agree exactly, because `0 + 1·sin(2π·0·x + u)` involves no rounding. This identity covers
@@ -317,7 +359,9 @@ val xs = grid + edges
 
 val wrong = xs.filter { x -> step.eval(x) != (if (x >= 0.0) 1.0 else 0.0) }
 
-markdown("exact step", """
+markdown(
+    "exact step",
+    """
     ~~~
     clamp01(floor(x) + 1)  vs  1 where x >= 0, 0 below
     samples:           ${xs.size} (grid over [-4, 4] plus the integer boundaries)
@@ -325,7 +369,9 @@ markdown("exact step", """
     step(0.0):         ${step.eval(0.0)}
     step(-1e-16):      ${step.eval(-1e-16)}
     ~~~
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 
 The same step handles the `expo-*` and `elastic-*` easings, whose formulas do not quite reach their

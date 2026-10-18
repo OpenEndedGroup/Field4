@@ -1,6 +1,8 @@
-// Sixteen hats a cycle. `whenCycle` is the existing operator for "from cycle 2 on, play
-// this instead", so the first half of the file is what the old surface could express and
-// the second half is the identical pattern with the gain following a sine.
+/*
+Sixteen hats a cycle. `whenCycle` is the existing operator for "from cycle 2 on, play
+this instead", so the first half of the file is what the old surface could express and
+the second half is the identical pattern with the gain following a sine.
+*/
 val hats = pat("hh*16")
 val demo = hats.whenCycle({ it >= 2 }) { hats with gain(sine().range(0.08, 1.0)) }
 
@@ -9,12 +11,15 @@ showPatRollOf(
     "gain(sine()) (cycles 2-3)" to (hats with gain(sine().range(0.08, 1.0))),
     title = "the same sixteen hats, before and after",
     subtitle = "rectangle height is the gain each note latched",
-    cycles = 2, paramKey = "gain",
+    cycles = 2,
+    paramKey = "gain",
 )
 displayOpen("main")
 
 val audio = showPatAudio(
-    demo, cycles = 4, cps = 2.0,
+    demo,
+    cycles = 4,
+    cps = 2.0,
     voice = patVoice(wave = PatWave.NOISE, decay = 0.006, sustain = 0.05),
     channel = "sound",
 )

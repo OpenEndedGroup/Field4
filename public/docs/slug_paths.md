@@ -46,8 +46,11 @@ Open contours are closed for filling. All coordinates, including cubic controls,
 must be finite and lie in the XY plane (`z = 0`).
 
 ```diffstatic {data-lang=kotlin}
-val prepared = SlugPath.compile(path, "field-slug".file,
-    tolerance = 1e-4f)
+val prepared = SlugPath.compile(
+    path,
+    "field-slug".file,
+    tolerance = 1e-4f,
+)
 val data = SlugBuffer(renderer, prepared)
 ```
 

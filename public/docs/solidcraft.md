@@ -43,8 +43,6 @@ operating system and architecture you use.
 ```diffstatic {data-lang=kotlin}
 import afield.geometry.solid.solidcraft.SolidCraftDesign
 import afield.geometry.solid.solidcraft.SolidCraftLibrary
-import afield.geometry.mesh.showMesh
-import afield.geometry.mesh.weld
 
 if (SolidCraftLibrary.isAvailable) {
     SolidCraftDesign.openBundledExample().use { part ->

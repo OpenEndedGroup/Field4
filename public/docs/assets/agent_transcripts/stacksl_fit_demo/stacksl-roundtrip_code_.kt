@@ -1,39 +1,43 @@
-// The step that turns a number into a capability: the fit's output is StackSL SOURCE.
-//
-// A fitted wire vector is a `DoubleArray` and nobody can run a `DoubleArray`. So the fitted values
-// are written back into the program at the token positions the compiler recorded, and the result
-// is an ordinary StackSL program — which this box then compiles from scratch through the ORDINARY
-// non-wired path and renders at 256. Paste the text it prints into a `stackSL` box and a GPU will
-// draw it.
-//
-// The number to watch is the last one: the maximum per-channel difference between the re-emitted
-// program's render and the fitted wire vector's render. If the literal rewriting were wrong — a
-// column off by one, a token mismatched — it would not be small, it would be a different picture.
+/*
+The step that turns a number into a capability: the fit's output is StackSL SOURCE.
+
+A fitted wire vector is a `DoubleArray` and nobody can run a `DoubleArray`. So the fitted values
+are written back into the program at the token positions the compiler recorded, and the result
+is an ordinary StackSL program — which this box then compiles from scratch through the ORDINARY
+non-wired path and renders at 256. Paste the text it prints into a `stackSL` box and a GPU will
+draw it.
+
+The number to watch is the last one: the maximum per-channel difference between the re-emitted
+program's render and the fitted wire vector's render. If the literal rewriting were wrong — a
+column off by one, a token mismatched — it would not be small, it would be a different picture.
+*/
 
 import afield.lang.stacksl.cpu.StackSLCpu
 import afield.lang.stacksl.cpu.StackSLFit
 import afield.media.image.util.PngEncoder
-import kotlin.math.abs
 
 run {
-
-    val seedProgram = """
+    val seedProgram =
+        """
         uv 3.0 * fbm
         0.5 0.5 0.5 1 vec4
         0.5 0.5 0.5 1 vec4
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
         palette
-    """.trimIndent()
+    """
+            .trimIndent()
 
-    val targetProgram = """
+    val targetProgram =
+        """
         uv 3.0 * fbm
         0.62 0.41 0.35 1 vec4
         0.31 0.45 0.52 1 vec4
         1.0 1.0 1.0 1 vec4
         0.12 0.55 0.88 1 vec4
         palette
-    """.trimIndent()
+    """
+            .trimIndent()
 
     val template = StackSLCpu.stillTemplate()
 
@@ -83,8 +87,10 @@ run {
     println("panels: rendered from the fitted WIRES | rendered from the re-emitted SOURCE")
     display(PngEncoder.encode(strip, width, panel))
 
-    // Printing with %.8f keeps eight decimal places, not eight significant digits.
-    // Its round-trip error depends on magnitude: a fitted Float may change in source.
-    // This 48x48 example previously measured 5.96e-08; the 1e-4 guard checks the actual
-    // error above instead of requiring an exact zero.
+    /*
+    Printing with %.8f keeps eight decimal places, not eight significant digits.
+    Its round-trip error depends on magnitude: a fitted Float may change in source.
+    This 48x48 example previously measured 5.96e-08; the 1e-4 guard checks the actual
+    error above instead of requiring an exact zero.
+    */
 }

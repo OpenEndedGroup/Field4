@@ -1,6 +1,8 @@
-// Draws into the fluid's control texture: a solid disc, walls top and bottom, and
-// stripes of dye released at the left edge. The controls persist from frame to
-// frame, so clear them first or a re-run leaves the old drawing behind.
+/*
+Draws into the fluid's control texture: a solid disc, walls top and bottom, and
+stripes of dye released at the left edge. The controls persist from frame to
+frame, so clear them first or a re-run leaves the old drawing behind.
+*/
 lbm.clearControls()
 
 var module = moduleHere(lbm.controlsParameters("cylinder"))

@@ -26,12 +26,15 @@ val range = f.certifiedRange(0.0, 6.0)
 // A yes/no question with the same guarantee.
 val claim = f.certifiedNeverExceeds(0.42, 0.0, 6.0)
 
-display("answers", Table(["question", "answer"], title = "saw + a 0.5 ms bump on [0, 6]")
-    .row("largest of 1200 samples", sampled)
-    .row("f.enclose(0, 6)", "[${once.lo}, ${once.hi}]")
-    .row("certifiedRange: max reached", "${range.max!!.value} at x = ${range.max!!.witness}")
-    .row("certifiedRange: max proven ≤", range.max!!.bound)
-    .row("certifiedNeverExceeds(0.42)", "${claim.kind} at x = ${claim.witness}"))
+display(
+    "answers",
+    Table(["question", "answer"], title = "saw + a 0.5 ms bump on [0, 6]")
+        .row("largest of 1200 samples", sampled)
+        .row("f.enclose(0, 6)", "[${once.lo}, ${once.hi}]")
+        .row("certifiedRange: max reached", "${range.max!!.value} at x = ${range.max!!.witness}")
+        .row("certifiedRange: max proven ≤", range.max!!.bound)
+        .row("certifiedNeverExceeds(0.42)", "${claim.kind} at x = ${claim.witness}"),
+)
 ```
 
 The samples say the function peaks at 0.4. The single enclosure says the peak is no higher than about 1.0, which is true but not useful. `certifiedRange` finds the bump at `x = 2.31` and pins its height between a value it actually computed there and a bound it proved, less than a millionth apart. `certifiedNeverExceeds(0.42)` is refuted, and the result carries the `x` that breaks the claim.
@@ -81,15 +84,23 @@ val cases = with(Functions) {
         "triangle(0.5)" to triangle(0.5),
         "square(0.5, duty = 0.3)" to square(0.5, duty = 0.3),
         "saw + square * triangle" to (saw(1.0) + square(0.25) * triangle(2.0)),
-        "pulseTrain, jittered" to pulseTrain(c(0.5, Functions.Domain.ALL), duty = c(0.4, Functions.Domain.ALL),
-            rise = c(0.05, Functions.Domain.ALL), jitter = c(0.3, Functions.Domain.ALL), domain = Functions.Domain.ALL),
+        "pulseTrain, jittered" to
+            pulseTrain(
+                c(0.5, Functions.Domain.ALL),
+                duty = c(0.4, Functions.Domain.ALL),
+                rise = c(0.05, Functions.Domain.ALL),
+                jitter = c(0.3, Functions.Domain.ALL),
+                domain = Functions.Domain.ALL,
+            ),
         "saw, eased BOUNCE_OUT" to saw(1.0, amplitude = 0.5, offset = 0.5).ease(Functions.Easing.BOUNCE_OUT),
         "valueNoise(1, 3)" to valueNoise(1L, 3.0),
         "fn { x -> x * x }" to fn(0.0..100.0, "lambda") { x -> x * x },
     ]
 }
-val table = Table(["function", "one enclosure on [-17.3, 83.9]", "refused because"],
-    title = "One-shot bounds across about two hundred periods")
+val table = Table(
+    ["function", "one enclosure on [-17.3, 83.9]", "refused because"],
+    title = "One-shot bounds across about two hundred periods",
+)
 for ((name, f) in cases) {
     val e = f.enclose(-17.3, 83.9)
     table.row(name, if (e.certified) "[${e.lo}, ${e.hi}]" else "-", e.refusal ?: "")

@@ -1,5 +1,7 @@
-// The brief, for you and for the agent. It is also kept as guides/start-here.md, which every agent in this document can read.
-val brief = """
+// The brief, for you and for the agent. It is also kept as guides/start-here.md, which every agent in this document can
+// read.
+val brief =
+    """
 # A staged level
 
 This document holds one level of a puzzle shooter-looter as rooms and doors on a grid (the **Level** box), and a
@@ -22,8 +24,12 @@ How to work here:
 
 Evaluate the results, not only the checks. Look at the paths and the placement, and say what you see. The checks
 only cover what someone thought to measure.
-""".trimIndent()
+"""
+        .trimIndent()
 
 val guide = "%document/guides/start-here.md".file
-if (!guide.exists()) { guide.parentFile.mkdirs(); guide.writeText(brief + "\n") }
+if (!guide.exists()) {
+    guide.parentFile.mkdirs()
+    guide.writeText(brief + "\n")
+}
 markdown(guide.readText(), width = 520)

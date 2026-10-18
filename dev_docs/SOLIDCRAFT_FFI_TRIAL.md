@@ -80,6 +80,12 @@ Facts found doing so, at v0.15.0:
   profile for a true tube.
 - A sweep with guide rails takes no twist or end scale (the rails set both); the builder refuses
   the combination before SolidCraft does.
+- A sweep caps both ends even when its path closes: a full-circle sweep has the torus's area plus
+  two discs, its caps pressed together inside. A ring is two half sweeps joined — on arc paths
+  the join removes the caps (exact torus area, watertight, genus 1, under 2 s). The same join on
+  two freeform halves of a trefoil knot runs minutes in truck's surface intersection and fails
+  with "no result", with abutting or overlapping halves; a closed knotted ring needs a periodic
+  sweep upstream (no closed-path sweep issue exists there as of 2026-10-18).
 - `surfaceBoundary` builds two boundaries only (three or four: SolidCraft issue #763), and the
   two curves must run the same way.
 - Sketch points the builder draws are fixed and it adds no constraints; parametric dimensions go

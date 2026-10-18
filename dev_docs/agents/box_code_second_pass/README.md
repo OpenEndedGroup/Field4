@@ -106,7 +106,29 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Keep downloaded examples local and preserve their sampling contracts](../box_code_adoption_batch_52/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **333 of 405 findings addressed**; 72 remain open. These counts do not claim
+| [Release Csound listeners and held notes with their controlling run](../box_code_adoption_batch_53/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+| [Expose seeded paint controls and keep particle rows readable](../box_code_adoption_batch_54/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
+
+| [Release native study solids after copying scene geometry](../box_code_adoption_batch_55/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+| [Format the frozen Kotlin and GLSL corpus with preservation receipts](../box_code_adoption_batch_56/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+| [Close headless browser setup paths and preserve recorded source identities](../box_code_adoption_batch_57/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+| [Keep single-character crowd palettes finite and reject empty crowds](../box_code_adoption_batch_58/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+| [Restore recording animation and expose procedural-only study controls](../box_code_adoption_batch_59/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+| [Use inherited renderer and bundle in the live pass-chain example](../box_code_adoption_batch_60/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+| [Read inherited aperture textures and controls directly](../box_code_adoption_batch_61/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
+
+| [Refresh generated RectSL material shaders on rerun](../box_code_adoption_batch_62/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
+
+| [Use the projected camera for cube lighting and explain shader spaces](../box_code_adoption_batch_63/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **354 of 405 findings addressed**; 51 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 

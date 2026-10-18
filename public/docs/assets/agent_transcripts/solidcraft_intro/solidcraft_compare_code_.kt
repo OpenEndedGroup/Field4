@@ -1,14 +1,13 @@
 import afield.geometry.solid.solidcraft.SolidCraftDesign
 import afield.geometry.solid.solidcraft.SolidCraftLibrary
-import afield.geometry.mesh.MeshRenderer
-import afield.geometry.mesh.MeshView
-import afield.geometry.mesh.showMeshGrid
-import afield.geometry.mesh.weld
 
 run {
     if (!SolidCraftLibrary.isAvailable) {
-        display("main", "<div style='padding:24px;background:#101318;color:#e6ecf4;font-family:Iosevka,monospace'>" +
-            "SolidCraft is optional. Run <code>./gradlew buildSolidCraftNative</code>, restart Field, then run this box.</div>")
+        display(
+            "main",
+            "<div style='padding:24px;background:#101318;color:#e6ecf4;font-family:Iosevka,monospace'>" +
+                "SolidCraft is optional. Run <code>./gradlew buildSolidCraftNative</code>, restart Field, then run this box.</div>",
+        )
         println(SolidCraftLibrary.describe())
         return@run
     }
@@ -25,8 +24,10 @@ run {
         val changed = part.summary().getJSONArray("bodies").getJSONObject(0)
         val after = part.mesh(tolerance = tolerance).toTriMesh().weld()
 
-        println("B-rep volume: ${"%.1f".format(original.getDouble("volume"))} → " +
-            "${"%.1f".format(changed.getDouble("volume"))} mm³")
+        println(
+            "B-rep volume: ${"%.1f".format(original.getDouble("volume"))} → " +
+                "${"%.1f".format(changed.getDouble("volume"))} mm³",
+        )
         println("STEP ${part.exportStep().size} bytes; STL ${part.exportStl().size} bytes")
         println("The hole is blind at width > 40 mm: its cut depth stays 20 mm.")
 

@@ -33,31 +33,34 @@ On macOS the IAC driver appears as two entries with the SAME name, one output an
 input, so a name alone does not identify a device: check the direction.
 
 ```edn [field-box id="midi_devices" role="properties"]
-{"id" "midi_devices" "index" 1 "name" "3 - What can this machine see?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - What can this machine see?" "_tombstone" false "frame" #afield/rect [60.0 226.0 475.6 136.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_devices_code_.kt" "lines" 44 "characters" 1837 "sha256" "6ced56ba7698669fd8a9e00675f239b45ead33fe4cc0e40b5c543ffa4782dc4f"}]}
+{"id" "midi_devices" "index" 1 "name" "3 - What can this machine see?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - What can this machine see?" "_tombstone" false "frame" #afield/rect [60.0 226.0 475.6 136.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_devices_code_.kt" "lines" 48 "characters" 1908 "sha256" "0784e3c7a0dac0d81185a824960c1e467a170813bf0e837c6ecfd371fa3781bb"}]}
 ```
 
 ```kotlin [field-property box="midi_devices" name="code" path="midi_devices_code_.kt"]
+/*
+3 - What MIDI hardware can this machine see, and can Field drive it?
 
+`MidiDevices.list()` reports whatever the JVM sees. The JDK always contributes
+Gervill (a software synthesizer) and the Real Time Sequencer, so the list is never
+empty - which means "the list is non-empty" is not evidence of hardware. `hardware()`
+is the filter that answers that question.
 
-// 3 - What MIDI hardware can this machine see, and can Field drive it?
-//
-// `MidiDevices.list()` reports whatever the JVM sees. The JDK always contributes
-// Gervill (a software synthesizer) and the Real Time Sequencer, so the list is never
-// empty - which means "the list is non-empty" is not evidence of hardware. `hardware()`
-// is the filter that answers that question.
-//
-// On macOS the IAC driver appears as two entries with the SAME name, one output and one
-// input, so a name alone does not identify a device: check the direction.
+On macOS the IAC driver appears as two entries with the SAME name, one output and one
+input, so a name alone does not identify a device: check the direction.
+*/
 val all = MidiDevices.list()
 val hardware = MidiDevices.hardware()
 
-val rows = all.joinToString("\n") { d ->
-    val direction = listOfNotNull(
-        if (d.canReceive) "Field can send" else null,
-        if (d.canTransmit) "Field can listen" else null
-    ).joinToString(" + ")
-    "| `${d.name}` | ${d.vendor} | ${d.implementation} | $direction |"
-}
+val rows =
+    all.joinToString("\n") { d ->
+        val direction =
+            listOfNotNull(
+                    if (d.canReceive) "Field can send" else null,
+                    if (d.canTransmit) "Field can listen" else null,
+                )
+                .joinToString(" + ")
+        "| `${d.name}` | ${d.vendor} | ${d.implementation} | $direction |"
+    }
 
 markdown(
     "main",
@@ -79,7 +82,8 @@ markdown(
     One caveat worth knowing before you open an input: doing so starts a non-daemon
     `Java Sound MidiInDevice Thread` that outlives `close()`, so a JVM that has opened a
     MIDI input will not exit on its own.
-    """.trimIndent()
+    """
+        .trimIndent(),
 )
 ```
 
@@ -230,17 +234,18 @@ markdown(
 <!-- field-box id="midi_read" index="4" -->
 
 ```edn [field-box id="midi_read" role="properties"]
-{"id" "midi_read" "index" 4 "name" "2 - Read it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Read it back" "_tombstone" false "frame" #afield/rect [575.6 60.0 340.0 136.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_read_code_.kt" "lines" 39 "characters" 1482 "sha256" "f05c7f3b1b53a5092a50ad061e1e39f9696449101d75a3ab4819971884366157"}]}
+{"id" "midi_read" "index" 4 "name" "2 - Read it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Read it back" "_tombstone" false "frame" #afield/rect [575.6 60.0 340.0 136.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_read_code_.kt" "lines" 41 "characters" 1486 "sha256" "f6dba57c10971e5fbccfb36413db3d2688ab48597576277a13f3484a43eb3235"}]}
 ```
 
 ```kotlin [field-property box="midi_read" name="code" path="midi_read_code_.kt"]
-
 import java.io.File
 
-// 2 - Read it back, and check the round trip actually held.
-//
-// Run box 1 first. This reads the file with no knowledge of what wrote it: the PPQ,
-// tempo map, track split and track names all come out of the file itself.
+/*
+2 - Read it back, and check the round trip actually held.
+
+Run box 1 first. This reads the file with no knowledge of what wrote it: the PPQ,
+tempo map, track split and track names all come out of the file itself.
+*/
 val file = File(System.getProperty("java.io.tmpdir"), "field-midi-demo.mid")
 require(file.isFile) { "run box 1 first - no file at ${file.absolutePath}" }
 
@@ -271,6 +276,7 @@ markdown(
     `${firstCycle.sortedBy { it.arc.start }.map { it.value }.joinToString(" ")}`.
 
     The roll above is drawn from the *file*, not from the clip box 1 held in memory.
-    """.trimIndent()
+    """
+        .trimIndent(),
 )
 ```

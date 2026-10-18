@@ -17,13 +17,17 @@ From `code`
 Click the grid to type into ORCA. Space plays and pauses; Cmd-G shows every operator.
 
 ```edn [field-box id="orca_hello" role="properties"]
-{"id" "orca_hello" "index" 0 "name" "ORCA · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ORCA · run me" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "orca_hello_code_.kt" "lines" 20 "characters" 491 "sha256" "dd4a2b2dbe2d7e9cb70d908bbc8c6e3fa9ca51f8f202dc4f7333cd7a6387fef6"}]}
+{"id" "orca_hello" "index" 0 "name" "ORCA · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ORCA · run me" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "orca_hello_code_.kt" "lines" 25 "characters" 530 "sha256" "daeecd68130c7414606cd5bf0f5f94f00b892df732524a7295937f713ca5d804"}]}
 ```
 
 ```kotlin [field-property box="orca_hello" name="code" path="orca_hello_code_.kt"]
 // Click the grid to type into ORCA. Space plays and pauses; Cmd-G shows every operator.
 val synth = PatSynthBank()
-val o = orca(rows = 12, grid = """
+val o =
+    orca(
+        rows = 12,
+        grid =
+            """
     #.ORCA.IN.FIELD.#
     .
     .2C8
@@ -32,7 +36,8 @@ val o = orca(rows = 12, grid = """
     .
     D8
     .:12C
-""")
+""",
+    )
 o.onNote {
     synth.play(it)
     markdown("heard", "`${it.note}${it.octave}` on channel ${it.channel}, MIDI ${it.midi}")

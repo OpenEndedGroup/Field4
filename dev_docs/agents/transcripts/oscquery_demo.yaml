@@ -9,21 +9,27 @@ operations:
         "autorun": false
         "code": |
           import afield.io.osc.query.*
-          
-          // Publish four parameters as an OSCQuery service on http port 9020 (OSC UDP on 9021),
-          // advertised over DNS-SD so TouchDesigner, Max, Chataigne and VDMX list it as "Field demo".
-          // The callbacks run here, on Field's main loop, whenever one of them sets a value.
+
+          /*
+          Publish four parameters as an OSCQuery service on http port 9020 (OSC UDP on 9021),
+          advertised over DNS-SD so TouchDesigner, Max, Chataigne and VDMX list it as "Field demo".
+          The callbacks run here, on Field's main loop, whenever one of them sets a value.
+          */
           val q = oscQuery("Field demo")
           q.describe("/demo", "parameters published by the OSCQuery demo document")
-          
-          fun show() = markdown("values", q.server.all.values.sortedBy { it.path }
-              .joinToString("\n") { "- `${it.path}` (${it.type}) = **${it.value.joinToString(", ")}**" })
-          
+
+          fun show() = markdown(
+              "values",
+              q.server.all.values
+                  .sortedBy { it.path }
+                  .joinToString("\n") { "- `${it.path}` (${it.type}) = **${it.value.joinToString(", ")}**" },
+          )
+
           q.float("/demo/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { show() }
           q.bool("/demo/on", true, "sound on") { show() }
           q.menu("/demo/scene", listOf("dawn", "dusk", "night"), "dusk") { show() }
           q.vector("/demo/xy", listOf(0.5, 0.5), description = "a point on a pad") { show() }
-          
+
           show()
           markdown("Browse **http://localhost:${q.httpPort}/** for the namespace, or **?HOST_INFO** for the service.")
   - create:
@@ -51,15 +57,17 @@ operations:
         "autorun": false
         "code": |
           import afield.io.osc.query.*
-          
+
           // The other direction: read an OSCQuery service as a remote. Here it is this Field's own,
           // so run box 1 first; point it at TouchDesigner or Chataigne by changing the host and port.
           val remote = oscQueryRemote("127.0.0.1", 9020).refresh()
-          remote["/demo/cutoff"].set(2500.0)   // sent as OSC over UDP to the service's OSC_PORT
+          remote["/demo/cutoff"].set(2500.0) // sent as OSC over UDP to the service's OSC_PORT
           remote["/demo/scene"].set("night")
-          
-          markdown("**${remote.name}** — OSC on port ${remote.oscPort}, LISTEN: ${remote.supportsListen}\n\n" +
-              remote.params.joinToString("\n") { "- `${it.path}` ${it.type} ${it.range} ${it.description ?: ""}" })
+
+          markdown(
+              "**${remote.name}** — OSC on port ${remote.oscPort}, LISTEN: ${remote.supportsListen}\n\n" +
+                  remote.params.joinToString("\n") { "- `${it.path}` ${it.type} ${it.range} ${it.description ?: ""}" },
+          )
   - create:
       box: "oscq-mirror"
       name: "4. Mirror as sliders (run)"
@@ -98,9 +106,11 @@ operations:
         "autorun": false
         "code": |
           import afield.io.osc.query.*
-          
+
           // OSCQuery services announcing themselves on this network (DNS-SD _oscjson._tcp), this Field's
           // included once box 1 has run. Each one can be opened with oscQueryRemote(address, port).
           val found = oscQueryDiscover(2000)
-          markdown(if (found.isEmpty()) "No OSCQuery services answered." else
-              found.joinToString("\n") { "- **${it.instance}** at `${it.address}:${it.port}`" })
+          markdown(
+              if (found.isEmpty()) "No OSCQuery services answered."
+              else found.joinToString("\n") { "- **${it.instance}** at `${it.address}:${it.port}`" },
+          )

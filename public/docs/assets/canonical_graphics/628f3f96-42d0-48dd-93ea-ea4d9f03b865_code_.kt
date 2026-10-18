@@ -1,20 +1,10 @@
-import afield.runtime.lifecycle.RunScope
-import afield.runtime.lifecycle.ReleasePolicy
-
-
-
-
-import afield.geometry.path.FLine
 import afield.graphics.text.slug.*
-
 import org.lwjgl.vulkan.VK10.*
-import afield.document.workspace.file
 
 name = "5e. Slug filled paths"
 // Build the optional helper once: bash native/field-slug/build.sh
-val path = FLine().moveTo(-1, -1).lineTo(1, -1)
-    .cubicTo(vec(1.4, 0, 0), vec(0.8, 1.3, 0), vec(0, 1, 0))
-    .lineTo(-1, 1).close()
+val path =
+    FLine().moveTo(-1, -1).lineTo(1, -1).cubicTo(vec(1.4, 0, 0), vec(0.8, 1.3, 0), vec(0, 1, 0)).lineTo(-1, 1).close()
 // Clockwise inner contour cuts a hole in the counterclockwise outer contour.
 path.moveTo(-0.3, -0.3).lineTo(-0.3, 0.3).lineTo(0.3, 0.3).lineTo(0.3, -0.3).close()
 val prepared = SlugPath.compile(path, "field-slug".file)
@@ -50,6 +40,9 @@ mesh.tint = { tint }
 
 // Focus the renderer window: WASD/arrows move, E/C rise/fall, R resets.
 var kc by keyCamera(camera = camera)
-// Change tint or camera without preparing geometry again.
-// Geometry edits: prepare a new SlugPath, then data.replace(newPath) on the render thread.
-// Re-running/stopping this box removes its mesh before retiring the atlas.
+
+/*
+Change tint or camera without preparing geometry again.
+Geometry edits: prepare a new SlugPath, then data.replace(newPath) on the render thread.
+Re-running/stopping this box removes its mesh before retiring the atlas.
+*/

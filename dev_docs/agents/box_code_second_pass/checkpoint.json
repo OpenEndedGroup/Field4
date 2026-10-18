@@ -1345,6 +1345,90 @@
     "aed906aefa4e-02": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_52/README.md"
+    },
+    "7a500644ebfe-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_53/README.md"
+    },
+    "7a500644ebfe-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_53/README.md"
+    },
+    "ded1d6a3cafb-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_53/README.md"
+    },
+    "c958776f78cf-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_54/README.md"
+    },
+    "58fe3dbd8e31-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_54/README.md"
+    },
+    "4e6db45ce6bf-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_55/README.md"
+    },
+    "68263951f250-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_55/README.md"
+    },
+    "a0f1fb8e7acb-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_55/README.md"
+    },
+    "691b5d822671-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_56/README.md"
+    },
+    "d98fa9571c63-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_57/README.md"
+    },
+    "184894c9ac87-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_58/README.md"
+    },
+    "a86d30f62c84-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_59/README.md"
+    },
+    "6af7378331b4-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_59/README.md"
+    },
+    "aff7b1698617-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_59/README.md"
+    },
+    "7f180cbab721-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_60/README.md"
+    },
+    "a6aa1047e7f5-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_61/README.md"
+    },
+    "a6aa1047e7f5-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_61/README.md"
+    },
+    "4e40faf4c597-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_62/README.md"
+    },
+    "e8fc29a1999a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_62/README.md"
+    },
+    "a0a84eb67e15-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_63/README.md"
+    },
+    "a0a84eb67e15-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_63/README.md"
     }
   },
   "batches": [
@@ -1398,7 +1482,18 @@
     "../box_code_adoption_batch_49/README.md",
     "../box_code_adoption_batch_50/README.md",
     "../box_code_adoption_batch_51/README.md",
-    "../box_code_adoption_batch_52/README.md"
+    "../box_code_adoption_batch_52/README.md",
+    "../box_code_adoption_batch_53/README.md",
+    "../box_code_adoption_batch_54/README.md",
+    "../box_code_adoption_batch_55/README.md",
+    "../box_code_adoption_batch_56/README.md",
+    "../box_code_adoption_batch_57/README.md",
+    "../box_code_adoption_batch_58/README.md",
+    "../box_code_adoption_batch_59/README.md",
+    "../box_code_adoption_batch_60/README.md",
+    "../box_code_adoption_batch_61/README.md",
+    "../box_code_adoption_batch_62/README.md",
+    "../box_code_adoption_batch_63/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1417,10 +1512,34 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 52,
-    "branch": "codex/box-code-readability-52",
-    "baseline": "adc1eb308",
-    "state": "Batch52: real tool/root preservation, all38 final FLine lessons, actual codec/container proof, measured circle-helper sampling difference; 40 Kotlin bodies formatted. Full guards delegated to lander. Batch45 landed d366f9f0c. Field9718 CPU-only.",
-    "evidence": "../box_code_adoption_batch_52/README.md"
+    "batch": 63,
+    "branch": "codex/box-code-readability-63",
+    "baseline": "88513bfc7",
+    "state": "Batch 63 actual native orbit, projection and independent-camera checks passed with recorded rounding bounds; 354 addressed, 51 open.",
+    "evidence": "../box_code_adoption_batch_63/README.md"
+  },
+  "mechanical": {
+    "status": "applied_for_valid_kotlin_glsl_with_explicit_retained_cases",
+    "baseline": "75071082a40db358424c27f992ee4316317b18c1",
+    "groups": 567,
+    "sourceOccurrences": 3541,
+    "states": 3548,
+    "distinctBodies": 2953,
+    "alreadyFormattedBodies": 1823,
+    "formattedCandidateBodies": 1107,
+    "languageRetentions": 13,
+    "schematicRetentions": 10,
+    "editedFiles": 562,
+    "parsedProgramsVerified": 2702,
+    "codecDocuments": 43,
+    "mirrorDocuments": 15,
+    "preexistingMirrorDriftRetained": [
+      "dev_docs/agents/demos/interaction_nets_lambda/document.md#lambda-oracle_code_.kt"
+    ],
+    "evidence": "../box_code_adoption_batch_56/README.md",
+    "initialAttemptEditedFiles": 575,
+    "recordedFilesRestored": 13,
+    "retainedRecordedGroup": "dev_docs/agents/demos/function_conversation_example",
+    "landingRepair": "../box_code_adoption_batch_57/README.md"
   }
 }

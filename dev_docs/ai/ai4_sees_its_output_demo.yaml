@@ -34,7 +34,10 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 300.0, h: 60.0 }
       properties:
         code: |
-          display("main", """<style>#sw { background: #d62728 !important; } .x .y #sw { background: #2ca02c; }</style><div class="x"><div class="y"><div id="sw" style="background: #9467bd; width: 240px; height: 120px"></div></div></div><script>document.getElementById('sw').style.setProperty('background', '#1f77b4', 'important')</script>""")
+          display(
+              "main",
+              """<style>#sw { background: #d62728 !important; } .x .y #sw { background: #2ca02c; }</style><div class="x"><div class="y"><div id="sw" style="background: #9467bd; width: 240px; height: 120px"></div></div></div><script>document.getElementById('sw').style.setProperty('background', '#1f77b4', 'important')</script>""",
+          )
   - create:
       box: ai4_sees_bars
       name: Bars
@@ -42,7 +45,10 @@ operations:
       properties:
         code: |
           val values = listOf(20, 40, 60, 80, 100)
-          val bars = values.joinToString("") { v -> "<div style='display:inline-block; vertical-align:bottom; width:20px; margin:3px; background:#1f77b4; height:${v}%'></div>" }
+          val bars =
+              values.joinToString("") { v ->
+                  "<div style='display:inline-block; vertical-align:bottom; width:20px; margin:3px; background:#1f77b4; height:${v}%'></div>"
+              }
           display("main", "<div style='background:white; padding:8px'>$bars</div>")
   - create:
       box: ai4_sees_scripted
@@ -52,9 +58,10 @@ operations:
         code: |
           // Replays the eval task "swatch-colour": look at Swatch, then answer. No model is called.
           askFieldAgent(
-              goal = "The box Swatch displays a coloured rectangle. Make a box named Answer that prints just the name " +
-                  "of the colour the rectangle is shown in, as a person looking at it would say it (one of: red, green, " +
-                  "blue, purple, orange), and run Answer.",
+              goal =
+                  "The box Swatch displays a coloured rectangle. Make a box named Answer that prints just the name " +
+                      "of the colour the rectangle is shown in, as a person looking at it would say it (one of: red, green, " +
+                      "blue, purple, orange), and run Answer.",
               checks = listOf("last-run-ok:Answer", "output-contains:Answer:blue", "property-lacks:Answer:code:red"),
               mode = "scripted",
               script = fieldAgentEvalScript("swatch-colour"),
@@ -67,9 +74,10 @@ operations:
         code: |
           // The same question to the configured model. It has ViewBoxOutputRequest; whether it looks is up to it.
           askFieldAgent(
-              goal = "The box Swatch displays a coloured rectangle. Make a box named Colour that prints just the name " +
-                  "of the colour the rectangle is shown in, as a person looking at it would say it (one of: red, green, " +
-                  "blue, purple, orange), and run Colour. Say how you know.",
+              goal =
+                  "The box Swatch displays a coloured rectangle. Make a box named Colour that prints just the name " +
+                      "of the colour the rectangle is shown in, as a person looking at it would say it (one of: red, green, " +
+                      "blue, purple, orange), and run Colour. Say how you know.",
               checks = listOf("last-run-ok:Colour", "output-contains:Colour:blue", "property-lacks:Colour:code:red"),
               mode = "live",
           )
@@ -79,11 +87,13 @@ operations:
       frame: { x: 2160.0, y: 80.0, w: 340.0, h: 60.0 }
       properties:
         code: |
-          // Checks: output-picture:B (a capture that is not blank), output-colour:B:#rrggbb:share (that much of it is that colour).
+          // Checks: output-picture:B (a capture that is not blank), output-colour:B:#rrggbb:share (that much of it is that
+          // colour).
           askFieldAgent(
-              goal = "The box Bars is meant to show five blue bars, 20, 40, 60, 80 and 100 pixels tall, but nobody can see " +
-                  "them. Look at what it shows, fix Bars so that the five bars are visible at those heights, run it, and " +
-                  "look again to check.",
+              goal =
+                  "The box Bars is meant to show five blue bars, 20, 40, 60, 80 and 100 pixels tall, but nobody can see " +
+                      "them. Look at what it shows, fix Bars so that the five bars are visible at those heights, run it, and " +
+                      "look again to check.",
               checks = listOf("last-run-ok:Bars", "output-picture:Bars", "output-colour:Bars:#1f77b4:0.02"),
               mode = "live",
           )
@@ -94,7 +104,10 @@ operations:
       properties:
         code: |
           val values = listOf(20, 30, 40, 50, 60)
-          val bars = values.joinToString("") { v -> "<div style='display:inline-block; vertical-align:bottom; width:28px; margin:3px; background:#1f77b4; height:${v}px'></div>" }
+          val bars =
+              values.joinToString("") { v ->
+                  "<div style='display:inline-block; vertical-align:bottom; width:28px; margin:3px; background:#1f77b4; height:${v}px'></div>"
+              }
           display("main", "<div style='background:white; padding:8px'>$bars</div>")
   - create:
       box: ai4_sees_live_row
@@ -104,9 +117,10 @@ operations:
         code: |
           // output-rising:B:#hex:N counts the bars in B's picture: at least N, rising left to right.
           askFieldAgent(
-              goal = "The box Row shows five blue bars. Add five more after them, 70, 80, 90, 100 and 110 pixels tall, " +
-                  "keeping every bar 28 pixels wide, so that all ten stand side by side in a single row rising left to " +
-                  "right. Run it and check what it shows; keep going until it looks right.",
+              goal =
+                  "The box Row shows five blue bars. Add five more after them, 70, 80, 90, 100 and 110 pixels tall, " +
+                      "keeping every bar 28 pixels wide, so that all ten stand side by side in a single row rising left to " +
+                      "right. Run it and check what it shows; keep going until it looks right.",
               checks = listOf("last-run-ok:Row", "output-rising:Row:#1f77b4:10"),
               mode = "live",
           )
