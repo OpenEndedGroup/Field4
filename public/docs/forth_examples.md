@@ -319,8 +319,6 @@ The host bridge goes the other direction too. Kotlin can inject new words when F
 ```diffstatic {data-lang=kotlin}
 :::static
 import afield.lang.forth.ForthInterpreter
-import afield.graphics.vulkan.buffers.DynamicallyWriteable
-import afield.math.linalg.Vec4
 
 val forth = ForthInterpreter()
 

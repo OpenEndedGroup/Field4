@@ -10,7 +10,13 @@ loop {
         "garden" to mqtt.series("sensors/garden/env", "temp"),
         title = "Temperatures (°C)",
     )
-    markdown("info", "garden: %.1f °C, %.0f %% humidity".format(
-        mqtt.number("sensors/garden/env", "temp"), mqtt.number("sensors/garden/env", "humidity")))
+    markdown(
+        "info",
+        "garden: %.1f °C, %.0f %% humidity"
+            .format(
+                mqtt.number("sensors/garden/env", "temp"),
+                mqtt.number("sensors/garden/env", "humidity"),
+            ),
+    )
     delay(500)
 }

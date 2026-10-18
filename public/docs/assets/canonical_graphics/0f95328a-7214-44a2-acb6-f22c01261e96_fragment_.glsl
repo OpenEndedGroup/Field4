@@ -23,8 +23,10 @@ layout(push_constant) uniform Push {
 layout(location = 0) out vec4 outColor;
 
 uint hash(uint x) {
-    x ^= x >> 16u; x *= 0x7feb352du;
-    x ^= x >> 15u; x *= 0x846ca68bu;
+    x ^= x >> 16u;
+    x *= 0x7feb352du;
+    x ^= x >> 15u;
+    x *= 0x846ca68bu;
     x ^= x >> 16u;
     return x;
 }
@@ -103,9 +105,9 @@ void main() {
     // each of the eight neighbours gets its own draw against spreadProbability
     int s = max(int(round(push.spreadStepPx)), 1);
     vec4 neighbours = max(max(max(reaching(pixel, ivec2(s, 0), dims, 0u), reaching(pixel, ivec2(-s, 0), dims, 1u)),
-                              max(reaching(pixel, ivec2(0, s), dims, 2u), reaching(pixel, ivec2(0, -s), dims, 3u))),
-                          0.7071 * max(max(reaching(pixel, ivec2(s, s), dims, 4u), reaching(pixel, ivec2(-s, s), dims, 5u)),
-                                       max(reaching(pixel, ivec2(s, -s), dims, 6u), reaching(pixel, ivec2(-s, -s), dims, 7u))));
+    max(reaching(pixel, ivec2(0, s), dims, 2u), reaching(pixel, ivec2(0, -s), dims, 3u))),
+    0.7071 * max(max(reaching(pixel, ivec2(s, s), dims, 4u), reaching(pixel, ivec2(-s, s), dims, 5u)),
+    max(reaching(pixel, ivec2(s, -s), dims, 6u), reaching(pixel, ivec2(-s, -s), dims, 7u))));
 
     // a neighbour's fire takes a tree only if that kind has recovered there
     int spread = strongest(neighbours * push.spreadGain, lessThanEqual(decayed, vec4(push.readyThreshold)));

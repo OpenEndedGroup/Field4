@@ -15,9 +15,11 @@ operations:
       properties:
         code: |
           import afield.ai.inference.onnx.ClipImage
-          import afield.ai.inference.onnx.clipEncode
           import afield.ai.inference.onnx.DepthAnything
+          import afield.ai.inference.onnx.clipEncode
           import afield.media.image.util.PngEncoder
+          import java.nio.ByteBuffer
+          import java.nio.ByteOrder
           import org.bytedeco.javacv.OpenCVFrameConverter
           import org.bytedeco.javacv.OpenCVFrameGrabber
           import org.bytedeco.opencv.global.opencv_imgproc.COLOR_BGR2RGBA
@@ -26,18 +28,16 @@ operations:
           import org.bytedeco.opencv.global.opencv_imgproc.cvtColor
           import org.bytedeco.opencv.opencv_core.Mat
           import org.lwjgl.system.MemoryUtil
-          import java.nio.ByteBuffer
-          import java.nio.ByteOrder
-          
+
           // Encoded once, here, into a val: the text tower is not in the per-frame path. First call in
           // a session loads the 242MB encoder; after that each prompt is a few milliseconds.
           val prompts = mapOf(
               "a person at a desk" to clipEncode("a person sitting at a desk"),
-              "an empty room"      to clipEncode("an empty room"),
-              "a close-up face"    to clipEncode("a close-up of a face"),
-              "a hand up close"    to clipEncode("a hand held up to the camera")
+              "an empty room" to clipEncode("an empty room"),
+              "a close-up face" to clipEncode("a close-up of a face"),
+              "a hand up close" to clipEncode("a hand held up to the camera"),
           )
-          
+
           val grabber = OpenCVFrameGrabber(0)
           grabber.start()
           try {
@@ -52,7 +52,7 @@ operations:
               }
               val w = m.cols()
               val h = m.rows()
-          
+
               val rgbaMat = Mat()
               when (m.channels()) {
                   4 -> cvtColor(m, rgbaMat, COLOR_BGRA2RGBA)
@@ -60,22 +60,24 @@ operations:
                   else -> cvtColor(m, rgbaMat, COLOR_GRAY2RGBA)
               }
               val bytes = w * h * 4
-              // JavaCPP leaves Mat.data()'s capacity unset, so asByteBuffer() hands back an EMPTY
-              // buffer and a bounds-checked copy silently moves nothing -- which looks exactly like a
-              // black camera. Wrap the raw address instead, as WebcamTexture.copyMatToBuffer does.
+              /*
+              JavaCPP leaves Mat.data()'s capacity unset, so asByteBuffer() hands back an EMPTY
+              buffer and a bounds-checked copy silently moves nothing -- which looks exactly like a
+              black camera. Wrap the raw address instead, as WebcamTexture.copyMatToBuffer does.
+              */
               val src = MemoryUtil.memByteBuffer(rgbaMat.data().address(), bytes)
               val rgba = ByteBuffer.allocateDirect(bytes).order(ByteOrder.nativeOrder())
               rgba.put(src.duplicate())
               rgba.rewind()
               rgbaMat.release()
-          
+
               // adaptation = 1f: normalise against this frame's own range, since each press is a
               // fresh start rather than a continuous stream.
               val depth = DepthAnything(width = 266, height = 266, adaptation = 1f)
               val stats = depth.infer(rgba, w, h)
               val embedding = ClipImage().encode(rgba, w, h)
               val ranked = embedding.classify(prompts)
-          
+
               // Camera frame beside its depth map, both scaled to 360 tall.
               val outH = 360
               val camOutW = (w.toDouble() / h * outH).toInt()
@@ -98,8 +100,7 @@ operations:
                   val sy = (y.toDouble() / outH * depth.height).toInt().coerceIn(0, depth.height - 1)
                   for (x in 0 until depthOutW) {
                       val sx = (x.toDouble() / depthOutW * depth.width).toInt().coerceIn(0, depth.width - 1)
-                      val t = ai.onnxruntime.platform.Fp16Conversions
-                          .fp16ToFloat(d.get(sy * depth.width + sx)).coerceIn(0f, 1f)
+                      val t = ai.onnxruntime.platform.Fp16Conversions.fp16ToFloat(d.get(sy * depth.width + sx)).coerceIn(0f, 1f)
                       val r = (255 * (t * 1.6f).coerceIn(0f, 1f)).toInt()
                       val g = (255 * ((t - 0.25f) * 1.6f).coerceIn(0f, 1f)).toInt()
                       val b = (255 * ((t - 0.6f) * 2.2f).coerceIn(0f, 1f)).toInt()
@@ -107,23 +108,29 @@ operations:
                   }
               }
               val b64 = java.util.Base64.getEncoder().encodeToString(PngEncoder.encode(px, outW, outH))
-          
+
               // `bar(max = 1.0)` so the bars read as "of the whole", not "of the best one this
               // frame" — a top-1 at 12% should look like 12%, not like a full bar.
-              val top = Table(listOf("label", "confidence"))
-                  .rows(ranked.map { (label, p) -> listOf(label, p) })
-                  .role("confidence", CellRole.ACCENT)
-                  .bar("confidence", max = 1.0, width = 180)
-                  .format("confidence") { "%.1f%%".format((it as Number).toDouble() * 100) }
-          
-              markdown("main", """
+              val top =
+                  Table(listOf("label", "confidence"))
+                      .rows(ranked.map { (label, p) -> listOf(label, p) })
+                      .role("confidence", CellRole.ACCENT)
+                      .bar("confidence", max = 1.0, width = 180)
+                      .format("confidence") { "%.1f%%".format((it as Number).toDouble() * 100) }
+
+              markdown(
+                  "main",
+                  """
                   <img src="data:image/png;base64,$b64" style="width:100%;border-radius:3px"/>
-          
+
                   {muted:${w}x$h · depth ${depth.lastInferenceMs}ms, raw [${"%.2f".format(stats.rawMin)}, ${"%.2f".format(stats.rawMax)}] · brighter = nearer}
-          
+
                   ${top.h}
-              """)
-              println("depth ${depth.lastInferenceMs}ms  best=${ranked.first().first} ${"%.1f".format(ranked.first().second * 100)}%")
+              """,
+              )
+              println(
+                  "depth ${depth.lastInferenceMs}ms  best=${ranked.first().first} ${"%.1f".format(ranked.first().second * 100)}%",
+              )
           } finally {
               runCatching { grabber.stop() }
               runCatching { grabber.release() }

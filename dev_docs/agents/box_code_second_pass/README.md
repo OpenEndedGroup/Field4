@@ -112,7 +112,11 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Release native study solids after copying scene geometry](../box_code_adoption_batch_55/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **341 of 405 findings addressed**; 64 remain open. These counts do not claim
+| [Format the frozen Kotlin and GLSL corpus with preservation receipts](../box_code_adoption_batch_56/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+| [Close headless browser setup paths and preserve recorded source identities](../box_code_adoption_batch_57/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **343 of 405 findings addressed**; 62 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 

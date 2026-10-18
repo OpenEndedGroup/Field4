@@ -27,7 +27,9 @@ four, and the transition that takes all four out at once is the clap.
 :::static
 import afield.simulation.petri.*
 
-val net = petri("""
+val net =
+    petri(
+        """
     #petri
     !grid 1/8
 
@@ -55,18 +57,22 @@ val net = petri("""
     // four kicks fill charge, and emptying it is a clap
     charge : 0 ^4
     4*charge -[ clap : cp ]->
-""")
+""",
+    )
 
 :::fold draw it, and find the first clap
 val run = net.run()
 val firstClap = run.firingsOver(afield.audio.synth.PatArc(cyc(0), cyc(4))).first { it.transition == "clap" }
 showPetriNet(net, w = 900.0, h = 560.0)
-markdown("main", """
+markdown(
+    "main",
+    """
     #### three rings and a counter
 
     - transitions that make a sound: ${net.transitions.filter { it.emit != null }.map { "`${it.name}` → `${it.emit}`" }.joinToString(", ")}
     - the first clap fires at cycle **${firstClap.at}**, one step after the fourth kick
-""")
+""",
+)
 displayOpen("main")
 :::endfold
 ```

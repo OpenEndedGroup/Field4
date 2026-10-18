@@ -35,17 +35,13 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.Target
-          import afield.graphics.render.TexturePreviewCache
           import afield.media.browser.*
-          import afield.graphics.vulkan.targets.RenderToTexture
-          import afield.graphics.texture.MetalIOSurface
-          import afield.math.linalg.vec
-          import org.lwjgl.vulkan.VK10.*
           import java.io.ByteArrayInputStream
           import java.util.Base64
           import java.util.concurrent.CopyOnWriteArrayList
           import javax.imageio.ImageIO
-          
+          import org.lwjgl.vulkan.VK10.*
+
           val releases = CopyOnWriteArrayList<BrowserFrameRelease>()
           val source = RenderToTexture(renderer) {
               width = 64
@@ -59,9 +55,11 @@ operations:
           }
           val surface = MacExternalBrowserSurface(
               renderer,
-              ExternalBrowserSurfaceSpec(64, 64, BrowserSurfacePixelFormat.BGRA8_UNORM, slotCount = 2)
-          ) { releases.add(it) }
-          
+              ExternalBrowserSurfaceSpec(64, 64, BrowserSurfacePixelFormat.BGRA8_UNORM, slotCount = 2),
+          ) {
+                  releases.add(it)
+              }
+
           val ioSurfaceRef = source.colorImageRefs.first()!!.exportMetalIOSurfaceRef()
           val ioSurfaceId = MetalIOSurface.ioSurfaceId(ioSurfaceRef)
           require(ioSurfaceId != 0L) { "MoltenVK did not export an IOSurface" }
@@ -76,15 +74,16 @@ operations:
                       width = 64,
                       height = 64,
                       pixelFormat = BrowserSurfacePixelFormat.BGRA8_UNORM,
-                      handle = ExternalBrowserImageHandle.MacIOSurfaceMachPort(ioSurfacePort)
-                  )
-              ) == BrowserFrameOfferResult.ACCEPTED
+                      handle = ExternalBrowserImageHandle.MacIOSurfaceMachPort(ioSurfacePort),
+                  ),
+              ) == BrowserFrameOfferResult.ACCEPTED,
           )
-          
+
           renderer.renderList.others["external-browser-macos-smoke-source"] = source
-          renderer.renderList.others["external-browser-macos-smoke-copy"] =
-              Target { command, _ -> surface.prepareSampledImagesFor(command) }
-          
+          renderer.renderList.others["external-browser-macos-smoke-copy"] = Target { command, _ ->
+              surface.prepareSampledImagesFor(command)
+          }
+
           var ticks = 0
           loop {
               ticks++
@@ -103,10 +102,11 @@ operations:
                       64,
                       64,
                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                      64
+                      64,
                   ) ?: throw IllegalStateException("resident texture readback failed")
-                  val encoded = Regex("base64,([^']+)").find(html)?.groupValues?.get(1)
-                      ?: throw IllegalStateException("PNG payload missing")
+                  val encoded =
+                      Regex("base64,([^']+)").find(html)?.groupValues?.get(1)
+                          ?: throw IllegalStateException("PNG payload missing")
                   val image = ImageIO.read(ByteArrayInputStream(Base64.getDecoder().decode(encoded)))
                   val argb = image.getRGB(32, 32)
                   val red = (argb ushr 16) and 255
@@ -119,11 +119,12 @@ operations:
                   println("external-browser-macos PASS")
                   end()
               }
-          }.end {
-              renderer.renderList.others.remove("external-browser-macos-smoke-copy")
-              renderer.renderList.others.remove("external-browser-macos-smoke-source")
-              surface.close()
           }
+              .end {
+                  renderer.renderList.others.remove("external-browser-macos-smoke-copy")
+                  renderer.renderList.others.remove("external-browser-macos-smoke-source")
+                  surface.close()
+              }
   - connect: { parent: external_browser_surface_renderer, child: external_browser_surface_smoke }
   - launch: { box: external_browser_surface_renderer, property: code, strand: renderer }
   - await: { wait: pending }

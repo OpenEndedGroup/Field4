@@ -100,11 +100,11 @@ sliders(
 )
 
 /*
-Use in an animation loop (example)
-loop {
-    if (running) {
-        val offset = animAmplitude * sin(time * animSpeed)
-        // apply offset to your visualization
-    }
-}
-*/
+ Use in an animation loop (example)
+ loop {
+     if (running) {
+         val offset = animAmplitude * sin(time * animSpeed)
+         // apply offset to your visualization
+     }
+ }
+ */

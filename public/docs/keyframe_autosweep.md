@@ -37,23 +37,28 @@ import java.nio.file.Files
 import java.util.Base64
 import kotlin.io.path.readBytes
 import kotlin.io.path.writeText
+
 :::endfold
 
 val dim = 420
 
 :::fold the scene, and the ten lanes of it that a key can drive
-// The half you would replace with your own sketch: a grid of spheres on a floor, and a
-// `KeyframeScope` over ten places in it. Nothing below this block ever writes those ten places —
-// only a blended key does, which is what makes the contact sheet evidence rather than decoration.
+/*
+The half you would replace with your own sketch: a grid of spheres on a floor, and a
+`KeyframeScope` over ten places in it. Nothing below this block ever writes those ten places —
+only a blended key does, which is what makes the contact sheet evidence rather than decoration.
+*/
 val bundle = StandardRenderer.build(
     renderer,
-    StandardRenderer.Config(renderWidth = dim, renderHeight = dim, backgroundColor = Vector3f(0.02f, 0.02f, 0.03f))
+    StandardRenderer.Config(renderWidth = dim, renderHeight = dim, backgroundColor = Vector3f(0.02f, 0.02f, 0.03f)),
 )
 val scene = bundle.scene
 
-// A square target must be projected square. `Projection(renderer)`'s `auto` lambda re-resizes to the
-// *window* inside every evaluateUniform, so a one-off `resize` is overwritten on the next frame and
-// every sphere comes out an ellipse. Replace the lambda; do not call `resize` once.
+/*
+A square target must be projected square. `Projection(renderer)`'s `auto` lambda re-resizes to the
+*window* inside every evaluateUniform, so a one-off `resize` is overwritten on the next frame and
+every sphere comes out an ellipse. Replace the lambda; do not call `resize` once.
+*/
 scene.projection.auto = { scene.projection.resize(dim, dim) }
 scene.projection.resize(dim, dim)
 
@@ -66,10 +71,13 @@ val grid = 3
 val spheres = (0 until grid * grid).map {
     bundle.registerSphere(name = "ball-$it", radius = 0.3f, slices = 24, stacks = 24, renderer = renderer)
 }
-// A floor, and not for decoration: `shadow.strength` and `ao.strength` are two of the ten lanes, and
-// with nothing under the spheres to receive a shadow they are two lanes a sweep could move all night
-// without changing a pixel.
-bundle.registerCube(name = "floor", size = 1f, renderer = renderer)
+/*
+A floor, and not for decoration: `shadow.strength` and `ao.strength` are two of the ten lanes, and
+with nothing under the spheres to receive a shadow they are two lanes a sweep could move all night
+without changing a pixel.
+*/
+bundle
+    .registerCube(name = "floor", size = 1f, renderer = renderer)
     .setModel(Matrix4f().translate(0f, -0.34f, 0f).scale(11f, 0.04f, 11f))
 bundle.applyScenePlan()
 
@@ -87,8 +95,7 @@ val layout = {
         val ix = i / grid - (grid - 1) / 2
         val iz = i % grid - (grid - 1) / 2
         spheres[i].setModel(
-            if (rank >= visible) Matrix4f().scale(0f)
-            else Matrix4f().translate(ix * spread, 0f, iz * spread)
+            if (rank >= visible) Matrix4f().scale(0f) else Matrix4f().translate(ix * spread, 0f, iz * spread),
         )
     }
 }
@@ -97,7 +104,7 @@ layout()
 val palettes = mapOf(
     "warm" to (Vector3f(0.10f, 0.05f, 0.03f) to Vector3f(1.0f, 0.78f, 0.55f)),
     "cool" to (Vector3f(0.03f, 0.05f, 0.11f) to Vector3f(0.62f, 0.78f, 1.0f)),
-    "acid" to (Vector3f(0.04f, 0.10f, 0.04f) to Vector3f(0.75f, 1.0f, 0.35f))
+    "acid" to (Vector3f(0.04f, 0.10f, 0.04f) to Vector3f(0.75f, 1.0f, 0.35f)),
 )
 var palette = "warm"
 val applyPalette = { name: String ->
@@ -118,10 +125,16 @@ val keys = KeyframeScope(schemaVersion = 1).apply {
     vector3Target("background", { scene.backgroundColor }) { scene.backgroundColor.set(it) }
     floatTarget("ao.strength", { scene.aoStrength }) { scene.aoStrength = it }
     floatTarget("shadow.strength", { scene.shadowStrength }) { scene.shadowStrength = it }
-    floatTarget("grid.spread", { spread }) { spread = it; layout() }
+    floatTarget("grid.spread", { spread }) {
+        spread = it
+        layout()
+    }
     // An `Int` lane, because a subdivision level or an instance count is one, and it interpolates
     // as a float lane so it can travel smoothly between two looks.
-    intTarget("grid.visible", { visible }, 1..(grid * grid)) { visible = it; layout() }
+    intTarget("grid.visible", { visible }, 1..(grid * grid)) {
+        visible = it
+        layout()
+    }
     // The discrete lane: a name that selects a whole sub-state. There is no midpoint between "warm"
     // and "acid", which is the case the sweep has to have a policy about.
     stringTarget("palette", { palette }) { applyPalette(it) }
@@ -129,42 +142,86 @@ val keys = KeyframeScope(schemaVersion = 1).apply {
 
 bundle.present(renderer = renderer)
 bundle.attachTo(renderer)
+
 :::endfold
 
 :::fold four keys, as a few evenings of clicking would have left them
-// In your own document these are files you saved with `scope.capture().save(…)`. The fourth is
-// deliberately *incomplete* — it predates two of the lanes, the way a key saved three weeks ago
-// does — because that is the case the blend has to have an answer for.
+/*
+In your own document these are files you saved with `scope.capture().save(…)`. The fourth is
+deliberately *incomplete* — it predates two of the lanes, the way a key saved three weeks ago
+does — because that is the case the blend has to have an answer for.
+*/
 val pool = Files.createTempDirectory("autosweep-pool")
 val look = { name: String, values: Map<String, Any?> ->
     pool.resolve(name).writeText(keys.encodeKeyJson(keys.Key(values.toMutableMap())))
 }
-look("high-and-cool", mapOf(
-    "camera.at" to Vector3f(0f, 3.0f, -3.0f), "camera.target" to Vector3f(0f, 0f, 0f),
-    "light.direction" to Vector3f(-0.5f, -1f, -0.3f).normalize(), "light.intensity" to 3.4f,
-    "background" to Vector3f(0.012f, 0.020f, 0.050f), "ao.strength" to 0.85f,
-    "shadow.strength" to 1.0f, "grid.spread" to 0.85f, "grid.visible" to 9, "palette" to "cool"))
-look("low-and-warm", mapOf(
-    "camera.at" to Vector3f(1.8f, 1.2f, -2.6f), "camera.target" to Vector3f(0f, 0.1f, 0f),
-    "light.direction" to Vector3f(0.7f, -0.4f, -0.5f).normalize(), "light.intensity" to 6.2f,
-    "background" to Vector3f(0.050f, 0.025f, 0.012f), "ao.strength" to 0.35f,
-    "shadow.strength" to 0.6f, "grid.spread" to 1.45f, "grid.visible" to 4, "palette" to "warm"))
-look("flat-and-acid", mapOf(
-    "camera.at" to Vector3f(-2.2f, 1.8f, -2.4f), "camera.target" to Vector3f(0.2f, 0.2f, 0f),
-    "light.direction" to Vector3f(-0.1f, -0.95f, 0.1f).normalize(), "light.intensity" to 1.9f,
-    "background" to Vector3f(0.010f, 0.045f, 0.015f), "ao.strength" to 1.0f,
-    "shadow.strength" to 0.15f, "grid.spread" to 0.55f, "grid.visible" to 9, "palette" to "acid"))
-look("older-partial-key", mapOf(
-    "camera.at" to Vector3f(0f, 1.6f, -3.6f), "camera.target" to Vector3f(0f, 0f, 0f),
-    "light.direction" to Vector3f(-0.8f, -0.6f, 0.1f).normalize(), "light.intensity" to 4.6f,
-    "background" to Vector3f(0.020f, 0.020f, 0.020f),
-    "shadow.strength" to 0.8f, "grid.spread" to 1.05f, "grid.visible" to 6))
+look(
+    "high-and-cool",
+    mapOf(
+        "camera.at" to Vector3f(0f, 3.0f, -3.0f),
+        "camera.target" to Vector3f(0f, 0f, 0f),
+        "light.direction" to Vector3f(-0.5f, -1f, -0.3f).normalize(),
+        "light.intensity" to 3.4f,
+        "background" to Vector3f(0.012f, 0.020f, 0.050f),
+        "ao.strength" to 0.85f,
+        "shadow.strength" to 1.0f,
+        "grid.spread" to 0.85f,
+        "grid.visible" to 9,
+        "palette" to "cool",
+    ),
+)
+look(
+    "low-and-warm",
+    mapOf(
+        "camera.at" to Vector3f(1.8f, 1.2f, -2.6f),
+        "camera.target" to Vector3f(0f, 0.1f, 0f),
+        "light.direction" to Vector3f(0.7f, -0.4f, -0.5f).normalize(),
+        "light.intensity" to 6.2f,
+        "background" to Vector3f(0.050f, 0.025f, 0.012f),
+        "ao.strength" to 0.35f,
+        "shadow.strength" to 0.6f,
+        "grid.spread" to 1.45f,
+        "grid.visible" to 4,
+        "palette" to "warm",
+    ),
+)
+look(
+    "flat-and-acid",
+    mapOf(
+        "camera.at" to Vector3f(-2.2f, 1.8f, -2.4f),
+        "camera.target" to Vector3f(0.2f, 0.2f, 0f),
+        "light.direction" to Vector3f(-0.1f, -0.95f, 0.1f).normalize(),
+        "light.intensity" to 1.9f,
+        "background" to Vector3f(0.010f, 0.045f, 0.015f),
+        "ao.strength" to 1.0f,
+        "shadow.strength" to 0.15f,
+        "grid.spread" to 0.55f,
+        "grid.visible" to 9,
+        "palette" to "acid",
+    ),
+)
+look(
+    "older-partial-key",
+    mapOf(
+        "camera.at" to Vector3f(0f, 1.6f, -3.6f),
+        "camera.target" to Vector3f(0f, 0f, 0f),
+        "light.direction" to Vector3f(-0.8f, -0.6f, 0.1f).normalize(),
+        "light.intensity" to 4.6f,
+        "background" to Vector3f(0.020f, 0.020f, 0.020f),
+        "shadow.strength" to 0.8f,
+        "grid.spread" to 1.05f,
+        "grid.visible" to 6,
+    ),
+)
+
 :::endfold
 
 // ── and here is the sweep. Everything above is the sketch; this is the whole feature. ──
 val archive = Files.createTempDirectory("autosweep-archive")
 val sweep = KeyframeSweep(
-    keys, pool, archive,
+    keys,
+    pool,
+    archive,
     SweepConfig(
         seed = 20260916,
         count = 8,
@@ -173,14 +230,16 @@ val sweep = KeyframeSweep(
         // Below 1, a blend is mostly one key with the others as perturbation. Well above it, every
         // blend is the average of its participants — a night of mush.
         concentration = 0.7,
-        extrapolationProbability = 0.3
-    )
+        extrapolationProbability = 0.3,
+    ),
 )
 
-// `frames { }` puts the run on the Runloop, so the callback can wait for real frames and the stop
-// key cancels it between renders. (`frames` rather than `start`: `start` has a receiver overload and
-// a receiverless one, and a bare lambda satisfies both, so `start { … }` does not compile anywhere —
-// every existing call site passes a callable reference instead, which is why nobody has hit it.)
+/*
+`frames { }` puts the run on the Runloop, so the callback can wait for real frames and the stop
+key cancels it between renders. (`frames` rather than `start`: `start` has a receiver overload and
+a receiverless one, and a bare lambda satisfies both, so `start { … }` does not compile anywhere —
+every existing call site passes a callable reference instead, which is why nobody has hit it.)
+*/
 frames {
     val report = sweep.run { render ->
         // The blend is already applied when this is called. Wait for it to be drawn, then read the
@@ -194,16 +253,20 @@ frames {
     // Nothing here touches the renderer or the scope. An archive describes itself, which is the
     // whole point of the manifests — this is the code an offline categorising pass starts from.
     val rows = readSweepArchive(archive)
-    val sheet = rows.joinToString("") { m ->
-        val still = archive.resolve("renders/${m.id}/still.png")
-        val img = "<img src='data:image/png;base64,${Base64.getEncoder().encodeToString(still.readBytes())}' " +
-            "width='120' style='border:1px solid #333;display:block'/>"
-        "<div style='display:inline-block;margin:2px;font:10px Iosevka,monospace;color:#999'>" +
-            "$img${m.index}${m.extrapolationGain?.let { " ✦" } ?: ""} ${m.anchor.take(12)}</div>"
-    }
+    val sheet =
+        rows.joinToString("") { m ->
+            val still = archive.resolve("renders/${m.id}/still.png")
+            val img =
+                "<img src='data:image/png;base64,${Base64.getEncoder().encodeToString(still.readBytes())}' " +
+                    "width='120' style='border:1px solid #333;display:block'/>"
+            "<div style='display:inline-block;margin:2px;font:10px Iosevka,monospace;color:#999'>" +
+                "$img${m.index}${m.extrapolationGain?.let { " ✦" } ?: ""} ${m.anchor.take(12)}</div>"
+        }
     display("sheet", "<div style='width:520px'>$sheet</div>")
 
-    markdown("what went in", """
+    markdown(
+        "what went in",
+        """
         | # | keys blended, and at what weight | pushed past the hull | `palette` taken from |
         |---|----------------------------------|----------------------|----------------------|
         ${rows.joinToString("\n") { m ->
@@ -211,7 +274,9 @@ frames {
                 "| ${m.extrapolationGain?.let { g -> "x${"%.2f".format(g)} away from<br>${m.extrapolationPole}" } ?: "—"} " +
                 "| ${m.discreteLanes.values.distinct().joinToString(", ")} |"
         }}
-    """, width = 520)
+    """,
+        width = 520,
+    )
 :::endfold
 }
 ```

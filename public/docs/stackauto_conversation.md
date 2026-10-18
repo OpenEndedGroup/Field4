@@ -296,27 +296,31 @@ void main() {
 ??? example "The mesh the model rebuilt, in the box's Kotlin — since shortened with faces, vertexMap and faceCentroids"
 
     ```diffstatic {data-lang=kotlin}
-    val solid = canonicalConway("sD").polyhedron
-    val topology = solid.topology
-    val xyz = solid.realization!!.vertexCoordinates
-    val centres = solid.faceCentroids
-    // Centre-to-perimeter fans give a polygon radius, not a circular mask.
-    val fanCount = topology.faces.sumOf { topology.faceCycle(it.id).size }
-    m.set(3 * fanCount, fanCount) {
-        var t = 0
-        topology.faces.forEachIndexed { f, face ->
-            val c = centres[f]
-            val n = solid.faceNormal(face.id)
-            val ring = topology.faceCycle(face.id).map { xyz[topology.vertexMap.getValue(it)] }
-            for (k in ring.indices) {
-                for ((p, r) in [c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f]) {
-                    pos.add(p.x, p.y, p.z); nrm.add(n.x, n.y, n.z); cen.add(c.x, c.y, c.z)
-                    fid.add(face.id.value.toFloat()); faceRadius.add(r)
-                }
-                tri.add(3 * t, 3 * t + 1, 3 * t + 2); t++
+val solid = canonicalConway("sD").polyhedron
+val topology = solid.topology
+val xyz = solid.realization!!.vertexCoordinates
+val centres = solid.faceCentroids
+// Centre-to-perimeter fans give a polygon radius, not a circular mask.
+val fanCount = topology.faces.sumOf { topology.faceCycle(it.id).size }
+m.set(3 * fanCount, fanCount) {
+    var t = 0
+    topology.faces.forEachIndexed { f, face ->
+        val c = centres[f]
+        val n = solid.faceNormal(face.id)
+        val ring = topology.faceCycle(face.id).map { xyz[topology.vertexMap.getValue(it)] }
+        for (k in ring.indices) {
+            for ((p, r) in [c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f]) {
+                pos.add(p.x, p.y, p.z)
+                nrm.add(n.x, n.y, n.z)
+                cen.add(c.x, c.y, c.z)
+                fid.add(face.id.value.toFloat())
+                faceRadius.add(r)
             }
+            tri.add(3 * t, 3 * t + 1, 3 * t + 2)
+            t++
         }
     }
+}
     ```
 <!-- /stackauto-study-source:decay-mesh -->
 

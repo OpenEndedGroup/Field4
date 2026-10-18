@@ -109,17 +109,16 @@ vocabulary, and the four reactions it takes are the two that did not exist befor
 two halves of that duplication.
 
 ```edn [field-box id="lambda-reduction" role="properties"]
-{"id" "lambda-reduction" "index" 2 "name" "One reduction, one panel per stage" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One reduction, one panel per stage" "frame" #afield/rect [820.0 60.0 1180.0 900.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lambda-reduction_code_.kt" "lines" 58 "characters" 2602 "sha256" "cf58678b15f64b3638e6de59941763edd3fe4d854964390343e4304a42015cd7"}]}
+{"id" "lambda-reduction" "index" 2 "name" "One reduction, one panel per stage" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One reduction, one panel per stage" "frame" #afield/rect [820.0 60.0 1180.0 900.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lambda-reduction_code_.kt" "lines" 63 "characters" 2616 "sha256" "5f8a13afd2fb286b81d63d73e42ef4e73551fe2c5e735b5200cfbad9fbf4f16f"}]}
 ```
 
 ```kotlin [field-property box="lambda-reduction" name="code" path="lambda-reduction_code_.kt"]
-// One reduction, one panel per stage. `(\x. x x) (\y. y)` is the smallest term that uses the whole
-// vocabulary, and the four reactions it takes are the two that did not exist before 2026-09-18:
-// `dup-lam` on an abstraction whose binder is wired to its own body, and `fan-fan` annihilating the
-// two halves of that duplication.
-
-import afield.app.protocol.Rect
-import afield.geometry.path.FLine
+/*
+One reduction, one panel per stage. `(\x. x x) (\y. y)` is the smallest term that uses the whole
+vocabulary, and the four reactions it takes are the two that did not exist before 2026-09-18:
+`dup-lam` on an abstraction whose binder is wired to its own body, and `fan-fan` annihilating the
+two halves of that duplication.
+*/
 
 val source = "(\\x. x x) (\\y. y)"
 val compiled = LambdaTerms.compile(LambdaTerms.parse(source))
@@ -133,11 +132,12 @@ stages += Triple("compiled", compiled.net.toFLines(), compiled.net.summaryHtml("
 while (stages.size < 8) {
     val detail = reducer.stepDetailed(compiled.net) ?: break
     compiled.net.relax(24)
-    stages += Triple(
-        "${stages.size}. ${detail.ruleName}",
-        compiled.net.toFLines(),
-        compiled.net.summaryHtml("${stages.size}. ${detail.ruleName}", maxNodes = 3)
-    )
+    stages +=
+        Triple(
+            "${stages.size}. ${detail.ruleName}",
+            compiled.net.toFLines(),
+            compiled.net.summaryHtml("${stages.size}. ${detail.ruleName}", maxNodes = 3),
+        )
 }
 
 val readback = LambdaTerms.readback(compiled)
@@ -150,11 +150,14 @@ println("stages: " + stages.joinToString(" | ") { it.first })
 // counts on the cards are what say how big each net was.
 val panelWidth = 196.0
 val gutter = 10.0
-val panels = stages.mapIndexed { index, stage ->
-    val frame = Rect(14.0 + index * (panelWidth + gutter), 18.0, panelWidth, 250.0)
-    listOf(frame.toFLine(filled = true, color = vec(0.07, 0.11, 0.16, 0.5))) +
-        stage.second.fitInto(frame, padding = 22.0)
-}.flatten()
+val panels =
+    stages
+        .mapIndexed { index, stage ->
+            val frame = Rect(14.0 + index * (panelWidth + gutter), 18.0, panelWidth, 250.0)
+            listOf(frame.toFLine(filled = true, color = vec(0.07, 0.11, 0.16, 0.5))) +
+                stage.second.fitInto(frame, padding = 22.0)
+        }
+        .flatten()
 
 showInteractionOverview(
     graphicLines = panels,
@@ -162,15 +165,17 @@ showInteractionOverview(
     channel = "reduction",
     graphicTitle = "$source, one panel per stage",
     graphicWidth = 14.0 + stages.size * (panelWidth + gutter),
-    graphicHeight = 286.0
+    graphicHeight = 286.0,
 )
 
-// Read the cards left to right and the agent count goes 6, 4, 6, 4, 2. It goes UP at `dup-lam`,
-// which is the point: duplication is work, and it is work the net does explicitly rather than by
-// copying a subtree behind your back.
-//
-// Try it: change `source` to `(\f. \y. f (f y)) ((\x. x) (\x. x))` and run again — a redex shared
-// under a binder, reduced once for both of its uses.
+/*
+Read the cards left to right and the agent count goes 6, 4, 6, 4, 2. It goes UP at `dup-lam`,
+which is the point: duplication is work, and it is work the net does explicitly rather than by
+copying a subtree behind your back.
+
+Try it: change `source` to `(\f. \y. f (f y)) ((\x. x) (\x. x))` and run again — a redex shared
+under a binder, reduced once for both of its uses.
+*/
 ```
 
 ## 4. Normalise a term, and check it against the oracle
@@ -186,52 +191,61 @@ parse the text, compile it to an interaction net, reduce the net until nothing f
 back out. Nothing here needs a GPU, a network or any setup.
 
 ```edn [field-box id="lambda-normalise" role="properties"]
-{"id" "lambda-normalise" "index" 3 "name" "Normalise a term, and check it against the oracle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Normalise a term, and check it against the oracle" "frame" #afield/rect [60.0 60.0 700.0 900.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lambda-normalise_code_.kt" "lines" 52 "characters" 3198 "sha256" "3881a47812864668186349524a0ccb05bdf653931daf263797790864c50bd003"}]}
+{"id" "lambda-normalise" "index" 3 "name" "Normalise a term, and check it against the oracle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Normalise a term, and check it against the oracle" "frame" #afield/rect [60.0 60.0 700.0 900.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lambda-normalise_code_.kt" "lines" 63 "characters" 3277 "sha256" "1ea293c73a4f1faa54ba6f58ddc989c46b10f8f2b23b359cd20976581f0c9994"}]}
 ```
 
 ```kotlin [field-property box="lambda-normalise" name="code" path="lambda-normalise_code_.kt"]
-// Type a λ-term, get its normal form. `LambdaTerms.normalise` is the whole pipeline in one call:
-// parse the text, compile it to an interaction net, reduce the net until nothing fires, read a term
-// back out. Nothing here needs a GPU, a network or any setup.
+/*
+Type a λ-term, get its normal form. `LambdaTerms.normalise` is the whole pipeline in one call:
+parse the text, compile it to an interaction net, reduce the net until nothing fires, read a term
+back out. Nothing here needs a GPU, a network or any setup.
+*/
 
 val run = LambdaTerms.normalise("(\\m n f x. m f (n f x)) (\\f x. f x) (\\f x. f (f x))")
 println("add one two  =  ${run.printed}")
 println("${run.steps} reactions, ${run.fans} fans compiled, ${run.remainingNodes} agents left standing")
 println("oracle agrees: " + LambdaTerms.alphaEquivalent(run.result, LambdaTerms.referenceNormalOrder(run.term)))
 
-// That last line is the only reason to trust the one above it. `referenceNormalOrder` is an ordinary
-// capture-avoiding substitution evaluator with no nets and no sharing anywhere in it — it exists in
-// order to disagree with the net, and the readback is compared to it with `alphaEquivalent`, not with
-// `==`, because a readback invents its own binder names.
+/*
+That last line is the only reason to trust the one above it. `referenceNormalOrder` is an ordinary
+capture-avoiding substitution evaluator with no nets and no sharing anywhere in it — it exists in
+order to disagree with the net, and the readback is compared to it with `alphaEquivalent`, not with
+`==`, because a readback invents its own binder names.
+*/
 
 println()
 println("term                                       normal form                   steps  fans  agents")
 listOf(
-    "\\x. x",
-    "(\\x y z. x z (y z)) (\\x y. x) (\\x y. x)",
-    "(\\n f x. f (n f x)) (\\f x. f (f x))",
-    "(\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x)))",
-    "(\\f x. f (f (f x))) (\\f x. f (f x))",
-    "(\\n f x. n (\\g h. h (g f)) (\\u. x) (\\u. u)) (\\f x. f (f (f x)))",
-    "(\\x. x x) (\\y. ((\\x. x) (\\x. x)) y)",
-    "(\\x y. x) (\\x. x) ((\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x))))"
-).forEach { source ->
-    val each = LambdaTerms.normalise(source)
-    val ok = LambdaTerms.alphaEquivalent(each.result, LambdaTerms.referenceNormalOrder(each.term))
-    println(
-        source.take(40).padEnd(42) + each.printed.take(28).padEnd(30) +
-            "%5d %5d %7d".format(each.steps, each.fans, each.remainingNodes) + (if (ok) "" else "   ORACLE DISAGREES")
+        "\\x. x",
+        "(\\x y z. x z (y z)) (\\x y. x) (\\x y. x)",
+        "(\\n f x. f (n f x)) (\\f x. f (f x))",
+        "(\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x)))",
+        "(\\f x. f (f (f x))) (\\f x. f (f x))",
+        "(\\n f x. n (\\g h. h (g f)) (\\u. x) (\\u. u)) (\\f x. f (f (f x)))",
+        "(\\x. x x) (\\y. ((\\x. x) (\\x. x)) y)",
+        "(\\x y. x) (\\x. x) ((\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x))))",
     )
-}
+    .forEach { source ->
+        val each = LambdaTerms.normalise(source)
+        val ok = LambdaTerms.alphaEquivalent(each.result, LambdaTerms.referenceNormalOrder(each.term))
+        println(
+            source.take(40).padEnd(42) +
+                each.printed.take(28).padEnd(30) +
+                "%5d %5d %7d".format(each.steps, each.fans, each.remainingNodes) +
+                (if (ok) "" else "   ORACLE DISAGREES"),
+        )
+    }
 
-// Read the `agents` column against the `normal form` column on the exponentiation row — `three two`,
-// which is 2^3. The net is left standing at 10 agents; the term it reads back as needs 11 nodes (one
-// ROOT, two LAM, eight APP). The net is SMALLER than its own answer, because it stayed shared: the
-// unfolding happened in the readback, not in the reduction. A fan in a normal form is not a node of
-// the term, it is a bracket on the path through it, which is what `Lambda.FAN_LABEL` is for.
-//
-// Do not read that as a general claim. `mul two three` finishes at 10 agents against a 9-node term
-// and `mul three three` comes out even. Which way it goes depends on the term.
+/*
+Read the `agents` column against the `normal form` column on the exponentiation row — `three two`,
+which is 2^3. The net is left standing at 10 agents; the term it reads back as needs 11 nodes (one
+ROOT, two LAM, eight APP). The net is SMALLER than its own answer, because it stayed shared: the
+unfolding happened in the readback, not in the reduction. A fan in a normal form is not a node of
+the term, it is a bracket on the path through it, which is what `Lambda.FAN_LABEL` is for.
+
+Do not read that as a general claim. `mul two three` finishes at 10 agents against a 9-node term
+and `mul three three` comes out even. Which way it goes depends on the term.
+*/
 
 println()
 println("what the compiler builds, for `\\f. \\y. f (f y)`:")
@@ -239,8 +253,10 @@ val compiled = LambdaTerms.compile(LambdaTerms.parse("\\f. \\y. f (f y)"))
 println("  " + compiled.net.nodes.groupingBy { it.type.name }.eachCount().toSortedMap())
 println("  ${compiled.fans} fan(s) for the variable used twice, ${compiled.erasers} eraser(s) for unused binders")
 
-// Try it: put a term of your own in the list. `\x. x x` applied to itself diverges, and the net will
-// too — `normalise` takes a `maxSteps` and `run.finished` is false when it ran out, which is all
-// a reducer can report about a term that has no normal form.
+/*
+Try it: put a term of your own in the list. `\x. x x` applied to itself diverges, and the net will
+too — `normalise` takes a `maxSteps` and `run.finished` is false when it ran out, which is all
+a reducer can report about a term that has no normal form.
+*/
 ```
 

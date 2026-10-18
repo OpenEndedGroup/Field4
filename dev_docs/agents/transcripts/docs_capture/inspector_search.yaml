@@ -12,10 +12,11 @@ operations:
 
           val scene = linkedMapOf(
               "title" to "sketch",
-              "groups" to listOf(
-                  Group("background", listOf(Layer("paper", true, 1.0))),
-                  Group("ink", listOf(Layer("outline", true, 2.0), Layer("hatching", false, 0.5))),
-              ),
+              "groups" to
+                  listOf(
+                      Group("background", listOf(Layer("paper", true, 1.0))),
+                      Group("ink", listOf(Layer("outline", true, 2.0), Layer("hatching", false, 0.5))),
+                  ),
           )
           tree("scene", scene, maxHeight = 300)
           displayOpen("scene")

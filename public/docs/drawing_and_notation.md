@@ -37,9 +37,12 @@ A stroke can carry pen pressure, as one drawn with a tablet pen does: `stroke(li
 Any mark, hand-drawn or not, can be changed or removed:
 
 ```diffstatic {data-lang=kotlin}
-val m = notation.named("tempo")!!          // a mark labelled "tempo"
-notation.edit(m) { stroke = "#e03131"; text = "tempo 96" }
-notation.anchor(m, thisBox)                // it now follows this box
+val m = notation.named("tempo")!! // a mark labelled "tempo"
+notation.edit(m) {
+    stroke = "#e03131"
+    text = "tempo 96"
+}
+notation.anchor(m, thisBox) // it now follows this box
 notation.delete(m)
 ```
 
@@ -48,13 +51,12 @@ notation.delete(m)
 `notation` is the whole drawing, seen from the box that asks:
 
 ```diffstatic {data-lang=kotlin}
-for (m in notation.marks)
-    println("${m.kind} ${m.label} at ${m.bounds}, over ${m.box?.name}")
+for (m in notation.marks) println("${m.kind} ${m.label} at ${m.bounds}, over ${m.box?.name}")
 
-notation.strokes                // just the pen strokes; also .arrows .lines .texts .shapes .frames
-notation.over(thisBox)          // marks sitting on this box
-notation.arrowsTo(thisBox)      // arrows that end on it
-notation.selected               // what is selected in the drawing right now
+notation.strokes // just the pen strokes; also .arrows .lines .texts .shapes .frames
+notation.over(thisBox) // marks sitting on this box
+notation.arrowsTo(thisBox) // arrows that end on it
+notation.selected // what is selected in the drawing right now
 ```
 
 Each mark knows its `kind`, `bounds`, `points` (in canvas coordinates, the same ones a box's `frame` uses), `stroke` and `fill` colours, and its `label`: its own text, the text written inside it, or a name given from code. `toFLine()` turns any mark into an `FLine`, and from there everything Field can do with geometry applies.
@@ -90,10 +92,10 @@ Field sits in the middle of all this. A box can draw, which is LeWitt's directio
 Cutting a drawing with a line is a good way to read it. It also makes a drawn line a value over time, the freehand counterpart of placing keys in [the keyframe editor](keyframe_editor.md). A vertical line through a score picks out an instant, and a horizontal one picks out a pitch. `notation.space` names a region and says what its axes mean. The region can be a frame, a box, or a rectangle:
 
 ```diffstatic {data-lang=kotlin}
-val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)   // eight beats; MIDI 84 at the top
-score.vertical(2.0)       // everything at beat 2, as hits sorted by pitch
-score.horizontal(66.0)    // every place something passes F#4, as beats
-score.events              // every mark as an event: start, end, and the pitch it starts and ends on
+val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0) // eight beats; MIDI 84 at the top
+score.vertical(2.0) // everything at beat 2, as hits sorted by pitch
+score.horizontal(66.0) // every place something passes F#4, as beats
+score.events // every mark as an event: start, end, and the pitch it starts and ends on
 ```
 
 A cut returns hits. A stroke crosses it at points, so a line that doubles back gives two hits, two voices at once. A shape or a text covers a stretch of it, a `span`, so a rectangle in a piano roll gives the pitches it covers. Each hit also says how far along its stroke it is (`along`), how fast the stroke is rising there in the space's units (`slope`, which for a score is semitones per beat), and, for a pen stroke, how hard the pen was pressing (`pressure`).
@@ -136,11 +138,20 @@ notation {
     rect(740, 202, 80, 56)
     rect(900, 42, 120, 56)
 }
-val score = notation.space("projection", x = 0.0..10.0, y = 3.0..0.0)   // ten beats; three rows
-fun register(v: Double) = when { v >= 2 -> "high"; v >= 1 -> "middle"; else -> "low" }
-markdown("events", score.events.filter { it.mark.kind == MarkType.RECTANGLE }.joinToString("  \n") {
-    "beat %.1f for %.1f, %s".format(it.start, it.duration, register(it.value))
-})
+val score = notation.space("projection", x = 0.0..10.0, y = 3.0..0.0) // ten beats; three rows
+fun register(v: Double) = when {
+    v >= 2 -> "high"
+    v >= 1 -> "middle"
+    else -> "low"
+}
+markdown(
+    "events",
+    score.events
+        .filter { it.mark.kind == MarkType.RECTANGLE }
+        .joinToString("  \n") {
+            "beat %.1f for %.1f, %s".format(it.start, it.duration, register(it.value))
+        },
+)
 ```
 
 ### A crescendo
@@ -152,21 +163,25 @@ The hairpin below is drawn by code with a little wobble in it. In your own docum
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/drawing_and_notation/crescendo.png" capture="window" embed=true open-outputs="false" clip="0,0,1080,330" w="180" h="50" wait="3.0" timeout="90" name="notation-crescendo" alt="A red hand-drawn crescendo hairpin opening to the right inside a frame labelled 'dynamics', and the box's readout of the hairpin's width at each beat as a dynamic marking from niente to ff"}
 notation {
     frame("dynamics", 260, 30, 800, 200)
-    val hand = { i: Int -> 2.5 * sin(i * 2.3) + 1.5 * sin(i * 0.7) }     // a hand is not a ruler
-    val hairpin = (0..60).map { i ->
-        val k = if (i <= 30) i else 60 - i                                // out along the top, back along the bottom
-        val side = if (i <= 30) -1 else 1
-        vec(1020 - k * 23.0, 130 + side * (75 - k * 2.5) + hand(i))
-    }
+    val hand = { i: Int -> 2.5 * sin(i * 2.3) + 1.5 * sin(i * 0.7) } // a hand is not a ruler
+    val hairpin =
+        (0..60).map { i ->
+            val k = if (i <= 30) i else 60 - i // out along the top, back along the bottom
+            val side = if (i <= 30) -1 else 1
+            vec(1020 - k * 23.0, 130 + side * (75 - k * 2.5) + hand(i))
+        }
     stroke(hairpin, name = "hairpin", stroke = "#e03131")
 }
 val dynamics = notation.space("dynamics", x = 0.0..8.0, y = 0.0..1.0)
 val markings = ["niente", "pp", "p", "mp", "mf", "f", "ff"]
-markdown("dynamics", (0..7).joinToString("  \n") { beat ->
-    val ys = dynamics.vertical(beat.toDouble()).filter { !it.isSpan }.map { it.value }
-    val gap = if (ys.size >= 2) ys.max() - ys.min() else 0.0
-    "beat $beat: %.2f %s".format(gap, markings[(gap / 0.75 * 6).roundToInt().coerceIn(0, 6)])
-})
+markdown(
+    "dynamics",
+    (0..7).joinToString("  \n") { beat ->
+        val ys = dynamics.vertical(beat.toDouble()).filter { !it.isSpan }.map { it.value }
+        val gap = if (ys.size >= 2) ys.max() - ys.min() else 0.0
+        "beat $beat: %.2f %s".format(gap, markings[(gap / 0.75 * 6).roundToInt().coerceIn(0, 6)])
+    },
+)
 ```
 
 Draw two hairpins, or a diminuendo after the crescendo, and the same reading code reads them.

@@ -10,7 +10,11 @@ shows the last note it heard:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/orca/hello.png" alt="A Field box with two outputs. The orca output is ORCA's black grid: a comment reading ORCA IN FIELD, a clock C8 feeding a track operator T that holds the notes CDEGAGED, two MIDI operators lit in teal under a pair of delays, and ORCA's status lines along the bottom. Below it, the heard output reads the note, channel and MIDI number of the last note Kotlin received." capture="box" open-outputs="true" wait-output=true wait-output-kind=display wait-output-channel="heard" wait="3" timeout="180" embed=true name="orca-hello" w="760" h="560" padding="18"}
 val synth = PatSynthBank()
-val o = orca(rows = 12, grid = """
+val o =
+    orca(
+        rows = 12,
+        grid =
+            """
     #.ORCA.IN.FIELD.#
     .
     .2C8
@@ -19,7 +23,8 @@ val o = orca(rows = 12, grid = """
     .
     D8
     .:12C
-""")
+""",
+    )
 o.onNote {
     synth.play(it)
     markdown("heard", "`${it.note}${it.octave}` on channel ${it.channel}, MIDI ${it.midi}")
@@ -110,14 +115,16 @@ highlights and turns every `:` into a drone on G, whatever note the grid gives i
 go {
     println(o.eval("client.orca.w + ' x ' + client.orca.h"))
     o.js("client.theme.set('b_med', '#ff4fa0')")
-    o.js("""
+    o.js(
+        """
         const Midi = library[':']
         library[':'] = function (orca, x, y, passive) {
           Midi.call(this, orca, x, y, passive)
           const listen = this.listen
           this.listen = (port, value) => port === this.ports.note ? 'G' : listen.call(this, port, value)
         }
-    """)
+    """,
+    )
 }
 ```
 
@@ -137,11 +144,19 @@ speeds against itself. Every eighth note `echo` plays, the loop moves one note o
 step up the scale, so the tune changes slowly as it goes. The bass follows it.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/orca/duet.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" wait-output-channel="between" execution="launch" duration="12" fps="20" timeout="240" w="900" embed=true name="orca-duet-video" alt="Two ORCA grids running in one Field box. The upper one, LEAD, steps through a track of eight notes while its bass flips between C and F; the lower one, ECHO, plays a track that keeps changing to the last eight notes LEAD played. Under them, a line from Kotlin reads what it heard and the last note it moved in LEAD's tune."}
-// Two ORCAs and Kotlin in between. Lead plays a tune in twos; Kotlin hands each note to
-// Echo, which plays the last eight back in threes, an octave up; every eighth note Echo
-// plays, Kotlin moves one note of Lead's tune a step up the scale. Click a grid to join in.
+/*
+Two ORCAs and Kotlin in between. Lead plays a tune in twos; Kotlin hands each note to
+Echo, which plays the last eight back in threes, an octave up; every eighth note Echo
+plays, Kotlin moves one note of Lead's tune a step up the scale. Click a grid to join in.
+*/
 val synth = PatSynthBank()
-val lead = orca("lead", cols = 40, rows = 10, grid = """
+val lead =
+    orca(
+        "lead",
+        cols = 40,
+        rows = 10,
+        grid =
+            """
     #.LEAD.#
     .
     .2C8
@@ -150,21 +165,32 @@ val lead = orca("lead", cols = 40, rows = 10, grid = """
     .
     D8
     .:12C
-""")
-val echo = orca("echo", cols = 40, rows = 10, grid = """
+""",
+    )
+val echo =
+    orca(
+        "echo",
+        cols = 40,
+        rows = 10,
+        grid =
+            """
     #.ECHO.#
     .
     .3C8
     D3.8TCCCCCCCC
     .:25
-""")
+""",
+    )
 val up = mapOf('C' to 'D', 'D' to 'E', 'E' to 'G', 'G' to 'A', 'A' to 'C')
 val heard = ArrayDeque("CCCCCCCC".toList())
 var echoes = 0
 var nudged = "none yet"
 
 lead.onNote {
-    if (it.channel == 0) { heard.addLast(it.note[0]); heard.removeFirst() }
+    if (it.channel == 0) {
+        heard.addLast(it.note[0])
+        heard.removeFirst()
+    }
     synth.play(it, pan = 0.35, wave = if (it.channel == 1) PatWave.SINE else PatWave.TRIANGLE)
 }
 echo.onNote {
@@ -174,26 +200,27 @@ echo.onNote {
 
 displayOpen("between")
 // The go-between. A box launches what it ends with: here the synth, and this loop beside it.
-synth + frames {
-    var seen = -1
-    while (frame()) {
-        if (lead.frame == seen) continue
-        seen = lead.frame
-        // Lead to Echo: Echo's track is always the last eight notes Lead played.
-        heard.forEachIndexed { i, note -> echo[5 + i, 3] = note }
-        // Echo to Lead: every eighth echo moves one note of Lead's tune up the scale.
-        if (echoes >= 8) {
-            echoes = 0
-            val x = 5 + seen % 8
-            val note = up[lead[x, 3]] ?: 'C'
-            nudged = "lead[$x, 3] ${lead[x, 3]} → $note"
-            lead[x, 3] = note
+synth +
+    frames {
+        var seen = -1
+        while (frame()) {
+            if (lead.frame == seen) continue
+            seen = lead.frame
+            // Lead to Echo: Echo's track is always the last eight notes Lead played.
+            heard.forEachIndexed { i, note -> echo[5 + i, 3] = note }
+            // Echo to Lead: every eighth echo moves one note of Lead's tune up the scale.
+            if (echoes >= 8) {
+                echoes = 0
+                val x = 5 + seen % 8
+                val note = up[lead[x, 3]] ?: 'C'
+                nudged = "lead[$x, 3] ${lead[x, 3]} → $note"
+                lead[x, 3] = note
+            }
+            // The bass follows the tune: F under G and A, C under the rest.
+            lead[4, 7] = if (lead[4, 4] in "GA") 'F' else 'C'
+            markdown("between", "heard `${heard.joinToString("")}` · last nudge `$nudged`")
         }
-        // The bass follows the tune: F under G and A, C under the rest.
-        lead[4, 7] = if (lead[4, 4] in "GA") 'F' else 'C'
-        markdown("between", "heard `${heard.joinToString("")}` · last nudge `$nudged`")
     }
-}
 ```
 
 The box ends with `synth + frames { ... }`: a box launches what its last expression is, and `+`

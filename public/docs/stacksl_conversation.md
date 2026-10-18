@@ -165,7 +165,6 @@ the tool; two documents can each have their own tool of the same name.
 
 <!-- stacksl-study-source:colour-tool -->
 ```diffstatic {data-lang=kotlin}
-import afield.ai.tools.AgentToolExtensions
 import afield.lang.stacksl.study.StackSLStudyShader
 import com.fasterxml.jackson.annotation.JsonClassDescription
 
@@ -173,8 +172,11 @@ import com.fasterxml.jackson.annotation.JsonClassDescription
 data class ColoursOfStackSLStudy(val revision: String = "current")
 
 val document = inside.filename
-AgentToolExtensions.register(ColoursOfStackSLStudy::class.java,
-    { it.focus?.document == document && it.focus?.property == "stackSL" }, scope = document) { ctx, _ ->
+AgentToolExtensions.register(
+    ColoursOfStackSLStudy::class.java,
+    { it.focus?.document == document && it.focus?.property == "stackSL" },
+    scope = document,
+) { ctx, _ ->
     val program = ctx.focus!!.box.getPropertyRaw("stackSL", "") as String
     StackSLStudyShader.colourKnobs(program).map { it.hex }
 }

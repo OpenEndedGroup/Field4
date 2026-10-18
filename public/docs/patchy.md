@@ -75,9 +75,13 @@ go {
         val doc = p.newDocument(640, 480)
         val layer = p.addLayer(doc, "Kotlin ink")
         rectangle.call(
-            "documentId" to doc, "layerId" to layer,
-            "x" to 30, "y" to 30, "width" to 150, "height" to 80,
-            "color" to "#202020"
+            "documentId" to doc,
+            "layerId" to layer,
+            "x" to 30,
+            "y" to 30,
+            "width" to 150,
+            "height" to 80,
+            "color" to "#202020",
         )
     }
     val title = p.script("patchy.setResult(app.activeDocument ? app.activeDocument.name : null);")

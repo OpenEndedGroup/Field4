@@ -106,8 +106,13 @@ import afield.media.video.diffusion.*
 
 val root = StreamDiffusionSupport.configuredRoot()
 val config = root?.let {
-    StreamDiffusionConfig(it, prompt = StreamDiffusionPresets.CHARCOAL,
-        strength = .45, fps = 16, useTensorRT = true)
+    StreamDiffusionConfig(
+        it,
+        prompt = StreamDiffusionPresets.CHARCOAL,
+        strength = .45,
+        fps = 16,
+        useTensorRT = true,
+    )
 }
 val support = StreamDiffusionSupport.probe(renderer, config)
 if (support.available) {
@@ -182,17 +187,24 @@ opt into the controls. The provider records a GPU correspondence target in the
 supplied command buffer:
 
 ```diffstatic {data-lang=kotlin}
-import afield.media.video.diffusion.*
 import afield.graphics.vulkan.device.CommandBuffer
+import afield.media.video.diffusion.*
 
-val config = StreamDiffusionConfig(checkNotNull(root),
-    displayReprojection = true, historyBlend = .35, noiseAdvection = .8)
+val config = StreamDiffusionConfig(
+    checkNotNull(root),
+    displayReprojection = true,
+    historyBlend = .35,
+    noiseAdvection = .8,
+)
 val motion = object : StreamDiffusionMotionProvider {
     override fun onFrame(frame: StreamDiffusionFrame) {
         // Retain transforms / camera / object state keyed by frame.id and generation.
     }
-    override fun record(command: CommandBuffer,
-        request: StreamDiffusionMotionRequest): RenderToTexture? {
+
+    override fun record(
+        command: CommandBuffer,
+        request: StreamDiffusionMotionRequest,
+    ): RenderToTexture? {
         // Render current pixels into reference-frame UV coordinates.
         // Return null if this pair's retained geometry is unavailable.
         return renderCorrespondence(command, request.current, request.reference)

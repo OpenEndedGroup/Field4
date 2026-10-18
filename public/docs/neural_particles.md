@@ -71,8 +71,8 @@ Three calls take that network to the GPU:
 
 ```diffstatic {data-lang=kotlin}
 val field = flowMatch(pairing.to, pairing.from, FlowMatchOptions(coupling = FlowCoupling.PAIRED))
-val export = field.export()                  // weights, training frame, source cloud
-val glsl = export.glsl("neuralField")        // place this immediately after #version
+val export = field.export() // weights, training frame, source cloud
+val glsl = export.glsl("neuralField") // place this immediately after #version
 ```
 
 `export()` is a snapshot: the weights flat and layer-major, plus the centring and scaling the
@@ -89,15 +89,21 @@ readable GLSL.
 val particles = ShaderNeuralParticles(export) {
     particleCount = 300_000
     stepsPerCycle = 150
-    dwellCycles = 3f        // how long a particle rests on the target once it arrives
+    dwellCycles = 3f // how long a particle rests on the target once it arrives
 }
-particles.installInto()     // defaults to renderer.renderList
+particles.installInto() // defaults to renderer.renderList
 ```
 
 Each particle is a struct rather than a texel, because of the two unusual fields:
 
 ```diffstatic {data-lang=glsl}
-struct Particle { vec2 position; vec2 start; vec2 velocity; float t; float pad; };
+struct Particle {
+    vec2 position;
+    vec2 start;
+    vec2 velocity;
+    float t;
+    float pad;
+};
 ```
 
 A flow is a map. Each particle travels from one specific source point to wherever the field takes it by `t = 1`, and when it arrives it goes back
@@ -156,16 +162,20 @@ val pairing = mixtureSource(components, seed = 5)
 fun cloud(points: List<Vec3>, size: Double, c: Vec4): FLine {
     val f = FLine()
     points.forEach { f.moveTo(it) }
-    f.pointed = true; f.pointSize = size; f.color = c
+    f.pointed = true
+    f.pointSize = size
+    f.color = c
     return f
 }
 
 // Every 100th correspondence, to show the pairing is point-for-point and not a cloud match.
 val threads = FLine()
 for (i in pairing.from.indices step 100) {
-    threads.moveTo(pairing.from[i]); threads.lineTo(pairing.to[i])
+    threads.moveTo(pairing.from[i])
+    threads.lineTo(pairing.to[i])
 }
-threads.color = vec(1.0, 0.62, 0.25, 0.75); threads.thickness = 1.2
+threads.color = vec(1.0, 0.62, 0.25, 0.75)
+threads.thickness = 1.2
 :::fold draw the source, the target and the pairing
 lines(
     [
@@ -173,15 +183,20 @@ lines(
         cloud(pairing.from, 1.6, vec(0.44, 0.83, 0.78, 1.0)),
         threads,
     ],
-    w = 1000.0, h = 450.0, fitToSize = true,
+    w = 1000.0,
+    h = 450.0,
+    fitToSize = true,
 )
-markdown("what", """
+markdown(
+    "what",
+    """
     ~~~
 closed subpaths found   ${components.size}
 points per component    ${components.map { it.size }.joinToString(", ")}
 paired points           ${pairing.from.size}
     ~~~
-""")
+""",
+)
 :::endfold
 ```
 
@@ -212,8 +227,8 @@ seconds.
 Train a second field, from the same source, and you can interpolate the **weights**:
 
 ```diffstatic {data-lang=kotlin}
-val blended = fieldA.blendWith(fieldB, t)     // t from 0 to 1
-particles.updateWeights(blended.network)      // a buffer write; nothing recompiles
+val blended = fieldA.blendWith(fieldB, t) // t from 0 to 1
+particles.updateWeights(blended.network) // a buffer write; nothing recompiles
 ```
 
 Interpolating the *targets*, sending point `i` to `(1-t)·A_i + t·B_i`, is a straight-line
@@ -270,7 +285,7 @@ it is useful on its own for anything that needs neighbours on the GPU:
 ```diffstatic {data-lang=kotlin}
 val grid = GpuNeighbourGrid(
     capacity = 12_000,
-    cellsPerSide = 32,              // cellSize = domainSize / cellsPerSide = 0.0625
+    cellsPerSide = 32, // cellSize = domainSize / cellsPerSide = 0.0625
     domainMin = Vector2f(-1f, -1f),
     domainSize = 2f,
 )
@@ -316,10 +331,11 @@ something like it, install once rather than once per module.
 
 ```diffstatic {data-lang=kotlin}
 val written = ShaderBoids(grid, count = 12_000) {
-    containment = 1.5f; containmentRadius = 0.44f   // a soft wall, applied after the rule
-    driverStrength = -0.9f                          // negative: flee the driver
+    containment = 1.5f
+    containmentRadius = 0.44f // a soft wall, applied after the rule
+    driverStrength = -0.9f // negative: flee the driver
 }
-written.installDrawInto()                           // defaults to renderer.renderList
+written.installDrawInto() // defaults to renderer.renderList
 ```
 
 The default weights flock at this density and `radius = 2f / 64f`. They are far from the textbook
@@ -450,9 +466,11 @@ drift of the plain Deep Sets form was what made it look lively. To get motion, a
 the interaction:
 
 ```diffstatic {data-lang=kotlin}
-boids.settings.driverStrength = -1.5f     // negative flees, positive pursues
+boids.settings.driverStrength = -1.5f // negative flees, positive pursues
 boids.settings.driverRadius = 0.25f
-boids.driver = { wanderingPoint() }       // read once a frame
+boids.driver = {
+    wanderingPoint()
+} // read once a frame
 ```
 
 `driverStrength` adds a pull toward, or a push away from, a point you supply each frame. It is

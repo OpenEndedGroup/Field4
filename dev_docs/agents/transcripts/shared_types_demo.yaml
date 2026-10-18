@@ -20,16 +20,22 @@ operations:
         h: 100.0
       properties:
         code: |
-          // One publish, and every box in this document can name these types. They are
-          // compiled as ordinary Kotlin into a directory on the shared classloader, NOT
-          // declared in this box's snippet -- which is why they escape this box at all.
-          println(sharedTypes("""
+          /*
+          One publish, and every box in this document can name these types. They are
+          compiled as ordinary Kotlin into a directory on the shared classloader, NOT
+          declared in this box's snippet -- which is why they escape this box at all.
+          */
+          println(
+              sharedTypes(
+                  """
           package shared
 
           data class Particle(val x: Double, val y: Double, val mass: Double) {
               val momentum: Double get() = mass * kotlin.math.hypot(x, y)
           }
-          """))
+          """,
+              ),
+          )
   - create:
       box: shared_types_use
       name: 2 - Use it, with full fidelity
@@ -40,9 +46,11 @@ operations:
         h: 100.0
       properties:
         code: |
-          // Named arguments, copy, destructuring and the data-class toString all work,
-          // because shared.Particle is a real compiled class with real metadata -- not a
-          // type name re-spelled as text.
+          /*
+          Named arguments, copy, destructuring and the data-class toString all work,
+          because shared.Particle is a real compiled class with real metadata -- not a
+          type name re-spelled as text.
+          */
           val p = shared.Particle(x = 3.0, y = 4.0, mass = 2.0)
           println("toString: " + p)
           println("copy: " + p.copy(mass = 10.0))
@@ -61,8 +69,7 @@ operations:
         code: |
           // @rootExported publishes the value to the document root, so any box can reach
           // it. Before shared types the *value* crossed but its type did not.
-          @rootExported
-          val particle = shared.Particle(x = 1.5, y = 2.5, mass = 4.0)
+          @rootExported val particle = shared.Particle(x = 1.5, y = 2.5, mass = 4.0)
 
           println("exported: " + particle)
   - create:
@@ -75,9 +82,11 @@ operations:
         h: 100.0
       properties:
         code: |
-          // _particle arrives from box 3. These lines only COMPILE because the type crossed
-          // the box boundary: a box-declared class lands here as Any?, and .x does not
-          // resolve on Any?.
+          /*
+          _particle arrives from box 3. These lines only COMPILE because the type crossed
+          the box boundary: a box-declared class lands here as Any?, and .x does not
+          resolve on Any?.
+          */
           println("received: " + _particle)
           println("x + y = " + (_particle.x + _particle.y))
           println("momentum = " + _particle.momentum)

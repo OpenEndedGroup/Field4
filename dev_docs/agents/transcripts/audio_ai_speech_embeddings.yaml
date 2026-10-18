@@ -11,14 +11,17 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-
-          display("guide", """
+          display(
+              "guide",
+              """
           <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
             <h2 style="margin:0 0 8px;color:#7fcbd7">Speech-reactive learned spaces</h2>
             <p><b>emotion2vec</b> emphasizes vocal affect, prosody and texture. <b>WavLM Base+</b> supplies a broader self-supervised speech representation; layer 6 is a useful acoustic/phonetic compromise. Both produce 50 Hz frame vectors, explicit WebRTC voice activity, energy, novelty, and a compact binary MessagePack artifact.</p>
             <p>Run box 2 to inspect the synchronized visualizer without a worker. Run box 3 for the complete local path: find or import <code>~/Downloads/near_drowning.wav</code> → submit two durable jobs → watch progress → retrieve cached results → pool 500 ms of acoustic evidence every 40 ms (25 Hz) → run fixed-seed cosine t-SNE in Field through Smile → play the recording through axes 0×1 and 2×3. Hover a path to inspect its time; click it to seek the audio.</p>
           </section>
-          """.trimIndent())
+          """
+                  .trimIndent(),
+          )
           display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
   - create:
       box: speech_embedding_visualizer_gallery
@@ -26,11 +29,8 @@ operations:
       frame: { x: 520.0, y: 40.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.ui.visualization.AudioVisualizer
-          import afield.ui.visualization.AudioVisualizerOptions
-          import afield.audio.engine.WavFloatArrayLoader
           import java.io.File
-          import java.nio.file.Path
+
           val json = FieldAudioClient.json
           val folder = File("public/docs/assets/audio_ai_speech_embeddings")
           val previews = listOf("emotion2vec", "wavlm_base_plus").map {
@@ -43,13 +43,10 @@ operations:
       frame: { x: 40.0, y: 190.0, w: 440.0, h: 100.0 }
       properties:
         code: |
-          import afield.document.graph.Box
-          import afield.ui.visualization.AudioVisualizerOptions
-          import afield.math.statistics.SmileMdsDistance
           import java.nio.file.Files
           import java.nio.file.Path
           import java.util.concurrent.CompletableFuture
-          
+
           val client = FieldAudioClient()
           val localPath = Path.of(System.getProperty("user.home"), "Downloads", "near_drowning.wav")
           val timeSync = "near-drowning-speech-spaces"
@@ -58,7 +55,7 @@ operations:
           val projectionPoolMillis = 500.0
           val projectionHopMillis = 40.0
           display("all jobs", fieldAudioJobMonitor(heightPixels = 340))
-          
+
           fun Box.trackedSpeech(label: String, request: ModelOperation): CompletableFuture<AnalysisResult> =
               client.submit(request).thenCompose { accepted ->
                   display("$label job", fieldAudioJobStatusHtml(accepted))
@@ -74,72 +71,101 @@ operations:
                       result
                   }
               }
-          
-          client.assetsByFilename("*near_drowning*").thenCompose { matches ->
-              when {
-                  matches.size == 1 -> CompletableFuture.completedFuture(matches.single())
-                  matches.isEmpty() && Files.isRegularFile(localPath) -> client.importWav(localPath)
-                  matches.isEmpty() -> CompletableFuture.failedFuture(
-                      IllegalStateException("near_drowning.wav is neither imported nor present at $localPath")
+
+          client
+              .assetsByFilename("*near_drowning*")
+              .thenCompose { matches ->
+                  when {
+                      matches.size == 1 -> CompletableFuture.completedFuture(matches.single())
+                      matches.isEmpty() && Files.isRegularFile(localPath) -> client.importWav(localPath)
+                      matches.isEmpty() ->
+                          CompletableFuture.failedFuture(
+                              IllegalStateException("near_drowning.wav is neither imported nor present at $localPath"),
+                          )
+                      else ->
+                          CompletableFuture.failedFuture(
+                              IllegalStateException("near_drowning filename matched ${matches.size} assets"),
+                          )
+                  }
+              }
+              .thenCompose { source ->
+                  val audio =
+                      source.representations.firstOrNull { it.role == "canonical_project" }
+                          ?: source.representations.first { it.mediaType in setOf("audio/wav", "audio/x-wav") }
+                  val duration = requireNotNull(audio.durationSeconds) { "source audio has no duration" }
+                  val region = AssetRegion(source.id, startSeconds = 0.0, durationSeconds = duration)
+                  display(
+                      "source",
+                      audio.audioVisualizerHtml(
+                          label = "near_drowning.wav · ${"%.2f".format(duration)} s · ${audio.sampleRate} Hz",
+                          options = AudioVisualizerOptions(
+                              width = 1100,
+                              waveformHeight = 150,
+                              initialStartSeconds = 0.0,
+                              initialDurationSeconds = minOf(projectionDurationSeconds, duration),
+                              initialPositionSeconds = 0.0,
+                              syncGroup = timeSync,
+                          ),
+                      ),
                   )
-                  else -> CompletableFuture.failedFuture(
-                      IllegalStateException("near_drowning filename matched ${matches.size} assets")
+
+                  val results =
+                      listOf(
+                              "emotion2vec" to
+                                  emotion2VecEmbeddingAnalysis(
+                                      region,
+                                      requestedBy = "field:speech-embeddings/near-drowning",
+                                  ),
+                              "WavLM Base+" to
+                                  wavlmBasePlusEmbeddingAnalysis(
+                                      region,
+                                      layer = 6,
+                                      requestedBy = "field:speech-embeddings/near-drowning",
+                                  ),
+                          )
+                          .map { (label, request) -> trackedSpeech(label, request) }
+                  CompletableFuture.allOf(*results.toTypedArray()).thenApply { results.map { it.join() } }
+              }
+              .thenCompose { results ->
+                  display("projection", "fitting 500 ms context windows at 25 Hz from 0–10 s with Field Smile t-SNE…")
+                  val previews = results.map { result ->
+                      client.speechEmbeddingSmileTsnePreview(
+                          result,
+                          maxFrames = 600,
+                          startSeconds = projectionStartSeconds,
+                          durationSeconds = projectionDurationSeconds,
+                          poolMillis = projectionPoolMillis,
+                          hopMillis = projectionHopMillis,
+                          dimensions = 4,
+                          distance = SmileMdsDistance.COSINE,
+                          perplexity = 30.0,
+                          seed = 184921L,
+                          previewPoints = 1800,
+                      )
+                  }
+                  CompletableFuture.allOf(*previews.toTypedArray()).thenApply {
+                      previews.map { it.join() }
+                  }
+              }
+              .thenAccept { previews ->
+                  display("projection", "Field Smile t-SNE complete · 500 ms pool · 40 ms hop · ${previews.size} spaces")
+                  display(
+                      "speech spaces",
+                      speechEmbeddingPreviewDashboardHtml(
+                          previews,
+                          width = 1100,
+                          phaseHeight = 270,
+                          syncGroup = timeSync,
+                      ),
                   )
               }
-          }.thenCompose { source ->
-              val audio = source.representations.firstOrNull { it.role == "canonical_project" }
-                  ?: source.representations.first { it.mediaType in setOf("audio/wav", "audio/x-wav") }
-              val duration = requireNotNull(audio.durationSeconds) { "source audio has no duration" }
-              val region = AssetRegion(source.id, startSeconds = 0.0, durationSeconds = duration)
-              display("source", audio.audioVisualizerHtml(
-                  label = "near_drowning.wav · ${"%.2f".format(duration)} s · ${audio.sampleRate} Hz",
-                  options = AudioVisualizerOptions(
-                      width = 1100, waveformHeight = 150,
-                      initialStartSeconds = 0.0,
-                      initialDurationSeconds = minOf(projectionDurationSeconds, duration),
-                      initialPositionSeconds = 0.0,
-                      syncGroup = timeSync,
-                  ),
-              ))
-          
-              val results = listOf(
-                  "emotion2vec" to emotion2VecEmbeddingAnalysis(
-                      region, requestedBy = "field:speech-embeddings/near-drowning",
-                  ),
-                  "WavLM Base+" to wavlmBasePlusEmbeddingAnalysis(
-                      region, layer = 6, requestedBy = "field:speech-embeddings/near-drowning",
-                  ),
-              ).map { (label, request) -> trackedSpeech(label, request) }
-              CompletableFuture.allOf(*results.toTypedArray()).thenApply { results.map { it.join() } }
-          }.thenCompose { results ->
-              display("projection", "fitting 500 ms context windows at 25 Hz from 0–10 s with Field Smile t-SNE…")
-              val previews = results.map { result ->
-                  client.speechEmbeddingSmileTsnePreview(
-                      result,
-                      maxFrames = 600,
-                      startSeconds = projectionStartSeconds,
-                      durationSeconds = projectionDurationSeconds,
-                      poolMillis = projectionPoolMillis,
-                      hopMillis = projectionHopMillis,
-                      dimensions = 4,
-                      distance = SmileMdsDistance.COSINE,
-                      perplexity = 30.0,
-                      seed = 184921L,
-                      previewPoints = 1800,
+              .exceptionally { error ->
+                  val message = error.cause?.message ?: error.message ?: error.toString()
+                  display(
+                      "speech analysis error",
+                      """<pre style="color:#f1aaaa;background:#28191b;padding:12px;white-space:pre-wrap">$message</pre>""",
                   )
+                  null
               }
-              CompletableFuture.allOf(*previews.toTypedArray()).thenApply {
-                  previews.map { it.join() }
-              }
-          }.thenAccept { previews ->
-              display("projection", "Field Smile t-SNE complete · 500 ms pool · 40 ms hop · ${previews.size} spaces")
-              display("speech spaces", speechEmbeddingPreviewDashboardHtml(
-                  previews, width = 1100, phaseHeight = 270, syncGroup = timeSync,
-              ))
-          }.exceptionally { error ->
-              val message = error.cause?.message ?: error.message ?: error.toString()
-              display("speech analysis error", """<pre style="color:#f1aaaa;background:#28191b;padding:12px;white-space:pre-wrap">$message</pre>""")
-              null
-          }
   - execute: { box: speech_embedding_guide }
   - execute: { box: speech_embedding_visualizer_gallery }

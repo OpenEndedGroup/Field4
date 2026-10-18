@@ -26,12 +26,12 @@ layout(location = 1) out vec4 out1;
 layout(location = 2) out vec4 out2;
 
 const vec2 DIRS[9] = vec2[](
-    vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(0.0, 1.0), vec2(-1.0, 0.0), vec2(0.0, -1.0),
-    vec2(1.0, 1.0), vec2(-1.0, 1.0), vec2(-1.0, -1.0), vec2(1.0, -1.0)
+vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(0.0, 1.0), vec2(-1.0, 0.0), vec2(0.0, -1.0),
+vec2(1.0, 1.0), vec2(-1.0, 1.0), vec2(-1.0, -1.0), vec2(1.0, -1.0)
 );
 const float WEIGHTS[9] = float[](
-    4.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0,
-    1.0 / 36.0, 1.0 / 36.0, 1.0 / 36.0, 1.0 / 36.0
+4.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0,
+1.0 / 36.0, 1.0 / 36.0, 1.0 / 36.0, 1.0 / 36.0
 );
 const int OPPOSITE[9] = int[](0, 3, 4, 1, 2, 7, 8, 5, 6);
 
@@ -56,8 +56,14 @@ void loadPopulations(ivec2 pixel, ivec2 dims, out float f[9]) {
     vec4 a = texelFetch(fluid0Tex, p, 0);
     vec4 b = texelFetch(fluid1Tex, p, 0);
     vec4 c = texelFetch(fluid2Tex, p, 0);
-    f[0] = a.r; f[1] = a.g; f[2] = a.b; f[3] = a.a;
-    f[4] = b.r; f[5] = b.g; f[6] = b.b; f[7] = b.a;
+    f[0] = a.r;
+    f[1] = a.g;
+    f[2] = a.b;
+    f[3] = a.a;
+    f[4] = b.r;
+    f[5] = b.g;
+    f[6] = b.b;
+    f[7] = b.a;
     f[8] = c.r;
 }
 
@@ -71,8 +77,8 @@ void macroscopic(float f[9], out float density, out vec2 velocity) {
     for (int i = 0; i < 9; ++i) density += f[i];
     density = max(density, 1e-5);
     velocity = vec2(
-        f[1] - f[3] + f[5] - f[6] - f[7] + f[8],
-        f[2] - f[4] + f[5] + f[6] - f[7] - f[8]
+    f[1] - f[3] + f[5] - f[6] - f[7] + f[8],
+    f[2] - f[4] + f[5] + f[6] - f[7] - f[8]
     ) / density;
 }
 
@@ -107,8 +113,10 @@ float streamed(ivec2 pixel, int i, ivec2 dims) {
 }
 
 uint hash(uint x) {
-    x ^= x >> 16u; x *= 0x7feb352du;
-    x ^= x >> 15u; x *= 0x846ca68bu;
+    x ^= x >> 16u;
+    x *= 0x7feb352du;
+    x ^= x >> 15u;
+    x *= 0x846ca68bu;
     x ^= x >> 16u;
     return x;
 }

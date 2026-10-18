@@ -62,10 +62,12 @@ operations:
       frame: { x: 520.0, y: 250.0, w: 350.0, h: 105.0 }
       properties:
         code: |
-          // Run the three workload boxes first, then run this box. The macro does that for you.
-          // Drag the overview, Zoom to selection, choose Allocated bytes, and click a lane.
-          // Open current box code returns you to the code behind a measured coroutine.
-          // Hot code adds sampled classes, methods and box lines, including background threads.
+          /*
+          Run the three workload boxes first, then run this box. The macro does that for you.
+          Drag the overview, Zoom to selection, choose Allocated bytes, and click a lane.
+          Open current box code returns you to the code behind a measured coroutine.
+          Hot code adds sampled classes, methods and box lines, including background threads.
+          */
           CoroutineProfiles.request(thisBox.inside.filename, CoroutineProfileRequest("start", 3.0, stacks = true))
           thisBox.inBrowser("window.showProfilingTimeline()")
           println("Recording three seconds. The timeline will latch automatically.")
@@ -96,4 +98,6 @@ operations:
         check(captured.spans.any { it.lane in vectorLanes && it.allocatedBytes > 131072 }) {
             "Vector allocation was not observed (this demo needs JVM allocation counters)"
         }
-        println("PROFILE_DEMO_READY: ${captured.lanes.size} lanes, ${captured.spans.size} resumes. Workers stopped; explore the latched timeline.")
+        println(
+            "PROFILE_DEMO_READY: ${captured.lanes.size} lanes, ${captured.spans.size} resumes. Workers stopped; explore the latched timeline.",
+        )

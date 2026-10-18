@@ -47,11 +47,9 @@ methods, and plots the enclosed volume Manifold reports for each pose.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_skinned_volume/sweep.png" wait="8" capture="box" open-outputs="true" w="1000" h="460" padding="16" timeout="180" requires="manifold" name="chain-skinned-volume-sweep" alt="A line plot of enclosed volume against twist angle from 0 to 180 degrees. The linear-blend trace falls smoothly from 3.0 to 2.0; the dual-quaternion trace rises very slightly above the flat rest line at 3.0 and eases back" embed=true}
 :::static
-import afield.graphics.scene.CappedTwistFixture
+import afield.geometry.solid.manifold.toSolid
 import afield.graphics.scene.GltfSkinning.SkinningMethod
 import afield.graphics.scene.GltfSkinning.SkinningOptions
-import afield.graphics.scene.skinnedGltfToTriMesh
-import afield.geometry.solid.manifold.toSolid
 
 val rig = CappedTwistFixture.locate()
 val twists = (0..12).map { it * 15f }
@@ -59,9 +57,13 @@ val twists = (0..12).map { it * 15f }
 // Pose the file, hand the triangles to Manifold, read back the enclosed volume.
 fun volumeAt(degrees: Float, method: SkinningMethod): Double =
     skinnedGltfToTriMesh(
-        rig, clip = "twist", seconds = CappedTwistFixture.secondsFor(degrees),
-        options = SkinningOptions(method = method),
-    ).toSolid().use { it.volume }
+            rig,
+            clip = "twist",
+            seconds = CappedTwistFixture.secondsFor(degrees),
+            options = SkinningOptions(method = method),
+        )
+        .toSolid()
+        .use { it.volume }
 
 :::fold sweep both methods and plot them against the rest volume
 val lbs = twists.map { volumeAt(it, SkinningMethod.LINEAR_BLEND) }
@@ -89,34 +91,41 @@ This box measures four poses with two independent volume calculations, Manifold'
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_skinned_volume/readout.png" wait="8" capture="box" open-outputs="true" w="1060" h="330" padding="18" timeout="180" requires="manifold" name="chain-skinned-volume-readout" embed=true}
 :::static
-import afield.graphics.scene.CappedTwistFixture
-import afield.graphics.scene.DualQuaternionSkinning
+import afield.geometry.solid.manifold.toSolid
 import afield.graphics.scene.GltfSkinning.SkinningMethod
 import afield.graphics.scene.GltfSkinning.SkinningOptions
-import afield.graphics.scene.skinnedGltfToTriMesh
-import afield.geometry.solid.manifold.toSolid
 
 val rig = CappedTwistFixture.locate()
 
 :::fold measure rest and a half turn, both methods, both volume implementations
 fun row(label: String, degrees: Float, method: SkinningMethod): String {
     val mesh = skinnedGltfToTriMesh(
-        rig, clip = "twist", seconds = CappedTwistFixture.secondsFor(degrees),
+        rig,
+        clip = "twist",
+        seconds = CappedTwistFixture.secondsFor(degrees),
         options = SkinningOptions(method = method),
     )
     val waist = DualQuaternionSkinning.candyWrapperRadius(
-        mesh.positions, CappedTwistFixture.UPPER_JOINT_Y, tolerance = 0.01f,
+        mesh.positions,
+        CappedTwistFixture.UPPER_JOINT_Y,
+        tolerance = 0.01f,
     )
     return mesh.toSolid().use { solid ->
         val field = mesh.signedVolume()
-        "| $label | ${mesh.isWatertight()} | ${solid.genus} | %.6f | %.6f | %.1e | %.4f | %.4f |".format(
-            solid.volume, field, kotlin.math.abs(solid.volume - field),
-            solid.volume / CappedTwistFixture.REST_VOLUME, waist,
-        )
+        "| $label | ${mesh.isWatertight()} | ${solid.genus} | %.6f | %.6f | %.1e | %.4f | %.4f |"
+            .format(
+                solid.volume,
+                field,
+                kotlin.math.abs(solid.volume - field),
+                solid.volume / CappedTwistFixture.REST_VOLUME,
+                waist,
+            )
     }
 }
 
-markdown("chain", """
+markdown(
+    "chain",
+    """
 | pose | watertight | genus | Manifold volume | `signedVolume` | gap | of rest | waist radius |
 |---|---|---|---|---|---|---|---|
 ${row("rest", 0f, SkinningMethod.LINEAR_BLEND)}
@@ -125,7 +134,9 @@ ${row("linear blend, 180°", 180f, SkinningMethod.LINEAR_BLEND)}
 ${row("dual quaternion, 180°", 180f, SkinningMethod.DUAL_QUATERNION)}
 
 Closed forms: rest ${CappedTwistFixture.REST_VOLUME}; linear blend at 180°, 0.75 × (2 + 2/3) = ${"%.6f".format(0.75 * (2.0 + 2.0 / 3.0))}.
-""", width = 1000)
+""",
+    width = 1000,
+)
 Unit
 :::endfold
 ```
