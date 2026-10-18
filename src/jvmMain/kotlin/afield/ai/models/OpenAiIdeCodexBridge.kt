@@ -25,6 +25,9 @@ import afield.ai.conversation.Stability
 import afield.ai.conversation.SuspendedRound
 import afield.ai.conversation.TurnContext
 import afield.ai.conversation.TurnSuspension
+import afield.ai.conversation.aiToolFailureEndsTurn
+import afield.ai.conversation.aiToolFailureMessage
+import afield.ai.conversation.aiToolNotRunOutput
 import afield.ai.conversation.isAiTurnCancellation
 import afield.ai.conversation.sha256
 import afield.ai.conversation.temporaryRateLimitDelay
@@ -371,6 +374,10 @@ class OpenAiIdeCodexBridge(
             promoted = ctx.promoted ?: state.promotedTools,
             progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(ProgressUpdate(title = line, phase = "tool")) } },
         )
+        // The calls the provider holds that it has no outputs for yet, and the outputs this turn has for
+        // them so far. A turn that fails while there are any leaves an output for each to the next one.
+        var openCalls: List<PendingToolCall> = emptyList()
+        var openOutputs: List<PendingToolOutput> = emptyList()
         try {
         // After a suspended turn, the outputs of the calls its last response made; after a capped turn, the
         // calls it left unrun and its forced final answer. Either goes ahead of this prompt.
@@ -473,6 +480,8 @@ class OpenAiIdeCodexBridge(
             val toolOutputs = mutableListOf<ResponseInputItem>()
             val roundResults = mutableListOf<Any>()
             val roundOutputs = mutableListOf<PendingToolOutput>()
+            openCalls = calls.map { PendingToolCall(it.callId(), it.name()) }
+            openOutputs = roundOutputs
             for (call in calls) {
                 log.toolActivity(call.name())
                 val argumentSummary = summarizeToolArguments(call.name(), call.arguments())
@@ -503,9 +512,10 @@ class OpenAiIdeCodexBridge(
                 activeToolStarted = toolStarted
                 val toolResult: Any = try {
                     tools.execute(callCtx, call)
-                } catch (e: Exception) {
-                    if (isAiTurnCancellation(e)) throw e
-                    error("tool: ERROR name=${call.name()} msg=${e.message}")
+                } catch (e: Throwable) {
+                    if (aiToolFailureEndsTurn(e)) throw e
+                    val message = aiToolFailureMessage(e)
+                    error("tool: ERROR name=${call.name()} msg=$message")
                     toolIo(
                         "tool_exception",
                         mapOf(
@@ -513,13 +523,13 @@ class OpenAiIdeCodexBridge(
                             "toolName" to call.name(),
                             "callId" to call.callId(),
                             "exceptionType" to e::class.java.name,
-                            "message" to (e.message ?: "")
+                            "message" to message
                         )
                     )
                     mapOf(
                         "error" to true,
                         "tool" to call.name(),
-                        "message" to (e.message ?: e::class.java.name)
+                        "message" to message
                     )
                 }
 
@@ -658,6 +668,7 @@ class OpenAiIdeCodexBridge(
                 suspension = awaited
                 if (runtimeConfig.isOpenRouter) appendStatelessHistory(state, roundOutputs.map { functionOutput(it.callId, it.outputJson) })
                 else state.suspendedRound = SuspendedRound(roundOutputs.toList())
+                openCalls = emptyList()
                 rounds++
                 info("turn suspended after round $rounds: waiting for ${awaited.jobs.size} build job(s) without the model")
                 toolIo("turn_suspended", mapOf("round" to rounds, "jobIds" to awaited.jobs.map { it.jobId },
@@ -696,6 +707,7 @@ class OpenAiIdeCodexBridge(
                 info("")
             }
             state.previousResponseId = response.id()
+            openCalls = emptyList()
             appendStatelessHistory(state, toolOutputs + inputItemsFromOutput(response))
             info("follow-up response id=${response.id()} outputItems=${response.output().size}")
             toolIo(
@@ -734,6 +746,8 @@ class OpenAiIdeCodexBridge(
                     "pendingCallIds" to pendingCalls.map { it.callId() }
                 )
             )
+            openCalls = pendingCalls.map { PendingToolCall(it.callId(), it.name()) }
+            openOutputs = emptyList()
             response = modelRequest("forced_final") { createForcedFinalResponse(
                 state = state,
                 previousResponse = response,
@@ -751,9 +765,10 @@ class OpenAiIdeCodexBridge(
             // The next turn branches from the response that made the pending calls, which
             // previousResponseId still names, never from this one: see CappedTurnContinuation.
             state.cappedTurnContinuation = CappedTurnContinuation(
-                pendingCalls = pendingCalls.map { PendingToolCall(it.callId(), it.name()) },
+                pendingCalls = openCalls,
                 finalText = extractOutputTextWithNewlines(response)
             )
+            openCalls = emptyList()
             info("forced-final response id=${response.id()} outputItems=${response.output().size}; " +
                 "the next turn continues from ${state.previousResponseId}")
             toolIo(
@@ -838,6 +853,7 @@ class OpenAiIdeCodexBridge(
         )
         } catch (failure: Throwable) {
             val cancelled = isAiTurnCancellation(failure)
+            if (openCalls.isNotEmpty()) runCatching { answerOpenCalls(state, openCalls, openOutputs, failure) }
             activeToolStarted?.let { toolElapsedMs += (System.nanoTime() - it) / 1_000_000 }
             if (!terminalRecorded) {
                 terminalRecorded = true
@@ -1157,6 +1173,22 @@ class OpenAiIdeCodexBridge(
         // Stateless history gets nothing from this request either: its stop instruction and its reasoning
         // under that stop stay out, and the next turn adds the continuation as it does on the direct path.
         return createResponse(builder.build(), onTextDelta, onProgress, ledger)
+    }
+
+    /**
+     * Leave the next turn an output for each of [calls], the ones a failed turn left the provider holding
+     * without outputs: what [outputs] has for a call that ran, a "not finished" error for the rest. Without
+     * them the thread is poisoned: `previous_response_id` names a response whose function calls have no
+     * outputs, and the provider refuses every later request on it ("No tool output found for function call").
+     * The chained path sends them as the opening of the next turn, as after a suspended one; the stateless
+     * path appends them to its own history, which already holds the calls.
+     */
+    private fun answerOpenCalls(state: ThreadState, calls: List<PendingToolCall>, outputs: List<PendingToolOutput>, failure: Throwable) {
+        val byId = outputs.associateBy { it.callId }
+        val answered = calls.map { byId[it.callId] ?: aiToolNotRunOutput(it.callId, it.name, failure) }
+        if (runtimeConfig.isOpenRouter) appendStatelessHistory(state, answered.map { functionOutput(it.callId, it.outputJson) })
+        else state.suspendedRound = SuspendedRound(answered)
+        warn("turn failed with ${calls.size} call(s) unanswered by the provider; the next turn opens with their outputs")
     }
 
     private fun functionOutput(callId: String, outputJson: String): ResponseInputItem =

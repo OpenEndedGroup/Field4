@@ -13,7 +13,8 @@ import afield.ai.conversation.SuspendedRound
 import afield.ai.conversation.SuspendsTurn
 import afield.ai.conversation.TurnContext
 import afield.ai.conversation.TurnSuspension
-import afield.ai.conversation.isAiTurnCancellation
+import afield.ai.conversation.aiToolFailureEndsTurn
+import afield.ai.conversation.aiToolFailureMessage
 import afield.ai.tools.ToolExecutionContext
 import afield.ai.tools.ToolRegistry
 import afield.ai.tools.aiToolMapper
@@ -129,9 +130,9 @@ class ScriptedLlmBridge(
                     val started = System.nanoTime()
                     val result: Any = try {
                         tools.executeByName(callCtx, step.tool, args)
-                    } catch (e: Exception) {
-                        if (isAiTurnCancellation(e)) throw e
-                        mapOf("error" to true, "tool" to step.tool, "message" to (e.message ?: e::class.java.name))
+                    } catch (e: Throwable) {
+                        if (aiToolFailureEndsTurn(e)) throw e
+                        mapOf("error" to true, "tool" to step.tool, "message" to aiToolFailureMessage(e))
                     }
                     val elapsedMs = (System.nanoTime() - started) / 1_000_000
                     val json = runCatching { aiToolMapper.writeValueAsString(result) }.getOrElse { result.toString() }
