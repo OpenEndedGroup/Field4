@@ -124,7 +124,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Read inherited aperture textures and controls directly](../box_code_adoption_batch_61/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **350 of 405 findings addressed**; 55 remain open. These counts do not claim
+| [Refresh generated RectSL material shaders on rerun](../box_code_adoption_batch_62/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **352 of 405 findings addressed**; 53 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 
