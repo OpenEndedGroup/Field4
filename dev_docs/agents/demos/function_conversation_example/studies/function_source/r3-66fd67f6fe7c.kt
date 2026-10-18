@@ -1,3 +1,9 @@
+import afield.math.functions.Functions
+import afield.math.functions.StudyComposition
+import afield.math.functions.StudyEvent
+import afield.math.functions.StudyChoice
+import kotlin.math.PI
+
 with(Functions) {
     val durationSeconds = 3600.0
     val carrierPeriodSeconds = 40.0
@@ -26,7 +32,7 @@ with(Functions) {
         StudyEvent("e3", firstStartSeconds + 2.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),
         StudyEvent("e4", firstStartSeconds + 3.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),
         StudyEvent("e5", firstStartSeconds + 4.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),
-        StudyEvent("e6", firstStartSeconds + 5.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds),
+        StudyEvent("e6", firstStartSeconds + 5.0 * eventSpacingSeconds, riseSeconds, holdSeconds, fallSeconds)
     )
 
     fun smooth01(value: Double): Double {
@@ -37,19 +43,17 @@ with(Functions) {
     fun background(seconds: Double, channel: Int): Double {
         val drift = phaseExcursionRadians * kotlin.math.sin(2.0 * PI * seconds / relativePhasePeriodSeconds)
         val phase = 2.0 * PI * seconds / carrierPeriodSeconds + (channel - 1) * drift
-        return backgroundCenter +
-            backgroundAmplitude * kotlin.math.sin(phase) +
+        return backgroundCenter + backgroundAmplitude * kotlin.math.sin(phase) +
             slowAmplitude * kotlin.math.sin(2.0 * PI * seconds / slowPeriodSeconds)
     }
 
-    /*
-    age runs from the background edge toward the plateau on either side.
-    Integral of f(age) = lowPulseHz + (highPulseHz-lowPulseHz)*age/span.
-    Reversing age on the fall gives a decelerating, shrinking pulse train.
-    */
+    // age runs from the background edge toward the plateau on either side.
+    // Integral of f(age) = lowPulseHz + (highPulseHz-lowPulseHz)*age/span.
+    // Reversing age on the fall gives a decelerating, shrinking pulse train.
     fun shoulder(base: Double, age: Double, span: Double): Double {
         val u = (age / span).coerceIn(0.0, 1.0)
-        val cycles = lowPulseHz * age + 0.5 * (highPulseHz - lowPulseHz) * age * age / span
+        val cycles = lowPulseHz * age +
+            0.5 * (highPulseHz - lowPulseHz) * age * age / span
         val pulse = 0.5 - 0.5 * kotlin.math.cos(2.0 * PI * cycles)
         val strength = smooth01(u)
         val pulseTarget = pulseFloor + (1.0 - pulseFloor) * pulse
@@ -59,20 +63,19 @@ with(Functions) {
         return (1.0 - merge) * pulsed + merge
     }
 
-    val channels =
-        listOf("x", "y", "z").mapIndexed { index, name ->
-            fn(0.0..durationSeconds, name) { seconds ->
-                // The background always uses absolute time; events never restart it.
-                val base = background(seconds, index)
-                val event = events.firstOrNull { seconds >= it.start && seconds <= it.end }
-                when {
-                    event == null -> base
-                    seconds < event.plateauStart -> shoulder(base, seconds - event.start, event.rise)
-                    seconds <= event.plateauEnd -> 1.0 // exact closed constant hold
-                    else -> shoulder(base, event.end - seconds, event.fall)
-                }
+    val channels = listOf("x", "y", "z").mapIndexed { index, name ->
+        fn(0.0..durationSeconds, name) { seconds ->
+            // The background always uses absolute time; events never restart it.
+            val base = background(seconds, index)
+            val event = events.firstOrNull { seconds >= it.start && seconds <= it.end }
+            when {
+                event == null -> base
+                seconds < event.plateauStart -> shoulder(base, seconds - event.start, event.rise)
+                seconds <= event.plateauEnd -> 1.0 // exact closed constant hold
+                else -> shoulder(base, event.end - seconds, event.fall)
             }
         }
+    }
 
     StudyComposition(
         channels = channels,
@@ -80,38 +83,14 @@ with(Functions) {
         duration = durationSeconds,
         maxFrequencyHz = 2.0,
         choices = listOf(
-            StudyChoice(
-                "Three time-dependent channels over one hour, with smooth relative phase motion on an approximately 100-second scale",
-                "user requirement",
-            ),
-            StudyChoice(
-                "Six evenly spaced pulse crescendos/decrescendos, each reaching an exact 30-second all-ones hold; background continues and returns, with events away from boundaries",
-                "user requirement",
-            ),
-            StudyChoice(
-                "Integrated instantaneous pulse frequency, smooth joins, and stable event IDs e1 through e6",
-                "user requirement",
-            ),
-            StudyChoice(
-                "Background: 40-second carrier, sinusoidal relative-phase drift with 100-second period and +/-2pi/3 excursion, plus a gentle 230-second common sway",
-                "agent assumption",
-            ),
-            StudyChoice(
-                "Starts at 185+600*n seconds; 100-second rises and falls put plateau centers at 300+600*n seconds and leave 185-second boundary margins",
-                "agent assumption",
-            ),
-            StudyChoice(
-                "Synchronized pulse targets sweep from 0.06 to 0.80 Hz; quintic crossfade grows pulse depth toward a 0.25-to-1 target, then fills troughs in the final 20% to merge into the hold. Falls reverse this gesture",
-                "agent assumption",
-            ),
-            StudyChoice(
-                "All channels stay in [0,1]; quintic envelopes give value, velocity and acceleration continuity at event boundaries and plateaus",
-                "agent assumption",
-            ),
-            StudyChoice(
-                "Rise edits pin the event start, retain the 30-second hold, and move that event's later joins only; other event starts do not ripple",
-                "agent assumption",
-            ),
-        ),
+            StudyChoice("Three time-dependent channels over one hour, with smooth relative phase motion on an approximately 100-second scale", "user requirement"),
+            StudyChoice("Six evenly spaced pulse crescendos/decrescendos, each reaching an exact 30-second all-ones hold; background continues and returns, with events away from boundaries", "user requirement"),
+            StudyChoice("Integrated instantaneous pulse frequency, smooth joins, and stable event IDs e1 through e6", "user requirement"),
+            StudyChoice("Background: 40-second carrier, sinusoidal relative-phase drift with 100-second period and +/-2pi/3 excursion, plus a gentle 230-second common sway", "agent assumption"),
+            StudyChoice("Starts at 185+600*n seconds; 100-second rises and falls put plateau centers at 300+600*n seconds and leave 185-second boundary margins", "agent assumption"),
+            StudyChoice("Synchronized pulse targets sweep from 0.06 to 0.80 Hz; quintic crossfade grows pulse depth toward a 0.25-to-1 target, then fills troughs in the final 20% to merge into the hold. Falls reverse this gesture", "agent assumption"),
+            StudyChoice("All channels stay in [0,1]; quintic envelopes give value, velocity and acceleration continuity at event boundaries and plateaus", "agent assumption"),
+            StudyChoice("Rise edits pin the event start, retain the 30-second hold, and move that event's later joins only; other event starts do not ripple", "agent assumption")
+        )
     )
 }

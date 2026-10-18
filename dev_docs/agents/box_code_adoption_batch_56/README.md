@@ -15,3 +15,7 @@ Retained cases are explicit: twelve KotlinJS bodies and the ambiguous JavaScript
 Focused verification is parsing/token/string/boundary preservation and actual codec round-trip checks, plus Python syntax compilation for the reusable harnesses. This mechanical batch claims no new GPU/audio/browser run and replaces no public capture. The lander owns the complete guard run. The checkpoint retains the unresolved browser cleanup diagnostic from batch 53 and the remaining semantic work.
 
 Checkpoint: 342/405 addressed, 63 open. Mechanical coverage: 575 edited files, 2702 parsed programs preserved; 23 retained language/schematic bodies and one pre-existing mirror drift documented above. Full guards are delegated to the lander.
+
+## Landing repair
+
+The full guard passed, then conversation packaging rejected a comment anchor changed in recorded FunctionStudy revisions. Batch 57 restores all 13 touched files of the recorded function example byte-for-byte to the pre-format baseline and teaches the inventory to retain that provenance. The live blank starter remains editable. The corrected formatter diff covers 562 files. Batch 57 also makes the stack.auto packager accept assignment whitespace while still requiring the exact stored HEAD string. All four packagers extract their real source blocks after that repair; the lander owns regeneration and the final guard.

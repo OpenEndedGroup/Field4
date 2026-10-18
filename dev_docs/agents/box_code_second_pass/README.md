@@ -114,7 +114,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Format the frozen Kotlin and GLSL corpus with preservation receipts](../box_code_adoption_batch_56/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **342 of 405 findings addressed**; 63 remain open. These counts do not claim
+| [Close headless browser setup paths and preserve recorded source identities](../box_code_adoption_batch_57/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **343 of 405 findings addressed**; 62 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 
