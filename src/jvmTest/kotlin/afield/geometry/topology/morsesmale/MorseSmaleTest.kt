@@ -2,6 +2,7 @@ package afield.geometry.topology.morsesmale
 
 import afield.geometry.network.NativeGeometry
 import afield.media.image.Img
+import afield.media.image.drawFLines
 import java.util.concurrent.TimeUnit
 import kotlin.math.PI
 import kotlin.math.exp
@@ -32,6 +33,17 @@ class MorseSmaleTest {
         assertEquals(MorseSmaleLibrary.isAvailable, NativeGeometry.available("morseSmale"))
         assertTrue(NativeGeometry.describe("morseSmale").startsWith("morseSmale: "))
         if (!MorseSmaleLibrary.isAvailable) assertTrue(MorseSmaleLibrary.describe().contains("buildMorseSmaleNative"))
+    }
+
+    @Test
+    fun drawFLinesScalesTheImageAndDrawsTheLine() {
+        val img = Img(20, 10, 1, FloatArray(200))
+        val out = img.drawFLines(listOf(afield.geometry.path.FLine().moveTo(0.0, 5.0).lineTo(20.0, 5.0)), scale = 2.0)
+        assertEquals(40, out.width)
+        assertEquals(20, out.height)
+        assertEquals(3, out.channels)
+        assertTrue(out.get(20, 10, 0) > 0.5f, "line drawn in its default colour")
+        assertEquals(0f, out.get(20, 2, 0))
     }
 
     @Test
