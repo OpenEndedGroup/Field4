@@ -2533,16 +2533,29 @@ val field = rbfField(samples)
 
 // how well each sample is predicted by the other 59: the way to compare kernels
 println("leave-one-out RMSE, thin plate: " + "%.4f".format(field.leaveOneOutRmse()))
-println("leave-one-out RMSE, gaussian(2): " + "%.4f".format(rbfField(samples, RbfKernels.gaussian(2.0)).leaveOneOutRmse()))
+println(
+    "leave-one-out RMSE, gaussian(2): " + "%.4f".format(rbfField(samples, RbfKernels.gaussian(2.0)).leaveOneOutRmse()),
+)
 
-fun image(g: (Double, Double) -> Double) = Img(200, 200, 1, FloatArray(200 * 200) {
-    g((it % 200) / 100.0, (it / 200) / 100.0).toFloat()
-})
-showImg(montage([
-    "the function" to image(::f).colormap("coolwarm", -1.4f, 1.4f),
-    "the fit" to image { x, y -> field(x, y) }.colormap("coolwarm", -1.4f, 1.4f),
-    "error x 10" to image { x, y -> 10 * (field(x, y) - f(x, y)) }.colormap("coolwarm", -1.4f, 1.4f)
-], columns = 3, cellSide = 260))
+fun image(g: (Double, Double) -> Double) = Img(
+    200,
+    200,
+    1,
+    FloatArray(200 * 200) {
+        g((it % 200) / 100.0, (it / 200) / 100.0).toFloat()
+    },
+)
+showImg(
+    montage(
+        [
+            "the function" to image(::f).colormap("coolwarm", -1.4f, 1.4f),
+            "the fit" to image { x, y -> field(x, y) }.colormap("coolwarm", -1.4f, 1.4f),
+            "error x 10" to image { x, y -> 10 * (field(x, y) - f(x, y)) }.colormap("coolwarm", -1.4f, 1.4f),
+        ],
+        columns = 3,
+        cellSide = 260,
+    ),
+)
 ```
 
 The thin-plate kernel is the default because it has no shape parameter to get wrong. With it the field

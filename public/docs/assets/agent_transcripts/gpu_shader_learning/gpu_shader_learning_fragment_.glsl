@@ -1,5 +1,7 @@
 #version 460
-layout(push_constant) uniform P { vec4 state; } p;
+layout(push_constant) uniform P {
+    vec4 state;
+} p;
 layout(location=0) out vec4 color;
 void main() {
     // This is the teacher. Edit it here; there is no Python version to keep in sync.

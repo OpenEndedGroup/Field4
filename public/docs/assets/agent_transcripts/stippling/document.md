@@ -17,19 +17,21 @@ From `code`
 A shaded sphere on a white floor, as an Img: lit from up and to the left (y grows down).
 
 ```edn [field-box id="stipple_hello" role="properties"]
-{"id" "stipple_hello" "index" 0 "name" "stipple — a sphere in 6000 dots" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "stipple — a sphere in 6000 dots" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stipple_hello_code_.kt" "lines" 18 "characters" 932 "sha256" "ab487befdb4ea53ead782848bc61caf87ddbd4e198b0a9a88051a938bb3cb353"}]}
+{"id" "stipple_hello" "index" 0 "name" "stipple — a sphere in 6000 dots" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "stipple — a sphere in 6000 dots" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stipple_hello_code_.kt" "lines" 20 "characters" 969 "sha256" "5930a0d0e9b1fc51ad50747c9e6b1512dc54c2958c2ef7828f68bfec03cd8d30"}]}
 ```
 
 ```kotlin [field-property box="stipple_hello" name="code" path="stipple_hello_code_.kt"]
 // A shaded sphere on a white floor, as an Img: lit from up and to the left (y grows down).
-val sphere = Img.generate(480, 360) { x, y ->
-    val dx = (x - 220) / 140.0
-    val dy = (y - 170) / 140.0
-    val r2 = dx * dx + dy * dy
-    val tone = if (r2 < 1.0) 0.1 + 0.9 * max(0.0, -0.45 * dx - 0.55 * dy + 0.7 * sqrt(1.0 - r2))
-               else 1.0 - 0.6 * exp(-2.0 * ((x - 280) / 150.0).pow(2) - 2.0 * ((y - 318) / 30.0).pow(2))
-    tone.toFloat()
-}
+val sphere =
+    Img.generate(480, 360) { x, y ->
+        val dx = (x - 220) / 140.0
+        val dy = (y - 170) / 140.0
+        val r2 = dx * dx + dy * dy
+        val tone =
+            if (r2 < 1.0) 0.1 + 0.9 * max(0.0, -0.45 * dx - 0.55 * dy + 0.7 * sqrt(1.0 - r2))
+            else 1.0 - 0.6 * exp(-2.0 * ((x - 280) / 150.0).pow(2) - 2.0 * ((y - 318) / 30.0).pow(2))
+        tone.toFloat()
+    }
 
 // 6000 dots wherever it is dark (`invert`, as ink on paper), evenly spaced rather than clumped.
 val dots = sphere.stipple(6000, invert = true)
@@ -52,23 +54,27 @@ From `code`
 Launch it (Alt-R). The same sphere as `stipple_hello`.
 
 ```edn [field-box id="stipple_relaxing" role="properties"]
-{"id" "stipple_relaxing" "index" 1 "name" "Stippler — watching Lloyd relaxation settle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Stippler — watching Lloyd relaxation settle" "_tombstone" false "frame" #afield/rect [80.0 640.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stipple_relaxing_code_.kt" "lines" 24 "characters" 1090 "sha256" "9823af8825ce292383f1e8b14e277d0725c47fe509e6256c4eaa0bd11635af64"}]}
+{"id" "stipple_relaxing" "index" 1 "name" "Stippler — watching Lloyd relaxation settle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Stippler — watching Lloyd relaxation settle" "_tombstone" false "frame" #afield/rect [80.0 640.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stipple_relaxing_code_.kt" "lines" 28 "characters" 1124 "sha256" "16dd6e5760dd9c67d8255734a1e912f4f5d1796a39298788459b99a870ce69f5"}]}
 ```
 
 ```kotlin [field-property box="stipple_relaxing" name="code" path="stipple_relaxing_code_.kt"]
 // Launch it (Alt-R). The same sphere as `stipple_hello`.
-val sphere = Img.generate(480, 360) { x, y ->
-    val dx = (x - 220) / 140.0
-    val dy = (y - 170) / 140.0
-    val r2 = dx * dx + dy * dy
-    val tone = if (r2 < 1.0) 0.1 + 0.9 * max(0.0, -0.45 * dx - 0.55 * dy + 0.7 * sqrt(1.0 - r2))
-               else 1.0 - 0.6 * exp(-2.0 * ((x - 280) / 150.0).pow(2) - 2.0 * ((y - 318) / 30.0).pow(2))
-    tone.toFloat()
-}
+val sphere =
+    Img.generate(480, 360) { x, y ->
+        val dx = (x - 220) / 140.0
+        val dy = (y - 170) / 140.0
+        val r2 = dx * dx + dy * dy
+        val tone =
+            if (r2 < 1.0) 0.1 + 0.9 * max(0.0, -0.45 * dx - 0.55 * dy + 0.7 * sqrt(1.0 - r2))
+            else 1.0 - 0.6 * exp(-2.0 * ((x - 280) / 150.0).pow(2) - 2.0 * ((y - 318) / 30.0).pow(2))
+        tone.toFloat()
+    }
 
-// Where the stippler starts: one dot per equal share of the darkness along a Hilbert curve,
-// so every region already has the right number of dots. Their spacing is rough, and evening
-// it out is what relaxation is for.
+/*
+Where the stippler starts: one dot per equal share of the darkness along a Hilbert curve,
+so every region already has the right number of dots. Their spacing is rough, and evening
+it out is what relaxation is for.
+*/
 val s = Stippler(sphere, 6000, invert = true)
 showImg(stipplesToImg(s.points(), 480, 360), channel = "start")
 

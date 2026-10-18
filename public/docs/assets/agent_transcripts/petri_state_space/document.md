@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="petri_ss_unbounded" index="0" -->
 
 ```edn [field-box id="petri_ss_unbounded" role="properties"]
-{"id" "petri_ss_unbounded" "index" 0 "name" "4 — a leak, and an omega" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — a leak, and an omega" "_tombstone" false "frame" #afield/rect [60.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_unbounded_code_.kt" "lines" 38 "characters" 1704 "sha256" "5fcd264c6d3bd0a620b82718d8d43b3aa82946930e29aa256d802ced6f45048b"}]}
+{"id" "petri_ss_unbounded" "index" 0 "name" "4 — a leak, and an omega" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — a leak, and an omega" "_tombstone" false "frame" #afield/rect [60.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_unbounded_code_.kt" "lines" 48 "characters" 1750 "sha256" "2e75874724e9123ae57ffa332a2b1720133d5eeb827e4d61c9ff62f912080fdd"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_unbounded" name="code" path="petri_ss_unbounded_code_.kt"]
@@ -21,7 +21,11 @@ import afield.simulation.petri.*
 // forever and the state space is infinite.
 val leak = petri {
     place("run", tokens = 1)
-    t("make") { from("run"); to("run"); to("queue") }
+    t("make") {
+        from("run")
+        to("run")
+        to("queue")
+    }
 }
 
 // The exhaustive search cannot finish, and does not pretend to. Every accessor that would
@@ -40,14 +44,20 @@ println(cover.report())
 println("bound('queue') = ${cover.bound("queue")}   (null here means omega, not unknown)")
 println("bound('run')   = ${cover.bound("run")}")
 
-// The trade, stated: coverability terminates on everything and is only *valid* for plain
-// place/transition nets. Add a capacity and it says so rather than guessing — even here,
-// where it happens to get the right answer anyway, because a capped place is bounded by
-// its capacity whatever the pumping argument says and so is never given an ω.
+/*
+The trade, stated: coverability terminates on everything and is only *valid* for plain
+place/transition nets. Add a capacity and it says so rather than guessing — even here,
+where it happens to get the right answer anyway, because a capped place is bounded by
+its capacity whatever the pumping argument says and so is never given an ω.
+*/
 val capped = petri {
     place("run", tokens = 1)
     place("queue", capacity = 3)
-    t("make") { from("run"); to("run"); to("queue") }
+    t("make") {
+        from("run")
+        to("run")
+        to("queue")
+    }
 }
 println()
 println(capped.coverability().report())
@@ -60,7 +70,7 @@ println("  " + capped.stateSpace().report().lines().first())
 <!-- field-box id="petri_ss_philosophers" index="1" -->
 
 ```edn [field-box id="petri_ss_philosophers" role="properties"]
-{"id" "petri_ss_philosophers" "index" 1 "name" "1 — the table can wedge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — the table can wedge" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_philosophers_code_.kt" "lines" 37 "characters" 1671 "sha256" "d5cde6c42239e4e460a9cb6834a666eb84ff609b4581e39b9b75de268ab0a4cf"}]}
+{"id" "petri_ss_philosophers" "index" 1 "name" "1 — the table can wedge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — the table can wedge" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_philosophers_code_.kt" "lines" 48 "characters" 1786 "sha256" "135e37a03cd285ed57e9ff08ff21ceb112ffd4fa3a72c243d133992c1cc11600"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_philosophers" name="code" path="petri_ss_philosophers_code_.kt"]
@@ -76,9 +86,20 @@ fun table(reverseLast: Boolean) = petri {
         val left = i
         val right = (i + 1) % 5
         val reversed = reverseLast && i == 4
-        t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
-        t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
-        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        t("grab.$i") {
+            from("fork.${if (reversed) right else left}")
+            to("holding.$i")
+        }
+        t("eat.$i") {
+            from("holding.$i")
+            from("fork.${if (reversed) left else right}")
+            to("eating.$i")
+        }
+        t("done.$i") {
+            from("eating.$i")
+            to("fork.$left")
+            to("fork.$right")
+        }
     }
 }
 
@@ -108,7 +129,7 @@ showPetriStateSpace(graph, w = 1100.0, h = 640.0)
 <!-- field-box id="petri_ss_exclusion" index="2" -->
 
 ```edn [field-box id="petri_ss_exclusion" role="properties"]
-{"id" "petri_ss_exclusion" "index" 2 "name" "5 — what the algebra cannot see" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — what the algebra cannot see" "_tombstone" false "frame" #afield/rect [420.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_exclusion_code_.kt" "lines" 36 "characters" 1725 "sha256" "a44503fff5866dc630c4ca3de76d59681923fefa54c9fbb4a2320d0679cf3a53"}]}
+{"id" "petri_ss_exclusion" "index" 2 "name" "5 — what the algebra cannot see" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — what the algebra cannot see" "_tombstone" false "frame" #afield/rect [420.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_exclusion_code_.kt" "lines" 54 "characters" 1837 "sha256" "65b07ef45aaac9d80cde738d0319876e1052029fd281765aa03ca078eecb4053"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_exclusion" name="code" path="petri_ss_exclusion_code_.kt"]
@@ -121,10 +142,24 @@ fun net(guarded: Boolean) = petri {
     place("idle.b", tokens = 1)
     place("crit.a")
     place("crit.b")
-    t("enter.a") { from("idle.a"); if (guarded) inhibit("crit.b"); to("crit.a") }
-    t("leave.a") { from("crit.a"); to("idle.a") }
-    t("enter.b") { from("idle.b"); if (guarded) inhibit("crit.a"); to("crit.b") }
-    t("leave.b") { from("crit.b"); to("idle.b") }
+    t("enter.a") {
+        from("idle.a")
+        if (guarded) inhibit("crit.b")
+        to("crit.a")
+    }
+    t("leave.a") {
+        from("crit.a")
+        to("idle.a")
+    }
+    t("enter.b") {
+        from("idle.b")
+        if (guarded) inhibit("crit.a")
+        to("crit.b")
+    }
+    t("leave.b") {
+        from("crit.b")
+        to("idle.b")
+    }
 }
 
 val safe = net(guarded = true)
@@ -132,8 +167,9 @@ val unsafe = net(guarded = false)
 
 // An inhibitor arc moves no token, and the incidence matrix is a record of *change*. So
 // the two nets have the same matrix, and no amount of algebra can distinguish them.
-println("same incidence matrix? " +
-    (safe.incidence().map { it.toList() } == unsafe.incidence().map { it.toList() }))
+println(
+    "same incidence matrix? " + (safe.incidence().map { it.toList() } == unsafe.incidence().map { it.toList() }),
+)
 println(safe.incidenceTable())
 println("P-invariants: " + safe.pInvariants())
 println("…none of which couples crit.a to crit.b, so the algebra cannot prove exclusion.")
@@ -141,8 +177,11 @@ println()
 
 // The search asks the engine whether a transition is enabled, and the engine knows about
 // inhibitor arcs. So it can.
-println("guarded:   mutually exclusive? " + safe.stateSpace().mutuallyExclusive("crit.a", "crit.b") +
-    "   over ${safe.stateSpace().stateCount} reachable markings")
+println(
+    "guarded:   mutually exclusive? " +
+        safe.stateSpace().mutuallyExclusive("crit.a", "crit.b") +
+        "   over ${safe.stateSpace().stateCount} reachable markings",
+)
 val breach = unsafe.stateSpace().mutualExclusionFailure("crit.a", "crit.b")!!
 println("unguarded: broken in ${breach.length} firings — $breach")
 println(breach.describe(ending = "→ both processes are inside the critical section"))
@@ -155,7 +194,7 @@ showPetriNet(safe, w = 760.0, h = 400.0, layout = PetriLayout.FORCE)
 <!-- field-box id="petri_ss_asymmetric" index="3" -->
 
 ```edn [field-box id="petri_ss_asymmetric" role="properties"]
-{"id" "petri_ss_asymmetric" "index" 3 "name" "2 — proved, and the difference from starved" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — proved, and the difference from starved" "_tombstone" false "frame" #afield/rect [420.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_asymmetric_code_.kt" "lines" 34 "characters" 1519 "sha256" "34eee5c663b3c17a7577d5a7667bdd06ae6d6e26138ac7a5edf7ef16155bc87b"}]}
+{"id" "petri_ss_asymmetric" "index" 3 "name" "2 — proved, and the difference from starved" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — proved, and the difference from starved" "_tombstone" false "frame" #afield/rect [420.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_asymmetric_code_.kt" "lines" 45 "characters" 1634 "sha256" "2ff4bae76d8122e4e3a285d5118a9d5413122d7a1d7d69a013267513843d3cc1"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_asymmetric" name="code" path="petri_ss_asymmetric_code_.kt"]
@@ -169,9 +208,20 @@ fun table(reverseLast: Boolean) = petri {
         val left = i
         val right = (i + 1) % 5
         val reversed = reverseLast && i == 4
-        t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
-        t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
-        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        t("grab.$i") {
+            from("fork.${if (reversed) right else left}")
+            to("holding.$i")
+        }
+        t("eat.$i") {
+            from("holding.$i")
+            from("fork.${if (reversed) left else right}")
+            to("eating.$i")
+        }
+        t("done.$i") {
+            from("eating.$i")
+            to("fork.$left")
+            to("fork.$right")
+        }
     }
 }
 
@@ -200,7 +250,7 @@ showPetriStateSpace(graph, w = 1100.0, h = 640.0)
 <!-- field-box id="petri_ss_reduction" index="4" -->
 
 ```edn [field-box id="petri_ss_reduction" role="properties"]
-{"id" "petri_ss_reduction" "index" 4 "name" "6 — the wall, and stubborn sets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — the wall, and stubborn sets" "_tombstone" false "frame" #afield/rect [780.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_reduction_code_.kt" "lines" 58 "characters" 2730 "sha256" "bd622f1a7cfb8a7c046ad2e2ede44eed5a03fdef11bed3d4b9839e0ad4a87f01"}]}
+{"id" "petri_ss_reduction" "index" 4 "name" "6 — the wall, and stubborn sets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — the wall, and stubborn sets" "_tombstone" false "frame" #afield/rect [780.0 200.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_reduction_code_.kt" "lines" 82 "characters" 2972 "sha256" "3f0216ee82355546a1cbce4851490761434462cef07b3fd1b6534462b0def3df"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_reduction" name="code" path="petri_ss_reduction_code_.kt"]
@@ -213,15 +263,28 @@ fun philosophers(n: Int) = petri {
     for (i in 0 until n) {
         val left = i
         val right = (i + 1) % n
-        t("grab.$i") { from("fork.$left"); to("holding.$i") }
-        t("eat.$i") { from("holding.$i"); from("fork.$right"); to("eating.$i") }
-        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        t("grab.$i") {
+            from("fork.$left")
+            to("holding.$i")
+        }
+        t("eat.$i") {
+            from("holding.$i")
+            from("fork.$right")
+            to("eating.$i")
+        }
+        t("done.$i") {
+            from("eating.$i")
+            to("fork.$left")
+            to("fork.$right")
+        }
     }
 }
 
-// An exhaustive search is exponential in how much is happening at once, so the useful
-// question is not "does this work" but "how far does it get". The answer is a fact
-// about your net and your machine, so measure it rather than guess.
+/*
+An exhaustive search is exponential in how much is happening at once, so the useful
+question is not "does this work" but "how far does it get". The answer is a fact
+about your net and your machine, so measure it rather than guess.
+*/
 println(" n   full         reduced   speed-up   verdict     ms(full) ms(red)")
 for (n in 2..12) {
     val net = philosophers(n)
@@ -235,25 +298,36 @@ for (n in 2..12) {
     val red = net.stateSpace(reduction = PetriReduction.STUBBORN)
     val redMs = (System.nanoTime() - t1) / 1_000_000
 
-    println("%2d   %-11s  %-7d   %-8s   %-9s   %5d    %5d".format(
-        n,
-        if (full.complete) "${full.stateCount}" else "BUDGET(${full.stateCount})",
-        red.stateCount,
-        if (full.complete) "%.1fx".format(full.stateCount.toDouble() / red.stateCount) else "—",
-        "${full.canDeadlock}/${red.canDeadlock}",
-        fullMs, redMs))
+    println(
+        "%2d   %-11s  %-7d   %-8s   %-9s   %5d    %5d"
+            .format(
+                n,
+                if (full.complete) "${full.stateCount}" else "BUDGET(${full.stateCount})",
+                red.stateCount,
+                if (full.complete) "%.1fx".format(full.stateCount.toDouble() / red.stateCount) else "—",
+                "${full.canDeadlock}/${red.canDeadlock}",
+                fullMs,
+                redMs,
+            ),
+    )
 }
 
-// The full sequence is the companion Pell numbers, a(n) = 2a(n-1) + a(n-2); the reduced
-// one is 2n^2 - 2n + 2. Twelve philosophers is past the default budget for the full
-// search — which says BUDGET and refuses to answer — and 266 markings for the reduced one.
+/*
+The full sequence is the companion Pell numbers, a(n) = 2a(n-1) + a(n-2); the reduced
+one is 2n^2 - 2n + 2. Twelve philosophers is past the default budget for the full
+search — which says BUDGET and refuses to answer — and 266 markings for the reduced one.
+*/
 val twelve = philosophers(12)
 val reduced = twelve.stateSpace(reduction = PetriReduction.STUBBORN)
 println()
 println("full   : " + twelve.stateSpace().report().trim().lines().joinToString(" | "))
 println("reduced: " + reduced.report().trim().lines().joinToString(" | "))
-println("counterexample: " + reduced.deadlockTrace()!! + "   verify=" +
-    (reduced.deadlockTrace()!!.verify() ?: "checks out"))
+println(
+    "counterexample: " +
+        reduced.deadlockTrace()!! +
+        "   verify=" +
+        (reduced.deadlockTrace()!!.verify() ?: "checks out"),
+)
 
 // The reduction answers deadlock and refuses everything else, because that is all the
 // theorem covers. `exact` is the flag that keeps the two apart.
@@ -269,23 +343,35 @@ showPetriStateSpace(reduced, w = 1100.0, h = 600.0)
 <!-- field-box id="petri_ss_buffer" index="5" -->
 
 ```edn [field-box id="petri_ss_buffer" role="properties"]
-{"id" "petri_ss_buffer" "index" 5 "name" "3 — a buffer, counted exactly" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a buffer, counted exactly" "_tombstone" false "frame" #afield/rect [780.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_buffer_code_.kt" "lines" 29 "characters" 1255 "sha256" "952b6900fe766e45dd3badd71283e4adb333eb291820b7227e5f09eb6d09aea3"}]}
+{"id" "petri_ss_buffer" "index" 5 "name" "3 — a buffer, counted exactly" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a buffer, counted exactly" "_tombstone" false "frame" #afield/rect [780.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_buffer_code_.kt" "lines" 41 "characters" 1318 "sha256" "1b3e5449170178839e82282508d4b3e92e34d076709aa5fcbbfe9172b04d9959"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_buffer" name="code" path="petri_ss_buffer_code_.kt"]
 import afield.simulation.petri.*
 
-// The producer/consumer buffer from public/docs/petri_nets.md. Each worker holds a token
-// it puts straight back, which is what makes it *one* worker rather than an unbounded
-// supply of them.
+/*
+The producer/consumer buffer from public/docs/petri_nets.md. Each worker holds a token
+it puts straight back, which is what makes it *one* worker rather than an unbounded
+supply of them.
+*/
 val buffer = petri {
     grid = cyc(1, 8)
     place("free", tokens = 4)
     place("items", capacity = 4)
     place("producer", tokens = 1)
     place("consumer", tokens = 1)
-    t("produce") { from("producer"); from("free"); to("items"); to("producer") }
-    t("consume") { from("consumer"); from("items"); to("free"); to("consumer") }
+    t("produce") {
+        from("producer")
+        from("free")
+        to("items")
+        to("producer")
+    }
+    t("consume") {
+        from("consumer")
+        from("items")
+        to("free")
+        to("consumer")
+    }
 }
 
 val graph = buffer.stateSpace()

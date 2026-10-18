@@ -1,0 +1,16 @@
+{
+  "nativePaint": {
+    "defaultPixelsIdentical": true,
+    "editedControlsChangePixels": true,
+    "seededRestorationIdentical": true,
+    "size": [
+      900,
+      643
+    ]
+  },
+  "schema": {
+    "realCpuPackingAndAbiIdentical": true,
+    "proof": "06947e8e7550661ebc7f7c8ced53f75ee3c20c7a2485e6e987d7b8aa0f078882"
+  },
+  "limits": "Actual native paint and CPU schema bytes; no Vulkan allocation, GPU drawing or public capture."
+}

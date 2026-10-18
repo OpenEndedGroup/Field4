@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="chain_renderer" index="0" -->
 
 ```edn [field-box id="chain_renderer" role="properties"]
-{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["rectsl_spacetime_trace"] "properties" {"children" #{#afield/box "rectsl_spacetime_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 9 "characters" 224 "sha256" "35c79d6c0626c7abac860e64b9ac883b790e30da73c14a6418e3189e0e9e9787"}]}
+{"id" "chain_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["rectsl_spacetime_trace"] "properties" {"children" #{#afield/box "rectsl_spacetime_trace"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chain_renderer_code_.kt" "lines" 10 "characters" 225 "sha256" "0e8615e1c2e959fc1156e1f634ea4c0d8cd8f5d525b1d30513a7f5d09664cd82"}]}
 ```
 
 ```kotlin [field-property box="chain_renderer" name="code" path="chain_renderer_code_.kt"]
 import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,27 +32,20 @@ start(renderer::run)
 <!-- field-box id="rectsl_spacetime_trace" index="1" -->
 
 ```edn [field-box id="rectsl_spacetime_trace" role="properties"]
-{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 208 "characters" 8855 "sha256" "087708d27656dcbe85a0ee9f1f9f72d4d8c1275d08e7242f2c5776e15c7f965f"}]}
+{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 230 "characters" 8669 "sha256" "4112bf5f38787678dda3ff85f95785d61765141654465e85471265e1beeb579a"}]}
 ```
 
 ```kotlin [field-property box="rectsl_spacetime_trace" name="code" path="rectsl_spacetime_trace_code_.kt"]
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
 import afield.graphics.scene.fabricated.PathTraceEnvironment
 import afield.graphics.scene.fabricated.PathTraceMaterial
 import afield.graphics.scene.fabricated.PathTraceScene
 import afield.graphics.scene.fabricated.PathTracingRenderer
 import afield.graphics.scene.fabricated.importTriMesh
 import afield.graphics.vulkan.util.Camera
-import afield.geometry.solid.manifold.ManifoldLibrary
-import afield.geometry.solid.manifold.Solid
 import afield.lang.rectsl.compileRectSL
 import afield.lang.rectsl.toAdField
-import afield.geometry.mesh.boundsOf
-import afield.geometry.mesh.diagnose
-import afield.geometry.mesh.genus
-import afield.geometry.mesh.isWatertight
-import afield.math.linalg.Vector3f
-import afield.geometry.mesh.marchingCubes
-import afield.geometry.mesh.sampledField3D
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)
@@ -60,10 +54,13 @@ require(ManifoldLibrary.isAvailable) {
     ManifoldLibrary.describe() + "\nOn macOS: brew install manifold, then run this box again."
 }
 
-// ---- the animation -------------------------------------------------------------
-// Two rects and four keyed tracks. `'( 0=a  4=b )` is RectSL's track literal: a value at
-// a time, linearly interpolated, and `->x` takes one wherever it takes a number.
-val source = """
+/*
+---- the animation -------------------------------------------------------------
+Two rects and four keyed tracks. `'( 0=a  4=b )` is RectSL's track literal: a value at
+a time, linearly interpolated, and `->x` takes one wherever it takes a number.
+*/
+val source =
+    """
 #rectsl
 ->wall 8 8 abstract
 ->duration 4
@@ -78,27 +75,33 @@ val source = """
   1.2 1.2 ->wh
   1.6 -1.4 ->xy
   '( 0=0.3  4=2.2 ) ->w
-""".trimIndent()
+"""
+        .trimIndent()
 
 val program = compileRectSL(source).program
 val field = program.toAdField()
-println("RectSL: ${program.wall.width} x ${program.wall.height} wall, " +
-    "${program.duration}s, ${field.rectCount} of ${program.nodes.size} rects lowered")
-println("  worst AD-against-Fn.eval disagreement across the lowered channels: " +
-    field.worstChannelDisagreement)
+println(
+    "RectSL: ${program.wall.width} x ${program.wall.height} wall, " +
+        "${program.duration}s, ${field.rectCount} of ${program.nodes.size} rects lowered",
+)
+println(
+    "  worst AD-against-Fn.eval disagreement across the lowered channels: " + field.worstChannelDisagreement,
+)
 if (field.skipped.isNotEmpty()) println("  refused: ${field.skipped}")
 
 // ---- time as the third axis ----------------------------------------------------
 val nx = 104
 val ny = 104
 val nt = 80
-val halfWall = 4.4       // the shapes reach 3.85, so this clears them
-val halfDepth = 3.0      // how long the time axis is, in the wall's own units
+val halfWall = 4.4 // the shapes reach 3.85, so this clears them
+val halfDepth = 3.0 // how long the time axis is, in the wall's own units
 
-// One autodiff tape per slice, and the tape is the reason this is sampled onto a grid
-// rather than handed to a marcher directly: an ADTape grows monotonically, so it is worth
-// reusing across a slice and wrong to keep for a whole march. Sampling first also makes
-// the field safe to read from several threads.
+/*
+One autodiff tape per slice, and the tape is the reason this is sampled onto a grid
+rather than handed to a marcher directly: an ADTape grows monotonically, so it is worth
+reusing across a slice and wrong to keep for a whole march. Sampling first also makes
+the field safe to read from several threads.
+*/
 val inner = FloatArray(nx * ny * nt)
 val sampledAt = System.nanoTime()
 for (k in 0 until nt) {
@@ -114,33 +117,43 @@ for (k in 0 until nt) {
 }
 val sampleMs = (System.nanoTime() - sampledAt) / 1e6
 println("sampled ${inner.size} points, ${nt} tapes, ${"%.0f".format(sampleMs)} ms")
-println("  ${inner.count { it < 0f }} of them inside, distances " +
-    "${"%.3f".format(inner.min())} to ${"%.3f".format(inner.max())}")
+println(
+    "  ${inner.count { it < 0f }} of them inside, distances " +
+        "${"%.3f".format(inner.min())} to ${"%.3f".format(inner.max())}",
+)
 
 val innerBounds = boundsOf(
     vec(-halfWall, -halfWall, -halfDepth),
     vec(halfWall, halfWall, halfDepth),
 )
 
-// ---- what happens at the wall, measured both ways ------------------------------
-// The animation is solid at t = 0 and at t = duration, so the surface of the unpadded
-// volume runs into the sampling window and has to stop there. This is the case the
-// `levelSet` row of Solid's own table is about: a march leaves that boundary open, and the
-// level set closes it against the box.
+/*
+---- what happens at the wall, measured both ways ------------------------------
+The animation is solid at t = 0 and at t = duration, so the surface of the unpadded
+volume runs into the sampling window and has to stop there. This is the case the
+`levelSet` row of Solid's own table is about: a march leaves that boundary open, and the
+level set closes it against the box.
+*/
 val unpadded = sampledField3D(inner, nx, ny, nt, innerBounds)
 val cutMarch = marchingCubes(unpadded, innerBounds, resolution = 140)
 val cutSolid = Solid.levelSetOf(unpadded, innerBounds, edgeLength = 0.12)
 println()
 println("with the volume ending exactly at the first and last frame:")
-println("  marchingCubes: ${cutMarch.triangleCount} triangles, " +
-    "watertight ${cutMarch.isWatertight()}, ${cutMarch.diagnose().boundaryLoops.size} boundary loop(s)")
-println("  levelSetOf:    ${cutSolid.triangleCount} triangles, status ${cutSolid.status}, " +
-    "genus ${cutSolid.genus}, volume ${"%.3f".format(cutSolid.volume)}")
+println(
+    "  marchingCubes: ${cutMarch.triangleCount} triangles, " +
+        "watertight ${cutMarch.isWatertight()}, ${cutMarch.diagnose().boundaryLoops.size} boundary loop(s)",
+)
+println(
+    "  levelSetOf:    ${cutSolid.triangleCount} triangles, status ${cutSolid.status}, " +
+        "genus ${cutSolid.genus}, volume ${"%.3f".format(cutSolid.volume)}",
+)
 cutSolid.close()
 
-// ---- and the version that gets rendered ----------------------------------------
-// One empty slice each side, a hair outside, so the solid closes flat a fraction of a cell
-// beyond the first and last frame instead of being serrated by the jump to `outside`.
+/*
+---- and the version that gets rendered ----------------------------------------
+One empty slice each side, a hair outside, so the solid closes flat a fraction of a cell
+beyond the first and last frame instead of being serrated by the jump to `outside`.
+*/
 val dz = 2 * halfDepth / (nt - 1.0)
 val padded = FloatArray(nx * ny * (nt + 2))
 val slab = nx * ny
@@ -156,17 +169,23 @@ val spacetime = sampledField3D(padded, nx, ny, nt + 2, bounds)
 val marched = marchingCubes(spacetime, bounds, resolution = 140)
 println()
 println("and with one empty slice each side:")
-println("  marchingCubes: ${marched.triangleCount} triangles, " +
-    "watertight ${marched.isWatertight()}, genus ${marched.genus()}")
+println(
+    "  marchingCubes: ${marched.triangleCount} triangles, " +
+        "watertight ${marched.isWatertight()}, genus ${marched.genus()}",
+)
 
 val whole = Solid.levelSetOf(spacetime, bounds, edgeLength = 0.12)
-println("  levelSetOf:    ${whole.triangleCount} triangles, status ${whole.status}, " +
-    "genus ${whole.genus}, volume ${"%.3f".format(whole.volume)}")
+println(
+    "  levelSetOf:    ${whole.triangleCount} triangles, status ${whole.status}, " +
+        "genus ${whole.genus}, volume ${"%.3f".format(whole.volume)}",
+)
 
 val parts = whole.decompose()
-println("  ${parts.size} component(s): volumes " +
-    parts.map { "%.2f".format(it.volume) }.joinToString(", ") +
-    " — connected because the two rects overlap on screen at some frame")
+println(
+    "  ${parts.size} component(s): volumes " +
+        parts.map { "%.2f".format(it.volume) }.joinToString(", ") +
+        " — connected because the two rects overlap on screen at some frame",
+)
 
 // ---- the render ----------------------------------------------------------------
 val scene = PathTraceScene()
@@ -185,8 +204,7 @@ parts.forEach { part ->
     // warm at the last, so the render says which end of the solid the animation starts at.
     val colours = FloatArray(plain.vertexCount * 3)
     for (v in 0 until plain.vertexCount) {
-        val u = ((plain.z(v) + halfDepth.toFloat()) / (2f * halfDepth.toFloat()))
-            .coerceIn(0.0f, 1.0f)
+        val u = ((plain.z(v) + halfDepth.toFloat()) / (2f * halfDepth.toFloat())).coerceIn(0.0f, 1.0f)
         colours[v * 3] = 0.10f + 0.85f * u
         colours[v * 3 + 1] = 0.34f + 0.14f * u
         colours[v * 3 + 2] = 0.86f - 0.76f * u
@@ -206,7 +224,10 @@ parts.forEach { part ->
     )
     appended += added.triangleCount
     dropped += added.degenerateCount
-    if (added.triangleCount > 0) { sceneLo.min(added.boundsMin); sceneHi.max(added.boundsMax) }
+    if (added.triangleCount > 0) {
+        sceneLo.min(added.boundsMin)
+        sceneHi.max(added.boundsMax)
+    }
 }
 println("scene: $appended triangles, $dropped dropped, coloured by time along the third axis")
 parts.forEach { it.close() }
@@ -240,7 +261,9 @@ tracer.indirectClamp = 10f
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
 frames {
-    while (tracer.samples < 700) { frame() }
+    while (tracer.samples < 700) {
+        frame()
+    }
     println("rectsl spacetime study converged: ${tracer.samples} samples")
 }
 ```

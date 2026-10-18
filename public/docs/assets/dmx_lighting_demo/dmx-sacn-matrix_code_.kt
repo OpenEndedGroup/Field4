@@ -6,18 +6,23 @@ val patch = Patch(startUniverse = 10)
 patch.grid(16, 8, spacing = 10.0, profile = FixtureProfile.RGBW, serpentine = true)
 
 // Any Img will do (imgFromFile("...") for a file); here a small gradient made in place.
-val img = Img(64, 32, 3, FloatArray(64 * 32 * 3) { i ->
-    val x = (i / 3) % 64 / 63f
-    val y = (i / 3) / 64 / 31f
-    when (i % 3) {
-        0 -> x
-        1 -> y
-        else -> 1f - x
-    }
-})
+val img = Img(
+    64,
+    32,
+    3,
+    FloatArray(64 * 32 * 3) { i ->
+        val x = (i / 3) % 64 / 63f
+        val y = (i / 3) / 64 / 31f
+        when (i % 3) {
+            0 -> x
+            1 -> y
+            else -> 1f - x
+        }
+    },
+)
 
-val out = sacnOut("127.0.0.1")   // host = null sends to multicast 239.255.0.10 instead
-val node = sacnIn()              // Field as an sACN receiver on UDP 5568
+val out = sacnOut("127.0.0.1") // host = null sends to multicast 239.255.0.10 instead
+val node = sacnIn() // Field as an sACN receiver on UDP 5568
 
 // On the sender's clock: sample the image, then sweep a wave of brightness across it.
 patch.animate(out) { t ->

@@ -78,6 +78,9 @@ nav:
     - Snapping: snapping.md
     - Drawing and Notation: drawing_and_notation.md
     - File Management: files_and_paths.md
+    # Beside files_and_paths.md: both are about the document folder on disk, this one from the
+    # side of an editor or script writing into it while Field has it open.
+    - Editing From Outside Field: editing_from_outside.md
     # Beside files_and_paths.md: that page answers "which file did this path mean", this one "which
     # box did this value come from", and both are lookups a person otherwise reverse-engineers.
     - Why Does This Value Resolve Here?: why.md
@@ -182,6 +185,10 @@ nav:
       - Parametric CAD (SolidCraft): solidcraft.md
       - "SolidCraft: build from code": solidcraft_building.md
       - Tetrahedral Meshing (TetGen): tetgen.md
+      - Morse–Smale Complexes: morse_smale.md
+      - Principal Curves: principal_curves.md
+      - Vectorizing Drawings (Polyvector): polyvector.md
+      - Chaining Geometry Extensions: geometry_chains.md
       - A Solid, Written Down (solidsl): solid_notation.md
       - Geometry From Disk (OBJ, STL, PLY, glTF): geometry_from_disk.md
       - Polytopes & the Conway Algebra: polytope_examples.md

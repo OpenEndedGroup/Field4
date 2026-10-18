@@ -26,13 +26,27 @@ Top left: raw. Top right: spatial. Bottom left: spatial + DLAA. Bottom right: RR
 The adapter records into Field's command buffer and consumes Field-owned images. `DlssReconstruction(..., rayReconstruction=true)` selects RR. `evaluate` then requires a `RayReconstructionGuides` value in addition to color, depth, motion, and frame state.
 
 ```diffstatic {data-lang=kotlin}
-val rr = DlssReconstruction(renderer, size, size, ReconstructionMode.DLAA,
-    rayReconstruction = true)
+val rr = DlssReconstruction(
+    renderer,
+    size,
+    size,
+    ReconstructionMode.DLAA,
+    rayReconstruction = true,
+)
 
 // Outside the render pass, after producing these sampled images:
-rr.evaluate(command, ReconstructionInputs(rawLight, depth, motion), frame,
-    RayReconstructionGuides(diffuseAlbedo, specularAlbedo, normalRoughness,
-        camera.modelView(), projection.evaluateUniform()))
+rr.evaluate(
+    command,
+    ReconstructionInputs(rawLight, depth, motion),
+    frame,
+    RayReconstructionGuides(
+        diffuseAlbedo,
+        specularAlbedo,
+        normalRoughness,
+        camera.modelView(),
+        projection.evaluateUniform(),
+    ),
+)
 ```
 
 The guides have to describe the light you are handing over. This experiment's RTXDI bridge is Lambertian, so its specular albedo is zero and its roughness is one. Those values are specific to this bridge; a scene with glossy materials has to supply real ones. This example does not cover glossy or path-traced RR.

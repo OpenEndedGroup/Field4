@@ -11,11 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="generate_and_rank" index="0" -->
 
 ```edn [field-box id="generate_and_rank" role="properties"]
-{"id" "generate_and_rank" "index" 0 "name" "2 · generate and rank" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · generate and rank" "_tombstone" false "frame" #afield/rect [480.0 40.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "generate_and_rank_code_.kt" "lines" 25 "characters" 1151 "sha256" "d8da448f4279858e34920de7adc7a48a9b1eda622b7a5deed9efc7ab88655bbd"}]}
+{"id" "generate_and_rank" "index" 0 "name" "2 · generate and rank" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · generate and rank" "_tombstone" false "frame" #afield/rect [480.0 40.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "generate_and_rank_code_.kt" "lines" 30 "characters" 1181 "sha256" "f69d8545c8f4a614aad88db5b1948600baec6cb1c2d1f6abc360b3beea596696"}]}
 ```
 
 ```kotlin [field-property box="generate_and_rank" name="code" path="generate_and_rank_code_.kt"]
-
 val client = FieldAudioClient()
 val source = client.assetByFilename("*Nancy*").get()
 val region = AssetRegion(source.id, startSeconds = 18.0, durationSeconds = 4.5)
@@ -26,20 +25,26 @@ val sketch = gestureBoard(18.0, "uneasy nocturnal orchestra, old optical-film te
     event(5.2, "first disturbance", 0.45)
     event(13.1, "dark accent", 0.92, 1.6)
     curve("breath", GestureCurveKind.ACTIVITY) {
-        point(0.0, 0.08); point(5.0, 0.16); point(10.0, 0.55); point(13.1, 0.94); point(18.0, 0.12)
+        point(0.0, 0.08)
+        point(5.0, 0.16)
+        point(10.0, 0.55)
+        point(13.1, 0.94)
+        point(18.0, 0.12)
     }
     curve("event density", GestureCurveKind.DENSITY, 1.25) {
-        point(0.0, 0.05); point(7.0, 0.22); point(12.5, 0.78); point(18.0, 0.08)
+        point(0.0, 0.05)
+        point(7.0, 0.22)
+        point(12.5, 0.78)
+        point(18.0, 0.08)
     }
 }
 
 display("gesture", gestureBoardHtml(sketch))
-client.submit(gestureCandidates(region, sketch, seeds = 0L until 8L))
-    .thenCompose(client::awaitCandidates)
-    .thenAccept { result ->
-        display("ranked gesture", gestureBoardHtml(sketch, candidates = result))
-        display("audition", candidateBoardHtml(result))
-    }
+client.submit(gestureCandidates(region, sketch, seeds = 0L until 8L)).thenCompose(client::awaitCandidates).thenAccept {
+    result ->
+    display("ranked gesture", gestureBoardHtml(sketch, candidates = result))
+    display("audition", candidateBoardHtml(result))
+}
 ```
 
 ## 2. 1 · draw the gesture
@@ -47,11 +52,10 @@ client.submit(gestureCandidates(region, sketch, seeds = 0L until 8L))
 <!-- field-box id="draw_the_gesture" index="1" -->
 
 ```edn [field-box id="draw_the_gesture" role="properties"]
-{"id" "draw_the_gesture" "index" 1 "name" "1 · draw the gesture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · draw the gesture" "_tombstone" false "frame" #afield/rect [40.0 40.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "draw_the_gesture_code_.kt" "lines" 22 "characters" 1078 "sha256" "abb673691bcf9ecc49893d284726ebbc2c83811095a1cbecb9aa764908f1be80"}]}
+{"id" "draw_the_gesture" "index" 1 "name" "1 · draw the gesture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · draw the gesture" "_tombstone" false "frame" #afield/rect [40.0 40.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "draw_the_gesture_code_.kt" "lines" 33 "characters" 1161 "sha256" "02140c7e0c6013d228ceb0b051963879cc00b29ad68248ce9a8a136e845e40a0"}]}
 ```
 
 ```kotlin [field-property box="draw_the_gesture" name="code" path="draw_the_gesture_code_.kt"]
-
 val sketch = gestureBoard(18.0, "uneasy nocturnal orchestra, old optical-film texture") {
     prompt(0.0, 5.0, "almost motionless low strings")
     prompt(5.0, 8.0, "woodwind fragments begin to circle")
@@ -59,17 +63,29 @@ val sketch = gestureBoard(18.0, "uneasy nocturnal orchestra, old optical-film te
     event(5.2, "first disturbance", strength = 0.45)
     event(13.1, "dark accent", strength = 0.92, weight = 1.6)
     curve("breath", GestureCurveKind.ACTIVITY) {
-        point(0.0, 0.08); point(5.0, 0.16); point(10.0, 0.55)
-        point(13.1, 0.94); point(18.0, 0.12)
+        point(0.0, 0.08)
+        point(5.0, 0.16)
+        point(10.0, 0.55)
+        point(13.1, 0.94)
+        point(18.0, 0.12)
     }
     curve("event density", GestureCurveKind.DENSITY, weight = 1.25) {
-        point(0.0, 0.05); point(7.0, 0.22); point(12.5, 0.78); point(18.0, 0.08)
+        point(0.0, 0.05)
+        point(7.0, 0.22)
+        point(12.5, 0.78)
+        point(18.0, 0.08)
     }
     curve("register drift", GestureCurveKind.REGISTER, weight = 0.7) {
-        point(0.0, 0.18); point(9.0, 0.48); point(14.0, 0.72); point(18.0, 0.31)
+        point(0.0, 0.18)
+        point(9.0, 0.48)
+        point(14.0, 0.72)
+        point(18.0, 0.31)
     }
     curve("surface light", GestureCurveKind.BRIGHTNESS, weight = 0.6) {
-        point(0.0, 0.13); point(11.0, 0.27); point(13.1, 0.68); point(18.0, 0.16)
+        point(0.0, 0.13)
+        point(11.0, 0.27)
+        point(13.1, 0.68)
+        point(18.0, 0.16)
     }
 }
 display("main", gestureBoardHtml(sketch, width = 1100))

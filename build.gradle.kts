@@ -3687,6 +3687,41 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
     }
 }
 
+// Build one optional native geometry library (native/field-<module>): plain CMake, no downloads,
+// no third-party packages, and its native test runs as part of the build. Field compiles and runs
+// without any of them; afield.geometry.network.NativeGeometry reports which are present.
+//
+//     ./gradlew buildMorseSmaleNative
+//     ./gradlew jvmTest --tests 'afield.geometry.topology.morsesmale.*'
+fun registerNativeGeometryBuild(taskName: String, module: String) = tasks.register(taskName) {
+    group = "build"
+    description = "Builds native/field-$module into build/field-$module and runs its native test (needs cmake)."
+    val sourceDir = layout.projectDirectory.dir("native/field-$module")
+    val script = layout.projectDirectory.file("tools/build_native_geometry.py")
+    inputs.dir(sourceDir)
+    inputs.file(script)
+    outputs.dir(layout.buildDirectory.dir("field-$module/build"))
+    doLast {
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath, module)
+        val result = providers.exec {
+            commandLine(command)
+            isIgnoreExitValue = true
+        }
+        val code = result.result.get().exitValue
+        if (code != 0) {
+            throw GradleException(
+                "${command.joinToString(" ")} failed with exit code $code:\n" +
+                    result.standardOutput.asText.get() + result.standardError.asText.get(),
+            )
+        }
+        logger.lifecycle(result.standardOutput.asText.get().trim().lines().last())
+    }
+}
+
+val buildMorseSmaleNative = registerNativeGeometryBuild("buildMorseSmaleNative", "morse-smale")
+val buildPrincipalCurvesNative = registerNativeGeometryBuild("buildPrincipalCurvesNative", "principal-curves")
+val buildPolyvectorNative = registerNativeGeometryBuild("buildPolyvectorNative", "polyvector")
+
 // Build native/field-slug, the helper afield.graphics.text.slug.SlugPath shells out to. Explicit opt-in
 // like Loris: build.sh fetches the pinned Slughorn revision from GitHub on first run.
 val buildSlugNative = tasks.register<Exec>("buildSlugNative") {
@@ -4026,7 +4061,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, fetchSteamAudioNatives, "buildLorisNative", buildD2LayoutHelper)
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildMorseSmaleNative, buildPrincipalCurvesNative, buildPolyvectorNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, fetchSteamAudioNatives, "buildLorisNative", buildD2LayoutHelper)
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 

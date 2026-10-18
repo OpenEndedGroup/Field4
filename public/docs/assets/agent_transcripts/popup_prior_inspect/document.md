@@ -25,40 +25,55 @@ of where a row appears on screen. That answer belongs to KotlinCompletionSupport
 a `category=` beside every visible row. See public/docs/completion_ranking.md.
 
 ```edn [field-box id="agent_popup_prior_inspect" role="properties"]
-{"id" "agent_popup_prior_inspect" "index" 0 "name" "What prior does the popup have" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What prior does the popup have" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_popup_prior_inspect_code_.kt" "lines" 31 "characters" 1863 "sha256" "8c19b91324d09527ee633e4657ddc94e01a37be7fcea23249d34aa84a65fd676"}]}
+{"id" "agent_popup_prior_inspect" "index" 0 "name" "What prior does the popup have" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What prior does the popup have" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_popup_prior_inspect_code_.kt" "lines" 46 "characters" 1986 "sha256" "102b23a946a14a4ac3b399839a8762971bcbba843a7324f44e77e2770d05269e"}]}
 ```
 
 ```kotlin [field-property box="agent_popup_prior_inspect" name="code" path="agent_popup_prior_inspect_code_.kt"]
-// Ask Field what prior the completion popup has, instead of trusting a number typed into a
-// page. `CommonMemberPrior` is the object the completion server itself calls, once per
-// candidate, on every keystroke — so this table is the popup's own arithmetic rather than a
-// description of it. Change `receiver` to any qualified type name to ask about your own class.
-//
-// What this cannot tell you is which SECTION each of these lands in, which is the other half
-// of where a row appears on screen. That answer belongs to KotlinCompletionSupport, and it is
-// `internal` — deliberately unreachable from a box. Use `FIELD_RANK_DUMP` for that; it prints
-// a `category=` beside every visible row. See public/docs/completion_ranking.md.
+/*
+Ask Field what prior the completion popup has, instead of trusting a number typed into a
+page. `CommonMemberPrior` is the object the completion server itself calls, once per
+candidate, on every keystroke — so this table is the popup's own arithmetic rather than a
+description of it. Change `receiver` to any qualified type name to ask about your own class.
+
+What this cannot tell you is which SECTION each of these lands in, which is the other half
+of where a row appears on screen. That answer belongs to KotlinCompletionSupport, and it is
+`internal` — deliberately unreachable from a box. Use `FIELD_RANK_DUMP` for that; it prints
+a `category=` beside every visible row. See public/docs/completion_ranking.md.
+*/
 val receiver = "afield.geometry.path.FLine"
 val ranks = afield.runtime.completion.CommonMemberPrior.ranksFor(receiver)
 
 // Sorted by position rather than trusting the map's iteration order, so the figure is the
 // same every time it is drawn.
-val prior = Table(listOf("position", "member", "prior score"))
-    .rows(ranks.entries.sortedBy { it.value }.map { (member, position) ->
-        listOf(position, member, afield.runtime.completion.CommonMemberPrior.scoreOf(position))
-    })
-    .role("member", CellRole.ACCENT)
+val prior =
+    Table(listOf("position", "member", "prior score"))
+        .rows(
+            ranks.entries
+                .sortedBy { it.value }
+                .map { (member, position) ->
+                    listOf(position, member, afield.runtime.completion.CommonMemberPrior.scoreOf(position))
+                },
+        )
+        .role("member", CellRole.ACCENT)
 
 // Position 1 scores BASE, and each position after it costs STEP.
-check(ranks.all { (_, position) ->
-    afield.runtime.completion.CommonMemberPrior.scoreOf(position) ==
-        afield.runtime.completion.CommonMemberPrior.BASE - afield.runtime.completion.CommonMemberPrior.STEP * (position - 1)
-}) { "the prior is no longer BASE less STEP per position" }
+check(
+    ranks.all { (_, position) ->
+        afield.runtime.completion.CommonMemberPrior.scoreOf(position) ==
+            afield.runtime.completion.CommonMemberPrior.BASE -
+                afield.runtime.completion.CommonMemberPrior.STEP * (position - 1)
+    },
+) {
+    "the prior is no longer BASE less STEP per position"
+}
 
-markdown("main", """
+markdown(
+    "main",
+    """
     {muted:@CommonMembers on ${receiver.md} — ${ranks.size} members, first scores ${afield.runtime.completion.CommonMemberPrior.BASE}, less ${afield.runtime.completion.CommonMemberPrior.STEP} per position}
 
     ${prior.h}
-""")
+""",
+)
 ```
 

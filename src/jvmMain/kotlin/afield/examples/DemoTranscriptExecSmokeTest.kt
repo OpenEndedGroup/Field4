@@ -311,6 +311,9 @@ object DemoTranscriptExecSmokeTest {
         // lp_curves.md's companion: LP methods as curve generators over LpPolygon, drawn through
         // showPlaneGrid / showPlane. The second box ends in `animate { }` and is launched. CPU only.
         "lp_curves",
+        // lp_curves.md's 3-D section companion: the same methods over LpPolytope, drawn through `three { }`
+        // (a Three.js payload sent to display), so no Window and no Renderer. Both boxes execute.
+        "lp_curves_3d",
         // Six independent pure-CPU dynamic-graph boxes. Four print and draw through showPlaneGrid /
         // showSignals; the other two build a Frames through animateEvolution, so executing them is a
         // compile check and the animation only runs when the box is launched. No Window, no Renderer.
@@ -533,6 +536,12 @@ object DemoTranscriptExecSmokeTest {
         "kratos_flow_playground",
         // Also wants TetGen: it meshes the bracket here before the worker sees it.
         "kratos_structural_playground",
+        // Optional native field_morse_smale (./gradlew buildMorseSmaleNative); the live box loops forever.
+        "morse_smale_explorer",
+        // Optional native field_principal_curves (./gradlew buildPrincipalCurvesNative); the live box loops forever.
+        "principal_curves_explorer",
+        // Optional native field_polyvector (OpenCV, Boost, Eigen; ./gradlew buildPolyvectorNative).
+        "polyvector_explorer",
         // The same worker, times fifty: a grid sweep is minutes of solver, so CI compiles it and
         // the `kratos.study.parameter-sweep` catalog entry runs the same code path at 3x3.
         "kratos_parameter_study",
@@ -635,6 +644,9 @@ object DemoTranscriptExecSmokeTest {
         "path_tracer_instrument",
         "path_tracing_emitters",
         "path_tracing_medium",
+        // Clojure box parity: its Kotlin root is compiled; the three Clojure boxes are a guest
+        // language and skipped. ClojureFieldCoreTest and ClojureHostTest run the Clojure half.
+        "clojure_box_parity",
         "python_box_parity",
         "python_cells",
         // fieldcv: the Python cells need JEP plus the optional cv group, and a camera; the Kotlin

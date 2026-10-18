@@ -85,9 +85,6 @@ oscillator.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_pattern_particles/bands.png" alt="A line plot titled 'four bands of one bar, the numbers the shader reads', four traces over two seconds against a legend of 70 Hz, 340 Hz, 1.6 kHz and 8 kHz. The 70 Hz trace spikes sixteen times, to about 0.32; the 340 Hz trace spikes with it at about two thirds the height; the 1.6 kHz and 8 kHz traces stay busier and flatter, hovering around 0.05 and 0.1" wait="8" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="120" name="chain-pattern-bands" embed=true}
 :::static
-import afield.audio.synth.PatSynthDocs
-import afield.audio.synth.logBands
-
 // The same scene the .wav above is, and the same scene the GPU figure plays.
 val scene = PatSynthDocs.SCENES.first { it.name == "seam-bands" }
 val audio = scene.render()
@@ -130,14 +127,14 @@ The compute shader declares four floats beside its two buffer references:
 
 ```diffstatic {data-lang=glsl}
 layout(push_constant) uniform dat {
-    Seeds seeds;      // written once: one random phase and radius per particle
-    Out   outData;    // this frame's positions, read by the draw box
+    Seeds seeds; // written once: one random phase and radius per particle
+    Out outData; // this frame's positions, read by the draw box
     float time;
-    float band0;      // 70 Hz    — the kick
-    float band1;      // 340 Hz
-    float band2;      // 1.6 kHz  — the square stab's harmonics
-    float band3;      // 8 kHz    — the hats
-    uint  count;
+    float band0; // 70 Hz    — the kick
+    float band1; // 340 Hz
+    float band2; // 1.6 kHz  — the square stab's harmonics
+    float band3; // 8 kHz    — the hats
+    uint count;
 } pc;
 ```
 
@@ -145,10 +142,13 @@ and the Kotlin binds each one to a lambda. The renderer evaluates them once per 
 sees this frame's analysis and nothing is copied by hand:
 
 ```diffstatic {data-lang=kotlin}
-step.band0 = { (bandEnergy.getOrElse(0) { 0.0 } * 2.4).f }
-step.band1 = { (bandEnergy.getOrElse(1) { 0.0 } * 2.4).f }
-step.band2 = { (bandEnergy.getOrElse(2) { 0.0 } * 2.4).f }
-step.band3 = { (bandEnergy.getOrElse(3) { 0.0 } * 2.4).f }
+var gain = 2.4
+gain = 2.4 // Edit and Alt+Enter this assignment to change the running response.
+
+step.band0 = { (bandEnergy.getOrElse(0) { 0.0 } * gain).f }
+step.band1 = { (bandEnergy.getOrElse(1) { 0.0 } * gain).f }
+step.band2 = { (bandEnergy.getOrElse(2) { 0.0 } * gain).f }
+step.band3 = { (bandEnergy.getOrElse(3) { 0.0 } * gain).f }
 ```
 
 `bandEnergy` is an inherited property, declared with `prop<DoubleArray>(bandEnergy)` in the audio box

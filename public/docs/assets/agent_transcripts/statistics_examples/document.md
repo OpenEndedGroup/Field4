@@ -19,7 +19,7 @@ Freedman-Diaconis, Scott and Sturges widths, floored so the count cannot exceed 
 Re-derive the whole decision from the public stats and predict the bin count.
 
 ```edn [field-box id="stats_histogram" role="properties"]
-{"id" "stats_histogram" "index" 0 "name" "Histograms, and the rule that picks the bins" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Histograms, and the rule that picks the bins" "_tombstone" false "frame" #afield/rect [80.0 470.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_histogram_code_.kt" "lines" 69 "characters" 3070 "sha256" "16ec9936fee1b5e003ea61e551e7442fe1ece520e1437c6ae97b4e70d2c7cde1"}]}
+{"id" "stats_histogram" "index" 0 "name" "Histograms, and the rule that picks the bins" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Histograms, and the rule that picks the bins" "_tombstone" false "frame" #afield/rect [80.0 470.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_histogram_code_.kt" "lines" 69 "characters" 3064 "sha256" "28d4631af6d2062f3a416f876388fe53e3215b93a898ed161036109739520319"}]}
 ```
 
 ```kotlin [field-property box="stats_histogram" name="code" path="stats_histogram_code_.kt"]
@@ -80,7 +80,7 @@ println(
         "knows nothing but n, so it is ${hBimodal.bins.size} bins for any 500-point sample.",
 )
 
-val svgs = listOf(
+val svgs = [
     histogramToSvg(hSkewed, widthPx = 380, heightPx = 230, padTop = 26, title = "exp(0.6 g), n=500", decimals = 3),
     histogramToSvg(
         hBimodal,
@@ -90,7 +90,7 @@ val svgs = listOf(
         title = "two modes at -2 and +2, n=500",
         decimals = 3,
     ),
-)
+]
 showRow("histograms", svgs)
 ```
 
@@ -106,7 +106,7 @@ The whole reason StatsDependence has six coefficients instead of one. Six shapes
 coefficient on each, printed as one table so the disagreements line up in a row.
 
 ```edn [field-box id="stats_dependence" role="properties"]
-{"id" "stats_dependence" "index" 1 "name" "Six questions, six answers — and is the answer big?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Six questions, six answers — and is the answer big?" "_tombstone" false "frame" #afield/rect [960.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_dependence_code_.kt" "lines" 93 "characters" 4499 "sha256" "a71bb67c9826e2967b5a83f4d25312b3461f4f26d828b3162f237abca32a1426"}]}
+{"id" "stats_dependence" "index" 1 "name" "Six questions, six answers — and is the answer big?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Six questions, six answers — and is the answer big?" "_tombstone" false "frame" #afield/rect [960.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_dependence_code_.kt" "lines" 93 "characters" 4500 "sha256" "65935734e88ec940a8abd4fd7d0242d2ce9265920eb6b342465c79a12cd4b10d"}]}
 ```
 
 ```kotlin [field-property box="stats_dependence" name="code" path="stats_dependence_code_.kt"]
@@ -119,14 +119,14 @@ val x = DoubleArray(n) { it / (n - 1.0) * 2.0 - 1.0 }
 // are built out of.
 val noise = DoubleArray(n) { rng.nextGaussian() }
 
-val cases = listOf(
+val cases = [
     "linear" to DoubleArray(n) { 0.8 * x[it] + 0.25 * noise[it] },
     "monotone, curved" to DoubleArray(n) { exp(3.0 * x[it]) },
     "parabola" to DoubleArray(n) { x[it] * x[it] },
-    "sine, 1.5 cycles" to DoubleArray(n) { sin(3.0 * PI * x[it]) },
+    "sine, 3 cycles over x = -1..1" to DoubleArray(n) { sin(3.0 * PI * x[it]) },
     "same mean, growing spread" to DoubleArray(n) { (0.05 + abs(x[it])) * noise[it] },
     "independent" to DoubleArray(n) { noise[it] },
-)
+]
 
 println("shape                        r      rho     tau      xi     dCor    MIC~")
 val panels = cases.map { (label, y) ->
@@ -197,7 +197,7 @@ println(
 val window = Rect(0.0, 0.0, 1.0, 1.0)
 val frame = window.toFLine(color = vec(0.35, 0.44, 0.56, 0.5), thickness = 1.0)
 showPlaneGrid(
-    *panels.map { (label, cloud) -> label to listOf(frame, cloud) }.toTypedArray(),
+    *panels.map { (label, cloud) -> label to [frame, cloud] }.toTypedArray(),
     columns = 2,
     cellWidth = 380,
     cellHeight = 240,
@@ -282,24 +282,11 @@ display("card", buf.summaryHtml(widthPx = 620, chartHeightPx = 150, decimals = 3
 
 <!-- field-box id="stats_rolling" index="3" -->
 
-### Narrative
-
-From `code`
-
-A single coefficient over a whole recording answers the wrong question when the
-relationship comes and goes. RollingDistanceCorrelation maintains its sums
-incrementally, O(w) per push; RollingXiCorrelation just recomputes, O(w log w).
-
 ```edn [field-box id="stats_rolling" role="properties"]
-{"id" "stats_rolling" "index" 3 "name" "Rolling dependence across a regime change" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Rolling dependence across a regime change" "_tombstone" false "frame" #afield/rect [960.0 580.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_rolling_code_.kt" "lines" 88 "characters" 3780 "sha256" "79e1c13c4766b70f3e6175ae71821e3d33808dbd8d6001d4d965f286888ae999"}]}
+{"id" "stats_rolling" "index" 3 "name" "Rolling dependence across a regime change" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Rolling dependence across a regime change" "_tombstone" false "frame" #afield/rect [960.0 580.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_rolling_code_.kt" "lines" 87 "characters" 3963 "sha256" "89933bcb8b547a2235e6041d268eedd23cc2e5fef884174810f040c70ca805dd"}]}
 ```
 
 ```kotlin [field-property box="stats_rolling" name="code" path="stats_rolling_code_.kt"]
-/*
-A single coefficient over a whole recording answers the wrong question when the
-relationship comes and goes. RollingDistanceCorrelation maintains its sums
-incrementally, O(w) per push; RollingXiCorrelation just recomputes, O(w log w).
-*/
 val w = 80
 val total = 600
 val change = 300
@@ -307,6 +294,7 @@ val rng = java.util.Random(3)
 
 val dcor = RollingDistanceCorrelation(w)
 val xiRoll = RollingXiCorrelation(w)
+
 val xs = ArrayList<Double>()
 val ys = ArrayList<Double>()
 val dSeries = ArrayList<Double>()
@@ -315,73 +303,76 @@ val absR = ArrayList<Double>()
 
 for (i in 0 until total) {
     val xv = rng.nextGaussian()
-    // Before `change`: two independent Gaussians. After: y = x^2 - 1, which Pearson cannot see.
+    // Before `change`: two independent Gaussians. After: y = x^2 - 1, a dependence Pearson cannot see.
     val yv = if (i < change) rng.nextGaussian() else xv * xv - 1.0 + 0.15 * rng.nextGaussian()
     xs += xv
     ys += yv
-    dSeries += dcor.push(xv, yv) ?: 0.0 // the first push always returns null
-    xiSeries += xiRoll.push(xv, yv) ?: 0.0
-    // There is no RollingPearson, so take the batch one over the same window.
+    val distanceValue = dcor.push(xv, yv)
+    val xiValue = xiRoll.push(xv, yv)
+    // Compare with the w-sample null only once a complete window has arrived.
+    val fullWindow = xs.size >= w
+    dSeries += if (fullWindow) requireNotNull(distanceValue) else Double.NaN
+    xiSeries += if (fullWindow) requireNotNull(xiValue) else Double.NaN
+    // There is no RollingPearson, so take the batch one over the same window for comparison.
     val lo = maxOf(0, xs.size - w)
     val bx = xs.subList(lo, xs.size).toDoubleArray()
     val by = ys.subList(lo, ys.size).toDoubleArray()
-    absR += if (bx.size >= 2) abs(StatsDependence.pearson(bx, by)) else 0.0
+    absR += if (fullWindow) abs(StatsDependence.pearson(bx, by)) else Double.NaN
 }
 
-// The threshold that makes the traces readable: the 95th percentile of the dCor null,
-// drawn at THIS window size because the null shifts with the window.
+// Calibrate each statistic against its own null distribution at this window size.
+// These are pointwise reference levels, not a multiple-testing-adjusted change detector.
 val r2 = java.util.Random(1234)
 val k = 300
-val threshold =
-    DoubleArray(k) {
-            StatsDependence.distanceCorrelation(
-                DoubleArray(w) { r2.nextGaussian() },
-                DoubleArray(w) { r2.nextGaussian() },
-            )
-        }
-        .sortedArray()[(k * 0.95).toInt()]
+val dNull = DoubleArray(k)
+val xiNull = DoubleArray(k)
+repeat(k) { i ->
+    val nx = DoubleArray(w) { r2.nextGaussian() }
+    val ny = DoubleArray(w) { r2.nextGaussian() }
+    dNull[i] = StatsDependence.distanceCorrelation(nx, ny)
+    xiNull[i] = StatsDependence.chatterjeeXi(nx, ny)
+}
+val threshold = dNull.sortedArray()[(k * 0.95).toInt()]
+val xiThreshold = xiNull.sortedArray()[(k * 0.95).toInt()]
 
-fun mean(l: List<Double>, a: Int, b: Int) = l.subList(a, b).average()
-println("window=$w, regime change at i=$change, dCor null 95th pct at this w=${"%.3f".format(threshold)}")
-println(
-    "  before (i=$w..${change - 1}):        dCor ${"%.3f".format(mean(dSeries, w, change))}" +
-        "   xi ${"%.3f".format(mean(xiSeries, w, change))}   |r| ${"%.3f".format(mean(absR, w, change))}",
-)
-println(
-    "  settled after (i=${change + w}..${total - 1}): dCor ${"%.3f".format(mean(dSeries, change + w, total))}" +
-        "   xi ${"%.3f".format(mean(xiSeries, change + w, total))}   |r| ${"%.3f".format(mean(absR, change + w, total))}",
-)
+// The incremental sums are not an approximation. Cross-check the last window against the O(w^2)
+// batch call, which materialises two full w x w distance matrices to get the same answer.
+val batchLast = StatsDependence.distanceCorrelation(xs.takeLast(w).toDoubleArray(), ys.takeLast(w).toDoubleArray())
+val agreement = abs(dSeries.last() - batchLast)
+
 val firstD = (change until total).firstOrNull { dSeries[it] > threshold }
-val firstXi = (change until total).firstOrNull { xiSeries[it] > threshold }
-println("  threshold first crossed by dCor at +${firstD?.minus(change)} samples, by xi at +${firstXi?.minus(change)}")
-
-/*
-Not an approximation, and this is a real cross-check rather than a restatement:
-RollingDistanceCorrelation never rebuilds a distance matrix, while the batch call
-materialises two full w x w matrices and double-centres them.
-*/
-val batchLast = StatsDependence.distanceCorrelation(
-    xs.takeLast(w).toDoubleArray(),
-    ys.takeLast(w).toDoubleArray(),
-)
-println("  incremental vs batch on the final window: |difference| = ${abs(dSeries.last() - batchLast)}")
-// And rolling xi is bit-exact, because it literally calls chatterjeeXi over the window.
-val batchXi = StatsDependence.chatterjeeXi(
-    xs.takeLast(w).toDoubleArray(),
-    ys.takeLast(w).toDoubleArray(),
-)
-println("  rolling xi vs batch xi: |difference| = ${abs(xiSeries.last() - batchXi)} (exactly zero by construction)")
+val firstXi = (change until total).firstOrNull { xiSeries[it] > xiThreshold }
+val dCrossing = firstD?.let { "+${it - change} samples" } ?: "not crossed"
+val xiCrossing = firstXi?.let { "+${it - change} samples" } ?: "not crossed"
 
 showSignals(
     "rolling dCor" to dSeries,
     "rolling xi" to xiSeries,
     "rolling |pearson|" to absR,
     "dCor null 95th pct at w=$w" to List(total) { threshold },
+    "xi null 95th pct at w=$w" to List(total) { xiThreshold },
     channel = "traces",
     title = "Three rolling coefficients across one regime change (window $w)",
     xTitle = "sample",
     yTitle = "coefficient",
-    marks = listOf("regime change" to change),
+    marks = ["regime change" to change],
+)
+// The two windows are the same three coefficients measured twice, so they read as a table.
+// The pipes in `|r|` are escaped, or they would split the cell they sit in.
+markdown(
+    "numbers",
+    """
+    | window | dCor | xi | \|r\| |
+    |--------|------|----|-------|
+    | window-full to the change (i=$w..${change - 1}) | ${"%.3f".format(dSeries.subList(w, change).average())} | ${"%.3f".format(xiSeries.subList(w, change).average())} | ${"%.3f".format(absR.subList(w, change).average())} |
+    | settled after the change (i=${change + w}..${total - 1}) | ${"%.3f".format(dSeries.subList(change + w, total).average())} | ${"%.3f".format(xiSeries.subList(change + w, total).average())} | ${"%.3f".format(absR.subList(change + w, total).average())} |
+
+    {muted:dCor null 95th pct ${"%.3f".format(threshold)}: $dCrossing.
+    xi null 95th pct ${"%.3f".format(xiThreshold)}: $xiCrossing.}
+
+    {muted:incremental vs batch on the final window: |difference| = $agreement}
+""",
+    width = 900,
 )
 ```
 
@@ -397,7 +388,7 @@ quantilewarp.kt does not measure anything. It fits a monotone 8-knot PCHIP curve
 the measured quantiles of recent samples onto the quantiles of a target distribution.
 
 ```edn [field-box id="stats_warp" role="properties"]
-{"id" "stats_warp" "index" 4 "name" "Reshaping a distribution with an 8-knot warp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Reshaping a distribution with an 8-knot warp" "_tombstone" false "frame" #afield/rect [80.0 860.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_warp_code_.kt" "lines" 111 "characters" 4640 "sha256" "3af4b9514782f6cff211192b3741fc3d2415ed0f3d98b09b99b483454f6b9d65"}]}
+{"id" "stats_warp" "index" 4 "name" "Reshaping a distribution with an 8-knot warp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Reshaping a distribution with an 8-knot warp" "_tombstone" false "frame" #afield/rect [80.0 860.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_warp_code_.kt" "lines" 111 "characters" 4628 "sha256" "7cd9b8e255281c5b49d54c96827f5b76e707806948282adf960086aafe2f646d"}]}
 ```
 
 ```kotlin [field-property box="stats_warp" name="code" path="stats_warp_code_.kt"]
@@ -477,7 +468,7 @@ val gaps = (1..12).map {
     step - st.inputKnots[4]
 }
 println("median knot chasing a step to $step (smoothingAlpha=${QuantileWarpConfig().smoothingAlpha}):")
-listOf(1, 2, 4, 8, 12).forEach { k ->
+[1, 2, 4, 8, 12].forEach { k ->
     println(
         "  after $k updates gap=${"%.3f".format(gaps[k - 1])}  vs closed form ${step}*0.8^$k=" +
             "${"%.3f".format(step * 0.8.pow(k))}",
@@ -493,7 +484,7 @@ showSignals(
     xTitle = "quantile of the fitting sample",
     yTitle = "warped value",
 )
-val svgs = listOf(
+val svgs = [
     histogramToSvg(
         buildHistogram(held.toList()),
         widthPx = 380,
@@ -510,7 +501,7 @@ val svgs = listOf(
         decimals = 2,
         title = "after the warp: skew ${"%.3f".format(after.skewness)}",
     ),
-)
+]
 showRow("distributions", svgs)
 ```
 

@@ -119,6 +119,10 @@ methods on a class named after a file, and default arguments, which Clojure has 
 | `(frame)`, `(end)` | Inside an animation body: reads the current frame number, or stops now. |
 | `(prop "name")`, `(prop! "name" v)` | Reads or writes a property of this box. `prop!` returns the value it wrote. |
 | `(prop b "name")`, `(prop! b "name" v)` | The same, for another box `b`, such as one from `(.getParents (box))`. |
+| `(slider label f :min 0 :max 1 :step 0.01 :value v)` | Draws a slider in the box's `controls` panel. `f` is called with each new value; it can also be an atom, which is set to the value. |
+| `(checkbox label f :value false)` | Draws a checkbox; `f` (a function or an atom) receives `true` or `false`. |
+| `(context :name)`, `(context :name default)` | Reads the nearest property, or Kotlin variable, called `name` on this box or its parents. |
+| `(context SomeClass)` | Finds the nearest value of that class on this box or its parents, like `fromContext` in Kotlin. |
 
 </div>
 
@@ -214,6 +218,60 @@ Everything on
 [Drawing with FLines](fline_examples.md) is reachable from a Clojure box by interop; `field.core`
 only covers the awkward corners.
 
+## Sliders and checkboxes
+
+`slider` and `checkbox` draw the same controls a Kotlin box's `slider(...)` and `checkbox(...)` draw.
+Each takes a label and what to call when the control moves: a function of one argument, or an atom,
+which is set to the new value. Keyword options set the range, step and starting value:
+
+<!--
+FIELD_TEST
+id: docs.clojure.controls
+runner: backdoor-box
+tags: [docs, clojure, display]
+timeoutSec: 120
+waitSec: 2.0
+expect:
+  outputContains:
+    - "sine at 3.0 Hz"
+-->
+```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/controls.png" capture="box" open-outputs=true trim=true wait="3" wait-output=true wait-output-kind="display" timeout="240" embed=true name="clojure-controls" w="760" h="80" alt="A Clojure box's output: a main panel reading sine at 3.0 Hz, and under it a controls panel with a frequency slider set to 3.0 and an unticked square wave checkbox."}
+:::static
+;; Moving the slider or ticking the box updates the atom, and the watch redraws.
+(def state (atom {:freq 3.0 :square false}))
+
+(defn redraw [{:keys [freq square]}]
+  (display "main" (format "%s at %.1f Hz" (if square "square" "sine") freq)))
+
+(slider "frequency" #(swap! state assoc :freq %) :min 1 :max 10 :step 0.1 :value 3.0)
+(checkbox "square wave" #(swap! state assoc :square %))
+
+(add-watch state :redraw (fn [_ _ _ now] (redraw now)))
+(redraw @state)
+```
+
+The controls appear when the box finishes running, all in one `controls` panel; pass
+`:channel "name"` to put a control in a panel of its own. Run the box again and a control you moved
+keeps its value, and its function is called with that value, so `state` agrees with what is on the
+screen. A function that throws is reported on the line the control was created on.
+
+## Values from parent boxes
+
+A box can read what the boxes above it provide. `(context :speed)` looks for a property called
+`speed` on this box, then on its parents, then on theirs, and returns the first it finds. A Kotlin
+parent's top-level variables count too, so a Clojure box can use a value a Kotlin box computed.
+Give a second argument to use when nothing is found, or a class instead of a name to find the
+nearest value of that type:
+
+```diffstatic {data-lang=clojure}
+(context :speed)            ; a parent's `speed` property, or nil
+(context "palette" [])      ; a parent Kotlin box's `val palette`, or []
+(context afield.graphics.vulkan.Renderer)   ; the renderer this box is under
+```
+
+The [clojure_box_parity](agent_transcripts.md#clojure_box_parity) document has a Kotlin root with a
+`speed` property and a `palette` variable, and a Clojure box that reads both.
+
 ## Launching an animation
 
 A Clojure box animates the way a Kotlin box does: returning an animation from the box starts it.
@@ -285,6 +343,30 @@ expect:
 
 The error sits on the line of the form that threw. The forms above it have already run and printed,
 and the forms below it do not run.
+
+When the throw happens inside a function defined in the box, the error is placed on the line inside
+that function where it happened, rather than on the line that called it:
+
+<!--
+FIELD_TEST
+id: docs.clojure.error-in-defn
+runner: backdoor-box
+tags: [docs, clojure, inline-output]
+timeoutSec: 120
+waitSec: 1.5
+expect:
+  allowExecutionErrors: true
+  outputContains:
+    - "Divide by zero"
+-->
+```diffstatic_runner {data-lang=clojure screenshot="assets/clojure/error_in_defn.png" capture="editor" outputs="inline" expect-error=true wait="4" padding="10" timeout="240" embed=true name="clojure-error-in-defn" w="900" h="240" alt="A five-line Clojure box defining mean and calling it on an empty vector. The error Divide by zero sits on line 3, the division inside mean, not on line 5 where mean is called."}
+:::static
+(def readings [])
+(defn mean [values]
+  (/ (reduce + values) (count values)))
+
+(mean readings)
+```
 
 Anything a box writes to `*err*` appears the same way, as an error against the line that wrote it.
 That is how Clojure's own warnings reach you, such as the one for shadowing a `clojure.core` name

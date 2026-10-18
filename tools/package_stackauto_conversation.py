@@ -169,7 +169,8 @@ def source_blocks() -> dict[str, str]:
     starter = DEMOS / STARTER
     code = (folder() / CODE_FILE).read_text()
     for slot in ("explode", "face_decay"):
-        assert f'module.{slot} = """{head(slot)}"""' in code, f"the box's code does not hold stack.auto.{slot}'s HEAD"
+        assignment = rf'module\.{re.escape(slot)}\s*=\s*"""{re.escape(head(slot))}"""'
+        assert re.search(assignment, code), f"the box's code does not hold stack.auto.{slot}'s HEAD"
     starter_fragment = (starter / "polytope_source_fragment_.glsl").read_text()
     final_fragment = (folder() / "polytope_source_fragment_.glsl").read_text()
     return {

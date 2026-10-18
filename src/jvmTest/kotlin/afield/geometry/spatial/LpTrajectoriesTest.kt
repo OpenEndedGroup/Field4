@@ -122,6 +122,101 @@ class LpTrajectoriesTest {
     }
 
     @Test
+    fun chebyshevCentreIsTheCentreOfTheLargestInscribedDisc() {
+        // A 4 × 2 rectangle: the largest disc has radius 1 and its centre anywhere on the midline;
+        // with a triangle the centre is the incentre, unique.
+        val rect = LpPolygon(listOf(vec(0.0, 0.0), vec(4.0, 0.0), vec(4.0, 2.0), vec(0.0, 2.0)))
+        val r = chebyshevCenter(rect.normalX, rect.normalY, rect.bound)
+        assertEquals(1.0, r[2], 1e-9)
+        assertEquals(1.0, r[1], 1e-9)
+        // The 3-4-5 right triangle's inradius is (3 + 4 − 5) / 2 = 1, its incentre (1, 1).
+        val tri = LpPolygon(listOf(vec(0.0, 0.0), vec(4.0, 0.0), vec(0.0, 3.0)))
+        val t = chebyshevCenter(tri.normalX, tri.normalY, tri.bound)
+        assertEquals(1.0, t[0], 1e-9)
+        assertEquals(1.0, t[1], 1e-9)
+        assertEquals(1.0, t[2], 1e-9)
+        // Every first cutting-plane centre for CHEBYSHEV is the pentagon's own Chebyshev centre.
+        val first = pentagon.cuttingPlanes(c, iterations = 1, center = LpCenter.CHEBYSHEV).trajectory.samples.first()
+        val p = chebyshevCenter(pentagon.normalX, pentagon.normalY, pentagon.bound)
+        assertEquals(p[0], first.x, 1e-12)
+        assertEquals(p[1], first.y, 1e-12)
+        assertTrue((0 until pentagon.edgeCount).all { pentagon.slack(it, p[0], p[1]) >= p[2] - 1e-9 })
+    }
+
+    @Test
+    fun volumetricCentreIsStationaryAndDiffersFromTheAnalyticCentre() {
+        // On a square both centres are the middle, by symmetry.
+        val square = LpPolygon.regular(4, 1.0, cx = 0.5, cy = -0.25, rotation = 0.3)
+        val v = volumetricCenter(square.normalX, square.normalY, square.bound, 0.4, -0.2)
+        assertEquals(0.5, v[0], 1e-7)
+        assertEquals(-0.25, v[1], 1e-7)
+        // A triangle with its bottom edge repeated ten times: repeats are ten constraints at the
+        // analytic centre but share one leverage budget at the volumetric centre, so the two differ,
+        // and the volumetric centre is where the volumetric gradient vanishes.
+        val tri = LpPolygon(listOf(vec(-1.0, 0.0), vec(1.0, 0.0), vec(0.0, 2.0)))
+        val nx = tri.normalX + DoubleArray(9) { tri.normalX[0] }
+        val ny = tri.normalY + DoubleArray(9) { tri.normalY[0] }
+        val b = tri.bound + DoubleArray(9) { tri.bound[0] }
+        val volumetric = volumetricCenter(nx, ny, b, 0.0, 0.5)
+        fun vol(x: Double, y: Double): Double {
+            var hxx = 0.0
+            var hxy = 0.0
+            var hyy = 0.0
+            for (i in nx.indices) {
+                val s = b[i] - nx[i] * x - ny[i] * y
+                hxx += nx[i] * nx[i] / (s * s)
+                hxy += nx[i] * ny[i] / (s * s)
+                hyy += ny[i] * ny[i] / (s * s)
+            }
+            return 0.5 * kotlin.math.ln(hxx * hyy - hxy * hxy)
+        }
+        val h = 1e-5
+        val gy = (vol(volumetric[0], volumetric[1] + h) - vol(volumetric[0], volumetric[1] - h)) / (2 * h)
+        val gx = (vol(volumetric[0] + h, volumetric[1]) - vol(volumetric[0] - h, volumetric[1])) / (2 * h)
+        assertTrue(hypot(gx, gy) < 1e-4, "volumetric gradient ($gx, $gy)")
+        assertEquals(0.0, volumetric[0], 1e-7)
+        // The analytic centre of the same constraints, on the symmetry axis x = 0 by grid search:
+        // the ten repeats push it well up, away from the bottom edge; the volumetric centre less so.
+        var analytic = 0.0
+        var bestLog = Double.NEGATIVE_INFINITY
+        for (step in 1 until 4000) {
+            val y = step * 0.0005
+            val f = nx.indices.sumOf { kotlin.math.ln(b[it] - ny[it] * y) }
+            if (f > bestLog) {
+                bestLog = f
+                analytic = y
+            }
+        }
+        assertTrue(analytic - volumetric[1] > 0.05, "volumetric y ${volumetric[1]} vs analytic y $analytic")
+    }
+
+    @Test
+    fun warmStartedCentralPathMatchesTheColdOneInFewerNewtonSteps() {
+        val continuation = LpContinuation()
+        var warmSteps = 0
+        var coldSteps = 0
+        for (frame in 0..40) {
+            val theta = 0.02 * frame
+            val direction = vec(kotlin.math.cos(theta), kotlin.math.sin(theta))
+            val moved = LpPolygon(pentagon.vertices.map { vec(it.x * (1.0 + 0.002 * frame), it.y) })
+            val warm = continuation.centralPath(moved, direction, samples = 90)
+            val cold = moved.centralPath(direction, samples = 90)
+            val gap = warm.samples.indices.maxOf { hypot(warm.samples[it].x - cold.samples[it].x, warm.samples[it].y - cold.samples[it].y) }
+            assertTrue(gap < 1e-6, "frame $frame: warm and cold paths differ by $gap")
+            if (frame > 0) {
+                warmSteps += warm.solverSteps
+                coldSteps += cold.solverSteps
+            }
+        }
+        assertTrue(warmSteps < 0.85 * coldSteps, "warm $warmSteps Newton steps vs cold $coldSteps")
+        continuation.reset()
+        assertEquals(null, continuation.last)
+        // A previous path with a different sample count is ignored, not misused.
+        val other = pentagon.centralPath(c, samples = 40, warm = pentagon.centralPath(c, samples = 90))
+        assertEquals(40, other.samples.size)
+    }
+
+    @Test
     fun polygonInputIsNormalisedOrRejectedClearly() {
         val clockwise = LpPolygon(pentagon.vertices.reversed() + pentagon.vertices.last())
         assertEquals(5, clockwise.edgeCount)
@@ -142,5 +237,49 @@ class LpTrajectoriesTest {
         assertFailsWith<IllegalArgumentException> { pentagon.centralPath(c, doubleArrayOf(1.0, -1.0, 1.0, 1.0, 1.0)) }
         assertTrue(LpPolygon.regular(7, 2.0).edgeCount == 7)
         assertTrue(pentagon.ellipsoid(c, 3).ellipses[0].toFLine() is FLine)
+    }
+
+    @Test
+    fun hullDropsInteriorDuplicateAndCollinearPoints() {
+        val corners = listOf(vec(0, 0), vec(4, 0), vec(4, 3), vec(0, 3))
+        val messy = listOf(
+            vec(2, 1), vec(4, 3), vec(0, 0), vec(1, 2), // interior points, in no order
+            vec(2, 0), vec(3, 0), vec(4, 1.5), vec(0, 1), // on edges, between corners
+            vec(4, 0), vec(4, 0), vec(0, 3), vec(0.0000001, 3.0), // repeats, one off by less than mergeDistance
+            vec(3, 2),
+        )
+        val hull = LpPolygon.hull(messy)
+        assertEquals(4, hull.edgeCount, "only the four corners remain: ${hull.vertices}")
+        assertTrue(corners.all { k -> hull.vertices.any { it.distance(k) < 1e-5f } })
+        // Counter-clockwise: positive signed area, and every input point is inside or on the hull.
+        val v = hull.vertices
+        val area2 = v.indices.sumOf { i -> v[i].x.toDouble() * v[(i + 1) % v.size].y - v[(i + 1) % v.size].x.toDouble() * v[i].y }
+        assertEquals(24.0, area2, 1e-5)
+        assertTrue(messy.all { hull.violation(it.x.toDouble(), it.y.toDouble()) < 1e-6 })
+        // The same hull from either winding and from a scrambled order.
+        assertEquals(4, LpPolygon.hull(corners.reversed()).edgeCount)
+        assertEquals(4, LpPolygon.hull(messy.shuffled(java.util.Random(3))).edgeCount)
+    }
+
+    @Test
+    fun hullOfANonConvexDrawnLineAndItsFailures() {
+        // A star: non-convex, so the strict constructor refuses it and the hull keeps its five tips.
+        val star = FLine()
+        for (k in 0 until 10) {
+            val a = Math.PI / 2 + Math.PI * k / 5
+            val r = if (k % 2 == 0) 2.0 else 0.8
+            if (k == 0) star.moveTo(r * kotlin.math.cos(a), r * kotlin.math.sin(a)) else star.lineTo(r * kotlin.math.cos(a), r * kotlin.math.sin(a))
+        }
+        star.lineTo(0.0, 2.0)
+        assertFailsWith<IllegalArgumentException> { LpPolygon.of(star) }
+        val hull = LpPolygon.hullOf(star)
+        assertEquals(5, hull.edgeCount)
+        val path = hull.centralPath(c)
+        assertTrue(path.samples.all { hull.containsStrictly(it.x, it.y) })
+        val tip = hull.optimalVertex(c)
+        assertTrue(hypot(path.last.x - tip.x, path.last.y - tip.y) < 1e-3)
+
+        assertTrue(assertFailsWith<IllegalArgumentException> { LpPolygon.hull(listOf(vec(0, 0), vec(1, 1), vec(2, 2), vec(3, 3))) }.message!!.contains("one line"))
+        assertTrue(assertFailsWith<IllegalArgumentException> { LpPolygon.hull(listOf(vec(1, 1), vec(1, 1), vec(2, 2))) }.message!!.contains("3 distinct"))
     }
 }

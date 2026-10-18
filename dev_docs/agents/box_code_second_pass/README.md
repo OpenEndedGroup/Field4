@@ -90,7 +90,45 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Tracked real analyses and usable corpus fragments](../box_code_adoption_batch_43/README.md) | Seven findings addressed, including the pending fresh-service helper proof; actual beat/pitch jobs, three Smile fits, corpus index/query/placement and whole-box Stop/relaunch verified; eleven formatting states. |
 
-[Machine checkpoint](checkpoint.json): **300 of 405 findings addressed**; 105 remain open. These counts do not claim
+| [Beginner graphics, live speed and quoted-code formatting](../box_code_adoption_batch_45/README.md) | Four findings addressed; identical native triangle/reruns, live speed assignment and Stop, saved fallbacks and two genuine docs captures; ten Kotlin and six GLSL bodies formatted. |
+
+| [Teaching comments and accurate controls](../box_code_adoption_batch_46/README.md) | Eight findings addressed; 80 Kotlin states and two GLSL shaders mechanically checked, baseline executable tokens preserved; full guards delegated to the lander. |
+
+| [Clear the remaining CV overlays](../box_code_adoption_batch_47/README.md) | Three findings addressed; real SharedImage camera equality, eight native SharedLines phases and both relaunches; three Kotlin bodies formatted with Python preserved. |
+
+| [Responsive long loops](../box_code_adoption_batch_48/README.md) | Two findings addressed; actual worker exits within 7ms of cancellation, seeded completion unchanged and both drawing after-states yield to the Runloop; nine Kotlin states formatted. |
+
+| [Teaching headers and explicit shader contracts](../box_code_adoption_batch_49/README.md) | Six findings addressed; ten Kotlin bodies, five shader bodies, five collection conversions; unchanged baseline calculations/interfaces and codec-verified saved fallbacks. |
+
+| [Synchronize statistics lesson copies](../box_code_adoption_batch_50/README.md) | Three findings addressed; actual three-cycle dependence and calibrated rolling transcripts; existing alife layout proof reused; five Kotlin bodies and five collection conversions. |
+
+| [Named defaults and live band gain](../box_code_adoption_batch_51/README.md) | Four findings addressed; six real browser control groups, both callback variants with assignment/reset-only relaunch proof, 24 Kotlin states mechanically checked. |
+
+| [Keep downloaded examples local and preserve their sampling contracts](../box_code_adoption_batch_52/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+| [Release Csound listeners and held notes with their controlling run](../box_code_adoption_batch_53/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+| [Expose seeded paint controls and keep particle rows readable](../box_code_adoption_batch_54/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
+
+| [Release native study solids after copying scene geometry](../box_code_adoption_batch_55/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+| [Format the frozen Kotlin and GLSL corpus with preservation receipts](../box_code_adoption_batch_56/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+| [Close headless browser setup paths and preserve recorded source identities](../box_code_adoption_batch_57/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+| [Keep single-character crowd palettes finite and reject empty crowds](../box_code_adoption_batch_58/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+| [Restore recording animation and expose procedural-only study controls](../box_code_adoption_batch_59/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+| [Use inherited renderer and bundle in the live pass-chain example](../box_code_adoption_batch_60/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+| [Read inherited aperture textures and controls directly](../box_code_adoption_batch_61/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
+
+| [Refresh generated RectSL material shaders on rerun](../box_code_adoption_batch_62/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
+
+| [Use the projected camera for cube lighting and explain shader spaces](../box_code_adoption_batch_63/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **354 of 405 findings addressed**; 51 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 

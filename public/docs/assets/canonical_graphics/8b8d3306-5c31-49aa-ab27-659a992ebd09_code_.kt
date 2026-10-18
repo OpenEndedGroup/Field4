@@ -4,9 +4,9 @@ var numVec4 = 16
 
 // we need a ssboSizer to size and allocate storage for this compute module
 var module = computeModuleHere {
-    ssboSizer = { ubo -> 
+    ssboSizer = { ubo ->
         numVec4 * 4 * 4
-    }   
+    }
 }
 
 var m = ComputeMesh()
@@ -21,27 +21,26 @@ renderer += "runCompute" to module
 
 var fr = 0
 // initial input
-module.InputBuffer.mapAndWrite  {
+module.InputBuffer.mapAndWrite {
     this.clear()
     for (n in 0 until numVec4) {
-        this.add(n.toFloat()*13.0)
+        this.add(n.toFloat() * 13.0)
     }
     this.clear()
 }
 
 frames {
-    while(true) {
+    while (true) {
 
-        //print output
+        // print output
         module.OutputBuffer.mapAndRead {
             var s = "${fr}:: "
             this.clear()
-            for(n in 0 until 10)
-                s+=this.get(n).toString()+" "
+            for (n in 0 until 10) s += this.get(n).toString() + " "
             print(s)
-        }   
+        }
 
         fr++
         frame()
-    }    
+    }
 }

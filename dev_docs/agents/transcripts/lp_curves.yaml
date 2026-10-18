@@ -6,11 +6,13 @@ description: >
 
     1. lp_routes — one pentagon and one objective direction, and every route there: the barrier
        method's central path, a fan of central paths, the primal-dual iterates, a PDHG spiral, the
-       ellipsoid method with its ellipses, the simplex walk and analytic-centre cutting planes.
+       ellipsoid method with its ellipses, the simplex walk and analytic-centre cutting planes,
+       drawn with +y up.
        Captions carry each method's own numbers. Change `c` or the weights and re-run.
     2. lp_turning — launched. The objective direction turns once every twelve seconds while the
        hexagon's vertices breathe, and the central path, the PDHG spiral and the simplex walk are
-       recomputed for every picture (twenty a second). Watch the routes swing from vertex to vertex.
+       recomputed for every picture (twenty a second), the central path warm-started from the last
+       picture's through an LpContinuation. Watch the routes swing from vertex to vertex.
        Change `tau`, the weights or the period and run it again; re-running replaces the loop.
 operations:
   - create:
@@ -49,6 +51,7 @@ operations:
                   [outline] + cuts.regions.map { r -> polylineFrom(r, closed = true).also { it.color = vec(0.6, 0.8, 1.0, 0.4) } } +
                       cuts.trajectory.toFLine(),
               columns = 4,
+              yUp = true,
               cellWidth = 260,
               cellHeight = 230,
           )
@@ -63,7 +66,7 @@ operations:
           import kotlin.math.*
 
           // The objective turns once every `period` seconds while the hexagon breathes. Every route is
-          // recomputed from scratch for each picture; they are cheap.
+          // recomputed for each picture; they are cheap.
           val period = 12.0
           val tau = 0.3
           val weights = doubleArrayOf(1.0, 1.0, 3.0, 1.0, 1.0, 1.0)
@@ -78,13 +81,15 @@ operations:
               })
           }
 
+          // Each frame's central path starts Newton from the previous frame's: same path, fewer steps.
+          val continuation = LpContinuation()
           val started = AnimationClock.nowSeconds()
           var nextDraw = 0.0
           val draw: (Double) -> Unit = { t ->
               val polygon = shape(t)
               val theta = 2.0 * PI * t / period
               val c = vec(cos(theta), sin(theta))
-              val central = polygon.centralPath(c, weights, samples = 90)
+              val central = continuation.centralPath(polygon, c, weights, samples = 90)
               val spiral = polygon.pdhg(c, iterations = 300, tau = tau, sigma = tau)
               val walk = polygon.simplexWalk(c)
               val o = polygon.center
@@ -108,6 +113,7 @@ operations:
                   height = 500,
                   window = window,
                   interactive = false,
+                  yUp = true,
               )
           }
 

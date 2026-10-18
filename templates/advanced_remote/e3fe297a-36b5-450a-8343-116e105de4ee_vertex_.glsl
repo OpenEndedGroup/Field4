@@ -32,6 +32,7 @@ uniform mat4 projectionMatrix;
 
 attribute float size;
 
+// Bound by the remote JavaScript: componentwise normal displacement in object space.
 uniform vec3 foo;
 
 void main()
@@ -45,14 +46,15 @@ void main()
     P.xyz += normal*foo;
 
     // we transform the _position_ by the camera
-    gl_Position = modelViewMatrix * vec4( P, 1.0);
+    gl_Position = modelViewMatrix * vec4(P, 1.0);
 
+    // 300.0 sets the point-size scale; view-space depth makes distant points smaller.
     gl_PointSize = size * 300.0 / abs(gl_Position.z);
 
-//    gl_PointSize = -normal.z*10.0;
+    //    gl_PointSize = -normal.z*10.0;
 
     // and project it onto the screen
-    gl_Position = projectionMatrix  * gl_Position;
+    gl_Position = projectionMatrix * gl_Position;
 
     // and figure out what this does to the normal
     vNormal = normalMatrix * normal;

@@ -27,13 +27,15 @@ language is functions from queries to lists of events.
 // Nothing is stored. Ask the same pattern three different questions.
 val drums = pat("bd sd hh hh")
 
-val answers = [
-    "one cycle" to PatArc(PatQ.ZERO, PatQ.ONE),
-    "second half" to PatArc(PatQ.of(1, 2), PatQ.ONE),
-    "cycle 97" to PatArc(PatQ.of(97), PatQ.of(98)),
-].joinToString("\n") { (label, arc) ->
-    "%-12s %s".format(label, drums.events(arc).joinToString("  ") { "${it.value}@${it.arc.start}" })
-}
+val answers =
+    [
+            "one cycle" to PatArc(PatQ.ZERO, PatQ.ONE),
+            "second half" to PatArc(PatQ.of(1, 2), PatQ.ONE),
+            "cycle 97" to PatArc(PatQ.of(97), PatQ.of(98)),
+        ]
+        .joinToString("\n") { (label, arc) ->
+            "%-12s %s".format(label, drums.events(arc).joinToString("  ") { "${it.value}@${it.arc.start}" })
+        }
 println(answers)
 display("<pre>" + answers + "</pre>")
 ```
@@ -511,9 +513,9 @@ It arrives two ways at once: the atom is still `bd:3` for anything reading names
 Every card above is one line in a box, and the same renderer draws whatever you are editing:
 
 ```diffstatic {data-lang=kotlin}
-showPatMini("polymeter-sub")                                     // the published card
-showPatRollOf("mine" to pat("bd(5,8,2), hh*8?0.2"), cycles = 4)  // anything else, same scale
-showPatAudio(pat("bd(5,8,2), hh*8?0.2"), cycles = 4, cps = 2.0)  // and hear it
+showPatMini("polymeter-sub") // the published card
+showPatRollOf("mine" to pat("bd(5,8,2), hh*8?0.2"), cycles = 4) // anything else, same scale
+showPatAudio(pat("bd(5,8,2), hh*8?0.2"), cycles = 4, cps = 2.0) // and hear it
 ```
 
 ---
@@ -546,10 +548,12 @@ The useful consequence: a signal can drive a *parameter* without changing the rh
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/continuous-parameter.png" wait="2" capture="box" open-outputs="true" name="pat-doc-parameter"}
 :::static
-// Lane 1 is a cutoff staircase typed out by hand, one literal per note — the whole of what
-// a pattern language without signals can do. Lane 2 is appBoth, which shatters four kicks
-// into sixteen. Lanes 3-5 are `with(cutoff(curve))` over 4, 8 and 16 notes: the same curve,
-// sampled at whatever density the rhythm happens to be, note count untouched.
+/*
+Lane 1 is a cutoff staircase typed out by hand, one literal per note — the whole of what
+a pattern language without signals can do. Lane 2 is appBoth, which shatters four kicks
+into sixteen. Lanes 3-5 are `with(cutoff(curve))` over 4, 8 and 16 notes: the same curve,
+sampled at whatever density the rhythm happens to be, note count untouched.
+*/
 showPatRoll("continuous-parameter")
 :::fold open the output pane
 displayOpen("main")
@@ -629,9 +633,9 @@ spell out the word that made it — sixteen steps of it are `x..xx.x..x..xx.x`. 
 a `k` inside the Euclidean brackets, and `g` asks for the other reading:
 
 ```diffstatic {data-lang=kotlin}
-struct(kolakoski(16), pat("bd"))    // the figure, as a bass drum
-pat("bd(k16) hh*4")                 // the same, in a string
-pat("bd(g16)")                      // each term as the gap to the next onset instead
+struct(kolakoski(16), pat("bd")) // the figure, as a bass drum
+pat("bd(k16) hh*4") // the same, in a string
+pat("bd(g16)") // each term as the gap to the next onset instead
 ```
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/kolakoski.png" wait="2" capture="box" open-outputs="true" name="pat-doc-kolakoski"}
@@ -670,8 +674,8 @@ sequence of *densities* rather than durations — each term saying how many hits
 group of slots — and let the Euclidean algorithm decide where inside the group those hits sit:
 
 ```diffstatic {data-lang=kotlin}
-val counts = kolakoskiWord(8)                                  // 1 2 2 1 1 2 1 2 — sums to 12
-val hybrid = pat(counts.joinToString(" ") { "[bd($it,3)]" })   // [bd(1,3)] [bd(2,3)] …
+val counts = kolakoskiWord(8) // 1 2 2 1 1 2 1 2 — sums to 12
+val hybrid = pat(counts.joinToString(" ") { "[bd($it,3)]" }) // [bd(1,3)] [bd(2,3)] …
 ```
 
 Eight groups of three slots is a twenty-four slot bar carrying twelve onsets, which is exactly the
@@ -691,7 +695,8 @@ showPatRollOf(
     "kolakoski x euclid" to hybrid,
     "euclid(12,24)" to struct(euclid(12, 24), pat("bd")),
     "kolakoski(24)" to struct(kolakoski(24), pat("bd")),
-    title = "12 onsets in 24 slots, three ways", cycles = 2
+    title = "12 onsets in 24 slots, three ways",
+    cycles = 2,
 )
 :::fold open the output pane
 displayOpen("main")
@@ -713,10 +718,10 @@ whole scene, both figures and the audio, is the `kolakoski_euclid`
 plays it.
 
 ```diffstatic {data-lang=kotlin}
-patCondense("x ~ ~ x ~ x ~ ~").notation          // x(3,8)
-patCondense(kolakoskiMask(16)).notation          // x(k16)
-patCondense("bd [hh hh] sd [cp cp]").notation    // bd hh*2 sd cp*2
-pat("bd sd hh cp").rev().condense().notation     // cp hh sd bd
+patCondense("x ~ ~ x ~ x ~ ~").notation // x(3,8)
+patCondense(kolakoskiMask(16)).notation // x(k16)
+patCondense("bd [hh hh] sd [cp cp]").notation // bd hh*2 sd cp*2
+pat("bd sd hh cp").rev().condense().notation // cp hh sd bd
 ```
 
 The search covers the grammar the rest of this page describes: atoms and `~`, `_` and `@n`, `[ ]` at
@@ -771,17 +776,24 @@ val crossing = pat("a b c").slow(2)
 
 val lines = buildList {
     // One wide query: three notes, and b genuinely spans the bar line.
-    add("drawn    " + crossing.events(PatArc(PatQ.ZERO, PatQ.of(2)))
-        .joinToString("  ") { "${it.value}[${it.arc}]" })
+    add(
+        "drawn    " + crossing.events(PatArc(PatQ.ZERO, PatQ.of(2))).joinToString("  ") { "${it.value}[${it.arc}]" },
+    )
     // Cycle by cycle, b comes back twice — but only one fragment carries its onset.
     for (cycle in 0..1) {
-        add("cycle $cycle  " + crossing.events(PatArc(PatQ.of(cycle), PatQ.of(cycle + 1)))
-            .joinToString("  ") { "${it.value}[${it.arc}]" + if (it.hasOnset) "" else " (continues)" })
+        add(
+            "cycle $cycle  " +
+                crossing.events(PatArc(PatQ.of(cycle), PatQ.of(cycle + 1))).joinToString("  ") {
+                    "${it.value}[${it.arc}]" + if (it.hasOnset) "" else " (continues)"
+                },
+        )
     }
     // And what actually gets played: three notes, each at its full length.
-    add("played   " + crossing.eventSequence(0).take(3).toList()
-        .joinToString("  ") { "${it.value}[${it.arc}]" })
-}.joinToString("\n")
+    add(
+        "played   " + crossing.eventSequence(0).take(3).toList().joinToString("  ") { "${it.value}[${it.arc}]" },
+    )
+}
+    .joinToString("\n")
 println(lines)
 display("<pre>" + lines + "</pre>")
 ```
@@ -876,21 +888,19 @@ From the inside it is a graph node, `op = "pat"`, and every number in the patter
 one of its leaves.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/fn-graph.png" wait="2" capture="box" open-outputs="true" name="pat-doc-fn-graph"}
-import afield.math.functions.extractParameters
-import afield.math.functions.graphNode
-import afield.math.functions.graphText
-
 val gesture = patFn("g:(0.3,0.12) adsr:(0.8,0.01,0.08,0.4,0.2)", cps = 2.0, range = 0.9)
 val node = gesture.graphNode()
 
-val report = """
+val report =
+    """
 op        ${node.op}
 source    ${node.strings["source"]}
 knobs     ${node.children.joinToString("  ") { it.role }}
 values    ${gesture.extractParameters().joinToString("  ")}
 
 ${gesture.graphText()}
-""".trimIndent()
+"""
+        .trimIndent()
 
 println(report)
 display("<pre>" + report + "</pre>")
@@ -908,10 +918,6 @@ wrong numbers: wrong heights, wrong widths. Adam moves the leaves until the curv
 coincide, and the fitted result comes back out as **pattern text you can paste into a box**:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/fn-fit.png" wait="5" capture="box" open-outputs="true" name="pat-doc-fn-fit"}
-import afield.math.functions.Functions
-import afield.math.functions.fitGradient
-import afield.math.functions.graphNode
-
 with(Functions) {
     val target = patFn("g:(0.9,0.18) g:(0.1,0.18)", cps = 1.0, range = 0.9)
     val seed = patFn("g:(0.7,0.25) g:(0.3,0.12)", cps = 1.0, range = 0.9)
@@ -922,11 +928,13 @@ with(Functions) {
     plot(target, 0.0..2.0, channel = "1 target", title = "target  g:(0.9,0.18) g:(0.1,0.18)")
     plot(run.fitted, 0.0..2.0, channel = "2 fitted", title = "fitted from a wrong-numbered seed")
 
-    val report = """
+    val report =
+        """
     seed    ${seed.graphNode().strings["source"]}
     fitted  ${run.fitted.graphNode().strings["source"]}
     RMSE    ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}
-    """.trimIndent()
+    """
+            .trimIndent()
     println(report)
     display("<pre>" + report + "</pre>")
 }

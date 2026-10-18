@@ -92,7 +92,9 @@ quoted string after `chnget`, `chnset`, `invalue` or `outvalue`, it offers the o
 names. In the score it offers instrument numbers and names.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/csound/completion.png" transcript="assets/transcripts/csound_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="csound-completion" alt="Field's completion popup in a Csound box at the prefix posc, under the header CSOUND OPCODES. The rows are poscil and poscil3, each with the manual's shortest syntax line underneath: ares poscil aamp, acps [, ifn, iphs]. The panel beside them reads High precision oscillator., then the six syntax lines of poscil in a code block, then a list of its arguments — ifn, iphs, ares, kamp, kcps — each with one sentence from the manual, and last the manual's section, Signal Generators: Basic Oscillators, and a link to csound.com/docs/manual/poscil.html."}
-ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';")
+ui.eval(
+    "window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';",
+)
 ui.openEditor("csound_completion")
 ui.pause(900)
 ui.waitForSelector(".monaco-editor", 15000.0)
@@ -138,7 +140,9 @@ ui.openEditor("csound_doc_pluck")
 ui.waitForSelector(".monaco-editor", 15000.0)
 ui.pause(1000)
 ui.editorHeight(470)
-ui.eval("var e = window.globalEditor; e.focus(); e.setPosition({lineNumber: 5, column: 1}); e.revealLine(5); return 'ok';")
+ui.eval(
+    "var e = window.globalEditor; e.focus(); e.setPosition({lineNumber: 5, column: 1}); e.revealLine(5); return 'ok';",
+)
 ui.waitForSelector(".afield-line-note", 10000.0)
 ui.pause(600)
 ```
@@ -151,7 +155,9 @@ ui.openEditor("csound_doc_pluck")
 ui.waitForSelector(".monaco-editor", 15000.0)
 ui.pause(1000)
 ui.editorHeight(470)
-ui.eval("var e = window.globalEditor; e.focus(); e.setPosition({lineNumber: 16, column: 1}); e.revealLine(16); return 'ok';")
+ui.eval(
+    "var e = window.globalEditor; e.focus(); e.setPosition({lineNumber: 16, column: 1}); e.revealLine(16); return 'ok';",
+)
 ui.waitForSelector(".afield-line-note", 10000.0)
 ui.pause(600)
 ```
@@ -180,17 +186,19 @@ running `CsoundInstance`, and its `node` is that Csound's place in Field's audio
 ```diffstatic {data-lang=kotlin}
 val pluck = csoundOf("pluck").csound
 
-pluck.setChannel("cutoff", 900)                 // chnget "cutoff" sees it on the next k-cycle
-pluck.setStringChannel("voice", "from Kotlin")  // an S channel
-println(pluck.channel("level"))                 // what chnset last wrote
+pluck.setChannel("cutoff", 900) // chnget "cutoff" sees it on the next k-cycle
+pluck.setStringChannel("voice", "from Kotlin") // an S channel
+println(pluck.channel("level")) // what chnset last wrote
 
 [57, 60, 64, 69].forEachIndexed { k, note ->
-    pluck.event("i \"Pluck\" ${k * 0.5} 0.5 $note -12")   // p-fields from Kotlin values
+    pluck.event("i \"Pluck\" ${k * 0.5} 0.5 $note -12") // p-fields from Kotlin values
 }
 
-pluck.onOutvalue("level") { v -> println("Reverb rms $v") }   // outvalue "level", krms
-pluck.setInvalue("gain", 0.5)                                  // invalue "gain"
-pluck.noteOn(0, 64, 90)                                        // MIDI, to massign'ed instruments
+// The orchestra can keep playing after this controlling box stops.
+val run = requireNotNull(afield.runtime.lifecycle.RunScope.current())
+run.own(pluck.onOutvalue("level") { v -> println("Reverb rms $v") }) // outvalue "level", krms
+pluck.setInvalue("gain", 0.5) // invalue "gain"
+pluck.noteOn(0, 64, 90) // MIDI, to massign'ed instruments
 ```
 
 What each of these does, and on which thread:
@@ -219,8 +227,8 @@ out as Field signals:
 
 ```diffstatic {data-lang=kotlin}
 val fx = csoundOf("fx")
-fx.node.connect("in", SawOsc(Param(110f)) * Param(0.15f))   // ain chnget "in"
-fx.node.audioOut("wet").pan(-0.5f)                           // chnset aL, "wet"
+fx.node.connect("in", SawOsc(Param(110f)) * Param(0.15f)) // ain chnget "in"
+fx.node.audioOut("wet").pan(-0.5f) // chnset aL, "wet"
 ```
 
 `node.outL` and `node.outR` are Csound's `outs` as two Field signals. All of these are rendered on
@@ -236,20 +244,25 @@ The same holds offline. `renderSignalsOffline` advances any number of signals th
 blocks, without a device, which is how this box measures a Csound filter on a Field sine:
 
 ```diffstatic {data-lang=kotlin}
-val cs = afield.audio.csound.CsoundInstance("""
+val cs =
+    afield.audio.csound.CsoundInstance(
+        """
 instr Filter
   ain   chnget    "in"
   alow  butterlp  ain, 500
         chnset    alow, "low"
 endin
-""", "i \"Filter\" 0 z")
+""",
+        "i \"Filter\" 0 z",
+    )
 val node = cs.node(audioIn = mapOf("in" to SineOsc(Param(1000f))))
 val (dry, low) = renderSignalsOffline(0.5, SineOsc(Param(1000f)), node.audioOut("low"))
 cs.close()
 ```
 
-It prints a gain of 0.2420. A second-order Butterworth lowpass passes twice its cutoff at
-1/√(1 + 2⁴) = 0.2425.
+This excerpt returns the dry and lowpass sample arrays. The full `csound_demo` starting point
+measures their RMS ratio and prints a gain of 0.2420. A second-order Butterworth lowpass
+passes a signal at twice its cutoff with gain 1/√(1 + 2⁴) = 0.2425.
 
 ## Csound inside a Kotlin box
 
@@ -257,7 +270,9 @@ When the Kotlin is the larger part, `csound` compiles an orchestra and score ins
 returns a `CsoundLaunch`. Return it as the box's last expression to hear it:
 
 ```diffstatic {data-lang=kotlin}
-val drone = csound("""
+val drone =
+    csound(
+        """
 chn_k "pitch", 1, 2, 110, 55, 440
 chn_k "cutoff", 1, 2, 1200, 200, 6000
 instr 1
@@ -269,7 +284,9 @@ instr 1
   a1 moogladder a1, kc, 0.3
   outs a1, a1
 endin
-""", "i1 0 z")
+""",
+        "i1 0 z",
+    )
 csoundControls(drone)
 drone
 ```

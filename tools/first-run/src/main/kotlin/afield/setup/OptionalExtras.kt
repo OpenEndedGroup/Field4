@@ -47,6 +47,9 @@ internal val extrasCatalog = listOf(
     Extra("slang", "Slang shader compiler", "Graphics", "public/docs/afield_four_graphics.md", setOf("uv"), "prepareSlangCompiler", advice = "Fetches Field's pinned, checksummed slangc for live Slang boxes (vertex_fragment and friends). Field prefers it to the Vulkan SDK's and any slangc on PATH. Does not build the learned shaders."),
     // Appended so existing numbered setup selections keep their meaning.
     Extra("solidcraft", "SolidCraft parametric CAD", "Native libraries", "public/docs/solidcraft.md", setOf("python3", "git", "cargo", "rustc", "compiler"), "buildSolidCraftNative", advice = "Builds Field's C/FFM bridge inside a pinned SolidCraft source checkout. Needs Rust/Cargo 1.95 or newer, network on first build, and several minutes. Check with ./gradlew smokeSolidCraft; the welcome screen has a SolidCraft starting point."),
+    Extra("morse-smale", "Morse-Smale complexes", "Native libraries", "public/docs/morse_smale.md", setOf("python3", "cmake", "compiler"), "buildMorseSmaleNative", advice = "Builds Field's own Morse-Smale library (no downloads, no other dependencies) and runs its native test. Check with NativeGeometry.describe() in a box."),
+    Extra("principal-curves", "Principal curves and trees", "Native libraries", "public/docs/principal_curves.md", setOf("python3", "cmake", "compiler"), "buildPrincipalCurvesNative", advice = "Builds Field's elastic principal graph library (an ElPiGraph port; no downloads, no other dependencies) and runs its native test."),
+    Extra("polyvector", "Line-drawing vectorization (polyvector)", "Native libraries", "public/docs/polyvector.md", setOf("python3", "cmake", "compiler"), "buildPolyvectorNative", setOf("linux", "mac"), "Needs OpenCV, Boost and Eigen development packages (setup installs them with Homebrew, apt, dnf or pacman). Downloads the authors' pinned, MIT-licensed implementation on first build. Windows is not yet supported by the build."),
 )
 
 internal fun platformId(os: String): String = when {
@@ -127,6 +130,9 @@ internal fun artifactCandidates(root: File, id: String, platform: String, enviro
         "syphon" -> "AFIELD_SYPHON_LIBRARY" to listOf("build/field-syphon/libfield_syphon.dylib")
         "shaders" -> "" to listOf("build/lighting/learned-shader/learned-scalar.spv")
         "slang" -> "AFIELD_SLANGC" to listOf("build/lighting/slangc.path")
+        "morse-smale" -> "AFIELD_MORSE_SMALE_LIBRARY" to listOf("build/field-morse-smale/build/${library("field_morse_smale")}", "build/field-morse-smale/build/Release/${library("field_morse_smale")}")
+        "principal-curves" -> "AFIELD_PRINCIPAL_CURVES_LIBRARY" to listOf("build/field-principal-curves/build/${library("field_principal_curves")}", "build/field-principal-curves/build/Release/${library("field_principal_curves")}")
+        "polyvector" -> "AFIELD_POLYVECTOR_LIBRARY" to listOf("build/field-polyvector/build/${library("field_polyvector")}")
         else -> return emptyList()
     }
     // libpd's Windows target keeps its lib prefix, unlike the other native wrappers.

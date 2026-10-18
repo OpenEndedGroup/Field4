@@ -1,0 +1,11 @@
+{
+  "bodies": 2953,
+  "statuses": {
+    "language-review": 13,
+    "candidate": 1107,
+    "already-formatted": 1823,
+    "parse-review": 10
+  },
+  "rawLiteralsRestored": 37,
+  "rule": "Kotlin formatter may change commas/semicolons; all other executable tokens match and raw literals are restored exactly. GLSL punctuation remains exact."
+}

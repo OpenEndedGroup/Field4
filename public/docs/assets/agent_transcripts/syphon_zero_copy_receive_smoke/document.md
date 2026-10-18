@@ -37,25 +37,28 @@ start(renderer::run)
 <!-- field-box id="syphon_zero_copy_smoke" index="1" -->
 
 ```edn [field-box id="syphon_zero_copy_smoke" role="properties"]
-{"id" "syphon_zero_copy_smoke" "index" 1 "name" "Syphon receive, zero-copy, exact pixels" "parents" ["root" "syphon_zero_copy_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "syphon_zero_copy_renderer"} "name" "Syphon receive, zero-copy, exact pixels" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_zero_copy_smoke_code_.kt" "lines" 80 "characters" 3652 "sha256" "209db44415840e536532a6a1c534db3f2349613ba406dce561e13302828029d5"} {"name" "vertex" "language" "glsl" "path" "syphon_zero_copy_smoke_vertex_.glsl" "lines" 6 "characters" 138 "sha256" "907a218100d7c3399bd0131de3d4aae514b9fd90ea58b289f8f8b333fa6d650b"} {"name" "fragment" "language" "glsl" "path" "syphon_zero_copy_smoke_fragment_.glsl" "lines" 7 "characters" 270 "sha256" "85655a25a50c56788ef5a3ee94286463b233bd4d029823941e0e051055f9ccbe"}]}
+{"id" "syphon_zero_copy_smoke" "index" 1 "name" "Syphon receive, zero-copy, exact pixels" "parents" ["root" "syphon_zero_copy_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "syphon_zero_copy_renderer"} "name" "Syphon receive, zero-copy, exact pixels" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_zero_copy_smoke_code_.kt" "lines" 95 "characters" 3734 "sha256" "1b11c67bab186457ecedf1e4e23de17eb660721821fe59824819a9e9556f06ca"} {"name" "vertex" "language" "glsl" "path" "syphon_zero_copy_smoke_vertex_.glsl" "lines" 6 "characters" 138 "sha256" "907a218100d7c3399bd0131de3d4aae514b9fd90ea58b289f8f8b333fa6d650b"} {"name" "fragment" "language" "glsl" "path" "syphon_zero_copy_smoke_fragment_.glsl" "lines" 7 "characters" 270 "sha256" "85655a25a50c56788ef5a3ee94286463b233bd4d029823941e0e051055f9ccbe"}]}
 ```
 
 ```kotlin [field-property box="syphon_zero_copy_smoke" name="code" path="syphon_zero_copy_smoke_code_.kt"]
 import afield.io.syphon.*
-import afield.graphics.render.TexturePreviewCache
-import org.lwjgl.vulkan.VK10.*
 import java.io.ByteArrayInputStream
 import java.util.Base64
 import javax.imageio.ImageIO
+import org.lwjgl.vulkan.VK10.*
 
 check(Syphon.isAvailable) { Syphon.describe() }
-val probePath = SyphonLibrary.probePath ?: throw IllegalStateException("field_syphon_probe is missing: ./gradlew buildSyphonNative")
+val probePath =
+    SyphonLibrary.probePath ?: throw IllegalStateException("field_syphon_probe is missing: ./gradlew buildSyphonNative")
 val device = renderer.device
-println("syphon-zero-copy driver=${device.physicalDevice.driverName} metalObjects=${device.supportsMetalObjects} externalMemoryHost=${device.supportsExternalMemoryHost}")
+println(
+    "syphon-zero-copy driver=${device.physicalDevice.driverName} metalObjects=${device.supportsMetalObjects} externalMemoryHost=${device.supportsExternalMemoryHost}",
+)
 
 // 64x48 for the first half of 14 s, then 96x64
 val name = "FieldZeroCopySmoke-${ProcessHandle.current().pid()}"
-val proc = ProcessBuilder(probePath.toString(), "serve", name, "14", "64", "48", "96", "64").redirectErrorStream(true).start()
+val proc =
+    ProcessBuilder(probePath.toString(), "serve", name, "14", "64", "48", "96", "64").redirectErrorStream(true).start()
 val inp = syphonClient(name, 8000)
 val tex = inp.texture()
 prop<SyphonTexture>(syphonIn) = tex
@@ -81,14 +84,23 @@ quad.set(4, 2) {
 
 fun check(w: Int, h: Int) {
     val html: String = TexturePreviewCache.capture(
-        renderer, syphonProbeTarget.colorImageHandles[0], syphonProbeTarget.colorFormats[0], 96, 64,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 96
+        renderer,
+        syphonProbeTarget.colorImageHandles[0],
+        syphonProbeTarget.colorFormats[0],
+        96,
+        64,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        96,
     ) ?: throw IllegalStateException("readback failed")
-    val png = Regex("base64,([^']+)").find(html)?.groupValues?.get(1) ?: throw IllegalStateException("PNG payload missing")
+    val png =
+        Regex("base64,([^']+)").find(html)?.groupValues?.get(1) ?: throw IllegalStateException("PNG payload missing")
     val image = ImageIO.read(ByteArrayInputStream(Base64.getDecoder().decode(png)))
     val points = listOf(1 to 1, w / 4 to h / 4, 3 * w / 4 to h / 4, w / 4 to 3 * h / 4, 3 * w / 4 to 3 * h / 4)
-    val want = listOf(listOf(17, 34, 51), listOf(255, 0, 0), listOf(0, 255, 0), listOf(0, 0, 255), listOf(255, 255, 255))
-    val got = points.map { (x, y) -> image.getRGB(x, y).let { listOf((it ushr 16) and 255, (it ushr 8) and 255, it and 255) } }
+    val want =
+        listOf(listOf(17, 34, 51), listOf(255, 0, 0), listOf(0, 255, 0), listOf(0, 0, 255), listOf(255, 255, 255))
+    val got = points.map { (x, y) ->
+        image.getRGB(x, y).let { listOf((it ushr 16) and 255, (it ushr 8) and 255, it and 255) }
+    }
     println("syphon-zero-copy ${w}x$h path=${tex.path} imports=${tex.imports} frames=${tex.frames} pixels=$got")
     require(got == want) { "${w}x$h: expected $want, sampled $got" }
 }
@@ -107,7 +119,9 @@ loop {
     } else if (phase == 2 && ticks > 1060) {
         check(96, 64)
         val copies = Syphon.cpuCopies - copiesBefore
-        println("syphon-zero-copy frames=${tex.frames} imports=${tex.imports} cpuCopies(texture)=${tex.cpuCopies} cpuCopies(jvm)=$copies")
+        println(
+            "syphon-zero-copy frames=${tex.frames} imports=${tex.imports} cpuCopies(texture)=${tex.cpuCopies} cpuCopies(jvm)=$copies",
+        )
         require(tex.imports == 2L) { "expected one import per surface size, got ${tex.imports}" }
         require(tex.cpuCopies == 0L && copies == 0L) { "frames went through memory: ${tex.cpuCopies} / $copies" }
         require(tex.frames > 100) { "only ${tex.frames} frames arrived" }
@@ -115,12 +129,13 @@ loop {
         end()
     }
     frame()
-}.end {
-    renderer.renderList.others.remove("syphonProbeTarget")
-    tex.close()
-    inp.close()
-    proc.destroy()
 }
+    .end {
+        renderer.renderList.others.remove("syphonProbeTarget")
+        tex.close()
+        inp.close()
+        proc.destroy()
+    }
 ```
 
 ```glsl [field-property box="syphon_zero_copy_smoke" name="vertex" path="syphon_zero_copy_smoke_vertex_.glsl"]

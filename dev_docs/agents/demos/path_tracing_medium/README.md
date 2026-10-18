@@ -10,7 +10,7 @@ lamp's fan is seen in cross-section.
 ## The one parameter to move
 
 ```kotlin
-tracer.mediumDensity = 0.16f   // extinction per world unit
+tracer.mediumDensity = 0.16f // extinction per world unit
 ```
 
 Box 2 cycles it through `0.0`, `0.08`, `0.16`, `0.40` every 192 samples and prints the
@@ -29,7 +29,7 @@ collision spends one of `maxBounces`, so a dense medium runs out of path length.
 Then try the second knob:
 
 ```kotlin
-tracer.mediumAnisotropy = 0.4f   // Henyey-Greenstein g, in (-1, 1)
+tracer.mediumAnisotropy = 0.4f // Henyey-Greenstein g, in (-1, 1)
 ```
 
 `0.8` pulls the glow into a tight forward halo hugging the lamp; `-0.8` throws it back

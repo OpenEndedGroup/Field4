@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="path_trace_renderer" index="0" -->
 
 ```edn [field-box id="path_trace_renderer" role="properties"]
-{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_camera"] "properties" {"children" #{#afield/box "path_trace_camera"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 9 "characters" 219 "sha256" "9c1f4775efdc0df7175c2b6ee2bcf7bda2d78cce64864e565119faeac51ef21f"}]}
+{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_camera"] "properties" {"children" #{#afield/box "path_trace_camera"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 10 "characters" 220 "sha256" "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9"}]}
 ```
 
 ```kotlin [field-property box="path_trace_renderer" name="code" path="path_trace_renderer_code_.kt"]
 import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,36 +32,40 @@ start(renderer::run)
 <!-- field-box id="path_trace_camera" index="1" -->
 
 ```edn [field-box id="path_trace_camera" role="properties"]
-{"id" "path_trace_camera" "index" 1 "name" "camera and depth of field" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "camera and depth of field" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_camera_code_.kt" "lines" 41 "characters" 1977 "sha256" "eeb4ddb0da9265ea40cea5f039c616d5c4198c0e0999e7290cdad6f63b4cf66f"}]}
+{"id" "path_trace_camera" "index" 1 "name" "camera and depth of field" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "camera and depth of field" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_camera_code_.kt" "lines" 47 "characters" 1981 "sha256" "c46a97f10e01dcb933f2e7556f1c65a26085baa3d281accbe33b38b16f0c9952"}]}
 ```
 
 ```kotlin [field-property box="path_trace_camera" name="code" path="path_trace_camera_code_.kt"]
 import afield.graphics.scene.fabricated.*
 import afield.graphics.vulkan.util.Camera
-import afield.graphics.vulkan.util.keyCamera
-import afield.math.linalg.Vector3f
+
 val scene = PathTraceScene()
 val grey = scene.material(PathTraceMaterial.diffuse(0.35f, 0.35f, 0.35f))
 val light = scene.material(PathTraceMaterial.diffuse(0.7f, 0.7f, 0.7f))
 for (z in -8..4) for (x in -7..7) {
-    val m = if ((x+z) and 1 == 0) grey else light
-    scene.quad(Vector3f(x.toFloat(),0f,z.toFloat()), Vector3f(x.toFloat(),0f,z+1f),
-        Vector3f(x+1f,0f,z+1f), Vector3f(x+1f,0f,z.toFloat()), m)
+    val m = if ((x + z) and 1 == 0) grey else light
+    scene.quad(
+        Vector3f(x.toFloat(), 0f, z.toFloat()),
+        Vector3f(x.toFloat(), 0f, z + 1f),
+        Vector3f(x + 1f, 0f, z + 1f),
+        Vector3f(x + 1f, 0f, z.toFloat()),
+        m,
+    )
 }
 val red = scene.material(PathTraceMaterial.plastic(0.65f, 0.035f, 0.015f, 0.25f))
 val gold = scene.material(PathTraceMaterial.metal(0.95f, 0.7f, 0.3f, 0.18f))
 val blue = scene.material(PathTraceMaterial.plastic(0.025f, 0.12f, 0.6f, 0.3f))
-scene.sphere(Vector3f(-1.45f,0.65f,2.3f), 0.65f, red, 48, 24)
-scene.sphere(Vector3f(0f,0.65f,0f), 0.65f, gold, 48, 24)
-scene.sphere(Vector3f(1.8f,0.65f,-3f), 0.65f, blue, 48, 24)
+scene.sphere(Vector3f(-1.45f, 0.65f, 2.3f), 0.65f, red, 48, 24)
+scene.sphere(Vector3f(0f, 0.65f, 0f), 0.65f, gold, 48, 24)
+scene.sphere(Vector3f(1.8f, 0.65f, -3f), 0.65f, blue, 48, 24)
 val camera = Camera(renderer).also {
-    it.at.set(0f,2.6f,8f)
-    it.target.set(0f,0.65f,0f)
+    it.at.set(0f, 2.6f, 8f)
+    it.target.set(0f, 0.65f, 0f)
     it.p.fov = 0.62
 }
 val env = PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
 prop<PathTracingRenderer>(tracer)
-tracer = pathTracingHere(scene, env, width=1280, height=720, camera = camera)
+tracer = pathTracingHere(scene, env, width = 1280, height = 720, camera = camera)
 tracer.apertureRadius = 0.25f // world units; zero switches depth of field off
 tracer.focusDistance = null // keep the camera target in focus
 tracer.pixelJitter = 1f // full-pixel antialiasing; zero samples pixel centres
@@ -73,7 +78,9 @@ tracer.exposure = 1.5f
 tracer.blitToScreen()
 var cameraKeys by keyCamera(renderer = renderer, camera = camera)
 frames {
-    while (tracer.samples < 1024) { frame() }
+    while (tracer.samples < 1024) {
+        frame()
+    }
     println("camera study converged: ${tracer.samples} samples")
 }
 ```

@@ -114,7 +114,7 @@ geometry {
     val c = vertex(0.1, 0.1, -1.0)
     val d = vertex(-0.1, 0.1, -1.0)
 
-    quad(a, b, c, d)          // == triangle(a, b, c) + triangle(a, c, d)
+    quad(a, b, c, d) // == triangle(a, b, c) + triangle(a, c, d)
 }
 ```
 
@@ -235,7 +235,7 @@ An empty builder is a legitimate way to draw nothing:
 
 ```diffstatic {data-lang=kotlin}
 :::static
-geometry { }   // clears the mesh
+geometry {} // clears the mesh
 ```
 
 There is **no** fallback to a built-in cube. A box that never calls `geometry { … }` draws nothing,

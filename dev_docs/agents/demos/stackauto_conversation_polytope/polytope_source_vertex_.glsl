@@ -9,7 +9,11 @@ layout(location = 1) out vec3 vLocal;
 layout(location = 2) flat out float vId;
 layout(location = 3) out float vAway;
 layout(location = 4) out float vRadius;
-layout(push_constant) uniform matrices { mat4 p; mat4 m; vec4 params; } pc;
+layout(push_constant) uniform matrices {
+    mat4 p;
+    mat4 m;
+    vec4 params;
+} pc;
 
 // explode: outward travel and shrink about each face centre.
 {{ stack.auto.explode }}

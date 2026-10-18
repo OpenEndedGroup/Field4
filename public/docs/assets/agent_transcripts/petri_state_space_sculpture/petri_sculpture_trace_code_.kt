@@ -6,9 +6,6 @@ import afield.graphics.scene.fabricated.importTriMesh
 import afield.graphics.vulkan.util.Camera
 import afield.simulation.petri.*
 import java.io.File
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 prop<PathTracingRenderer>(tracer)
 
@@ -18,36 +15,52 @@ fun table(seats: Int) = petri {
     for (i in 0 until seats) {
         val left = i
         val right = (i + 1) % seats
-        t("grab.$i") { from("fork.$left"); to("holding.$i") }
-        t("eat.$i") { from("holding.$i"); from("fork.$right"); to("eating.$i") }
-        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        t("grab.$i") {
+            from("fork.$left")
+            to("holding.$i")
+        }
+        t("eat.$i") {
+            from("holding.$i")
+            from("fork.$right")
+            to("eating.$i")
+        }
+        t("done.$i") {
+            from("eating.$i")
+            to("fork.$left")
+            to("fork.$right")
+        }
     }
 }
 val seats = 5
 val full = table(seats).stateSpace()
 val reduced = table(seats).stateSpace(reduction = PetriReduction.STUBBORN)
 
-// ---- layout: depth is height, the marking decides where on the floor plan ------
-// Each philosopher has a seat on a circle. Holding one fork pulls a marking halfway
-// towards that seat, eating pulls it all the way, and the pulls add.
+/*
+---- layout: depth is height, the marking decides where on the floor plan ------
+Each philosopher has a seat on a circle. Holding one fork pulls a marking halfway
+towards that seat, eating pulls it all the way, and the pulls add.
+*/
 fun seat(i: Int) = Vec3(cos(2 * PI * i / seats).toFloat(), 0f, sin(2 * PI * i / seats).toFloat())
 val layer = 0.62f
 
 fun layout(graph: PetriStateGraph, offsetX: Float): List<Vec3> {
-    val raw = graph.states.indices.map { id ->
-        val m = graph.states[id]
-        val p = Vec3(offsetX, -layer * graph.depth(id), 0f)
-        for (i in 0 until seats) {
-            val pull = 0.5f * m.count("holding.$i") + 1.0f * m.count("eating.$i")
-            p.add(Vec3(seat(i)).mul(pull))
+    val raw =
+        graph.states.indices.map { id ->
+            val m = graph.states[id]
+            val p = Vec3(offsetX, -layer * graph.depth(id), 0f)
+            for (i in 0 until seats) {
+                val pull = 0.5f * m.count("holding.$i") + 1.0f * m.count("eating.$i")
+                p.add(Vec3(seat(i)).mul(pull))
+            }
+            p
         }
-        p
-    }
     // Markings that land on the same spot (the pulls can cancel) are fanned out on a
     // small ring, so every marking stays its own bead.
     val placed = raw.map { Vec3(it) }
-    raw.indices.groupBy { "%.3f %.3f %.3f".format(raw[it].x, raw[it].y, raw[it].z) }
-        .values.filter { it.size > 1 }
+    raw.indices
+        .groupBy { "%.3f %.3f %.3f".format(raw[it].x, raw[it].y, raw[it].z) }
+        .values
+        .filter { it.size > 1 }
         .forEach { group ->
             group.forEachIndexed { k, id ->
                 val a = 2 * PI * k / group.size + 0.4
@@ -108,9 +121,13 @@ fun sculpt(graph: PetriStateGraph, offsetX: Float) {
         val radius = if (edge in lit) 0.026 else 0.011
         val added = scene.importTriMesh(
             tubeMesh(arc(at[edge.from], at[edge.to], axis), radius = radius, sides = 10),
-            material, warning = {},
+            material,
+            warning = {},
         )
-        if (added.triangleCount > 0) { lo.min(added.boundsMin); hi.max(added.boundsMax) }
+        if (added.triangleCount > 0) {
+            lo.min(added.boundsMin)
+            hi.max(added.boundsMax)
+        }
     }
     at.forEachIndexed { id, p ->
         when {
@@ -124,10 +141,14 @@ fun sculpt(graph: PetriStateGraph, offsetX: Float) {
 sculpt(full, offsetX = 0f)
 sculpt(reduced, offsetX = 3.4f)
 
-println("full graph: ${full.stateCount} markings, ${full.edgeCount} firings, " +
-    "deadlock after ${full.deadlockTrace()!!.length}: ${full.deadlockTrace()!!.transitions}")
-println("stubborn-set graph: ${reduced.stateCount} markings, ${reduced.edgeCount} firings, " +
-    "deadlock after ${reduced.deadlockTrace()!!.length}: ${reduced.deadlockTrace()!!.transitions}")
+println(
+    "full graph: ${full.stateCount} markings, ${full.edgeCount} firings, " +
+        "deadlock after ${full.deadlockTrace()!!.length}: ${full.deadlockTrace()!!.transitions}",
+)
+println(
+    "stubborn-set graph: ${reduced.stateCount} markings, ${reduced.edgeCount} firings, " +
+        "deadlock after ${reduced.deadlockTrace()!!.length}: ${reduced.deadlockTrace()!!.transitions}",
+)
 
 // ---- floor, camera, tracer -----------------------------------------------------
 val middle = Vec3(lo).add(hi).mul(0.5f)
@@ -167,6 +188,8 @@ tracer.fogBackground = true
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
 frames {
-    while (tracer.samples < 900) { frame() }
+    while (tracer.samples < 900) {
+        frame()
+    }
     println("petri sculpture converged: ${tracer.samples} samples")
 }

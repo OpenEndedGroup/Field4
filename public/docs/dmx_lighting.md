@@ -27,9 +27,9 @@ This sets two channels on a node at a fixed address:
 ```diffstatic {data-lang=kotlin}
 import afield.io.dmx.*
 
-val out = artnetOut("192.168.1.50")      // a node's IP, or a broadcast address
-out.universe(1)[1] = 255                 // channel 1 of universe 1, full
-out.universe(1).setLevel(2, 0.5)         // channel 2, half
+val out = artnetOut("192.168.1.50") // a node's IP, or a broadcast address
+out.universe(1)[1] = 255 // channel 1 of universe 1, full
+out.universe(1).setLevel(2, 0.5) // channel 2, half
 ```
 
 `artnetOut` returns a `DmxOutput` owned by the box. Its sender thread sends a universe when its
@@ -54,7 +54,7 @@ does what) at a universe and start address, placed at a position in the room:
 import afield.io.dmx.*
 
 val patch = Patch(startUniverse = 1)
-val strip = patch.strip(200, vec(0.0, 0.0), vec(400.0, 0.0))            // 200 RGB pixels
+val strip = patch.strip(200, vec(0.0, 0.0), vec(400.0, 0.0)) // 200 RGB pixels
 val pars = patch.grid(4, 2, spacing = 100.0, profile = FixtureProfile.RGBWA)
 patch.add(FixtureProfile.DIMMER16, universe = 5, address = 1, position = vec(0.0, 300.0))
 
@@ -91,8 +91,8 @@ Three mappers set the colour of every fixture (or of a list you pass as `only`):
 
 ```diffstatic {data-lang=kotlin}
 patch.map { x, y, t -> vec(0.5 + 0.5 * sin(x * 0.03 - t * 2), 0.2, 0.5 + 0.5 * cos(y * 0.05)) }
-patch.mapAlong { u, t -> vec(u, 1 - u, 0.0) }        // u runs 0..1 from the first fixture to the last
-patch.mapImage(imgFromFile("sky.png"))               // the rig's bounding box stretched over the image
+patch.mapAlong { u, t -> vec(u, 1 - u, 0.0) } // u runs 0..1 from the first fixture to the last
+patch.mapImage(imgFromFile("sky.png")) // the rig's bounding box stretched over the image
 ```
 
 `map` hands the function each fixture's position, so the same function drives a strip, a grid or a
@@ -111,7 +111,7 @@ For a white of a given warmth, `colorTemperature(3200.0)` returns the colour of 
 temperature (a curve fit, fine for looks; not a fixture calibration):
 
 ```diffstatic {data-lang=kotlin}
-patch.map { _, _, _ -> colorTemperature(3200.0) }   // tungsten; 5600.0 is daylight
+patch.map { _, _, _ -> colorTemperature(3200.0) } // tungsten; 5600.0 is daylight
 ```
 
 `stripAlong` places a strip on a drawn curve instead of a straight line: LED tape stuck to a shape.
@@ -122,7 +122,7 @@ import afield.io.dmx.*
 
 val tape = FLine().moveTo(0, 0).cubicTo(x0 = 150, y0 = -160, x1 = 250, y1 = 160, x = 400, y = 0)
 val patch = Patch(startUniverse = 1)
-patch.stripAlong(tape, 200)                          // evenly spaced by arc length, ends on the ends
+patch.stripAlong(tape, 200) // evenly spaced by arc length, ends on the ends
 patch.map(0.0) { x, y, _ ->
     vec(0.5 + 0.5 * sin(x * 0.03), 0.5 + 0.5 * sin(x * 0.03 + 2.1), 0.5 + 0.5 * sin(y * 0.03))
 }
@@ -154,7 +154,7 @@ draws what a receiver has for universe `n`, decoded as the fixtures that drive i
 
 ```diffstatic {data-lang=kotlin}
 showPatch(patch, channel = "matrix")
-showUniverse(node, 10, profile = FixtureProfile.RGBW, cols = 16)   // or profile = null for 512 gray slots
+showUniverse(node, 10, profile = FixtureProfile.RGBW, cols = 16) // or profile = null for 512 gray slots
 ```
 
 This box sends an image to a 16 × 8 matrix of RGBW fixtures as sACN, receives it again on this
@@ -168,18 +168,23 @@ val patch = Patch(startUniverse = 10)
 patch.grid(16, 8, spacing = 10.0, profile = FixtureProfile.RGBW, serpentine = true)
 
 // Any Img will do (imgFromFile("...") for a file); here a small gradient made in place.
-val img = Img(64, 32, 3, FloatArray(64 * 32 * 3) { i ->
-    val x = (i / 3) % 64 / 63f
-    val y = (i / 3) / 64 / 31f
-    when (i % 3) {
-        0 -> x
-        1 -> y
-        else -> 1f - x
-    }
-})
+val img = Img(
+    64,
+    32,
+    3,
+    FloatArray(64 * 32 * 3) { i ->
+        val x = (i / 3) % 64 / 63f
+        val y = (i / 3) / 64 / 31f
+        when (i % 3) {
+            0 -> x
+            1 -> y
+            else -> 1f - x
+        }
+    },
+)
 
-val out = sacnOut("127.0.0.1")   // host = null sends to multicast 239.255.0.10 instead
-val node = sacnIn()              // Field as an sACN receiver on UDP 5568
+val out = sacnOut("127.0.0.1") // host = null sends to multicast 239.255.0.10 instead
+val node = sacnIn() // Field as an sACN receiver on UDP 5568
 
 // On the sender's clock: sample the image, then sweep a wave of brightness across it.
 patch.animate(out) { t ->
@@ -205,10 +210,10 @@ wired, and the receiver draws slots in wire order.
 other software (a console, a media server, another Field) can drive it.
 
 ```diffstatic {data-lang=kotlin}
-val input = artnetIn()                  // UDP 6454; sacnIn(universes = [1, 2]) joins multicast groups
-input.channel(1, 1)                     // universe 1, channel 1, 0..255
-input.universe(2)                       // all 512 slots, merged
-input.version(1)                        // bumps when universe 1 may have changed; cheap to poll
+val input = artnetIn() // UDP 6454; sacnIn(universes = [1, 2]) joins multicast groups
+input.channel(1, 1) // universe 1, channel 1, 0..255
+input.universe(2) // all 512 slots, merged
+input.version(1) // bumps when universe 1 may have changed; cheap to poll
 ```
 
 Several sources on one universe are merged. sACN first keeps only the sources at the highest
@@ -224,12 +229,12 @@ universe 2, which is why its grid is mostly empty. Launch it:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dmx_lighting/artnet_received.png" alt="two output panels of received universes: universe 1 full with 170 coloured RGB pixels, universe 2 with 30 coloured pixels and the rest of the grid empty" capture="box" execution="launch" wait="3" wait-output=true wait-output-kind=display wait-output-channel="universe 2" embed=true name="dmx-artnet-received" w="760" h="560"}
 import afield.io.dmx.*
 
-val input = artnetIn()                    // Field as a node on UDP 6454
+val input = artnetIn() // Field as a node on UDP 6454
 
 val tape = FLine().moveTo(0, 0).cubicTo(x0 = 150, y0 = -160, x1 = 250, y1 = 160, x = 400, y = 0)
 val patch = Patch(startUniverse = 1)
 patch.stripAlong(tape, 200)
-val out = artnetOut("127.0.0.1")          // to this machine, so to `input`
+val out = artnetOut("127.0.0.1") // to this machine, so to `input`
 patch.animate(out) { t ->
     map(t) { x, _, time -> vec(0.5 + 0.5 * sin(x * 0.03 - time * 2.0), 0.3, 0.6) }
 }
@@ -246,7 +251,7 @@ An Art-Net input answers ArtPoll, so discovery tools list Field as a node. `artP
 other side: it sends one ArtPoll and returns every `ArtPollReply` that comes back within a second.
 
 ```diffstatic {data-lang=kotlin}
-artPoll("255.255.255.255").forEach { println(it) }   // every node on the network
+artPoll("255.255.255.255").forEach { println(it) } // every node on the network
 ```
 
 ## Synchronised output

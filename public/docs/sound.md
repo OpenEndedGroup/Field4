@@ -154,9 +154,11 @@ Dirt install and `zzzznotadrum` is in none. You can hear where the join falls: t
 drums and one square-wave blip, in one bar.
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/per-event-fallback.wav" audio-spec="per-event-fallback" audio-renderer="afield.audio.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-per-event-fallback"}
-// showDirtAudio(pat("bd zzzznotadrum bd hh") with gain(0.9),
-//               voice = patVoice(wave = PatWave.SQUARE, baseHz = 330.0, ...))
-// offline-rendered by SoundRenderPathDocs — listen below
+/*
+showDirtAudio(pat("bd zzzznotadrum bd hh") with gain(0.9),
+              voice = patVoice(wave = PatWave.SQUARE, baseHz = 330.0, ...))
+offline-rendered by SoundRenderPathDocs — listen below
+*/
 ```
 
 **Voice: real Dirt-Samples where the library had the token, the stand-in synth per event where it did not.**
@@ -206,7 +208,7 @@ showPatAudio(pat("bd ~ sd ~, hh*8") with gain(0.9))
 
 // the real thing — same shape, same annotations
 val played = showDirtAudio(pat("bd ~ sd ~, hh*8") with gain(0.9))
-println(played.describe())          // say which voice you actually got
+println(played.describe()) // say which voice you actually got
 ```
 
 Both put a player in the box's output. `showPatAudio` hands back the rendered

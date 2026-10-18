@@ -1056,6 +1056,21 @@ walk are recomputed twenty times a second. Change the weights or the PDHG step s
 
 [Open ↗](offline.html?file=assets/agent_transcripts/lp_curves/metadata.edn)
 
+### lp_curves_3d
+
+The same methods in three dimensions, the companion to
+[Linear programs as curves, in three dimensions](lp_curves.md#in-three-dimensions). *Every route* takes the convex hull of a
+seeded point cloud as an `LpPolytope` and draws the central path, the primal-dual iterates, the
+simplex walk along the hull's edges and a PDHG spiral to one vertex, in a `three { }` scene you can
+orbit. *A fan of central paths* draws one path per direction over the sphere and turns it on a
+turntable. Change the direction or the seed and run it again.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/lp_curves_3d_fan.png" capture="box" open-outputs="true" wait="6.0" embed=true hidden=true timeout="180" padding="12" name="gallery-lp-curves-3d-fan" alt="A translucent faceted solid with grey edges and a bundle of rainbow-coloured central paths leaving a common point inside it and fanning out to every corner" macro-file="../../dev_docs/agents/transcripts/lp_curves_3d.yaml" capture-box="lp3_fan"}
+// The transcript builds and runs both boxes; this is the fan box, caught mid-turn.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/lp_curves_3d/metadata.edn)
+
 ### close_node_demo
 
 Two boxes about the `Close` node in the middle of an `FLine`, which is a shape
@@ -2200,6 +2215,22 @@ box of three. [Python in Field](python.md) shows both cells' output.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/python_box_parity/metadata.edn)
 
+### clojure_box_parity
+
+**Clojure boxes doing what Kotlin and Python boxes do: errors on the right line, live controls, and
+values from the parent.** Four boxes: a Kotlin language root and three Clojure boxes under it. Run
+the first and the red error marker sits on line 6, inside `mean`, where the division by zero
+happened, not on the call on line 8. The second draws a slider and a checkbox whose handlers are a
+Clojure fn and an atom; ticking the box redraws its `main` panel, and running it again keeps the
+tick. The third prints the root's `speed` property and its Kotlin `palette` variable, both read with
+`(context ...)`. Run the root first. Nothing to install: Clojure ships inside Field.
+
+`DemoTranscriptExecSmokeTest` compiles the Kotlin root and skips the three Clojure boxes, so CI checks
+one box of four; `ClojureFieldCoreTest` and `ClojureHostTest` run what the Clojure boxes use.
+[Clojure in a box](clojure.md) teaches the same calls.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/clojure_box_parity/metadata.edn)
+
 ### fieldcv_webcam
 
 **Your webcam through fieldcv, drawn by the GPU from shared memory.** Eight boxes: a render window; a
@@ -2356,6 +2387,40 @@ CI compiles the boxes; new inference requires that separate environment.
 ![Recorded particles with time, color and trail controls](assets/particle_video/field-view.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/particle_video/metadata.edn)
+
+### morse_smale_explorer
+
+[Morse–Smale complexes](morse_smale.md), three ways. The first box draws the ridges of a
+photograph under a persistence slider. The complex is built once and the slider only re-reads it,
+so dragging is instant. The second, launched, moves six hills around a 200 × 150 grid and
+recomputes the field and its complex on every frame, colouring each critical point by its id; a peak
+keeps its colour while it stays on the same grid cell. The third prints one saddle's four
+separatrices as a table. Needs the optional native library: `./gradlew buildMorseSmaleNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/morse_smale_explorer/metadata.edn)
+
+### principal_curves_explorer
+
+[Principal curves](principal_curves.md), three ways. The first box fits three noisy strands as
+curves under a bending slider and draws a band around each showing how widely its points are
+scattered. The second fits the green pixels of the leaf print as a branching tree. The third,
+launched, moves 2000 points along a travelling wave and refines one forest five iterations a frame
+to follow them, never regrowing it. Needs the optional native library:
+`./gradlew buildPrincipalCurvesNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/principal_curves_explorer/metadata.edn)
+
+### polyvector_explorer
+
+[Line-drawing vectorization](polyvector.md) by polyvector fields. The first box draws a pencil
+sketch with a T-junction, a crossing and a wave, builds its field once, and re-traces it whenever
+the pruning slider moves, drawing the field's streamlines under the curves. The second vectorizes
+the edges of a photograph on a worker thread, which takes about a minute. The third turns the
+vectorized sketch into geometry and treats it as such: parallel outlines, normals and a wave. Needs the optional native
+library and its OpenCV, Boost and Eigen packages: the welcome page's **Geometry extensions** panel
+says how, or run `./gradlew buildPolyvectorNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/polyvector_explorer/metadata.edn)
 
 ## FieldML scenes
 

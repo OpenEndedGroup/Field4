@@ -12,9 +12,11 @@ val out = artnetOut("127.0.0.1")
 // A colour field over (x, y, t), evaluated on the DMX sender's own 44 Hz clock.
 patch.animate(out) { t ->
     map(t) { x, y, time ->
-        vec(0.5 + 0.5 * sin(x * 0.03 - time * 2.0),
+        vec(
+            0.5 + 0.5 * sin(x * 0.03 - time * 2.0),
             0.5 + 0.5 * sin(x * 0.03 - time * 2.0 + 2.1),
-            0.5 + 0.5 * sin(y * 0.03 + time))
+            0.5 + 0.5 * sin(y * 0.03 + time),
+        )
     }
 }
 

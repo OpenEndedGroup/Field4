@@ -88,31 +88,33 @@ copying it into a document that will not be written.
 Nothing in this document needs a GPU, a network, or any setup.
 
 ```edn [field-box id="870b3111-5179-4b74-8e71-06aec8dc8536" role="properties"]
-{"id" "870b3111-5179-4b74-8e71-06aec8dc8536" "index" 2 "name" "How to see read-only mode" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "How to see read-only mode" "frame" #afield/rect [60.0 60.0 530.0 140.0] "nested" #{} "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "870b3111-5179-4b74-8e71-06aec8dc8536_code_.kt" "lines" 23 "characters" 1236 "sha256" "a067194446865b655ce75e21223b8d806cc2cc3af4b606f13afe45afc2344422"}]}
+{"id" "870b3111-5179-4b74-8e71-06aec8dc8536" "index" 2 "name" "How to see read-only mode" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "How to see read-only mode" "frame" #afield/rect [60.0 60.0 530.0 140.0] "nested" #{} "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "870b3111-5179-4b74-8e71-06aec8dc8536_code_.kt" "lines" 25 "characters" 1181 "sha256" "15a94006a81c1d54af28a9b923f46314900fb161260f6b1ae22ade9816d5115c"}]}
 ```
 
 ```kotlin [field-property box="870b3111-5179-4b74-8e71-06aec8dc8536" name="code" path="870b3111-5179-4b74-8e71-06aec8dc8536_code_.kt"]
-// Read-only mode, end to end.
-//
-// Open this document normally:      ./field.sh <workspace> -d read_only_session
-// Open it read-only:                ./field.sh <workspace> -d read_only_session --read-only
-//
-// Read-only is also AFIELD_READ_ONLY=1, -Dafield.readOnly=true, or the agent
-// backdoor's `open --read-only` for a single session.
-//
-// What to look for in a read-only session:
-//
-//   1. An amber pill at the top of the window: READ-ONLY, and in plain words that
-//      nothing you change here will be saved.
-//   2. Type in any box. The pill becomes a running count of the changes that are
-//      going to be discarded. Cursor movement does NOT count -- Monaco's view state
-//      is not part of the document.
-//   3. Try to close or reload the window. The browser asks you to confirm, because
-//      there is work to lose. Field has no explicit save, so this dialog is the only
-//      moment a user would otherwise find out.
-//   4. Drop a file onto the canvas. Refused, with a reason, instead of silently
-//      copying it into a document that will not be written.
-//
-// Nothing in this document needs a GPU, a network, or any setup.
+/*
+Read-only mode, end to end.
+
+Open this document normally:      ./field.sh <workspace> -d read_only_session
+Open it read-only:                ./field.sh <workspace> -d read_only_session --read-only
+
+Read-only is also AFIELD_READ_ONLY=1, -Dafield.readOnly=true, or the agent
+backdoor's `open --read-only` for a single session.
+
+What to look for in a read-only session:
+
+  1. An amber pill at the top of the window: READ-ONLY, and in plain words that
+     nothing you change here will be saved.
+  2. Type in any box. The pill becomes a running count of the changes that are
+     going to be discarded. Cursor movement does NOT count -- Monaco's view state
+     is not part of the document.
+  3. Try to close or reload the window. The browser asks you to confirm, because
+     there is work to lose. Field has no explicit save, so this dialog is the only
+     moment a user would otherwise find out.
+  4. Drop a file onto the canvas. Refused, with a reason, instead of silently
+     copying it into a document that will not be written.
+
+Nothing in this document needs a GPU, a network, or any setup.
+*/
 println("open me with --read-only and read the pill at the top of the window")
 ```

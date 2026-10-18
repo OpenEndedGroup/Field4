@@ -17,19 +17,23 @@ From `code`
 Launch "pluck" first, then launch this: MIDI notes into its massign'ed instr Key.
 
 ```edn [field-box id="cs_keys" role="properties"]
-{"id" "cs_keys" "index" 0 "name" "keys" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "keys" "_tombstone" false "frame" #afield/rect [230.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_keys_code_.kt" "lines" 11 "characters" 309 "sha256" "ade619922f73f14427c12340566cf44565f9ea6daad40236f9c663072157cc70"}]}
+{"id" "cs_keys" "index" 0 "name" "keys" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "keys" "_tombstone" false "frame" #afield/rect [230.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_keys_code_.kt" "lines" 15 "characters" 421 "sha256" "fc0330bf4791bf5fcc0d119050a31e4246e0836aae37060e8c2978937de10f01"}]}
 ```
 
 ```kotlin [field-property box="cs_keys" name="code" path="cs_keys_code_.kt"]
 // Launch "pluck" first, then launch this: MIDI notes into its massign'ed instr Key.
 val pluck = csoundOf("pluck").csound
-val notes = listOf(62, 65, 69, 72, 69, 65)
+val notes = [62, 65, 69, 72, 69, 65]
 var i = 0
 loop {
     val note = notes[i++ % notes.size]
     pluck.noteOn(0, note, 90)
-    delay(220)
-    pluck.noteOff(0, note)
+    try {
+        delay(220)
+    } finally {
+        // Stop can cancel the delay; release this run's note before leaving.
+        pluck.noteOff(0, note)
+    }
     delay(30)
 }
 ```
@@ -45,29 +49,40 @@ From `code`
 A wavetable computed in Kotlin, copied into ftable 1, played by poscil, and read back.
 
 ```edn [field-box id="cs_table" role="properties"]
-{"id" "cs_table" "index" 1 "name" "a table from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a table from Kotlin" "_tombstone" false "frame" #afield/rect [610.0 180.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_table_code_.kt" "lines" 20 "characters" 1026 "sha256" "00df8e88e2ff0e6f60acdfaf53e0bb825eb2c0d2484b1b19b1480f595d6c6c19"}]}
+{"id" "cs_table" "index" 1 "name" "a table from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a table from Kotlin" "_tombstone" false "frame" #afield/rect [610.0 180.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_table_code_.kt" "lines" 31 "characters" 1087 "sha256" "84db6c767bec8178534252dc7111635b8a5f6bcce72f17693db3ae8525e82a0b"}]}
 ```
 
 ```kotlin [field-property box="cs_table" name="code" path="cs_table_code_.kt"]
 // A wavetable computed in Kotlin, copied into ftable 1, played by poscil, and read back.
-val cs = afield.audio.csound.CsoundInstance("""
+val cs =
+    afield.audio.csound.CsoundInstance(
+        """
 giWave  ftgen  1, 0, 4096, 10, 1
 instr Play
   asig  poscil  0.3, 220, giWave
   outs    asig, asig
 endin
-""", "i \"Play\" 0 0.1")
-val partials = listOf(1.0, 0.0, 0.33, 0.0, 0.2, 0.0, 0.14)     // odd harmonics: a square-ish wave
-val wave = DoubleArray(cs.tableLength(1)) { i ->
-    val ph = 2 * PI * i / 4096
-    partials.withIndex().sumOf { (k, a) -> a * sin((k + 1) * ph) }
-}
+""",
+        "i \"Play\" 0 0.1",
+    )
+val partials = listOf(1.0, 0.0, 0.33, 0.0, 0.2, 0.0, 0.14) // odd harmonics: a square-ish wave
+val wave =
+    DoubleArray(cs.tableLength(1)) { i ->
+        val ph = 2 * PI * i / 4096
+        partials.withIndex().sumOf { (k, a) -> a * sin((k + 1) * ph) }
+    }
 cs.writeTable(1, wave)
 val back = cs.table(1)!!
 val (left, _) = cs.renderOffline()
 cs.close()
-println("wrote ${wave.size} values; read back equal: ${wave.contentEquals(back)}; rendered ${left.size} frames, peak ${"%.3f".format(left.maxOf { abs(it) })}")
-showSignals("ftable 1, read back" to (0 until 4096 step 8).map { back[it] }, channel = "table", title = "ftable 1, written from Kotlin")
+println(
+    "wrote ${wave.size} values; read back equal: ${wave.contentEquals(back)}; rendered ${left.size} frames, peak ${"%.3f".format(left.maxOf { abs(it) })}",
+)
+showSignals(
+    "ftable 1, read back" to (0 until 4096 step 8).map { back[it] },
+    channel = "table",
+    title = "ftable 1, written from Kotlin",
+)
 showSignals("poscil 220 Hz" to (0 until 480).map { left[it] }, channel = "played", title = "what poscil plays from it")
 ```
 
@@ -221,29 +236,36 @@ From `code`
 Launch "pluck" first. Every line here talks to the Csound it is playing.
 
 ```edn [field-box id="cs_talk" role="properties"]
-{"id" "cs_talk" "index" 6 "name" "talk to pluck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "talk to pluck" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_talk_code_.kt" "lines" 19 "characters" 1028 "sha256" "885e40d1dada63470823ff50a1ef7244be2fa88933d6163e6e7c7105d7e24b72"}]}
+{"id" "cs_talk" "index" 6 "name" "talk to pluck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "talk to pluck" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_talk_code_.kt" "lines" 26 "characters" 1127 "sha256" "5ed66367e7757e5bd01a7aedc549525868ab40355fd9a266fe07a5ba7b54b781"}]}
 ```
 
 ```kotlin [field-property box="cs_talk" name="code" path="cs_talk_code_.kt"]
 // Launch "pluck" first. Every line here talks to the Csound it is playing.
 val pluck = csoundOf("pluck").csound
 
-pluck.setChannel("cutoff", 900)                 // chnget "cutoff" reads it next k-cycle
-pluck.setStringChannel("voice", "from Kotlin")  // an S channel; Reverb outvalues it back
+pluck.setChannel("cutoff", 900) // chnget "cutoff" reads it next k-cycle
+pluck.setStringChannel("voice", "from Kotlin") // an S channel; Reverb outvalues it back
 println("level now: ${"%.4f".format(pluck.channel("level"))}")
 
 // Every channel the orchestra allocated, with the range chn_k declared for it.
-pluck.channels().forEach { c -> println("${c.name}: ${c.hints?.let { "${it.default} in ${it.min}..${it.max}" } ?: "no hints"}") }
+pluck.channels().forEach { c ->
+    println("${c.name}: ${c.hints?.let { "${it.default} in ${it.min}..${it.max}" } ?: "no hints"}")
+}
 
 // Score events with p-fields from Kotlin values: a rising arpeggio, half a second apart.
-listOf(57, 60, 64, 69).forEachIndexed { k, note ->
+[57, 60, 64, 69].forEachIndexed { k, note ->
     pluck.event("i \"Pluck\" ${k * 0.5} 0.5 $note -12")
 }
 
-// outvalue calls back on Field's main thread.
-pluck.onOutvalue("said") { println("Csound said: $it") }
+// Stop or rerun removes these listeners from the independently playing orchestra.
+val run = requireNotNull(RunScope.current())
+run.own(pluck.onOutvalue("said") { println("Csound said: $it") })
 var n = 0
-pluck.onOutvalue("level") { v -> if (n++ % 40 == 0) display("level", "<div style='padding:8px'>Reverb rms ${"%.4f".format(v as Double)}</div>") }
+run.own(
+    pluck.onOutvalue("level") { v ->
+        if (n++ % 40 == 0) display("level", "<div style='padding:8px'>Reverb rms ${"%.4f".format(v as Double)}</div>")
+    },
+)
 ```
 
 ## 8. Field into fx
@@ -281,27 +303,39 @@ From `code`
 Offline: a Field 1 kHz sine through Csound's butterlp at 500 Hz, and back.
 
 ```edn [field-box id="cs_measured" role="properties"]
-{"id" "cs_measured" "index" 8 "name" "through Csound, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "through Csound, measured" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_measured_code_.kt" "lines" 18 "characters" 1016 "sha256" "4d92947c243bb7e1b4a44daba040b3e8307e218ad7ecc6687f709e7092cf257e"}]}
+{"id" "cs_measured" "index" 8 "name" "through Csound, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "through Csound, measured" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_measured_code_.kt" "lines" 30 "characters" 1070 "sha256" "9aabcc8fad3cf726011ca1deeb6684109871e9027f8f092e1985d98127de2ef4"}]}
 ```
 
 ```kotlin [field-property box="cs_measured" name="code" path="cs_measured_code_.kt"]
 // Offline: a Field 1 kHz sine through Csound's butterlp at 500 Hz, and back.
-val cs = afield.audio.csound.CsoundInstance("""
+val cs =
+    afield.audio.csound.CsoundInstance(
+        """
 instr Filter
   ain   chnget    "in"
   alow  butterlp  ain, 500
   chnset    alow, "low"
 endin
-""", "i \"Filter\" 0 z")
+""",
+        "i \"Filter\" 0 z",
+    )
 val node = cs.node(audioIn = mapOf("in" to SineOsc(Param(1000f))))
 val (dry, low) = renderSignalsOffline(0.5, SineOsc(Param(1000f)), node.audioOut("low"))
 cs.close()
 
 fun rms(x: FloatArray) = sqrt(x.drop(4800).sumOf { it.toDouble() * it } / (x.size - 4800))
-val expected = 1.0 / sqrt(1.0 + 16.0)    // a 2nd-order Butterworth at twice its cutoff
-println("in rms ${"%.4f".format(rms(dry))}, out rms ${"%.4f".format(rms(low))}: gain ${"%.4f".format(rms(low) / rms(dry))}, Butterworth says ${"%.4f".format(expected)}")
+val expected = 1.0 / sqrt(1.0 + 16.0) // a 2nd-order Butterworth at twice its cutoff
+println(
+    "in rms ${"%.4f".format(rms(dry))}, out rms ${"%.4f".format(rms(low))}: gain ${"%.4f".format(rms(low) / rms(dry))}, Butterworth says ${"%.4f".format(expected)}",
+)
 val window = 4800 until 5040
-showSignals("Field sine" to window.map { dry[it] }, "after Csound's butterlp" to window.map { low[it] },
-    x = window.map { it / 48.0 }, channel = "signals", title = "1 kHz in, butterlp 500 Hz, back to Field", xTitle = "ms")
+showSignals(
+    "Field sine" to window.map { dry[it] },
+    "after Csound's butterlp" to window.map { low[it] },
+    x = window.map { it / 48.0 },
+    channel = "signals",
+    title = "1 kHz in, butterlp 500 Hz, back to Field",
+    xTitle = "ms",
+)
 ```
 

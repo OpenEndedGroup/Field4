@@ -11,13 +11,16 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rw_baseline" index="0" -->
 
 ```edn [field-box id="rw_baseline" role="properties"]
-{"id" "rw_baseline" "index" 0 "name" "Baseline (global fixpoint)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Baseline (global fixpoint)" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_baseline_code_.kt" "lines" 6 "characters" 247 "sha256" "ff4378329971eefb62525fba4bb9995e0bba7c19f13b61db20e939b0b0e60f99"}]}
+{"id" "rw_baseline" "index" 0 "name" "Baseline (global fixpoint)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Baseline (global fixpoint)" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_baseline_code_.kt" "lines" 9 "characters" 254 "sha256" "d81018e0cb2da77e890b9a52a5b3e05f3fac84599ccc88910cfdfdce69332d46"}]}
 ```
 
 ```kotlin [field-property box="rw_baseline" name="code" path="rw_baseline_code_.kt"]
 fun p(v: Int) = v
 fun A(v: Int) = v * 10
-rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
+rule("p2a") { x: Expr ->
+    from { p(x) }
+    to { A(x) }
+}
 val r = p(1) + p(2)
 println("baseline (global fixpoint): r = $r  -> both p() rewritten to A(1)+A(2)")
 check(r == 30) { "baseline expected 30, got $r" }
@@ -28,13 +31,16 @@ check(r == 30) { "baseline expected 30, got $r" }
 <!-- field-box id="rw_bottomup" index="1" -->
 
 ```edn [field-box id="rw_bottomup" role="properties"]
-{"id" "rw_bottomup" "index" 1 "name" "bottomup (inner)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "bottomup (inner)" "_tombstone" false "frame" #afield/rect [400.0 260.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_bottomup_code_.kt" "lines" 7 "characters" 269 "sha256" "bf5f22c37b957dcc6404871e79a7f3e7d9efc6e7595196f5c4e186c39481e641"}]}
+{"id" "rw_bottomup" "index" 1 "name" "bottomup (inner)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "bottomup (inner)" "_tombstone" false "frame" #afield/rect [400.0 260.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_bottomup_code_.kt" "lines" 10 "characters" 276 "sha256" "c021645e626b72c4dc383341acb53a5d3963e6e93ce40f451a088d780e23634c"}]}
 ```
 
 ```kotlin [field-property box="rw_bottomup" name="code" path="rw_bottomup_code_.kt"]
 fun f(v: Int) = v * 2
 fun g(v: Int) = v + 100
-rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+rule("fg") { x: Expr ->
+    from { f(x) }
+    to { g(x) }
+}
 strategy { bottomup("fg") }
 val r = f(f(1))
 println("bottomup: r = $r  -> inner f rewritten: f(g(1)) = f(101) = 202")
@@ -46,13 +52,16 @@ check(r == 202) { "bottomup expected 202, got $r" }
 <!-- field-box id="rw_topdown" index="2" -->
 
 ```edn [field-box id="rw_topdown" role="properties"]
-{"id" "rw_topdown" "index" 2 "name" "topdown (outer)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "topdown (outer)" "_tombstone" false "frame" #afield/rect [60.0 260.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_topdown_code_.kt" "lines" 7 "characters" 264 "sha256" "50c5329fa6458442f3580d5ad6db5ca5151d8de9b61480ad634d2ce4f865292b"}]}
+{"id" "rw_topdown" "index" 2 "name" "topdown (outer)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "topdown (outer)" "_tombstone" false "frame" #afield/rect [60.0 260.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_topdown_code_.kt" "lines" 10 "characters" 271 "sha256" "3b00f3141af24312ac6803195fb560e966f280d232d3ea38224a49a9113f9c7c"}]}
 ```
 
 ```kotlin [field-property box="rw_topdown" name="code" path="rw_topdown_code_.kt"]
 fun f(v: Int) = v * 2
 fun g(v: Int) = v + 100
-rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+rule("fg") { x: Expr ->
+    from { f(x) }
+    to { g(x) }
+}
 strategy { topdown("fg") }
 val r = f(f(1))
 println("topdown: r = $r  -> outer f rewritten: g(f(1)) = g(2) = 102")
@@ -64,13 +73,16 @@ check(r == 102) { "topdown expected 102, got $r" }
 <!-- field-box id="rw_repeat" index="3" -->
 
 ```edn [field-box id="rw_repeat" role="properties"]
-{"id" "rw_repeat" "index" 3 "name" "repeat (bounded)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "repeat (bounded)" "_tombstone" false "frame" #afield/rect [400.0 470.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_repeat_code_.kt" "lines" 7 "characters" 307 "sha256" "f63bde9b42245fcbccababf5ac5747aaca9023d7cfcc0c5b75d59986edf826fe"}]}
+{"id" "rw_repeat" "index" 3 "name" "repeat (bounded)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "repeat (bounded)" "_tombstone" false "frame" #afield/rect [400.0 470.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_repeat_code_.kt" "lines" 10 "characters" 314 "sha256" "b06f5c1d0763dfe49c5912c07ddf4dc0840c55b5b7974621c8622d2a878ceea2"}]}
 ```
 
 ```kotlin [field-property box="rw_repeat" name="code" path="rw_repeat_code_.kt"]
 fun f(v: Int) = v * 2
 fun g(v: Int) = v + 100
-rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+rule("fg") { x: Expr ->
+    from { f(x) }
+    to { g(x) }
+}
 strategy { repeat(topdown("fg"), 2) }
 val r = f(f(f(1)))
 println("repeat(topdown, 2): r = $r  -> two outer steps, inner f(1) left: g(g(f(1))) = 202")
@@ -82,15 +94,21 @@ check(r == 202) { "repeat bounded expected 202, got $r" }
 <!-- field-box id="rw_seq" index="4" -->
 
 ```edn [field-box id="rw_seq" role="properties"]
-{"id" "rw_seq" "index" 4 "name" "then (sequence)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "then (sequence)" "_tombstone" false "frame" #afield/rect [740.0 260.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_seq_code_.kt" "lines" 9 "characters" 325 "sha256" "4b38200fe78747a673207eefd300ce321a25719e7f193bf33b759a78b81cfdd6"}]}
+{"id" "rw_seq" "index" 4 "name" "then (sequence)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "then (sequence)" "_tombstone" false "frame" #afield/rect [740.0 260.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_seq_code_.kt" "lines" 15 "characters" 339 "sha256" "47abba3dfe9776e8f31f95612c6f03590d1406dc031d1d04858012d5b3b08150"}]}
 ```
 
 ```kotlin [field-property box="rw_seq" name="code" path="rw_seq_code_.kt"]
 fun p(v: Int) = v
 fun q(v: Int) = v
 fun r0(v: Int) = v * 1000
-rule("p2q") { x: Expr -> from { p(x) }; to { q(x) } }
-rule("q2r") { x: Expr -> from { q(x) }; to { r0(x) } }
+rule("p2q") { x: Expr ->
+    from { p(x) }
+    to { q(x) }
+}
+rule("q2r") { x: Expr ->
+    from { q(x) }
+    to { r0(x) }
+}
 strategy { "p2q" then "q2r" }
 val out = p(5)
 println("then: out = $out  -> p -> q -> r0(5) = 5000")
@@ -102,15 +120,21 @@ check(out == 5000) { "then expected 5000, got $out" }
 <!-- field-box id="rw_choice" index="5" -->
 
 ```edn [field-box id="rw_choice" role="properties"]
-{"id" "rw_choice" "index" 5 "name" "choice (first applicable)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "choice (first applicable)" "_tombstone" false "frame" #afield/rect [60.0 470.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_choice_code_.kt" "lines" 9 "characters" 361 "sha256" "c05d877dc3bb3be6ab388f896c1a5586adf2d6a31ddd5f442d14d1c94fe8cfef"}]}
+{"id" "rw_choice" "index" 5 "name" "choice (first applicable)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "choice (first applicable)" "_tombstone" false "frame" #afield/rect [60.0 470.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_choice_code_.kt" "lines" 15 "characters" 375 "sha256" "676f0080b3c16673d5553e074598fc9832c550ab9e75058243d41cdf1212036f"}]}
 ```
 
 ```kotlin [field-property box="rw_choice" name="code" path="rw_choice_code_.kt"]
 fun pick(v: Int) = v
 fun X(v: Int) = v + 1
 fun Y(v: Int) = v + 2
-rule("toX") { x: Expr -> from { pick(x) }; to { X(x) } }
-rule("toY") { x: Expr -> from { pick(x) }; to { Y(x) } }
+rule("toX") { x: Expr ->
+    from { pick(x) }
+    to { X(x) }
+}
+rule("toY") { x: Expr ->
+    from { pick(x) }
+    to { Y(x) }
+}
 strategy { choice("toY", "toX") }
 val r = pick(10)
 println("choice: r = $r  -> prefers toY though toX is declared first: Y(10) = 12")
@@ -122,7 +146,7 @@ check(r == 12) { "choice expected 12, got $r" }
 <!-- field-box id="rw_subset" index="6" -->
 
 ```edn [field-box id="rw_subset" role="properties"]
-{"id" "rw_subset" "index" 6 "name" "subset (name one rule)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "subset (name one rule)" "_tombstone" false "frame" #afield/rect [740.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_subset_code_.kt" "lines" 10 "characters" 352 "sha256" "d79ea08eb15fd7a3900a681d5605f938c60f9809853e135d49a3005e218d7a43"}]}
+{"id" "rw_subset" "index" 6 "name" "subset (name one rule)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "subset (name one rule)" "_tombstone" false "frame" #afield/rect [740.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_subset_code_.kt" "lines" 16 "characters" 366 "sha256" "427591224cb4238198120ffb563f50735285b6c1b0b9b0bd1f741603f36c172f"}]}
 ```
 
 ```kotlin [field-property box="rw_subset" name="code" path="rw_subset_code_.kt"]
@@ -130,8 +154,14 @@ fun p(v: Int) = v
 fun q(v: Int) = v
 fun A(v: Int) = v * 10
 fun B(v: Int) = v * 100
-rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
-rule("q2b") { x: Expr -> from { q(x) }; to { B(x) } }
+rule("p2a") { x: Expr ->
+    from { p(x) }
+    to { A(x) }
+}
+rule("q2b") { x: Expr ->
+    from { q(x) }
+    to { B(x) }
+}
 strategy { "p2a" }
 val r = p(1) + q(2)
 println("subset: r = $r  -> only p2a fires: A(1) + q(2); q2b left alone")
@@ -143,13 +173,16 @@ check(r == 12) { "subset expected 12, got $r" }
 <!-- field-box id="rw_once" index="7" -->
 
 ```edn [field-box id="rw_once" role="properties"]
-{"id" "rw_once" "index" 7 "name" "once (single site)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "once (single site)" "_tombstone" false "frame" #afield/rect [400.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_once_code_.kt" "lines" 7 "characters" 256 "sha256" "a556f67fbdf54aa1b31aaec84306ff218e51be00ed855edb6293ea5990bc1142"}]}
+{"id" "rw_once" "index" 7 "name" "once (single site)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "once (single site)" "_tombstone" false "frame" #afield/rect [400.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_once_code_.kt" "lines" 10 "characters" 263 "sha256" "4d6cbd30f9dda89783d6e3e1de28906ea9a82c1117a4bb626ee5f4d59155324e"}]}
 ```
 
 ```kotlin [field-property box="rw_once" name="code" path="rw_once_code_.kt"]
 fun p(v: Int) = v
 fun A(v: Int) = v * 10
-rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
+rule("p2a") { x: Expr ->
+    from { p(x) }
+    to { A(x) }
+}
 strategy { once("p2a") }
 val r = p(1) + p(2)
 println("once: r = $r  -> only the first p() rewritten: A(1) + p(2)")
@@ -161,13 +194,16 @@ check(r == 12) { "once expected 12, got $r" }
 <!-- field-box id="rw_nested" index="8" -->
 
 ```edn [field-box id="rw_nested" role="properties"]
-{"id" "rw_nested" "index" 8 "name" "nested pattern (two levels deep)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "nested pattern (two levels deep)" "_tombstone" false "frame" #afield/rect [740.0 470.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_nested_code_.kt" "lines" 8 "characters" 307 "sha256" "155a5e7223ffbc6b3e897ae57b0db994387108f7ea91ee86c5dc5c3911174fde"}]}
+{"id" "rw_nested" "index" 8 "name" "nested pattern (two levels deep)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "nested pattern (two levels deep)" "_tombstone" false "frame" #afield/rect [740.0 470.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_nested_code_.kt" "lines" 11 "characters" 314 "sha256" "c3f66be4b54491585d4897856cce2ae064ee926f3cea818ec1196d531407d0c3"}]}
 ```
 
 ```kotlin [field-property box="rw_nested" name="code" path="rw_nested_code_.kt"]
 fun f(v: Int) = v * 2
 fun g(v: Int) = v + 100
-rule("fg") { x: Expr -> from { f(f(x)) }; to { g(x) } }
+rule("fg") { x: Expr ->
+    from { f(f(x)) }
+    to { g(x) }
+}
 strategy { repeat(topdown("fg"), 2) }
 val r = f(f(f(f(1))))
 println("nested pattern: r = $r  -> each step eats TWO f's: g(g(1)) = g(101) = 201")

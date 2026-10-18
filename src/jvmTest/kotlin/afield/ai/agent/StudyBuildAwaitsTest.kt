@@ -194,6 +194,49 @@ class StudyBuildAwaitsTest {
         }
     }
 
+    @Test fun aResultNoteThatNamesAViewIsShownToTheResumedChatAsAPicture() {
+        // A recipe's result note can name a view of its result (StudyBuildView): when the chat resumes, Field draws it,
+        // captures the box and attaches the picture, so the agent sees what it built, not only its counts.
+        val info = session()
+        val chat = Box("chat").also { it.name = "Chat"; info.boxes[it.id] = it }
+        val viewer = Box("viewer").also { it.name = "Clash close-ups"; info.boxes[it.id] = it }
+        val drawn = java.util.concurrent.atomic.AtomicInteger()
+        val source = Box("source").also { info.boxes[it.id] = it }
+        val builds = StudyBuilds(Files.createTempDirectory("await-view-store").toFile(), listOf(StudyBuildStage("bake", "Bake the mesh", "v1",
+            resultNotes = { r -> listOf(StudyBuildNotice("${r.facts["open"]} findings remain.",
+                view = StudyBuildView("Clash close-ups", "each remaining finding, close up") { drawn.incrementAndGet() })) }) { c ->
+            c.file("mesh.txt").writeText("baked"); StudyBuildProduct(listOf("mesh.txt"), facts = mapOf("open" to 2))
+        }), { emptyMap() })
+        source.properties["_studyBuilds:study"] = BoxStudyBuildBinding(source, "study", builds)
+        val picture = java.awt.image.BufferedImage(40, 30, java.awt.image.BufferedImage.TYPE_INT_RGB).also { g ->
+            for (x in 0 until 40) for (y in 0 until 30) g.setRGB(x, y, if (x > 20) 0xff3030 else 0x101010) }
+        val captured = mutableListOf<String>()
+        val camera = object : FieldGraphHost by LiveFieldGraphHost {
+            override fun <T> onOwner(info: SessionInformation, action: () -> T): T = action()
+            override fun captureOutput(info: SessionInformation, box: Box, settleMs: Int): BoxOutputShot {
+                captured += box.name; return BoxOutputShot(true, "captured", picture, "", listOf("main"))
+            }
+        }
+        builds.use {
+            val job = builds.start("bake", builds.stages().single().fingerprint!!).id
+            waitFor(builds, job, StudyBuildStatus.SUCCEEDED)
+            val resumed = mutableListOf<AiAssist>()
+            StudyBuildAwaits(graphFor = { FieldGraphTools(it, camera) }, resume = { _, _, a -> resumed += a; true }, pollMs = hour,
+                isOpen = { true }).use { awaits ->
+                val suspension = TurnSuspension(listOf(AwaitedBuild("source", "study", job, "bake", "Bake the mesh", builds.directory.path)),
+                    System.currentTimeMillis() + hour)
+                awaits.suspend(info, chat, suspension, "code", 24)
+                awaits.tick()
+            }
+            val continuation = resumed.single()
+            assertEquals(1, drawn.get(), "the view is drawn before it is captured")
+            assertEquals(listOf("Clash close-ups"), captured)
+            assertTrue(continuation.images.single().startsWith("data:image/jpeg;base64,"), "the picture travels with the resumed message")
+            assertContains(continuation.extraPrompt, "Attached: what `Clash close-ups` shows now (each remaining finding, close up).")
+            assertContains(continuation.extraPrompt, "2 findings remain.")
+        }
+    }
+
     @Test fun aRestartedFieldRearmsTheWaitSavedWithTheChat() = fixture().use { f ->
         val job = f.start()
         waitFor(f.builds, job, StudyBuildStatus.RUNNING)

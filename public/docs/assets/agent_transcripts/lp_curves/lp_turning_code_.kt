@@ -1,7 +1,7 @@
 import kotlin.math.*
 
 // The objective turns once every `period` seconds while the hexagon breathes. Every route is
-// recomputed from scratch for each picture; they are cheap.
+// recomputed for each picture; they are cheap.
 val period = 12.0
 val tau = 0.3
 val weights = doubleArrayOf(1.0, 1.0, 3.0, 1.0, 1.0, 1.0)
@@ -16,13 +16,15 @@ val shape = { t: Double ->
     })
 }
 
+// Each frame's central path starts Newton from the previous frame's: same path, fewer steps.
+val continuation = LpContinuation()
 val started = AnimationClock.nowSeconds()
 var nextDraw = 0.0
 val draw: (Double) -> Unit = { t ->
     val polygon = shape(t)
     val theta = 2.0 * PI * t / period
     val c = vec(cos(theta), sin(theta))
-    val central = polygon.centralPath(c, weights, samples = 90)
+    val central = continuation.centralPath(polygon, c, weights, samples = 90)
     val spiral = polygon.pdhg(c, iterations = 300, tau = tau, sigma = tau)
     val walk = polygon.simplexWalk(c)
     val o = polygon.center
@@ -46,6 +48,7 @@ val draw: (Double) -> Unit = { t ->
         height = 500,
         window = window,
         interactive = false,
+        yUp = true,
     )
 }
 

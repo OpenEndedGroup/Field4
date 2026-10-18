@@ -7,6 +7,6 @@ void main() {
     if (i >= CELLS) return;
     ivec2 c = worldCell(i);
     float divergence = (readCell(pc.source, c + ivec2(1,0)).x - readCell(pc.source, c - ivec2(1,0)).x
-                      + readCell(pc.source, c + ivec2(0,1)).y - readCell(pc.source, c - ivec2(0,1)).y) / (2. * H);
+    + readCell(pc.source, c + ivec2(0,1)).y - readCell(pc.source, c - ivec2(0,1)).y) / (2. * H);
     storeCell(i, vec3(divergence, 0, 0));
 }

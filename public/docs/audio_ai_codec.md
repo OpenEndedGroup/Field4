@@ -10,15 +10,21 @@ Faust example.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_codec/reconstruction_microscope.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-codec" alt="Real EnCodec input and reconstruction waveforms, spectra, measured errors and four codebook streams"}
 :::static
-import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
-import java.nio.file.Path
+
 val json = FieldAudioClient.json
 val folder = File("public/docs/assets/audio_ai_codec")
 val result = json.decodeFromString<CodecReconstructionResult>(File(folder, "result.json").readText())
-val data = CodecVisualization.load(result, File(folder, "source.wav").toPath(), File(folder, "reconstruction.wav").toPath(), File(folder, "tokens.npy").toPath())
-display("main", CodecVisualization.renderHtml(data, width = 1040))
-
+val data = CodecVisualization.load(
+    result,
+    File(folder, "source.wav").toPath(),
+    File(folder, "reconstruction.wav").toPath(),
+    File(folder, "tokens.npy").toPath(),
+)
+display(
+    "main",
+    CodecVisualization.renderHtml(data, width = 1040),
+)
 ```
 
 Listen to the [model input](assets/audio_ai_codec/source.wav) and its [EnCodec reconstruction](assets/audio_ai_codec/reconstruction.wav).

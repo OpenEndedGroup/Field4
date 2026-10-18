@@ -18,11 +18,10 @@ Topology is the source of truth. Coordinates and the FLine viewer only arrive af
 selection and the abstract Conway operation have decided what the new faces are.
 
 ```edn [field-box id="polytope_selective_kis" role="properties"]
-{"id" "polytope_selective_kis" "index" 0 "name" "Polytope — selective kis, topology to FLine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — selective kis, topology to FLine" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_selective_kis_code_.kt" "lines" 83 "characters" 2906 "sha256" "dd8491c63d5a5575f9f8e0a3fe5d3ecbafe881a55d37cd949b97ac9debb83cf4"}]}
+{"id" "polytope_selective_kis" "index" 0 "name" "Polytope — selective kis, topology to FLine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — selective kis, topology to FLine" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_selective_kis_code_.kt" "lines" 83 "characters" 2922 "sha256" "03748905f7ecb4b29adf807e81761d2130783f14597efdc123d7adcc831e6583"}]}
 ```
 
 ```kotlin [field-property box="polytope_selective_kis" name="code" path="polytope_selective_kis_code_.kt"]
-
 // Topology is the source of truth. Coordinates and the FLine viewer only arrive after
 // selection and the abstract Conway operation have decided what the new faces are.
 var source = cube()
@@ -53,7 +52,8 @@ println(
     transform = ${result.summary()}
     triangles = ${triangles.summary()}
     orbit the view; hover and click a face to inspect its lineage
-    """.trimIndent(),
+    """
+        .trimIndent(),
 )
 
 val status: (String) -> Unit = { message -> markdown("face provenance", message) }
@@ -65,8 +65,7 @@ val faceLines = polyhedron.toFaceFLines { face, line ->
     val height = (attributes["height"] as? Number)?.toDouble()
     val lineage = result.lineage(face.id)
     val role = (lineage as? ElementLineage.Derived)?.role ?: "source"
-    val sources = result.sourceElements(face.id)
-        .joinToString { "rank ${it.rank} / id ${it.id.value}" }
+    val sources = result.sourceElements(face.id).joinToString { "rank ${it.rank} / id ${it.id.value}" }
 
     line.filled = true
     line.stroked = true
@@ -87,7 +86,8 @@ val faceLines = polyhedron.toFaceFLines { face, line ->
             - deployed height: `$deployed`
             - source: $sources
             - clicked at: `${hit.position}`
-            """.trimIndent(),
+            """
+                .trimIndent(),
         )
     }
 }

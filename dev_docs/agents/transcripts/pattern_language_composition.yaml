@@ -38,9 +38,11 @@ operations:
       frame: { x: 60.0, y: 60.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // A signal is not a new type: it is a PatPattern<Double> that answers EVERY arc with
-          // exactly one event, sampled at the arc's exact rational midpoint. Nothing plays a
-          // continuous pattern directly — you discretise it, and segment(n) is how.
+          /*
+          A signal is not a new type: it is a PatPattern<Double> that answers EVERY arc with
+          exactly one event, sampled at the arc's exact rational midpoint. Nothing plays a
+          continuous pattern directly — you discretise it, and segment(n) is how.
+          */
           showPatRoll("signals-segment")
 
           // The same renderer, live, on whatever you feel like editing:
@@ -53,15 +55,18 @@ operations:
               cycles = 2,
               channel = "live",
           )
-          displayOpen("main"); displayOpen("live")
+          displayOpen("main")
+          displayOpen("live")
 
           // Exactness, not floating point: the midpoint of 3/7 .. 5/7 is exactly 4/7.
           val arc = PatArc(PatQ.of(3, 7), PatQ.of(5, 7))
           println("midpoint of $arc = ${patArcMidpoint(arc)}")
-          println("segment(4) arcs = " + sine().segment(4)
-              .events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "${it.arc}" })
-          println("segment(4) values = " + sine().segment(4)
-              .events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "%.4f".format(it.value) })
+          println(
+              "segment(4) arcs = " + sine().segment(4).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "${it.arc}" },
+          )
+          println(
+              "segment(4) values = " + sine().segment(4).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "%.4f".format(it.value) },
+          )
   # 2 ── structure choice: the operator family, and the event tables it produces.
   - create:
       box: pat_demo_structure
@@ -80,20 +85,26 @@ operations:
           // A lambda, not a named `fun`: K2 cannot codegen a named function inside a box that
           // captures the script's implicit Box receiver (which `println` needs).
           val table = { label: String, p: PatPattern<Double> ->
-              val events = p.events(PatArc(PatQ.ZERO, PatQ.ONE))
-                  .sortedBy { it.arc.start.toDouble() }
-              println("%-10s %d events  %s".format(label, events.size,
-                  events.joinToString(" ") { "[${it.arc.start}..${it.arc.end}]=${patFormatNumber(it.value)}" }))
+              val events = p.events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
+              println(
+                  "%-10s %d events  %s"
+                      .format(
+                          label,
+                          events.size,
+                          events.joinToString(" ") { "[${it.arc.start}..${it.arc.end}]=${patFormatNumber(it.value)}" },
+                      ),
+              )
           }
-          table("|+| both", twos.`|+|`(threes))   // 4 events: the intersection grid
-          table("|+ left", twos.`|+`(threes))     // 2 events: exactly the left's
-          table("+| right", twos.`+|`(threes))    // 3 events: exactly the right's
+          table("|+| both", twos.`|+|`(threes)) // 4 events: the intersection grid
+          table("|+ left", twos.`|+`(threes)) // 2 events: exactly the left's
+          table("+| right", twos.`+|`(threes)) // 3 events: exactly the right's
 
           // `/`, `<` and `>` are illegal in a Kotlin identifier, so division is `|over|` and the
           // take-value family spells the arrow as an L or an R. The bar keeps its Tidal meaning.
           table("|over|", twos.`|over|`(threes))
-          println("bd sd `#` x y z w = " + (pat("bd sd").`#`(pat("x y z w")))
-              .events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value })
+          println(
+              "bd sd `#` x y z w = " + (pat("bd sd").`#`(pat("x y z w"))).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value },
+          )
   # 3 ── the counterfactual: a continuous parameter without multiplying the notes.
   - create:
       box: pat_demo_parameter
@@ -101,29 +112,40 @@ operations:
       frame: { x: 60.0, y: 520.0, w: 330.0, h: 100.0 }
       properties:
         code: |
-          // Before tonight the only way to attach a value to an atom was zip(...) with a string
-          // pattern: one literal per note, typed by hand. Now a parameter can be a FUNCTION, and
-          // the note count does not change when you read it.
+          /*
+          Before tonight the only way to attach a value to an atom was zip(...) with a string
+          pattern: one literal per note, typed by hand. Now a parameter can be a FUNCTION, and
+          the note count does not change when you read it.
+          */
           showPatRoll("continuous-parameter")
           displayOpen("main")
 
           val curve = sine().rangex(300, 6000)
           for (n in listOf(4, 8, 16)) {
-              val notes = (pat("45*$n") with cutoff(curve))
-                  .events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
-              println("bd*%-2d -> %2d notes, cutoff %s".format(n, notes.size,
-                  notes.joinToString(" ") { "%.0f".format(it.num("cutoff")) }))
+              val notes =
+                  (pat("45*$n") with cutoff(curve)).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
+              println(
+                  "bd*%-2d -> %2d notes, cutoff %s"
+                      .format(
+                          n,
+                          notes.size,
+                          notes.joinToString(" ") { "%.0f".format(it.num("cutoff")) },
+                      ),
+              )
           }
           // appBoth is the other choice: it intersects both sides, so a 16-step sweep cuts
           // each note where the curve steps:
-          println("appBoth against a 16-step sweep -> " +
-              pat("45*4").appBoth(curve.segment(16)) { a, _ -> a }
-                  .events(PatArc(PatQ.ZERO, PatQ.ONE)).size + " events")
+          println(
+              "appBoth against a 16-step sweep -> " +
+                  pat("45*4").appBoth(curve.segment(16)) { a, _ -> a }.events(PatArc(PatQ.ZERO, PatQ.ONE)).size +
+                  " events",
+          )
 
           // Hear it: a 110 Hz saw whose filter follows the curve, one value latched per note.
           showPatAudio(
               pat("45*16") with cutoff(curve) with gain(0.7),
-              cycles = 4, cps = 2.0,
+              cycles = 4,
+              cps = 2.0,
               voice = patVoice(wave = PatWave.SAW, baseHz = 110.0, decay = 0.012, sustain = 0.3),
               channel = "sound",
           )
@@ -135,9 +157,11 @@ operations:
       frame: { x: 820.0, y: 520.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // Sixteen hats a cycle. `whenCycle` is the existing operator for "from cycle 2 on, play
-          // this instead", so the first half of the file is what the old surface could express and
-          // the second half is the identical pattern with the gain following a sine.
+          /*
+          Sixteen hats a cycle. `whenCycle` is the existing operator for "from cycle 2 on, play
+          this instead", so the first half of the file is what the old surface could express and
+          the second half is the identical pattern with the gain following a sine.
+          */
           val hats = pat("hh*16")
           val demo = hats.whenCycle({ it >= 2 }) { hats with gain(sine().range(0.08, 1.0)) }
 
@@ -146,12 +170,15 @@ operations:
               "gain(sine()) (cycles 2-3)" to (hats with gain(sine().range(0.08, 1.0))),
               title = "the same sixteen hats, before and after",
               subtitle = "rectangle height is the gain each note latched",
-              cycles = 2, paramKey = "gain",
+              cycles = 2,
+              paramKey = "gain",
           )
           displayOpen("main")
 
           val audio = showPatAudio(
-              demo, cycles = 4, cps = 2.0,
+              demo,
+              cycles = 4,
+              cps = 2.0,
               voice = patVoice(wave = PatWave.NOISE, decay = 0.006, sustain = 0.05),
               channel = "sound",
           )
@@ -174,28 +201,40 @@ operations:
           // Spelled from each chord's own root, a progression makes the hand leap. voiceLead()
           // picks each chord's inversion and octave to minimise how far the voices have to move.
           val progression = chords("c'maj7 a'min7 d'min7 g'dom7")
-          val asWritten = progression.events(PatArc(PatQ.ZERO, PatQ.ONE))
-              .sortedBy { it.arc.start.toDouble() }.map { it.value }
-          val voiceLed = progression.voiceLead(center = 60).events(PatArc(PatQ.ZERO, PatQ.ONE))
-              .sortedBy { it.arc.start.toDouble() }.map { it.value }
+          val asWritten = progression.events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }.map { it.value }
+          val voiceLed =
+              progression
+                  .voiceLead(center = 60)
+                  .events(PatArc(PatQ.ZERO, PatQ.ONE))
+                  .sortedBy { it.arc.start.toDouble() }
+                  .map { it.value }
 
           showPatRoll("voice-leading")
           displayOpen("main")
 
           println("as written : $asWritten")
           println("voice-led  : $voiceLed")
-          println("movement   : %.0f semitones as written, %.0f voice-led".format(
-              patTotalVoiceMovement(asWritten), patTotalVoiceMovement(voiceLed)))
-          println("harmony unchanged: " + asWritten.zip(voiceLed).all { (a, b) ->
-              a.map { Math.floorMod(it, 12) }.toSortedSet() == b.map { Math.floorMod(it, 12) }.toSortedSet()
-          })
+          println(
+              "movement   : %.0f semitones as written, %.0f voice-led"
+                  .format(
+                      patTotalVoiceMovement(asWritten),
+                      patTotalVoiceMovement(voiceLed),
+                  ),
+          )
+          println(
+              "harmony unchanged: " +
+                  asWritten.zip(voiceLed).all { (a, b) ->
+                      a.map { Math.floorMod(it, 12) }.toSortedSet() == b.map { Math.floorMod(it, 12) }.toSortedSet()
+                  },
+          )
 
           // Hear both: two cycles as written, two voice-led.
           val arped = progression.arpeggiate().texts()
           val led = progression.voiceLead(center = 60).arpeggiate().texts()
           showPatAudio(
               arped.whenCycle({ it >= 2 }) { led },
-              cycles = 4, cps = 1.0,
+              cycles = 4,
+              cps = 1.0,
               voice = patVoice(wave = PatWave.SINE, decay = 0.02, sustain = 0.45),
               channel = "sound",
           )
@@ -215,8 +254,7 @@ operations:
           val drums = stack(kick, snare, hats).off(1, 16) { it with gain(0.18) }
 
           // A bass line spelled in a scale, with a filter that opens across two cycles.
-          val bass = run(8).scale("minPent", root = 36).texts()
-              .with(sustain(0.5), cutoff(saw().rangex(200, 2400)))
+          val bass = run(8).scale("minPent", root = 36).texts().with(sustain(0.5), cutoff(saw().rangex(200, 2400)))
 
           // A chord pad, voice-led so it does not leap, arpeggiated up.
           val pad = chords("<c'min7 a'maj7> f'maj7").voiceLead(center = 67).arpeggiate().texts()
@@ -231,13 +269,30 @@ operations:
           )
           displayOpen("main")
 
-          showPatAudio(drums, cycles = 4, cps = 2.0,
-              voice = patVoice(decay = 0.01, sustain = 0.08), channel = "drums")
-          showPatAudio(bass, cycles = 4, cps = 2.0,
-              voice = patVoice(wave = PatWave.SAW, decay = 0.03, sustain = 0.5), channel = "bass")
-          showPatAudio(pad, cycles = 4, cps = 2.0,
-              voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.05, sustain = 0.6), channel = "pad")
-          displayOpen("drums"); displayOpen("bass"); displayOpen("pad")
+          showPatAudio(
+              drums,
+              cycles = 4,
+              cps = 2.0,
+              voice = patVoice(decay = 0.01, sustain = 0.08),
+              channel = "drums",
+          )
+          showPatAudio(
+              bass,
+              cycles = 4,
+              cps = 2.0,
+              voice = patVoice(wave = PatWave.SAW, decay = 0.03, sustain = 0.5),
+              channel = "bass",
+          )
+          showPatAudio(
+              pad,
+              cycles = 4,
+              cps = 2.0,
+              voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.05, sustain = 0.6),
+              channel = "pad",
+          )
+          displayOpen("drums")
+          displayOpen("bass")
+          displayOpen("pad")
 
           println("drums: ${drums.events(PatArc(PatQ.ZERO, PatQ.ONE)).size} events/cycle")
           println("bass : ${bass.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value }}")
@@ -256,19 +311,31 @@ operations:
           displayOpen("main")
 
           println("straight : " + hats.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "${it.arc.start}" })
-          println("swing(4) : " + hats.swing(4).events(PatArc(PatQ.ZERO, PatQ.ONE))
-              .sortedBy { it.arc.start.toDouble() }.map { "${it.arc.start}" })
+          println(
+              "swing(4) : " +
+                  hats
+                      .swing(4)
+                      .events(PatArc(PatQ.ZERO, PatQ.ONE))
+                      .sortedBy { it.arc.start.toDouble() }
+                      .map { "${it.arc.start}" },
+          )
 
           // squeeze replaces each event with a whole pattern, compressed into that event's arc —
           // mini-notation nesting, over Kotlin values. Compare `join`, which does not rescale.
           val nested = pat("a b").squeeze { if (it == "a") pat("1 2 3") else pat("4 5") }
-          println("squeeze  : " + nested.events(PatArc(PatQ.ZERO, PatQ.ONE))
-              .sortedBy { it.arc.start.toDouble() }.map { "${it.value}@${it.arc.start}" })
+          println(
+              "squeeze  : " +
+                  nested
+                      .events(PatArc(PatQ.ZERO, PatQ.ONE))
+                      .sortedBy { it.arc.start.toDouble() }
+                      .map { "${it.value}@${it.arc.start}" },
+          )
 
           // Two cycles straight, then two swung. This is the one to listen to.
           showPatAudio(
               hats.whenCycle({ it >= 2 }) { hats.swing(4) },
-              cycles = 4, cps = 2.0,
+              cycles = 4,
+              cps = 2.0,
               voice = patVoice(wave = PatWave.NOISE, decay = 0.008, sustain = 0.06),
               channel = "swing",
           )
@@ -277,7 +344,8 @@ operations:
           // And a full bar from one Euclidean figure: bd on the onsets, hh on everything else.
           showPatAudio(
               euclidFull(3, 8, pat("bd"), pat("hh") with gain(0.35)),
-              cycles = 4, cps = 2.0,
+              cycles = 4,
+              cps = 2.0,
               voice = patVoice(decay = 0.012, sustain = 0.1),
               channel = "euclid",
           )
@@ -289,28 +357,38 @@ operations:
       frame: { x: 820.0, y: 1560.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // Three standalone step markers. Each is shorthand for a bracketed form, so each pair
-          // below must come out arc-for-arc identical — and the roll draws them one above the other
-          // so you can check by eye as well as by assertion.
+          /*
+          Three standalone step markers. Each is shorthand for a bracketed form, so each pair
+          below must come out arc-for-arc identical — and the roll draws them one above the other
+          so you can check by eye as well as by assertion.
+          */
           showPatRoll("mini-notation")
           displayOpen("main")
 
           val pairs = listOf(
-              "bd sd . hh hh hh" to "[bd sd] [hh hh hh]",   // `.` groups
-              "bd _ _ sd" to "bd@3 sd",                     // `_` extends
-              "bd ! ! sd" to "bd!3 sd",                     // bare `!` repeats
+              "bd sd . hh hh hh" to "[bd sd] [hh hh hh]", // `.` groups
+              "bd _ _ sd" to "bd@3 sd", // `_` extends
+              "bd ! ! sd" to "bd!3 sd", // bare `!` repeats
           )
           for ((shorthand, bracketed) in pairs) {
               val a = pat(shorthand).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
               val b = pat(bracketed).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
               val same = a.map { it.arc } == b.map { it.arc } && a.map { it.value } == b.map { it.value }
-              println("%-20s == %-22s : %s   %s".format(shorthand, bracketed, same,
-                  a.joinToString(" ") { "${it.value}@${it.arc.start}" }))
+              println(
+                  "%-20s == %-22s : %s   %s"
+                      .format(
+                          shorthand,
+                          bracketed,
+                          same,
+                          a.joinToString(" ") { "${it.value}@${it.arc.start}" },
+                      ),
+              )
           }
 
           // A `.` inside a token is still part of the token — decimals and sample payloads are safe.
-          println("0.5 1.25 -> " + pat("0.5 1.25").nums()
-              .events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value })
+          println(
+              "0.5 1.25 -> " + pat("0.5 1.25").nums().events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value },
+          )
           println("my_atom  -> " + pat("my_atom b").events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value })
 
           // A sample-index suffix becomes an `n` parameter without changing the atom.
@@ -321,7 +399,8 @@ operations:
           // Hear the dot: two cycles of five even notes, then the same five notes grouped.
           showPatAudio(
               pat("bd sd hh hh hh").whenCycle({ it >= 2 }) { pat("bd sd . hh hh hh") },
-              cycles = 4, cps = 1.0,
+              cycles = 4,
+              cps = 1.0,
               voice = patVoice(decay = 0.012, sustain = 0.12),
               channel = "dot",
           )

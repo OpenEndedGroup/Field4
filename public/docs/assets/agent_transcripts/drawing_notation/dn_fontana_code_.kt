@@ -1,7 +1,9 @@
-// After John Cage's Fontana Mix (1958): six curves, a grid, a point, and a straight line.
-// Cage's performer laid a line from a point inside the grid to one outside it and measured
-// where it crossed the curves. Here the line is yours: draw one across the sheet (Alt+D, then L)
-// and this box reads it. Run the box first; it draws the sheet.
+/*
+After John Cage's Fontana Mix (1958): six curves, a grid, a point, and a straight line.
+Cage's performer laid a line from a point inside the grid to one outside it and measured
+where it crossed the curves. Here the line is yours: draw one across the sheet (Alt+D, then L)
+and this box reads it. Run the box first; it draws the sheet.
+*/
 val colors = listOf("#e03131", "#1971c2", "#2f9e44", "#f08c00", "#9c36b5", "#0c8599")
 notation("sheet") {
     frame("fontana mix", 1200, 100, 900, 520)
@@ -20,4 +22,6 @@ fun read(line: Mark) {
 }
 
 notation.lines.lastOrNull { it.handDrawn }?.let(::read)
-notation.onChange("fontana") { edit -> (edit.added + edit.updated).lastOrNull { it.kind == MarkType.LINE }?.let(::read) }
+notation.onChange("fontana") { edit ->
+    (edit.added + edit.updated).lastOrNull { it.kind == MarkType.LINE }?.let(::read)
+}

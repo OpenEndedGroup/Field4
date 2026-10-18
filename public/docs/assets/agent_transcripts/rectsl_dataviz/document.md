@@ -47,22 +47,25 @@ with a staggered eased `->alpha`. Edit `rectsl` and re-run to change it live.
 See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
 
 ```edn [field-box id="dataviz_figure" role="properties"]
-{"id" "dataviz_figure" "index" 1 "name" "rectsl dataviz" "parents" ["root" "dataviz_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "dataviz_renderer"} "name" "rectsl dataviz" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataviz_figure_code_.kt" "lines" 62 "characters" 1946 "sha256" "0a3a13ce478378cc67d7be1b0666719d6c12f3966b4ec6b5a00f595430bb94b8"}]}
+{"id" "dataviz_figure" "index" 1 "name" "rectsl dataviz" "parents" ["root" "dataviz_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "dataviz_renderer"} "name" "rectsl dataviz" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataviz_figure_code_.kt" "lines" 67 "characters" 1926 "sha256" "60787fac1ed40a2397206f1e384865987c0742cdffd983696d7b554817b9f271"}]}
 ```
 
 ```kotlin [field-property box="dataviz_figure" name="code" path="dataviz_figure_code_.kt"]
-// RectSL data-visualization demo.
-//
-// The #rectsl program draws a viridis colour-bar legend (array + colormap)
-// and a bar chart bound to a data list (data / normalize / bars), animated in
-// with a staggered eased `->alpha`. Edit `rectsl` and re-run to change it live.
-// See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
+/*
+RectSL data-visualization demo.
+
+The #rectsl program draws a viridis colour-bar legend (array + colormap)
+and a bar chart bound to a data list (data / normalize / bars), animated in
+with a staggered eased `->alpha`. Edit `rectsl` and re-run to change it live.
+See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
+*/
+import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 import afield.lang.rectsl.RectAnimationOracle
 import afield.lang.rectsl.rectMaterialShaderCode
 import afield.lang.rectsl.writeFrameToMesh
-import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
-val rectsl = """
+val rectsl =
+    """
 #rectsl
 ->wall 20 10 meters
 ->duration 6
@@ -80,13 +83,15 @@ val rectsl = """
 """
 
 val program = RectAnimationOracle.compile(rectsl).program!!
-val shader  = rectMaterialShaderCode(program)
+val shader = rectMaterialShaderCode(program)
 
-// Seed this box's shader-source properties before `moduleHere {}` runs; the
-// `//%-` fragment break makes this fragment execute first (see the playground
-// transcript for the why).
+/*
+Refresh the generated fragment on every run before `moduleHere {}`; the
+`//%-` fragment break makes this fragment execute first (see the playground
+transcript for the why).
+*/
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
-once.fragment { shader.exampleFragmentShader!! }
+fragment = shader.exampleFragmentShader!!
 
 //%-
 

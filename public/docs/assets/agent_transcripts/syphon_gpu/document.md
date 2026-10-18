@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="syphon_gpu_renderer" index="0" -->
 
 ```edn [field-box id="syphon_gpu_renderer" role="properties"]
-{"id" "syphon_gpu_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["syphon_gpu_publish" "syphon_gpu_receive"] "properties" {"children" #{#afield/box "syphon_gpu_publish" #afield/box "syphon_gpu_receive"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_gpu_renderer_code_.kt" "lines" 11 "characters" 257 "sha256" "03e8713c75d9569dc75c7d1d3c498e4f5a7666b33feae447c434503726e16e8a"}]}
+{"id" "syphon_gpu_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["syphon_gpu_publish" "syphon_gpu_receive"] "properties" {"children" #{#afield/box "syphon_gpu_publish" #afield/box "syphon_gpu_receive"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_gpu_renderer_code_.kt" "lines" 12 "characters" 258 "sha256" "683951a73ff938de55dfa931eb8ce4230eb983a94d382275f66db53fd9c061b5"}]}
 ```
 
 ```kotlin [field-property box="syphon_gpu_renderer" name="code" path="syphon_gpu_renderer_code_.kt"]
 import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false

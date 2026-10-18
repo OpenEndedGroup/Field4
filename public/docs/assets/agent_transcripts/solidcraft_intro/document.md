@@ -11,21 +11,20 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="solidcraft_compare" index="0" -->
 
 ```edn [field-box id="solidcraft_compare" role="properties"]
-{"id" "solidcraft_compare" "index" 0 "name" "SolidCraft — a parameter changes the part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidCraft — a parameter changes the part" "_tombstone" false "frame" #afield/rect [80.0 80.0 500.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidcraft_compare_code_.kt" "lines" 43 "characters" 1973 "sha256" "8c0d66b42d4e46b131a43635c99c08e85f92b732fee2e7a3eed561ebdca00176"}]}
+{"id" "solidcraft_compare" "index" 0 "name" "SolidCraft — a parameter changes the part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidCraft — a parameter changes the part" "_tombstone" false "frame" #afield/rect [80.0 80.0 500.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidcraft_compare_code_.kt" "lines" 44 "characters" 1887 "sha256" "2c63f8d297c7fb8e5d70440d2a6e48c643de02296d7a69fdfece3d35d0b90137"}]}
 ```
 
 ```kotlin [field-property box="solidcraft_compare" name="code" path="solidcraft_compare_code_.kt"]
 import afield.geometry.solid.solidcraft.SolidCraftDesign
 import afield.geometry.solid.solidcraft.SolidCraftLibrary
-import afield.geometry.mesh.MeshRenderer
-import afield.geometry.mesh.MeshView
-import afield.geometry.mesh.showMeshGrid
-import afield.geometry.mesh.weld
 
 run {
     if (!SolidCraftLibrary.isAvailable) {
-        display("main", "<div style='padding:24px;background:#101318;color:#e6ecf4;font-family:Iosevka,monospace'>" +
-            "SolidCraft is optional. Run <code>./gradlew buildSolidCraftNative</code>, restart Field, then run this box.</div>")
+        display(
+            "main",
+            "<div style='padding:24px;background:#101318;color:#e6ecf4;font-family:Iosevka,monospace'>" +
+                "SolidCraft is optional. Run <code>./gradlew buildSolidCraftNative</code>, restart Field, then run this box.</div>",
+        )
         println(SolidCraftLibrary.describe())
         return@run
     }
@@ -42,8 +41,10 @@ run {
         val changed = part.summary().getJSONArray("bodies").getJSONObject(0)
         val after = part.mesh(tolerance = tolerance).toTriMesh().weld()
 
-        println("B-rep volume: ${"%.1f".format(original.getDouble("volume"))} → " +
-            "${"%.1f".format(changed.getDouble("volume"))} mm³")
+        println(
+            "B-rep volume: ${"%.1f".format(original.getDouble("volume"))} → " +
+                "${"%.1f".format(changed.getDouble("volume"))} mm³",
+        )
         println("STEP ${part.exportStep().size} bytes; STL ${part.exportStl().size} bytes")
         println("The hole is blind at width > 40 mm: its cut depth stays 20 mm.")
 

@@ -18,12 +18,18 @@ while (p < ltc.size - 1) {
 val frames = LtcDecoder(48000, TimecodeRate.FPS_2997_DF).decodeAll(played.toFloatArray())
 
 // Decoded frame number against playback time, and the speed the decoder measured.
-val w = 640.0; val h = 220.0
+val w = 640.0
+val h = 220.0
 val tMax = played.size / 48000.0
 val fMax = frames.maxOf { it.timecode - start }.toDouble()
-val pts = frames.joinToString(" ") { "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.timecode - start) / fMax * h) }
-val spd = frames.joinToString(" ") { "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.speed - 0.8) / 0.4 * h) }
-display("main", """<svg width="${w + 60}" height="${h + 40}" style="font: 12px sans-serif">
+val pts = frames.joinToString(" ") {
+    "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.timecode - start) / fMax * h)
+}
+val spd =
+    frames.joinToString(" ") { "%.1f,%.1f".format(it.sampleStart / 48000 / tMax * w, h - (it.speed - 0.8) / 0.4 * h) }
+display(
+    "main",
+    """<svg width="${w + 60}" height="${h + 40}" style="font: 12px sans-serif">
   <g transform="translate(40,10)">
     <rect width="$w" height="$h" fill="none" stroke="#999"/>
     <polyline points="$pts" fill="none" stroke="#2a7" stroke-width="2"/>
@@ -31,7 +37,11 @@ display("main", """<svg width="${w + 60}" height="${h + 40}" style="font: 12px s
     <text x="4" y="14" fill="#2a7">decoded frame (0 … ${fMax.toInt()})</text>
     <text x="4" y="${h - 6}" fill="#c52">measured speed (0.8 … 1.2)</text>
     <text x="${w / 2 - 40}" y="${h + 22}" fill="#999">playback time, s (0 … ${"%.2f".format(tMax)})</text>
-  </g></svg>""")
-markdown("info", "decoded **${frames.size}** frames, ${frames.first().timecode} … ${frames.last().timecode}; " +
-    "consecutive: ${frames.zipWithNext().all { (a, b) -> a.timecode + 1 == b.timecode }}; " +
-    "across the minute: ${frames.map { it.timecode.toString() }.filter { it.startsWith("00:00:59;2") || it.startsWith("00:01:00;0") }}")
+  </g></svg>""",
+)
+markdown(
+    "info",
+    "decoded **${frames.size}** frames, ${frames.first().timecode} … ${frames.last().timecode}; " +
+        "consecutive: ${frames.zipWithNext().all { (a, b) -> a.timecode + 1 == b.timecode }}; " +
+        "across the minute: ${frames.map { it.timecode.toString() }.filter { it.startsWith("00:00:59;2") || it.startsWith("00:01:00;0") }}",
+)

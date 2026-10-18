@@ -11,25 +11,22 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="fn_fit_demo" index="0" -->
 
 ```edn [field-box id="fn_fit_demo" role="properties"]
-{"id" "fn_fit_demo" "index" 0 "name" "differentiable Fn fit" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "differentiable Fn fit" "_tombstone" false "frame" #afield/rect [80.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fn_fit_demo_code_.kt" "lines" 16 "characters" 688 "sha256" "5cc09bd172c9398322f4566549d4f9f132db8a1a38b3d68414aac10a8cc66d52"}]}
+{"id" "fn_fit_demo" "index" 0 "name" "differentiable Fn fit" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "differentiable Fn fit" "_tombstone" false "frame" #afield/rect [80.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fn_fit_demo_code_.kt" "lines" 13 "characters" 603 "sha256" "857282fa20aec27e6c582be323852cd22499fc87e7cb07fc9b2020ccae2e1bd3"}]}
 ```
 
 ```kotlin [field-property box="fn_fit_demo" name="code" path="fn_fit_demo_code_.kt"]
-import afield.math.functions.Functions
-import afield.math.functions.fitBest
-
 with(Functions) {
     val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)
-    val seed   = cos(3.4) * sin(1.0, amplitude = 2.0)
+    val seed = cos(3.4) * sin(1.0, amplitude = 2.0)
 
     // fitBest = jittered restarts; escapes the frequency local-minimum a single
     // fitGradient would stall in. domain defaults to 0..1; no Functions.Domain(...) needed.
     val run = fitBest(target, seed, restarts = 16)
 
-    plot(target,     channel = "1 target", title = "target  cos·sin")
+    plot(target, channel = "1 target", title = "target  cos·sin")
     plot(run.fitted, channel = "2 fitted", title = "gradient-fitted (best of 16 restarts)")
 
-    run   // Field renders the FnFitRun: RMSE before -> after + a loss sparkline
+    run // Field renders the FnFitRun: RMSE before -> after + a loss sparkline
 }
 ```
 

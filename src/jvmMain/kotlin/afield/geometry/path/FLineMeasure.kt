@@ -379,8 +379,8 @@ fun FLine.area2D(): Float {
     for (i in nodes.indices) {
         val n = nodes[i]
         if (i == 0 || n is FLine.MoveTo) {
-            if (start != null && pen != null) chord(pen!!, start!!)
-            start = Vec3(endPointOf(i)); pen = Vec3(start!!)
+            if (start != null && pen != null) chord(pen, start)
+            start = Vec3(endPointOf(i)); pen = Vec3(start)
             continue
         }
         val s = segs[i] ?: continue
@@ -392,7 +392,7 @@ fun FLine.area2D(): Float {
         }
         pen = Vec3(s.p3)
     }
-    if (start != null && pen != null) chord(pen!!, start!!)
+    if (start != null && pen != null) chord(pen, start)
     return area.toFloat()
 }
 
@@ -526,7 +526,7 @@ private fun FLine.windingAndCrossings2D(point: Vec2): Pair<Int, Int> {
     var pen: Vec3? = null
     fun closeOff() { val s = start; val p = pen; if (s != null && p != null) edge(p.x.toDouble(), p.y.toDouble(), s.x.toDouble(), s.y.toDouble()) }
     for (i in nodes.indices) {
-        if (i == 0 || nodes[i] is FLine.MoveTo) { closeOff(); start = Vec3(endPointOf(i)); pen = Vec3(start!!); continue }
+        if (i == 0 || nodes[i] is FLine.MoveTo) { closeOff(); start = Vec3(endPointOf(i)); pen = Vec3(start); continue }
         val s = drawnSegmentEndingAt(i) ?: continue
         val n = if (s.straight) 1 else 64
         var prev = s.p0

@@ -875,7 +875,7 @@ class KeyframerTest {
                 assertTrue(kv is KValue.Num, "$value is a Num")
                 assertEquals(kind, kv.kind)
             }
-            val back = kv!!.toAny()
+            val back = kv.toAny()
             assertEquals(value::class, back::class, "$value round-trips to its own type")
             assertEquals(value, back)
         }

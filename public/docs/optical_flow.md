@@ -65,8 +65,12 @@ prop<RenderToTexture>(motion) = flow.output
 For two attachments of one RTT, select them explicitly:
 
 ```diffstatic {data-lang=kotlin}
-val flow = opticalFlow(renderer,
-    pair.imageViewArray[0], pair.imageViewArray[1], grid = 4)
+val flow = opticalFlow(
+    renderer,
+    pair.imageViewArray[0],
+    pair.imageViewArray[1],
+    grid = 4,
+)
 ```
 
 The inputs are borrowed: keep them alive while the operation uses them. `evaluate()` reads their current contents; it neither renders them nor keeps a previous input frame for you. Recreate the operation when dimensions, grid, quality, or input resources change. Call `flow.close()` when finished, after removing consumers of its output.
@@ -110,12 +114,18 @@ Open the [optical_flow_pingpong](agent_transcripts.md#optical_flow_pingpong) sta
 
 ```diffstatic {data-lang=kotlin}
 propDown<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer) {
-    width = 960; height = 540; useDepth = false
+    width = 960
+    height = 540
+    useDepth = false
     format = VK_FORMAT_R16G16B16A16_SFLOAT
 }
 
-val flow = opticalFlow(renderer,
-    history.previousImageView, history.latestImageView, grid = 4)
+val flow = opticalFlow(
+    renderer,
+    history.previousImageView,
+    history.latestImageView,
+    grid = 4,
+)
 propDown<RenderToTexture>(motion) = flow.output
 ```
 
@@ -126,10 +136,10 @@ The example's frame loop is:
 ```diffstatic {data-lang=kotlin}
 // renderSource() is a helper defined in the example: it records history.render(),
 // submits that command buffer, and waits for the source to finish.
-if (reset) renderSource()   // Seed both slots with the same time on startup/reset.
+if (reset) renderSource() // Seed both slots with the same time on startup/reset.
 renderSource()
 flow.evaluate(reset = reset || !animate)
-frame()                    // The child now samples the completed motion texture.
+frame() // The child now samples the completed motion texture.
 ```
 
 Edit the parent's **fragment** to change the source; edit the child's **fragment** to use the motion. **Animate source** pauses time: both slots receive the paused frame, and motion should settle near zero. Repeated paused pairs disable temporal hints on every evaluation. **Reset the pair** seeds both slots and disables hints for that pair. A successful source shader edit does the same, so unrelated old and new patterns are not treated as consecutive animation frames. The parent publishes its textures as `propDown` slots, so relaunching it relaunches the child too, and the child's samplers bind the new allocation.

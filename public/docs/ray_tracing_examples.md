@@ -42,7 +42,9 @@ The shader bindings in these examples are minimal:
 ```diffstatic {data-lang=glsl}
 layout(set = 0, binding = 0, rgba8) uniform image2D outputImage;
 layout(set = 0, binding = 1) uniform accelerationStructureEXT topLevelAS;
-layout(set = 0, binding = 2) uniform RayCamera { /* origin, right, up, forward, fov, aspect */ } rayCamera;
+layout(set = 0, binding = 2) uniform RayCamera {
+    /* origin, right, up, forward, fov, aspect */
+} rayCamera;
 ```
 
 Binding 0 is the storage image that gets read back for the docs. Binding 1 appears only in examples that trace against a TLAS. Binding 2 is the camera block `seedRayCameraUniforms` fills, and only Mirror Balls uses it; the other three hard-code their camera in the raygen shader.
@@ -54,14 +56,16 @@ This is the smallest useful ray tracing pipeline: a single raygen shader writes 
 The module setup is just a raygen stage plus an image resolver:
 
 ```diffstatic {data-lang=kotlin}
-val module = RayTracingModule(
-    Parameters(
-        renderer = renderer,
-        raygen = uvGradientRaygen,
-        imageResolver = { outputImageView },
-        name = "rt-uv-gradient"
-    )
-).pointer()
+val module =
+    RayTracingModule(
+            Parameters(
+                renderer = renderer,
+                raygen = uvGradientRaygen,
+                imageResolver = { outputImageView },
+                name = "rt-uv-gradient",
+            ),
+        )
+        .pointer()
 
 module += "dispatch" to RayTracingDispatch(module, 1024, 1024)
 renderer += "rt-uv-gradient" to module
@@ -86,12 +90,14 @@ void main() {
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-uv-gradient.png" alt="a square filled corner to corner by a smooth two-axis colour ramp, with no geometry in it: bright green at bottom-left, bright red at top-right, yellow at bottom-right where both are strong, and near-black at top-left where neither is. Every ray hit the image plane and nothing else, so what is drawn is the launch index itself" source-image="/tmp/docs-rt-uv-gradient.png" wait="12.0" timeout="120" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-uv-gradient"}
 import afield.graphics.scene.fabricated.RayTracingDocsHarness
-import afield.document.context.fromContext
 
 val renderer: Renderer = fromContext()
 val captureScene: suspend () -> Unit = {
     val image = RayTracingDocsHarness.renderUvGradient("/tmp/docs-rt-uv-gradient.png", renderer)
-    display("render", RayTracingDocsHarness.htmlForImage(image, "UV gradient: raygen writes UV directly to a storage image"))
+    display(
+        "render",
+        RayTracingDocsHarness.htmlForImage(image, "UV gradient: raygen writes UV directly to a storage image"),
+    )
     println("ray tracing example ready")
 }
 start(captureScene)
@@ -105,50 +111,59 @@ Building the acceleration structures is most of the work:
 
 ```diffstatic {data-lang=kotlin}
 val vertices = floatArrayOf(
-    -0.5f, -0.5f, 0.0f,
-     0.5f, -0.5f, 0.0f,
-     0.0f,  0.5f, 0.0f
+    -0.5f,
+    -0.5f,
+    0.0f,
+    0.5f,
+    -0.5f,
+    0.0f,
+    0.0f,
+    0.5f,
+    0.0f,
 )
 
 val vertexBuffer = VulkanBuffer(
     renderer = renderer,
     requestedSize = vertices.size * 4L,
-    usage = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR or
+    usage =
+        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR or
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
     reqMask = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-    needsDeviceAddress = true
+    needsDeviceAddress = true,
 )
 vertexBuffer.mapAndWrite_bytes { asFloatBuffer().put(vertices) }
 
-val blas = AccelerationStructure(renderer, "triangle-blas")
-    .buildBottomLevelNow(
-        triangles = [
-            AccelerationStructureTriangles(
-                vertexBuffer = vertexBuffer,
-                maxVertex = 2,
-                primitiveCount = 1
-            )
-        ]
-    )
+val blas =
+    AccelerationStructure(renderer, "triangle-blas")
+        .buildBottomLevelNow(
+            triangles = [
+                AccelerationStructureTriangles(
+                    vertexBuffer = vertexBuffer,
+                    maxVertex = 2,
+                    primitiveCount = 1,
+                ),
+            ],
+        )
 
-val tlas = AccelerationStructure(renderer, "triangle-tlas")
-    .buildTopLevelNow(instances = [RayTracingInstance(blas)])
+val tlas = AccelerationStructure(renderer, "triangle-tlas").buildTopLevelNow(instances = [RayTracingInstance(blas)])
 ```
 
 Once the TLAS exists, the module connects shader source to the output image and acceleration structure:
 
 ```diffstatic {data-lang=kotlin}
-val module = RayTracingModule(
-    Parameters(
-        renderer = renderer,
-        raygen = triangleRaygen,
-        miss = triangleMiss,
-        closesthit = triangleClosestHit,
-        imageResolver = { outputImageView },
-        accelerationStructureResolver = { tlas },
-        name = "rt-triangle"
-    )
-).pointer()
+val module =
+    RayTracingModule(
+            Parameters(
+                renderer = renderer,
+                raygen = triangleRaygen,
+                miss = triangleMiss,
+                closesthit = triangleClosestHit,
+                imageResolver = { outputImageView },
+                accelerationStructureResolver = { tlas },
+                name = "rt-triangle",
+            ),
+        )
+        .pointer()
 module += "dispatch" to RayTracingDispatch(module, 1024, 1024)
 renderer += "rt-triangle" to module
 ```
@@ -184,7 +199,7 @@ void main() {
 
     payload = vec3(0.05, 0.05, 0.12);
     traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 0, 0,
-                origin, 0.001, dir, 100.0, 0);
+    origin, 0.001, dir, 100.0, 0);
     imageStore(outputImage, px, vec4(payload, 1.0));
 }
 ```
@@ -193,7 +208,6 @@ void main() {
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-triangle-scene.png" alt="one large triangle, point up, centred on a flat very dark blue background. Its three vertices carry red at bottom-left, green at bottom-right and blue at the apex, interpolated smoothly across the face so the middle is a muddy brown-grey. The edges are clean and hard against the background, and nothing else is in the scene" source-image="/tmp/docs-rt-triangle.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-triangle-scene"}
 import afield.graphics.scene.fabricated.RayTracingDocsHarness
-import afield.document.context.fromContext
 
 val renderer: Renderer = fromContext()
 val captureScene: suspend () -> Unit = {
@@ -217,29 +231,41 @@ val zNear = 0.0f
 val zFar = 2.3f
 
 val vertices = floatArrayOf(
-    -half, y, zNear,
-     half, y, zNear,
-     half, y, zFar,
-
-    -half, y, zNear,
-     half, y, zFar,
-    -half, y, zFar
+    -half,
+    y,
+    zNear,
+    half,
+    y,
+    zNear,
+    half,
+    y,
+    zFar,
+    -half,
+    y,
+    zNear,
+    half,
+    y,
+    zFar,
+    -half,
+    y,
+    zFar,
 )
 ```
 
 After those vertices are written into a device-addressable buffer, the BLAS is built as two triangle primitives:
 
 ```diffstatic {data-lang=kotlin}
-val blas = AccelerationStructure(renderer, "shader-tiles-blas")
-    .buildBottomLevelNow(
-        triangles = [
-            AccelerationStructureTriangles(
-                vertexBuffer = quadVertexBuffer,
-                maxVertex = 5,
-                primitiveCount = 2
-            )
-        ]
-    )
+val blas =
+    AccelerationStructure(renderer, "shader-tiles-blas")
+        .buildBottomLevelNow(
+            triangles = [
+                AccelerationStructureTriangles(
+                    vertexBuffer = quadVertexBuffer,
+                    maxVertex = 5,
+                    primitiveCount = 2,
+                ),
+            ],
+        )
 ```
 
 The pattern itself:
@@ -255,7 +281,7 @@ void main() {
     vec3 worldHit = gl_WorldRayOriginEXT + gl_HitTEXT * gl_WorldRayDirectionEXT;
     float tileScale = 3.6;
     float checker = mod(abs(floor(worldHit.x * tileScale)) +
-                        abs(floor(worldHit.z * tileScale)), 2.0);
+    abs(floor(worldHit.z * tileScale)), 2.0);
 
     vec3 lightTile = vec3(0.78, 0.78, 0.82);
     vec3 darkTile = vec3(0.22, 0.22, 0.26);
@@ -270,7 +296,6 @@ void main() {
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-shader-tiles.png" alt="a grey and near-black checkerboard floor seen in steep perspective from just above it, filling the lower two thirds of the square and receding to a hard horizon edge; above that edge is flat very dark blue where rays miss the plane entirely. The squares are large in the foreground and compress towards the back, and the pale ones dim slightly with distance" source-image="/tmp/docs-rt-shader-tiles.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-shader-tiles"}
 import afield.graphics.scene.fabricated.RayTracingDocsHarness
-import afield.document.context.fromContext
 
 val renderer: Renderer = fromContext()
 val captureScene: suspend () -> Unit = {
@@ -288,36 +313,37 @@ This scene combines two kinds of hit group. The checker floor is regular triangl
 The TLAS carries one floor instance and three sphere instances:
 
 ```diffstatic {data-lang=kotlin}
-val floorBlas = AccelerationStructure(renderer, "mirror-floor-blas")
-    .buildBottomLevelNow(
-        triangles = [
-            AccelerationStructureTriangles(
-                vertexBuffer = floorVertexBuffer,
-                maxVertex = 5,
-                primitiveCount = 2
-            )
-        ]
-    )
+val floorBlas =
+    AccelerationStructure(renderer, "mirror-floor-blas")
+        .buildBottomLevelNow(
+            triangles = [
+                AccelerationStructureTriangles(
+                    vertexBuffer = floorVertexBuffer,
+                    maxVertex = 5,
+                    primitiveCount = 2,
+                ),
+            ],
+        )
 
-val sphereBlas = AccelerationStructure(renderer, "mirror-sphere-blas")
-    .buildBottomLevelNow(
-        aabbs = [
-            AccelerationStructureAabbs(
-                aabbBuffer = sphereAabbBuffer,
-                primitiveCount = 1
-            )
-        ]
-    )
+val sphereBlas =
+    AccelerationStructure(renderer, "mirror-sphere-blas")
+        .buildBottomLevelNow(
+            aabbs = [
+                AccelerationStructureAabbs(
+                    aabbBuffer = sphereAabbBuffer,
+                    primitiveCount = 1,
+                ),
+            ],
+        )
 
 val instances = [
     RayTracingInstance(floorBlas, shaderBindingTableRecordOffset = 0),
     RayTracingInstance(sphereBlas, transform = sphereA, shaderBindingTableRecordOffset = 1),
     RayTracingInstance(sphereBlas, transform = sphereB, shaderBindingTableRecordOffset = 1),
-    RayTracingInstance(sphereBlas, transform = sphereC, shaderBindingTableRecordOffset = 1)
+    RayTracingInstance(sphereBlas, transform = sphereC, shaderBindingTableRecordOffset = 1),
 ]
 
-val tlas = AccelerationStructure(renderer, "mirror-balls-tlas")
-    .buildTopLevelNow(instances = instances)
+val tlas = AccelerationStructure(renderer, "mirror-balls-tlas").buildTopLevelNow(instances = instances)
 ```
 
 Because there are two hit groups, the module uses explicit `RayTracingGroups` instead of the single-hit-group shortcut in `Parameters`:
@@ -326,7 +352,7 @@ Because there are two hit groups, the module uses explicit `RayTracingGroups` in
 val groups = RayTracingGroups(
     raygen = RayTracingShaderStage("raygen", ShaderKind.RAYGEN_SHADER, raygenSource),
     miss = mutableListOf(
-        RayTracingShaderStage("miss", ShaderKind.MISS_SHADER, missSource)
+        RayTracingShaderStage("miss", ShaderKind.MISS_SHADER, missSource),
     ),
     hit = mutableListOf(
         RayTracingHitGroup(
@@ -334,35 +360,37 @@ val groups = RayTracingGroups(
             closestHit = RayTracingShaderStage(
                 "floorClosestHit",
                 ShaderKind.CLOSEST_HIT_SHADER,
-                floorClosestHitSource
-            )
+                floorClosestHitSource,
+            ),
         ),
         RayTracingHitGroup(
             name = "mirror-spheres",
             closestHit = RayTracingShaderStage(
                 "sphereClosestHit",
                 ShaderKind.CLOSEST_HIT_SHADER,
-                sphereClosestHitSource
+                sphereClosestHitSource,
             ),
             intersection = RayTracingShaderStage(
                 "sphereIntersection",
                 ShaderKind.INTERSECTION_SHADER,
-                sphereIntersectionSource
-            )
-        )
-    )
+                sphereIntersectionSource,
+            ),
+        ),
+    ),
 )
 
-val module = RayTracingModule(
-    Parameters(
-        renderer = renderer,
-        rayTracingGroups = groups,
-        maxRayRecursionDepth = 3,   // reflection bounces + 1 for the primary ray
-        imageResolver = { outputImageView },
-        accelerationStructureResolver = { tlas },
-        name = "rt-mirror-balls"
-    )
-).pointer()
+val module =
+    RayTracingModule(
+            Parameters(
+                renderer = renderer,
+                rayTracingGroups = groups,
+                maxRayRecursionDepth = 3, // reflection bounces + 1 for the primary ray
+                imageResolver = { outputImageView },
+                accelerationStructureResolver = { tlas },
+                name = "rt-mirror-balls",
+            ),
+        )
+        .pointer()
 ```
 
 The procedural sphere intersection shader solves a ray/sphere quadratic in object space, then reports the hit:
@@ -419,7 +447,7 @@ void main() {
 
     payload.bouncesLeft -= 1;
     traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 0, 0,
-                worldHit + normal * 0.01, 0.001, reflected, 100.0, 0);
+    worldHit + normal * 0.01, 0.001, reflected, 100.0, 0);
 }
 ```
 
@@ -427,12 +455,14 @@ void main() {
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/rt-mirror-balls.png" alt="three reflective spheres standing in a row on a black and white checkerboard floor, the middle one slightly further back, under a plain dark slate sky. Each sphere is dark and matte-looking across its upper half where it reflects that sky, and its lower half carries a sharply bent reflection of the checkerboard, the squares curving into a tight band just above where the sphere meets the floor. The two outer spheres also pick up small reflections of each other. Soft shadows run back from each sphere across the tiles" source-image="/tmp/docs-rt-mirror-balls.png" wait="20.0" timeout="180" capture="box" execution="launch" wait-output=true wait-output-kind="all" wait-output-contains="ray tracing example ready" embed=true hidden=true graphics-context=true name="rt-mirror-balls"}
 import afield.graphics.scene.fabricated.RayTracingDocsHarness
-import afield.document.context.fromContext
 
 val renderer: Renderer = fromContext()
 val captureScene: suspend () -> Unit = {
     val image = RayTracingDocsHarness.renderMirrorBallsScene("/tmp/docs-rt-mirror-balls.png", renderer)
-    display("render", RayTracingDocsHarness.htmlForImage(image, "Three reflective procedural spheres over a traced checker floor"))
+    display(
+        "render",
+        RayTracingDocsHarness.htmlForImage(image, "Three reflective procedural spheres over a traced checker floor"),
+    )
     println("ray tracing example ready")
 }
 start(captureScene)
@@ -445,11 +475,13 @@ instances or animate them. Re-evaluating the installation replaces that named sc
 
 ```diffstatic {data-lang=kotlin}
 import afield.graphics.scene.fabricated.RayTracingDocsHarness
-import kotlin.math.sin
 
 prop<RayTracingDocsHarness.LiveMirrorBallsScene>(mirrors)
 mirrors = RayTracingDocsHarness.installMirrorBallsSceneInWindow(
-    renderer, name = "mirror-study", width = 1536, height = 1024
+    renderer,
+    name = "mirror-study",
+    width = 1536,
+    height = 1024,
 )
 val rest = mirrors.sphere(1)
 mirrors.animate { seconds, scene ->

@@ -31,7 +31,12 @@ controlGroup("gesture") {
     pad = gesture("take", initialTake = eight) { p = it }
     button("bake take") { if (it) bake() }
     button("smooth take") { if (it) smoothTake() }
-    button("replay lanes") { if (it) { pad.setTake(x, y); println("pad now plays the lanes: ${pad.samples.size} samples") } }
+    button("replay lanes") {
+        if (it) {
+            pad.setTake(x, y)
+            println("pad now plays the lanes: ${pad.samples.size} samples")
+        }
+    }
 }
 displayOpen("gesture")
 

@@ -252,25 +252,29 @@ It needs the spec the test drops. If the box tells you it is missing, run once:
 ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'
 
 ```edn [field-box id="sweep" role="properties"]
-{"id" "sweep" "index" 2 "name" "3 - re-run the decision" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - re-run the decision" "frame" #afield/rect [60.0 226.0 393.5 136.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sweep_code_.kt" "lines" 42 "characters" 2170 "sha256" "1542fae9a804645ccaf32b98f1c0dcda586d8bf721fe412a8e3c80bc24338206"}]}
+{"id" "sweep" "index" 2 "name" "3 - re-run the decision" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - re-run the decision" "frame" #afield/rect [60.0 226.0 393.5 136.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sweep_code_.kt" "lines" 47 "characters" 2187 "sha256" "2aef7c272e7d2807535e35f7ea54e49d8675bb3124560de5b7eb04ffa7ca6b86"}]}
 ```
 
 ```kotlin [field-property box="sweep" name="code" path="sweep_code_.kt"]
-// 3 / Re-run the decision.
-//
-// The refusal in dev_docs/completion_rank_at_scale.md is a measurement, so it should be checkable
-// without reading anything. This box shells out to `tools/rank_weight_lab.py`, which stages the
-// shipped fieldSuggest.js into a temp directory with one ranking constant rewritten and re-scores all
-// 578 carets through it. Nothing in the repository is touched.
-//
-// It needs the spec the test drops. If the box tells you it is missing, run once:
-//   ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'
+/*
+3 / Re-run the decision.
+
+The refusal in dev_docs/completion_rank_at_scale.md is a measurement, so it should be checkable
+without reading anything. This box shells out to `tools/rank_weight_lab.py`, which stages the
+shipped fieldSuggest.js into a temp directory with one ranking constant rewritten and re-scores all
+578 carets through it. Nothing in the repository is touched.
+
+It needs the spec the test drops. If the box tells you it is missing, run once:
+  ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'
+*/
 
 import java.io.File
 
-// Field's working directory is the checkout it was started from; walk up to its root.
-// Spelled with explicit types on purpose: in the REPL a `generateSequence(...).firstOrNull { } ?: error(...)`
-// chain infers `Any` here, and the first `File(repo, ...)` below then fails to resolve a constructor.
+/*
+Field's working directory is the checkout it was started from; walk up to its root.
+Spelled with explicit types on purpose: in the REPL a `generateSequence(...).firstOrNull { } ?: error(...)`
+chain infers `Any` here, and the first `File(repo, ...)` below then fails to resolve a constructor.
+*/
 fun findRepoRoot(): File {
     var at: File? = File(".").absoluteFile
     while (at != null) {
@@ -289,13 +293,14 @@ val report = if (!spec.exists()) {
     "no spec at ${spec.path}\n\nrun once, then re-run me:\n" +
         "  ./gradlew jvmTest --tests 'afield.runtime.completion.FieldSuggestPresentationTest'"
 } else {
-    val process = ProcessBuilder("python3", "tools/rank_weight_lab.py")
-        .directory(repo).redirectErrorStream(true).start()
-    val text = process.inputStream.bufferedReader().readText()
-    process.waitFor()
-    "R0 is the popup as shipped. Compare bare c-recall down the column: teaching CATEGORY_WEIGHT the\n" +
-        "server's whole vocabulary gently (R2) moves it by 0.000; doing it hard (R1) costs 5.5 points.\n\n" + text
-}
+        val process =
+            ProcessBuilder("python3", "tools/rank_weight_lab.py").directory(repo).redirectErrorStream(true).start()
+        val text = process.inputStream.bufferedReader().readText()
+        process.waitFor()
+        "R0 is the popup as shipped. Compare bare c-recall down the column: teaching CATEGORY_WEIGHT the\n" +
+            "server's whole vocabulary gently (R2) moves it by 0.000; doing it hard (R1) costs 5.5 points.\n\n" +
+            text
+    }
 
 report
 ```

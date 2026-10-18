@@ -1,0 +1,105 @@
+{
+  "realSharedBuffers": true,
+  "realNativeRenderer": true,
+  "controlledTestInput": "Direct buffer line publications and a 4x4 test image; not a webcam/detector replay or public capture.",
+  "cameraQuadSamePixels": true,
+  "consumerRerunsPassed": true,
+  "phases": [
+    {
+      "source": "transcript",
+      "phase": "initial-empty",
+      "vertices": 0,
+      "indices": 0,
+      "greenPixelRows": 0,
+      "captureSize": [
+        4112,
+        2524
+      ],
+      "actualCountVerdict": "transcript-initial-empty-counts-final.json"
+    },
+    {
+      "source": "transcript",
+      "phase": "line",
+      "vertices": 4,
+      "indices": 2,
+      "greenPixelRows": 8,
+      "captureSize": [
+        4112,
+        2524
+      ],
+      "actualCountVerdict": "transcript-line-counts-final.json"
+    },
+    {
+      "source": "transcript",
+      "phase": "cleared",
+      "vertices": 0,
+      "indices": 0,
+      "greenPixelRows": 0,
+      "captureSize": [
+        4112,
+        2524
+      ],
+      "actualCountVerdict": "transcript-cleared-counts-final.json"
+    },
+    {
+      "source": "transcript",
+      "phase": "resumed",
+      "vertices": 4,
+      "indices": 2,
+      "greenPixelRows": 8,
+      "captureSize": [
+        4112,
+        2524
+      ],
+      "actualCountVerdict": "transcript-resumed-counts-final.json"
+    },
+    {
+      "source": "page",
+      "phase": "initial-empty",
+      "vertices": 0,
+      "indices": 0,
+      "greenPixelRows": 0,
+      "captureSize": [
+        4112,
+        2524
+      ],
+      "actualCountVerdict": "page-initial-empty-counts-final3.json"
+    },
+    {
+      "source": "page",
+      "phase": "line",
+      "vertices": 4,
+      "indices": 2,
+      "greenPixelRows": 10,
+      "captureSize": [
+        4112,
+        2524
+      ],
+      "actualCountVerdict": "page-line-counts-final3.json"
+    },
+    {
+      "source": "page",
+      "phase": "cleared",
+      "vertices": 0,
+      "indices": 0,
+      "greenPixelRows": 0,
+      "captureSize": [
+        4112,
+        2524
+      ],
+      "actualCountVerdict": "page-cleared-counts-final3.json"
+    },
+    {
+      "source": "page",
+      "phase": "resumed",
+      "vertices": 4,
+      "indices": 2,
+      "greenPixelRows": 10,
+      "captureSize": [
+        4112,
+        2524
+      ],
+      "actualCountVerdict": "page-resumed-counts-final3.json"
+    }
+  ]
+}

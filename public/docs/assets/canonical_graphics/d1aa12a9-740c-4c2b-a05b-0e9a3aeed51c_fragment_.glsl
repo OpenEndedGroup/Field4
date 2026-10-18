@@ -18,10 +18,10 @@ void main()
     vec2 dx3 = texel * vec2(radii.z, 0.0);
 
     vec4 c =
-          weights.x * texture(b0, ftc)
-        + weights.y * (texture(b0, ftc + dx1) + texture(b0, ftc - dx1))
-        + weights.z * (texture(b0, ftc + dx2) + texture(b0, ftc - dx2))
-        + weights.w * (texture(b0, ftc + dx3) + texture(b0, ftc - dx3));
+    weights.x * texture(b0, ftc)
+    + weights.y * (texture(b0, ftc + dx1) + texture(b0, ftc - dx1))
+    + weights.z * (texture(b0, ftc + dx2) + texture(b0, ftc - dx2))
+    + weights.w * (texture(b0, ftc + dx3) + texture(b0, ftc - dx3));
 
     uFragColor = vec4(c.rgb / radii.w, 1.0);
     uFragColor1 = vec4(c.bgr / radii.w, 1.0);

@@ -7,10 +7,11 @@ sources swing from left to right and move nearer and further:
 ```diffstatic {data-lang=kotlin}
 audio {
     patSpatial(
-        pat("bd ~ sd ~, hh*8").with(
-            param("az", sine().range(-70.0, 70.0)),
-            param("dist", "1 3 1 6"),
-        ),
+        pat("bd ~ sd ~, hh*8")
+            .with(
+                param("az", sine().range(-70.0, 70.0)),
+                param("dist", "1 3 1 6"),
+            ),
         cps = 2.0,
     )
 }
@@ -63,11 +64,12 @@ its own:
 
 ```diffstatic {data-lang=kotlin}
 patSpatial(
-    pat("bd ~ sd ~, hh*8").with(
-        paramOf("spat", pat("<kit hats>")),
-        param("az", sine().range(-70.0, 70.0)),
-        param("dist", "1 3 1 6"),
-    ),
+    pat("bd ~ sd ~, hh*8")
+        .with(
+            paramOf("spat", pat("<kit hats>")),
+            param("az", sine().range(-70.0, 70.0)),
+            param("dist", "1 3 1 6"),
+        ),
     cps = 2.0,
 )
 ```
@@ -111,12 +113,13 @@ example moves a four-note line between two groups:
 
 ```diffstatic {data-lang=kotlin}
 showPatSpatial(
-    pat("60 64 67 71").with(
-        paramOf("spat", pat("a b a b")),
-        param("az", sine().range(-85.0, 85.0)),
-        paramOf("dist", pat("1.2 3 1.2 5")),
-        param("lpf", 2200),
-    ),
+    pat("60 64 67 71")
+        .with(
+            paramOf("spat", pat("a b a b")),
+            param("az", sine().range(-85.0, 85.0)),
+            paramOf("dist", pat("1.2 3 1.2 5")),
+            param("lpf", 2200),
+        ),
     cps = 2.0,
 )
 ```
@@ -135,11 +138,12 @@ source. Here a virtual head turns at 45° a second:
 
 ```diffstatic {data-lang=kotlin}
 val launch = patSpatial(
-    pat("bd ~ sd ~, hh*8").with(
-        paramOf("spat", pat("<kit hats>")),
-        param("az", "0 -85"),
-        param("dist", 2.0),
-    ),
+    pat("bd ~ sd ~, hh*8")
+        .with(
+            paramOf("spat", pat("<kit hats>")),
+            param("az", "0 -85"),
+            param("dist", 2.0),
+        ),
     cps = 2.0,
 )
 launch.awaitReady()
@@ -179,9 +183,11 @@ These two clips are the mono signal one `spat` group sends to Steam Audio, befor
 placed, binaural result is the clip in [Following a head](#following-a-head) above.
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/spatial-source-plain.wav" audio-spec="spatial-source-plain" audio-renderer="afield.audio.synth.PatSpatialSoundDocs" embed=true hidden=true name="pat-spatial-source-plain"}
-// PatSpatialSoundDocs.renderWav("spatial-source-plain", …)
-// patSpatialEventsForArc(pat("36 ~ 48 ~, 72*4") with gain(0.9), az = -70, dist = 1.5)
-// -> one DoughEngine, 128-frame blocks, left channel only
+/*
+PatSpatialSoundDocs.renderWav("spatial-source-plain", …)
+patSpatialEventsForArc(pat("36 ~ 48 ~, 72*4") with gain(0.9), az = -70, dist = 1.5)
+-> one DoughEngine, 128-frame blocks, left channel only
+*/
 ```
 
 The mono source for one `spat` group, before Steam Audio places it.
