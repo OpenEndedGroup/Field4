@@ -1357,6 +1357,14 @@
     "ded1d6a3cafb-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_53/README.md"
+    },
+    "c958776f78cf-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_54/README.md"
+    },
+    "58fe3dbd8e31-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_54/README.md"
     }
   },
   "batches": [
@@ -1411,7 +1419,8 @@
     "../box_code_adoption_batch_50/README.md",
     "../box_code_adoption_batch_51/README.md",
     "../box_code_adoption_batch_52/README.md",
-    "../box_code_adoption_batch_53/README.md"
+    "../box_code_adoption_batch_53/README.md",
+    "../box_code_adoption_batch_54/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1430,10 +1439,10 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 53,
-    "branch": "codex/box-code-readability-53",
-    "baseline": "8ea0e0c83",
-    "state": "Csound native lifecycle verified; 336/405 addressed, 69 open. Browser callback cleanup remains open with actual failed rerun and preamble-class cast diagnostics.",
-    "evidence": "../box_code_adoption_batch_53/README.md"
+    "batch": 54,
+    "branch": "codex/box-code-readability-54",
+    "baseline": "3bcffcdfd",
+    "state": "338/405 addressed, 67 open; actual native paint equivalence and edited/restored controls verified, schema ABI and packed bytes unchanged.",
+    "evidence": "../box_code_adoption_batch_54/README.md"
   }
 }
