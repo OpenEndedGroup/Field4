@@ -235,6 +235,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `stipple_sheet.yaml`: **the stipple transport sheet** — the companion to
   `stipple_transport.md`. Loads the committed two-image model and deforms particles and a lattice
   under transport-time, movie-time and step sliders. Pure CPU.
+- `lp_curves.yaml`: **linear programs as curves** — the companion to `lp_curves.md`. Every LP route
+  over one pentagon (central path, fan, primal-dual, PDHG, ellipsoid, simplex, cutting planes), and a
+  launched box that turns the objective while the polygon breathes. Pure CPU.
 - `frames_lifecycle.yaml`: **a frame loop, from start to cleanup** — the companion to
   `animation_time_model.md`. Runs until stopped, stops itself with `end()`, re-run replaces, and a
   fourth box the reader drives to see which of `.end { }` and `finally` each way of stopping reaches.

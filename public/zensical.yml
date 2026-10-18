@@ -186,6 +186,7 @@ nav:
       - Polytopes & the Conway Algebra: polytope_examples.md
       - Typography as Geometry: typography_examples.md
       - Voronoi, Contours & Clusters: spatial_geometry_examples.md
+      - Linear Programs as Curves: lp_curves.md
     # sound.md is the Tour's sound stop, so this group starts at the pattern language that feeds
     # it and continues into the paths that page only introduces. Deliberately not an ordinal —
     # the Tour has gained a stop twice now, and a comment that counts them goes stale silently.
