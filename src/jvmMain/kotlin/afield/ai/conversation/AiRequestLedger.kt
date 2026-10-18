@@ -73,13 +73,16 @@ internal object AiRequestLedger {
         fun response(response: Response) {
             // Failed/incomplete SSE responses can still contain billed usage. Record before validation.
             val usage = response.usage().orElse(null)
+            // Compatible local servers can report totals without the optional breakdowns.
+            val inputDetails = runCatching { usage?.inputTokensDetails() }.getOrNull()
             usage(mapOf(
                 "responseId" to response.id(),
                 "responseModel" to response.model().toString(), "responseStatus" to response.status().orElse(null)?.toString(),
                 "usageKnown" to (usage != null), "inputTokens" to usage?.inputTokens(),
-                "cachedInputTokens" to usage?.inputTokensDetails()?.cachedTokens(),
-                "cacheWriteTokens" to usage?.inputTokensDetails()?._additionalProperties()?.get("cache_write_tokens")?.convert(Long::class.javaObjectType),
-                "outputTokens" to usage?.outputTokens(), "reasoningTokens" to usage?.outputTokensDetails()?.reasoningTokens(),
+                "cachedInputTokens" to runCatching { inputDetails?.cachedTokens() }.getOrNull(),
+                "cacheWriteTokens" to inputDetails?._additionalProperties()?.get("cache_write_tokens")?.convert(Long::class.javaObjectType),
+                "outputTokens" to usage?.outputTokens(),
+                "reasoningTokens" to runCatching { usage?.outputTokensDetails()?.reasoningTokens() }.getOrNull(),
                 "totalTokens" to usage?.totalTokens()
             ))
         }

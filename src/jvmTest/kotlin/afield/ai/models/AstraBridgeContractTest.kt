@@ -111,6 +111,29 @@ class AstraBridgeContractTest {
     }
 
     @Test
+    fun localResponsesMayOmitTokenBreakdowns() {
+        val variants = listOf(
+            "",
+            ",\"input_tokens_details\":{\"cached_tokens\":3}",
+            ",\"input_tokens_details\":{},\"output_tokens_details\":{}",
+            ",\"input_tokens_details\":{\"cached_tokens\":3},\"output_tokens_details\":{\"reasoning_tokens\":2}"
+        )
+        variants.forEach { details ->
+            withServer("openrouter") { server, _, bridge ->
+                server.createContext("/v1/responses") { exchange ->
+                    val body = finalResponse("resp_local").trimEnd().dropLast(1) +
+                        ",\"usage\":{\"input_tokens\":10,\"output_tokens\":5,\"total_tokens\":15$details}}"
+                    exchange.responseHeaders.add("Content-Type", "application/json")
+                    exchange.sendResponseHeaders(200, body.toByteArray().size.toLong())
+                    exchange.responseBody.use { it.write(body.toByteArray()) }
+                }
+                val state = bridge.startThread("local.kt", "")
+                assertEquals("Inspected roof.", bridge.send(state, "Inspect roof.").text)
+            }
+        }
+    }
+
+    @Test
     fun aFreshProviderThreadReceivesTheSavedBoxConversation() = withServer("openrouter") { server, requests, bridge ->
         server.createContext("/v1/responses") { exchange ->
             requests.add(mapper.readTree(exchange.requestBody))
