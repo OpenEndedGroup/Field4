@@ -632,7 +632,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**32551 public symbols across 1476 source files**, 16529 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**32551 public symbols across 1477 source files**, 16529 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -661,7 +661,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 121 | 3082 | 1397 (45%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 212 | 2987 | 1067 (35%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Machine learning](machine-learning.md) | 92 | 2203 | 687 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Machine learning](machine-learning.md) | 93 | 2203 | 687 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 
 ## Every file
@@ -718,6 +718,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiSessionTree.kt](machine-learning.md#aisessiontree-kt) | Machine learning | 27 | 17 | A box's AI4 conversation recorded as a tree of turns beside its markdown transcript, so a turn can be rewound to or edited and re-sent without losing the abandoned branch. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiStatePruning.kt](machine-learning.md#aistatepruning-kt) | Machine learning | 8 | 8 | Housekeeping for the box states AI4 conversations save under `<document>/ai4_blobs/state/`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiToastPolicy.kt](machine-learning.md#aitoastpolicy-kt) | Machine learning | 0 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiToolFailure.kt](machine-learning.md#aitoolfailure-kt) | Machine learning | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr>tooluse/<wbr></small> [AiToolUseImprovementCli.kt](machine-learning.md#aitooluseimprovementcli-kt) | Machine learning | 13 | 1 | A command-line task in which a model reads Field's recent AI tool I/O logs and edits the AI4 tool descriptions and prompts that caused the trouble it finds. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [AiToolUseImprovementMonitor.kt](machine-learning.md#aitooluseimprovementmonitor-kt) | Machine learning | 5 | 0 | The runner behind the AI tool-use improvement task, which summarises the AI4 tool input/output logs and starts the Gradle task that proposes fixes, optionally in a generated worktree. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>conversation/<wbr></small> [AiTurnCancellation.kt](machine-learning.md#aiturncancellation-kt) | Machine learning | 0 | 0 |  |  |
