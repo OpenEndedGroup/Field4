@@ -420,6 +420,9 @@ fun ClusterLayer.toFLines(
  *   Passing a `window` maps *that* rectangle onto the frame instead, and whatever falls outside is
  *   clipped by the frame rather than allowed to set the scale. Several panels sharing one `window`
  *   also line up with each other, which is usually what a comparison wants.
+ * @param yUp draw +y pointing up the page, as in a maths figure, instead of SVG's +y down. The
+ *   lines (and [window], which stays in the caller's coordinates) are mirrored before fitting, so a
+ *   caption can say "up" and mean the caller's +y.
  *
  * # Why the dots are drawn here and not by Skia
  *
@@ -440,10 +443,13 @@ fun planeFigureHtml(
     padding: Double = 14.0,
     window: Rect? = null,
     interactive: Boolean = false,
+    yUp: Boolean = false,
 ): String {
     val frame = Rect(0.0, 0.0, width.toDouble(), height.toDouble())
-    val fitted = if (window == null) lines.fitInto(frame, padding = padding)
-    else lines.mapped(window, frame, padding)
+    val source = if (yUp) lines.map { line -> line.transform { p -> vec(p.x, -p.y, p.z) } } else lines
+    val view = if (yUp && window != null) Rect(window.x, -(window.y + window.h), window.w, window.h) else window
+    val fitted = if (view == null) source.fitInto(frame, padding = padding)
+    else source.mapped(view, frame, padding)
 
     val dots = StringBuilder()
     val geometry = fitted.map { line ->
@@ -547,8 +553,9 @@ fun Box.showPlane(
     padding: Double = 14.0,
     window: Rect? = null,
     interactive: Boolean = true,
+    yUp: Boolean = false,
 ) {
-    display(channel, planeFigureHtml(lines, title, caption, width, height, padding, window, interactive))
+    display(channel, planeFigureHtml(lines, title, caption, width, height, padding, window, interactive, yUp))
 }
 
 /**
@@ -561,6 +568,7 @@ fun Box.showPlane(
  * @param columns figures per row.
  * @param window a shared window for every panel — see [planeFigureHtml]. Passing one both keeps a
  *   far-flung stray line from setting the scale and makes the panels line up with each other.
+ * @param yUp draw +y up the page in every panel — see [planeFigureHtml].
  */
 fun Box.showPlaneGrid(
     vararg panels: Pair<String, List<FLine>>,
@@ -570,6 +578,7 @@ fun Box.showPlaneGrid(
     cellHeight: Int = -1,
     padding: Double = 12.0,
     window: Rect? = null,
+    yUp: Boolean = false,
 ) {
     require(panels.isNotEmpty()) { "showPlaneGrid needs at least one panel" }
     val height = if (cellHeight > 0) cellHeight else (cellWidth * 0.78).toInt()
@@ -586,7 +595,7 @@ fun Box.showPlaneGrid(
             val title = label.substringBefore('\n')
             val caption = label.substringAfter('\n', "").ifBlank { null }
             append("<div>")
-            append(planeFigureHtml(lines, title, caption, cellWidth, height, padding, window))
+            append(planeFigureHtml(lines, title, caption, cellWidth, height, padding, window, yUp = yUp))
             append("</div>")
         }
         append("</div>")
