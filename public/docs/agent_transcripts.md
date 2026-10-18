@@ -2032,6 +2032,16 @@ Walkthrough: [Corpus microscope: from recordings to related windows](audio_ai_co
 
 [Open ↗](offline.html?file=assets/agent_transcripts/audio_ai_corpus_microscope/metadata.edn)
 
+### contour_trees_explorer
+
+[Merge trees and contour trees](contour_trees.md). The first box shows a landscape of hills and
+hollows with its contour tree's nodes, the regions its arcs stand for, and the tree drawn as a plot,
+with a slider that prunes branches by persistence. The second divides the brightness of the leaf
+print into contour-tree regions, lightly and strongly simplified. Plain Kotlin, no optional
+libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/contour_trees_explorer/metadata.edn)
+
 
 ## External-service live-coding scenes
 
