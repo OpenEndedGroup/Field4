@@ -1,0 +1,22 @@
+{
+  "sources": [
+    {
+      "path": "public/docs/assets/ai_tool_demo/metadata.edn",
+      "kotlinBodies": 2,
+      "constructorChanges": 0,
+      "linesVarargSites": 0,
+      "overloadSensitiveListCallsRetained": 0,
+      "sourceAndContainerPreserved": true
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "kotlinBodies": 38,
+      "constructorChanges": 27,
+      "linesVarargSites": 23,
+      "overloadSensitiveListCallsRetained": 6,
+      "sourceAndContainerPreserved": true
+    }
+  ],
+  "baseline": "adc1eb308",
+  "retainedListCallsReason": "Kotlin collection literals have no unique expected type in overloaded List.plus expressions; explicit listOf retains the original inferred type."
+}
