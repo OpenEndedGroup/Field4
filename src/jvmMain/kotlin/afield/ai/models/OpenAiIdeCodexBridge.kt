@@ -335,16 +335,18 @@ class OpenAiIdeCodexBridge(
                     (result as? Response)?.usage()?.orElse(null)?.let { usage ->
                         inputTokens = (inputTokens ?: 0L) + usage.inputTokens()
                         outputTokens = (outputTokens ?: 0L) + usage.outputTokens()
-                        runCatching { usage.inputTokensDetails().cachedTokens() }.getOrNull()?.let { cached ->
+                        val inputDetails = runCatching { usage.inputTokensDetails() }.getOrNull()
+                        val cachedTokens = runCatching { inputDetails?.cachedTokens() }.getOrNull()
+                        cachedTokens?.let { cached ->
                             cacheReadTokens = (cacheReadTokens ?: 0L) + cached
                         }
                         toolIo("model_usage", mapOf(
                             "phase" to phase, "responseId" to result.id(),
                             "inputTokens" to usage.inputTokens(),
-                            "cachedInputTokens" to usage.inputTokensDetails().cachedTokens(),
-                            "cacheWriteTokens" to usage.inputTokensDetails()._additionalProperties()["cache_write_tokens"]?.convert(Long::class.javaObjectType),
+                            "cachedInputTokens" to cachedTokens,
+                            "cacheWriteTokens" to inputDetails?._additionalProperties()?.get("cache_write_tokens")?.convert(Long::class.javaObjectType),
                             "outputTokens" to usage.outputTokens(),
-                            "reasoningTokens" to usage.outputTokensDetails().reasoningTokens(),
+                            "reasoningTokens" to runCatching { usage.outputTokensDetails().reasoningTokens() }.getOrNull(),
                             "compactionItems" to result.output().count { it.isCompaction() }
                         ))
                     }
