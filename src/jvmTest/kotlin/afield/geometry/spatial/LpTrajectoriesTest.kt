@@ -238,4 +238,48 @@ class LpTrajectoriesTest {
         assertTrue(LpPolygon.regular(7, 2.0).edgeCount == 7)
         assertTrue(pentagon.ellipsoid(c, 3).ellipses[0].toFLine() is FLine)
     }
+
+    @Test
+    fun hullDropsInteriorDuplicateAndCollinearPoints() {
+        val corners = listOf(vec(0, 0), vec(4, 0), vec(4, 3), vec(0, 3))
+        val messy = listOf(
+            vec(2, 1), vec(4, 3), vec(0, 0), vec(1, 2), // interior points, in no order
+            vec(2, 0), vec(3, 0), vec(4, 1.5), vec(0, 1), // on edges, between corners
+            vec(4, 0), vec(4, 0), vec(0, 3), vec(0.0000001, 3.0), // repeats, one off by less than mergeDistance
+            vec(3, 2),
+        )
+        val hull = LpPolygon.hull(messy)
+        assertEquals(4, hull.edgeCount, "only the four corners remain: ${hull.vertices}")
+        assertTrue(corners.all { k -> hull.vertices.any { it.distance(k) < 1e-5f } })
+        // Counter-clockwise: positive signed area, and every input point is inside or on the hull.
+        val v = hull.vertices
+        val area2 = v.indices.sumOf { i -> v[i].x.toDouble() * v[(i + 1) % v.size].y - v[(i + 1) % v.size].x.toDouble() * v[i].y }
+        assertEquals(24.0, area2, 1e-5)
+        assertTrue(messy.all { hull.violation(it.x.toDouble(), it.y.toDouble()) < 1e-6 })
+        // The same hull from either winding and from a scrambled order.
+        assertEquals(4, LpPolygon.hull(corners.reversed()).edgeCount)
+        assertEquals(4, LpPolygon.hull(messy.shuffled(java.util.Random(3))).edgeCount)
+    }
+
+    @Test
+    fun hullOfANonConvexDrawnLineAndItsFailures() {
+        // A star: non-convex, so the strict constructor refuses it and the hull keeps its five tips.
+        val star = FLine()
+        for (k in 0 until 10) {
+            val a = Math.PI / 2 + Math.PI * k / 5
+            val r = if (k % 2 == 0) 2.0 else 0.8
+            if (k == 0) star.moveTo(r * kotlin.math.cos(a), r * kotlin.math.sin(a)) else star.lineTo(r * kotlin.math.cos(a), r * kotlin.math.sin(a))
+        }
+        star.lineTo(0.0, 2.0)
+        assertFailsWith<IllegalArgumentException> { LpPolygon.of(star) }
+        val hull = LpPolygon.hullOf(star)
+        assertEquals(5, hull.edgeCount)
+        val path = hull.centralPath(c)
+        assertTrue(path.samples.all { hull.containsStrictly(it.x, it.y) })
+        val tip = hull.optimalVertex(c)
+        assertTrue(hypot(path.last.x - tip.x, path.last.y - tip.y) < 1e-3)
+
+        assertTrue(assertFailsWith<IllegalArgumentException> { LpPolygon.hull(listOf(vec(0, 0), vec(1, 1), vec(2, 2), vec(3, 3))) }.message!!.contains("one line"))
+        assertTrue(assertFailsWith<IllegalArgumentException> { LpPolygon.hull(listOf(vec(1, 1), vec(1, 1), vec(2, 2))) }.message!!.contains("3 distinct"))
+    }
 }

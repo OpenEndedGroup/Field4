@@ -311,6 +311,9 @@ object DemoTranscriptExecSmokeTest {
         // lp_curves.md's companion: LP methods as curve generators over LpPolygon, drawn through
         // showPlaneGrid / showPlane. The second box ends in `animate { }` and is launched. CPU only.
         "lp_curves",
+        // lp_curves_3d.md's companion: the same methods over LpPolytope, drawn through `three { }`
+        // (a Three.js payload sent to display), so no Window and no Renderer. Both boxes execute.
+        "lp_curves_3d",
         // Six independent pure-CPU dynamic-graph boxes. Four print and draw through showPlaneGrid /
         // showSignals; the other two build a Frames through animateEvolution, so executing them is a
         // compile check and the animation only runs when the box is launched. No Window, no Renderer.

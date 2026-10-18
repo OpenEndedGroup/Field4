@@ -302,12 +302,56 @@ The starting point [lp_curves](agent_transcripts.md#lp_curves) opens the same an
 of its own, next to a box that draws every route at once. Change the weights or the step sizes and
 run it again.
 
-## Polygons from drawings
+## Polygons from point sets and drawings
 
-`LpPolygon.of(line)` reads the node positions of an `FLine`, so a closed outline drawn with
-`fline { }` or taken from elsewhere is a polygon here. The constructor refuses fewer than three
-distinct vertices, zero area, a reflex corner and three collinear vertices, and says which. Only
-the end point of each segment is read; flatten curved segments first if they should count.
+The `LpPolygon` constructor wants a convex polygon and says so when it is not. To run these methods
+over anything else (a scatter of points, a non-convex outline, a stroke drawn by hand) take its
+convex hull first. `LpPolygon.hull(points)` accepts points in any order, with repeats, and drops
+those inside the hull and those on a hull edge between two corners. `LpPolygon.hullOf(line)` does
+the same for the node positions of an `FLine`.
+
+The example builds both: a hull of 40 scattered points, and a hull of a star whose inner corners
+the strict constructor would refuse as reflex. A fan of central paths runs inside each.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/lp_curves/hulls.png" wait="3.0" capture="box" open-outputs="true" w="900" h="420" padding="14"}
+:::static
+import kotlin.math.*
+
+val random = kotlin.random.Random(5)
+val points = List(40) { vec(random.nextDouble(-3.0, 3.0), random.nextDouble(-2.0, 2.0) * random.nextDouble()) }
+val scattered = LpPolygon.hull(points)
+
+// A five-pointed star: non-convex, so LpPolygon.of(star) would fail on its first inner corner.
+val star = fline {
+    for (k in 0..10) {
+        val a = Math.PI / 2 + Math.PI * k / 5
+        val r = if (k % 2 == 0) 2.6 else 1.1
+        if (k == 0) moveTo(r * cos(a), r * sin(a)) else lineTo(r * cos(a), r * sin(a))
+    }
+    color = vec(1.0, 1.0, 1.0, 0.5)
+}
+val tips = LpPolygon.hullOf(star)
+:::fold draw the two panels
+showPlaneGrid(
+    "LpPolygon.hull(points)\n${points.size} points, ${scattered.edgeCount} on the hull" to
+        [scattered.toFLine()] + scattered.centralFan(angles = 48, samples = 80).toFLines() + pointCloudFLine(points, pointSize = 1.0),
+    "LpPolygon.hullOf(star)\n${star.nodes.size} nodes, ${tips.edgeCount} hull vertices" to
+        [star, tips.toFLine()] + tips.centralFan(angles = 48, samples = 80).toFLines(),
+    columns = 2,
+    yUp = true,
+    cellWidth = 420,
+    cellHeight = 340,
+)
+:::endfold
+```
+
+![Left: forty white dots scattered across a wide region, the convex polygon around them, and rainbow central paths radiating from inside it to its corners. Right: a white five-pointed star with the pentagon through its five tips drawn around it, and central paths from the pentagon's centre to each tip](assets/lp_curves/hulls.png)
+
+`LpPolygon.of(line)` and the constructor stay strict: when the outline is meant to be convex
+already, a reflex corner or three collinear vertices is a mistake to be told about, not something
+to cut off. Both read only the end point of each segment, so flatten curved segments first if their
+bulge should count. For a polytope in space, built the same way from a point cloud, see
+[Linear programs in three dimensions](lp_curves_3d.md).
 
 ## Reference
 
@@ -316,6 +360,7 @@ the end point of each segment is read; flatten curved segments first if they sho
 | Entry point | What it returns |
 |---|---|
 | `LpPolygon(points)`, `LpPolygon.of(line)`, `LpPolygon.regular(sides, radius)` | a strictly convex polygon, counter-clockwise, as vertices and edge half-planes |
+| `LpPolygon.hull(points)`, `LpPolygon.hullOf(line)` | the convex hull of any point set or line's nodes, as an `LpPolygon` |
 | `polygon.centralPath(direction, weights, samples, muHigh, muLow, start, warm)` | the log-barrier central path, `LpTrajectory`; `warm` reuses a previous path's samples as Newton starts |
 | `LpContinuation().centralPath(polygon, direction, ...)` | a central path warm-started from the previous call's, for animation |
 | `polygon.centralFan(angles, samples, weights)` | one central path per direction round the circle, `List<LpTrajectory>` |
@@ -335,7 +380,8 @@ the end point of each segment is read; flatten curved segments first if they sho
     central-cut factor is `n²/(n²−1) = 4/3`, not `16/9`), that each ellipse still contains the
     optimum, that weights move the path, the Chebyshev centre against a rectangle and a 3-4-5
     triangle, the volumetric centre's vanishing gradient, and that a warm-started path matches the
-    cold one in at most 85% of the Newton steps. Figures pass `yUp = true` to `showPlaneGrid` and
+    cold one in at most 85% of the Newton steps, and that `LpPolygon.hull` drops interior, repeated
+    and collinear points and returns a counter-clockwise hull. Figures pass `yUp = true` to `showPlaneGrid` and
     `showPlane`, so +y is up the page, as in the maths. The animated starting point is
     `dev_docs/agents/transcripts/lp_curves.yaml`.
 
