@@ -100,7 +100,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Teaching headers and explicit shader contracts](../box_code_adoption_batch_49/README.md) | Six findings addressed; ten Kotlin bodies, five shader bodies, five collection conversions; unchanged baseline calculations/interfaces and codec-verified saved fallbacks. |
 
-[Machine checkpoint](checkpoint.json): **323 of 405 findings addressed**; 82 remain open. These counts do not claim
+| [Synchronize statistics lesson copies](../box_code_adoption_batch_50/README.md) | Three findings addressed; actual three-cycle dependence and calibrated rolling transcripts; existing alife layout proof reused; five Kotlin bodies and five collection conversions. |
+
+[Machine checkpoint](checkpoint.json): **326 of 405 findings addressed**; 79 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 

@@ -1,0 +1,9 @@
+{
+  "actualDependenceTranscript": true,
+  "sineCyclesAcrossShownDomain": 3,
+  "actualRollingTranscript": true,
+  "separateStatisticNullLevels": true,
+  "fullWindowWarmupRetained": true,
+  "batchIncrementalTolerance": 1e-10,
+  "reusedIndependentNullCalibration": "batch25 already exercised the identical page algorithm against 200 held-out windows; this run replays the newly synchronized transcript."
+}

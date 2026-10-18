@@ -1,0 +1,13 @@
+{
+  "rollingSourceMatchesVerifiedDocsPage": true,
+  "alifeSourceUnchangedSinceBatch46": true,
+  "alifeSha256": "7478daf027b7683a5f0508f47abc6fd0916e4ee2d467c10f9509c4a8bb8ab352",
+  "separateControlDeclarations": [
+    "GOAL_X",
+    "GOAL_Y",
+    "STEPS",
+    "SEEDS",
+    "PER_SEED"
+  ],
+  "reusedProof": "../box_code_adoption_batch_46/semantics.json"
+}
