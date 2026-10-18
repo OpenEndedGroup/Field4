@@ -14,7 +14,7 @@ This example draws a sketch the way a hand would, laying every stroke down three
 little wobble, then vectorizes it. On the right is the field near the crossing, magnified: an orange
 and a blue tick at every other ink pixel.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/polyvector/sketch.png" alt="two panels. On the left, a pencil sketch on white of an A, a post with a beam meeting it in a T, a slanted stroke crossing the beam, and a wave along the bottom, each stroke a slightly doubled wobbly grey line, with a thin red curve running down the middle of every stroke, through the A's apexes, the T and the crossing. On the right, the crossing magnified eight times: the beam and the slanted stroke as soft grey bands covered in small orange and blue ticks, which run along and across each stroke, and along both strokes where they cross" wait="6" timeout="180" capture="box" open-outputs="true" padding="20" trim="true" requires="polyvector" name="polyvector-sketch" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/polyvector/sketch.png" alt="two panels on black. On the left, a light grey pencil sketch of an A, a post with a beam meeting it in a T, a slanted stroke crossing the beam, and a wave along the bottom, each stroke a slightly doubled wobbly line, with a thin orange curve running down the middle of every stroke, through the A's apexes, the T and the crossing. On the right, the crossing magnified eight times: the beam and the slanted stroke as soft grey bands on black, covered in small orange and blue ticks, which run along and across each stroke, and along both strokes where they cross" wait="6" timeout="180" capture="box" open-outputs="true" padding="20" requires="polyvector" name="polyvector-sketch" embed=true}
 import afield.geometry.vectorize.polyvector.*
 
 // A sketch, drawn the way a hand would: each stroke laid down three times with a little wobble, in a
@@ -52,14 +52,17 @@ val drawing = Img(w, h, 3, FloatArray(w * h * 3) { 1f - ink[it / 3] })
 val field = Polyvector.fitField(Polyvector.inkOf(drawing))
 val result = field.trace()
 
+// Shown light on black: the same pencil marks, inverted for display only.
+val pencil = Img(w, h, 3, FloatArray(w * h * 3) { 0.04f + 0.7f * ink[it / 3] })
+val curveColor = Vec4(1f, 0.4f, 0.2f, 1f)
 // The field near the X, magnified, moved into the crop's coordinates.
 val x0 = 262; val y0 = 96
 val shift = Vec2(-x0.toFloat(), -y0.toFloat())
 showImgGrid(
-    "a sketch and its curves" to drawing.drawFLines(result.toFLines(thickness = 2.0), scale = 2.0),
-    "the field, at the crossing" to drawing.crop(x0, y0, 93, 70)
+    "a sketch and its curves" to pencil.drawFLines(result.toFLines(color = curveColor, thickness = 2.0), scale = 2.0),
+    "the field, at the crossing" to pencil.crop(x0, y0, 93, 70)
         .drawFLines(field.directionFLines(step = 2, length = 1.7, thickness = 3.0).map { it + shift }, scale = 8.0),
-    columns = 2, cellSide = 560,
+    columns = 2, cellSide = 440,
 )
 ```
 
@@ -76,6 +79,77 @@ curve, in pixel coordinates.
     version. The welcome page's **Geometry extensions** panel shows whether it is built and how to
     build it on your system, and `./field.sh --setup` can install the packages and build it for you.
     Windows is not supported yet.
+
+## From pixels to geometry
+
+What comes out is not a cleaned-up image but curves: each one an ordinary `FLine` that you can
+measure, offset, resample, warp or extrude like any other Field geometry. This example vectorizes the
+same sketch, drops any fragment shorter than 12 pixels, and then gives the curves three treatments
+that would be awkward to do to the pixels: parallel outlines, a comb of normals, and a wave.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/polyvector/geometry.png" alt="four panels on black. The first is the pencil sketch: an A, a post meeting a beam in a T with a stroke crossing it, and a wave. The second redraws every vectorized curve with three parallel copies on each side, like an engraving. The third draws each curve with short ticks along its normals, like a comb. The fourth draws each curve as a small, regular wave following its course" wait="6" timeout="180" capture="box" open-outputs="true" padding="20" requires="polyvector" name="polyvector-geometry" embed=true}
+import afield.geometry.vectorize.polyvector.*
+
+:::fold the same sketch as above
+// A sketch, drawn the way a hand would: each stroke laid down three times with a little wobble, in a
+// soft pencil line about three pixels wide.
+val random = java.util.Random(3)
+val strokes = [
+    [Vec2(40f, 200f), Vec2(110f, 60f), Vec2(180f, 200f)],         // an A
+    [Vec2(70f, 140f), Vec2(150f, 140f)],                         // its crossbar
+    [Vec2(220f, 60f), Vec2(220f, 200f)],                         // a post
+    [Vec2(220f, 130f), Vec2(300f, 130f)],                        // meeting a beam: a T
+    [Vec2(250f, 60f), Vec2(340f, 200f)],                         // and a stroke crossing it: an X
+    (0..30).map { Vec2(40f + 300f * it / 30, (245 + 12 * sin(it / 30.0 * 2 * PI)).toFloat()) },  // a wave
+]
+val w = 380; val h = 280
+val ink = FloatArray(w * h)
+for (stroke in strokes) repeat(3) {
+    val jitter = { random.nextGaussian().toFloat() * 1.5f }
+    val pts = stroke.map { Vec2(it.x + jitter(), it.y + jitter()) }
+    for (k in 0 until pts.size - 1) {
+        val a = pts[k]; val b = pts[k + 1]
+        val n = (a.distance(b) * 2).toInt()
+        for (s in 0..n) {
+            val t = s.toFloat() / n
+            val cx = a.x + (b.x - a.x) * t; val cy = a.y + (b.y - a.y) * t
+            for (y in (cy - 4).toInt()..(cy + 4).toInt()) for (x in (cx - 4).toInt()..(cx + 4).toInt()) {
+                if (x !in 0 until w || y !in 0 until h) continue
+                val d = hypot(x + 0.5 - cx, y + 0.5 - cy) / 1.6
+                ink[y * w + x] = maxOf(ink[y * w + x], (0.8 * exp(-d * d)).toFloat())
+            }
+        }
+    }
+}
+val drawing = Img(w, h, 3, FloatArray(w * h * 3) { 1f - ink[it / 3] })
+:::
+
+// Vectorize, simplify away the pencil's jitter (2 pixels), and keep curves at least 12 pixels long.
+val curves = Polyvector.vectorize(drawing).toFLines().map { it.bySimplifying(2f) }.filter { it.length() > 12f }
+
+// From here on the drawing is geometry: FLines, which anything that works on FLines works on.
+// (byWaving's frequency is per node interval; this asks for one wave every 16 pixels.)
+val light = Vec4(0.92f, 0.9f, 0.85f, 1f)
+fun styled(lines: List<FLine>, thickness: Double) = lines.onEach { it.properties["color"] = light; it.properties["thickness"] = thickness }
+val engraved = styled(curves.flatMap { c -> [c] + [3f, 6f, 9f].flatMap { d -> c.byCreatingParallelCurves(d, 120).toList() } }, 1.0)
+val combed = styled(curves.flatMap { c -> [c] + c.byCreatingNormalLines(samples = (c.length() / 4).toInt().coerceAtLeast(2), length = 14f) }, 1.0)
+val waved = styled(curves.map { it.byWaving(amplitude = 3f, frequency = it.length() / 16f / (it.nodes.size - 1), samples = (it.length() * 2).toInt().coerceAtLeast(20)) }, 1.6)
+
+val black = Img(w, h, 3, FloatArray(w * h * 3) { 0.04f })
+val pencil = Img(w, h, 3, FloatArray(w * h * 3) { 0.04f + 0.7f * ink[it / 3] })
+showImgGrid(
+    "the sketch" to pencil.drawFLines(emptyList(), scale = 2.0),
+    "parallel curves" to black.drawFLines(engraved, scale = 2.0),
+    "normals" to black.drawFLines(combed, scale = 2.0),
+    "waves" to black.drawFLines(waved, scale = 2.0),
+    columns = 2, cellSide = 440,
+)
+```
+
+`bySimplifying` is ordinary FLine geometry too: it drops points that stray less than 2 pixels from
+the line through their neighbours. Every line also carries
+`curveId`, `startNode` and `endNode` in its properties, and the `GeometryNetwork` it came from,
+so a manipulated copy can still be traced back to the stroke it came from.
 
 ## Photographs: evidence first
 

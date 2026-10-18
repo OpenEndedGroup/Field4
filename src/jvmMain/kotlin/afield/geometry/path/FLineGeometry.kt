@@ -2154,7 +2154,9 @@ fun FLine.byDashing(dashLength: Float, gapLength: Float, resolution: Float = 2f)
 /**
  * Create a wave pattern along the curve.
  * @param amplitude wave amplitude
- * @param frequency wave frequency
+ * @param frequency waves per node interval, not per unit of length: a line of two nodes makes
+ *   `frequency` waves end to end, one of eleven makes ten times as many. For waves of a fixed
+ *   wavelength, divide the length by the wavelength and by `nodes.size - 1`.
  * @param samples number of samples
  */
 fun FLine.byWaving(amplitude: Float, frequency: Float, samples: Int = 100): FLine {
