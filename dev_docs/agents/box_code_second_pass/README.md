@@ -94,7 +94,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Teaching comments and accurate controls](../box_code_adoption_batch_46/README.md) | Eight findings addressed; 80 Kotlin states and two GLSL shaders mechanically checked, baseline executable tokens preserved; full guards delegated to the lander. |
 
-[Machine checkpoint](checkpoint.json): **312 of 405 findings addressed**; 93 remain open. These counts do not claim
+| [Clear the remaining CV overlays](../box_code_adoption_batch_47/README.md) | Three findings addressed; real SharedImage camera equality, eight native SharedLines phases and both relaunches; three Kotlin bodies formatted with Python preserved. |
+
+[Machine checkpoint](checkpoint.json): **315 of 405 findings addressed**; 90 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 
