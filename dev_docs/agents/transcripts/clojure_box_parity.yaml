@@ -1,0 +1,81 @@
+name: clojure_box_parity
+description: |
+  **Clojure boxes doing what Kotlin and Python boxes do: errors on the right line, live controls,
+  and values from parent boxes.** Four boxes: a Kotlin language root and three Clojure boxes under it.
+
+    - **An error is marked on the line that raised it.** Run the box: the red marker sits on line 6,
+      inside `mean`, not on the call on line 8.
+    - **A slider and a checkbox with Clojure handlers.** `(slider ...)` and `(checkbox ...)` draw the
+      controls a Kotlin box's `slider(...)` and `checkbox(...)` draw; a handler is a fn or an atom.
+    - **Values from the parent.** `(context :speed)` reads the root's `speed` property and
+      `(context "palette")` the Kotlin variable the root defines.
+
+  Run the root first: the Clojure boxes read what it defines.
+operations:
+  - create:
+      box: cparity_root
+      name: "Clojure root -- children of this box run as Clojure"
+      frame: { x: 60.0, y: 40.0, w: 340.0, h: 100.0 }
+      properties:
+        mainLanguage: clojure
+        isClojureRoot: true
+        speed: 2.5
+        code: |
+          // The language root stays Kotlin; its `mainLanguage` makes its children Clojure.
+          // Its `speed` property and this variable are read by the box "values from the parent".
+          val palette = listOf("tomato", "teal", "gold")
+          println("the root stays Kotlin")
+  - create:
+      box: cparity_error
+      name: "an error is marked where it happened"
+      frame: { x: 60.0, y: 1040.0, w: 340.0, h: 100.0 }
+      properties:
+        code_language: Clojure
+        code: |
+          ;; The marker lands on line 6, inside mean, where the division failed --
+          ;; not on line 8, where mean was called.
+          (def readings [])
+
+          (defn mean [values]
+            (/ (reduce + values) (count values)))
+
+          (mean readings)
+  - create:
+      box: cparity_controls
+      name: "a slider and a checkbox, with Clojure handlers"
+      frame: { x: 60.0, y: 2040.0, w: 340.0, h: 100.0 }
+      properties:
+        code_language: Clojure
+        code: |
+          ;; The same controls a Kotlin box draws, calling back into Clojure.
+          (def state (atom {:freq 3.0 :square false}))
+
+          (defn redraw [{:keys [freq square]}]
+            (display "main" (format "<b>%s</b> at %.1f Hz" (if square "square" "sine") freq)))
+
+          (slider "frequency" #(swap! state assoc :freq %) :min 1 :max 10 :step 0.1 :value 3.0)
+          (checkbox "square wave" #(swap! state assoc :square %))
+
+          (add-watch state :redraw (fn [_ _ _ now] (redraw now)))
+          (redraw @state)
+  - create:
+      box: cparity_context
+      name: "values from the parent"
+      frame: { x: 60.0, y: 3040.0, w: 340.0, h: 100.0 }
+      properties:
+        code_language: Clojure
+        code: |
+          ;; `context` looks on this box, then on its parents: a property by name,
+          ;; a Kotlin variable by name, or the nearest value of a class.
+          (println "speed" (context :speed))
+          (println "palette" (vec (context "palette")))
+          (println "missing" (context :no-such-thing 1.0))
+  - connect: { parent: cparity_root, child: cparity_error }
+  - connect: { parent: cparity_root, child: cparity_controls }
+  - connect: { parent: cparity_root, child: cparity_context }
+  - execute: { box: cparity_root, property: code }
+  - await: {}
+  - execute: { box: cparity_controls, property: code }
+  - await: {}
+  - execute: { box: cparity_context, property: code }
+  - await: {}

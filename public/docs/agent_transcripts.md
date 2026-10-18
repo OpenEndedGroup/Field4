@@ -2200,6 +2200,22 @@ box of three. [Python in Field](python.md) shows both cells' output.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/python_box_parity/metadata.edn)
 
+### clojure_box_parity
+
+**Clojure boxes doing what Kotlin and Python boxes do: errors on the right line, live controls, and
+values from the parent.** Four boxes: a Kotlin language root and three Clojure boxes under it. Run
+the first and the red error marker sits on line 6, inside `mean`, where the division by zero
+happened, not on the call on line 8. The second draws a slider and a checkbox whose handlers are a
+Clojure fn and an atom; ticking the box redraws its `main` panel, and running it again keeps the
+tick. The third prints the root's `speed` property and its Kotlin `palette` variable, both read with
+`(context ...)`. Run the root first. Nothing to install: Clojure ships inside Field.
+
+`DemoTranscriptExecSmokeTest` compiles the Kotlin root and skips the three Clojure boxes, so CI checks
+one box of four; `ClojureFieldCoreTest` and `ClojureHostTest` run what the Clojure boxes use.
+[Clojure in a box](clojure.md) teaches the same calls.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/clojure_box_parity/metadata.edn)
+
 ### fieldcv_webcam
 
 **Your webcam through fieldcv, drawn by the GPU from shared memory.** Eight boxes: a render window; a

@@ -254,6 +254,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `pattern_condense.yaml`: **the shortest way to write a rhythm down** — `patCondense` accepts a
   candidate only by re-parsing and playing it, which is why box 1 draws pairs rather than printing
   strings. Includes the loop closed from audio: samples in, `60(3,8)` out.
+- `clojure_box_parity.yaml`: **Clojure boxes doing what Kotlin and Python boxes do**: an error marked
+  on the line inside the `defn` that raised, a slider and checkbox whose handlers are Clojure fns or
+  atoms, and `(context ...)` reading a parent's property and Kotlin variable. Compile-only here (the
+  Kotlin root); `ClojureFieldCoreTest` runs the Clojure half.
 - `python_box_parity.yaml`: **Python boxes doing what Kotlin boxes do** — an error marked on the line
   inside the function that raised, and a slider and checkbox whose callbacks are Python. Same JEP
   prerequisite as `python_cells`, and compile-only here for the same reason.
