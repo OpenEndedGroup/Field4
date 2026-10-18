@@ -4650,13 +4650,13 @@ The points and curves of one sketch. Each drawing call returns the new curve's i
 
 ### SolidCraftBuilderSmokeTest { #solidcraftbuildersmoketest-kt-solidcraftbuildersmoketest }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">SolidCraftBuilderSmokeTest</span></code>](source/jvmMain/afield/geometry/solid/solidcraft/SolidCraftBuilderSmokeTest/#L11)
+[<code class="highlight"><span class="k">object</span> <span class="nc">SolidCraftBuilderSmokeTest</span></code>](source/jvmMain/afield/geometry/solid/solidcraft/SolidCraftBuilderSmokeTest/#L14)
 
 Run with ./gradlew smokeSolidCraft: builds one design per construction feature and checks its geometry.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="solidcraftbuildersmoketest-kt--solidcraftbuildersmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/solidcraft/SolidCraftBuilderSmokeTest/#L44) |  |
+| <a id="solidcraftbuildersmoketest-kt--solidcraftbuildersmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/geometry/solid/solidcraft/SolidCraftBuilderSmokeTest/#L47) |  |
 
 ## SolidCraftSmokeTest.kt { #solidcraftsmoketest-kt }
 
