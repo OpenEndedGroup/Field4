@@ -35,7 +35,7 @@ class GeometryNetworkTest {
     @Test
     fun fLinesCarryProvenanceAndSamples() {
         val n = yPlusCrossing()
-        val lines = n.toFLines()
+        val lines = n.toFLines(withSamples = true)
         assertEquals(4, lines.size)
         assertSame(n, lines[0].properties["geometryNetwork"])
         assertEquals(10, lines[0].properties["startNode"])

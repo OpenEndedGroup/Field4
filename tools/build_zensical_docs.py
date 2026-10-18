@@ -123,6 +123,24 @@ def solidcraft_library_path(repo_root: Path) -> Path:
     return repo_root / "build" / "native" / "solidcraft" / name
 
 
+def native_geometry_library_path(module: str, target: str, env: str):
+    """A path function for one of the optional native geometry libraries
+    (`tools/build_native_geometry.py <module>`), shaped like [tetgen_library_path]: the
+    environment override, then `build/field-<module>/build[/Release]/`."""
+
+    def resolve(repo_root: Path) -> Path:
+        override = os.environ.get(env, "").strip()
+        if override:
+            return Path(override)
+        name = (f"{target}.dll" if sys.platform.startswith("win") else
+                f"lib{target}.dylib" if sys.platform == "darwin" else f"lib{target}.so")
+        base = repo_root / "build" / f"field-{module}" / "build"
+        choices = [base / name, base / "Release" / name]
+        return next((c for c in choices if c.exists()), choices[0])
+
+    return resolve
+
+
 def tetgen_library_path(repo_root: Path) -> Path:
     """Where `afield.geometry.mesh.tetgen.TetgenLibrary.resolvedPath` will look, from Python.
 
@@ -446,6 +464,10 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "manifold": (manifold_library_path, "brew install manifold"),
     "solidcraft": (solidcraft_library_path, "./gradlew buildSolidCraftNative"),
     "tetgen": (tetgen_library_path, "./gradlew buildTetgenNative"),
+    "morse-smale": (
+        native_geometry_library_path("morse-smale", "field_morse_smale", "AFIELD_MORSE_SMALE_LIBRARY"),
+        "./gradlew buildMorseSmaleNative",
+    ),
     "paint": (paint_library_path, "./gradlew buildPaintNative"),
     "libpd": (libpd_library_path, "./gradlew buildLibpdNative"),
     "csound": (csound_library_path, "./gradlew buildCsoundNative"),

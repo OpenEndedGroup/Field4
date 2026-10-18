@@ -196,19 +196,21 @@ class GeometryNetwork(
      *
      * With [smooth], each curve becomes a Catmull–Rom spline through its own vertices, so it still
      * passes through its endpoints and junctions; only the embedding between vertices changes.
-     * Without it, vertices are joined by straight segments and each vertex node carries that
-     * vertex's [GeometryCurve.samples] in its properties.
+     * Without it, vertices are joined by straight segments, and with [withSamples] each vertex node
+     * also carries that vertex's [GeometryCurve.samples] in its properties. That costs a property map
+     * per vertex, so it is off by default: the samples stay reachable through `geometryNetwork`.
      *
      * Every line carries `curveId`, `startNode`, `endNode`, each curve attribute, and
      * `geometryNetwork` (this network) in its properties.
      */
-    fun toFLines(smooth: Boolean = false, tension: Float = 1f): List<FLine> = curves.filter { it.vertexCount >= 2 }.map { c ->
+    fun toFLines(smooth: Boolean = false, tension: Float = 1f, withSamples: Boolean = false): List<FLine> = curves.filter { it.vertexCount >= 2 }.map { c ->
         val line = if (smooth) {
             catmullRomToBezier(List(c.vertexCount) { c.vertex(it) }, c.closed, tension)
         } else {
             FLine().also { f ->
                 for (i in 0 until c.vertexCount) {
                     if (i == 0) f.moveTo(c.vertex(i)) else f.lineTo(c.vertex(i))
+                    if (!withSamples) continue
                     val node = f.nodes.last()
                     c.samples.forEach { (name, ch) ->
                         node.properties[name] = if (ch.width == 1) ch[i] else DoubleArray(ch.width) { k -> ch[i, k] }

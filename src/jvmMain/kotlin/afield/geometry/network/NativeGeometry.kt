@@ -26,6 +26,12 @@ interface NativeGeometryCapability {
 object NativeGeometry {
     private val modules = linkedMapOf<String, () -> NativeGeometryCapability>()
 
+    init {
+        // Each entry names a module's library object, which only knows where its file would be;
+        // nothing is loaded until a module is used.
+        register("morseSmale") { afield.geometry.topology.morsesmale.MorseSmaleLibrary }
+    }
+
     /** Called by each module's library object; the factory is evaluated only when asked. */
     fun register(name: String, capability: () -> NativeGeometryCapability) {
         modules[name] = capability
