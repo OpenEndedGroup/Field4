@@ -90,7 +90,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Tracked real analyses and usable corpus fragments](../box_code_adoption_batch_43/README.md) | Seven findings addressed, including the pending fresh-service helper proof; actual beat/pitch jobs, three Smile fits, corpus index/query/placement and whole-box Stop/relaunch verified; eleven formatting states. |
 
-[Machine checkpoint](checkpoint.json): **300 of 405 findings addressed**; 105 remain open. These counts do not claim
+| [Beginner graphics, live speed and quoted-code formatting](../box_code_adoption_batch_45/README.md) | Four findings addressed; identical native triangle/reruns, live speed assignment and Stop, saved fallbacks and two genuine docs captures; ten Kotlin and six GLSL bodies formatted. |
+
+[Machine checkpoint](checkpoint.json): **304 of 405 findings addressed**; 101 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 
