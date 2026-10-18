@@ -1365,6 +1365,18 @@
     "58fe3dbd8e31-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_54/README.md"
+    },
+    "4e6db45ce6bf-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_55/README.md"
+    },
+    "68263951f250-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_55/README.md"
+    },
+    "a0f1fb8e7acb-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_55/README.md"
     }
   },
   "batches": [
@@ -1420,7 +1432,8 @@
     "../box_code_adoption_batch_51/README.md",
     "../box_code_adoption_batch_52/README.md",
     "../box_code_adoption_batch_53/README.md",
-    "../box_code_adoption_batch_54/README.md"
+    "../box_code_adoption_batch_54/README.md",
+    "../box_code_adoption_batch_55/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1439,10 +1452,10 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 54,
-    "branch": "codex/box-code-readability-54",
-    "baseline": "3bcffcdfd",
-    "state": "338/405 addressed, 67 open; actual native paint equivalence and edited/restored controls verified, schema ABI and packed bytes unchanged.",
-    "evidence": "../box_code_adoption_batch_54/README.md"
+    "batch": 55,
+    "branch": "codex/box-code-readability-55",
+    "baseline": "432d1ee41",
+    "state": "341/405 addressed, 64 open. Full authored native Manifold scenes preserve triangle/material hashes; census/conversion failures release scoped roots and components.",
+    "evidence": "../box_code_adoption_batch_55/README.md"
   }
 }
