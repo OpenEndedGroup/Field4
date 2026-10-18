@@ -94,6 +94,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [pf.kt](../src/jvmMain/kotlin/afield/math/estimation/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
 | [GpFit.kt](../src/jvmMain/kotlin/afield/math/gp/GpFit.kt) | Math | gaussian_processes | 1 | 7 | 33% |
 | [CoroutineProfiling.kt](../src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt) | Workspace | profiling_timeline | 1 | 4 | 44% |
+| [SolidCraftBuilder.kt](../src/jvmMain/kotlin/afield/geometry/solid/solidcraft/SolidCraftBuilder.kt) | Graphics | solidcraft_building | 1 | 2 | 90% |
 | [scratch.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/scratch.kt) | Internal | running_code, why | 1 | 1 | 50% |
 | [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/ui/visualization/ValueVisualizer.kt) | Visualization | visualizers, agent_transcripts, dataframe | 1 | 1 | 80% |
 | [FabricatePostEffects.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricatePostEffects.kt) | Renderers | fabricate_renderer | 1 | 0 | 75% |
@@ -475,7 +476,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SavedJsonSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/stdlib/SavedJsonSmokeTest.kt) | Examples | — | 1 | 2 | 0% |
 | [WfcSmokeTest.kt](../src/jvmMain/kotlin/afield/examples/stdlib/WfcSmokeTest.kt) | Examples | — | 1 | 2 | 0% |
 | [FLineEditing.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineEditing.kt) | Graphics | — | 1 | 2 | 0% |
-| [SolidCraftBuilder.kt](../src/jvmMain/kotlin/afield/geometry/solid/solidcraft/SolidCraftBuilder.kt) | Graphics | — | 1 | 2 | 90% |
 | [FourVisualizers.kt](../src/jvmMain/kotlin/afield/graphics/render/FourVisualizers.kt) | Graphics | — | 1 | 2 | 50% |
 | [PlyLoaderUnitTest.kt](../src/jvmMain/kotlin/afield/graphics/scene/PlyLoaderUnitTest.kt) | Graphics | — | 1 | 2 | 25% |
 | [MslEditorLanguage.kt](../src/jvmMain/kotlin/afield/graphics/shader/MslEditorLanguage.kt) | Graphics | — | 1 | 2 | 40% |
@@ -1184,6 +1184,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `FractionAlongAnchor` | class | `src/jvmMain/kotlin/afield/geometry/path/FLineGeometry.kt:116` |
 | `ContactPatch` | class | `src/jvmMain/kotlin/afield/geometry/solid/manifold/PlanarContact.kt:19` |
 | `ApertureAudit` | class | `src/jvmMain/kotlin/afield/geometry/solid/manifold/PlanarContact.kt:21` |
+| `SolidCraftBuilder` | class | `src/jvmMain/kotlin/afield/geometry/solid/solidcraft/SolidCraftBuilder.kt:48` |
 | `HasAccelerationStructure` | interface | `src/jvmMain/kotlin/afield/graphics/render/AccelerationStructure.kt:35` |
 | `AccelerationStructureTriangles` | class | `src/jvmMain/kotlin/afield/graphics/render/AccelerationStructure.kt:39` |
 | `AccelerationStructureAabbs` | class | `src/jvmMain/kotlin/afield/graphics/render/AccelerationStructure.kt:54` |
@@ -1194,6 +1195,5 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `FromInput` | class | `src/jvmMain/kotlin/afield/graphics/render/Mesh.kt:35` |
 | `Mesh` | class | `src/jvmMain/kotlin/afield/graphics/render/Mesh.kt:45` |
 | `Renderable` | interface | `src/jvmMain/kotlin/afield/graphics/render/Module.kt:297` |
-| `FromUniform` | class | `src/jvmMain/kotlin/afield/graphics/render/Module.kt:301` |
 
 …and **2103 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
