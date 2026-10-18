@@ -1317,6 +1317,22 @@
     "7a5d00bb1ace-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_50/README.md"
+    },
+    "919f8f675222-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_51/README.md"
+    },
+    "f4ff6ef40b11-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_51/README.md"
+    },
+    "bcfb7a0fe799-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_51/README.md"
+    },
+    "a0a84eb67e15-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_51/README.md"
     }
   },
   "batches": [
@@ -1368,7 +1384,8 @@
     "../box_code_adoption_batch_47/README.md",
     "../box_code_adoption_batch_48/README.md",
     "../box_code_adoption_batch_49/README.md",
-    "../box_code_adoption_batch_50/README.md"
+    "../box_code_adoption_batch_50/README.md",
+    "../box_code_adoption_batch_51/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1387,10 +1404,10 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 50,
-    "branch": "codex/box-code-readability-50",
-    "baseline": "5d3e9766a",
-    "state": "Three findings verified: actual dependence and separately calibrated rolling transcript replay; source matches verified docs body. Alife control layout already resolved in batch46, unchanged-source/semantic proof reused. Five Kotlin bodies formatted, five collection conversions. Full guards delegated to lander. Batch49 queued 20261018-133444-codex-box-code-readability-49; batch45 currently landing. Field9718 CPU-only.",
-    "evidence": "../box_code_adoption_batch_50/README.md"
+    "batch": 51,
+    "branch": "codex/box-code-readability-51",
+    "baseline": "beca71345",
+    "state": "Four creative-control findings verified: six real controlGroup/browser constructions match original/edited defaults; both authored band-callback variants respond to assignment fragments and full relaunch after reset-only edit. 24 Kotlin states formatted; full guards delegated to lander. Batch50 queued 20261018-133726-codex-box-code-readability-50. Field9718 CPU-only.",
+    "evidence": "../box_code_adoption_batch_51/README.md"
   }
 }

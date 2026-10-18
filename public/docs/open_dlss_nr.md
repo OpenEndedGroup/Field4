@@ -102,15 +102,19 @@ var green = 1.1f
 var blue = 1.4f
 controlGroup("neural cubes") {
     if (lab.availability.ready) {
-        slider("Network style", min = 0.0, max = 2.0, step = 1.0, initialValue = 1.0) { style = it.toInt() }
-        slider("Tone", min = -10.0, max = 30.0, initialValue = 0.0) { tone = it.toFloat() }
-        slider("Structure", min = -10.0, max = 30.0, initialValue = 10.0) { structure = it.toFloat() }
-        slider("NR intensity (0 = source)", min = 0.0, max = 1.0, initialValue = 1.0) { intensity = it.toFloat() }
+        slider("Network style", min = 0.0, max = 2.0, step = 1.0, initialValue = style.toDouble()) {
+            style = it.toInt()
+        }
+        slider("Tone", min = -10.0, max = 30.0, initialValue = tone.toDouble()) { tone = it.toFloat() }
+        slider("Structure", min = -10.0, max = 30.0, initialValue = structure.toDouble()) { structure = it.toFloat() }
+        slider("NR intensity (0 = source)", min = 0.0, max = 1.0, initialValue = intensity.toDouble()) {
+            intensity = it.toFloat()
+        }
     }
-    checkbox("Animate source", initialValue = false) { animate = it }
-    slider("Grade red", min = 0.0, max = 2.0, initialValue = .65) { red = it.toFloat() }
-    slider("Grade green", min = 0.0, max = 2.0, initialValue = 1.1) { green = it.toFloat() }
-    slider("Grade blue", min = 0.0, max = 2.0, initialValue = 1.4) { blue = it.toFloat() }
+    checkbox("Animate source", initialValue = animate) { animate = it }
+    slider("Grade red", min = 0.0, max = 2.0, initialValue = red.toDouble()) { red = it.toFloat() }
+    slider("Grade green", min = 0.0, max = 2.0, initialValue = green.toDouble()) { green = it.toFloat() }
+    slider("Grade blue", min = 0.0, max = 2.0, initialValue = blue.toDouble()) { blue = it.toFloat() }
     button("Reload edited shaders") { if (it) reload = true }
 }
 displayOpen("neural cubes")
@@ -311,15 +315,19 @@ var green = 1.1f
 var blue = 1.4f
 controlGroup("neural ink") {
     if (lab.availability.ready) {
-        slider("Network style", min = 0.0, max = 2.0, step = 1.0, initialValue = 1.0) { style = it.toInt() }
-        slider("Tone", min = -10.0, max = 30.0, initialValue = 0.0) { tone = it.toFloat() }
-        slider("Structure", min = -10.0, max = 30.0, initialValue = 10.0) { structure = it.toFloat() }
-        slider("NR intensity (0 = source)", min = 0.0, max = 1.0, initialValue = 1.0) { intensity = it.toFloat() }
+        slider("Network style", min = 0.0, max = 2.0, step = 1.0, initialValue = style.toDouble()) {
+            style = it.toInt()
+        }
+        slider("Tone", min = -10.0, max = 30.0, initialValue = tone.toDouble()) { tone = it.toFloat() }
+        slider("Structure", min = -10.0, max = 30.0, initialValue = structure.toDouble()) { structure = it.toFloat() }
+        slider("NR intensity (0 = source)", min = 0.0, max = 1.0, initialValue = intensity.toDouble()) {
+            intensity = it.toFloat()
+        }
     }
-    checkbox("Animate source", initialValue = false) { animate = it }
-    slider("Grade red", min = 0.0, max = 2.0, initialValue = .65) { red = it.toFloat() }
-    slider("Grade green", min = 0.0, max = 2.0, initialValue = 1.1) { green = it.toFloat() }
-    slider("Grade blue", min = 0.0, max = 2.0, initialValue = 1.4) { blue = it.toFloat() }
+    checkbox("Animate source", initialValue = animate) { animate = it }
+    slider("Grade red", min = 0.0, max = 2.0, initialValue = red.toDouble()) { red = it.toFloat() }
+    slider("Grade green", min = 0.0, max = 2.0, initialValue = green.toDouble()) { green = it.toFloat() }
+    slider("Grade blue", min = 0.0, max = 2.0, initialValue = blue.toDouble()) { blue = it.toFloat() }
     button("Reload edited shaders") { if (it) reload = true }
 }
 displayOpen("neural ink")
