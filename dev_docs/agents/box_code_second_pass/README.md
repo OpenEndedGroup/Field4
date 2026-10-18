@@ -136,7 +136,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Use bundled texture inputs and explain the Underfit source WAV](../box_code_adoption_batch_68/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **366 of 405 findings addressed**; 39 remain open. These counts do not claim
+| [Adopt fullscreen teacher meshes and reflected push suppliers](../box_code_adoption_batch_64/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **367 of 405 findings addressed**; 38 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 
