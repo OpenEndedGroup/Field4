@@ -32,7 +32,7 @@ import kotlin.math.sqrt
  * (which only reads signs). [fieldNotes] enumerates the places where the field is sign-correct but
  * not metric-correct, so the gap is a fact rather than a surprise.
  *
- * # It is thread-safe, deliberately unlike the `sdf…` family
+ * # It is thread-safe, where the `sdf…` family is not
  *
  * `mesh_sdf.kt` is explicit that a [ScalarField3D] "must **read** the vector it is handed and not
  * write to it", and its own combinators capture a single scratch [Vec3] to transform into. That makes
