@@ -195,6 +195,28 @@ int main() {
         fpc_free(f);
     }
 
+    // A dense strand and a sparse one, fitted as two curves of ten nodes each: the sparse one must
+    // keep its length instead of collapsing under stiffness scaled for the dense one.
+    {
+        Cloud c;
+        for (int i = 0; i < 4000; i++) add2(c, unif(20, 380), 60 + gauss(8));
+        for (int i = 0; i < 40; i++) add2(c, unif(20, 380), 150 + gauss(1.5));
+        std::vector<double> nodes;
+        std::vector<int> edges;
+        for (int s = 0; s < 2; s++) for (int i = 0; i < 10; i++) {
+            nodes.push_back(30 + 340.0 * i / 9); nodes.push_back(s ? 150 : 60);
+            if (i) { edges.push_back(s * 10 + i - 1); edges.push_back(s * 10 + i); }
+        }
+        fpc_forest* f = make(c);
+        fpc_set_graph(f, 20, nodes.data(), 18, edges.data(), err, sizeof err);
+        fpc_fit(f, 0, err, sizeof err);
+        Graph g = graph(f, 2);
+        double lo = 1e9, hi = -1e9;
+        for (int i = 10; i < 20; i++) { lo = std::min(lo, g.nodes[2 * i]); hi = std::max(hi, g.nodes[2 * i]); }
+        CHECK(hi - lo > 250, "sparse strand collapsed to %.0f of ~340", hi - lo);
+        fpc_free(f);
+    }
+
     // A loop from a closed initial graph.
     {
         Cloud c;

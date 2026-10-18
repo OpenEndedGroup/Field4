@@ -2356,6 +2356,17 @@ separatrices as a table. Needs the optional native library: `./gradlew buildMors
 
 [Open ↗](offline.html?file=assets/agent_transcripts/morse_smale_explorer/metadata.edn)
 
+### principal_curves_explorer
+
+[Principal curves](principal_curves.md), three ways. The first box fits three noisy strands as
+curves under a bending slider and draws a band around each showing how widely its points are
+scattered. The second fits the green pixels of the leaf print as a branching tree. The third,
+launched, moves 2000 points along a travelling wave and refines one forest five iterations a frame
+to follow them, never regrowing it. Needs the optional native library:
+`./gradlew buildPrincipalCurvesNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/principal_curves_explorer/metadata.edn)
+
 ## FieldML scenes
 
 <!-- transcript-index: verified-by = compile -->

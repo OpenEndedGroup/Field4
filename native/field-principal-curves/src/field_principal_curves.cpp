@@ -9,6 +9,8 @@
 //     distance from the origin, so pixel coordinates far from (0, 0) do not stop the fit early.
 //   - Growth candidates are scored on a random subsample of the points (candidate_sample) and in
 //     parallel; the chosen configuration is then refitted on every point.
+//   - Each connected component's lambda and mu are scaled by its share of the point weight
+//     (component_scale), so a sparse component is not crushed by the stiffness meant for a dense one.
 //   - branch_penalty adds penalty * sum(max(0, degree - 2)) to a candidate's energy, a simpler stand-in
 //     for ElPiGraph's penalised energy, so branching has to earn its place.
 //   - Point-to-edge projection and per-node statistics are new.
@@ -62,6 +64,24 @@ struct Graph {
         return adj;
     }
 };
+
+// Connected-component label of every node.
+std::vector<int> component_labels(const Graph& g) {
+    std::vector<int> label(g.k(), -1);
+    auto adj = g.adjacency();
+    int next = 0;
+    for (int s = 0; s < g.k(); s++) {
+        if (label[s] >= 0) continue;
+        std::vector<int> stack{s};
+        label[s] = next;
+        while (!stack.empty()) {
+            int u = stack.back(); stack.pop_back();
+            for (int v : adj[u]) if (label[v] < 0) { label[v] = next; stack.push_back(v); }
+        }
+        next++;
+    }
+    return label;
+}
 
 template <typename F>
 void parallel_for(int n, int threads, F body) {
@@ -156,10 +176,11 @@ void partition(const fpc_forest& f, const Graph& g, const std::vector<int>& subs
 }
 
 // ElPiGraph's spring Laplacian, with uniform lambda and mu.
-void add_laplacian(const fpc_forest& f, const Graph& g, std::vector<double>& A) {
+// scale[j]: multiplier for the elasticities of node j's component (see component_scale).
+void add_laplacian(const fpc_forest& f, const Graph& g, const std::vector<double>& scale, std::vector<double>& A) {
     const int k = g.k();
     for (auto& e : g.edges) {
-        double l = f.p.lambda;
+        double l = f.p.lambda * scale[e[0]];
         A[e[0] * k + e[0]] += l; A[e[1] * k + e[1]] += l;
         A[e[0] * k + e[1]] -= l; A[e[1] * k + e[0]] -= l;
     }
@@ -167,7 +188,7 @@ void add_laplacian(const fpc_forest& f, const Graph& g, std::vector<double>& A) 
     for (int c = 0; c < k; c++) {
         int K = static_cast<int>(adj[c].size());
         if (K < 2 || f.p.mu <= 0) continue;
-        double mu = f.p.mu;
+        double mu = f.p.mu * scale[c];
         A[c * k + c] += mu;
         for (int l : adj[c]) { A[c * k + l] -= mu / K; A[l * k + c] -= mu / K; }
         for (int a : adj[c]) for (int b : adj[c]) A[a * k + b] += mu / (static_cast<double>(K) * K);
@@ -176,8 +197,11 @@ void add_laplacian(const fpc_forest& f, const Graph& g, std::vector<double>& A) 
 
 struct Energy { double total, mse, ep, rp, trimmed; };
 
+std::vector<double> component_scale(const fpc_forest& f, const Graph& g, const std::vector<int>& subset, const std::vector<int>& part);
+
 Energy energy(const fpc_forest& f, const Graph& g, const std::vector<int>& subset, const std::vector<int>& part,
               const std::vector<double>& d2) {
+    auto scale = component_scale(f, g, subset, part);
     double ws = 0, mse = 0, trimmed = 0;
     for (size_t s = 0; s < part.size(); s++) {
         double wi = f.w[subset.empty() ? s : subset[s]];
@@ -187,7 +211,7 @@ Energy energy(const fpc_forest& f, const Graph& g, const std::vector<int>& subse
     }
     mse /= std::max(ws, 1e-300);
     double ep = 0;
-    for (auto& e : g.edges) ep += f.p.lambda * f.dist2(g.node(e[0]), g.node(e[1]));
+    for (auto& e : g.edges) ep += f.p.lambda * scale[e[0]] * f.dist2(g.node(e[0]), g.node(e[1]));
     double rp = 0;
     auto adj = g.adjacency();
     std::vector<double> mean(g.d);
@@ -195,9 +219,30 @@ Energy energy(const fpc_forest& f, const Graph& g, const std::vector<int>& subse
         if (adj[c].size() < 2) continue;
         std::fill(mean.begin(), mean.end(), 0.0);
         for (int l : adj[c]) for (int j = 0; j < g.d; j++) mean[j] += g.node(l)[j] / adj[c].size();
-        rp += f.p.mu * f.dist2(g.node(c), mean.data());
+        rp += f.p.mu * scale[c] * f.dist2(g.node(c), mean.data());
     }
     return {mse + ep + rp, mse, ep, rp, trimmed / std::max(ws, 1e-300)};
+}
+
+// Each component's share of the assigned point weight, per node. The approximation term weights
+// every point by its share of the total, so without this a component holding 1% of the points
+// feels 1% of the pull and the same elasticity as everything else, and shrinks. Scaling each
+// component's lambda and mu by its share makes it settle as it would if fitted alone. A single
+// component (or a single tree) is unaffected. The share is floored so an empty component stays put.
+std::vector<double> component_scale(const fpc_forest& f, const Graph& g, const std::vector<int>& subset, const std::vector<int>& part) {
+    auto label = component_labels(g);
+    int nc = label.empty() ? 0 : *std::max_element(label.begin(), label.end()) + 1;
+    std::vector<double> share(nc, 0.0);
+    double total = 0;
+    for (size_t s = 0; s < part.size(); s++) {
+        double wi = f.w[subset.empty() ? s : subset[s]];
+        total += wi;
+        if (part[s] >= 0) share[label[part[s]]] += wi;
+    }
+    std::vector<double> scale(g.k(), 1.0);
+    if (nc <= 1 || total <= 0) return scale;
+    for (int j = 0; j < g.k(); j++) scale[j] = std::max(share[label[j]] / total, 1e-6);
+    return scale;
 }
 
 // Fixed-topology EM fit. Returns iterations used; leaves the final partition in part/d2.
@@ -219,7 +264,7 @@ int embed(const fpc_forest& f, Graph& g, const std::vector<int>& subset, int max
             A[j * k + j] += wi;
             for (int c = 0; c < d; c++) B[j * d + c] += wi * f.point(i)[c];
         }
-        add_laplacian(f, g, A);
+        add_laplacian(f, g, component_scale(f, g, subset, part), A);
         for (int j = 0; j < k; j++) {
             if (g.fixed[j]) {
                 for (int c = 0; c < k; c++) A[j * k + c] = 0;
