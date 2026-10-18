@@ -14,6 +14,31 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
+/**
+ * The channel-tagged log events the AI tooling writes, and the sinks that receive them.
+ *
+ * A [LogEvent] carries a channel (a comma-separated set of tags such as `info,ai.toolio`), a
+ * message, and optional block indent and boundary markers. [LogDispatcher] fans each event out to
+ * every installed [LogSink]; [LogDispatcher.withSink] attaches one for the length of a block.
+ *
+ * #### Sinks
+ *
+ * - [StdoutLog] — prints to the terminal, skipping channels muted by [ConsoleMute].
+ * - [NotifyLog] — prints like [StdoutLog] and also raises a clipped, de-duplicated toast.
+ * - [SilentLog] — drops everything.
+ *
+ * [ChannelMatch] is the rule all channel selectors share: a selector matches when each of its tags
+ * is among the channel's.
+ *
+ * #### File traces
+ *
+ * [TraceLogger] appends sectioned, truncated text to a trace file when `afield.ai4.trace` (or
+ * `AFIELD_AI4_TRACE`) is set; `1`/`true` selects `~/.afield/logs/ai4_trace.log`. [AiToolIoLogger]
+ * writes one JSONL file per tool session under `~/.afield/logs/ai4_tool_io`, on unless
+ * `afield.ai4.toolIoLog` (or `AFIELD_AI4_TOOL_IO_LOG`) is `0`, `false` or `off`.
+ */
+
+/** One log line: its channel tags, message, time, and the block indent and boundary it sits in. */
 data class LogEvent(
     val channel: String,
     val message: String,

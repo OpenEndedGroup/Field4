@@ -5,6 +5,10 @@ import afield.audio.engine.WavFloatArrayWriter
 import kotlin.math.roundToLong
 
 /**
+ * Offline renders of the ORCA page's two sound examples, with each note placed on the sample its ORCA frame falls on.
+ */
+
+/**
  * The sound on the [ORCA](../orca.md) page, rendered offline: ORCA's own operators running in
  * [OrcaHeadless], frame by frame, voiced by the same [PatSynthBank] calls a box makes live.
  *
@@ -14,7 +18,7 @@ import kotlin.math.roundToLong
  * clip is the rhythm ORCA computed, with none of a live run's network jitter.
  *
  * The grids and the exchange are copies of `dev_docs/agents/transcripts/orca_duet.yaml` and of the
- * page's first box; `OrcaSoundDocsTest` fails if they drift apart.
+ * page's first box.
  */
 object OrcaSoundDocs {
     const val SR = 48_000

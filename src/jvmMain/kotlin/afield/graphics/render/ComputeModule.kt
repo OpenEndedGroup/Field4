@@ -29,6 +29,14 @@ import org.lwjgl.vulkan.KHRAccelerationStructure.VK_DESCRIPTOR_TYPE_ACCELERATION
 import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
 
+/**
+ * A compute pipeline as a renderable module: [ComputeModule] compiles and introspects a compute
+ * shader, owns its descriptor sets, and dispatches the [ComputeTask]s registered in its `meshes`.
+ *
+ * Boxes hold it through a [ComputeModulePointer], which swaps in a rebuilt module when the shader
+ * is reloaded and carries live values across the interface change.
+ */
+
 class ComputeModulePointer(var current: ComputeModule) : Renderable {
     /** What the last successful [reload] did to the interface and which values it could not carry. */
     var lastReloadReport: ModuleReloadReport? = null

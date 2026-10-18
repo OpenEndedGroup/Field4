@@ -17,9 +17,14 @@ import java.nio.file.Path
 import kotlin.io.path.exists
 
 /**
- * Where `native/field-syphon` is. Searched in order: `-Dafield.syphon.library`,
- * `AFIELD_SYPHON_LIBRARY`, then `build/field-syphon` in the working directory. macOS only.
+ * The locator and foreign-function bindings for `native/field-syphon`, the optional macOS library
+ * under [SyphonServer] and [SyphonClient].
+ *
+ * The library is searched for in order: the `afield.syphon.library` system property, the
+ * `AFIELD_SYPHON_LIBRARY` environment variable, then `build/field-syphon` in the working directory.
  */
+
+/** Locates `libfield_syphon.dylib` and reports whether it is available. */
 object SyphonLibrary {
     private val os = System.getProperty("os.name").lowercase()
 

@@ -11,33 +11,36 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="inverse" index="0" -->
 
 ```edn [field-box id="inverse" role="properties"]
-{"id" "inverse" "index" 0 "name" "2 - Inverse design - let a gradient find the numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Inverse design - let a gradient find the numbers" "_tombstone" false "frame" #afield/rect [780.0 40.0 700.0 470.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inverse_code_.kt" "lines" 71 "characters" 3258 "sha256" "fd63c39182f8ca197c132f176fb446cfb30a19bb4d7f5db6164a1c43005ddd9e"}]}
+{"id" "inverse" "index" 0 "name" "2 - Inverse design - let a gradient find the numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Inverse design - let a gradient find the numbers" "_tombstone" false "frame" #afield/rect [780.0 40.0 700.0 470.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inverse_code_.kt" "lines" 84 "characters" 3439 "sha256" "f8805f74bde38b69dd17e578e54820f1da1f178fa4a2cd0cd8a5fb2551a0d653"}]}
 ```
 
 ```kotlin [field-property box="inverse" name="code" path="inverse_code_.kt"]
 import afield.lang.solidsl.*
-import afield.geometry.mesh.MeshView
 
 // ---- the problem ---------------------------------------------------------------------
 // Somebody hands you a bag of points with a signed distance at each. What shape is it?
-val truth = doubleArrayOf(0.45, 1.90, 0.16)     // the answer, used ONLY to make the target
-val seed = doubleArrayOf(0.26, 1.05, 0.34)      // where the search starts: wrong by 42%, 45%, 112%
+val truth = doubleArrayOf(0.45, 1.90, 0.16) // the answer, used ONLY to make the target
+val seed = doubleArrayOf(0.26, 1.05, 0.34) // where the search starts: wrong by 42%, 45%, 112%
 // -----------------------------------------------------------------------------------------
 
-val template = smoothUnion(sphere(0.45), cylinder(1.90, 0.16).at(0.0, 0.0, 0.0), k = 0.18)
-    .parameterize {
-        param("sphereRadius", "SmoothUnion/a/Sphere.radius")
-        param("barHeight", "SmoothUnion/b/Translate/Cylinder.height")
-        param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
-    }.orThrow()
+val template =
+    smoothUnion(sphere(0.45), cylinder(1.90, 0.16).at(0.0, 0.0, 0.0), k = 0.18)
+        .parameterize {
+            param("sphereRadius", "SmoothUnion/a/Sphere.radius")
+            param("barHeight", "SmoothUnion/b/Translate/Cylinder.height")
+            param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+        }
+        .orThrow()
 
 val target = template.withValues(truth).sampleField(count = 2400, seed = 91)
 println("target: $target")
 println()
 
-// One tape per evaluation carries all 2400 residuals and all 3 parameters, and one backward
-// sweep reads every derivative off it. The alternative — central-differencing the loss —
-// costs 2n extra full sweeps per step and needs an fdStep tuned per problem.
+/*
+One tape per evaluation carries all 2400 residuals and all 3 parameters, and one backward
+sweep reads every derivative off it. The alternative — central-differencing the loss —
+costs 2n extra full sweeps per step and needs an fdStep tuned per problem.
+*/
 val fit = template.fitParameters(target, seed)
 println(fit.report())
 println()
@@ -72,18 +75,28 @@ showMesh(
     fit.fitted.march(resolution = 110),
     channel = "fitted",
     title = "the fit - what the gradient found",
-    caption = "%.6f, %.6f, %.6f · loss %.4e · %.3g times better".format(
-        fit.values[0], fit.values[1], fit.values[2], fit.loss, fit.improvementFactor,
-    ),
+    caption =
+        "%.6f, %.6f, %.6f · loss %.4e · %.3g times better"
+            .format(
+                fit.values[0],
+                fit.values[1],
+                fit.values[2],
+                fit.loss,
+                fit.improvementFactor,
+            ),
     view = view,
 )
 showMesh(
     template.withValues(truth).march(resolution = 110),
     channel = "target",
     title = "the target - the shape the samples came from",
-    caption = "%.2f, %.2f, %.2f · the fitted render above is pixel-identical to this one".format(
-        truth[0], truth[1], truth[2],
-    ),
+    caption =
+        "%.2f, %.2f, %.2f · target reference; fitted parameter and loss errors are reported above"
+            .format(
+                truth[0],
+                truth[1],
+                truth[2],
+            ),
     view = view,
 )
 ```
@@ -93,7 +106,7 @@ showMesh(
 <!-- field-box id="gradient" index="1" -->
 
 ```edn [field-box id="gradient" role="properties"]
-{"id" "gradient" "index" 1 "name" "1 - A solid, and its exact gradient" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A solid, and its exact gradient" "_tombstone" false "frame" #afield/rect [40.0 40.0 700.0 470.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gradient_code_.kt" "lines" 72 "characters" 3607 "sha256" "b816cb0bcf6874371cafb56b95fc8611f21353ade1bbb4592dfbba561287abcc"}]}
+{"id" "gradient" "index" 1 "name" "1 - A solid, and its exact gradient" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A solid, and its exact gradient" "_tombstone" false "frame" #afield/rect [40.0 40.0 700.0 470.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gradient_code_.kt" "lines" 72 "characters" 3617 "sha256" "6d4b7c1e176d45fbedd3b7d0d8905b9d571f2eadcde9d5ffe813dcaa46b2f5f4"}]}
 ```
 
 ```kotlin [field-property box="gradient" name="code" path="gradient_code_.kt"]
@@ -176,7 +189,7 @@ part.gradientNotes().forEach { println("  - $it") }
 <!-- field-box id="refusals" index="2" -->
 
 ```edn [field-box id="refusals" role="properties"]
-{"id" "refusals" "index" 2 "name" "3 - What refuses, and the one that does not" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - What refuses, and the one that does not" "_tombstone" false "frame" #afield/rect [40.0 560.0 700.0 470.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 60 "characters" 3490 "sha256" "e86c851feb04e0542f0d6656e44d9934d114a395b5acd5b0873482e0b6aec8ae"}]}
+{"id" "refusals" "index" 2 "name" "3 - What refuses, and the one that does not" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - What refuses, and the one that does not" "_tombstone" false "frame" #afield/rect [40.0 560.0 700.0 470.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 60 "characters" 3495 "sha256" "b43c5e13f30f662475f1c3445167b6f55e6c7cc9304b3e9361ad516ea8f44124"}]}
 ```
 
 ```kotlin [field-property box="refusals" name="code" path="refusals_code_.kt"]

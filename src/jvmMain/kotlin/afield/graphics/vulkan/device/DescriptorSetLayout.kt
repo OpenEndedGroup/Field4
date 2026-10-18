@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.device
 
+/**
+ * Descriptor set layouts for the renderer's shaders: [DescriptorSetLayout] owns a Vulkan layout handle and releases it with its device, and [DescriptorSetLayout.SimpleDescriptorSetLayout] builds one from parallel lists of bindings and descriptor types.
+ *
+ * That builder supports partially bound arrays, one variable-count (bindless) binding, and update-after-bind. [UpdatesDescriptorSet] is the interface a bound resource implements to push its descriptor into a command buffer.
+ */
+
 import afield.graphics.vulkan.buffers.BufferParameters
 import afield.graphics.shader.Introspected
 import afield.graphics.vulkan.util.vkCheck

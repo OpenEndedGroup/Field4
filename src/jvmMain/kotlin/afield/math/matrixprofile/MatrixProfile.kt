@@ -10,6 +10,17 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
+ * Matrix profiles of a single series: for every subsequence, the distance to its nearest
+ * neighbour. The result, [MatrixProfile], yields motifs (repeated shapes) and discords (shapes
+ * that occur once).
+ *
+ * [matrixProfile] computes a self-join or, given two series, an AB-join; [joinBothWays] returns
+ * both directions of a join, and [distanceProfile] the distances from one query to every
+ * subsequence of a series. Its `motifs` and `discords` return [Motif]s and [Discord]s. The
+ * multichannel and contrast variants are in `MultiDimensional.kt`. Tests: `MatrixProfileTest`.
+ */
+
+/**
  * The matrix profile of a series (Yeh, Keogh et al., 2016): for every subsequence of length [m],
  * the z-normalized Euclidean distance to its nearest neighbour somewhere else in the series (or,
  * for a join, in another series) and where that neighbour is.

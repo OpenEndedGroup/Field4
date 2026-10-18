@@ -9,6 +9,14 @@ import kotlin.math.exp
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+/**
+ * Pitch and phase tracking for harmonically rich monophonic input, through [HarmonicPhaseTracker].
+ *
+ * A bank of complex harmonic demodulators votes on the fundamental's phase velocity, and a
+ * decimated autocorrelation search reacquires the period when the bank falls into an octave trap.
+ * The tracker is a [PhaseTracker], so its state can drive a [TrackedPhaseBank].
+ */
+
 private const val TWO_PI = 2.0 * PI
 
 

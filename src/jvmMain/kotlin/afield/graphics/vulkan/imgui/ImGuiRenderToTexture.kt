@@ -1,5 +1,15 @@
 package afield.graphics.vulkan.imgui
 
+/**
+ * Draws Dear ImGui (through imgui-java) into a Field render-to-texture target, so an ImGui interface
+ * can be shown as a texture on any surface, including a panel in VR.
+ *
+ * [ImGuiRenderToTexture] owns the ImGui context, the font atlas and the vertex buffers, and records
+ * ImGui's draw lists into its target each frame, honouring clip rects with a dynamic scissor. Only the
+ * font atlas is bound as a texture; other ImGui texture ids are ignored. [ImGuiPanel] places such a
+ * texture in world space and feeds controller rays back to it as pointer input.
+ */
+
 import afield.runtime.lifecycle.Generator
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.buffers.VertexBuffer

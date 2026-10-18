@@ -20,7 +20,7 @@ import kotlin.math.sqrt
  * separate ONNX graphs — `text_model.onnx` and `vision_model.onnx` — each emit an already-projected
  * 512-vector, so no head has to be reimplemented here.
  *
- * Three things fall out, and the third is the one nothing else offers:
+ * That gives three uses:
  *
  *  1. **Zero-shot classification with no training.** Encode a handful of prompts once, cosine them
  *     against the live frame, take the best. See [ClipVector.classify].
@@ -29,13 +29,11 @@ import kotlin.math.sqrt
  *     projecting the current frame onto it is a continuous parameter that tracks a semantic axis
  *     rather than a pixel statistic. See [ClipVector.axisTo].
  *
- * Encode prompts once, into a `val`, and the text tower is simply not in the per-frame path — there is
- * nothing cleverer to do about it than that.
+ * Encode prompts once, into a `val`, and the text tower stays out of the per-frame path.
  *
  * ## Cosine values are not comparable across modalities
  *
- * The single most misread property of CLIP, and the reason [classify] exists rather than a bare
- * `cosine` threshold. Measured on this checkpoint:
+ * This is why [ClipVector.classify] ranks prompts rather than thresholding a bare cosine. Measured on this checkpoint:
  *
  *  * **text against text** sits in a narrow high cone — `cos("storm","calm") = 0.881`,
  *    `cos("a photo of a cat","a photo of a dog") = 0.931`. Nothing is ever near 0.
@@ -44,17 +42,17 @@ import kotlin.math.sqrt
  *
  * So `0.21` does not mean "unrelated" and `0.88` does not mean "the same". Only *rank* and
  * *difference* carry information: compare one image against several prompts, or track how a
- * projection moves over time. An absolute threshold on a raw cosine will not survive contact.
+ * projection moves over time. An absolute threshold on a raw cosine does not transfer between prompts or scenes.
  *
  * ## Cost
  *
  * Text is ≈5ms per prompt, after the one-off cost of loading the encoder. Vision is ≈36ms at
- * 224x224 on a CPU provider —
- * far cheaper than [DepthAnything], but still not free, so drive it from a worker if it is per-frame.
+ * 224x224 on a CPU provider, far cheaper than [DepthAnything], but still not free, so drive it from a worker if it is per-frame.
  *
- * @see ClipText for the text tower
- * @see ClipImage for the vision tower
+ * The text tower is [ClipText] and the vision tower is [ClipImage].
  */
+
+/** Shared constants and helpers for the two CLIP towers, [ClipText] and [ClipImage]. */
 object Clip {
 
     /** The dimensionality of the shared embedding space for this checkpoint. */

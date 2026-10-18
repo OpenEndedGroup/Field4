@@ -1,5 +1,13 @@
 package afield.lang.stacksl.cpu
 
+/**
+ * Interval bounds on a fragment shader's colours: a certified range for every pixel in a rectangle,
+ * without rendering the pixels.
+ *
+ * [StackSLIntervals] encloses a rectangle ([StackSLRegionBound]) or splits the frame into a quadtree
+ * of tiles ([StackSLTile]) proven flat to a tolerance; [StackSLTilePicture] draws the result.
+ */
+
 import afield.media.image.util.PngEncoder
 
 /**

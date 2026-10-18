@@ -1,5 +1,17 @@
 package afield.runtime.execution
 
+/**
+ * What happens to the value a box's code returns: [ReturnValueRegistry] offers it to each
+ * registered [ReturnValueHandler] in turn, and the first one that accepts it keeps it running.
+ *
+ * The handlers registered here run a returned `Sequence` one element per frame
+ * ([registerSequenceReturnValue]) and a returned `frames { }` block ([registerFramesReturnValue]).
+ * Several values can be returned together with [launches] or `+`, which builds a [LaunchBundle].
+ * Each launch carries a per-strand generation, so relaunching or stopping a strand ends what it
+ * started before.
+ */
+
+
 import afield.data.table.div
 import afield.data.table.minus
 import afield.data.table.rem
@@ -240,6 +252,7 @@ fun registerSequenceReturnValue() {
 fun registerFramesReturnValue() {
     ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, launchEpoch, notify ->
         if (returnValue !is Frames) return@handler false
+        val scope = RunScope.currentFor(inside)
         returnValue.shouldend = {
             inside.runGeneration[strand] != generation
         }
@@ -284,8 +297,13 @@ fun registerFramesReturnValue() {
                     notify(false, strand, generation)
                     return@withBoxContext
                 }
+                // A replaced run must cancel waits too, not only the next frame() boundary.
+                scope?.ownJob(job)
                 notify(true, strand, generation)
                 try {
+                    // Supersession closes the old scope after scheduling us. Give its cancelled
+                    // body a turn to run synchronous finally cleanup before touching shared state.
+                    kotlinx.coroutines.yield()
                     returnValue.body()
                 } catch (e: CancellationException) {
                 } catch (t: Throwable) {

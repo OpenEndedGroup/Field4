@@ -1,3 +1,12 @@
+/**
+ * Compiles a filled, flat [FLine] into Slughorn atlas data ([SlugPath]) by running the native
+ * `field-slug` helper, built with `./gradlew buildSlugNative`.
+ *
+ * [SlugPath.compile] runs once per geometry edit, not per frame, and refuses paths that leave
+ * z=0. The result is immutable and carries no placement; [SlugBuffer] uploads it to the GPU.
+ * `SlugPathTest` covers it.
+ */
+
 package afield.graphics.text.slug
 
 import afield.geometry.path.FLine

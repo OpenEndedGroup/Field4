@@ -2,6 +2,14 @@
 
 package afield.lang.stacksl
 
+/**
+ * Live numbers for a `{{ stack.auto.foo }}` slot: every literal in the StackSL becomes a member of a
+ * uniform block, `foo_numbers`, that sliders, Kotlin or a keyframe can turn without a recompile.
+ *
+ * [StackAutoNumbers] holds the block's layout and the calls that seed it and switch it live.
+ * `StackAutoNumbersTest` covers it.
+ */
+
 import afield.data.collections.get
 import afield.data.collections.invoke
 import afield.data.collections.times

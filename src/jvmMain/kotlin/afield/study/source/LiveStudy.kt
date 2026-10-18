@@ -59,6 +59,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
+ * The standard study verbs, and the tools that offer them to an AI4 agent: inspect, edit, patch, set
+ * numbers, observe, compare, sweep, try variants, adopt a variant and restore a revision.
+ *
+ * [LiveStudy] is the interface a study implements. [StudyRequest] holds the request shapes the verbs
+ * take, which a library study's own request classes implement; [registerStudyTools] wires those
+ * classes to a study once. From box code, [Box.registerStudyTools] makes the same verbs as
+ * box-authored tools named after a prefix, using the [StudyCall] request classes.
+ */
+
+/**
  * What a study's standard tool requests have in common, whatever the language.
  *
  * Each library study keeps its own request classes — their names are the tool names, and their

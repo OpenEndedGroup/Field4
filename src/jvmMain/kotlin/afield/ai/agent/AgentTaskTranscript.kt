@@ -11,6 +11,10 @@ import afield.ui.output.displayOpen
 import afield.app.protocol.payload
 
 /**
+ * Writes an agent task into a box's AI4 chat transcript, so a finished task can be read and continued in that box's chat panel.
+ */
+
+/**
  * Writes an agent task into a box's AI4 chat transcript (`ai4_chat_history`), in the transcript's
  * own markup (`<<you>>`, `<<ai>>`, `<<progress>>`, `<<model:…>>`), and pushes it to the box's
  * `ai-chat` panel. The panel then renders the task like any other turn, and the person can continue

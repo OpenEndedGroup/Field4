@@ -5,6 +5,14 @@ import afield.math.linalg.Vec3
 import afield.math.linalg.Matrix4f
 
 /**
+ * The interface for a stereo head pose that arrives from somewhere other than OpenXR, such as a
+ * remote headset.
+ *
+ * A [StereoPoseSource] is latched once per frame so both eyes render from the same pose, and it
+ * reports which frame that pose belongs to.
+ */
+
+/**
  * A source of stereo viewing geometry that is neither OpenXR nor a desktop mock — a head somewhere
  * else, reporting where it is.
  *

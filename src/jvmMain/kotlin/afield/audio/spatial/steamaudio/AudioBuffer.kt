@@ -9,6 +9,14 @@ import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout
 import java.nio.FloatBuffer
 
+/**
+ * Audio buffers and the settings every Steam Audio effect is created against.
+ *
+ * [AudioSettings] fixes the sampling rate and block size; [AudioBuffer] holds deinterleaved
+ * per-channel samples in native memory for an effect to read or write; [SpeakerLayout]
+ * describes the output channel arrangement.
+ */
+
 /** Sampling rate and block size, shared by every effect created against them. */
 public data class AudioSettings(
     /** Samples per second, for example 48000. */

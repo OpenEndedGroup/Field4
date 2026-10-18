@@ -14,6 +14,14 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 /**
+ * A Chromium tab with the full browser control plane and no picture, for driving or scraping a page
+ * from a box without a renderer.
+ *
+ * [HeadlessPuppetBrowser] uses the same Electron producer and protocol as [FieldUiBrowserTexture],
+ * started with frames dropped at the source. `HeadlessPuppetBrowserTest` exercises it.
+ */
+
+/**
  * A Chromium tab with no picture: the whole [PuppetBrowserControl] plane — navigation, pointer,
  * keyboard, IME, touch, promise-aware JavaScript, the isolated world, arbitrary CDP and the
  * allowlisted page→Field request bridge — with no [afield.graphics.vulkan.Renderer], no Vulkan surface, no

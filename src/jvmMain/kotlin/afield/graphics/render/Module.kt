@@ -1,3 +1,19 @@
+/**
+ * The rasterising [Module]: one graphics pipeline built from vertex/fragment (or task/mesh)
+ * GLSL, the [Mesh]es it draws, and the uniforms, textures and push constants bound to it.
+ *
+ * [Parameters] carries the shader sources and pipeline settings, and [parameters] builds one
+ * against the renderer found by `fromContext()`. A [ModulePointer] stands in front of a module so
+ * a box can recompile its shaders and swap in the new [Module] without the renderer losing its
+ * reference; [Module.pointer] makes one. [before] wraps a command-buffer callback as a target
+ * that runs ahead of the module's draws, and [parseCompilerException] splits a shader compiler
+ * error into file, line and message.
+ *
+ * Box code usually reaches this through `moduleHere` rather than constructing a [Module]
+ * directly; the graphics lessons in `public/docs/assets/canonical_graphics/LESSONS.md` show
+ * that shape.
+ */
+
 package afield.graphics.render
 
 import afield.graphics.scene.main
@@ -46,6 +62,7 @@ import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
 import kotlin.reflect.KProperty
 
+/** Shader sources and pipeline settings shared by [Module] and [RayTracingModule]. */
 data class Parameters(
     val renderer: Renderer,
     var vertex: String = "",

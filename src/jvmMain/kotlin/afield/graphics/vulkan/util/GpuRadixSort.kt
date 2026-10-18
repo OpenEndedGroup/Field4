@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.util
 
+/**
+ * A stable GPU radix sort of `uint` keys in storage buffers, with an optional `uint` payload carried along.
+ *
+ * [GpuRadixSort] owns its scratch buffers and compute shaders. [asFrameBufferGroup] wraps a single [VulkanBuffer] so it can be passed where a per-frame buffer group is expected.
+ */
+
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.Target
 import afield.graphics.vulkan.buffers.BufferParameters

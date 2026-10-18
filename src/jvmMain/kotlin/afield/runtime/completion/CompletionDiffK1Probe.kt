@@ -40,6 +40,15 @@ expect:
     - "K1 DUMP DONE"
 */
 /**
+ * A probe that dumps the K1 completer's raw candidates over the shared completion fixtures, for
+ * diffing against the K2 Analysis-API sidecar's output.
+ *
+ * Run as the `kotlin.completion-diffdump.probe` smoke test; it writes
+ * `build/completion-corpus/k1-candidates.json`, which `tools/completion_diff.py` compares with the
+ * sidecar's dump fixture by fixture.
+ */
+
+/**
  * STAGE B (K1 side of the differential). Runs the REAL production K1 completion path
  * (`KotlinInterface2.complete` → K1 delegate, intro-warmed) over the shared TSV corpora and dumps the
  * raw candidates per fixture to `build/completion-corpus/k1-candidates.json`. The AA side is dumped

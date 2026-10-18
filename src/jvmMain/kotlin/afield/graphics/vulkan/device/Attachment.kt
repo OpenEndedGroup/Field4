@@ -6,6 +6,14 @@ import afield.graphics.texture.Image.ImageData
 import afield.graphics.texture.ImageView
 import afield.graphics.texture.ImageView.ImageViewData
 
+/**
+ * An image plus image view sized and formatted to be used as a framebuffer attachment.
+ *
+ * [Attachment] picks the view's aspect from the usage flags: a depth-stencil usage makes a depth
+ * view and sets `isDepthAttachment`, a colour usage makes a colour view. `cleanup` destroys the view
+ * and then the image.
+ */
+
 class Attachment(device: Device, width: Int, height: Int, format: Int, usage: Int) {
     val image: Image
     val imageView: ImageView

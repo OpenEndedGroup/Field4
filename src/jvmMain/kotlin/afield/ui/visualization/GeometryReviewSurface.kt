@@ -24,6 +24,11 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
+ * A persistent annotation inbox for a custom canvas, the same one a Three.js viewer has:
+ * [Box.geometryReviewSurface] binds it to a box and returns a [GeometryReviewSurface].
+ */
+
+/**
  * Give a custom canvas the same persistent annotation inbox as a Three.js viewer.
  *
  * [name] identifies this canvas on the box; [revision] identifies its authored geometry. The canvas

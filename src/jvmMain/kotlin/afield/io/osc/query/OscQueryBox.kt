@@ -11,6 +11,15 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
+ * The box-facing OSCQuery entry points: `Box.oscQuery` to publish parameters, `Box.oscQueryRemote`
+ * and `Box.oscQueryDiscover` to reach other services, and `Box.oscQueryMirror` to show a remote's
+ * namespace as Field controls.
+ *
+ * [OscQueryServices] keeps one server per HTTP port across box runs and brings callbacks onto the
+ * main Runloop; [BoxOscQuery] is the per-box view that owns the parameters a box declares.
+ */
+
+/**
  * Process-wide OSCQuery state behind `Box.oscQuery`: one [OscQueryServer] per HTTP port, the
  * remotes a box has opened, and the queue that brings callbacks onto the main Runloop.
  *

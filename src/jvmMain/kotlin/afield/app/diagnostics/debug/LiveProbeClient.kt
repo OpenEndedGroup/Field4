@@ -1,5 +1,10 @@
 package afield.app.diagnostics.debug
 
+/**
+ * Field's side of the JDI probe helper: [LiveProbeClient] starts the helper process, sends it
+ * probe requests and routes each response to the listener registered for its request id.
+ */
+
 import afield.app.diagnostics.logging.lprintln
 import java.io.BufferedReader
 import java.io.InputStreamReader

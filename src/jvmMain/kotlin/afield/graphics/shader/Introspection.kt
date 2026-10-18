@@ -19,6 +19,18 @@ import org.lwjgl.vulkan.VK10
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
+/**
+ * Reflection of a compiled shader's interface: the uniform blocks, storage buffers, textures, images,
+ * acceleration structures and push constants it declares, with their sets, bindings, member offsets and
+ * sizes.
+ *
+ * [Introspection] compiles GLSL to SPIR-V through [ShaderSPIRVUtils] (or takes SPIR-V or Slang reflection
+ * directly, through `fromSpirv` and `fromSlangReflection`) and reads the result with SPIRV-Cross, so the
+ * layout it reports is the compiler's, not a parse of the source. [Introspected] holds the reflected
+ * types; [parseGlslMemberComments] recovers the trailing comments on block members, which the
+ * reflection does not carry. Field's modules use this to allocate and bind each shader's buffers.
+ */
+
 private fun spvcReflectJson(spirvBytecode: ByteBuffer): String {
     val words = spirvBytecode.slice().order(ByteOrder.nativeOrder()).asIntBuffer()
 

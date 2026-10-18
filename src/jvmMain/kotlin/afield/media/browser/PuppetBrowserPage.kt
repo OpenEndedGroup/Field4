@@ -9,23 +9,22 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.concurrent.CompletableFuture
 
-// A page read as data rather than watched as a picture.
-//
-// These are the queries you would otherwise write by hand every time: a selector's text, an
-// attribute, how many of something there is, a table as rows, and a wait for a condition to become
-// true. They are thin — each is one `PuppetBrowserControl.evaluate` — and they are here rather than
-// in a box because the escaping and the null handling are the parts that are easy to get subtly
-// wrong, and because a shared spelling is what makes two boxes agree about what `text` means.
-//
-// They run in an isolated world by default. An isolated world sees the same DOM and none of the
-// page's globals, so a page that has redefined `Array.prototype.map`, shadowed
-// `document.querySelectorAll` or installed its own `Element.prototype.getAttribute` cannot change
-// what Field reads out of it. Less paranoia about hostile pages than about ordinary ones:
-// dashboards ship polyfills.
-//
-// Every one of them works against a `HeadlessPuppetBrowser` with no GPU, and equally against a
-// `FieldUiBrowserTexture` you are already rendering — the receiver is the control plane, not the
-// texture.
+/**
+ * Page queries on a puppet browser: an element's text or attribute, a count, a table as rows, and a wait for a condition.
+ *
+ * They are thin — each is one `PuppetBrowserControl.evaluate` — and they are here rather than
+ * in a box because the escaping and the null handling are the parts that are easy to get subtly
+ * wrong, and because a shared spelling is what makes two boxes agree about what `text` means.
+ *
+ * They run in an isolated world by default. An isolated world sees the same DOM and none of the
+ * page's globals, so a page that has redefined `Array.prototype.map`, shadowed
+ * `document.querySelectorAll` or installed its own `Element.prototype.getAttribute` cannot change
+ * what Field reads out of it; ordinary dashboards ship polyfills that would.
+ *
+ * Every one of them works against a `HeadlessPuppetBrowser` with no GPU, and equally against a
+ * `FieldUiBrowserTexture` you are already rendering — the receiver is the control plane, not the
+ * texture.
+ */
 
 /** The single element matching [selector], as trimmed text, or null if there is no such element. */
 fun PuppetBrowserControl.text(

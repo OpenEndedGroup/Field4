@@ -6,6 +6,10 @@ import java.io.File
 import java.time.Instant
 
 /**
+ * Lessons AI4 distils from its own eval runs, kept in a reviewable Markdown file and added to the instructions of every turn that has the graph tools.
+ */
+
+/**
  * What AI4 has learned from its own evals, as a file a person reviews with `git diff`.
  *
  * # The loop

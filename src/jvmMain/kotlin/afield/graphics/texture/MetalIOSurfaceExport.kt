@@ -1,3 +1,10 @@
+/**
+ * [MetalIOSurface] reaches the macOS IOSurface framework from Kotlin, so a Field render-to-texture image can be shared with another process by `IOSurfaceID` or Mach port.
+ *
+ * It looks up, locks, measures and releases IOSurfaces, and [MetalIOSurface.ioSurfaceIds] lists the
+ * ids behind a [afield.graphics.vulkan.targets.RenderToTexture] created for IOSurface export. macOS only.
+ */
+
 package afield.graphics.texture
 
 import afield.graphics.vulkan.targets.RenderToTexture

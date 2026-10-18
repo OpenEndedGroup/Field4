@@ -3,6 +3,14 @@ package afield.graphics.shader
 import afield.graphics.render.AccelerationStructure
 import arrow.core.Either
 
+/**
+ * Decides whether a recompiled shader can be swapped in without a full reload.
+ *
+ * [graphicsShaderAbiCheck] and [computeShaderAbiCheck] compare the old and new [Introspection] of each
+ * stage; a changed stage set or a changed interface returns a [ShaderAbiCheck] that is not compatible,
+ * with a message asking for a full reload.
+ */
+
 data class ShaderAbiCheck(
     val compatible: Boolean,
     val message: String = ""

@@ -21,6 +21,20 @@ import java.nio.FloatBuffer
 import java.nio.IntBuffer
 import kotlin.reflect.KProperty
 
+/**
+ * Structure maps a shader's introspected uniform block or push-constant block onto named Kotlin members, so a box can set, read and bind values by member name.
+ *
+ * A [Structure] is built from the `Introspected.Member` list that shader reflection produces, and
+ * writes each value at its reflected offset when the block is uploaded. Values can be set
+ * directly, or bound to a function that is re-evaluated each time the block is written
+ * ([bindPushConstant], [HasUniform]); a [ProgressingUniform] keeps being written until it reports
+ * completion. A member that nothing has been assigned to fails with [unassignedMemberMessage].
+ */
+
+/**
+ * A uniform value computed on demand: [evaluateUniform] is called each time the owning
+ * [Structure] is written.
+ */
 interface HasUniform<T> : () -> T {
     fun evaluateUniform(): T
 

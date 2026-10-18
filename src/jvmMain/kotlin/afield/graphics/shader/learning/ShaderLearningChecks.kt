@@ -5,6 +5,12 @@ import org.json.JSONObject
 import java.io.File
 import kotlin.math.*
 
+/**
+ * Acceptance checks for a learned shader, run from a box beneath the moduleHere starting point once training finishes.
+ *
+ * [ShaderLearningChecks.run] measures a [ShaderLearningView] at a held-out parameter: full-image error, timing, and whether a rejected model leaves the previous one attached. [ShaderLearningChecks.stripeMetrics] measures error at the bundled test pattern's hard stripe edge separately, because a whole-image mean can hide edge smoothing.
+ */
+
 /** Called from a child of the actual moduleHere Starting Point, after its training process completes. */
 object ShaderLearningChecks {
     /** Measure the bundled hard stripe separately: a whole-image mean can hide edge smoothing. */

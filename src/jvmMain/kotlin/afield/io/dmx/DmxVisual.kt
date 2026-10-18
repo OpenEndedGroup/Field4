@@ -19,6 +19,18 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
+/**
+ * Drawings of a DMX rig and its universes as [FLine] geometry, for a box's output or a PNG.
+ *
+ * Two views of the same light. [Patch.toFLines] and [Box.showPatch] draw each fixture at its
+ * position in the colour it is set to; [Patch.receivedToFLines] and [Box.showReceived] draw the
+ * same layout in the colours decoded from what a [DmxInput] received, so the sent look and the
+ * arrived one can sit side by side. [universeToFLines] and [Box.showUniverse] show a universe in
+ * wire order instead, as a grid of slots or of fixtures read through a [FixtureProfile].
+ * [renderLinesPng] rasterises any of these without a browser.
+ */
+
+/** A closed polygon approximating a circle of radius [r] about ([cx], [cy]). */
 private fun disc(cx: Double, cy: Double, r: Double, segments: Int = 20): FLine {
     val f = FLine()
     for (i in 0..segments) {

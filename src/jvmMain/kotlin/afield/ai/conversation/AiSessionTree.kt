@@ -23,6 +23,15 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
+ * A box's AI4 conversation recorded as a tree of turns beside its markdown transcript, so a turn can be rewound to or edited and re-sent without losing the abandoned branch.
+ *
+ * [AiSessionTree] reads and writes the `ai4_session` JSONL sidecar and reconciles it with
+ * `ai4_chat_history`, which remains what the panel shows. [AiImageBlobs] moves inline images out to
+ * `<document>/ai4_blobs/` as content-addressed references, and [FieldBuildInfo] identifies the Field
+ * build a turn's checkpoint records.
+ */
+
+/**
  * # A box's AI conversation as a tree, not a list
  *
  * `ai4_chat_history` is one markdown string: what the panel shows, what a new provider thread is seeded

@@ -15,6 +15,14 @@ import afield.math.linalg.Vector4f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK13.*
 
+/**
+ * A self-contained optical-flow demonstration that renders two warped test images, measures the motion
+ * between them, and drives a feedback image with it.
+ *
+ * [OpticalFlowDemo] builds its own inputs, so it runs without a camera or video source; it is a
+ * starting point for wiring [opticalFlow] output into shaders.
+ */
+
 /** Two generated images, their motion/cost, and a feedback image driven by that motion.
  * [backend] defaults to [OpticalFlowBackend.AUTO]: the NV engine where it exists, [PyramidOpticalFlow] elsewhere. */
 class OpticalFlowDemo(val renderer: Renderer,val width: Int=960,val height: Int=540,val name: String="optical-flow",

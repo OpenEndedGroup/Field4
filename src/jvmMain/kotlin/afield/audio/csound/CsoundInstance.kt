@@ -1,5 +1,10 @@
 @file:afield.runtime.completion.CompletionCategory("Synthesis")
 package afield.audio.csound
+/**
+ * A running Csound you can render offline or play through Field's audio engine, with queued score
+ * events, live recompilation and thread-safe control channels.
+ */
+
 
 import afield.audio.engine.WavFloatArrayWriter
 import afield.audio.synth.Buf

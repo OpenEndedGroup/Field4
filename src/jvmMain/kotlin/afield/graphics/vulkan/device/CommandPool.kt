@@ -5,6 +5,13 @@ import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VkCommandPoolCreateInfo
 import afield.graphics.vulkan.util.vkCheck
 
+/**
+ * A Vulkan command pool for one queue family, from which Field allocates command buffers.
+ *
+ * [CommandPool] is created with `VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT`, so each command
+ * buffer from it can be reset and re-recorded individually.
+ */
+
 class CommandPool(device: Device, queueFamilyIndex: Int) {
     val device: Device
     val queueFamilyIndex: Int

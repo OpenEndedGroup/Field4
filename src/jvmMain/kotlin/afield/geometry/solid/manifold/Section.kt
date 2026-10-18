@@ -13,6 +13,13 @@ import java.lang.foreign.ValueLayout
 import java.lang.ref.Cleaner
 
 /**
+ * 2D regions with holes, from Manifold's `CrossSection`: boolean operations, offsetting with a choice of
+ * [JoinType], and extrusion into a [Solid].
+ *
+ * [FLine.toSection] converts drawn outlines into a [Section], and [Section.toFLines] converts back for display.
+ */
+
+/**
  * [Section] — a 2D region with holes, that you can **offset**. Manifold's `CrossSection`, which is
  * [Clipper2](https://github.com/AngusJohnson/Clipper2) underneath.
  *

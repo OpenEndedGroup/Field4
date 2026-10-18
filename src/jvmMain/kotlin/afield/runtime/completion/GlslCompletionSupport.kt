@@ -41,6 +41,17 @@ import afield.graphics.shader._meshShader
 import afield.graphics.shader._rayTracingShader
 import afield.graphics.shader._shader
 
+/**
+ * Completion and hover context for GLSL shader properties (`fragment`, `vertex`, `compute` and the
+ * rest), including Field's `{% ... %}` and `{{ ... }}` shader template syntax.
+ *
+ * [GlslCompletionSupport.complete] builds an inventory of the symbols visible in the shader (built-ins,
+ * declarations and struct members from the box's own source and its shader template) and offers root
+ * names, `receiver.member` completions, or template tags and expressions depending on the caret.
+ * [GlslCompletionSupport.describeContext] answers the matching symbol-context request.
+ */
+
+/** A token's span in the shader source. */
 private data class GlslBounds(val start: Int, val end: Int, val text: String)
 
 private data class GlslMemberInfo(

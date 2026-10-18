@@ -1,6 +1,14 @@
 @file:afield.runtime.completion.CompletionCategory("Math")
 package afield.math.gp
 
+/**
+ * Gaussian-process regression of a scalar field sampled at [Vec2] or [Vec3] points.
+ *
+ * `gp2D` and `gp3D` turn a list of points and their values into a [GaussianProcess], with either one
+ * noise level for every observation or one per observation; the `predict` overloads read the fitted
+ * field back at a point as a [GpPrediction] (mean and variance).
+ */
+
 import afield.math.linalg.Vec2
 import afield.math.linalg.Vec3
 

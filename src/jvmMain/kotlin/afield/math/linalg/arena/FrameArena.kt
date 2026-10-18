@@ -1,5 +1,17 @@
 package afield.math.linalg.arena
 
+/**
+ * Per-thread scratch memory for temporary vectors, reclaimed all at once when a scope ends.
+ *
+ * [frameScratch] runs a block against the current thread's [FrameArena]; vectors allocated inside it
+ * become invalid when the block returns. Scopes nest, each restoring its own [ArenaMark]. Use an
+ * explicit [FrameArena] (and close it) for short-lived threads, since [FrameArena.current] keeps its
+ * native storage until the thread calls [FrameArena.closeCurrent].
+ *
+ * With debug checks on (the default), using a vector after its scope has ended, or from another
+ * thread, throws instead of reading reused memory.
+ */
+
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout

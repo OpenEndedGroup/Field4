@@ -1,3 +1,7 @@
+/**
+ * Decodes an audio stream with FFmpeg into signed 16-bit PCM [AudioFrame]s for [AudioPlayer].
+ */
+
 package afield.graphics.texture.video
 
 import org.bytedeco.ffmpeg.avcodec.AVCodecContext

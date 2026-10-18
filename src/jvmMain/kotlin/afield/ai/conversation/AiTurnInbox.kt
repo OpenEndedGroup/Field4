@@ -3,6 +3,13 @@ package afield.ai.conversation
 import afield.app.protocol.AiAssist
 
 /**
+ * The queue for messages a person sends to a box's chat while its AI turn is still running.
+ *
+ * The bridge hands waiting messages to the model at the next tool-round boundary, and whatever is left
+ * when the turn ends becomes the box's next turn. See [AiTurnInbox].
+ */
+
+/**
  * Messages a person sends to a box's chat while that box's AI turn is still running.
  *
  * Until 2026-10-04 the server refused such a message with a notification. The panel had already shown

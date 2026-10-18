@@ -617,7 +617,7 @@ fun row(src: String): String = try {
         "| ${r.history.joinToString("") { it.symbol.toString() }.ifEmpty { "—" }} " +
         "| ${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f |"
 } catch (ex: ConwayParseException) {
-        "| `$src` | — | **${ex.message}** | — | — |"
+        "| `$src` | — | **${ex.message.md}** | — | — |"
     }
 
 val cases = ["C", "dC", "daC", "adC", "bC", "k4aC", "t4kC", "sD", "qC", "a4C", "4kC", "k2C", "dx"]
@@ -1545,7 +1545,7 @@ markdown(
 
 | call | message |
 |---|---|
-${refusals.joinToString("\n") { (call, message) -> "| `$call` | $message |" }}
+${refusals.joinToString("\n") { (call, message) -> "| `$call` | ${message.md} |" }}
 """,
     width = 940,
 )

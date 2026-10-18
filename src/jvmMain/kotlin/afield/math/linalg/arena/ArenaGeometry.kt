@@ -1,5 +1,12 @@
 package afield.math.linalg.arena
 
+/**
+ * Arena-vector versions of a few `afield.math.linalg` geometry tests, for use inside `frameScratch`.
+ *
+ * Covers the closest point on a segment and on an axis-aligned box, point-in-box, and ray-box
+ * intersection. Each one reads and writes arena vectors, so it allocates nothing on the heap.
+ */
+
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -19,6 +26,7 @@ fun FrameScope.closestPointOnSegment(
     return dest.set(a.x + abx * clamped, a.y + aby * clamped, a.z + abz * clamped)
 }
 
+/** Allocation-free arena form of `afield.math.linalg.closestPointOnAabb`. */
 fun FrameScope.closestPointOnAabb(
     point: ArenaVec3f,
     minimum: ArenaVec3f,

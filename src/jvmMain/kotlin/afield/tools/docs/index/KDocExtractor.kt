@@ -11,6 +11,16 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.readText
 
 /**
+ * Reads the KDoc comments out of a Kotlin source file and attaches each one to the declaration below it.
+ *
+ * [KDocExtractor.extractKDocs] returns one [KDocComment] per block, with its line span and the name and
+ * kind of the declaration it documents. The completion doc panel, `KotlinSourceIndex` and the generated
+ * reference pages all read summaries through it. A block attaches to the first following line that
+ * `parseDeclaration` recognises; `KDocAttachmentGuard` reports blocks that would attach to the wrong
+ * declaration.
+ */
+
+/**
  * Data class representing a KDoc comment found in source code
  */
 data class KDocComment(

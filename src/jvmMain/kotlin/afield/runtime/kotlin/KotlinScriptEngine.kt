@@ -46,6 +46,16 @@ import java.util.*
 import kotlin.reflect.*
 import kotlin.script.experimental.api.*
 
+/**
+ * The common interface every box's Kotlin engine implements, and the shared pieces both engines use.
+ *
+ * [KotlinScriptEngine] is what a box's code runs through: compiling, evaluating, completion and
+ * context tracking. [createKotlinScriptEngine] returns the active implementation, [KotlinInterface2]
+ * (K2) or the older [KotlinInterface] (K1). The file also holds the types both engines return, such as
+ * [CompletionResult], [KotlinContext] and [KotlinDebugScriptTracker], and the compiler options they
+ * share.
+ */
+
 internal const val fieldKotlinLanguageVersion = "2.5"
 // At language 2.5 name-based destructuring's full form and `[a, b]` are the default and the short form
 // stays off, so `-Xname-based-destructuring=only-syntax` would only add a "redundant" warning to every box.

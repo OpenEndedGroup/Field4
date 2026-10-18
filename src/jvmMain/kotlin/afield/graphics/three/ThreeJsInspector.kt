@@ -20,47 +20,32 @@ import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 
 /**
- * The three.js output area as an **instrument** rather than a picture of one.
+ * Measure, section and explode controls for the Three.js viewer, so a 3D preview of something to be
+ * built can be inspected without re-running its box.
  *
- * ### Why this file exists
+ * The inspector answers three questions:
  *
- * Every one of the human's 2026-08-09 `panel-*` workspace documents renders through the three.js
- * viewer, and one of them ends like this:
- *
- * ```kotlin
- * showConduitRelaxationThree(relaxed, channelPrefix = "cross-host-assembled", explosionMm = 0.0, height = 720)
- * ```
- *
- * `explosionMm = 0.0` is the whole argument for this file. An exploded view *existed*, as a number the
- * human retypes and re-runs a box for. Last night the viewer learned to name which element a click hit;
- * that answered "what is this". It still could not answer the three questions anyone asks of a 3D
- * preview of a thing that gets built:
- *
- *  * **how far apart are these two things** — [ThreeMeasurement], drawn in the scene as a real
- *    dimension with witness lines and a legible number;
- *  * **what does this look like in section** — [ThreeSection], a cut plane with a highlighted cut
+ *  * **how far apart are these two things**: [ThreeMeasurement], drawn in the scene as a dimension
+ *    with witness lines and a legible number;
+ *  * **what does this look like in section**: [ThreeSection], a cut plane with a highlighted cut
  *    outline, not merely a hidden front half;
- *  * **how does it come apart** — [ThreeExplode], a *parameter* with a scrubber, in two modes.
+ *  * **how does it come apart**: [ThreeExplode], a parameter with a scrubber, in two modes.
  *
- * ### Where the work actually happens
+ * #### Where the work happens
  *
- * In the viewer, on the client, and deliberately. A slider that costs a websocket round-trip and a box
- * re-run is the thing being replaced, so the displacement, the cut and the closest approach are all
- * computed in `threejs_viewer.html`. Which means they are computed **twice** — once there and once
- * here — and that is the situation `ViewerJavaScript` exists for. Each of the three is a marked
- * `// [viewer-region …]` region, lifted out of the shipped HTML and executed on GraalJS by
+ * The displacement, the cut and the closest approach are computed in the viewer
+ * (`threejs_viewer.html`), so moving a slider costs no websocket round-trip and no box re-run. Each
+ * of the three is a marked `// [viewer-region …]` region of that HTML, which
  * `ThreeInspectorMeasureDifferentialTest`, `ThreeInspectorExplodeDifferentialTest` and
- * `ThreeInspectorSectionDifferentialTest`, against expectations derived from the geometry the figures
- * were built from.
+ * `ThreeInspectorSectionDifferentialTest` lift out and run on GraalJS against expectations derived
+ * from the figure geometry.
  *
- * ### What is not covered, said once
- *
- * The regions are the *geometry*. The three.js plumbing around them — `localClippingEnabled`, the
- * canvas-texture sprite the dimension text is drawn into, the HUD sliders — is not liftable and is not
- * under differential test; it is covered by the docs capture in `public/docs/three_inspector.md`, which
- * is a real screenshot of a real run rather than an assertion. If the dimension text renders as an
- * empty sprite, these tests will still be green. That is the honest boundary.
+ * The regions cover the geometry only. The three.js plumbing around them (`localClippingEnabled`,
+ * the canvas-texture sprite the dimension text is drawn into, the HUD sliders) is not under those
+ * tests, so an empty dimension sprite would leave them green.
  */
+
+/** How the viewer pushes a figure's parts apart; [amount] `0.0` is the assembled state. */
 @Serializable
 data class ThreeExplode(
     /**

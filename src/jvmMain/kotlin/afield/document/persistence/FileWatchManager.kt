@@ -54,6 +54,14 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 /**
+ * Reloads an open document's properties when their sidecar files are edited outside Field.
+ *
+ * A [FileWatchManager] watches one document folder and tells Field's own saves apart from external
+ * edits by content hash, so editing a box's `.kt` or `.glsl` sidecar in another editor updates the box
+ * in the running session.
+ */
+
+/**
  * Keeps one open document synchronized with external edits to its workspace directory.
  *
  * The watcher registers only [SessionInformation.filename] itself (not subdirectories) for create,

@@ -21,6 +21,8 @@ import java.util.concurrent.TimeUnit
  * since the line last ran — says so, rather than answering for text the model has never seen.
  * Directives are never run for a note: `#reset` and `#boxes` change the model.
  */
+
+/** Computes the [LineNotes.Note] for a line of a Datalog box from the box's current model. */
 object DatalogLineNotes {
     private val P = LineNotes::plain
     private val S = LineNotes::strong

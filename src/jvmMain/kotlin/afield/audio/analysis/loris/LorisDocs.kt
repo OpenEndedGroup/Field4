@@ -10,6 +10,15 @@ import afield.ui.visualization.TimeViewerShell
 import java.nio.file.Files
 import java.nio.file.Path
 
+/**
+ * The fixture that renders the audio and figures on the Loris docs page from a committed film-dialogue recording.
+ *
+ * [LorisDocs.render] analyses the source WAV with fixed [LorisOptions], resynthesizes it unedited and
+ * with frequencies scaled by 0.75 and noise bandwidth removed, and writes both WAVs with a `provenance.json` under
+ * `public/docs/assets/loris`. The `...Html` functions return the comparison, transformed and morph
+ * panels the page embeds. It needs the native Loris executable.
+ */
+
 /** Reproducible real-audio documentation fixture; never substitutes synthetic tracks for Loris. */
 object LorisDocs {
     val sourcePath: Path get() = Path.of("public/docs/assets/subharmonic_sound/notld-barbara-source.wav")

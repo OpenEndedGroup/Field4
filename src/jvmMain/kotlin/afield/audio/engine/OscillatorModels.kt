@@ -2,6 +2,12 @@
 
 package afield.audio.engine
 
+/**
+ * Scalar, one-object-per-oscillator reference models: [Phasor] (a complex phasor advanced by multiplication), [Oscillator], [Resonator] and [TrackingResonator].
+ *
+ * These are the per-sample building blocks that the array banks in `OscillatorBankArrays.kt` hold, and a readable counterpart to the vectorized banks in `ResonatorBank.kt`.
+ */
+
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos

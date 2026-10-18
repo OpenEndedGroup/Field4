@@ -19,6 +19,14 @@ expect:
 */
 
 /**
+ * An audit of every playable audio file the documentation publishes, by the family of code that
+ * made it.
+ *
+ * [DocsAudioProvenance] re-renders the committed `.wav`s the fence sweep can reach through their producer and
+ * correlates the two, so a figure the code no longer makes is found; [UNDERIVABLE] lists the ones it cannot reach. `DocsAudioProvenanceGuardTest` asserts the result.
+ */
+
+/**
  * Every playable audio artifact the documentation publishes, and what actually made it.
  *
  * `sound.md` was written from [DirtRender]'s KDoc, which says that "every audio figure in the

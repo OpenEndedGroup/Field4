@@ -42,6 +42,15 @@ import kotlin.concurrent.thread
 import kotlin.time.measureTime
 
 /**
+ * Finds which classes a bare name could mean, so Field can write the `import` line for it.
+ *
+ * A class-path index, built once by [initializeClassCache], maps simple class names to fully
+ * qualified ones. [findClassesNamed], [classesWithPrefix] and [kotlinImportStatementFor] answer
+ * completion and auto-import from it, filtered by the user's import blacklist. [ImportResolution]
+ * controls whether that answer depends on the local machine.
+ */
+
+/**
  * The two inputs, both outside the checked-in source, that decide what [kotlinImportStatementFor] answers.
  *
  * `kotlinImportStatementFor` emits an import only when a simple name resolves to exactly ONE importable

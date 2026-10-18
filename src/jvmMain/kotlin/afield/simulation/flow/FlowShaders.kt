@@ -1,3 +1,13 @@
+/**
+ * Packaged GLSL helpers (`grain.glsl`, `strokes.glsl`, `motion.glsl`, `tiles.glsl`) for flow
+ * shaders, reachable as `#include "flow/..."`.
+ *
+ * The include resolver in `shaders.kt` already falls back to [FlowShaders.source] for `flow/`
+ * paths, so a document needs no setup; [FlowShaders.install] registers the root explicitly,
+ * replacing any custom `flow` registration. Passes, resources and artistic controls stay in
+ * editable boxes.
+ */
+
 package afield.simulation.flow
 
 import afield.graphics.shader.ShaderIncludeResolution

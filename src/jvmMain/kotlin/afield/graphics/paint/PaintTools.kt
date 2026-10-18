@@ -5,6 +5,17 @@ import afield.math.linalg.Vec4
 import java.lang.foreign.MemorySegment
 import kotlin.math.pow
 
+/**
+ * The tools and materials a [PaintCanvas] is worked with: grounds, brushes, knives, rags, pencils,
+ * and tubes of paint.
+ *
+ * A tool is made by its canvas ([PaintCanvas.brush], [PaintCanvas.knife], [PaintCanvas.rag],
+ * [PaintCanvas.pencil], [PaintCanvas.waterBrush], [PaintCanvas.dynamicBrush]) and the native ones
+ * are [AutoCloseable]. [BrushKind] and [BrushConfig] shape a bristle brush, [Handling] says how it
+ * is moved, and [Tubes] names ready-mixed colours to load it with. Tests: `PaintToolsTest`,
+ * `DynamicBrushTest`.
+ */
+
 /** What a [PaintCanvas] starts as. */
 enum class PaintGround(internal val code: Int) {
     /** A flat ground of the canvas's `groundColor`, no texture. */

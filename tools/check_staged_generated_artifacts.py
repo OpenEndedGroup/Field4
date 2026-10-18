@@ -585,6 +585,14 @@ def main(argv: list[str] | None = None) -> int:
     staged = _git_paths(repo, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
     selected = list(GUARDS) if args.all else guards_for_paths(staged)
 
+    from conversation_packagers import packagers_for_paths  # noqa: PLC0415
+    for packager in packagers_for_paths(staged, repo):
+        print(
+            f"conversation page: this commit feeds public/docs/{packager.stem}.md. "
+            f"Re-run `uv run python {packager.script}` and commit what it writes "
+            "(landing repackages it too, but your branch's tests will see it stale)."
+        )
+
     if not selected:
         print("generated-artifact guard: no affected staged paths")
         return 0

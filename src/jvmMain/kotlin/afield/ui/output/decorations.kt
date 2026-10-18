@@ -60,6 +60,13 @@ import java.util.*
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
+/**
+ * Editor decorations driven from running code: [RawDecoration] marks a span of a box's source in
+ * Monaco, and the `Marker` extensions here — [histogram], [history], [stats], [liveNumber], [toggle],
+ * [beep], [bop] — attach live values and clickable widgets to the line that called them.
+ */
+
+
 
 /**
  * A single Monaco decoration payload for a box.

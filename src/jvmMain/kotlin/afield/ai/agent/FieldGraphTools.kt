@@ -35,18 +35,20 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-// =============================================================================================
-// Field graph + execution tools for Field's own agent.
-//
-// These are the operations an external agent reaches through tools/field_backdoor.py — new-box,
-// set, connect, run, launch, stop, wait-output — as native tools in the AI4 registry. Each one calls
-// the same server function the websocket/backdoor handler calls (createAgentBox, executeAllRequest,
-// launchAllRequest, stopBoxRequest, the actionTable's -connect/-disconnect/-delete-box), so nothing
-// about box execution is reimplemented here.
-//
-// The rule the results keep (AGENTS.md, 2026-09-14): a box that fails to compile or throws comes
-// back as `success: false` with its diagnostics. Never a silent ok.
-// =============================================================================================
+/**
+ * The box graph and execution tools of Field's own agent: list, create, delete, edit, connect,
+ * run, launch, stop and read the output of boxes in the current document.
+ *
+ * These are the operations an external agent reaches through `tools/field_backdoor.py` (new-box,
+ * set, connect, run, launch, stop, wait-output), registered as native tools in the AI4 registry.
+ * Each one calls the same server function the websocket and backdoor handlers call
+ * (`createAgentBox`, `executeAllRequest`, `launchAllRequest`, `stopBoxRequest`, and the action
+ * table's `-connect`, `-disconnect` and `-delete-box`), so box execution is not reimplemented here.
+ *
+ * A box that fails to compile or throws comes back as `success: false` with its diagnostics,
+ * never as a silent success. [FieldGraphHost] is the seam to the server: [LiveFieldGraphHost] is
+ * the real one, and tests such as `InFieldAgentHarnessTest` supply a scripted host.
+ */
 
 @JsonClassDescription("List every box in this Field document. Returns, per box: uid, name, parents, children, whether it is running, the length of its code, and the verdict of its last run. Use it when a box the task names is not one you know; other tools accept the names it lists (e.g. box = `Sun`). It takes no arguments and does not fail; an empty list means no boxes yet.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.READ_DOCUMENT])

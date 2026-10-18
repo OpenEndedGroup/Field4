@@ -26,6 +26,14 @@ import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_TASK_BIT_EXT
 import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
 
+/**
+ * A task/mesh-shader pipeline as a renderable module: [MeshModule] compiles and introspects task and
+ * mesh shaders and owns their descriptor sets.
+ *
+ * Boxes hold it through a [MeshModulePointer], which swaps in a rebuilt module when a shader is
+ * reloaded and carries live values across the interface change.
+ */
+
 class MeshModulePointer(var current: MeshModule) : Renderable {
     /** What the last successful [reload] did to the interface and which values it could not carry. */
     var lastReloadReport: ModuleReloadReport? = null

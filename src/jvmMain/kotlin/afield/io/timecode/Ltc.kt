@@ -8,6 +8,16 @@ import kotlin.math.abs
 import kotlin.math.roundToLong
 
 /**
+ * Linear timecode as audio: [LtcEncoder] renders SMPTE LTC frames to samples, [LtcDecoder] reads
+ * them back from a live or recorded signal, and [TimecodeWav] writes and reads the mono `.wav`
+ * files LTC usually travels in.
+ *
+ * [LtcFrame] is the 80-bit frame itself; [LtcDecodedFrame] is what the decoder reports for each
+ * frame it finds. The decoder tolerates gain, DC offset, noise, speed changes and reverse play,
+ * which `TimecodeTest` checks against encoder output.
+ */
+
+/**
  * One LTC (linear timecode) frame: the 80 bits SMPTE 12M records on an audio track once per video
  * frame. Bits 0..63 carry the timecode in BCD interleaved with 32 user bits; bits 64..79 are the
  * fixed sync word `0011 1111 1111 1101`, which tells a reader where a frame ends and which way the

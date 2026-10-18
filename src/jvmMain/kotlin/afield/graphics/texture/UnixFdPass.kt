@@ -1,3 +1,10 @@
+/**
+ * [UnixFdPass] sends file descriptors to another process over a Unix domain socket with SCM_RIGHTS, which is how Field hands exported GPU memory to its Linux encoder helper.
+ *
+ * It calls a separately built JNI helper (`native/field-fdpass/`), loaded through its own class
+ * loader; [UnixFdPass.available] reports whether that helper is present. Linux only.
+ */
+
 package afield.graphics.texture
 
 import afield.app.diagnostics.logging.lprintln

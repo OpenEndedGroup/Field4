@@ -14,6 +14,16 @@ import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import java.util.concurrent.CompletableFuture
 
+/**
+ * The control vocabulary for an offscreen Chromium tab driven from Field: its state, events, and
+ * the pointer, key, touch and JavaScript requests a box sends it.
+ *
+ * [PuppetBrowserControl] is the command plane (navigation, input, JavaScript in the main or
+ * isolated world, raw CDP); [PuppetBrowser] adds an [ExternalBrowserSurface], so the same tab can be
+ * sampled as a texture. [HeadlessPuppetBrowser] implements only the control plane and
+ * [FieldUiBrowserTexture] implements both. The wire encoding is covered by `PuppetBrowserProtocolTest`.
+ */
+
 /** Current observable state of an offscreen Chromium tab. */
 data class PuppetBrowserState(
     val url: String = "about:blank",

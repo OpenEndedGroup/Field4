@@ -7,6 +7,10 @@ import org.lwjgl.vulkan.EXTQueueFamilyForeign.VK_QUEUE_FAMILY_FOREIGN_EXT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_GENERAL
 
 /**
+ * The Linux browser-frame receiver, which imports Electron's dma-buf frames into Vulkan.
+ */
+
+/**
  * Linux receiver for Electron nativePixmap dma-bufs. The producer must transfer every fd with
  * `SCM_RIGHTS`; copying the integer values from Electron's process is not a transfer.
  *

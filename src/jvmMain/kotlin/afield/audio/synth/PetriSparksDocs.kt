@@ -22,6 +22,14 @@ expect:
 */
 
 /**
+ * The sound on `chain_petri_sparks.md`: the page's Petri net, played from the pinned
+ * Dirt-Samples.
+ *
+ * [PetriSparksDocs] holds the net source the page's boxes parse and renders its emitted pattern with
+ * [patRenderStereoDirt]. It runs as the `synth.petri.sparks.sound` FIELD_TEST.
+ */
+
+/**
  * The sound on `chain_petri_sparks.md`: the page's Petri net, played from the pinned Dirt-Samples.
  *
  * [NET] is the same `#petri` source the page's boxes parse. Three token rings of three, four and

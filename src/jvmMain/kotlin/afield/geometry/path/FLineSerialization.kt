@@ -24,6 +24,15 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import java.awt.Stroke
 
+/**
+ * Serializes an [FLine] to JSON and back, nodes and properties included, through [FLineSerializer].
+ *
+ * [FLine] names [FLineSerializer] in its `@Serializable` annotation, so any `kotlinx.serialization`
+ * format picks it up. Each property value is written with a type tag: numbers, booleans, strings and
+ * `Vec2`/`Vec3`/`Vec4`. A value of any other type throws `SerializationException`; a few runtime-only
+ * properties (`onClick` callbacks, `thicken` strokes) are skipped instead.
+ */
+
 object FLineSerializer : KSerializer<FLine> {
     override val descriptor: SerialDescriptor = FLineSurrogate.serializer().descriptor
 

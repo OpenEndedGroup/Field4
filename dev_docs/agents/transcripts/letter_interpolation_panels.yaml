@@ -27,6 +27,7 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
+
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -43,105 +44,118 @@ operations:
       frame: { x: 380.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.ai.learning.FlowCoupling
-          import afield.ai.learning.FlowMatchOptions
-          import afield.ai.learning.contourComponents
-          import afield.ai.learning.flowMatch
-          
           prop<afield.simulation.particles.FlowMatchExport>(fieldA)
           prop<afield.simulation.particles.FlowMatchExport>(fieldB)
-          
+
           val LETTERS = "C" to "S"
           val N = 512
-          
-          // Both fields must start from the *same* cloud. That is what gives a particle one start
-          // point and two destinations, and it is also what makes the two normalisation frames
-          // agree -- `blendWith` refuses to mix two coordinate systems, so sharing the cloud is a
-          // requirement and not a tidiness.
+
+          /*
+          Both fields must start from the *same* cloud. That is what gives a particle one start
+          point and two destinations, and it is also what makes the two normalisation frames
+          agree -- `blendWith` refuses to mix two coordinate systems, so sharing the cloud is a
+          requirement and not a tidiness.
+          */
           val source = (0 until N).map {
               val a = 2 * Math.PI * it / N
               vec(Math.cos(a), Math.sin(a), 0.0)
           }
-          
+
           // A letter as N points in arc-length order, centred and scaled to unit RMS radius so
           // that both letters live in the same frame as the circle.
           fun glyph(ch: String): List<Vec3> {
               val parts = contourComponents(layoutText(ch, typeface("Helvetica", 300.0)).toFLines(), total = N, seed = 3)
-              if (parts.size != 1) error("'$ch' has ${parts.size} closed contours; this scene pairs one circle with one contour, so pick a letter like C, S, E, F, L, T, V or Z")
+              if (parts.size != 1)
+                  throw IllegalArgumentException(
+                      "'$ch' has ${parts.size} closed contours; this scene pairs one circle with one contour, so pick a letter like C, S, E, F, L, T, V or Z",
+                  )
               val p = parts[0]
               val cx = p.map { it.x.toDouble() }.average()
               val cy = p.map { it.y.toDouble() }.average()
               val rms = Math.sqrt(p.sumOf { (it.x - cx) * (it.x - cx) + (it.y - cy) * (it.y - cy) } / p.size)
               return p.map { vec((it.x - cx) / rms, (it.y - cy) / rms, 0.0) }
           }
-          
-          // Rotate and if necessary reverse the contour so index i starts near circle index i.
-          // Without this each letter carries an arbitrary rotation relative to the circle, and --
-          // worse for this scene -- a *different* one, so the two fields would disagree about
-          // which part of the circle becomes which part of the glyph and the interpolation would
-          // be comparing nothing.
+
+          /*
+          Rotate and if necessary reverse the contour so index i starts near circle index i.
+          Without this each letter carries an arbitrary rotation relative to the circle, and --
+          worse for this scene -- a *different* one, so the two fields would disagree about
+          which part of the circle becomes which part of the glyph and the interpolation would
+          be comparing nothing.
+          */
           fun align(contour: List<Vec3>): List<Vec3> {
               var best = contour
               var bestCost = Double.MAX_VALUE
-              for (reversed in listOf(false, true)) {
+              for (reversed in [false, true]) {
                   val base = if (reversed) contour.reversed() else contour
                   for (shift in 0 until N) {
                       var cost = 0.0
                       for (i in 0 until N) {
-                          val q = base[(i + shift) % N]; val s = source[i]
+                          val q = base[(i + shift) % N]
+                          val s = source[i]
                           cost += (q.x - s.x) * (q.x - s.x) + (q.y - s.y) * (q.y - s.y)
                           if (cost > bestCost) break
                       }
-                      if (cost < bestCost) { bestCost = cost; best = List(N) { base[(it + shift) % N] } }
+                      if (cost < bestCost) {
+                          bestCost = cost
+                          best = List(N) { base[(it + shift) % N] }
+                      }
                   }
               }
               return best
           }
-          
+
           // The same seed in both calls. Smile's Xavier initialisation is drawn from a generator
           // that `flowMatch` reseeds, so this really is the same starting point twice.
-          fun train(target: List<Vec3>) = flowMatch(
-              target, source,
-              FlowMatchOptions(steps = 9000, coupling = FlowCoupling.PAIRED, seed = 7, hidden = intArrayOf(64, 64)),
-          ).export()
-          
+          fun train(target: List<Vec3>) =
+              flowMatch(
+                      target,
+                      source,
+                      FlowMatchOptions(steps = 9000, coupling = FlowCoupling.PAIRED, seed = 7, hidden = intArrayOf(64, 64)),
+                  )
+                  .export()
+
           fieldA = train(align(glyph(LETTERS.first)))
           fieldB = train(align(glyph(LETTERS.second)))
-          println("${LETTERS.first} and ${LETTERS.second}: ${fieldA.network.parameterCount} parameters each, one source of ${fieldA.sourceCount} points")
+          println(
+              "${LETTERS.first} and ${LETTERS.second}: ${fieldA.network.parameterCount} parameters each, one source of ${fieldA.sourceCount} points",
+          )
   - create:
       box: li_panels
       name: three pinned panels
       frame: { x: 740.0, y: 40.0, w: 320.0, h: 100.0 }
       properties:
         code: |
-          import afield.simulation.particles.ShaderNeuralParticles
-          import afield.simulation.particles.blendWith
-          
           prop<List<afield.simulation.particles.ShaderNeuralParticles>>(panels)
-          
-          // 0.5 is the ring. The other two are where the form is buckling -- a ring with the S's
-          // spine pressing into it -- and they are the reason this figure is not just "a circle".
-          // 0.78 rather than 0.75 because the buckle is deepest a little past three quarters.
-          val STOPS = listOf(0.25f, 0.5f, 0.78f)
-          
-          // `name` keeps each system's buffers and modules apart; without it the second one would
-          // bind over the first. `viewCenter` is subtracted before the divide, so a negative x
-          // moves that panel to the right of the screen.
+
+          /*
+          0.5 is the ring. The other two are where the form is buckling -- a ring with the S's
+          spine pressing into it -- and they are the reason this figure is not just "a circle".
+          0.78 rather than 0.75 because the buckle is deepest a little past three quarters.
+          */
+          val STOPS = [0.25f, 0.5f, 0.78f]
+
+          /*
+          `name` keeps each system's buffers and modules apart; without it the second one would
+          bind over the first. `viewCenter` is subtracted before the divide, so a negative x
+          moves that panel to the right of the screen.
+          */
           once.panels {
               STOPS.mapIndexed { i, _ ->
                   ShaderNeuralParticles(fieldA, renderer) {
-                      name = "panel$i"
-                      particleCount = 150_000
-                      stepsPerCycle = 150
-                      // Higher than the sweeping scene's: a still wants the arrived distribution
-                      // crisp rather than the stream between shapes.
-                      dwellCycles = 3f
-                      viewScale = 4.6f
-                      viewCenter = Vector2f((1 - i) * 5.2f, 0f)
-                  }.also { it.installInto() }
+                          name = "panel$i"
+                          particleCount = 150_000
+                          stepsPerCycle = 150
+                          // Higher than the sweeping scene's: a still wants the arrived distribution
+                          // crisp rather than the stream between shapes.
+                          dwellCycles = 3f
+                          viewScale = 4.6f
+                          viewCenter = Vector2f((1 - i) * 5.2f, 0f)
+                      }
+                      .also { it.installInto() }
               }
           }
-          
+
           // Set once, not per frame. Each panel is a different field from the same trained pair.
           STOPS.forEachIndexed { i, t ->
               panels[i].updateWeights(fieldA.blendWith(fieldB, t).network)

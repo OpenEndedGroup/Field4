@@ -25,6 +25,14 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * GLSL to SPIR-V compilation through shaderc, with `#include` resolution and line-numbered error reports.
+ *
+ * [ShaderSPIRVUtils] compiles a source for one [ShaderKind] (vertex, fragment, compute, mesh, task and
+ * the ray-tracing stages), and throws [CompilerError] with the compiler's message on failure. A
+ * [ShaderIncludeResolver] passed in a [ShaderCompileSource] answers each include request.
+ */
+
 enum class ShaderKind(internal val kind: Int) {
     VERTEX_SHADER(Shaderc.shaderc_glsl_vertex_shader), GEOMETRY_SHADER(Shaderc.shaderc_glsl_geometry_shader), FRAGMENT_SHADER(
         Shaderc.shaderc_glsl_fragment_shader

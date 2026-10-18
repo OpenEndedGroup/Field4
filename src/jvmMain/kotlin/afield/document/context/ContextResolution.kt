@@ -34,6 +34,17 @@ import afield.media.video.*
 import afield.runtime.kotlin.KotlinVariableInfo
 import afield.runtime.lifecycle.map
 import afield.ui.output.templates.filter
+
+/**
+ * The graph walk that decides which box supplies a value read through `fromContext`, `prop` or `@exported`.
+ *
+ * Every lookup starts at the asking box and moves up through its ancestors one generation at a time;
+ * the nearest match wins. A [ContextResolution.Query] says what counts as a match and a
+ * [ContextResolution.Policy] says which parts of each box are searched, and in what order.
+ * [ContextResolution.explain] runs the same walk to the end of the graph and reports the winner,
+ * the path to it, and anything it shadowed, as a [WhyAnswer].
+ */
+
 /**
  * The one walk behind every "where does this value come from?" question a box can ask of the graph.
  *

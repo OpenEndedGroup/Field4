@@ -1,5 +1,10 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * The head-related transfer function that binaural rendering filters through: one [Hrtf] per
+ * context, shared by every [BinauralEffect] and kept open longer than all of them.
+ */
+
 import afield.audio.spatial.steamaudio.raw.IPLHRTFSettings
 import afield.audio.spatial.steamaudio.raw.Phonon
 import java.lang.foreign.Arena

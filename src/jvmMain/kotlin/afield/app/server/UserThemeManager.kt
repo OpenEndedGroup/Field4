@@ -28,6 +28,15 @@ import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.time.Duration.Companion.milliseconds
 
+/**
+ * Serves the user's CSS theme from `~/.afield/theme.css` to the browser and pushes it again whenever the file changes.
+ *
+ * [UserThemeManager.start] creates the file with seed tokens if it is missing, then polls its
+ * modification time and size and broadcasts the new CSS to every client on a change.
+ * [UserThemeManager.sendTo] sends the current theme to one session.
+ */
+
+/** Owns `~/.afield/theme.css` and its delivery to connected clients. */
 object UserThemeManager {
     private val themeDir = File(System.getProperty("user.home"), ".afield")
     private val themeFile = File(themeDir, "theme.css")

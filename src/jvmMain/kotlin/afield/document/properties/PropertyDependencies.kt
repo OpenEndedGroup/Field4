@@ -1,5 +1,13 @@
 package afield.document.properties
 
+/**
+ * Records which boxes read values held by other boxes, per document, and saves that record as
+ * `dependencies.edn` beside `metadata.edn`.
+ *
+ * [PropertyDependencies] below describes what is recorded and when it is written; the tests are
+ * `PropertyDependenciesTest`.
+ */
+
 import afield.app.diagnostics.named
 import afield.app.server.documents
 import afield.data.table.div

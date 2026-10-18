@@ -10,6 +10,14 @@ import kotlinx.serialization.json.put
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
+ * The registration point through which code outside the AI core, including a document's own boxes, adds tools to the AI4 agents.
+ *
+ * [AgentToolExtensions.register] takes a request class, an availability check and a handler;
+ * registering the same tool name again in the same scope replaces the handler. A result type that
+ * implements [SummarisesForToolLog] supplies its own one-line summary for the tool log.
+ */
+
+/**
  * How code outside core adds tools to the AI4 agents.
  *
  * # Why this exists

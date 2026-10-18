@@ -26,6 +26,12 @@ import org.json.JSONObject
 import kotlin.math.sqrt
 import kotlin.random.Random
 
+/**
+ * On-GPU training of the learned RGB function, with no CPU image or weight readback.
+ *
+ * [GpuShaderTraining] is the in-renderer alternative to the offline [ShaderTraining] path. It needs a device with cooperative-vector training enabled and the prebuilt training shaders under `build/lighting/learned-shader/`; otherwise its constructor refuses and the offline path remains.
+ */
+
 /** A small reusable learned RGB function, trained directly from Field images on the graphics queue.
  * Architecture matches LearnedShader: 16 positional features -> 32 ReLU -> 32 ReLU -> RGB.
  * Slang differentiates the network; cooperative-vector outer products accumulate its gradients.

@@ -19,9 +19,10 @@ import java.util.concurrent.ConcurrentHashMap
  * ```
  * in a box whose document has run [registerChatlogTools]: the viewer reads chats and lenses through that
  * document's [ChatlogStore], over the routes in `ChatlogRoutes.kt`, which answer only for documents that
- * registered one. The payload is built here, not there, because a `put("…")` in a route-declaring file reads
- * as a route to `ServerSurfaceLedgerTest`.
+ * registered one.
  */
+
+/** Holds each registering document's [ChatlogStore] and builds the payload the lens viewer page fetches. */
 object ChatLensViewer {
     private val stores = ConcurrentHashMap<String, ChatlogStore>()
 

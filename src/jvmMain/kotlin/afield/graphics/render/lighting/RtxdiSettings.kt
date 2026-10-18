@@ -1,3 +1,12 @@
+/**
+ * Live controls for the RTXDI resampling path of [DirectLighting].
+ *
+ * [RtxdiSettings] holds the camera matrices, temporal and spatial reuse parameters, shadowing and an
+ * optional spatial denoise, and takes the light list as [IdentifiedAreaLight]s through
+ * [RtxdiSettings.commitLights], so a light keeps its history across reordering. Edit it on the render
+ * thread between frames; [RtxdiSettings.resetHistory] discards history after a cut or material edit.
+ */
+
 package afield.graphics.render.lighting
 
 import afield.math.linalg.Matrix4f

@@ -41,6 +41,10 @@ import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 
 /**
+ * Java2D drawings of a stack or a relation, sized for a line note.
+ */
+
+/**
  * The small pictures line notes ([LineNotes]) draw for languages whose values are not images: a
  * stack, drawn as cells with its top uppermost, and a relation, drawn as a table. Drawn in Java2D on
  * an off-screen image, so they need no window or GPU.

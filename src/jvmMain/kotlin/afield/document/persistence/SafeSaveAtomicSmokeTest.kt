@@ -50,11 +50,12 @@ expect:
  * directory, then an atomic rename into place, so a concurrent reader (or another process sharing
  * the workspace) only ever observes a complete file.
  *
- * The load-bearing case is [concurrentAtomicWritesNeverTear]: many writer threads hammer one file
+ * The load-bearing case is `concurrentAtomicWritesNeverTear`: many writer threads hammer one file
  * while a reader parses it in a tight loop; with atomic writes the reader must never see a
  * half-written (unparseable) file — which is exactly the SnakeYAML "expected <block end>" failure
  * this fix eliminates.
  */
+
 object SafeSaveAtomicSmokeTest {
 
     fun runTests(): Boolean {

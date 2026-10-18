@@ -77,6 +77,14 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
+/**
+ * [FLine] is Field's drawn path: a list of move, line and cubic segments with per-node
+ * and per-line properties, built with `moveTo` / `lineTo` / `cubicTo` and drawn by `Box.lines(...)`.
+ *
+ * Also here are the operators that translate, scale and rotate a `List<FLine>` (or a map of
+ * them) as a group.
+ */
+
 var _flineSequenceNumber = 0L
 
 /**

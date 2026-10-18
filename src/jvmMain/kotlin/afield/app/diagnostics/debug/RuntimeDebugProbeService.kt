@@ -1,5 +1,14 @@
 package afield.app.diagnostics.debug
 
+/**
+ * The runtime debug probe: samples a symbol at a line of a running box or a `src/` file and shows
+ * the values in the box's "debug probe" output channel.
+ *
+ * [RuntimeDebugProbeService.startProbe] targets box code and
+ * [RuntimeDebugProbeService.startSourceProbe] targets a source file. Both need Field to have been
+ * launched with a JDWP port; [RuntimeDebugProbeService.availabilityError] explains when it was not.
+ */
+
 import afield.document.graph.Box
 import afield.app.protocol.DebugProbeEvent
 import afield.app.protocol.DebugProbeRequest

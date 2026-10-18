@@ -3,6 +3,16 @@ package afield.graphics.shader
 import afield.graphics.render.pointer
 
 import afield.graphics.render.AccelerationStructure
+
+/**
+ * What changed in a shader's interface across a full reload, binding by binding and member by member.
+ *
+ * [shaderInterfaceTransition] and [graphicsShaderInterfaceTransition] compare two [Introspection]s and
+ * classify each binding as one [ShaderBindingChange]; the result names what was kept, added, removed,
+ * renamed, resized or retyped, so a reload can re-apply the values that still fit. Tested in
+ * `ShaderInterfaceTransitionTest`.
+ */
+
 /**
  * The kinds of thing a shader's interface binds, as a full reload compares them. [label] is how a
  * transition summary names one: "uniform block `Light` grew 16→32 bytes".

@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.util
 
+/**
+ * Reduces an image to global summary statistics on the GPU in two compute passes.
+ *
+ * [ImageReducer] reads the source as a sampled texture, so the image needs the sampled usage bit and its layout is left alone; results come back through [ImageReducer.readResults].
+ */
+
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.Target
 import afield.graphics.vulkan.buffers.BufferParameters

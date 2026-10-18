@@ -61,6 +61,25 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * Keyframe curves edited by hand in a box's output panel and read back by code as a number at any
+ * time.
+ *
+ * `keyframes(name = "x")` opens a curve editor in the box's output area and returns a
+ * [KeyframeEvaluator]; the curve the user draws is saved on the box under that name, so it
+ * survives a re-run and a reload. Seed a new curve with times, `(time, value)` pairs, or
+ * [Keyframe]s carrying their segment types:
+ *
+ * ```kotlin
+ * val x = keyframes(name = "x", defaults = listOf(Vec2(0.0, 0.0), Vec2(5.0, 1.0), Vec2(10.0, 0.0)))
+ * val now = x.evaluateValueAt(2.5)
+ * ```
+ *
+ * The evaluator also edits the curve from code (`add`, `remove`, `edit`, `simplify`, `smooth`),
+ * moves the editor's playhead with `setTime`, and draws reference overlays with `setOverlay`.
+ * Tests: `KeyframeEvaluatorTest`, `KeyframerTest`.
+ */
+
+/**
  * KeyframeEvaluator - Evaluates animation curves defined by keyframes
  *
  * Supports multiple interpolation types:

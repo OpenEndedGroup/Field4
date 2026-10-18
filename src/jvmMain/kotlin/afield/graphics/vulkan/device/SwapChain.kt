@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.device
 
+/**
+ * The window's presentation chain: [SwapChain] creates the swapchain images and their views for a surface, acquires the next image each frame and presents it on a [Queue.PresentQueue].
+ *
+ * The present mode follows the vsync setting, and [SwapChain.presentImage] returns a [SwapChain.PresentResult] that says whether the window needs resizing.
+ */
+
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.device.Queue.PresentQueue
 import afield.graphics.texture.ImageView

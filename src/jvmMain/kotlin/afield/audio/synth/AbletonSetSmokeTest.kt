@@ -25,6 +25,14 @@ expect:
   stdoutContains:
     - "AbletonSet smoke tests passed"
 */
+/**
+ * Smoke test for reading Ableton Live sets: clips, automation envelopes, gzipped `.als` files, sample
+ * lookup, track volume and pitch analysis, run against generated fixtures.
+ */
+
+/**
+ * Runs the Ableton set checks; given a path to a set, prints a summary of its tracks instead.
+ */
 object AbletonSetSmokeTest {
     @JvmStatic
     fun main(args: Array<String>) {

@@ -1,5 +1,13 @@
 package afield.lang.stacksl.cpu
 
+/**
+ * The losses a [StackSLFit] can descend on: mean squared RGB error, LPIPS perceptual distance, and
+ * mixtures of the two.
+ *
+ * [StackSLFitLoss] names the choices; [StackSLLpipsLoss] computes the LPIPS value and gradient of a
+ * render against its target.
+ */
+
 import afield.ai.inference.onnx.Lpips
 import afield.math.autodiff.ADGradient
 

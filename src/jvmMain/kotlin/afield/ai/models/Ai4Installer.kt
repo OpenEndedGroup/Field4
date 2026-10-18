@@ -1,3 +1,14 @@
+/**
+ * Installs Field's AI assistant: the websocket handlers behind the box and document chat, and the code tools the model calls.
+ *
+ * [installAi4] registers the `ai-assist`, `ai-chat-*` and related message handlers, picks an
+ * [LlmBridge] for the configured provider, and keeps one conversation thread per chat key.
+ * [Ai4CodeToolProviders] implements the tools that read, edit, compile and evaluate box code,
+ * shared by the chat and the MCP backdoor. The top-level helpers ([uniqueBoxOrRefuse],
+ * [setupSnapshot], [clipToolText], [primitiveToolValue]) turn boxes and runtime values into
+ * tool results.
+ */
+
 package afield.ai.models
 
 import afield.ai.conversation.AiBoxConversation

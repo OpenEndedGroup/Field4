@@ -1,8 +1,10 @@
 import afield.io.midi.rtp.*
 
-// Open an RTP-MIDI network session called "Field" on UDP 5004/5005 and announce it over Bonjour.
-// In macOS Audio MIDI Setup -> MIDI Studio -> Network, "Field" now appears in the Directory:
-// select it and press Connect. An iPad app with network MIDI, or rtpMIDI on Windows, lists it too.
+/*
+Open an RTP-MIDI network session called "Field" on UDP 5004/5005 and announce it over Bonjour.
+In macOS Audio MIDI Setup -> MIDI Studio -> Network, "Field" now appears in the Directory:
+select it and press Connect. An iPad app with network MIDI, or rtpMIDI on Windows, lists it too.
+*/
 val midi = rtpMidi("Field")
 
 // Each note that arrives runs this, on Field's main loop.

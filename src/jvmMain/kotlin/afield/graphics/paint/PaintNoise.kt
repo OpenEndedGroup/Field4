@@ -1,6 +1,11 @@
 @file:afield.runtime.completion.CompletionCategory("Graphics")
 package afield.graphics.paint
 
+/**
+ * Smooth 1D noise that varies a stroke along its length, the same for the same seed, so the
+ * two eyes of a stereo pair can share it: [PaintNoise].
+ */
+
 import kotlin.math.floor
 
 /**

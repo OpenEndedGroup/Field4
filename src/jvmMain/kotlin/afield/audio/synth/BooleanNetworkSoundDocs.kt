@@ -26,6 +26,14 @@ expect:
 */
 
 /**
+ * The clips on `boolean_network_music_examples.md`: each figure's note stream played through the
+ * pinned Tidal Dirt-Samples.
+ *
+ * [BooleanNetworkSoundDocs] rebuilds the notes each page fence builds and renders them with
+ * [patRenderStereoDirt]. It runs as the `synth.boolean.network.sound` FIELD_TEST.
+ */
+
+/**
  * The clips on `boolean_network_music_examples.md`: each figure's note stream, played through the
  * real Tidal Dirt-Samples.
  *

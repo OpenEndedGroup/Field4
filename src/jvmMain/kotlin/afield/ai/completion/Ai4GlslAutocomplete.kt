@@ -1,5 +1,18 @@
 package afield.ai.completion
 
+/**
+ * Language-model autocomplete for shader properties (`fragment`, `vertex`, `compute` and the other
+ * shader stages).
+ *
+ * [Ai4GlslAutocomplete.complete] marks the cursor in the box's shader code, wraps it for the stage's
+ * language, adds context from the shader include library, and asks a fast model for three
+ * candidates, each with a one-line note. It returns them as [CompletionCandidate]s. One model thread
+ * is kept per file key, so later requests in the same editor reuse the conversation.
+ *
+ * The model is `AFIELD_SHADER_AUTOCOMPLETE_MODEL` (or `AFIELD_GLSL_AUTOCOMPLETE_MODEL`), defaulting
+ * to the fast model.
+ */
+
 import afield.ai.diagnostics.SilentLog
 import afield.ai.diagnostics.log
 import afield.ai.models.Ai4ModelDefaults

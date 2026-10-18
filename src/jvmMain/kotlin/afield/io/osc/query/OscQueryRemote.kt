@@ -32,6 +32,15 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
+ * The client side of OSCQuery: [OscQueryRemote] reads another application's namespace over HTTP,
+ * sets its parameters over OSC UDP, and follows changes over its WebSocket.
+ *
+ * It talks to TouchDesigner, Max, Chataigne, VDMX or another Field, and finds them on the local
+ * network with [OscQueryRemote.discover]. `OscQueryRoundTripTest` drives it against an
+ * [OscQueryServer] in the same process.
+ */
+
+/**
  * A remote OSCQuery service — TouchDesigner, Max, Chataigne, VDMX, another Field — read over HTTP,
  * set over OSC UDP, and followed over its WebSocket.
  *

@@ -48,6 +48,16 @@ import afield.ai.tools.WorkspaceSymbolSearchResult
 import afield.ai.tools.validateNoMarkers
 import afield.runtime.languages.LanguageSpec
 
+/**
+ * The entry points an editor or chat panel calls to run one AI4 turn against a box's code.
+ *
+ * [IdeChatHelpers] wraps an [LlmBridge]. [IdeChatHelpers.chatFile], [IdeChatHelpers.chatInline] and
+ * [IdeChatHelpers.chatError] build the turn's instructions and tool context, run it through the bridge,
+ * and return an [IdeChatHelpers.HighLevelResult] with the edited code, commentary and tool transcript;
+ * [IdeChatHelpers.chatGeneral] runs a chat turn and returns the bridge's own result.
+ */
+
+/** Runs AI4 editor and chat turns through one [LlmBridge]. */
 class IdeChatHelpers(
     private val bridge: LlmBridge,
     private val log: LogSink = StdoutLog,

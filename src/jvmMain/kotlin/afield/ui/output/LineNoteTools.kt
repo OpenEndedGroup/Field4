@@ -40,6 +40,13 @@ import afield.runtime.lifecycle.plugins
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
+/**
+ * The AI tool that lets a chat read a program's line notes: [ReadLineNotes] asks for the notes on
+ * some lines of the focused box's property, and [readLineNotes] answers with text and pictures. Reading
+ * a note never runs the program.
+ */
+
+
 /** The AI4 tool that reads a program's line notes ([LineNotes]) — what the editor shows beside the cursor. */
 @JsonClassDescription(
     "Read the line notes of the focused box's program: for each requested line, what the editor shows about it. " +

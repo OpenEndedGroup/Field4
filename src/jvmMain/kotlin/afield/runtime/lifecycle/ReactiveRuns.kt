@@ -59,6 +59,14 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.LockSupport
 
 /**
+ * Reactive properties: the runs that `propUp` pulls from upstream and `propDown` pushes downstream.
+ *
+ * A read that finds no value runs the box that supplies it before returning; a write that changes a
+ * value reruns the boxes that read the old one. [ReactiveRuns] holds both mechanisms and their
+ * guards.
+ */
+
+/**
  * The runs that `propUp` and `propDown` cause: pulling a missing value from upstream, and pushing a
  * changed one downstream.
  *

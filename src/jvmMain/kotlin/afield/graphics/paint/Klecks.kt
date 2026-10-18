@@ -1,6 +1,11 @@
 @file:afield.runtime.completion.CompletionCategory("Graphics")
 package afield.graphics.paint
 
+/**
+ * An editable Klecks painting app inside a box's output panel, saved into the document when you
+ * press Submit: [klecks] returns a [KlecksPainting].
+ */
+
 import afield.data.table.div
 import afield.data.table.get
 import afield.data.table.minus

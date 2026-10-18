@@ -2,6 +2,14 @@ package afield.simulation.physics.pressure
 
 import kotlin.math.*
 
+/**
+ * Geometric checks on a deformed pressure envelope: [ShapeAudits] finds triangle self-intersections,
+ * sharp folds between neighbouring triangles, panel seams and multi-panel junction angles.
+ *
+ * The checks read the computed triangles only, independent of how a viewer shades or explodes them.
+ */
+
+/** Intersecting triangle pairs, the folded-edge count and the sharpest fold angle in degrees. */
 data class ShapeAudit(val intersections: List<Pair<Int,Int>>,val foldedEdges: Int,val maximumFoldDegrees: Double)
 
 /** Diagnostics on computed triangles, independent of shading and viewer explosion. */

@@ -31,7 +31,7 @@ import java.security.MessageDigest
  * so it is safe to point at a document someone is working in. The tree is the source, and the transcript is
  * used to check it: transcript text past the tree's head (a verdict appended by an agent task, an
  * interrupted turn) becomes an `unrecorded` node, and a transcript that no longer starts with the head (a
- * hand edit) becomes an `unrecorded` root. That is what `AiSessionTree.reconcile` would record next time.
+ * hand edit) becomes an `unrecorded` root. That is what `AiSessionTree` would record the next time it reconciles the box.
  *
  * ## Addresses
  *
@@ -40,6 +40,8 @@ import java.security.MessageDigest
  * grows, and a block in an abandoned branch has one just as a block on the current branch does. Summaries
  * written over a chat (lenses) cite these addresses.
  */
+
+/** Reads the saved AI4 chats of a document folder from disk, without opening the document. */
 object ChatArchive {
     const val HISTORY = "ai4_chat_history"
     const val SESSION = "ai4_session"

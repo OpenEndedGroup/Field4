@@ -1,0 +1,29 @@
+{
+  "baseline": "76953386d",
+  "sources": [
+    {
+      "path": "public/docs/chart.md",
+      "kotlinBodies": 8,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/geometry_from_disk.md",
+      "kotlinBodies": 9,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/polytope_examples.md",
+      "kotlinBodies": 25,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/morpho_search.md",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

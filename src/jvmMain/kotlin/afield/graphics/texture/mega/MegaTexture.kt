@@ -38,6 +38,15 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * A virtual texture over thousands of source images, paged into a fixed GPU atlas on demand.
+ *
+ * Shaders report which images and detail levels they need through a feedback buffer; [MegaTexture]
+ * reads it back, asks [MegaTextureDecoder] for the missing pages, copies them into atlas slots and
+ * publishes a page table the shader samples through. [MegaTextureConfig] sets page size, residency
+ * budget and feedback rate, and [MegaTextureStats] reports per-level residency and decode queues.
+ */
+
+/**
  * How a [MegaTexture] is shaped: how big its pages are, how much GPU memory it may hold, how hard
  * it decodes, and what its shader-visible names and bindings are.
  *

@@ -1,3 +1,12 @@
+/**
+ * Turning a line into an outline: offsets, ribbons and buffers of an [FLine], at fixed or varying width.
+ *
+ * [byRibboning] and [byVariableRibboning] return an [FLineRibbon] with left and right edges and a
+ * closed shell. [byJavaOffsetting] uses Java2D strokes; [byJtsBuffering], [byJtsOffsetting] and
+ * [byJtsVariableBuffering] use JTS, with [FLineStrokeJoin] and [FLineStrokeCap] for the corner and
+ * end style. [byJtsSplitting] separates a self-intersecting line into an [FLineSplit].
+ */
+
 package afield.geometry.path
 
 import afield.ui.visualization.l

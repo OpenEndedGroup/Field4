@@ -38,6 +38,12 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
+ * Line notes: the sentence, and sometimes a picture, that the editor shows for one line of a box's program.
+ *
+ * Languages register a [LineNotes.Provider] for the property their programs live in; the editor asks through a `line-note` request.
+ */
+
+/**
  * What a box's program shows at one of its lines — a sentence, and a picture when there is one —
  * offered wherever the editor looks at a line: at the top of the completion popup opened on it, and in
  * the notes beside the cursor.

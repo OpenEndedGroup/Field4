@@ -1,3 +1,13 @@
+/**
+ * The OpenAI implementation of [LlmBridge]: Field's agent loop over the Responses API.
+ *
+ * Each turn sends the conversation and the shared tool definitions, runs the function calls the
+ * model returns through the [ToolRegistry], and feeds the outputs back until the model answers in
+ * text. Against OpenAI the history lives in a server-side conversation; against OpenRouter, which
+ * has none, the bridge keeps it locally per thread. Rate-limit waits, suspended turns and the
+ * request ledger are handled here too.
+ */
+
 package afield.ai.models
 
 import afield.ai.conversation.SuspendsTurn

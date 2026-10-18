@@ -7,8 +7,8 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.ln
 
 /**
- * Lexical search over the documentation sources (`public/docs/**/*.md`, outside `assets/`), for
- * Open Anything. The semantic index finds pages by meaning; this finds them by the text a reader
+ * Lexical search over the documentation sources (the Markdown pages under `public/docs/`, outside
+ * `assets/`), for Open Anything. The semantic index finds pages by meaning; this finds them by the text a reader
  * remembers — a page title, a heading, or an identifier from an example such as `once.renderer`,
  * which an embedding search ranks poorly.
  *
@@ -19,6 +19,8 @@ import kotlin.math.ln
  *
  * The index is rebuilt when any page's size or modification time changes.
  */
+
+/** The docs lexical index and its query entry points; see the file overview. */
 object DocsSearch {
 
     @Serializable

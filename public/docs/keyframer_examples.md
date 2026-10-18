@@ -853,12 +853,10 @@ through. Without it the browser only reads.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/browser.png" wait="4.0" capture="box" open-outputs="true" w="960" h="560" padding="16"}
 :::static
 import java.nio.file.Files
-import java.nio.file.Path
 
-// A fixed directory rather than a fresh temp one, so the browser's header names the same folder
-// every run; cleared first so only these four keys are in it.
-val dir = Path.of(System.getProperty("java.io.tmpdir"), "keyframer-docs", "glow-looks")
-if (Files.exists(dir)) dir.toFile().deleteRecursively()
+// A fresh private parent keeps this lesson's four keys separate from other boxes and checkouts.
+// The leaf name stays readable in the browser header.
+val dir = Files.createTempDirectory("keyframer-docs-").resolve("glow-looks")
 Files.createDirectories(dir)
 
 // One pass with three uniforms, and a scope that watches them.

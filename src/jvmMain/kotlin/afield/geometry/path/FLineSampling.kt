@@ -1,3 +1,11 @@
+/**
+ * Choosing points along an [FLine]: pluggable samplers that return parameter and position pairs.
+ *
+ * [FLineSamplers] holds the built-in [FLineSampler]s (uniform, by distance, random, curvature
+ * adaptive, Douglas-Peucker, patterned) and [FLineSamplers.compose] / [then] chain them.
+ * [sampleSeries] returns [FLineSample]s and [samplePoints] returns just the points.
+ */
+
 package afield.geometry.path
 
 import afield.lang.remotejs.JsFun

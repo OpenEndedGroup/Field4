@@ -17,6 +17,10 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 /**
+ * A running libpd instance as a Field object: [PdInstance] opens patches, renders them offline or as a [PdNode] in a synth graph, and passes messages in and out.
+ */
+
+/**
  * Pure Data inside Field: one running Pd, with its own patches, its own `[dac~]` and its own
  * `[s]`/`[r]` names.
  *

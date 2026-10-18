@@ -41,6 +41,14 @@ import afield.runtime.lifecycle.plugins
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
+/**
+ * The AI tool `WhyDoesThisResolve`, which lets the in-app assistant ask where a box's value comes from.
+ *
+ * It takes a name or a type and, optionally, a box (the focused one by default), and returns the
+ * same explanation as [ContextResolution.explain]. [installContextWhyTools]
+ * registers it.
+ */
+
 /** The AI4 tool that explains where a box's inherited or context value comes from ([ContextResolution.explain]). */
 @JsonClassDescription(
     "Explain why a value a box's code reads resolves where it does, without running anything: for a name " +

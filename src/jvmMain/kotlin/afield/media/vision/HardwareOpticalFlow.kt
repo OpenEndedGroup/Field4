@@ -19,6 +19,12 @@ import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.NVOpticalFlow.*
 
+/**
+ * The hardware optical-flow backend, which drives the VK_NV_optical_flow engine on NVIDIA Ada and later GPUs.
+ *
+ * [HardwareOpticalFlow] is what [OpticalFlowBackend.AUTO] picks when the device has that extension enabled.
+ */
+
 /** Dedicated hardware image correspondence. Call [evaluate] between Field frames, after producers
  * have submitted. Images stay on the GPU. This first implementation waits for one final fence;
  * it does not overlap pairs, and includes conversion/synchronization in [milliseconds].

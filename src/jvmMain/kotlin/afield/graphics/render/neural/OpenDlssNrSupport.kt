@@ -1,3 +1,13 @@
+/**
+ * Whether the native neural-rendering (NR) pass can run on this renderer.
+ *
+ * [OpenDlssNrSupport.availability] returns an [OpenDlssNrSupport.Availability] that is ready only when
+ * the device enabled the required Vulkan features and the pinned weights and kernels are on disk; its
+ * `reason` names the Gradle task to run when they are missing (`fetchOpenDlssNrWeights`,
+ * `buildOpenDlssNrNative`). The paths can be overridden with `FIELD_OPEN_DLSS_NR_MODEL` and
+ * `FIELD_OPEN_DLSS_NR_SHADERS`.
+ */
+
 package afield.graphics.render.neural
 
 import afield.graphics.vulkan.Renderer

@@ -77,6 +77,13 @@ import kotlin.script.experimental.jvm.util.toSourceCodePosition
 import kotlin.script.experimental.util.LinkedSnippet
 import kotlin.system.measureNanoTime
 
+/**
+ * The older K1 implementation of [KotlinScriptEngine], built on the K1 REPL compiler.
+ *
+ * [KotlinInterface2] is the K2 replacement. [createKotlinScriptEngine] decides which of the two a box
+ * gets.
+ */
+
 class KotlinInterface(
     val propertyClasses: Map<String, KClass<*>> = emptyMap(), val properties: Map<String, Any?> = emptyMap(),
 

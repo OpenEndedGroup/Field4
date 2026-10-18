@@ -33,6 +33,15 @@ import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import org.jetbrains.kotlin.psi.psiUtil.forEachDescendantOfType
 
 /**
+ * Pattern-based rewrite rules for box code, written in the box itself with a `rewrite { from { } to { } }`
+ * block and applied to the source before it compiles.
+ *
+ * The rules are matched on the parsed syntax tree, not on text, so `from { max(x, y) }` matches any
+ * call of `max` with two arguments whatever their spelling. [PatternRewrite] describes the phases,
+ * guards and hygiene rules.
+ */
+
+/**
  * A structural source-to-source rewriter that runs as a preprocessor in front of `kotlinc`,
  * bootstrapped on the existing PSI-based macro pass (see [afield.runtime.kotlin.KotlinScriptEngine.applyMacros]).
  *

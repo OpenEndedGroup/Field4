@@ -1,3 +1,13 @@
+/**
+ * The Vulkan pass that runs the native neural-rendering (NR) network over a sampled image.
+ *
+ * [OpenDlssNrPass.evaluate] takes [OpenDlssNrInputs] (colour with its [OpenDlssNrColorEncoding], and
+ * optional motion and depth guides for temporal mode), an [OpenDlssNrFrame] and the current
+ * [OpenDlssNrControls] (seed, style, tone, structure, intensity), and writes the result to its output
+ * texture. [OpenDlssNrPass.postEffect] wraps it as a post effect, and [OpenDlssNrPass.reset] drops
+ * temporal history after a cut or edit.
+ */
+
 package afield.graphics.render.neural
 
 import afield.graphics.vulkan.Renderer

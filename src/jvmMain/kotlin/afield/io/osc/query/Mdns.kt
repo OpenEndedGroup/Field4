@@ -15,6 +15,14 @@ import java.nio.ByteBuffer
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
+ * A dependency-free multicast DNS and DNS-SD implementation, sized to advertise and find OSCQuery
+ * services on the local network.
+ *
+ * [Mdns] answers queries for the services an [OscQueryServer] registers and runs the one-shot
+ * browse behind `Box.oscQueryDiscover`.
+ */
+
+/**
  * Just enough multicast DNS (RFC 6762) and DNS-SD (RFC 6763) to advertise and find OSCQuery
  * services, with no dependency: a responder that answers PTR/SRV/TXT/A questions for the services
  * registered with [advertise], and a one-shot [browse].

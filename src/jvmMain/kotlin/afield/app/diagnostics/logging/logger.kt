@@ -1,3 +1,13 @@
+/**
+ * The `lprintln` / `lprint` / `lblock` logging calls, which send a message to the server log on a
+ * named channel such as `"info,startup"`.
+ *
+ * Each call goes to `LogDispatcher` with the current thread's indent. `lblock` logs a begin line,
+ * runs its block with the indent deepened, and logs a matching end line even if the block throws, so
+ * nested blocks read as a tree. The single-argument forms are deprecated and log on `info,legacy`.
+ * [formatMillis] formats a nanosecond duration with its unit for stat lines.
+ */
+
 package afield.app.diagnostics.logging
 
 import afield.ai.diagnostics.BlockBoundary

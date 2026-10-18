@@ -33,6 +33,11 @@ import afield.runtime.execution.end
 import jdk.incubator.vector.DoubleVector
 import jdk.incubator.vector.VectorOperators
 
+/**
+ * SIMD helpers for dense `DoubleArray` arithmetic, using the JDK Vector API: [DenseDoubleOps]
+ * provides `dot`, `combine` and `scale`.
+ */
+
 /** Allocation-free SIMD operations on equal-length dense double arrays, with scalar tails.
  * Reductions use lane-wise accumulation, so last-bit rounding can differ from a scalar sum.
  * Destination arrays may alias either input for elementwise operations.

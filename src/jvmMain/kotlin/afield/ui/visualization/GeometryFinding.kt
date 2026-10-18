@@ -9,6 +9,11 @@ import afield.lang.remotejs.JsFun
 import afield.geometry.path.length
 import kotlinx.serialization.json.*
 
+/**
+ * [GeometryFinding], the record a geometry checker or agent writes about a piece of geometry for
+ * review; it never changes whether a build is accepted.
+ */
+
 /** Review metadata shared by checkers and agents. A finding never changes build acceptance. */
 data class GeometryFinding(
     val key: String,
