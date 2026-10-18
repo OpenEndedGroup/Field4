@@ -448,6 +448,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - topology
     - [morsesmale](graphics.md#morsesmale-kt)
     - [tracking](graphics.md#featuretracking-kt)
+    - [trees](graphics.md#contourtrees-kt)
 - vectorize
     - [polyvector](graphics.md#polyvector-kt)
 
@@ -584,6 +585,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 - [agents](alife.md#alife-kt)
 - *automata* — [ALife](alife.md#alife-ca-kt) · [Data](data.md#booleannetworks-kt)
+- [creatures](simulation.md#creatures-kt)
 - [flow](simulation.md#flowshaders-kt)
 - [kratos](simulation.md#kratosdemo-kt)
 - [particles](machine-learning.md#neuralparticles-kt)
@@ -635,7 +637,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**32697 public symbols across 1483 source files**, 16604 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**32876 public symbols across 1485 source files**, 16627 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -648,11 +650,11 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 13 | 127 | 43 (33%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 41 | 1954 | 1413 (72%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 304 | 7443 | 3800 (51%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 305 | 7466 | 3814 (51%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 42 | 742 | 373 (50%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 42 | 985 | 531 (53%) | Making a shape behave. |
+| [Simulation](simulation.md) | 43 | 1141 | 540 (47%) | Making a shape behave. |
 | [Imaging](imaging.md) | 47 | 741 | 339 (45%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 14 | 774 | 571 (73%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -899,6 +901,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ContextWhySmoke.kt](examples.md#contextwhysmoke-kt) | Examples | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>context/<wbr></small> [ContextWhyTools.kt](workspace.md#contextwhytools-kt) | Workspace | 8 | 4 | The AI tool `WhyDoesThisResolve`, which lets the in-app assistant ask where a box's value comes from. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [contours.kt](graphics.md#contours-kt) | Graphics | 24 | 17 | Marching-squares iso-contours for 2D scalar fields, plus the scalar field most callers want to contour. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>topology/<wbr>trees/<wbr></small> [ContourTrees.kt](graphics.md#contourtrees-kt) | Graphics | 23 | 14 |  | [Merge trees and contour trees](../contour_trees.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>controls/<wbr></small> [ControlLaw.kt](visualization.md#controllaw-kt) | Visualization | 12 | 7 | The mapping between a slider's travel and its value: linear, logarithmic, power-taper or bipolar. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [controllers.kt](workspace.md#controllers-kt) | Workspace · internal | 6 | 1 | The phone controller surface: the `/controllers` routes that let a second device see and drive the selected box's controls and outputs. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Conway.kt](polytopes.md#conway-kt) | Polytopes | 14 | 9 | Conway prefix notation: the one-line string that names a polyhedron by how it is built. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
@@ -910,6 +913,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>ai/<wbr></small> [CorpusMicroscope.kt](audio-ai.md#corpusmicroscope-kt) | Audio AI | 2 | 2 | The audition surface for a corpus nearest-neighbour query: the query window and every window the search returned, as players on one shared relative timeline. | [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>ai/<wbr></small> [CorpusOperations.kt](audio-ai.md#corpusoperations-kt) | Audio AI | 9 | 9 | Multi-scale corpus operations: segment a source into overlapping windows, embed each window with grouped audio descriptors, and retrieve neighbours by weighted distance. | [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>statistics/<wbr></small> [correlations.kt](math.md#correlations-kt) | Math | 18 | 18 | Measures of statistical dependence between two equal-length `DoubleArray`s, batch and rolling. | [Values over time: interpolants & keyframes](../interpolants_examples.md), [Measuring dependence between two signals](../statistics_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>creatures/<wbr></small> [Creatures.kt](simulation.md#creatures-kt) | Simulation | 156 | 9 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [CrossBoxContextInheritanceSmokeTest.kt](examples.md#crossboxcontextinheritancesmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>csound/<wbr></small> [CsdDocument.kt](audio.md#csddocument-kt) | Audio | 17 | 12 | Reads a Csound box's text as a `.csd` document and maps box lines to its options, orchestra, score and instruments. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [CsoundBox.kt](synthesis.md#csoundbox-kt) | Synthesis | 35 | 29 | The box-facing side of Csound: an orchestra and a score as a sound source, with control channels both ways. | [Csound](../csound.md) |
@@ -1244,7 +1248,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [ImageReducer.kt](graphics.md#imagereducer-kt) | Graphics | 9 | 8 | Reduces an image to global summary statistics on the GPU in two compute passes. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [ImageReducerExample.kt](examples.md#imagereducerexample-kt) | Examples | 5 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr></small> [ImageView.kt](graphics.md#imageview-kt) | Graphics | 17 | 1 | `ImageView` wraps a `VkImageView` over an image, and the small interfaces Field's shader bindings use to find views and samplers. | [Field 4 Graphics](../afield_four_graphics.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr></small> [imaging.kt](imaging.md#imaging-kt) | Imaging | 76 | 65 | CPU image / computer-vision family for the Field stdlib — the raster counterpart to the time-domain `timeseries.kt` and frequency-domain `spectral.kt` families. | [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md), [Driving Lights: Art-Net and sACN](../dmx_lighting.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr></small> [imaging.kt](imaging.md#imaging-kt) | Imaging | 76 | 65 | CPU image / computer-vision family for the Field stdlib — the raster counterpart to the time-domain `timeseries.kt` and frequency-domain `spectral.kt` families. | [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md), [Merge trees and contour trees](../contour_trees.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr></small> [imaging_features.kt](imaging.md#imaging-features-kt) | Imaging | 49 | 38 | Edges, corners, lines, blobs and morphology for `Img` — the "find things in the picture" half of the stdlib imaging family (see `imaging.kt` for the value type and `imaging_filters.kt` for convolution and gradients). | [Imaging and computer vision](../imaging_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr></small> [imaging_field.kt](imaging.md#imaging-field-kt) | Imaging | 21 | 21 | What makes the imaging family *Field's* rather than a generic CV library: the bridges out of the raster and into the things Field already draws, colours and displays. | [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md), [Spatial artificial life](../alife_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr></small> [imaging_filters.kt](imaging.md#imaging-filters-kt) | Imaging | 56 | 46 | Convolution, smoothing, gradients and multiscale pyramids for `Img` — the filter half of the stdlib imaging family (see `imaging.kt` for the value type, `imaging_features.kt` for edges, corners and blobs). | [Imaging and computer vision](../imaging_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md) |
