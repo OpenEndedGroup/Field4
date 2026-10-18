@@ -49,6 +49,7 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
+
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -69,21 +70,19 @@ operations:
           // `afield.graphics.scene.fabricated` is not among a box's automatic imports, unlike `afield.graphics.scene`.
           import afield.graphics.scene.fabricated.StandardRenderer
           import afield.graphics.scene.fabricated.applyScenePlan
-          import afield.math.linalg.Matrix4f
-          import afield.math.linalg.Vector3f
-          
+
           prop<StandardRenderer.Bundle>(bundle)
-          
+
           val r: Renderer = fromContext()
-          
+
           once.bundle {
               val b = StandardRenderer.build(
                   r,
                   StandardRenderer.Config(
                       renderWidth = 1024,
                       renderHeight = 1024,
-                      backgroundColor = Vector3f(0.09f, 0.10f, 0.13f)
-                  )
+                      backgroundColor = Vector3f(0.09f, 0.10f, 0.13f),
+                  ),
               )
               b.scene.camera.at.set(0f, 1.5f, -4.2f)
               b.scene.camera.target.set(0f, 0f, 0f)
@@ -91,7 +90,7 @@ operations:
               b.scene.lightIntensity = 3.4f
               b.scene.shadowStrength = 1f
               b.scene.aoStrength = 0.8f
-          
+
               for (ix in -2..2) {
                   for (iz in -2..2) {
                       b.registerSphere(name = "ball-$ix-$iz", radius = 0.3f, slices = 24, stacks = 24, renderer = r)
@@ -115,39 +114,41 @@ operations:
           import afield.graphics.scene.fabricated.FabricatePassLibrary
           import afield.graphics.scene.fabricated.StandardRenderer
           import afield.graphics.scene.fabricated.addPassChain
-          
+
           prop<FabricateBuiltChain>(chain)
-          
+
           val r: Renderer = fromContext()
           val b: StandardRenderer.Bundle = fromContext()
-          
-          // Declared once. Six passes, each with its own resolution: reduce to a half, reduce to a
-          // quarter, two aperture discs on the cheap quarter-resolution image, and a composite that
-          // rejoins at full resolution while sampling the small blur. `printReport` prints the plan
-          // — sizes, sampler wiring, shared targets, and the memory cost against one full-resolution
-          // target per pass. Read it before believing the picture: a chain planned at the wrong
-          // resolution renders something that looks perfectly plausible.
+
+          /*
+          Declared once. Six passes, each with its own resolution: reduce to a half, reduce to a
+          quarter, two aperture discs on the cheap quarter-resolution image, and a composite that
+          rejoins at full resolution while sampling the small blur. `printReport` prints the plan
+          — sizes, sampler wiring, shared targets, and the memory cost against one full-resolution
+          target per pass. Read it before believing the picture: a chain planned at the wrong
+          resolution renders something that looks perfectly plausible.
+          */
           once.chain {
               val c = b.addPassChain(
                   FabricatePassLibrary.apertureChain(
                       nearRadius = 4f,
                       farRadius = 12f,
                       taps = 40,
-                      blend = 0.92f
+                      blend = 0.92f,
                   ),
                   renderer = r,
-                  printReport = true
+                  printReport = true,
               )
               b.attachTo(r)
               b.present(renderer = r)
               c
           }
-          
+
           // ── live knobs. Edit a number, hit run. No rebuild, no reallocation. ──
           chain.setPush("aperture-near", "radius", 4f)
           chain.setPush("aperture-far", "radius", 14f)
           chain.setPush("composite", "blend", 0.92f)
-          
+
           println(chain.plan.report())
   - connect: { parent: pc_renderer, child: pc_scene }
   - connect: { parent: pc_scene, child: pc_chain }

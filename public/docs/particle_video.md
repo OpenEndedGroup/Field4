@@ -104,8 +104,10 @@ result. Change the input filename and particle count for your own movie:
 ```diffstatic {data-lang=kotlin}
 val tracker = particleTracker()
 suspend fun process() {
-    val run = tracker.track("my-movie.mp4",
-        ParticleTrackingOptions(particles = 24000, colorLimit = 1.0))
+    val run = tracker.track(
+        "my-movie.mp4",
+        ParticleTrackingOptions(particles = 24000, colorLimit = 1.0),
+    )
     println("cached=${run.cacheHit}")
     particleVideoView(run.load(), stride = 16)
 }

@@ -26,7 +26,6 @@ census. It needs no renderer: everything before the trace runs on the CPU.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_life3d_render/readout.png" wait="10" capture="box" open-outputs="true" w="1100" h="320" padding="18" timeout="180" name="chain-life3d-readout" embed=true alt="Tables: live cells per generation falling from 1852 to 164; Field's marching cubes reporting 10688 triangles, watertight, genus 0 against Manifold's level set reporting 5374 triangles and genus minus 47; a cluster census whose 48 volumes sum exactly to the whole solid's; and a sweep showing both the cluster count and the volume changing with the sampling spacing"}
 :::static
 import afield.geometry.solid.manifold.Solid
-
 import kotlin.random.Random
 
 val n = 36
@@ -44,7 +43,10 @@ for (z in from until from + 2 * half) for (y in from until from + 2 * half) for 
 
 var volume = seeded
 val populations = mutableListOf(volume.population())
-repeat(generations) { volume = volume.step(LIFE3D_BLOB); populations += volume.population() }
+repeat(generations) {
+    volume = volume.step(LIFE3D_BLOB)
+    populations += volume.population()
+}
 
 :::fold two marchers on one field, then the census
 // smoothRadius = 0 marches the raw occupancy, which is why the clusters are faceted at the voxel
@@ -54,13 +56,16 @@ val bounds = volume.marchBounds()
 
 val marched = volume.toMesh(resolution = 110, smoothRadius = 0, iso = 0.5)
 
-val whole = Solid.levelSet(bounds, edgeLength = edgeLength) { x, y, z ->
-    field(vec(x, y, z)).toDouble()
-}
+val whole =
+    Solid.levelSet(bounds, edgeLength = edgeLength) { x, y, z ->
+        field(vec(x, y, z)).toDouble()
+    }
 val parts = whole.decompose()
 val volumes = parts.map { it.volume }
 
-markdown("census", """
+markdown(
+    "census",
+    """
 #### `LIFE3D_BLOB`, ${generations} generations from a 45%-filled 16-cubed seed
 
 live cells per generation: `${populations.joinToString(" -> ")}`
@@ -80,7 +85,9 @@ is the genus above. Each one on its own has genus ${parts.take(5).map { it.genus
 | smallest cluster | ${"%.3f".format(volumes.last())} |
 | the ${parts.size} summed | ${"%.4f".format(volumes.sum())} |
 | the solid they came from | ${"%.4f".format(whole.volume)} |
-""", width = 1020)
+""",
+    width = 1020,
+)
 
 parts.forEach { it.close() }
 whole.close()
@@ -92,11 +99,13 @@ val sweep = buildString {
     appendLine("|---|---|---|")
     [1.4, 0.7, 0.35].forEach { edge ->
         Solid.scope {
-            val s = Solid.levelSet(bounds, edgeLength = edge) { x, y, z ->
-                field(vec(x, y, z)).toDouble()
-            }
-            appendLine("| `levelSet` edgeLength ${edge} | ${s.decompose().size} | " +
-                "${"%.2f".format(s.volume)} |")
+            val s =
+                Solid.levelSet(bounds, edgeLength = edge) { x, y, z ->
+                    field(vec(x, y, z)).toDouble()
+                }
+            appendLine(
+                "| `levelSet` edgeLength ${edge} | ${s.decompose().size} | " + "${"%.2f".format(s.volume)} |",
+            )
         }
     }
     [55, 110, 220].forEach { resolution ->
@@ -151,7 +160,10 @@ it started in, and a camera placed for the volume puts it in the middle distance
 
 ```diffstatic {data-lang=kotlin}
 val added = scene.importTriMesh(part.toTriMesh(normals = true, minSharpAngle = 25.0), material)
-if (added.triangleCount > 0) { sceneLo.min(added.boundsMin); sceneHi.max(added.boundsMax) }
+if (added.triangleCount > 0) {
+    sceneLo.min(added.boundsMin)
+    sceneHi.max(added.boundsMax)
+}
 ```
 
 A few of the level set's triangles have zero area; the tracer skips them rather than failing the

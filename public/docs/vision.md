@@ -273,7 +273,6 @@ Before optimising any of this there is one call to make
 (`VisionPose.kt:666#fun visionPoseLatencyReport(`):
 
 ```diffstatic {data-lang=kotlin}
-import afield.graphics.visionos.visionPoseLatencyReport
 println(visionPoseLatencyReport())
 ```
 

@@ -27,16 +27,16 @@ void main()
     c.r += sin(ftc.x*10.0+ftc.y*123.3)*0.0001;
 
     float r = fieldQuantileWarpMix(
-                            c.r,
-                            1,
-                            pc.warpXLo,
-                            pc.warpXHi,
-                            pc.warpYLo,
-                            pc.warpYHi
-                        );
+    c.r,
+    1,
+    pc.warpXLo,
+    pc.warpXHi,
+    pc.warpYLo,
+    pc.warpYHi
+    );
 
     if (length(fract(gl_FragCoord.xy*100.9123))<0.1)
-        fieldProbe(c.r);
+    fieldProbe(c.r);
 
     uFragColor.rgb = vec3(r);
 }

@@ -31,6 +31,7 @@ start(renderer::run)
 ```text [field-property box="rp_renderer" name="preamble"]
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.util.Window
+
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -108,8 +109,9 @@ println("bundle ready: " + bundle.postStack.names() + ", " + balls.size + " ball
 ```
 
 ```text [field-property box="rp_bundle" name="preamble"]
-import afield.graphics.vulkan.util.Window
 import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+
 var Box.bundle by Inheritance<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
 val Once.bundle by Onceing<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
 var Box.window by Inheritance<Window>() /**/
@@ -226,8 +228,9 @@ frames {
 ```
 
 ```text [field-property box="rp_chain" name="preamble"]
-import afield.graphics.vulkan.util.Window
 import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+
 var Box.chain by Inheritance<afield.graphics.scene.fabricated.FabricateBuiltChain>() /**/
 val Once.chain by Onceing<afield.graphics.scene.fabricated.FabricateBuiltChain>() /**/
 var Box.bundle by Inheritance<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/
@@ -281,8 +284,9 @@ frames {
 ```
 
 ```text [field-property box="rp_modes" name="preamble"]
-import afield.graphics.vulkan.util.Window
 import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+
 var Box.chain by Inheritance<afield.graphics.scene.fabricated.FabricateBuiltChain>() /**/
 val Once.chain by Onceing<afield.graphics.scene.fabricated.FabricateBuiltChain>() /**/
 var Box.bundle by Inheritance<afield.graphics.scene.fabricated.StandardRenderer.Bundle>() /**/

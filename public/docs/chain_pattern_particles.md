@@ -127,14 +127,14 @@ The compute shader declares four floats beside its two buffer references:
 
 ```diffstatic {data-lang=glsl}
 layout(push_constant) uniform dat {
-    Seeds seeds;      // written once: one random phase and radius per particle
-    Out   outData;    // this frame's positions, read by the draw box
+    Seeds seeds; // written once: one random phase and radius per particle
+    Out outData; // this frame's positions, read by the draw box
     float time;
-    float band0;      // 70 Hz    — the kick
-    float band1;      // 340 Hz
-    float band2;      // 1.6 kHz  — the square stab's harmonics
-    float band3;      // 8 kHz    — the hats
-    uint  count;
+    float band0; // 70 Hz    — the kick
+    float band1; // 340 Hz
+    float band2; // 1.6 kHz  — the square stab's harmonics
+    float band3; // 8 kHz    — the hats
+    uint count;
 } pc;
 ```
 

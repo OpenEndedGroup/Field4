@@ -56,9 +56,7 @@ val request = styleCandidates(
     ),
 )
 
-client.submit(request)
-    .thenCompose(client::awaitCandidates)
-    .thenAccept { display("candidates", candidateBoardHtml(it)) }
+client.submit(request).thenCompose(client::awaitCandidates).thenAccept { display("candidates", candidateBoardHtml(it)) }
 ```
 
 The source window, text, seed family, sampling temperature, top-k/top-p filtering, guidance balance,
@@ -89,19 +87,23 @@ val lora = UnderfitLoraCheckpoint.fromFile(
     intervalMax = 0.92,
 )
 
-client.submit(underfitCandidates(
-    source = region,
-    prompt = "sparse suspended orchestral tension",
-    durationSeconds = 30.0,
-    checkpoints = [lora],
-    model = UnderfitModel.SMALL_MUSIC,
-    controls = UnderfitGenerationControls(
-        steps = 8,
-        cfg = 1.5,
-        initNoiseLevel = 0.65,
-    ),
-)).thenCompose(client::awaitCandidates)
-  .thenAccept { display("underfit", candidateBoardHtml(it)) }
+client
+    .submit(
+        underfitCandidates(
+            source = region,
+            prompt = "sparse suspended orchestral tension",
+            durationSeconds = 30.0,
+            checkpoints = [lora],
+            model = UnderfitModel.SMALL_MUSIC,
+            controls = UnderfitGenerationControls(
+                steps = 8,
+                cfg = 1.5,
+                initNoiseLevel = 0.65,
+            ),
+        ),
+    )
+    .thenCompose(client::awaitCandidates)
+    .thenAccept { display("underfit", candidateBoardHtml(it)) }
 ```
 
 Hear the source, matched no-LoRA baseline and actual LoRA take in the

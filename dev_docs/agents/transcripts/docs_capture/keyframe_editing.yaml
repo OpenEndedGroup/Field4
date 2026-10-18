@@ -13,7 +13,8 @@ operations:
       frame: { x: 40.0, y: 30.0, w: 300.0, h: 60.0 }
       properties:
         code: |
-          val brightness = keyframes(name = "brightness", defaults = listOf(vec(0.0, 0.1), vec(1.0, 0.9), vec(2.5, 0.4), vec(4.0, 0.1)))
+          val brightness =
+              keyframes(name = "brightness", defaults = listOf(vec(0.0, 0.1), vec(1.0, 0.9), vec(2.5, 0.4), vec(4.0, 0.1)))
 
           lateinit var level: MeterHandle
           controlGroup("level") { level = meter("brightness") }

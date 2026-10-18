@@ -530,18 +530,19 @@ val fit = model.fitParameters(
     SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 6000, learningRate = 0.015),
 )
 
-fit.report()
+fit
+    .report()
 
 /*
-fit 4 parameter(s) in 4176 iterations (gradient)
-  cubeSize           1.350000  ->      0.855279
-  barHeight          1.600000  ->      2.197225
-  barRadius          0.420000  ->      0.281335
-  barTilt           25.000000  ->     -0.009525
-  loss           7.044887e-02  ->  3.766267e-03
-  rms distance   2.654221e-01  ->  6.136992e-02
-  improvement    18.71x
-*/
+             fit 4 parameter(s) in 4176 iterations (gradient)
+               cubeSize           1.350000  ->      0.855279
+               barHeight          1.600000  ->      2.197225
+               barRadius          0.420000  ->      0.281335
+               barTilt           25.000000  ->     -0.009525
+               loss           7.044887e-02  ->  3.766267e-03
+               rms distance   2.654221e-01  ->  6.136992e-02
+               improvement    18.71x
+             */
 ```
 
 Marched, the seed, the fit and the target:

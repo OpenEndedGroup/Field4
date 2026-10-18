@@ -20,7 +20,8 @@ has a certified range.
 ```diffstatic {data-lang=kotlin}
 val f = with(Functions) {
     val d = Functions.Domain(0.0, 3.0)
-    c(0.2, d) + gaussian(0.8, 0.2, 0.5, d) +
+    c(0.2, d) +
+        gaussian(0.8, 0.2, 0.5, d) +
         smoothStep(1.4, 2.0, d) * (c(0.3, d) + sin(6.0, amplitude = 0.08)) +
         gaussian(2.6, 0.003, 0.25, d)
 }
@@ -57,7 +58,7 @@ block. So at time `t` the audio hears, to first order, the function at `t` minus
 
 ```diffstatic {data-lang=kotlin}
 val perSample = SineOsc(Param(375f)) * f.scaleY(0.8).toSignal()
-val perBlock  = SineOsc(Param(375f)) * Param { 0.8f * f(time.toDouble()).toFloat() }
+val perBlock = SineOsc(Param(375f)) * Param { 0.8f * f(time.toDouble()).toFloat() }
 ```
 
 ## What came back
@@ -70,39 +71,64 @@ and their errors on one timeline, with the loudness render underneath.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_fn_sound_roundtrip/roundtrip.png" wait="12" capture="box" open-outputs="true" w="1180" h="900" padding="18" timeout="240" name="chain-fn-roundtrip" embed=true alt="A four-lane time-axis viewer over three seconds. The top two lanes draw the function in white, a slow swell, a step up to a wobbling plateau and one narrow spike, with its certified band behind it, too tight to separate from the line at this zoom, and the curves recovered from the loudness and from the pitch of the rendered sound drawn dashed on top of it and hidden by it. The two lower lanes are the recovery errors: flat near zero except for a spike at the narrow bump, with a faint ripple along the pitch lane's plateau. Below, an audio player showing the loudness render's waveform, and a table of frame counts, errors, lags and certified-band containment for both encodings"}
 :::static
-import afield.audio.synth.FnSoundDocs
 import afield.audio.synth.FnSoundDocs.Encoding
 
-// Each roundTrip renders through FnSignal, writes a 16-bit .wav with no normalisation, reads that
-// file back, and analyses what it read. `inside` is checked against the proven bounds of
-// certifiedRange over the samples each frame read, not against a sampled curve.
+/*
+Each roundTrip renders through FnSignal, writes a 16-bit .wav with no normalisation, reads that
+file back, and analyses what it read. `inside` is checked against the proven bounds of
+certifiedRange over the samples each frame read, not against a sampled curve.
+*/
 val loud = FnSoundDocs.roundTrip(Encoding.LOUDNESS)
 val pitch = FnSoundDocs.roundTrip(Encoding.PITCH)
 val f = loud.fn
 
 :::fold the viewer, the audio, and the numbers
 val sync = "chain-fn-roundtrip"
-val viewer = SignalViewer([
-    certifiedSignalChannel("f, and its loudness read back", f, 0.1, 0.95).copy(comparison = loud::recoveredAt),
-    certifiedSignalChannel("f, and its pitch read back", f, 0.1, 0.95).copy(comparison = pitch::recoveredAt),
-    SignalChannel("loudness − f", loud::errorAt, -0.1, 0.1),
-    SignalChannel("pitch − f", pitch::errorAt, -0.1, 0.1),
-], 0.0, FnSoundDocs.SECONDS, sampleStep = 1.0 / 4000, gaps = true)
-displaySignal(viewer, "viewer", SignalViewerOptions(width = 1100, laneHeight = 120,
-    label = "one function, played two ways and read back", comparisonLabel = "read back from the .wav",
-    syncGroup = sync, viewKey = "chain-fn-roundtrip:viewer"))
-displayAudioBytes(loud.wav.readBytes(), channel = "audio", durationSeconds = FnSoundDocs.SECONDS,
-    label = "the loudness render, as analysed", options = AudioVisualizerOptions(width = 1100, syncGroup = sync))
+val viewer = SignalViewer(
+    [
+        certifiedSignalChannel("f, and its loudness read back", f, 0.1, 0.95).copy(comparison = loud::recoveredAt),
+        certifiedSignalChannel("f, and its pitch read back", f, 0.1, 0.95).copy(comparison = pitch::recoveredAt),
+        SignalChannel("loudness − f", loud::errorAt, -0.1, 0.1),
+        SignalChannel("pitch − f", pitch::errorAt, -0.1, 0.1),
+    ],
+    0.0,
+    FnSoundDocs.SECONDS,
+    sampleStep = 1.0 / 4000,
+    gaps = true,
+)
+displaySignal(
+    viewer,
+    "viewer",
+    SignalViewerOptions(
+        width = 1100,
+        laneHeight = 120,
+        label = "one function, played two ways and read back",
+        comparisonLabel = "read back from the .wav",
+        syncGroup = sync,
+        viewKey = "chain-fn-roundtrip:viewer",
+    ),
+)
+displayAudioBytes(
+    loud.wav.readBytes(),
+    channel = "audio",
+    durationSeconds = FnSoundDocs.SECONDS,
+    label = "the loudness render, as analysed",
+    options = AudioVisualizerOptions(width = 1100, syncGroup = sync),
+)
 
 fun row(label: String, t: FnSoundDocs.RoundTrip) =
     "| $label | ${t.measured.size} of ${t.frames.size} | ${"%.5f".format(t.rmsError)} | ${"%.4f".format(t.maxAbsError)} at ${"%.3f".format(t.maxErrorAtSeconds)} s | " +
         "${t.insideCount} of ${t.measured.size}, worst ${"%.1e".format(t.worstOutside)} outside | ${"%.2f".format(t.blip.survival)} |"
-markdown("readout", """
+markdown(
+    "readout",
+    """
 | read back from | frames | RMS error | worst error | inside the certified range | of the bump's height |
 |---|---|---|---|---|---|
 ${row("loudness (RMS)", loud)}
 ${row("pitch (YIN)", pitch)}
-""", width = 1080)
+""",
+    width = 1080,
+)
 :::endfold
 ```
 
@@ -127,7 +153,6 @@ bridges and zooms in on the narrow bump.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_fn_sound_roundtrip/delays.png" wait="12" capture="box" open-outputs="true" w="1180" h="640" padding="18" timeout="240" name="chain-fn-delays" embed=true alt="A two-lane time-axis viewer zoomed to thirty milliseconds around the narrow bump. In the top lane the curve read back from the per-sample render sits on the function; in the lower lane the curve read back from the per-block Param render is visibly shifted to the right of it. Below, a table of the four trips giving each one's RMS error, the delay that best aligns it in samples, and the RMS error at that delay"}
 :::static
-import afield.audio.synth.FnSoundDocs
 import afield.audio.synth.FnSoundDocs.Encoding
 import afield.audio.synth.FnSoundDocs.Route
 
@@ -138,25 +163,58 @@ fun trip(e: Encoding, r: Route) = trips.single { it.encoding == e && it.route ==
 
 :::fold the bump up close, and the four delays
 val f = trips.first().fn
-val viewer = SignalViewer([
-    SignalChannel("loudness through toSignal()", f::eval, 0.35, 0.8, comparison = trip(Encoding.LOUDNESS, Route.PER_SAMPLE)::recoveredAt),
-    SignalChannel("loudness through Param { }", f::eval, 0.35, 0.8, comparison = trip(Encoding.LOUDNESS, Route.PER_BLOCK)::recoveredAt),
-], 0.0, FnSoundDocs.SECONDS, sampleStep = 1.0 / 48000, gaps = true)
-displaySignal(viewer, "viewer", SignalViewerOptions(width = 1100, laneHeight = 150,
-    label = "the bump at 2.6 s, 30 ms wide", comparisonLabel = "read back from the .wav",
-    initialStart = FnSoundDocs.BLIP_AT - 0.015, initialDuration = 0.03, viewKey = "chain-fn-roundtrip:delays"))
+val viewer = SignalViewer(
+    [
+        SignalChannel(
+            "loudness through toSignal()",
+            f::eval,
+            0.35,
+            0.8,
+            comparison = trip(Encoding.LOUDNESS, Route.PER_SAMPLE)::recoveredAt,
+        ),
+        SignalChannel(
+            "loudness through Param { }",
+            f::eval,
+            0.35,
+            0.8,
+            comparison = trip(Encoding.LOUDNESS, Route.PER_BLOCK)::recoveredAt,
+        ),
+    ],
+    0.0,
+    FnSoundDocs.SECONDS,
+    sampleStep = 1.0 / 48000,
+    gaps = true,
+)
+displaySignal(
+    viewer,
+    "viewer",
+    SignalViewerOptions(
+        width = 1100,
+        laneHeight = 150,
+        label = "the bump at 2.6 s, 30 ms wide",
+        comparisonLabel = "read back from the .wav",
+        initialStart = FnSoundDocs.BLIP_AT - 0.015,
+        initialDuration = 0.03,
+        viewKey = "chain-fn-roundtrip:delays",
+    ),
+)
 
-val rows = trips.joinToString("\n") { t ->
-    "| ${t.encoding.name.lowercase()} | ${if (t.route == Route.PER_SAMPLE) "`toSignal()`" else "`Param { }`"} | " +
-        "${"%.5f".format(t.rmsError)} | ${t.bestLagSamples} | ${"%.5f".format(t.rmsErrorAtBestLag)} |"
-}
-markdown("delays", """
+val rows =
+    trips.joinToString("\n") { t ->
+        "| ${t.encoding.name.lowercase()} | ${if (t.route == Route.PER_SAMPLE) "`toSignal()`" else "`Param { }`"} | " +
+            "${"%.5f".format(t.rmsError)} | ${t.bestLagSamples} | ${"%.5f".format(t.rmsErrorAtBestLag)} |"
+    }
+markdown(
+    "delays",
+    """
 One audio block is ${FnSoundDocs.BLOCK} samples, ${"%.2f".format(1000.0 * FnSoundDocs.BLOCK / FnSoundDocs.SR)} ms.
 
 | encoding | bridge | RMS error | best delay, samples | RMS error at that delay |
 |---|---|---|---|---|
 $rows
-""", width = 1080)
+""",
+    width = 1080,
+)
 :::endfold
 ```
 

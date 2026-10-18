@@ -1,0 +1,2895 @@
+{
+  "files": 575,
+  "parsedPrograms": 2702,
+  "languages": {
+    "kotlin": 2057,
+    "glsl": 384,
+    "csound": 4,
+    "python": 12,
+    "fieldml": 4,
+    "pd": 4,
+    "stacksl": 160,
+    "kotlinjs": 3,
+    "javascript": 11,
+    "slang": 5,
+    "rectsl": 58
+  },
+  "rawStringsAndFragmentMarkersPreserved": true,
+  "sources": [
+    {
+      "path": "dev_docs/SLIDER_EXAMPLES.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/artifacts/petri_state_graph_bound/state_graph_bound_demo/metadata.edn",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/artifacts/rectsl_soft_raster/bias_demo/metadata.edn",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/alife_evolution/evolve_ca_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/alife_evolution/map_elites_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/alife_evolution/metadata.edn",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/alife_evolution/shared_core_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/alife_script/metadata.edn",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/alife_script/one_agent_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/alife_script/patrol_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/alife_script/regime_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/alife_walls/cling_and_climb_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/alife_walls/document.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/alife_walls/hit_a_wall_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/alife_walls/metadata.edn",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/alife_walls/route_vs_seek_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/browse_embeds/logs_box_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/browse_embeds/metadata.edn",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/browse_embeds/tree_box_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/certified_envelope/build.yaml",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/certified_envelope/certified_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/certified_envelope/document.md",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/certified_envelope/limits_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/certified_envelope/metadata.edn",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/certified_envelope/range_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/certified_envelope/sampled_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/certified_envelope/workbench_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/chart_clip/build.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/chart_clip/clip_marks_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/chart_clip/clip_off_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/chart_clip/clip_on_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/chart_clip/metadata.edn",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/chart_clip/note_wrap_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/completion_rank_at_scale/document.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/completion_rank_at_scale/metadata.edn",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/completion_rank_at_scale/sweep_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/computed_ray_geometry/example.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/advect.comp",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/controls.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/divergence.comp",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/divergence.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/grain.frag",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/grain.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/inputs.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/kernel.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/particles.comp",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/particles.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/pressure.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/profile.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/project.comp",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/project.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/reset.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/resolve.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/strokes.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/flow_grain/strokes.vert",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/frame_history_reprojection/document.md",
+      "parsedPrograms": 8,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/frame_history_reprojection/metadata.edn",
+      "parsedPrograms": 8,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation/function_source_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation/metadata.edn",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/checks/runtime.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/document.md",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/function_source_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/metadata.edn",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r1-8f83d79e35c9.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r2-8f83d79e35c9.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r3-66fd67f6fe7c.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r4-f7f9ef4f2f47.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r5-2aa6023ddfca.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r6-deb1b1738cb0.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r7-ebc54198e3ae.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r8-e4aea058bc8b.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation_example/studies/function_source/r9-82456e1e48ac.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/gp_drawing/gp_field2d_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/gp_drawing/metadata.edn",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/gpu_probe_bench/document.md",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/gpu_probe_bench/metadata.edn",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/gpu_probe_bench/probe_caught_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/gpu_probe_bench/probe_chain_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/gpu_probe_bench/probe_hello_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/gpu_probe_bench/probe_renderer_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/interaction_nets_lambda/document.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/interaction_nets_lambda/lambda-normalise_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/interaction_nets_lambda/lambda-oracle_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/interaction_nets_lambda/lambda-reduction_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/interaction_nets_lambda/metadata.edn",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/keyframe_key_discovery/build.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/keyframe_key_discovery/document.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/keyframe_key_discovery/kf_before_after_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/keyframe_key_discovery/kf_junk_vs_damage_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/keyframe_key_discovery/kf_orphaned_slots_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/keyframe_key_discovery/metadata.edn",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/learned_from_module/fragment.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/learned_shader/example.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/learned_shader/material.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/logging_layer/build.yaml",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/logging_layer/log_blocks_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/logging_layer/log_channels_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/logging_layer/log_filter_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/logging_layer/log_mute_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/logging_layer/log_mute_is_console_only_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/logging_layer/log_stats_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/logging_layer/metadata.edn",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/marf_demo/b38c3ac4-b5fc-4642-9543-c9e37c0c41f7_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/marf_demo/document.md",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/marf_demo/metadata.edn",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/midi_clip/document.md",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/midi_clip/metadata.edn",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/midi_clip/midi_devices_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/midi_clip/midi_read_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/opendlssnr/cubes-record.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/opendlssnr/cubes.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/opendlssnr/example.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/opendlssnr/image-study.yaml",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/opendlssnr/record.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/opendlssnr/study.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/optical_flow_pingpong/fragment.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/optical_flow_pingpong/view.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_traced_reconstruction/example.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracer_instrument/metadata.edn",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracer_instrument/pt_renderer_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracer_instrument/pt_swap_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracer_instrument/pt_tracer_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracing_emitters/build.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracing_emitters/document.md",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracing_emitters/metadata.edn",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracing_emitters/pt_emitters_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracing_emitters/pt_renderer_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracing_emitters/verify.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracing_medium/README.md",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracing_medium/build.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracing_medium/document.md",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracing_medium/metadata.edn",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracing_medium/pt_medium_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracing_medium/pt_renderer_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/path_tracing_medium/verify.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/pattern_condense/build.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/pattern_condense/condense_basics_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/pattern_condense/condense_from_audio_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/pattern_condense/metadata.edn",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/read_only_session/870b3111-5179-4b74-8e71-06aec8dc8536_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/read_only_session/document.md",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/read_only_session/metadata.edn",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/reconstruction_plumbing/example.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/rr_plumbing/example.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/rr_plumbing/vertex.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/document.md",
+      "parsedPrograms": 17,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/drag_time_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/gpu_crowd_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/gpu_twist_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/metadata.edn",
+      "parsedPrograms": 17,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/solidsl_inverse/build.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/solidsl_inverse/document.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/solidsl_inverse/gradient_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/solidsl_inverse/metadata.edn",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/solidsl_inverse/refusals_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/stackauto_conversation_polytope/metadata.edn",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/stackauto_conversation_polytope/polytope_source_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/stackauto_conversation_polytope/polytope_source_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/demos/stackauto_conversation_polytope/polytope_source_vertex_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/light_infrastructure/VERIFY_RENDER.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/tool-pool/bounds.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/ai4_iframe_hello.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/ai_tool_demo.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/alife_evolution.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/alife_script.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/alife_walls.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/audio_ai_codec.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/audio_ai_gesture_board.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/audio_ai_muscriptor.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/audio_ai_speech_embeddings.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/audio_ai_underfit_mancini.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/audio_render_analysis.yaml",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/browse_embeds.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/certified_envelope.yaml",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/chain_scene_to_light.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/close_node_demo.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/cloth_simdverlet_start.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/csound_demo.yaml",
+      "parsedPrograms": 9,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/dataframe_typed_columns.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/dmx_lighting_demo.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/completion_category_headers.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/field_audio_absent_service.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/gesture_smooth_take.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/inspector_search.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/keybindings_inspect.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/keyframe_custom_types.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/keyframe_editing.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/keyframe_tidy_take.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/keyframe_two_lanes.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/threejs_editable_fill_pixels.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/underfit_mancini_board.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/drawing_notation.yaml",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/drawn_score.yaml",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/dynamic_graph_systems_examples.yaml",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/external_browser_surface_linux_smoke.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/external_browser_surface_macos_smoke.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/faust_voice.yaml",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/field_ui_browser_texture.yaml",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fieldcv_webcam.yaml",
+      "parsedPrograms": 13,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fieldml_afield_four_demo.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fieldml_mesh_demo.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fline_hit_records.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fn_differentiable_fit_demo.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/four_morton_quadtree.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/four_pass_chain.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/four_summary_pyramid.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/gesture_to_keyframes.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/gpu_probe_bench.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/gpu_shader_learning.yaml",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/imaging_cv_examples.yaml",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/interaction_nets_lambda.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/iosurface_ring_roundtrip_smoke.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/keyframe_autosweep.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/keyframe_code_blend.yaml",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/keyframe_editor.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/keyframe_key_discovery.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/kolakoski_euclid.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/kratos_flow_playground.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/kratos_thermal_playground.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/learned_boids.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/learned_from_module.yaml",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/learned_shader.yaml",
+      "parsedPrograms": 7,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/mega_texture_wall.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/morpho_circuit_search.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/mqtt_demo.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/onnx_webcam_live.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/open_dlss_nr.yaml",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/open_dlss_nr_cubes.yaml",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/openxr_eye_intersection.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/optical_flow.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/optical_flow_pingpong.yaml",
+      "parsedPrograms": 10,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/orca_duet.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/orca_hello.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/orca_jam.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/oscquery_demo.yaml",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/particle_video.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/path_traced_reconstruction.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/path_tracing_camera.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/path_tracing_emitters.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/path_tracing_glass.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/path_tracing_gltf.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/path_tracing_hidden_environment.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/path_tracing_material_shader_check.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/path_tracing_materials.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/path_tracing_medium.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/pattern_condense.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/pattern_language_composition.yaml",
+      "parsedPrograms": 8,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/petri_sound.yaml",
+      "parsedPrograms": 7,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/petri_state_space.yaml",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/petri_state_space_sculpture.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/petri_tala_layout.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/photo_mount_path_trace.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/photo_to_solid_chain.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/pitch_transcription_roundtrip.yaml",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/point_matching.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/polytope_canonical_gallery.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/polytope_conway_demo.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/polytope_layer_stack_path_trace.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/polytope_path_trace_lineage.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/popup_prior_inspect.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/profiling_timeline.yaml",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/pure_data_demo.yaml",
+      "parsedPrograms": 8,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/ray_reconstruction.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/read_only_session.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/reconstruction_plumbing.yaml",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/recstl_playground.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/rectsl_dataviz.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/rectsl_glsl_sdf.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/rectsl_heading_fit.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/rectsl_inverse_animation.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/rectsl_musicality.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/rectsl_plot_axes.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/rectsl_sdf_live.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/rectsl_spacetime_path_trace.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/rewrite_strategies_demo.yaml",
+      "parsedPrograms": 18,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/shared_types_demo.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/simdverlet_world.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/skinned_characters.yaml",
+      "parsedPrograms": 12,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/skinned_volume_path_trace.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/smpte_timecode.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/solidcraft_intro.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/solidsl_gallery.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/sonicpi_pattern_demo.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/sound_path_map.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/spectral_examples.yaml",
+      "parsedPrograms": 7,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/splat_sequence_streaming.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/stacksl_evolve_studio.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/stacksl_fit_demo.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/stacksl_gallery.yaml",
+      "parsedPrograms": 125,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/staged_project.yaml",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/stippling.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/streaming_diffusion.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/syphon_gpu.yaml",
+      "parsedPrograms": 7,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/syphon_zero_copy_receive_smoke.yaml",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/three_inspector_wall.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/tone_synth_sequence.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/vision_geometry_desk_preview.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/vision_metal_cube.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/youtube_kaleidoscope.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/youtube_mouse_keyboard_browser.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/ai/ai4_sees_its_output_demo.yaml",
+      "parsedPrograms": 7,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/ai/in_field_agent_demo.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/assets/headless_browser/headless_browser_table.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/assets/splat_cpu_raster/splat_cpu_raster.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/nesting_edge_demo/metadata.edn",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/spatial_pointer_demo.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "dev_docs/viz_demo.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "optional/kratos/examples/cuboids.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "optional/streamdiffusion/examples/capture-motion.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "optional/streamdiffusion/examples/spinning.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/ai4_experiments.md",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/ai4_live_iframe.md",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/ai4_painting.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/aiFeatures.md",
+      "parsedPrograms": 11,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/ar_reference.md",
+      "parsedPrograms": 10,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/brief_house_demo/metadata.edn",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/0e01f4b0-4b65-40db-a8b0-cd6cde4048d6_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/0e01f4b0-4b65-40db-a8b0-cd6cde4048d6_vertex_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/0f95328a-7214-44a2-acb6-f22c01261e96_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/0f95328a-7214-44a2-acb6-f22c01261e96_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/1103f132-7484-4440-8102-5bd159a29fbf_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/176b09bd-6e1c-4cb4-9c8a-b046d54c6dde_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/176b09bd-6e1c-4cb4-9c8a-b046d54c6dde_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/1ae1daed-12d3-4629-8f81-66194c5b924c_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/1ae1daed-12d3-4629-8f81-66194c5b924c_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/1b0f6eb5-b860-401d-913a-6469b4285774_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/1b0f6eb5-b860-401d-913a-6469b4285774_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/262e80f5-d991-453d-9af8-8d181ff0eb0b_vertex_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/30f2cf70-58c1-4691-a97a-d9cac5149f9c_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/3cbcadc0-b279-470d-9a5f-afc120518829_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/42056e8d-ec8b-4bf8-b84a-1cd1d8524510_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/42056e8d-ec8b-4bf8-b84a-1cd1d8524510_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/459b9c54-6363-4c27-a033-2f145e017022_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/459b9c54-6363-4c27-a033-2f145e017022_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/55bc1784-bc44-40eb-bc01-d02eca463445_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/57eb613c-90e0-46e1-b075-8e1578bc4934_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/57eb613c-90e0-46e1-b075-8e1578bc4934_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/57eb613c-90e0-46e1-b075-8e1578bc4934_vertex_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/611072da-1af6-4d2d-85bf-07a9ba191aca_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/628f3f96-42d0-48dd-93ea-ea4d9f03b865_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/628f3f96-42d0-48dd-93ea-ea4d9f03b865_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/628f3f96-42d0-48dd-93ea-ea4d9f03b865_vertex_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/65bd0587-dbfa-451a-8f6a-e003ff3d1abf_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/715eae62-197d-49a1-a202-464ae4465cd5_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/715eae62-197d-49a1-a202-464ae4465cd5_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/72b68fa7-a8c3-4d4a-964d-2f66306692e3_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/818be776-a391-4703-9e6e-c6259440e2f1_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/818be776-a391-4703-9e6e-c6259440e2f1_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/81f27655-7d32-4a4d-b73d-1b5d368efaa7_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/8323570b-87db-4623-95a2-bd61c7d0f6f7_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/85e8478b-529b-406e-b835-7c00912848f2_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/8b8d3306-5c31-49aa-ab27-659a992ebd09_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/8b8d3306-5c31-49aa-ab27-659a992ebd09_compute_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/92e4a943-1cc2-433c-9953-18e0107f3854_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/954d64d5-ee3f-4cb7-8ac7-1e2cce8a9073_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/9a1f9aea-5940-4d4c-976f-85b650a9c2d7_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/9a1f9aea-5940-4d4c-976f-85b650a9c2d7_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/9df25333-3cb1-4bba-b628-b34c7ba61909_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/a8dfc9a7-3062-4eca-ab7e-a243ff8e7bde_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/a8dfc9a7-3062-4eca-ab7e-a243ff8e7bde_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/af0946dd-f25d-4355-984d-f0d24a43ee12_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/b09e32ea-79a6-40a7-bb7a-99e6723081ad_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/b09e32ea-79a6-40a7-bb7a-99e6723081ad_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/b2ba23e8-18e5-4f07-a709-2b89116a83b3_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/b42d7b13-680e-4f9b-b789-8e6e7d8c4a21_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/cc81ab4e-6c43-4908-bfff-7c8f827c927c_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/cd63d465-dbe0-4e55-bccf-14c6a7f5e54a_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/d1aa12a9-740c-4c2b-a05b-0e9a3aeed51c_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/d1aa12a9-740c-4c2b-a05b-0e9a3aeed51c_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/d1aa12a9-740c-4c2b-a05b-0e9a3aeed51c_vertex_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/d9733b9a-73a8-4045-a756-2a6e28e08c21_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/d9733b9a-73a8-4045-a756-2a6e28e08c21_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/e1d6dd17-1ebd-40e7-a0ef-309779c562ff_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/e39270ec-8faf-4d26-8f4e-ce4d23ec4af1_vertex_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/f1d2cbea-b20d-4794-b9f7-37b847dcdeb6_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/f1d2cbea-b20d-4794-b9f7-37b847dcdeb6_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/f1d2cbea-b20d-4794-b9f7-37b847dcdeb6_vertex_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/fd8503ec-e5e2-4fa9-86fe-3d65ad96911f_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/fd8503ec-e5e2-4fa9-86fe-3d65ad96911f_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/metadata.edn",
+      "parsedPrograms": 200,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/dmx_lighting_demo/dmx-sacn-matrix_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/dmx_lighting_demo/dmx-sender_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/dmx_lighting_demo/metadata.edn",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/evolve/variety-evolution.operations.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/fieldml_frames_demo/metadata.edn",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/fieldml_mesh_demo/metadata.edn",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/function_conversation/FunctionStudyTools.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/function_conversation/final.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/functions/chebyshev-waveshaper.operations.yaml",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/functions/waveshape-transforms.operations.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/functions/waveshaper-family-evolvable.operations.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/mqtt_demo/metadata.edn",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/mqtt_demo/mqtt-listen_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/mqtt_demo/mqtt-plot_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/mqtt_demo/mqtt-retained_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/mqtt_demo/mqtt-sensors_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/OpenDlssNrStudy.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/cubes-record.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/cubes.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/example.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/open_dlss_nr_cubes.yaml",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/record.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/study.frag",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/opendlssnr/study.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/oscquery_demo/metadata.edn",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/oscquery_demo/oscq-discover_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/oscquery_demo/oscq-publish_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/oscquery_demo/oscq-remote_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/rectsl_conversation/RectSLStudyTools.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/solidsl_gallery/document.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/solidsl_gallery/glsl_backend_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/solidsl_gallery/metadata.edn",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/sonicpi_pattern_demo/metadata.edn",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stackauto_conversation/StackAutoStudyTools.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stackauto_conversation/polytope/final-code.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_conversation/StackSLStudyTools.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_cpu_demo/metadata.edn",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_cpu_demo/stacksl-cpu-still_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_fit_demo/metadata.edn",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_fit_demo/stacksl-fit_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_fit_demo/stacksl-wires_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/auto-after_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/auto-before_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/custom-palette_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/definitions_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/diffusion-feedback_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/diffusion-feedback_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/fbm-palette_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/feedback-trails_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/feedback-trails_fragment_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/fm-palette_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/grade-fields_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/hard-threshold_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/kaleido-twist_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/local-marks_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/metadata.edn",
+      "parsedPrograms": 125,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/mirror-tiles_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/oklab-shift_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/phasor-noise_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/polar-sigmoid_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/posterize-shaper_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/radial-waves_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/ryb-paint_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/sample-hold_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/sigmoid-punch_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/soft-ring_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/spiral-flow_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/stripe-bands_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/subroutine-ridges_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/tiled-grid_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/tonemap-grade_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/twist-swirl_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/uv-coordinates_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/value-noise_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_gallery/word-reference_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_surrogate_demo/metadata.edn",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/stacksl_surrogate_demo/surrogate-recover_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/three_output_gallery/metadata.edn",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/transcripts/drawn_score_hero_setup.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/transcripts/qualified_sources_approval.yaml",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/assets/transcripts/stackauto_numbers_setup.yaml",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/audio_ai_codec.md",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/audio_ai_gesture_board.md",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/audio_ai_muscriptor.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/audio_ai_speech_embeddings.md",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/audio_render_analysis.md",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/boolean_network_music_examples.md",
+      "parsedPrograms": 9,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/box_output.md",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/chain_ca_sound.md",
+      "parsedPrograms": 7,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/chain_drawn_score.md",
+      "parsedPrograms": 8,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/chain_fn_sound_roundtrip.md",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/chain_lambda_sound.md",
+      "parsedPrograms": 7,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/chain_life3d_render.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/chain_pattern_particles.md",
+      "parsedPrograms": 9,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/chain_petri_sculpture.md",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/chain_petri_sparks.md",
+      "parsedPrograms": 7,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/chain_photo_to_solid.md",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/chain_physics_render.md",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/chain_polytope_render.md",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/chain_rectsl_spacetime.md",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/chain_skinned_volume.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/completion_ranking.md",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/computed_ray_geometry.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/dmx_lighting.md",
+      "parsedPrograms": 13,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/dough_dsp_sound.md",
+      "parsedPrograms": 12,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/drawing_and_notation.md",
+      "parsedPrograms": 8,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/fabricate_renderer.md",
+      "parsedPrograms": 23,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/faust.md",
+      "parsedPrograms": 8,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/field_audio_ai.md",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/files_and_paths.md",
+      "parsedPrograms": 10,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/fn_intervals.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/forth_examples.md",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/four_in_output_areas.md",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/funFeatures.md",
+      "parsedPrograms": 26,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/function_conversation.md",
+      "parsedPrograms": 8,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/functions_domains.md",
+      "parsedPrograms": 8,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/functions_examples.md",
+      "parsedPrograms": 248,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/geometry_review.md",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/gpu_shader_learning.md",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/gpu_state.md",
+      "parsedPrograms": 11,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/graph_query.md",
+      "parsedPrograms": 8,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/imaging_examples.md",
+      "parsedPrograms": 7,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/keybindings.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/keyframe_autosweep.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/keyframe_editor.md",
+      "parsedPrograms": 18,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/kotlin_in_the_head.md",
+      "parsedPrograms": 7,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/learned_shader.md",
+      "parsedPrograms": 10,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/linear_algebra.md",
+      "parsedPrograms": 31,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/logging.md",
+      "parsedPrograms": 7,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/loris.md",
+      "parsedPrograms": 11,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/mqtt.md",
+      "parsedPrograms": 8,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/neural_particles.md",
+      "parsedPrograms": 13,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/neural_reconstruction.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/onnx.md",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/open_dlss_nr.md",
+      "parsedPrograms": 14,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/optical_flow.md",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/orca.md",
+      "parsedPrograms": 8,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/osc.md",
+      "parsedPrograms": 9,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/output_panel_sizing.md",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/output_requests.md",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/particle_video.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/pat_spatial.md",
+      "parsedPrograms": 7,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/patchy.md",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/path_traced_reconstruction.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/path_tracing.md",
+      "parsedPrograms": 30,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/pattern_language.md",
+      "parsedPrograms": 47,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/pattern_rewrite.md",
+      "parsedPrograms": 19,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/petri_nets.md",
+      "parsedPrograms": 15,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/physics.md",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/profiling_timeline.md",
+      "parsedPrograms": 8,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/projection_examples.md",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/puppet_browser.md",
+      "parsedPrograms": 10,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/pure_data.md",
+      "parsedPrograms": 11,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/qualified_sources.md",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/ray_reconstruction.md",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/ray_tracing_examples.md",
+      "parsedPrograms": 20,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/reconstruction_plumbing.md",
+      "parsedPrograms": 9,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/rectsl_conversation.md",
+      "parsedPrograms": 9,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/rectsl_examples.md",
+      "parsedPrograms": 52,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/rectsl_inverse_animation.md",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/running_code.md",
+      "parsedPrograms": 20,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/slug_paths.md",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/smpte_timecode.md",
+      "parsedPrograms": 6,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/solid_notation.md",
+      "parsedPrograms": 18,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/solidcraft.md",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/sonic_pi.md",
+      "parsedPrograms": 12,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/sound.md",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/stackauto_conversation.md",
+      "parsedPrograms": 10,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/stacksl_conversation.md",
+      "parsedPrograms": 8,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/stacksl_evolve.md",
+      "parsedPrograms": 7,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/stacksl_examples.md",
+      "parsedPrograms": 100,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/stacksl_intervals.md",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/state_estimation_examples.md",
+      "parsedPrograms": 5,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/stipple_transport.md",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/streaming_diffusion.md",
+      "parsedPrograms": 3,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/subharmonic_sound.md",
+      "parsedPrograms": 29,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/syphon.md",
+      "parsedPrograms": 4,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/three_output.md",
+      "parsedPrograms": 15,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/vision.md",
+      "parsedPrograms": 2,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "public/docs/vision_geometry.md",
+      "parsedPrograms": 9,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "python/fieldcv/examples/shared_memory.yaml",
+      "parsedPrograms": 10,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "python/fieldcv/examples/webcam_demo.yaml",
+      "parsedPrograms": 13,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "src/jvmMain/resources/empty_vertex.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "src/jvmMain/resources/plain_vertex.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "templates/advanced_remote/1869b645-4420-4c17-8baf-415870e9da9c_vertex_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "templates/advanced_remote/48175964-ffa4-444a-908e-f692b295b0f8_vertex_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "templates/advanced_remote/89b3bb47-f863-4200-b457-30ee2352199a_vertex_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "templates/advanced_remote/8b78e419-cd1e-4111-96ab-899eb3ed47d1_vertex_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "templates/advanced_remote/8f448a7e-ed41-4f74-9ad2-6e1bc41c1299_vertex_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "templates/advanced_remote/b8a8e517-91e3-4958-928d-a2143d326ae2_vertex_.glsl",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "templates/h2-explorer-examples/8f01ff7d-3580-40e6-acd5-a8e303a19fdb_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "templates/h2-explorer-examples/b26b8dce-3dce-41aa-b712-7bb0f7daaad7_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "templates/h2-explorer-examples/d7d194dd-536f-44f3-9d5e-de58542baa7e_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "templates/h2-explorer-examples/f58460c5-30dc-496e-9bce-dd041b340c6e_code_.kt",
+      "parsedPrograms": 1,
+      "allProgramsPreserved": true
+    },
+    {
+      "path": "templates/h2-explorer-examples/metadata.edn",
+      "parsedPrograms": 7,
+      "allProgramsPreserved": true
+    }
+  ]
+}

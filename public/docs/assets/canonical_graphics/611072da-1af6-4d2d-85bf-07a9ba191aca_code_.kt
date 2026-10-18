@@ -10,5 +10,4 @@ once.renderer {
     Renderer(window)
 }
 
-
 start(renderer::run)

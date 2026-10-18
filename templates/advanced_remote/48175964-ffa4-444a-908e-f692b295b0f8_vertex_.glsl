@@ -34,10 +34,10 @@ void main()
     vUv = uv;
 
     // we transform the _position_ by the camera
-    gl_Position = modelViewMatrix * vec4( position, 1.0);
+    gl_Position = modelViewMatrix * vec4(position, 1.0);
 
     // and project it onto the screen
-    gl_Position = projectionMatrix  * gl_Position;
+    gl_Position = projectionMatrix * gl_Position;
 
     // and figure out what this does to the normal
     vNormal = normalMatrix * normal;

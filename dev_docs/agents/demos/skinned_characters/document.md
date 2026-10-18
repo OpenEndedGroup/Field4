@@ -15,8 +15,9 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 ```
 
 ```text [field-property box="f5e60137-f514-4c01-865c-5af02f1d8eee" name="preamble"]
-import afield.graphics.vulkan.util.Window
 import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -44,44 +45,47 @@ start(renderer::run)
 <!-- field-box id="gpu_crowd" index="1" -->
 
 ```edn [field-box id="gpu_crowd" role="properties"]
-{"id" "gpu_crowd" "index" 1 "name" "6 - Skinning on the GPU, and a crowd of 64" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "6 - Skinning on the GPU, and a crowd of 64" "_tombstone" false "frame" #afield/rect [60.0 375.0 600.0 136.0] "autorun" false "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_crowd_code_.kt" "lines" 76 "characters" 3234 "sha256" "e3e6c838f68ff9d22ae09196a4d899c794ef0606146c2cc642994f3a6008e69c"} {"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "8c95217c5eb296f0b777d1cd1c5a4aac3bd08cee26c0845c51bfbd99a3c29f34"}]}
+{"id" "gpu_crowd" "index" 1 "name" "6 - Skinning on the GPU, and a crowd of 64" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "6 - Skinning on the GPU, and a crowd of 64" "_tombstone" false "frame" #afield/rect [60.0 375.0 600.0 136.0] "autorun" false "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_crowd_code_.kt" "lines" 86 "characters" 3178 "sha256" "3216279dd47879c683235dd5d81ada3cdb424c627f3971f3e44f25790d97dd7e"} {"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "8c95217c5eb296f0b777d1cd1c5a4aac3bd08cee26c0845c51bfbd99a3c29f34"}]}
 ```
 
 ```kotlin [field-property box="gpu_crowd" name="code" path="gpu_crowd_code_.kt"]
-import afield.graphics.scene.GltfSupport
-import afield.graphics.scene.GpuSkinner
-import afield.graphics.scene.GpuSkinning
-import afield.graphics.scene.RiggedFixture
-import afield.math.linalg.Matrix4f
+/*
+Sixty-four characters, one mesh, one draw call, all of them animating -- and not one vertex is
+re-uploaded after setup. Box 4 above is the CPU skinner: it rewrites the packed vertex buffer
+every pose, which costs 2.8 ms for a 50,000-vertex character and cannot be done 64 times.
 
-// Sixty-four characters, one mesh, one draw call, all of them animating -- and not one vertex is
-// re-uploaded after setup. Box 4 above is the CPU skinner: it rewrites the packed vertex buffer
-// every pose, which costs 2.8 ms for a 50,000-vertex character and cannot be done 64 times.
-//
-// EDIT `count` AND RE-RUN. The per-frame CPU cost is `count x bones` matrices, so 2 here.
+EDIT `count` AND RE-RUN. The per-frame CPU cost is `count x bones` matrices, so 2 here.
+*/
 val count = 64
 
-// `renderer` and `window` come from box 0, which publishes them with `prop<Renderer>(renderer)`.
-// This box is connected beneath it, so the bare name resolves -- RUN BOX 0 FIRST. Before box 0
-// has run there is no Renderer anywhere and this box fails with "must pass in a value for
-// context parameter afield.graphics.vulkan.Renderer", which is the same footgun box 4 documents.
+/*
+`renderer` and `window` come from box 0, which publishes them with `prop<Renderer>(renderer)`.
+This box is connected beneath it, so the bare name resolves -- RUN BOX 0 FIRST. Before box 0
+has run there is no Renderer anywhere and this box fails with "must pass in a value for
+context parameter afield.graphics.vulkan.Renderer", which is the same footgun box 4 documents.
+*/
 val model = GltfSupport.loadGltfBasic(
-    RiggedFixture.locate(), GltfSupport.GltfLoadConfig(loadTextures = false)
+    RiggedFixture.locate(),
+    GltfSupport.GltfLoadConfig(loadTextures = false),
 )
 val inst = model.meshes.first { it.skin != null }
 
-// The shaders come straight from the library constants, so this box cannot drift from the code
-// `GpuSkinningSmoke` grades. `skinnedFragmentShader` rather than the bundled one because the
-// bundled glTF fragment shader never reads vColor -- it outputs the normal -- so the per-instance
-// tint would be invisible and "the crowd is varied" would be unfalsifiable.
-val module = Module(
-    Parameters(
-        renderer = renderer,
-        vertex = GpuSkinning.skinnedVertexShader,
-        fragment = GpuSkinning.skinnedFragmentShader,
-        name = "gpu skinned crowd"
-    )
-).pointer()
+/*
+The shaders come straight from the library constants, so this box cannot drift from the code
+`GpuSkinningSmoke` grades. `skinnedFragmentShader` rather than the bundled one because the
+bundled glTF fragment shader never reads vColor -- it outputs the normal -- so the per-instance
+tint would be invisible and "the crowd is varied" would be unfalsifiable.
+*/
+val module =
+    Module(
+            Parameters(
+                renderer = renderer,
+                vertex = GpuSkinning.skinnedVertexShader,
+                fragment = GpuSkinning.skinnedFragmentShader,
+                name = "gpu skinned crowd",
+            ),
+        )
+        .pointer()
 
 val m = Mesh(renderer, module)
 module += "crowd" to m
@@ -108,19 +112,26 @@ fun place(i: Int): Matrix4f {
 var n = 0
 loop {
     val t = n / 60f
-    // The whole per-frame CPU cost: `count` palettes of 2 matrices each. Every instance is at its
-    // own phase of its own blend of two clips, which is the per-instance clip blending -- it is
-    // evaluated here, on the CPU, because it is O(instances x bones) and bones are units.
-    skinner.uploadPalettes((0 until count).map { i ->
-        skinner.blendedPalette(
-            place(i),
-            "bend", (t + i * 0.09f) % 2f,
-            "curl", (t * 0.7f + i * 0.05f) % 2f,
-            mix = i / (count - 1f)
-        )
-    })
+    /*
+    The whole per-frame CPU cost: `count` palettes of 2 matrices each. Every instance is at its
+    own phase of its own blend of two clips, which is the per-instance clip blending -- it is
+    evaluated here, on the CPU, because it is O(instances x bones) and bones are units.
+    */
+    skinner.uploadPalettes(
+        (0 until count).map { i ->
+            skinner.blendedPalette(
+                place(i),
+                "bend",
+                (t + i * 0.09f) % 2f,
+                "curl",
+                (t * 0.7f + i * 0.05f) % 2f,
+                mix = i / (count - 1f),
+            )
+        },
+    )
     skinner.updateCamera(m, camera)
-    if (n % 120 == 0) println("frame $n: $count instances, ${count * skinner.boneCount} matrices uploaded, one draw call")
+    if (n % 120 == 0)
+        println("frame $n: $count instances, ${count * skinner.boneCount} matrices uploaded, one draw call")
     n++
     frame()
 }
@@ -129,6 +140,7 @@ loop {
 ```text [field-property box="gpu_crowd" name="preamble"]
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.util.Window
+
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -146,12 +158,22 @@ val Once.renderer by Onceing<Renderer>() /**/
 ```text [field-property box="c82c404d-a15d-4f51-a06f-66dfc2a00364" name="preamble"]
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.util.Window
-import java.nio.*
-import arrow.core.right
 import arrow.core.left
+import java.nio.*
 
-
-/*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
+/*supermap*/ class MappedStructure {
+    lateinit var tri: IntBuffer
+}
+fun Mesh.set(numVert: Int, numTriangle: Int = 0, builder: MappedStructure.() -> Unit = {}) {
+    this.resize(numVert, numTriangle)
+    val mesh = this
+    MappedStructure().apply {
+        mesh.t?.mapAndWrite_ints {
+            tri = this
+            builder()
+        }
+    }
+}
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -162,20 +184,20 @@ class VertexBuffer(
     members: List<Introspected.Member> = VertexBufferLayoutMembers(),
     baseOffset: Int = 0,
     pathPrefix: String = "",
-    root: Structure? = null
+    root: Structure? = null,
 ) : Structure(members, baseOffset, pathPrefix, root) {
-    init { setMembers(members) }
+    init {
+        setMembers(members)
+    }
+
     var vertexData by Structure.FromStructure<Float>()
 }
 fun VertexBufferByteSize(): Long = 4L
-fun VertexBufferLayoutMembers(): List<Introspected.Member> =
-    listOf(
-        Introspected.Member("vertexData", 0, PrimitiveType.float.left(), 4, false),
-    )
-fun HasBuffer.asVertexBuffer(): VertexBuffer =
-    asStructure(VertexBuffer(), VertexBufferLayoutMembers())
-fun BufferParameters.asVertexBuffer(): VertexBuffer =
-    buffer.asVertexBuffer()
+fun VertexBufferLayoutMembers(): List<Introspected.Member> = listOf(
+    Introspected.Member("vertexData", 0, PrimitiveType.float.left(), 4, false),
+)
+fun HasBuffer.asVertexBuffer(): VertexBuffer = asStructure(VertexBuffer(), VertexBufferLayoutMembers())
+fun BufferParameters.asVertexBuffer(): VertexBuffer = buffer.asVertexBuffer()
 /*end*/
 /*start*/
 /*graphics-structure-type:IndexBuffer:IndexBuffer*/
@@ -183,48 +205,61 @@ class IndexBuffer(
     members: List<Introspected.Member> = IndexBufferLayoutMembers(),
     baseOffset: Int = 0,
     pathPrefix: String = "",
-    root: Structure? = null
+    root: Structure? = null,
 ) : Structure(members, baseOffset, pathPrefix, root) {
-    init { setMembers(members) }
+    init {
+        setMembers(members)
+    }
+
     var indexData by Structure.FromStructure<UInt>()
 }
 fun IndexBufferByteSize(): Long = 4L
-fun IndexBufferLayoutMembers(): List<Introspected.Member> =
-    listOf(
-        Introspected.Member("indexData", 0, PrimitiveType.uint.left(), 4, false),
-    )
-fun HasBuffer.asIndexBuffer(): IndexBuffer =
-    asStructure(IndexBuffer(), IndexBufferLayoutMembers())
-fun BufferParameters.asIndexBuffer(): IndexBuffer =
-    buffer.asIndexBuffer()
+fun IndexBufferLayoutMembers(): List<Introspected.Member> = listOf(
+    Introspected.Member("indexData", 0, PrimitiveType.uint.left(), 4, false),
+)
+fun HasBuffer.asIndexBuffer(): IndexBuffer = asStructure(IndexBuffer(), IndexBufferLayoutMembers())
+fun BufferParameters.asIndexBuffer(): IndexBuffer = buffer.asIndexBuffer()
 /*end*/
 /*graphics-pc-structure:modelView*/ var Structure.modelView by Structure.FromStructure<Any>() // view * model
-/*graphics-pc-binding:modelView*/ var Mesh.modelView by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>() // view * model
-/*graphics-pc-binding-group:modelView*/ var MeshGroup.modelView by MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>() // view * model
+/*graphics-pc-binding:modelView*/ var Mesh.modelView by
+    Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>() // view * model
+/*graphics-pc-binding-group:modelView*/ var MeshGroup.modelView by
+    MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>() // view * model
 /*graphics-pc-structure:proj*/ var Structure.proj by Structure.FromStructure<Any>() // projection
 /*graphics-pc-binding:proj*/ var Mesh.proj by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>() // projection
-/*graphics-pc-binding-group:proj*/ var MeshGroup.proj by MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>() // projection
+/*graphics-pc-binding-group:proj*/ var MeshGroup.proj by
+    MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>() // projection
 /*graphics-pc-structure:materialBaseColor*/ var Structure.materialBaseColor by Structure.FromStructure<Any>()
-/*graphics-pc-binding:materialBaseColor*/ var Mesh.materialBaseColor by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
-/*graphics-pc-binding-group:materialBaseColor*/ var MeshGroup.materialBaseColor by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*graphics-pc-binding:materialBaseColor*/ var Mesh.materialBaseColor by
+    Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*graphics-pc-binding-group:materialBaseColor*/ var MeshGroup.materialBaseColor by
+    MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
 /*graphics-pc-structure:vertexOffset*/ var Structure.vertexOffset by Structure.FromStructure<Any>() // in floats
 /*graphics-pc-binding:vertexOffset*/ var Mesh.vertexOffset by Mesh.BoundFromStructure<UInt>() // in floats
-/*graphics-pc-binding-group:vertexOffset*/ var MeshGroup.vertexOffset by MeshGroup.BoundFromStructure<UInt>() // in floats
+/*graphics-pc-binding-group:vertexOffset*/ var MeshGroup.vertexOffset by
+    MeshGroup.BoundFromStructure<UInt>() // in floats
 /*graphics-pc-structure:indexOffset*/ var Structure.indexOffset by Structure.FromStructure<Any>() // in indices
 /*graphics-pc-binding:indexOffset*/ var Mesh.indexOffset by Mesh.BoundFromStructure<UInt>() // in indices
-/*graphics-pc-binding-group:indexOffset*/ var MeshGroup.indexOffset by MeshGroup.BoundFromStructure<UInt>() // in indices
+/*graphics-pc-binding-group:indexOffset*/ var MeshGroup.indexOffset by
+    MeshGroup.BoundFromStructure<UInt>() // in indices
 /*graphics-pc-structure:vertexStride*/ var Structure.vertexStride by Structure.FromStructure<Any>() // in floats
 /*graphics-pc-binding:vertexStride*/ var Mesh.vertexStride by Mesh.BoundFromStructure<UInt>() // in floats
-/*graphics-pc-binding-group:vertexStride*/ var MeshGroup.vertexStride by MeshGroup.BoundFromStructure<UInt>() // in floats
+/*graphics-pc-binding-group:vertexStride*/ var MeshGroup.vertexStride by
+    MeshGroup.BoundFromStructure<UInt>() // in floats
 /*graphics-pc-structure:useVertexColor*/ var Structure.useVertexColor by Structure.FromStructure<Any>() // bool as uint
 /*graphics-pc-binding:useVertexColor*/ var Mesh.useVertexColor by Mesh.BoundFromStructure<UInt>() // bool as uint
-/*graphics-pc-binding-group:useVertexColor*/ var MeshGroup.useVertexColor by MeshGroup.BoundFromStructure<UInt>() // bool as uint
+/*graphics-pc-binding-group:useVertexColor*/ var MeshGroup.useVertexColor by
+    MeshGroup.BoundFromStructure<UInt>() // bool as uint
 /*graphics-pc-structure:vertexBuffer*/ var Structure.vertexBuffer by Structure.FromStructure<Any>()
-/*graphics-pc-binding:vertexBuffer*/ var Mesh.vertexBuffer by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
-/*graphics-pc-binding-group:vertexBuffer*/ var MeshGroup.vertexBuffer by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding:vertexBuffer*/ var Mesh.vertexBuffer by
+    Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:vertexBuffer*/ var MeshGroup.vertexBuffer by
+    MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-structure:indexBuffer*/ var Structure.indexBuffer by Structure.FromStructure<Any>()
-/*graphics-pc-binding:indexBuffer*/ var Mesh.indexBuffer by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
-/*graphics-pc-binding-group:indexBuffer*/ var MeshGroup.indexBuffer by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding:indexBuffer*/ var Mesh.indexBuffer by
+    Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:indexBuffer*/ var MeshGroup.indexBuffer by
+    MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 ```
 
 ```kotlin [field-property box="c82c404d-a15d-4f51-a06f-66dfc2a00364" name="code" path="c82c404d-a15d-4f51-a06f-66dfc2a00364_code_.kt"]
@@ -442,44 +477,42 @@ showMeshGrid(
 <!-- field-box id="gpu_twist" index="4" -->
 
 ```edn [field-box id="gpu_twist" role="properties"]
-{"id" "gpu_twist" "index" 4 "name" "7 - The candy wrapper on the GPU, linear and dual quaternion in one draw" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "7 - The candy wrapper on the GPU, linear and dual quaternion in one draw" "_tombstone" false "frame" #afield/rect [700.0 540.0 600.0 136.0] "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_twist_code_.kt" "lines" 80 "characters" 3344 "sha256" "590eb4e128e73d145b96ffffa2c291c78273d677cff071f267769acf7e6a03ca"} {"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "8c95217c5eb296f0b777d1cd1c5a4aac3bd08cee26c0845c51bfbd99a3c29f34"}]}
+{"id" "gpu_twist" "index" 4 "name" "7 - The candy wrapper on the GPU, linear and dual quaternion in one draw" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "7 - The candy wrapper on the GPU, linear and dual quaternion in one draw" "_tombstone" false "frame" #afield/rect [700.0 540.0 600.0 136.0] "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_twist_code_.kt" "lines" 83 "characters" 3219 "sha256" "e2bbcfdd929d909efd257a29b79876e1047feb2ed3a5b1adf9633fff6a441a27"} {"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "8c95217c5eb296f0b777d1cd1c5a4aac3bd08cee26c0845c51bfbd99a3c29f34"}]}
 ```
 
 ```kotlin [field-property box="gpu_twist" name="code" path="gpu_twist_code_.kt"]
-import afield.graphics.scene.DualQuaternionSkinning
 import afield.graphics.scene.GltfSkinning.SkinningMethod
 import afield.graphics.scene.GltfSkinning.SkinningOptions
-import afield.graphics.scene.GltfSkinning
-import afield.graphics.scene.GltfSupport
-import afield.graphics.scene.GpuSkinner
-import afield.graphics.scene.GpuSkinning
-import afield.graphics.scene.RiggedFixture
-import afield.math.linalg.Matrix4f
 
-// Box 5 is the candy wrapper on the CPU. This is the same twist on the GPU, both methods in ONE
-// draw call: the left cylinder is linear blend skinning and pinches to a point at 180 degrees, the
-// right one is dual quaternion skinning and keeps its radius. Same mesh, same palette, same shader;
-// the only difference between them is one word per instance saying which blend to run.
-//
-// RUN BOX 0 FIRST, and stop box 6 if it is running -- both draw into box 0's window.
-//
-// EDIT `methods` AND RE-RUN: make both LINEAR_BLEND and both pinch; make both DUAL_QUATERNION and
-// neither does.
+/*
+Box 5 is the candy wrapper on the CPU. This is the same twist on the GPU, both methods in ONE
+draw call: the left cylinder is linear blend skinning and pinches to a point at 180 degrees, the
+right one is dual quaternion skinning and keeps its radius. Same mesh, same palette, same shader;
+the only difference between them is one word per instance saying which blend to run.
+
+RUN BOX 0 FIRST, and stop box 6 if it is running -- both draw into box 0's window.
+
+EDIT `methods` AND RE-RUN: make both LINEAR_BLEND and both pinch; make both DUAL_QUATERNION and
+neither does.
+*/
 val methods = listOf(SkinningMethod.LINEAR_BLEND, SkinningMethod.DUAL_QUATERNION)
 
 val model = GltfSupport.loadGltfBasic(
-    RiggedFixture.locate(), GltfSupport.GltfLoadConfig(loadTextures = false)
+    RiggedFixture.locate(),
+    GltfSupport.GltfLoadConfig(loadTextures = false),
 )
 val inst = model.meshes.first { it.skin != null }
 
-val module = Module(
-    Parameters(
-        renderer = renderer,
-        vertex = GpuSkinning.skinnedVertexShader,
-        fragment = GpuSkinning.skinnedFragmentShader,
-        name = "gpu twist, lbs vs dqs"
-    )
-).pointer()
+val module =
+    Module(
+            Parameters(
+                renderer = renderer,
+                vertex = GpuSkinning.skinnedVertexShader,
+                fragment = GpuSkinning.skinnedFragmentShader,
+                name = "gpu twist, lbs vs dqs",
+            ),
+        )
+        .pointer()
 
 val m = Mesh(renderer, module)
 module += "twist" to m
@@ -517,11 +550,16 @@ loop {
     skinner.updateCamera(m, camera)
     if (n % 45 == 0) {
         val rest = sk.palette(twist, seconds)
-        println("t = %.2f s   waist, %% of rest radius:   %s %.1f%%   |   %s %.1f%%".format(
-            seconds,
-            methods[0], 100 * waist(methods[0], rest) / restRadius,
-            methods[1], 100 * waist(methods[1], rest) / restRadius,
-        ))
+        println(
+            "t = %.2f s   waist, %% of rest radius:   %s %.1f%%   |   %s %.1f%%"
+                .format(
+                    seconds,
+                    methods[0],
+                    100 * waist(methods[0], rest) / restRadius,
+                    methods[1],
+                    100 * waist(methods[1], rest) / restRadius,
+                ),
+        )
     }
     n++
     frame()
@@ -531,6 +569,7 @@ loop {
 ```text [field-property box="gpu_twist" name="preamble"]
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.util.Window
+
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/
@@ -542,23 +581,18 @@ val Once.renderer by Onceing<Renderer>() /**/
 <!-- field-box id="drag_time" index="5" -->
 
 ```edn [field-box id="drag_time" role="properties"]
-{"id" "drag_time" "index" 5 "name" "2 - Drag `time` and watch it bend" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Drag `time` and watch it bend" "_tombstone" false "frame" #afield/rect [700.0 60.0 600.0 136.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "drag_time_code_.kt" "lines" 46 "characters" 2167 "sha256" "47fcc81ef8dbe24321729405a665da70267496420c0765629e6fc08de4336759"}]}
+{"id" "drag_time" "index" 5 "name" "2 - Drag `time` and watch it bend" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Drag `time` and watch it bend" "_tombstone" false "frame" #afield/rect [700.0 60.0 600.0 136.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "drag_time_code_.kt" "lines" 53 "characters" 1998 "sha256" "8991b51726fd71e035629af5397920746280cdb18177ac9aba873367b293ac64"}]}
 ```
 
 ```kotlin [field-property box="drag_time" name="code" path="drag_time_code_.kt"]
-import afield.ui.output.controlGroup
-import afield.ui.output.displayOpen
-import afield.graphics.scene.RiggedFixture
-import afield.graphics.scene.posedGltfToTriMesh
-import afield.geometry.mesh.MeshView
-import afield.geometry.mesh.showMesh
+/*
+Drag `time`. The cylinder bends.
 
-// Drag `time`. The cylinder bends.
-//
-// `time` runs 0 -> 2 seconds through a clip that rotates the upper bone 0 -> 60 -> 0 degrees about
-// +z. At 0 the tube is straight and the skinned vertices are bit-identical to the unskinned ones;
-// at 1 the tip has swung -sqrt(3) in x, which is -2 sin 60 exactly. Drag `bend to curl` as well and
-// the LOWER bone joins in, which is the parent chain composing.
+`time` runs 0 -> 2 seconds through a clip that rotates the upper bone 0 -> 60 -> 0 degrees about
++z. At 0 the tube is straight and the skinned vertices are bit-identical to the unskinned ones;
+at 1 the tip has swung -sqrt(3) in x, which is -2 sin 60 exactly. Drag `bend to curl` as well and
+the LOWER bone joins in, which is the parent chain composing.
+*/
 
 val rig = RiggedFixture.locate()
 val view = MeshView(yawDegrees = 0.0, pitchDegrees = 8.0, distance = 2.6)
@@ -567,26 +601,38 @@ var seconds = 0.6
 var mix = 0.0
 
 fun draw() {
-    // blendedPalette mixes the two clips' joint matrices componentwise -- the same linear blend that
-    // linear blend skinning itself commits to, so a limb shortens at 90 degrees here exactly as it
-    // does there. Not a quaternion blend, deliberately, so the two agree.
-    val mesh = posedGltfToTriMesh(rig) { s ->
-        s.blendedPalette(s.clip("bend"), seconds.toFloat(), s.clip("curl"), seconds.toFloat(), mix.toFloat())
-    }
+    /*
+    blendedPalette mixes the two clips' joint matrices componentwise -- the same linear blend that
+    linear blend skinning itself commits to, so a limb shortens at 90 degrees here exactly as it
+    does there. Not a quaternion blend, deliberately, so the two agree.
+    */
+    val mesh =
+        posedGltfToTriMesh(rig) { s ->
+            s.blendedPalette(s.clip("bend"), seconds.toFloat(), s.clip("curl"), seconds.toFloat(), mix.toFloat())
+        }
     val b = mesh.bounds()
     // Printed as well as drawn, so the pose is a NUMBER and not only a picture -- at time 1, mix 0,
     // tip x is -1.982, which is -2 sin 60 minus the tube's own radius projected onto the bend.
-    println("time %.2f s, bend->curl %.2f -> tip x %.4f, top y %.4f"
-        .format(seconds, mix, b.min.x, b.max.y))
+    println(
+        "time %.2f s, bend->curl %.2f -> tip x %.4f, top y %.4f".format(seconds, mix, b.min.x, b.max.y),
+    )
     showMesh(
-        mesh, channel = "pose", view = view,
+        mesh,
+        channel = "pose",
+        view = view,
         caption = "time %.2f s, bend->curl %.2f — tip reaches x = %.3f".format(seconds, mix, b.min.x),
     )
 }
 
 controlGroup("controls") {
-    slider("time", min = 0.0, max = 2.0, step = 0.01, initialValue = seconds) { seconds = it; draw() }
-    slider("bend to curl", min = 0.0, max = 1.0, step = 0.01, initialValue = mix) { mix = it; draw() }
+    slider("time", min = 0.0, max = 2.0, step = 0.01, initialValue = seconds) {
+        seconds = it
+        draw()
+    }
+    slider("bend to curl", min = 0.0, max = 1.0, step = 0.01, initialValue = mix) {
+        mix = it
+        draw()
+    }
 }
 displayOpen("controls")
 draw()
@@ -646,34 +692,44 @@ loop { frame() }
 ```
 
 ```text [field-property box="gpu_skin" name="preamble"]
-import afield.graphics.vulkan.util.Window
 import afield.graphics.vulkan.Renderer
-import java.nio.*
-import arrow.core.right
+import afield.graphics.vulkan.util.Window
 import arrow.core.left
+import java.nio.*
 
-
-/*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
+/*supermap*/ class MappedStructure {
+    lateinit var tri: IntBuffer
+}
+fun Mesh.set(numVert: Int, numTriangle: Int = 0, builder: MappedStructure.() -> Unit = {}) {
+    this.resize(numVert, numTriangle)
+    val mesh = this
+    MappedStructure().apply {
+        mesh.t?.mapAndWrite_ints {
+            tri = this
+            builder()
+        }
+    }
+}
 /*start*/
 /*graphics-structure-type:VertexBuffer:VertexBuffer*/
 class VertexBuffer(
     members: List<Introspected.Member> = VertexBufferLayoutMembers(),
     baseOffset: Int = 0,
     pathPrefix: String = "",
-    root: Structure? = null
+    root: Structure? = null,
 ) : Structure(members, baseOffset, pathPrefix, root) {
-    init { setMembers(members) }
+    init {
+        setMembers(members)
+    }
+
     var vertexData by Structure.FromStructure<Float>()
 }
 fun VertexBufferByteSize(): Long = 4L
-fun VertexBufferLayoutMembers(): List<Introspected.Member> =
-    listOf(
-        Introspected.Member("vertexData", 0, PrimitiveType.float.left(), 4, false),
-    )
-fun HasBuffer.asVertexBuffer(): VertexBuffer =
-    asStructure(VertexBuffer(), VertexBufferLayoutMembers())
-fun BufferParameters.asVertexBuffer(): VertexBuffer =
-    buffer.asVertexBuffer()
+fun VertexBufferLayoutMembers(): List<Introspected.Member> = listOf(
+    Introspected.Member("vertexData", 0, PrimitiveType.float.left(), 4, false),
+)
+fun HasBuffer.asVertexBuffer(): VertexBuffer = asStructure(VertexBuffer(), VertexBufferLayoutMembers())
+fun BufferParameters.asVertexBuffer(): VertexBuffer = buffer.asVertexBuffer()
 /*end*/
 /*start*/
 /*graphics-structure-type:IndexBuffer:IndexBuffer*/
@@ -681,48 +737,61 @@ class IndexBuffer(
     members: List<Introspected.Member> = IndexBufferLayoutMembers(),
     baseOffset: Int = 0,
     pathPrefix: String = "",
-    root: Structure? = null
+    root: Structure? = null,
 ) : Structure(members, baseOffset, pathPrefix, root) {
-    init { setMembers(members) }
+    init {
+        setMembers(members)
+    }
+
     var indexData by Structure.FromStructure<UInt>()
 }
 fun IndexBufferByteSize(): Long = 4L
-fun IndexBufferLayoutMembers(): List<Introspected.Member> =
-    listOf(
-        Introspected.Member("indexData", 0, PrimitiveType.uint.left(), 4, false),
-    )
-fun HasBuffer.asIndexBuffer(): IndexBuffer =
-    asStructure(IndexBuffer(), IndexBufferLayoutMembers())
-fun BufferParameters.asIndexBuffer(): IndexBuffer =
-    buffer.asIndexBuffer()
+fun IndexBufferLayoutMembers(): List<Introspected.Member> = listOf(
+    Introspected.Member("indexData", 0, PrimitiveType.uint.left(), 4, false),
+)
+fun HasBuffer.asIndexBuffer(): IndexBuffer = asStructure(IndexBuffer(), IndexBufferLayoutMembers())
+fun BufferParameters.asIndexBuffer(): IndexBuffer = buffer.asIndexBuffer()
 /*end*/
 /*graphics-pc-structure:modelView*/ var Structure.modelView by Structure.FromStructure<Any>() // view * model
-/*graphics-pc-binding:modelView*/ var Mesh.modelView by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>() // view * model
-/*graphics-pc-binding-group:modelView*/ var MeshGroup.modelView by MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>() // view * model
+/*graphics-pc-binding:modelView*/ var Mesh.modelView by
+    Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>() // view * model
+/*graphics-pc-binding-group:modelView*/ var MeshGroup.modelView by
+    MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>() // view * model
 /*graphics-pc-structure:proj*/ var Structure.proj by Structure.FromStructure<Any>() // projection
 /*graphics-pc-binding:proj*/ var Mesh.proj by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>() // projection
-/*graphics-pc-binding-group:proj*/ var MeshGroup.proj by MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>() // projection
+/*graphics-pc-binding-group:proj*/ var MeshGroup.proj by
+    MeshGroup.BoundFromStructure<afield.math.linalg.Matrix4f>() // projection
 /*graphics-pc-structure:materialBaseColor*/ var Structure.materialBaseColor by Structure.FromStructure<Any>()
-/*graphics-pc-binding:materialBaseColor*/ var Mesh.materialBaseColor by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
-/*graphics-pc-binding-group:materialBaseColor*/ var MeshGroup.materialBaseColor by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*graphics-pc-binding:materialBaseColor*/ var Mesh.materialBaseColor by
+    Mesh.BoundFromStructure<afield.math.linalg.Vector4f>()
+/*graphics-pc-binding-group:materialBaseColor*/ var MeshGroup.materialBaseColor by
+    MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>()
 /*graphics-pc-structure:vertexOffset*/ var Structure.vertexOffset by Structure.FromStructure<Any>() // in floats
 /*graphics-pc-binding:vertexOffset*/ var Mesh.vertexOffset by Mesh.BoundFromStructure<UInt>() // in floats
-/*graphics-pc-binding-group:vertexOffset*/ var MeshGroup.vertexOffset by MeshGroup.BoundFromStructure<UInt>() // in floats
+/*graphics-pc-binding-group:vertexOffset*/ var MeshGroup.vertexOffset by
+    MeshGroup.BoundFromStructure<UInt>() // in floats
 /*graphics-pc-structure:indexOffset*/ var Structure.indexOffset by Structure.FromStructure<Any>() // in indices
 /*graphics-pc-binding:indexOffset*/ var Mesh.indexOffset by Mesh.BoundFromStructure<UInt>() // in indices
-/*graphics-pc-binding-group:indexOffset*/ var MeshGroup.indexOffset by MeshGroup.BoundFromStructure<UInt>() // in indices
+/*graphics-pc-binding-group:indexOffset*/ var MeshGroup.indexOffset by
+    MeshGroup.BoundFromStructure<UInt>() // in indices
 /*graphics-pc-structure:vertexStride*/ var Structure.vertexStride by Structure.FromStructure<Any>() // in floats
 /*graphics-pc-binding:vertexStride*/ var Mesh.vertexStride by Mesh.BoundFromStructure<UInt>() // in floats
-/*graphics-pc-binding-group:vertexStride*/ var MeshGroup.vertexStride by MeshGroup.BoundFromStructure<UInt>() // in floats
+/*graphics-pc-binding-group:vertexStride*/ var MeshGroup.vertexStride by
+    MeshGroup.BoundFromStructure<UInt>() // in floats
 /*graphics-pc-structure:useVertexColor*/ var Structure.useVertexColor by Structure.FromStructure<Any>() // bool as uint
 /*graphics-pc-binding:useVertexColor*/ var Mesh.useVertexColor by Mesh.BoundFromStructure<UInt>() // bool as uint
-/*graphics-pc-binding-group:useVertexColor*/ var MeshGroup.useVertexColor by MeshGroup.BoundFromStructure<UInt>() // bool as uint
+/*graphics-pc-binding-group:useVertexColor*/ var MeshGroup.useVertexColor by
+    MeshGroup.BoundFromStructure<UInt>() // bool as uint
 /*graphics-pc-structure:vertexBuffer*/ var Structure.vertexBuffer by Structure.FromStructure<Any>()
-/*graphics-pc-binding:vertexBuffer*/ var Mesh.vertexBuffer by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
-/*graphics-pc-binding-group:vertexBuffer*/ var MeshGroup.vertexBuffer by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding:vertexBuffer*/ var Mesh.vertexBuffer by
+    Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:vertexBuffer*/ var MeshGroup.vertexBuffer by
+    MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-structure:indexBuffer*/ var Structure.indexBuffer by Structure.FromStructure<Any>()
-/*graphics-pc-binding:indexBuffer*/ var Mesh.indexBuffer by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
-/*graphics-pc-binding-group:indexBuffer*/ var MeshGroup.indexBuffer by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding:indexBuffer*/ var Mesh.indexBuffer by
+    Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
+/*graphics-pc-binding-group:indexBuffer*/ var MeshGroup.indexBuffer by
+    MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/

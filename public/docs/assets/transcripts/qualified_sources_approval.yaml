@@ -11,7 +11,8 @@ operations:
       frame: { x: 80, y: 60, w: 760, h: 120 }
       properties:
         code: |
-          val rule = """
+          val rule =
+              """
           // Loot for a room, from how many doors it is from the spawn.
           fun loot(doors: Int) = when {
               doors >= 4 -> "epic"
@@ -31,28 +32,54 @@ operations:
               return placed
           }
           ::place
-          """.trimStart()
+          """
+                  .trimStart()
 
-          val loot = qualifiedSource("loot", rule, label = "Loot rule",
+          val loot = qualifiedSource(
+              "loot",
+              rule,
+              label = "Loot rule",
               frozen = listOf(FrozenRegion.after("// Checks: everything below this line stays as it is.")),
               control = QualifiedControl("shallow", "hall 1, store 2", "no room has epic loot"),
               fixtures = mapOf(
-                  "keep" to QualifiedFixture("gate 1, yard 2, keep 4", mapOf("gate" to "common", "keep" to "epic", "yard" to "rare")),
-                  "crypt" to QualifiedFixture("stairs 1, ossuary 3, tomb 5", mapOf("ossuary" to "rare", "stairs" to "common", "tomb" to "epic")),
-                  "mill" to QualifiedFixture("door 1, loft 2, well 4", mapOf("door" to "common", "loft" to "rare", "well" to "epic"))),
-              replayVersion = "loot-replay-1") { replay ->
-              QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
-          }
+                  "keep" to
+                      QualifiedFixture(
+                          "gate 1, yard 2, keep 4",
+                          mapOf("gate" to "common", "keep" to "epic", "yard" to "rare"),
+                      ),
+                  "crypt" to
+                      QualifiedFixture(
+                          "stairs 1, ossuary 3, tomb 5",
+                          mapOf("ossuary" to "rare", "stairs" to "common", "tomb" to "epic"),
+                      ),
+                  "mill" to
+                      QualifiedFixture(
+                          "door 1, loft 2, well 4",
+                          mapOf("door" to "common", "loft" to "rare", "well" to "epic"),
+                      ),
+              ),
+              replayVersion = "loot-replay-1",
+          ) { replay ->
+                  QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
+              }
 
-          val second = loot.candidate(loot.rule.currentId(), SourceStudy.hash(loot.rule.liveSource()),
-              "Epic loot from three doors in", listOf(QualifiedEdit("doors >= 4", "doors >= 3")))
+          val second = loot.candidate(
+              loot.rule.currentId(),
+              SourceStudy.hash(loot.rule.liveSource()),
+              "Epic loot from three doors in",
+              listOf(QualifiedEdit("doors >= 4", "doors >= 3")),
+          )
           val job = loot.test(second.id)
           kotlin.concurrent.thread {
               loot.replays.await(job.id)
               loot.proposeRebaseline(job.id)
               while (loot.pendingProposals().isNotEmpty()) Thread.sleep(200)
-              val third = loot.candidate(loot.rule.currentId(), SourceStudy.hash(loot.rule.liveSource()),
-                  second.description, fromCandidate = second.id)
+              val third = loot.candidate(
+                  loot.rule.currentId(),
+                  SourceStudy.hash(loot.rule.liveSource()),
+                  second.description,
+                  fromCandidate = second.id,
+              )
               loot.replays.await(loot.test(third.id).id)
               loot.apply(third.id, third.baseRevision, third.baseSourceHash)
           }

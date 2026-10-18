@@ -1377,6 +1377,10 @@
     "a0f1fb8e7acb-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_55/README.md"
+    },
+    "691b5d822671-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_56/README.md"
     }
   },
   "batches": [
@@ -1433,7 +1437,8 @@
     "../box_code_adoption_batch_52/README.md",
     "../box_code_adoption_batch_53/README.md",
     "../box_code_adoption_batch_54/README.md",
-    "../box_code_adoption_batch_55/README.md"
+    "../box_code_adoption_batch_55/README.md",
+    "../box_code_adoption_batch_56/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1452,10 +1457,30 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 55,
-    "branch": "codex/box-code-readability-55",
-    "baseline": "432d1ee41",
-    "state": "341/405 addressed, 64 open. Full authored native Manifold scenes preserve triangle/material hashes; census/conversion failures release scoped roots and components.",
-    "evidence": "../box_code_adoption_batch_55/README.md"
+    "batch": 56,
+    "branch": "codex/box-code-readability-56",
+    "baseline": "75071082a",
+    "state": "342/405 addressed, 63 open. Corpus formatter application complete with explicit retained cases; semantic lifecycle/helper work remains.",
+    "evidence": "../box_code_adoption_batch_56/README.md"
+  },
+  "mechanical": {
+    "status": "applied_for_valid_kotlin_glsl_with_explicit_retained_cases",
+    "baseline": "75071082a40db358424c27f992ee4316317b18c1",
+    "groups": 567,
+    "sourceOccurrences": 3541,
+    "states": 3548,
+    "distinctBodies": 2953,
+    "alreadyFormattedBodies": 1823,
+    "formattedCandidateBodies": 1107,
+    "languageRetentions": 13,
+    "schematicRetentions": 10,
+    "editedFiles": 575,
+    "parsedProgramsVerified": 2702,
+    "codecDocuments": 43,
+    "mirrorDocuments": 15,
+    "preexistingMirrorDriftRetained": [
+      "dev_docs/agents/demos/interaction_nets_lambda/document.md#lambda-oracle_code_.kt"
+    ],
+    "evidence": "../box_code_adoption_batch_56/README.md"
   }
 }

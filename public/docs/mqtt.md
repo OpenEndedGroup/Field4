@@ -54,7 +54,9 @@ import afield.io.mqtt.*
 mqtt.publish("installation/scene", mapOf("name" to "dusk", "brightness" to 0.4), qos = 1, retain = true)
 
 mqtt.subscribe("installation/#") { topic, message ->
-    markdown("`$topic`: **${message.string("name")}** at ${message.number("brightness")} (retained: ${message.retained})")
+    markdown(
+        "`$topic`: **${message.string("name")}** at ${message.number("brightness")} (retained: ${message.retained})",
+    )
 }
 ```
 
@@ -74,6 +76,7 @@ fun sensors() {
     mqtt.publish("sensors/kitchen/temp", 21.0 + sin(t * 3.0) * 1.5)
     mqtt.publish("sensors/garden/env", mapOf("temp" to 12.0 + sin(t * 0.8) * 3.0, "humidity" to 70))
 }
+
 :::endfold
 
 mqtt.track("sensors/#")

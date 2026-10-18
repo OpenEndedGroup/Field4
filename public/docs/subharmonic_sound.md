@@ -35,8 +35,11 @@ showSignals(
     "note played" to run.times.map { subBassNoteAt(it) },
     "tracked" to run.hz[0],
     "generated (÷ 2)" to run.subHz[0],
-    x = run.times, channel = "main", title = "An octave under a bassline",
-    xTitle = "seconds", yTitle = "Hz",
+    x = run.times,
+    channel = "main",
+    title = "An octave under a bassline",
+    xTitle = "seconds",
+    yTitle = "Hz",
 )
 :::endfold
 ```
@@ -50,7 +53,12 @@ showSignals(
 A spectrogram of the same clip shows what a laptop speaker hides. Time runs left to right, frequency up to 400 Hz bottom to top, and brighter is louder. The bass and its harmonics are the stacked steps; from three seconds a new step appears under the lowest one, at half its height:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/bass-octave-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-bass-octave-spectrum"}
-showSpectrogram(SubharmonicSoundDocs.render("bass-octave"), maxHz = 400.0, channel = "main", title = "An octave under a bassline")
+showSpectrogram(
+    SubharmonicSoundDocs.render("bass-octave"),
+    maxHz = 400.0,
+    channel = "main",
+    title = "An octave under a bassline",
+)
 ```
 
 ![Spectrogram of the bass-octave clip: stepped bass harmonics throughout, with a new line at half the fundamental from three seconds](assets/subharmonic_sound/bass-octave-spectrum.png)
@@ -113,22 +121,26 @@ val zero = SubharmonicZeroCross()
 val pll = SubharmonicPLL(bandwidthHz = 30.0)
 val quiet = SubharmonicPLL(bandwidthHz = 30.0)
 val quad = SubharmonicQuadPLL()
-val subs = clean.through(Subharmonic(zero)) * subBetween(0f, 3f) +
-    clean.through(Subharmonic(pll)) * subBetween(3f, 6f) +
-    (clean * 0.25f).through(Subharmonic(quiet)) * subBetween(6f, 9f) * 4f +
-    clean.through(Subharmonic(quad)) * subBetween(9f, 12f)
+val subs =
+    clean.through(Subharmonic(zero)) * subBetween(0f, 3f) +
+        clean.through(Subharmonic(pll)) * subBetween(3f, 6f) +
+        (clean * 0.25f).through(Subharmonic(quiet)) * subBetween(6f, 9f) * 4f +
+        clean.through(Subharmonic(quad)) * subBetween(9f, 12f)
 val out = bass * 0.3f + subs * 1.5f
 :::fold render twelve seconds and plot every tracker's estimate against the notes
 val run = subRender(out, seconds = 12f, zero, pll, quiet, quad)
-val skip = 10   // the first 100 ms, before the zero-crossing tracker has seen a crossing
+val skip = 10 // the first 100 ms, before the zero-crossing tracker has seen a crossing
 showSignals(
     "note played" to run.times.drop(skip).map { subBassNoteAt(it) },
     "zero-crossing" to run.hz[0].drop(skip),
     "PLL, 30 Hz" to run.hz[1].drop(skip),
     "PLL, 30 Hz, −12 dB" to run.hz[2].drop(skip),
     "quadrature PLL" to run.hz[3].drop(skip),
-    x = run.times.drop(skip), channel = "main", title = "Four trackers, one bassline",
-    xTitle = "seconds", yTitle = "Hz",
+    x = run.times.drop(skip),
+    channel = "main",
+    title = "Four trackers, one bassline",
+    xTitle = "seconds",
+    yTitle = "Hz",
 )
 :::endfold
 ```
@@ -142,7 +154,12 @@ showSignals(
 In the spectrogram the sub is the lowest line. Look at how cleanly it steps in each three-second section:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/bass-trackers-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-bass-trackers-spectrum"}
-showSpectrogram(SubharmonicSoundDocs.render("bass-trackers"), maxHz = 400.0, channel = "main", title = "Four trackers, one bassline")
+showSpectrogram(
+    SubharmonicSoundDocs.render("bass-trackers"),
+    maxHz = 400.0,
+    channel = "main",
+    title = "Four trackers, one bassline",
+)
 ```
 
 ![Spectrogram of the four-tracker clip: a clean stepped sub line in the first and last sections, a smeared one in the second, a misplaced one in the third](assets/subharmonic_sound/bass-trackers-spectrum.png)
@@ -190,21 +207,33 @@ This bassline is an octave higher than before. At a division of 3 the original's
 val bass = subBassline(octave = 2f)
 val clean = bass.lowpass(300f)
 val steps = Param(2f).apply {
-    supplier = { when { time < 3f -> 2f; time < 6f -> 3f; time < 9f -> 1.5f; time < 12f -> 2.03f; else -> 2f } }
+    supplier = {
+        when {
+            time < 3f -> 2f
+            time < 6f -> 3f
+            time < 9f -> 1.5f
+            time < 12f -> 2.03f
+            else -> 2f
+        }
+    }
 }
 val wobble = SineOsc(Param(3f)) * 0.07f * subBetween(12f, 15f)
 val single = SubharmonicQuadPLL()
 val stack = SubharmonicQuadPLL().apply { voices = [SubVoice(2.0, 0.7), SubVoice(3.0, 0.2), SubVoice(4.0, 0.1)] }
-val sub = clean.through(Subharmonic(single, division = steps + wobble)) * subBetween(0f, 15f) +
-    clean.through(Subharmonic(stack)) * subBetween(15f, 18f)
+val sub =
+    clean.through(Subharmonic(single, division = steps + wobble)) * subBetween(0f, 15f) +
+        clean.through(Subharmonic(stack)) * subBetween(15f, 18f)
 val out = bass * 0.25f + sub * 1.5f
 :::fold render eighteen seconds and plot the tracked and generated frequencies
 val run = subRender(out, seconds = 18f, single)
 showSignals(
     "tracked" to run.hz[0],
     "generated" to run.subHz[0],
-    x = run.times, channel = "main", title = "One tracker, six divisions",
-    xTitle = "seconds", yTitle = "Hz",
+    x = run.times,
+    channel = "main",
+    title = "One tracker, six divisions",
+    xTitle = "seconds",
+    yTitle = "Hz",
 )
 :::endfold
 ```
@@ -218,7 +247,12 @@ showSignals(
 The spectrogram shows the division changing under a bassline that does not:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/divisions-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-divisions-spectrum"}
-showSpectrogram(SubharmonicSoundDocs.render("divisions"), maxHz = 600.0, channel = "main", title = "One tracker, six divisions")
+showSpectrogram(
+    SubharmonicSoundDocs.render("divisions"),
+    maxHz = 600.0,
+    channel = "main",
+    title = "One tracker, six divisions",
+)
 ```
 
 ![Spectrogram of the divisions clip: the bass harmonics unchanged while the lowest line drops to a half, a third and two thirds of the fundamental, then sways, then splits into three](assets/subharmonic_sound/divisions-spectrum.png)
@@ -261,8 +295,11 @@ val first = run.times.indices.filter { run.times[it] < 1.0 }
 showSignals(
     "tracked" to first.map { run.hz[0][it] },
     "generated (÷ 2)" to first.map { run.subHz[0][it] },
-    x = first.map { run.times[it] }, channel = "main", title = "Following a kick's pitch drop",
-    xTitle = "seconds", yTitle = "Hz",
+    x = first.map { run.times[it] },
+    channel = "main",
+    title = "Following a kick's pitch drop",
+    xTitle = "seconds",
+    yTitle = "Hz",
 )
 :::endfold
 ```
@@ -276,7 +313,12 @@ showSignals(
 Here the spectrogram shows what the speaker cannot. The raw sub in the middle section is a line near 25 Hz; the saturated one in the last section adds harmonics above it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/kick-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-kick-spectrum"}
-showSpectrogram(SubharmonicSoundDocs.render("kick"), maxHz = 400.0, channel = "main", title = "Raw and saturated sub under a kick")
+showSpectrogram(
+    SubharmonicSoundDocs.render("kick"),
+    maxHz = 400.0,
+    channel = "main",
+    title = "Raw and saturated sub under a kick",
+)
 ```
 
 ![Spectrogram of the kick clip: dry kicks, then a line near 25 Hz under each, then that line with harmonics stacked above it](assets/subharmonic_sound/kick-spectrum.png)
@@ -306,8 +348,7 @@ val notes = [0, 2, 4, 3, 0, 1, 4, 2]
 val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
 val arpy = SamplesSignal(subSequence(8.0, hits))
 val tracker = SubharmonicQuadPLL()
-val sub = arpy.lowpass(300f).lowpass(300f)
-    .through(Subharmonic(tracker))
+val sub = arpy.lowpass(300f).lowpass(300f).through(Subharmonic(tracker))
 val thin = arpy.highpass(400f)
 val out = arpy * subBetween(0f, 4f) + (thin + sub * 1.5f) * subBetween(4f, 8f)
 :::fold render eight seconds and plot the tracked melody and the sub under it
@@ -315,8 +356,11 @@ val run = subRender(out, seconds = 8f, tracker)
 showSignals(
     "tracked" to run.hz[0],
     "generated (÷ 2)" to run.subHz[0],
-    x = run.times, channel = "main", title = "A plucked melody and the bass it never had",
-    xTitle = "seconds", yTitle = "Hz",
+    x = run.times,
+    channel = "main",
+    title = "A plucked melody and the bass it never had",
+    xTitle = "seconds",
+    yTitle = "Hz",
 )
 :::endfold
 ```
@@ -330,7 +374,12 @@ showSignals(
 In the spectrogram the second half loses the arpy's lowest partials to the highpass, and gains a new line an octave beneath where they were:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/arpy-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-arpy-spectrum"}
-showSpectrogram(SubharmonicSoundDocs.render("arpy"), maxHz = 600.0, channel = "main", title = "A plucked melody and the bass it never had")
+showSpectrogram(
+    SubharmonicSoundDocs.render("arpy"),
+    maxHz = 600.0,
+    channel = "main",
+    title = "A plucked melody and the bass it never had",
+)
 ```
 
 ![Spectrogram of the arpy clip: plucked notes with full harmonics, then the same notes thinned above 400 Hz with a new low line under each](assets/subharmonic_sound/arpy-spectrum.png)
@@ -375,13 +424,34 @@ val sub = voice.through(Subharmonic(tracker))
 val out = voice + sub * 1.5f
 :::fold render 7.5 s and plot the tracker against a YIN pitch analysis of the same clip
 val run = subRender(out, seconds = 7.5f, tracker)
-val voiced = patF0Frames(subFilmClip(), 48_000, minHz = 60.0, maxHz = 400.0)
-    .filter { it.voiced && it.centerSample < 7.5 * 48_000 }
-display("main", Plotly.plot {
-    scatter { name = "voice pitch (YIN)"; mode = ScatterMode.markers; x.set(voiced.map { it.centerSample / 48_000.0 }); y.set(voiced.map { it.hz }); marker { size = 5 } }
-    scatter { name = "zero-crossing, raw input"; mode = ScatterMode.markers; x.set(run.times); y.set(run.hz[0]); marker { size = 2 } }
-    layout { title = "Raw dialogue: the tracker follows the formants"; xaxis { title = "seconds" }; yaxis { title = "Hz" } }
-}.darkMode())
+val voiced = patF0Frames(subFilmClip(), 48_000, minHz = 60.0, maxHz = 400.0).filter {
+    it.voiced && it.centerSample < 7.5 * 48_000
+}
+display(
+    "main",
+    Plotly.plot {
+            scatter {
+                name = "voice pitch (YIN)"
+                mode = ScatterMode.markers
+                x.set(voiced.map { it.centerSample / 48_000.0 })
+                y.set(voiced.map { it.hz })
+                marker { size = 5 }
+            }
+            scatter {
+                name = "zero-crossing, raw input"
+                mode = ScatterMode.markers
+                x.set(run.times)
+                y.set(run.hz[0])
+                marker { size = 2 }
+            }
+            layout {
+                title = "Raw dialogue: the tracker follows the formants"
+                xaxis { title = "seconds" }
+                yaxis { title = "Hz" }
+            }
+        }
+        .darkMode(),
+)
 :::endfold
 ```
 
@@ -394,7 +464,12 @@ display("main", Plotly.plot {
 The spectrogram makes the gargle visible: the sub's line jumps around well above the voice's lowest harmonic rather than below it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/film-naive-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-film-naive-spectrum"}
-showSpectrogram(SubharmonicSoundDocs.render("film-naive"), maxHz = 600.0, channel = "main", title = "Raw dialogue with a zero-crossing sub")
+showSpectrogram(
+    SubharmonicSoundDocs.render("film-naive"),
+    maxHz = 600.0,
+    channel = "main",
+    title = "Raw dialogue with a zero-crossing sub",
+)
 ```
 
 ![Spectrogram of the raw dialogue with its sub: voice harmonics, with a jumping line scattered across them](assets/subharmonic_sound/film-naive-spectrum.png)
@@ -426,9 +501,7 @@ import space.kscience.plotly.models.ScatterMode
 :::endfold
 :::static
 val voice = SamplesSignal(subFilmClip())
-val band = voice.highpass(70f)
-    .lowpass(280f)
-    .lowpass(280f)
+val band = voice.highpass(70f).lowpass(280f).lowpass(280f)
 val squared = band.through(Saturator(Param(20f))).lowpass(280f)
 val tracker = SubharmonicQuadPLL(bandwidthHz = 20.0, gateLevel = 0.05)
 val level = EnvelopeFollower(band, attackTime = Param(0.01f), releaseTime = Param(0.08f))
@@ -437,11 +510,31 @@ val out = voice + sub * 3f
 :::fold render the whole clip and plot the tracker against the YIN analysis
 val run = subRender(out, seconds = 13.5f, tracker)
 val voiced = patF0Frames(subFilmClip(), 48_000, minHz = 60.0, maxHz = 400.0).filter { it.voiced }
-display("main", Plotly.plot {
-    scatter { name = "voice pitch (YIN)"; mode = ScatterMode.markers; x.set(voiced.map { it.centerSample / 48_000.0 }); y.set(voiced.map { it.hz }); marker { size = 5 } }
-    scatter { name = "quadrature PLL, shaped input"; mode = ScatterMode.markers; x.set(run.times); y.set(run.hz[0]); marker { size = 2 } }
-    layout { title = "Shaped dialogue: the tracker follows the voice"; xaxis { title = "seconds" }; yaxis { title = "Hz" } }
-}.darkMode())
+display(
+    "main",
+    Plotly.plot {
+            scatter {
+                name = "voice pitch (YIN)"
+                mode = ScatterMode.markers
+                x.set(voiced.map { it.centerSample / 48_000.0 })
+                y.set(voiced.map { it.hz })
+                marker { size = 5 }
+            }
+            scatter {
+                name = "quadrature PLL, shaped input"
+                mode = ScatterMode.markers
+                x.set(run.times)
+                y.set(run.hz[0])
+                marker { size = 2 }
+            }
+            layout {
+                title = "Shaped dialogue: the tracker follows the voice"
+                xaxis { title = "seconds" }
+                yaxis { title = "Hz" }
+            }
+        }
+        .darkMode(),
+)
 :::endfold
 ```
 
@@ -454,7 +547,12 @@ display("main", Plotly.plot {
 In the spectrogram the sub follows the shape of each phrase an octave below the voice's lowest harmonic, and turns to a broad smear where the wind comes in:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/film-shaped-spectrum.png" wait="1.5" capture="box" open-outputs="true" name="subharmonic-film-shaped-spectrum"}
-showSpectrogram(SubharmonicSoundDocs.render("film-shaped"), maxHz = 600.0, channel = "main", title = "Shaped dialogue with a quadrature-PLL sub")
+showSpectrogram(
+    SubharmonicSoundDocs.render("film-shaped"),
+    maxHz = 600.0,
+    channel = "main",
+    title = "Shaped dialogue with a quadrature-PLL sub",
+)
 ```
 
 ![Spectrogram of the shaped dialogue: a low line tracing each phrase an octave under the voice, and broadband low growl in the last few seconds](assets/subharmonic_sound/film-shaped-spectrum.png)
@@ -516,8 +614,12 @@ val bank = TrackedPhaseBank(voices = TrackedPhaseBank.harmonics(8) { n -> 0.5 / 
 val colored = analysis.synthesize(bank)
 val out = plucks * subBetween(0f, 4f) + colored * subBetween(4f, 8f)
 :::fold render eight seconds and show the changing spectrum
-showSpectrogram(doughRenderMono(out, seconds = 8f), maxHz = 2000.0,
-    channel = "main", title = "Recorded plucks, then eight tracked harmonics")
+showSpectrogram(
+    doughRenderMono(out, seconds = 8f),
+    maxHz = 2000.0,
+    channel = "main",
+    title = "Recorded plucks, then eight tracked harmonics",
+)
 :::endfold
 ```
 
@@ -537,8 +639,10 @@ plays this bank. The notes now have tones both above and below their tracked pit
 val notes = [0, 2, 4, 3, 0, 1, 4, 2]
 val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
 val plucks = SamplesSignal(subSequence(8.0, hits))
-val analysis = TrackedPhaseAnalysis(plucks,
-    HarmonicPhaseTracker(minHz = 100.0, maxHz = 250.0, initialHz = 150.0))
+val analysis = TrackedPhaseAnalysis(
+    plucks,
+    HarmonicPhaseTracker(minHz = 100.0, maxHz = 250.0, initialHz = 150.0),
+)
 val bank = TrackedPhaseBank(voices = TrackedPhaseBank.rationalLattice())
 val colored = analysis.synthesize(bank)
 audio { plucks * subBetween(0f, 4f) + colored * subBetween(4f, 8f) }
@@ -601,13 +705,15 @@ component. This sample-by-sample example gives that sound a new 55 Hz undertone:
 ```diffstatic {data-lang=kotlin}
 val tracker = HarmonicPhaseTracker(initialHz = 70.0)
 val bank = TrackedPhaseBank(tracker, TrackedPhaseBank.ratios(0.5 to 0.7))
-val output = FloatArray(96_000) { n ->
-    val t = n / 48_000.0
-    val input = 0.7 * kotlin.math.sin(2 * kotlin.math.PI * 220 * t + 0.31) +
-        0.48 * kotlin.math.sin(2 * kotlin.math.PI * 330 * t - 0.77) +
-        0.31 * kotlin.math.sin(2 * kotlin.math.PI * 550 * t + 1.13)
-    bank.process(input.toFloat())
-}
+val output =
+    FloatArray(96_000) { n ->
+        val t = n / 48_000.0
+        val input =
+            0.7 * kotlin.math.sin(2 * kotlin.math.PI * 220 * t + 0.31) +
+                0.48 * kotlin.math.sin(2 * kotlin.math.PI * 330 * t - 0.77) +
+                0.31 * kotlin.math.sin(2 * kotlin.math.PI * 550 * t + 1.13)
+        bank.process(input.toFloat())
+    }
 ```
 
 Set `minHz..maxHz` to the expected fundamental range. `initialHz` seeds the search;

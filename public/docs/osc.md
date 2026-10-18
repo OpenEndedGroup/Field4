@@ -406,10 +406,10 @@ port, so calling `oscClient(...)` inside a loop costs a map lookup rather than a
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val sc = oscClient("127.0.0.1", 57120)      // SuperCollider's language, on its default port
+val sc = oscClient("127.0.0.1", 57120) // SuperCollider's language, on its default port
 sc.send("/field/hello", 1, 0.5f, "text")
 
-val phone = oscClient("192.168.1.40", 9000)  // a tablet running a control surface
+val phone = oscClient("192.168.1.40", 9000) // a tablet running a control surface
 phone.send("/1/fader1", 0.25f)
 ```
 

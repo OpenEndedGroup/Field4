@@ -13,14 +13,14 @@ operations:
     properties:
       code: |
         import afield.graphics.vulkan.util.Options
-        import afield.app.protocol.Rect
+
         prop<Window>(window)
         prop<Renderer>(renderer)
-        Options.enableVR=false
-        Options.enableHDR=false
-        Options.profiling=false
+        Options.enableVR = false
+        Options.enableHDR = false
+        Options.profiling = false
         once.renderer {
-            window=Window("Field · neural ink",initialDimensions=Rect(40.0,40.0,2304.0,832.0))
+            window = Window("Field · neural ink", initialDimensions = Rect(40.0, 40.0, 2304.0, 832.0))
             Renderer(window)
         }
         println("agent graphics renderer ready")
@@ -40,8 +40,6 @@ operations:
       h: 150
     properties:
       code: |
-        import afield.ui.output.controlGroup
-        import afield.ui.output.displayOpen
         import afield.graphics.render.neural.*
 
         val owner = renderer
@@ -49,50 +47,62 @@ operations:
         // Leave null for the editable fragment shader; try the bundled drawing or your own image.
         val imagePath: String? = null
         // val imagePath: String? = "public/docs/assets/opendlssnr/ink-input.png"
-        lab = OpenDlssNrStudy(owner, size=768, imagePath=imagePath,
-            vertex=requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
-            fragment=requireNotNull(fragment) { "Missing fragment shader on this box or its parents" })
+        lab = OpenDlssNrStudy(
+            owner,
+            size = 768,
+            imagePath = imagePath,
+            vertex = requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+            fragment = requireNotNull(fragment) { "Missing fragment shader on this box or its parents" },
+        )
         println(lab.availability.reason)
-        var style=1
-        var tone=0f
-        var structure=10f
-        var intensity=1f
-        var animate=false
-        var reload=false
-        var red=.65f
-        var green=1.1f
-        var blue=1.4f
+        var style = 1
+        var tone = 0f
+        var structure = 10f
+        var intensity = 1f
+        var animate = false
+        var reload = false
+        var red = .65f
+        var green = 1.1f
+        var blue = 1.4f
         controlGroup("neural ink") {
-            if(lab.availability.ready) {
-                slider("Network style",min=0.0,max=2.0,step=1.0,initialValue=1.0) {style=it.toInt()}
-                slider("Tone",min=-10.0,max=30.0,initialValue=0.0) {tone=it.toFloat()}
-                slider("Structure",min=-10.0,max=30.0,initialValue=10.0) {structure=it.toFloat()}
-                slider("NR intensity (0 = source)",min=0.0,max=1.0,initialValue=1.0) {intensity=it.toFloat()}
+            if (lab.availability.ready) {
+                slider("Network style", min = 0.0, max = 2.0, step = 1.0, initialValue = 1.0) { style = it.toInt() }
+                slider("Tone", min = -10.0, max = 30.0, initialValue = 0.0) { tone = it.toFloat() }
+                slider("Structure", min = -10.0, max = 30.0, initialValue = 10.0) { structure = it.toFloat() }
+                slider("NR intensity (0 = source)", min = 0.0, max = 1.0, initialValue = 1.0) { intensity = it.toFloat() }
             }
-            checkbox("Animate source",initialValue=false) {animate=it}
-            slider("Grade red",min=0.0,max=2.0,initialValue=.65) {red=it.toFloat()}
-            slider("Grade green",min=0.0,max=2.0,initialValue=1.1) {green=it.toFloat()}
-            slider("Grade blue",min=0.0,max=2.0,initialValue=1.4) {blue=it.toFloat()}
-            button("Reload edited shaders") {if(it)reload=true}
+            checkbox("Animate source", initialValue = false) { animate = it }
+            slider("Grade red", min = 0.0, max = 2.0, initialValue = .65) { red = it.toFloat() }
+            slider("Grade green", min = 0.0, max = 2.0, initialValue = 1.1) { green = it.toFloat() }
+            slider("Grade blue", min = 0.0, max = 2.0, initialValue = 1.4) { blue = it.toFloat() }
+            button("Reload edited shaders") { if (it) reload = true }
         }
         displayOpen("neural ink")
-        println("SOURCE | NR | GRADE · 768 × 768 per panel. Edit fragment, then reload. Run record clip for six seconds of GPU frames.")
-        val owned=lab
+        println(
+            "SOURCE | NR | GRADE · 768 × 768 per panel. Edit fragment, then reload. Run record clip for six seconds of GPU frames.",
+        )
+        val owned = lab
         frames {
             try {
-                while(!owner.isClosed) {
-                    owned.controls=OpenDlssNrControls(style=style,tone=tone,structure=structure,intensity=intensity)
-                    owned.grade=Vector4f(red,green,blue,1f)
-                    owned.animate=animate && !owned.recording
-                    if(reload) {
-                        owned.reload(requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
-                            requireNotNull(fragment) { "Missing fragment shader on this box or its parents" })
-                            .onFailure {println("Keeping working shaders: ${it.message}")}
-                        reload=false
+                while (!owner.isClosed) {
+                    owned.controls =
+                        OpenDlssNrControls(style = style, tone = tone, structure = structure, intensity = intensity)
+                    owned.grade = Vector4f(red, green, blue, 1f)
+                    owned.animate = animate && !owned.recording
+                    if (reload) {
+                        owned
+                            .reload(
+                                requireNotNull(vertex) { "Missing vertex shader on this box or its parents" },
+                                requireNotNull(fragment) { "Missing fragment shader on this box or its parents" },
+                            )
+                            .onFailure { println("Keeping working shaders: ${it.message}") }
+                        reload = false
                     }
                     frame()
                 }
-            } finally {owned.close()}
+            } finally {
+                owned.close()
+            }
         }
       vertex: |
         #version 460
@@ -106,7 +116,9 @@ operations:
         #version 460
         layout(location=0) in vec2 uv;
         layout(location=0) out vec4 color;
-        layout(push_constant) uniform Study { vec4 frame; } pc;
+        layout(push_constant) uniform Study {
+            vec4 frame;
+        } pc;
 
         float hash(vec2 p) {
             return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);
@@ -115,7 +127,7 @@ operations:
             vec2 i=floor(p), f=fract(p);
             f=f*f*(3-2*f);
             return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),
-                       mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);
+            mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);
         }
         vec3 linearize(vec3 c) {
             return mix(c/12.92,pow((c+.055)/1.055,vec3(2.4)),step(vec3(.04045),c));
@@ -171,34 +183,35 @@ operations:
       h: 100
     properties:
       code: |
-        import afield.graphics.render.neural.OpenDlssNrStudy
         import java.nio.file.Path
         import kotlin.io.path.createDirectories
 
         // Run beneath the live study box. The scene remains editable after recording.
-        val study=lab
-        check(study.availability.ready) {study.availability.reason}
-        check(!study.recording) {"A recording is already running"}
-        val folder=Path.of("build/opendlssnr-study/clip").toAbsolutePath().also {it.createDirectories()}
-        val controls=study.controls.copy()
-        val grade=study.grade.toString()
-        val previousTime=study.time
-        study.recording=true
-        study.animate=false
+        val study = lab
+        check(study.availability.ready) { study.availability.reason }
+        check(!study.recording) { "A recording is already running" }
+        val folder = Path.of("build/opendlssnr-study/clip").toAbsolutePath().also { it.createDirectories() }
+        val controls = study.controls.copy()
+        val grade = study.grade.toString()
+        val previousTime = study.time
+        study.recording = true
+        study.animate = false
         frames {
             try {
-                for(i in 0 until 180) {
-                    check(study.controls==controls && study.grade.toString()==grade) {"Controls changed during capture; record again"}
-                    study.time=i/30f
-                    val saved=study.saveFrame(folder.resolve("frame-%03d.png".format(i)))
-                    while(!saved.isDone)frame()
+                for (i in 0 until 180) {
+                    check(study.controls == controls && study.grade.toString() == grade) {
+                        "Controls changed during capture; record again"
+                    }
+                    study.time = i / 30f
+                    val saved = study.saveFrame(folder.resolve("frame-%03d.png".format(i)))
+                    while (!saved.isDone) frame()
                     saved.join()
-                    if(i%30==0)println("Recorded $i / 180")
+                    if (i % 30 == 0) println("Recorded $i / 180")
                 }
                 println("NR STUDY RECORD DONE: 180 frames at 30 fps, 2304 × 832; $folder")
             } finally {
-                study.time=previousTime
-                study.recording=false
+                study.time = previousTime
+                study.recording = false
             }
         }
 - connect:

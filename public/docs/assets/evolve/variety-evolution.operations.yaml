@@ -18,20 +18,19 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 620.0, h: 980.0 }
       properties:
         code: |
-          // Variety evolution — novelty search over Fn graphs (afield.math.functions.evolveVariety).
-          // Grows a *set* of behaviourally distinct gestures from one seed, then plots each.
-          // Run this box: the six plots below are one seed evolved six different ways.
-          import afield.math.functions.Functions
-          import afield.math.functions.evolveVariety
-          
+          /*
+          Variety evolution — novelty search over Fn graphs (afield.math.functions.evolveVariety).
+          Grows a *set* of behaviourally distinct gestures from one seed, then plots each.
+          Run this box: the six plots below are one seed evolved six different ways.
+          */
           with(Functions) {
               val variety = evolveVariety(
-                  seed = sin(2.0) * 0.5,   // one modest seed gesture
-                  count = 6,               // how many mutually-distant gestures to grow
+                  seed = sin(2.0) * 0.5, // one modest seed gesture
+                  count = 6, // how many mutually-distant gestures to grow
                   iterations = 48,
-                  rngSeed = 7L,            // deterministic: same seed + inputs -> identical set
-                  neighbours = 3,          // k-nearest novelty
-                  normalize = true         // measure novelty by *shape*, not amplitude
+                  rngSeed = 7L, // deterministic: same seed + inputs -> identical set
+                  neighbours = 3, // k-nearest novelty
+                  normalize = true, // measure novelty by *shape*, not amplitude
               )
               _print("variety spread (mean pairwise behavioural distance) = ${variety.meanPairwiseDistance}")
               variety.results.forEachIndexed { i, fn ->

@@ -1,9 +1,3 @@
-import afield.document.context.fromContextWithNameOrNull
-import afield.graphics.vulkan.buffers.VulkanBuffer
-import afield.graphics.render.computeMemoryBarrier
-import afield.graphics.render.graphicsMemoryBarrier
-import afield.graphics.render.computeTask
-
 // Dependencies are explicit graph exports; resources stay in their parent box.
 val flowA = fromContextWithNameOrNull<FrameBufferGroup>("flowA")!!
 val flowB = fromContextWithNameOrNull<FrameBufferGroup>("flowB")!!
@@ -27,11 +21,14 @@ mesh.auxiliary = { pressureA }
 mesh.tiles = { tileHeaders }
 mesh.clock = { flowClock }
 mesh.emitter = { flowEmitter }
-module += "barrier" to computeTask { _, cmd, _ ->
-    computeMemoryBarrier(cmd, null as VulkanBuffer?)
-    graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
-}
+module +=
+    "barrier" to
+        computeTask { _, cmd, _ ->
+            computeMemoryBarrier(cmd, null as VulkanBuffer?)
+            graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
+        }
 flowSimulation += "project" to module
-loop { true }.end {
-    if (flowSimulation.modules["project"] === module) flowSimulation.modules.remove("project")
-}
+loop { true }
+    .end {
+        if (flowSimulation.modules["project"] === module) flowSimulation.modules.remove("project")
+    }

@@ -30,13 +30,16 @@ easier way to write a caption or a table.
 This box writes into two channels:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/box_output/two_channels.png" capture="box" wait="3" padding="16" timeout="180" embed=true open-outputs="false" name="box-output-two-channels" w="560" h="80" alt="A Field box with two output panels under it. The first, titled 'summary', is open and shows a short Markdown table of three readings: tempo 122, voices 4, key D minor. The second, titled 'raw', is open below it and shows the same readings as one line of plain text."}
-markdown("summary", """
+markdown(
+    "summary",
+    """
     | reading | value |
     |---|---|
     | tempo | 122 |
     | voices | 4 |
     | key | D minor |
-""")
+""",
+)
 
 display("raw", "<pre>tempo=122 voices=4 key=Dm</pre>")
 displayOpen("raw")
@@ -84,9 +87,12 @@ and `chart` are left:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/box_output/open_and_clear.png" capture="box" wait="3" padding="16" timeout="180" embed=true open-outputs="false" name="box-output-open-and-clear" w="560" h="80" alt="A Field box with two open output panels. 'notes' holds one line of text, 'three passes, no retries'. 'chart' shows a row of five blue bars of increasing height drawn as inline SVG. There is no third panel."}
 display("notes", "<p>three passes, no retries</p>")
-display("chart", (1..5).joinToString("", "<svg width='220' height='90'>", "</svg>") {
-    "<rect x='${it * 40 - 30}' y='${90 - it * 16}' width='28' height='${it * 16}' fill='#4a90d9'/>"
-})
+display(
+    "chart",
+    (1..5).joinToString("", "<svg width='220' height='90'>", "</svg>") {
+        "<rect x='${it * 40 - 30}' y='${90 - it * 16}' width='28' height='${it * 16}' fill='#4a90d9'/>"
+    },
+)
 display("scratch", "temporary")
 
 displayOpen("notes")

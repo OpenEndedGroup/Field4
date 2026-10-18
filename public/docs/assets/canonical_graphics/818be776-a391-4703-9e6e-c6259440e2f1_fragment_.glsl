@@ -7,9 +7,8 @@ layout(push_constant) uniform matrices {
     vec4 finalColor;
 } pc;
 
-
 void main()
 {
     // uFragColor = pc.finalColor;
-   uFragColor = vec4(1,1,1,1);
+    uFragColor = vec4(1,1,1,1);
 }

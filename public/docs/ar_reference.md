@@ -43,11 +43,15 @@ remoteAr(debug = true, selfTest = true)
 `debug = true` shows the status panel (connection, A-Frame/Three.js versions, XR platform); `selfTest = true` runs the head's in-browser self-test on boot and reports pass/fail. The iframe carries the class `field-remote-ar-head` so page scripts and tests can target it. `remoteAr()` is a thin convenience over assigning the iframe into a box output channel yourself and opening it:
 
 ```diffstatic {data-lang=kotlin}
-display("remote-ar", """
+display(
+    "remote-ar",
+    """
 <iframe src="/extensions/remote_ar/index.html?debug=1"
         allow="xr-spatial-tracking; fullscreen"
         style="display:block;width:960px;height:540px;border:0;background:#000"></iframe>
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 displayOpen("remote-ar")
 ```
 

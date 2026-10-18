@@ -22,8 +22,6 @@ each reaction.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/one_reduction.png" wait="10" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="180" name="chain-lambda-one" embed=true alt="A two-trace plot over eighty-six reactions: an agent count that climbs from about nineteen to a peak of forty-six around reactions thirty-five and forty-five and then falls, in steps, to twenty-six, and a lower trace of covered pairs that rises to fifteen and comes back down to zero, above a table giving the term, nineteen agents and three fans compiled, eighty-six reactions of which eight are beta, the rule tally led by delim-delim, and the answer λa. λb. a applied eight times to b"}
 :::static
-import afield.audio.synth.LambdaSoundDocs
-
 // trace() compiles, reduces and records; it does not relax the layout, because nothing is
 // watching. The answer it read back is checked against the plain normal-order evaluator below.
 val t = LambdaSoundDocs.trace("church-exp-two-cubed", ActivationOrder.FIRST_FOUND)
@@ -38,7 +36,9 @@ showSignals(
     channel = "series",
 )
 
-markdown("readout", """
+markdown(
+    "readout",
+    """
 | | |
 |---|---|
 | term | `${t.source}` |
@@ -48,7 +48,9 @@ markdown("readout", """
 | rules fired | ${t.ruleTally.entries.joinToString(", ") { "`${it.key}` x${it.value}" }} |
 | read back as | `${t.printed}` |
 | left standing | ${t.remainingNodes} agents, ${t.trailingReduciblePairs} pairs a rule covers |
-""", width = 1080)
+""",
+    width = 1080,
+)
 :::endfold
 ```
 
@@ -66,29 +68,35 @@ all four schedulers and fails if any term breaks either rule.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/sweep.png" wait="25" capture="box" open-outputs="true" w="1180" h="560" padding="18" timeout="300" name="chain-lambda-sweep" embed=true alt="A table of twenty-two corpus terms sorted by reaction count, from church-pred-three at 127 down to self-apply-identity at 10: every term but the last condenses to four distinct notations across the four schedulers, the last to three, and the FIRST_FOUND spellings are long mixtures of single strikes, rests and the odd replicate"}
 :::static
-import afield.audio.synth.LambdaSoundDocs
-
-// Both of these throw rather than return false. Reaching the next line is the measurement:
-// stepCountIsScheduleInvariant names the term and the counts if any term breaks it, and
-// ruleMultisetIsScheduleInvariant is the stronger claim that the mixes match too.
+/*
+Both of these throw rather than return false. Reaching the next line is the measurement:
+stepCountIsScheduleInvariant names the term and the counts if any term breaks it, and
+ruleMultisetIsScheduleInvariant is the stronger claim that the mixes match too.
+*/
 val sweep = LambdaSoundDocs.corpusSweep()
 val counts = LambdaSoundDocs.stepCountIsScheduleInvariant(sweep)
 val multisets = LambdaSoundDocs.ruleMultisetIsScheduleInvariant(sweep)
 val spellings = LambdaSoundDocs.spellingsPerTerm(sweep)
 
 :::fold the corpus, worst-spread first
-val rows = sweep.entries
-    .filter { counts.getValue(it.key) > 0 }
-    .sortedWith(compareByDescending<Map.Entry<String, Map<ActivationOrder, LambdaSoundDocs.Trace>>> {
-        spellings.getValue(it.key)
-    }.thenByDescending { counts.getValue(it.key) })
-    .joinToString("\n") { (name, traces) ->
-        val first = traces.values.first()
-        "| `$name` | ${counts.getValue(name)} | ${first.betas} | ${first.fans} | " +
-            "${spellings.getValue(name)} | `${first.betaCondensation.notation}` |"
-    }
+val rows =
+    sweep.entries
+        .filter { counts.getValue(it.key) > 0 }
+        .sortedWith(
+            compareByDescending<Map.Entry<String, Map<ActivationOrder, LambdaSoundDocs.Trace>>> {
+                    spellings.getValue(it.key)
+                }
+                .thenByDescending { counts.getValue(it.key) },
+        )
+        .joinToString("\n") { (name, traces) ->
+            val first = traces.values.first()
+            "| `$name` | ${counts.getValue(name)} | ${first.betas} | ${first.fans} | " +
+                "${spellings.getValue(name)} | `${first.betaCondensation.notation}` |"
+        }
 
-markdown("sweep", """
+markdown(
+    "sweep",
+    """
 ${sweep.size} terms x ${LambdaSoundDocs.ORDERS.size} schedulers = ${sweep.size * LambdaSoundDocs.ORDERS.size} reductions.
 Reaction count is scheduler-invariant on **all ${counts.size}**; so is the rule multiset, on all $multisets.
 Three corpus terms are already normal forms and are left out of the table.
@@ -96,7 +104,9 @@ Three corpus terms are already normal forms and are left out of the table.
 | term | reactions | β | fans | distinct β spellings | the FIRST_FOUND spelling |
 |---|---|---|---|---|---|
 $rows
-""", width = 1120)
+""",
+    width = 1120,
+)
 :::endfold
 ```
 
@@ -114,11 +124,11 @@ and draws where its β-steps fall.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/four_schedules.png" wait="14" capture="box" open-outputs="true" w="1180" h="420" padding="18" timeout="240" name="chain-lambda-four" embed=true alt="Four coloured piano-roll lanes of one cycle each, all with eight strikes in eighty-six slots but in visibly different places: FIRST_FOUND spreads four through the first half and packs its last four together near the end, LEFTMOST_BY_ID and HIGHEST_PAIR_ENERGY break theirs into pairs, and RIGHTMOST_BY_ID puts four early and spreads its last four out singly. Below, all four read back as the same answer, and a table gives every scheduler the same eighty-six reactions and eight betas against four different condensed notations and compressions of 0.20, 0.28, 0.26 and 0.27, all four signed for by the search"}
 :::static
-import afield.audio.synth.LambdaSoundDocs
-
-// The same term the two clips below play, under each of the four reproducible schedulers.
-// answerIsScheduleInvariant checks all four against the plain normal-order evaluator, so the
-// "one answer" column is a measurement and not a caption.
+/*
+The same term the two clips below play, under each of the four reproducible schedulers.
+answerIsScheduleInvariant checks all four against the plain normal-order evaluator, so the
+"one answer" column is a measurement and not a caption.
+*/
 val traces = LambdaSoundDocs.traceAllOrders(LambdaSoundDocs.BAR_TERM)
 val answer = LambdaSoundDocs.answerIsScheduleInvariant(traces)
 val betas = LambdaSoundDocs.betaIsScheduleInvariant(traces)
@@ -132,17 +142,22 @@ showPatRollOf(
     channel = "masks",
 )
 
-val rows = traces.entries.joinToString("\n") { (order, t) ->
-    "| `${order.name}` | ${t.steps} | ${t.betas} | `${t.betaCondensation.notation}` | " +
-        "${"%.2f".format(t.betaCompression)} | ${t.betaCondensation.exact} |"
-}
-markdown("spellings", """
+val rows =
+    traces.entries.joinToString("\n") { (order, t) ->
+        "| `${order.name}` | ${t.steps} | ${t.betas} | `${t.betaCondensation.notation}` | " +
+            "${"%.2f".format(t.betaCompression)} | ${t.betaCondensation.exact} |"
+    }
+markdown(
+    "spellings",
+    """
 All four read back as `$answer`.
 
 | scheduler | reactions | β | shortest notation | against a flat spelling | the search signed for it |
 |---|---|---|---|---|---|
 $rows
-""", width = 1080)
+""",
+    width = 1080,
+)
 :::endfold
 ```
 
@@ -180,6 +195,7 @@ sequence.
 
 ```diffstatic {data-lang=kotlin}
 val notes = LambdaSoundDocs.trace("erase-argument").melody
+
 // -> one MIDI note per reaction, pitched by the kind that reaction emitted
 ```
 
