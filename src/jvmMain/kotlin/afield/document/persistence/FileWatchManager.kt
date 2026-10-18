@@ -101,6 +101,13 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     internal data class SidecarPath(val boxId: String, val propertyName: String)
 
     private val internalSaveInfo = ConcurrentHashMap<String, InternalSave>()
+
+    // The text the watcher itself last put into a property on reload, by (box id, property). A reload
+    // marks the sidecar pending, so that the next save refreshes the inline copy in metadata.edn, and
+    // until that save lands the property looks like a local edit. Without this record a second
+    // external edit inside that window was skipped as "pending local" and then overwritten on disk by
+    // the save, which wrote the first edit back. See [pendingIsLocalEdit].
+    private val watcherLoadedValues = ConcurrentHashMap<Pair<String, String>, String>()
     private var watchJob: Job? = null
     private var isRunning = false
     private var orphanCheckJob: Job? = null
@@ -201,6 +208,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
         fileTimestamps.clear()
         startupSidecarFiles.clear()
         internalSaveInfo.clear()
+        watcherLoadedValues.clear()
 
         try {
             watchService.close()
@@ -457,7 +465,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             return
         }
 
-        if (sidecarPath != null && sessionInfo.hasPendingSidecarSave(sidecarPath.boxId, sidecarPath.propertyName)) {
+        if (sidecarPath != null && pendingIsLocalEdit(sidecarPath.boxId, sidecarPath.propertyName)) {
             fileTimestamps[absolutePath] = currentTime
             SaveReloadLog.log(
                 "watch-skip-pending-local",
@@ -479,6 +487,23 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             // The session now holds this content; a duplicate event for it is not another edit.
             markInternalSave(file)
         }
+    }
+
+    /**
+     * Whether a sidecar event must yield to an unsaved change made in Field. True when the property
+     * has a pending sidecar save and its value is not the one this watcher loaded from disk: someone
+     * edited it in Field since, and that edit wins until it is saved. A pending save that only exists
+     * because of this watcher's own reload does not count, so a second external edit made before
+     * that save is reloaded rather than overwritten.
+     */
+    internal fun pendingIsLocalEdit(boxId: String, propertyName: String): Boolean {
+        if (!sessionInfo.hasPendingSidecarSave(boxId, propertyName)) return false
+        val loaded = watcherLoadedValues[boxId to propertyName] ?: return true
+        return sessionInfo.boxes[boxId]?.getPropertyRaw(propertyName) != loaded
+    }
+
+    internal fun recordWatcherLoad(boxId: String, propertyName: String, content: String) {
+        watcherLoadedValues[boxId to propertyName] = content
     }
 
     private suspend fun reloadSidecarFile(file: File) {
@@ -523,6 +548,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
                 // Only update if content has actually changed
                 if (currentValue != content) {
                     box.setPropertyRaw(propertyName, content, doResync = true)
+                    recordWatcherLoad(box.id, propertyName, content)
                     // External change to a sidecar-backed property needs persistence
                     if (Box.ioSeparateProperties.containsKey(propertyName) && box.isInsideInitialized()) {
                         box.inside.markSidecarPending(box.id, propertyName)
@@ -867,9 +893,13 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             } else {
                 withSpaces
             }
-            // 4. Use a default if empty, otherwise capitalize first letter
+            // 4. Use a default if empty, otherwise capitalize first letter. What is left is usually
+            // just the property name, which would call every dropped code file "Code"; the box id is
+            // the one thing the author chose, so it names the box instead.
             val displayName = if (meaningfulPart.isEmpty()) {
                 "Box $boxId"
+            } else if (meaningfulPart.equals(propertyName, ignoreCase = true)) {
+                boxId
             } else {
                 meaningfulPart.replaceFirstChar { it.uppercase() }
             }
@@ -883,7 +913,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             // Read and set the file content
             val content = file.readText()
             box.setPropertyRaw(propertyName, content, doResync = true)
-            
+            recordWatcherLoad(box.id, propertyName, content)
+
             // Mark for persistence
             if (box.isInsideInitialized()) {
                 box.inside.markSidecarPending(box.id, propertyName)
