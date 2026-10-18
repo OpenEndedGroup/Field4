@@ -1509,6 +1509,18 @@
     "2792e161f146-04": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_71/README.md"
+    },
+    "158f702c98c5-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_72/README.md"
+    },
+    "c02c565581b7-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_72/README.md"
+    },
+    "2ddf54b22aca-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_72/README.md"
     }
   },
   "batches": [
@@ -1580,7 +1592,8 @@
     "../box_code_adoption_batch_68/README.md",
     "../box_code_adoption_batch_64/README.md",
     "../box_code_adoption_batch_70/README.md",
-    "../box_code_adoption_batch_71/README.md"
+    "../box_code_adoption_batch_71/README.md",
+    "../box_code_adoption_batch_72/README.md"
   ],
   "next": "Approved order 1 \u2192 4 \u2192 5 \u2192 2 \u2192 3. Groups 1 and 4 source fixes/checks complete (optional Kratos solver acceptance unavailable). Next group 5: finish prepared batch 64, remaining helper/idiom/classification edits; then groups 2 and 3.",
   "preparation": {
@@ -1599,11 +1612,11 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 71,
-    "branch": "codex/box-code-readability-71",
-    "baseline": "02d964aa9",
-    "state": "374 addressed; 31 open. Groups 1, 4 and 5 complete. Next: group 2 async ownership, then group 3 resource and listener ownership.",
-    "evidence": "../box_code_adoption_batch_71/README.md"
+    "batch": 72,
+    "branch": "codex/box-code-readability-72",
+    "baseline": "d1d55b55a",
+    "state": "377 addressed; 28 open. Groups 1, 4 and 5 done; ten group 2 findings and eighteen group 3 findings remain. Native host 9722 was stopped after a swapchain acquire stall; fresh CPU host 9723 is ready.",
+    "evidence": "../box_code_adoption_batch_72/README.md"
   },
   "mechanical": {
     "status": "applied_for_valid_kotlin_glsl_with_explicit_retained_cases",
