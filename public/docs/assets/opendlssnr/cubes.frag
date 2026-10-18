@@ -1,10 +1,10 @@
 #version 460
 layout(push_constant) uniform Scene {
-    // xy = input width/height in pixels; zw = raster jitter in pixels, with Y down.
+    // xy = input pixels; zw = raster jitter in pixels (Y down).
     vec4 sizeJitter;
-    // xy = current/previous scene times; zw = current/previous horizontal shifts in input pixels.
+    // xy = current/previous scene seconds; zw = horizontal shifts in pixels.
     vec4 times;
-    // x = particle/appearance stress test; y = orbiting camera; zw unused.
+    // x = appearance stress flag; y = camera orbit flag; zw unused.
     vec4 settings;
 } pc;
 layout(location=0) in vec3 world;
@@ -12,6 +12,7 @@ layout(location=1) in vec3 normal;
 layout(location=2) in vec4 nowClip;
 layout(location=3) in vec4 oldClip;
 layout(location=4) flat in int objectId;
+layout(location=5) flat in vec3 cameraEye;
 layout(location=0) out vec4 color;
 void main() {
     if(objectId<0) {
@@ -28,7 +29,10 @@ void main() {
     }
     vec3 light=normalize(vec3(sin(pc.times.x)*4,5,3)-world);
     float diffuse=.2+.8*abs(dot(n,light));
-    float specular=pow(max(0,abs(dot(n,normalize(light+normalize(vec3(5,3.7,5)-world))))),96);
+    // Lighting and the view vector use the same world-space eye as projection.
+    vec3 viewDirection = normalize(cameraEye - world);
+    vec3 halfDirection = normalize(light + viewDirection);
+    float specular = pow(max(0, abs(dot(n, halfDirection))), 96);
     color=vec4(clamp(base*diffuse+specular*1.8,0,1),1);
     if(pc.settings.x==1) {
         color.rgb=objectId==0?vec3(.04,.08,.16):base;

@@ -126,7 +126,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Refresh generated RectSL material shaders on rerun](../box_code_adoption_batch_62/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **352 of 405 findings addressed**; 53 remain open. These counts do not claim
+| [Use the projected camera for cube lighting and explain shader spaces](../box_code_adoption_batch_63/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **354 of 405 findings addressed**; 51 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 

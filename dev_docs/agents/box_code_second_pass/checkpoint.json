@@ -1421,6 +1421,14 @@
     "e8fc29a1999a-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_62/README.md"
+    },
+    "a0a84eb67e15-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_63/README.md"
+    },
+    "a0a84eb67e15-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_63/README.md"
     }
   },
   "batches": [
@@ -1484,7 +1492,8 @@
     "../box_code_adoption_batch_59/README.md",
     "../box_code_adoption_batch_60/README.md",
     "../box_code_adoption_batch_61/README.md",
-    "../box_code_adoption_batch_62/README.md"
+    "../box_code_adoption_batch_62/README.md",
+    "../box_code_adoption_batch_63/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1503,11 +1512,11 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 62,
-    "branch": "codex/box-code-readability-62",
-    "baseline": "166824d53",
-    "state": "Batch 62 four native rerun comparisons and two material edits passed; 352 addressed, 53 open.",
-    "evidence": "../box_code_adoption_batch_62/README.md"
+    "batch": 63,
+    "branch": "codex/box-code-readability-63",
+    "baseline": "88513bfc7",
+    "state": "Batch 63 actual native orbit, projection and independent-camera checks passed with recorded rounding bounds; 354 addressed, 51 open.",
+    "evidence": "../box_code_adoption_batch_63/README.md"
   },
   "mechanical": {
     "status": "applied_for_valid_kotlin_glsl_with_explicit_retained_cases",
