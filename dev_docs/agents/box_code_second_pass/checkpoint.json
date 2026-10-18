@@ -1495,7 +1495,7 @@
     "../box_code_adoption_batch_62/README.md",
     "../box_code_adoption_batch_63/README.md"
   ],
-  "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
+  "next": "Follow PRIORITIES.md: correctness/live-state safety, shared async ownership, resource ownership, runnability/output cost, then remaining polish and final coverage.",
   "preparation": {
     "batch": 43,
     "evidence": "build/box-code-revision/adoption-43/preparation.json",
@@ -1512,11 +1512,11 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 63,
-    "branch": "codex/box-code-readability-63",
-    "baseline": "88513bfc7",
-    "state": "Batch 63 actual native orbit, projection and independent-camera checks passed with recorded rounding bounds; 354 addressed, 51 open.",
-    "evidence": "../box_code_adoption_batch_63/README.md"
+    "batch": 64,
+    "branch": "codex/box-code-readability-64",
+    "baseline": "56759c590",
+    "state": "Prepared four fullscreenTriangle/reflected-state source edits; actual formatter passed, behavioral verification pending. Work reordered in PRIORITIES.md; no finding newly closed.",
+    "evidence": "../box_code_adoption_batch_64/changes.json"
   },
   "mechanical": {
     "status": "applied_for_valid_kotlin_glsl_with_explicit_retained_cases",
