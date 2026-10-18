@@ -16,6 +16,7 @@ import afield.lang.rectsl.*
 // The scene, drawn on the CPU: 256 x 128 pixels of a 16 x 8 wall, at one second in.
 val scene = RectSLImager(SceneOnARig.SCENE)
 val frame = scene.frame(1.0, 256, 128)
+showImg(frame, channel = "scene")
 
 // A 16 x 8 grid of RGB pixels in universe 1 and four RGBWA washes in universe 2, coloured from
 // the frame shrunk to one pixel per fixture.
@@ -23,21 +24,20 @@ val rig = SceneOnARig.Rig()
 rig.show(frame)
 
 :::fold send it as sACN to this machine, receive it, and draw both
-// Plain objects rather than the box helpers, so every socket is closed before the box ends.
-val out = DmxOutput(DmxProtocol.SACN, host = "127.0.0.1", port = 35692, autoStart = false, discovery = false)
-val node = DmxInput(DmxProtocol.SACN, port = 35692, bindAddress = "127.0.0.1")
-try {
-    rig.patch.render(out)
-    out.flush()
-    val until = System.currentTimeMillis() + 2000
-    while ((node.version(1) == 0L || node.version(2) == 0L) && System.currentTimeMillis() < until) Thread.sleep(5)
-
-    showImg(frame.upscaleNearest(2), channel = "scene", maxSide = 540, caption = "the scene at t = 1 s, as RectSLImager draws it")
-    showPatch(rig.patch, channel = "sent", w = 540.0, h = 330.0)
-    showReceived(rig.patch, node, channel = "received", w = 540.0, h = 330.0)
-} finally {
-    out.close()
-    node.close()
+// Nested scopes close the sender even if receiver construction fails.
+val port = 35692
+DmxOutput(DmxProtocol.SACN, host = "127.0.0.1", port = port, autoStart = false, discovery = false).use { out ->
+    DmxInput(DmxProtocol.SACN, port = port, bindAddress = "127.0.0.1").use { node ->
+        rig.patch.render(out)
+        out.flush()
+        val deadline = System.nanoTime() + 2_000_000_000L
+        while ((node.version(1) == 0L || node.version(2) == 0L) && System.nanoTime() < deadline) Thread.sleep(5)
+        check(node.version(1) > 0L && node.version(2) > 0L) {
+            "Incomplete sACN frame on port $port after 2 seconds: universe 1=${node.version(1)}, universe 2=${node.version(2)}. Check sender address/port."
+        }
+        showPatch(rig.patch, channel = "sent", w = 540.0, h = 330.0)
+        showReceived(rig.patch, node, channel = "received", w = 540.0, h = 330.0)
+    }
 }
 :::endfold
 ```
@@ -89,8 +89,8 @@ context is involved, so the lights keep running on a machine whose display is as
 
 ```diffstatic {data-lang=kotlin}
 val scene = RectSLImager(source)
-val img = scene.frame(1.5, 256, 128)          // colours as typed: 0x808080 is 0.502
-val light = scene.frame(1.5, 256, 128, linear = true)   // the light that stands for: 0.216
+val img = scene.frame(1.5, 256, 128) // colours as typed: 0x808080 is 0.502
+val light = scene.frame(1.5, 256, 128, linear = true) // the light that stands for: 0.216
 ```
 
 There are two choices of value. A frame holds colours *as typed* by default, which is what the
@@ -117,7 +117,9 @@ val floor = SceneOnARig.decodeErrors()
 
 :::fold the readout
 fun f(v: Double, d: Int = 2) = "%.${d}f".format(v)
-markdown("roundtrip", """
+markdown(
+    "roundtrip",
+    """
 #### ${trip.frames} frames, ${trip.fixtures} fixtures, two universes, sACN to 127.0.0.1 and back
 
 | | |
@@ -143,7 +145,9 @@ ${timing.ticks} looks computed; ${timing.arrivalMillis.size + 1} frames of unive
 | profile | ${floor.keys.joinToString(" | ") { it.name }} |
 |---|${floor.keys.joinToString("") { "---|" }}
 | worst error, levels | ${floor.values.joinToString(" | ") { f(it, 3) }} |
-""", width = 1000)
+""",
+    width = 1000,
+)
 :::endfold
 ```
 
@@ -203,12 +207,16 @@ showPatch(rig.patch, channel = "point samples at t = ${"%.3f".format(times[k])} 
 rig.show(frame, area = true)
 showPatch(rig.patch, channel = "area average at t = ${"%.3f".format(times[k])} s", w = 540.0, h = 300.0)
 
-markdown("counts", """
+markdown(
+    "counts",
+    """
 | route | frames with the rig dark | light on the rig, min – max | mean over the sweep | (max − min) / mean |
 |---|---|---|---|---|
 | point samples | ${point.darkFrames} of ${point.total.size} | ${"%.2f".format(point.min)} – ${"%.2f".format(point.max)} | ${"%.3f".format(point.mean)} | ${"%.2f".format(point.flicker)} |
 | area average | ${area.darkFrames} of ${area.total.size} | ${"%.3f".format(area.min)} – ${"%.3f".format(area.max)} | ${"%.3f".format(area.mean)} | ${"%.4f".format(area.flicker)} |
-""", width = 1000)
+""",
+    width = 1000,
+)
 :::endfold
 ```
 
@@ -227,7 +235,7 @@ flickering.
 That is why `SceneOnARig.Rig.show` shrinks the frame first:
 
 ```diffstatic {data-lang=kotlin}
-patch.mapImage(frame.resize(16, 8))      // one pixel per fixture, each the mean of its cell
+patch.mapImage(frame.resize(16, 8)) // one pixel per fixture, each the mean of its cell
 ```
 
 This works exactly because `resize` averages whole 16 × 16 blocks, and the image size then matches

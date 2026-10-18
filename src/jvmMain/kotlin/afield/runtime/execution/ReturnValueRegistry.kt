@@ -240,6 +240,7 @@ fun registerSequenceReturnValue() {
 fun registerFramesReturnValue() {
     ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, launchEpoch, notify ->
         if (returnValue !is Frames) return@handler false
+        val scope = RunScope.currentFor(inside)
         returnValue.shouldend = {
             inside.runGeneration[strand] != generation
         }
@@ -284,8 +285,13 @@ fun registerFramesReturnValue() {
                     notify(false, strand, generation)
                     return@withBoxContext
                 }
+                // A replaced run must cancel waits too, not only the next frame() boundary.
+                scope?.ownJob(job)
                 notify(true, strand, generation)
                 try {
+                    // Supersession closes the old scope after scheduling us. Give its cancelled
+                    // body a turn to run synchronous finally cleanup before touching shared state.
+                    kotlinx.coroutines.yield()
                     returnValue.body()
                 } catch (e: CancellationException) {
                 } catch (t: Throwable) {

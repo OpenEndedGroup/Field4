@@ -2,7 +2,7 @@
 name: rtp_midi_demo
 description: >
   RTP-MIDI (AppleMIDI) in three boxes: open a network MIDI session called "Field", have a second
-  session join it, and play notes and a controller into it. Run them in order; nothing else needs
+  session join it, and play notes and a controller into it. Run box 1, then launch boxes 2 and 3; nothing else needs
   to be on the network. Docs page: public/docs/rtp_midi.md.
 operations:
   - create:
@@ -13,58 +13,78 @@ operations:
         "autorun": false
         "code": |
           import afield.io.midi.rtp.*
-          
-          // Open an RTP-MIDI network session called "Field" on UDP 5004/5005 and announce it over Bonjour.
-          // In macOS Audio MIDI Setup -> MIDI Studio -> Network, "Field" now appears in the Directory:
-          // select it and press Connect. An iPad app with network MIDI, or rtpMIDI on Windows, lists it too.
+
+          /*
+          Open an RTP-MIDI network session called "Field" on UDP 5004/5005 and announce it over Bonjour.
+          In macOS Audio MIDI Setup -> MIDI Studio -> Network, "Field" now appears in the Directory:
+          select it and press Connect. An iPad app with network MIDI, or rtpMIDI on Windows, lists it too.
+          */
           val midi = rtpMidi("Field")
-          
+
           // Each note that arrives runs this, on Field's main loop.
           midi.onNote { pitch, velocity, channel ->
               if (velocity > 0) markdown("last note", "note **$pitch** velocity $velocity on channel ${channel + 1}")
           }
           midi.onControl { cc, value, channel -> markdown("last control", "CC $cc = $value on channel ${channel + 1}") }
-          
+
           markdown("session", "Session **${midi.session.name}** on port ${midi.port}; ${midi.peers.size} peer(s).")
   - create:
       box: "rtpm-peer"
-      name: "2. A peer joins (run)"
+      name: "2. A peer joins (launch)"
       frame: { x: 520.0, y: 60.0, w: 380.0, h: 70.0 }
       properties:
         "autorun": false
         "code": |
           import afield.io.midi.rtp.*
-          
+
           // A second session in the same Field, so the demo works with nothing else on the network.
           // It invites the "Field" session from box 1 the way a Mac or an iPad would.
           val other = rtpMidi("Field peer", port = 5006, advertise = false)
           other.invite("127.0.0.1", 5004)
-          
-          // The invitation and the first clock exchange take a few milliseconds.
-          Thread.sleep(500)
-          markdown("peers", other.peers.joinToString("\n") { p ->
-              val stats = p.roundTripStatsMs?.let { (lo, mean, hi) -> "round trip %.2f / %.2f / %.2f ms (min/mean/max)".format(lo, mean, hi) } ?: "not synced yet"
-              "- **${p.name}** at ${p.address.hostAddress}:${p.controlPort}, ${p.state.name.lowercase()}, $stats"
-          })
+
+          // Launch: wait for a real connection and clock sample, with a bounded deadline.
+          frames {
+              val deadline = System.nanoTime() + 12_000_000_000L
+              while (other.peers.none { it.connected && it.roundTripStatsMs != null }) {
+                  check(System.nanoTime() < deadline) { "RTP-MIDI peer did not connect and synchronize within 12 seconds" }
+                  frame()
+              }
+              markdown(
+                  "peers",
+                  other.peers.joinToString("\n") { p ->
+                      val stats =
+                          p.roundTripStatsMs?.let { (lo, mean, hi) ->
+                              "round trip %.2f / %.2f / %.2f ms (min/mean/max)".format(lo, mean, hi)
+                          } ?: "not synced yet"
+                      "- **${p.name}** at ${p.address.hostAddress}:${p.controlPort}, ${p.state.name.lowercase()}, $stats"
+                  },
+              )
+          }
   - create:
       box: "rtpm-play"
-      name: "3. Play into it (run)"
+      name: "3. Play into it (launch)"
       frame: { x: 980.0, y: 60.0, w: 380.0, h: 70.0 }
       properties:
         "autorun": false
         "code": |
           import afield.io.midi.rtp.*
-          
+
           // Play an arpeggio from the peer session into the "Field" session; box 1 shows each note as it
           // arrives. Pointed at a Mac's session instead, these notes reach any DAW listening to it.
           val other = rtpMidi("Field peer", port = 5006, advertise = false)
-          for (pitch in listOf(60, 64, 67, 72)) {
-              other.noteOn(pitch, 90)
-              Thread.sleep(150)
-              other.noteOff(pitch)
-          }
-          other.controlChange(74, 100)
-          Thread.sleep(100)   // let the last packets arrive before counting
-          
           val field = rtpMidi("Field")
-          markdown("received", "box 1's session has received ${field.messageCount} messages; held notes: ${field.held.size}")
+
+          // Launch: cancellation releases the current note before this sequence ends.
+          frames {
+              for (pitch in [60, 64, 67, 72]) {
+                  other.noteOn(pitch, 90)
+                  try {
+                      delay(150) // Milliseconds; the receiver keeps processing while we wait.
+                  } finally {
+                      other.noteOff(pitch)
+                  }
+              }
+              other.controlChange(74, 100)
+              delay(100) // Let the last packets arrive before reading the receiver's counters.
+              markdown("received", "box 1's session has received ${field.messageCount} messages; held notes: ${field.held.size}")
+          }
