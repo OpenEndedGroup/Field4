@@ -523,6 +523,8 @@
   {"doc": "polytope_manifold_path_trace", "box": "polytope_manifold_trace", "codeSha256": "ae46bf1e67a3f1f9", "codeLines": 126, "receivers": ["afield.document.graph.Box"], "preamble": "polytope_manifold_path_trace__polytope_manifold_trace.preamble.kt"},
   {"doc": "polytope_path_trace_lineage", "box": "chain_renderer", "codeSha256": "65352961508480bf", "codeLines": 10, "receivers": ["afield.document.graph.Box"], "preamble": "polytope_path_trace_lineage__chain_renderer.preamble.kt"},
   {"doc": "polytope_path_trace_lineage", "box": "polytope_lineage_trace", "codeSha256": "a84ab5ff6ced35e8", "codeLines": 101, "receivers": ["afield.document.graph.Box"], "preamble": "polytope_path_trace_lineage__polytope_lineage_trace.preamble.kt"},
+  {"doc": "polyvector_explorer", "box": "pv_photograph", "codeSha256": "12b608b012351893", "codeLines": 18, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "polyvector_explorer", "box": "pv_sketch", "codeSha256": "05b3e44a632e05f2", "codeLines": 45, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "popup_prior_inspect", "box": "agent_popup_prior_inspect", "codeSha256": "b4091c511ab7c927", "codeLines": 46, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "principal_curves_explorer", "box": "pc_leaf", "codeSha256": "3d48964cd97090fd", "codeLines": 14, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "principal_curves_explorer", "box": "pc_live", "codeSha256": "0177c01b32c7d6ec", "codeLines": 24, "receivers": ["afield.document.graph.Box"], "preamble": ""},

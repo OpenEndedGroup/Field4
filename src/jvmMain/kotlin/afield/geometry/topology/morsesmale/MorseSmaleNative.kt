@@ -27,6 +27,15 @@ import kotlin.io.path.exists
 object MorseSmaleLibrary : NativeGeometryCapability {
     override val name = "morseSmale"
 
+    override val title = "Morse–Smale complexes"
+    override val docsPage = "morse_smale.md"
+    override val buildTask = "buildMorseSmaleNative"
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("xcode-select --install", "brew install cmake", "./gradlew buildMorseSmaleNative"),
+        "linux" to listOf("sudo apt install build-essential cmake    # or dnf / pacman equivalents", "./gradlew buildMorseSmaleNative"),
+        "windows" to listOf("winget install -e --id Kitware.CMake    # and Visual Studio C++ Build Tools", ".\\gradlew buildMorseSmaleNative"),
+    )
+
     private val os = System.getProperty("os.name").lowercase()
 
     val fileName: String

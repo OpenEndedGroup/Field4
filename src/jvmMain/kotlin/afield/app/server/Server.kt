@@ -4695,6 +4695,14 @@ class Server {
                             call.respond(withContext(Dispatchers.IO) { afield.graphics.vulkan.util.VulkanProbe.status(refresh) })
                         }
 
+                        // The optional native geometry libraries (Morse–Smale, principal curves,
+                        // polyvector): present or not, and how to install each, for the welcome page.
+                        // Library objects only look for files, so this loads no native code.
+                        get("/api/native-geometry-status") {
+                            if (call.refuseUnlessSameSiteDocsClient(afield.app.server.docsAccessPolicy)) return@get
+                            call.respond(withContext(Dispatchers.IO) { afield.geometry.network.NativeGeometry.status() })
+                        }
+
                         // Field's own agent, headless: POST an AgentTaskRequest, get an AgentTaskResult.
                         // `?document=<name>` runs it in that open document; otherwise in a scratch one
                         // that is discarded afterwards. Runs code and may spend model tokens, so it has

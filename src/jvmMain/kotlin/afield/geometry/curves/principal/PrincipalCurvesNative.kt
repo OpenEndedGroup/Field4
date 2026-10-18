@@ -27,6 +27,15 @@ import kotlin.io.path.exists
 object PrincipalCurvesLibrary : NativeGeometryCapability {
     override val name = "principalCurves"
 
+    override val title = "Principal curves"
+    override val docsPage = "principal_curves.md"
+    override val buildTask = "buildPrincipalCurvesNative"
+    override val install: Map<String, List<String>> = mapOf(
+        "macos" to listOf("xcode-select --install", "brew install cmake", "./gradlew buildPrincipalCurvesNative"),
+        "linux" to listOf("sudo apt install build-essential cmake    # or dnf / pacman equivalents", "./gradlew buildPrincipalCurvesNative"),
+        "windows" to listOf("winget install -e --id Kitware.CMake    # and Visual Studio C++ Build Tools", ".\\gradlew buildPrincipalCurvesNative"),
+    )
+
     private val os = System.getProperty("os.name").lowercase()
 
     val fileName: String

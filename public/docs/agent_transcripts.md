@@ -2410,6 +2410,18 @@ to follow them, never regrowing it. Needs the optional native library:
 
 [Open ↗](offline.html?file=assets/agent_transcripts/principal_curves_explorer/metadata.edn)
 
+### polyvector_explorer
+
+[Line-drawing vectorization](polyvector.md) by polyvector fields. The first box draws a pencil
+sketch with a T-junction, a crossing and a wave, builds its field once, and re-traces it whenever
+the pruning slider moves, drawing the field's streamlines under the curves. The second vectorizes
+the edges of a photograph on a worker thread, which takes about a minute. The third turns the
+vectorized sketch into geometry and treats it as such: parallel outlines, normals and a wave. Needs the optional native
+library and its OpenCV, Boost and Eigen packages: the welcome page's **Geometry extensions** panel
+says how, or run `./gradlew buildPolyvectorNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/polyvector_explorer/metadata.edn)
+
 ## FieldML scenes
 
 <!-- transcript-index: verified-by = compile -->

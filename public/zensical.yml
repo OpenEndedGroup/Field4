@@ -187,6 +187,8 @@ nav:
       - Tetrahedral Meshing (TetGen): tetgen.md
       - Morse–Smale Complexes: morse_smale.md
       - Principal Curves: principal_curves.md
+      - Vectorizing Drawings (Polyvector): polyvector.md
+      - Chaining Geometry Extensions: geometry_chains.md
       - A Solid, Written Down (solidsl): solid_notation.md
       - Geometry From Disk (OBJ, STL, PLY, glTF): geometry_from_disk.md
       - Polytopes & the Conway Algebra: polytope_examples.md
