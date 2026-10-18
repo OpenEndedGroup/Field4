@@ -1229,6 +1229,38 @@
     "1e41294cbe22-03": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_45/README.md"
+    },
+    "02b566216ca7-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "7a5d00bb1ace-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "013ba1fa3c91-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "0977f890d8a9-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "2792e161f146-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "ded1d6a3cafb-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "153504d5e8c3-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
+    },
+    "9be027ca01a6-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_46/README.md"
     }
   },
   "batches": [
@@ -1275,7 +1307,8 @@
     "../box_code_adoption_batch_41/README.md",
     "../box_code_adoption_batch_42/README.md",
     "../box_code_adoption_batch_43/README.md",
-    "../box_code_adoption_batch_45/README.md"
+    "../box_code_adoption_batch_45/README.md",
+    "../box_code_adoption_batch_46/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1294,10 +1327,10 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 45,
-    "branch": "codex/box-code-readability-45",
-    "baseline": "8074d4abd",
-    "state": "Batch45 verified: real native equality/rerun/edit, live phase assignment/relaunch/Stop, saved fallbacks, DOM extents and two genuine docs captures inspected. Six formatter regression tests and scoped compile/idiom gates pass. Preparing commit/landing.",
-    "evidence": "build/box-code-revision/adoption-45"
+    "batch": 46,
+    "branch": "codex/box-code-readability-46",
+    "baseline": "d54d91aa6",
+    "state": "Eight teaching findings verified; 80 Kotlin states/two shaders formatted; baseline executable tokens, markers, strings and YAML operation contracts preserved. Full guards delegated to lander. Batch45 queued 20261018-131653-codex-box-code-readability-45.",
+    "evidence": "../box_code_adoption_batch_46/README.md"
   }
 }

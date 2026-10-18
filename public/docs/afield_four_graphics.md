@@ -1128,7 +1128,7 @@ Beyond includes, a shader property is a template with values supplied from Kotli
 // we can define this first
 shaderTemplate["col"] = mapOf("fixedColor" to Resolver { "vec4(1,0.75,0,1)" })
 
-// then there's an execution break here
+// Run the declarations above first; rerun the module fragment to compile its generated shader interface.
 //%-
 var module = moduleHere {
     primitiveType = triangle_strip
@@ -1178,7 +1178,7 @@ shaderTemplate["pc"] = mapOf("dec" to Resolver { pc.glsl() })
 pc.a.x = 0.3f
 pc.otherDeclarations = "layout(offset=${pc.nextFreeOffset(16)}) uint foo;"
 
-// then there's an execution break here
+// Run the declarations above first; rerun the module fragment to compile its generated shader interface.
 //%-
 var module = moduleHere {
     primitiveType = triangle_strip

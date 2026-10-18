@@ -92,7 +92,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Beginner graphics, live speed and quoted-code formatting](../box_code_adoption_batch_45/README.md) | Four findings addressed; identical native triangle/reruns, live speed assignment and Stop, saved fallbacks and two genuine docs captures; ten Kotlin and six GLSL bodies formatted. |
 
-[Machine checkpoint](checkpoint.json): **304 of 405 findings addressed**; 101 remain open. These counts do not claim
+| [Teaching comments and accurate controls](../box_code_adoption_batch_46/README.md) | Eight findings addressed; 80 Kotlin states and two GLSL shaders mechanically checked, baseline executable tokens preserved; full guards delegated to the lander. |
+
+[Machine checkpoint](checkpoint.json): **312 of 405 findings addressed**; 93 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 
