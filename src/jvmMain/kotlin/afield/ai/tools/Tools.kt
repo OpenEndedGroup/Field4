@@ -10,7 +10,8 @@ import afield.ai.models.setupChanges
 import afield.ai.models.toolResultBlock
 
 import afield.ai.conversation.AiTurnInbox
-import afield.ai.conversation.isAiTurnCancellation
+import afield.ai.conversation.aiToolFailureEndsTurn
+import afield.ai.conversation.aiToolFailureMessage
 import afield.ai.models.LlmProgressUpdate
 import afield.runtime.languages.MalformedAI
 import afield.app.diagnostics.CodeUseFailureRow
@@ -1209,9 +1210,9 @@ internal class ToolRegistry {
                 // Fall through to a document-authored tool with this name.
                 dynamicTool(dynamicToolsIn(ctx), name)!!.runBlockingFromToolLoop(ctx, rawArgs())
             }
-        } catch (e: Exception) {
-            if (view != null && !isAiTurnCancellation(e)) {
-                AgentExtensionRegistry.after(documentKey, view, ToolResultView(false, e.message ?: e::class.java.simpleName, (System.nanoTime() - started) / 1_000_000))
+        } catch (e: Throwable) {
+            if (view != null && !aiToolFailureEndsTurn(e)) {
+                AgentExtensionRegistry.after(documentKey, view, ToolResultView(false, aiToolFailureMessage(e), (System.nanoTime() - started) / 1_000_000))
             }
             throw e
         }

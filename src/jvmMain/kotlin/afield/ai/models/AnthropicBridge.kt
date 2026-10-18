@@ -19,6 +19,9 @@ import afield.ai.conversation.Stability
 import afield.ai.conversation.SuspendedRound
 import afield.ai.conversation.TurnContext
 import afield.ai.conversation.TurnSuspension
+import afield.ai.conversation.aiToolFailureEndsTurn
+import afield.ai.conversation.aiToolFailureMessage
+import afield.ai.conversation.aiToolNotRunOutput
 import afield.ai.conversation.isAiTurnCancellation
 import afield.ai.conversation.toolActivity
 import afield.ai.conversation.userNotice
@@ -268,6 +271,11 @@ class AnthropicBridge(
         }
         var toolElapsedMs = 0L
         var activePhase = "model:initial"
+        // The tool_use blocks at the end of the history that have no tool_result after them yet, and the
+        // results this turn has for them so far. A turn that fails while there are any leaves a result for
+        // each to the next one, whose message must open with them.
+        var openCalls: List<OpenAiIdeCodexBridge.PendingToolCall> = emptyList()
+        var openOutputs: List<PendingToolOutput> = emptyList()
         try {
         var hitToolRoundCap = false
         var response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null), requestLedger("initial"), onProgress)
@@ -285,6 +293,8 @@ class AnthropicBridge(
             val resultBlocks = mutableListOf<ContentBlockParam>()
             val roundResults = mutableListOf<Any>()
             val roundOutputs = mutableListOf<PendingToolOutput>()
+            openCalls = toolUses.map { OpenAiIdeCodexBridge.PendingToolCall(it.id(), it.name()) }
+            openOutputs = roundOutputs
             for (use in toolUses) {
                 val name = use.name()
                 log.toolActivity(name)
@@ -297,14 +307,15 @@ class AnthropicBridge(
                 val started = System.nanoTime()
                 val result: Any = try {
                     tools.executeByName(callCtx, name, argsJson)
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     // A cancelled turn must end the turn, not become a tool error the model is asked about.
-                    if (isAiTurnCancellation(e)) throw e
-                    error("tool: ERROR name=$name msg=${e.message}")
+                    if (aiToolFailureEndsTurn(e)) throw e
+                    val message = aiToolFailureMessage(e)
+                    error("tool: ERROR name=$name msg=$message")
                     toolIo("tool_exception", mapOf(
                         "round" to (rounds + 1), "toolName" to name, "callId" to use.id(),
-                        "exceptionType" to e::class.java.name, "message" to (e.message ?: "")))
-                    mapOf("error" to true, "tool" to name, "message" to (e.message ?: e::class.java.name))
+                        "exceptionType" to e::class.java.name, "message" to message))
+                    mapOf("error" to true, "tool" to name, "message" to message)
                 }
                 val toolMs = (System.nanoTime() - started) / 1_000_000
                 toolElapsedMs += toolMs
@@ -377,6 +388,7 @@ class AnthropicBridge(
             TurnSuspension.of(roundResults)?.let { awaited ->
                 suspension = awaited
                 state.suspendedRound = SuspendedRound(roundOutputs.toList())
+                openCalls = emptyList()
                 rounds++
                 info("turn suspended after round $rounds: waiting for ${awaited.jobs.size} build job(s) without the model")
                 toolIo("turn_suspended", mapOf("round" to rounds, "jobIds" to awaited.jobs.map { it.jobId },
@@ -398,6 +410,7 @@ class AnthropicBridge(
                 .role(MessageParam.Role.USER)
                 .contentOfBlockParams(resultBlocks)
                 .build()
+            openCalls = emptyList()
 
             rounds++
             // At the round cap, force a final answer (results are already paired above) by switching tool use
@@ -457,6 +470,11 @@ class AnthropicBridge(
         )
         } catch (failure: Throwable) {
             val cancelled = isAiTurnCancellation(failure)
+            if (openCalls.isNotEmpty()) runCatching {
+                val byId = openOutputs.associateBy { it.callId }
+                state.suspendedRound = SuspendedRound(openCalls.map { byId[it.callId] ?: aiToolNotRunOutput(it.callId, it.name, failure) })
+                warn("turn failed with ${openCalls.size} tool_use block(s) unanswered; the next turn's message opens with their results")
+            }
             toolIo(if (cancelled) "session_cancelled" else "session_failed", mapOf(
                 "status" to if (cancelled) "cancelled" else "failed",
                 "phase" to activePhase,

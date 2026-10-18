@@ -2374,13 +2374,17 @@ fun installAi4() {
                         editResult = null
                     }
                 }
-            } catch (e: Exception) {
-                val outcome = if (isAiTurnCancellation(e)) "cancelled" else "failed"
-                AiBoxConversation.failed(box, "AI ${exec.kind} $outcome: ${e.message ?: e::class.java.simpleName}")
+            } catch (e: Throwable) {
                 // A failed tool round can leave a provider thread awaiting an unsent result.
                 // Continue from saved text next time instead of reusing that incomplete chain.
+                // That holds for an Error too: one that escaped this catch (a box tool's StackOverflowError,
+                // 2026-10-18) kept the chain, and every later turn in the chat was refused.
                 threadByKey.remove(conversationKey)
                 chatThreadByKey.remove(conversationKey)
+                // An OutOfMemoryError or the like still ends the turn the way it did; invokeOnCompletion records it.
+                if (e is VirtualMachineError && e !is StackOverflowError) throw e
+                val outcome = if (isAiTurnCancellation(e)) "cancelled" else "failed"
+                AiBoxConversation.failed(box, "AI ${exec.kind} $outcome: ${e.message ?: e::class.java.simpleName}")
                 if (livePrefix != null) {
                     sendFinalVisibleAiPanel(
                         "_AI ${exec.kind} $outcome: ${e.message ?: e::class.java.simpleName}_"
