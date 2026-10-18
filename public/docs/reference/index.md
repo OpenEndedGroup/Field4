@@ -434,6 +434,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 - *mesh* — [Graphics](graphics.md#measurementhelpers-kt) · [Math](math.md#linalg-mesh-kt) · [Simulation](simulation.md#tetmeshviews-kt)
     - [tetgen](simulation.md#tetmeshviews-kt)
+- [network](graphics.md#geometrynetwork-kt)
 - *path* — [Graphics](graphics.md#fline-kt) · [Math](math.md#cubicbezier3d-kt)
     - [java2d](graphics.md#flinesandjavashapes-kt)
     - [planning](math.md#cubicbezier3d-kt)
@@ -442,6 +443,8 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
     - *manifold* — [Graphics](graphics.md#manifoldsmoketest-kt) · [Internal](internal.md#manifoldnative-kt)
     - [solidcraft](graphics.md#solidcraft-kt)
 - *spatial* — [Graphics](graphics.md#bspot-kt) · [Machine learning](machine-learning.md#stippletransport-kt) · [Math](math.md#linalg-spatial-kt)
+- topology
+    - [morsesmale](graphics.md#morsesmale-kt)
 
 </div>
 
@@ -627,7 +630,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**32328 public symbols across 1468 source files**, 16401 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**32481 public symbols across 1474 source files**, 16495 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -640,12 +643,12 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 12 | 125 | 41 (32%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 41 | 1954 | 1413 (72%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 293 | 7084 | 3602 (50%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 298 | 7236 | 3695 (51%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 42 | 742 | 373 (50%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 42 | 985 | 531 (53%) | Making a shape behave. |
-| [Imaging](imaging.md) | 46 | 740 | 338 (45%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
+| [Imaging](imaging.md) | 47 | 741 | 339 (45%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 14 | 774 | 571 (73%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 5 | 349 | 199 (57%) | Optimisation over a space you can only sample. |
@@ -1155,6 +1158,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [GeometryAgentTools.kt](graphics.md#geometryagenttools-kt) | Graphics | 48 | 13 | A worked, public example of giving Field's AI its own tools — two of them, over the geometry the loaders in MeshFromDisk.kt read off disk. | [Geometry from disk](../geometry_from_disk.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>steamaudio/<wbr></small> [GeometryBenchmark.kt](examples.md#geometrybenchmark-kt) | Examples | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [GeometryFinding.kt](visualization.md#geometryfinding-kt) | Visualization | 9 | 1 | `GeometryFinding`, the record a geometry checker or agent writes about a piece of geometry for review; it never changes whether a build is accepted. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>network/<wbr></small> [GeometryNetwork.kt](graphics.md#geometrynetwork-kt) | Graphics | 35 | 16 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [GeometryReviewSurface.kt](workspace.md#geometryreviewsurface-kt) | Workspace | 7 | 6 | A persistent annotation inbox for a custom canvas, the same one a Three.js viewer has: `Box.geometryReviewSurface` binds it to a box and returns a `GeometryReviewSurface`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [GeometryReviewTools.kt](machine-learning.md#geometryreviewtools-kt) | Machine learning | 38 | 0 | AI4 tools for the geometry review inbox: listing a document's Three.js and canvas review views, reading and answering their notes, reporting findings, styling parts and inspecting a view. | [Point to geometry, keep the context](../geometry_review.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [GeometryViewCapture.kt](machine-learning.md#geometryviewcapture-kt) | Machine learning | 0 | 0 |  |  |
@@ -1238,6 +1242,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr></small> [imaging_field.kt](imaging.md#imaging-field-kt) | Imaging | 21 | 21 | What makes the imaging family *Field's* rather than a generic CV library: the bridges out of the raster and into the things Field already draws, colours and displays. | [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md), [Spatial artificial life](../alife_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr></small> [imaging_filters.kt](imaging.md#imaging-filters-kt) | Imaging | 56 | 46 | Convolution, smoothing, gradients and multiscale pyramids for `Img` — the filter half of the stdlib imaging family (see `imaging.kt` for the value type, `imaging_features.kt` for edges, corners and blobs). | [Imaging and computer vision](../imaging_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr></small> [imaging_geometry.kt](imaging.md#imaging-geometry-kt) | Imaging | 53 | 39 | Geometry and motion for `Img`: affine and perspective warps, homography estimation from point correspondences (DLT + RANSAC), and pyramidal Lucas–Kanade optical flow. | [Imaging and computer vision](../imaging_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr></small> [imaging_overlay.kt](imaging.md#imaging-overlay-kt) | Imaging | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>image/<wbr></small> [imaging_simd.kt](imaging.md#imaging-simd-kt) | Imaging | 0 | 0 | The SIMD span kernels the imaging filters are built out of. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>imaging/<wbr></small> [ImagingGallery.kt](examples.md#imaginggallery-kt) | Examples | 7 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [ImagingVisualizer.kt](visualization.md#imagingvisualizer-kt) | Visualization | 4 | 4 | Inline visualizers for the CPU imaging and computer-vision family (`afield.stdlib/imaging*.kt`): what a gradient, a pyramid, a flow field or a list of corners looks like when a box evaluates one. |  |
@@ -1376,6 +1381,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>analysis/<wbr>loris/<wbr></small> [LorisVisualizer.kt](visualization.md#lorisvisualizer-kt) | Visualization | 11 | 5 | Draws a `LorisModel`'s partial trajectories as an interactive HTML panel next to its waveform. | [Loris: partial tracks and resynthesis](../loris.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>core/<wbr></small> [Lowerer.kt](languages.md#lowerer-kt) | Languages | 2 | 2 | The last stage of the FieldML front end: the typed tree becomes the `CoreExpr` tree the evaluator walks. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [LowSegmentFLineFitting.kt](graphics.md#lowsegmentflinefitting-kt) | Graphics | 29 | 1 | Fits a point sequence with as few line and arc segments as its error budget allows. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [lp_polytope.kt](graphics.md#lp-polytope-kt) | Graphics | 51 | 41 |  | [Linear programs in three dimensions](../lp_curves_3d.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [lp_trajectories.kt](graphics.md#lp-trajectories-kt) | Graphics | 46 | 39 |  | [Linear programs as curves](../lp_curves.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [Lpips.kt](machine-learning.md#lpips-kt) | Machine learning | 16 | 16 | LPIPS: how different two pictures look, as a learned perceptual distance. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [LpipsSmokeTest.kt](machine-learning.md#lpipssmoketest-kt) | Machine learning · internal | 2 | 1 |  |  |
@@ -1456,6 +1462,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>morpho/<wbr></small> [MorphoSearchFLines.kt](languages.md#morphosearchflines-kt) | Languages | 11 | 8 | Drawing what a search did, as vector `FLine`s for `afield.geometry.spatial.showPlaneGrid`. | [Searching for MorphoHDL Circuits](../morpho_search.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>morpho/<wbr></small> [MorphoSim.kt](languages.md#morphosim-kt) | Languages | 9 | 7 | What a compiled MorphoHDL circuit computes, and how deep it is: a bit-parallel logic simulator, plus the per-cell arrival times morpho's own compiler already hands over. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>morpho/<wbr></small> [MorphoSpec.kt](languages.md#morphospec-kt) | Languages | 48 | 22 | What a MorphoHDL design is *supposed* to do, and how much it is allowed to cost — the half of a search that morpho itself has no opinion about. | [Searching for MorphoHDL Circuits](../morpho_search.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>topology/<wbr>morsesmale/<wbr></small> [MorseSmale.kt](graphics.md#morsesmale-kt) | Graphics | 48 | 28 |  | [Morse–Smale complexes: the shape of a scalar field](../morse_smale.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>topology/<wbr>morsesmale/<wbr></small> [MorseSmaleNative.kt](graphics.md#morsesmalenative-kt) | Graphics | 8 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [MotionItems.kt](graphics.md#motionitems-kt) | Graphics | 9 | 3 | Per-item motion for 2D items drawn by stable identity, for passes that need each item's previous pose. | [Flow grain and motion](../flow_grain.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [MouseEvents.kt](graphics.md#mouseevents-kt) | Graphics | 23 | 6 | Mouse input from a Vulkan renderer's window, delivered to named callbacks. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>motion/<wbr></small> [movement.kt](simulation.md#movement-kt) | Simulation | 41 | 31 | Springs, dampers, and a steerable character built out of four of them. | [Springs, dampers, and a character with mass](../movement_examples.md) |
@@ -1476,6 +1484,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>nano/<wbr></small> [NanoVisualization.kt](languages.md#nanovisualization-kt) | Languages | 21 | 21 | Runs a Nano program and hands back its final machine state, either as data or as a self-contained HTML panel for a box's output area. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>nano/<wbr></small> [NanoVM.kt](languages.md#nanovm-kt) | Languages | 64 | 8 | Nano is a minimal 8-bit virtual machine designed for emergence and artificial-life simulations: four registers, 32 bytes of RAM, and all but five of the 256 possible opcode bytes decoding to an instruction. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>capture/<wbr></small> [NativeCaptureTarget.kt](imaging.md#nativecapturetarget-kt) | Imaging | 0 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>network/<wbr></small> [NativeGeometry.kt](graphics.md#nativegeometry-kt) | Graphics | 10 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>graph/<wbr></small> [nesting.kt](workspace.md#nesting-kt) | Workspace | 10 | 5 | Nesting: drawing one box inside another, through the `nested` and `nestedIn` properties. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [NetStats.kt](workspace.md#netstats-kt) | Workspace · internal | 4 | 4 | Per-second counters of WebSocket traffic between the backend and the browser, shown on the pinned "net" console row. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [NeuralFieldParitySmoke.kt](examples.md#neuralfieldparitysmoke-kt) | Examples | 2 | 1 |  |  |
