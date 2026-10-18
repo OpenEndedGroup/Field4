@@ -1,0 +1,10 @@
+{
+  "gate": "./gradlew checkKDocAttachment",
+  "passed": true,
+  "logSha256": "1578e35315f0879088f8933a9d28815f92cbcae450d2d6872cf665abcbd030f8",
+  "repair": "Remove duplicate stacked class KDoc in FabricatePassGraph.kt; executable code unchanged",
+  "bouncedItems": [
+    "20261017-234226-codex-box-code-readability-39",
+    "20261017-235425-codex-box-code-readability-41"
+  ]
+}

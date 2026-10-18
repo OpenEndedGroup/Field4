@@ -1129,6 +1129,50 @@
     "17291ebbeb49-04": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_38/README.md"
+    },
+    "c69d11328023-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_39/README.md"
+    },
+    "c69d11328023-03": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_39/README.md"
+    },
+    "c69d11328023-04": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_39/README.md"
+    },
+    "c69d11328023-05": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_39/README.md"
+    },
+    "fc9b34aa3014-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_39/README.md"
+    },
+    "00f66fc4d1b2-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_40/README.md"
+    },
+    "947ece830417-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_40/README.md"
+    },
+    "35ccd5a56ec6-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_40/README.md"
+    },
+    "cf8a600bbd52-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_41/README.md"
+    },
+    "28e3ddccbba4-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_41/README.md"
+    },
+    "2f08a46f3b63-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_41/README.md"
     }
   },
   "batches": [
@@ -1169,7 +1213,10 @@
     "../box_code_adoption_batch_35/README.md",
     "../box_code_adoption_batch_36/README.md",
     "../box_code_adoption_batch_37/README.md",
-    "../box_code_adoption_batch_38/README.md"
+    "../box_code_adoption_batch_38/README.md",
+    "../box_code_adoption_batch_39/README.md",
+    "../box_code_adoption_batch_40/README.md",
+    "../box_code_adoption_batch_41/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups."
 }
