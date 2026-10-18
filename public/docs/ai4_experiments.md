@@ -21,9 +21,14 @@ panel and the same conversation. Here is the result, with the Scribbler's code o
 ![the Field window. Top left, the Studio and Scribbler boxes. Below them the Studio's output: a landscape whose pale sky, blue hills and green field are made of small looping scribbles, with a dark green tree on the right; and under it the AI Chat, ending with a list of scribble calls and an inline picture of the canvas as the painter last looked at it. On the right, the code editor open on the Scribbler box, showing the aiTool("scribble") block with its describe text, its four parameters and the start of its action](assets/ai4_experiments/scribbler.jpg)
 
 The whole tool is ordinary box code. It finds the Studio's canvas, works out the scribble, strokes
-it with a paint brush, and asks the Studio to show the result:
+it with a paint brush, and asks the Studio to show the result. Studio publishes typed
+`studioCanvas` and `refreshStudio` callbacks; the canvas callback reads the current easel even
+after a conversation rewind replaces it:
 
 ```diffstatic {data-lang=kotlin}
+prop<() -> PaintCanvas>(studioCanvas)
+prop<() -> Unit>(refreshStudio)
+
 aiTool("scribble") {
     describe(
         "Scribble inside a region: rows of looping, wandering line that fill the outline the way a quick hand " +
@@ -35,9 +40,9 @@ aiTool("scribble") {
     val density by param<Double>("rows of loops per 100 units: 1 loose .. 8 dense", default = 3.0)
     val width by param<Double>("brush width", default = 5.0)
     action {
-        val canvas = studio.properties["studio.canvas"] as PaintCanvas
+        val canvas = studio.studioCanvas()
         // ... the scribble, row by row, inside the outline ...
-        (studio.properties["studio.refresh"] as () -> Unit)()
+        studio.refreshStudio()
         "scribbled ${color()} over the region at density ${density()}"
     }
 }

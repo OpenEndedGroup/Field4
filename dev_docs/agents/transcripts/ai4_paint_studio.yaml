@@ -46,7 +46,10 @@ operations:
           fun pngUrl(bytes: ByteArray) = "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes)
           fun show() = display("main", canvas().png())
           // Another box's tool can paint on this easel: it finds the canvas here and calls this to show the result.
-          thisBox.properties["studio.refresh"] = { show() }
+          prop<() -> PaintCanvas>(studioCanvas)
+          prop<() -> Unit>(refreshStudio)
+          studioCanvas = { canvas() }
+          refreshStudio = { show() }
 
           // "#rrggbb", one tube ("ultramarine blue"), or a pile of tubes by parts ("lead white:3, yellow ochre:1").
           class Paint(val color: Vec4, val tubes: Map<String, Double>?)
@@ -991,6 +994,9 @@ operations:
         code: |
           import kotlin.random.Random
 
+          prop<() -> PaintCanvas>(studioCanvas)
+          prop<() -> Unit>(refreshStudio)
+
           // A brush the painter does not have yet: a scribble, painted on the Studio's easel.
           val studio = thisBox.inside.boxes.values.single { it.name == "Studio" }
 
@@ -1021,7 +1027,7 @@ operations:
                   require(rowsPer100.isFinite() && rowsPer100 in 1.0..8.0) {
                       "density must be between 1 and 8 rows of loops per 100 units"
                   }
-                  val canvas = studio.properties["studio.canvas"] as PaintCanvas
+                  val canvas = studio.studioCanvas()
                   val ring = outline().chunked(2)
                   val rnd = Random(color().hashCode() + outline().hashCode())
                   val loop = 50.0 / rowsPer100
@@ -1054,7 +1060,7 @@ operations:
                       row += loop * 1.1
                       dir = -dir
                   }
-                  (studio.properties["studio.refresh"] as () -> Unit)()
+                  studio.refreshStudio()
                   "scribbled ${color()} over the region at density ${density()}"
               }
           }
