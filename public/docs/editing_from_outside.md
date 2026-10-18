@@ -13,7 +13,7 @@ writes, and which copy wins on load.
 A document called `sketch` in your workspace is the folder `<workspace>/sketch/`. Each box's
 code is saved beside `metadata.edn` as its own file, named after the box's id:
 
-```text
+```diffstatic {data-lang=text}
 sketch/
   metadata.edn
   f2b585c8-0009-44cd-8181-06ac28784e2d_code_.kt
