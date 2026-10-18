@@ -2229,14 +2229,6 @@ internal fun awaitPaintedFrames(page: Page, what: String, timeoutMs: Int = VIDEO
 }
 
 /**
- * Return a callback that starts (or simply admits) frame-synchronous capture.
- *
- * Docs captures prepare their clip against the already-running box, then restart the
- * same property only after the runloop capture hook is installed. The readiness
- * predicate keeps compilation/setup frames out of the movie and opens on the first
- * active frame of the relaunched value.
- */
-/**
  * Has a relaunched docs-video target reached the point the movie may start?
  *
  * Either it is running past its launch phase, or the relaunch already ran to completion: its
@@ -2256,6 +2248,14 @@ internal fun relaunchedVideoTargetReady(
     return runGeneration > stoppedGeneration && jobs == 0
 }
 
+/**
+ * Return a callback that starts (or simply admits) frame-synchronous capture.
+ *
+ * Docs captures prepare their clip against the already-running box, then restart the
+ * same property only after the runloop capture hook is installed. The readiness
+ * predicate keeps compilation/setup frames out of the movie and opens on the first
+ * active frame of the relaunched value.
+ */
 private fun videoCapturePreparation(
     info: SessionInformation,
     page: Page,
