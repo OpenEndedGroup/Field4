@@ -101,6 +101,8 @@ object DemoTranscriptExecSmokeTest {
         // ai4_chat_archive.md's demo: reads the example chat under public/docs/assets by checkout path.
         "ai4_chat_archive",
         "particle_video_reader",
+        // contour_trees.md's starting point: contour trees of a computed field and the leaf print, plain Kotlin.
+        "contour_trees_explorer",
         // The staged-project starting place: a level edited through guarded tools, three study-build
         // stages behind a gate, a qualified loot rule and a corpus of variants. CPU only; Manifold is used
         // when installed and the blockout says so when it is not.

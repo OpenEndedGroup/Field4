@@ -47,7 +47,7 @@ class ContourTreesTest {
 
     @Test fun outputs() {
         val t = ContourTrees.contourTree(bumps(three))
-        assertEquals(t.arcs.size + 1, t.plot().size)
+        assertEquals(t.arcs.size + 1, t.plot(200.0, 150.0, margin = 15.0).size)
         assertEquals(t.nodes.size, t.network().nodes.ids.size)
         val img = t.segmentationImage(); assertEquals(3, img.channels)
         assertTrue(t.arcsAt(t.nodes[0].id).isNotEmpty())

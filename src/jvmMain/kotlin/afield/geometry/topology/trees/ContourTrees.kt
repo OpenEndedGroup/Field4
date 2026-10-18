@@ -97,12 +97,14 @@ class ScalarTree internal constructor(
     /**
      * The tree drawn the classic way, as a plot: each node at height = its value (scaled into
      * [height] pixels, higher values up), leaves spread evenly along x in depth-first order and
-     * every other node above the mean of the leaves below it; arcs drawn as right-angled elbows.
+     * every other node above the mean of the leaves below it; arcs drawn as right-angled elbows. [margin] insets the whole plot from the edges of the
+     * [width] by [height] area.
      */
-    fun plot(width: Double = 400.0, height: Double = 240.0, color: Vec4 = Vec4(0.9f, 0.85f, 0.75f, 1f)): List<FLine> {
+    fun plot(width: Double = 400.0, height: Double = 240.0, margin: Double = 0.0, color: Vec4 = Vec4(0.9f, 0.85f, 0.75f, 1f)): List<FLine> {
         if (nodes.isEmpty()) return emptyList()
         val lo = nodes.minOf { it.value }; val hi = nodes.maxOf { it.value }
-        fun y(v: Double) = height - (v - lo) / (hi - lo).coerceAtLeast(1e-12) * height
+        val h = height - 2 * margin
+        fun y(v: Double) = margin + h - (v - lo) / (hi - lo).coerceAtLeast(1e-12) * h
         val adj = nodes.associate { n -> n.id to arcsAt(n.id).map { if (it.lower == n.id) it.upper else it.lower } }
         val rootId = nodes.firstOrNull { it.type == TreeNodeType.ROOT }?.id ?: nodes.maxBy { adj.getValue(it.id).size }.id
         val xOf = HashMap<Int, Double>()
@@ -110,7 +112,7 @@ class ScalarTree internal constructor(
         val leaves = nodes.count { adj.getValue(it.id).size == 1 && it.id != rootId }.coerceAtLeast(1)
         fun place(n: Int, parent: Int): Double {
             val kids = adj.getValue(n).filter { it != parent }
-            val x = if (kids.isEmpty()) (leafIndex++ + 0.5) / leaves * width else kids.map { place(it, n) }.average()
+            val x = if (kids.isEmpty()) margin + (leafIndex++ + 0.5) / leaves * (width - 2 * margin) else kids.map { place(it, n) }.average()
             xOf[n] = x
             return x
         }
