@@ -2,6 +2,7 @@ package afield.geometry.vectorize.polyvector
 
 import afield.geometry.network.NativeGeometry
 import afield.media.image.Img
+import afield.media.image.drawFLines
 import afield.media.image.imgFromFile
 import java.io.File
 import kotlin.math.exp
@@ -111,6 +112,31 @@ class PolyvectorTest {
         val f = Polyvector.fitField(strokes(80, 60, doubleArrayOf(10.0, 30.0, 70.0, 30.0, 5.0)), 80, 60)
         f.close(); f.close()
         assertFailsWith<IllegalStateException> { f.trace() }
+    }
+
+    /** Every member the polyvector docs page names, called once. */
+    @Test
+    fun documentedSurface() {
+        if (!available()) return
+        val ink = strokes(140, 140, doubleArrayOf(20.0, 20.0, 120.0, 120.0, 3.0), doubleArrayOf(20.0, 120.0, 120.0, 20.0, 3.0))
+        val drawing = Img(140, 140, 3, FloatArray(140 * 140 * 3) { 1f - ink[it / 3] })
+        val field = Polyvector.fitField(Polyvector.inkOf(drawing), FrameFieldParameters())
+        assertEquals(2, field.directionFLines(step = 2, length = 1.7, thickness = 3.0).size)
+        field.singularitiesFLine()
+        assertEquals(140 * 140, field.mask.size)
+        assertEquals(140 * 140, field.weight.size)
+        assertEquals(4 * 140 * 140, field.directions.size)
+        field.singularities.size
+        val result = field.trace(TraceParameters())
+        assertTrue(result.streamlinesFLine().nodes.isNotEmpty())
+        assertTrue(result.meanStrokeWidth > 0)
+        assertTrue(result.coverage() > 0.8)
+        assertTrue(result.network().curves.isNotEmpty())
+        assertTrue(result.toFLines(thickness = 2.0).isNotEmpty())
+        assertTrue(result.curves.isNotEmpty() && result.streamlines.isNotEmpty())
+        assertTrue(Polyvector.vectorize(drawing).curves.isNotEmpty())
+        assertTrue(Polyvector.vectorizeAsync(drawing).get(120, java.util.concurrent.TimeUnit.SECONDS).curves.isNotEmpty())
+        assertTrue(drawing.drawFLines(result.toFLines(), scale = 2.0).width == 280)
     }
 
     @Test

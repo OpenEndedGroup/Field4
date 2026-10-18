@@ -97,9 +97,10 @@ class PolyvectorField internal constructor(
 
     /**
      * The field drawn as small crosses, one every [step] pixels on the ink: each cross is the two
-     * directions there, [length] pixels long, the first in [color0] and the second in [color1].
+     * directions there, [length] pixels long, the first in [color0] and the second in [color1],
+     * [thickness] wide.
      */
-    fun directionFLines(step: Int = 4, length: Double = 3.0, color0: Vec4 = Vec4(0.95f, 0.45f, 0.1f, 1f), color1: Vec4 = Vec4(0.15f, 0.5f, 0.95f, 1f)): List<FLine> {
+    fun directionFLines(step: Int = 4, length: Double = 3.0, color0: Vec4 = Vec4(0.95f, 0.45f, 0.1f, 1f), color1: Vec4 = Vec4(0.15f, 0.5f, 0.95f, 1f), thickness: Double = 0.8): List<FLine> {
         val a = FLine(); val b = FLine()
         for (y in 0 until height step step) for (x in 0 until width step step) {
             val i = (y * width + x) * 4
@@ -110,8 +111,8 @@ class PolyvectorField internal constructor(
                 line.moveTo(cx - dx, cy - dy).lineTo(cx + dx, cy + dy)
             }
         }
-        a.properties["color"] = color0; a.properties["thickness"] = 0.8
-        b.properties["color"] = color1; b.properties["thickness"] = 0.8
+        a.properties["color"] = color0; a.properties["thickness"] = thickness
+        b.properties["color"] = color1; b.properties["thickness"] = thickness
         return listOf(a, b)
     }
 
