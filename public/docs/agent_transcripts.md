@@ -1053,6 +1053,9 @@ spiral, the ellipsoid method with its ellipses, the simplex walk and cutting pla
 with its own numbers. *A turning objective* is launched: the direction turns once every twelve
 seconds while the hexagon's vertices breathe, and the central path, the PDHG spiral and the simplex
 walk are recomputed twenty times a second. Change the weights or the PDHG step size and run it again.
+*Drag the polygon* draws the [fan as a map](lp_curves.md#the-fan-as-a-map) in an editable viewer:
+choose the pencil tool and drag a corner, and the grid is redrawn for the new polygon when the drag
+ends.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/lp_curves/metadata.edn)
 

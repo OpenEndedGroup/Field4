@@ -353,6 +353,179 @@ to cut off. Both read only the end point of each segment, so flatten curved segm
 bulge should count. For a polytope in space, built the same way from a point cloud, see
 [In three dimensions](#in-three-dimensions).
 
+## The fan as a map
+
+A fan of central paths is a sampling of a map with two inputs: the objective direction's angle θ
+and the barrier weight μ. Give it any pair and it returns one point inside the polygon, the
+barrier maximiser `x(θ, μ)`. `polygon.fanMap()` hands you that map as an object, `LpFanMap`. It
+takes `log μ` rather than μ, because the interesting range of μ spans several powers of ten.
+
+Each point it returns, an `LpFanPoint`, carries the map's derivatives as well as its position:
+`dxdTheta`, how the point moves as the direction turns, and `dxdLogMu`, how it moves as μ grows.
+They are exact, not differences: at the maximiser `c(θ) = μ Σ wᵢ nᵢ / sᵢ`, and differentiating that
+gives `∂x/∂θ = M⁻¹ c'(θ)` and `∂x/∂log μ = −M⁻¹ c(θ)`, where `M = μ Σ wᵢ nᵢnᵢᵀ / sᵢ²` is the
+barrier's curvature. `jacobianDeterminant` is the area a unit square of (θ, log μ) covers at that
+point, and it works out to `1 / det M`, which is always positive. So the map never folds: each
+interior point except the analytic centre is hit by exactly one (θ, μ). In fact θ and `1/μ` are
+the polar angle and radius of the barrier's gradient, so the fan is polar coordinates, carried
+into the polygon.
+
+`fanMap().grid(thetas, logMus)` samples the map on a grid and returns its coordinate lines:
+`thetaLines()` are central paths, one per angle, and `muLines()` are closed rings, one per value of
+μ. Each grid point starts Newton from an already solved neighbour, so a grid of a few thousand
+points takes a few milliseconds. `warp(line)` carries an `FLine` drawn in the (θ, log μ) plane,
+x as θ and y as `log μ`, into the polygon. The example draws the grid, then a set of waves and
+spirals drawn in the parameter plane and warped, and then a regular lattice of dots in (θ, log μ),
+mapped and coloured by the determinant, in six bands of equal count from blue (smallest) to
+yellow (largest).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/lp_curves/fan_map.png" wait="3.0" capture="box" open-outputs="true" w="1100" h="420" padding="14"}
+:::static
+import kotlin.math.*
+
+val polygon = LpPolygon([vec(-2.0, -1.0), vec(1.5, -1.5), vec(3.0, 1.0), vec(0.5, 2.5), vec(-2.5, 1.5)])
+val map = polygon.fanMap()
+val high = ln(100.0) // log μ at the centre end
+val low = ln(1e-3) // log μ at the vertex end
+
+val grid = map.grid(thetas = 96, logMus = 48, logMuHigh = high, logMuLow = low)
+
+// Waves and spirals, drawn in the (θ, log μ) rectangle and carried into the polygon.
+val waves = (0 until 9).map { k ->
+    val level = high + (low - high) * (k + 0.5) / 9
+    map.warp(fline {
+        moveTo(0.0, level)
+        for (s in 1..240) lineTo(2 * PI * s / 240, level + 0.35 * sin(10 * PI * s / 240))
+        color = vec(0.55, 0.85, 1.0, 0.8)
+    })
+}
+val spirals = (0 until 12).map { k ->
+    map.warp(fline {
+        moveTo(2 * PI * k / 12, high)
+        lineTo(2 * PI * k / 12 + PI, low)
+        color = vec(1.0, 0.7, 0.35, 0.8)
+    }, stepsPerSegment = 160)
+}
+
+// A lattice of dots in (θ, log μ), mapped; brighter where the map stretches area more.
+val dots = (0 until 120).flatMap { i -> (0 until 40).map { j -> map.at(2 * PI * i / 120, high + (low - high) * (j + 0.5) / 40) } }
+val logDet = dots.map { ln(it.jacobianDeterminant) }
+val lo = logDet.min()
+val hi = logDet.max()
+:::fold draw the three panels
+// Six bands by rank, so each colour holds a sixth of the dots.
+val rank = logDet.indices.sortedBy { logDet[it] }.withIndex().associate { (r, k) -> k to r }
+val shades = (0 until 6).map { b ->
+    val picked = dots.filterIndexed { k, _ -> rank.getValue(k) * 6 / dots.size == b }
+    val t = b / 5.0
+    pointCloudFLine(picked.map { it.position }, vec(0.3 + 0.7 * t, 0.35 + 0.5 * t, 1.0 - 0.6 * t, 0.9), pointSize = 0.5)
+}
+
+showPlaneGrid(
+    "fanMap().grid(96, 48)\nθ lines are central paths, μ lines are rings" to
+        [polygon.toFLine()] + grid.thetaLines(every = 3, alpha = 0.7) + grid.muLines(every = 3),
+    "warp(line)\n9 waves and 12 straight lines from (θ, log μ)" to [polygon.toFLine()] + waves + spirals,
+    "map.at(θ, log μ), coloured by det J\ndet from %.0e to %.0e".format(exp(lo), exp(hi)) to [polygon.toFLine()] + shades,
+    columns = 3,
+    yUp = true,
+    cellWidth = 340,
+    cellHeight = 300,
+)
+:::endfold
+```
+
+![Three copies of the pentagon. In the first, rainbow central paths radiate from an interior point to the corners and white closed rings cross them, rounded near the centre and taking the pentagon's shape near its edge. In the second, blue wavy rings and orange spiral arms fill the pentagon. In the third, rings of dots crowd at the centre and into the five corners, blue there and yellow in between](assets/lp_curves/fan_map.png)
+
+The grid shows where the map is uneven. Near the analytic centre and in the corners the cells
+shrink to slivers, and the determinant goes to zero: at large μ every direction lands next to the
+centre, as at the origin of polar coordinates, and at small μ every direction in a corner's range
+lands on that corner. The opposite happens along the edges. A ring of small μ crosses a whole edge
+within a narrow range of angles, about μ wide, so the map is steep in θ there and a grid of fixed
+angular step draws that crossing as one straight chord. Neither effect is a sampling error; a finer
+grid shows the same thing, closer to the boundary.
+
+The same map moves particles. Below, 900 points start at random positions in (θ, log μ) and slide
+down in `log μ` at a steady rate, wrapping back to the top when they reach the bottom. Mapped into
+the polygon, each one follows its own central path out of the centre and into a corner, slowing as
+it goes, because the corners take up so little of the polygon. Each frame starts every point's
+Newton from where it was in the last frame.
+
+```diffstatic_runner {data-lang=kotlin video="assets/lp_curves/fan_flow.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="620" embed=true name="lp-curves-fan-flow" alt="white dots stream out of a point inside the pentagon along faint rainbow central paths, spread across the middle and gather into the five corners, where they slow and bunch before reappearing at the centre"}
+:::static
+import kotlin.math.*
+
+val polygon = LpPolygon([vec(-2.0, -1.0), vec(1.5, -1.5), vec(3.0, 1.0), vec(0.5, 2.5), vec(-2.5, 1.5)])
+val map = polygon.fanMap()
+val high = ln(30.0)
+val low = ln(1e-3)
+val speed = 1.2 // log μ per second
+
+val random = kotlin.random.Random(3)
+val angles = List(900) { random.nextDouble(0.0, 2 * PI) }
+val phases = List(900) { random.nextDouble() }
+var points = angles.map { map.at(it, high) }
+val paths = map.grid(thetas = 48, logMus = 40, logMuHigh = high, logMuLow = low).thetaLines(alpha = 0.25)
+val started = AnimationClock.nowSeconds()
+
+loop {
+    val t = AnimationClock.nowSeconds() - started
+    points = points.mapIndexed { k, p ->
+        val along = (phases[k] + t * speed / (high - low)) % 1.0
+        map.at(angles[k], high + (low - high) * along, near = p)
+    }
+    showPlane(
+        [polygon.toFLine()] + paths + pointCloudFLine(points.map { it.position }, pointSize = 0.6),
+        title = "900 points sliding down in log μ",
+        caption = "each follows the central path for its own θ",
+        width = 560,
+        height = 480,
+        interactive = false,
+        yUp = true,
+    )
+}
+```
+
+### Drag the polygon
+
+`threeLines(lines, editable = true, onEditCommitted = { edited -> … })` shows FLines in a viewer
+whose points you can drag with the pencil tool, and calls back with the edited lines each time a
+drag ends. That is enough to make the fan map editable: the first line is the polygon's outline,
+the callback takes the convex hull of the dragged outline (`LpPolygon.hullOf`, so a corner dragged
+inwards is dropped rather than refused) and redraws the grid for the new polygon under the same
+viewer name. Choose the pencil tool, then drag a corner of the white outline.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/lp_curves/fan_map_editable.png" wait="5.0" capture="box" open-outputs="true" padding="14"}
+:::static
+fun redraw(polygon: LpPolygon) {
+    val grid = polygon.fanMap().grid(thetas = 72, logMus = 30)
+    val outline = polylineFrom(polygon.vertices, closed = true).also {
+        it.color = vec(1.0, 1.0, 1.0, 0.95)
+        it.thickness = 2.0
+    }
+    threeLines(
+        [outline] + grid.thetaLines(every = 2, alpha = 0.7) + grid.muLines(every = 3),
+        channel = "main",
+        name = "fan-map",
+        height = 520,
+        width = 620,
+        editable = true,
+        // Runs once each time a drag ends, with copies of every line as edited.
+        onEditCommitted = { edited -> redraw(LpPolygon.hullOf(edited[0])) },
+    )
+}
+
+redraw(LpPolygon([vec(-2.0, -1.0), vec(1.5, -1.5), vec(3.0, 1.0), vec(0.5, 2.5), vec(-2.5, 1.5)]))
+```
+
+![A three-dimensional viewer, seen at an angle over a ground grid, showing the white pentagon outline with its rainbow central paths and grey rings, and the camera and pencil tools at the left of its toolbar](assets/lp_curves/fan_map_editable.png)
+
+The callback runs when a drag ends, not while it moves, and the grid is recomputed then; at this
+size that takes a few milliseconds. Only `threeLines` has this callback. A `three { }` scene and a
+plane figure (`showPlane`) can be panned and zoomed but not edited, and `Box.lines(...,
+editable = true)` lets you drag points but has no callback: read its lines with
+`currentLines()` on the value it returns. The starting point
+[lp_curves](agent_transcripts.md#lp_curves) has this box as `lp_fan_map`.
+
 ## In three dimensions
 
 Everything above works in space too. A three-dimensional linear program maximises `c·x` over a
@@ -575,6 +748,9 @@ in one box and the turning fan in another.
 | `polygon.centralPath(direction, weights, samples, muHigh, muLow, start, warm)` | the log-barrier central path, `LpTrajectory`; `warm` reuses a previous path's samples as Newton starts |
 | `LpContinuation().centralPath(polygon, direction, ...)` | a central path warm-started from the previous call's, for animation |
 | `polygon.centralFan(angles, samples, weights)` | one central path per direction round the circle, `List<LpTrajectory>` |
+| `polygon.fanMap(weights)` | `LpFanMap`, the fan as a map `x(θ, log μ)`: `at(theta, logMu, near)` gives an `LpFanPoint` with `dxdTheta`, `dxdLogMu` and `jacobianDeterminant` |
+| `fanMap.grid(thetas, logMus, logMuHigh, logMuLow)` | `LpFanGrid`: `thetaLines()` (central paths) and `muLines()` (rings) as `FLine`s |
+| `fanMap.warp(line, stepsPerSegment)` | an `FLine` drawn in the (θ, log μ) plane, carried into the polygon |
 | `polygon.primalDual(direction)` | Mehrotra predictor–corrector iterates, `LpTrajectory` |
 | `polygon.pdhg(direction, iterations, tau, sigma, theta)` | `LpPdhgTrace`: the primal walk and every dual vector |
 | `polygon.ellipsoid(direction, iterations)` | `LpEllipsoidTrace`: centres and `LpEllipse`s |
@@ -612,7 +788,10 @@ In three dimensions:
     optimum, that weights move the path, the Chebyshev centre against a rectangle and a 3-4-5
     triangle, the volumetric centre's vanishing gradient, and that a warm-started path matches the
     cold one in at most 85% of the Newton steps, and that `LpPolygon.hull` drops interior, repeated
-    and collinear points and returns a counter-clockwise hull. Figures pass `yUp = true` to `showPlaneGrid` and
+    and collinear points and returns a counter-clockwise hull. `LpFanMapTest.kt` checks the fan map's analytic Jacobian
+    against central differences, that its points are the central path's samples, that the
+    determinant stays positive and falls toward the centre and the corners, that grid and warp
+    points stay inside, and that the warm-started grid agrees with cold starts. Figures pass `yUp = true` to `showPlaneGrid` and
     `showPlane`, so +y is up the page, as in the maths. The animated starting point is
     `dev_docs/agents/transcripts/lp_curves.yaml`.
 

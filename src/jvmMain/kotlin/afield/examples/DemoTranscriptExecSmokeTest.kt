@@ -309,7 +309,8 @@ object DemoTranscriptExecSmokeTest {
         // closed contours and reports the numbers, all through showPlaneGrid.
         "close_node_demo",
         // lp_curves.md's companion: LP methods as curve generators over LpPolygon, drawn through
-        // showPlaneGrid / showPlane. The second box ends in `animate { }` and is launched. CPU only.
+        // showPlaneGrid / showPlane. The second box ends in `animate { }` and is launched; the third
+        // draws the fan map in an editable threeLines viewer. CPU only.
         "lp_curves",
         // lp_curves.md's 3-D section companion: the same methods over LpPolytope, drawn through `three { }`
         // (a Three.js payload sent to display), so no Window and no Renderer. Both boxes execute.

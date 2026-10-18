@@ -346,6 +346,7 @@
   {"doc": "loris_partial_explorer", "box": "loris_source_and_partials", "codeSha256": "d5bcea7b85fefeaf", "codeLines": 38, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "loris_partial_explorer", "box": "loris_spectral_whirlpool", "codeSha256": "a29b3d7c993e7a94", "codeLines": 65, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "loris_partial_explorer", "box": "loris_two_resolutions", "codeSha256": "ddd070233b46946a", "codeLines": 33, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "lp_curves", "box": "lp_fan_map", "codeSha256": "b727d85d4ba18318", "codeLines": 20, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "lp_curves", "box": "lp_routes", "codeSha256": "5f20d10634806b99", "codeLines": 36, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "lp_curves", "box": "lp_turning", "codeSha256": "9c55ba903f7e47f9", "codeLines": 62, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "lp_curves_3d", "box": "lp3_fan", "codeSha256": "9f0a5da63fb3330a", "codeLines": 17, "receivers": ["afield.document.graph.Box"], "preamble": ""},
