@@ -106,7 +106,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Keep downloaded examples local and preserve their sampling contracts](../box_code_adoption_batch_52/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **333 of 405 findings addressed**; 72 remain open. These counts do not claim
+| [Release Csound listeners and held notes with their controlling run](../box_code_adoption_batch_53/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **336 of 405 findings addressed**; 69 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 

@@ -194,7 +194,9 @@ println(pluck.channel("level")) // what chnset last wrote
     pluck.event("i \"Pluck\" ${k * 0.5} 0.5 $note -12") // p-fields from Kotlin values
 }
 
-pluck.onOutvalue("level") { v -> println("Reverb rms $v") } // outvalue "level", krms
+// The orchestra can keep playing after this controlling box stops.
+val run = requireNotNull(afield.runtime.lifecycle.RunScope.current())
+run.own(pluck.onOutvalue("level") { v -> println("Reverb rms $v") }) // outvalue "level", krms
 pluck.setInvalue("gain", 0.5) // invalue "gain"
 pluck.noteOn(0, 64, 90) // MIDI, to massign'ed instruments
 ```
