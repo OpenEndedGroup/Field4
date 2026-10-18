@@ -1173,6 +1173,22 @@
     "2f08a46f3b63-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_41/README.md"
+    },
+    "0aefe1d7c786-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_42/README.md"
+    },
+    "0aefe1d7c786-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_42/README.md"
+    },
+    "e7aa0b16f15f-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_42/README.md"
+    },
+    "e85075e73aab-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_42/README.md"
     }
   },
   "batches": [
@@ -1216,7 +1232,20 @@
     "../box_code_adoption_batch_38/README.md",
     "../box_code_adoption_batch_39/README.md",
     "../box_code_adoption_batch_40/README.md",
-    "../box_code_adoption_batch_41/README.md"
+    "../box_code_adoption_batch_41/README.md",
+    "../box_code_adoption_batch_42/README.md"
   ],
-  "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups."
+  "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
+  "preparation": {
+    "batch": 43,
+    "evidence": "build/box-code-revision/adoption-43/preparation.json",
+    "serviceSource": "/Users/marc/field4/services/field-audio-ai",
+    "serviceCommit": "8ffcb6b545fe04d3138192eec703fcaadb2d64c5",
+    "apiPort": 18765,
+    "apiSession": 57004,
+    "privateProject": "build/box-code-revision/adoption-43/field-audio-project",
+    "analysisEnvironment": "build/box-code-revision/adoption-43/analysis-env",
+    "analysisInstallSession": 44411,
+    "state": "Real API healthy on private port using a clean matching pinned service checkout. Analysis dependencies installed in private env; worker still needs to start on 18767. Default ports/foreign services untouched. No jobs claimed yet. CPU Field hosts through9712 shut down."
+  }
 }
