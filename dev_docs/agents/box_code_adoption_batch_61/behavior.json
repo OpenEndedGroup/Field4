@@ -1,0 +1,12 @@
+{
+  "actualNativeFullDependentGraph": true,
+  "sourceRerunThenDownstream": true,
+  "sourceAndReductionNestingPreserved": true,
+  "pixelIdenticalModes": [
+    "aperture",
+    "sharp",
+    "radius guide"
+  ],
+  "modesProduceDifferentPixels": true,
+  "limits": "Uses existing private renderer/window; all other authored producer, filter, composite and analytic sprite bodies/shaders are replayed. No public media replaced."
+}
