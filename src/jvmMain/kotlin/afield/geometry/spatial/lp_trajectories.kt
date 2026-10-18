@@ -176,8 +176,14 @@ data class LpSample(
     val position: Vec2 get() = vec(x, y)
 }
 
-/** A method's whole walk, in order. [method] names the method that produced it. */
-class LpTrajectory(val method: String, val samples: List<LpSample>) {
+/**
+ * A method's whole walk, in order. [method] names the method that produced it.
+ *
+ * [solverSteps] counts the inner solver's work where there is one: the damped Newton steps taken
+ * over the whole of [centralPath]. It is how a warm start ([LpContinuation]) shows what it saved;
+ * methods without an inner solver leave it at 0.
+ */
+class LpTrajectory(val method: String, val samples: List<LpSample>, val solverSteps: Int = 0) {
     /** The final iterate. */
     val last: LpSample get() = samples.last()
 
@@ -225,12 +231,23 @@ class LpPdhgTrace(val trajectory: LpTrajectory, val duals: List<DoubleArray>)
 /** [cuttingPlanes]'s result: the centres, and the region still in play at every step. */
 class LpCuttingPlaneTrace(val trajectory: LpTrajectory, val regions: List<List<Vec2>>)
 
-/** The two centres [cuttingPlanes] can cut through. */
+/** The centres [cuttingPlanes] can cut through. */
 enum class LpCenter {
     /** The analytic centre: the maximiser of `Σ ln slackᵢ` over the region's constraints, cuts included. */
     ANALYTIC,
     /** The centroid (centre of gravity) of the region that remains. */
     CENTROID,
+    /**
+     * The Chebyshev centre: the centre of the largest disc inside the region. Only the constraints
+     * the disc touches decide it, so a cut that misses the disc does not move it.
+     */
+    CHEBYSHEV,
+    /**
+     * Vaidya's volumetric centre: the minimiser of `½ ln det ∇²(−Σ ln slackᵢ)` over the region's
+     * constraints, cuts included. It weighs each constraint by its leverage, so a crowd of nearly
+     * parallel cuts counts for less than it does at the analytic centre.
+     */
+    VOLUMETRIC,
 }
 
 private fun unit(direction: Vec2): DoubleArray {
@@ -252,7 +269,7 @@ private fun closedPolyline(points: List<Vec2>, color: Vec4, thickness: Double): 
 /*
 Damped Newton on  f(x) = c·x + mu Σ wᵢ ln(bᵢ − nᵢ·x)  over half-planes given as arrays. The
 Hessian is 2×2 and negative definite inside, so the step is solved in closed form. Returns the
-maximiser, starting from a strictly feasible (x0, y0).
+maximiser, starting from a strictly feasible (x0, y0), as (x, y, Newton steps taken).
 */
 private fun barrierNewton(
     nx: DoubleArray, ny: DoubleArray, b: DoubleArray, w: DoubleArray,
@@ -260,6 +277,8 @@ private fun barrierNewton(
 ): DoubleArray {
     var x = x0
     var y = y0
+    var steps = 0
+    fun done() = doubleArrayOf(x, y, steps.toDouble())
     fun value(px: Double, py: Double): Double {
         var v = cx * px + cy * py
         for (i in nx.indices) {
@@ -290,7 +309,8 @@ private fun barrierNewton(
         val dx = (hyy * gx - hxy * gy) / det
         val dy = (hxx * gy - hxy * gx) / det
         val decrement = gx * dx + gy * dy
-        if (decrement < 1e-18) return doubleArrayOf(x, y)
+        if (decrement < 1e-18) return done()
+        steps++
         val before = value(x, y)
         var alpha = 1.0
         var accepted = false
@@ -304,9 +324,38 @@ private fun barrierNewton(
             }
             alpha *= 0.5
         }
-        if (!accepted) return doubleArrayOf(x, y)
+        if (!accepted) return done()
     }
-    return doubleArrayOf(x, y)
+    return done()
+}
+
+/*
+The Newton decrement gᵀH⁻¹g of the barrier objective at (x, y): how far, in Newton's own measure,
+the point is from the maximiser for this μ. Infinite outside. Used to pick the better of two starts.
+*/
+private fun barrierDecrement(
+    nx: DoubleArray, ny: DoubleArray, b: DoubleArray, w: DoubleArray,
+    cx: Double, cy: Double, mu: Double, x: Double, y: Double,
+): Double {
+    var gx = cx
+    var gy = cy
+    var hxx = 0.0
+    var hxy = 0.0
+    var hyy = 0.0
+    for (i in nx.indices) {
+        val s = b[i] - nx[i] * x - ny[i] * y
+        if (s <= 0.0) return Double.POSITIVE_INFINITY
+        val z = mu * w[i] / s
+        gx -= z * nx[i]
+        gy -= z * ny[i]
+        val q = z / s
+        hxx += q * nx[i] * nx[i]
+        hxy += q * nx[i] * ny[i]
+        hyy += q * ny[i] * ny[i]
+    }
+    val det = hxx * hyy - hxy * hxy
+    if (!(det > 0.0) || !det.isFinite()) return Double.POSITIVE_INFINITY
+    return (gx * (hyy * gx - hxy * gy) + gy * (hxx * gy - hxy * gx)) / det
 }
 
 private fun LpPolygon.checkedWeights(weights: DoubleArray?): DoubleArray {
@@ -329,6 +378,12 @@ private fun LpPolygon.checkedWeights(weights: DoubleArray?): DoubleArray {
  *
  * @param samples how many values of μ, at least 2.
  * @param start where Newton starts for the first μ; must be strictly inside.
+ * @param warm a previous central path with the same [samples] (typically for a slightly different
+ *   polygon, direction or weights). Newton for each μ then starts from that path's sample at the
+ *   same μ instead of from this path's previous sample, whenever its Newton decrement says it is
+ *   the closer of the two. The answer is the same — each sample is the unique barrier maximiser — but it takes
+ *   fewer Newton steps when the change is small ([LpTrajectory.solverSteps]). [LpContinuation]
+ *   threads this through an animation for you.
  */
 fun LpPolygon.centralPath(
     direction: Vec2,
@@ -337,18 +392,81 @@ fun LpPolygon.centralPath(
     muHigh: Double = 1000.0,
     muLow: Double = 1e-5,
     start: Vec2 = center,
+    warm: LpTrajectory? = null,
 ): LpTrajectory {
     require(samples >= 2) { "centralPath needs at least 2 samples, got $samples" }
     require(muHigh > muLow && muLow > 0.0) { "centralPath needs muHigh > muLow > 0, got $muHigh and $muLow" }
     require(containsStrictly(start.x.toDouble(), start.y.toDouble())) { "centralPath must start strictly inside the polygon; $start is not" }
     val c = unit(direction)
     val w = checkedWeights(weights)
+    val guide = warm?.samples?.takeIf { it.size == samples }
     var p = doubleArrayOf(start.x.toDouble(), start.y.toDouble())
-    return LpTrajectory("central-path", List(samples) { k ->
+    var steps = 0
+    val out = List(samples) { k ->
         val mu = exp(ln(muHigh) + (ln(muLow) - ln(muHigh)) * k / (samples - 1))
-        p = barrierNewton(normalX, normalY, bound, w, c[0], c[1], mu, p[0], p[1])
+        // Start from whichever of the previous path's sample and this path's last one Newton
+        // judges closer, so a warm start is never worse than following the path itself.
+        val hint = guide?.get(k)?.takeIf {
+            barrierDecrement(normalX, normalY, bound, w, c[0], c[1], mu, it.x, it.y) <
+                barrierDecrement(normalX, normalY, bound, w, c[0], c[1], mu, p[0], p[1])
+        }
+        p = if (hint != null) barrierNewton(normalX, normalY, bound, w, c[0], c[1], mu, hint.x, hint.y)
+        else barrierNewton(normalX, normalY, bound, w, c[0], c[1], mu, p[0], p[1])
+        steps += p[2].toInt()
         sample(c, p[0], p[1], k, mu, "central-path")
-    })
+    }
+    return LpTrajectory("central-path", out, steps)
+}
+
+/**
+ * A warm-started [centralPath] for a polygon, direction or weights that move smoothly between
+ * calls — an animation's frames. From the third call on it extrapolates each sample linearly from
+ * the previous two paths (`2·last − before`, a secant predictor) and passes that as
+ * [centralPath]'s `warm`; on the second call it passes the previous path itself. Newton then starts
+ * next to the answer and needs fewer steps than following the path cold, for the same path.
+ * [last] is the latest path and [lastSteps] its Newton step count; [reset] forgets the history,
+ * which a jump should do. A prediction that does not fit (a different sample count, or a sample
+ * Newton judges further off than the path's own previous sample) is ignored, so a jump costs a
+ * cold start and nothing else.
+ */
+class LpContinuation {
+    /** The path the previous call returned, or `null` before the first call and after [reset]. */
+    var last: LpTrajectory? = null
+        private set
+
+    private var before: LpTrajectory? = null
+
+    /** Newton steps the previous call took. */
+    val lastSteps: Int get() = last?.solverSteps ?: 0
+
+    /** [polygon]'s central path for [direction], warm-started from the previous calls'. */
+    fun centralPath(
+        polygon: LpPolygon,
+        direction: Vec2,
+        weights: DoubleArray? = null,
+        samples: Int = 160,
+        muHigh: Double = 1000.0,
+        muLow: Double = 1e-5,
+    ): LpTrajectory {
+        val a = last
+        val b = before
+        val guess = if (a != null && b != null && a.samples.size == b.samples.size)
+            LpTrajectory("prediction", a.samples.indices.map { k ->
+                val s = a.samples[k]
+                s.copy(x = 2.0 * s.x - b.samples[k].x, y = 2.0 * s.y - b.samples[k].y)
+            })
+        else a
+        val path = polygon.centralPath(direction, weights, samples, muHigh, muLow, warm = guess)
+        before = a
+        last = path
+        return path
+    }
+
+    /** Forget the previous paths, so the next call starts cold. */
+    fun reset() {
+        last = null
+        before = null
+    }
 }
 
 /**
@@ -616,6 +734,100 @@ private fun clipConvex(region: List<DoubleArray>, nx: Double, ny: Double, b: Dou
     return out
 }
 
+/*
+The Chebyshev centre of { x : nᵢ·x ≤ bᵢ } with unit normals: maximise r subject to nᵢ·x + r ≤ bᵢ.
+That is a three-variable LP whose bounded optimum has three tight constraints, so for the few
+dozen constraints a cutting-plane run accumulates it is enough to solve each triple's 3×3 system
+(Cramer's rule) and keep the feasible solution with the largest r. Returns (x, y, r).
+*/
+internal fun chebyshevCenter(nx: DoubleArray, ny: DoubleArray, b: DoubleArray): DoubleArray {
+    val m = nx.size
+    var best: DoubleArray? = null
+    for (i in 0 until m) for (j in i + 1 until m) for (k in j + 1 until m) {
+        val det = nx[i] * (ny[j] - ny[k]) - ny[i] * (nx[j] - nx[k]) + (nx[j] * ny[k] - nx[k] * ny[j])
+        if (abs(det) < 1e-12) continue
+        val dx = b[i] * (ny[j] - ny[k]) - ny[i] * (b[j] - b[k]) + (b[j] * ny[k] - b[k] * ny[j])
+        val dy = nx[i] * (b[j] - b[k]) - b[i] * (nx[j] - nx[k]) + (nx[j] * b[k] - nx[k] * b[j])
+        val dr = nx[i] * (ny[j] * b[k] - ny[k] * b[j]) - ny[i] * (nx[j] * b[k] - nx[k] * b[j]) + b[i] * (nx[j] * ny[k] - nx[k] * ny[j])
+        val x = dx / det
+        val y = dy / det
+        val r = dr / det
+        if (r <= 0.0 || (best != null && r <= best[2])) continue
+        val tolerance = 1e-9 * (1.0 + abs(r))
+        if ((0 until m).all { nx[it] * x + ny[it] * y + r <= b[it] + tolerance }) best = doubleArrayOf(x, y, r)
+    }
+    return checkNotNull(best) { "chebyshevCenter: the region has no interior" }
+}
+
+/*
+Vaidya's volumetric centre: minimise V(x) = ½ ln det H(x), H = Σ aᵢaᵢᵀ / sᵢ², over the interior.
+∇V = Σ σᵢ aᵢ / sᵢ with leverages σᵢ = aᵢᵀH⁻¹aᵢ / sᵢ²; the Newton step uses Vaidya's
+approximation Q = Σ σᵢ aᵢaᵢᵀ / sᵢ² of the Hessian (Q ≼ ∇²V ≼ 5Q), with backtracking on V, from
+a strictly feasible start (the analytic centre).
+*/
+internal fun volumetricCenter(nx: DoubleArray, ny: DoubleArray, b: DoubleArray, x0: Double, y0: Double, maxIterations: Int = 100): DoubleArray {
+    var x = x0
+    var y = y0
+    fun hessian(px: Double, py: Double): DoubleArray? {
+        var hxx = 0.0
+        var hxy = 0.0
+        var hyy = 0.0
+        for (i in nx.indices) {
+            val s = b[i] - nx[i] * px - ny[i] * py
+            if (s <= 0.0) return null
+            val q = 1.0 / (s * s)
+            hxx += q * nx[i] * nx[i]
+            hxy += q * nx[i] * ny[i]
+            hyy += q * ny[i] * ny[i]
+        }
+        return doubleArrayOf(hxx, hxy, hyy)
+    }
+    fun value(px: Double, py: Double): Double {
+        val h = hessian(px, py) ?: return Double.POSITIVE_INFINITY
+        return 0.5 * ln(h[0] * h[2] - h[1] * h[1])
+    }
+    repeat(maxIterations) {
+        val h = hessian(x, y) ?: return doubleArrayOf(x, y)
+        val det = h[0] * h[2] - h[1] * h[1]
+        var gx = 0.0
+        var gy = 0.0
+        var qxx = 0.0
+        var qxy = 0.0
+        var qyy = 0.0
+        for (i in nx.indices) {
+            val s = b[i] - nx[i] * x - ny[i] * y
+            val leverage = (h[2] * nx[i] * nx[i] - 2.0 * h[1] * nx[i] * ny[i] + h[0] * ny[i] * ny[i]) / det / (s * s)
+            gx += leverage * nx[i] / s
+            gy += leverage * ny[i] / s
+            val q = leverage / (s * s)
+            qxx += q * nx[i] * nx[i]
+            qxy += q * nx[i] * ny[i]
+            qyy += q * ny[i] * ny[i]
+        }
+        val qdet = qxx * qyy - qxy * qxy
+        if (!(qdet > 0.0) || !qdet.isFinite()) return doubleArrayOf(x, y)
+        val dx = -(qyy * gx - qxy * gy) / qdet
+        val dy = -(qxx * gy - qxy * gx) / qdet
+        val decrement = -(gx * dx + gy * dy)
+        if (decrement < 1e-18) return doubleArrayOf(x, y)
+        val before = value(x, y)
+        var accepted = false
+        var alpha = 1.0
+        for (tries in 0 until 80) {
+            val after = value(x + alpha * dx, y + alpha * dy)
+            if (after.isFinite() && after <= before - 1e-4 * alpha * decrement) {
+                x += alpha * dx
+                y += alpha * dy
+                accepted = true
+                break
+            }
+            alpha *= 0.5
+        }
+        if (!accepted) return doubleArrayOf(x, y)
+    }
+    return doubleArrayOf(x, y)
+}
+
 private fun areaAndCentroid(region: List<DoubleArray>): DoubleArray {
     var a2 = 0.0
     var cx = 0.0
@@ -637,7 +849,9 @@ private fun areaAndCentroid(region: List<DoubleArray>): DoubleArray {
  * objective (`c·x ≥ c·centre`), and repeat. With [LpCenter.ANALYTIC] the centre is the analytic
  * centre of every constraint so far, cuts included, so earlier cuts keep pushing on the path just
  * as extra constraints push a central path; with [LpCenter.CENTROID] it is the centre of gravity,
- * which removes at least `1 − (2/3)²` of the area each step. The trajectory approaches the optimal
+ * which removes at least `1 − (2/3)²` of the area each step; with [LpCenter.CHEBYSHEV] it is the
+ * centre of the largest inscribed disc, and with [LpCenter.VOLUMETRIC] Vaidya's volumetric centre
+ * of every constraint so far. The trajectory approaches the optimal
  * vertex from inside; it stops when the remaining area falls below [minArea] or after
  * [iterations]. [LpSample.scale] is the remaining area, and [LpCuttingPlaneTrace.regions] holds
  * the region at every step.
@@ -661,12 +875,17 @@ fun LpPolygon.cuttingPlanes(
         val area = abs(ac[0])
         val p = when (center) {
             LpCenter.CENTROID -> doubleArrayOf(ac[1], ac[2])
-            LpCenter.ANALYTIC -> {
+            LpCenter.ANALYTIC, LpCenter.VOLUMETRIC -> {
                 // The region's vertex mean is strictly inside it, so Newton can start there.
                 val sx = region.sumOf { it[0] } / region.size
                 val sy = region.sumOf { it[1] } / region.size
-                barrierNewton(nx.toDoubleArray(), ny.toDoubleArray(), b.toDoubleArray(), DoubleArray(nx.size) { 1.0 }, 0.0, 0.0, 1.0, sx, sy)
+                val ax = nx.toDoubleArray()
+                val ay = ny.toDoubleArray()
+                val bounds = b.toDoubleArray()
+                val analytic = barrierNewton(ax, ay, bounds, DoubleArray(ax.size) { 1.0 }, 0.0, 0.0, 1.0, sx, sy)
+                if (center == LpCenter.ANALYTIC) analytic else volumetricCenter(ax, ay, bounds, analytic[0], analytic[1])
             }
+            LpCenter.CHEBYSHEV -> chebyshevCenter(nx.toDoubleArray(), ny.toDoubleArray(), b.toDoubleArray())
         }
         samples.add(sample(c, p[0], p[1], k, area, "cutting-plane"))
         regions.add(region.map { vec(it[0], it[1]) })
