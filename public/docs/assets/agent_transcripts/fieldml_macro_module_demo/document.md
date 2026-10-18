@@ -14,32 +14,16 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 From `code`
 
-Scaffolding, and there is now exactly ONE reason it is Kotlin.
-
-`Renderer.run` is a `suspend` member: on the JVM it is `run(Continuation)`, and
-FieldML can *satisfy* a suspend function type but still cannot *call into* one --
-it has no continuation to pass and nowhere to resume. That is the whole of it.
-
-`prop` and `once` used to be the other reason, and they are not any more: they are
-source macros, mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md, and reachable from
-FieldML since 2026-08-20. They are still written in Kotlin here only because this
-box has to exist anyway.
+Kotlin owns the renderer loop: FieldML cannot call the suspend member Renderer.run.
+The FieldML child builds the scene; launch this parent first to publish its renderer.
 
 ```edn [field-box id="fieldml-macromod-renderer" role="properties"]
-{"id" "fieldml-macromod-renderer" "index" 0 "name" "window and renderer (Kotlin)" "parents" ["root"] "children" ["fieldml-macromod-root"] "properties" {"children" #{#afield/box "fieldml-macromod-root"} "parents" #{#afield/box "root"} "name" "window and renderer (Kotlin)" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-macromod-renderer_code_.kt" "lines" 18 "characters" 822 "sha256" "d699789ef6583bcee7b709b2095664b1a60f6a72402ad1ae471b11a49447bd19"}]}
+{"id" "fieldml-macromod-renderer" "index" 0 "name" "window and renderer (Kotlin)" "parents" ["root"] "children" ["fieldml-macromod-root"] "properties" {"children" #{#afield/box "fieldml-macromod-root"} "parents" #{#afield/box "root"} "name" "window and renderer (Kotlin)" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-macromod-renderer_code_.kt" "lines" 10 "characters" 392 "sha256" "0f7bf2905c040b87aadbddd20531cada42b9ce2ed832e739ce8b686ba18885e3"}]}
 ```
 
 ```kotlin [field-property box="fieldml-macromod-renderer" name="code" path="fieldml-macromod-renderer_code_.kt"]
-// Scaffolding, and there is now exactly ONE reason it is Kotlin.
-//
-// `Renderer.run` is a `suspend` member: on the JVM it is `run(Continuation)`, and
-// FieldML can *satisfy* a suspend function type but still cannot *call into* one --
-// it has no continuation to pass and nowhere to resume. That is the whole of it.
-//
-// `prop` and `once` used to be the other reason, and they are not any more: they are
-// source macros, mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md, and reachable from
-// FieldML since 2026-08-20. They are still written in Kotlin here only because this
-// box has to exist anyway.
+// Kotlin owns the renderer loop: FieldML cannot call the suspend member Renderer.run.
+// The FieldML child builds the scene; launch this parent first to publish its renderer.
 prop<Window>(window)
 prop<Renderer>(renderer)
 once.renderer {

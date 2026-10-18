@@ -13,23 +13,23 @@ import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/*
- * Fits ordinary cubics to Hyperbezier curves, so the nicer curve family is usable everywhere an
- * FLine already accepts a cubic.
+/**
+ * Fits ordinary cubics to [Hyperbezier] curves, so that family is usable everywhere an [FLine]
+ * already accepts a cubic.
  *
- * A hyperbezier is specified exactly the way a cubic Bezier is -- a start, two control points, an
- * end -- but it is a different curve through that polygon: one whose curvature varies smoothly, and
- * which is an exact circular arc or Euler spiral when the arms are "circle-like" (see circleArm).
- * Push the arms out past that and the curve tightens into a corner instead of bulging. What it will
- * not do is the cubic's double inflection, which is what a single cubic can express and a
- * hyperbezier cannot.
+ * A hyperbezier is specified exactly the way a cubic Bezier is: a start, two control points, an end.
+ * It is a different curve through that polygon, one whose curvature varies smoothly, and it is an
+ * exact circular arc or Euler spiral when the arms are "circle-like" (see [circleArm]). Push the
+ * arms out past that and the curve tightens into a corner instead of bulging. What it will not do is
+ * the cubic's double inflection: a hyperbezier has at most one.
  *
- * Nothing downstream of an FLine needs to know any of that: fitHyperbezierCubics hands back a
- * handful of ordinary cubics, G1-continuous by construction because every join uses the
- * hyperbezier's own tangent.
+ * Nothing downstream of an FLine needs to know any of that. [fitHyperbezierCubics] hands back a
+ * handful of ordinary cubics, G1-continuous by construction because every join is pinned to the
+ * hyperbezier's own tangent there. To draw one, use [FLine.hyperbezierTo] in place of
+ * [FLine.cubicTo], or [hyperbezierBetween] for a whole line from one control polygon and
+ * [hyperbezierThrough] to run a curve through a list of points.
  *
- * This is a plain comment rather than KDoc on purpose: a KDoc block here would attach itself to
- * whatever declaration came next and publish this prose under that symbol's name.
+ * The curve itself, and the control-polygon-to-curve map, are in [Hyperbezier].
  */
 
 // ==================== FIT RESULTS ====================

@@ -31,10 +31,14 @@ expect:
     - "CompiledSnippet tests passed"
 */
 /**
- * Test for CompiledSnippet functionality - compile once, evaluate many times
- * 
- * This follows the repo's lightweight "runnable object" style instead of JUnit.
+ * Smoke test of [KotlinInterface.CompiledSnippet]: compile a snippet once, then evaluate it many times.
+ *
+ * It covers a basic compile and evaluate, repeated evaluations of one compiled snippet, snippets
+ * that read variables, and the compile-error and evaluation-error paths. It is a runnable object
+ * rather than a JUnit class, run by the smoke catalog as `core.compiled-snippet.smoke`.
  */
+
+/** Entry point and case list for the compiled-snippet smoke test. */
 object CompiledSnippetTest {
 
     fun runTests(): Boolean {

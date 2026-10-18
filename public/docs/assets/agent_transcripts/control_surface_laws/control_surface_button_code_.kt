@@ -16,7 +16,8 @@ val log = mutableListOf<String>()
 controlGroup("gesture") {
     button("gate") { down ->
         log += if (down) "gate down" else "gate up"
-        println(log.takeLast(6).joinToString("  "))
+        if (log.size > 6) log.removeAt(0)
+        println(log.joinToString("  "))
     }
     checkbox("bypass", initialValue = false) { on ->
         println("bypass ${if (on) "on" else "off"}")

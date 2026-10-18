@@ -1,5 +1,14 @@
 package afield.graphics.vulkan.imgui
 
+/**
+ * A world-space rectangle that shows an [ImGuiRenderToTexture] in VR and turns controller rays into
+ * ImGui pointer input.
+ *
+ * Place the panel with [ImGuiPanel.place] or [ImGuiPanel.faceToward], raycast it with
+ * [ImGuiPanel.raycast] or [ImGuiPanel.interact], and draw its quad with the per-eye matrix from
+ * [ImGuiPanel.panelMvp]. `afield.examples.four.ImGuiVrPanelDemo` is a worked example.
+ */
+
 import afield.graphics.vulkan.targets.OpenXRHmdTarget.ControllerState
 import afield.math.linalg.Matrix4f
 import afield.math.linalg.Vector3f

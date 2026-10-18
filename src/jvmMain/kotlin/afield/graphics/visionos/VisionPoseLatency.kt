@@ -15,10 +15,9 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * Where the time goes between a head moving and the resulting image reaching it.
  *
- * The plan asks for this before any optimisation, on the grounds that latency debugging becomes
- * archaeology otherwise. The point is not one number — it is **attribution**, because the plausible
+ * This attributes latency to stages rather than reporting one number, because the plausible
  * explanations for "it feels laggy" are spread across five machines' worth of stages and at least two
- * of them are deliberate.
+ * of them are buffering by design.
  *
  * ## Two clocks, and why the headline number needs neither reconciled
  *
@@ -34,9 +33,9 @@ import java.util.concurrent.atomic.AtomicLong
  * trip rather than an average: the minimum is the one least polluted by queuing in either direction,
  * and averaging RTTs on a contended Wi-Fi link estimates the contention, not the offset.
  *
- * ## What is deliberate, and must not be read as a fault
+ * ## Delays by design, not faults
  *
- * The receiver runs a jitter buffer (`RTTStream.bufferFrames`) that holds frames on purpose so that
+ * The receiver runs a jitter buffer (`RTTStream.bufferFrames`) that holds frames so that
  * network jitter does not become dropped frames. It is reported as its own span. Without that split,
  * the buffer doing exactly its job looks like the network being slow, and the obvious "fix" —
  * shrinking it — trades smoothness for a better number.
@@ -52,6 +51,7 @@ import java.util.concurrent.atomic.AtomicLong
  * compositor frame. That closes when the present path moves to Compositor Services, which is also
  * what makes reprojection possible; it is not worth faking before then.
  */
+
 object VisionPoseLatency {
 
     const val PING = "visionpose/ping"

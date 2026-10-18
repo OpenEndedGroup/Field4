@@ -5,6 +5,7 @@ R=Path(__file__).resolve().parents[3];H=Path(__file__).resolve().parent;OUT=R/'b
 s=importlib.util.spec_from_file_location('rig43',H.parent/'box_code_adoption_batch_26/rehearse.py');n=importlib.util.module_from_spec(s);s.loader.exec_module(n);m=n.m;m.PORT=9713;m.OUT=OUT/'spectral-runtime';m.OUT.mkdir(parents=True,exist_ok=True)
 async def main():
  text=(R/'public/docs/audio_ai_spectral_embeddings.md').read_text();code=re.search(r'```diffstatic \{data-lang=kotlin\}\n([\s\S]*?)\n```',text)[1]
+ code=m.extract_static_code(lines=code.splitlines())
  code=code.replace('FieldAudioClient()','FieldAudioClient("http://127.0.0.1:18765")').replace('"near_drowning.wav"','"readability43-test.wav"').replace('Path.of(System.getProperty("user.home"), "Downloads", "readability43-test.wav")','Path.of('+json.dumps(str(OUT/'readability43-test.wav'))+')')
  code=code.replace('runAsync(', 'val spectralExercise = runAsync(',1).replace('    },\n    onError =','        display("test done", "spectral completed")\n    },\n    onError =',1).replace('onError = { failure ->','onError = { failure -> display("test done", "spectral failed");',1)
  await m.program('spectral-page',code)

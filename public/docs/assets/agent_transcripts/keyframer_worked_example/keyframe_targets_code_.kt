@@ -3,9 +3,6 @@ A KeyframeScope holds no values of its own. It holds *targets*: places to read f
 write to. The simplest is a uniform Structure — and none of this needs a GPU, because
 Structure is constructible bare and bind/bindings are plain maps.
 */
-import afield.graphics.vulkan.buffers.Structure
-import afield.animation.keyframes.KeyframeScope
-
 val glow = Structure()
 val blur = Structure()
 glow.bind("radius") { 4.0f }
@@ -78,12 +75,12 @@ markdown(
     | blur.radius | ${bound(blur, "radius")} |
     | glow.glow@radius | ${(glow.bindings["glow@radius"]?.invoke() ?: "<unbound>").md} |
 
-    #### 4 — the bindings/values trap
+    #### 4 — capture reads bindings and plain values
 
     | binding | value |
     | --- | --- |
     | bound (via bind) | ${trap["bound"].md} |
-    | set (via values) | ${trap["set"].md} {warn:← captured as null, silently} |
+    | set (via values) | ${trap["set"].md} (plain value) |
 
     #### 5 — captured() again, then re-captured
 

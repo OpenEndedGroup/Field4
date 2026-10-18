@@ -52,6 +52,14 @@ import kotlin.script.experimental.dependencies.ExternalDependenciesResolver
 import kotlin.script.experimental.dependencies.RepositoryCoordinates
 import kotlin.script.experimental.dependencies.maven.MavenDependenciesResolver
 
+/**
+ * Adds Maven dependencies to the classpath that box code compiles against.
+ *
+ * [MavenClasspathManager] keeps a list of repositories and dependency coordinates, resolves them to
+ * jars, searches Maven Central, and checks for newer versions. It stores its state on disk so the
+ * list survives a restart, and the server's Maven requests call into it.
+ */
+
 @Serializable
 private data class StoredMavenDependency(
     val coordinate: String,

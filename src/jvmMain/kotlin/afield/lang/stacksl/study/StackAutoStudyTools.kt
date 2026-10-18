@@ -15,13 +15,20 @@ import afield.study.ui.numbers
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
-// The tools an AI4 conversation gets when it is opened on the code of a box whose shaders have
-// `{{ stack.auto.<slot> }}` slots with programs bound. Each works on one slot's study
-// (StackAutoStudies), inside the box's own shader: the end result is what the tools show.
+/**
+ * The tools an AI4 conversation gets when it is opened on the code of a box whose shaders have
+ * `{{ stack.auto.<slot> }}` slots with programs bound.
+ *
+ * Each works on one slot's study (see [StackAutoStudies]), inside the box's own shader: the end
+ * result is what the tools show.
+ */
 
+/** How to work on a stack.auto slot, or the StackSL words guide's entries matching a search term. */
 @JsonClassDescription("Read how to work on a stack.auto slot: StackSL inside someone's own shader. Call it once, before your first edit in a conversation; with search, look a word up in the StackSL words guide instead.")
 data class StackAutoSlotGuide(
-    @JsonPropertyDescription("A word or phrase to look up in the StackSL words guide; empty returns how to work on a slot") val search: String = ""
+    /** A word or phrase to look up in the StackSL words guide; empty returns how to work on a slot. */
+    @JsonPropertyDescription("A word or phrase to look up in the StackSL words guide; empty returns how to work on a slot")
+    val search: String = ""
 )
 
 @JsonClassDescription("Read a stack.auto slot's study: its program, the host shader's lines that declare and call it (what its input and output mean — the host decides, not StackSL's own frame), where the module is drawn (the window, a render target), the compiler's problems and warnings, its numbers (knobs: index, line:column, as typed, the operand the compiler took it as, the card's name in brackets, and whether it is turned live but not kept), keys, and history. slot may be empty when the box has only one. Inspect once before editing and reuse sourceHash.")

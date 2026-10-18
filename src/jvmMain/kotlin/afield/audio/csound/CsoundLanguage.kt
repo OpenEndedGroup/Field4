@@ -1,5 +1,10 @@
 @file:afield.runtime.completion.CompletionCategory("Synthesis")
 package afield.audio.csound
+/**
+ * Csound as a box Main Language: Run, Launch and Alt-Enter on `.csd` text, with opcode completion
+ * and error lines mapped back into the box.
+ */
+
 
 import afield.document.graph.Box
 import afield.runtime.execution.BoxExecution

@@ -59,8 +59,10 @@ vec4 sampleField(Field field, vec2 p) {
     vec2 grid = p / H - .5;
     ivec2 cell = ivec2(floor(grid));
     vec2 f = fract(grid);
-    return mix(mix(readCell(field, cell), readCell(field, cell + ivec2(1,0)), f.x),
-    mix(readCell(field, cell + ivec2(0,1)), readCell(field, cell + ivec2(1)), f.x), f.y);
+    // Cell-centred bilinear interpolation; readCell rejects stale tile generations.
+    vec4 lower = mix(readCell(field, cell), readCell(field, cell + ivec2(1, 0)), f.x);
+    vec4 upper = mix(readCell(field, cell + ivec2(0, 1)), readCell(field, cell + ivec2(1)), f.x);
+    return mix(lower, upper, f.y);
 }
 void storeCell(int index, vec3 value) {
     pc.target.v[index] = vec4(value, intBitsToFloat(pc.tiles.v[index / (N * N)].z));

@@ -1,3 +1,11 @@
+/**
+ * Runs a path tracer, converts its output into ray reconstruction guides, and denoises it with DLSS Ray Reconstruction, in one ordered pass.
+ *
+ * [PathTracedReconstruction] takes an uninstalled `PathTracingRenderer`, owns its dispatch and
+ * closes it. `view` selects the raw, progressive or reconstructed image, and `gpuMilliseconds`
+ * reports the GPU time of tracing, guide conversion and NGX together.
+ */
+
 package afield.media.reconstruction
 
 import afield.graphics.vulkan.Target

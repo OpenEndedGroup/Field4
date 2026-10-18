@@ -10,20 +10,18 @@ layout(std430, buffer_reference) buffer Out {
 };
 
 layout(push_constant) uniform dat {
+    // Written once: x = random phase, y = thickness variation per particle.
     Seeds seeds;
-    // written once: one random phase and radius per particle
+    // This frame's output: xy = position, z = ring index, w = particle size.
     Out outData;
-    // this frame's positions, read by the draw box
+    // Elapsed seconds.
     float time;
-    // seconds
+    // Band energies: 70 Hz kick, 340 Hz, 1.6 kHz stab harmonics, 8 kHz hats.
     float band0;
-    // 70 Hz — the kick
     float band1;
-    // 340 Hz
     float band2;
-    // 1.6 kHz — the square stab's harmonics
     float band3;
-    // 8 kHz — the hats
+    // Valid particle count; the final workgroup may include padding.
     uint count;
 } pc;
 

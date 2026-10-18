@@ -55,6 +55,7 @@ prop<CorpusPreview>(preview)
 prop<AssetRepresentation>(canonical)
 display("all jobs", fieldAudioJobMonitor(heightPixels = 330))
 
+:::fold durable job tracking
 fun tracked(run: RunScope?, label: String, request: ModelOperation): CompletableFuture<AnalysisResult> = RunScope.withCurrent(run) {
     client.trackAnalysis(
         request,
@@ -64,6 +65,8 @@ fun tracked(run: RunScope?, label: String, request: ModelOperation): Completable
         onError = {}, // The enclosing operation reports failure once.
     )
 }
+
+:::endfold
 
 runAsync<AudioAsset>(
     onResult = { source ->

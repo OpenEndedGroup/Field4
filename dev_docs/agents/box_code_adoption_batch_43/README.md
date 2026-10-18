@@ -4,7 +4,7 @@ Baseline: `5e02bad8c`. Seven findings: `77839dd1b5da-01`, `7f432af2dc54-01`, `69
 
 ## Teaching changes
 
-The beat/pitch page and starting point use `trackAnalysis` for submit/watch/await/inspect, inside an outer `runAsync` that owns lookup, child cancellation, guarded source publication and the final board. HTTP continuations explicitly re-enter the originating RunScope. Shared clients are cached; durable service jobs survive local cancellation. Errors use escaped Markdown. Source windows, algorithm parameters, dashboard dimensions, source captions and the separate illustrative gallery remain intact.
+The beat/pitch page and starting point use `trackAnalysis` for submit/watch/await/inspect, inside an outer `runAsync` that owns lookup, child cancellation, guarded source publication and the final board. HTTP continuations explicitly re-enter the originating RunScope. Shared clients are cached; durable service jobs survive local cancellation. Errors use escaped Markdown. Source windows, algorithm parameters, dashboard dimensions, source captions remain intact in the initial edit. The landing reconciliation below retains main’s newer real cached gallery.
 
 The spectral page uses the already reviewed starting-point implementation: one tracked job, one artifact and three Field-owned distance/projection fits. It retains the original distances, pooling, seeds and fit settings.
 
@@ -32,6 +32,10 @@ Actual whole-box Stop and changed-window relaunch cancel the old operation. A sh
 
 ## Mechanical coverage
 
-Actual import/ktfmt covers eleven Kotlin bodies/states, including the unchanged offline galleries. Five original transcript listOf calls become house-style collection literals. Reviewed token/container checks preserve YAML metadata, prose outside the approved edit, raw strings and fragment/fold markers. Scoped transcript compile and idiom gates pass. No GLSL body changes in this batch.
+Actual import/ktfmt covers eleven Kotlin bodies/states, including the unchanged offline galleries. The initial edit converted five original transcript listOf calls; main subsequently replaced that old illustrative gallery with real cached results, which this reconciliation retains. Reviewed token/container checks preserve YAML metadata, prose outside the approved edit, raw strings and fragment/fold markers. Scoped transcript compile and idiom gates pass. No GLSL body changes in this batch.
 
 `evidence.tar.gz` contains real verdicts and diagnostic failures. The private virtual environment, mutable service project and model cache are excluded. The full 405-finding sweep and corpus-wide mechanical coverage remain incomplete.
+
+## Landing reconciliation
+
+The original queue item `20261018-065111-codex-box-code-readability-43` bounced on four authored-source conflicts. Main had added a genuine Nancy capture contract, real cached JSON previews, output-card cleanup/opening, waveform dimensions and documentation folds. The repair uses `tools/merge_regen.py main`, retains those incoming changes and integrates the verified run ownership. The transcript live body now matches the page's executable body. The real cached gallery and all incoming operation metadata are preserved. `merge-resolution.json` records the reviewed resolution separately from the original edit; import/ktfmt and token/container verification run again. Fixture harnesses use the actual docs fold extractor, so folds never enter Kotlin as text.

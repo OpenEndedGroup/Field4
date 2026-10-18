@@ -96,6 +96,17 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 /**
+ * Output areas and controls for box code: [HasOutput] and the `display` channels, progress bars and
+ * [withProgress], [streamProcess] for running external commands into a panel, the `tree`, `column`
+ * and `logs` embeds, and the controls DSL — [slider], [checkbox], [stringInput], [colorPicker],
+ * [button], [controlGroup] and [syncToProperty].
+ *
+ * Each control renders into a named output channel (`controls` by default) and calls back into the
+ * box when the browser reports a change.
+ */
+
+
+/**
  * Receives text, display, and error output for a box or runtime.
  */
 interface HasOutput {

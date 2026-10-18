@@ -13,6 +13,14 @@ import kotlin.io.path.deleteIfExists
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
+/**
+ * Compiles Slang shaders by running an external `slangc`, to GLSL, SPIR-V and reflection JSON.
+ *
+ * [SlangCompiler] looks for the executable in `AFIELD_SLANGC`, then `-Dafield.slangc`, then the pinned
+ * download, the Vulkan SDK and `PATH`. `compileVertexFragment` and `compileSharedStage` return one
+ * [SlangStageArtifacts] per stage, ready for [Introspection].
+ */
+
 private data class SlangTargetOptions(
     val stage: String,
     val glslProfile: String,

@@ -1,3 +1,17 @@
+/**
+ * Exports a Field document to documentation pages, and the capture helpers that export uses.
+ *
+ * [exportToDocumentation] walks the boxes under a root that carry documentation metadata and writes
+ * Markdown pages with their captured assets into a docs directory. [splitKotlinIntoChunks] and
+ * [CommentCommandRewriter] cut box code into the pieces a page shows, and [format] expands a box's
+ * text into page Markdown.
+ *
+ * The rest of the file is capture plumbing: [processPng] for still images,
+ * [Window.raiseAndScreenshot], [Window.raiseAndRecord] and [captureGlfwWindow] for native renderer
+ * windows, and an ffmpeg layer ([FFMPEG], [runProcessLogged], [detectCropBox],
+ * [encodeWithCropAndMargin]) for recordings.
+ */
+
 package afield.tools.docs
 
 import afield.app.server.app
@@ -62,6 +76,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
+/** Path of the ffmpeg executable: an `AFIELD_FFMPEG`-style environment override, a standard install location, `PATH`, or bare `ffmpeg`. */
 val FFMPEG: String by lazy { locateFfmpeg() }
 
 private fun locateFfmpeg(): String {
@@ -103,7 +118,6 @@ fun coerceToDouble(orDefault: Any?): Double {
 /**
  * the idea here is that we have two kinds of ways of 'exporting' a Field + Workspace based on metadata associated with the boxes, one for humans and one for AI (incrementally resyncable)
  */
-
 // baseDirectory points to the base of the docs site, subDirectory is relative to that, where we're going to be putting things and where we're going to be putting assets associated with them
 suspend fun exportToDocumentation(
     root: Box = thisSessionInfo.get().root, baseDirectory: String, subDirectory: String, docName: String

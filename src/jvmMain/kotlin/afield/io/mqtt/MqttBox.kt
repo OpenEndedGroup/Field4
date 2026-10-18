@@ -16,6 +16,15 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
+ * The box-facing MQTT surface: `mqtt` and `mqtt(url)` return a [BoxMqtt] for publishing and
+ * subscribing, and `mqttBroker(port)` starts an embedded broker.
+ *
+ * Callbacks arrive on the main Runloop, so they can touch boxes, sliders and graphics directly.
+ * Connections and brokers outlive a stopped box and are shared by url and port; subscriptions belong
+ * to the box that made them. [MqttConnections] holds that shared state.
+ */
+
+/**
  * Process-wide MQTT state behind `Box.mqtt`: one client per broker url, the embedded brokers, and
  * the queue that brings callbacks onto the main Runloop.
  *

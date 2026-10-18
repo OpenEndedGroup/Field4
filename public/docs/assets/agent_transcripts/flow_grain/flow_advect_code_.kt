@@ -12,14 +12,10 @@ mesh.auxiliary = { pressureA }
 mesh.tiles = { tileHeaders }
 mesh.clock = { flowClock }
 mesh.emitter = { flowEmitter }
-module +=
-    "barrier" to
-        computeTask { _, cmd, _ ->
-            computeMemoryBarrier(cmd, null as VulkanBuffer?)
-            graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
-        }
-flowSimulation += "advect" to module
-loop { true }
+module += "barrier" to computeBarrier(graphics = true)
+val simulation = flowSimulation
+simulation += "advect" to module
+loop {}
     .end {
-        if (flowSimulation.modules["advect"] === module) flowSimulation.modules.remove("advect")
+        if (simulation.modules["advect"] === module) simulation.modules.remove("advect")
     }

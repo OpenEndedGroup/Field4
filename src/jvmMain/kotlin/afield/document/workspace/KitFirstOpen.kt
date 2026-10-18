@@ -12,6 +12,8 @@ import java.io.File
  * returns, once: the marker is consumed whether or not a launch succeeds, so a role that fails is not
  * relaunched on every open. Later opens run only what `autorun` asks for, as for any document.
  */
+
+/** Finds the roles a freshly copied kit document launches on its first open. */
 object KitFirstOpen {
     /** The one-time marker, in the document folder beside `metadata.edn`. */
     const val MARKER = ".kit-launch-on-open"

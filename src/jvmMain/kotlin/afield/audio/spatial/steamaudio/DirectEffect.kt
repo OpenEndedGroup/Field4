@@ -8,6 +8,13 @@ import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout
 
 /**
+ * Rendering the direct sound path: distance attenuation, air absorption, directivity,
+ * occlusion and transmission.
+ *
+ * [DirectEffect] filters one source's audio per block according to a [DirectEffectParams].
+ */
+
+/**
  * Per-block parameters for a [DirectEffect], held directly in native memory.
  *
  * Mutable view over an `IPLDirectEffectParams` struct: allocate one per source from a

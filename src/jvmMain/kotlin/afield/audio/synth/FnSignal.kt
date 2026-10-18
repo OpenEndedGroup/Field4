@@ -4,6 +4,13 @@ package afield.audio.synth
 import afield.math.functions.Functions
 
 /**
+ * Plays a [Functions.Fn] of time as audio, evaluating it at every sample rather than once per block.
+ *
+ * [FnSignal] wraps the function and [toSignal] is the extension that builds one, so an envelope or
+ * frequency contour written as an `Fn` can drive a synth graph sample-accurately.
+ */
+
+/**
  * A [Functions.Fn] of time, in seconds, heard as a [Signal] — evaluated at every sample.
  *
  * Sample `i` of a block is `fn(time + i / sampleRate)`, where `time` is [SynthContext.time], the

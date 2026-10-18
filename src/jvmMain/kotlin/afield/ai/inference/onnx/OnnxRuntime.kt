@@ -25,36 +25,33 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * [ONNX Runtime](https://onnxruntime.ai) reaches the JVM through Microsoft's own JNI artifact —
  * `com.microsoft.onnxruntime:onnxruntime`, already on the classpath because
- * [afield.ai.retrieval.SemanticRetrievalService] embeds text. This object is the part that makes a *live-coded*
- * model practical rather than merely possible, and it is one idea:
+ * [afield.ai.retrieval.SemanticRetrievalService] embeds text. [OnnxRuntime] caches each session in a JVM singleton,
+ * so re-running a box does not rebuild it.
  *
- * > **A session is cached in a JVM singleton, so re-running a box does not rebuild it.**
- *
- * That matters more than it sounds. Session construction is the expensive half of ONNX — hundreds of
+ * Session construction is the expensive half of ONNX — hundreds of
  * milliseconds to several seconds, because the graph is parsed, fused and specialised for the
  * execution provider. Frame-time inference is the cheap half. A box that says `depthAnything()` and
  * gets re-evaluated on every keystroke must not pay session construction on every keystroke, and a
  * recurrent model (RVM, Silero) must not lose its hidden state either.
  *
- * Field recompiles the *box*, not the application. [sessions] lives in an `object` loaded by the
+ * Field recompiles the *box*, not the application. The session map lives in an `object` loaded by the
  * application class loader, so the map outlives every recompilation of the code that reads it — the
  * same discipline [afield.audio.synth.FaustEngine] uses for compiled DSP. Key a session by something
- * stable (its [SessionSpec], i.e. file plus provider plus thread counts) and hot-reload becomes free.
+ * stable (its [OnnxRuntime.SessionSpec], i.e. file plus provider plus thread counts) and hot-reload becomes free.
  * Build an [OrtSession] yourself in box code and every keystroke costs a rebuild.
  *
- * ## What was measured, on this machine
+ * ## Measured costs
  *
- * Apple Silicon, 10 cores, Depth Anything V2 Small at 518x518. These numbers are why the defaults
- * are what they are, and each one contradicts a plausible guess:
+ * Apple Silicon, 10 cores, Depth Anything V2 Small at 518x518. These numbers set the defaults:
  *
  *  * **CoreML does not help this model.** The provider claims 43 of 848 nodes, across 19 partitions;
  *    the boundary crossings cost about what the accelerated nodes save (≈470ms vs ≈388ms for plain
- *    CPU — i.e. CoreML is *slower*). [OnnxProvider.AUTO] therefore resolves to CPU. CoreML is still
+ *    CPU — i.e. CoreML is *slower*). [OnnxRuntime.OnnxProvider.AUTO] therefore resolves to CPU. CoreML is still
  *    worth requesting for transformer encoders, where the partition count is small.
  *  * **fp16 weights are slower than fp32 on CPU**, ≈462ms vs ≈388ms, because every operator upcasts.
  *    fp16's win is download size (50MB vs 99MB), not speed. Pick it to save disk, not time.
  *  * **Pinning intra-op threads costs throughput.** `setIntraOpNumThreads(4)` measured ≈457ms against
- *    ≈388ms for the runtime's own default. [SessionSpec.intraOpThreads] defaults to 0, meaning "let
+ *    ≈388ms for the runtime's own default. [OnnxRuntime.SessionSpec.intraOpThreads] defaults to 0, meaning "let
  *    ORT decide". Set it only when you have measured that the render thread is actually starving.
  *
  * The general shape: nothing on a CPU execution provider is frame-rate. 388ms is 2.6fps. Inference
@@ -64,15 +61,15 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * ## What is not here
  *
- * There is no `IoBinding` in the Java API — verified by inspecting the 1.27.0 jar, not inferred from
- * documentation. Outputs are therefore always copies, and zero-copy CUDA/Vulkan interop is not
+ * The Java API (1.27.0) has no `IoBinding`. Outputs are therefore always copies, and zero-copy CUDA/Vulkan interop is not
  * reachable from Java today without dropping to Panama downcalls against the same loaded library.
  * That is fine for everything here: a 518x518 fp32 depth map is 1.07MB, and the copy is invisible
  * beside a 388ms inference.
  *
- * @see OnnxModel for the download-and-cache side
- * @see DepthAnything for a worked capability built on top
+ * Model download and caching is [OnnxModel]; [DepthAnything] is a capability built on top.
  */
+
+/** The process-wide ONNX Runtime environment and its cache of sessions keyed by [OnnxRuntime.SessionSpec]. */
 object OnnxRuntime {
 
     /**

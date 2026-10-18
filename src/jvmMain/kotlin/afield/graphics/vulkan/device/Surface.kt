@@ -4,6 +4,13 @@ import org.lwjgl.glfw.GLFWVulkan
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSurface
 
+/**
+ * The Vulkan presentation surface for a GLFW window.
+ *
+ * [Surface] asks GLFW to create the surface for a window handle on the instance behind a
+ * [PhysicalDevice], and `cleanup` destroys it.
+ */
+
 class Surface(physicalDevice: PhysicalDevice, windowHandle: Long) {
     private val physicalDevice: PhysicalDevice
     var vkSurface: Long = 0

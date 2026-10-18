@@ -21,6 +21,14 @@ import afield.media.video.*
 import java.util.concurrent.ConcurrentHashMap
 
 /**
+ * A ranking prior for the completion popup taken from a type's [CommonMembers] annotation, so that
+ * an empty-prefix popup such as a bare `f.` lists the members that matter first.
+ *
+ * [CommonMemberPrior.rankOf] gives a member's declared position and [CommonMemberPrior.scoreOf] turns
+ * it into popup points, below a user's own recency and above the category weight.
+ */
+
+/**
  * Resolves a receiver type's [CommonMembers] declaration into the ranking prior the popup consumes
  * (`Metadata.commonMemberRank`, scored by `COMMON_MEMBER_BASE` in `fieldSuggest.js`).
  *

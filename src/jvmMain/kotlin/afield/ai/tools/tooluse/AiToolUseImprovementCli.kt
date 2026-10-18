@@ -26,6 +26,19 @@ import kotlin.io.path.name
 import kotlin.io.path.pathString
 import kotlin.system.exitProcess
 
+/**
+ * A command-line task in which a model reads Field's recent AI tool I/O logs and edits the AI4 tool
+ * descriptions and prompts that caused the trouble it finds.
+ *
+ * [main] runs it; Gradle's `improveAiToolUse` and `improveAiToolUseDryRun` tasks launch it. It
+ * summarises the newest logs under `~/.afield/logs/ai4_tool_io/` (`--log-dir`, or
+ * `AFIELD_AI4_TOOL_IO_LOG_PATH`), attaches a manifest of the source tree, and gives the model a small
+ * tool set over it, including `ReplaceInFileRequest` for exact snippet edits. It writes a Markdown
+ * report and a transcript of the run. With `--dry-run` the edits go to an in-memory overlay and come
+ * out as a patch file instead of touching the source. Logs of this task's own runs are left out of the
+ * review ([isToolUseImprovementLog]).
+ */
+
 private val defaultToolLogDir: Path = Paths.get(
     System.getenv("AFIELD_AI4_TOOL_IO_LOG_PATH")
         ?: System.getProperty("afield.ai4.toolIoLog.path")

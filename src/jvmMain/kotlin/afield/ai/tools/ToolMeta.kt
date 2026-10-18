@@ -3,11 +3,11 @@ package afield.ai.tools
 /**
  * # What a tool is, besides its schema: where it belongs, how the model meets it, what it touches
  *
- * Until 2026-10-02 the registry asked one question of a tool — is it available in this conversation? —
- * and every tool that said yes sent its whole schema on every request. Pi (earendil-works/pi) asks a
- * second: *how should the model discover it?* That is [ToolExposure]. A third, also Pi's (its MCP-style
- * hints), is what calling it does: [ToolEffect]. Field uses effects for three things rather than for
- * confirmation dialogs — a central refusal of document mutations on a read-only document, eval checks
+ * Tool metadata answers three questions beyond the schema: which namespace a tool belongs to, how the
+ * model discovers it ([ToolExposure]), and what calling it does ([ToolEffect]). Both of the last two
+ * follow Pi (earendil-works/pi). Exposure decides whether a tool's schema is sent with every request or
+ * only on demand. Field uses effects for three things rather than for confirmation dialogs: a central
+ * refusal of document mutations on a read-only document, eval checks
  * (`effects-absent:FILESYSTEM_WRITE`), and the catalogue line that tells a model which calls are cheap
  * looks and which change things.
  *
@@ -16,6 +16,8 @@ package afield.ai.tools
  * none gets [ToolMeta.DEFAULT]: namespace `core`, DIRECT, [ToolEffect.UNDECLARED] — undeclared rather
  * than "no effects", so an eval asserting an effect is absent fails on a tool that never said.
  */
+
+/** How a model discovers a tool: schema up front, by program, on request, or never. */
 enum class ToolExposure {
     /** Schema sent with every request; callable directly and from programs. */
     DIRECT,

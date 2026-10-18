@@ -22,6 +22,10 @@ expect:
     - "Faust polyphony tests passed"
 */
 /**
+ * Smoke test for patterns played through a Faust voice bank: checks that onsets land on the notated sample and that a chord really sounds three voices at once.
+ */
+
+/**
  * A pattern playing a Faust program, measured in samples and in Hz.
  *
  * `synth.faust.smoke` guards the contract with the vendored compiler. This guards the two claims that make

@@ -16,6 +16,13 @@ import org.lwjgl.vulkan.KHRRayTracingPipeline.VK_PIPELINE_BIND_POINT_RAY_TRACING
 import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
 
+/**
+ * Builds NVIDIA cluster acceleration structures from compute-shader output: [ClusterGeometry] validates [TriangleCluster] records, builds cluster-level acceleration structures and one cluster BLAS for ray tracing.
+ *
+ * It requires `VK_NV_cluster_acceleration_structure`; [ClusterGeometryInput] names the producer buffers it reads.
+ */
+
+
 /** One Field cluster description, eight uint32 words / 32 bytes, usable by ordinary compute shaders.
  * Positions are vec4 (xyz in world/object units); indices are uint32 LOCAL to this cluster's
  * vertex slice. A cluster may change counts, positions and indices on every build. IDs stay yours.

@@ -40,6 +40,17 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
+ * Runs the optional offline particle tracker (RAFT optical flow, via PyTorch) over a video and
+ * caches the result as a PVTRACK1 file.
+ *
+ * [particleTracker] makes a [ParticleTracker] for the tools in `optional/particle-tracker`; its
+ * `track` call is a suspend function meant for a box's `start { ... }` coroutine, and it returns a
+ * [ParticleTrackingRun] whose `load` hands the file to `particlevideo.kt`.
+ * [ParticleTrackingOptions] holds every algorithm setting, and each one is part of the cache key.
+ * Invalid options fail before any process starts (`ParticleVideoTest`).
+ */
+
+/**
  * Options for bidirectional RAFT-large video particles. Width 0 retains source resolution; frame
  * limit 0 processes the whole clip. All distances and velocities use processed pixels and frames.
  *

@@ -38,19 +38,19 @@ expect:
  * `io.github.kyay10.wither.with(x)` turns `x` into an implicit receiver for the rest of the
  * enclosing block, and its IR pass rewrites the receiver-less member accesses that follow.
  *
- * The load-bearing assertion is [testReceiverInjection]: a bare `greet()` with no explicit
+ * The load-bearing assertion is `testReceiverInjection`: a bare `greet()` with no explicit
  * receiver only resolves if Wither injected the `Greeter` receiver. Without the plugin the
  * snippet fails to compile ("unresolved reference 'greet'"), so a green run proves the plugin
  * is actually registered into the REPL's compilation config and doing work end-to-end.
  *
- * [testPlainEvalStillWorks] is the regression half: turning the plugin on must not disturb
+ * `testPlainEvalStillWorks` is the regression half: turning the plugin on must not disturb
  * ordinary snippet evaluation.
  *
  * Runnable-object test style, matching [ReplBootstrapGateTest].
  *
  * ### Red from 2026-08-25 to 2026-10-04: Wither's IR pass never recognised its own `with`
  *
- * [testReceiverInjection] failed with an `IrErrorCallExpression` reaching codegen:
+ * `testReceiverInjection` failed with an `IrErrorCallExpression` reaching codegen:
  *
  *     Unresolved reference: this@R|<local>/<with holder>|
  *     AssertionError: Unexpected IR element found during code generation ... or it should have been lowered
@@ -75,7 +75,7 @@ expect:
  * Measured 2026-10-04 on Kotlin 2.5.0-Beta1, same worktree and harness, changing only
  * `libs/wither-plugin.jar`:
  *
- *  - the jar on `main` before this change (sha1 `2869851…`): XFAIL, `with` CALL still in the IR, `got: null`;
+ *  - the jar on `main` before the swap (sha1 `2869851…`): XFAIL, `with` CALL still in the IR, `got: null`;
  *  - 5052517 (`1e6f4c6…`): XFAIL, same IR, same `got: null`;
  *  - face220 (`be020c9…`): passes; `demo()` returns `hi-W`.
  *
@@ -92,6 +92,7 @@ expect:
  * in `~/temp/wither` (class file 66; the compiler host is a JDK 22). The build is reproducible, so
  * compare `shasum` with `libs/`.
  */
+
 object WitherSmokeTest {
 
     fun runTests(): Boolean {

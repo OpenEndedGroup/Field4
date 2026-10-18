@@ -17,3 +17,16 @@ Extends handoff ee38c55f to three more Audio AI pages: `audio_ai_spectral_embedd
   points on the welcome screen and link them from the pages.
 - The long workflow fences (100+ lines of future chaining) are frightening for a first read; fold
   the job-tracking boilerplate (rule 8).
+
+## Completed — 2026-10-17
+
+The three pages already link their published Starting Points and use the default
+Audio AI imports. The remaining job-tracking helpers are now folded in the
+spectral, MuScriptor and corpus-microscope examples; spectral imports and filename
+resolution are folded too. The requests, analysis settings and result rendering
+remain visible. Removing the fold markers yields byte-identical executable fences.
+Existing real captures and their runner code are unchanged.
+The strict HTML build passed all authored links and retained every capture without
+starting a service.
+
+The originating annotation store is absent here; close `a6f6a258` there after landing.

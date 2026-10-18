@@ -36,6 +36,16 @@ import java.time.format.DateTimeFormatter
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.name
 
+/**
+ * Creates, lists, merges and deletes git worktrees that agents work in, one branch per proposal.
+ *
+ * [AgentWorktreeManager.createProposal] adds a worktree on a new `agent/<task>/<id>` branch from the
+ * current `HEAD` and records it as JSON in a `.metadata` folder under the worktree root. That root
+ * is `afield.agentWorktreeRoot`, `AFIELD_AGENT_WORKTREE_ROOT`, or `<checkout>-agent-worktrees`
+ * beside the checkout. `mergeProposal` refuses to merge into a checkout with uncommitted changes.
+ */
+
+/** Git worktree proposals for agents: create, list, update, merge, finalize and delete. */
 object AgentWorktreeManager {
     private val json = Json {
         ignoreUnknownKeys = true

@@ -12,22 +12,23 @@ import afield.lang.remotejs.KotlinJsHeadProfiles
 /**
  * The offline half of "will this Live Metal program actually run?".
  *
- * A box names a uniform in three places, and nothing on the Mac used to notice when they disagreed:
+ * A box names a uniform in three places, and these checks catch them disagreeing on the Mac:
  *
  *  1. the `// {{ visionmetal uniforms=… }}` marker, which becomes the head's slot order;
  *  2. the shader, which reads `u_NAME` — the head generates `#define u_NAME frame.user[i]` from that
  *     list, so an undeclared `u_NAME` is a **Metal compile error on the device**;
  *  3. the script, whose `uniform("name", …)` writes land in a slot only if the name is declared —
- *     an undeclared write is dropped, silently, and the shader just sees zero.
+ *     an undeclared write is dropped without a warning, and the shader just sees zero.
  *
  * All three failures show up as "it doesn't work in the headset", minutes away from the edit that
  * caused them. Every one is decidable from the box's own text plus a real run of its script, which is
  * what this does. It is the uniform-shaped companion to
  * [VisionGeometryPreview.CapturedMesh.windingAgreement].
  *
- * Nothing here compiles MSL — Metal's compiler is not available on this machine and this does not
- * pretend to replace it. These are the checks that need only the ABI the head documents.
+ * Nothing here compiles MSL; Metal's compiler is not available on this machine. These are the
+ * checks that need only the ABI the head documents.
  */
+
 object VisionMetalProgramCheck {
 
     /** `u_NAME` occurrences in shader source, ignoring the ones inside `//` and `/* */` comments. */

@@ -1,3 +1,13 @@
+/**
+ * The Vulkan pass that runs the native neural-rendering (NR) network over a sampled image.
+ *
+ * [OpenDlssNrPass.evaluate] takes [OpenDlssNrInputs] (colour with its [OpenDlssNrColorEncoding], and
+ * optional motion and depth guides for temporal mode), an [OpenDlssNrFrame] and the current
+ * [OpenDlssNrControls] (seed, style, tone, structure, intensity), and writes the result to its output
+ * texture. [OpenDlssNrPass.postEffect] wraps it as a post effect, and [OpenDlssNrPass.reset] drops
+ * temporal history after a cut or edit.
+ */
+
 package afield.graphics.render.neural
 
 import afield.graphics.vulkan.Renderer
@@ -67,6 +77,9 @@ class OpenDlssNrPass(val renderer: Renderer,val width: Int,val height: Int) : Au
     val outputAllocatedBytes: Long get()=storage.colorImageRefs.sumOf {it?.memorySize ?: 0L}
     var controls=OpenDlssNrControls()
     private var closed=false
+    private val closeWithRenderer=Runnable { close() }
+    /** Whether this pass has retired, explicitly or with its renderer. */
+    val isClosed: Boolean get()=closed
     private var previousFrame=-1L
     private var previousRevision=Long.MIN_VALUE
     private var previousPresentation=-1L
@@ -76,6 +89,7 @@ class OpenDlssNrPass(val renderer: Renderer,val width: Int,val height: Int) : Au
     private var pendingReset=true
     var resetCount=0;private set
     var resetReason="initial";private set
+    init { renderer.beforeDeviceCleanup+=closeWithRenderer }
     fun reset(reason: String="camera cut or live edit") {pendingReset=true;resetReason=reason}
     /** Configure an editable Fabricate post effect; its native target calls the same evaluate path. */
     fun postEffect(name: String,inputs: () -> OpenDlssNrInputs,frame: () -> OpenDlssNrFrame): FabricatePostEffect {
@@ -153,6 +167,7 @@ class OpenDlssNrPass(val renderer: Renderer,val width: Int,val height: Int) : Au
     internal fun paddedWidth(): Int {check(handle!=MemorySegment.NULL);return native.paddedWidth.invokeWithArguments(handle) as Int}
     override fun close() {
         if(closed)return;closed=true
+        renderer.beforeDeviceCleanup.remove(closeWithRenderer)
         storage.evaluate=null
         val old=handle
         renderer.cleanup+=Runnable {

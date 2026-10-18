@@ -7,6 +7,16 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
+ * Matrix profiles across several channels and between two classes of examples, built on the
+ * single-series [MatrixProfile].
+ *
+ * [multiMatrixProfile] finds motifs that appear in only some channels of a multichannel series
+ * and reports which channels share them ([MultiMatrixProfile], [MultiMotif]). [contrastProfile]
+ * finds shapes that repeat in a set of positive examples and are absent from a set of negative
+ * ones ([ContrastProfile], [Plato]). Tests: `MatrixProfileTest`.
+ */
+
+/**
  * The multidimensional matrix profile of a `d`-channel series (mSTAMP, Yeh, Kavantzas & Keogh,
  * 2017). A motif in many channels is rarely in *all* of them: a gesture shows up in the wrist's
  * x and z but not y, a fault in two of eight sensors. So instead of one profile there are `d`:

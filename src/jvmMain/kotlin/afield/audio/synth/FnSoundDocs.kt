@@ -35,7 +35,7 @@ expect:
  * analysis is the in-process pair `PatOnsetDetection` and `PatPitchDetection` already provide: an RMS
  * envelope ([patEnergyEnvelope]) for loudness, and YIN ([patF0Frames]) for pitch.
  *
- * # Two encodings of one function
+ * #### Two encodings of one function
  *
  * * [Encoding.LOUDNESS]: a [CARRIER_HZ] sine whose amplitude is `LOUDNESS_GAIN · f(t)`. Recovered as
  *   `√2 · RMS / LOUDNESS_GAIN`. The carrier is chosen so one period is exactly 128 samples at
@@ -44,18 +44,20 @@ expect:
  * * [Encoding.PITCH]: a sine at `PITCH_BASE_HZ · 2^f(t)` and constant level, so `f` spans a fraction of
  *   an octave. Recovered as `log2(hz / PITCH_BASE_HZ)` from voiced YIN frames only.
  *
- * # What is measured, per encoding and route
+ * #### What is measured, per encoding and route
  *
  * Every analysis frame is one sample of the population: its recovered value against `f` at the frame
  * centre ([RoundTrip.maxAbsError], [RoundTrip.rmsError]); the delay that best aligns them
  * ([RoundTrip.bestLagSamples]); and whether the recovered value lies inside the **certified** range of
  * `f` over the samples the frame actually read ([RoundTrip.insideCertified]) — the only interval a
- * windowed measurement could honestly be expected to land in. [Blip] is the narrow feature: a bump
+ * windowed measurement can be expected to land in. [Blip] is the narrow feature: a bump
  * with a 3 ms sigma, shorter than both analysis windows, and how much of its height comes back.
  *
  * No engine, no device, no Field window. The renders are deterministic, so the committed `.wav`s
  * regenerate byte-stably; as a FIELD_TEST everything is written to a temp dir.
  */
+
+/** Renders and measures the Fn sound round trip; see the file overview. */
 object FnSoundDocs {
 
     /** Sample rate of every render and of both published clips. */

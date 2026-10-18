@@ -22,6 +22,14 @@ import javax.sound.midi.SysexMessage
 import kotlin.random.Random
 
 /**
+ * A UDP AppleMIDI session that accepts or sends invitations, keeps peer clocks in sync and sends and
+ * receives MIDI as `javax.sound.midi` messages.
+ *
+ * Most box code reaches it through `rtpMidi(...)` in `RtpMidiBox.kt`; `RtpMidiLoopbackTest`
+ * connects two sessions over loopback UDP.
+ */
+
+/**
  * An AppleMIDI network session: the same thing as a session in macOS's *Audio MIDI Setup → MIDI
  * Network Setup*, rtpMIDI on Windows, or an iPad app's "network MIDI".
  *

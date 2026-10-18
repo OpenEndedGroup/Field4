@@ -29,6 +29,8 @@ import kotlin.concurrent.thread
  * Repeated identical requests are served from [cache] instead, which is what actually matters —
  * a Petri animation redraws the same net many times.
  */
+
+/** Runs d2 layout engines through the optional `native/field-d2-layout` helper, answering `null` when it is unavailable. */
 object D2Layout {
 
     /** Must match `protocolVersion` in the helper's `main.go`. */

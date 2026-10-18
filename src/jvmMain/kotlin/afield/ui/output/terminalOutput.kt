@@ -22,6 +22,13 @@ import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 
 /**
+ * A real terminal in a box's output area: [terminal] starts a process in a panel and returns a
+ * [FieldTerminal] that box code can type into, read, and kill. The process outlives its panel, which
+ * re-attaches with its scrollback.
+ */
+
+
+/**
  * A terminal started by [terminal]: the process keeps running when its panel is closed or the page
  * reloads, and the panel re-attaches with its scrollback.
  */

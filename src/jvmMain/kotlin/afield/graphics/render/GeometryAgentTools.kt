@@ -29,11 +29,9 @@ import java.util.concurrent.CopyOnWriteArrayList
  *
  * # What this is for
  *
- * `afield.ai.tools.AgentToolExtensions` is how any code outside `afield.ai.core` adds tools to AI4. It
- * is careful, well-documented, and until 2026-08-11 the only thing in the tree that used it was a
- * gitignored personal package — so there was nothing a reader could run, and nothing a build could
- * check. This is the runnable half of `public/docs/aiFeatures.md`'s "Give the AI a tool of your own",
- * and it is deliberately built out of parts that are already interesting on their own:
+ * `afield.ai.tools.AgentToolExtensions` is how any code outside `afield.ai.core` adds tools to AI4.
+ * This file is the runnable half of `public/docs/aiFeatures.md`'s "Give the AI a tool of your own",
+ * built out of parts that are useful on their own:
  * [meshFromAnyFile] reads OBJ, STL, PLY, glTF/GLB and everything else Assimp handles, and
  * [afield.geometry.mesh.renderPng] rasterises the result with no GPU, no window and no AWT.
  *
@@ -50,8 +48,8 @@ import java.util.concurrent.CopyOnWriteArrayList
  * // then open AI Chat and ask about the files in there.
  * ```
  *
- * [register] is idempotent, so leaving those two lines in a box you re-run is fine, and — since
- * 2026-08-11 — a re-run reaches a conversation that is already open.
+ * [GeometryAgentTools.register] is idempotent, so leaving those two lines in a box you re-run is
+ * fine, and a re-run reaches a conversation that is already open.
  *
  * # The three things this example is trying to demonstrate
  *
@@ -62,17 +60,18 @@ import java.util.concurrent.CopyOnWriteArrayList
  *     I/O log — which `AiToolUseImprovementMonitor` reads — records what happened rather than a class
  *     name.
  *  3. **Refusing to read outside the roots.** These tools take a *path from a language model*. The
- *     roots are the entire permission model, and [resolveInsideRoots] is where it is enforced; a
+ *     roots are the entire permission model, and `resolveInsideRoots` is where it is enforced; a
  *     symlink or a `../` that escapes is an error, not a read. Every tool that takes a path from a
  *     model needs an equivalent, and it is the part an example is most likely to leave out.
  *
  * # What this does not do
  *
- * It does not modify anything. There is deliberately no `ConvertGeometryFile` here: a writing tool
+ * It does not modify anything. There is no `ConvertGeometryFile` here: a writing tool
  * needs a confirmation protocol (the personal house cluster's `commit=false` preview pattern), which is
- * a bigger subject than one example should try to carry, and getting it half-right in a page people
- * copy from would be worse than leaving it out.
+ * a bigger subject than one example should carry.
  */
+
+/** Registers the geometry inspection tools with AI4 once a search root has been added. */
 object GeometryAgentTools {
 
     /**

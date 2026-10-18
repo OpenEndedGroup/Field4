@@ -30,6 +30,16 @@ import afield.ui.visualization.h
 import afield.app.diagnostics.logging.lprintln
 import afield.document.properties.Delegation
 
+/**
+ * Nesting: drawing one box inside another, through the `nested` and `nestedIn` properties.
+ *
+ * A nested box is also connected to its container, so it inherits the container's imports and
+ * marked preamble lines. Setting [nested] or [nestedIn] keeps both sides and the edge in step;
+ * [nestInto] also converts the frame to and from parent-relative coordinates, and refuses a cycle.
+ * [reconcileNestingEdges] re-derives missing edges for boxes loaded from disk. The behaviour is
+ * covered by `NestingConnectsTest`.
+ */
+
 private val nestingMutationDepth = ThreadLocal.withInitial { 0 }
 
 private inline fun <T> withNestingGuard(body: () -> T): T {

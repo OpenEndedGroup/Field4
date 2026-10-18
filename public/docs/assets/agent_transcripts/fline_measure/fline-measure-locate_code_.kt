@@ -19,13 +19,14 @@ val normals = stops.map { loc ->
 }
 
 // the circle that matches the bend, at three of them
-val bends = listOf(stops[3], stops[7], stops[10]).map { loc ->
-    val r = 1.0 / loc.signedCurvature2D
-    fline {
-        circle(loc.point.x + loc.normal2D.x * r, loc.point.y + loc.normal2D.y * r, kotlin.math.abs(r))
-        thickness = 1.0
-        color = vec(1.0, 0.6, 0.2, 0.8)
+val bends =
+    [stops[3], stops[7], stops[10]].map { loc ->
+        val r = 1.0 / loc.signedCurvature2D
+        fline {
+            circle(loc.point.x + loc.normal2D.x * r, loc.point.y + loc.normal2D.y * r, kotlin.math.abs(r))
+            thickness = 1.0
+            color = vec(1.0, 0.6, 0.2, 0.8)
+        }
     }
-}
 
-lines(listOf(curve) + normals + bends, w = 420.0, h = 260.0, fitToSize = true)
+lines([curve] + normals + bends, w = 420.0, h = 260.0, fitToSize = true)

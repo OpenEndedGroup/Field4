@@ -20,6 +20,12 @@ import org.lwjgl.vulkan.*
 import java.io.File
 import java.security.MessageDigest
 
+/**
+ * Runs a trained shader function as a compute pass that writes its own render target.
+ *
+ * [LearnedShader] loads a model directory written by training, evaluates it each frame for the current parameter, and can [LearnedShader.attach] itself to the renderer's pre-target list. It uses cooperative vectors when the device supports them and a scalar variant otherwise.
+ */
+
 /** A frozen, user-trained shader function. Weights are owned by this view; replace the view at a
  * frame boundary to change weights. The ordinary arithmetic variant needs no cooperative vectors.
  * Architecture/layout are explicit and checked, not a general ML graph runtime.

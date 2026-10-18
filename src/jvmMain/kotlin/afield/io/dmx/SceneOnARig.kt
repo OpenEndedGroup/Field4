@@ -11,20 +11,28 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * A RectSL scene on a light rig, measured: the worked example behind `public/docs/chain_scene_to_light.md`
- * and `SceneOnARigTest`, kept in one place so the page, the test and the demo document run the same
- * code.
+ * A RectSL scene driven onto a light rig over sACN, and measured end to end.
  *
- * The route is four parts of Field that were written without each other: a RectSL scene is drawn on
- * the CPU into an [Img] ([RectSLImager]), [Patch.mapImage] colours a 16 × 8 grid of RGB pixels plus
- * four RGBWA washes from it, a [DmxOutput] sends the universes as sACN to 127.0.0.1, and a
- * [DmxInput] receives them; [Fixture.decode] turns what arrived back into colours in the rig's
- * layout, to be compared with the pixels the rig was given.
+ * This is the code behind [A RectSL scene on a light rig](../chain_scene_to_light.md): that page,
+ * the demo document and `SceneOnARigTest` all run it rather than describing it, so the rig is
+ * patched one way and measured one way wherever it appears.
  *
- * Three things are measured, each by a function here: [roundTrip] (what the wire does to each
- * fixture's colour), [aliasing] (what sampling a 256-pixel frame at 16 points does to a thin moving
- * line), and [timing] (what a frame costs, and how often the receiver sees one while the scene
+ * The route crosses four parts of Field. A RectSL scene is drawn on the CPU into an [Img]
+ * ([RectSLImager]); [Patch] `mapImage` colours a 16 × 8 grid of RGB pixels plus four RGBWA washes
+ * from it; a [DmxOutput] sends those universes as sACN to 127.0.0.1; a [DmxInput] receives them,
+ * and [Fixture] `decode` turns what arrived back into colours in the rig's layout, to be compared
+ * with the pixels the rig was given.
+ *
+ * Three things are measured, each by a function here: `roundTrip` (what the wire does to each
+ * fixture's colour), `aliasing` (what sampling a 256-pixel frame at 16 points does to a thin moving
+ * line), and `timing` (what a frame costs, and how often the receiver sees one while the scene
  * animates on the sender's 44 Hz clock).
+ */
+
+/**
+ * The rig, the two RectSL scenes it is driven with, and the three measurements. `Rig` patches the
+ * fixtures and colours them from a frame; `SCENE` and `LINE` are the sources `roundTrip`,
+ * `aliasing` and `timing` run.
  */
 object SceneOnARig {
 

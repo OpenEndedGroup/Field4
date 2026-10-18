@@ -38,23 +38,32 @@ start(renderer::run)
 <!-- field-box id="neural_reconstruction" index="1" -->
 
 ```edn [field-box id="neural_reconstruction" role="properties"]
-{"id" "neural_reconstruction" "index" 1 "name" "neural reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "neural_reconstruction_code_.kt" "lines" 61 "characters" 3034 "sha256" "5be1c88c0d26345a6b8113903a0469243a59470097867771fd1c0434fa81f168"} {"name" "vertex" "language" "glsl" "path" "neural_reconstruction_vertex_.glsl" "lines" 41 "characters" 2372 "sha256" "6a509b1e0537b8c5c5db23c515e5a0bd7fa0676ed78e2c7b33ce2210efd66a38"} {"name" "fragment" "language" "glsl" "path" "neural_reconstruction_fragment_.glsl" "lines" 31 "characters" 1604 "sha256" "f4c71150e7f5dd16c2bb5e576fd5862c4f5df297eb59e14bba54c58f179b5399"}]}
+{"id" "neural_reconstruction" "index" 1 "name" "neural reconstruction" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural reconstruction" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "neural_reconstruction_code_.kt" "lines" 90 "characters" 3390 "sha256" "5964ecc783d50ee6dd50e2318f8a7964fe8c5410e9a73001f788ea67b4d81834"} {"name" "vertex" "language" "glsl" "path" "neural_reconstruction_vertex_.glsl" "lines" 74 "characters" 3104 "sha256" "f8a0170eee872ff2345d1a7b997aca7e64e59ec99b10417924f8c539d938fb15"} {"name" "fragment" "language" "glsl" "path" "neural_reconstruction_fragment_.glsl" "lines" 51 "characters" 2264 "sha256" "68b3587e130c556bd773908cf0e4efaefc4e3738b7fda72d8afc5007ecc2dbc4"}]}
 ```
 
 ```kotlin [field-property box="neural_reconstruction" name="code" path="neural_reconstruction_code_.kt"]
-import afield.ui.output.controlGroup
-import afield.ui.output.displayOpen
 import afield.media.reconstruction.*
-import afield.document.context.fromContextWithNameOrNull
 
 prop<ReconstructionDemo>(lab)
 fromContextWithNameOrNull<ReconstructionDemo>("lab")?.close()
 val available = NgxSupport.availability(renderer.device)
 available.onFailure { println("Neural reconstruction unavailable: ${it.message}; showing the source.") }
-val modes = listOf(null, ReconstructionMode.DLAA, ReconstructionMode.QUALITY, ReconstructionMode.PERFORMANCE,
-    ReconstructionMode.ULTRA_PERFORMANCE)
-val smallest = if(available.isSuccess) DlssReconstruction.recommend(renderer,ReconstructionSize(1920,1080),
-    ReconstructionMode.ULTRA_PERFORMANCE).smallestFor(ReconstructionSize(1920,1080)) else null
+val modes = [
+    null,
+    ReconstructionMode.DLAA,
+    ReconstructionMode.QUALITY,
+    ReconstructionMode.PERFORMANCE,
+    ReconstructionMode.ULTRA_PERFORMANCE,
+]
+val smallest =
+    if (available.isSuccess)
+        DlssReconstruction.recommend(
+                renderer,
+                ReconstructionSize(1920, 1080),
+                ReconstructionMode.ULTRA_PERFORMANCE,
+            )
+            .smallestFor(ReconstructionSize(1920, 1080))
+    else null
 var requested = if (available.isSuccess) 1 else 0
 var active = requested
 var abstractScene = false
@@ -65,40 +74,60 @@ var reload = false
 lab = ReconstructionDemo(renderer, modes[active])
 controlGroup("reconstruction") {
     if (available.isSuccess) {
-        slider("0: Source · 1: DLAA · 2: Quality · 3: Performance · 4: Ultra", min=0.0, max=4.0, step=1.0, initialValue=1.0) { requested=it.toInt() }
+        slider(
+            "0: Source · 1: DLAA · 2: Quality · 3: Performance · 4: Ultra",
+            min = 0.0,
+            max = 4.0,
+            step = 1.0,
+            initialValue = 1.0,
+        ) {
+            requested = it.toInt()
+        }
     }
-    checkbox("Abstract colors and particles", initialValue=false) { abstractScene=it }
-    checkbox("Animate", initialValue=true) { animate=it }
-    checkbox("Move camera", initialValue=true) { camera=it }
-    button("Camera cut / reset") { if(it)cut=true }
-    button("Reload edited shaders") { if(it)reload=true }
+    checkbox("Abstract colors and particles", initialValue = false) { abstractScene = it }
+    checkbox("Animate", initialValue = true) { animate = it }
+    checkbox("Move camera", initialValue = true) { camera = it }
+    button("Camera cut / reset") { if (it) cut = true }
+    button("Reload edited shaders") { if (it) reload = true }
 }
 displayOpen("reconstruction")
-if(smallest!=null)println("Ultra minimum input: ${smallest.width} × ${smallest.height}. Mode 4 uses the SDK recommendation.")
+if (smallest != null)
+    println("Ultra minimum input: ${smallest.width} × ${smallest.height}. Mode 4 uses the SDK recommendation.")
 println("1920 × 1080 output. Edit this box's vertex / fragment shaders, then reload.")
 frames {
     var previousAbstract = abstractScene
     var previousCamera = camera
-    while(true) {
-        if(requested!=active) {
+    while (true) {
+        if (requested != active) {
             runCatching {
-                val next = ReconstructionDemo(renderer, modes[requested], attach=false)
-                next.time=lab.time
+                val next = ReconstructionDemo(renderer, modes[requested], attach = false)
+                next.time = lab.time
                 lab.close()
-                lab=next.attach()
-                active=requested
+                lab = next.attach()
+                active = requested
                 println("${modes[active] ?: "Source"}: ${lab.inputSize.width} × ${lab.inputSize.height} → 1920 × 1080")
-            }.onFailure { println("Keeping current view: ${it.message}");requested=active }
+            }
+                .onFailure {
+                    println("Keeping current view: ${it.message}")
+                    requested = active
+                }
         }
-        if(previousAbstract!=abstractScene || previousCamera!=camera)lab.reset("scene controls")
-        previousAbstract=abstractScene;previousCamera=camera
-        lab.abstractScene=abstractScene;lab.animate=animate;lab.cameraMotion=camera
-        if(cut) { lab.time+=4f;lab.reset("camera cut");cut=false }
-        if(reload) {
-            val vertexSource = thisBox.getPropertyRaw("vertex") as String
-            val fragmentSource = thisBox.getPropertyRaw("fragment") as String
-            lab.reload(vertexSource,fragmentSource).onFailure { println("Keeping working shaders: ${it.message}") }
-            reload=false
+        if (previousAbstract != abstractScene || previousCamera != camera) lab.reset("scene controls")
+        previousAbstract = abstractScene
+        previousCamera = camera
+        lab.abstractScene = abstractScene
+        lab.animate = animate
+        lab.cameraMotion = camera
+        if (cut) {
+            lab.time += 4f
+            lab.reset("camera cut")
+            cut = false
+        }
+        if (reload) {
+            val vertexSource = requireNotNull(vertex) { "Missing vertex shader on this box or its parents" }
+            val fragmentSource = requireNotNull(fragment) { "Missing fragment shader on this box or its parents" }
+            lab.reload(vertexSource, fragmentSource).onFailure { println("Keeping working shaders: ${it.message}") }
+            reload = false
         }
         frame()
     }
@@ -107,43 +136,76 @@ frames {
 
 ```glsl [field-property box="neural_reconstruction" name="vertex" path="neural_reconstruction_vertex_.glsl"]
 #version 460
-layout(push_constant) uniform Scene { vec4 sizeJitter; vec4 times; vec4 settings; } pc;
+layout(push_constant) uniform Scene {
+    // xy = input width/height in pixels; zw = raster jitter in pixels, with Y down.
+    vec4 sizeJitter;
+    // xy = current/previous scene times; zw = current/previous horizontal shifts in input pixels.
+    vec4 times;
+    // x = particle/appearance stress test; y = orbiting camera; zw unused.
+    vec4 settings;
+} pc;
 layout(location=0) out vec3 world;
 layout(location=1) out vec3 normal;
 layout(location=2) out vec4 nowClip;
 layout(location=3) out vec4 oldClip;
 layout(location=4) flat out int objectId;
 const int indices[36]=int[](0,2,1,1,2,3,4,5,6,5,7,6,0,1,4,1,5,4,2,6,3,3,6,7,0,4,2,2,4,6,1,3,5,3,7,5);
-vec3 corner(int i){return vec3((i&1)==0?-1:1,(i&2)==0?-1:1,(i&4)==0?-1:1);}
-vec3 objectPoint(int id,vec3 p,float time){
-    if(id>=39){float k=float(id-39);return p*(pc.settings.x==1?.035:0)+vec3(sin(k*2.4+time)*3,1.4+sin(k*.8+time*.7),cos(k*1.7+time)*2);}
+vec3 corner(int i) {
+    return vec3((i&1)==0?-1:1,(i&2)==0?-1:1,(i&4)==0?-1:1);
+}
+// Object IDs: floor 0, boxes 1/2, thin bars 3..38, particles 39 onward.
+vec3 objectPoint(int id,vec3 p,float time) {
+    if(id>=39) {
+        float k=float(id-39);
+        return p*(pc.settings.x==1?.035:0)+vec3(sin(k*2.4+time)*3,1.4+sin(k*.8+time*.7),cos(k*1.7+time)*2);
+    }
     if(id==0)return p*vec3(5,.06,4)+vec3(0,-.08,0);
     if(id==1)return p*vec3(.85,.7,.85)+vec3(-1.5,.7,-.5);
     if(id==2)return p*vec3(.7,.9,.7)+vec3(1.4+sin(time)*.6,.9,-.4);
     int n=id-3;
-    if(n<18){p*=vec3(.015,1.2,.015);p.xy=mat2(.8,.6,-.6,.8)*p.xy;return p+vec3(float(n)*.19-1.7,1.7,1.4);}
-    p*=vec3(.015,1.2,.015);p.xy=mat2(.8,-.6,.6,.8)*p.xy;return p+vec3(float(n-18)*.19-1.7,1.7,1.45);
+    if(n<18) {
+        p*=vec3(.015,1.2,.015);
+        p.xy=mat2(.8,.6,-.6,.8)*p.xy;
+        return p+vec3(float(n)*.19-1.7,1.7,1.4);
+    }
+    p*=vec3(.015,1.2,.015);
+    p.xy=mat2(.8,-.6,.6,.8)*p.xy;
+    return p+vec3(float(n-18)*.19-1.7,1.7,1.45);
 }
-vec4 project(vec3 p,float t){
+// World position to Vulkan clip space: positive view depth, near Z = 0 and far Z = W.
+vec4 project(vec3 p,float t) {
     float a=pc.settings.y==1?t*.18:0;
     vec3 eye=vec3(5*sin(a)+5*cos(a),3.7,5*cos(a)-5*sin(a));
     vec3 f=normalize(vec3(0,.8,0)-eye),r=normalize(cross(f,vec3(0,1,0))),u=cross(r,f);
-    vec3 q=p-eye;float z=dot(q,f);float near=.1,far=100;
+    vec3 q=p-eye;
+    float z=dot(q,f);
+    float near=.1,far=100;
     return vec4(dot(q,r)*1.9*pc.sizeJitter.y/pc.sizeJitter.x,dot(q,u)*1.9,far/(far-near)*z-far*near/(far-near),z);
 }
-void main(){
-    if(gl_VertexIndex<3){
+void main() {
+    if(gl_VertexIndex<3) {
         vec2 xy=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2)*2-1;
-        gl_Position=vec4(xy,.999999,1);objectId=-1;world=vec3(0);normal=vec3(0,1,0);nowClip=oldClip=gl_Position;return;
+        gl_Position=vec4(xy,.999999,1);
+        objectId=-1;
+        world=vec3(0);
+        normal=vec3(0,1,0);
+        nowClip=oldClip=gl_Position;
+        return;
     }
-    objectId=(gl_VertexIndex-3)/36;int v=(gl_VertexIndex-3)%36;
+    objectId=(gl_VertexIndex-3)/36;
+    int v=(gl_VertexIndex-3)%36;
     float t=pc.times.x,old=pc.times.y;
-    vec3 p=corner(indices[v]);world=objectPoint(objectId,p,t);
-    int tri=(v/3)*3;vec3 a=objectPoint(objectId,corner(indices[tri]),t),b=objectPoint(objectId,corner(indices[tri+1]),t),c=objectPoint(objectId,corner(indices[tri+2]),t);
+    vec3 p=corner(indices[v]);
+    world=objectPoint(objectId,p,t);
+    int tri=(v/3)*3;
+    vec3 a=objectPoint(objectId,corner(indices[tri]),t),b=objectPoint(objectId,corner(indices[tri+1]),t),c=objectPoint(objectId,corner(indices[tri+2]),t);
     normal=normalize(cross(b-a,c-a));
-    nowClip=project(world,t);oldClip=project(objectPoint(objectId,p,old),old);
+    // Keep correspondence in unjittered clip space for both scene times.
+    nowClip=project(world,t);
+    oldClip=project(objectPoint(objectId,p,old),old);
     nowClip.x+=2*pc.times.z/pc.sizeJitter.x*nowClip.w;
     oldClip.x+=2*pc.times.w/pc.sizeJitter.x*oldClip.w;
+    // Jitter moves only the raster position; it must not become motion.
     gl_Position=nowClip;
     gl_Position.xy+=vec2(2*pc.sizeJitter.z/pc.sizeJitter.x,-2*pc.sizeJitter.w/pc.sizeJitter.y)*gl_Position.w;
 }
@@ -151,7 +213,14 @@ void main(){
 
 ```glsl [field-property box="neural_reconstruction" name="fragment" path="neural_reconstruction_fragment_.glsl"]
 #version 460
-layout(push_constant) uniform Scene { vec4 sizeJitter; vec4 times; vec4 settings; } pc;
+layout(push_constant) uniform Scene {
+    // xy = input width/height in pixels; zw = raster jitter in pixels, with Y down.
+    vec4 sizeJitter;
+    // xy = current/previous scene times; zw = current/previous horizontal shifts in input pixels.
+    vec4 times;
+    // x = particle/appearance stress test; y = orbiting camera; zw unused.
+    vec4 settings;
+} pc;
 layout(location=0) in vec3 world;
 layout(location=1) in vec3 normal;
 layout(location=2) in vec4 nowClip;
@@ -160,25 +229,38 @@ layout(location=4) flat in int objectId;
 layout(location=0) out vec4 color;
 layout(location=1) out float depth;
 layout(location=2) out vec2 motion;
-void main(){
-    if(objectId<0){color=vec4(.014,.022,.04,1);depth=1;motion=vec2(0);return;}
+void main() {
+    if(objectId<0) {
+        color=vec4(.014,.022,.04,1);
+        depth=1;
+        motion=vec2(0);
+        return;
+    }
     vec3 n=normalize(normal);
     vec3 base=objectId==0?vec3(.23):objectId==1?vec3(.05,.27,.65):objectId==2?vec3(.8,.14,.045):vec3(.9,.68,.21);
-    if(objectId<3){vec2 st=world.xz*9;float checkers=mod(floor(st.x)+floor(st.y),2);base*=mix(.22,1,checkers);}
+    // Checker coordinates are world-space XZ; lighting is evaluated separately below.
+    if(objectId<3) {
+        vec2 st=world.xz*9;
+        float checkers=mod(floor(st.x)+floor(st.y),2);
+        base*=mix(.22,1,checkers);
+    }
     vec3 light=normalize(vec3(sin(pc.times.x)*4,5,3)-world);
     float diffuse=.2+.8*abs(dot(n,light));
     float specular=pow(max(0,abs(dot(n,normalize(light+normalize(vec3(5,3.7,5)-world))))),96);
     color=vec4(base*diffuse+specular*1.8,1);
-    if(pc.settings.x==1){
+    if(pc.settings.x==1) {
         color.rgb=objectId==0?vec3(.04,.08,.16):base;
         // Deliberately changing appearance has no geometric correspondence. It is visible in
         // comparisons, but not represented as fictional velocity or an undocumented vendor mask.
         if(objectId==1)color.rgb=.45+.4*cos(world*8+pc.times.x*vec3(2,3,5));
         if(objectId>=3)color.rgb=mix(vec3(.1,.8,.6),vec3(.9,.08,.3),step(0,sin(pc.times.x*1.7)));
     }
+    // Flip clip Y into top-left UVs. Both positions exclude raster jitter.
     vec2 uv=nowClip.xy/nowClip.w*vec2(.5,-.5)+.5;
     vec2 prev=oldClip.xy/oldClip.w*vec2(.5,-.5)+.5;
+    // Current-to-previous displacement, scaled from UVs to input pixels.
     motion=(prev-uv)*pc.sizeJitter.xy;
+    // Standard Vulkan depth in [0, 1]; background is written as 1 above.
     depth=gl_FragCoord.z;
 }
 ```

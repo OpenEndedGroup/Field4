@@ -5,6 +5,14 @@ import afield.math.linalg.Vec4
 import java.lang.foreign.MemorySegment
 
 /**
+ * Watercolour and ink on paper: the [Paper] kinds, [WaterPigment]s and their [Watercolors]
+ * palette, the [WaterPaint] mixed from them, and the reports and ledgers a wash returns.
+ *
+ * A sheet is made with [PaintCanvas.paper] and worked with [PaintCanvas.waterBrush]. [WaterMap]
+ * names the fields of the sheet's state that can be read back. Test: `WaterMediaTest`.
+ */
+
+/**
  * A sheet of paper for watercolour and ink ([PaintCanvas.paper]). Each is a physical make-up — how
  * much water it holds, how fast it drinks and wicks, its grain, tooth and sizing — not a texture:
  * the same drop behaves differently on each because the water does. The numbers are estimates in

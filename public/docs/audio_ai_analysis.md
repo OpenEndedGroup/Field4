@@ -34,15 +34,17 @@ other, and clicking an analysis plot seeks the recording.
 
 ## Running all three from one box
 
-The source waveform appears immediately. The persistent monitor and three replace-in-place status
+The source waveform appears immediately. The monitor and three replace-in-place status
 cards report each job while the worker runs, and a job becomes a panel on the analysis board only
 once it has finished successfully.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_analysis/synchronized_analysis.png" capture="box" capture-profile="linux-nvidia" open-outputs="true" wait="4" wait-output="true" wait-output-channel="analysis" timeout="300" w="1040" h="40" padding="16" embed=true name="nancy-analysis" alt="Nancy from 18 to 42 seconds with a source waveform and synchronized beat, pYIN pitch and Basic Pitch note panels"}
+:::fold imports and client
 import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
 
 val client = cached { FieldAudioClient() }
+:::endfold
 val start = 18.0
 val duration = 24.0
 val timeSync = "nancy-analysis"
@@ -50,15 +52,20 @@ display("all jobs", fieldAudioJobMonitor(heightPixels = 330))
 
 runAsync(
     onResult = { results: List<AnalysisResult> ->
+        displayClear("all jobs")
+        for (label in ["beats", "monophonic pitch", "polyphonic pitch"]) displayClear("$label job")
+        displayOpen("source")
         display(
             "analysis",
             analysisDashboardHtml(
                 results,
+                width = 1040,
                 panelHeight = 250,
                 syncGroup = timeSync,
                 timeOffsetSeconds = start,
             ),
         )
+        displayOpen("analysis")
     },
     onError = { failure ->
         markdown("analysis error", "Analysis failed: ${(failure.message ?: failure.toString()).md}")
@@ -80,6 +87,8 @@ runAsync(
             canonical.audioVisualizerHtml(
                 label = "Nancy · 18–42 s",
                 options = AudioVisualizerOptions(
+                    width = 1040,
+                    waveformHeight = 110,
                     initialStartSeconds = start,
                     initialDurationSeconds = duration,
                     initialPositionSeconds = start,
@@ -88,6 +97,7 @@ runAsync(
             ),
         )
 
+        :::fold submit and track the three analysis jobs
         val requests = [
             "beats" to multiScaleBeatAnalysis(region, requestedBy = "field:analysis-example"),
             "monophonic pitch" to monophonicPitchAnalysis(region, requestedBy = "field:analysis-example"),
@@ -106,6 +116,7 @@ runAsync(
                 .also { pending -> onCancel { pending.cancel(true) } }
         }
         CompletableFuture.allOf(*analyses.toTypedArray()).thenApply { analyses.map { it.join() } }
+        :::endfold
     }
 }
 ```

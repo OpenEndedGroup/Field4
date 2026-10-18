@@ -230,7 +230,7 @@ layout(push_constant) uniform dat {
     float   dt;
 } pc;
 
-// The live slot, and it goes AFTER the push block, not before.
+// The live slot.
 {{ stack.auto.force }}
 ```
 

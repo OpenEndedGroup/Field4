@@ -3,6 +3,15 @@ package afield.geometry.solid.manifold
 import afield.geometry.path.planning.Point3D
 import kotlin.math.abs
 
+/**
+ * Finds where two parts touch on a shared plane, and audits apertures cut through that contact, in double precision.
+ *
+ * [planarContact] intersects the boundary triangles of two [SolidPlanarMesh]es lying on a [ContactPlane] and
+ * returns a [ContactPatch]; [planarContacts] discovers the shared planes itself. [auditApertures] compares
+ * removed regions against an expected boundary and reports mismatch areas against [GeometryTolerances].
+ * [polylineTube] builds a [Solid] tube of cylinders and spheres along a polyline.
+ */
+
 /** A finite physical contact is extracted from boundary triangles on this plane, not from an infinite cut. */
 data class ContactPlane(val origin: Point3D, val normal: Point3D) {
     init { require(normal.length.isFinite() && normal.length > 0) }

@@ -17,7 +17,8 @@ async def main():
  if '--bootstrap-proof' in sys.argv:
   await m.macro('fresh-cache-and-lifetime-proof',[{'execute':{'box':'subject','property':'code','type':'fragment','code':'check(!accepted.single().cacheHit)\ncheck(operation.future.isDone && !operation.future.isCompletedExceptionally)\nprintln("fresh uncached analysis confirmed; all owned resources released before future completion")'}}])
   return
- text=(R/'public/docs/audio_ai_analysis.md').read_text();doc=re.search(r'```diffstatic \{data-lang=kotlin\}\n([\s\S]*?)\n```',text)[1]
+ text=(R/'public/docs/audio_ai_analysis.md').read_text();doc=re.search(r'```diffstatic(?:_runner)?[^\n]*\n([\s\S]*?)\n```',text)[1]
+ doc=m.extract_static_code(lines=doc.splitlines())
  data=yaml.safe_load((R/'dev_docs/agents/transcripts/audio_ai_analysis.yaml').read_text());live=next(o['create']['properties']['code'] for o in data['operations'] if 'create'in o and o['create']['box']=='analyse_nancy')
  for name,code in [('beat-pitch-page',doc),('beat-pitch-transcript',live)]:
   await m.program(name,fixture(code))

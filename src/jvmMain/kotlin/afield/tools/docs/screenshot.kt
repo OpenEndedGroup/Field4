@@ -1,3 +1,18 @@
+/**
+ * Screenshot and video capture of Field's browser UI, used by the backdoor and the docs runner.
+ *
+ * Captures go through the server's shared Playwright page. [captureBoxScreenshot] and
+ * [captureWindowScreenshot] answer the agent capture requests for one box's output or the whole
+ * window, [openEditorForCapture] opens a box's editor first so inline visualizers are on screen, and
+ * [captureBoxVideo] and [captureWindowVideo] record frames over CDP and encode them to MP4 with
+ * ffmpeg. Before each capture a preparation script waits for the page to settle, with every wait
+ * bounded so that a page that never paints fails with a message naming what was pending.
+ * [trimUniformEdgePixels] crops uniform borders from the result.
+ *
+ * [DocsUiDriver] is the object a docs `drive` script uses to act on the page during a recording,
+ * and [DocsUiRecorder] runs the recording beside it. [Box.screenshot] is the box-code entry point.
+ */
+
 package afield.tools.docs
 
 import afield.ai.conversation.images

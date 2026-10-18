@@ -5,88 +5,74 @@ package afield.simulation.petri
 
 import afield.audio.synth.PatQ
 
-/*
- The other question.
-
- `PetriAnalysis.kt` answers the *deterministic* question and says so in its own KDoc: [willDeadlock]
- runs the net forward under its own [PetriConflict] policy and reports whether *that one*
- interleaving wedged; [deadTransitions] calls a transition dead when it did not fire in *that one*
- run. For a live coder that is the useful question, because the conflict policy is part of the
- instrument.
-
- It is not the question the textbook asks, and it is not the question a five-philosopher table
- asks either. A symmetric dining table deadlocks under *some* interleavings and not others, so
- running it once and finding it still going proves nothing at all. That is why the demo in
- `petri/document.md` carries a `reverseLast` flag: the human already knew the answer and had to
- encode it by hand, because the analysis could not compute it.
-
- This file computes it. It builds the state space — every marking reachable by *any* interleaving —
- and reads the classical properties straight off it. Boundedness, safety, deadlock, quasi-liveness,
- liveness, reversibility, home markings, mutual exclusion. Exactly, with counterexamples.
-
- The one invariant everything here obeys
- ---------------------------------------
-
- **A positive answer is always sound. A negative answer needs [PetriSearchOutcome.COMPLETE].**
-
- A deadlock the search *found* is real whether or not the budget ran out — it came with a firing
- sequence, and [PetriTrace.verify] re-fires that sequence through the engine to prove it. But
- "there is no deadlock" is a claim about markings nobody visited, so every accessor that would make
- such a claim returns `null` — *unknown* — when the search was truncated. Nothing here reports a
- truncated search as safe. That failure mode is the whole reason to write an exhaustive search
- rather than a longer simulation, and building it in only to lose it at the last accessor would be
- worse than not building it.
-
- What this sees that the incidence matrix cannot
- -----------------------------------------------
-
- The successor relation is [PetriNet.fire], which calls the engine's own `petriBind`. So **read
- arcs, inhibitor arcs, colour guards, `enabledIf` and place capacities are all handled**, because an
- explicit search asks "is this transition enabled here?" and gets the real answer, where
- `tInvariants`/`pInvariants` ask the incidence matrix, which is a record of *change* and therefore
- blind to every arc that does not move a token. A net whose mutual exclusion is enforced by an
- inhibitor arc has no P-invariant that proves it and a state space that does.
-
- The price is the classical one: reachability for a net with inhibitor arcs is undecidable in
- general, so this may exhaust its budget where the algebra would have answered instantly. The two
- layers are complements, not replacements.
-
- Two searches, and when to use which
- -----------------------------------
-
- - [PetriNet.stateSpace] is exact and handles every feature of the model, but only terminates on a
-   bounded net. An unbounded one exhausts the budget and says so.
- - [PetriNet.coverability] is Karp–Miller: it accelerates growth to ω and therefore *always*
-   terminates, which is how you get per-place boundedness for a net whose state space is infinite.
-   The price is that Karp–Miller is only valid for plain place/transition nets — inhibitor arcs,
-   place capacities and colour-dependent behaviour each break the acceleration argument, and each
-   adds an entry to [PetriCoverabilityGraph.caveats] rather than being quietly ignored.
-
- The state key, which is a real decision
- ---------------------------------------
-
- [PetriMarking.signature] is the obvious key and it is the wrong one here. Its own KDoc explains
- why: it compares colours by `toString`, so two distinct `PatPattern`s collide. It also *sorts* the
- colours within a place, so it loses arrival order — and consumption is FIFO, so two markings with
- the same multiset in a different order have genuinely different futures.
-
- Both of those make the key **coarser** than the state, and a coarse key in a reachability search
- merges states whose futures differ, which can hide a reachable deadlock behind an already-visited
- marking and report the net safe. That is the one direction of error this file may not make. So the
- key here is strict: places, and the colours in them **in arrival order**, compared by the colours'
- own `equals` rather than by their rendering.
-
- The cost lands in the other direction, which is the survivable one. A net that mints a fresh
- colour object per firing has an effectively infinite state space and will exhaust the budget —
- and that is the honest answer, because the question really is unanswerable by this method for that
- net. [PetriSearchOutcome.BUDGET] says so instead of guessing.
-
- `PetriToken.born` is not in the key. That is not much of an abstraction in practice: the search
- fires everything at [PatQ.ZERO] — it is the *untimed* semantics, and timing, grid and conflict
- policy are all deliberately discarded — so `born` never varies during a search. The residual
- exposure is a guard or an `enabledIf` that reads `born`, which the state space would evaluate at
- zero and a real run would not.
-*/
+/**
+ * Every marking a net can reach by *any* interleaving, and the classical properties read off that:
+ * boundedness, safety, deadlock, quasi-liveness, liveness, reversibility, home markings, mutual
+ * exclusion. Exactly, and with a counterexample when the answer is no.
+ *
+ * `PetriAnalysis.kt` asks the *deterministic* question instead: [willDeadlock] runs the net forward
+ * under its own [PetriConflict] policy and reports whether *that one* interleaving wedged, and
+ * [deadTransitions] calls a transition dead when it did not fire in *that one* run. For a live
+ * coder that is usually the useful question, because the conflict policy is part of the instrument.
+ *
+ * It is not the question the textbook asks, and not the one a five-philosopher table asks either. A
+ * symmetric dining table deadlocks under some interleavings and not others, so running it once and
+ * finding it still going proves nothing; you have to enumerate. That example is worked through under
+ * [Checking every possible order](../petri_nets.md#checking-every-possible-order).
+ *
+ * #### A positive answer is sound; a negative answer needs a complete search
+ *
+ * A deadlock the search *found* is real whether or not the budget ran out: it came with a firing
+ * sequence, and [PetriTrace.verify] re-fires that sequence through the engine to prove it. But
+ * "there is no deadlock" is a claim about markings nobody visited, so every accessor that would make
+ * such a claim returns `null`, meaning unknown, when the search was truncated
+ * ([PetriSearchOutcome.BUDGET] rather than [PetriSearchOutcome.COMPLETE]). Nothing here reports a
+ * truncated search as safe.
+ *
+ * #### What this sees that the incidence matrix cannot
+ *
+ * The successor relation is [PetriNet.fire], which calls the engine's own binding step. So **read
+ * arcs, inhibitor arcs, colour guards, `enabledIf` and place capacities are all handled**: an
+ * explicit search asks "is this transition enabled here?" and gets the real answer, where
+ * `tInvariants` and `pInvariants` ask the incidence matrix, which is a record of *change* and so
+ * blind to every arc that does not move a token. A net whose mutual exclusion is enforced by an
+ * inhibitor arc has no P-invariant that proves it, and a state space that does.
+ *
+ * The price is the classical one: reachability for a net with inhibitor arcs is undecidable in
+ * general, so this may exhaust its budget where the algebra would have answered instantly. The two
+ * layers are complements, not replacements.
+ *
+ * #### Two searches, and when to use which
+ *
+ * - [PetriNet.stateSpace] is exact and handles every feature of the model, but only terminates on a
+ *   bounded net. An unbounded one exhausts the budget and says so.
+ * - [PetriNet.coverability] is Karp–Miller: it accelerates growth to ω and therefore *always*
+ *   terminates, which is how you get per-place boundedness for a net whose state space is infinite.
+ *   Karp–Miller is only valid for plain place/transition nets, though. Inhibitor arcs, place
+ *   capacities and colour-dependent behaviour each break the acceleration argument, and each adds
+ *   an entry to [PetriCoverabilityGraph.caveats] rather than being dropped silently.
+ *
+ * #### The state key
+ *
+ * [PetriMarking.signature] is the obvious key and the wrong one here: it *sorts* the colours within
+ * a place, so it loses arrival order, and consumption is FIFO, so two markings holding the same
+ * multiset in a different order have genuinely different futures.
+ *
+ * That makes the key **coarser** than the state, and a coarse key in a reachability search merges
+ * states whose futures differ, which can hide a reachable deadlock behind an already-visited
+ * marking and call the net safe. An unsound *safe* is the error that matters, so the key here is
+ * strict: places, and the colours in them **in arrival order**, compared by the colours' own
+ * `equals`.
+ *
+ * The cost lands in the survivable direction. A net that mints a fresh colour object per firing has
+ * an effectively infinite state space and exhausts the budget, and [PetriSearchOutcome.BUDGET]
+ * reports that rather than guessing.
+ *
+ * `PetriToken.born` is not in the key. The search fires everything at [PatQ.ZERO] — these are the
+ * *untimed* semantics, with timing, grid and conflict policy all discarded — so `born` never varies
+ * during a search anyway. The residual exposure is a guard or an `enabledIf` that reads `born`,
+ * which the state space evaluates at zero and a real run does not.
+ */
 
 // ── firing one transition, alone ───────────────────────────────────────────────────────────
 

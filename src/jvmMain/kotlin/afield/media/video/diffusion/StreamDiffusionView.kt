@@ -9,6 +9,17 @@ import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 
 /**
+ * A render target that sends a source [RenderToTexture] through the streaming-diffusion worker
+ * and returns the result as an ordinary sampled texture, [StreamDiffusionView.output].
+ *
+ * The frames stay on the GPU throughout: the source is copied into shared buffers, the CUDA worker
+ * writes its result into others, and the view copies that back into `output`. Construct and close
+ * a view between frames. With `renderSource = true` the view schedules the source itself; with
+ * `false` the caller renders the source earlier in the same command buffer. An optional
+ * [StreamDiffusionMotionProvider] enables display reprojection and history blending.
+ */
+
+/**
  * GPU RTT -> optional CUDA worker -> ordinary sampled RTT. Construct/close between frames.
  * With renderSource=true this target owns scheduling of source; do not also register source.
  * With renderSource=false the caller renders source earlier in the same command buffer.

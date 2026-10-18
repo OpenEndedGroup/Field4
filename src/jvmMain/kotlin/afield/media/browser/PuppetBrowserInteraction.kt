@@ -7,6 +7,15 @@ import afield.math.linalg.Vector3f
 import org.lwjgl.glfw.GLFW
 import kotlin.math.abs
 
+/**
+ * Input adapters that route mouse, keyboard and controller rays into a [PuppetBrowser].
+ *
+ * [PuppetBrowserUvInput] turns panel UVs into CSS-pixel pointer events, with click counting;
+ * [PuppetBrowserWindowInput] forwards one Field window's pointer and key stream; [PuppetBrowserPanel]
+ * places the browser as a world-space rectangle and hit-tests rays against it (orientation is
+ * covered by `PuppetBrowserPanelOrientationTest`).
+ */
+
 /** Maps normalized panel UVs into the browser's CSS-pixel input coordinate system. */
 class PuppetBrowserUvInput(val browser: PuppetBrowser) {
     val cssWidth: Double get() = browser.spec.width / browser.spec.deviceScaleFactor

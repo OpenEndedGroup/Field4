@@ -1,5 +1,9 @@
 package afield.graphics.vulkan.device
 
+/**
+ * The GPU Field renders on: [PhysicalDevice.createPhysicalDevice] picks one, optionally by preferred name, and the object records its properties, features, memory types, queue families, extensions and driver identity.
+ */
+
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*

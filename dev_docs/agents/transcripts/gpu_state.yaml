@@ -84,9 +84,8 @@ operations:
               float dt;
           } pc;
 
-          // The live slot, and it goes AFTER the push block, not before: a program is free to read
-          // `?pc.knobs`, and the generated function is emitted exactly where this line is. Put it above
-          // and glslang says `'pc' : undeclared identifier` on a line number inside generated code.
+          // The live slot. Field emits the generated function after the push block wherever this line
+          // sits, so a program is free to read `?pc.knobs`.
           // Until Kotlin binds it this is `vec4 force(vec4 force_in) { return vec4(0.0); }`, so the
           // shader still compiles and the field simply sits still.
           {{ stack.auto.force }}

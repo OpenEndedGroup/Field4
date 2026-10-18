@@ -1,5 +1,12 @@
 package afield.app.diagnostics.debug
 
+/**
+ * The JSON line protocol between Field and the JDI probe helper process: probe requests and the
+ * ack, sample, error and completion responses.
+ *
+ * [ProbeJson] is the codec both sides use; responses are discriminated by their `type` field.
+ */
+
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json

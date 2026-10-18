@@ -1,3 +1,16 @@
+/**
+ * Where Field's AI features find their provider, API key, endpoint and model names.
+ *
+ * Each setting is read from an environment variable first and then from a file under
+ * `~/.afield/`: the provider (`AFIELD_AI_PROVIDER`, else `ai-provider.txt`, defaulting to
+ * `openai`), the OpenAI key (`OPENAI_PLATFORM_KEY` or `OPENAI_API_KEY`, else
+ * `openai-platform-key.txt`), the OpenRouter key and the per-provider model settings. The
+ * /welcome page writes the files through [saveAiSettings] and [saveOpenAiPlatformKey], and
+ * [aiProviderConfigRevision] changes on each [saveAiSettings] so cached clients know to rebuild.
+ * [activeAiProviderRuntimeConfig] resolves all of it into the one [AiProviderRuntimeConfig] a
+ * bridge is built from.
+ */
+
 package afield.ai.models
 
 import com.openai.client.OpenAIClient

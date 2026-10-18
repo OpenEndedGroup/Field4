@@ -91,6 +91,16 @@ import kotlin.math.max
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
+/**
+ * Reads and writes a document as `metadata.edn` plus sidecar files, and keeps backups of what it replaces.
+ *
+ * [SavingContext] is the canonical reader and writer of the version 2 document format: it saves a set
+ * of boxes to `metadata.edn`, writing large text properties such as `code` or `fragment` to
+ * `<uid>_<property>_.<ext>` sidecars, and loads a document folder (or EDN text) back into boxes.
+ * [File.safeSave] is the file write underneath it, which keeps the previous version in a `backups/`
+ * directory and can write atomically through a temp file and a rename.
+ */
+
 @Serializable
 data class Box_transfer(val id: String, val properties: Map<String, Pair<String, JsonElement>>)
 

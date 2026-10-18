@@ -9,6 +9,14 @@ import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 /**
+ * The JVM side of the `field-encode` helper, which encodes Field render targets (VideoToolbox on
+ * macOS, the `field-encode-linux` build on Linux) and streams them to the visionOS app.
+ *
+ * [FieldEncodeProcess] starts the helper and exchanges newline-delimited JSON with it; image data
+ * never passes through this pipe. [FieldRTTStreamer] is the usual way to drive it from a box.
+ */
+
+/**
  * Launches and drives the `field-encode` Swift co-process (`native/field-encode`) — the macOS
  * VideoToolbox sender for the visionOS stereo/flat docks (see
  * `dev_docs/vision_frontend.md` -> "The sender seam" and `native/field-encode/WIRE_FORMAT.md`).

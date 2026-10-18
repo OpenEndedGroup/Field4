@@ -3,15 +3,16 @@ package afield.lang.brief
 import java.io.File
 
 /**
- * The Brief editor extension, as bytes.
+ * The Brief editor extension's JavaScript, read from the same resource the browser loads.
  *
- * The single source of truth is the static resource `src/commonMain/resources/brief.js`, served to the
- * browser as the AMD module `bithero/brief` (see `bootstrapMonaco.js`) and read verbatim here, so the
- * node probe in `afield.examples.brief.BriefEditorExtensionWorkout` exercises the exact code that
- * ships. The file self-installs under bare `eval` and registers an AMD module when a Monaco loader is
- * present, which is what makes it testable outside a browser at all — a browser-side language you can
- * only test in a browser does not stay correct.
+ * The single source is the static resource `src/commonMain/resources/brief.js`, served to the browser
+ * as the AMD module `bithero/brief` (see `bootstrapMonaco.js`) and read verbatim here, so the node
+ * probe in `afield.examples.brief.BriefEditorExtensionWorkout` exercises the code that ships. The file
+ * installs itself under bare `eval` and registers an AMD module when a Monaco loader is present, which
+ * is what lets it be tested outside a browser.
  */
+
+/** Access to `brief.js` and the vocabulary it declares. */
 object BriefEditorExtension {
     const val id: String = Brief.ID
 

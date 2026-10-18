@@ -1,5 +1,8 @@
 #version 450
-layout(push_constant) uniform Sprite { vec4 size; vec4 look; } pc;
+layout(push_constant) uniform Sprite {
+    vec4 size;
+    vec4 look;
+} pc;
 layout(location=0) out vec2 local;
 layout(location=1) flat out vec2 appearance;
 const vec2 corners[6] = vec2[6](vec2(-1,-1),vec2(1,-1),vec2(1,1),vec2(-1,-1),vec2(1,1),vec2(-1,1));

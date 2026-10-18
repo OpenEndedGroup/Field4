@@ -1,3 +1,11 @@
+/**
+ * Small helpers for checking a mesh measurement against a known answer in a box.
+ *
+ * [compare] prints a measured value next to its analytic value with absolute and relative error,
+ * [integrate] sums a per-vertex field over a [TriMesh] using its mixed vertex areas, and
+ * [randomPoints] draws repeatable uniform samples from an axis-aligned box.
+ */
+
 package afield.geometry.mesh
 
 import afield.document.graph.Box

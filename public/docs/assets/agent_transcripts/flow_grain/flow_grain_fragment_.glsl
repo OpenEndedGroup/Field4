@@ -48,7 +48,10 @@ vec2 atCell(ivec2 cell) {
 vec2 flowVelocity(vec2 p) {
     vec2 grid = p / H - .5, f = fract(grid);
     ivec2 c = ivec2(floor(grid));
-    return mix(mix(atCell(c),atCell(c+ivec2(1,0)),f.x),mix(atCell(c+ivec2(0,1)),atCell(c+ivec2(1)),f.x),f.y);
+    // The same cell-centred interpolation used by the simulation pass.
+    vec2 lower = mix(atCell(c), atCell(c + ivec2(1, 0)), f.x);
+    vec2 upper = mix(atCell(c + ivec2(0, 1)), atCell(c + ivec2(1)), f.x);
+    return mix(lower, upper, f.y);
 }
 void main() {
     vec2 world = flowUVToWorld(uv, pc.history.frame.inverseCurrent);

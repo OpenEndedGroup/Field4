@@ -1,3 +1,10 @@
+/**
+ * An [LlmBridge] that replays a fixed script of tool calls instead of asking a model.
+ *
+ * Tests and the no-credentials mode of agent tasks use it to drive the real tool dispatch;
+ * [ScriptedLlmBridge] documents the script format.
+ */
+
 package afield.ai.models
 
 import afield.ai.conversation.AiTurnInbox

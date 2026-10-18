@@ -14,11 +14,7 @@ for (i in 0 until 24) {
     mesh.tiles = { tileHeaders }
     mesh.clock = { flowClock }
     mesh.emitter = { flowEmitter }
-    module +=
-        "barrier-$i" to
-            computeTask { _, cmd, _ ->
-                computeMemoryBarrier(cmd, null as VulkanBuffer?)
-            }
+    module += "barrier-$i" to computeBarrier()
 }
 flowSimulation += "pressure" to module
 loop { true }

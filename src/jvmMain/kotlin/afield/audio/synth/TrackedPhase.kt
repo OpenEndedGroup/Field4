@@ -9,18 +9,22 @@ import kotlin.math.exp
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-private const val TWO_PI = 2.0 * PI
-
-/*
- * A tracker reduces one periodic sound to phase, phase advance, pitch, level and confidence.
- * A bank consumes that state once per sample and gives every voice its own phase accumulator:
- *     theta += ratio * (omega + lock * (phaseAdvance - omega))
+/**
+ * Pitch-tracked phase for voice banks: a tracker reduces one periodic sound to phase, phase
+ * advance, pitch, level and confidence, and a bank gives every voice its own phase accumulator.
+ *
+ * Each voice advances by
+ *
+ * ```
+ * theta += ratio * (omega + lock * (phaseAdvance - omega))
+ * ```
+ *
  * This supports undertones, harmonics and irrational ratios without dividing wrapped phase.
- * lock=0 follows stable pitch; lock=1 also follows the tracker's phase corrections. It does
+ * `lock = 0` follows stable pitch; `lock = 1` also follows the tracker's phase corrections. It does
  * not force a voice onto an absolute input phase, so changing a ratio preserves continuity.
  *
  * QuadPhaseTracker is the analysis half of SubharmonicQuadPLL, sharing its HilbertPair and
- * algorithm. The existing subharmonic facade keeps its original oscillator and level behavior.
+ * algorithm; [Subharmonic] keeps its own oscillator and level behaviour.
  * HarmonicPhaseTracker supplies the same state from several partials, including a missing
  * fundamental. Neither tracker separates polyphonic sources.
  *
@@ -29,6 +33,8 @@ private const val TWO_PI = 2.0 * PI
  * it. Per-sample paths reuse their storage. Custom renderers must handle their own bandwidth;
  * the bank's Nyquist fade protects the fundamental of each sine voice only.
  */
+
+private const val TWO_PI = 2.0 * PI
 
 /**
  * Mutable, reused per-sample state published by a [PhaseTracker].

@@ -12,26 +12,32 @@ import afield.lang.remotejs.JsType
 import afield.lang.remotejs.TypeBuilder
 import afield.lang.remotejs.jsBinding
 /**
- * Typed Kotlin/JS view of the Tone.js computer-music head — the `// {{ tone }}` profile.
+ * The typed Kotlin/JS view of Tone.js, the computer-music library loaded by the RemoteAR browser
+ * head, selected in a box with the `// {{ tone }}` profile.
  *
- * Described ONCE with [jsBinding]; the compiler-facing `external` declarations and the JVM-analysis
- * completion mirror are both generated from it (see [KotlinJsBinding]) so they cannot drift, exactly
- * like [RemoteArKotlinJs]. Adding a Tone class/helper is one DSL call.
+ * The surface is described once with [jsBinding]. Both the compiler-facing `external` declarations
+ * and the completion model are generated from that one description, as with [RemoteArKotlinJs], so
+ * the two cannot drift. Adding a Tone class or helper is one DSL call.
  *
- * **Grounding (the roadmap's hard rule).** Every name bound here is confirmed present in the vendored
- * bundle `extensions/remote_ar/vendor/tone/15.1.22/Tone.js`, which the RemoteAR head installs as the
- * global `Tone` (`index.html` loads it; `index_vr.html` redirects there). The 184 module exports were
- * enumerated and each top-level name below matched against them; each member/property was matched as a
- * real identifier in the bundle. The one plausible name that is NOT present is `amount` (Distortion's
- * ctor arg) — so `Distortion` takes a permissive `dynamic` options arg and exposes the real
- * `distortion` property instead. `external object Tone` maps to the global `Tone`; `Tone.Synth()`
- * compiles to `new Tone.Synth()`, `Tone.now()` to `Tone.now()` — the same mapping THREE uses.
+ * `external object Tone` maps to the global `Tone`: `Tone.Synth()` compiles to `new Tone.Synth()`,
+ * and `Tone.now()` to `Tone.now()`. Every name bound here is present in the vendored bundle
+ * `vendor/tone/15.1.22/Tone.js` under the RemoteAR extension resources. Distortion's constructor
+ * argument `amount` is not, so `Distortion` takes a `dynamic` options argument and exposes the real
+ * `distortion` property instead.
  *
- * The surface is a genuinely useful synthesis slice: the synth family, sources, the core effects, the
- * `Param`/`Signal` value type, `Transport` scheduling, and `Loop`/`Sequence`. Audio *playback* needs a
- * user gesture in a real browser head and is not headlessly verifiable; what IS verified is that every
- * name compiles Kotlin → JS against these generated declarations (see KotlinJsToneSurfaceSmokeTest).
+ * #### What is covered
+ *
+ * - the synth family and sources
+ * - the core effects
+ * - the `Param` / `Signal` value type
+ * - `Transport` scheduling, `Loop` and `Sequence`
+ *
+ * Playback needs a user gesture in a real browser, so it is not checked headlessly.
+ * `KotlinJsToneSurfaceSmokeTest` compiles every bound name from Kotlin to JS against the generated
+ * declarations.
  */
+
+/** The Tone.js binding: its profile id and the declarations generated for the compiler and for completion. */
 object ToneKotlinJs {
     const val surfaceId: String = "tone"
 

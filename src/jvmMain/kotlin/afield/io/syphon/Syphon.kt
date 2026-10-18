@@ -38,6 +38,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * `ByteArray`. At 1920 x 1080 that is about 8 MB a frame each way. Publishing an IOSurface that
  * already exists ([SyphonServer.publishIOSurface]) skips the CPU entirely.
  */
+
+/** Process-wide Syphon state: whether the bridge is built, the server list, and the run-loop pump. */
 object Syphon {
     private val pumping = AtomicBoolean(false)
 

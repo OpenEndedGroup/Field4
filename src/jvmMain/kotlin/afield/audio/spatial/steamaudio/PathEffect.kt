@@ -8,6 +8,13 @@ import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout
 
 /**
+ * Rendering sound that reaches the listener around obstacles along baked probe paths.
+ *
+ * [PathEffect] spatializes a source using the paths a [Simulator] found, configured per block
+ * by [PathEffectParams].
+ */
+
+/**
  * Per-block parameters for a [PathEffect].
  *
  * A [Simulator] fills in the two fields that describe the *paths it found* --

@@ -2,6 +2,14 @@
 
 package afield.app.diagnostics.debug
 
+/**
+ * The JDI probe helper: a separate JVM that attaches to Field over JDWP and samples a variable at
+ * a source line.
+ *
+ * Its `main` attaches with [attachSocket] and hands requests read from stdin to [JdiProbeService],
+ * which installs breakpoints that suspend only the hitting thread and writes responses to stdout.
+ */
+
 import com.sun.jdi.AbsentInformationException
 import com.sun.jdi.ArrayReference
 import com.sun.jdi.Bootstrap

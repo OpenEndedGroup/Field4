@@ -22,12 +22,12 @@ expect:
  * ### What this is for
  *
  * [StdlibReferenceGenerator] answers "what is already in the box?" — a symbol per row, a summary per
- * symbol. It is deliberately a *summary*, and a reader who wants the next question answered ("what
+ * symbol. It is a *summary*, and a reader who wants the next question answered ("what
  * does it actually do?") has to leave the site. Meanwhile the published pages cite source constantly:
- * 172 `path:line` citations across the corpus, every one of them dead text. This is the destination
+ * `path:line` citations throughout the corpus, which are otherwise dead text. This is the destination
  * those two facts imply — the place a citation can point at, and the place a reference row can lead.
  *
- * ### The one property that makes it honest
+ * ### Fences carry their real line numbers
  *
  * A page that lifts KDoc out of the source and puts the rest in fences is only trustworthy if the
  * fences still say where their code lives. So every fence carries `linenums="N"` set to its real first
@@ -55,11 +55,13 @@ expect:
  *
  * ### Running it
  *
- * ```
+ * ```bash
  * ./gradlew generateSourcePages                     # into build/source-pages
  * ./gradlew checkSourcePages                        # verify only, no output kept
  * ```
  */
+
+/** Generates and verifies the source-mirror docs pages; see the file overview. */
 object SourcePageGenerator {
 
     /** Where the pages live inside the docs tree, and therefore what their URLs look like. */

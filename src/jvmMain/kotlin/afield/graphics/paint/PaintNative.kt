@@ -1,6 +1,11 @@
 @file:afield.runtime.completion.CompletionCategory("Internal")
 package afield.graphics.paint
 
+/**
+ * The bindings to the native `field-paint` library: [PaintLibrary] finds the library file, and
+ * the internal FFM layer under [PaintCanvas] calls into it.
+ */
+
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
 import java.lang.foreign.Linker

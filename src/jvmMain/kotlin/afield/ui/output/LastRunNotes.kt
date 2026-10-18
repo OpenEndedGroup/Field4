@@ -42,6 +42,10 @@ import afield.document.graph.Box
 import java.util.concurrent.ConcurrentHashMap
 
 /**
+ * The record of what each line of a box produced on its last run, read back as line notes for Forth, Clojure and Python.
+ */
+
+/**
  * What each line of a box produced the last time it ran, kept so the editor can show it as a line
  * note ([LineNotes]) without running anything.
  *

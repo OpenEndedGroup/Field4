@@ -37,6 +37,14 @@ import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
 
+/**
+ * Reformats a box's Kotlin or GLSL code.
+ *
+ * [formatCodeProperty] picks the formatter by property name: [formatKotlinCode] for `code`, which runs
+ * ktfmt and then restores Field-specific layout such as fragment breaks and comment blocks, and
+ * [formatGlslCode] for shader properties.
+ */
+
 fun formatKotlinCode(code: String, blockifyComments: Boolean = true): String {
     // Box code is a script: top-level statements, not only declarations.
     // ktfmt attaches comments that follow the last statement of a script to that statement's last

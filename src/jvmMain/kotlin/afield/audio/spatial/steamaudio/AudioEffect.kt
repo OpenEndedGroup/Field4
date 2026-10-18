@@ -1,5 +1,10 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * The base class every Steam Audio effect extends: [AudioEffect] resets state, reports and flushes
+ * the reverb tail, and [AudioEffect.drainTail] runs that flush loop for a source that has stopped.
+ */
+
 import java.lang.foreign.MemorySegment
 
 /**

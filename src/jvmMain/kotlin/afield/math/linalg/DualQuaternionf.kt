@@ -1,4 +1,18 @@
 package afield.math.linalg
+
+/**
+ * Rigid 3D transforms (rotation plus translation) as mutable unit dual quaternions, with blending.
+ *
+ * [DualQuaternionf] is built from a rotation and a translation, composes with `*`, transforms points
+ * with `transform` or `*`, and converts to a `Matrix4f` with `toMatrix`. Two transforms blend with
+ * `nlerp` (fast, normalised component blend) or `sclerp` (screw-linear interpolation, which moves at
+ * constant speed along a single screw motion); `pow` scales a transform by a fraction. Both blends
+ * take the shorter path when the two quaternions have opposite signs.
+ *
+ * Methods without a `dest` argument change the receiver and return it, following the rest of
+ * `afield.math.linalg`.
+ */
+
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin

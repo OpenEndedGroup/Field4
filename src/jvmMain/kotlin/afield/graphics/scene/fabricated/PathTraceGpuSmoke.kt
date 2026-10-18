@@ -334,6 +334,16 @@ object PathTraceGpuSmoke {
                 check(softPixels(jittered) in 1..64) { "Pixel jitter did not antialias the subpixel edge" }
                 val centred=capture { tracer.pixelJitter=0f }
                 check(centred.contentEquals(pinhole)) { "Turning jitter off retained old samples" }
+                val rolled=capture { camera.up.set(0f,-1f,0f) }
+                for(pixel in 0 until 48*32)for(channel in 0..3) {
+                    check(abs(rolled[pixel*4+channel]-pinhole[(48*32-1-pixel)*4+channel])<1e-5f) {
+                        "camera.up did not rotate the path-traced image by 180 degrees"
+                    }
+                }
+                val projectedUp=capture { camera.up.set(0f,1f,.5f) }
+                check(projectedUp.contentEquals(pinhole)) {
+                    "A forward component of camera.up changed the orthonormal camera basis"
+                }
                 for (bad in listOf(-1f,Float.NaN,Float.POSITIVE_INFINITY)) {
                     check(runCatching { tracer.apertureRadius=bad }.isFailure)
                     check(runCatching { tracer.focusDistance=bad }.isFailure)
@@ -342,7 +352,7 @@ object PathTraceGpuSmoke {
                 check(runCatching { tracer.focusDistance=0f }.isFailure)
                 check(runCatching { tracer.pixelJitter=1.01f }.isFailure)
                 println("PASS GPU $backend camera: sharp focus plane, ${softPixels(defocused)} defocused pixels, " +
-                    "${softPixels(jittered)} antialiased pixels, premultiplied coverage and focus/jitter resets")
+                    "${softPixels(jittered)} antialiased pixels, camera.up roll/projection, premultiplied coverage and focus/jitter resets")
             }
         }
     }

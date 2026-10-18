@@ -1,3 +1,13 @@
+/**
+ * [Image] wraps a `VkImage` and its memory, created from an [Image.ImageData] description, including the external-memory exports used to hand frames to other processes.
+ *
+ * Alongside ordinary device-local images, an [Image] can be allocated for export as an opaque fd
+ * (CUDA/NVENC on Linux, see [VulkanExternalMemory]), as a dma-buf with a DRM format modifier (see
+ * [LinuxDmaBufExport]) or as a Metal IOSurface (see [MetalIOSurface]). The file also holds the
+ * format helpers [vkFormatBytesPerPixel] and [vkFormatBytesPerPixelOrNull], and
+ * [image_layout_transition] for recording layout barriers.
+ */
+
 package afield.graphics.texture
 
 import afield.graphics.vulkan.device.vkLayout

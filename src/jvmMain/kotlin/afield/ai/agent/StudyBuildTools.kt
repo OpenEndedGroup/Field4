@@ -28,6 +28,14 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import com.fasterxml.jackson.module.kotlin.convertValue
 
+/**
+ * AI4 tools over a box's study builds: list, inspect, start, wait for, cancel, await and prune build jobs.
+ *
+ * Each request class is one tool and returns a [StudyBuildToolResult]. [AwaitStudyBuildsRequest]
+ * is the exception: its [StudyBuildAwaitResult] can end the turn with a suspension, which
+ * [StudyBuildAwaits] then holds until the jobs finish.
+ */
+
 @JsonClassDescription("List the live derived-stage build runners in this document. Returns success plus, per runner, its source box id, name, dependency currency, current results and latest attempt. Use it when you need a runner's boxId and name and the task does not give them. A document with no runners returns an empty list, not an error. e.g. a result entry has boxId = `a1b2`, name = `mesh`.")
 @AgentToolMeta("builds", ToolExposure.DIRECT, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
 data class ListStudyBuildsRequest(val unused: Int = 0)

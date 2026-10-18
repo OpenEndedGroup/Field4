@@ -1276,9 +1276,9 @@
   },
   "inProgress": {
     "batch": 43,
-    "branch": "codex/box-code-readability-43",
+    "branch": "codex/box-code-readability-44",
     "baseline": "5e02bad8c",
-    "state": "Seven findings verified; final evidence and landing preparation. Cumulative39\u201341 repair landed8d711697c; batch42 landedf34580a63. CPU Field9713, private API18765 and adapted real analysis worker18767 remain available.",
+    "state": "Batch43 initially bounced on four source conflicts with newer real cached galleries/capture configuration on main. Integrated incoming captures, folds, output cleanup and real gallery with owned live analyses via merge_regen.py main. Formatting, verification and merge_regen --continue remain before requeue. CPU Field9713 predates merged runtime sources and must be refreshed before additional execution.",
     "evidence": "../box_code_adoption_batch_43/README.md"
   }
 }

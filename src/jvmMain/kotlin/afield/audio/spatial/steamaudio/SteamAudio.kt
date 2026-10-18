@@ -1,5 +1,10 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * Library-wide constants for the Steam Audio bindings: version numbers, the native band count
+ * and an explicit load entry point, on [SteamAudio].
+ */
+
 import afield.audio.spatial.steamaudio.raw.Phonon
 
 /** Library-wide constants and version information. */

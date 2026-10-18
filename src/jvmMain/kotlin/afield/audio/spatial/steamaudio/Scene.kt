@@ -12,6 +12,13 @@ import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout
 import java.nio.file.Path
 
+/**
+ * Acoustic geometry: the scene that sound is simulated against, and the meshes in it.
+ *
+ * A [Scene] holds [StaticMesh] geometry built from vertices, [Triangle]s and materials, and
+ * [InstancedMesh] copies of a sub-scene placed by a transform that can move.
+ */
+
 /** A triangle, as three indices into a mesh's vertex list. */
 public data class Triangle(public val a: Int, public val b: Int, public val c: Int) {
     internal fun writeTo(segment: MemorySegment) {

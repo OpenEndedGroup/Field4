@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.util
 
+/**
+ * Keyed collections of running sequences that a host steps once per frame.
+ *
+ * [MapOfSequences] holds the Runloop's `preRun`/`postRun` hooks and a mesh's `update` map, and can record each hook in the lifecycle ledger; [MapOfGenerators] holds generators that take an input each step and yield a value, without ledger entries.
+ */
+
 import afield.runtime.lifecycle.Generator
 
 /**

@@ -74,12 +74,18 @@ object PathTraceEmitterGpuSmoke {
 
     // ---------------------------------------------------------------- scenes
 
-    /** Sphere inside a two-sided emissive cube. Radiances are y-, y+, z-, z+, x-, x+. */
+    /** Sphere inside a two-sided textured emissive cube. Radiances are y-, y+, z-, z+, x-, x+.
+     * Different texture means and reciprocal factors preserve the stated radiance on every face. */
     private fun enclosure(radiances: List<Vector3f>): PathTraceScene = PathTraceScene().apply {
         require(radiances.size == 6)
         sphere(Vector3f(), 0.6f, material(PathTraceMaterial.plastic(1f, 1f, 1f, 0.4f)), 48, 24)
         val h = 3f
-        val faces = radiances.map { material(PathTraceMaterial.emissive(it.x, it.y, it.z)) }
+        val faces = radiances.mapIndexed { i, radiance ->
+            val mean=if(i%2==0).25f else 2f
+            val emission=texture(PathTraceTexture(1,1,floatArrayOf(mean,mean,mean,1f)))
+            material(PathTraceMaterial.emissive(radiance.x/mean,radiance.y/mean,radiance.z/mean)
+                .copy(emissionTexture=emission))
+        }
         quad(Vector3f(-h,-h,-h), Vector3f(h,-h,-h), Vector3f(h,-h,h), Vector3f(-h,-h,h), faces[0])
         quad(Vector3f(-h, h,-h), Vector3f(h, h,-h), Vector3f(h, h,h), Vector3f(-h, h,h), faces[1])
         quad(Vector3f(-h,-h,-h), Vector3f(-h,h,-h), Vector3f(h,h,-h), Vector3f(h,-h,-h), faces[2])

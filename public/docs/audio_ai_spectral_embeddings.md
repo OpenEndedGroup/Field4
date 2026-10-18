@@ -82,10 +82,13 @@ and monitors one durable analysis job, downloads the artifact, and compares thre
 the first ten seconds. Every panel shares the source player's cursor in both directions.
 
 ```diffstatic {data-lang=kotlin}
+:::fold imports
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
+
+:::endfold
 
 val client = FieldAudioClient()
 val localPath = Path.of(System.getProperty("user.home"), "Downloads", "near_drowning.wav")
@@ -118,6 +121,7 @@ runAsync(
     val showProjection = progress<String> { display("projection", it) }
     // HTTP continuations run on other threads. New tracked legs still belong to this run.
     val run = RunScope.current()
+    :::fold durable job tracking
     val tracked: (ModelOperation) -> CompletableFuture<AnalysisResult> = { request ->
         RunScope.withCurrent(run) {
                 client.trackAnalysis(
@@ -130,11 +134,13 @@ runAsync(
             }
             .also { pending -> onCancel { pending.cancel(true) } }
     }
+    :::endfold
     val lookup = client.assetsByFilename("near_drowning.wav")
     onCancel { lookup.cancel(true) }
     lookup
         .thenCompose { matches ->
             if (future.isDone) throw CancellationException("run ended")
+            :::fold find or import the recording
             when {
                 matches.size == 1 -> CompletableFuture.completedFuture(matches.single())
                 matches.isEmpty() && Files.isRegularFile(localPath) ->
@@ -148,6 +154,7 @@ runAsync(
                         IllegalStateException("near_drowning.wav matched ${matches.size} assets"),
                     )
             }
+            :::endfold
         }
         .thenCompose { source ->
             if (future.isDone) throw CancellationException("run ended")

@@ -68,6 +68,15 @@ import java.util.Base64
 import javax.imageio.ImageIO
 
 /**
+ * Draws a loaded [ParticleVideo] as images and as a scrubbable box output.
+ *
+ * [ParticleVideo.image] rasterizes one recorded frame as per-identity trails and optional points, colored by
+ * sampled RGB, identity or confidence. [particleVideoView] puts that drawing in a box's output
+ * with controls for movie time, colors and trails. Both work from the loaded tracks and never run
+ * inference.
+ */
+
+/**
  * Rasterizes an actual recorded frame, with sampled RGB or stable identity/confidence colors.
  * [pointRadius] uses source pixel coordinates; [scale] magnifies the complete image and dots.
  * [trailLength] draws recent consecutive samples as a polyline per identity, without bridging lifecycles.

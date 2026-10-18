@@ -157,11 +157,12 @@ in audio-sized blocks. See [SMPTE Timecode](smpte_timecode.md).
 
 ### matrix_profile
 
-**Motifs, discords and contrast**, in four pure-CPU boxes on `afield.math.matrixprofile`: a random
-walk with a wiggle hidden three times, found by `matrixProfile(...).motifs()`; a pulse train with one
-malformed beat, found by `discords()`; four noisy channels with a gesture in two of them, found with its channels by
-`multiMatrixProfile`; and two sets of examples where only one has a step, found by
-`contrastProfile(...).platos()`. Each box makes its own signal from a fixed seed, so swap in yours.
+**Motifs, discords and contrast**, in four boxes that use `afield.math.matrixprofile` (no GPU
+needed). A random walk with a wiggle hidden three times, found by `matrixProfile(...).motifs()`; a
+pulse train with one malformed beat, found by `discords()`; four noisy channels with a gesture in
+two of them, which `multiMatrixProfile` finds along with the channels that carry it; and two sets
+of examples where only one has a step, found by `contrastProfile(...).platos()`. Each box makes its
+own signal from a fixed seed, so replace that with your own data.
 See [Motifs, Discords and Contrast](matrix_profile.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/matrix_profile/metadata.edn)
@@ -1945,11 +1946,13 @@ Walkthrough: [Gesture board: drawing toward a sound](audio_ai_gesture_board.md).
 
 ### audio_ai_analysis
 
+![Nancy’s source waveform above real beat, pYIN pitch and Basic Pitch note panels.](assets/audio_ai_analysis/synchronized_analysis.png)
+
 Resolve a recording by filename, display its exact source window, submit
 librosa beat and pYIN analysis plus Spotify Basic Pitch, follow all three jobs through replaceable
 progress cards and the durable monitor, await their immutable results, then compare onset, tempo,
 confidence, monophonic F0, voicing and polyphonic notes on synchronized timelines. Its first two
-boxes are model-free and remain runnable without the analysis worker.
+boxes show the guide and real cached previews without the analysis worker.
 Walkthrough: [Beat and pitch analysis](audio_ai_analysis.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/audio_ai_analysis/metadata.edn)
@@ -2171,6 +2174,19 @@ reach `java.lang.System` from Python. The last cell's `fig.show()` needs a brows
 `--with-playwright` it opens this box's `browser` channel, and headless it emits no output at all.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/python_cells/metadata.edn)
+
+### python_box_parity
+
+**Python boxes doing what Kotlin boxes do: errors on the right line, and live controls.** Three boxes:
+a Kotlin language root and two Python cells under it. Run the first cell and the red error marker sits
+on line 6, inside `mean`, where the division by zero happened. The second draws a slider and a checkbox
+whose callbacks are Python functions; moving either runs the function, and its `display(...)` updates
+the box. Same prerequisite as `python_cells`: Field must have found a Python with JEP before it started.
+
+`DemoTranscriptExecSmokeTest` compiles the Kotlin root and skips the two Python cells, so CI checks one
+box of three. [Python in Field](python.md) shows both cells' output.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/python_box_parity/metadata.edn)
 
 ### fieldcv_webcam
 

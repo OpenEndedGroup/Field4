@@ -401,9 +401,9 @@ response, a pyramid, or a list of detections.
 !!! tip "Open the demo document"
     The [imaging_visualizers_demo](agent_transcripts.md#imaging_visualizers_demo)
     starting point has one box per visualizer on this page. Open it from the
-    welcome screen, run the boxes and look at each one's output area — every box evaluates one imaging value as its last expression, so
-    there is no `showImg`, no `display(...)` and no explicit call at all. Then
-    change a sigma or a threshold and re-run a box.
+    welcome screen, run the boxes and look at each one's output area. Each box
+    ends with one imaging value, and Field draws it; no `display(...)` call is
+    needed. Then change a sigma or a threshold and re-run a box.
 
 The rest of this page is the *instruments* built on top of this renderer: inline
 probes that live next to a line of code, display channels, control surfaces, and
@@ -1554,6 +1554,8 @@ showing through: at this zoom each bin holds about ten samples, roughly a third 
 so a bin's min and max rarely land on a peak. Zoom in and it becomes the waveform.
 
 ### Beat and pitch analysis views
+
+![Nancy’s source waveform above real beat, pYIN pitch and Basic Pitch note panels.](assets/audio_ai_analysis/synchronized_analysis.png)
 
 The Field Audio integration keeps full-resolution analysis tensors as immutable NPZ assets and sends
 only bounded preview trajectories to the browser. `analysisVisualizationHtml(...)` presents three

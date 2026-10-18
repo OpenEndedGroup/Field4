@@ -12,6 +12,20 @@ import java.net.URI
 import java.nio.file.Path
 import java.nio.file.Paths
 
+/**
+ * A read-only view of box text in saved documents as addressable files, so tools that expect files can read
+ * a box's code or shaders without opening Field. [AfieldVirtualFileSystem] names each text property
+ * `afield://<document>/<uid>/<property>`, lists them from a workspace directory (an `afield:` URI whose path
+ * is that directory) and reads them back from `metadata.edn` or `metadata.json`, resolving sidecar files
+ * and skipping tombstoned boxes.
+ *
+ * Only properties in [AfieldVirtualFileSystem.DEFAULT_PROPERTIES] are exposed by default: `code` and the
+ * GLSL and Slang shader stages, each with a language label. [collectVirtualFiles] combines listing roots
+ * and reading explicit URIs across several [VirtualFileSystem]s, dispatched by URI scheme; the AI4
+ * filestore CLI in `afield.ai.knowledge` uses it to upload document text.
+ */
+
+/** One addressable file: its `afield:` [uri], a display [fileName] and a [language] label. */
 data class VirtualFileRef(
     val uri: String,
     val fileName: String,

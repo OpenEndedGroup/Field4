@@ -6,33 +6,48 @@ import afield.runtime.lifecycle.gather
 import afield.app.diagnostics.logging.lprintln
 import java.util.concurrent.ConcurrentHashMap
 
-// A tiny, dynamic, Jinja-ish templating engine in *one file* using only Kotlin stdlib.
-// Features:
-// - {{ expr }} interpolation
-// - {% if expr %} ... {% else %} ... {% endif %} with nesting
-// - {% property "name" %} (requires include resolver; {% include "name" %} is a deprecated alias)
-// - Dynamic, runtime resolver chaining with dot-path fallback rules
-// - Good runtime errors with line/col, line snippet, and a resolution trace
-//
-// The resolver contract is intentionally loose and runtime-driven:
-//   resolve(key: String): Any?
-// where Any? may be:
-//   - null -> treated as "not resolved"
-//   - String -> final value
-//   - any other value -> final value via toString()
-//   - Resolver -> used to resolve remaining suffix segments
-//   - Iterable<*> containing Resolvers -> used as a new resolver chain
-//
-// Path strategy for "foo.bar.gux":
-//   try "foo.bar.gux", then "foo.bar", then "foo", then "".
-// If "foo" resolves to a Resolver, we then attempt "bar.gux", then "bar", then "" on that child.
-//
-// This gives you liveness and debuggability over type gymnastics.
+/**
+ * The template engine behind `{{ slot }}` in a Field shader: a Jinja-shaped expander written against
+ * the Kotlin standard library alone, which a shader stage's source runs through before shaderc
+ * sees it. `Box.shaderTemplate` is where a box puts the values it resolves against.
+ *
+ * A template may contain:
+ *
+ * - `{{ expr }}`, replaced by whatever `expr` resolves to.
+ * - `{% if expr %}` … `{% else %}` … `{% endif %}`, nested freely. `not expr` and `!expr` negate.
+ *   An empty string, a zero, an empty map and an empty list are false; a resolver is true.
+ * - `{% property "name" %}`, which expands another named shader property in place and needs an
+ *   include resolver to find it. `{% include "name" %}` is the same tag under its older spelling,
+ *   kept so that saved documents still compile.
+ *
+ * Everything a template reads comes from a `Resolver`, one function from a key to a value, and what
+ * comes back is read by value rather than by type. `null` means not resolved, so the next resolver in
+ * the chain is asked. A `String` is the answer, and so is anything else through its `toString`. A
+ * `Resolver`, a `Map` or a list of `Resolver`s is structural instead: the rest of the path is
+ * resolved against it, to a depth of fifty.
+ *
+ * `{{ a.b.c }}` is matched longest prefix first, so `a.b.c` is offered to every resolver, then
+ * `a.b`, then `a`, then the empty key. A resolver may therefore own a whole dotted namespace or just
+ * its root, and where `a` answers with something structural, `b.c` is resolved against that. A path
+ * that resolves nowhere stops the shader rather than silently emitting nothing, and says where: the
+ * line and column, the line itself under a caret, and every key that was tried against every
+ * resolver with what each returned.
+ *
+ * `runShaderTemplate` is `runTemplate` plus `#line` directives around any expansion that spans
+ * lines, so a compiler error after one still names the shader line that was written rather than the
+ * line it grew into.
+ */
 
 //////////////////////////////
 // Public API
 //////////////////////////////
 
+/**
+ * One source of named values for a template: given a key, either a value or `null` for "ask the next
+ * one". A key arrives dotted and whole (`a.b.c` before `a.b` before `a`), so a resolver may answer
+ * for a namespace as readily as for a name, and a resolver returned as the answer resolves the rest
+ * of the path.
+ */
 fun interface Resolver {
     fun resolve(key: String): Any?
 }

@@ -107,6 +107,18 @@ import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * The Three.js viewer's server side: the geometry payload it is sent, the live state of each view,
+ * and [Box.threeLines], which puts a viewer in a box's output area.
+ *
+ * A view is an iframe on `/threejs` that orbits, picks and edits the geometry it is given. The
+ * payload types ([ThreeGeometryPayload], [ThreeGeometryData], [ThreeAttribute], [ThreeIndex],
+ * [ThreeBounds]) mirror three.js `BufferGeometry`, plus the editable and interactive records a click
+ * or a drag reports back. Each view has one [ThreeGeometryViewState]: call its `update` to push new
+ * geometry to every connected viewer. [installThreeJsHandler] answers the viewers' websocket
+ * messages, and edits, surface clicks and review notes return to the box through it.
+ */
+
 private const val THREE_CHANNEL = "__threejs__"
 /** How many superseded generations a view keeps serving buffers for, so a viewer's in-flight fetch still lands. */
 private const val RECENT_GENERATIONS = 2

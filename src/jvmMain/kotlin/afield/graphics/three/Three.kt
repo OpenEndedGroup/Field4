@@ -25,10 +25,11 @@ import afield.geometry.mesh.signedVolume
 import kotlin.math.abs
 
 /**
- * One 3D output for everything Field can draw.
+ * One 3D output for everything Field can draw: [Box.three] puts meshes and FLines in one orbitable
+ * Three.js scene.
  *
- * [Box.three] is [Box.threeLines] grown a vocabulary. It takes meshes as well as FLines, draws them in
- * one orbitable scene, and lays several views out side by side when you ask for a contact sheet:
+ * [Box.three] extends [Box.threeLines] to meshes, and lays several views out side by side when you ask
+ * for a contact sheet:
  *
  * ```kotlin
  * three(channel = "car", height = 460) {
@@ -40,30 +41,24 @@ import kotlin.math.abs
  * }
  * ```
  *
- * `pickable` and `inspect` are new on 2026-08-16, and the example above is why. Without them this same
- * scene drew a solid and its annotations together and then let you measure **only the annotations** —
- * the viewer built its pick list out of the FLine half of the payload, so a ray went straight through
- * every mesh in it. A mesh hit now resolves to a vertex, an edge or a triangle
- * ([ThreeSurfaceHit]) and the measure tool can span the two.
+ * With `pickable = true` a click on a mesh resolves to a vertex, an edge or a triangle
+ * ([ThreeSurfaceHit]), so the measure tool can span a solid and its annotations.
  *
- * # Why this exists
+ * #### Compared with the CPU rasterizer
  *
- * Meshes used to go to the CPU rasterizer in [VisionGeometryPreview] and come back as a static PNG.
- * That renderer is still here and still the right tool for a value-visualizer thumbnail and for the
- * pixel-exact proofs in `MeshDefectRenderTest` and friends — it is deterministic, which a GPU is not.
- * What it could never do is let you *orbit*, or put a solid and its FLine annotations in one scene.
+ * The CPU rasterizer in [VisionGeometryPreview] still draws a mesh to a static PNG, and remains the
+ * tool for value-visualizer thumbnails and pixel-exact tests such as `MeshDefectRenderTest`, since it
+ * is deterministic. It cannot orbit, or put a solid and its FLine annotations in one scene.
  *
- * # What you give up, said plainly
+ * #### Shading differs
  *
  * The shading models differ. The rasterizer is two-light Lambert over vertex colours; this is
  * three.js's `MeshStandardMaterial` under the viewer's ambient/key/rim rig. The same mesh will not
- * come out pixel-identical, and it is not supposed to. What *is* held identical is the input — see
- * [toThreeDrawable] — and the back-face-culling behaviour, so a face wound the wrong way is missing
- * from both.
- *
- * @see toThreeDrawable for the lowering
- * @see ThreeDrawable for the format the viewer actually consumes
+ * come out pixel-identical. The input is held identical (see [toThreeDrawable]), as is back-face
+ * culling, so a face wound the wrong way is missing from both.
  */
+
+/** The receiver of a `three { … }` block: collects meshes, lines, panels and camera settings for one view. */
 class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
 
     internal val drawables = ArrayList<ThreeDrawable>()

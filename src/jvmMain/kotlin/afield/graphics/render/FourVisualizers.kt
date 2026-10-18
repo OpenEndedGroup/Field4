@@ -44,6 +44,18 @@ import java.util.concurrent.ConcurrentHashMap
 import afield.ui.visualization.Table
 import afield.ui.visualization.CellRole
 
+/**
+ * Inline value printers for the Vulkan graphics types, so a renderer, buffer or texture shows as a
+ * readable table when a box prints it.
+ *
+ * [registerFourVisualizers] runs at each new root and registers a printer for [Renderer], [Camera],
+ * [Window], the device and swapchain types, images and buffers, uniform [Structure]s, the module and
+ * module-pointer types, [Mesh], render-to-texture targets, [LoadedTexture] and [StorageImage]. Each
+ * printer renders a small coloured table of the object's state: frame counter and upload bytes for a
+ * renderer, extents and formats for images, field values for a structure. [TexturePreviewCache]
+ * holds the downscaled previews shown beside texture values.
+ */
+
 private const val H2_FRAMEBUFFERGROUP_MAX_FLOATS = 65_536
 
 // ── tiny helpers ──────────────────────────────────────────────────────

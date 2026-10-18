@@ -1,3 +1,13 @@
+/**
+ * DLSS super resolution, DLAA and Ray Reconstruction through NVIDIA NGX, as a pass recorded into a Vulkan command buffer.
+ *
+ * [DlssReconstruction] takes render-resolution color, depth and motion ([ReconstructionInputs]), plus
+ * [RayReconstructionGuides] when ray reconstruction is on, and writes an output-resolution texture.
+ * Each frame is described by a [ReconstructionFrame]: its index, the [ReconstructionJitter] the scene
+ * was sampled with (`ReconstructionJitter.halton` gives a sequence sized to the upscale ratio),
+ * frame time and pre-exposure. Call `reset` on camera cuts and live edits so history is discarded.
+ */
+
 package afield.media.reconstruction
 
 import afield.graphics.vulkan.Renderer
@@ -13,12 +23,21 @@ import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout.*
 import kotlin.math.ceil
 
-/** Input pixel coordinates: origin top left, X right, Y down, current-to-previous, without jitter.
+/** Motion defaults to input pixels: origin top left, X right, Y down, current-to-previous, without jitter.
+ * For Field direct-lighting motion, set [motionCurrentMinusPrevious] true and [motionInPixels] false;
+ * the adapter supplies the corresponding sign and scale to NGX without an intermediate image pass.
  * Color is opaque linear HDR RGB, pre-exposure explicitly supplied; coverage/latent channels stay outside
  * reconstruction. Depth is standard Vulkan [0,1], background=1. All inputs are render-resolution,
  * sampled images, mip 0 / layer 0; producer and consumer must use the renderer's graphics queue.
  */
-data class ReconstructionInputs(val color: HasImageView,val depth: HasImageView,val motion: HasImageView)
+data class ReconstructionInputs(val color: HasImageView,val depth: HasImageView,val motion: HasImageView,
+    val motionCurrentMinusPrevious: Boolean=false,val motionInPixels: Boolean=true) {
+    internal fun motionScale(size: ReconstructionSize): Pair<Float,Float> {
+        val sign=if(motionCurrentMinusPrevious)-1f else 1f
+        return sign*(if(motionInPixels)1f else size.width.toFloat()) to
+            sign*(if(motionInPixels)1f else size.height.toFloat())
+    }
+}
 /** RR guides at input resolution. Diffuse/specular albedo are the actual BRDF response;
  * normals.xyz are world-space unit normals and .w is linear roughness. Matrices are unjittered
  * column-major right-multiply (equivalent to NGX's row-major left-multiply convention).
@@ -61,7 +80,7 @@ class DlssReconstruction(val renderer: Renderer,val inputSize: ReconstructionSiz
     private val arena=Arena.ofShared()
     private val images=arena.allocate(256,8)
     private val matrices=arena.allocate(128,4)
-    private val frameData=arena.allocate(16,4)
+    private val frameData=arena.allocate(24,4)
     private val handleSlot=arena.allocate(ADDRESS)
     private var handle=MemorySegment.NULL
     private val storage=StorageOutput(renderer,outputSize)
@@ -77,9 +96,27 @@ class DlssReconstruction(val renderer: Renderer,val inputSize: ReconstructionSiz
     private var lastRevision=Long.MIN_VALUE
     private var pendingReset=true
     private var lastInputs=longArrayOf()
+    private var lastMotionScale: Pair<Float,Float>?=null
     var resetCount=0;private set
     var resetReason="initial";private set
     fun reset(reason: String="camera cut or live edit") { pendingReset=true;resetReason=reason }
+    /** Record [source], then reconstruct its completed attachments in the same command buffer.
+     * This owns the source's scheduling; registering it separately in `preTargets` is rejected,
+     * including registrations added after this view was created. */
+    fun evaluate(command: CommandBuffer,index: Int,source: RenderToTexture,inputs: ReconstructionInputs,
+        frame: ReconstructionFrame,guides: RayReconstructionGuides?=null) {
+        check(!closed && !command.inRenderPassInstance)
+        require(frame.index>=0 && frame.index!=lastFrame) { "A view must evaluate once per frame" }
+        validateSourceScheduling(source)
+        source.render(command,index)
+        evaluate(command,inputs,frame,guides)
+    }
+    internal fun validateSourceScheduling(source: RenderToTexture) {
+        require(source.renderer===renderer) { "Reconstruction and its source must use the same renderer" }
+        check(renderer.renderList.preTargets.values.none { it===source }) {
+            "DLSS owns this source's rendering; remove its independent preTargets registration to avoid rendering it twice"
+        }
+    }
     fun evaluate(command: CommandBuffer,inputs: ReconstructionInputs,frame: ReconstructionFrame,guides: RayReconstructionGuides?=null) {
         check(!closed && !command.inRenderPassInstance)
         require(frame.index>=0 && frame.index!=lastFrame) { "A view must evaluate once per frame" }
@@ -118,13 +155,17 @@ class DlssReconstruction(val renderer: Renderer,val inputSize: ReconstructionSiz
         storage.transition(command,VK_IMAGE_LAYOUT_GENERAL)
         frameData.set(JAVA_FLOAT,0,frame.jitter.x);frameData.set(JAVA_FLOAT,4,frame.jitter.y)
         frameData.set(JAVA_FLOAT,8,frame.milliseconds);frameData.set(JAVA_FLOAT,12,frame.preExposure)
+        val motionScale=inputs.motionScale(inputSize)
+        frameData.set(JAVA_FLOAT,16,motionScale.first);frameData.set(JAVA_FLOAT,20,motionScale.second)
         val inputIds=views.filterIndexed { i,_ -> i!=3 }.map { it.imageView.image }.toLongArray()
         if(lastPresentationRevision!=renderer.presentationRevision)reset("presentation resumed")
-        val reset=pendingReset || frame.reset || frame.index!=lastFrame+1 || lastRevision!=frame.revision || !inputIds.contentEquals(lastInputs)
+        val reset=pendingReset || frame.reset || frame.index!=lastFrame+1 || lastRevision!=frame.revision ||
+            !inputIds.contentEquals(lastInputs) || motionScale!=lastMotionScale
         if(reset && !pendingReset)resetReason=when {
             frame.reset -> "explicit frame reset"
             frame.index!=lastFrame+1 -> "skipped frame"
             lastRevision!=frame.revision -> "scene revision"
+            motionScale!=lastMotionScale -> "motion convention changed"
             else -> "input resources replaced"
         }
         if(guides!=null) {
@@ -139,7 +180,7 @@ class DlssReconstruction(val renderer: Renderer,val inputSize: ReconstructionSiz
         timer.end(command,renderer.currentImage)
         if(reset)resetCount++
         lastPresentationRevision=renderer.presentationRevision
-        pendingReset=false;lastFrame=frame.index;lastRevision=frame.revision;lastInputs=inputIds
+        pendingReset=false;lastFrame=frame.index;lastRevision=frame.revision;lastInputs=inputIds;lastMotionScale=motionScale
     }
     override fun close() {
         if(closed)return;closed=true

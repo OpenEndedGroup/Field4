@@ -46,6 +46,14 @@ import java.time.Duration
 import kotlin.script.experimental.api.SourceCodeCompletionVariant
 
 /**
+ * The HTTP bridge from Field's Kotlin completion to the out-of-process K2 Analysis-API completion
+ * sidecar.
+ *
+ * [AaCompletionClient] is consulted only when the AA completion backend is active, and returns null on
+ * any failure so the caller falls back to the in-process K1 completer.
+ */
+
+/**
  * Stage C client for the out-of-process K2 Analysis-API completion endpoint (`/complete` on the
  * code-use semantic sidecar). Used only when `KotlinEngineConfig.activeCompletionBackend == AA`;
  * [KotlinInterface2.complete] falls back to the K1 delegate whenever this returns null (no sidecar

@@ -82,6 +82,8 @@ import afield.app.protocol.send
  * A root that holds Kotlin of its own is left to open its own window: that Kotlin may be about to, and
  * two render loops on one renderer would fight. [ensure] only says so.
  */
+
+/** Finds, makes and opens windows on the roots of RectSL and StackSL scenes. */
 object LanguageRoots {
     /** The nearest box above [box], walking up its parents, marked with main language [language]. */
     fun rootOf(box: Box, language: String): Box? {

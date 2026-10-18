@@ -44,7 +44,7 @@ NVSDK_NGX_Resource_VK resource(const Image& i,bool write) {
         {i.aspect,0,1,0,1},VkFormat(i.format),i.width,i.height,write);
 }
 }
-API int f4ngx_abi() { return 4; }
+API int f4ngx_abi() { return 5; }
 API int f4ngx_image_size() { return sizeof(Image); }
 API const char* f4ngx_error() { return error.c_str(); }
 // Paths are UTF-8 converted by the caller to native wchar_t (UTF-32 on this Linux ABI).
@@ -131,7 +131,7 @@ API int f4ngx_rr_evaluate(void* view,uint64_t command,const Image* images,const 
     NVSDK_NGX_Resource_VK distance{};
     if(images[7].image) { distance=resource(images[7],false);p.pInSpecularHitDistance=&distance; }
     p.InRenderSubrectDimensions={images[0].width,images[0].height};p.InJitterOffsetX=frame[0];p.InJitterOffsetY=frame[1];
-    p.InFrameTimeDeltaInMsec=frame[2];p.InPreExposure=frame[3];p.InExposureScale=1.f;p.InMVScaleX=1.f;p.InMVScaleY=1.f;p.InReset=reset;
+    p.InFrameTimeDeltaInMsec=frame[2];p.InPreExposure=frame[3];p.InExposureScale=1.f;p.InMVScaleX=frame[4];p.InMVScaleY=frame[5];p.InReset=reset;
     p.pInWorldToViewMatrix=const_cast<float*>(matrices);p.pInViewToClipMatrix=const_cast<float*>(matrices+16);
     return result(NGX_VULKAN_EVALUATE_DLSSD_EXT(reinterpret_cast<VkCommandBuffer>(command),v->handle,v->params,&p),"evaluate RR");
 }
@@ -156,7 +156,7 @@ API int f4ngx_evaluate(void* view,uint64_t command,const Image* images,const flo
     NVSDK_NGX_VK_DLSS_Eval_Params p{};p.Feature.pInColor=&color;p.Feature.pInOutput=&output;p.pInDepth=&depth;p.pInMotionVectors=&motion;
     // Creation uses the SDK optimal size; evaluation uses the actual validated input dimensions.
     p.InRenderSubrectDimensions={images[0].width,images[0].height};p.InJitterOffsetX=frame[0];p.InJitterOffsetY=frame[1];
-    p.InFrameTimeDeltaInMsec=frame[2];p.InPreExposure=frame[3];p.InExposureScale=1.f;p.InMVScaleX=1.f;p.InMVScaleY=1.f;p.InReset=reset;
+    p.InFrameTimeDeltaInMsec=frame[2];p.InPreExposure=frame[3];p.InExposureScale=1.f;p.InMVScaleX=frame[4];p.InMVScaleY=frame[5];p.InReset=reset;
     return result(NGX_VULKAN_EVALUATE_DLSS_EXT(reinterpret_cast<VkCommandBuffer>(command),v->handle,v->params,&p),"evaluate DLSS");
 }
 API uint64_t f4ngx_memory(void* runtime) {

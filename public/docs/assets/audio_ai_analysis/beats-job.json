@@ -1,0 +1,15 @@
+{
+  "id": "job_b897af3a64c148329c9df1dcb6dfd485",
+  "operation_id": "op_4f90e89235ce427dae0f7f16cfe99ee2",
+  "request_hash": "sha256:9ac765a5bd6366c68c498de3a51110b15646545c66742513ba80d395239d7834",
+  "state": "complete",
+  "resolved_backend": "analysis.librosa",
+  "progress": 1.0,
+  "created_at": "2026-10-17T17:49:59.558484Z",
+  "updated_at": "2026-10-17T17:50:03.454683Z",
+  "error": null,
+  "candidate_set_id": null,
+  "codec_result_id": null,
+  "analysis_result_id": "analysis_88287269523349b99265a12e0dc44c1e",
+  "cache_hit": false
+}

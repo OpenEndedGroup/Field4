@@ -17,6 +17,10 @@ import java.nio.file.Path
 import kotlin.io.path.exists
 
 /**
+ * Finds the optional libpd native library ([PdLibrary]) and binds its C functions for [PdInstance].
+ */
+
+/**
  * Where libpd is, and what to do when it is not there.
  *
  * libpd is an **optional** native dependency, like Manifold, Ceres and TetGen: a clone of Field

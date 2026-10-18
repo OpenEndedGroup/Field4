@@ -9,6 +9,7 @@ if not p.exists():
  with wave.open(str(p),'wb') as f:f.setnchannels(1);f.setsampwidth(2);f.setframerate(sr);f.writeframes((signal*32767).astype('<i2').tobytes())
 async def main():
  text=(R/'public/docs/audio_ai_corpus_microscope.md').read_text();codes=[f[1] for f in re.finditer(r'```diffstatic \{data-lang=kotlin\}\n([\s\S]*?)\n```',text)];assert len(codes)==3
+ codes=[m.extract_static_code(lines=c.splitlines()) for c in codes]
  index=codes[0].replace('FieldAudioClient()','FieldAudioClient("http://127.0.0.1:18765")')
  old='["*Nancy*", "*Candlestick Park*"].map { client.assetByFilename(it) }'
  replacement='['+','.join(json.dumps(str(q)) for q in [OUT/'readability43-test.wav',p])+'].map { client.importWav(java.nio.file.Path.of(it)) }'

@@ -1,3 +1,12 @@
+/**
+ * A small editable raster scene for trying DLAA and DLSS super resolution without ray tracing.
+ *
+ * [ReconstructionDemo] renders color, depth and motion at the input resolution recommended for its
+ * [ReconstructionMode] and hands them to [DlssReconstruction]. Leave `mode` null to see the
+ * unjittered source at output resolution. `reload` swaps in new vertex and fragment shaders, and
+ * `reset` discards reconstruction history after a scene edit.
+ */
+
 package afield.media.reconstruction
 
 import afield.graphics.vulkan.Renderer
@@ -78,8 +87,8 @@ class ReconstructionDemo(val renderer: Renderer,val mode: ReconstructionMode?=Re
         mesh.push["sizeJitter"]=Vector4f(inputSize.width.toFloat(),inputSize.height.toFloat(),jitter.x,jitter.y)
         mesh.push["times"]=Vector4f(time,previousTime,horizontalShiftPixels,previousShift)
         mesh.push["settings"]=Vector4f(if(abstractScene)1f else 0f,if(cameraMotion)1f else 0f,0f,0f)
-        scene.render(command,index)
-        reconstruction?.evaluate(command,ReconstructionInputs(color,depth,motion),ReconstructionFrame(frame,jitter,revision=revision))
+        if(reconstruction==null)scene.render(command,index)
+        else reconstruction.evaluate(command,index,scene,ReconstructionInputs(color,depth,motion),ReconstructionFrame(frame,jitter,revision=revision))
         previousTime=time;previousShift=horizontalShiftPixels;if(animate)time+=1f/60;frame++
     }
     override fun close() {

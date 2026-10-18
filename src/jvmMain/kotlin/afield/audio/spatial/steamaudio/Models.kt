@@ -1,5 +1,10 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * Per-source models for Steam Audio's direct path: [DistanceAttenuationModel],
+ * [AirAbsorptionModel] and [Directivity].
+ */
+
 import afield.audio.spatial.steamaudio.raw.IPLAirAbsorptionModel
 import afield.audio.spatial.steamaudio.raw.IPLDirectivity
 import afield.audio.spatial.steamaudio.raw.IPLDistanceAttenuationModel

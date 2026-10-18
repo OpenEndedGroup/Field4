@@ -17,5 +17,7 @@ mesh.resize(16000 * 6)
 renderer += "flow-strokes" to module
 loop { true }
     .end {
-        if (renderer.renderList.modules["flow-strokes"] === module) renderer.renderList.modules.remove("flow-strokes")
+        if (renderer.renderList.modules["flow-strokes"] === module) {
+            renderer.renderList.modules.remove("flow-strokes")
+        }
     }

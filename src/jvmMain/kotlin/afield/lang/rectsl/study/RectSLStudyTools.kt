@@ -16,14 +16,20 @@ import afield.study.ui.numbers
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
-// The tools an AI4 conversation gets when it is opened on a RectSL scene's `rectSL` property. Each
-// works on the focused box's own study (see RectSLPrograms), so nothing here is per document. A
-// document can still add tools of its own from a box: AgentToolExtensions.register with its document
-// as the scope.
+/**
+ * The tools an AI4 conversation gets when it is opened on a RectSL scene's `rectSL` property.
+ *
+ * Each works on the focused box's own study (see [RectSLPrograms]), so nothing here is per
+ * document. A document can still add tools of its own from a box: [AgentToolExtensions.register]
+ * with its document as the scope.
+ */
 
+/** The working guide for RectSL studies, or the words guide's entries matching a search term. */
 @JsonClassDescription("Read how to work on a RectSL study: the wall and its coordinates, idioms that hold, traps, the tools and the style a person expects. Call it once, before your first edit in a conversation. With search, return the words guide's entries matching a word or phrase instead.")
 data class RectSLStudyGuide(
-    @JsonPropertyDescription("A word or phrase to look up in the RectSL words guide; empty returns the working guide") val search: String = ""
+    /** A word or phrase to look up in the words guide; empty returns the working guide. */
+    @JsonPropertyDescription("A word or phrase to look up in the RectSL words guide; empty returns the working guide")
+    val search: String = ""
 )
 
 @JsonClassDescription("Read this RectSL study: the checked scene, whether the editor holds an unchecked human edit (dirty; then liveSource is what is in the box and liveCheck says whether it compiles), revision history, the scene's shape (wall, duration, rectangles, what is visible when), the analysis's warnings, the lines that make rectangles, knobs (typed numbers and colours, one line each: index, line:column, as typed, what reads it), and personAt — the line the person's editor cursor is on, which a click on a rectangle in the window moves to the line that made it, so 'this one' usually means it. Inspect once before editing and reuse liveSourceHash. The window above the box plays the scene live; prefer ObserveRectSLStudy or TimelineRectSLStudy, which draw exact times.")

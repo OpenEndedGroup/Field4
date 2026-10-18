@@ -13,13 +13,13 @@ import afield.lang.remotejs.JsFun
 import afield.geometry.path.length
 import afield.lang.remotejs.RemoteLifecycleKotlinJs
 /**
- * Kotlin/JS declarations for the tiny JavaScriptCore runtime owned by Field4Vision's Live Metal
+ * Kotlin/JS declarations for the JavaScriptCore runtime owned by Field4Vision's Live Metal
  * renderer.
  *
  * Runtime Kotlin/JS compilation currently accepts one source file, so this surface is appended to
- * the user's source rather than compiled as a separate library. Appending is deliberate: compiler
+ * the user's source rather than compiled as a separate library. Appending means compiler
  * diagnostics keep the user's original line numbers. [completionDeclarations] mirrors the same
- * public surface in JVM-analysis-safe Kotlin because the completion sidecar intentionally does not
+ * public surface in JVM-analysis-safe Kotlin because the completion sidecar does not
  * load the Kotlin/JS compiler frontend.
  *
  * This only describes values that really exist in `LiveMetalJavaScript.swift`. Two things cross that
@@ -31,6 +31,7 @@ import afield.lang.remotejs.RemoteLifecycleKotlinJs
  * the shader lives in the box's `msl` property, and slot order comes from the head marker's
  * `uniforms=` option.
  */
+
 object VisionMetalKotlinJs {
     const val surfaceId: String = "visionmetal"
 

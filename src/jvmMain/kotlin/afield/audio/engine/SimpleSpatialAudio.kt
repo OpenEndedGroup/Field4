@@ -2,6 +2,12 @@
 
 package afield.audio.engine
 
+/**
+ * 3D sound playback over OpenAL: [SimpleSpatialAudioEngine] loads WAV files into [SoundBuffer]s, plays them through positioned [SoundSource]s, and applies [ReverbSettings] or [EaxReverbSettings] effects.
+ *
+ * The engine follows a listener position and orientation, can enable HRTF where OpenAL Soft offers it, and can render to a loopback device at a fixed sample rate instead of the output device.
+ */
+
 import afield.graphics.vulkan.targets.OpenXRHmdTarget
 import afield.graphics.vulkan.targets.SideBySideStereoTarget
 import afield.graphics.texture.video.AudioDecoder

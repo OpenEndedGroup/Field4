@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.util
 
+/**
+ * Reports what Vulkan this machine offers: loader, instance, devices, validation layers, the SDK and, on macOS, the KosmicKrisp driver.
+ *
+ * [VulkanProbe] runs the check in a child JVM and returns a [VulkanStatus], which the Vulkan panel on `/welcome` shows along with install steps for the current OS. [VulkanDeviceInfo] describes one physical device.
+ */
+
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json

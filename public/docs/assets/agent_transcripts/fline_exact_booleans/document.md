@@ -11,19 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="fline-exact-booleans" index="0" -->
 
 ```edn [field-box id="fline-exact-booleans" role="properties"]
-{"id" "fline-exact-booleans" "index" 0 "name" "1 - Booleans, Area (left) and exact (right)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Booleans, Area (left) and exact (right)" "_tombstone" false "frame" #afield/rect [60.0 60.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-exact-booleans_code_.kt" "lines" 52 "characters" 2065 "sha256" "ae21262dfaed931ebf0a144ec497fc0099411e7768293fd50bcd5017bb880295"}]}
+{"id" "fline-exact-booleans" "index" 0 "name" "1 - Booleans, Area (left) and exact (right)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Booleans, Area (left) and exact (right)" "_tombstone" false "frame" #afield/rect [60.0 60.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-exact-booleans_code_.kt" "lines" 43 "characters" 1567 "sha256" "7366183272a5e0011d91c601fd85182f723bfb2ae8d3c51e4eb606a005c907d2"}]}
 ```
 
 ```kotlin [field-property box="fline-exact-booleans" name="code" path="fline-exact-booleans_code_.kt"]
-fun circle(cx: Double, cy: Double, r: Double) = fline {
-    val k = 0.5522847 * r
-    moveTo(cx + r, cy)
-    cubicTo(cx + r, cy + k, cx + k, cy + r, cx, cy + r)
-    cubicTo(cx - k, cy + r, cx - r, cy + k, cx - r, cy)
-    cubicTo(cx - r, cy - k, cx - k, cy - r, cx, cy - r)
-    cubicTo(cx + k, cy - r, cx + r, cy - k, cx + r, cy)
-    close()
-}
+fun circle(cx: Double, cy: Double, r: Double) = FLine().circle(cx, cy, r)
 
 fun blob(x: Double, y: Double) = fline {
     moveTo(x, y)
@@ -35,27 +27,26 @@ fun blob(x: Double, y: Double) = fline {
 }
 
 // a dot on every node: how many segments each answer used
-fun dots(f: FLine, c: Vec4) = f.nodes.mapNotNull { it.toOrNull }.map { p ->
-    fline {
-        moveTo(p.x + 2.5, p.y)
-        cubicTo(p.x + 2.5, p.y + 1.4, p.x + 1.4, p.y + 2.5, p.x, p.y + 2.5)
-        cubicTo(p.x - 1.4, p.y + 2.5, p.x - 2.5, p.y + 1.4, p.x - 2.5, p.y)
-        cubicTo(p.x - 2.5, p.y - 1.4, p.x - 1.4, p.y - 2.5, p.x, p.y - 2.5)
-        cubicTo(p.x + 1.4, p.y - 2.5, p.x + 2.5, p.y - 1.4, p.x + 2.5, p.y)
-        filled = true
-        stroked = false
-        color = c
-    }
-}
+fun dots(f: FLine, c: Vec4) =
+    f.nodes
+        .mapNotNull { it.toOrNull }
+        .map { p ->
+            FLine().circle(p.x, p.y, 2.5).apply {
+                filled = true
+                stroked = false
+                color = c
+            }
+        }
 
 val out = mutableListOf<FLine>()
-for ((row, op) in listOf(FLineBooleanOp.Union, FLineBooleanOp.Subtract).withIndex()) {
+for ((row, op) in [FLineBooleanOp.Union, FLineBooleanOp.Subtract].withIndex()) {
     val y = 40.0 + row * 190
     for (col in 0..1) {
         val x = 40.0 + col * 260
         val a = blob(x + 20, y)
         val b = circle(x + 90, y + 60, 45.0)
-        val r = if (col == 1) a.booleanExact(b, op).line
+        val r =
+            if (col == 1) a.booleanExact(b, op).line
             else if (op == FLineBooleanOp.Union) a.byUnionWith(b) else a.byDifferenceWith(b)
         r.filled = true
         r.stroked = true
@@ -74,16 +65,16 @@ lines(out, w = 460.0, h = 380.0, fitToSize = true)
 <!-- field-box id="fline-exact-offsets" index="1" -->
 
 ```edn [field-box id="fline-exact-offsets" role="properties"]
-{"id" "fline-exact-offsets" "index" 1 "name" "2 - Offsets, sampled (left) and exact (right)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Offsets, sampled (left) and exact (right)" "_tombstone" false "frame" #afield/rect [560.0 60.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-exact-offsets_code_.kt" "lines" 49 "characters" 1874 "sha256" "b02e563f7dec8d03d6348270d4be9d2ac4061d06a8b5dacaa159bb9e170a9c25"}]}
+{"id" "fline-exact-offsets" "index" 1 "name" "2 - Offsets, sampled (left) and exact (right)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Offsets, sampled (left) and exact (right)" "_tombstone" false "frame" #afield/rect [560.0 60.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-exact-offsets_code_.kt" "lines" 47 "characters" 1553 "sha256" "53225276e60f5895f99105b560d892dc8bd6e8f6d52127959432f06c17c3e572"}]}
 ```
 
 ```kotlin [field-property box="fline-exact-offsets" name="code" path="fline-exact-offsets_code_.kt"]
 fun star(cx: Double, cy: Double) = fline {
+    breakNext()
     for (i in 0 until 10) {
         val r = if (i % 2 == 0) 70.0 else 32.0
         val a = kotlin.math.PI * i / 5
-        if (i == 0) moveTo(cx + r * kotlin.math.cos(a), cy + r * kotlin.math.sin(a))
-        else lineTo(cx + r * kotlin.math.cos(a), cy + r * kotlin.math.sin(a))
+        lineTo(cx + r * kotlin.math.cos(a), cy + r * kotlin.math.sin(a))
     }
     close()
 }
@@ -95,28 +86,26 @@ fun sCurve(x: Double, y: Double) = fline {
     lineTo(x + 215, y + 55)
 }
 
-fun dots(f: FLine, c: Vec4) = f.nodes.mapNotNull { it.toOrNull }.map { p ->
-    fline {
-        moveTo(p.x + 2.0, p.y)
-        cubicTo(p.x + 2.0, p.y + 1.1, p.x + 1.1, p.y + 2.0, p.x, p.y + 2.0)
-        cubicTo(p.x - 1.1, p.y + 2.0, p.x - 2.0, p.y + 1.1, p.x - 2.0, p.y)
-        cubicTo(p.x - 2.0, p.y - 1.1, p.x - 1.1, p.y - 2.0, p.x, p.y - 2.0)
-        cubicTo(p.x + 1.1, p.y - 2.0, p.x + 2.0, p.y - 1.1, p.x + 2.0, p.y)
-        filled = true
-        stroked = false
-        color = c
-    }
-}
+fun dots(f: FLine, c: Vec4) =
+    f.nodes
+        .mapNotNull { it.toOrNull }
+        .map { p ->
+            FLine().circle(p.x, p.y, 2.0).apply {
+                filled = true
+                stroked = false
+                color = c
+            }
+        }
 
 val out = mutableListOf<FLine>()
 for (col in 0..1) {
     val x = 30.0 + col * 280
-    val shapes = listOf(star(x + 110, 100.0), sCurve(x, 270.0))
+    val shapes = [star(x + 110, 100.0), sCurve(x, 270.0)]
     for (s in shapes) {
         s.thickness = 1.0
         s.color = vec(1.0, 1.0, 1.0, 0.6)
         out.add(s)
-        for (d in listOf(12.0, -12.0)) {
+        for (d in [12.0, -12.0]) {
             val o = if (col == 0) s.byOffsetting(d.toFloat()) else s.byOffsettingExact(d.toFloat())
             o.thickness = 1.5
             o.color = if (col == 0) vec(1.0, 0.55, 0.35, 1.0) else vec(0.4, 0.9, 1.0, 1.0)

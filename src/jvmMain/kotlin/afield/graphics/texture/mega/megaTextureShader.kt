@@ -3,6 +3,13 @@ package afield.graphics.texture.mega
 import afield.graphics.vulkan.util.Resolver
 
 /**
+ * GLSL snippets that let a box's own shaders sample a [MegaTexture].
+ *
+ * [megaTextureTemplate] returns the slots (`declarations`, `functions`, `fragment`, `vertex`, `all`)
+ * to interpolate into a shader template; the box writes the geometry and the draw itself.
+ */
+
+/**
  * The GLSL a box pulls into its own shaders to talk to a [MegaTexture].
  *
  * This is the part of the system that is deliberately *not* hidden in the backend. Generating a

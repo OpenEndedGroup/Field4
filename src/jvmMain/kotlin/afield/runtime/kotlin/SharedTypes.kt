@@ -40,6 +40,15 @@ import java.net.URLClassLoader
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
+ * Lets several boxes in one document use the same Kotlin class, with its real type.
+ *
+ * Call [sharedTypes] on a box with Kotlin declarations as source. [SharedTypes] compiles them as
+ * ordinary classes onto a classloader every box shares, so a `data class` declared there can be used,
+ * and named, in any box. By default, publishing restarts the other boxes that have already run, because
+ * a loaded class cannot be replaced.
+ */
+
+/**
  * Declares Kotlin types that every box in a document can name.
  *
  * Boxes are separate compilation units: each has its own [KotlinInterface2] with its own REPL

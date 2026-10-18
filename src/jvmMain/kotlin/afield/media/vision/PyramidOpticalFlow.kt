@@ -15,6 +15,14 @@ import afield.math.linalg.Vector4f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK13.*
 
+/**
+ * The portable optical-flow backend: coarse-to-fine Lucas–Kanade built from ordinary fragment passes,
+ * for devices without a hardware motion engine.
+ *
+ * [PyramidOpticalFlow] is what [OpticalFlowBackend.AUTO] picks on any device without
+ * VK_NV_optical_flow enabled, MoltenVK included.
+ */
+
 /** Portable dense optical flow: coarse-to-fine Lucas–Kanade in ordinary fragment passes.
  *
  * Runs on any Vulkan device Field runs on — MoltenVK included — because it asks for nothing beyond

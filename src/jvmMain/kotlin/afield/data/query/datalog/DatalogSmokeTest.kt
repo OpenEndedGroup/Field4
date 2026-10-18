@@ -13,17 +13,20 @@ expect:
     - "Datalog smoke passed"
 */
 /**
- * Smoke for [afield.data.query.datalog] — the deductive-database language.
+ * Smoke test for the Datalog deductive-database language in `afield.data.query.datalog`.
  *
- * Like `afield.data.query.graph`'s smoke this is a plain `jvm-main` entrypoint, which it can only be
+ * Like the `afield.data.query.graph` smoke this is a plain `jvm-main` entrypoint, which works
  * because the engine touches no `Runloop`, starts no threads and opens no devices, so the JVM exits
  * naturally (see the `smoke-tests-natural-exit` convention). The live box-graph bridge
  * (`DatalogBoxes.kt`) and the box language live outside what this file imports.
  *
- * The case that matters most is [testSemiNaiveAgreesWithBfs]: the incremental fixpoint has to produce
- * exactly the transitive closure an independent breadth-first search produces, over a random graph
- * with cycles. Everything else here is a semantics fence; that one is the correctness proof.
+ * The central case is `testSemiNaiveAgreesWithBfs`: the incremental fixpoint must produce exactly
+ * the transitive closure an independent breadth-first search produces, over a random graph with
+ * cycles. The other cases pin individual semantics: recursion, negation and stratification,
+ * arithmetic, aggregates, safety errors and the query API.
  */
+
+/** The `datalog.core.smoke` entrypoint; prints "Datalog smoke passed" on success. */
 object DatalogSmokeTest {
 
     @JvmStatic

@@ -1,3 +1,13 @@
+/**
+ * A small scene for trying [DirectLighting]: a floor, three cubes and a moving area light.
+ *
+ * [DirectLightingDemo] builds the raster renderer, the [OpaqueRayScene] and the lighting pass at a
+ * given size; call [DirectLightingDemo.animate] from the box's frame loop and
+ * [DirectLightingDemo.moveObject] to move a cube. Re-running the box that built it closes the
+ * previous instance. [DirectLightingSmoke] is the standalone entrypoint behind the
+ * `four.direct-lighting.smoke` smoke test, with a `--fallback` mode that runs without ray tracing.
+ */
+
 package afield.graphics.render.lighting
 
 import afield.document.graph.Box

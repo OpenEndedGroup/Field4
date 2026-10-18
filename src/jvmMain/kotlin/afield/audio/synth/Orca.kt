@@ -23,6 +23,11 @@ import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.pow
 
 /**
+ * ORCA, the two-dimensional livecoding sequencer, running in a box output with its notes, control
+ * changes, UDP and OSC messages delivered to Kotlin callbacks; start it with [orca].
+ */
+
+/**
  * [ORCA](https://github.com/hundredrabbits/Orca), Hundred Rabbits' two-dimensional livecoding
  * sequencer, running in one of this box's outputs, with everything it plays coming back to Kotlin.
  *

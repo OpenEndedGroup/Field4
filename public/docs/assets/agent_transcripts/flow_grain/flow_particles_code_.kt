@@ -12,12 +12,7 @@ mesh.auxiliary = { if (flowStep.get() % 2L == 0L) flowB else flowA }
 mesh.tiles = { tileHeaders }
 mesh.clock = { flowClock }
 mesh.emitter = { flowEmitter }
-module +=
-    "barrier" to
-        computeTask { _, cmd, _ ->
-            computeMemoryBarrier(cmd, null as VulkanBuffer?)
-            graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
-        }
+module += "barrier" to computeBarrier(graphics = true)
 flowSimulation += "particles" to module
 loop { true }
     .end {

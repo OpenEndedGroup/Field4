@@ -35,6 +35,16 @@ import java.text.DecimalFormatSymbols
 import java.util.Locale
 import kotlin.math.abs
 
+/**
+ * Lets an OSC controller drive the editor by forwarding float, launch and stop messages to the front end as `osc-editor` commands.
+ *
+ * [OscEditorBackdoor] reads its port, addresses, debounce and delta mode from [FieldPreferences],
+ * listens with an `OSCPortIn`, and forwards each matching message to the front end as an
+ * `osc-editor` message. [OscEditorBackdoor.learnNextAddress] listens once on a port and returns the
+ * first address it hears, for filling in the preferences.
+ */
+
+/** The OSC listener settings taken from [FieldPreferences]; a change restarts the listener. */
 private data class OscEditorConfig(
     val enabled: Boolean,
     val port: Int,

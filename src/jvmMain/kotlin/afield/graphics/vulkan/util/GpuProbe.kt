@@ -1,3 +1,10 @@
+/**
+ * Runs a compute shader against fixture buffers, checks that it ran, and compares its read-back output with stated bounds.
+ *
+ * [GpuProbe] is the facility; a probe whose shader never produced output throws
+ * [GpuProbeNeverLanded].
+ */
+
 package afield.graphics.vulkan.util
 
 import afield.graphics.vulkan.Renderer

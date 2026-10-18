@@ -1,5 +1,11 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * Optional compute devices for Steam Audio: [EmbreeDevice] for the Embree ray tracer,
+ * [OpenClDeviceList] and [OpenClDevice] for GPU work, and the [RadeonRaysDevice] and
+ * [TrueAudioNextDevice] built on OpenCL.
+ */
+
 import afield.audio.spatial.steamaudio.raw.IPLOpenCLDeviceDesc
 import afield.audio.spatial.steamaudio.raw.IPLOpenCLDeviceSettings
 import afield.audio.spatial.steamaudio.raw.IPLTrueAudioNextDeviceSettings

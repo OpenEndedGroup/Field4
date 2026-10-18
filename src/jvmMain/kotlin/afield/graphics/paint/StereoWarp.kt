@@ -1,6 +1,11 @@
 @file:afield.runtime.completion.CompletionCategory("Graphics")
 package afield.graphics.paint
 
+/**
+ * A smooth map between the two canvases of a stereo pair, so canvas texture such as weave and
+ * grain sits on the painted surface in both eyes: [StereoWarp].
+ */
+
 import afield.geometry.path.FLine
 import afield.math.linalg.Vec2
 import afield.math.linalg.Vec3

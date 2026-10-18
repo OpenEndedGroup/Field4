@@ -7,6 +7,14 @@ import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
 
 /**
+ * Offline bakes over a [ProbeBatch]: the pathing visibility graph and reflection data.
+ *
+ * [PathBaker] with [PathBakeSettings] precomputes which probes can see each other, which
+ * [PathEffect] then searches at runtime; [ReflectionsBaker] with [ReflectionsBakeSettings]
+ * stores reverb or static-endpoint reflections so they need not be simulated live.
+ */
+
+/**
  * Precomputes the probe-to-probe visibility graph that [PathEffect] searches at runtime.
  *
  * ### Why pathing needs this

@@ -3,6 +3,12 @@ package afield.ui.notation
 import kotlin.math.roundToInt
 
 /**
+ * Colour correction for marks written from code, so that they show as asked under the drawing layer's dark
+ * theme rather than as their inverted, hue-rotated selves.
+ */
+
+
+/**
  * Colours as the drawing layer shows them. Excalidraw's dark theme draws the scene through the CSS filter
  * `invert(93%) hue-rotate(180deg)` (`theme="dark"` in `tools/excalidraw-bundle/entry.jsx`), so a colour stored
  * on an element is not the colour on screen. Per channel the inversion is `0.93 - 0.86 c`; the hue rotation is

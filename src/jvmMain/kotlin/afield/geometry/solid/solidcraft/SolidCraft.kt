@@ -18,6 +18,14 @@ import java.lang.invoke.MethodHandle
 import java.nio.file.Files
 import java.nio.file.Path
 
+/**
+ * An optional bridge to the SolidCraft B-rep document engine, whose model stays in native Rust code.
+ *
+ * [SolidCraftLibrary] locates the native library and reports whether it is available. [SolidCraftDesign.open]
+ * loads a design, [SolidCraftDesign.setParameter] edits it, and [SolidCraftDesign.mesh] copies a body out as a
+ * [SolidCraftMesh] for display.
+ */
+
 /** Optional SolidCraft B-rep/document engine. Its model remains in Rust; Field copies display meshes. */
 object SolidCraftLibrary {
     private val fileName: String get() = when {

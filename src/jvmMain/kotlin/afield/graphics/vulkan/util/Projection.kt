@@ -1,5 +1,13 @@
 package afield.graphics.vulkan.util
 
+/**
+ * Projection matrices for the Vulkan renderer: a plain perspective [Projection] and a [SuperProjection] that blends perspective into orthographic.
+ *
+ * [SuperProjection] is what [Camera] uses. Its `orthoness` runs from 0 (perspective) to 1 (orthographic) along a matrix-log path, with `matchDepth` (or the camera's distance to its target) as the depth where the two footprints agree, and `ox`/`oy` shifting the principal point.
+ *
+ * The remaining functions are the matrix tools behind that blend: [matrix4fToSimple] and [simpleToMatrix4f] convert to EJML, [expmEigen] and [logmEigen] take the matrix exponential and logarithm, [lieInterpolateProjectionEJML] interpolates two projections, and [renormDepth01] and [renormVerticalFovAtDepth] rescale a matrix's depth range and its field of view at a chosen depth.
+ */
+
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.buffers.HasUniform
 import afield.document.context.fromContext

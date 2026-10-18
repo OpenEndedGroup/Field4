@@ -28,6 +28,34 @@ import java.nio.FloatBuffer
 import java.nio.IntBuffer
 import kotlin.math.max
 
+/**
+ * A block of GPU memory, and the ways to hand one to a shader. [VulkanBuffer] is the allocation
+ * itself: VMA-suballocated, kept mapped on the CPU side for its whole life, resizable while frames
+ * are in flight, and released through the renderer's frame-retirement queue rather than on the spot.
+ * Vertex data, uniforms, storage buffers, acceleration-structure scratch and compute input and
+ * output are all this one class under different `usage` flags.
+ *
+ * Writing and reading go through three small interfaces, and which you reach for is a question of how
+ * much you want to think about layout. [BufferWriteable] and [BufferReadable] map the allocation as
+ * a plain `FloatBuffer`, `ByteBuffer` or `IntBuffer` and let you address it yourself.
+ * [DynamicallyWriteable] gives you a [DynamicBuffer] instead, which pads to std430 as it goes and
+ * grows the allocation under a write that would overflow it; `write { … }` starts at the beginning
+ * and `append { … }` continues from the cursor.
+ *
+ * [HasBuffer] is the handle a shader is bound to, and the useful thing about it is that it composes.
+ * Adding a `Long` to one offsets it. `zeroBefore` on a buffer, and `barrier` or `graphicsBarrier` on
+ * any handle, return a handle that records that work on the way to giving the address up. "This
+ * buffer, cleared first" and "this buffer, once the compute writes to it are visible" then travel
+ * with the buffer, so nothing has to remember where in the frame to put the clear or the barrier.
+ *
+ * Render workers read the handle, address and descriptor range while recording a frame, on other
+ * threads than the one that writes them. Every one of those fields is therefore `@Volatile`, and
+ * allocation builds its replacements in locals and publishes them at the end, handle before range. A
+ * worker sees either the old allocation, which is still alive, or the new one, and never a null
+ * handle mid-resize.
+ */
+
+/** A GPU buffer handle and the device address a shader reads it at. */
 interface HasBuffer {
     fun getBuffer(): Long
     fun getGPUAddress(cmd: CommandBuffer): Long

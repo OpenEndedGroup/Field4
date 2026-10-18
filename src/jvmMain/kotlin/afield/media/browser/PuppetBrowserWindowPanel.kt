@@ -10,6 +10,10 @@ import afield.graphics.texture.TextureSampler
 import afield.graphics.vulkan.util.updateForever
 import afield.graphics.shader.fromViews
 
+/**
+ * Shows a puppet browser page letterboxed inside a Field render window, with mouse hit-testing back into page coordinates.
+ */
+
 /** An aspect-correct rectangle in one Field [afield.graphics.vulkan.util.Window]'s logical coordinates. */
 data class PuppetBrowserWindowViewport(
     val x: Double,

@@ -1,19 +1,32 @@
 #version 450
 #extension GL_EXT_buffer_reference : require
 layout(local_size_x = 64) in;
-layout(std430, buffer_reference) buffer inData { vec4 a[]; };
-layout(std430, buffer_reference) buffer outData { vec4 a[]; };
+layout(std430, buffer_reference) buffer inData {
+    vec4 a[];
+};
+layout(std430, buffer_reference) buffer outData {
+    vec4 a[];
+};
 layout(push_constant) uniform dat {
     inData inData;
     outData outData;
     float something;
+    uint particleCount;
 } pc;
 {% property "fieldProbe" %}
 void main() {
     uint idx = gl_GlobalInvocationID.x;
-    pc.outData.a[idx].x = pc.inData.a[idx].x*cos(pc.something*pc.inData.a[idx].z) + pc.inData.a[idx].y*sin(pc.something*pc.inData.a[idx].w);
-    pc.outData.a[idx].y = -pc.inData.a[idx].x*sin(pc.something*pc.inData.a[idx].w) + pc.inData.a[idx].y*cos(pc.something*pc.inData.a[idx].z*0.03);
-    pc.outData.a[idx].zw = pc.inData.a[idx].zw;
-    vec2 delta = pc.outData.a[idx].xy - pc.inData.a[idx].xy;
+    if (idx >= pc.particleCount) return;
+    vec4 seed = pc.inData.a[idx]; // xy position, zw modulation and size.
+    float phaseZ = pc.something * seed.z;
+    float phaseW = pc.something * seed.w;
+    // The y cosine alone uses the slow phase.
+    float slowPhaseZ = phaseZ * 0.03;
+    vec2 moved = vec2(
+    seed.x * cos(phaseZ) + seed.y * sin(phaseW),
+    -seed.x * sin(phaseW) + seed.y * cos(slowPhaseZ)
+    );
+    pc.outData.a[idx] = vec4(moved, seed.zw);
+    vec2 delta = moved - seed.xy;
     fieldProbe(length(delta));
 }

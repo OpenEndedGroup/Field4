@@ -27,6 +27,14 @@ import afield.math.linalg.vec
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * The server side of an editable `Box.lines(..., editable = true)` drawing: an edit session per
+ * widget that applies the browser's point drags and new strokes to the live [FLine]s.
+ *
+ * `Box.lines` returns an [EditableFLineViewState] when `editable = true` (null otherwise); call
+ * [EditableFLineViewState.currentLines] to read the lines as they are after the user's edits.
+ */
+
 class EditableFLineViewState internal constructor(
     val sessionId: String
 ) {

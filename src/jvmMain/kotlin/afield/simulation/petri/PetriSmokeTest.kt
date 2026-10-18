@@ -43,6 +43,8 @@ expect:
  * Nothing committed is written. Pass an output directory as `args[0]` (or set `PETRI_SMOKE_DIR`) to
  * keep the rendered WAVs and SVGs for listening and looking at.
  */
+
+/** Entry point for the `petri.smoke` test. */
 object PetriSmokeTest {
 
     @JvmStatic

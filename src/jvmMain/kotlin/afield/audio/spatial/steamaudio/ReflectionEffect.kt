@@ -8,6 +8,14 @@ import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout
 
 /**
+ * Rendering simulated reflections onto a source's audio.
+ *
+ * [ReflectionEffect] applies an impulse response or parametric reverb per block, driven by a
+ * [ReflectionEffectParams]; a [ReflectionMixer] sums several sources' reflections so the
+ * expensive final stage runs once.
+ */
+
+/**
  * Per-block parameters for a [ReflectionEffect].
  *
  * A [Simulator] fills most of this in for you -- see [SimulationOutputs.reflections] -- but

@@ -1,3 +1,8 @@
+/**
+ * Streams PCM audio through OpenAL by queuing a fixed ring of buffers, and reports the playback
+ * position that [AudioClock] uses to keep video in sync.
+ */
+
 package afield.graphics.texture.video
 
 import org.lwjgl.openal.AL

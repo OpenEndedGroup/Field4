@@ -36,7 +36,6 @@ import afield.math.linalg.i
 import afield.math.linalg.l
 import afield.math.linalg.vec
 import afield.math.linalg.x
-import afield.geometry.path.HungarianAssignment
 import java.util.SplittableRandom
 import java.util.concurrent.CancellationException
 import kotlin.math.PI

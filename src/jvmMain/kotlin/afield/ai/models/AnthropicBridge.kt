@@ -1,3 +1,11 @@
+/**
+ * The Anthropic (Claude) implementation of [LlmBridge], running Field's agent loop over the Messages API.
+ *
+ * It uses the same [ToolRegistry] and tool definitions as [OpenAiIdeCodexBridge]. The Messages API
+ * keeps no server-side conversation, so [AnthropicBridge] holds each thread's history locally and
+ * marks the system prompt and tool list for prompt caching.
+ */
+
 package afield.ai.models
 
 import afield.ai.tools.DescribeToolsRequest

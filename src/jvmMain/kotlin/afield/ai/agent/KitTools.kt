@@ -11,6 +11,13 @@ import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import java.io.File
 
+/**
+ * The AI4 tool that reports which kit a document runs and which of its kit-provided properties and assets have drifted from the kit.
+ *
+ * [InspectKitRequest] is the tool and [KitToolResult] its answer. It reads only; migrating a
+ * document to a newer kit is done by a person with `tools/field_kit.py`.
+ */
+
 @JsonClassDescription("Say which kit this document runs and what differs from it. A kit is the box code, box-held sources and asset files every document of one kind receives. Returns the kit's name, the revision the document records, the revision the kit is at now, and each role property and asset that is not current: changed in the kit (a migration installs it), edited in this document (a migration refuses it), a frozen copy that differs from the kit (a migration replaces it), or no longer in the kit. Use it before relying on a provider's behaviour, or when asked whether the document is up to date. It changes nothing, and does not migrate: a person migrates with tools/field_kit.py. A document with no kit returns success=true with kit empty. e.g. kit = `` to compare with the kit the document records.")
 @AgentToolMeta("kit", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
 data class InspectKitRequest(

@@ -1,6 +1,5 @@
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.util.Window
-import afield.simulation.particles.ShaderNeuralParticles
 var Box.panels by Inheritance<List<afield.simulation.particles.ShaderNeuralParticles>>() /**/
 val Once.panels by Onceing<List<afield.simulation.particles.ShaderNeuralParticles>>() /**/
 val Why.panels by Whying() /**/

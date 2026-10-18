@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.util
 
+/**
+ * Mouse input from a Vulkan renderer's window, delivered to named callbacks.
+ *
+ * [MouseEvents] registers handlers for down, up, move, drag and scroll, keyed by a name so that re-running a box replaces its handler rather than adding another. Each handler receives a [MouseEvent] with position, delta, scroll, buttons held, and the window size.
+ */
+
 import afield.runtime.lifecycle.Generator
 import afield.graphics.vulkan.Renderer
 import afield.document.context.fromContext

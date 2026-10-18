@@ -41,6 +41,17 @@ import afield.app.diagnostics.logging.lprintln
 import kotlin.script.experimental.api.ResultValue
 
 /**
+ * A callable block that keeps the Kotlin source it was written as, and can be rebuilt from that
+ * source after it has been saved.
+ *
+ * The `sourceBlock` macro makes a [SourceBackedBlock] holding both a live lambda and its source. A
+ * block restored from storage has only the source and rebuilds itself by evaluating it on its box's
+ * engine. Doing that while the same box's code is running would run that code again, so it is
+ * refused with [SourceBackedBlockSelfBoxReentry] or [SourceBackedBlockDuringOwnBody], each of whose
+ * messages says where to invoke the block instead.
+ */
+
+/**
  * Box ids whose stored source is being hydrated on this thread, by **any** route.
  *
  * Shared with [SourceBackedFnRewriteNumberExpression] on purpose rather than one set each: both

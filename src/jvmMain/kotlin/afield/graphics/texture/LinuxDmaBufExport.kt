@@ -1,3 +1,12 @@
+/**
+ * [LinuxDmaBufExport] exports Vulkan images as Linux dma-bufs described by a DRM format modifier, so another process (such as Electron) can import them without a copy.
+ *
+ * [LinuxDmaBufExport.shareableModifiers] and [LinuxDmaBufExport.supportsModifier] check which
+ * modifiers the device can export for a format; [LinuxDmaBufExport.handle] and
+ * [LinuxDmaBufExport.handles] package an exported image as a [DmaBufHandle] of fd, modifier and
+ * [DmaBufPlaneLayout]s. Linux only.
+ */
+
 package afield.graphics.texture
 
 import afield.graphics.vulkan.device.Device
