@@ -131,6 +131,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `Img` into 6000 evenly spaced dots in two statements; `stipple_relaxing` is a launched `loop { }`
   that shows the weighted random start beside one Lloyd step a frame, with `showSignals` plotting how
   far the dots moved.
+- `evolving_water_bugs.yaml`: the creature genetic algorithm (`afield.simulation.creatures`) as two launched
+  boxes. `water_bug` writes the water-surface `ContactModel` and the fitness in the box and draws the
+  champion with its foot score; `ground_crawler` is the same evolution with a floor and gravity.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
 - `staged_project.yaml` — the staged-project starting place (`public/docs/staged_projects.md`): a level on a
   grid behind `level.inspect`/`level.edit`, blockout, traversal and placement stages with a "reachable loot"

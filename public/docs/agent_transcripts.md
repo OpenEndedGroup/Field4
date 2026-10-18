@@ -340,6 +340,20 @@ sphere and the floor, and both ends of that sentence are asserted by
 
 [Open ↗](offline.html?file=assets/agent_transcripts/simdverlet_world/metadata.edn)
 
+### evolving_water_bugs
+
+A genetic algorithm that evolves little 2D creatures of points, springs and motorised joints, with
+every point a foot that steps on its own cycle. The library evolves the body, the foot timing and
+the joint curves together; the box says what world they live in. In `water_bug` that is a water
+surface seen from above: a foot that touches down grips the surface film where it landed, and one
+that is up drags through the water. That rule is a dozen lines of `ContactModel` in the box, next
+to the fitness that rewards distance and charges for stretching and effort. `ground_crawler` swaps
+in a floor and gravity and scores only horizontal distance, and nothing else changes. Evolution runs
+on its own thread and both loops draw the current champion; CI launches them, advances 90 frames,
+and stops them.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/evolving_water_bugs/metadata.edn)
+
 ### inertial_movement
 
 Motion that survives being interrupted, as three boxes that get longer in

@@ -155,6 +155,11 @@ object DemoTranscriptExecSmokeTest {
         // buys is that `inertialTo`, `MovementState` and the control-group callbacks are exercised
         // through the real box path, which no unit test covers.
         "inertial_movement",
+        // The creature GA: two launched loops that evolve on their own thread under a box-written
+        // ContactModel (a water surface; a floor under gravity). CreatureEvolutionTest covers the
+        // library; running it here covers the box path — a ContactModel and fitness written in a box
+        // and handed to the library, and the .end { } that stops the evolution thread.
+        "evolving_water_bugs",
         // The keyframe editor: a launched loop playing a curve into a meter, and three executed boxes
         // (typed keys; an onChange overlay; key types of its own with interpolant(...)). Pure CPU — the editor is an iframe in `display` — so what
         // running it buys is keyframes(...), KeyframeEvaluator and the Keyframe-seeded overload
