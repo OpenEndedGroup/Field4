@@ -17,17 +17,17 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
-          
+
           prop<Window>(window)
           prop<Renderer>(renderer)
-          
+
           Options.enableHDR = false
-          
+
           once.renderer {
               window = Window("RectSL — data visualization")
               Renderer(window)
           }
-          
+
           println("dataviz renderer ready")
           start(renderer::run)
   # 2. figure box — compiles the snippet and draws it live. This is the box you hack on.
@@ -72,12 +72,12 @@ operations:
           val shader = rectMaterialShaderCode(program)
 
           /*
-          Seed this box's shader-source properties before `moduleHere {}` runs; the
+          Refresh the generated fragment on every run before `moduleHere {}`; the
           `//%-` fragment break makes this fragment execute first (see the playground
           transcript for the why).
           */
           once.vertex { RECT_ANIMATION_VERTEX_SHADER }
-          once.fragment { shader.exampleFragmentShader!! }
+          fragment = shader.exampleFragmentShader!!
 
           //%-
 

@@ -1413,6 +1413,14 @@
     "a6aa1047e7f5-02": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_61/README.md"
+    },
+    "4e40faf4c597-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_62/README.md"
+    },
+    "e8fc29a1999a-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_62/README.md"
     }
   },
   "batches": [
@@ -1475,7 +1483,8 @@
     "../box_code_adoption_batch_58/README.md",
     "../box_code_adoption_batch_59/README.md",
     "../box_code_adoption_batch_60/README.md",
-    "../box_code_adoption_batch_61/README.md"
+    "../box_code_adoption_batch_61/README.md",
+    "../box_code_adoption_batch_62/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1494,11 +1503,11 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 61,
-    "branch": "codex/box-code-readability-61",
-    "baseline": "234b206ca",
-    "state": "Batch 61 three native display modes and layout checks passed; 350 addressed, 55 open.",
-    "evidence": "../box_code_adoption_batch_61/README.md"
+    "batch": 62,
+    "branch": "codex/box-code-readability-62",
+    "baseline": "166824d53",
+    "state": "Batch 62 four native rerun comparisons and two material edits passed; 352 addressed, 53 open.",
+    "evidence": "../box_code_adoption_batch_62/README.md"
   },
   "mechanical": {
     "status": "applied_for_valid_kotlin_glsl_with_explicit_retained_cases",
