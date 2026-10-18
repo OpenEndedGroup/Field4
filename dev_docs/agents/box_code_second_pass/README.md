@@ -88,8 +88,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Reliable network failure and note release](../box_code_adoption_batch_42/README.md) | Four more findings addressed; real sACN/RTP traffic, Stop/rerun note order, 52 lifecycle tests, saved-source preservation and the complete scene/rig capture verified; 17 formatting occurrences. |
 
-[Machine checkpoint](checkpoint.json): **293 of 405 findings addressed**, one implemented with
-external-service verification pending; all other findings stay open. These counts do not claim
+| [Tracked real analyses and usable corpus fragments](../box_code_adoption_batch_43/README.md) | Seven findings addressed, including the pending fresh-service helper proof; actual beat/pitch jobs, three Smile fits, corpus index/query/placement and whole-box Stop/relaunch verified; eleven formatting states. |
+
+[Machine checkpoint](checkpoint.json): **300 of 405 findings addressed**; 105 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 
