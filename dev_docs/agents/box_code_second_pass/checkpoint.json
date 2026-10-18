@@ -1385,6 +1385,10 @@
     "d98fa9571c63-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_57/README.md"
+    },
+    "184894c9ac87-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_58/README.md"
     }
   },
   "batches": [
@@ -1443,7 +1447,8 @@
     "../box_code_adoption_batch_54/README.md",
     "../box_code_adoption_batch_55/README.md",
     "../box_code_adoption_batch_56/README.md",
-    "../box_code_adoption_batch_57/README.md"
+    "../box_code_adoption_batch_57/README.md",
+    "../box_code_adoption_batch_58/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1462,11 +1467,11 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 57,
-    "branch": "codex/box-code-readability-57",
-    "baseline": "f8cd87437",
-    "state": "343/405 addressed, 62 open. Chromium success/setup/query cleanup verified. Requeue descendant repairs batch-56 post-guard packaging bounce; all four source-block extractors pass.",
-    "evidence": "../box_code_adoption_batch_57/README.md"
+    "batch": 58,
+    "branch": "codex/box-code-readability-58",
+    "baseline": "7eee8eb47",
+    "state": "344/405 addressed, 61 open. Native crowds 1/2/64 visible with finite palettes and one draw; private Renderer 9719 remains alive for subsequent GPU work.",
+    "evidence": "../box_code_adoption_batch_58/README.md"
   },
   "mechanical": {
     "status": "applied_for_valid_kotlin_glsl_with_explicit_retained_cases",

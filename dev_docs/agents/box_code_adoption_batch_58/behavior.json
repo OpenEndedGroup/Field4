@@ -1,0 +1,12 @@
+{
+  "actualNativeInstanceCounts": [
+    1,
+    2,
+    64
+  ],
+  "finitePalettes": true,
+  "oneModuleMeshAndDraw": true,
+  "zeroGuardBeforeAllocation": true,
+  "rendererPort": 9719,
+  "limits": "Real fixture, shaders and native screenshots. Zero exercises the authored prefix before model allocation. Renderer remains running for subsequent GPU checks."
+}
