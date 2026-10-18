@@ -1,6 +1,9 @@
 name: learned_shader
 description: 'A user-trained function in a shader: original, approximation and error; ordinary arithmetic or cooperative
   vectors.'
+docs:
+  - page: learned_shader.md
+    why: "Explains the trained function, its error and cooperative vectors."
 operations:
 - create:
     box: agent_graphics_context

@@ -10,6 +10,9 @@ description: >
        the hull's edges and a PDHG spiral. Change `c` or the seed and re-run; orbit the view.
     2. lp3_fan — the same hull with a fan of central paths, one per direction spread over the
        sphere, turning on a turntable. Change `directions` or the cloud and re-run.
+docs:
+  - page: lp_curves.md#in-three-dimensions
+    why: "The section these LpPolytope boxes accompany."
 operations:
   - create:
       box: lp3_routes

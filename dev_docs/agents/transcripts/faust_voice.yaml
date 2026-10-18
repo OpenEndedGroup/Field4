@@ -24,6 +24,9 @@ description: >
   `FaustEngine.warmInBackground()` spends that up front.
   Only boxes 2–4 are executed by this transcript. Box 1 opens an audio device and box 5 fails on
   purpose, so both are left for you to click. See public/docs/faust.md.
+docs:
+  - page: faust.md
+    why: "Explains #faust regions in Kotlin and the Faust binding these boxes use."
 operations:
   - create:
       box: faust_voice_play

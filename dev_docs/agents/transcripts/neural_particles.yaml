@@ -64,6 +64,9 @@ description: |
   `tools/run_field_tests.py --id four.neural-particles.smoke` is the same machinery driven
   headlessly, grading the GPU's trajectories against the CPU integrator point by point, and
   `--id four.neural-field-parity.smoke` is the single-forward-pass check underneath it.
+docs:
+  - page: neural_particles.md
+    why: "Explains the trained velocity field and the three boxes."
 operations:
   # 1. the renderer: owns the Window and pumps the loop. Run this one first.
   - create:

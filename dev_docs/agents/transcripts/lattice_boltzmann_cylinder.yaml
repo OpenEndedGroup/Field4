@@ -8,6 +8,9 @@ description: >
   sheds a von Karman vortex street, shown as vorticity. The same two boxes are lessons
   10 and 10b of canonical_graphics. Requires a GPU/Vulkan window; capture it with a follow-on
   `native-screenshot <path>` backdoor command.
+docs:
+  - page: afield_four_graphics.md
+    why: "Includes the lattice Boltzmann walkthrough this document builds."
 operations:
   - create:
       box: lbm_renderer

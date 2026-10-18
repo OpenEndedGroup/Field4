@@ -4,6 +4,9 @@ description: >
   right-hand OpenXR controller ray supplies hover and trigger clicks; thumbstick or trackpad scrolls,
   so the EU consent page and the player are usable without desktop sharing. On the desktop the mouse
   stands in for the controller and the stereo pair is shown side by side. Chromium audio remains live.
+docs:
+  - page: puppet_browser.md
+    why: "Explains driving a browser page, including in VR."
 operations:
   - create:
       box: youtube_vr_renderer

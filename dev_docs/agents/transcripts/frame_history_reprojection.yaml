@@ -7,6 +7,9 @@ description: |
   The accumulation box resets a stable eye/target pose on launch and retains explicit
   Alt-Enter reset assignments for its live controls. Repeated chain declarations retain the
   upstream scene input and compatible persistent targets.
+docs:
+  - page: path_traced_reconstruction.md
+    why: "Covers temporal reprojection and accumulation for the renderer."
 operations:
   - create:
       box: rp_renderer

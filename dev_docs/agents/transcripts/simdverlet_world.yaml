@@ -29,6 +29,9 @@ description: >
   The written-up version, with the design argument for why a collider is a projection and not a force,
   is `dev_docs/physics/SIMDVERLET_5_WORLD.md`. Replayed end to end in CI: launch each box, run real
   runloop frames, stop.
+docs:
+  - page: physics.md
+    why: "Explains SimdVerlet cloth, colliders and forces."
 operations:
   - create:
       box: world_drape

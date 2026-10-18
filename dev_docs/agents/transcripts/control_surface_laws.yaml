@@ -21,6 +21,9 @@ description: >
   records, and `controlLaws.js` is loaded by both pages.
   Pure compute — no Window, no Renderer, no audio device — so the whole thing runs headless.
   See dev_docs/control_surface_laws.md.
+docs:
+  - page: visualizers.md#controls-sliders-toggles-colors-text-and-xy-pads
+    why: "Covers the controls DSL that slider laws, buttons and meters extend."
 operations:
   - create:
       box: control_surface_laws

@@ -12,6 +12,11 @@ description: >
   Studio's canvas, to show a tool written beside a running conversation. Open the Studio's AI
   panel and ask for a painting. Needs `./gradlew buildPaintNative`; without it the Studio says so
   and stops.
+docs:
+  - page: ai4_painting.md
+    why: "Covers AI4 painting with the paint simulator tools this studio registers."
+  - page: paint_canvas.md
+    why: "Explains the paint canvas the agent's strokes land on."
 operations:
   - create:
       box: ai4_paint_studio

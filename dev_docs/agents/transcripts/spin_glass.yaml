@@ -19,6 +19,9 @@ description: >
   changing it, rebuild update -> measure -> view so every box allocates to the new size. The transcript produces no
   image artifact itself — capture its native window with a follow-on
   `native-screenshot <path>` backdoor command (run with --with-playwright).
+docs:
+  - page: afield_four_graphics.md
+    why: "Explains the compute-shader and renderer pattern this system uses."
 operations:
   # 1. renderer box: owns the Window + Renderer and pumps the loop.
   - create:

@@ -1,5 +1,10 @@
 name: path_traced_reconstruction
 description: Compare raw multi-bounce path tracing, progressive accumulation and Ray Reconstruction.
+docs:
+  - page: path_traced_reconstruction.md
+    why: "Explains reconstructing a noisy path-traced image."
+  - page: path_tracing.md
+    why: "Reference for the path tracer feeding the reconstruction."
 operations:
 - create:
     box: agent_graphics_context

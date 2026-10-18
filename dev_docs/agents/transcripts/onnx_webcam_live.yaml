@@ -3,6 +3,9 @@ description: >
   One box: grab a webcam frame, run Depth Anything V2 and CLIP on it, and show the frame
   beside its depth map with a zero-shot ranking over four text prompts.
   Press the run key again for a new frame.
+docs:
+  - page: onnx.md
+    why: "Covers loading and running ONNX models on live frames in a box."
 operations:
   - create:
       box: onnx_webcam

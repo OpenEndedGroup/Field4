@@ -10,6 +10,9 @@ description: |
   so you can see the favourite walk towards it.
   The saved document at `dev_docs/agents/demos/gp_instruments/` is this same scene. See
   `public/docs/gaussian_process_optimization.md`.
+docs:
+  - page: gaussian_process_optimization.md
+    why: "Explains GP optimisation and A/B preference as used in these boxes."
 operations:
   - create:
       box: gp_tune

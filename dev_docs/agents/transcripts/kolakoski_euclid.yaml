@@ -21,6 +21,9 @@ description: >
   to that synth voice and still runs. And visibility: every output gets its own channel and every
   channel is opened, because an unopened channel is collapsed to zero height and a second write to
   one channel replaces the first.
+docs:
+  - page: pattern_language.md
+    why: "Covers pattern mini-notation, including Euclidean and Kolakoski rhythms."
 operations:
   - create:
       box: kolakoski_x_euclid

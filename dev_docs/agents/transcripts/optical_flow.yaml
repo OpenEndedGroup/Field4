@@ -1,5 +1,8 @@
 name: optical_flow
 description: Hardware image motion, cost inspection and feedback advection from a pair of Field images.
+docs:
+  - page: optical_flow.md
+    why: "Explains the hardware optical flow call and its motion texture."
 operations:
 - create:
     box: agent_graphics_context

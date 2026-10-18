@@ -1,5 +1,8 @@
 name: photo_mount_path_trace
 description: Real NVIDIA path-traced documentation figure.
+docs:
+  - page: chain_photo_to_solid.md
+    why: "Walks through the photo-to-solid chain this render ends."
 operations:
 - create:
     box: chain_renderer

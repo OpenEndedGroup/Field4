@@ -4,6 +4,9 @@ description: >
   This is the non-Kotlin/JS route: the shader and the JavaScript both come from the box's Kotlin, and
   geometry is asked for explicitly. For the Kotlin/JS route — where the box builds its own geometry in
   the headset — see visionos_start and the vision_geometry_* transcripts.
+docs:
+  - page: vision.md#live-metal-programmable-native-graphics
+    why: "Explains Live Metal, the renderer this cube publishes to."
 operations:
   - create:
       box: agent_vision_metal_cube

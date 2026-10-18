@@ -4,6 +4,9 @@ description: >
   building meshes in the headset from shipping them over the wire. A swept tube whose spine and
   radius both move, rebuilt from scratch in `onFrame`. The swap lands at a frame boundary, so the
   mesh never tears mid-draw.
+docs:
+  - page: vision_geometry.md
+    why: "Explains sending geometry to Vision Pro and animating it."
 operations:
   - create:
       box: agent_vision_geometry_animated_root

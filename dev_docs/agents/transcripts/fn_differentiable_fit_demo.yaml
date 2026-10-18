@@ -9,6 +9,9 @@ description: >
   curve (channel "2 fitted"), and returns the FnFitRun — Field renders it as a compact RMSE
   before->after summary with a loss-trajectory sparkline. Open/replay this into a fresh Field4 and
   look at the box: the fitted plot should sit right on top of the target.
+docs:
+  - page: functions_examples.md
+    why: "Covers Functions.Fn and fitting, including fitBest."
 operations:
   - create:
       box: fn_fit_demo

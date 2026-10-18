@@ -10,6 +10,9 @@ description: >
   `free-param` word, and prints the track IR as its own algebra. Open or replay this into a fresh
   Field4 and look at box one: the top band is where the rect was asked to go, the middle band is a
   seed that misses every waypoint, and the bottom band is a solved arc threading all three.
+docs:
+  - page: rectsl_inverse_animation.md
+    why: "Explains the inverse animation fit this document runs."
 operations:
   - create:
       box: rectsl_inverse_fit

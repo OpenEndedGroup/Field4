@@ -7,6 +7,9 @@ description: >
   glass and plastic rather than as a printout. The triangulator's `sourceFace` carries each triangle
   back to the polygon that chose it. Needs a live renderer parent; the GPU path tracer runs on
   ordinary compute, MoltenVK included.
+docs:
+  - page: chain_polytope_render.md
+    why: "Walks through this polytope-to-render chain."
 operations:
   - create:
       box: chain_renderer

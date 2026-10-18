@@ -17,6 +17,11 @@ description: >
   painting boxes say so and stop.
 
   Companion to public/docs/chain_drawn_paint.md. Pure CPU; no Window, no Renderer, no audio device.
+docs:
+  - page: chain_drawn_paint.md
+    why: "Walks through turning drawn pen strokes into paint."
+  - page: paint_canvas.md
+    why: "Explains the paint canvas and its brush settings."
 operations:
   - create:
       box: dp_strokes

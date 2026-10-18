@@ -1,5 +1,8 @@
 name: path_tracing_gltf
 description: Static textured glTF/GLB import into the progressive path tracer, using the bundled Toy Car.
+docs:
+  - page: path_tracing.md#loading-gltf-and-glb-models
+    why: "Explains loading glTF and GLB models into the tracer."
 operations:
   - create:
       box: path_trace_renderer

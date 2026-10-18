@@ -3,6 +3,9 @@ description: >
   Binocular eye-ray intersection in an explicit application world space. Uses real HTC
   per-eye poses when available, draws the EXT combined ray separately, and never invents
   depth from a single ray. macOS shows only the reference scene, labelled as a preview.
+docs:
+  - page: openxr_eye_intersection.md
+    why: "Explains eye-gaze rays and how they hit scene geometry."
 operations:
   - create:
       box: eye_ray_renderer

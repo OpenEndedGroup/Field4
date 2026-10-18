@@ -4,6 +4,9 @@ description: >
   heat source and skin temperature sliders. One persistent Kratos worker keeps the same background
   grid across edits. Requires the optional/kratos uv environment and Manifold. Stop releases the
   worker; launch again to restart. The entire experiment remains editable Kotlin.
+docs:
+  - page: reference/simulation.md
+    why: "Reference for the Kratos simulation API this playground uses."
 operations:
   - create:
       box: kratos_thermal

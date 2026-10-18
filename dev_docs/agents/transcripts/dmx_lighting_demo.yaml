@@ -1,5 +1,8 @@
 # Generated from dmx_lighting_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "dmx_lighting_demo"
+docs:
+  - page: dmx_lighting.md
+    why: "Explains driving lights over Art-Net and sACN as this document does."
 operations:
   - create:
       box: "dmx-receiver"

@@ -49,6 +49,9 @@ description: |
   `public/docs/interaction_nets_examples.md` the published page, and
   `tools/run_field_tests.py --id stdlib.lambda-terms.smoke` is the same three claims asserted
   headlessly.
+docs:
+  - page: interaction_nets_examples.md
+    why: "Explains compiling λ-terms to interaction nets and reading them back."
 operations:
   - create:
       box: lambda_normalise
