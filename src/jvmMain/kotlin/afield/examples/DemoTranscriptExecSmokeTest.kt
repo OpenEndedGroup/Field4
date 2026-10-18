@@ -538,6 +538,8 @@ object DemoTranscriptExecSmokeTest {
         "kratos_structural_playground",
         // Optional native field_morse_smale (./gradlew buildMorseSmaleNative); the live box loops forever.
         "morse_smale_explorer",
+        // Optional native field_morse_smale; the live box loops forever.
+        "tracking_explorer",
         // Optional native field_principal_curves (./gradlew buildPrincipalCurvesNative); the live box loops forever.
         "principal_curves_explorer",
         // Optional native field_polyvector (OpenCV, Boost, Eigen; ./gradlew buildPolyvectorNative).
