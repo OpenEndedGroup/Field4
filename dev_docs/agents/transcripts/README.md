@@ -237,7 +237,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   under transport-time, movie-time and step sliders. Pure CPU.
 - `lp_curves.yaml`: **linear programs as curves** — the companion to `lp_curves.md`. Every LP route
   over one pentagon (central path, fan, primal-dual, PDHG, ellipsoid, simplex, cutting planes), and a
-  launched box that turns the objective while the polygon breathes. Pure CPU.
+  launched box that turns the objective while the polygon breathes, and `lp_fan_map`, the fan as a map
+  `x(θ, log μ)` drawn as a grid in an editable `threeLines` viewer: drag a corner and the grid is
+  recomputed when the drag ends. Pure CPU.
 - `lp_curves_3d.yaml`: **linear programs in three dimensions** — the companion to the "In three dimensions" section of `lp_curves.md`.
   A point cloud's hull as an `LpPolytope` with four routes to one vertex (central path, primal-dual,
   simplex along edges, PDHG), and a turning fan of central paths, both in `three { }`. Pure CPU.
