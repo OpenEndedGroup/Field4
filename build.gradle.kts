@@ -4190,7 +4190,7 @@ val buildSolidCraftNative = tasks.register<Exec>("buildSolidCraftNative") {
 tasks.register<JavaExec>("smokeSolidCraft") {
     javaLauncher.set(javaToolchains.fieldLauncher())
     group = "verification"
-    description = "Builds the optional SolidCraft bridge and checks parameter editing, mesh and STEP export."
+    description = "Builds the optional SolidCraft bridge and checks parameter editing, mesh, STEP export and built sketches, sweeps and surfaces."
     dependsOn(buildSolidCraftNative)
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.geometry.solid.solidcraft.SolidCraftSmokeTest")
