@@ -627,7 +627,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**32293 public symbols across 1466 source files**, 16370 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**32328 public symbols across 1468 source files**, 16401 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -640,7 +640,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 12 | 125 | 41 (32%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 41 | 1954 | 1413 (72%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 291 | 7049 | 3571 (50%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 293 | 7084 | 3602 (50%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 42 | 742 | 373 (50%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
@@ -1868,6 +1868,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>manifold/<wbr></small> [Solid.kt](graphics.md#solid-kt) | Graphics | 54 | 46 | Closed 3D volumes from the Manifold library: primitives, transforms, union, difference and intersection, with results that stay closed manifolds. | [Solids that cannot fail: Manifold in Field](../manifold.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>solidsl/<wbr></small> [SolidAgreement.kt](graphics.md#solidagreement-kt) | Graphics | 28 | 17 | The measurement this package exists for: **one written shape, evaluated two completely independent ways, and the disagreement reported as a number.** |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>solidcraft/<wbr></small> [SolidCraft.kt](graphics.md#solidcraft-kt) | Graphics | 15 | 4 | An optional bridge to the SolidCraft B-rep document engine, whose model stays in native Rust code. | [SolidCraft: edit the design, then see the part](../solidcraft.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>solidcraft/<wbr></small> [SolidCraftBuilder.kt](graphics.md#solidcraftbuilder-kt) | Graphics | 33 | 30 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>solidcraft/<wbr></small> [SolidCraftBuilderSmokeTest.kt](graphics.md#solidcraftbuildersmoketest-kt) | Graphics · internal | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>solidcraft/<wbr></small> [SolidCraftSmokeTest.kt](graphics.md#solidcraftsmoketest-kt) | Graphics · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>solidsl/<wbr></small> [SolidExact.kt](graphics.md#solidexact-kt) | Graphics | 29 | 20 | Lowering **(b)**: a `SolidExpr` as an *exact* Manifold `Solid` — or a stated refusal. | [A solid, written down: `afield.lang.solidsl`](../solid_notation.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>solidsl/<wbr></small> [SolidExpr.kt](graphics.md#solidexpr-kt) | Graphics | 74 | 57 | The SolidSL algebra: 3D solids and 2D profiles as immutable data values, with the builder functions that write them and the bounds that enclose them. | [A solid, written down: `afield.lang.solidsl`](../solid_notation.md), [Solids that cannot fail: Manifold in Field](../manifold.md) |

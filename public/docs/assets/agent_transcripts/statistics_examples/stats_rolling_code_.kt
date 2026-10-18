@@ -1,8 +1,3 @@
-/*
-A single coefficient over a whole recording answers the wrong question when the
-relationship comes and goes. RollingDistanceCorrelation maintains its sums
-incrementally, O(w) per push; RollingXiCorrelation just recomputes, O(w log w).
-*/
 val w = 80
 val total = 600
 val change = 300
@@ -10,6 +5,7 @@ val rng = java.util.Random(3)
 
 val dcor = RollingDistanceCorrelation(w)
 val xiRoll = RollingXiCorrelation(w)
+
 val xs = ArrayList<Double>()
 val ys = ArrayList<Double>()
 val dSeries = ArrayList<Double>()
@@ -18,71 +14,74 @@ val absR = ArrayList<Double>()
 
 for (i in 0 until total) {
     val xv = rng.nextGaussian()
-    // Before `change`: two independent Gaussians. After: y = x^2 - 1, which Pearson cannot see.
+    // Before `change`: two independent Gaussians. After: y = x^2 - 1, a dependence Pearson cannot see.
     val yv = if (i < change) rng.nextGaussian() else xv * xv - 1.0 + 0.15 * rng.nextGaussian()
     xs += xv
     ys += yv
-    dSeries += dcor.push(xv, yv) ?: 0.0 // the first push always returns null
-    xiSeries += xiRoll.push(xv, yv) ?: 0.0
-    // There is no RollingPearson, so take the batch one over the same window.
+    val distanceValue = dcor.push(xv, yv)
+    val xiValue = xiRoll.push(xv, yv)
+    // Compare with the w-sample null only once a complete window has arrived.
+    val fullWindow = xs.size >= w
+    dSeries += if (fullWindow) requireNotNull(distanceValue) else Double.NaN
+    xiSeries += if (fullWindow) requireNotNull(xiValue) else Double.NaN
+    // There is no RollingPearson, so take the batch one over the same window for comparison.
     val lo = maxOf(0, xs.size - w)
     val bx = xs.subList(lo, xs.size).toDoubleArray()
     val by = ys.subList(lo, ys.size).toDoubleArray()
-    absR += if (bx.size >= 2) abs(StatsDependence.pearson(bx, by)) else 0.0
+    absR += if (fullWindow) abs(StatsDependence.pearson(bx, by)) else Double.NaN
 }
 
-// The threshold that makes the traces readable: the 95th percentile of the dCor null,
-// drawn at THIS window size because the null shifts with the window.
+// Calibrate each statistic against its own null distribution at this window size.
+// These are pointwise reference levels, not a multiple-testing-adjusted change detector.
 val r2 = java.util.Random(1234)
 val k = 300
-val threshold =
-    DoubleArray(k) {
-            StatsDependence.distanceCorrelation(
-                DoubleArray(w) { r2.nextGaussian() },
-                DoubleArray(w) { r2.nextGaussian() },
-            )
-        }
-        .sortedArray()[(k * 0.95).toInt()]
+val dNull = DoubleArray(k)
+val xiNull = DoubleArray(k)
+repeat(k) { i ->
+    val nx = DoubleArray(w) { r2.nextGaussian() }
+    val ny = DoubleArray(w) { r2.nextGaussian() }
+    dNull[i] = StatsDependence.distanceCorrelation(nx, ny)
+    xiNull[i] = StatsDependence.chatterjeeXi(nx, ny)
+}
+val threshold = dNull.sortedArray()[(k * 0.95).toInt()]
+val xiThreshold = xiNull.sortedArray()[(k * 0.95).toInt()]
 
-fun mean(l: List<Double>, a: Int, b: Int) = l.subList(a, b).average()
-println("window=$w, regime change at i=$change, dCor null 95th pct at this w=${"%.3f".format(threshold)}")
-println(
-    "  before (i=$w..${change - 1}):        dCor ${"%.3f".format(mean(dSeries, w, change))}" +
-        "   xi ${"%.3f".format(mean(xiSeries, w, change))}   |r| ${"%.3f".format(mean(absR, w, change))}",
-)
-println(
-    "  settled after (i=${change + w}..${total - 1}): dCor ${"%.3f".format(mean(dSeries, change + w, total))}" +
-        "   xi ${"%.3f".format(mean(xiSeries, change + w, total))}   |r| ${"%.3f".format(mean(absR, change + w, total))}",
-)
+// The incremental sums are not an approximation. Cross-check the last window against the O(w^2)
+// batch call, which materialises two full w x w distance matrices to get the same answer.
+val batchLast = StatsDependence.distanceCorrelation(xs.takeLast(w).toDoubleArray(), ys.takeLast(w).toDoubleArray())
+val agreement = abs(dSeries.last() - batchLast)
+
 val firstD = (change until total).firstOrNull { dSeries[it] > threshold }
-val firstXi = (change until total).firstOrNull { xiSeries[it] > threshold }
-println("  threshold first crossed by dCor at +${firstD?.minus(change)} samples, by xi at +${firstXi?.minus(change)}")
-
-/*
-Not an approximation, and this is a real cross-check rather than a restatement:
-RollingDistanceCorrelation never rebuilds a distance matrix, while the batch call
-materialises two full w x w matrices and double-centres them.
-*/
-val batchLast = StatsDependence.distanceCorrelation(
-    xs.takeLast(w).toDoubleArray(),
-    ys.takeLast(w).toDoubleArray(),
-)
-println("  incremental vs batch on the final window: |difference| = ${abs(dSeries.last() - batchLast)}")
-// And rolling xi is bit-exact, because it literally calls chatterjeeXi over the window.
-val batchXi = StatsDependence.chatterjeeXi(
-    xs.takeLast(w).toDoubleArray(),
-    ys.takeLast(w).toDoubleArray(),
-)
-println("  rolling xi vs batch xi: |difference| = ${abs(xiSeries.last() - batchXi)} (exactly zero by construction)")
+val firstXi = (change until total).firstOrNull { xiSeries[it] > xiThreshold }
+val dCrossing = firstD?.let { "+${it - change} samples" } ?: "not crossed"
+val xiCrossing = firstXi?.let { "+${it - change} samples" } ?: "not crossed"
 
 showSignals(
     "rolling dCor" to dSeries,
     "rolling xi" to xiSeries,
     "rolling |pearson|" to absR,
     "dCor null 95th pct at w=$w" to List(total) { threshold },
+    "xi null 95th pct at w=$w" to List(total) { xiThreshold },
     channel = "traces",
     title = "Three rolling coefficients across one regime change (window $w)",
     xTitle = "sample",
     yTitle = "coefficient",
-    marks = listOf("regime change" to change),
+    marks = ["regime change" to change],
+)
+// The two windows are the same three coefficients measured twice, so they read as a table.
+// The pipes in `|r|` are escaped, or they would split the cell they sit in.
+markdown(
+    "numbers",
+    """
+    | window | dCor | xi | \|r\| |
+    |--------|------|----|-------|
+    | window-full to the change (i=$w..${change - 1}) | ${"%.3f".format(dSeries.subList(w, change).average())} | ${"%.3f".format(xiSeries.subList(w, change).average())} | ${"%.3f".format(absR.subList(w, change).average())} |
+    | settled after the change (i=${change + w}..${total - 1}) | ${"%.3f".format(dSeries.subList(change + w, total).average())} | ${"%.3f".format(xiSeries.subList(change + w, total).average())} | ${"%.3f".format(absR.subList(change + w, total).average())} |
+
+    {muted:dCor null 95th pct ${"%.3f".format(threshold)}: $dCrossing.
+    xi null 95th pct ${"%.3f".format(xiThreshold)}: $xiCrossing.}
+
+    {muted:incremental vs batch on the final window: |difference| = $agreement}
+""",
+    width = 900,
 )

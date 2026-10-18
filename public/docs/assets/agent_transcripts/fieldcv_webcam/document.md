@@ -61,8 +61,14 @@ start(renderer::run)
 
 <!-- field-box id="cv_overlay" index="3" -->
 
+### Narrative
+
+From `code`
+
+every polyline channel box 1 publishes, and the colour it is drawn in
+
 ```edn [field-box id="cv_overlay" role="properties"]
-{"id" "cv_overlay" "index" 3 "name" "lines (Kotlin)" "parents" ["root" "cv_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cv_renderer"} "name" "lines (Kotlin)" "_tombstone" false "frame" #afield/rect [460.0 360.0 260.0 60.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "cv_overlay_vertex_.glsl" "lines" 5 "characters" 173 "sha256" "80fa3b414c968e2b80a9ea7c059047812096607a7fbfbcdc5e1b66beb479e851"} {"name" "fragment" "language" "glsl" "path" "cv_overlay_fragment_.glsl" "lines" 4 "characters" 125 "sha256" "de401ae26147903e7089ad1203f372e4d717f269ac30588aa855a98ef3b4cc83"} {"name" "code" "language" "kotlin" "path" "cv_overlay_code_.kt" "lines" 47 "characters" 1963 "sha256" "9b8448ec5dba6c8356b8035aa3a969658aee3dde9c0d4a1f3824cc8284946e90"}]}
+{"id" "cv_overlay" "index" 3 "name" "lines (Kotlin)" "parents" ["root" "cv_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cv_renderer"} "name" "lines (Kotlin)" "_tombstone" false "frame" #afield/rect [460.0 360.0 260.0 60.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "cv_overlay_vertex_.glsl" "lines" 5 "characters" 173 "sha256" "80fa3b414c968e2b80a9ea7c059047812096607a7fbfbcdc5e1b66beb479e851"} {"name" "fragment" "language" "glsl" "path" "cv_overlay_fragment_.glsl" "lines" 4 "characters" 125 "sha256" "de401ae26147903e7089ad1203f372e4d717f269ac30588aa855a98ef3b4cc83"} {"name" "code" "language" "kotlin" "path" "cv_overlay_code_.kt" "lines" 51 "characters" 2122 "sha256" "3e49a71a1aa5d2f5c1c608aa2d517a791fb46d5975272596e632f449b93e4233"}]}
 ```
 
 ```glsl [field-property box="cv_overlay" name="vertex" path="cv_overlay_vertex_.glsl"]
@@ -81,24 +87,24 @@ void main() { uFragColor = fcol; }
 ```
 
 ```kotlin [field-property box="cv_overlay" name="code" path="cv_overlay_code_.kt"]
-import afield.lang.python.NumpyShared
-
 // every polyline channel box 1 publishes, and the colour it is drawn in
-val channels = listOf(
-    "tracks" to vec(0.2, 1.0, 0.3, 0.8),
-    "skeleton" to vec(1.0, 0.3, 0.8, 1.0),
-    "hands" to vec(1.0, 0.9, 0.2, 1.0),
-    "face" to vec(0.3, 0.9, 1.0, 0.9),
-    "contours" to vec(1.0, 0.55, 0.1, 1.0),
-    "strokes" to vec(1.0, 1.0, 1.0, 1.0),
-).map { (name, colour) -> NumpyShared.lines(name) to colour }
+val channels =
+    [
+            "tracks" to vec(0.2, 1.0, 0.3, 0.8),
+            "skeleton" to vec(1.0, 0.3, 0.8, 1.0),
+            "hands" to vec(1.0, 0.9, 0.2, 1.0),
+            "face" to vec(0.3, 0.9, 1.0, 0.9),
+            "contours" to vec(1.0, 0.55, 0.1, 1.0),
+            "strokes" to vec(1.0, 1.0, 1.0, 1.0),
+        ]
+        .map { (name, colour) -> NumpyShared.lines(name) to colour }
 
-var module = moduleHere { }
+var module = moduleHere {}
 var m = Mesh()
 module += m named "overlay"
 renderer += module
 
-val width = 0.003   // half the line's width, in NDC
+val width = 0.003 // half the line's width, in NDC
 val strokeWidth = 0.008
 
 frames {
@@ -108,7 +114,11 @@ frames {
             val w = if (shared.name == "strokes") strokeWidth else width
             shared.lines().flatMap { f -> f.nodes.zipWithNext().map { Triple(it, colour, w) } }
         }
-        if (segs.isEmpty()) continue
+        if (segs.isEmpty()) {
+            // Publish an empty draw when detections disappear; retain no old overlay.
+            m.resize(0, 0)
+            continue
+        }
         // each segment is a thin quad, two triangles, since GPU lines are a single pixel wide
         m.set(4 * segs.size, 2 * segs.size) {
             for ((i, s) in segs.withIndex()) {
