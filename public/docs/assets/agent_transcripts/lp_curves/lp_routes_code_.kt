@@ -28,6 +28,7 @@ showPlaneGrid(
         [outline] + cuts.regions.map { r -> polylineFrom(r, closed = true).also { it.color = vec(0.6, 0.8, 1.0, 0.4) } } +
             cuts.trajectory.toFLine(),
     columns = 4,
+    yUp = true,
     cellWidth = 260,
     cellHeight = 230,
 )
