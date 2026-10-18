@@ -19,14 +19,10 @@ val teacher = moduleHere {
     depthWrite = false
     blend = false
 }
-val mesh = Mesh(renderer, teacher)
-mesh.resize(3, 0, teacher)
-mesh.push.setMembers(teacher.current.fi.pushConstants.single().members)
+val mesh = fullscreenTriangle(teacher)
 teacher += "fullscreen" to mesh
 source += "teacher" to teacher
-lab =
-    GpuShaderLearningView(renderer, source) { t -> mesh.push["state"] = vec(source.width, source.height, t, 0) }
-        .install()
+lab = GpuShaderLearningView(renderer, source) { t -> mesh.state = { vec(source.width, source.height, t, 0) } }.install()
 var learn = true
 var view = 2
 var reset = false

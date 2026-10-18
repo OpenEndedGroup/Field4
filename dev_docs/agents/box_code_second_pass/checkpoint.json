@@ -1477,6 +1477,10 @@
     "25f85b04108e-06": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_68/README.md"
+    },
+    "691b5d822671-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_64/README.md"
     }
   },
   "batches": [
@@ -1545,7 +1549,8 @@
     "../box_code_adoption_batch_65/README.md",
     "../box_code_adoption_batch_66/README.md",
     "../box_code_adoption_batch_67/README.md",
-    "../box_code_adoption_batch_68/README.md"
+    "../box_code_adoption_batch_68/README.md",
+    "../box_code_adoption_batch_64/README.md"
   ],
   "next": "Approved order 1 \u2192 4 \u2192 5 \u2192 2 \u2192 3. Groups 1 and 4 source fixes/checks complete (optional Kratos solver acceptance unavailable). Next group 5: finish prepared batch 64, remaining helper/idiom/classification edits; then groups 2 and 3.",
   "preparation": {
@@ -1564,11 +1569,11 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 68,
-    "branch": "codex/box-code-readability-68",
-    "baseline": "4c02898d9",
-    "state": "Groups 1 and 4 complete with stated optional-worker limits; 366 addressed, 39 open. Next group 5, then 2, then 3. Native renderer 9722 remains available.",
-    "evidence": "../box_code_adoption_batch_68/README.md"
+    "batch": 64,
+    "branch": "codex/box-code-readability-69",
+    "baseline": "56759c590",
+    "state": "Groups 1 and 4 complete; group 5 helper adoption in progress; 367 addressed and 38 open.",
+    "evidence": "../box_code_adoption_batch_64/README.md"
   },
   "mechanical": {
     "status": "applied_for_valid_kotlin_glsl_with_explicit_retained_cases",
