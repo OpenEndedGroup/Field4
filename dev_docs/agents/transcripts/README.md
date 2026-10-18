@@ -238,6 +238,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `lp_curves.yaml`: **linear programs as curves** — the companion to `lp_curves.md`. Every LP route
   over one pentagon (central path, fan, primal-dual, PDHG, ellipsoid, simplex, cutting planes), and a
   launched box that turns the objective while the polygon breathes. Pure CPU.
+- `lp_curves_3d.yaml`: **linear programs in three dimensions** — the companion to `lp_curves_3d.md`.
+  A point cloud's hull as an `LpPolytope` with four routes to one vertex (central path, primal-dual,
+  simplex along edges, PDHG), and a turning fan of central paths, both in `three { }`. Pure CPU.
 - `frames_lifecycle.yaml`: **a frame loop, from start to cleanup** — the companion to
   `animation_time_model.md`. Runs until stopped, stops itself with `end()`, re-run replaces, and a
   fourth box the reader drives to see which of `.end { }` and `finally` each way of stopping reaches.

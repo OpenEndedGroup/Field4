@@ -45,7 +45,8 @@ The visual reference for all of this is https://lpviz.net.
  * with a message saying which, fewer than three distinct vertices, zero area, a reflex corner and
  * three collinear vertices: each would make an edge redundant or the interior empty, and the
  * barrier methods need a strictly feasible interior. Use [LpPolygon.of] to read the vertices of
- * an [FLine], and [LpPolygon.regular] for a regular polygon.
+ * an [FLine], [LpPolygon.regular] for a regular polygon, and [LpPolygon.hull] / [LpPolygon.hullOf]
+ * for the convex hull of any point set or drawn line.
  *
  * Edge `i` runs from `vertices[i]` to `vertices[i + 1]`; its unit outward normal is
  * `(normalX[i], normalY[i])` and its bound `bound[i]`.
@@ -136,6 +137,28 @@ class LpPolygon(points: List<Vec2>) {
          * curved segment contributes its end vertex; flatten curves first if you want them.
          */
         fun of(line: FLine): LpPolygon = LpPolygon(line.nodes.map { vec(it.to.x, it.to.y) })
+
+        /**
+         * The convex hull of [points], as a polygon: any point set, in any order, with repeats,
+         * interior points and collinear runs. Interior points are dropped, points on a hull edge
+         * between two corners are dropped (they would be collinear vertices), and the hull is
+         * counter-clockwise. Points closer than [mergeDistance] count as one.
+         *
+         * Andrew's monotone chain in doubles. It fails, with a message, when fewer than three
+         * distinct points remain or every point lies on one line. Use [LpPolygon]'s own
+         * constructor when the vertices are meant to be convex already and a reflex corner should
+         * be an error rather than silently cut off.
+         */
+        fun hull(points: List<Vec2>, mergeDistance: Double = 1e-6): LpPolygon =
+            LpPolygon(convexHull2(points, mergeDistance))
+
+        /**
+         * The convex hull of [line]'s node positions — a hand-drawn stroke, a non-convex outline
+         * or a scatter drawn with `moveTo`s all give a polygon. As with [of], only the end point of
+         * each segment is read, so flatten curved segments first if their bulge should count.
+         */
+        fun hullOf(line: FLine, mergeDistance: Double = 1e-6): LpPolygon =
+            hull(line.nodes.indices.map { val p = line.endPointOf(it); vec(p.x, p.y) }, mergeDistance)
 
         /** A regular polygon with [sides] vertices on a circle of [radius] around `(cx, cy)`. */
         fun regular(sides: Int, radius: Double, cx: Double = 0.0, cy: Double = 0.0, rotation: Double = 0.0): LpPolygon {
@@ -258,6 +281,50 @@ private fun unit(direction: Vec2): DoubleArray {
 
 private fun LpPolygon.sample(c: DoubleArray, x: Double, y: Double, k: Int, scale: Double, tag: String) =
     LpSample(x, y, k, c[0] * x + c[1] * y, violation(x, y), scale, tag)
+
+/*
+Andrew's monotone chain. Sort by (x, y), drop near-duplicates, build the lower and upper chains,
+popping every point that is not a strict left turn: collinear and interior points go. The turn
+test is relative to the two edge lengths, a little looser than LpPolygon's own collinearity check,
+so whatever survives here is accepted there.
+*/
+internal fun convexHull2(points: List<Vec2>, mergeDistance: Double): List<Vec2> {
+    require(mergeDistance >= 0.0) { "mergeDistance must be non-negative, got $mergeDistance" }
+    val sorted = points.map {
+        require(it.x.isFinite() && it.y.isFinite()) { "LpPolygon.hull: point $it is not finite" }
+        doubleArrayOf(it.x.toDouble(), it.y.toDouble())
+    }.sortedWith(compareBy<DoubleArray>({ it[0] }, { it[1] }))
+    val distinct = ArrayList<DoubleArray>()
+    for (p in sorted) {
+        // Sorted by x, so only the points within mergeDistance in x can be repeats of p.
+        var j = distinct.size - 1
+        var repeat = false
+        while (j >= 0 && distinct[j][0] >= p[0] - mergeDistance) {
+            if (hypot(distinct[j][0] - p[0], distinct[j][1] - p[1]) <= mergeDistance) { repeat = true; break }
+            j--
+        }
+        if (!repeat) distinct.add(p)
+    }
+    require(distinct.size >= 3) { "LpPolygon.hull needs at least 3 distinct points, got ${distinct.size}" }
+    fun leftTurn(o: DoubleArray, a: DoubleArray, b: DoubleArray): Boolean {
+        val cross = (a[0] - o[0]) * (b[1] - a[1]) - (a[1] - o[1]) * (b[0] - a[0])
+        val norm = hypot(a[0] - o[0], a[1] - o[1]) * hypot(b[0] - a[0], b[1] - a[1])
+        return cross > 1e-8 * norm
+    }
+    fun chain(ps: List<DoubleArray>): List<DoubleArray> {
+        val out = ArrayList<DoubleArray>()
+        for (p in ps) {
+            while (out.size >= 2 && !leftTurn(out[out.size - 2], out[out.size - 1], p)) out.removeAt(out.size - 1)
+            out.add(p)
+        }
+        return out
+    }
+    val lower = chain(distinct)
+    val upper = chain(distinct.reversed())
+    val hull = lower.dropLast(1) + upper.dropLast(1)
+    require(hull.size >= 3) { "LpPolygon.hull: all ${distinct.size} distinct points lie on one line, so their hull has no area" }
+    return hull.map { vec(it[0], it[1]) }
+}
 
 private fun closedPolyline(points: List<Vec2>, color: Vec4, thickness: Double): FLine = FLine().also { f ->
     points.forEachIndexed { i, p -> if (i == 0) f.moveTo(p) else f.lineTo(p) }

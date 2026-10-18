@@ -1056,6 +1056,17 @@ walk are recomputed twenty times a second. Change the weights or the PDHG step s
 
 [Open ↗](offline.html?file=assets/agent_transcripts/lp_curves/metadata.edn)
 
+### lp_curves_3d
+
+The same methods in three dimensions, the companion to
+[Linear programs in three dimensions](lp_curves_3d.md). *Every route* takes the convex hull of a
+seeded point cloud as an `LpPolytope` and draws the central path, the primal-dual iterates, the
+simplex walk along the hull's edges and a PDHG spiral to one vertex, in a `three { }` scene you can
+orbit. *A fan of central paths* draws one path per direction over the sphere and turns it on a
+turntable. Change the direction or the seed and run it again.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/lp_curves_3d/metadata.edn)
+
 ### close_node_demo
 
 Two boxes about the `Close` node in the middle of an `FLine`, which is a shape
