@@ -102,7 +102,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Synchronize statistics lesson copies](../box_code_adoption_batch_50/README.md) | Three findings addressed; actual three-cycle dependence and calibrated rolling transcripts; existing alife layout proof reused; five Kotlin bodies and five collection conversions. |
 
-[Machine checkpoint](checkpoint.json): **326 of 405 findings addressed**; 79 remain open. These counts do not claim
+| [Named defaults and live band gain](../box_code_adoption_batch_51/README.md) | Four findings addressed; six real browser control groups, both callback variants with assignment/reset-only relaunch proof, 24 Kotlin states mechanically checked. |
+
+[Machine checkpoint](checkpoint.json): **330 of 405 findings addressed**; 75 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 

@@ -1,0 +1,29 @@
+{
+  "baseline": "beca71345",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/pattern_particles.yaml",
+      "kotlinBodies": 4,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/chain_pattern_particles.md",
+      "kotlinBodies": 7,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/direct_lighting.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/open_dlss_nr.md",
+      "kotlinBodies": 10,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}
