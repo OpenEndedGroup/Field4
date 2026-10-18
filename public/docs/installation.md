@@ -111,7 +111,9 @@ Python prerequisites do not include a configured JEP runtime: complete that in t
 and agent tooling have their own guides and prerequisites.
 
 The menu covers Python/JEP, computer vision and voice; Vulkan/OpenXR and shader tools;
-Ceres, TetGen, Manifold, [SolidCraft](solidcraft.md), paint and the [Patchy layered editor](patchy.md); Pure Data, Csound and LuaJIT; and optional
+Ceres, TetGen, Manifold, [SolidCraft](solidcraft.md), paint and the [Patchy layered editor](patchy.md); the geometry extensions
+([Morse–Smale complexes](morse_smale.md), [principal curves](principal_curves.md) and [polyvector vectorization](polyvector.md),
+whose OpenCV, Boost and Eigen packages setup installs on macOS and Linux); Pure Data, Csound and LuaJIT; and optional
 physics, video, audio-AI and training workers, guide/template services and audio samples. It also includes agent and documentation tooling.
 Kotlin, JavaScript, Faust, ordinary audio and browser drawing work without selecting any extras.
 
@@ -159,7 +161,7 @@ The launcher then opens Field's desktop app. Press `?` for help, or consult the
 The first tab in the desktop app is the welcome page, also at `https://localhost:9092/welcome` in
 a browser:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-welcome-frame" screenshot="assets/welcome/welcome-page.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="welcome-page" alt="The welcome page in a fresh workspace. Across the top, Field·4 and buttons for Start here: a moving drawing, the five-minute guide, native graphics, documentation, and shutdown, then a filename box with Create. On the left, Running now, a search box, No documents found in this workspace yet, and the collapsed Starting points and Templates lists with their counts. On the right, the Changelog open on recent commits, and below it the collapsed Projects, Maven, Workspace, Runtime, Vulkan, Python, AI, Preferences and OSC panels with one-line summaries."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x1260" clip-selector="#docs-welcome-frame" screenshot="assets/welcome/welcome-page.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="welcome-page" alt="The welcome page. Across the top, Field·4 and buttons for Start here: a moving drawing, the five-minute guide, native graphics, documentation, and shutdown, then a filename box with Create. On the left, Running now, a search box and the workspace's documents, and the collapsed Starting points and Templates lists with their counts. On the right, the Changelog open on recent commits, and below it the collapsed Projects, Maven, Workspace, Runtime, Vulkan, Geometry extensions, Python, AI, Preferences and OSC panels with one-line summaries."}
 // The compact /welcome row and empty-workspace prompt point to Start here; /welcome is its own page, so it is loaded into a frame on the capture page at a desktop
 // window's size, against the runner's fresh checkout-local workspace: what a new user sees.
 ui.eval("""
@@ -167,7 +169,7 @@ ui.eval("""
     const f = document.createElement("iframe")
     f.id = "docs-welcome-frame"
     f.src = "/welcome"
-    f.setAttribute("style", "position:fixed;left:0;top:0;width:1100px;height:1000px;border:0;background:#111;z-index:2147483000")
+    f.setAttribute("style", "position:fixed;left:0;top:0;width:1100px;height:1240px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
 """.trimIndent())

@@ -117,6 +117,7 @@ mutation; it is a different one.
 | `GET /api/refactor-pass` | `refactorPass.kt` | loopback + same-site |
 | `GET /api/terminal` | `terminal.kt` | loopback + same-site |
 | `GET /api/vulkan-status` | `Server.kt` | loopback + same-site |
+| `GET /api/native-geometry-status` | `Server.kt` | loopback + same-site |
 | `GET /api/welcome-changelog` | `Server.kt` | none |
 | `GET /api/welcome-docs` | `Server.kt` | none |
 | `GET /api/welcome-docs/stream` | `Server.kt` | none |
