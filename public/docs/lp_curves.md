@@ -85,7 +85,7 @@ showPlaneGrid(
 )
 ```
 
-![Two pentagons filled with rainbow-coloured curves radiating from a common centre to the five vertices. In the second the common centre has moved toward one edge, away from the heavily weighted edge opposite, and every curve has bent with it](assets/lp_curves/fan.png)
+![Two pentagons filled with rainbow-coloured curves radiating from a common centre to the five vertices. In the second the common centre has moved up, away from the heavily weighted bottom edge, and every curve has bent with it](assets/lp_curves/fan.png)
 
 ## Weights and redundant constraints
 
@@ -128,7 +128,7 @@ showPlaneGrid(
 :::endfold
 ```
 
-![Left: three curves leave three different interior points and converge on the same vertex of the pentagon. Right: a short curve of dots runs from the middle of the pentagon toward its far corner as the weight on one edge grows](assets/lp_curves/weights.png)
+![Left: three curves leave three different interior points and converge on the same vertex of the pentagon. Right: a short curve of dots runs from the middle of the pentagon down toward its lower-left corner, away from the upper-right edge whose weight grows](assets/lp_curves/weights.png)
 
 ## PDHG: spirals from outside
 
@@ -210,7 +210,9 @@ cuts away everything worse than that centre, and repeats. The four `LpCenter`s c
 - `VOLUMETRIC`, Vaidya's volumetric centre: like the analytic centre, but each constraint counts
   in proportion to how much it constrains, so a stack of nearly parallel cuts counts for less.
 
-`trace.regions` holds the region at every step.
+`trace.regions` holds the region at every step. In the example the direction `(-1, -0.2)` ties
+the two left-hand vertices, so the whole left edge is optimal and the methods may end anywhere on
+it: three end near its middle, while the Chebyshev centres slide down to the lower corner.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/lp_curves/cutting_planes.png" wait="3.0" capture="box" open-outputs="true" w="900" h="820" padding="14"}
 :::static
@@ -227,7 +229,7 @@ val panels = LpCenter.entries.map { kind ->
 showPlaneGrid(*panels.toTypedArray(), columns = 2, cellWidth = 420, cellHeight = 340, yUp = true)
 ```
 
-![Four pentagons, each overlaid with nested shrinking regions cut by parallel lines, and an orange path of centres moving into the left-hand vertex](assets/lp_curves/cutting_planes.png)
+![Four pentagons, each cut by parallel lines into nested shrinking regions, with an orange path of centres running left to the pentagon's left-hand edge; in the Chebyshev panel the path bends down to the lower-left corner](assets/lp_curves/cutting_planes.png)
 
 ## Animated: a turning objective
 
@@ -238,7 +240,10 @@ direction. The routes swing from vertex to vertex as the arrow from the centre p
 The central path comes from an `LpContinuation`. Each frame's polygon and direction are close to
 the last frame's, so the continuation starts Newton for each μ at the previous frame's sample for
 that μ (`centralPath(..., warm = previous)` does the same by hand). The path is the same one a
-cold start would find, in fewer Newton steps; the caption shows both counts.
+cold start would find. The caption shows both Newton step counts, and they do not always favour
+the warm start: when frames are close together it saves steps, but at this clip's 2.25° a frame,
+and while the path swings from one vertex to the next, a stale start can cost more than following
+the path from the centre.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/lp_curves/turning.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="620" embed=true name="lp-curves-turning" alt="a breathing hexagon with an arrow turning from its centre; an orange central path, a pink PDHG spiral and a blue simplex walk swing together from vertex to vertex as the arrow turns"}
 :::static
@@ -283,7 +288,7 @@ loop {
             central.toFLine(vec(1.0, 0.72, 0.32, 1.0), 2.0),
         ],
         title = "θ = %3.0f°".format(Math.toDegrees(theta) % 360.0),
-        caption = "orange: central path, ${central.solverSteps} Newton steps warm, $coldSteps cold\npink: PDHG · blue: simplex walk",
+        caption = "orange: central path, ${central.solverSteps} Newton steps warm, $coldSteps cold · pink: PDHG · blue: simplex walk",
         width = 560,
         height = 520,
         window = window,
