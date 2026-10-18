@@ -224,6 +224,9 @@ class DocumentedApiEvaluationTest {
         "objectPoint" to
             "open_dlss_nr.md; a GLSL function in the cubes scene's vertex shader, run only inside a " +
                 "live renderer. The open_dlss_nr_cubes transcript compiles the Kotlin only.",
+        "cameraPosition" to
+            "open_dlss_nr.md; a GLSL function in the cubes scene's vertex shader, run only inside a " +
+                "live renderer. The open_dlss_nr_cubes transcript compiles the Kotlin only.",
         "saveFrame" to
             "open_dlss_nr.md; the study's saveFrame writes a frame read back from live GPU targets, " +
                 "so it needs a renderer; the page's transcripts compile the call.",
