@@ -1465,6 +1465,18 @@
     "88ec49055037-02": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_67/README.md"
+    },
+    "192f12341fa6-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_68/README.md"
+    },
+    "25f85b04108e-05": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_68/README.md"
+    },
+    "25f85b04108e-06": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_68/README.md"
     }
   },
   "batches": [
@@ -1532,9 +1544,10 @@
     "../box_code_adoption_batch_63/README.md",
     "../box_code_adoption_batch_65/README.md",
     "../box_code_adoption_batch_66/README.md",
-    "../box_code_adoption_batch_67/README.md"
+    "../box_code_adoption_batch_67/README.md",
+    "../box_code_adoption_batch_68/README.md"
   ],
-  "next": "Approved order 1 \u2192 4 \u2192 5 \u2192 2 \u2192 3. Group 1 source fixes and available behavioral checks complete; full optional Kratos solves unavailable. Next group 4: runnable inputs/texture output/display cadence; retain prepared batch 64 for group 5.",
+  "next": "Approved order 1 \u2192 4 \u2192 5 \u2192 2 \u2192 3. Groups 1 and 4 source fixes/checks complete (optional Kratos solver acceptance unavailable). Next group 5: finish prepared batch 64, remaining helper/idiom/classification edits; then groups 2 and 3.",
   "preparation": {
     "batch": 43,
     "evidence": "build/box-code-revision/adoption-43/preparation.json",
@@ -1551,11 +1564,11 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 67,
-    "branch": "codex/box-code-readability-67",
-    "baseline": "8a391f550",
-    "state": "Group 4 cadence checks and real captures passed; 363 addressed, 42 open. Finish three group 4 input/texture findings, then 5, 2, 3.",
-    "evidence": "../box_code_adoption_batch_67/README.md"
+    "batch": 68,
+    "branch": "codex/box-code-readability-68",
+    "baseline": "4c02898d9",
+    "state": "Groups 1 and 4 complete with stated optional-worker limits; 366 addressed, 39 open. Next group 5, then 2, then 3. Native renderer 9722 remains available.",
+    "evidence": "../box_code_adoption_batch_68/README.md"
   },
   "mechanical": {
     "status": "applied_for_valid_kotlin_glsl_with_explicit_retained_cases",
