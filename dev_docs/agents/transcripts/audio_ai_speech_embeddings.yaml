@@ -4,6 +4,9 @@ description: >
   live box that finds or imports near_drowning.wav, submits revision-pinned emotion2vec and WavLM
   Base+ jobs, follows both through the durable monitor, projects their binary frame vectors inside
   Field with Smile t-SNE, and auditions two phase portraits per model with one shared cursor.
+docs:
+  - page: audio_ai_speech_embeddings.md
+    why: "Explains the emotion and speech embedding views this document builds."
 operations:
   - create:
       box: speech_embedding_guide

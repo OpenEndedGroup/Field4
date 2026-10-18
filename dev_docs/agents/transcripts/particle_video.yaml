@@ -2,6 +2,9 @@ name: particle_video
 description: >
   Scrub a portable subset of recorded video particles, then optionally track a local movie
   through the cached PyTorch RAFT launcher at native resolution.
+docs:
+  - page: particle_video.md
+    why: "Explains particle video trajectories and how they are computed."
 operations:
   - create:
       box: particle_video_guide

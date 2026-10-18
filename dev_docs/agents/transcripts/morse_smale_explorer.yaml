@@ -6,6 +6,9 @@ description: >
   its id, so a peak keeps its colour for as long as it stays on the same cell. And a table of what a
   result holds: one saddle's four separatrices and the strongest persistence pairs. Needs the
   optional native library: ./gradlew buildMorseSmaleNative.
+docs:
+  - page: morse_smale.md
+    why: "Explains Morse–Smale complexes and persistence as used here."
 operations:
   - create:
       box: ms_photo_slider

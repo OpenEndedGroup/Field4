@@ -5,6 +5,9 @@ description: >
   workflow. The first box is model-free and renders the real GestureBoardVisualization. The second
   is the live service operation: change the filename pattern and source window, then run it while
   the Field Audio service and worker are available.
+docs:
+  - page: audio_ai_gesture_board.md
+    why: "Explains how each drawn mark conditions MusicGen-Style and how to submit the board."
 operations:
   - create:
       box: draw_the_gesture

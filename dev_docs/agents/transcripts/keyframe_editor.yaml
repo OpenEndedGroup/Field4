@@ -5,6 +5,9 @@ description: >
   one key of each type. `smoothed` draws a smoothed overlay of the curve and keeps it up to date as
   the curve is edited, with `onChange`. CI launches `brightness`, executes the other two, advances
   90 frames and stops.
+docs:
+  - page: keyframe_editor.md
+    why: "Explains drawing, editing and reading keyframe curves."
 operations:
   - create:
       box: kf_brightness

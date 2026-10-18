@@ -1,5 +1,10 @@
 # Generated from stacksl_fit_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "stacksl_fit_demo"
+docs:
+  - page: stacksl_examples.md
+    why: "Shows StackSL programs, including fitting."
+  - page: stacksl_cheatsheet.md
+    why: "Lists the StackSL vocabulary."
 operations:
   - create:
       box: "stacksl-wires"

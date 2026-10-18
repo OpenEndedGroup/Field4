@@ -27,6 +27,9 @@ description: >
   Replay this file into a fresh Field (field_run_transcript) to see all three, then change a sigma
   or a radius and re-run a box. Each `execute` op omits inline code, so it runs the box's stored
   `code`. Executed end-to-end by examples.demo-transcript.exec.
+docs:
+  - page: imaging_examples.md#speed-against-opencv
+    why: "Discusses the speed of the imaging operators these boxes time."
 operations:
   - create:
       box: imaging_perf_pyrdown

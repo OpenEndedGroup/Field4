@@ -1,5 +1,8 @@
 name: gpu_shader_learning
 description: Train on moduleHere RGB directly on the GPU, freeze the fit, and save portable learned weights.
+docs:
+  - page: gpu_shader_learning.md
+    why: "Explains training on moduleHere output on the GPU and saving weights."
 operations:
 - create:
     box: agent_graphics_context

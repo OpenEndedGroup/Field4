@@ -397,6 +397,24 @@ The FIELD_TEST `examples.agent-transcripts.materialize` re-materializes to a tem
 the committed bundle is out of date** — or absent entirely — so a transcript edit without a regenerate
 is caught in CI. `./gradlew checkAgentTranscripts` is the same guard inside `check`.
 
+### Documentation pages for a starting point
+
+A top-level `docs:` list names the one or two documentation pages someone with the document open
+should read next. Each item is a page relative to `public/docs/`, optionally with a heading anchor,
+plus an optional one-sentence `why`:
+
+```yaml
+docs:
+  - page: drawing_and_notation.md#reading-a-region
+    why: "How box code reads the marks inside a region."
+```
+
+The materializer writes each item as a docs-redirect guide, `guides/<page>.md`, titled by the page's
+H1 (and the section's heading when there is an anchor). The document's Guides panel lists it under
+**Documentation** and opens it in the docs pane (`dev_docs/frontend/DOCUMENT_GUIDES.md`). A page or
+anchor that does not exist fails materialization, so renaming a page means updating the transcripts
+that point at it. Leave `docs:` out rather than listing a page that only mentions the topic.
+
 A transcript that is *not* a self-contained scene makes a broken starting point, so it is listed in
 `AgentTranscriptMaterializer.EXCLUDE` and no document is generated for it. Its index entry then must
 not offer an `Open ↗` link, and should say in prose why it is agent-only; the index guard checks both

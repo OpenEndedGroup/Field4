@@ -10,6 +10,9 @@ description: >
   axes, the tick labels and the legend are glyph outlines and SVG, not a raster and not a
   third-party JS chart. The saved document at `dev_docs/agents/demos/chart_primitive/` is this same scene, and this
   transcript is what built it.
+docs:
+  - page: chart.md
+    why: "Covers Chart marks, scales, DataFrame charts and clickable marks."
 operations:
   - create:
       box: chart_one_call

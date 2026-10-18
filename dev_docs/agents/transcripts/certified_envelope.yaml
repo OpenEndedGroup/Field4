@@ -10,6 +10,9 @@ description: |
   Box 5 is the workbench's own worked example, rewritten from formula ops bit for bit, with its claims
   certified: every plateau exactly 1 (PROVEN), >= 0 (PROVEN), and <= 1 REFUTED by 4 ulps at 284.99994 s.
   The saved document at `dev_docs/agents/demos/certified_envelope/` is this same scene.
+docs:
+  - page: fn_intervals.md
+    why: "Explains proving a function's range, the idea behind certified envelopes."
 operations:
   - create:
       box: sampled

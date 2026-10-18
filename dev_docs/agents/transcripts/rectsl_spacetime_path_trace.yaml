@@ -9,6 +9,9 @@ description: >
   says which end the animation starts at. It also measures what happens where the volume meets the
   sampling window, which is the case `levelSet`'s closure guarantee is for. Needs a live renderer
   parent and Manifold (`brew install manifold`).
+docs:
+  - page: chain_rectsl_spacetime.md
+    why: "Walks through this RectSL spacetime-to-render chain."
 operations:
   - create:
       box: chain_renderer

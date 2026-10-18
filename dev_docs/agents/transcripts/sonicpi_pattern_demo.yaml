@@ -1,5 +1,8 @@
 # Generated from sonicpi_pattern_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "sonicpi_pattern_demo"
+docs:
+  - page: sonic_pi.md
+    why: "Explains driving Sonic Pi from Field patterns."
 operations:
   - create:
       box: "sonicpi-pattern-lower"

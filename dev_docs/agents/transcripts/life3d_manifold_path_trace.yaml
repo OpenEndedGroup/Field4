@@ -8,6 +8,9 @@ description: >
   settles it, and a component census is a fact about the automaton that nothing else here reports.
   The largest cluster is traced in gold and the other forty-seven in blue. Needs a live renderer
   parent and Manifold (`brew install manifold`).
+docs:
+  - page: chain_life3d_render.md
+    why: "Walks through 3D Life into the Boolean layer and the path tracer."
 operations:
   - create:
       box: chain_renderer

@@ -1,6 +1,11 @@
 name: neural_reconstruction
 description: Compare source, DLAA and DLSS through Ultra Performance, with thin geometry, camera motion,
   particles and editable shaders.
+docs:
+  - page: neural_reconstruction.md
+    why: "Explains the neural reconstruction pipeline this document runs."
+  - page: reconstruction_plumbing.md
+    why: "Shows how the G-buffer, jitter and history inputs are wired."
 operations:
 - create:
     box: agent_graphics_context

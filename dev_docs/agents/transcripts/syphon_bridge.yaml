@@ -8,6 +8,9 @@ description: >
   "Field pattern", so the round trip through Syphon's shared GPU surface is visible with nothing
   else installed; change the name to receive another application. macOS only; the library is
   optional (`./gradlew buildSyphonNative`, needs Xcode) and without it every box says so and stops.
+docs:
+  - page: syphon.md
+    why: "Explains sending and receiving frames over Syphon."
 operations:
   - create:
       box: syphon_servers

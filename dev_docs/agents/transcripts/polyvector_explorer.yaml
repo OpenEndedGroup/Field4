@@ -7,6 +7,9 @@ description: >
   sketch as FLines, offset into engraving-like parallel curves, combed with normals and waved. Needs the optional native library and its
   OpenCV, Boost and Eigen packages: see the welcome page's Geometry extensions panel, or run
   ./gradlew buildPolyvectorNative.
+docs:
+  - page: polyvector.md
+    why: "Explains vectorizing line drawings with polyvector fields."
 operations:
   - create:
       box: pv_sketch

@@ -9,6 +9,9 @@ description: >
   Box 4 is a realization before/after: a Conway output is jittered, relaxed, and the solver's own
   diagnostics are left as the final value. Companion to
   dev_docs/agents/transcripts/polytope_conway_demo.yaml and to public/docs/polytope_examples.md.
+docs:
+  - page: polytope_examples.md
+    why: "Explains the Conway algebra these four boxes explore."
 operations:
   - create:
       box: polytope_expression_gallery

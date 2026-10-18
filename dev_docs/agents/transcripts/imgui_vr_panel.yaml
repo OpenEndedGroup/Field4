@@ -7,6 +7,9 @@ description: >
   real headset via OpenXRHmdTarget.copySideBySideToEyes; on macOS it previews on the
   desktop window. Requires a GPU/Vulkan window; capture it with a follow-on
   native-screenshot <path> (--with-playwright).
+docs:
+  - page: imgui_vr_panel.md
+    why: "Explains rendering an ImGui panel to a texture inside VR."
 operations:
   # 1. renderer box — owns the on-screen Window + Renderer and pumps the loop.
   - create:

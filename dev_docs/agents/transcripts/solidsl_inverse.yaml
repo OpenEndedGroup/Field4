@@ -8,6 +8,9 @@ description: >
 
   Nothing here needs Manifold, a GPU or a window: marching cubes and the mesh rasteriser are both
   pure Kotlin. The saved document at `dev_docs/agents/demos/solidsl_inverse/` is this same scene.
+docs:
+  - page: solid_notation.md#solving-for-the-numbers
+    why: "Explains differentiating a solid and inverse fitting."
 operations:
   - create:
       box: gradient

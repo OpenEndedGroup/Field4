@@ -10,6 +10,9 @@ description: >
   frame's runtime columns. It runs in a single execution because Field re-runs the preamble setup
   before each `//%-` fragment — remove the marker and the box stops compiling. See
   `kotlin.dataframe-plugin.spike` for what the plugin does and does not carry on its own.
+docs:
+  - page: dataframe.md
+    why: "Explains DataFrames in a box, including typed column access."
 operations:
   - create:
       box: dataframe_typed

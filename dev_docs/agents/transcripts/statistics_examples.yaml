@@ -42,6 +42,9 @@ description: >
   on screen, then change a shape, a window size, a target distribution or an n and re-run a box.
   Each `execute` op omits inline code, so it runs the box's stored `code` property. Executed
   end-to-end by examples.demo-transcript.exec. The page is public/docs/statistics_examples.md.
+docs:
+  - page: statistics_examples.md
+    why: "Explains each statistics example in this document."
 operations:
   - create:
       box: stats_summary

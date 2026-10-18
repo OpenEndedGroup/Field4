@@ -13,6 +13,9 @@ description: >
   at each beat as a dynamic marking.
 
   Companion to public/docs/drawing_and_notation.md. Pure CPU; no Window, no Renderer.
+docs:
+  - page: drawing_and_notation.md
+    why: "Explains the drawing layer and the notation API these boxes use."
 operations:
   - create:
       box: dn_draw

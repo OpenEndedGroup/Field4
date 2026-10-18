@@ -3,6 +3,9 @@ description: >
   A loadable corpus-navigation starting point. It indexes Nancy and Final Out at Candlestick Park
   at four overlapping time scales, follows every durable job, queries a six-second Nancy window,
   and renders source-relative neighbour and splice audition players.
+docs:
+  - page: audio_ai_corpus_microscope.md
+    why: "Explains corpus indexing, multi-scale windows and neighbour queries used here."
 operations:
   - create:
       box: corpus_microscope_guide

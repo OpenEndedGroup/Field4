@@ -66,6 +66,9 @@ description: |
   every level, so the pyramid is compared against arithmetic rather than against a previous render.
   [four_morton_quadtree](#four_morton_quadtree) is the same three planes produced from a point set
   instead of a raster, by a completely different pipeline.
+docs:
+  - page: reference/renderers.md
+    why: "Reference for the pass-chain API used to build this pyramid."
 operations:
   # 1. the renderer: owns the Window and pumps the loop. Run this one first.
   - create:

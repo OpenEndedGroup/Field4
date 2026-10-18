@@ -5,6 +5,9 @@ description: >
   their notes, a gate that holds placement until every loot point is reachable within its path budget, the
   loot-placement rule as a qualified source, and a model-free corpus of seeded variants shown side by side.
   The starting place for public/docs/staged_projects.md.
+docs:
+  - page: staged_projects.md
+    why: "Explains staged projects and how their stages run."
 operations:
   - create:
       box: staged_start

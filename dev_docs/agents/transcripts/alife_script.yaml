@@ -18,6 +18,9 @@ description: |
   The clock is a fixed step and the world is seeded, so a run is reproducible — the same document run
   twice is the same run, including across JVMs. The saved document at
   `dev_docs/agents/demos/alife_script/` is this same scene, and the write-up is `dev_docs/ALIFE.md`.
+docs:
+  - page: alife_examples.md
+    why: "Introduces the spatial ALife engine that per-agent scripts extend."
 operations:
   - create:
       box: one_agent
