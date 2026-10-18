@@ -1,0 +1,21 @@
+{
+  "actualNativeGpu": true,
+  "vmCountPerCase": 32,
+  "capacities": [
+    0,
+    1,
+    3,
+    4
+  ],
+  "cpuOutputPrefixesMatch": true,
+  "guardBytesPreserved": true,
+  "invalidMappingsRejected": true,
+  "stdout": [
+    "Nano capacity=0: 32 CPU prefixes match; guard bytes preserved",
+    "Nano capacity=1: 32 CPU prefixes match; guard bytes preserved",
+    "Nano capacity=3: 32 CPU prefixes match; guard bytes preserved",
+    "Nano capacity=4: 32 CPU prefixes match; guard bytes preserved",
+    "Nano GPU output bounds PASSED"
+  ],
+  "limits": "Runs production GLSL with 20-byte host mappings. Each case pumps four native frames and fences before reading; guard bytes must remain untouched, so the sentinel overwrite readiness helper is inappropriate."
+}
