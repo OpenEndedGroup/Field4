@@ -66,6 +66,6 @@ float mesh format; call `.weld()` when you want Field's index-based watertightne
 Close a design with `use { }` when done. An invalid parameter edit leaves the preceding design and
 evaluation intact.
 
-This first slice reads and edits existing feature trees. It does not yet create sketches or features
-from Kotlin, and its calls run in the calling thread. The [starting point](offline.html?file=assets/agent_transcripts/solidcraft_intro/metadata.edn)
+To build a design from sketches and features in code instead, see
+[SolidCraft: build a part from code](solidcraft_building.md). Calls run in the calling thread. The [starting point](offline.html?file=assets/agent_transcripts/solidcraft_intro/metadata.edn)
 is a small place to test which parts of that API are worth extending.

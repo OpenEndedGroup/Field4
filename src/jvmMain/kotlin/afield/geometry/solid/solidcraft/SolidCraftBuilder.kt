@@ -96,8 +96,8 @@ class SolidCraftBuilder internal constructor(private val name: String, private v
     /**
      * Sweeps the closed profiles of `profile` along `path` (its curves and wires, as one chain
      * unless `pathCurves` picks some). Each of `rails` is a sketch whose chain the profile's far
-     * side follows, reshaping it by `railFit`; `twist` turns the profile along the way and `scale`
-     * grows it to the end.
+     * side follows, reshaping it by `railFit`. Without rails, `twist` turns the profile along the
+     * way and `scale` grows it to the end; with rails, the rails decide both.
      */
     fun sweep(
         profile: SolidCraftSketchRef, path: SolidCraftSketchRef, pathCurves: List<String> = path.chain(),
@@ -190,6 +190,7 @@ class SolidCraftBuilder internal constructor(private val name: String, private v
     }
 
     private fun sweepPath(o: JSONObject, path: SolidCraftSketchRef, pathCurves: List<String>, rails: List<SolidCraftSketchRef>, railFit: SolidCraftRailFit, twist: String?, scale: String?) {
+        require(rails.isEmpty() || (twist == null && scale == null)) { "a sweep with guide rails takes no twist or scale: the rails set the profile's turn and size" }
         o.put("path_sketch", path.id).put("path", JSONArray(pathCurves))
         if (rails.isNotEmpty()) o.put("rails", JSONArray(rails.map { r -> JSONObject().put("sketch", r.id).put("curves", JSONArray(r.chain())) }))
         if (railFit != SolidCraftRailFit.SCALE) o.put("rail_fit", railFit.json)
