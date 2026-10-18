@@ -49,7 +49,7 @@ and re-run to change it live. See rectsl_cheatsheet.md ("Plotting layer")
 / rectsl_examples.md ("A plotted figure").
 
 ```edn [field-box id="plot_figure" role="properties"]
-{"id" "plot_figure" "index" 1 "name" "rectsl plot + axes" "parents" ["root" "plot_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "plot_renderer"} "name" "rectsl plot + axes" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "plot_figure_code_.kt" "lines" 73 "characters" 2178 "sha256" "21e5808c151ea49863fbad09d523317a440e0ccbd4433f4f99a2461812b080ea"}]}
+{"id" "plot_figure" "index" 1 "name" "rectsl plot + axes" "parents" ["root" "plot_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "plot_renderer"} "name" "rectsl plot + axes" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "plot_figure_code_.kt" "lines" 73 "characters" 2169 "sha256" "c7a1269d3cd53d885cd280225e22fcd96b9792037f19dd75c7984915dd430ebf"}]}
 ```
 
 ```kotlin [field-property box="plot_figure" name="code" path="plot_figure_code_.kt"]
@@ -94,12 +94,12 @@ val program = RectAnimationOracle.compile(rectsl).program!!
 val shader = rectMaterialShaderCode(program)
 
 /*
-Seed this box's shader-source properties before `moduleHere {}` runs; the
+Refresh the generated fragment on every run before `moduleHere {}`; the
 `//%-` fragment break makes this fragment execute first (see the playground
 transcript for the why).
 */
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
-once.fragment { shader.exampleFragmentShader!! }
+fragment = shader.exampleFragmentShader!!
 
 //%-
 

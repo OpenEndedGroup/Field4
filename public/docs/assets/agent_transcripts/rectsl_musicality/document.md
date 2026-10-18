@@ -52,7 +52,7 @@ Nothing below is written in seconds. Edit `rectsl` and re-run to change the
 groove live. See rectsl_cheatsheet.md ("Musicality") / rectsl_examples.md.
 
 ```edn [field-box id="music_groove" role="properties"]
-{"id" "music_groove" "index" 1 "name" "rectsl musicality" "parents" ["root" "music_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "music_renderer"} "name" "rectsl musicality" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "music_groove_code_.kt" "lines" 112 "characters" 3288 "sha256" "70c6592ea1feb1d04eb13ee5e1c4430d706abc361108b48808bcb049da96d4ed"}]}
+{"id" "music_groove" "index" 1 "name" "rectsl musicality" "parents" ["root" "music_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "music_renderer"} "name" "rectsl musicality" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "music_groove_code_.kt" "lines" 112 "characters" 3279 "sha256" "13adbd0a1c2a8bb5c4321341894c267e95abef9acf791d34528f62816e0258a9"}]}
 ```
 
 ```kotlin [field-property box="music_groove" name="code" path="music_groove_code_.kt"]
@@ -136,12 +136,12 @@ val program = RectAnimationOracle.compile(rectsl).program!!
 val shader = rectMaterialShaderCode(program)
 
 /*
-Seed this box's shader-source properties before `moduleHere {}` runs; the
+Refresh the generated fragment on every run before `moduleHere {}`; the
 `//%-` fragment break makes this fragment execute first (see the playground
 transcript for the why).
 */
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
-once.fragment { shader.exampleFragmentShader!! }
+fragment = shader.exampleFragmentShader!!
 
 //%-
 

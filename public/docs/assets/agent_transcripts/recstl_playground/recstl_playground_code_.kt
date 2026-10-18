@@ -45,15 +45,17 @@ val program = RectAnimationOracle.compile(rectsl).program!!
 val shader = rectMaterialShaderCode(program)
 
 /*
-Seed this box's shader-source properties before `moduleHere {}` runs.
+Set this box's shader sources before `moduleHere {}` runs.
+Refresh the generated fragment on every run so material edits become visible.
 moduleHere builds its module from the box's `vertex`/`fragment` properties
-(not from assignments in the lambda); `once.vertex`/`once.fragment` set them
-once. Fragments separated by `//%-` run one at a time, each expanded only after the
+(not from assignments in the lambda). The constant vertex shader is seeded once;
+the generated fragment changes with the RectSL program. Fragments separated by
+`//%-` run one at a time, each expanded only after the
 previous one ran, so this fragment executes first and the moduleHere fragment then
 prepares its shaders from what was set here.
 */
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
-once.fragment { shader.exampleFragmentShader!! }
+fragment = shader.exampleFragmentShader!!
 
 //%-
 

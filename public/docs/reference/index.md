@@ -432,6 +432,8 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ### geometry
 
+- curves
+    - [principal](graphics.md#principalcurves-kt)
 - *mesh* — [Graphics](graphics.md#measurementhelpers-kt) · [Math](math.md#linalg-mesh-kt) · [Simulation](simulation.md#tetmeshviews-kt)
     - [tetgen](simulation.md#tetmeshviews-kt)
 - [network](graphics.md#geometrynetwork-kt)
@@ -630,7 +632,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**32485 public symbols across 1474 source files**, 16497 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**32551 public symbols across 1476 source files**, 16529 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -643,7 +645,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 12 | 125 | 41 (32%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 41 | 1954 | 1413 (72%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 298 | 7237 | 3696 (51%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 300 | 7303 | 3728 (51%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 42 | 742 | 373 (50%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
@@ -1381,7 +1383,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>analysis/<wbr>loris/<wbr></small> [LorisVisualizer.kt](visualization.md#lorisvisualizer-kt) | Visualization | 11 | 5 | Draws a `LorisModel`'s partial trajectories as an interactive HTML panel next to its waveform. | [Loris: partial tracks and resynthesis](../loris.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>core/<wbr></small> [Lowerer.kt](languages.md#lowerer-kt) | Languages | 2 | 2 | The last stage of the FieldML front end: the typed tree becomes the `CoreExpr` tree the evaluator walks. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [LowSegmentFLineFitting.kt](graphics.md#lowsegmentflinefitting-kt) | Graphics | 29 | 1 | Fits a point sequence with as few line and arc segments as its error budget allows. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [lp_polytope.kt](graphics.md#lp-polytope-kt) | Graphics | 51 | 41 |  | [Linear programs in three dimensions](../lp_curves_3d.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [lp_polytope.kt](graphics.md#lp-polytope-kt) | Graphics | 51 | 41 |  | [Linear programs as curves](../lp_curves.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [lp_trajectories.kt](graphics.md#lp-trajectories-kt) | Graphics | 46 | 39 |  | [Linear programs as curves](../lp_curves.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [Lpips.kt](machine-learning.md#lpips-kt) | Machine learning | 16 | 16 | LPIPS: how different two pictures look, as a learned perceptual distance. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [LpipsSmokeTest.kt](machine-learning.md#lpipssmoketest-kt) | Machine learning · internal | 2 | 1 |  |  |
@@ -1679,6 +1681,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>execution/<wbr></small> [PreambleFailureStopsExecutionTest.kt](workspace.md#preamblefailurestopsexecutiontest-kt) | Workspace | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [PrettyPrint.kt](audio.md#prettyprint-kt) | Audio · internal | 0 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [PrettyStrings.kt](internal.md#prettystrings-kt) | Internal · internal | 0 | 0 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>curves/<wbr>principal/<wbr></small> [PrincipalCurves.kt](graphics.md#principalcurves-kt) | Graphics | 58 | 29 |  | [Principal curves: smooth curves through point clouds](../principal_curves.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>curves/<wbr>principal/<wbr></small> [PrincipalCurvesNative.kt](graphics.md#principalcurvesnative-kt) | Graphics | 8 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Probes.kt](audio.md#probes-kt) | Audio | 31 | 27 | Probe points placed through a scene, and the batches that hold their baked data. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ProfilingPanelWorkout.kt](examples.md#profilingpanelworkout-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [Projection.kt](graphics.md#projection-kt) | Graphics | 31 | 8 | Projection matrices for the Vulkan renderer: a plain perspective `Projection` and a `SuperProjection` that blends perspective into orthographic. |  |

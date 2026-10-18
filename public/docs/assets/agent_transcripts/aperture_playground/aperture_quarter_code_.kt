@@ -1,9 +1,8 @@
 import org.lwjgl.vulkan.VK10.*
 
-val source = paintSource
 propDown<RenderToTexture>(paintQuarter) = RenderToTexture {
-    width = (source.width / 4).coerceAtLeast(1)
-    height = (source.height / 4).coerceAtLeast(1)
+    width = (paintSource.width / 4).coerceAtLeast(1)
+    height = (paintSource.height / 4).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
     clearFirst = true
@@ -11,9 +10,8 @@ propDown<RenderToTexture>(paintQuarter) = RenderToTexture {
     debugName = "paintQuarter"
 }
 paintQuarter.setDefaultSampler(anisotropyEnable = false)
-val input = paintHalf
 var module = moduleHere {
-    textures("paintHalf" to input)
+    textures("paintHalf" to paintHalf)
     paintQuarter.apply()
     blend = false
     depthTest = false

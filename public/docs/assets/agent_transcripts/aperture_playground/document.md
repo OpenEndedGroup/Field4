@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="aperture_source" index="1" -->
 
 ```edn [field-box id="aperture_source" role="properties"]
-{"id" "aperture_source" "index" 1 "name" "2. Source RTT — lines and points" "parents" ["root" "agent_graphics_context"] "children" ["aperture_half"] "properties" {"children" #{#afield/box "aperture_half"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2. Source RTT — lines and points" "_tombstone" false "frame" #afield/rect [460.0 70.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_source_code_.kt" "lines" 43 "characters" 1726 "sha256" "b2d02a5cc68a822eb11ad608ba2abdc25a5158f5ab4fb3fbba9a406c1c36103c"} {"name" "vertex" "language" "glsl" "path" "aperture_source_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_source_fragment_.glsl" "lines" 26 "characters" 927 "sha256" "52fd5840bbc29fbd596a4b00c17be6df51103f76300a2782bb35816e2a2a0c8f"}]}
+{"id" "aperture_source" "index" 1 "name" "2. Source RTT — lines and points" "parents" ["root" "agent_graphics_context"] "children" ["aperture_half"] "properties" {"children" #{#afield/box "aperture_half"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "2. Source RTT — lines and points" "_tombstone" false "frame" #afield/rect [460.0 70.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_source_code_.kt" "lines" 43 "characters" 1638 "sha256" "f9f25cfe543ead7ceb7c7f250cb87f5516da0d41a6092836b5ba519d6938a65f"} {"name" "vertex" "language" "glsl" "path" "aperture_source_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_source_fragment_.glsl" "lines" 26 "characters" 927 "sha256" "52fd5840bbc29fbd596a4b00c17be6df51103f76300a2782bb35816e2a2a0c8f"}]}
 ```
 
 ```kotlin [field-property box="aperture_source" name="code" path="aperture_source_code_.kt"]
@@ -44,7 +44,7 @@ Alpha is the fourth light band, so every intermediate filter must use blend=fals
 propDown: re-running this box with new dimensions re-runs the passes that read paintSource.
 */
 propDown<RenderToTexture>(paintSource)
-thisBox.paintSource = RenderToTexture {
+paintSource = RenderToTexture {
     width = window.width
     height = window.height
     format = VK_FORMAT_R16G16B16A16_SFLOAT
@@ -53,11 +53,11 @@ thisBox.paintSource = RenderToTexture {
     clearColor = vec(0, 0, 0, 0)
     debugName = "paint-source"
 }
-thisBox.paintSource.setDefaultSampler(anisotropyEnable = false)
-renderer.renderList.preTargets["paint-source"] = thisBox.paintSource
+paintSource.setDefaultSampler(anisotropyEnable = false)
+renderer.renderList.preTargets["paint-source"] = paintSource
 prop<afield.math.linalg.Vec4>(apertureControl)
-thisBox.apertureControl = vec(1.5, 0, 0, 0)
-println("paint source RTT ready: ${thisBox.paintSource.width}x${thisBox.paintSource.height}")
+apertureControl = vec(1.5, 0, 0, 0)
+println("paint source RTT ready: ${paintSource.width}x${paintSource.height}")
 
 var module = moduleHere {
     paintSource.apply()
@@ -74,11 +74,11 @@ mesh.look = { vec(24.0, 1.0, 0.0, 0.0) }
 mesh.size = { vec(paintSource.width, paintSource.height, 0, 0) }
 
 // Nest the two editable reduction helpers without hiding their shaders.
-thisBox.frame = Rect(360.0, 70.0, 260.0, 270.0)
-thisBox.inside.boxes.getValue("aperture_half").nestedIn = thisBox
-thisBox.inside.boxes.getValue("aperture_half").frame = Rect(15.0, 70.0, 240.0, 55.0)
-thisBox.inside.boxes.getValue("aperture_quarter").nestedIn = thisBox
-thisBox.inside.boxes.getValue("aperture_quarter").frame = Rect(15.0, 150.0, 240.0, 55.0)
+frame = Rect(360.0, 70.0, 260.0, 270.0)
+inside.boxes.getValue("aperture_half").nestedIn = thisBox
+inside.boxes.getValue("aperture_half").frame = Rect(15.0, 70.0, 240.0, 55.0)
+inside.boxes.getValue("aperture_quarter").nestedIn = thisBox
+inside.boxes.getValue("aperture_quarter").frame = Rect(15.0, 150.0, 240.0, 55.0)
 ```
 
 ```glsl [field-property box="aperture_source" name="vertex" path="aperture_source_vertex_.glsl"]
@@ -126,16 +126,15 @@ void main() {
 <!-- field-box id="aperture_half" index="2" -->
 
 ```edn [field-box id="aperture_half" role="properties"]
-{"id" "aperture_half" "index" 2 "name" "3. Reduce ½" "parents" ["root" "aperture_source"] "children" ["aperture_quarter" "aperture_medium"] "properties" {"children" #{#afield/box "aperture_quarter" #afield/box "aperture_medium"} "parents" #{#afield/box "root" #afield/box "aperture_source"} "name" "3. Reduce ½" "_tombstone" false "frame" #afield/rect [460.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_half_code_.kt" "lines" 27 "characters" 809 "sha256" "7c1631f9bb1a004caf5d6667ba2d84e2981707189fb187150010c3b0ad1eb0ab"} {"name" "vertex" "language" "glsl" "path" "aperture_half_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_half_fragment_.glsl" "lines" 11 "characters" 454 "sha256" "f7dad831d940b89297b19153878272f3195716a1205a80dc454f539f74a25ad9"}]}
+{"id" "aperture_half" "index" 2 "name" "3. Reduce ½" "parents" ["root" "aperture_source"] "children" ["aperture_quarter" "aperture_medium"] "properties" {"children" #{#afield/box "aperture_quarter" #afield/box "aperture_medium"} "parents" #{#afield/box "root" #afield/box "aperture_source"} "name" "3. Reduce ½" "_tombstone" false "frame" #afield/rect [460.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_half_code_.kt" "lines" 25 "characters" 776 "sha256" "52d58efb26969957cb6eafe1a7bc4b1c86037c3b6cd1fa98dfdaa2bbb7b8d986"} {"name" "vertex" "language" "glsl" "path" "aperture_half_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_half_fragment_.glsl" "lines" 11 "characters" 454 "sha256" "f7dad831d940b89297b19153878272f3195716a1205a80dc454f539f74a25ad9"}]}
 ```
 
 ```kotlin [field-property box="aperture_half" name="code" path="aperture_half_code_.kt"]
 import org.lwjgl.vulkan.VK10.*
 
-val source = paintSource
 propDown<RenderToTexture>(paintHalf) = RenderToTexture {
-    width = (source.width / 2).coerceAtLeast(1)
-    height = (source.height / 2).coerceAtLeast(1)
+    width = (paintSource.width / 2).coerceAtLeast(1)
+    height = (paintSource.height / 2).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
     clearFirst = true
@@ -143,9 +142,8 @@ propDown<RenderToTexture>(paintHalf) = RenderToTexture {
     debugName = "paintHalf"
 }
 paintHalf.setDefaultSampler(anisotropyEnable = false)
-val input = paintSource
 var module = moduleHere {
-    textures("paintSource" to input)
+    textures("paintSource" to paintSource)
     paintHalf.apply()
     blend = false
     depthTest = false
@@ -189,16 +187,15 @@ void main() {
 <!-- field-box id="aperture_quarter" index="3" -->
 
 ```edn [field-box id="aperture_quarter" role="properties"]
-{"id" "aperture_quarter" "index" 3 "name" "4. Reduce ¼" "parents" ["root" "aperture_half"] "children" ["aperture_broad"] "properties" {"children" #{#afield/box "aperture_broad"} "parents" #{#afield/box "root" #afield/box "aperture_half"} "name" "4. Reduce ¼" "_tombstone" false "frame" #afield/rect [460.0 440.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_quarter_code_.kt" "lines" 27 "characters" 826 "sha256" "6c0ee8fbdff312f6880d9de1c402d2e3136adee3347da560a173869896ea16b6"} {"name" "vertex" "language" "glsl" "path" "aperture_quarter_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_quarter_fragment_.glsl" "lines" 11 "characters" 444 "sha256" "ced8adc4342a1323b853755fe2038584cf0c1fbf839ea5bb709bc6da8f6315f6"}]}
+{"id" "aperture_quarter" "index" 3 "name" "4. Reduce ¼" "parents" ["root" "aperture_half"] "children" ["aperture_broad"] "properties" {"children" #{#afield/box "aperture_broad"} "parents" #{#afield/box "root" #afield/box "aperture_half"} "name" "4. Reduce ¼" "_tombstone" false "frame" #afield/rect [460.0 440.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_quarter_code_.kt" "lines" 25 "characters" 793 "sha256" "051ad22d86a65f45288e02232028773c1507b4bb3cae7c53f98e69ac3635f415"} {"name" "vertex" "language" "glsl" "path" "aperture_quarter_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_quarter_fragment_.glsl" "lines" 11 "characters" 444 "sha256" "ced8adc4342a1323b853755fe2038584cf0c1fbf839ea5bb709bc6da8f6315f6"}]}
 ```
 
 ```kotlin [field-property box="aperture_quarter" name="code" path="aperture_quarter_code_.kt"]
 import org.lwjgl.vulkan.VK10.*
 
-val source = paintSource
 propDown<RenderToTexture>(paintQuarter) = RenderToTexture {
-    width = (source.width / 4).coerceAtLeast(1)
-    height = (source.height / 4).coerceAtLeast(1)
+    width = (paintSource.width / 4).coerceAtLeast(1)
+    height = (paintSource.height / 4).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
     clearFirst = true
@@ -206,9 +203,8 @@ propDown<RenderToTexture>(paintQuarter) = RenderToTexture {
     debugName = "paintQuarter"
 }
 paintQuarter.setDefaultSampler(anisotropyEnable = false)
-val input = paintHalf
 var module = moduleHere {
-    textures("paintHalf" to input)
+    textures("paintHalf" to paintHalf)
     paintQuarter.apply()
     blend = false
     depthTest = false
@@ -338,16 +334,15 @@ void main() {
 <!-- field-box id="aperture_broad" index="5" -->
 
 ```edn [field-box id="aperture_broad" role="properties"]
-{"id" "aperture_broad" "index" 5 "name" "6. Aperture 24 px" "parents" ["root" "aperture_quarter"] "children" ["aperture_composite"] "properties" {"children" #{#afield/box "aperture_composite"} "parents" #{#afield/box "root" #afield/box "aperture_quarter"} "name" "6. Aperture 24 px" "_tombstone" false "frame" #afield/rect [890.0 440.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_broad_code_.kt" "lines" 30 "characters" 931 "sha256" "b2ceb8e5d411e744f3fe5d63214a0e0505da0f2e91dea278044ea8258cb66617"} {"name" "vertex" "language" "glsl" "path" "aperture_broad_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_broad_fragment_.glsl" "lines" 27 "characters" 1057 "sha256" "6b5b546e1ec925580d3684b191205d36c33888920fc31f265d98955e79995c63"}]}
+{"id" "aperture_broad" "index" 5 "name" "6. Aperture 24 px" "parents" ["root" "aperture_quarter"] "children" ["aperture_composite"] "properties" {"children" #{#afield/box "aperture_composite"} "parents" #{#afield/box "root" #afield/box "aperture_quarter"} "name" "6. Aperture 24 px" "_tombstone" false "frame" #afield/rect [890.0 440.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_broad_code_.kt" "lines" 28 "characters" 898 "sha256" "821cc3fbd5107d84571f217c229d2419555ff80a91c6f62b6c7a5d889b6292bf"} {"name" "vertex" "language" "glsl" "path" "aperture_broad_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_broad_fragment_.glsl" "lines" 27 "characters" 1057 "sha256" "6b5b546e1ec925580d3684b191205d36c33888920fc31f265d98955e79995c63"}]}
 ```
 
 ```kotlin [field-property box="aperture_broad" name="code" path="aperture_broad_code_.kt"]
 import org.lwjgl.vulkan.VK10.*
 
-val source = paintSource
 propDown<RenderToTexture>(paintBroad) = RenderToTexture {
-    width = (source.width / 4).coerceAtLeast(1)
-    height = (source.height / 4).coerceAtLeast(1)
+    width = (paintSource.width / 4).coerceAtLeast(1)
+    height = (paintSource.height / 4).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
     clearFirst = true
@@ -355,9 +350,8 @@ propDown<RenderToTexture>(paintBroad) = RenderToTexture {
     debugName = "paintBroad"
 }
 paintBroad.setDefaultSampler(anisotropyEnable = false)
-val input = paintQuarter
 var module = moduleHere {
-    textures("paintQuarter" to input)
+    textures("paintQuarter" to paintQuarter)
     paintBroad.apply()
     blend = false
     depthTest = false
@@ -420,16 +414,15 @@ void main() {
 <!-- field-box id="aperture_medium" index="6" -->
 
 ```edn [field-box id="aperture_medium" role="properties"]
-{"id" "aperture_medium" "index" 6 "name" "5. Aperture 4 / 10 px" "parents" ["root" "aperture_half"] "children" ["aperture_composite"] "properties" {"children" #{#afield/box "aperture_composite"} "parents" #{#afield/box "root" #afield/box "aperture_half"} "name" "5. Aperture 4 / 10 px" "_tombstone" false "frame" #afield/rect [890.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_medium_code_.kt" "lines" 30 "characters" 932 "sha256" "ceab3075736a7cde2d151c2375cca583afc3b0c530e3103a0d2073c0ec29eba6"} {"name" "vertex" "language" "glsl" "path" "aperture_medium_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_medium_fragment_.glsl" "lines" 29 "characters" 1115 "sha256" "b4e3de183e9ee1c6d70d5df07b441dda42849d8a08d1b5b6f65a6cb87ff904e1"}]}
+{"id" "aperture_medium" "index" 6 "name" "5. Aperture 4 / 10 px" "parents" ["root" "aperture_half"] "children" ["aperture_composite"] "properties" {"children" #{#afield/box "aperture_composite"} "parents" #{#afield/box "root" #afield/box "aperture_half"} "name" "5. Aperture 4 / 10 px" "_tombstone" false "frame" #afield/rect [890.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_medium_code_.kt" "lines" 28 "characters" 899 "sha256" "e72062210b2dae13b31324475f8317984ac0bccff9ffc5220952b4f04f5525d3"} {"name" "vertex" "language" "glsl" "path" "aperture_medium_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_medium_fragment_.glsl" "lines" 29 "characters" 1115 "sha256" "b4e3de183e9ee1c6d70d5df07b441dda42849d8a08d1b5b6f65a6cb87ff904e1"}]}
 ```
 
 ```kotlin [field-property box="aperture_medium" name="code" path="aperture_medium_code_.kt"]
 import org.lwjgl.vulkan.VK10.*
 
-val source = paintSource
 propDown<RenderToTexture>(paintMedium) = RenderToTexture {
-    width = (source.width / 2).coerceAtLeast(1)
-    height = (source.height / 2).coerceAtLeast(1)
+    width = (paintSource.width / 2).coerceAtLeast(1)
+    height = (paintSource.height / 2).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
     clearFirst = true
@@ -437,9 +430,8 @@ propDown<RenderToTexture>(paintMedium) = RenderToTexture {
     debugName = "paintMedium"
 }
 paintMedium.setDefaultSampler(anisotropyEnable = false)
-val input = paintHalf
 var module = moduleHere {
-    textures("paintHalf" to input)
+    textures("paintHalf" to paintHalf)
     paintMedium.apply()
     blend = false
     depthTest = false
@@ -504,20 +496,16 @@ void main() {
 <!-- field-box id="aperture_composite" index="7" -->
 
 ```edn [field-box id="aperture_composite" role="properties"]
-{"id" "aperture_composite" "index" 7 "name" "7. Composite — sharp / blur / guide" "parents" ["root" "aperture_medium" "aperture_broad"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "aperture_medium" #afield/box "aperture_broad"} "name" "7. Composite — sharp / blur / guide" "_tombstone" false "frame" #afield/rect [1320.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_composite_code_.kt" "lines" 27 "characters" 959 "sha256" "6ddb8d89fed43ad93a379a23e13e57869d2e7bfa4b08076c2dcb74a3edc669d0"} {"name" "vertex" "language" "glsl" "path" "aperture_composite_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_composite_fragment_.glsl" "lines" 19 "characters" 729 "sha256" "870d46d6e6d7caa9b2a9da5f87b395e668bde930fea8dcd29ac954f775b7cea1"}]}
+{"id" "aperture_composite" "index" 7 "name" "7. Composite — sharp / blur / guide" "parents" ["root" "aperture_medium" "aperture_broad"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "aperture_medium" #afield/box "aperture_broad"} "name" "7. Composite — sharp / blur / guide" "_tombstone" false "frame" #afield/rect [1320.0 260.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "aperture_composite_code_.kt" "lines" 23 "characters" 835 "sha256" "bf9d25d78fe8004133f889edf73c34956b108b3307a8c8eff5ca05148ab2a0e2"} {"name" "vertex" "language" "glsl" "path" "aperture_composite_vertex_.glsl" "lines" 8 "characters" 258 "sha256" "d8133a5a77fbe0d45c15e12b0ebaa5e1d811746872616def9c8b2ffc4181125a"} {"name" "fragment" "language" "glsl" "path" "aperture_composite_fragment_.glsl" "lines" 19 "characters" 729 "sha256" "870d46d6e6d7caa9b2a9da5f87b395e668bde930fea8dcd29ac954f775b7cea1"}]}
 ```
 
 ```kotlin [field-property box="aperture_composite" name="code" path="aperture_composite_code_.kt"]
 import org.lwjgl.vulkan.VK10.*
 
 // Screen composite: apertureControl.x is gain; y selects the display mode.
-// Edit and rerun controls.set below to update the vector read by the push supplier.
-val controls = fromContextWithNameOrNull<afield.math.linalg.Vec4>("apertureControl")!!
-val source = paintSource
-val medium = paintMedium
-val broad = paintBroad
+// Edit and rerun apertureControl.set below to update the vector read by the push supplier.
 var module = moduleHere {
-    textures("paintSource" to source, "paintMedium" to medium, "paintBroad" to broad)
+    textures("paintSource" to paintSource, "paintMedium" to paintMedium, "paintBroad" to paintBroad)
     depthTest = false
     depthWrite = false
     blend = true
@@ -529,12 +517,12 @@ var module = moduleHere {
 var mesh = Mesh()
 module += "composite" to mesh
 mesh.resize(3)
-mesh.displayControl = { controls }
+mesh.displayControl = { apertureControl }
 renderer.renderList += "paint-composite" to module
 println("paint composite ready")
 
 // y: 0 aperture, 1 sharp, 2 radius guide. Edit here and re-execute.
-controls.set(1.0f, 0.0f, 0.0f, 0.0f)
+apertureControl.set(1.0f, 0.0f, 0.0f, 0.0f)
 ```
 
 ```glsl [field-property box="aperture_composite" name="vertex" path="aperture_composite_vertex_.glsl"]

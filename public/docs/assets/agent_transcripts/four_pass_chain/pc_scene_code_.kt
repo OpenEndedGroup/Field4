@@ -4,11 +4,9 @@ import afield.graphics.scene.fabricated.applyScenePlan
 
 prop<StandardRenderer.Bundle>(bundle)
 
-val r: Renderer = fromContext()
-
 once.bundle {
     val b = StandardRenderer.build(
-        r,
+        renderer,
         StandardRenderer.Config(
             renderWidth = 1024,
             renderHeight = 1024,
@@ -24,13 +22,13 @@ once.bundle {
 
     for (ix in -2..2) {
         for (iz in -2..2) {
-            b.registerSphere(name = "ball-$ix-$iz", radius = 0.3f, slices = 24, stacks = 24, renderer = r)
+            b.registerSphere(name = "ball-$ix-$iz", radius = 0.3f, slices = 24, stacks = 24, renderer = renderer)
                 .setModel(Matrix4f().translate(ix * 0.85f, 0f, iz * 0.85f))
         }
     }
     b.applyScenePlan()
-    b.present(renderer = r)
-    b.attachTo(r)
+    b.present(renderer = renderer)
+    b.attachTo(renderer)
     b
 }
 println("scene ready: ${bundle.postStack.names()}")

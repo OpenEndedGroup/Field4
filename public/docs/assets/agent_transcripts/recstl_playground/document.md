@@ -51,7 +51,7 @@ time  — scrub to a frame (while paused); moving it freezes the clock there
 See the "RectSL examples" docs page / rectsl_cheatsheet.md for the language.
 
 ```edn [field-box id="recstl_playground" role="properties"]
-{"id" "recstl_playground" "index" 1 "name" "recstl" "parents" ["root" "recstl_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "recstl_renderer"} "name" "recstl" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "recstl_playground_code_.kt" "lines" 101 "characters" 3012 "sha256" "d083aad872b86770b9d2076ccda10f7000eac0eb316b0921a40337e62cf775f3"}]}
+{"id" "recstl_playground" "index" 1 "name" "recstl" "parents" ["root" "recstl_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "recstl_renderer"} "name" "recstl" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "recstl_playground_code_.kt" "lines" 103 "characters" 3126 "sha256" "8f2a4653c5967b7551c2ce7f86841877e95e082f67c58e625522ec28481b74ac"}]}
 ```
 
 ```kotlin [field-property box="recstl_playground" name="code" path="recstl_playground_code_.kt"]
@@ -102,15 +102,17 @@ val program = RectAnimationOracle.compile(rectsl).program!!
 val shader = rectMaterialShaderCode(program)
 
 /*
-Seed this box's shader-source properties before `moduleHere {}` runs.
+Set this box's shader sources before `moduleHere {}` runs.
+Refresh the generated fragment on every run so material edits become visible.
 moduleHere builds its module from the box's `vertex`/`fragment` properties
-(not from assignments in the lambda); `once.vertex`/`once.fragment` set them
-once. Fragments separated by `//%-` run one at a time, each expanded only after the
+(not from assignments in the lambda). The constant vertex shader is seeded once;
+the generated fragment changes with the RectSL program. Fragments separated by
+`//%-` run one at a time, each expanded only after the
 previous one ran, so this fragment executes first and the moduleHere fragment then
 prepares its shaders from what was set here.
 */
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
-once.fragment { shader.exampleFragmentShader!! }
+fragment = shader.exampleFragmentShader!!
 
 //%-
 

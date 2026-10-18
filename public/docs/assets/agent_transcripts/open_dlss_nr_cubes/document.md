@@ -35,7 +35,7 @@ start(renderer::run)
 <!-- field-box id="open_dlss_nr" index="1" -->
 
 ```edn [field-box id="open_dlss_nr" role="properties"]
-{"id" "open_dlss_nr" "index" 1 "name" "neural cubes" "parents" ["root" "agent_graphics_context"] "children" ["nr_record"] "properties" {"children" #{#afield/box "nr_record"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural cubes" "_tombstone" false "frame" #afield/rect [400.0 40.0 350.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "open_dlss_nr_code_.kt" "lines" 62 "characters" 2457 "sha256" "48530c7cd77965ce90cf079ae2eff30832d6cefc963fbeaf9ee6c62c2b79a86b"} {"name" "vertex" "language" "glsl" "path" "open_dlss_nr_vertex_.glsl" "lines" 75 "characters" 2731 "sha256" "96384ab0f4f7c2dabf5bea018e643d5ba34eb1bd48fef01868096c9c01434d4e"} {"name" "fragment" "language" "glsl" "path" "open_dlss_nr_fragment_.glsl" "lines" 36 "characters" 1424 "sha256" "04da737bed973c8aa60705e36d9050184be0097d07a2a899bc60984cc53f08bb"}]}
+{"id" "open_dlss_nr" "index" 1 "name" "neural cubes" "parents" ["root" "agent_graphics_context"] "children" ["nr_record"] "properties" {"children" #{#afield/box "nr_record"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural cubes" "_tombstone" false "frame" #afield/rect [400.0 40.0 350.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "open_dlss_nr_code_.kt" "lines" 62 "characters" 2457 "sha256" "48530c7cd77965ce90cf079ae2eff30832d6cefc963fbeaf9ee6c62c2b79a86b"} {"name" "vertex" "language" "glsl" "path" "open_dlss_nr_vertex_.glsl" "lines" 98 "characters" 3728 "sha256" "0c71e00f89a8c8aabef5159588fd6535901635507f441f8082429834e20313d1"} {"name" "fragment" "language" "glsl" "path" "open_dlss_nr_fragment_.glsl" "lines" 43 "characters" 1844 "sha256" "dae3930e45ae77ec2321912a08af00c60f72a342a1e259bde0a65dc4b5ae718a"}]}
 ```
 
 ```kotlin [field-property box="open_dlss_nr" name="code" path="open_dlss_nr_code_.kt"]
@@ -106,8 +106,11 @@ frames {
 ```glsl [field-property box="open_dlss_nr" name="vertex" path="open_dlss_nr_vertex_.glsl"]
 #version 460
 layout(push_constant) uniform Scene {
+    // xy = input pixels; zw = raster jitter in pixels (Y down).
     vec4 sizeJitter;
+    // xy = current/previous scene seconds; zw = horizontal shifts in pixels.
     vec4 times;
+    // x = appearance stress flag; y = camera orbit flag; zw unused.
     vec4 settings;
 } pc;
 layout(location=0) out vec3 world;
@@ -115,6 +118,7 @@ layout(location=1) out vec3 normal;
 layout(location=2) out vec4 nowClip;
 layout(location=3) out vec4 oldClip;
 layout(location=4) flat out int objectId;
+layout(location=5) flat out vec3 cameraEye;
 const int indices[36]=int[](0,2,1,1,2,3,4,5,6,5,7,6,0,1,4,1,5,4,2,6,3,3,6,7,0,4,2,2,4,6,1,3,5,3,7,5);
 vec3 corner(int i) {
     return vec3((i&1)==0?-1:1,(i&2)==0?-1:1,(i&4)==0?-1:1);
@@ -145,16 +149,32 @@ vec3 objectPoint(int id,vec3 p,float time) {
     p.xy=mat2(.8,-.6,.6,.8)*p.xy;
     return p+vec3(float(n-18)*.19-1.7,1.7,1.45);
 }
-vec4 project(vec3 p,float t) {
-    float a=pc.settings.y==1?t*.18:0;
-    vec3 eye=vec3(5*sin(a)+5*cos(a),3.7,5*cos(a)-5*sin(a));
-    vec3 f=normalize(vec3(0,.8,0)-eye),r=normalize(cross(f,vec3(0,1,0))),u=cross(r,f);
-    vec3 q=p-eye;
-    float z=dot(q,f);
-    float near=.1,far=100;
-    return vec4(dot(q,r)*1.9*pc.sizeJitter.y/pc.sizeJitter.x,dot(q,u)*1.9,far/(far-near)*z-far*near/(far-near),z);
+// Orbit in world space; share the current eye with fragment lighting.
+vec3 cameraPosition(float time) {
+    float angle = pc.settings.y == 1 ? time * .18 : 0;
+    return vec3(5 * sin(angle) + 5 * cos(angle), 3.7, 5 * cos(angle) - 5 * sin(angle));
+}
+
+// Positive view depth maps the near plane to Z=0 and the far plane to Z=W.
+vec4 project(vec3 worldPosition, float time) {
+    vec3 eye = cameraPosition(time);
+    vec3 forward = normalize(vec3(0, .8, 0) - eye);
+    vec3 right = normalize(cross(forward, vec3(0, 1, 0)));
+    vec3 up = cross(right, forward);
+    vec3 viewOffset = worldPosition - eye;
+    float depth = dot(viewOffset, forward);
+    float near = .1;
+    float far = 100;
+    return vec4(
+        dot(viewOffset, right) * 1.9 * pc.sizeJitter.y / pc.sizeJitter.x,
+        dot(viewOffset, up) * 1.9,
+        far / (far - near) * depth - far * near / (far - near),
+        depth
+    );
 }
 void main() {
+    cameraEye = cameraPosition(pc.times.x);
+    // First triangle fills the background; remaining triangles form the objects.
     if(gl_VertexIndex<3) {
         vec2 xy=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2)*2-1;
         gl_Position=vec4(xy,.999999,1);
@@ -164,13 +184,16 @@ void main() {
         nowClip=oldClip=gl_Position;
         return;
     }
+    // Recover object/face IDs, then transform the triangle into world space.
     objectId=(gl_VertexIndex-3)/36;
     int v=(gl_VertexIndex-3)%36;
     float t=pc.times.x,old=pc.times.y;
     vec3 p=corner(indices[v]);
     world=objectPoint(objectId,p,t);
     int tri=(v/3)*3;
-    vec3 a=objectPoint(objectId,corner(indices[tri]),t),b=objectPoint(objectId,corner(indices[tri+1]),t),c=objectPoint(objectId,corner(indices[tri+2]),t);
+    vec3 a = objectPoint(objectId, corner(indices[tri]), t);
+    vec3 b = objectPoint(objectId, corner(indices[tri + 1]), t);
+    vec3 c = objectPoint(objectId, corner(indices[tri + 2]), t);
     normal=normalize(cross(b-a,c-a));
     nowClip=project(world,t);
     oldClip=project(objectPoint(objectId,p,old),old);
@@ -184,8 +207,11 @@ void main() {
 ```glsl [field-property box="open_dlss_nr" name="fragment" path="open_dlss_nr_fragment_.glsl"]
 #version 460
 layout(push_constant) uniform Scene {
+    // xy = input pixels; zw = raster jitter in pixels (Y down).
     vec4 sizeJitter;
+    // xy = current/previous scene seconds; zw = horizontal shifts in pixels.
     vec4 times;
+    // x = appearance stress flag; y = camera orbit flag; zw unused.
     vec4 settings;
 } pc;
 layout(location=0) in vec3 world;
@@ -193,6 +219,7 @@ layout(location=1) in vec3 normal;
 layout(location=2) in vec4 nowClip;
 layout(location=3) in vec4 oldClip;
 layout(location=4) flat in int objectId;
+layout(location=5) flat in vec3 cameraEye;
 layout(location=0) out vec4 color;
 void main() {
     if(objectId<0) {
@@ -208,7 +235,10 @@ void main() {
     }
     vec3 light=normalize(vec3(sin(pc.times.x)*4,5,3)-world);
     float diffuse=.2+.8*abs(dot(n,light));
-    float specular=pow(max(0,abs(dot(n,normalize(light+normalize(vec3(5,3.7,5)-world))))),96);
+    // Lighting and the view vector use the same world-space eye as projection.
+    vec3 viewDirection = normalize(cameraEye - world);
+    vec3 halfDirection = normalize(light + viewDirection);
+    float specular = pow(max(0, abs(dot(n, halfDirection))), 96);
     color=vec4(clamp(base*diffuse+specular*1.8,0,1),1);
     if(pc.settings.x==1) {
         color.rgb=objectId==0?vec3(.04,.08,.16):base;
@@ -225,7 +255,7 @@ void main() {
 <!-- field-box id="nr_record" index="2" -->
 
 ```edn [field-box id="nr_record" role="properties"]
-{"id" "nr_record" "index" 2 "name" "record clip" "parents" ["root" "open_dlss_nr"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "open_dlss_nr"} "name" "record clip" "_tombstone" false "frame" #afield/rect [820.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "nr_record_code_.kt" "lines" 31 "characters" 1171 "sha256" "4e152b33331e702b38cf738cb3aad842325a404a5376c77f8e90add514a8606e"}]}
+{"id" "nr_record" "index" 2 "name" "record clip" "parents" ["root" "open_dlss_nr"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "open_dlss_nr"} "name" "record clip" "_tombstone" false "frame" #afield/rect [820.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "nr_record_code_.kt" "lines" 33 "characters" 1247 "sha256" "226f416b1929ff07a92adb680428ae23e0816165fcbae075426b942b836744af"}]}
 ```
 
 ```kotlin [field-property box="nr_record" name="code" path="nr_record_code_.kt"]
@@ -240,6 +270,7 @@ val folder = Path.of("build/opendlssnr-cubes/clip").toAbsolutePath().also { it.c
 val controls = study.controls.copy()
 val grade = study.grade.toString()
 val previousTime = study.time
+val previousAnimate = study.animate
 study.recording = true
 study.animate = false
 frames {
@@ -257,6 +288,7 @@ frames {
         println("NR STUDY RECORD DONE: 180 frames at 30 fps, 2304 × 832; $folder")
     } finally {
         study.time = previousTime
+        study.animate = previousAnimate
         study.recording = false
     }
 }

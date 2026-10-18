@@ -47,7 +47,7 @@ with a staggered eased `->alpha`. Edit `rectsl` and re-run to change it live.
 See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
 
 ```edn [field-box id="dataviz_figure" role="properties"]
-{"id" "dataviz_figure" "index" 1 "name" "rectsl dataviz" "parents" ["root" "dataviz_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "dataviz_renderer"} "name" "rectsl dataviz" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataviz_figure_code_.kt" "lines" 67 "characters" 1935 "sha256" "0e81cabc95acc2ce4456b0f3c12ebc3b691f8a545742f11c982f551abb2c6c74"}]}
+{"id" "dataviz_figure" "index" 1 "name" "rectsl dataviz" "parents" ["root" "dataviz_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "dataviz_renderer"} "name" "rectsl dataviz" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataviz_figure_code_.kt" "lines" 67 "characters" 1926 "sha256" "60787fac1ed40a2397206f1e384865987c0742cdffd983696d7b554817b9f271"}]}
 ```
 
 ```kotlin [field-property box="dataviz_figure" name="code" path="dataviz_figure_code_.kt"]
@@ -86,12 +86,12 @@ val program = RectAnimationOracle.compile(rectsl).program!!
 val shader = rectMaterialShaderCode(program)
 
 /*
-Seed this box's shader-source properties before `moduleHere {}` runs; the
+Refresh the generated fragment on every run before `moduleHere {}`; the
 `//%-` fragment break makes this fragment execute first (see the playground
 transcript for the why).
 */
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
-once.fragment { shader.exampleFragmentShader!! }
+fragment = shader.exampleFragmentShader!!
 
 //%-
 

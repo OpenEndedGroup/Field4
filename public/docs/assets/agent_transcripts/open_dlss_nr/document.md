@@ -177,7 +177,7 @@ void main() {
 <!-- field-box id="nr_record" index="2" -->
 
 ```edn [field-box id="nr_record" role="properties"]
-{"id" "nr_record" "index" 2 "name" "record clip" "parents" ["root" "open_dlss_nr"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "open_dlss_nr"} "name" "record clip" "_tombstone" false "frame" #afield/rect [820.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "nr_record_code_.kt" "lines" 31 "characters" 1171 "sha256" "c80a07b91e690d7ec11e4e06984b3db5913abb330c8163f38234a1b4c6240e21"}]}
+{"id" "nr_record" "index" 2 "name" "record clip" "parents" ["root" "open_dlss_nr"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "open_dlss_nr"} "name" "record clip" "_tombstone" false "frame" #afield/rect [820.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "nr_record_code_.kt" "lines" 33 "characters" 1247 "sha256" "de4d928fd32e617e000dce114f430572c52cb0e99a57a2341b0528d09bc0ae69"}]}
 ```
 
 ```kotlin [field-property box="nr_record" name="code" path="nr_record_code_.kt"]
@@ -192,6 +192,7 @@ val folder = Path.of("build/opendlssnr-study/clip").toAbsolutePath().also { it.c
 val controls = study.controls.copy()
 val grade = study.grade.toString()
 val previousTime = study.time
+val previousAnimate = study.animate
 study.recording = true
 study.animate = false
 frames {
@@ -209,6 +210,7 @@ frames {
         println("NR STUDY RECORD DONE: 180 frames at 30 fps, 2304 × 832; $folder")
     } finally {
         study.time = previousTime
+        study.animate = previousAnimate
         study.recording = false
     }
 }

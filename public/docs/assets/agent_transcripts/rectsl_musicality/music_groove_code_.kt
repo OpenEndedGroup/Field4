@@ -78,12 +78,12 @@ val program = RectAnimationOracle.compile(rectsl).program!!
 val shader = rectMaterialShaderCode(program)
 
 /*
-Seed this box's shader-source properties before `moduleHere {}` runs; the
+Refresh the generated fragment on every run before `moduleHere {}`; the
 `//%-` fragment break makes this fragment execute first (see the playground
 transcript for the why).
 */
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
-once.fragment { shader.exampleFragmentShader!! }
+fragment = shader.exampleFragmentShader!!
 
 //%-
 
