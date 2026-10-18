@@ -586,11 +586,30 @@ void persistence_pairs(fms_complex& c) {
     }
 }
 
+// Writes the path of arc as x, y pairs. A rerouted arc runs s' -> e -> s -> m, and the two
+// V-paths into e share their last stretch (V-paths into an extremum form a tree), so the raw
+// concatenation goes out to e and comes back over the same cells. A separatrix never revisits a
+// point, so every loop is cut as the path is written: the drawing loses the out-and-back spur and
+// the arc keeps its endpoints and its place in the graph.
 void materialise(const fms_complex& c, const Graph& g, int arc, std::vector<float>& out) {
     std::vector<std::pair<int, bool>> stack{{arc, false}};
+    std::unordered_map<uint64_t, size_t> seen;  // point -> its index in out, in points
+    auto key = [](const Point& p) {
+        uint32_t a, b;
+        std::memcpy(&a, &p[0], 4);
+        std::memcpy(&b, &p[1], 4);
+        return (static_cast<uint64_t>(a) << 32) | b;
+    };
     auto emit = [&](const Point& p) {
-        size_t s = out.size();
-        if (s >= 2 && out[s - 2] == p[0] && out[s - 1] == p[1]) return;
+        uint64_t k = key(p);
+        auto it = seen.find(k);
+        if (it != seen.end()) {
+            size_t keep = it->second + 1;
+            for (size_t i = keep; i < out.size() / 2; i++) seen.erase(key({out[2 * i], out[2 * i + 1]}));
+            out.resize(2 * keep);
+            return;
+        }
+        seen.emplace(k, out.size() / 2);
         out.push_back(p[0]);
         out.push_back(p[1]);
     };

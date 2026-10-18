@@ -181,6 +181,7 @@ nav:
       - Solids & Booleans (Manifold): manifold.md
       - Parametric CAD (SolidCraft): solidcraft.md
       - Tetrahedral Meshing (TetGen): tetgen.md
+      - Morse–Smale Complexes: morse_smale.md
       - A Solid, Written Down (solidsl): solid_notation.md
       - Geometry From Disk (OBJ, STL, PLY, glTF): geometry_from_disk.md
       - Polytopes & the Conway Algebra: polytope_examples.md

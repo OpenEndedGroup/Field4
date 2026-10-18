@@ -7,6 +7,8 @@ import afield.geometry.network.GeometryNodes
 import afield.geometry.path.FLine
 import afield.math.linalg.Vec4
 import afield.media.image.Img
+import afield.runtime.lifecycle.ReleasePolicy
+import afield.runtime.lifecycle.RunScope
 import java.lang.foreign.MemorySegment
 import java.lang.ref.Cleaner
 import java.util.concurrent.CompletableFuture
@@ -60,8 +62,10 @@ data class MorseSmaleTimings(val gradientMs: Double, val separatricesMs: Double,
  * complex.close()
  * ```
  *
- * The complex holds native memory. [close] frees it; a [Cleaner] frees it eventually if you forget,
- * but a live-coding box that rebuilds on every run should close the previous one.
+ * The complex holds native memory. One built while a box runs belongs to that run and is closed
+ * when the box runs again, so a box that rebuilds on every run does not accumulate them; it stays
+ * open after a stop, so a slider keeps working. Outside a box run, [close] it yourself; a [Cleaner]
+ * frees a forgotten one eventually.
  */
 class MorseSmaleComplex internal constructor(
     val width: Int,
@@ -338,7 +342,10 @@ object MorseSmale {
         require(offset >= 0 && last < values.size) { "a ${width}x$height field with these strides needs ${last + 1} values, got ${values.size}" }
         val handle = MorseSmaleNative.build(values, offset, width, height, pixelStride, rowStride)
         val copy = FloatArray(width * height) { i -> values[offset + (i / width) * rowStride + (i % width) * pixelStride] }
-        return MorseSmaleComplex(width, height, copy, handle)
+        val complex = MorseSmaleComplex(width, height, copy, handle)
+        // released by the box's next run, not by a stop (see ReleasePolicy.ACCUMULATING)
+        RunScope.current()?.own(complex, ReleasePolicy.ACCUMULATING)
+        return complex
     }
 
     /** Builds the complex of one [channel] of [img], read in place. */
@@ -356,11 +363,12 @@ object MorseSmale {
         build(img, channel).use { it.simplify(persistence) }
 
     /**
-     * [build] on a worker thread, for `runAsync`:
+     * [build] on a worker thread, for `runAsync`. A complex built off the box's thread is not owned
+     * by the run, so close it when you are done:
      *
      * ```
-     * runAsync(onResult = { c: MorseSmaleComplex -> display("ms", c.simplify(0.05).toFLines()) }) {
-     *     MorseSmale.buildAsync(img).also { f -> own { f.thenAccept { it.close() } } }
+     * runAsync(onResult = { c: MorseSmaleComplex -> lines(c.simplify(0.05).toFLines()); c.close() }) {
+     *     MorseSmale.buildAsync(img)
      * }
      * ```
      */
