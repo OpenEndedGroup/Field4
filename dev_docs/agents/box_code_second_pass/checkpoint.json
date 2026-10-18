@@ -1389,6 +1389,18 @@
     "184894c9ac87-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_58/README.md"
+    },
+    "a86d30f62c84-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_59/README.md"
+    },
+    "6af7378331b4-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_59/README.md"
+    },
+    "aff7b1698617-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_59/README.md"
     }
   },
   "batches": [
@@ -1448,7 +1460,8 @@
     "../box_code_adoption_batch_55/README.md",
     "../box_code_adoption_batch_56/README.md",
     "../box_code_adoption_batch_57/README.md",
-    "../box_code_adoption_batch_58/README.md"
+    "../box_code_adoption_batch_58/README.md",
+    "../box_code_adoption_batch_59/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1467,11 +1480,11 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 58,
-    "branch": "codex/box-code-readability-58",
-    "baseline": "7eee8eb47",
-    "state": "344/405 addressed, 61 open. Native crowds 1/2/64 visible with finite palettes and one draw; private Renderer 9719 remains alive for subsequent GPU work.",
-    "evidence": "../box_code_adoption_batch_58/README.md"
+    "batch": 59,
+    "branch": "codex/box-code-readability-59",
+    "baseline": "72ce0a610",
+    "state": "Batch 59 verified with native source rendering, real recording completion and Stop; 347 addressed, 58 open.",
+    "evidence": "../box_code_adoption_batch_59/README.md"
   },
   "mechanical": {
     "status": "applied_for_valid_kotlin_glsl_with_explicit_retained_cases",
