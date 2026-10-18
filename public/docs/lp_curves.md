@@ -401,57 +401,45 @@ three(name = "hull-fan", width = 760, height = 470) {
 
 ![A translucent faceted solid with its edges drawn in grey, white dots scattered inside and on it, and a bundle of rainbow-coloured curves leaving a common point inside and fanning out to the solid's corners](assets/lp_curves_3d/hull_fan.png)
 
-The scene can be orbited by dragging. The clip below turns the same hull once every twelve
-seconds, with half as many paths.
-It is drawn in the plane rather than in the Three.js viewer: every frame rotates the hull's edges
-and the paths about the vertical axis and projects them onto the page.
+The scene can be orbited by dragging, and `turntable(degreesPerSecond = …)` turns it on its own.
+The clip below records the same scene in the Three.js viewer, with half as many paths and
+`turntable(degreesPerSecond = 30.0)`. Dragging the view holds the turn, and it carries on two
+seconds after you let go.
 
-```diffstatic_runner {data-lang=kotlin video="assets/lp_curves_3d/turning_fan.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="12" fps="15" timeout="300" w="640" embed=true name="lp-curves-3d-turning-fan" alt="the hull's grey edges and its fan of rainbow central paths turning about the vertical axis; the paths bundle at a point inside and spread to every corner, and as the solid turns, paths that overlapped in one view separate"}
+??? aside "How the clip was recorded"
+    The recorder takes one frame per Field frame and waits for each to be painted and saved, while
+    the turntable steps on the browser's own clock, so the clip's speed of turn follows how fast
+    the capture ran rather than the 30° a second you see live. An earlier
+    version of this page drew the turn by projecting the hull into `showPlane`, because the
+    recorder waited for a relaunched box to be *running* and a box that only builds a `three { }`
+    scene finishes instead; the recorder now accepts a relaunch that ran to completion.
+
+```diffstatic_runner {data-lang=kotlin video="assets/lp_curves_3d/turning_fan.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" duration="12" fps="15" timeout="300" padding="20" embed=true name="lp-curves-3d-turning-fan" alt="the translucent hull with its grey edges and white dots, and its fan of rainbow central paths, turning about the vertical axis in the Three.js viewer; the paths bundle at a point inside and spread to every corner, and as the solid turns, paths that overlapped in one view separate"}
 :::static
-import kotlin.math.*
-
 val random = kotlin.random.Random(11)
 val cloud = List(70) {
     vec(random.nextDouble(-1.6, 1.6), random.nextDouble(-1.0, 1.0), random.nextDouble(-1.0, 1.0))
 }
 val polytope = LpPolytope.hull(cloud)
 val fan = polytope.centralFan(directions = 60, samples = 80)
-
-val period = 12.0 // seconds per turn
-val pitch = 0.4 // radians the view looks down
-// Turn p about the vertical axis by yaw, tilt by pitch, and keep x and y.
-fun project(p: Vec3, yaw: Double): Vec2 {
-    val x = p.x * cos(yaw) + p.z * sin(yaw)
-    val z = -p.x * sin(yaw) + p.z * cos(yaw)
-    return vec(x, p.y * cos(pitch) - z * sin(pitch))
+:::fold draw the scene
+val dots = fline {
+    cloud.forEach { moveTo(it) }
+    pointed = true
+    stroked = false
+    pointSize = 4.0
+    color = vec(1.0, 1.0, 1.0, 0.7)
 }
-
-val started = AnimationClock.nowSeconds()
-loop {
-    val yaw = 2.0 * PI * (AnimationClock.nowSeconds() - started) / period
-    val edges = polytope.edges.map { (a, b) ->
-        polylineFrom([project(polytope.vertices[a], yaw), project(polytope.vertices[b], yaw)]).also {
-            it.color = vec(0.62, 0.70, 0.80, 0.8)
-            it.thickness = 1.2
-        }
-    }
-    val paths = fan.mapIndexed { i, path ->
-        val hue = 2.0 * PI * i / fan.size // the same hue circle as fan.toFLines()
-        polylineFrom(path.positions.map { project(it, yaw) }).also {
-            it.color = vec(0.6 + 0.4 * cos(hue), 0.6 + 0.4 * cos(hue - 2.1), 0.6 + 0.4 * cos(hue + 2.1), 0.85)
-            it.thickness = 1.0
-        }
-    }
-    showPlane(
-        edges + paths,
-        title = "${fan.size} central paths, turned %3.0f°".format(Math.toDegrees(yaw) % 360.0),
-        width = 640,
-        height = 480,
-        window = Rect(-2.2, -1.65, 4.4, 3.3),
-        interactive = false,
-        yUp = true,
-    )
+three(name = "turning-fan", width = 640, height = 430) {
+    mesh(polytope.toMesh(), wireframe = false, opacity = 0.12, cullBackFaces = false)
+    lines(polytope.toFLine())
+    lines(dots)
+    lines(fan.toFLines(alpha = 0.85, thickness = 1.2))
+    camera(yaw = 32.0, pitch = 24.0)
+    turntable(degreesPerSecond = 30.0)
+    caption("${fan.size} central paths, turning")
 }
+:::endfold
 ```
 
 ### Every route to one vertex
