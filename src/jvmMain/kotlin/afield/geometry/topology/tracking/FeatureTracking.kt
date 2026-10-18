@@ -175,9 +175,20 @@ class FeatureTracker(val weights: MatchingWeights = MatchingWeights()) {
     var died: List<Track> = emptyList()
         private set
 
-    /** Adds the features seen at [time], continuing, starting or ending tracks. Returns the tracks alive now. */
-    fun add(time: Double, features: List<Feature>): List<Track> {
-        val previous = current.map { it.second }
+    /**
+     * Adds the features seen at [time], continuing, starting or ending tracks. Returns the tracks
+     * alive now.
+     *
+     * [motion], if given, predicts where a feature from the previous moment has moved to by now: it
+     * receives the feature's previous position and returns the displacement (dx, dy). Features are
+     * matched from their predicted positions. Use it when things move further between moments than
+     * the matching distances allow, with any motion estimate to hand: optical flow, the particles of
+     * a particle video, a simulation's velocity field.
+     */
+    fun add(time: Double, features: List<Feature>, motion: ((x: Double, y: Double) -> Pair<Double, Double>)? = null): List<Track> {
+        val previous = current.map { it.second }.map { f ->
+            if (motion == null) f else motion(f.x, f.y).let { (dx, dy) -> f.copy(x = f.x + dx, y = f.y + dy) }
+        }
         val pairs = FeatureMatching.match(previous, features, weights)
         val trackOf = arrayOfNulls<Track>(features.size)
         val newBorn = ArrayList<Track>(); val newDied = ArrayList<Track>()

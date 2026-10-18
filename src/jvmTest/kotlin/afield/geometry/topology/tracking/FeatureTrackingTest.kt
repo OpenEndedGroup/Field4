@@ -73,6 +73,21 @@ class FeatureTrackingTest {
         assertEquals(1, t.network().curves.count { it.id == 0 })
     }
 
+    @Test
+    fun motionPredictionBridgesLargeJumps() {
+        // Two features jump 40 px a frame, further than the gate; with the motion known they keep their tracks.
+        val plain = FeatureTracker(MatchingWeights(maxDistance = 20.0))
+        val predicted = FeatureTracker(MatchingWeights(maxDistance = 20.0))
+        for (k in 0 until 5) {
+            val f = [max(10.0 + 40 * k, 10.0), max(10.0 + 40 * k, 60.0)]
+            plain.add(k.toDouble(), f)
+            predicted.add(k.toDouble(), f) { _, _ -> 40.0 to 0.0 }
+        }
+        assertEquals(10, plain.tracks.size, "without prediction every jump is a death and a birth")
+        assertEquals(2, predicted.tracks.size, "with it, two tracks of five samples")
+        assertTrue(predicted.tracks.all { it.samples.size == 5 })
+    }
+
     private fun available(): Boolean {
         if (!MorseSmaleLibrary.isAvailable) println("SKIPPED tracking-with-Morse–Smale tests: ${MorseSmaleLibrary.describe()}")
         return MorseSmaleLibrary.isAvailable
