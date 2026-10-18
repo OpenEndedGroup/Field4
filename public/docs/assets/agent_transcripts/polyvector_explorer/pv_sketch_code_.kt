@@ -38,7 +38,8 @@ val field = Polyvector.fitField(Polyvector.inkOf(drawing))
 fun show(prune: Double) {
     val result = field.trace(TraceParameters(pruneRatio = prune))
     showImgGrid("${result.curves.size} curves, coverage ${"%.2f".format(result.coverage())}" to
-        drawing.drawFLines(listOf(result.streamlinesFLine()) + result.toFLines(thickness = 2.0), scale = 2.0),
+        Img(w, h, 3, FloatArray(w * h * 3) { 0.04f + 0.7f * ink[it / 3] })
+  .drawFLines(listOf(result.streamlinesFLine()) + result.toFLines(color = Vec4(1f, 0.4f, 0.2f, 1f), thickness = 2.0), scale = 2.0),
         channel = "curves", columns = 1, cellSide = 640)
 }
 slider("prune short branches", min = 0.0, max = 1.0, step = 0.05, initialValue = 0.75) { show(it) }
