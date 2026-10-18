@@ -178,12 +178,39 @@ class StudyBuildAwaits(
             if (!terminal && now < a.saved.deadline) continue
             val outcomes = a.saved.jobs.map { graph.studyBuilds.awaitedOutcome(it.awaited()) }
             val text = continuationText(outcomes, now - a.saved.since, timedOut = !terminal)
+            val (images, shown) = pictures(graph, outcomes)
             val continuation = AiAssist(uid = a.box.id, prompt = (a.box.getPropertyRaw(a.saved.property) as? String).orEmpty(),
-                extraPrompt = text, property = a.saved.property, kind = "general", maxToolRounds = a.saved.maxToolRounds,
+                extraPrompt = text + shown, images = images, property = a.saved.property, kind = "general", maxToolRounds = a.saved.maxToolRounds,
                 queueIfBusy = true, continuationId = UUID.randomUUID().toString())
             a.pending = continuation
             offer(k, a, continuation, now)
         }
+    }
+
+    /**
+     * The views the outcomes' notes name ([afield.study.build.StudyBuildView]), drawn and captured, as attachments,
+     * and a line saying what each picture is (or why it is missing). At most [MAX_VIEWS], one per box.
+     */
+    private fun pictures(graph: FieldGraphTools, outcomes: List<AwaitedJobOutcome>): Pair<List<String>, String> {
+        val views = outcomes.flatMap { it.notes }.mapNotNull { it.view }.distinctBy { it.box }.take(MAX_VIEWS)
+        val images = mutableListOf<String>()
+        val lines = StringBuilder()
+        for (view in views) {
+            val drawn = runCatching { view.show?.invoke() }.exceptionOrNull()
+            val captured = runCatching { graph.viewOutput(ViewBoxOutputRequest(view.box, settleMs = VIEW_SETTLE_MS, note = view.caption)) }
+            val shot = captured.getOrNull()
+            val url = shot?.dataUrl.orEmpty()
+            if (drawn == null && shot != null && shot.success && url.isNotBlank()) {
+                images += url
+                lines.append("\n\nAttached: what `${shot.name.ifBlank { view.box }}` shows now")
+                if (view.caption.isNotBlank()) lines.append(" (${view.caption})")
+                lines.append('.')
+            } else {
+                val why = drawn?.message ?: captured.exceptionOrNull()?.message ?: shot?.message ?: "no picture"
+                lines.append("\n\nThe view in `${view.box}` could not be attached: $why. Look at it yourself with ViewBoxOutputRequest.")
+            }
+        }
+        return images to lines.toString()
     }
 
     private fun offer(k: String, a: Armed, continuation: AiAssist, now: Long) {
@@ -238,6 +265,10 @@ class StudyBuildAwaits(
             "- `${job.name}/${job.stage}`${job.label.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()}, attempt `${job.jobId}`"
 
         private fun plural(n: Int) = if (n == 1) "1 build" else "$n builds"
+
+        /** Pictures a resumed message carries at most; a view's box is drawn and given this long to settle. */
+        internal const val MAX_VIEWS = 3
+        internal const val VIEW_SETTLE_MS = 1500
 
         /** The closed transcript block a suspended turn ends with; [shown] opens it while the wait lasts. */
         internal fun waitingRow(jobs: List<SavedJob>, deadline: Long): String = buildString {
