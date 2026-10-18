@@ -2451,6 +2451,15 @@ the topology of its gradient, with a blur slider. Plain Kotlin, no optional libr
 
 [Open ↗](offline.html?file=assets/agent_transcripts/vector_field_explorer/metadata.edn)
 
+### mapper_explorer
+
+[Mapper graphs of point clouds](mapper.md). The first box draws the Mapper graph of a ring with a
+tail and a separate blob over its points, with sliders for the number of bins, their overlap and
+the lens. The second scatters points along the letters A, H and O and counts the loops in each
+graph. Plain Kotlin, no optional libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/mapper_explorer/metadata.edn)
+
 ## FieldML scenes
 
 <!-- transcript-index: verified-by = compile -->

@@ -105,6 +105,8 @@ object DemoTranscriptExecSmokeTest {
         "contour_trees_explorer",
         // vector_field_topology.md's starting point: the topology of a computed flow and of a photograph's gradient.
         "vector_field_explorer",
+        // mapper.md's starting point: Mapper graphs of generated point clouds.
+        "mapper_explorer",
         // The staged-project starting place: a level edited through guarded tools, three study-build
         // stages behind a gate, a qualified loot rule and a corpus of variants. CPU only; Manifold is used
         // when installed and the blockout says so when it is not.
