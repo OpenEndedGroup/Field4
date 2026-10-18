@@ -29,6 +29,16 @@ class ThreeSolidInspectionTest {
         assertEquals(edges.size*6,scene.drawables.last().geometry.attributes.getValue("position").array.size)
     }
 
+    @Test fun partsCanBeDrawnInEveryPanelOfASheet() = Solid.scope {
+        // A sheet of close-ups shows one assembly in several panels, each with its own bounds; parts on the default
+        // panel 0 appear only in the first.
+        val parts = mapOf("a" to Solid.cube(10.0, 10.0, 10.0).toPlanarMesh(), "b" to Solid.cube(5.0, 5.0, 5.0).translated(20.0, 0.0, 0.0).toPlanarMesh())
+        val shared = ThreeSceneBuilder(12).apply { solidParts(parts, panel = -1) }
+        assertTrue(shared.drawables.isNotEmpty() && shared.drawables.all { it.panel == -1 }, "meshes and outlines on every panel")
+        val first = ThreeSceneBuilder(12).apply { solidParts(parts) }
+        assertTrue(first.drawables.all { it.panel == 0 }, "the default is unchanged")
+    }
+
     @Test fun shallowCreasesRemainVisibleEvenWithOneProvenanceFace() {
         // A real 0.0000001-radian bend; classification occurs before Float display conversion.
         val mesh=SolidPlanarMesh(doubleArrayOf(0.0,0.0,0.0,10.0,0.0,0.0,0.0,10.0,0.0,0.0,-10.0,1e-6),
