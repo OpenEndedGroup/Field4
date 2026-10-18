@@ -1345,6 +1345,18 @@
     "aed906aefa4e-02": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_52/README.md"
+    },
+    "7a500644ebfe-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_53/README.md"
+    },
+    "7a500644ebfe-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_53/README.md"
+    },
+    "ded1d6a3cafb-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_53/README.md"
     }
   },
   "batches": [
@@ -1398,7 +1410,8 @@
     "../box_code_adoption_batch_49/README.md",
     "../box_code_adoption_batch_50/README.md",
     "../box_code_adoption_batch_51/README.md",
-    "../box_code_adoption_batch_52/README.md"
+    "../box_code_adoption_batch_52/README.md",
+    "../box_code_adoption_batch_53/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1417,10 +1430,10 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 52,
-    "branch": "codex/box-code-readability-52",
-    "baseline": "adc1eb308",
-    "state": "Batch52: real tool/root preservation, all38 final FLine lessons, actual codec/container proof, measured circle-helper sampling difference; 40 Kotlin bodies formatted. Full guards delegated to lander. Batch45 landed d366f9f0c. Field9718 CPU-only.",
-    "evidence": "../box_code_adoption_batch_52/README.md"
+    "batch": 53,
+    "branch": "codex/box-code-readability-53",
+    "baseline": "8ea0e0c83",
+    "state": "Csound native lifecycle verified; 336/405 addressed, 69 open. Browser callback cleanup remains open with actual failed rerun and preamble-class cast diagnostics.",
+    "evidence": "../box_code_adoption_batch_53/README.md"
   }
 }

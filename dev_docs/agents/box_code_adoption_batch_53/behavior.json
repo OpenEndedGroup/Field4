@@ -1,0 +1,8 @@
+{
+  "realNativeCsound": true,
+  "nativeLibrary": "/Users/marc/field4/build/field-csound/build/CsoundLib64.framework/CsoundLib64",
+  "listenerRerunAndStop": true,
+  "docsListenerStop": true,
+  "nativeMidiActiveBeforeStopAndZeroAfterRelease": true,
+  "limits": "Real orchestra rendered offline; no audio device playback. Held-key delay extended to 10s in fixture. Browser investigation did not pass and its finding/source remain open and unchanged."
+}
