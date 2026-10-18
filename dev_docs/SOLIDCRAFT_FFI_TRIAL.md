@@ -61,12 +61,11 @@ the surface sweep (with rails), loft (end continuity G0–G3), revolve, boundary
 
 ```kotlin
 solidCraft("Flared") {
-    param("twist", "45 deg")
     val section = sketch("XY") { rectangle(-4.0, -4.0, 4.0, 4.0) }
     val path = sketch("XZ") { line(0.0, 0.0, 0.0, 60.0) }
     val rail = sketch("XZ") { line(4.0, 0.0, 12.0, 60.0) }
-    sweep(section, path, rails = listOf(rail), twist = "twist")
-}.open().use { part -> part.setParameter("twist", "90 deg"); part.mesh().toTriMesh() }
+    sweep(section, path, rails = listOf(rail))
+}.open().use { part -> part.mesh().toTriMesh() }
 ```
 
 The builder writes SolidCraft's own design JSON and opens it through the same C ABI, so the
@@ -79,6 +78,8 @@ Facts found doing so, at v0.15.0:
 - A sweep keeps the profile at the angle it was drawn to the path. A path that leaves the
   profile 27° off square gives a section `cos 27°` of the drawn one; start the path square to the
   profile for a true tube.
+- A sweep with guide rails takes no twist or end scale (the rails set both); the builder refuses
+  the combination before SolidCraft does.
 - `surfaceBoundary` builds two boundaries only (three or four: SolidCraft issue #763), and the
   two curves must run the same way.
 - Sketch points the builder draws are fixed and it adds no constraints; parametric dimensions go
