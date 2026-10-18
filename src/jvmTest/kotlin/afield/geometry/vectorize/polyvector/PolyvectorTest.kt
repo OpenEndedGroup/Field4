@@ -1,6 +1,7 @@
 package afield.geometry.vectorize.polyvector
 
 import afield.geometry.network.NativeGeometry
+import afield.geometry.path.*
 import afield.media.image.Img
 import afield.media.image.drawFLines
 import afield.media.image.imgFromFile
@@ -32,6 +33,16 @@ class PolyvectorTest {
     private operator fun DoubleArray.component5() = this[4]
 
     private fun total(d: PolyvectorDrawing) = d.network().curves.sumOf { it.length }
+
+    /** The page's styling step works on any FLine, so it runs without the native library. */
+    @Test
+    fun pageStylingOperatorsRunOnACurve() {
+        val c = FLine().moveTo(0.0, 0.0).lineTo(100.0, 0.0).lineTo(100.0, 50.0)
+        val (a, b) = c.byCreatingParallelCurves(3f, 120)
+        assertTrue(a.nodes.isNotEmpty() && b.nodes.isNotEmpty())
+        assertEquals(10, c.byCreatingNormalLines(samples = 10, length = 14f).size)
+        assertTrue(c.byWaving(amplitude = 3f, frequency = 1f, samples = 40).nodes.size > 2)
+    }
 
     @Test
     fun capabilityIsReported() {
