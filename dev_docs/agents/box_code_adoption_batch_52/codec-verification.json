@@ -1,0 +1,6 @@
+{
+  "actualCodecReadBothArtifacts": true,
+  "idsGraphAndNonCodePreserved": true,
+  "inlineProgramsMatchCodecAndSuccessfulVerdicts": 38,
+  "noMissingSidecarsMaterialized": true
+}
