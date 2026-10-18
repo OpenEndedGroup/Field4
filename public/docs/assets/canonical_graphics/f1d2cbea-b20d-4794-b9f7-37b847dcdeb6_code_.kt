@@ -2,8 +2,6 @@ var (module, meshes) = gltfModelWithTextureHere(
     "glTF-Sample-Models/2.0/TextureLinearInterpolationTest/glTF/TextureLinearInterpolationTest.gltf",
 )
 
-// var (module, meshes) = gltfModelWithTextureHere("/Users/marc/Desktop/badTexture.gltf")
-
 var m = Mesh()
 
 module += "let's go" to m
