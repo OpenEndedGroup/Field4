@@ -1305,6 +1305,18 @@
     "ae09b7bae9fc-02": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_49/README.md"
+    },
+    "190ee56ab53e-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_50/README.md"
+    },
+    "190ee56ab53e-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_50/README.md"
+    },
+    "7a5d00bb1ace-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_50/README.md"
     }
   },
   "batches": [
@@ -1355,7 +1367,8 @@
     "../box_code_adoption_batch_46/README.md",
     "../box_code_adoption_batch_47/README.md",
     "../box_code_adoption_batch_48/README.md",
-    "../box_code_adoption_batch_49/README.md"
+    "../box_code_adoption_batch_49/README.md",
+    "../box_code_adoption_batch_50/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1374,10 +1387,10 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 49,
-    "branch": "codex/box-code-readability-49",
-    "baseline": "df883e149",
-    "state": "Six teaching/shader-contract findings verified: ten Kotlin bodies, five shaders, five collection conversions, unchanged baseline executable tokens/interfaces and container semantics. Field codec refreshed two skin shader fallbacks preserving graph. Batch45 landing; batch48 queued 20261018-133031-codex-box-code-readability-48. Full guards delegated to lander. Field9718 CPU-only.",
-    "evidence": "../box_code_adoption_batch_49/README.md"
+    "batch": 50,
+    "branch": "codex/box-code-readability-50",
+    "baseline": "5d3e9766a",
+    "state": "Three findings verified: actual dependence and separately calibrated rolling transcript replay; source matches verified docs body. Alife control layout already resolved in batch46, unchanged-source/semantic proof reused. Five Kotlin bodies formatted, five collection conversions. Full guards delegated to lander. Batch49 queued 20261018-133444-codex-box-code-readability-49; batch45 currently landing. Field9718 CPU-only.",
+    "evidence": "../box_code_adoption_batch_50/README.md"
   }
 }
