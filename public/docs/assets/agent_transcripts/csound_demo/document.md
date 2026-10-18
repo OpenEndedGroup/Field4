@@ -17,19 +17,23 @@ From `code`
 Launch "pluck" first, then launch this: MIDI notes into its massign'ed instr Key.
 
 ```edn [field-box id="cs_keys" role="properties"]
-{"id" "cs_keys" "index" 0 "name" "keys" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "keys" "_tombstone" false "frame" #afield/rect [230.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_keys_code_.kt" "lines" 11 "characters" 309 "sha256" "ade619922f73f14427c12340566cf44565f9ea6daad40236f9c663072157cc70"}]}
+{"id" "cs_keys" "index" 0 "name" "keys" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "keys" "_tombstone" false "frame" #afield/rect [230.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_keys_code_.kt" "lines" 15 "characters" 421 "sha256" "fc0330bf4791bf5fcc0d119050a31e4246e0836aae37060e8c2978937de10f01"}]}
 ```
 
 ```kotlin [field-property box="cs_keys" name="code" path="cs_keys_code_.kt"]
 // Launch "pluck" first, then launch this: MIDI notes into its massign'ed instr Key.
 val pluck = csoundOf("pluck").csound
-val notes = listOf(62, 65, 69, 72, 69, 65)
+val notes = [62, 65, 69, 72, 69, 65]
 var i = 0
 loop {
     val note = notes[i++ % notes.size]
     pluck.noteOn(0, note, 90)
-    delay(220)
-    pluck.noteOff(0, note)
+    try {
+        delay(220)
+    } finally {
+        // Stop can cancel the delay; release this run's note before leaving.
+        pluck.noteOff(0, note)
+    }
     delay(30)
 }
 ```
@@ -221,29 +225,36 @@ From `code`
 Launch "pluck" first. Every line here talks to the Csound it is playing.
 
 ```edn [field-box id="cs_talk" role="properties"]
-{"id" "cs_talk" "index" 6 "name" "talk to pluck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "talk to pluck" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_talk_code_.kt" "lines" 19 "characters" 1028 "sha256" "885e40d1dada63470823ff50a1ef7244be2fa88933d6163e6e7c7105d7e24b72"}]}
+{"id" "cs_talk" "index" 6 "name" "talk to pluck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "talk to pluck" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_talk_code_.kt" "lines" 26 "characters" 1127 "sha256" "5ed66367e7757e5bd01a7aedc549525868ab40355fd9a266fe07a5ba7b54b781"}]}
 ```
 
 ```kotlin [field-property box="cs_talk" name="code" path="cs_talk_code_.kt"]
 // Launch "pluck" first. Every line here talks to the Csound it is playing.
 val pluck = csoundOf("pluck").csound
 
-pluck.setChannel("cutoff", 900)                 // chnget "cutoff" reads it next k-cycle
-pluck.setStringChannel("voice", "from Kotlin")  // an S channel; Reverb outvalues it back
+pluck.setChannel("cutoff", 900) // chnget "cutoff" reads it next k-cycle
+pluck.setStringChannel("voice", "from Kotlin") // an S channel; Reverb outvalues it back
 println("level now: ${"%.4f".format(pluck.channel("level"))}")
 
 // Every channel the orchestra allocated, with the range chn_k declared for it.
-pluck.channels().forEach { c -> println("${c.name}: ${c.hints?.let { "${it.default} in ${it.min}..${it.max}" } ?: "no hints"}") }
+pluck.channels().forEach { c ->
+    println("${c.name}: ${c.hints?.let { "${it.default} in ${it.min}..${it.max}" } ?: "no hints"}")
+}
 
 // Score events with p-fields from Kotlin values: a rising arpeggio, half a second apart.
-listOf(57, 60, 64, 69).forEachIndexed { k, note ->
+[57, 60, 64, 69].forEachIndexed { k, note ->
     pluck.event("i \"Pluck\" ${k * 0.5} 0.5 $note -12")
 }
 
-// outvalue calls back on Field's main thread.
-pluck.onOutvalue("said") { println("Csound said: $it") }
+// Stop or rerun removes these listeners from the independently playing orchestra.
+val run = requireNotNull(RunScope.current())
+run.own(pluck.onOutvalue("said") { println("Csound said: $it") })
 var n = 0
-pluck.onOutvalue("level") { v -> if (n++ % 40 == 0) display("level", "<div style='padding:8px'>Reverb rms ${"%.4f".format(v as Double)}</div>") }
+run.own(
+    pluck.onOutvalue("level") { v ->
+        if (n++ % 40 == 0) display("level", "<div style='padding:8px'>Reverb rms ${"%.4f".format(v as Double)}</div>")
+    },
+)
 ```
 
 ## 8. Field into fx
