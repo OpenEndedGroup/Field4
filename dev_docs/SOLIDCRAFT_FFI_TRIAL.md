@@ -51,15 +51,48 @@ mesh and export buffers before releasing the native handles. A design owns its e
 must be closed. API edits are synchronized per design; the bridge is otherwise a local, in-process
 call, so expensive evaluations block the calling thread.
 
+## Building designs from Kotlin
+
+`solidCraft { ... }` (`SolidCraftBuilder.kt`) builds a design instead of opening one: sketches of
+lines, arcs, circles, splines and 3D wires (`wire(fline)` samples a Field `FLine`), then extrude,
+revolve, sweep (twist, scale, guide rails with `scale`/`stretch` fit), loft, pipe, fillet, and
+the surface sweep (with rails), loft (end continuity G0–G3), revolve, boundary patch and thicken.
+`feature(type, json)` adds any other `FeatureKind` by its JSON fields.
+
+```kotlin
+solidCraft("Flared") {
+    param("twist", "45 deg")
+    val section = sketch("XY") { rectangle(-4.0, -4.0, 4.0, 4.0) }
+    val path = sketch("XZ") { line(0.0, 0.0, 0.0, 60.0) }
+    val rail = sketch("XZ") { line(4.0, 0.0, 12.0, 60.0) }
+    sweep(section, path, rails = listOf(rail), twist = "twist")
+}.open().use { part -> part.setParameter("twist", "90 deg"); part.mesh().toTriMesh() }
+```
+
+The builder writes SolidCraft's own design JSON and opens it through the same C ABI, so the
+engine validates it, failures name the feature, and the result saves, edits and exports like a
+loaded file. No new native entry points were needed. `smokeSolidCraft` runs one design per
+feature (`SolidCraftBuilderSmokeTest`) and checks volumes, areas or bounds against closed forms.
+
+Facts found doing so, at v0.15.0:
+
+- A sweep keeps the profile at the angle it was drawn to the path. A path that leaves the
+  profile 27° off square gives a section `cos 27°` of the drawn one; start the path square to the
+  profile for a true tube.
+- `surfaceBoundary` builds two boundaries only (three or four: SolidCraft issue #763), and the
+  two curves must run the same way.
+- Sketch points the builder draws are fixed and it adds no constraints; parametric dimensions go
+  through expressions (`param`) in feature fields, not sketch constraints.
+
 ## Boundary and scope
 
 The Rust adapter exposes one small versioned C ABI. Kotlin calls it through the JDK FFM API,
 following Field's Manifold binding style. `summary()` currently returns JSON; the other
 operations expose scalar and flat buffer shapes. It covers only opening a `.solidcraft` design,
 editing a named parameter, evaluating its feature tree, reading body statistics and tessellation,
-and exporting STEP, STL, or the native design. It does not expose general sketch/feature
-construction, GPU upload, or a live Field UI. It is a first vertical slice through SolidCraft
-L0–L3, with a small handwritten ABI; generating headers/bindings can follow if the slice proves
+and exporting STEP, STL, or the native design; designs are built through the same entry point
+(above). It does not expose GPU upload or a live Field UI. It is a first vertical slice through
+SolidCraft L0–L3, with a small handwritten ABI; generating headers/bindings can follow if the slice proves
 useful.
 
 The example design in `src/jvmMain/resources/afield/solidcraft/` is copied from SolidCraft's
