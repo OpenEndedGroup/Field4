@@ -51,52 +51,35 @@ expect:
     - "REPL snippet declarations smoke passed"
 */
 /**
- * What a box may declare at its top level, and still compile.
+ * Smoke test of what a box may declare at its top level and still compile under the K2 REPL.
  *
- * K2 REPL defects that made ordinary box code fail, all fixed in field's Kotlin fork
- * (`~/temp/kotlin`, branch `field/repl-implicit-receiver-in-named-functions`) and none fixed
- * upstream as of 2.4.20-RC2 — upstream's REPL codegen suite has no test for any of these shapes:
+ * Each case is a shape of ordinary box code that the stock 2.4 K2 REPL fails to compile or load,
+ * and that Field's Kotlin fork (and, for the last group, Field's build of the Wither plugin) handles:
  *
- *  1. **A named function that touches the implicit `Box` receiver.** `fun foo(a: Double) = a + _qqq`
- *     became a member of the snippet class, which has no `$script_receiver_n` parameter, so the
- *     receiver read reached the JVM backend as a dangling parameter and it failed with
- *     `No mapping for symbol: VALUE_PARAMETER SCRIPT_IMPLICIT_RECEIVER`. The fix stores the
- *     receivers in the snippet class's `$$implicitReceiver_*` fields, as the `.kts` script lowering
- *     already did. Cases A, B.
+ * 1. **A named function that touches the implicit `Box` receiver**, such as
+ *    `fun foo(a: Double) = a + _qqq`. The fork stores the receivers in the snippet class's
+ *    implicit-receiver fields, as the `.kts` script lowering does. Cases A, B, and case L, which
+ *    checks that a later run binds `foo(12.0)` to the live declaration.
+ * 2. **An expression-bodied function that reaches the receiver**, such as
+ *    `fun f(a: Double) = println(a)`. Only an inferred return type takes this resolution path, so
+ *    the same body in braces is a separate shape. Cases S, T, U.
+ * 3. **A delegated property whose provider declares `provideDelegate`**, such as
+ *    `var x by keyCamera()`. Cases N, Q.
+ * 4. **A destructuring declaration with a `_` entry**, such as `val (a, _) = p`. The fork builds the
+ *    `_` entry as a local of the snippet's evaluation body rather than a class property. Cases V to
+ *    Y, with Z1 to Z4 covering the name-based forms that reach the same path.
+ * 5. **A statement-level call to a function with no `callableId`**: a local function, or a member
+ *    of a local or anonymous class, which Wither's IR pass has to tolerate. Cases LF1 to LF9.
  *
- *     The `fun Box.foo` workaround had a second-order failure, case L: the *failed* snippet stayed
- *     in the REPL history, so the next run's `foo(12.0)` bound to the dead snippet's plain `foo`
- *     (a member beats an extension) and threw `null cannot be cast to non-null type …__code__N`
- *     from the `ReplState` lookup. With (1) fixed there is no failed snippet, so the sequence is
- *     clean — but see [staleDeclarationShadowing], which is still open.
- *
- *  2. **An expression-bodied function that reaches the receiver.** `fun f(a: Double) = println(a)`
- *     failed at *resolution* — `Candidate 'fun Box._printlnHere(...)' is inapplicable because of a
- *     receiver type mismatch` — while the same body in braces was fine. Only an inferred return type
- *     takes the jumping-return-type path, whose designation looked for a `FirScript` and so never
- *     found a `FirReplSnippet`, leaving the snippet's implicit receivers off the tower. Cases S, T, U.
- *
- *  3. **A delegated property whose provider declares `provideDelegate`** — `var x by keyCamera()`.
- *     Such a property is resolved through a disposable FIR copy of itself; the resolved delegate
- *     expression carries a `::x` reference to that copy, which gets no IR, so fir2ir failed with
- *     `IrPropertySymbolImpl is unbound`. Cases N, Q.
- *
- *  4. **A destructuring declaration with a `_` entry** — `val (a, _) = p`. The `_` became a
- *     snippet-class property `<unused var>` and the class failed to load with
- *     `ClassFormatError: Illegal method name "get<unused var>"`. The `.kts` path never had this:
- *     fir2ir skips a script's `_` entries. The fork now builds a snippet's `_` entry as a local of
- *     `$$eval`. Cases V–Y; Z1–Z4 cover the name-based forms that reach the same path.
- *
- * And one that is not the compiler's at all: **a call, as a statement, to a function with no
- * `callableId`** — a local function, or a member of a local or anonymous class — failed with
- * `IrGenerationExtensionException: … has no callableId`, thrown from the Wither plugin's IR pass,
- * which looked up the `callableId` of every statement-level callee. Fixed in Field's build of
- * Wither (`~/temp/wither`, branch `field/kotlin-2.5.0-beta1`). Cases LF1–LF9.
+ * One case is still open: a declaration from an earlier snippet can shadow a later one of the
+ * same name, and the test records that behaviour rather than asserting a fix.
  *
  * Each case drives the real engine: a fresh [KotlinInterface2] with an implicit `Box` receiver, the
- * stdlib `intro`, then [standardExecutionPractice] — the same preamble-then-body snippet sequence a
+ * stdlib `intro`, then [standardExecutionPractice], the same preamble-then-body snippet sequence a
  * launched box runs through.
  */
+
+/** Runs every top-level declaration case on a fresh engine; `main` exits non-zero if any case failed. */
 object ReplSnippetDeclarationsSmokeTest {
 
     /** The preamble `@exported var qqq = 10.0` upstream leaves behind for a child box. */

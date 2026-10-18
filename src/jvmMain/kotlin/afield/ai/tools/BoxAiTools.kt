@@ -28,8 +28,8 @@ import kotlin.reflect.typeOf
 /**
  * # Box-authored AI tools
  *
- * A pleasant, idempotent Kotlin DSL that lets a Field box contribute tools to the
- * document's AI4 agents (both the in-app chat and external MCP agents). A tool is a
+ * A box contributes tools to its document's AI agents with `aiTool(name) { }`, an idempotent
+ * Kotlin DSL that serves both the in-app chat and external MCP agents. A tool is a
  * `suspend` block that runs with the box in scope, can span many frames, and has its
  * arguments/description/return value marshaled automatically.
  *
@@ -48,7 +48,7 @@ import kotlin.reflect.typeOf
  * start { println(a("wall 1 1 ; rect 0 0 1 1 fill", listOf(0.0, 0.5))) }
  * ```
  *
- * The handle [a] is directly, `suspend`-invocable from box code — positional
+ * The returned handle is directly `suspend`-invocable from box code — positional
  * (`a(src, times)`, coerced by declared param order) or named (`a.call("source" to src)`)
  * — so you can exercise a tool without going through an agent. See [BoxTool].
  *
@@ -56,6 +56,8 @@ import kotlin.reflect.typeOf
  * by name (idempotent); a re-run that no longer registers one, or retiring the box, drops it —
  * see [DocumentToolRegistry] for the lifecycle.
  */
+
+/** Registers (or replaces) the tool [name] owned by this box and returns its [BoxTool] handle. */
 fun Box.aiTool(name: String, build: BoxToolBuilder.() -> Unit): BoxTool {
     require(name.isNotBlank()) { "aiTool name must not be blank." }
     val builder = BoxToolBuilder(this, name).apply(build)

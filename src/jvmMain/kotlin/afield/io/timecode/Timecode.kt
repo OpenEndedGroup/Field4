@@ -1,6 +1,13 @@
 package afield.io.timecode
 
 /**
+ * The SMPTE timecode value types: [TimecodeRate] (24, 25, 29.97 drop-frame, 30) and [Timecode],
+ * a frame count at a rate with HH:MM:SS:FF labelling, parsing and arithmetic.
+ *
+ * The LTC, MTC and clock code in this package all exchange [Timecode] values.
+ */
+
+/**
  * SMPTE timecode: the HH:MM:SS:FF clock that lighting desks, video servers and DAWs share.
  *
  * A [Timecode] is a frame count at a [TimecodeRate]. Everything else (the four fields, the label,

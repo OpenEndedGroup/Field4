@@ -1,5 +1,17 @@
 package afield.runtime.execution
 
+/**
+ * How a Kotlin box runs: [KotlinExecution] compiles and evaluates a box's code, launches what it
+ * returns, and routes its printed output, errors and completions back to the editor.
+ *
+ * [BoxExecution] is the contract a language engine implements: run a fragment or the whole box,
+ * launch it on a strand, continue, stop, and answer completion and hover requests.
+ * [KotlinExecution] is the Kotlin implementation. [configureOutputProxies] connects a box's
+ * `print`, error and `display(...)` output to the client that ran it. [improveMessage] and
+ * [suggestionsFor] turn compiler diagnostics into the inline hints shown under an error.
+ */
+
+
 import afield.runtime.mainLanguage
 import afield.app.protocol.handle
 import afield.app.server.Server
@@ -205,6 +217,7 @@ import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
 import kotlin.script.experimental.api.SourceCodeCompletionVariant
 
+/** Adds the "Reset Kotlin Environment for Box" action to a new root: it stops the boxes it is run on and gives each a fresh Kotlin engine. */
 @RunsAt(newRoot)
 fun installKEActions(root: Box) {
     root.actions["reset"] = Action(

@@ -5,6 +5,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
+ * The catalog of object names the built libpd can create, used by [PdObjects.suggest] to correct a mistyped object box.
+ */
+
+/**
  * The objects this Pd can create, and the nearest of them to one it could not.
  *
  * The list is `pd-objects.txt`, which `tools/build_libpd_native.py` writes beside the library from the

@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.util
 
+/**
+ * Small helpers shared by the Vulkan renderer: the host OS, memory-type selection and result checking.
+ *
+ * [updateForever] builds a sequence for a mesh's `update` map, [OS] reports the platform, [memoryTypeFromProperties] picks a device memory type, and [vkCheck] throws on a failed Vulkan call.
+ */
+
 import afield.runtime.lifecycle.Runloop
 import org.lwjgl.vulkan.VK10
 import afield.graphics.vulkan.device.PhysicalDevice

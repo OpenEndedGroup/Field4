@@ -53,6 +53,16 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 
+/**
+ * The phone controller surface: the `/controllers` routes that let a second device see and drive
+ * the selected box's controls and outputs.
+ *
+ * [installControllerRoutes] mounts the controller page, a `/controllers/controls` and `/controllers/outputs`
+ * JSON view, and the `/controllers/ws` socket, which carries control edits and touch gestures back
+ * into Field. The `recordController...` and [broadcastControllerControlUpdates] functions keep
+ * connected controllers current as output, selection and control values change in the editor.
+ */
+
 private val controllerJson = Json { ignoreUnknownKeys = true }
 private data class ControllerSelectionRecord(
     val selection: ControllerSelectionState,

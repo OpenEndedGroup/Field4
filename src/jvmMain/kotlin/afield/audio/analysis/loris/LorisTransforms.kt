@@ -4,9 +4,15 @@ package afield.audio.analysis.loris
 
 import kotlin.math.*
 
-// Kotlin-side partial edits. They change envelopes only; resynthesize with LorisClient.synthesize.
-// Loris's own labelling, sifting, dilation and morphing run natively: see LorisClient.distill/sift/dilate/morph.
+/**
+ * Kotlin-side edits of a [LorisModel]: filtering partials, transposing, stretching, tilting and cropping.
+ *
+ * Every function here returns a new model and changes breakpoint envelopes only, so the result is
+ * heard by passing it to [LorisClient.synthesize]. Labelling, sifting, dilation and morphing are
+ * Loris's own algorithms and run natively through [LorisClient].
+ */
 
+/** Time of the partial's first breakpoint. */
 val LorisPartial.startSeconds: Double get() = points.first().timeSeconds
 val LorisPartial.endSeconds: Double get() = points.last().timeSeconds
 val LorisPartial.durationSeconds: Double get() = endSeconds - startSeconds

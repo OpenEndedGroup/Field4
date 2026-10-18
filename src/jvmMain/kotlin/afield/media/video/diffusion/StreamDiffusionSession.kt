@@ -13,6 +13,15 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
+/**
+ * The worker process behind a [StreamDiffusionView]: [StreamDiffusionSession] starts the
+ * Python worker, shares its rings of GPU buffers and semaphores with it, and exchanges JSON control
+ * messages.
+ *
+ * Pixels never pass through the protocol; the messages carry slot indices, semaphore values and
+ * frame ids. `status`, `ready`, `capabilities` and `lastStats` report what the worker last said.
+ */
+
 /** Owns one isolated worker and its bounded GPU rings. Pixels never enter this protocol. */
 class StreamDiffusionSession internal constructor(
     private val renderer: Renderer, val width: Int, val height: Int, val format: Int,

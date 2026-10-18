@@ -81,10 +81,15 @@ import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.sqrt
 
-// The tools an AI4 conversation gets when it is opened on a function study's `code`. A function
-// study is a box whose Kotlin returns a StudyComposition and whose `aiStudy` property is "function"
-// (the "Make a Function Study" action sets it). Each tool works on the focused box's own study, so
-// nothing here is per document; a document can still add tools of its own from a box, scoped to it.
+/**
+ * The tools an AI4 conversation gets when it is opened on a function study's `code`.
+ *
+ * A function study is a box whose Kotlin returns a [StudyComposition] and whose `aiStudy` property
+ * is `"function"`; the "Make a Function Study" action sets it. The request classes here (inspect,
+ * edit, patch, export, observe, sample, select, compare) are the tool schemas, and
+ * [installFunctionStudyTools] registers them. Each tool works on the focused box's own study, so
+ * nothing here is per document; a document can still add tools of its own from a box, scoped to it.
+ */
 
 @JsonClassDescription("Read how to work on a function study: the Kotlin contract, the fast edit and export loop, time and observation policies, and the limits of the evidence. Call it once, before your first edit in a conversation.")
 data class FunctionStudyGuide(val unused: String = "")

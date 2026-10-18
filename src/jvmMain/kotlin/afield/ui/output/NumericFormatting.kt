@@ -2,6 +2,12 @@ package afield.ui.output
 
 import java.util.Locale
 
+/**
+ * Fixed-point number formatting for string templates: `x.f2` is `x` with two decimal places,
+ * from [f0] to [f9], always with a `.` decimal point regardless of the machine's locale.
+ */
+
+
 private fun Number.fixedDecimal(places: Int): String =
     String.format(Locale.ROOT, "%.${places}f", toDouble())
 

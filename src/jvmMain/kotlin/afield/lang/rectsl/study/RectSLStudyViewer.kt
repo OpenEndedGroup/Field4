@@ -17,6 +17,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 /**
+ * The output card a person uses on a RectSL study: a filmstrip, a scrubbed window, knobs for the
+ * scene's numbers and colours, and the keep, adopt, restore and check-in actions ([RectSLStudyViewer]).
+ */
+
+/**
  * The person's side of a RectSL study: one output card that shows the scene over time, lets them turn
  * its numbers and colours with the window following as they drag, and lets them keep, adopt, restore or
  * check in — the same transactions the model's tools make, on the same study.

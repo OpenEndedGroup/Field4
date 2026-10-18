@@ -31,6 +31,13 @@ import afield.math.linalg.x
 import kotlin.math.floor
 
 /**
+ * Bookkeeping for a scrolling window of world-aligned tiles: [TileResidency] maps tile coordinates to reusable toroidal slots and reports which slots changed after a move.
+ *
+ * It allocates no GPU resources or threads; callers use its slot arrays to decide what to regenerate.
+ */
+
+
+/**
  * A bounded, world-aligned rectangle of tiles, stored in reusable toroidal slots.
  * Moving one tile replaces only the entering row/column. Teleporting replaces at
  * most [capacity] tiles. No resources or threads are created here.

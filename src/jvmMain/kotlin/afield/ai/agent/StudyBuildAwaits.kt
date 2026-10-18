@@ -21,6 +21,12 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
+/**
+ * Waiting for study build jobs without the model: a box chat that ended its turn on [AwaitStudyBuildsRequest] is resumed by [StudyBuildAwaits] when its jobs are done or its deadline passes.
+ *
+ * [AiChatSuspension] and [AiChatAwaitedJob] are the wait as `ai-chat-history` reports it to the panel.
+ */
+
 /** A job a chat waits for, as `ai-chat-history` reports it. [status] is the last one seen, or "" before the first poll. */
 @Serializable
 data class AiChatAwaitedJob(val boxId: String, val name: String, val jobId: String, val stage: String = "",

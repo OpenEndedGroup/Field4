@@ -1,3 +1,14 @@
+/**
+ * Sampled textures for Field 4 shaders: images decoded from disk or memory, CPU-streamed frames, and GPU-writable storage images.
+ *
+ * [LoadedTexture] decodes a PNG/JPEG (via STB) or an EXR (via tinyexr) into a Vulkan image with a
+ * mip chain and a default [TextureSampler]; build one with [LoadedTexture.fromFile],
+ * [LoadedTexture.fromExrFile], [LoadedTexture.fromEncodedMemory] or [LoadedTexture.fromRawRGBA].
+ * [StreamingTexture] re-uploads a CPU `ByteBuffer` each frame it is asked to, and
+ * [MappedMonochromeTexture] uploads a single-channel image from a shared, header-prefixed mapped
+ * buffer only when its frame counter changes. [StorageImage] is a texture a compute shader writes.
+ */
+
 package afield.graphics.texture
 
 import afield.graphics.vulkan.device.vkLayout

@@ -1,3 +1,16 @@
+/**
+ * Maps tile slots of a [afield.graphics.render.TileResidency] onto pixel coordinates in one GPU
+ * atlas texture, with a halo border around each tile.
+ *
+ * Each slot occupies a square of `cellsPerTile + 2 * halo` pixels, laid out in the residency's
+ * columns and rows. [TileAtlasLayout.pixelX] and [TileAtlasLayout.pixelY] address a cell inside a
+ * slot (negative cells and cells past the tile reach into the halo), and
+ * [TileAtlasLayout.updateHeaders] packs four ints per slot (world tile x and y, generation,
+ * occupied) for upload. The layout owns no textures and schedules no work. Halos are meant to be
+ * filled from resident neighbouring tiles rather than by wrapping atlas coordinates, so the layout
+ * implies no periodic world boundary.
+ */
+
 package afield.simulation.flow
 
 import afield.graphics.render.TileResidency

@@ -11,6 +11,28 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
 
+/**
+ * Loris reassigned-bandwidth-enhanced analysis and resynthesis, run as an optional native process.
+ *
+ * [LorisClient.analyze] sends samples to the `field_loris` executable and returns a [LorisModel]:
+ * a list of [LorisPartial]s, each a track of irregularly timed [LorisBreakpoint]s carrying
+ * frequency, amplitude, phase and noise bandwidth. [LorisClient.synthesize] turns a model back into
+ * samples at the input rate, and `distill`, `sift`, `dilate` and `morph` run Loris's own labelling,
+ * time-warping and morphing natively. Requests and results are cached on disk by a hash of the
+ * request bytes and the executable, and every [LorisResult] carries that [LorisProvenance].
+ *
+ * The executable is not needed to build or run Field; [LorisNative.describe] says where it was
+ * found or how to build it (`./gradlew buildLorisNative`). Every call except `sift` has an `...Async`
+ * form that returns a `CompletableFuture`, which is the one to use from a box.
+ *
+ * ```kotlin
+ * val client = LorisClient()
+ * client.analyzeWavAsync(Path.of("voice.wav"), durationSeconds = 2.0).thenAccept { r ->
+ *     display("partials", r.visualizationHtml())
+ * }
+ * ```
+ */
+
 /** Loris's independent resolution, window and tracking controls, expressed in Hz/seconds/dB. */
 data class LorisOptions(
     val resolutionHz: Double = 40.0,

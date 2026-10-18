@@ -1,3 +1,12 @@
+/**
+ * A timestamped append-only log of document save and reload events, written to
+ * `~/.afield/logs/save_reload.log`.
+ *
+ * Each line is an ISO instant, the event name in brackets and a message. `logTiming` adds the
+ * elapsed milliseconds since a `System.nanoTime()` start and skips events faster than its threshold.
+ * The file rolls over to `save_reload.log.1` once it reaches 50 MB.
+ */
+
 package afield.app.diagnostics.logging
 
 import java.nio.file.Files

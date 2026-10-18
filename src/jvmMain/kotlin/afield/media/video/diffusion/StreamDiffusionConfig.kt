@@ -3,6 +3,15 @@ package afield.media.video.diffusion
 import org.json.JSONObject
 import java.io.File
 
+/**
+ * Settings for the optional streaming-diffusion backend: where it is installed, the prompt and
+ * strength, the seed, frame rate and the temporal options.
+ *
+ * [StreamDiffusionConfig] validates its ranges on construction and is handed to a
+ * [StreamDiffusionView]. [StreamDiffusionPresets] holds named prompts (ink, charcoal, wire, and white-on-black variants);
+ * change prompt, strength, seed or noise advection on a running view with `view.reset(...)`.
+ */
+
 /** Optional installed backend. No Python/CUDA dependency is loaded by ordinary Field startup. */
 data class StreamDiffusionConfig(
     val root: File,

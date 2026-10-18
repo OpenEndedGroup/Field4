@@ -18,6 +18,13 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
+ * Editable CPU-side Gaussian splat clouds: [SplatCloud] holds splats in world-unit scales, 0..1 opacity and linear colour, so cropping, filtering, decimating, transforming and merging are plain arithmetic.
+ *
+ * A cloud converts from the table [readCompressedSplatPly] reads and writes back out as a `.compressed.ply` that [CompressedSplatPly] reads again.
+ */
+
+
+/**
  * A Gaussian splat cloud as **editable CPU data**: read it, ask it questions, crop it, filter it,
  * decimate it, move it, merge it, and write it back out as a `.compressed.ply` that
  * [CompressedSplatPly] reads again.

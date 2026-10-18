@@ -2,6 +2,16 @@
 
 package afield.audio.ai
 
+/**
+ * Turns a window of a recording in the Field audio corpus into a box that plays it.
+ *
+ * [corpusClip] fetches a recording from the Field audio service, caches its WAV, and cuts the
+ * requested window into a [CorpusClip], whose [CorpusClip.sampler] plays it. The rest of the file
+ * places a neighbour found by the corpus microscope ([corpusMicroscopeHtml]) as a box of its own:
+ * [corpusNeighbourName] and [corpusNeighbourCode] give the box its name and its `code`, and
+ * [placeCorpusNeighbour] creates it beside an existing box.
+ */
+
 import afield.app.protocol.Rect
 import afield.app.server.SessionInformation
 import afield.app.server.createAgentBox

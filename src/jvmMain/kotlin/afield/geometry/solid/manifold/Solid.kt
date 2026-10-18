@@ -15,6 +15,15 @@ import java.lang.ref.Cleaner
 import kotlin.math.abs
 
 /**
+ * Closed 3D volumes from the Manifold library: primitives, transforms, union, difference and intersection,
+ * with results that stay closed manifolds.
+ *
+ * [Solid] is the type a box uses; [TriMesh.toSolid] brings an existing mesh in, and [Solid.toTriMesh]
+ * hands the result to Field's mesh display. The native library is optional: [ManifoldLibrary] reports
+ * whether it is installed.
+ */
+
+/**
  * [Solid] — a **guaranteed-closed** 3D volume you can subtract, union and intersect without thinking
  * about whether the answer is still a surface. Field's binding to
  * [Manifold](https://github.com/elalish/manifold), through Panama/FFM.

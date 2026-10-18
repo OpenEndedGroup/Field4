@@ -60,6 +60,12 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
+ * Lua as a Field box language: [LuaExecution] runs a box's text in that box's own LuaJIT state, and [installLuaLanguage] registers Lua as a Main Language.
+ *
+ * `LuaBoxTest` drives Lua boxes end to end.
+ */
+
+/**
  * Lua as a box language, over LuaJIT: set a box's Main Language to Lua and its children hold Lua.
  *
  * Each Lua box has **one `lua_State` of its own**, made the first time it runs and kept across runs,

@@ -30,6 +30,15 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
+ * The ledger of everything a box has registered with a longer-lived subsystem, and the handles that release it.
+ *
+ * Audio patches, control callbacks, Runloop hooks, render modules and feeder threads are each claimed
+ * as an [Ownership] through [LifecycleLedger], tagged with the box executing at the time. The run
+ * scopes in `RunScope.kt` decide when each one is released; [lifecycleCensus] counts what is still
+ * live per box, which is how a test checks that a stopped or retired box left nothing behind.
+ */
+
+/**
  * One live thing some box registered with a subsystem that outlives it: an audio patch, a control
  * callback, a Runloop hook, a module added to a render target, a feeder thread.
  *

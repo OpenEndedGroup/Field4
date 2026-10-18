@@ -27,6 +27,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * offer on Apple silicon. Two surfaces alternate; if Syphon is still copying the one due next, the
  * frame is skipped rather than overwritten under it.
  */
+
+/** A [Target] that copies [source]'s frame into an IOSurface and hands it to [server] each frame. */
 class SyphonGpuPublisher internal constructor(
     val server: SyphonServer,
     val source: RenderToTexture,

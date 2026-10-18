@@ -11,6 +11,16 @@ import org.lwjgl.system.SharedLibrary
 import org.lwjgl.system.windows.Kernel32
 import java.util.concurrent.atomic.AtomicBoolean
 
+/**
+ * The resident texture that browser paints arrive in: a fixed-size image Field samples like any
+ * other, refreshed from frames a producer offers between draws.
+ *
+ * [ExternalBrowserSurfaceSpec] fixes size, pixel format and slot count; a producer calls
+ * [ExternalBrowserSurface.offerFrame] with an [ExternalBrowserFrame], and the platform import or
+ * copy is recorded in `prepareSampledImagesFor` before the image is bound. [ExternalBrowserSurfaces.create]
+ * picks the macOS, Windows or Linux backend. Frame hand-off is covered by `ExternalBrowserFrameMailboxTest`.
+ */
+
 /** Fixed properties of the resident texture exposed to Field. */
 data class ExternalBrowserSurfaceSpec(
     val width: Int,

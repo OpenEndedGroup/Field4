@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.device
 
+/**
+ * Vulkan device queues: [Queue] fetches a queue from a family and submits command buffers with wait and signal semaphores and an optional fence.
+ *
+ * The subclasses [Queue.GraphicsQueue], [Queue.ComputeQueue] and [Queue.PresentQueue] choose the queue family for graphics, compute and presentation to a surface.
+ */
+
 import org.lwjgl.PointerBuffer
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRSurface

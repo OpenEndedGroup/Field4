@@ -32,6 +32,14 @@ import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
 /**
+ * [LazyVar], a lazy value that can also be assigned, and its [lazyVar] factory.
+ *
+ * Assigning the value before the first read means its initializer never runs, and [LazyVar.discard]
+ * forgets the value so the next read builds it again. A value that is dropped without being
+ * cached goes to an `onDiscard` callback, so something that needs releasing is released once.
+ */
+
+/**
  * A var-friendly lazy: if never explicitly set, the first get() runs [initializer] and caches it.
  * If explicitly set via the setter, initializer will not run.
  *

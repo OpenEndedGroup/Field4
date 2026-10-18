@@ -1,4 +1,9 @@
 package afield.audio.csound
+/**
+ * Finds and binds libcsound, the optional native library behind [CsoundInstance], and explains how
+ * to build it when it is missing.
+ */
+
 
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor

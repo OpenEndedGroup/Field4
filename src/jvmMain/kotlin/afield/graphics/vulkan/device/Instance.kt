@@ -25,6 +25,17 @@ import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
 
+/**
+ * The Vulkan instance: SDK and driver selection, layers, extensions and the debug messenger.
+ *
+ * [Instance] calls `Options.doVulkanSDK` before anything else, so the loader and driver it gets are
+ * the ones Field chose (KosmicKrisp or MoltenVK on macOS). It enables the validation layer when
+ * validation or shader `debugPrintf` is requested and a layer is installed, adds
+ * `VK_KHR_portability_enumeration` on macOS when the loader offers it, and records what it actually
+ * enabled in `enabledExtensions`. With VR enabled and an OpenXR runtime bootstrapped, the instance is
+ * created through OpenXR's `xrCreateVulkanInstanceKHR`, so the runtime can add the extensions it needs.
+ */
+
 class Instance(private val validate: Boolean) {
 
     var vkInstance: VkInstance

@@ -33,6 +33,11 @@ import kotlin.math.sin
  * a signal graph with [Subharmonic]. It returns the generated subharmonic only; mix the input back
  * in yourself.
  */
+
+/**
+ * The shared output stage of the subharmonic trackers: an oscillator advancing at the tracked
+ * rate divided by [division].
+ */
 abstract class SubharmonicTracker(
     val sampleRate: Double,
     /** The ratio between the tracked frequency and the generated one. Any value, any time. */

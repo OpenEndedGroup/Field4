@@ -2,6 +2,12 @@
 
 package afield.audio.engine
 
+/**
+ * Stores the output of a [TrackingResonatorBank] run as a [TrackingResonatorAnalysis], with per-frame frequencies and powers, and reads and writes it in a small binary format.
+ *
+ * [TrackingPartial] and [TrackingResonatorTrack] describe the resonators' tracks through the analysis.
+ */
+
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.DataInputStream

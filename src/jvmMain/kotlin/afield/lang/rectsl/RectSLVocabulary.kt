@@ -10,15 +10,16 @@ import afield.lang.stacksl.vocabularyFromGuide
  * Every word the RectSL evaluator knows, with what the cheatsheet says it does — the vocabulary the
  * editor offers in completion and explains beside the cursor.
  *
- * The editor's own table (`rectsl.js`) is written by hand, and on 2026-09-27 it lacked 54 of the
- * evaluator's words, `material`, `line`, `plot`, `scatter` and `spiral` among them, so they were never
- * offered. The words here are the evaluator's own ([RectLangVm.wordMetadata], the set its "did you
- * mean" searches); their stack effect and description come from the RectSL words guide, which
+ * The words are the evaluator's own ([RectLangVm.wordMetadata], the set its "did you mean"
+ * searches), so a word the evaluator knows is offered even when the editor's hand-written table
+ * (`rectsl.js`) lacks it. Their stack effect and description come from the RectSL words guide, which
  * `tools/rectsl_conversation_documents.py` generates from `public/docs/rectsl_cheatsheet.md` and holds
  * equal to it. The editor asks for completion through Field's `complete` request, which a RectSL
  * scene answers here ([RectSLExecution][afield.lang.rectsl.study.RectSLExecution]), as does a Kotlin box for
  * its `rectSL` property.
  */
+
+/** The RectSL word list and the completion it answers. */
 object RectSLVocabulary {
     /** Every built-in word, alphabetically. */
     val words: List<VocabularyWord> by lazy {

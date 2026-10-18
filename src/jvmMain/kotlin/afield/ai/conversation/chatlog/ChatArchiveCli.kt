@@ -7,6 +7,14 @@ import java.io.File
 import java.nio.file.FileSystems
 import java.nio.file.Paths
 
+/**
+ * # Chat archive statistics from the command line
+ *
+ * [ChatArchiveCli] reads saved AI4 chats from document folders through [ChatArchive] and prints a [ChatStats]
+ * row per chat (shape, tool calls by family, images, tokens), as a table or JSON, or prints the outline and read
+ * views an agent would see ([ChatLogViews]). It never opens a document in Field.
+ */
+
 /** Counts over one chat tree: its shape, its tool calls by family, its pictures, its cost. */
 @Serializable
 data class ChatStats(

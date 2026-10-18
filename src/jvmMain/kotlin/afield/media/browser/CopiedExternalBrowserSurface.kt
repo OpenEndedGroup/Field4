@@ -18,6 +18,10 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 
 /**
+ * The shared base of the native browser-frame receivers, which copies each imported frame into one stable texture for rendering.
+ */
+
+/**
  * The platform-independent half of all native browser receivers. A backend only imports a frame's
  * native image; this class owns conflation, the stable resident texture, copies, fence-delayed
  * release acknowledgements, and close ordering.

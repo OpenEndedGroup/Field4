@@ -2,6 +2,16 @@
 
 package afield.study.evidence
 
+/**
+ * Measures and lays out the frames a study renders: brightness, clipping, non-finite pixels, detail,
+ * palette, frame-to-frame motion and region-restricted differences, plus labelled contact sheets of
+ * tiles for a model to look at.
+ *
+ * [StudyEvidence] holds the functions; [StudyFrameStats], [StudyMotion] and [StudyDifference] are the
+ * numbers it returns. Measurements are taken from the program's raw output before the display clamp,
+ * so clipping is counted rather than hidden.
+ */
+
 import afield.data.collections.get
 import afield.data.collections.invoke
 import afield.data.collections.times

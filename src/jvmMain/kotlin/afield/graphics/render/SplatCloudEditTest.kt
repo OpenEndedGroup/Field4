@@ -26,23 +26,25 @@ expect:
     - "splat cloud edit tests PASSED"
 */
 /**
- * Holds [SplatCloud] and [CompressedSplatPlyWriter] — the read / query / edit / preview / write loop.
+ * Tests the splat cloud edit loop: read a compressed PLY into a [SplatCloud], query and edit it,
+ * preview it, and write it back with [CompressedSplatPlyWriter].
  *
- * The two claims that matter, and neither is checkable by reading the code:
+ * It checks two claims that reading the code cannot settle:
  *
  * 1. **A cloud that goes out comes back.** [CompressedSplatPlyWriter] is a new encoder and the only
  *    thing standing behind it is that it is the inverse of [CompressedSplatPly]'s decoder. So: write,
  *    read back, and compare, with the error pinned at the digits the quantization actually delivers.
  *    And separately, write the *same* input through [CompressedSplatPlyFixture] — the independent
  *    transcription of splat-transform's own encoder that already lives here — and require the bytes
- *    to be identical. Two encoders that agree byte for byte is a much better position than one
- *    encoder that agrees with the reader it was written against.
+ *    to be identical, so the writer is checked against an encoder other than the reader it mirrors.
  * 2. **The CPU transform is the transform the GPU bakes.** [SplatCloud.transformed] decomposes and
  *    re-composes a rotation and three scales; `packInto` folds the same matrix into the covariance
  *    congruence and never writes it down. If those two disagree, an edited cloud looks different
  *    after it is saved, and no amount of float comparison inside either path would show it. So the
  *    test rasterizes both and compares pixels.
  */
+
+/** The cases behind the `four.splat-cloud-edit.smoke` test; `main` runs them all. */
 object SplatCloudEditTest {
 
     private val testDir = File(System.getProperty("java.io.tmpdir"), "splat_cloud_edit_test")

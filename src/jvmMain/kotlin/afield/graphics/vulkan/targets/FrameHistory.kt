@@ -5,6 +5,14 @@ import afield.math.linalg.Matrix4fc
 import afield.math.linalg.Vector4f
 
 /**
+ * Tracks the previous frame's camera for one render target, so temporal passes can reproject pixels
+ * and know when there is no usable history.
+ *
+ * [FrameHistory] holds the reprojection matrix and an availability flag that drops whenever the
+ * frame sequence, size or scene epoch breaks.
+ */
+
+/**
  * One render target's **frame history**: where the camera was last frame, and whether that answer is
  * usable.
  *

@@ -35,7 +35,7 @@ import afield.media.image.util.NodeTool
 /**
  * See a Live Metal box's `geometry { … }` on your desk, without a headset.
  *
- * # What this proves, and what it does not
+ * #### What this proves, and what it does not
  *
  * A `// {{ visionmetal }}` box has three parts, and only one of them can be checked away from the
  * device today. This previews **the geometry part, and only that**:
@@ -51,9 +51,9 @@ import afield.media.image.util.NodeTool
  *    preview answers *"is my geometry the shape I meant?"* — the other half of the question the
  *    **Vision Geometry: Built-in Cube** command answers. It cannot tell you your shader is right.
  *
- * That boundary is deliberate and is repeated in the caption burnt into every rendered frame.
+ * That boundary is repeated in the caption burnt into every rendered frame.
  *
- * # Typical use
+ * #### Typical use
  *
  * ```kotlin
  * val capture = VisionGeometryPreview.capture(box.code)
@@ -63,6 +63,7 @@ import afield.media.image.util.NodeTool
  *
  * or, from a Live Metal box's own commands, the **Preview Vision Geometry** action.
  */
+
 object VisionGeometryPreview {
 
     // ---------------------------------------------------------------- captured meshes

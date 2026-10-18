@@ -11,6 +11,10 @@ import afield.graphics.shader.fromViews
 import kotlin.math.PI
 
 /**
+ * A Vulkan effect that draws a live puppet browser page through a grid of moving, mirrored triangular shards.
+ */
+
+/**
  * Draws a live [PuppetBrowser] through an animated, independently moving field of triangular shards.
  *
  * This is deliberately a native graphics effect rather than a page effect: Chromium still renders

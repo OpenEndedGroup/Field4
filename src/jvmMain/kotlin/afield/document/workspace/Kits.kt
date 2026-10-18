@@ -44,7 +44,8 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.io.File
 
 /**
- * Kits: one machine, many documents. A kit is what every document of one kind receives: the code of the boxes that play its roles
+ * Kits package the shared parts of one kind of document so many documents can be installed from, and
+ * migrated to, the same source. A kit is what every document of one kind receives: the code of the boxes that play its roles
  * (providers), the sources those boxes hold in other properties (a rule set, a recipe), and the
  * asset files they read from the document's `files/` folder. It is a directory with a `kit.json`
  * beside those files; `tools/field_kit.py` makes one from a document, rehashes it, installs it in
@@ -72,7 +73,7 @@ import java.io.File
  *
  * **The document owns a copy.** A document on a kit records the manifest it was last installed from in `files/kit.json` (its
  * *record*), with the kit's directory. Nothing changes a document's copy behind its back: a newer
- * kit is only a difference [inspect] reports, until a migration installs it. [inspect] compares
+ * kit is only a difference [Kits.inspect] reports, until a migration installs it. [Kits.inspect] compares
  * three hashes for every property and asset: the record's, the document's, and the kit's.
  * The document matching the kit is current; matching the record (and not the kit) means the kit
  * changed it, which a migration installs; matching neither means the document's own edit, which
@@ -80,6 +81,8 @@ import java.io.File
  * such as the baseline an audit checks candidates against; a migration replaces it whenever it
  * differs from the kit, and says so.
  */
+
+/** Reads kit manifests and document records, and compares a document's role boxes and assets against them. */
 object Kits {
     /** The record's path inside a document folder: `files/kit.json`, readable from a box as `"kit.json".file`. */
     const val RECORD = "files/kit.json"

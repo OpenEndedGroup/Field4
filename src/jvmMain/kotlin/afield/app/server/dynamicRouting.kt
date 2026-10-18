@@ -17,6 +17,14 @@ import afield.media.video.*
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * A registry that maps URI prefixes to directories, so the server can serve files from folders chosen at runtime.
+ *
+ * The `/local` route in `Server.kt` looks up a request path in [dynamicRoutes], longest matching
+ * prefix first, and serves the file from the directory registered for that prefix.
+ */
+
+/** Prefix-to-directory table consulted by the server's `/local` route. */
 class DynamicDirectoryRoutes {
     private val routes = ConcurrentHashMap<String, File>()
 

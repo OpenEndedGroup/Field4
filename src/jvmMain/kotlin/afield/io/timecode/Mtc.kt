@@ -7,6 +7,15 @@ import javax.sound.midi.ShortMessage
 import javax.sound.midi.SysexMessage
 
 /**
+ * MIDI Time Code for Field's MIDI ports: [Mtc] builds quarter-frame and full-frame messages and
+ * parses full frames, and [MtcDecoder] reassembles incoming messages into [Timecode].
+ *
+ * The extension functions [sendMtcFullFrame] and [sendMtcQuarterFrames] send from a `MidiOutput`,
+ * and [mtcDecoder] attaches a decoder to a `MidiInput`. To follow MTC as a smooth clock, use
+ * `TimecodeClock.followMtc`.
+ */
+
+/**
  * MIDI Time Code: SMPTE timecode carried over MIDI.
  *
  * While running, a sender emits eight quarter-frame messages (`F1 0n`) per two frames, each

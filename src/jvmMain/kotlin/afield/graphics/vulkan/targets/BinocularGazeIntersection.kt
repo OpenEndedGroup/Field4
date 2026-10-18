@@ -6,6 +6,14 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
+ * Estimates where the two eyes converge from a pair of per-eye gaze rays.
+ *
+ * [BinocularGazeIntersection] takes the closest approach of the left and right rays and rejects
+ * depths it cannot trust, so a caller can place an object at the point the viewer is looking at.
+ * `BinocularGazeIntersectionTest` covers it.
+ */
+
+/**
  * Closest approach of two forward eye rays, in metres, with explicit rejection of unreliable
  * depth. Real rays can be skew: [position] is the midpoint of [leftPoint] and [rightPoint], and
  * [separation] is their gap. Read [valid] before placing an object there.

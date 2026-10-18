@@ -1,5 +1,9 @@
 package afield.graphics.vulkan.util
 
+/**
+ * A uniform spatial grid over a particle buffer, rebuilt on the GPU each frame with [GpuRadixSort], so a compute shader can find a particle's neighbours by visiting nearby cells.
+ */
+
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.Target
 import afield.graphics.vulkan.buffers.FrameBufferGroup

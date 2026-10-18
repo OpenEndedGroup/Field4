@@ -18,6 +18,18 @@ import kotlin.io.path.invariantSeparatorsPathString
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 
+/**
+ * #### An index of GLSL include libraries for AI grounding
+ *
+ * [GlslIncludeLibraryIndex] scans directories of GLSL include files, Lygia by default plus any roots
+ * named in `AFIELD_GLSL_INCLUDE_DIRS` or repositories in `AFIELD_GLSL_INCLUDE_REPOS`, and records each
+ * file's include path, content hash and declared functions and macros in `glsl_include_index.json`
+ * under the AI filestore, so an agent can find which include defines a function.
+ * `AFIELD_GLSL_INCLUDE_INDEX=off` disables it and `AFIELD_GLSL_INCLUDE_DEFAULTS=off` drops the Lygia
+ * default.
+ */
+
+/** One function or macro declared in an include file. */
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class GlslIncludeSymbolRecord(
     val name: String,

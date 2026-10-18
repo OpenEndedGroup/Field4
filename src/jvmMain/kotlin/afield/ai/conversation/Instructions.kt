@@ -46,6 +46,16 @@ import afield.ai.tools.ToolExecutionContext
 import afield.ai.tools.extensionDocumentKey
 import afield.runtime.languages.LanguageSpec
 
+/**
+ * The instruction text AI4 sends the model with each turn, per kind of turn.
+ *
+ * [InstructionMode] names the kinds (general, inline, error, chat). [buildInstructionFragments] assembles
+ * a turn's instructions as [ContextFragment]s from the base contract, the tool guidance and the document's
+ * context, and [buildDynamicInstructions] joins them into one string. [generalInstructions],
+ * [inlineInstructions], [errorInstructions] and [generalChatInstructions] are the per-mode texts.
+ */
+
+/** The rules every code-editing turn starts from, for the named language. */
 private fun baseAssistantContract(langName: String): String = """
 You are a code-writing assistant for $langName embedded in an IDE.
 

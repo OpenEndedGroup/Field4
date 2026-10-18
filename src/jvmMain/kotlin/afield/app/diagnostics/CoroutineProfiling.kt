@@ -1,5 +1,14 @@
 package afield.app.diagnostics
 
+/**
+ * Per-box coroutine profiling behind the Profiling panel: wall time, CPU time and allocation
+ * charged to the box and strand that launched each continuation.
+ *
+ * [ProfileOrigin] is the coroutine context element that names the launching box, and
+ * [CoroutineProfiles] holds the one capture a process records at a time.
+ * [installCoroutineProfilingHandlers] installs the panel's request handlers.
+ */
+
 import afield.app.server.flag
 import afield.data.table.div
 import afield.data.table.minus

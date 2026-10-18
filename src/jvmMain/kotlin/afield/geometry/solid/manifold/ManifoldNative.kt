@@ -21,6 +21,13 @@ import java.nio.file.Path
 import kotlin.io.path.exists
 
 /**
+ * The FFM binding to `libmanifoldc` that [Solid] and [Section] are built on, plus the small public enums they take.
+ *
+ * Box code needs only [ManifoldLibrary], to ask whether the native library is installed, and the
+ * option enums [BooleanOp], [JoinType] and [FillRule]; the native entry points themselves are internal.
+ */
+
+/**
  * The Panama/FFM plumbing under [Solid] and [Section]: where `libmanifoldc` is, the function
  * descriptors for the C entry points Field uses, and the two upcall stubs that let a Kotlin lambda
  * be a Manifold callback.

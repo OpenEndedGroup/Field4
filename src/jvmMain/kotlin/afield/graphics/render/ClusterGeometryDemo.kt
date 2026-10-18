@@ -14,6 +14,13 @@ import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.KHRAccelerationStructure.*
 import org.lwjgl.vulkan.VK13.*
 
+/**
+ * A computed-terrain demo of [ClusterGeometry]: a compute shader writes every patch's vertices, indices and cluster descriptions, and a ray-tracing pass renders the resulting cluster acceleration structure.
+ *
+ * It needs a device with `VK_NV_cluster_acceleration_structure`.
+ */
+
+
 /** Computed terrain, using exactly the public ClusterGeometry input contract. The producer shader
  * owns all vertices, indices and descriptions, and is replaceable through ordinary live reload.
  * Each patch has 8x8 cells; [topology] switches diagonals without changing allocations.

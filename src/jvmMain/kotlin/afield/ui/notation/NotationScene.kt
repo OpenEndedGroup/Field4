@@ -44,6 +44,16 @@ import kotlin.math.min
 import kotlin.random.Random
 
 /**
+ * The drawing layer's scene as immutable data: [NotationScene] parses and re-serializes the root box's
+ * `drawing` property, [NotationChange] describes what differs between two scenes, and [MarkType] names the
+ * Excalidraw element kinds.
+ *
+ * Merging two copies of a scene keeps, for each element id, the copy Excalidraw's own version rule prefers,
+ * so the server can reconcile a client's drawing with marks written from code.
+ */
+
+
+/**
  * The drawing layer's scene as data: the root box's `drawing` property, a complete `.excalidraw`
  * document, parsed losslessly.
  *

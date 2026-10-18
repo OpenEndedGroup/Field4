@@ -15,6 +15,10 @@ import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.VkImageSubresourceRange
 
 /**
+ * The macOS browser-frame receiver, which imports Electron's IOSurfaces into Vulkan.
+ */
+
+/**
  * macOS implementation of [ExternalBrowserSurface]. A native producer transfers a Mach send right
  * for Electron's process-local IOSurface; this receiver resolves and imports it, while
  * [CopiedExternalBrowserSurface] copies into a stable image and acknowledges only after the fence.

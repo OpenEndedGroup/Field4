@@ -49,6 +49,14 @@ import java.io.File
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
+ * Reads, generates and live-reloads `~/.afield/keybindings.yaml`, the user's keyboard shortcut
+ * overrides, and sends the resolved bindings to connected clients.
+ *
+ * [UserKeybindingsManager] holds the state; [installUserKeybindingsHandlers] registers its
+ * websocket handlers.
+ */
+
+/**
  * `~/.afield/keybindings.yaml` — the user's shortcut overrides, watched and applied live exactly like
  * `theme.css` (see [UserThemeManager]).
  *

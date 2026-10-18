@@ -35,6 +35,7 @@ expect:
   stdoutContains:
     - "ExportedTypeNames smoke passed"
 */
+
 /**
  * Smoke for [ExportedTypeNames], which decides the type text `@exported` splices into another box's
  * preamble.
@@ -48,13 +49,14 @@ expect:
  *    hopefully. A preamble line that fails to compile poisons every later compile in that box, so
  *    a false accept is far more expensive than a false reject.
  *
- * [testUnnameableArgumentIsErasedNotEmitted] is the regression that motivated the rewrite: the old
+ * `testUnnameableArgumentIsErasedNotEmitted` is the regression that motivated the rewrite: the old
  * implementation accepted any name starting with `kotlin.` and returned it *whole*, so a
  * `List<SomeBoxLocalClass>` was emitted verbatim with an unresolvable argument inside it.
  *
  * Pure renderer assertions — no REPL, no engine, so this stays fast. Runnable-object test style,
  * matching [WitherSmokeTest].
  */
+
 object ExportedTypeNamesSmokeTest {
 
     /** The loader every box's engine actually derives its classpath from, in this process. */

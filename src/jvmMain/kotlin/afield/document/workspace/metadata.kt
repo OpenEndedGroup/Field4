@@ -21,6 +21,17 @@ import afield.document.properties.Delegation
 import org.yaml.snakeyaml.Yaml
 import java.io.File
 
+/**
+ * Per-box YAML metadata and the tags read from it. A box's `metadata` property holds YAML text, saved
+ * as the `<uid>_metadata_.yaml` sidecar; [tagsForBox] reads one key of it as a list of strings, and
+ * [tagDatabase] scans every document folder under a workspace root for those sidecars and collects
+ * each box's `tags`.
+ *
+ * [tagsForBox] returns null when the YAML is not a map or lacks the key; [tagDatabase] skips a sidecar
+ * whose YAML is not a map. A YAML syntax error is not caught in either and propagates.
+ */
+
+/** The box's YAML metadata text; empty by default. */
 var Box.metadata by Delegation<String>(defaultValue = { "" })
 
 fun idFromFilename(fn: String) = fn.split("_")[0]

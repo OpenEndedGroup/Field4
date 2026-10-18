@@ -7,7 +7,17 @@ import afield.ui.visualization.AudioVisualizerOptions
 import afield.ui.visualization.TimeViewerShell
 import kotlin.math.*
 
+/**
+ * Draws a [LorisModel]'s partial trajectories as an interactive HTML panel next to its waveform.
+ *
+ * [visualizationHtml] plots each partial's breakpoints at their real times on a cents, ERB or Hz axis
+ * ([LorisFrequencyAxis]), shares the time window, cursor and click-to-seek with the waveform view, and
+ * caps how many partials and points are drawn ([LorisViewOptions]). The caps affect drawing only.
+ */
+
+/** Frequency scale of the trajectory plot. */
 enum class LorisFrequencyAxis { CENTS, ERB, HZ }
+/** Which partials fill the drawing budget: spread across ERB bands, or the strongest overall. */
 enum class LorisTrackSelection { BAND_BALANCED, STRONGEST }
 
 /** Display limits affect drawing only, never the stored native model or resynthesis. */

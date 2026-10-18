@@ -3,6 +3,16 @@ package afield.math.gp
 
 import kotlin.math.*
 
+/**
+ * Choosing GP hyperparameters from data by maximising the log marginal likelihood.
+ *
+ * `fitGpHyperparameters` runs a bounded pattern search in log space over [GpParameter]s and returns a
+ * [GpFitResult] with the fitted process and whether the search step converged; it finds a local
+ * optimum, so compare several starts on multimodal problems. `scanGpEvidence` evaluates the evidence
+ * over a fixed list of candidate values and returns a [GpEvidenceScan] with normalised posterior
+ * weights.
+ */
+
 /** Positive parameter and explicit bounds, searched in log space. Same units as the model builder. */
 data class GpParameter(val name: String, val initial: Double, val lower: Double, val upper: Double) {
     init { require(name.isNotBlank() && lower.isFinite() && lower > 0 && upper.isFinite() && upper > lower && initial in lower..upper) }

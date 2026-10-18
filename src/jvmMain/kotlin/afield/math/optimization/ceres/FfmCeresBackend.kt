@@ -1,5 +1,16 @@
 @file:afield.runtime.completion.CompletionCategory("Internal")
 
+/**
+ * The Ceres solver backend that calls the native `ken_ceres_jvm` wrapper through the Java
+ * foreign-function API (`java.lang.foreign`), with no JNI glue.
+ *
+ * [FfmCeresBackend] loads the library, binds its `ken_ceres_*` entry points as downcall handles and
+ * reports [FfmCeresBackend.abiVersion]; [FfmCeresBackend.compile] turns a seed [PointCloud] and a
+ * [CeresProgram] into a reusable compiled solver whose input, output and prior buffers are allocated
+ * once in a confined arena and reused across solves. [CeresNativeLibrary] says where the library is
+ * expected and how to build it.
+ */
+
 package afield.math.optimization.ceres
 
 import java.lang.foreign.Arena
@@ -12,6 +23,12 @@ import java.lang.invoke.MethodHandle
 import java.nio.file.Path
 import kotlin.io.path.absolute
 
+/**
+ * A [CeresSolverBackend] backed by the native library at [libraryPath], by default
+ * [CeresNativeLibrary.defaultPath]. Construction fails with `UnsatisfiedLinkError` when an expected
+ * symbol is missing, and with `IllegalArgumentException` when the library reports an ABI version
+ * other than the one Field needs.
+ */
 class FfmCeresBackend(
     libraryPath: Path = CeresNativeLibrary.defaultPath,
     private val reusableMetricCapacity: Int = 128,

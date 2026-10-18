@@ -35,6 +35,14 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.CoroutineContext
 
 /**
+ * Run scopes: what a box's run owns, and which of stop, re-run or retire releases it.
+ *
+ * Each run of a box gets a [RunScope]; registrations made while it executes are owned by that scope
+ * and carry a [ReleasePolicy]. [BoxRunScopes] holds a box's scopes, so a re-run supersedes the last
+ * run's scope, a stop releases only what is running, and retiring the box releases everything.
+ */
+
+/**
  * Which of the three box events — stop, re-run, retire — takes a registration back out.
  *
  * | policy | kinds | released by |

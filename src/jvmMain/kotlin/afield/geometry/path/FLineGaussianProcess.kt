@@ -1,3 +1,13 @@
+/**
+ * Gaussian-process curves: fit a GP to an [FLine] or to points, then draw its mean, samples and uncertainty as lines.
+ *
+ * [FLine.gaussianProcess] and [gpCurve] return an [FLineGaussianProcess], which gives the mean,
+ * covariance, velocity and moving frames along the curve; [FLineGaussianProcess.posterior] gives an
+ * [FLineGpJoint] for coherent samples. For scalar GPs, [meanFLine], [sampleFLine] and
+ * [intervalFLines] turn a joint into plottable lines. Tests: `FLineGaussianProcessTest`,
+ * `FLineGpGeometryTest`.
+ */
+
 package afield.geometry.path
 
 import afield.math.gp.*

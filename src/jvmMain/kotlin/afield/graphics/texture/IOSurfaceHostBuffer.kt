@@ -1,3 +1,7 @@
+/**
+ * [IOSurfaceHostBuffer] maps an IOSurface's memory into a Vulkan buffer, so pixels move between an IOSurface and a Vulkan image with one GPU copy on macOS drivers that cannot back an image with an IOSurface.
+ */
+
 package afield.graphics.texture
 
 import afield.graphics.vulkan.device.Device

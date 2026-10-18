@@ -4,15 +4,16 @@ import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 
 /**
- * Simple PNG encoder that creates PNG files from ARGB pixel data.
- * 
- * This implementation avoids external dependencies (AWT, javax.imageio) and provides
- * a pure Kotlin solution for encoding images to PNG format. It's particularly useful
- * for screenshot capture and image export functionality.
- * 
- * The encoder supports RGBA color type (color type 6 in PNG specification) and uses
- * DEFLATE compression for the image data.
+ * Encodes ARGB pixels, or an RGBA `ByteBuffer` read back from the GPU, into PNG bytes without AWT or
+ * `javax.imageio`.
+ *
+ * Output is 8-bit RGBA (PNG colour type 6), one unfiltered scanline per row, compressed with
+ * `java.util.zip.Deflater`, with an `sRGB` chunk. [PngEncoder.encode] takes one ARGB `Int` per pixel;
+ * [PngEncoder.encodeFromBuffer] takes a readback buffer and can flip it vertically and force alpha
+ * to opaque.
  */
+
+/** Pure-Kotlin PNG writer used for screenshot capture and image export. */
 object PngEncoder {
     
     /**

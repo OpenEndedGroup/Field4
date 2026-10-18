@@ -37,6 +37,20 @@ import afield.app.diagnostics.logging.lprintln
 import java.io.File
 import java.util.Base64
 
+/**
+ * Per-version activity and screenshot records for a document, stored in its
+ * `history_metrics.edn` beside `metadata.edn`.
+ *
+ * Each record is keyed by version index. A save adds the activity the flight recorder saw since the
+ * previous save (per-box counts included), a diff adds its edit statistics, and a captured
+ * screenshot adds a reference to its image file. The history browser reads these back through
+ * [HistoryMetrics.activityByVersion] to annotate its timeline.
+ */
+
+/**
+ * Reads and writes a document's `history_metrics.edn`: activity per save, edit statistics per
+ * version, and screenshot references.
+ */
 object HistoryMetrics {
     private const val METRICS_EDN = "history_metrics.edn"
     private val metricsLock = Any()

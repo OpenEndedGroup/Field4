@@ -22,6 +22,13 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 /**
+ * A CPU rasterizer for Gaussian splat clouds, so a splat can be rendered to pixels, tested and captured without a GPU.
+ *
+ * [SplatRaster] ports the vertex and fragment stages of [GaussianSplatRenderer] rather than defining a second look.
+ */
+
+
+/**
  * A Gaussian splat cloud rasterized on the **CPU**, into pixels you can look at without a GPU.
  *
  * The reason to have this at all: until now the only way to see a splat in Field was to attach a

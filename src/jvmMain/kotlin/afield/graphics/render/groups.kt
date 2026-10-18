@@ -4,7 +4,17 @@ import afield.graphics.vulkan.buffers.bindPushConstantAcrossGroup
 import afield.graphics.vulkan.buffers.firstBoundPushConstant
 import kotlin.reflect.KProperty
 
+/**
+ * Mesh groups: lists of meshes that share one live push-constant binding.
+ *
+ * [MeshGroup], [MeshMeshGroup] and [ComputeMeshGroup] each carry a `BoundFromStructure` delegate, so
+ * a property assigned on the group (a supplier `() -> T`) is bound to the push constant of the same
+ * name in every member, and read back from the first member that has it. A name no member's module
+ * declares as a push constant throws. [bindPush] is the looser form for meshes that are not in a
+ * group: it runs one binding block against each target in turn.
+ */
 
+/** A list of [Mesh]es whose push constants are bound together by property name. */
 class MeshGroup : ArrayList<Mesh>() {
     class BoundFromStructure<T> {
         operator fun setValue(inside: MeshGroup, property: KProperty<*>, any: () -> T) {

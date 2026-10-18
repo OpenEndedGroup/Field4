@@ -1,3 +1,10 @@
+/**
+ * Heatmap colouring for the numeric values in the pinned console's rolling stat lines.
+ *
+ * [StatsHeatmap] splits a line such as `fps=61.2 upload=3.4MB` into fragments and colours each
+ * number by how it moved since the last value of the same key on that channel.
+ */
+
 package afield.app.diagnostics.logging
 
 import com.github.ajalt.mordant.rendering.TextColors

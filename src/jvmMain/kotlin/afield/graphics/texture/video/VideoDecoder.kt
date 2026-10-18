@@ -1,3 +1,11 @@
+/**
+ * Decodes video frames with FFmpeg into P010 or RGBA8 buffers ([VideoFrame]) for [VideoTexture].
+ *
+ * [VideoDecodeFormat] picks the output: P010 for ordinary display, RGBA8 when the R/G/B channels
+ * are values that 4:2:0 chroma subsampling would destroy. `VideoFrameTest` covers [VideoFrame]
+ * buffer release.
+ */
+
 package afield.graphics.texture.video
 
 import afield.app.diagnostics.logging.lprintln

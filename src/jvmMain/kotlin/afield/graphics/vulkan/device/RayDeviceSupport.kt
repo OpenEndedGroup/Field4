@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.device
 
+/**
+ * What the GPU supports for hardware ray tracing: [RayDeviceSupport] lists the acceleration-structure, ray-query and ray-tracing-pipeline extensions and features, and derives whether each path is usable.
+ *
+ * [lightingCapabilityReport] turns that into a JSON report for a [Device].
+ */
+
 import org.json.JSONObject
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*

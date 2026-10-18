@@ -8,6 +8,15 @@ import org.lwjgl.vulkan.VkSemaphoreTypeCreateInfo
 import afield.graphics.vulkan.util.vkCheck
 
 /**
+ * A Vulkan semaphore for GPU-to-GPU ordering between queue submissions, timeline by default.
+ *
+ * A timeline [Semaphore] keeps its own counter: `nextSignalValue` advances it for the submission
+ * that will signal, `currentValue` is the value to wait on, and `markExternallySignaled` advances it
+ * when something outside Field's submissions (such as image acquisition) signals it. Constructed with
+ * `timeline = false` it is a binary semaphore, and both values are always 0.
+ */
+
+/**
  * Semaphore wrapper that can be either binary or timeline.
  */
 class Semaphore(private val device: Device, private val timeline: Boolean = true) {

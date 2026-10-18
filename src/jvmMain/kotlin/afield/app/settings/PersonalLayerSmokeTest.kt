@@ -57,6 +57,7 @@ expect:
  *
  * Skips (exit 0) when there is no `src/personal`, which is the normal state for everyone but Marc.
  */
+
 object PersonalLayerSmokeTest {
 
     // A pure-Kotlin personal class with no native or heavyweight dependencies: kiwi is a

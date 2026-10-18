@@ -57,6 +57,19 @@ import java.util.zip.ZipOutputStream
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * The server side of the workspace browser: listing, searching, tagging and copying the documents
+ * under a workspace folder.
+ *
+ * [simpleDir] and [welcomeDir] list documents for the file browser and the welcome page,
+ * [startingPoints] and [templateStartingPoints] list the transcripts and templates a new document
+ * can start from, and [openStartingPointIntoWorkspace] and [duplicateWorkspaceDocument] copy one
+ * into the workspace. [searchWorkspace] searches document contents, [updateDocumentTags] and
+ * [exportTaggedDocumentsZip] manage tags, and [createWorkspaceProject] and its neighbours group
+ * documents into projects stored under the workspace's `_projects` folder.
+ */
+
+/** One document in a workspace listing, as [simpleDir] returns it. */
 @Serializable
 class Entry {
     var filename: String = ""

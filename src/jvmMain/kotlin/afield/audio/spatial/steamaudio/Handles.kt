@@ -1,5 +1,11 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * Lifetime management for Steam Audio native objects: [SteamAudioObject] wraps a
+ * reference-counted handle, releases it once on close, and keeps a cleaner as a backstop for
+ * objects that are dropped without closing.
+ */
+
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout

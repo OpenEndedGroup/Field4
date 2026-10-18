@@ -1,6 +1,14 @@
 @file:afield.runtime.completion.CompletionCategory("Internal")
 package afield.graphics.paint
 
+/**
+ * A command-line entry point that replays a recorded pen gesture through a brush and writes the
+ * painted PNG, so an agent can try a gesture without a browser.
+ *
+ * [GestureReplayMain] reads a [GestureReplayRequest] (raw samples, or keyframe lanes in
+ * [GestureReplayLanes]) and prints a [GestureReplayReport] as JSON.
+ */
+
 import afield.animation.keyframes.Keyframe
 import afield.animation.keyframes.KeyframeEvaluator
 import afield.ui.visualization.PenSample

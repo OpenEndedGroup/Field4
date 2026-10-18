@@ -66,8 +66,11 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 
-/*
- * Controls whose value is more than one number, after the Max/MSP objects they borrow from:
+/**
+ * Grouped controls whose value is more than one number: multisliders, matrices, range sliders,
+ * menus and recorded gestures.
+ *
+ * They are named after the Max/MSP objects they borrow from:
  * `multislider` ([multiSlider]), `matrixctrl` ([matrix]), `rslider` ([rangeSlider]) and `umenu`
  * ([menu]). All four travel the same way — the whole value as a list of doubles in one
  * `array-update` message ([ArrayControlUpdate]) — and are cached as comma-separated text in
@@ -77,7 +80,11 @@ import kotlinx.serialization.json.decodeFromJsonElement
  * The multislider, matrix and range slider also have a **playhead**: a position the box writes and
  * the person only sees. It is pushed like a meter reading ([MeterHandle]: rate-limited, in memory,
  * never cached, never calling back), so a sequencer can drive it from its clock every tick.
+ *
+ * [gesture] records a pointer path as a looping take ([GestureHandle]); [ArcRange] and
+ * [arcContains] answer range questions on a circular dial.
  */
+
 
 /**
  * What [multiSlider], [matrix] and [rangeSlider] return: the control's value, and its playhead.

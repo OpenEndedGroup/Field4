@@ -10,6 +10,17 @@ import afield.geometry.path.times
 import afield.graphics.three.three
 
 /**
+ * The Kotlin/JS declarations a box sees when it runs Kotlin in the browser RemoteAR head.
+ *
+ * [RemoteArKotlinJs] describes the `THREE` globals the `extensions/remote_ar` head installs
+ * (scene objects, vectors, FLine construction, the stage proxy and the animation task loop) with
+ * [jsBinding]. From that one description it produces [RemoteArKotlinJs.declarations], the
+ * `external` declarations the Kotlin/JS compiler sees, and [RemoteArKotlinJs.completionDeclarations],
+ * the stub model the completion sidecar analyses on the JVM. It also adds FLine operators
+ * (`fline + rotate(0.5)`, `fline * 2.0`) and named scene slots (`SCENE[name] = obj`).
+ */
+
+/**
  * Typed Kotlin/JS view of the stable, useful core of the browser RemoteAR head.
  *
  * The surface is described ONCE via [jsBinding]; the compiler-facing `external` declarations and the

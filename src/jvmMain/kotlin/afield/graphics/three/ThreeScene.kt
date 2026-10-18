@@ -27,35 +27,23 @@ import afield.geometry.mesh.shadedNormals
 import kotlinx.serialization.Serializable
 
 /**
- * The intermediate representation the Three.js viewer draws.
+ * The intermediate representation the Three.js viewer draws: a [ThreeDrawable] is some geometry plus
+ * how to draw it.
  *
- * # Why this exists
+ * [FLine]s lower to drawables, [TriMesh]es lower to drawables, and anything with a `toTriMesh()`
+ * reaches the viewer that way, so a mesh can be orbited and share a scene with its FLine
+ * annotations. The viewer knows neither source type; it draws drawables.
  *
- * Field had two 3D renderers that shared no vocabulary. [FLine]s went to the Three.js viewer —
- * orbitable, pickable, editable, with the measure/section/explode inspector. [TriMesh]es went to the
- * CPU z-buffer rasterizer in [VisionGeometryPreview] and came back as a static PNG at a fixed camera.
- * A mesh could not be orbited, a mesh and its FLine annotations could not share a scene, and every
- * feature the viewer grew stopped at the FLine boundary.
+ * The geometry is a [ThreeGeometryData], a three.js `BufferGeometry` of named attributes and an
+ * index, and [TriMesh]'s positions, indices, normals and colours transcribe into it directly. What a
+ * drawable adds is per-drawable material state, [ThreeDrawStyle].
  *
- * A [ThreeDrawable] is the common currency: some geometry, plus how to draw it. FLines lower to one,
- * meshes lower to one, and anything with a `toTriMesh()` reaches the viewer for free. The viewer
- * gained no knowledge of either source type — it draws drawables.
- *
- * # What was already right
- *
- * Very little of this is new machinery. [ThreeGeometryData] was *already* a generic three.js
- * `BufferGeometry` — named attributes and an index, with nothing FLine-shaped about it — and
- * [TriMesh] is already `positions / indices / normals? / colors?`. The lowering below is mostly a
- * transcription. What was missing was the layer above: per-drawable **material state**, which the
- * payload had no way to express because every FLine fill wanted the same material.
- *
- * # Additive, deliberately
- *
- * [ThreeGeometryPayload]'s `lines` / `fills` / `points` are untouched, and a payload with an empty
- * [ThreeGeometryPayload.drawables] serialises byte for byte as it did before any of this existed.
- * That is what lets the editable path, the inspector and the twelve tests that pin the current
- * payload carry on without a second thought — and `ThreeScenePayloadCompatibilityTest` holds it there.
+ * [ThreeGeometryPayload]'s `lines`, `fills` and `points` are unchanged by drawables: a payload with
+ * an empty [ThreeGeometryPayload.drawables] serialises as a lines-only payload always has, which the
+ * editable path and the inspector rely on.
  */
+
+/** How one [ThreeDrawable] is drawn: which three.js object class, and its material settings. */
 @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 @Serializable
 data class ThreeDrawStyle(

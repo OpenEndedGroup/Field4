@@ -34,6 +34,17 @@ import java.time.Instant
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 
+/**
+ * A command-line tool that uploads files to OpenAI through the content-hash cache and chats over them.
+ *
+ * `main` reads `--file`, `--dir`, `--vfs-root` and `--vfs-file` targets (run it with `--help` for the
+ * full list), uploads each through [OpenAiFileStoreCache] so unchanged content keeps its file ID, and
+ * creates a vector store and file batch for the results when there are any. It then opens an interactive
+ * chat thread through [afield.ai.models.OpenAiIdeCodexBridge], with file search when a vector store was
+ * made and workspace symbol search when the Kotlin source index has definitions. The cache directory
+ * defaults to [FilestoreDir]; the API key comes from `--api-key` or `OPENAI_API_KEY`.
+ */
+
 private data class FilestoreCliConfig(
     val cacheDir: Path,
     val apiKey: String?,

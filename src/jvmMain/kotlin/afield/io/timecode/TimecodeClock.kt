@@ -3,6 +3,11 @@ package afield.io.timecode
 import afield.audio.synth.MidiInput
 
 /**
+ * [TimecodeClock] gives a box a timecode it can read at any moment, either generated or
+ * following incoming LTC audio or MIDI Time Code.
+ */
+
+/**
  * A timecode clock a box can read: [now] answers "what timecode is it?" at any moment, from any
  * thread.
  *

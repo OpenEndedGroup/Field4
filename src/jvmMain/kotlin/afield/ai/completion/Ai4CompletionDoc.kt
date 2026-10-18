@@ -1,5 +1,19 @@
 package afield.ai.completion
 
+/**
+ * Drafts documentation, with a language model, for a completion item whose declaration has no KDoc.
+ *
+ * [Ai4CompletionDoc.resolveDoc] finds the item's definition through the Kotlin source index and
+ * returns nothing when that definition already carries a KDoc. Otherwise it sends the declaration's
+ * source to a fast model and caches the draft in [GENERATED_COMPLETION_DOCS_FILE], keyed by symbol,
+ * file, line and a hash of the declaration source, so an edited declaration gets a fresh draft.
+ * [Ai4CompletionDoc.dropStaleGeneratedDocs] evicts drafts whose source has changed or gone; it is
+ * covered by `GeneratedCompletionDocSweepTest`. Drafts the docs revision pass declined, listed in
+ * [GENERATED_COMPLETION_DOCS_DECLINED_FILE], are neither shown nor regenerated.
+ *
+ * The model is `AFIELD_COMPLETION_DOC_MODEL`, defaulting to the fast model.
+ */
+
 import afield.ai.knowledge.FilestoreDir
 import afield.runtime.completion.KotlinDefinitionRecord
 import afield.runtime.completion.KotlinSourceIndex

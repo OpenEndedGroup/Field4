@@ -1,5 +1,11 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * Steam Audio's acoustic simulator: [SimulationSettings] fixes its quality and cost, [Simulator]
+ * runs direct, reflection and pathing simulation over a [Scene], and each [Source] carries its
+ * own [SimulationInputs] in and [SimulationOutputs] out.
+ */
+
 import afield.audio.spatial.steamaudio.raw.IPLCoordinateSpace3
 import afield.audio.spatial.steamaudio.raw.IPLSimulationInputs
 import afield.audio.spatial.steamaudio.raw.IPLSimulationOutputs

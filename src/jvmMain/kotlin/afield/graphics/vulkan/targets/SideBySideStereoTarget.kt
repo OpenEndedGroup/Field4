@@ -34,6 +34,15 @@ import org.lwjgl.vulkan.VkImageCopy
 import org.lwjgl.vulkan.VkImageSubresourceRange
 
 /**
+ * Stereo rendering into one packed image: [SideBySideStereoTarget] draws the scene once per eye
+ * and lays the two views side by side, left eye on the left half.
+ *
+ * With an [OpenXRHmdTarget] attached, the per-eye view and projection matrices come from the
+ * headset and the packed image can feed its swapchains; without one, an internal stereo camera
+ * supplies them, so the same box code renders a stereo pair on a desktop window.
+ */
+
+/**
  * Side-by-side stereo helper that renders two eye passes into a single RTT (left half / right half).
  *
  * - Acts as a sideBySideSource for OpenXR via [packed] image view.

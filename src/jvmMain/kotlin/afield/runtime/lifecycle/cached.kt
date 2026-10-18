@@ -40,6 +40,11 @@ import java.util.WeakHashMap
 import kotlin.reflect.KClass
 
 /**
+ * [cached], which hands a box back the value it made on its last run for the same keys, and closes
+ * the old value when the keys change.
+ */
+
+/**
  * Returns the [T] this box made last time for the same [keys], making one with [make] only when
  * there is none:
  *

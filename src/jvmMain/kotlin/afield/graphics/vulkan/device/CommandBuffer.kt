@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.device
 
+/**
+ * A Vulkan command buffer allocated from a [CommandPool]: primary or secondary, one-time-submit or reusable, with [CommandBuffer.beginRecording], [CommandBuffer.endRecording] and [CommandBuffer.reset].
+ *
+ * It tracks whether recording is inside a render pass instance, so transfer commands are not recorded where Vulkan forbids them, and can defer host-read barriers on graphics buffers until a flush.
+ */
+
 import afield.graphics.vulkan.buffers.VulkanBuffer
 import afield.graphics.vulkan.util.vkCheck
 import afield.app.diagnostics.logging.lblock

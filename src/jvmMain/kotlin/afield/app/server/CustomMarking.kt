@@ -24,6 +24,15 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
+ * Custom marking menus: [Box.customMarking] maps a direction and a label to a callback, and the frontend
+ * shows the entries as a radial menu on the box.
+ *
+ * [MarkingDirections] names the directions and their angles. When the menu is shown the server
+ * registers each callback under an id and sends the frontend serialisable entries; choosing an
+ * entry runs its callback.
+ */
+
+/**
  * Direction definitions for custom marking menus.
  * Angles match buttons.js polarToRect which uses sin(angle) for x, cos(angle) for y:
  * 0=South, 90=East, 180=North, 270=West (clockwise from south).

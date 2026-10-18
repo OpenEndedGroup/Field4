@@ -364,6 +364,18 @@ import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
+/**
+ * The Field server: the Ktor HTTPS and WebSocket application that holds open documents, runs box
+ * code and answers the browser's RPC messages.
+ *
+ * [Server] starts the HTTPS listener (and the loopback HTTP mirror), mounts the `/ws` socket and
+ * the static and iframe routes such as `/browse`, `/inspect` and `/logs`, and installs the message
+ * handlers. Each connected browser has a [SessionInformation] for the document it shows;
+ * [sessions] maps sockets to those, and [documents] maps document names to them.
+ * [OutputBackPressure] limits how much box output is in flight to a client at once. Command-line
+ * options such as `--workspace` and `--document` are read here as [home] and [documentArgument].
+ */
+
 
 /***
  */

@@ -15,6 +15,16 @@ import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
 
 /**
+ * GpuSchema derives a std430 memory layout from an annotated Kotlin class, packs instances of it into buffers, and emits the matching GLSL struct and `buffer_reference` declarations.
+ *
+ * Annotate a class with [GpuStruct] (and exclude members with [GpuIgnore]), then call
+ * [gpuSchema] to get its [GpuSchema]: field offsets, size and stride, [GpuSchema.write] and
+ * [GpuSchema.writeArray] for packing, [GpuSchema.arrayView] for indexed writes into a mapped buffer,
+ * and [GpuSchema.glslDeclarations] for the shader side. [bindGpu] binds a schema-backed value to a
+ * [Structure] member. Schemas are cached per class.
+ */
+
+/**
  * Marks a Kotlin class as a CPU/GPU ABI declaration.
  *
  * [GpuSchema] deliberately describes memory, not a particular Vulkan binding strategy. The same

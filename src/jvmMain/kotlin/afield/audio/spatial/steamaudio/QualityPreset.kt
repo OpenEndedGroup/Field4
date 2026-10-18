@@ -1,6 +1,11 @@
 package afield.audio.spatial.steamaudio
 
 /**
+ * Measured quality presets for Steam Audio reflections and binaural rendering, as
+ * [QualityPreset].
+ */
+
+/**
  * A measured set of quality settings, so the trade-offs do not have to be rediscovered.
  *
  * Every number in the presets below came from a measurement in this repository rather than from

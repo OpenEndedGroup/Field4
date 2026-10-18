@@ -9,7 +9,7 @@ import java.nio.ByteOrder
 /**
  * [DepthAnything] on its own thread, so a 100–400ms inference cannot stall the renderer.
  *
- * This is not an optimisation, it is the only workable arrangement. Depth Anything Small costs ≈101ms
+ * Depth Anything Small costs ≈101ms
  * at 266x266 and ≈388ms at 518x518 on a CPU execution provider; calling [DepthAnything.infer] from a
  * render loop turns 60fps into 2.6fps. So the renderer gets *staleness* instead of latency: the most
  * recent depth map that happens to be finished, which at 266x266 is six frames old at 60fps and looks
@@ -28,18 +28,22 @@ import java.nio.ByteOrder
  *
  * ## Frames are dropped, not queued
  *
- * [submit] overwrites any frame that has not been picked up yet. A queue would be wrong here: it
- * would grow without bound whenever inference is slower than capture — which is always — and every
+ * [DepthAnythingWorker.submit] overwrites any frame that has not been picked up yet. A queue would be wrong here: it
+ * would grow without bound whenever inference is slower than capture, which is always, and every
  * frame it held would be more stale than the one behind it. Dropping means the model is always
  * working on the newest frame available when it became free.
  *
- * ## Why [consume] copies
+ * ## Why consume copies
  *
- * [depthFp16] has a fixed identity because `StreamingTexture` captures its source buffer once, at
+ * [DepthAnythingWorker.depthFp16] has a fixed identity because `StreamingTexture` captures its source buffer once, at
  * construction. The worker therefore cannot write into it directly — the renderer could be reading it
  * mid-write and would show a torn map with a visible seam. Instead the worker publishes into an
- * internal buffer, and [consume] copies that into [depthFp16] under the lock, on the calling thread.
+ * internal buffer, and [DepthAnythingWorker.consume] copies that into [DepthAnythingWorker.depthFp16] under the lock, on the calling thread.
  * The copy is ~537KB at 518x518, tens of microseconds, and it is the only work the render thread does.
+ */
+
+/**
+ * Runs [DepthAnything] on a background thread and hands the renderer the newest finished depth map.
  *
  * @param width model input width, a multiple of [DepthAnything.PATCH]
  * @param height model input height, likewise

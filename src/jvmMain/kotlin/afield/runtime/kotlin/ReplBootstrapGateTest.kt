@@ -42,28 +42,28 @@ expect:
     - "ReplBootstrapGate tests passed"
 */
 /**
- * Regression tests for the K2 REPL bootstrap-ordering fix.
+ * Smoke test of the bootstrap ordering of a [KotlinInterface2] engine: the stdlib intro is
+ * evaluated before any ordinary snippet.
  *
- * Background: on one [KotlinInterface2] engine the K2 evaluator chains each snippet's
- * classloader onto the previously *evaluated* snippet and emits the shared `ReplState`
- * holder only into the first-evaluated snippet. So snippets must evaluate in the order
- * they compile; a later snippet evaluating before the stdlib intro used to throw
- * `NoClassDefFoundError: ReplState` (mis-reported as a "package declaration" error). The 2.4.20
- * uplift fixed that upstream — see [testOutOfOrderEvalIsNowSafe] — so the gate below is now
- * belt-and-suspenders rather than the thing standing between a box and a broken engine.
+ * On one engine the K2 evaluator chains each snippet's classloader onto the previously evaluated
+ * snippet and emits the shared `ReplState` holder only into the first-evaluated one, so snippets
+ * have to evaluate in the order they compile. A box launched under a running renderer evaluates
+ * the intro asynchronously while its launch setup evaluates the inherited preamble, and the two
+ * can race.
  *
- * A box connected under a running renderer used to hit this because makeKI evaluated the
- * intro asynchronously while the launch setup evaluated the inherited preamble — the two
- * raced. The real race is timing-dependent (it never fired naturally on macOS), so these
- * tests do NOT rely on thread timing to reproduce it. Instead they:
- *   1. deterministically produce the out-of-order evaluation and pin what it does (since the
- *      2.4.20 uplift it is simply safe — it evaluates, with the right answer), and
- *   2. assert the engine's bootstrap gate ([KotlinScriptEngine.armBootstrapGate] /
- *      [bootstrap] / [releaseBootstrapGate]) makes ordinary exec/evaluate wait for the
- *      intro — which is what removes the race in production.
+ * The race depends on timing, so the test does not rely on threads to reproduce it. It runs three
+ * cases:
  *
- * Follows the repo's lightweight "runnable object" test style (see [CompiledSnippetTest]).
+ * 1. It forces an out-of-order evaluation and checks that it evaluates with the right answer, which
+ *    it does since the Kotlin 2.4.20 uplift.
+ * 2. It checks that the engine's bootstrap gate ([KotlinScriptEngine.armBootstrapGate] and
+ *    [KotlinScriptEngine.bootstrap]) holds an ordinary exec until the gate is released.
+ * 3. It checks that a concurrent exec waits for the bootstrap to finish.
+ *
+ * Like [CompiledSnippetTest] it is a runnable object rather than a JUnit class.
  */
+
+/** Runs the three bootstrap-ordering cases; `main` fails if any of them does. */
 object ReplBootstrapGateTest {
 
     fun runTests(): Boolean {

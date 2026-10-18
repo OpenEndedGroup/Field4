@@ -7,6 +7,17 @@ import afield.math.autodiff.minimizeWithGradient
 import java.util.concurrent.CancellationException
 import kotlin.math.*
 
+/**
+ * [InflationSolver] relaxes an [Envelope] to equilibrium by raising pressure in steps and
+ * minimising the [Mechanics] energy at each one with Field's L-BFGS.
+ *
+ * A step is accepted on free-force residuals in newtons, not on optimiser step size, and the
+ * [Solution] reports anchor reactions, force and moment balance and the step [Solution.history].
+ * A failed continuation returns unconverged at the load fraction it reached. [SolveOptions]
+ * sets the step count, tolerances and the optional Newton polish.
+ */
+
+/** Continuation and stopping settings for [InflationSolver.solve]. */
 data class SolveOptions(val pressureSteps: Int = 8, val iterationsPerStep: Int = 6000,
                         val relativeTolerance: Double = 2e-5, val absoluteTolerance: Double = .02,
                         val minimumStep: Double = 1.0/128, val precondition: Boolean = false,

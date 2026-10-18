@@ -16,6 +16,14 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
+ * An embedded MQTT 3.1.1 broker, [MqttBroker], for talking MQTT inside Field with nothing else
+ * installed.
+ *
+ * It binds to loopback by default; bind `"0.0.0.0"` to accept devices on the local network. The
+ * class documentation lists which parts of the protocol it implements.
+ */
+
+/**
  * A small MQTT 3.1.1 broker that runs inside Field, so boxes, tests and demos can talk MQTT with
  * nothing installed and no network.
  *

@@ -24,6 +24,15 @@ import java.lang.reflect.Method
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.measureNanoTime
 
+/**
+ * Startup phases: functions annotated [RunsAt] are found by a classpath scan and called by [runAll] at a named phase.
+ *
+ * The phase names are the constants at the top of this file ([early], [plugins], [installHandlers],
+ * [newRoot], ...). [runAll] calls every function registered for a phase in priority order, passing
+ * those arguments its parameters ask for. The same scan fills [labelledArgumentFunctions].
+ */
+
+/** Startup phase: install Ktor plugins. */
 const val plugins = "plugins" // time to install KTor plugins
 const val early = "early" // early on in the startup
 const val installHandlers = "installHandlers" // install message handlers for websockets
@@ -32,10 +41,7 @@ const val newRoot = "newRoot" // whenever a new root is made
 const val macroRegistration = "macroRegistration" // whenever a new root is made
 const val returnValueRegistration = "returnValueRegistration" // register handlers for return values from box execution
 
-/**
- * this is the world's smallest DI framework
- */
-
+/** Marks a function to be called by [runAll] at phase [value], lower [priority] first. */
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class RunsAt(val value: String, val priority: Int = 0)

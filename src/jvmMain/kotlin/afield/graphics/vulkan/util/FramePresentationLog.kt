@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.util
 
+/**
+ * A diagnostic log of swapchain presentation timing, written to a file while enabled.
+ *
+ * [FramePresentationLog] records when each present call was made and returned, and when the presentation or scanout of that image was observed; [FramePresentationLog.mark] adds a labelled line to the same log.
+ */
+
 import afield.app.diagnostics.logging.lprintln
 import org.lwjgl.vulkan.KHRSwapchain
 import org.lwjgl.vulkan.VK10

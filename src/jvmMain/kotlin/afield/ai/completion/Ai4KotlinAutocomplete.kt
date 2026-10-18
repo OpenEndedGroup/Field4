@@ -1,5 +1,16 @@
 package afield.ai.completion
 
+/**
+ * Language-model autocomplete for box Kotlin code.
+ *
+ * [Ai4KotlinAutocomplete.complete] marks the cursor in the code, wraps it as a Kotlin script and asks
+ * a fast model for three short candidates, each with a one-line note, returned as
+ * [KotlinCompletionCandidate]s. One model thread is kept per file key, so later requests in the same
+ * editor reuse the conversation. The Kotlin counterpart of `Ai4GlslAutocomplete`.
+ *
+ * The model is `AFIELD_KOTLIN_AUTOCOMPLETE_MODEL`, defaulting to the fast model.
+ */
+
 import afield.ai.models.LlmBridge
 import afield.ai.models.LlmReasoningEffort
 import afield.ai.models.LlmThreadState

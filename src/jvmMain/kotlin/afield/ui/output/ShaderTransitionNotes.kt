@@ -54,6 +54,10 @@ import afield.app.diagnostics.logging.lprintln
 import java.util.concurrent.ConcurrentHashMap
 
 /**
+ * Notes and markers that report how a shader reload changed a box's uniforms, buffers and push constants.
+ */
+
+/**
  * What the last full shader reload of a box did to its interface, said where the person editing it is
  * looking.
  *

@@ -4,6 +4,15 @@ package afield.geometry.path.planning
 
 import kotlin.math.sqrt
 
+/**
+ * A small immutable 3D point type used by the path-planning curves in this package.
+ *
+ * [Point3D] carries finite double coordinates with the vector operations a curve needs:
+ * addition, difference, scaling, [Point3D.dot], [Point3D.cross], [Point3D.length] and
+ * [Point3D.normalized].
+ * [CubicBezier3D] is built from it.
+ */
+
 /** Immutable double-precision coordinates; units are chosen by the caller. */
 data class Point3D(val x: Double, val y: Double, val z: Double) {
     init { require(x.isFinite() && y.isFinite() && z.isFinite()) { "Coordinates must be finite" } }

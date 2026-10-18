@@ -27,6 +27,13 @@ import afield.media.video.*
 import afield.runtime.macros.gatherPreambleUpwards
 
 /**
+ * Completion documentation for shader bindings, taken from the comments a box's preamble carries.
+ *
+ * A trailing comment on a GLSL push-constant or structure member is copied onto the generated Kotlin
+ * accessor in the preamble; [ShaderBindingDocs] reads it back so completing that accessor shows the note.
+ */
+
+/**
  * Documentation for the shader bindings a box's preamble declares, read back out of the preamble itself.
  *
  * The last leg of a comment's journey out of a shader. A note written at the end of a push-constant

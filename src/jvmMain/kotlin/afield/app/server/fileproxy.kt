@@ -29,6 +29,16 @@ import java.util.Base64
 import java.util.UUID
 import kotlin.io.path.pathString
 
+/**
+ * File proxy boxes: a box whose `contents` mirror a text file, given by an absolute path or by a
+ * path under the workspace or the document folder.
+ *
+ * [refreshFileProxyBox] and [refreshFileProxyBoxes] reload a proxy from disk, and
+ * [writeFileProxyContents] writes an edit back, reporting the outcome as a [FileProxyWriteResult].
+ * A workspace or document proxy's path is checked to stay inside that folder; an absolute one is not. [fileProxyHandlers]
+ * installs the `create-file-proxy-box` handler the editor uses to make one.
+ */
+
 private const val FILE_PROXY_DEFAULT_WIDTH = 240.0
 private const val FILE_PROXY_DEFAULT_HEIGHT = 90.0
 private const val MAX_TEXT_PROXY_BYTES = 10L * 1024L * 1024L

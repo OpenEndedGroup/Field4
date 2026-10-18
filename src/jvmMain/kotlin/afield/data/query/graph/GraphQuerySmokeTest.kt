@@ -13,19 +13,19 @@ expect:
     - "GraphQuery smoke passed"
 */
 /**
- * Smoke for the reflective path layer ([afield.data.query.graph]) — the XPath-style query engine
- * over arbitrary live object graphs.
+ * Smoke test for the reflective path layer in `afield.data.query.graph`, the XPath-style query
+ * engine over arbitrary live object graphs.
  *
- * Deliberately exercises only the generic core, which is what lets this run as a plain
- * `jvm-main` entrypoint at all: since the layer was split out of `afield.audio.synth` the
- * core touches no `Runloop`, spawns no threads and opens no devices, so the JVM exits
+ * It exercises only the generic core, which is what lets it run as a plain `jvm-main`
+ * entrypoint: the core touches no `Runloop`, spawns no threads and opens no devices, so the JVM exits
  * naturally. The synth-coupled parameter head (modulation, suppliers, `GraphBindingRuntime`)
  * does register a runloop hook and is covered by the `jvmTest` suites instead.
  *
- * The load-bearing case here is [testFastPathAgreesWithFullWalk]: the literal-prefix
- * optimization must return exactly what a full traversal plus glob filter returns, or the
- * two resolution strategies would quietly disagree.
+ * The central case is `testFastPathAgreesWithFullWalk`: the literal-prefix optimization must
+ * return exactly what a full traversal plus glob filter returns.
  */
+
+/** The `graphquery.core.smoke` entrypoint; prints "GraphQuery smoke passed" on success. */
 object GraphQuerySmokeTest {
 
     @JvmStatic

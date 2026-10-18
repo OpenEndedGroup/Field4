@@ -8,6 +8,13 @@ import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout
 
 /**
+ * Probe points placed through a scene, and the batches that hold their baked data.
+ *
+ * [ProbeGenerationParams] describes how probes are laid out, [ProbeArray] holds the generated
+ * points, and [ProbeBatch] carries them together with bakes keyed by [BakedDataIdentifier].
+ */
+
+/**
  * Names a particular piece of baked data within a [ProbeBatch].
  *
  * A batch can hold several independent bakes -- reverb, one static source, pathing -- and this

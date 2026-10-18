@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.util
 
+/**
+ * Rigid camera poses for blending between viewpoints: [CameraPose] stores a [Camera]'s placement as a dual quaternion plus a focus distance.
+ *
+ * [pose] reads one from a camera and [applyPose] writes it back. [sclerpTo] moves a camera toward a target pose by screw interpolation and [nlerpTo] by normalised linear interpolation.
+ */
+
 import afield.math.linalg.DualQuaternionf
 import afield.math.linalg.Matrix3f
 import afield.math.linalg.Quaternionf
