@@ -1,0 +1,7 @@
+{
+  "authoredCancellationCallbacks": 2,
+  "throwInsideActualBoxReceiver": true,
+  "normalCallbacksRemainUsable": true,
+  "submittedGeometryAndReynoldsRetainSnapshotAfterPreviewEdit": true,
+  "limits": "Executes extracted authored callbacks, snapshot statements, real FlowParameters and SimulationGeometry constructors. No Kratos solve, CFD result or capture is synthesized."
+}

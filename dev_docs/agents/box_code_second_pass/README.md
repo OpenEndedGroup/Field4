@@ -130,7 +130,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Bound Nano GPU output slices and preserve adjacent packed lanes](../box_code_adoption_batch_65/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **355 of 405 findings addressed**; 50 remain open. These counts do not claim
+| [Keep Kratos cancellation, result snapshots and graph restoration safe](../box_code_adoption_batch_66/README.md) | 6 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **361 of 405 findings addressed**; 44 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 
