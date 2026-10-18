@@ -43,9 +43,8 @@ operations:
 
         val owner = renderer
         prop<OpenDlssNrStudy>(lab)
-        // Leave null for the editable fragment shader; try the bundled drawing or your own image.
+        // The bundled still image. Set null to render and live-reload this box's fragment shader.
         val imagePath: String? = "public/docs/assets/opendlssnr/ink-input.png"
-        // val imagePath: String? = "public/docs/assets/opendlssnr/ink-input.png"
         lab = OpenDlssNrStudy(
             owner,
             size = 768,
@@ -70,15 +69,23 @@ operations:
                 slider("Structure", min = -10.0, max = 30.0, initialValue = 10.0) { structure = it.toFloat() }
                 slider("NR intensity (0 = source)", min = 0.0, max = 1.0, initialValue = 1.0) { intensity = it.toFloat() }
             }
-            checkbox("Animate source", initialValue = false) { animate = it }
+            if (imagePath == null) {
+                checkbox("Animate source", initialValue = false) { animate = it }
+            }
             slider("Grade red", min = 0.0, max = 2.0, initialValue = .65) { red = it.toFloat() }
             slider("Grade green", min = 0.0, max = 2.0, initialValue = 1.1) { green = it.toFloat() }
             slider("Grade blue", min = 0.0, max = 2.0, initialValue = 1.4) { blue = it.toFloat() }
-            button("Reload edited shaders") { if (it) reload = true }
+            if (imagePath == null) {
+                button("Reload edited shaders") { if (it) reload = true }
+            }
         }
         displayOpen("neural ink")
         println(
-            "SOURCE | NR | GRADE · 768 × 768 per panel. Edit fragment, then reload. Run record clip for six seconds of GPU frames.",
+            "SOURCE | NR | GRADE · 768 × 768 per panel. Run record clip for six seconds of GPU frames.",
+        )
+        println(
+            if (imagePath == null) "Edit fragment, then Reload edited shaders."
+            else "Still-image input: set imagePath to null and rerun to edit the source shader.",
         )
         val owned = lab
         frames {
@@ -193,6 +200,7 @@ operations:
         val controls = study.controls.copy()
         val grade = study.grade.toString()
         val previousTime = study.time
+        val previousAnimate = study.animate
         study.recording = true
         study.animate = false
         frames {
@@ -210,6 +218,7 @@ operations:
                 println("NR STUDY RECORD DONE: 180 frames at 30 fps, 2304 × 832; $folder")
             } finally {
                 study.time = previousTime
+                study.animate = previousAnimate
                 study.recording = false
             }
         }

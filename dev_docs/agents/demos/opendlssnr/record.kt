@@ -9,6 +9,7 @@ val folder = Path.of("build/opendlssnr-study/clip").toAbsolutePath().also { it.c
 val controls = study.controls.copy()
 val grade = study.grade.toString()
 val previousTime = study.time
+val previousAnimate = study.animate
 study.recording = true
 study.animate = false
 frames {
@@ -26,6 +27,7 @@ frames {
         println("NR STUDY RECORD DONE: 180 frames at 30 fps, 2304 × 832; $folder")
     } finally {
         study.time = previousTime
+        study.animate = previousAnimate
         study.recording = false
     }
 }
