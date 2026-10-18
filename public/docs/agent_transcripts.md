@@ -1053,6 +1053,9 @@ spiral, the ellipsoid method with its ellipses, the simplex walk and cutting pla
 with its own numbers. *A turning objective* is launched: the direction turns once every twelve
 seconds while the hexagon's vertices breathe, and the central path, the PDHG spiral and the simplex
 walk are recomputed twenty times a second. Change the weights or the PDHG step size and run it again.
+*Drag the polygon* draws the [fan as a map](lp_curves.md#the-fan-as-a-map) in an editable viewer:
+choose the pencil tool and drag a corner, and the grid is redrawn for the new polygon when the drag
+ends.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/lp_curves/metadata.edn)
 
@@ -2421,6 +2424,16 @@ library and its OpenCV, Boost and Eigen packages: the welcome page's **Geometry 
 says how, or run `./gradlew buildPolyvectorNative`.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/polyvector_explorer/metadata.edn)
+
+### tracking_explorer
+
+[Tracking features through time and scale](topology_tracking.md). The first box, launched, moves six
+hills in a computed field and follows their peaks frame by frame, each with its own colour and
+trail, reporting how many peaks there are and how many tracks have existed. The second follows the
+dark places in a photograph across increasing blur and draws each as a circle the size of the
+largest blur it survives. Needs the optional Morse–Smale library: `./gradlew buildMorseSmaleNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/tracking_explorer/metadata.edn)
 
 ## FieldML scenes
 

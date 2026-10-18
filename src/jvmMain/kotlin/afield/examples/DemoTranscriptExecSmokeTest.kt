@@ -309,7 +309,8 @@ object DemoTranscriptExecSmokeTest {
         // closed contours and reports the numbers, all through showPlaneGrid.
         "close_node_demo",
         // lp_curves.md's companion: LP methods as curve generators over LpPolygon, drawn through
-        // showPlaneGrid / showPlane. The second box ends in `animate { }` and is launched. CPU only.
+        // showPlaneGrid / showPlane. The second box ends in `animate { }` and is launched; the third
+        // draws the fan map in an editable threeLines viewer. CPU only.
         "lp_curves",
         // lp_curves.md's 3-D section companion: the same methods over LpPolytope, drawn through `three { }`
         // (a Three.js payload sent to display), so no Window and no Renderer. Both boxes execute.
@@ -538,6 +539,8 @@ object DemoTranscriptExecSmokeTest {
         "kratos_structural_playground",
         // Optional native field_morse_smale (./gradlew buildMorseSmaleNative); the live box loops forever.
         "morse_smale_explorer",
+        // Optional native field_morse_smale; the live box loops forever.
+        "tracking_explorer",
         // Optional native field_principal_curves (./gradlew buildPrincipalCurvesNative); the live box loops forever.
         "principal_curves_explorer",
         // Optional native field_polyvector (OpenCV, Boost, Eigen; ./gradlew buildPolyvectorNative).

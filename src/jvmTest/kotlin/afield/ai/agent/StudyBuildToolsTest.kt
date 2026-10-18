@@ -342,6 +342,35 @@ class StudyBuildToolsTest {
         }
     }
 
+    @Test fun aFailedAttemptsFailureNotesReachTheAgentWithoutMakingItCurrent() {
+        val info = session()
+        val box = Box("source").also { info.boxes[it.id] = it }
+        val events = java.util.concurrent.CopyOnWriteArrayList<LlmProgressUpdate>()
+        StudyBuilds(Files.createTempDirectory("failure-notes-wait").toFile(), listOf(
+            StudyBuildStage("routes", "Relax service routes", "v1",
+                failureNotes = { job -> listOf(StudyBuildNotice("Held routes: ${job.problem?.details?.get("held")}.", StudyBuildNoticeKind.ERROR,
+                    StudyBuildView("held-routes", "each held route"))) }) {
+                throw StudyBuildFailure(StudyBuildProblem("routes-held", "2 routes were held.", details = mapOf("held" to "r3, r7")))
+            }), { emptyMap() }).use { builds ->
+            box.properties["_studyBuilds:study"] = BoxStudyBuildBinding(box, "study", builds)
+            val job = builds.start("routes", builds.stages().single().fingerprint!!)
+            val ctx = ToolExecutionContext(fieldGraph = FieldGraphTools(info, host), reportProgress = { events += it })
+            val q = WaitStudyBuildRequest(box.id, "study", job.id, waitSeconds = 600.0)
+            val result = registry.executeByName(ctx, q.javaClass.simpleName, aiToolMapper.writeValueAsString(q)) as StudyBuildToolResult
+            assertEquals(true, result.details["terminal"])
+            assertEquals("Relax service routes · Check failed", events.last().title)
+            assertContains(events.last().body, "Held routes: r3, r7.")
+            assertContains(aiToolMapper.writeValueAsString(result.details["resultNotes"]), "each held route")
+            assertEquals(false, (result.details["currency"] as Map<*, *>)["isCurrent"])
+            val stage = aiToolMapper.writeValueAsString(call(info, InspectStudyBuildsRequest(box.id, "study")))
+            assertContains(stage, "\"failureNotes\":[{")
+            assertContains(stage, "Held routes: r3, r7.")
+            assertNull(builds.stages().single().current)
+            assertTrue(builds.stages().single().resultNotes.isEmpty())
+            assertContains(aiToolMapper.writeValueAsString(call(info, InspectStudyBuildsRequest(box.id, "study", job.id))), "Held routes: r3, r7.")
+        }
+    }
+
     @Test fun startAndWaitReturnsCompactEvidenceAndLiveCurrencyInOneCall() {
         val info = session()
         val box = Box("source").also { info.boxes[it.id] = it }
