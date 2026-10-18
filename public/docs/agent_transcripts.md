@@ -2442,6 +2442,15 @@ libraries.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/contour_trees_explorer/metadata.edn)
 
+### vector_field_explorer
+
+[Vector field topology](vector_field_topology.md). The first box builds a flow from swirls,
+sources and sinks and draws its critical points and separatrices over streamlines, with a slider
+that scales the swirl. The second draws the ridges and valleys of the leaf print's brightness as
+the topology of its gradient, with a blur slider. Plain Kotlin, no optional libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/vector_field_explorer/metadata.edn)
+
 ## FieldML scenes
 
 <!-- transcript-index: verified-by = compile -->

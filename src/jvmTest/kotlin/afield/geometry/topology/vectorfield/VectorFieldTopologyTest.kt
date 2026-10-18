@@ -85,5 +85,7 @@ class VectorFieldTopologyTest {
         assertEquals(tracker.alive.size, tracker.tracks.size, "features keep their tracks as the hills slide")
         val split = VectorFieldTopology.compute(flow { x, y -> (x - 20.5) to -(y - 15.5) })
         assertEquals(1, split.criticalPoints.size)
+        val u = Img.generate(41, 31) { x, _ -> (x - 20.5).toFloat() }; val v = Img.generate(41, 31) { _, y -> -(y - 15.5).toFloat() }
+        assertEquals(FlowCriticalType.SADDLE, VectorFieldTopology.compute(u, v).criticalPoints.single().type)
     }
 }

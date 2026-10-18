@@ -45,7 +45,8 @@ data class FlowCriticalPoint(
  * A separatrix: the streamline that leaves a saddle along one of its four eigen-directions. An
  * [unstable] one flows out of the saddle (forward in time); a stable one flows into it (traced
  * backward). [points] are pixel positions starting at the saddle; [end] is the critical point it
- * reached, or null if it left the frame or ran out of length.
+ * reached, or null if it left the frame, ran out of length, or stopped at a point weaker than
+ * `minStrength`.
  */
 class Separatrix(val saddle: Int, val unstable: Boolean, val points: DoubleArray, val end: Int?) {
     val size get() = points.size / 2
@@ -242,7 +243,7 @@ class VectorFieldTopology internal constructor(
             val uu = FloatArray(w * h) { u.data[it * u.channels] }; val vv = FloatArray(w * h) { v.data[it * v.channels] }
             require(uu.none { it.isNaN() } && vv.none { it.isNaN() }) { "the field has NaN values" }
             val field = Field(w, h, uu, vv)
-            val cps = ArrayList<FlowCriticalPoint>()
+            val all = ArrayList<FlowCriticalPoint>()
             for (y in 0 until h - 1) for (x in 0 until w - 1) {
                 val a = y * w + x
                 // the two triangles of this square: (a, a+1, a+w+1) and (a, a+w+1, a+w)
@@ -251,21 +252,22 @@ class VectorFieldTopology internal constructor(
                     val p2 = if (tri == 0) a + w + 1 else a + w
                     zeroIn(field, a, p1, p2, w)?.let { (px, py, j) ->
                         // a zero on a shared edge or vertex would be found twice
-                        if (cps.none { abs(it.x - px) < 1e-9 && abs(it.y - py) < 1e-9 }) {
-                            val c = FlowCriticalPoint(2 * a + tri, px, py, classify(j, centerTolerance), j)
-                            if (c.strength >= minStrength) cps.add(c)
-                        }
+                        if (all.none { abs(it.x - px) < 1e-9 && abs(it.y - py) < 1e-9 })
+                            all.add(FlowCriticalPoint(2 * a + tri, px, py, classify(j, centerTolerance), j))
                     }
                 }
             }
+            val cps = all.filter { it.strength >= minStrength }
+            val kept = cps.map { it.id }.toSet()
             val seps = ArrayList<Separatrix>()
             for (s in cps) if (s.type == FlowCriticalType.SADDLE) {
                 val j = s.jacobian
                 for ((lambda, ev) in eigen(j)) for (sgn in intArrayOf(1, -1)) {
                     val unstable = lambda > 0
                     val sx = s.x + sgn * ev[0] * CAPTURE * 0.8; val sy = s.y + sgn * ev[1] * CAPTURE * 0.8
-                    val (pts, end) = field.trace(sx, sy, if (unstable) 1 else -1, maxLength, step, cps, s.id)
-                    seps.add(Separatrix(s.id, unstable, doubleArrayOf(s.x, s.y) + pts, end))
+                    // traced against every zero, so it stops cleanly at a weak one too (and then ends nowhere)
+                    val (pts, end) = field.trace(sx, sy, if (unstable) 1 else -1, maxLength, step, all, s.id)
+                    seps.add(Separatrix(s.id, unstable, doubleArrayOf(s.x, s.y) + pts, end?.takeIf { it in kept }))
                 }
             }
             return VectorFieldTopology(w, h, cps, seps, field)
