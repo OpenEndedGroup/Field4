@@ -88,6 +88,19 @@ class FeatureTrackingTest {
         assertTrue(predicted.tracks.all { it.samples.size == 5 })
     }
 
+    /** Every tracker member the tracking docs page names, called once. */
+    @Test
+    fun documentedSurface() {
+        val t = FeatureTracker(MatchingWeights(valueWeight = 1.0, birthDistance = 10.0, maxDistance = 20.0))
+        t.add(0.0, [max(10.0, 10.0), max(50.0, 50.0)])
+        t.add(1.0, [max(12.0, 10.0), max(52.0, 50.0)]) { _, _ -> 1.0 to 0.0 }
+        assertEquals(2, t.toFLines().size)
+        assertEquals(2, t.aliveFLine().nodes.size)
+        assertEquals(3, t.network(threeD = true).dimension)
+        assertTrue(t.born.isEmpty() && t.died.isEmpty() && t.alive.size == 2 && t.tracks.all { it.samples.size == 2 })
+        assertTrue(FeatureTracker.colourOf(3).w == 1f)
+    }
+
     private fun available(): Boolean {
         if (!MorseSmaleLibrary.isAvailable) println("SKIPPED tracking-with-Morse–Smale tests: ${MorseSmaleLibrary.describe()}")
         return MorseSmaleLibrary.isAvailable
@@ -135,5 +148,6 @@ class FeatureTrackingTest {
         val big = s.tracker.tracks.first { it.samples.first().second.x < 80 }
         val small = s.tracker.tracks.first { it.samples.first().second.x > 80 }
         assertTrue(s.scaleOf(big) > s.scaleOf(small), "big reaches σ ${s.scaleOf(big)}, small ${s.scaleOf(small)}")
+        assertTrue(s.complexes.last().persistenceDiagram(dimension = 1).isNotEmpty() || s.complexes.last().persistenceDiagram(dimension = 0).isNotEmpty())
     }
 }

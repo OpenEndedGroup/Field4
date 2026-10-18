@@ -2422,6 +2422,16 @@ says how, or run `./gradlew buildPolyvectorNative`.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/polyvector_explorer/metadata.edn)
 
+### tracking_explorer
+
+[Tracking features through time and scale](topology_tracking.md). The first box, launched, moves six
+hills in a computed field and follows their peaks frame by frame, each with its own colour and
+trail, reporting how many peaks there are and how many tracks have existed. The second follows the
+dark places in a photograph across increasing blur and draws each as a circle the size of the
+largest blur it survives. Needs the optional Morse–Smale library: `./gradlew buildMorseSmaleNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/tracking_explorer/metadata.edn)
+
 ## FieldML scenes
 
 <!-- transcript-index: verified-by = compile -->
