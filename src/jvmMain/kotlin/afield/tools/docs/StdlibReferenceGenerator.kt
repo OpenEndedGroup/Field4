@@ -1612,6 +1612,28 @@ object StdlibReferenceGenerator {
     // ── cross-references ────────────────────────────────────────────────────────────────────────
 
     /**
+     * One published declaration as [TypeAnchors] sees it: where it lives, what a KDoc reference
+     * may call it, and the `page.md#anchor` its row carries.
+     *
+     * @param owner the type a member is declared in (`Owner` of `Owner.member`), null at top level
+     * @param receiver an extension's receiver type, simple name, null for anything else
+     * @param isType a type heading rather than a table row; only these resolve through an unknown
+     *   capitalised qualifier, see [TypeAnchors.resolveReference]
+     */
+    internal data class AnchorEntry(
+        val file: String,
+        val name: String,
+        val owner: String?,
+        val receiver: String?,
+        val isType: Boolean,
+        val target: String,
+        val pkg: String = "",
+    )
+
+    /** What a file can see without qualifying: its own package and its imports. */
+    internal data class FileScope(val pkg: String, val imports: List<String>)
+
+    /**
      * Where a KDoc `[Symbol]` reference is allowed to point, resolved in two steps.
      *
      * A reference resolves **inside the file that wrote it** first, and against the whole corpus only
@@ -1645,28 +1667,6 @@ object StdlibReferenceGenerator {
      * package name, a JDK type — still falls back to the last segment, so `[java.nio.ByteBuffer]`
      * behaves exactly as before.
      */
-    /**
-     * One published declaration as [TypeAnchors] sees it: where it lives, what a KDoc reference
-     * may call it, and the `page.md#anchor` its row carries.
-     *
-     * @param owner the type a member is declared in (`Owner` of `Owner.member`), null at top level
-     * @param receiver an extension's receiver type, simple name, null for anything else
-     * @param isType a type heading rather than a table row; only these resolve through an unknown
-     *   capitalised qualifier, see [TypeAnchors.resolveReference]
-     */
-    internal data class AnchorEntry(
-        val file: String,
-        val name: String,
-        val owner: String?,
-        val receiver: String?,
-        val isType: Boolean,
-        val target: String,
-        val pkg: String = "",
-    )
-
-    /** What a file can see without qualifying: its own package and its imports. */
-    internal data class FileScope(val pkg: String, val imports: List<String>)
-
     internal class TypeAnchors(entries: List<AnchorEntry>, private val scopes: Map<String, FileScope> = emptyMap()) {
         /** Every top-level declaration of an ambiguous bare name, for [scoped]. */
         private val candidates = mutableMapOf<String, MutableList<AnchorEntry>>()
