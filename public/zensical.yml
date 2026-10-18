@@ -185,6 +185,7 @@ nav:
       - Parametric CAD (SolidCraft): solidcraft.md
       - "SolidCraft: build from code": solidcraft_building.md
       - Tetrahedral Meshing (TetGen): tetgen.md
+      - Morse–Smale Complexes: morse_smale.md
       - A Solid, Written Down (solidsl): solid_notation.md
       - Geometry From Disk (OBJ, STL, PLY, glTF): geometry_from_disk.md
       - Polytopes & the Conway Algebra: polytope_examples.md
