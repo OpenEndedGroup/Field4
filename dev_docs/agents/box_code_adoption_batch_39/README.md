@@ -18,3 +18,7 @@ Canonical sidecars, builder and transcript contain exactly the same four code bo
 - Actual import/ktfmt covers 12 code occurrences; three collection-literal conversions. Reviewed tokens, execution boundaries, raw strings and YAML containers are checked. Explicit collection/idiom audit and scoped compile gates pass. No GLSL source is changed.
 
 Reusable harnesses and evidence.tar.gz retain exact results, numeric samples, genuine captures, failures and source/runtime diffs. Derived contact sheets are private QA only and excluded. Runtime coverage is this graph and the CPU ordering cases; the full corpus pass remains incomplete.
+
+## Landing repair
+
+The full guard exposed two pre-existing stacked class KDocs when this batch touched FabricatePassGraph.kt. The short duplicate is removed; the complete ordering/API explanation now attaches directly to the class. No executable tokens change. checkKDocAttachment passes after the repair; the cumulative topic is re-enqueued through land.py. This does not claim that the new queue item has landed.

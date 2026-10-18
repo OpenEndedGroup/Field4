@@ -26,11 +26,6 @@ internal fun <T> inputBeforeReplacement(
  * plain strings, which is what `FabricatePassGraphTestMain.kt` does.
  */
 
-/**
- * Small ordered map for renderer passes. Kotlin's default mutableMapOf currently preserves
- * insertion order, but this wrapper makes that contract explicit and gives tests a pure data
- * structure to exercise before we touch Vulkan objects.
- */
 class FabricatePassGraph<T>(initial: Iterable<Pair<String, T>> = emptyList()) {
     private val ordered = LinkedHashMap<String, T>()
 
