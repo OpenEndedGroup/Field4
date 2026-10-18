@@ -16,7 +16,9 @@ import kotlin.math.sqrt
  *
  * Each line is drawn in its `color` property (a [Vec4] with alpha) at its `thickness` (in output
  * pixels), or [color] and [thickness] when it has none. A line with `pointed = true` is drawn as
- * dots of `pointSize`, coloured per node by each node's own `color`, as Field draws it on the canvas.
+ * dots of `pointSize`, coloured per node by each node's own `color`, as Field draws it on the canvas. A
+ * line with `filled = true` is filled in its `fill` colour (even-odd), and outlined too unless
+ * `stroked = false`.
  *
  * ```
  * showImgGrid("separatrices" to photo.drawFLines(result.toFLines() + result.criticalPointsFLine(), scale = 2.0))
@@ -46,6 +48,13 @@ fun Img.drawFLines(
                 c = (n.properties["color"] as? Vec4) ?: c
                 val p = n.toOrNull ?: return@forEach
                 out.stampCapsule(p.x * scale, p.y * scale, p.x * scale, p.y * scale, size / 2, c)
+            }
+        } else if (line.properties["filled"] == true) {
+            val c = (line.properties["fill"] as? Vec4) ?: (line.properties["color"] as? Vec4) ?: color
+            out.fillPolygons(line.polylines().map { poly -> poly.map { Vec3(it.x * scale.toFloat(), it.y * scale.toFloat(), 0f) } }, c)
+            if (line.properties["stroked"] != false) {
+                val half = ((line.properties["thickness"] as? Number)?.toDouble() ?: thickness) / 2
+                line.polylines().forEach { poly -> for (i in 1 until poly.size) out.stampCapsule(poly[i - 1].x * scale, poly[i - 1].y * scale, poly[i].x * scale, poly[i].y * scale, half, c) }
             }
         } else {
             val c = (line.properties["color"] as? Vec4) ?: color
@@ -103,5 +112,33 @@ private fun Img.stampCapsule(ax: Double, ay: Double, bx: Double, by: Double, r: 
         data[i] += ((c.x - data[i]) * coverage).toFloat()
         data[i + 1] += ((c.y - data[i + 1]) * coverage).toFloat()
         data[i + 2] += ((c.z - data[i + 2]) * coverage).toFloat()
+    }
+}
+
+/** Blends the even-odd interior of [polys] into this RGB image, sampling each pixel at its centre. */
+private fun Img.fillPolygons(polys: List<List<Vec3>>, c: Vec4) {
+    val all = polys.flatten()
+    if (all.isEmpty()) return
+    val y0 = max(0, floor(all.minOf { it.y }.toDouble()).toInt())
+    val y1 = min(height - 1, ceil(all.maxOf { it.y }.toDouble()).toInt())
+    val xs = ArrayList<Double>()
+    for (y in y0..y1) {
+        val sy = y + 0.5
+        xs.clear()
+        polys.forEach { poly ->
+            for (i in poly.indices) {
+                val a = poly[i]; val b = poly[(i + 1) % poly.size]
+                if ((a.y <= sy) != (b.y <= sy)) xs.add(a.x + (sy - a.y) / (b.y - a.y) * (b.x - a.x))
+            }
+        }
+        xs.sort()
+        for (k in 0 until xs.size - 1 step 2) {
+            for (x in max(0, ceil(xs[k] - 0.5).toInt())..min(width - 1, floor(xs[k + 1] - 0.5).toInt())) {
+                val i = (y * width + x) * 3
+                data[i] += ((c.x - data[i]) * c.w)
+                data[i + 1] += ((c.y - data[i + 1]) * c.w)
+                data[i + 2] += ((c.z - data[i + 2]) * c.w)
+            }
+        }
     }
 }

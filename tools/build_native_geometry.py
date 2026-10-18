@@ -25,6 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 MODULES = {
     "morse-smale": "field_morse_smale",
+    "principal-curves": "field_principal_curves",
 }
 
 
