@@ -45,11 +45,13 @@ import afield.geometry.path.planning.Point3D
  * coplanar construction boundaries and triangulation diagonals are omitted. Separate parts retain their edges.
  * Z-up is an optional rigid display rotation (x,z,-y); canonical data and artifact identity stay unchanged.
  * An overlay uses the same part ID/group as its solid, so visibility and supplied motions agree.
+ * [panel] is the viewport that draws the parts in a multi-panel scene; `-1` draws them in every panel, which is how a
+ * sheet of close-ups shows one assembly framed differently in each panel (`panel(bounds = …)`).
  */
 fun ThreeSceneBuilder.solidParts(parts: Map<String,SolidPlanarMesh>,
     origin: Point3D = Point3D.ORIGIN, assembly: List<ThreeAssemblyMotion> = emptyList(),
     review: ThreeReviewState? = null, explode: ThreeExplode = ThreeExplode(), units: String = "mm",
-    upAxis: ThreeUpAxis = ThreeUpAxis.Y, partPaths: Map<String,List<String>> = emptyMap()) {
+    upAxis: ThreeUpAxis = ThreeUpAxis.Y, partPaths: Map<String,List<String>> = emptyMap(), panel: Int = 0) {
     require(parts.isNotEmpty() && parts.keys.none { it.isBlank() })
     require(assembly.map { it.part }.distinct().size==assembly.size && assembly.all { it.part in parts && it.displacement.size==3 && it.displacement.all(Double::isFinite) })
     fun displayVector(x: Double, y: Double, z: Double) =
@@ -66,12 +68,12 @@ fun ThreeSceneBuilder.solidParts(parts: Map<String,SolidPlanarMesh>,
             for (axis in 0..2) positions[i+axis]=p[axis].toFloat()
         }
         require(positions.all(Float::isFinite))
-        mesh(TriMesh(positions,boundary.indices.copyOf()),id=id,label=id,wireframe=false,flatShading=true,pickable=true,group=group)
+        mesh(TriMesh(positions,boundary.indices.copyOf()),id=id,label=id,wireframe=false,flatShading=true,pickable=true,group=group,panel=panel)
         val edges = solidOutlineEdges(boundary)
         topology[id] = solidPartTopology(boundary, edges)
         val lines=edges.flatMap { (a,b)->listOf(a,b).flatMap { i->listOf(positions[3*i],positions[3*i+1],positions[3*i+2]) } }.toFloatArray()
         drawables+=ThreeDrawable(ThreeGeometryData(mapOf("position" to ThreeAttribute(itemSize=3,array=lines),
-            "color" to ThreeAttribute(itemSize=3,array=FloatArray(lines.size){.15f}))),ThreeDrawStyle(kind="lines"),id=id,group=group)
+            "color" to ThreeAttribute(itemSize=3,array=FloatArray(lines.size){.15f}))),ThreeDrawStyle(kind="lines"),id=id,group=group,panel=panel)
     }
     background("#080b0c");helpers(false)
     inspect(units=units,explode=explode,groups=ids,artifactDigest=solidArtifactDigest(parts),renderOrigin=doubleArrayOf(origin.x,origin.y,origin.z),renderUpAxis=upAxis,assembly=displayedAssembly,review=review)
