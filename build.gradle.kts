@@ -3719,6 +3719,7 @@ fun registerNativeGeometryBuild(taskName: String, module: String) = tasks.regist
 }
 
 val buildMorseSmaleNative = registerNativeGeometryBuild("buildMorseSmaleNative", "morse-smale")
+val buildPrincipalCurvesNative = registerNativeGeometryBuild("buildPrincipalCurvesNative", "principal-curves")
 
 // Build native/field-slug, the helper afield.graphics.text.slug.SlugPath shells out to. Explicit opt-in
 // like Loris: build.sh fetches the pinned Slughorn revision from GitHub on first run.
@@ -4059,7 +4060,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildMorseSmaleNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, fetchSteamAudioNatives, "buildLorisNative", buildD2LayoutHelper)
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildMorseSmaleNative, buildPrincipalCurvesNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, fetchSteamAudioNatives, "buildLorisNative", buildD2LayoutHelper)
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 

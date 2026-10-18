@@ -538,6 +538,8 @@ object DemoTranscriptExecSmokeTest {
         "kratos_structural_playground",
         // Optional native field_morse_smale (./gradlew buildMorseSmaleNative); the live box loops forever.
         "morse_smale_explorer",
+        // Optional native field_principal_curves (./gradlew buildPrincipalCurvesNative); the live box loops forever.
+        "principal_curves_explorer",
         // The same worker, times fifty: a grid sweep is minutes of solver, so CI compiles it and
         // the `kratos.study.parameter-sweep` catalog entry runs the same code path at 3x3.
         "kratos_parameter_study",

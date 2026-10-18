@@ -30,6 +30,7 @@ object NativeGeometry {
         // Each entry names a module's library object, which only knows where its file would be;
         // nothing is loaded until a module is used.
         register("morseSmale") { afield.geometry.topology.morsesmale.MorseSmaleLibrary }
+        register("principalCurves") { afield.geometry.curves.principal.PrincipalCurvesLibrary }
     }
 
     /** Called by each module's library object; the factory is evaluated only when asked. */

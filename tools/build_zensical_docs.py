@@ -468,6 +468,10 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
         native_geometry_library_path("morse-smale", "field_morse_smale", "AFIELD_MORSE_SMALE_LIBRARY"),
         "./gradlew buildMorseSmaleNative",
     ),
+    "principal-curves": (
+        native_geometry_library_path("principal-curves", "field_principal_curves", "AFIELD_PRINCIPAL_CURVES_LIBRARY"),
+        "./gradlew buildPrincipalCurvesNative",
+    ),
     "paint": (paint_library_path, "./gradlew buildPaintNative"),
     "libpd": (libpd_library_path, "./gradlew buildLibpdNative"),
     "csound": (csound_library_path, "./gradlew buildCsoundNative"),
