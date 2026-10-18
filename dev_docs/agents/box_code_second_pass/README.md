@@ -96,7 +96,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Clear the remaining CV overlays](../box_code_adoption_batch_47/README.md) | Three findings addressed; real SharedImage camera equality, eight native SharedLines phases and both relaunches; three Kotlin bodies formatted with Python preserved. |
 
-[Machine checkpoint](checkpoint.json): **315 of 405 findings addressed**; 90 remain open. These counts do not claim
+| [Responsive long loops](../box_code_adoption_batch_48/README.md) | Two findings addressed; actual worker exits within 7ms of cancellation, seeded completion unchanged and both drawing after-states yield to the Runloop; nine Kotlin states formatted. |
+
+[Machine checkpoint](checkpoint.json): **317 of 405 findings addressed**; 88 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 

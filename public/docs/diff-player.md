@@ -18,30 +18,31 @@ Example animated fence:
 lines.clear()
 
 loop {
-  var f = FLine()
+    var f = FLine()
 
-  while (stereo.controllerState().triggerValue > 0.0) {
-    val at = stereo.controllerState().position
-    f.lineTo(at)
-    lines["ourLine"] = f
+    while (stereo.controllerState().triggerValue > 0.0) {
+        val at = stereo.controllerState().position
+        f.lineTo(at)
+        lines["ourLine"] = f
+        frame()
+    }
+
     frame()
-  }
-
-  frame()
 }
 :::after
 lines.clear()
 
 loop {
-  var f = FLine()
+    var f = FLine()
 
-  while (stereo.controllerState().triggerValue > 0.0) {
-    val at = stereo.controllerState().position
-    f.lineTo(at + vec(0, 0, 0.1))
-    lines["ourLine"] = f
-  }
+    while (stereo.controllerState().triggerValue > 0.0) {
+        val at = stereo.controllerState().position
+        f.lineTo(at + vec(0, 0, 0.1))
+        lines["ourLine"] = f
+        frame() // Yield while held, so input updates and Stop can be processed.
+    }
 
-  frame()
+    frame()
 }
 ```
 
@@ -50,7 +51,7 @@ Example static fence:
 ```diffstatic {data-lang=kotlin}
 :::static
 fun greet() {
-  println("hello")
+    println("hello")
 }
 ```
 
@@ -60,36 +61,37 @@ fun greet() {
 lines.clear() // clear the list of lines to draw
 
 loop { // do this forever (or until we stop this box)
-  var f = FLine()    // make a new line for our drawing
+    var f = FLine() // make a new line for our drawing
 
-  while(stereo.controllerState().triggerValue > 0.0) { // while the trigger is down
-    var at = stereo.controllerState().position // get its position
-    f.lineTo(at) // extend the drawing to this position
-    lines["ourLine"] = f // put this line onto the screen under the name "ourLine"
-    frame() // WAIT for a frame to come out of the screen
-  }
+    while (stereo.controllerState().triggerValue > 0.0) { // while the trigger is down
+        var at = stereo.controllerState().position // get its position
+        f.lineTo(at) // extend the drawing to this position
+        lines["ourLine"] = f // put this line onto the screen under the name "ourLine"
+        frame() // WAIT for a frame to come out of the screen
+    }
 
-  while(stereo.controllerState().triggerValue <= 0.0) { // while the trigger isn't down
-    frame() // WAIT for a frame to come out of the screen
-  }
+    while (stereo.controllerState().triggerValue <= 0.0) { // while the trigger isn't down
+        frame() // WAIT for a frame to come out of the screen
+    }
 }
 :::after
 lines.clear() // clear the list of lines to draw
 
 loop { // do this forever (or until we stop this box)
-  var f = FLine()    // make a new line for our drawing
+    var f = FLine() // make a new line for our drawing
 
-  while(stereo.controllerState().triggerValue > 0.0) { // while the trigger is down
-    var at = stereo.controllerState().position // get its position
-    f.lineTo(at + vec(0,0,0.1)) // extend the drawing to this position
-    lines["ourLine"] = f // put this line onto the screen under the name "ourLine"
-  }
+    while (stereo.controllerState().triggerValue > 0.0) { // while the trigger is down
+        var at = stereo.controllerState().position // get its position
+        f.lineTo(at + vec(0, 0, 0.1)) // extend the drawing to this position
+        lines["ourLine"] = f // put this line onto the screen under the name "ourLine"
+        frame() // WAIT while held so controller updates and Stop can be processed
+    }
 
-  while(stereo.controllerState().triggerValue <= 0.0) { // while the trigger isn't down
+    while (stereo.controllerState().triggerValue <= 0.0) { // while the trigger isn't down
+        frame() // WAIT for a frame to come out of the screen
+    }
+
     frame() // WAIT for a frame to come out of the screen
-  }
-
-  frame() // WAIT for a frame to come out of the screen
 }
 ```
 
@@ -109,7 +111,7 @@ expect:
 ```diffstatic {data-lang=kotlin}
 :::static
 val greet = { name: String ->
-  println("Hello, $name")
+    println("Hello, $name")
 }
 
 greet("Field4")

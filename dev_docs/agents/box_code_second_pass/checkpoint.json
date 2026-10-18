@@ -1273,6 +1273,14 @@
     "2ef873951f77-02": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_47/README.md"
+    },
+    "d9ced5632cf1-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_48/README.md"
+    },
+    "6291dfc415aa-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_48/README.md"
     }
   },
   "batches": [
@@ -1321,7 +1329,8 @@
     "../box_code_adoption_batch_43/README.md",
     "../box_code_adoption_batch_45/README.md",
     "../box_code_adoption_batch_46/README.md",
-    "../box_code_adoption_batch_47/README.md"
+    "../box_code_adoption_batch_47/README.md",
+    "../box_code_adoption_batch_48/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1340,10 +1349,10 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 47,
-    "branch": "codex/box-code-readability-47",
-    "baseline": "a637751ae",
-    "state": "Three CV findings verified: actual camera pixels identical, eight real shared-buffer/native overlay phases and both relaunches pass. Kotlin/import formatting three bodies, one collection conversion, mixed Python unchanged. Full gates delegated to lander. Field9718 renderer stopped; CPU-only. Batch45 queued 20261018-131653-codex-box-code-readability-45; batch46 queued 20261018-131929-codex-box-code-readability-46.",
-    "evidence": "../box_code_adoption_batch_47/README.md"
+    "batch": 48,
+    "branch": "codex/box-code-readability-48",
+    "baseline": "0cd246f01",
+    "state": "Two responsiveness findings verified: real StudyBuilds worker exits 7ms after cancellation within billion-sample batch; reduced seeded completion facts identical. Both Phased after states yield to real Runloop under controlled held input, then stop. Nine Kotlin states formatted. Full guards delegated to lander. Batch47 queued 20261018-132606-codex-box-code-readability-47. Field9718 CPU-only; renderer stopped.",
+    "evidence": "../box_code_adoption_batch_48/README.md"
   }
 }
