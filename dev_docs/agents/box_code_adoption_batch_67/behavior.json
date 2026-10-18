@@ -1,0 +1,11 @@
+{
+  "actualRasterUpdates": {
+    "wfc": 106,
+    "kinetic": 10
+  },
+  "maxDisplayFps": 20,
+  "wfcSolvedAndFinalWaveMatchesResolvedGrid": true,
+  "noDisplayAfterSolverCompletion": true,
+  "kineticElapsedTimeMotionAndStop": true,
+  "limits": "Complete authored WFC and kinetic bodies; fixture only records producer timestamps and requests private browser captures. No clock or solver/raster output is substituted; public media unchanged."
+}
