@@ -6498,6 +6498,8 @@ run's scope, a stop releases only what is running, and retiring the box releases
 
 `src/jvmMain/kotlin/afield/runtime/lifecycle/RunScope.kt` — [read the source](source/jvmMain/afield/runtime/lifecycle/RunScope/)
 
+**Used in:** [Beat and pitch analysis](../audio_ai_analysis.md), [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md), [Short-time spectral spaces](../audio_ai_spectral_embeddings.md)
+
 ### Top-level functions { #runscope-kt-functions }
 
 | Declaration | Summary |

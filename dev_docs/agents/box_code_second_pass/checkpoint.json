@@ -47,8 +47,8 @@
       "evidence": "../box_code_adoption_batch_2/README.md"
     },
     "3b06cede4fe6-01": {
-      "status": "implemented; fresh-service verification pending",
-      "evidence": "../box_code_adoption_batch_2/README.md"
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_43/README.md"
     },
     "0abf058ae10d-01": {
       "status": "addressed",
@@ -1189,6 +1189,30 @@
     "e85075e73aab-01": {
       "status": "addressed",
       "evidence": "../box_code_adoption_batch_42/README.md"
+    },
+    "77839dd1b5da-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_43/README.md"
+    },
+    "7f432af2dc54-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_43/README.md"
+    },
+    "69b2bbfea726-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_43/README.md"
+    },
+    "69b2bbfea726-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_43/README.md"
+    },
+    "a4f09a84ef47-01": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_43/README.md"
+    },
+    "a4f09a84ef47-02": {
+      "status": "addressed",
+      "evidence": "../box_code_adoption_batch_43/README.md"
     }
   },
   "batches": [
@@ -1233,7 +1257,8 @@
     "../box_code_adoption_batch_39/README.md",
     "../box_code_adoption_batch_40/README.md",
     "../box_code_adoption_batch_41/README.md",
-    "../box_code_adoption_batch_42/README.md"
+    "../box_code_adoption_batch_42/README.md",
+    "../box_code_adoption_batch_43/README.md"
   ],
   "next": "Remaining helper use and source findings across demos, transcripts, templates and docs. Continue code smells, lifecycle/live controls, GLSL intent and mechanical coverage of remaining groups.",
   "preparation": {
@@ -1246,6 +1271,16 @@
     "privateProject": "build/box-code-revision/adoption-43/field-audio-project",
     "analysisEnvironment": "build/box-code-revision/adoption-43/analysis-env",
     "analysisInstallSession": 44411,
-    "state": "Real API healthy on private port using a clean matching pinned service checkout. Analysis dependencies installed in private env; worker still needs to start on 18767. Default ports/foreign services untouched. No jobs claimed yet. CPU Field hosts through9712 shut down."
+    "state": "Real worker analyses, three Smile fits, corpus fragments and whole-box Stop/relaunch pass. Explicit private ONNX portability adaptation and backend duplicate-request race documented in batch43.",
+    "analysisWorkerSession": 59206,
+    "fieldPort": 9714,
+    "fieldSession": 32839
+  },
+  "inProgress": {
+    "batch": 43,
+    "branch": "codex/box-code-readability-44",
+    "baseline": "5e02bad8c",
+    "state": "Batch43 source-conflict repair complete via merge_regen.py main/--continue, merge commit5d89ff9e3. All required merged-tree guards pass. Fresh Field9714 replays incoming real cached gallery, both beat/pitch bodies, three spectral fits and all corpus fragments. Repair commit/queue follows; original queue20261018-065111-codex-box-code-readability-43 bounced. No findings newly counted by this repair.",
+    "evidence": "../box_code_adoption_batch_43/README.md"
   }
 }
