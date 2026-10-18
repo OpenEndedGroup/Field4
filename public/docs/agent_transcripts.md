@@ -1059,11 +1059,15 @@ walk are recomputed twenty times a second. Change the weights or the PDHG step s
 ### lp_curves_3d
 
 The same methods in three dimensions, the companion to
-[Linear programs in three dimensions](lp_curves_3d.md). *Every route* takes the convex hull of a
+[Linear programs as curves, in three dimensions](lp_curves.md#in-three-dimensions). *Every route* takes the convex hull of a
 seeded point cloud as an `LpPolytope` and draws the central path, the primal-dual iterates, the
 simplex walk along the hull's edges and a PDHG spiral to one vertex, in a `three { }` scene you can
 orbit. *A fan of central paths* draws one path per direction over the sphere and turns it on a
 turntable. Change the direction or the seed and run it again.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/lp_curves_3d_fan.png" capture="box" open-outputs="true" wait="6.0" embed=true hidden=true timeout="180" padding="12" name="gallery-lp-curves-3d-fan" alt="A translucent faceted solid with grey edges and a bundle of rainbow-coloured central paths leaving a common point inside it and fanning out to every corner" macro-file="../../dev_docs/agents/transcripts/lp_curves_3d.yaml" capture-box="lp3_fan"}
+// The transcript builds and runs both boxes; this is the fan box, caught mid-turn.
+```
 
 [Open ↗](offline.html?file=assets/agent_transcripts/lp_curves_3d/metadata.edn)
 
