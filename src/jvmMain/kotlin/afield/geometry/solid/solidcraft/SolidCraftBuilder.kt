@@ -67,7 +67,7 @@ class SolidCraftBuilder internal constructor(private val name: String, private v
         val planeJson = when (plane) {
             is String -> JSONObject().put("type", "origin").put("name", plane.uppercase())
             is JSONObject -> plane
-            else -> throw IllegalArgumentException("plane must be \"XY\", \"XZ\", \"YZ\" or offsetPlane(...), not $plane")
+            else -> throw IllegalArgumentException("plane must be \"XY\", \"XZ\", \"YZ\", offsetPlane(...) or planeSquareTo(...), not $plane")
         }
         val ref = add("Sketch", "sketch") { it.put("plane", planeJson).put("sketch", sketch.json()) }
         return SolidCraftSketchRef(ref.id, ref.name, sketch.curveIds.toList(), sketch.wireIds.toList())
@@ -76,6 +76,29 @@ class SolidCraftBuilder internal constructor(private val name: String, private v
     /** `base` (`"XY"`…) moved along its normal by `distance`, for stacking loft sections. */
     fun offsetPlane(base: String, distance: String): JSONObject =
         JSONObject().put("type", "offset").put("base", JSONObject().put("type", "origin").put("name", base.uppercase())).put("distance", distance)
+
+    /**
+     * The plane through the start of `line`, square to it there, with the sketch origin on the
+     * line. A profile drawn about (0, 0) on it sweeps along `wire(line)` as a true tube, because a
+     * sweep keeps the angle the profile was drawn at to the path's start.
+     */
+    fun planeSquareTo(line: FLine): JSONObject {
+        val cursor = line.cursor()
+        require(cursor.lengthD() > 0f) { "FLine has no length" }
+        cursor.setD(0f)
+        val o = cursor.position().let { doubleArrayOf(it.x.toDouble(), it.y.toDouble(), it.z.toDouble()) }
+        cursor.setD(minOf(1e-3f * cursor.lengthD(), 0.01f))
+        val q = cursor.position()
+        val n = normalize(doubleArrayOf(q.x - o[0], q.y - o[1], q.z - o[2]))
+        val helper = if (kotlin.math.abs(n[2]) < 0.9) doubleArrayOf(0.0, 0.0, 1.0) else doubleArrayOf(1.0, 0.0, 0.0)
+        val x = normalize(cross(helper, n))
+        val y = cross(n, x)
+        return JSONObject().put("type", "placed").put("origin", JSONArray(o.toList()))
+            .put("x_dir", JSONArray(x.toList())).put("y_dir", JSONArray(y.toList()))
+    }
+
+    private fun cross(a: DoubleArray, b: DoubleArray) = doubleArrayOf(a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+    private fun normalize(v: DoubleArray): DoubleArray = kotlin.math.sqrt(v.sumOf { it * it }).let { l -> DoubleArray(3) { v[it] / l } }
 
     /** Extrudes every closed profile of `sketch` by `distance` along its normal. */
     fun extrude(sketch: SolidCraftSketchRef, distance: String, operation: SolidCraftOperation = SolidCraftOperation.NEW_BODY, symmetric: Boolean = false, taper: String? = null) =
