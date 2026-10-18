@@ -129,7 +129,7 @@ Building the complex is the expensive step, and simplifying is cheap, so a slide
 threshold while the box is running. This box builds the complex once and redraws on every slider
 change:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/morse_smale/slider.png" alt="a persistence slider set to 0.05 above the leaf print with red ridge lines drawn over it, outlining the paper around the leaf and running down both sides of the frame, with critical points marked as dots and a caption reading 17 points, 31 curves" wait="4" capture="box" open-outputs="true" padding="20" requires="morse-smale" name="morse-smale-slider" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/morse_smale/slider.png" alt="a persistence slider set to 0.05 above the leaf print with red ridge lines drawn over it, outlining the paper around the leaf and running down both sides of the frame, with critical points marked as dots and a caption reading 17 points, 31 curves" wait="4" capture="box" open-outputs="true" padding="20" trim="true" requires="morse-smale" name="morse-smale-slider" embed=true}
 import afield.geometry.topology.morsesmale.*
 
 val print = imgFromFile("public/docs/assets/vision/fline-viewer.jpg", 3).crop(78, 262, 128, 236).scaleBy(2.0)
