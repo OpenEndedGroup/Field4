@@ -1,6 +1,6 @@
 # SolidCraft: edit the design, then see the part
 
-[SolidCraft](https://github.com/bherbruck/solidcraft) is a parametric CAD engine. Field's optional
+[SolidCraft](https://github.com/tangency-labs/solidcraft) is a parametric CAD engine. Field's optional
 `afield.geometry.solid.solidcraft` binding opens a saved design, changes a named parameter, evaluates its feature
 tree, and returns B-rep measurements or a triangle mesh for display. It can also export STEP, binary
 STL, and the edited SolidCraft design. This is a small first binding across SolidCraft's geometry,
