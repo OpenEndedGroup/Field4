@@ -18,8 +18,10 @@ Run directly with:  uv run --project . --group backdoor python tools/run_python_
 from __future__ import annotations
 
 import re
+import shutil
 import sys
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 TOOLS_ROOT = Path(__file__).resolve().parent
@@ -28,6 +30,11 @@ REPO_ROOT = TOOLS_ROOT.parent
 # Fallback only. The real floor is `requires-python` in pyproject.toml, read at runtime by
 # declared_python_floor() so this constant cannot drift away from the project's own declaration.
 FALLBACK_PYTHON_FLOOR = (3, 12)
+
+# JUnit XML, one file per suite, where the lander already reads Gradle's (`_collect_failures` in
+# tools/land.py globs build/test-results/*/TEST-*.xml). Without it a red here reached the lander's
+# fixer as "uv exited 1": the traceback was in the log, 54,000 lines above the 200-line tail it got.
+RESULTS_DIR = REPO_ROOT / "build" / "test-results" / "pythonTools"
 
 
 def declared_python_floor() -> tuple[int, ...]:
@@ -75,6 +82,33 @@ def suite_module_names() -> list[str]:
     return sorted(f"tools.{path.stem}" for path in TOOLS_ROOT.glob("test_*.py"))
 
 
+def _test_identity(test: unittest.TestCase) -> tuple[str, str]:
+    """(classname, name) for a failing test, a failing subTest, or a setUpClass/import holder."""
+    case = getattr(test, "test_case", test)  # a _SubTest wraps the real case
+    method = getattr(case, "_testMethodName", None)
+    if method is None:  # unittest's _ErrorHolder: setUpClass / setUpModule raised
+        return type(case).__module__, str(test)
+    name = method
+    if case is not test:
+        name += " " + test._subDescription()  # noqa: SLF001 — the only public form is str(test)
+    return f"{type(case).__module__}.{type(case).__qualname__}", name
+
+
+def _exception_line(trace: str) -> str:
+    return next((line.strip() for line in reversed(trace.splitlines()) if line.strip()), "")
+
+
+def write_junit(module: str, ran: int, failures: list, errors: list, skipped: int) -> None:
+    suite = ET.Element("testsuite", name=module, tests=str(ran), failures=str(len(failures)),
+                       errors=str(len(errors)), skipped=str(skipped))
+    for kind, entries in (("failure", failures), ("error", errors)):
+        for test, trace in entries:
+            classname, name = _test_identity(test)
+            case = ET.SubElement(suite, "testcase", classname=classname, name=name)
+            ET.SubElement(case, kind, message=_exception_line(trace)).text = trace
+    ET.ElementTree(suite).write(RESULTS_DIR / f"TEST-{module}.xml", encoding="utf-8", xml_declaration=True)
+
+
 def main() -> int:
     complaint = check_interpreter()
     if complaint is not None:
@@ -90,8 +124,12 @@ def main() -> int:
         print("no tools/test_*.py suites found — that is itself a failure")
         return 1
 
+    shutil.rmtree(RESULTS_DIR, ignore_errors=True)
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
     loader = unittest.TestLoader()
     rows: list[tuple[str, int, int, int, int]] = []
+    not_passing: list[str] = []
     failed = False
 
     for name in names:
@@ -100,6 +138,9 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001 — any import-time explosion is a real failure
             print(f"\n=== {name}: could not be loaded: {exc!r}", flush=True)
             rows.append((name, 0, 0, 1, 0))
+            not_passing.append(f"{name}: could not be loaded: {exc!r}")
+            write_junit(name, 0, [], [(unittest.case._ErrorHolder(name),  # noqa: SLF001
+                                       f"could not be loaded: {exc!r}")], 0)
             failed = True
             continue
 
@@ -112,6 +153,11 @@ def main() -> int:
         errors = len(result.errors)
         skipped = len(result.skipped)
         rows.append((name, ran, fails, errors, skipped))
+        write_junit(name, ran, result.failures, result.errors, skipped)
+        for kind, entries in (("FAIL", result.failures), ("ERROR", result.errors)):
+            for test, trace in entries:
+                classname, method = _test_identity(test)
+                not_passing.append(f"{kind} {classname}.{method}: {_exception_line(trace)[:300]}")
         if fails or errors or not result.wasSuccessful():
             failed = True
 
@@ -129,6 +175,16 @@ def main() -> int:
     print(f"  {'TOTAL'.ljust(width)}  {total_passed:>3} passed / {total_ran:>3} run"
           + (f", {total_bad} not passing" if total_bad else "")
           + (f", {total_skipped} skipped" if total_skipped else ""), flush=True)
+
+    # Last, so it is what a log tail shows: Gradle keeps running other tasks after this one fails,
+    # and the summary above can end up tens of thousands of lines from the end of the log.
+    if not_passing:
+        print("\nNot passing (tracebacks above, and in " + str(RESULTS_DIR.relative_to(REPO_ROOT)) + "):",
+              flush=True)
+        for line in not_passing:
+            print(f"  {line}", flush=True)
+    elif failed:
+        print("\nA suite reported failure without a failing test; see its output above.", flush=True)
 
     return 1 if failed else 0
 
