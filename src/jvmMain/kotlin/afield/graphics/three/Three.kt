@@ -203,8 +203,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         distance: Double = 2.7,
         fieldOfView: Double = 40.0,
         padding: Double = 1.06,
+        upAxis: ThreeUpAxis = ThreeUpAxis.Y,
+        follow: Boolean = false,
     ) {
-        camera = ThreeCameraSpec(yaw, pitch, distance, fieldOfView, padding)
+        camera = ThreeCameraSpec(yaw, pitch, distance, fieldOfView, padding, upAxis, follow)
         autoFrame = false
     }
 
