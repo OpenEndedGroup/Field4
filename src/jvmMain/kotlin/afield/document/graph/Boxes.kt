@@ -1870,6 +1870,7 @@ import afield.study.ui.*
 import afield.tools.automation.*
 import afield.tools.docs.*
 import afield.ui.controls.*
+import afield.ui.film.*
 import afield.ui.layout.*
 import afield.ui.notation.*
 import afield.ui.output.*

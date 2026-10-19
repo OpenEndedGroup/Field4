@@ -2049,6 +2049,40 @@ fun installAgentBackdoorHandlers() {
         Handled.yes
     })
 
+    // A canvas flight through the document's bookmarks: live in every window on it, or filmed to an
+    // MP4 frame by frame in the capture page (afield.tools.docs.recordCanvasFlight).
+    handlers["agent-canvas-flight"] = mutableSetOf({ message, reply ->
+        val info = thisSessionInfo.get()
+        val request = Json.decodeFromJsonElement<afield.app.protocol.AgentCanvasFlight>(message.payload!!)
+        playwrightScope.launch {
+            val response = runCatching {
+                if (request.path == null) playCanvasFlight(info, request.spec)
+                else afield.tools.docs.recordCanvasFlight(info, request)
+            }.getOrElse { throwable ->
+                lprintln("warning,agent_backdoor", "canvas flight failed: ${throwable.message}")
+                afield.app.protocol.AgentCanvasFlightResponse(
+                    ok = false, documentName = info.documentName, sessionKey = info.filename, path = request.path,
+                    message = throwable.message ?: throwable::class.simpleName ?: "Unknown canvas flight error"
+                )
+            }
+            reply(Message("agent-canvas-flight").payload(response))
+        }
+        Handled.yes
+    })
+
+    // Any web page filmed frame by frame in a capture context of its own (afield.tools.docs.filmPage).
+    handlers["agent-film-page"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<afield.app.protocol.AgentPageFilm>(message.payload!!)
+        playwrightScope.launch {
+            val response = runCatching { afield.tools.docs.filmPage(request) }.getOrElse { throwable ->
+                afield.app.protocol.AgentPageFilmResponse(ok = false, url = request.url, path = request.path,
+                    message = throwable.message ?: throwable::class.simpleName ?: "page film failed")
+            }
+            reply(Message("agent-film-page").payload(response))
+        }
+        Handled.yes
+    })
+
     handlers["agent-box-video"] = mutableSetOf({ message, reply ->
         val info = thisSessionInfo.get()
         val request = Json.decodeFromJsonElement<AgentBoxVideo>(message.payload!!)
@@ -2091,4 +2125,21 @@ internal fun installKitFirstOpen() {
             launchBoxesInOrder(roles)
         }
     }
+}
+
+/**
+ * Flies [spec] live in every window open on [info]'s document, and answers at once with how long it
+ * will take. A bookmark the document lacks is refused here rather than in each window.
+ */
+internal fun playCanvasFlight(info: SessionInformation, spec: afield.app.canvas.CanvasFlightSpec): afield.app.protocol.AgentCanvasFlightResponse {
+    afield.tools.docs.canvasFlightProblem(info, spec)?.let {
+        return afield.app.protocol.AgentCanvasFlightResponse(ok = false, documentName = info.documentName, sessionKey = info.filename, message = it)
+    }
+    val message = Message("canvas-flight").payload(spec)
+    info.sessions.forEach { _send(it, message) }
+    return afield.app.protocol.AgentCanvasFlightResponse(
+        ok = info.sessions.isNotEmpty(), documentName = info.documentName, sessionKey = info.filename,
+        durationSec = afield.app.canvas.CanvasFlightTimeline(spec).duration,
+        message = if (info.sessions.isEmpty()) "No window is open on ${info.documentName}" else "Flying in ${info.sessions.size} window(s)"
+    )
 }

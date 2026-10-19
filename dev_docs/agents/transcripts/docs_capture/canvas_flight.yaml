@@ -1,0 +1,71 @@
+name: canvas_flight
+description: >
+  Three boxes for the canvas-flight film on `public/docs/filming_the_canvas.md`: a title card, a
+  plan drawn as FLines, and a two-panel three.js sheet to turn while the canvas flies. The figure's
+  drive script saves the three bookmarks it flies through.
+
+  Capture-only, so it lives under transcripts/docs_capture/ (see bookmarks_panel.yaml).
+operations:
+  - create:
+      box: flight_title
+      name: FlightTitle
+      frame: { x: 60.0, y: 60.0, w: 100.0, h: 100.0 }
+      properties:
+        code: |
+          // The flight's opening card: plain HTML in the box's output.
+          display("main", """
+          <div style="width:520px;padding:28px 32px;background:#10161a;color:#e8f4f8;font:600 34px/1.2 system-ui,sans-serif;border:1px solid #3a6f86;border-radius:10px">
+            A canvas flight
+            <div style="margin-top:10px;font:400 17px/1.4 system-ui,sans-serif;color:#9cc3d3">overview → plan → close-ups</div>
+          </div>
+          """)
+          displayOpen("main")
+  - create:
+      box: flight_plan
+      name: FlightPlan
+      frame: { x: 1000.0, y: 120.0, w: 100.0, h: 100.0 }
+      properties:
+        code: |
+          // A plan to fly to: a spiral over a grid, drawn as FLines.
+          val spiral = fline {
+              color = vec(0.35, 0.8, 1.0, 1.0)
+              thickness = 2.5
+              moveTo(vec(220.0, 180.0, 0.0))
+              for (i in 1..400) {
+                  val a = i * 0.06
+                  val r = 4.0 + i * 0.42
+                  lineTo(vec(220.0 + r * cos(a), 180.0 + r * sin(a), 0.0))
+              }
+          }
+          val drawing = (0..8).map { i ->
+              fline {
+                  color = vec(1.0, 0.6, 0.2, 0.5)
+                  thickness = 1.0
+                  moveTo(vec(20.0 + i * 50.0, 10.0, 0.0))
+                  lineTo(vec(20.0 + i * 50.0, 350.0, 0.0))
+              }
+          }
+          lines(drawing.toMutableList().apply { add(spiral) }, w = 440.0, h = 360.0, fitToSize = true)
+  - create:
+      box: flight_model
+      name: FlightModel
+      frame: { x: 360.0, y: 760.0, w: 100.0, h: 100.0 }
+      properties:
+        code: |
+          // Two solids on a contact sheet, to turn while the canvas flies.
+          val shapes = listOf(
+              "ring" to torusMesh(majorSegments = 24, minorSegments = 12),
+              "tower" to boxMesh(0.5, 1.6, 0.5),
+          )
+          three(name = "flight", width = 760, height = 400) {
+              columns(2)
+              shapes.forEachIndexed { i, (label, shape) ->
+                  mesh(shape, label = label, panel = i, wireframe = false)
+                  panel(title = label, camera = ThreeCameraSpec(yawDegrees = 30.0, pitchDegrees = 20.0), bounds = shape.toThreeBounds())
+              }
+          }
+  - launch: { box: flight_title }
+  - launch: { box: flight_plan }
+  - launch: { box: flight_model }
+  - wait:
+      millis: 1500

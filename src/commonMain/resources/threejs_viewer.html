@@ -532,6 +532,7 @@ const viewerTools = createViewerTools({
 let captureState = {ready:false, error:null, revision:null};
 window.FieldViewer = Object.freeze({renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
     turntable: () => turntable.status(), cameraLink: () => cameraLink.status(), shot: () => shot.status(),
+    film: Object.freeze({begin: filmBegin, at: filmAt, end: filmEnd, status: filmStatus}),
     captureStatus: () => {
         const tools = viewerTools.status(), render = renderScheduler.stats();
         return {...captureState, ready:captureState.ready && !tools.pending.length && !tools.error &&
@@ -623,7 +624,7 @@ const turntable = createTurntable({key: `${urlParams.get('uid') || ''} ${Math.ra
 // A box can ask for a looping presentation move (`shot(…)`): the camera dollies while the model explodes
 // and goes see-through, on the wall clock, held by the same interactions as the turntable. `shotDistance`
 // is this frame's dolly, read by the panel cameras; `shotAppliedDistance` is what the single camera has.
-const shot = createShot({wake: ms => setTimeout(requestRender, ms)});
+const shot = createShot({now: () => filmClockMs ?? Date.now(), wake: ms => setTimeout(requestRender, ms)});
 let shotDistance = 1, shotAppliedDistance = 1;
 // About the target and the view's up axis. Positive turns the model anticlockwise seen from above.
 // `cameraTurned` lets a resize refit an untouched view without undoing the turn.
@@ -633,6 +634,54 @@ function turnCamera(angle) {
     camera.position.sub(controls.target).applyAxisAngle(camera.up, -angle).add(controls.target);
     cameraTurned = true;
 }
+// [viewer-region film] BEGIN
+// A canvas flight films this view (CanvasFlightClient in the main page): `film.begin` notes the camera,
+// `film.at(seconds)` puts it back there and turns it `degreesPerSecond * seconds` about its target and
+// up axis with turnCamera, plays a shot() on the flight's clock rather than the wall clock, and draws at
+// once; `film.end` restores the camera as it was. While it films, the turntable stands aside, damping is
+// off (no inertia between frames) and the camera link neither sends nor takes poses, so every frame
+// depends on the flight's clock alone.
+let film = null, filmClockMs = null;
+function filmBegin({degreesPerSecond = 8} = {}) {
+    if (film) filmEnd();
+    const damping = controls.enableDamping;
+    controls.enableDamping = false; controls.update();
+    const rate = Number(degreesPerSecond);
+    film = {rate: Number.isFinite(rate) ? rate * Math.PI / 180 : 0, damping, wall: Date.now(),
+        eye: camera.position.clone(), target: controls.target.clone(), up: camera.up.toArray(),
+        zoom: camera.zoom, fov: camera.fov, turned: cameraTurned, moved: cameraWasMoved, shotApplied: shotAppliedDistance};
+    filmClockMs = film.wall;
+    return filmStatus();
+}
+function filmAt(seconds) {
+    if (!film) return false;
+    const t = Math.max(0, Number(seconds) || 0);
+    filmClockMs = film.wall + t * 1000;
+    camera.position.copy(film.eye); controls.target.copy(film.target); cameraUp(film.up);
+    shotAppliedDistance = film.shotApplied;
+    turnCamera(film.rate * t);
+    controls.update();
+    render();
+    return true;
+}
+function filmEnd() {
+    if (!film) return false;
+    const f = film;
+    film = null; filmClockMs = null;
+    camera.position.copy(f.eye); controls.target.copy(f.target); cameraUp(f.up);
+    camera.zoom = f.zoom; camera.fov = f.fov; camera.updateProjectionMatrix();
+    shotAppliedDistance = f.shotApplied;
+    controls.update(); controls.enableDamping = f.damping;
+    cameraTurned = f.turned; cameraWasMoved = f.moved;
+    requestRender();
+    return true;
+}
+function filmStatus() {
+    return {filming: !!film, degreesPerSecond: film ? film.rate * 180 / Math.PI : null,
+        panels: Math.max(1, panelState.cameras.length), eye: camera.position.toArray(), target: controls.target.toArray(),
+        up: camera.up.toArray()};
+}
+// [viewer-region film] END
 const cameraLinkButton = document.getElementById('camera-link');
 let cameraLinkOn = false;
 const cameraLink = createCameraLink({
@@ -641,6 +690,7 @@ const cameraLink = createCameraLink({
     read: () => ({eye:camera.position.toArray(),target:controls.target.toArray(),up:camera.up.toArray(),
         fov:camera.fov,zoom:camera.zoom,near:camera.near,far:camera.far}),
     write: pose => {
+        if (film) return;
         // Drain local inertial motion before applying a remote pose, preventing echo/drift.
         const damping = controls.enableDamping;
         controls.enableDamping = false; controls.update();
@@ -674,7 +724,7 @@ function applyCameraLinkRequest(request) {
     else if (!request && on && linkFromRequest) { cameraLink.setEnabled(false); linkFromRequest = false; }
 }
 cameraLinkButton.addEventListener('click',()=>{linkFromRequest=false;cameraLink.setEnabled(!cameraLink.status().enabled);});
-controls.addEventListener('change',()=>cameraLink.localChanged());
+controls.addEventListener('change',()=>{if(!film)cameraLink.localChanged();});
 controls.addEventListener('start',()=>{cameraLink.dragging(true);turntable.hold(true);shot.hold(true);});
 controls.addEventListener('end',()=>{cameraLink.dragging(false);turntable.hold(false);shot.hold(false);cameraLink.localChanged();});
 for (const type of ['pointerdown', 'wheel', 'keydown'])
@@ -6815,7 +6865,7 @@ function applyShotLook(look) {
 }
 
 function render() {
-    const turn = turntable.step();
+    const turn = film ? null : turntable.step();
     if (turn !== null) { turnCamera(turn); requestRender(); }
     // A shot draws continuously, but only while the view is on screen and the page is showing.
     if (shot.active() && onScreen && document.visibilityState !== 'hidden') {

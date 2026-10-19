@@ -379,6 +379,8 @@ asymmetry is the other easy mistake: the `-window` commands take the box through
 | `record-window` | `path` | `--uid --property --with-editor --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
 | `record-editor` | `uid path` | `--property --padding --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
 | `record-box` | `uid path` | `--property --padding --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
+| `canvas-flight` | `stops` | `--leg --hold --orbit --record --fps --size --pixel-ratio --expect-frames --timeout` |
+| `film-page` | `url path` | `--duration --fps --size --pixel-ratio --setup-file --frame-file --settle-ms --load-timeout-ms --drag --drag-from --preroll-frames --expect-frames --timeout` |
 <!-- END CAPTURE SIGNATURES -->
 
 ```bash
@@ -401,6 +403,18 @@ What each family actually captures:
 - `page-eval`: JSON-serializable DOM probes. Use `--file` for anything with
   meaningful quoting; `--body` needs an explicit JavaScript `return` (without one the
   result carries a `warnings` entry and a stderr line, since it will be null).
+
+- `canvas-flight`: flies the canvas through bookmarks (names or slots), live in the document's
+  windows, or with `--record <mp4>` filmed frame by frame: the flight's clock is set per frame and
+  each painted frame goes to ffmpeg, so nothing drops under load (`public/docs/filming_the_canvas.md`).
+  The reply lists each stop's arrival frame and the camera filmed there; `--expect-frames N` fails
+  unless ffprobe counts `N` frames in the file.
+- `film-page`: films any URL the same way, in a capture context of its own: `--setup-file` holds an
+  `async () => ...` run once, `--frame-file` a `(t, i, n) => ...` run before every frame, and
+  `--drag DX,DY` drags the real mouse that far per frame (orbits a three.js page);
+  `--preroll-frames` runs frames before the first one filmed, so clips can continue one another.
+- `viewport WxH` sizes the capture page (`default` restores it), for saving bookmarks in a window
+  shaped like the film.
 
 `record-window`, `record-editor`, and `record-box` accept `--frame-synchronous`.
 In that mode the recorder captures one painted browser image per completed Field
