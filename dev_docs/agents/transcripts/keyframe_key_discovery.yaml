@@ -30,6 +30,9 @@ description: >
   The saved document at `dev_docs/agents/demos/keyframe_key_discovery/` is this same scene.
   Companion tests: afield.animation.keyframes.KeyframeBrowserTest and
   afield.app.server.KeyframeBrowserProtocolTest.
+docs:
+  - page: keyframer_examples.md
+    why: "Explains capturing and persisting keyframes that the browser lists."
 operations:
   - create:
       box: kf_before_after

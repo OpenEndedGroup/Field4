@@ -36,6 +36,9 @@ description: >
   on screen, then move a site, change a weight, raise an iso level or ask for a different k and
   re-run a box to watch it update. Each `execute` op omits inline code, so it runs the box's stored
   `code` property. Executed end-to-end by examples.demo-transcript.exec.
+docs:
+  - page: spatial_geometry_examples.md
+    why: "Explains each spatial geometry example in this document."
 operations:
   - create:
       box: spatial_delaunay

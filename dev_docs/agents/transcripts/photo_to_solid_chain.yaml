@@ -24,6 +24,9 @@ description: >
   boxes in order. The first is the slow one — about 1.4s to load 99MB of ONNX weights from
   ~/.afield/onnx/models, once per JVM; after that inference is about 130ms. Executed end-to-end by
   examples.demo-transcript.exec. The page is public/docs/chain_photo_to_solid.md.
+docs:
+  - page: chain_photo_to_solid.md
+    why: "Walks through this photo-to-solid chain step by step."
 operations:
   - create:
       box: photo_depth

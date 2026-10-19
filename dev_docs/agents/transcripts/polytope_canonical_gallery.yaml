@@ -8,6 +8,9 @@ description: >
   spread, the tangency-centroid offset and the planarity error before and after, so the picture and
   the numbers agree. Hover a face to highlight it; click it to read its degree, its combinatorial
   symmetry orbit, and its distance from the centre.
+docs:
+  - page: polytope_examples.md
+    why: "Explains Conway notation and canonical realization of polytopes."
 operations:
   - create:
       box: polytope_canonical_gallery

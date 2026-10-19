@@ -131,6 +131,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `Img` into 6000 evenly spaced dots in two statements; `stipple_relaxing` is a launched `loop { }`
   that shows the weighted random start beside one Lloyd step a frame, with `showSignals` plotting how
   far the dots moved.
+- `evolving_water_bugs.yaml`: the creature genetic algorithm (`afield.simulation.creatures`) as two launched
+  boxes. `water_bug` writes the water-surface `ContactModel` and the fitness in the box and draws the
+  champion with its foot score; `ground_crawler` is the same evolution with a floor and gravity.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
 - `staged_project.yaml` — the staged-project starting place (`public/docs/staged_projects.md`): a level on a
   grid behind `level.inspect`/`level.edit`, blockout, traversal and placement stages with a "reachable loot"
@@ -237,7 +240,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   under transport-time, movie-time and step sliders. Pure CPU.
 - `lp_curves.yaml`: **linear programs as curves** — the companion to `lp_curves.md`. Every LP route
   over one pentagon (central path, fan, primal-dual, PDHG, ellipsoid, simplex, cutting planes), and a
-  launched box that turns the objective while the polygon breathes. Pure CPU.
+  launched box that turns the objective while the polygon breathes, and `lp_fan_map`, the fan as a map
+  `x(θ, log μ)` drawn as a grid in an editable `threeLines` viewer: drag a corner and the grid is
+  recomputed when the drag ends. Pure CPU.
 - `lp_curves_3d.yaml`: **linear programs in three dimensions** — the companion to the "In three dimensions" section of `lp_curves.md`.
   A point cloud's hull as an `LpPolytope` with four routes to one vertex (central path, primal-dual,
   simplex along edges, PDHG), and a turning fan of central paths, both in `three { }`. Pure CPU.
@@ -391,6 +396,24 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 The FIELD_TEST `examples.agent-transcripts.materialize` re-materializes to a temp dir and **fails if
 the committed bundle is out of date** — or absent entirely — so a transcript edit without a regenerate
 is caught in CI. `./gradlew checkAgentTranscripts` is the same guard inside `check`.
+
+### Documentation pages for a starting point
+
+A top-level `docs:` list names the one or two documentation pages someone with the document open
+should read next. Each item is a page relative to `public/docs/`, optionally with a heading anchor,
+plus an optional one-sentence `why`:
+
+```yaml
+docs:
+  - page: drawing_and_notation.md#reading-a-region
+    why: "How box code reads the marks inside a region."
+```
+
+The materializer writes each item as a docs-redirect guide, `guides/<page>.md`, titled by the page's
+H1 (and the section's heading when there is an anchor). The document's Guides panel lists it under
+**Documentation** and opens it in the docs pane (`dev_docs/frontend/DOCUMENT_GUIDES.md`). A page or
+anchor that does not exist fails materialization, so renaming a page means updating the transcripts
+that point at it. Leave `docs:` out rather than listing a page that only mentions the topic.
 
 A transcript that is *not* a self-contained scene makes a broken starting point, so it is listed in
 `AgentTranscriptMaterializer.EXCLUDE` and no document is generated for it. Its index entry then must

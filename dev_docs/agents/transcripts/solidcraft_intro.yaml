@@ -4,6 +4,9 @@ description: >
   and compares the evaluated B-rep bodies as meshes. The 20 mm cut goes through the original
   20 mm extrusion and becomes blind when the extrusion grows to 25 mm. It also reports B-rep
   volume and export sizes. Without the optional native bridge, the box gives the build command.
+docs:
+  - page: solidcraft.md
+    why: "Explains SolidCraft, the modelling layer this document introduces."
 operations:
   - create:
       box: solidcraft_compare

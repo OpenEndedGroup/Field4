@@ -22,6 +22,9 @@ description: >
   six on screen, then change a sigma, a threshold or the planted motion and re-run a box to watch
   it update live. Each `execute` op omits inline code, so it runs the box's stored `code`
   property. Executed end-to-end by examples.demo-transcript.exec.
+docs:
+  - page: imaging_examples.md
+    why: "Covers the CPU imaging and vision functions these boxes call."
 operations:
   - create:
       box: imaging_basics

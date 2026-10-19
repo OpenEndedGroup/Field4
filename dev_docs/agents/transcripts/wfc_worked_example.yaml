@@ -8,6 +8,9 @@ description: >
   FloatArray paths ending in iso-contour FLines, and the solver's own inline ToHTML view of a
   half-collapsed and a contradicted solve. Each box runs on its own and prints the numbers
   the docs page quotes; none of them opens a Window or a Renderer.
+docs:
+  - page: wfc_examples.md
+    why: "Explains wave function collapse as used in each box."
 operations:
   - create:
       box: wfc_by_hand

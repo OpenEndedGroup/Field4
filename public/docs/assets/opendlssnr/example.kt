@@ -3,13 +3,12 @@ import java.nio.file.Path
 
 // Run as a child of the standard renderer box. Edit this path to use your own image.
 val image = Path.of("public/docs/assets/opendlssnr/ink-input.png").toAbsolutePath()
-val owner = fromContext<Renderer>()
 prop<OpenDlssNrImage>(study)
 fromContextWithNameOrNull<OpenDlssNrImage>("study")?.close()
-val available = OpenDlssNrSupport.availability(owner)
+val available = OpenDlssNrSupport.availability(renderer)
 println(available.reason)
 if (available.ready) {
-    study = OpenDlssNrImage(owner, image.toString()).install()
+    study = OpenDlssNrImage(renderer, image.toString()).install()
     var style = 1
     var tone = 0f
     var structure = 10f

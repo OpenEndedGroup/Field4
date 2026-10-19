@@ -29,7 +29,7 @@ for (i in 0 until 1500) {
 
 val graph = Mapper.compute(points, lens = Mapper.eccentricity(points), intervals = 12, overlap = 0.35)
 val black = Img(200, 170, 3, FloatArray(200 * 170 * 3))
-showImgGrid("${graph.components().size} pieces, ${graph.loops} loop(s)" to black.drawFLines(listOf(graph.pointsFLine(pointSize = 1.5)) + graph.toFLines(), scale = 3.0),
+showImgGrid("${graph.components().size} pieces, ${graph.loops} loop(s)" to black.drawFLines([graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(), scale = 3.0),
     columns = 1, cellSide = 600)
 ```
 
@@ -73,7 +73,7 @@ for (i in 0 until 1500) {
 val black = Img(200, 170, 3, FloatArray(200 * 170 * 3))
 fun panel(name: String, lens: DoubleArray): Pair<String, Img> {
     val graph = Mapper.compute(points, lens = lens, intervals = 12, overlap = 0.35)
-    return "$name: ${graph.loops} loop(s)" to black.drawFLines(listOf(graph.pointsFLine(pointSize = 1.5)) + graph.toFLines(), scale = 2.0)
+    return "$name: ${graph.loops} loop(s)" to black.drawFLines([graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(), scale = 2.0)
 }
 showImgGrid(
     panel("x", Mapper.coordinate(points, axis = 0)),
@@ -105,8 +105,8 @@ import afield.geometry.topology.mapper.*
 
 // Each letter as straight strokes (x0, y0, x1, y1) in a 100 by 140 box; O is a circle.
 val strokes = mapOf(
-    "A" to [listOf(50.0, 10.0, 15.0, 130.0), listOf(50.0, 10.0, 85.0, 130.0), listOf(30.0, 80.0, 70.0, 80.0)],
-    "H" to [listOf(20.0, 10.0, 20.0, 130.0), listOf(80.0, 10.0, 80.0, 130.0), listOf(20.0, 70.0, 80.0, 70.0)],
+    "A" to [[50.0, 10.0, 15.0, 130.0], [50.0, 10.0, 85.0, 130.0], [30.0, 80.0, 70.0, 80.0]],
+    "H" to [[20.0, 10.0, 20.0, 130.0], [80.0, 10.0, 80.0, 130.0], [20.0, 70.0, 80.0, 70.0]],
 )
 val random = java.util.Random(2)
 fun letter(name: String): DoubleArray {
@@ -124,7 +124,7 @@ val black = Img(100, 140, 3, FloatArray(100 * 140 * 3))
 showImgGrid(*["A", "H", "O"].map { name ->
     val points = letter(name)
     val graph = Mapper.compute(points, lens = Mapper.coordinate(points, axis = 1), intervals = 10, overlap = 0.35)
-    "$name: ${graph.loops} loop(s)" to black.drawFLines(listOf(graph.pointsFLine(pointSize = 1.5)) + graph.toFLines(minSize = 3.0, maxSize = 9.0), scale = 2.0)
+    "$name: ${graph.loops} loop(s)" to black.drawFLines([graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(minSize = 3.0, maxSize = 9.0), scale = 2.0)
 }.toTypedArray(), columns = 3, cellSide = 220)
 ```
 

@@ -5,6 +5,9 @@ description: >
   two of four channels, and the contrast profile finding the shape that positive examples have and
   negative ones lack. Each box generates its own signal from a fixed seed; replace it with yours and
   keep the rest. Pure CPU, no window. Docs page: public/docs/matrix_profile.md.
+docs:
+  - page: matrix_profile.md
+    why: "Explains motifs, discords and multidimensional profiles shown here."
 operations:
   - create:
       box: mp_motifs

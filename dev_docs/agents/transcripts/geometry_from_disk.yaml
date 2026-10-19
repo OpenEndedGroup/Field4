@@ -25,6 +25,9 @@ description: >
   Boxes 2 and 3 write only into a temp directory they delete themselves. Each `execute` op omits
   inline code, so it runs the box's stored `code` property. Executed end-to-end by
   examples.demo-transcript.exec.
+docs:
+  - page: geometry_from_disk.md
+    why: "The page these boxes accompany: reading geometry files into output."
 operations:
   - create:
       box: disk_glb

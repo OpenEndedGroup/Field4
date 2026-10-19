@@ -18,6 +18,9 @@ description: |
   through a thin wall between two frames, and the failure looks like an agent that ignores geometry
   rather than like a timestep problem. The saved document at `dev_docs/agents/demos/alife_walls/` is
   this same scene; `dev_docs/ALIFE_WALLS.md` is the write-up.
+docs:
+  - page: alife_examples.md
+    why: "Introduces the spatial ALife engine this walled world builds on."
 operations:
   - create:
       box: hit_a_wall

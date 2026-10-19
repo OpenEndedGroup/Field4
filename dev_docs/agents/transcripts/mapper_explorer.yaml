@@ -35,7 +35,7 @@ operations:
           fun show() {
               val graph = Mapper.compute(points, lens = lenses.getValue(lens), intervals = intervals, overlap = overlap)
               showImgGrid("$lens: ${graph.components().size} pieces, ${graph.loops} loop(s)" to
-                  black.drawFLines(listOf(graph.pointsFLine(pointSize = 1.5)) + graph.toFLines(), scale = 3.0), columns = 1, cellSide = 600)
+                  black.drawFLines([graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(), scale = 3.0), columns = 1, cellSide = 600)
           }
           slider("intervals", min = 2.0, max = 30.0, step = 1.0, initialValue = 12.0) { intervals = it.toInt(); show() }
           slider("overlap", min = 0.05, max = 0.8, step = 0.05, initialValue = 0.35) { overlap = it; show() }
@@ -51,8 +51,8 @@ operations:
 
           // Points scattered along three letters, sliced horizontally by the lens. A and O have a loop; H has none.
           val strokes = mapOf(
-              "A" to [listOf(50.0, 10.0, 15.0, 130.0), listOf(50.0, 10.0, 85.0, 130.0), listOf(30.0, 80.0, 70.0, 80.0)],
-              "H" to [listOf(20.0, 10.0, 20.0, 130.0), listOf(80.0, 10.0, 80.0, 130.0), listOf(20.0, 70.0, 80.0, 70.0)],
+              "A" to [[50.0, 10.0, 15.0, 130.0], [50.0, 10.0, 85.0, 130.0], [30.0, 80.0, 70.0, 80.0]],
+              "H" to [[20.0, 10.0, 20.0, 130.0], [80.0, 10.0, 80.0, 130.0], [20.0, 70.0, 80.0, 70.0]],
           )
           val random = java.util.Random(2)
           fun letter(name: String): DoubleArray {
@@ -70,5 +70,5 @@ operations:
           showImgGrid(*["A", "H", "O"].map { name ->
               val points = letter(name)
               val graph = Mapper.compute(points, lens = Mapper.coordinate(points, axis = 1), intervals = 10, overlap = 0.35)
-              "$name: ${graph.loops} loop(s)" to black.drawFLines(listOf(graph.pointsFLine(pointSize = 1.5)) + graph.toFLines(minSize = 3.0, maxSize = 9.0), scale = 2.0)
+              "$name: ${graph.loops} loop(s)" to black.drawFLines([graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(minSize = 3.0, maxSize = 9.0), scale = 2.0)
           }.toTypedArray(), columns = 3, cellSide = 220)

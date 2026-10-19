@@ -385,6 +385,7 @@ function bootstrapAnywhereProviders() {
                         description: guide.kind === "note" ? `box notes · ${guide.uid}` : guide.path,
                         detail: guide.kind === "note"
                                 ? "Read this box’s notes in the document viewer."
+                                : guide.kind === "docs" ? `Open ${guide.docs} in the docs pane.`
                                 : "Read this Markdown file in the document viewer.",
                         path: guide.path,
                         score: 36,

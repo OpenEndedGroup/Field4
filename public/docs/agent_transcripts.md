@@ -340,6 +340,20 @@ sphere and the floor, and both ends of that sentence are asserted by
 
 [Open ↗](offline.html?file=assets/agent_transcripts/simdverlet_world/metadata.edn)
 
+### evolving_water_bugs
+
+A genetic algorithm that evolves little 2D creatures of points, springs and motorised joints, with
+every point a foot that steps on its own cycle. The library evolves the body, the foot timing and
+the joint curves together; the box says what world they live in. In `water_bug` that is a water
+surface seen from above: a foot that touches down grips the surface film where it landed, and one
+that is up drags through the water. That rule is a dozen lines of `ContactModel` in the box, next
+to the fitness that rewards distance and charges for stretching and effort. `ground_crawler` swaps
+in a floor and gravity and scores only horizontal distance, and nothing else changes. Evolution runs
+on its own thread and both loops draw the current champion; CI launches them, advances 90 frames,
+and stops them.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/evolving_water_bugs/metadata.edn)
+
 ### inertial_movement
 
 Motion that survives being interrupted, as three boxes that get longer in
@@ -1053,6 +1067,9 @@ spiral, the ellipsoid method with its ellipses, the simplex walk and cutting pla
 with its own numbers. *A turning objective* is launched: the direction turns once every twelve
 seconds while the hexagon's vertices breathe, and the central path, the PDHG spiral and the simplex
 walk are recomputed twenty times a second. Change the weights or the PDHG step size and run it again.
+*Drag the polygon* draws the [fan as a map](lp_curves.md#the-fan-as-a-map) in an editable viewer:
+choose the pencil tool and drag a corner, and the grid is redrawn for the new polygon when the drag
+ends.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/lp_curves/metadata.edn)
 
@@ -2029,6 +2046,33 @@ Walkthrough: [Corpus microscope: from recordings to related windows](audio_ai_co
 
 [Open ↗](offline.html?file=assets/agent_transcripts/audio_ai_corpus_microscope/metadata.edn)
 
+### contour_trees_explorer
+
+[Merge trees and contour trees](contour_trees.md). The first box shows a landscape of hills and
+hollows with its contour tree's nodes, the regions its arcs stand for, and the tree drawn as a plot,
+with a slider that prunes branches by persistence. The second divides the brightness of the leaf
+print into contour-tree regions, lightly and strongly simplified. Plain Kotlin, no optional
+libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/contour_trees_explorer/metadata.edn)
+
+### vector_field_explorer
+
+[Vector field topology](vector_field_topology.md). The first box builds a flow from swirls,
+sources and sinks and draws its critical points and separatrices over streamlines, with a slider
+that scales the swirl. The second draws the ridges and valleys of the leaf print's brightness as
+the topology of its gradient, with a blur slider. Plain Kotlin, no optional libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/vector_field_explorer/metadata.edn)
+
+### mapper_explorer
+
+[Mapper graphs of point clouds](mapper.md). The first box draws the Mapper graph of a ring with a
+tail and a separate blob over its points, with sliders for the number of bins, their overlap and
+the lens. The second scatters points along the letters A, H and O and counts the loops in each
+graph. Plain Kotlin, no optional libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/mapper_explorer/metadata.edn)
 
 ## External-service live-coding scenes
 
@@ -2431,34 +2475,6 @@ dark places in a photograph across increasing blur and draws each as a circle th
 largest blur it survives. Needs the optional Morse–Smale library: `./gradlew buildMorseSmaleNative`.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/tracking_explorer/metadata.edn)
-
-### contour_trees_explorer
-
-[Merge trees and contour trees](contour_trees.md). The first box shows a landscape of hills and
-hollows with its contour tree's nodes, the regions its arcs stand for, and the tree drawn as a plot,
-with a slider that prunes branches by persistence. The second divides the brightness of the leaf
-print into contour-tree regions, lightly and strongly simplified. Plain Kotlin, no optional
-libraries.
-
-[Open ↗](offline.html?file=assets/agent_transcripts/contour_trees_explorer/metadata.edn)
-
-### vector_field_explorer
-
-[Vector field topology](vector_field_topology.md). The first box builds a flow from swirls,
-sources and sinks and draws its critical points and separatrices over streamlines, with a slider
-that scales the swirl. The second draws the ridges and valleys of the leaf print's brightness as
-the topology of its gradient, with a blur slider. Plain Kotlin, no optional libraries.
-
-[Open ↗](offline.html?file=assets/agent_transcripts/vector_field_explorer/metadata.edn)
-
-### mapper_explorer
-
-[Mapper graphs of point clouds](mapper.md). The first box draws the Mapper graph of a ring with a
-tail and a separate blob over its points, with sliders for the number of bins, their overlap and
-the lens. The second scatters points along the letters A, H and O and counts the loops in each
-graph. Plain Kotlin, no optional libraries.
-
-[Open ↗](offline.html?file=assets/agent_transcripts/mapper_explorer/metadata.edn)
 
 ## FieldML scenes
 

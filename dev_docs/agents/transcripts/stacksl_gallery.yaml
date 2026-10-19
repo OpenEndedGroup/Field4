@@ -1,5 +1,10 @@
 # Generated from stacksl_gallery/metadata.edn by afield.examples.DocumentToTranscript.
 name: "stacksl_gallery"
+docs:
+  - page: stacksl_examples.md
+    why: "Explains the StackSL programs in the gallery."
+  - page: stacksl_cheatsheet.md
+    why: "Lists the StackSL vocabulary."
 operations:
   - create:
       box: "renderer"

@@ -1,5 +1,8 @@
 name: learned_from_module
 description: Capture actual moduleHere output, train a small network, and replace the source pass with learned inference.
+docs:
+  - page: learned_shader.md
+    why: "Explains training on module output and swapping in learned inference."
 operations:
 - create:
     box: agent_graphics_context
@@ -10,13 +13,45 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+      code: |-
+        import afield.graphics.vulkan.util.Options
+
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+
+        Options.enableVR = false
+        Options.enableHDR = false
+        Options.profiling = false
+
+        once.renderer {
+            window = Window("Field")
+            Renderer(window)
+        }
+
+        println("agent graphics renderer ready")
+        start(renderer::run)
 - launch:
     box: agent_graphics_context
     property: code
     type: code
     strand: renderer
-    code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+    code: |-
+      import afield.graphics.vulkan.util.Options
+
+      prop<Window>(window)
+      prop<Renderer>(renderer)
+
+      Options.enableVR = false
+      Options.enableHDR = false
+      Options.profiling = false
+
+      once.renderer {
+          window = Window("Field")
+          Renderer(window)
+      }
+
+      println("agent graphics renderer ready")
+      start(renderer::run)
 - wait:
     frames: 3
 - create:
@@ -28,7 +63,7 @@ operations:
       w: 420.0
       h: 100.0
     properties:
-      code: |-
+      code: |
         import afield.graphics.shader.learning.*
         import java.io.File
         import org.lwjgl.vulkan.VK13.*
@@ -47,12 +82,10 @@ operations:
             depthWrite = false
             blend = false
         }
-        val mesh = Mesh(renderer, teacher)
-        mesh.resize(3, 0, teacher)
-        mesh.push.setMembers(teacher.current.fi.pushConstants.single().members)
+        val mesh = fullscreenTriangle(teacher)
         teacher += "fullscreen" to mesh
         source += "teacher" to teacher
-        val setTime: (Float) -> Unit = { t -> mesh.push["state"] = vec(source.width, source.height, t, 0) }
+        val setTime: (Float) -> Unit = { t -> mesh.state = { vec(source.width, source.height, t, 0) } }
         lab = ShaderLearningView(renderer, source, setSourceParameter = setTime)
         var capture = false
         var requestedView = 0
@@ -116,8 +149,12 @@ operations:
                     source.defaultSampler?.cleanup()
                 }
             }
-      vertex: "#version 460\nvoid main() {\n    vec2 p=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);\n    gl_Position=vec4(p*2-1,0,1);\n\
-        }\n"
+      vertex: |-
+        #version 460
+        void main() {
+            vec2 p=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);
+            gl_Position=vec4(p*2-1,0,1);
+        }
       fragment: |-
         #version 460
         layout(push_constant) uniform P {
@@ -145,7 +182,7 @@ operations:
     property: code
     type: code
     strand: scene
-    code: |-
+    code: |
       import afield.graphics.shader.learning.*
       import java.io.File
       import org.lwjgl.vulkan.VK13.*
@@ -164,12 +201,10 @@ operations:
           depthWrite = false
           blend = false
       }
-      val mesh = Mesh(renderer, teacher)
-      mesh.resize(3, 0, teacher)
-      mesh.push.setMembers(teacher.current.fi.pushConstants.single().members)
+      val mesh = fullscreenTriangle(teacher)
       teacher += "fullscreen" to mesh
       source += "teacher" to teacher
-      val setTime: (Float) -> Unit = { t -> mesh.push["state"] = vec(source.width, source.height, t, 0) }
+      val setTime: (Float) -> Unit = { t -> mesh.state = { vec(source.width, source.height, t, 0) } }
       lab = ShaderLearningView(renderer, source, setSourceParameter = setTime)
       var capture = false
       var requestedView = 0

@@ -16,8 +16,8 @@ saddles in white, the separatrices leaving saddles in orange and those arriving 
 import afield.geometry.topology.vectorfield.*
 
 // Each entry is (x, y, outflow, swirl): positive outflow is a source, negative a sink, swirl turns it.
-val features = [listOf(50.0, 45.0, 1.0, 0.6), listOf(150.0, 40.0, -1.0, -0.8), listOf(100.0, 100.0, 0.2, 1.2),
-    listOf(40.0, 115.0, -0.8, 0.0), listOf(165.0, 115.0, 0.9, -0.3)]
+val features = [[50.0, 45.0, 1.0, 0.6], [150.0, 40.0, -1.0, -0.8], [100.0, 100.0, 0.2, 1.2],
+    [40.0, 115.0, -0.8, 0.0], [165.0, 115.0, 0.9, -0.3]]
 val flow = Img.generateRGB(200, 150) { x, y ->
     var u = 0.0; var v = 0.0
     for ((cx, cy, out, swirl) in features) {

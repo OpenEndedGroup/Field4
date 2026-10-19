@@ -76,6 +76,7 @@ import afield.audio.synth.*
 import afield.data.table.cell
 import afield.data.table.get
 import afield.document.graph.Box
+import afield.document.graph.RunningState
 import afield.document.graph.captureLaunchEpoch
 import afield.graphics.vulkan.*
 import afield.media.stream.*
@@ -2228,6 +2229,26 @@ internal fun awaitPaintedFrames(page: Page, what: String, timeoutMs: Int = VIDEO
 }
 
 /**
+ * Has a relaunched docs-video target reached the point the movie may start?
+ *
+ * Either it is running past its launch phase, or the relaunch already ran to completion: its
+ * generation moved past [stoppedGeneration] and it left no running state and no jobs. The second
+ * case is a box that only *executes* — a `three { turntable(...) }` scene, say, whose motion lives
+ * in the browser. Requiring a running state there could never be satisfied: the relaunch went
+ * `launching` then finished, and every such capture timed out "waiting for relaunched video target
+ * to reach its first active frame".
+ */
+internal fun relaunchedVideoTargetReady(
+    stoppedGeneration: Int,
+    runGeneration: Int,
+    state: RunningState?,
+    jobs: Int,
+): Boolean {
+    if (state != null) return state.watermark > stoppedGeneration && state.mode != "launching"
+    return runGeneration > stoppedGeneration && jobs == 0
+}
+
+/**
  * Return a callback that starts (or simply admits) frame-synchronous capture.
  *
  * Docs captures prepare their clip against the already-running box, then restart the
@@ -2290,8 +2311,12 @@ private fun videoCapturePreparation(
 
         val launchedAtEpoch = target.captureLaunchEpoch()
         val ready: () -> Boolean = {
-            val state = target.currentRunningStates["default"]
-            state != null && state.watermark > stoppedGeneration && state.mode != "launching"
+            relaunchedVideoTargetReady(
+                stoppedGeneration = stoppedGeneration,
+                runGeneration = target.runGeneration["default"] ?: -1,
+                state = target.currentRunningStates["default"],
+                jobs = target.jobs.size,
+            )
         }
         FrameCaptureGate(
             ready = ready,

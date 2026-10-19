@@ -42,6 +42,11 @@ description: |
   bodies below are byte-identical to its committed `<box>_code_.kt` sidecars, and the `vertex` and
   `fragment` shaders on `twist_compare` and `gpu_skin` to its `_vertex_.glsl` and `_fragment_.glsl`
   ones.
+docs:
+  - page: geometry_from_disk.md
+    why: "Covers loading glTF meshes, including skinned ones."
+  - page: chain_skinned_volume.md
+    why: "Shows the skinned mesh carried into a volume render."
 operations:
   - create:
       box: skin_renderer

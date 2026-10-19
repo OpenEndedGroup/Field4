@@ -7,6 +7,9 @@ description: >
   notation it is being scored against. Two boxes are deliberately about failure: a legato Dough
   render an energy onset detector cannot segment, and a triad a monophonic detector refuses to name
   rather than guessing at. No Python service, no audio device, no GPU, no network.
+docs:
+  - page: sound.md
+    why: "Covers rendering patterns to audio and analysing it back."
 operations:
   - create:
       box: pitch_roundtrip_guide

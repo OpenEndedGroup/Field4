@@ -30,6 +30,9 @@ description: >
   document; then change any pattern string and re-run that box. Each `execute` op omits inline code,
   so it runs the box's stored `code` property. See dev_docs/PATTERN_LANGUAGE.md and
   dev_docs/PAT_GALLERY.md.
+docs:
+  - page: pattern_language.md
+    why: "Teaches the pat(...) language, signals and parameter algebra used here."
 operations:
   # 1 ── the continuous family, and what segment() does to it.
   - create:

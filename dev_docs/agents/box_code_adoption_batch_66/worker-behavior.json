@@ -1,0 +1,47 @@
+{
+  "cases": [
+    {
+      "box": "kratos_parameter_study",
+      "heldOpening": false,
+      "compiledInRealBox": true,
+      "actualUnavailableWorkerCleanup": true,
+      "retained": "workers/g1-kratos_parameter_study-unavailable-ready-0.json"
+    },
+    {
+      "box": "kratos_parameter_study",
+      "heldOpening": true,
+      "compiledInRealBox": true,
+      "actualCancellationAndFinally": true,
+      "actualUnavailableWorkerCleanup": false
+    },
+    {
+      "box": "kratos_flow_playground",
+      "heldOpening": false,
+      "compiledInRealBox": true,
+      "actualCancellationAndFinally": false,
+      "actualUnavailableWorkerCleanup": true
+    },
+    {
+      "box": "kratos_flow_playground",
+      "heldOpening": true,
+      "compiledInRealBox": true,
+      "actualCancellationAndFinally": true,
+      "actualUnavailableWorkerCleanup": false
+    },
+    {
+      "box": "kratos_thermal_playground",
+      "heldOpening": false,
+      "compiledInRealBox": true,
+      "actualCancellationAndFinally": false,
+      "actualUnavailableWorkerCleanup": true
+    },
+    {
+      "box": "kratos_thermal_playground",
+      "heldOpening": true,
+      "compiledInRealBox": true,
+      "actualCancellationAndFinally": true,
+      "actualUnavailableWorkerCleanup": false
+    }
+  ],
+  "limits": "No local Kratos environment is installed and the Podman VM is stopped. Full solves/grid/search are not claimed. The complete authored bodies compile and execute the real unavailable-worker path; held-opening fixtures exercise real Frame cancellation, catch ordering and finally. No solver result, picture or simulation output is substituted."
+}

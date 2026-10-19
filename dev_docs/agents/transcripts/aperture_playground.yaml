@@ -3,6 +3,9 @@ description: 'Editable lines and point defocus: a source RTT, two reductions, ci
   aperture filters, and a composite. One shader pair and one optional resource per
   box; no personal code. Run the macro to wire the graph, then edit individual shaders
   and re-execute their boxes.'
+docs:
+  - page: aperture_playground.md
+    why: "Walks through the source, reductions, aperture filters and composite in this document."
 operations:
 - create:
     box: agent_graphics_context

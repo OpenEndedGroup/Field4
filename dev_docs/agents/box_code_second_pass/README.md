@@ -128,7 +128,23 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Use the projected camera for cube lighting and explain shader spaces](../box_code_adoption_batch_63/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **354 of 405 findings addressed**; 51 remain open. These counts do not claim
+| [Bound Nano GPU output slices and preserve adjacent packed lanes](../box_code_adoption_batch_65/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+| [Keep Kratos cancellation, result snapshots and graph restoration safe](../box_code_adoption_batch_66/README.md) | 6 findings resolved; see the batch for actual evidence and limits. |
+
+| [Bound live raster cadence and retain the final WFC result](../box_code_adoption_batch_67/README.md) | 2 findings resolved; see the batch for actual evidence and limits. |
+
+| [Use bundled texture inputs and explain the Underfit source WAV](../box_code_adoption_batch_68/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+| [Adopt fullscreen teacher meshes and reflected push suppliers](../box_code_adoption_batch_64/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
+
+| [Use captured interaction stages and make render controls easy to find](../box_code_adoption_batch_70/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+| [Publish typed paint callbacks and clarify guides and remote shader lessons](../box_code_adoption_batch_71/README.md) | 4 findings resolved; see the batch for actual evidence and limits. |
+
+| [Own candidate generation callbacks and verify every motion capture save](../box_code_adoption_batch_72/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **377 of 405 findings addressed**; 28 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 

@@ -159,6 +159,11 @@ object DemoTranscriptExecSmokeTest {
         // buys is that `inertialTo`, `MovementState` and the control-group callbacks are exercised
         // through the real box path, which no unit test covers.
         "inertial_movement",
+        // The creature GA: two launched loops that evolve on their own thread under a box-written
+        // ContactModel (a water surface; a floor under gravity). CreatureEvolutionTest covers the
+        // library; running it here covers the box path — a ContactModel and fitness written in a box
+        // and handed to the library, and the .end { } that stops the evolution thread.
+        "evolving_water_bugs",
         // The keyframe editor: a launched loop playing a curve into a meter, and three executed boxes
         // (typed keys; an onChange overlay; key types of its own with interpolant(...)). Pure CPU — the editor is an iframe in `display` — so what
         // running it buys is keyframes(...), KeyframeEvaluator and the Keyframe-seeded overload
@@ -315,7 +320,8 @@ object DemoTranscriptExecSmokeTest {
         // closed contours and reports the numbers, all through showPlaneGrid.
         "close_node_demo",
         // lp_curves.md's companion: LP methods as curve generators over LpPolygon, drawn through
-        // showPlaneGrid / showPlane. The second box ends in `animate { }` and is launched. CPU only.
+        // showPlaneGrid / showPlane. The second box ends in `animate { }` and is launched; the third
+        // draws the fan map in an editable threeLines viewer. CPU only.
         "lp_curves",
         // lp_curves.md's 3-D section companion: the same methods over LpPolytope, drawn through `three { }`
         // (a Three.js payload sent to display), so no Window and no Renderer. Both boxes execute.

@@ -31,6 +31,9 @@ description: |
   It also runs with the arithmetic wrong on purpose being easy to reach: open `vfield` with `=c`
   instead of `>c` and the box's `stack.auto` output channel will tell you the definition ends two
   deep.
+docs:
+  - page: gpu_state.md
+    why: "Explains ping-pong state buffers for the particle simulation here."
 operations:
   # 1. the renderer: owns the Window and pumps the loop. Run this one first.
   - create:

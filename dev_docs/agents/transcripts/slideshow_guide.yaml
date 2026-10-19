@@ -9,6 +9,9 @@ description: >
 
   Companion to public/docs/interactive_guides.md. Pure CPU; no Window, no Renderer. The notes and
   selections need a browser to be seen; headless, every box still runs.
+docs:
+  - page: interactive_guides.md
+    why: "Explains building slideshow guides with notes and annotations."
 operations:
   - create:
       box: sg_numbers

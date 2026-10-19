@@ -1,5 +1,8 @@
 name: computed_ray_geometry
 description: Compute editable triangle clusters in Field and trace them with Vulkan Mega Geometry.
+docs:
+  - page: computed_ray_geometry.md
+    why: "Walks through computing triangle clusters and tracing them."
 operations:
 - create:
     box: agent_graphics_context

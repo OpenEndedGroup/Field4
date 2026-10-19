@@ -9,6 +9,9 @@ description: >
   rebuilds the other three boxes' engines, which is well past the backdoor's 20s default.
   The four `wait: pending` barriers are reported as `skipped` in the applied/skipped
   tally; that is normal, not an error.
+docs:
+  - page: reference/workspace.md
+    why: "Reference entry for sharedTypes(), used by box 1."
 operations:
   - create:
       box: shared_types_declare

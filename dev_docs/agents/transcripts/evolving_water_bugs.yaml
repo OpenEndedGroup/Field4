@@ -1,0 +1,223 @@
+name: evolving_water_bugs
+description: >
+  A genetic algorithm that evolves 2D spring-and-joint creatures, written as the water bug it began
+  as. `afield.simulation.creatures` supplies the parts that are the same for any such creature: a
+  genome of points, edges, cyclic foot programs and joint motor curves; mutation, crossover and
+  repair that keep a body connected and planar; a Verlet body with angle-motor joints; and playback
+  as FLines with a per-foot score underneath. What the creature is, where it lives and what counts
+  as doing well are written here, in the boxes.
+
+  `water_bug` is the whole experiment. Seen from above, on a water surface, with no gravity: a foot
+  that touches down grips the surface film where it landed and is pulled back toward that spot,
+  while everything else drags through water. That model is the `WaterSurface` class in the box, and
+  fitness is distance travelled minus what the body spent and how much it stretched. Evolution runs
+  on its own thread; the loop draws the current champion swimming and its foot score.
+
+  `ground_crawler` is the same evolution with a different world, to show which part is the water
+  bug: side-on, under gravity, over a floor. A foot only grips when its program says so and it is
+  actually on the floor, and the score is horizontal distance only. Nothing else changed.
+
+  Pure CPU, no Window and no Renderer. Both boxes are `loop { }`s with an `.end { }` that stops
+  their evolution thread, so they must be launched. Replayed end to end in CI: launch both, run 90
+  runloop frames, stop.
+operations:
+  - create:
+      box: water_bug
+      name: evolving a water bug
+      frame: { x: 80.0, y: 80.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.simulation.creatures.*
+
+          /*
+          Launch it (Alt-R). Seen from above: a creature of points and springs on a water surface.
+          Each point is a foot with a cyclic program saying when it touches down. A foot that is down
+          grips the surface film where it landed; a foot that is up drags through the water. Joints
+          bend the body to a cyclic target curve. The genetic algorithm evolves the shape, the foot
+          timing and the joint curves together.
+
+          The library does the genetics and the springs. Everything that makes it a *water bug* is
+          below: how a foot meets the water, and what we reward.
+          */
+
+          // How a foot meets the water. One instance per foot, so it can remember where it landed.
+          class WaterSurface : ContactModel {
+              override fun foot(index: Int) = object : ContactModel.Foot {
+                  var planted: Float2? = null
+                  override var grip = 0f
+                  override val anchor get() = planted
+
+                  override fun force(step: FootStep): Float2 {
+                      val g = step.genome
+                      grip = step.contact
+                      if (step.contact <= 0.02f) {
+                          // Up: just water drag.
+                          planted = null
+                          return step.velocity * -g.freeDrag
+                      }
+                      // Down: a spring back to where the foot first touched, plus a much heavier drag.
+                      val at = planted ?: step.position.also { planted = it }
+                      val drag = max(g.freeDrag, g.footDrag * step.contact)
+                      return (at - step.position) * (g.footStickiness * step.contact) - step.velocity * drag
+                  }
+              }
+          }
+
+          // What we reward: getting anywhere at all, minus stretching the body and wasted motor effort.
+          fun swimScore(e: CreatureEvaluation) =
+              e.netCentroidMotion - 2f * e.meanStretchError - 0.05f * e.meanActuationEffort - 0.08f * e.meanTargetSlew
+
+          val config = EvolutionConfig(
+              populationSize = 28,
+              generations = 200,
+              minPoints = 5,
+              maxPoints = 8,
+              targetEdgeCount = 8,
+              targetJointActivations = 10,
+              alwaysUpFootFraction = 0.5f,   // half the points are body, not feet
+              cyclingFootFraction = 0.5f,    // the rest must actually step
+              simulation = CreatureSimulationConfig(
+                  measuredCycles = 10,
+                  gravity = 0f,              // seen from above
+                  contact = WaterSurface(),
+                  fitness = ::swimScore,
+                  jointTargetAngleScale = 1.55f,
+                  jointMotorKp = 1.4f,
+                  jointMotorKd = 0.22f,
+                  jointTargetFilterRate = 6.8f,
+                  maxJointImpulsePerStep = 0.03f,
+                  maxMeanStretchError = 1.25f,
+                  maxPeakStretchError = 2.0f,
+                  maxCenterSpeed = 2.5f,
+              ),
+          )
+
+          // Evolution takes seconds per generation, so it runs on its own thread and hands its
+          // champion over; the loop below only draws.
+          val controller = EvolutionController()
+          var champion: CreatureEvaluation? = null
+          var status = "generation 0"
+          kotlin.concurrent.thread(isDaemon = true, name = "water_bug evolution") {
+              CreatureEvolution.evolve(config, controller) { update ->
+                  champion = update.champion
+                  status = "generation ${update.generation.generation}: best ${"%.2f".format(update.champion.fitness)}"
+              }
+          }
+
+          var i = 0
+          loop {
+              val bug = champion ?: return@loop
+              val c = bug.frames[i % bug.frames.size].center
+              showPlane(
+                  bug.frameLines(i) + bug.notationLines(i, origin = Float2(c.x - 3f, c.y + 6f)),
+                  title = "water bug — $status",
+                  caption = "orange: a foot gripping the surface; ×: where it gripped; bars: each foot's score",
+                  window = Rect(c.x - 4.0, c.y - 4.0, 8.0, 11.0),
+                  width = 500,
+                  height = 600,
+                  yUp = true,
+              )
+              i++
+          }.end { controller.requestStop() }
+
+  - create:
+      box: ground_crawler
+      name: the same evolution, on the ground
+      frame: { x: 1500.0, y: 80.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.simulation.creatures.*
+
+          /*
+          The same genetic algorithm with a different world: side-on, under gravity, on a floor at
+          y = 0. A foot can only grip when its program says so *and* it is on the floor; anything
+          below the floor is pushed back up. The score is horizontal distance, because a crawler
+          that only bounces has not gone anywhere. Compare with `water_bug`: only this part changed.
+          */
+          class Floor(val stiffness: Float = 900f, val friction: Float = 40f) : ContactModel {
+              override fun place(points: List<Float2>): List<Float2> {
+                  val lowest = points.minOf { it.y }
+                  return points.map { Float2(it.x, it.y - lowest) }
+              }
+
+              override fun foot(index: Int) = object : ContactModel.Foot {
+                  var planted: Float2? = null
+                  override var grip = 0f
+                  override val anchor get() = planted
+
+                  override fun force(step: FootStep): Float2 {
+                      val g = step.genome
+                      val p = step.position
+                      val v = step.velocity
+                      val onFloor = p.y <= 0.02f
+                      // The floor: push anything below it back up, damping its fall.
+                      val up = if (p.y < 0f) -p.y * stiffness - min(v.y, 0f) * friction else 0f
+                      grip = if (onFloor) step.contact else 0f
+                      if (grip <= 0.02f) {
+                          planted = null
+                          // Sliding contact, or air.
+                          val slide = if (onFloor) friction else g.freeDrag * 0.1f
+                          return Float2(-v.x * slide, up - v.y * g.freeDrag * 0.1f)
+                      }
+                      val at = planted ?: Float2(p.x, 0f).also { planted = it }
+                      return Float2((at.x - p.x) * g.footStickiness * grip - v.x * g.footDrag * grip, up)
+                  }
+              }
+          }
+
+          val config = EvolutionConfig(
+              populationSize = 28,
+              generations = 200,
+              minPoints = 5,
+              maxPoints = 8,
+              targetEdgeCount = 8,
+              targetJointActivations = 10,
+              alwaysUpFootFraction = 0.5f,
+              cyclingFootFraction = 0.5f,
+              simulation = CreatureSimulationConfig(
+                  measuredCycles = 10,
+                  gravity = -9.8f,
+                  contact = Floor(),
+                  fitness = { e -> abs(e.displacement.x) - 2f * e.meanStretchError },
+                  jointTargetAngleScale = 1.55f,
+                  jointMotorKp = 1.4f,
+                  jointMotorKd = 0.22f,
+                  maxCenterSpeed = 4f,
+              ),
+          )
+
+          val controller = EvolutionController()
+          var champion: CreatureEvaluation? = null
+          var status = "generation 0"
+          kotlin.concurrent.thread(isDaemon = true, name = "ground_crawler evolution") {
+              CreatureEvolution.evolve(config, controller) { update ->
+                  champion = update.champion
+                  status = "generation ${update.generation.generation}: best ${"%.2f".format(update.champion.fitness)}"
+              }
+          }
+
+          var i = 0
+          loop {
+              val crawler = champion ?: return@loop
+              val c = crawler.frames[i % crawler.frames.size].center
+              val floor = fline {
+                  moveTo(c.x - 5f, 0f)
+                  lineTo(c.x + 5f, 0f)
+              }.apply { color = vec(0.5, 0.45, 0.4, 1.0) }
+              showPlane(
+                  listOf(floor) + crawler.frameLines(i, alignNetMotionToPositiveX = false),
+                  title = "crawler — $status",
+                  window = Rect(c.x - 4.0, -1.0, 8.0, 6.0),
+                  width = 500,
+                  height = 380,
+                  yUp = true,
+              )
+              i++
+          }.end { controller.requestStop() }
+
+  - launch: { box: water_bug, property: code }
+  - launch: { box: ground_crawler, property: code }
+  - await: { wait: pending }
+  - wait: { frames: 90 }
+  - stop: { box: water_bug }
+  - stop: { box: ground_crawler }

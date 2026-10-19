@@ -58,6 +58,50 @@ private fun revision(bytes: ByteArray) = java.util.HexFormat.of().formatHex(Mess
 private fun headingTitle(lines: Sequence<String>): String? =
     lines.take(128).firstOrNull { it.startsWith("# ") }?.removePrefix("# ")?.trim()?.take(160)?.ifBlank { null }
 
+/**
+ * A guide that is a pointer into the Field documentation: front matter naming the page,
+ *
+ * ```
+ * ---
+ * docs: drawing_and_notation/#reading-a-region
+ * ---
+ * # Drawing and notation
+ * One paragraph saying why this page matters here.
+ * ```
+ *
+ * The viewer opens [page] in the docs pane (`/field-docs/`, which serves the local build or
+ * openendedgroup.com/field4) rather than rendering the file.
+ */
+internal data class DocsRedirect(val page: String, val title: String?, val summary: String)
+
+/** The front matter's `docs:` value as a docs-relative page, or null when it is not one. */
+internal fun docsPage(value: String): String? {
+    var v = value.trim().removeSurrounding("\"").removeSurrounding("'").trim()
+    Regex("^https?://(www\\.)?openendedgroup\\.com/field4/?", RegexOption.IGNORE_CASE).find(v)?.let { v = v.substring(it.range.last + 1) }
+    v = v.removePrefix("/field-docs/").removePrefix("/")
+    if (v.isEmpty() || v.length > 512 || Regex("^[a-z][a-z\\d+.-]*:", RegexOption.IGNORE_CASE).containsMatchIn(v) ||
+        v.any { it.isWhitespace() || it == '\\' || it.code < 32 }) return null
+    val hash = v.substringAfter('#', "").let { if (it.isEmpty()) "" else "#$it" }
+    var path = v.substringBefore('#')
+    if (path.split('/').any { it == ".." || it == "." }) return null
+    // Authors think in source pages; the built site serves `page.md` as `page/`.
+    path = path.removeSuffix(".md").let { if (it.isEmpty() || it.endsWith("/") || it.endsWith(".html")) it else "$it/" }
+    return path + hash
+}
+
+internal fun docsRedirect(text: String): DocsRedirect? {
+    val lines = text.removePrefix("\uFEFF").lines()
+    if (lines.firstOrNull()?.trim() != "---") return null
+    val end = lines.drop(1).indexOfFirst { it.trim() == "---" }.takeIf { it >= 0 }?.plus(1) ?: return null
+    val page = lines.subList(1, end).firstNotNullOfOrNull { line ->
+        line.substringAfter("docs:", "").takeIf { line.trimStart().startsWith("docs:") }
+    }?.let(::docsPage) ?: return null
+    val body = lines.drop(end + 1)
+    val summary = body.dropWhile { it.isBlank() || it.startsWith("#") }.takeWhile { it.isNotBlank() }
+        .joinToString(" ") { it.trim() }.take(400)
+    return DocsRedirect(page, headingTitle(body.asSequence()), summary)
+}
+
 /** Files remain authoritative: no copied Markdown property or hidden box is needed to read a guide. */
 internal class DocumentGuideFiles(root: File) {
     private val root = root.canonicalFile
@@ -83,11 +127,13 @@ internal class DocumentGuideFiles(root: File) {
                 val path = root.toPath().relativize(file.toPath()).toString()
                 val target = resolve(path)
                 require(target.length() <= MAX_BYTES)
-                val title = target.bufferedReader().use { headingTitle(it.lineSequence()) }
+                val redirect = if (target.length() <= 16 * 1024) docsRedirect(target.readText()) else null
+                val title = redirect?.title ?: target.bufferedReader().use { headingTitle(it.lineSequence()) }
                     ?: file.nameWithoutExtension.replace('_', ' ')
                 // Older Fields seeded this README into every workspace. It describes the on-disk
                 // format for agents (now in AGENTS.md); listing it made it read as the document's docs.
                 if (path.equals("README.md", true) && title == SEEDED_WORKSPACE_README_TITLE) null
+                else if (redirect != null) DocumentGuideEntry(path, title, kind = "docs", docs = redirect.page, summary = redirect.summary)
                 else DocumentGuideEntry(path, title)
             }.getOrNull()
         }.sortedWith(compareBy<DocumentGuideEntry> { !it.path.equals("README.md", true) }.thenBy { it.path.lowercase() })

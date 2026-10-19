@@ -1,5 +1,10 @@
 name: ray_reconstruction
 description: Compare raw RTXDI, spatial filtering, DLAA and DLSS Ray Reconstruction at 1080p.
+docs:
+  - page: ray_reconstruction.md
+    why: "Explains the Ray Reconstruction denoiser this document runs."
+  - page: reconstruction_plumbing.md
+    why: "Shows how to wire its inputs from your own modules."
 operations:
 - create:
     box: agent_graphics_context

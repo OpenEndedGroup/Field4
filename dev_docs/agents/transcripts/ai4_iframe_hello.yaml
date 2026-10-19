@@ -1,5 +1,8 @@
 name: ai4_iframe_hello
 description: One box hosts a live webpage and opts that iframe into AI4's inspect, wait, navigate, screenshot, click, fill and JavaScript tools.
+docs:
+  - page: ai4_live_iframe.md
+    why: "Shows how a box opts its iframe into AI4's inspect, click and screenshot tools."
 operations:
   - create:
       box: ai4_iframe_hello
