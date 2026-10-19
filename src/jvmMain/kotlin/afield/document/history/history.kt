@@ -2509,7 +2509,7 @@ private fun historyVersionDtos(documentPath: String, indexes: Set<Int>? = null):
                 index = v.index,
                 filename = v.file.name,
                 timestamp = v.timestamp,
-                boxCount = boxIds.size,
+                boxCount = boxIds.count { it != "root" },
                 byteSize = v.byteSize,
                 boxIds = boxIds.toList().sorted(),
                 message = names[v.index] ?: if (v.file.name == "metadata.edn") "Current" else "",
@@ -2549,7 +2549,7 @@ private fun launchHistoryStatsStream(
                     versionIndex = versionSnapshot.first().index,
                     completed = 0,
                     total = total,
-                    boxCount = initialBoxIds.size,
+                    boxCount = initialBoxIds.count { it != "root" },
                     boxIds = initialBoxIds.toList().sorted(),
                     done = total == 0
                 )
@@ -2610,7 +2610,7 @@ private fun launchHistoryStatsStream(
                         completed = i,
                         total = total,
                         diffStats = stats,
-                        boxCount = boxIds.size,
+                        boxCount = boxIds.count { it != "root" },
                         boxIds = boxIds.toList().sorted(),
                         done = i == total
                     )
@@ -2777,7 +2777,7 @@ fun installHistoryHandlers() {
                 index = v.index,
                 filename = v.file.name,
                 timestamp = v.timestamp,
-                boxCount = boxIds.size,
+                boxCount = boxIds.count { it != "root" },
                 byteSize = v.byteSize,
                 boxIds = boxIds.toList(),
                 message = names[v.index] ?: if (v.file.name == "metadata.edn") "Current" else "",

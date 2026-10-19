@@ -654,7 +654,8 @@ class SavingContext {
                     if (altered) {
                         // Notify history manager about the new version
                         val savedAt = System.currentTimeMillis()
-                        val boxIds = snapshot.transfers.map { it.id }.toSet()
+                        // Root is excluded, as HistoryManager.extractBoxIds does when it reads a version from disk.
+                        val boxIds = snapshot.transfers.map { it.id }.filterNot { it == "root" }.toSet()
                         val historyStartedAt = System.nanoTime()
                         HistoryManager.onVersionSaved(fn, boxIds, savedAt)
                         historyMs = SaveReloadLog.elapsedMillis(historyStartedAt)
