@@ -4858,6 +4858,24 @@ kbd {
     transition: opacity 180ms ease-out, transform 180ms ease-out, border-color 180ms ease-out;
 }
 
+/* While a canvas flight is filmed (CanvasFlightClient), frames show the flight and nothing else that
+   moves: no toasts, no CSS animation or transition finishing between captures, no blinking caret. */
+body.canvas-flight-recording .bubble.field-toast,
+body.canvas-flight-recording .field-toast {
+    visibility: hidden !important;
+}
+
+body.canvas-flight-recording *,
+body.canvas-flight-recording *::before,
+body.canvas-flight-recording *::after {
+    animation: none !important;
+    transition: none !important;
+}
+
+body.canvas-flight-recording .monaco-editor .cursor {
+    visibility: hidden !important;
+}
+
 .bubble.field-toast-visible,
 .field-toast.field-toast-visible {
     opacity: 1;

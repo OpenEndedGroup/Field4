@@ -1822,6 +1822,8 @@ class CaptureSignatureDocTests(unittest.TestCase):
         capture = {
             name for name in sub.choices
             if name.startswith(("screenshot-", "record-", "native-", "wait-native-"))
+            # Films, named outright: a flight through bookmarks, and any page stepped frame by frame.
+            or name in {"canvas-flight", "film-page"}
         }
         self.assertEqual(
             capture,

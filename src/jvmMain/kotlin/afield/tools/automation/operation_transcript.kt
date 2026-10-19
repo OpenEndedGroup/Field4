@@ -1670,6 +1670,7 @@ object OperationTranscript {
                 val target = mappedBox()
                     ?: box("__docs_drive__", createIfMissing = true, initIfCreated = true, root = info)
                 val driver = DocsUiDriver { globalPlaywriteContext ?: error("Playwright page unavailable") }
+                driver.session = info
                 target.properties["__docsUiDriver"] = driver
 
                 // Completion/autocomplete captures trigger a real Ctrl+Space against this freshly
@@ -1809,7 +1810,8 @@ object OperationTranscript {
                             driver.clipFailures.joinToString(", ")
                     }
                 } finally {
-                    if (recorder != null && videoPath != null) {
+                    // A script that filmed its own video (ui.filmCanvasFlight) has written videoPath already.
+                    if (recorder != null && videoPath != null && !recorder.discarded) {
                         val frames = runBlocking { recorder.stopAndEncode(java.nio.file.Path.of(videoPath)) }
                         lprintln("info,docs", "drive recorded $frames frames -> $videoPath")
                     }

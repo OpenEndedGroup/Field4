@@ -1414,6 +1414,115 @@ data class AgentBoxVideo(
     val expectOutputs: String = ExpectedOutputs.PANEL
 )
 
+/**
+ * `canvas-flight` on the backdoor, and box code's `canvasFlight`: fly [spec] in the document's
+ * windows, or, with a [path], film it there frame by frame (`afield.tools.docs.recordCanvasFlight`).
+ */
+@Serializable
+data class AgentCanvasFlight(
+    val spec: afield.app.canvas.CanvasFlightSpec,
+    /** The .mp4 to film the flight to; null flies it live instead, in every window on the document. */
+    val path: String? = null,
+    val fps: Int = 30,
+    /** The film's size in pixels; null for either keeps the capture window's own size. */
+    val width: Int? = 1920,
+    val height: Int? = 1080,
+    /** Pixels of film per CSS pixel of the window: 1920 wide at 1.5 is a window 1280 CSS px wide. */
+    val pixelRatio: Double = 1.5
+)
+
+/**
+ * `film-page` on the backdoor: film any web page frame by frame (`afield.tools.docs.filmPage`). The
+ * page opens in a capture context of its own at [width] by [height] pixels ([pixelRatio] per CSS
+ * pixel); [setup], a JavaScript function `async () => …`, runs once after load and [settleMs]; then
+ * before every frame [frame], a function `(t, i, n) => …` that may return a promise, sets the page to
+ * time `t` seconds (frame `i` of `n`), and the frame is captured once the page has painted.
+ *
+ * A nonzero [dragDx] or [dragDy] drags the real mouse through the film: pressed at ([dragX], [dragY])
+ * (the middle of the page when null) before the first frame, moved that many CSS px further each
+ * frame, and released after the last. That orbits a three.js view's OrbitControls, or pans anything
+ * that pans by dragging, with trusted input. [prerollFrames] runs that many frames (script and drag)
+ * before the first one filmed, so a clip can open exactly where an earlier one, filmed with fewer, ended.
+ */
+@Serializable
+data class AgentPageFilm(
+    val url: String,
+    val path: String,
+    val durationSec: Double,
+    val fps: Int = 30,
+    val width: Int = 1920,
+    val height: Int = 1080,
+    val pixelRatio: Double = 1.0,
+    val setup: String? = null,
+    val frame: String? = null,
+    val settleMs: Int = 0,
+    val loadTimeoutMs: Int = 60_000,
+    val dragX: Double? = null,
+    val dragY: Double? = null,
+    val dragDx: Double = 0.0,
+    val dragDy: Double = 0.0,
+    val prerollFrames: Int = 0
+)
+
+@Serializable
+data class AgentPageFilmResponse(
+    val ok: Boolean,
+    val url: String,
+    val path: String,
+    val durationSec: Double = 0.0,
+    val fps: Int = 0,
+    val frameCount: Int = 0,
+    val encodedFrames: Int? = null,
+    val width: Int = 0,
+    val height: Int = 0,
+    /** What [AgentPageFilm.setup] returned, as JSON text. */
+    val setupResult: String? = null,
+    /** What the last frame's script returned, as JSON text. */
+    val lastFrameResult: String? = null,
+    val message: String = ""
+)
+
+/** The canvas camera: translation in CSS px and zoom, as `moveCanvasCamera` takes them. */
+@Serializable
+data class CanvasFlightCamera(val x: Double, val y: Double, val zoom: Double)
+
+/** How one stop of a filmed flight came out: the frame it is first reached in and the camera there. */
+@Serializable
+data class CanvasFlightStopReport(
+    val bookmark: String,
+    val name: String,
+    val slot: Int? = null,
+    val arrivalSec: Double,
+    val frame: Int,
+    /** Where the flight puts the camera for this stop, in the capture window. */
+    val target: CanvasFlightCamera,
+    /** The camera the bookmark itself saved (the same as [target] in a window of the saved size). */
+    val saved: CanvasFlightCamera,
+    /** The camera in the filmed [frame]. */
+    val filmed: CanvasFlightCamera? = null,
+    val reached: Boolean = false
+)
+
+@Serializable
+data class AgentCanvasFlightResponse(
+    val ok: Boolean,
+    val documentName: String,
+    val sessionKey: String,
+    val path: String? = null,
+    val durationSec: Double = 0.0,
+    val fps: Int = 0,
+    /** Frames captured and sent to the encoder. */
+    val frameCount: Int = 0,
+    /** Frames in the encoded file, counted by ffprobe. */
+    val encodedFrames: Int? = null,
+    val width: Int? = null,
+    val height: Int? = null,
+    /** three.js views that turned during the flight. */
+    val threeViews: Int = 0,
+    val stops: List<CanvasFlightStopReport> = emptyList(),
+    val message: String = ""
+)
+
 @Serializable
 data class AgentVideoResponse(
     val ok: Boolean,

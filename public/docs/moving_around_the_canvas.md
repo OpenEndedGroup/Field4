@@ -423,6 +423,9 @@ While the navigation overlay is up, every box on screen that a slot points at we
 with that slot's number: `F3` is the view saved in slot 3, reached with `shift-F3`. A box wears
 more than one chip if several slots were saved on it.
 
+**Fly Through Bookmarks** in the command palette flies the canvas smoothly through the saved slots
+in order, and box code can film the same flight to an MP4. See [Filming the canvas](filming_the_canvas.md).
+
 Bookmarks live on the root box as the `bookmarks` property and are saved with the rest of the
 document state. They survive a reload, and they travel with the document rather than with your
 browser session.

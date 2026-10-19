@@ -95,6 +95,7 @@ import com.microsoft.playwright.options.ScreenshotType
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -493,6 +494,18 @@ private fun postProcessScreenshot(path: Path) {
         }
       }
       "mouseUp" -> page.mouse().up()
+      // The capture page's size in CSS px (dx by dy); zero puts back the shared page's own size. For a
+      // test that must see Field in a window shaped like a person's, such as one saving canvas
+      // bookmarks for a 16:9 flight.
+      "setViewport" -> {
+        if (request.dx <= 0.0 || request.dy <= 0.0) {
+          page.setViewportSize(afield.app.server.PLAYWRIGHT_VIEWPORT_WIDTH, afield.app.server.PLAYWRIGHT_VIEWPORT_HEIGHT)
+        } else {
+          require(request.dx in 200.0..8000.0 && request.dy in 200.0..8000.0) { "setViewport takes 200 to 8000 CSS px a side" }
+          page.setViewportSize(request.dx.toInt(), request.dy.toInt())
+        }
+        page.evaluate("() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
+      }
       "showHistory" -> {
         val raw = page.evaluate(
           """
@@ -2842,6 +2855,19 @@ class DocsUiRecorder(
     }
 
     val frameCount: Int get() = frames.size
+
+    /** True once the drive's script has filmed its own video ([DocsUiDriver.filmCanvasFlight]): nothing to encode. */
+    @Volatile
+    var discarded: Boolean = false
+        private set
+
+    /** Stop the loop and drop its frames: the drive's video is being written another way. */
+    suspend fun discard() {
+        discarded = true
+        running = false
+        job?.join()
+        frames.clear()
+    }
 }
 
 /**
@@ -2857,8 +2883,43 @@ class DocsUiDriver internal constructor(
     /** Set by the drive op when it records; [scriptStarted] tells it the script is running. */
     internal var recorder: DocsUiRecorder? = null
 
+    /** The document the drive runs in; set by the drive op. */
+    internal var session: SessionInformation? = null
+
     /** Called by the drive op's prelude, the script's first statement. */
     fun scriptStarted() { recorder?.markScriptStart() }
+
+    /**
+     * Films a canvas flight through [stops] to [path] (the drive's video, `vid` in the script) with the
+     * recorder box code's `canvasFlight(record = ...)` uses, frame by frame, instead of recording the
+     * drive in real time. [width] and [height] null keep the window's size; the call returns once
+     * the film is written, and fails if the film came out short or missed a stop.
+     */
+    fun filmCanvasFlight(
+        path: String,
+        stops: List<String>,
+        legSeconds: Double = 6.0,
+        holdSeconds: Double = 2.0,
+        orbitDegreesPerSecond: Double = 8.0,
+        fps: Int = 30,
+        width: Int? = null,
+        height: Int? = null,
+        pixelRatio: Double = 2.0
+    ): afield.app.protocol.AgentCanvasFlightResponse {
+        val info = session ?: error("filmCanvasFlight: this driver has no document")
+        recorder?.let { runBlocking { it.discard() } }
+        val request = afield.app.protocol.AgentCanvasFlight(
+            afield.app.canvas.CanvasFlightSpec(stops.map { afield.app.canvas.CanvasFlightStop(it) }, legSeconds, holdSeconds, orbitDegreesPerSecond),
+            path, fps, width, height, pixelRatio
+        )
+        val film = playwrightScope.async { recordCanvasFlight(info, request) }
+        // Keep the runloop turning while the film is made, as [pause] does.
+        while (!film.isCompleted) idle(20L)
+        val reply = runBlocking { film.await() }
+        check(reply.ok) { "filmCanvasFlight: ${reply.message}" }
+        lprintln("info,docs", "drive filmed a canvas flight: ${reply.frameCount} frames -> $path")
+        return reply
+    }
 
     private fun run(request: AgentPlaywrightInputRequest): JsonElement? =
         runBlocking(playwrightDispatcher) {

@@ -75,6 +75,9 @@ nav:
     # slots, i.e. how you get around a document before you do anything in it. It absorbed the old
     # Spatial Navigation page (spatial_navigation.md), which was judged not worth a page of its own.
     - Moving Around the Canvas: moving_around_the_canvas.md
+    # Beside moving_around_the_canvas.md: a canvas flight is a camera move through its bookmarks,
+    # filmed to MP4.
+    - Filming the Canvas: filming_the_canvas.md
     - Snapping: snapping.md
     - Drawing and Notation: drawing_and_notation.md
     - File Management: files_and_paths.md
