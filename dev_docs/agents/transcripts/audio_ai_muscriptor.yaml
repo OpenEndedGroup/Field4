@@ -14,13 +14,13 @@ operations:
           display(
               "guide",
               """
-          <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
-            <h2 style="margin:0 0 8px;color:#7fcbd7">MuScriptor · recording to an instrument-labelled score</h2>
-            <p><code>analysis.transcribe_music</code> is one model-neutral operation with three revision-pinned worker capabilities: small, medium, and large. It retains onset, offset, MIDI pitch, instrument group, activity curves, MessagePack events, performance-timed MIDI, and optional beat-quantized MIDI.</p>
-            <p>Run box 2 from the committed real result without a server to explore the synchronized piano roll. Replace box 3's <code>sourcePattern</code> with a recording you have the rights to transcribe, then run it for asset lookup → submit → progress → durable result → source/score audition → MIDI download. Unchanged operations are cache hits.</p>
-            <p style="color:#e5bd77">The code is MIT, but the gated model weights are CC BY-NC 4.0. Accept the selected model's Hugging Face terms before starting the worker.</p>
-          </section>
-          """
+              <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
+                <h2 style="margin:0 0 8px;color:#7fcbd7">MuScriptor · recording to an instrument-labelled score</h2>
+                <p><code>analysis.transcribe_music</code> is one model-neutral operation with three revision-pinned worker capabilities: small, medium, and large. It retains onset, offset, MIDI pitch, instrument group, activity curves, MessagePack events, performance-timed MIDI, and optional beat-quantized MIDI.</p>
+                <p>Run box 2 from the committed real result without a server to explore the synchronized piano roll. Replace box 3's <code>sourcePattern</code> with a recording you have the rights to transcribe, then run it for asset lookup → submit → progress → durable result → source/score audition → MIDI download. Unchanged operations are cache hits.</p>
+                <p style="color:#e5bd77">The code is MIT, but the gated model weights are CC BY-NC 4.0. Accept the selected model's Hugging Face terms before starting the worker.</p>
+              </section>
+              """
                   .trimIndent(),
           )
           display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
@@ -56,17 +56,19 @@ operations:
       properties:
         code: |
           import java.nio.file.Path
+          import kotlinx.coroutines.*
+          import kotlinx.coroutines.future.await
 
-          val client = FieldAudioClient()
+          val client = cached { FieldAudioClient() }
           val sourcePattern = "*sonic-pi-study*" // replace with an asset you may transcribe
           // Filename matches can refer to different recordings; retain the resolved content ID.
           val sync = "muscriptor-live"
           val midiDirectory = Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders")
           display("job monitor", fieldAudioJobMonitor(heightPixels = 330))
 
-          client
-              .assetByFilename(sourcePattern)
-              .thenCompose { source ->
+          go {
+              try {
+                  val source = client.assetByFilename(sourcePattern).await()
                   display("source identity", source.id)
                   val audio =
                       source.representations.firstOrNull { it.role == "canonical_project" }
@@ -85,65 +87,44 @@ operations:
                           ),
                       ),
                   )
-                  client
-                      .submit(
-                          musicTranscriptionAnalysis(
-                              region,
-                              backend = MuscriptorBackend.SMALL,
-                              tempoDetection = MuscriptorTempoDetection.BEST_EFFORT,
-                              requestedBy = "field:audio-ai-muscriptor/live",
-                          ),
-                      )
-                      .thenCompose { accepted ->
-                          display("transcription job", fieldAudioJobStatusHtml(accepted))
-                          client.watch(
-                              accepted.jobId,
-                              onEvent = { event -> display("transcription job", fieldAudioJobStatusHtml(accepted, event)) },
-                              onError = { error -> display("transcription stream", "progress stream: ${error.message}") },
+                  val result =
+                      client
+                          .trackAnalysis(
+                              musicTranscriptionAnalysis(
+                                  region,
+                                  backend = MuscriptorBackend.SMALL,
+                                  tempoDetection = MuscriptorTempoDetection.BEST_EFFORT,
+                                  requestedBy = "field:audio-ai-muscriptor/live",
+                              ),
+                              onAccepted = { display("transcription job", fieldAudioJobStatusHtml(it)) },
+                              onProgress = { job, event -> display("transcription job", fieldAudioJobStatusHtml(job, event)) },
+                              onCompleted = { display("transcription job", fieldAudioJobStatusHtml(it)) },
+                              onError = {}, // Report failure once through the surrounding coroutine.
                           )
-                          client.awaitAnalysis(accepted).thenApply { result ->
-                              client.inspect(accepted.jobId).thenAccept { job ->
-                                  display("transcription job", fieldAudioJobStatusHtml(job))
-                              }
-                              result
-                          }
-                      }
-              }
-              .thenAccept { result ->
+                          .await()
+                  display("score", analysisVisualizationHtml(result, width = 1100, height = 420, syncGroup = sync))
+                  val transcription = client.musicTranscription(result).await()
+                  val byInstrument = transcription.notes.groupingBy { it.instrument }.eachCount()
+                  display("typed notes", "${transcription.notes.size} notes · $byInstrument")
                   display(
-                      "score",
-                      analysisVisualizationHtml(
-                          result,
-                          width = 1100,
-                          height = 420,
-                          syncGroup = sync,
-                      ),
+                      "interpretation",
+                      "Instrument labels are predictions. Compare pitches and onsets with the source; a completed job is not an accuracy guarantee.",
                   )
-                  client.musicTranscription(result).thenAccept { transcription ->
-                      val byInstrument = transcription.notes.groupingBy { it.instrument }.eachCount()
-                      display("typed notes", "${transcription.notes.size} notes · $byInstrument")
-                      display(
-                          "interpretation",
-                          "Instrument labels are predictions. Compare pitches and onsets with the source; a completed job is not an accuracy guarantee.",
-                      )
-                  }
-                  val downloads = mutableListOf(
-                      client.download(result.musicTranscriptionMidi(), midiDirectory.resolve("muscriptor-performance.mid")),
+                  val downloads = mutableListOf<Path>()
+                  downloads.add(
+                      client
+                          .download(result.musicTranscriptionMidi(), midiDirectory.resolve("muscriptor-performance.mid"))
+                          .await(),
                   )
                   result.musicTranscriptionQuantizedMidiOrNull()?.let { midi ->
-                      downloads += client.download(midi, midiDirectory.resolve("muscriptor-quantized.mid"))
+                      downloads.add(client.download(midi, midiDirectory.resolve("muscriptor-quantized.mid")).await())
                   }
-                  java.util.concurrent.CompletableFuture.allOf(*downloads.toTypedArray()).thenRun {
-                      display("MIDI", downloads.joinToString("<br>") { "saved ${it.join()}" })
-                  }
+                  display("MIDI", downloads.joinToString("<br>") { "saved $it" })
+              } catch (cancelled: CancellationException) {
+                  throw cancelled
+              } catch (failure: Throwable) {
+                  markdown("MuScriptor error", "Operation failed: ${(failure.message ?: failure.toString()).md}")
               }
-              .exceptionally { error ->
-                  val message = error.cause?.message ?: error.message ?: error.toString()
-                  display(
-                      "MuScriptor error",
-                      """<pre style="color:#f1aaaa;background:#28191b;padding:12px;white-space:pre-wrap">$message</pre>""",
-                  )
-                  null
-              }
+          }
   - execute: { box: muscriptor_guide }
   - execute: { box: muscriptor_visualizer_gallery }

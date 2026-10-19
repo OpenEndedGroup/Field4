@@ -148,7 +148,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Teach run-owned Loris workflows with cancellable native awaits](../box_code_adoption_batch_74/README.md) | 1 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **381 of 405 findings addressed**; 24 remain open. These counts do not claim
+| [Own MuScriptor and speech pipelines and retain usable result handles](../box_code_adoption_batch_75/README.md) | 6 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **387 of 405 findings addressed**; 18 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 
