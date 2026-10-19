@@ -106,7 +106,7 @@ showMesh(
 <!-- field-box id="gradient" index="1" -->
 
 ```edn [field-box id="gradient" role="properties"]
-{"id" "gradient" "index" 1 "name" "1 - A solid, and its exact gradient" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A solid, and its exact gradient" "_tombstone" false "frame" #afield/rect [40.0 40.0 700.0 470.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gradient_code_.kt" "lines" 86 "characters" 3643 "sha256" "f9ef0ff7ebb98612fe79fc1aaa71efd041d0e5568a0b605e03e5321ce42d4808"}]}
+{"id" "gradient" "index" 1 "name" "1 - A solid, and its exact gradient" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A solid, and its exact gradient" "_tombstone" false "frame" #afield/rect [40.0 40.0 700.0 470.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gradient_code_.kt" "lines" 86 "characters" 3637 "sha256" "dcb19c9aebb4d123adecca8ea3fef1c33c7ac1907dd4049c0089719bc63dd498"}]}
 ```
 
 ```kotlin [field-property box="gradient" name="code" path="gradient_code_.kt"]
@@ -167,12 +167,12 @@ itself between h and h/2 — at a sphere's own centre, on a polygon's outline, w
 any kink. A census that did not count those would pass while checking nothing.
 */
 println("---- analytic vs central differences, right now ----")
-val probes = listOf(
+val probes = [
     Triple(0.9, 0.0, 0.0),
     Triple(0.0, 0.0, 1.2),
     Triple(0.31, -0.44, 0.62),
     Triple(0.0, 0.0, 0.0), // the ball's own centre
-)
+]
 probes.forEach { (x, y, z) ->
     val c = template.checkGradient(x, y, z)
     println("  dParam (%5.2f, %5.2f, %5.2f)  %s".format(x, y, z, c))
@@ -203,7 +203,7 @@ part.gradientNotes().forEach { println("  - $it") }
 <!-- field-box id="refusals" index="2" -->
 
 ```edn [field-box id="refusals" role="properties"]
-{"id" "refusals" "index" 2 "name" "3 - What refuses, and the one that does not" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - What refuses, and the one that does not" "_tombstone" false "frame" #afield/rect [40.0 560.0 700.0 470.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 71 "characters" 3642 "sha256" "31b055aa092a163175c3ea5f0df041e0dbd1cc73d05ddcd7b0b98892a99be95c"}]}
+{"id" "refusals" "index" 2 "name" "3 - What refuses, and the one that does not" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - What refuses, and the one that does not" "_tombstone" false "frame" #afield/rect [40.0 560.0 700.0 470.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 71 "characters" 3636 "sha256" "0c72a3075912ddd6a01fe1231d00f0830f841d22502fc9b4e129605787193fc0"}]}
 ```
 
 ```kotlin [field-property box="refusals" name="code" path="refusals_code_.kt"]
@@ -264,7 +264,7 @@ fun deadUnder(expr: SolidExpr, path: String): SolidFit {
 }
 
 println("---- a swallowed child, under two kinds of union ----")
-val hard = deadUnder(unionOf(listOf(outer, inner)), "Union/1/Sphere.radius")
+val hard = deadUnder(unionOf([outer, inner]), "Union/1/Sphere.radius")
 val soft = deadUnder(smoothUnion(outer, inner, 0.9), "SmoothUnion/b/Sphere.radius")
 println("  hard Union      dead: ${hard.deadParameters}")
 println("  smoothUnion     dead: ${soft.deadParameters}")

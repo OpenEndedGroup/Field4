@@ -369,6 +369,93 @@ data class CreatureEvaluation(
             "speed=${"%.3f".format(meanSpeed)} " +
             "frames=${frames.size} exploded=$exploded"
 
+    /**
+     * Frame [index] as 3D FLines: x and y are the surface, z is height. Show them with
+     * `three { lines(...); camera(upAxis = ThreeUpAxis.Z) }` so the viewer's grid is the water.
+     *
+     * A planted foot sits on the surface (height 0) and every other point is [lift] above it. Each edge
+     * arcs upward by [arc] times its length, so legs bow like a strider's. On the surface: the body's shadow, a drop line from every point, and a ring where each planted foot is holding.
+     */
+    fun frameLines3d(
+        index: Int,
+        lift: Float = 0.2f,
+        arc: Float = 0.06f,
+        alignNetMotionToPositiveX: Boolean = true
+    ): List<FLine> {
+        if (frames.isEmpty()) return emptyList()
+        val frame = frames[index.coerceIn(0, frames.lastIndex)]
+        val alignment = motionAlignmentTransform(alignNetMotionToPositiveX)
+        val ground = frame.points.map(alignment::transform)
+        val height = frame.down.map { if (it) 0f else lift }
+
+        fun project(p: Float2, z: Float) = vec(p.x, p.y, z)
+
+        val shadow = FLine().apply {
+            color = vec(0.35, 0.5, 0.6, 0.35)
+            thickness = 1.2
+        }
+        val drops = FLine().apply {
+            color = vec(0.6, 0.7, 0.8, 0.3)
+            thickness = 0.6
+        }
+        val rings = FLine().apply {
+            color = vec(1.0, 0.55, 0.25, 0.8)
+            thickness = 1.2
+        }
+        val legs = FLine().apply {
+            color = vec(0.72, 0.87, 0.88, 0.95)
+            thickness = 2.0
+        }
+        for (edge in genome.edges) {
+            val a = ground[edge.a]
+            val b = ground[edge.b]
+            shadow.moveTo(project(a, 0f))
+            shadow.lineTo(project(b, 0f))
+
+            // A cubic whose controls sit a third of the way along, raised so the curve peaks arc * length above
+            // the straight line between its ends (a cubic reaches 3/4 of its control offset).
+            val za = height[edge.a]
+            val zb = height[edge.b]
+            val rise = arc * distance(a, b) * 4f / 3f
+            legs.moveTo(project(a, za))
+            legs.cubicTo(
+                project(a.lerp(b, 1f / 3f), (za + (zb - za) / 3f) + rise),
+                project(a.lerp(b, 2f / 3f), (za + (zb - za) * 2f / 3f) + rise),
+                project(b, zb)
+            )
+        }
+        ground.forEachIndexed { i, p ->
+            drops.moveTo(project(p, 0f))
+            drops.lineTo(project(p, height[i]))
+        }
+        frame.anchors.forEach { anchor ->
+            anchor ?: return@forEach
+            val at = alignment.transform(anchor)
+            val r = 0.12f
+            for (k in 0..16) {
+                val t = k / 16f * 2f * PI.toFloat()
+                val p = project(Float2(at.x + r * cos(t), at.y + r * sin(t)), 0f)
+                if (k == 0) rings.moveTo(p) else rings.lineTo(p)
+            }
+        }
+
+        val upPoints = FLine().apply {
+            pointed = true
+            pointSize = 1.4
+            color = vec(0.31, 0.61, 0.93, 1.0)
+        }
+        val downPoints = FLine().apply {
+            pointed = true
+            pointSize = 2.2
+            color = vec(0.98, 0.69, 0.22, 1.0)
+        }
+        ground.forEachIndexed { i, p ->
+            (if (frame.down[i]) downPoints else upPoints).moveTo(project(p, height[i]))
+        }
+
+        return listOf(shadow, drops, rings, legs, upPoints, downPoints)
+    }
+
     fun frameLines(
         index: Int,
         trailLength: Int = 40,

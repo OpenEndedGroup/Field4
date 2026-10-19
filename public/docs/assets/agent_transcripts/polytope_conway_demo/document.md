@@ -18,7 +18,7 @@ Topology is the source of truth. Coordinates and the FLine viewer only arrive af
 selection and the abstract Conway operation have decided what the new faces are.
 
 ```edn [field-box id="polytope_selective_kis" role="properties"]
-{"id" "polytope_selective_kis" "index" 0 "name" "Polytope — selective kis, topology to FLine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — selective kis, topology to FLine" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_selective_kis_code_.kt" "lines" 83 "characters" 2922 "sha256" "03748905f7ecb4b29adf807e81761d2130783f14597efdc123d7adcc831e6583"}]}
+{"id" "polytope_selective_kis" "index" 0 "name" "Polytope — selective kis, topology to FLine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — selective kis, topology to FLine" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_selective_kis_code_.kt" "lines" 83 "characters" 2910 "sha256" "3474f02bc897f2a516a66235039c6fc6607fae952a9c956543cfabf03577914f"}]}
 ```
 
 ```kotlin [field-property box="polytope_selective_kis" name="code" path="polytope_selective_kis_code_.kt"]
@@ -30,7 +30,7 @@ val sourceFaces = source.topology.elements(2)
 // The first pair are the cube's opposite z faces. Attributes do both jobs here: `raise`
 // selects the domain of kis, while `height` is deployed independently over that domain.
 val raisedFaces = sourceFaces.take(2)
-val raisedHeights = listOf(0.22, 0.68)
+val raisedHeights = [0.22, 0.68]
 for (i in raisedFaces.indices) {
     source = source.withAttributes(
         raisedFaces[i].id,
@@ -104,6 +104,6 @@ displayOpen("polytope")
 
 // These are registered polytope value printers. They reduce the larger immutable objects
 // to public data-class summaries, then use Field's normal nested data-class visualizer.
-viz("inspection", listOf(result, triangles))
+viz("inspection", [result, triangles])
 ```
 

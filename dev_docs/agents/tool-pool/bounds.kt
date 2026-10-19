@@ -14,9 +14,8 @@ val measured = aiTool("geometry.bounds3") {
         }
         mapOf("min" to (0..2).map { a -> p.minOf { it[a] } }, "max" to (0..2).map { a -> p.maxOf { it[a] } })
     }
-    test("negative and positive coordinates", mapOf("points" to listOf(listOf(-2, 3, 7), listOf(5, -1, 4)))) { value
-        ->
-        check(value == mapOf("min" to listOf(-2.0, -1.0, 4.0), "max" to listOf(5.0, 3.0, 7.0)))
+    test("negative and positive coordinates", mapOf("points" to [[-2, 3, 7], [5, -1, 4]])) { value ->
+        check(value == mapOf("min" to [-2.0, -1.0, 4.0], "max" to [5.0, 3.0, 7.0]))
     }
     testFailure(
         "empty input is refused",
@@ -25,7 +24,7 @@ val measured = aiTool("geometry.bounds3") {
     )
     testFailure(
         "incomplete coordinates are refused",
-        mapOf("points" to listOf(listOf(1, 2))),
+        mapOf("points" to [[1, 2]]),
         messageContains = "Provide finite xyz points",
     )
 }

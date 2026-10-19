@@ -30,7 +30,7 @@ operations:
           }
 
           // The sampled envelope, drawn the way the function workbench draws it: min and max per bin.
-          val viewer = SignalViewer(listOf(SignalChannel("x", signal::eval)), 0.0, 3600.0)
+          val viewer = SignalViewer([SignalChannel("x", signal::eval)], 0.0, 3600.0)
           displaySignal(
               viewer,
               "main",
@@ -42,7 +42,7 @@ operations:
           val bin = (1234.57 / 3.6).toInt()
           display(
               "numbers",
-              Table(listOf("what", "value"), title = "what the sampled plot can see")
+              Table(["what", "value"], title = "what the sampled plot can see")
                   .row("f(1234.57), the glitch's peak", signal(1234.57))
                   .row("sampled max, bin $bin", bins.high[bin])
                   .row("sampled max, whole hour", bins.high.max())
@@ -63,7 +63,7 @@ operations:
           val signal = with(Functions) {
               sin(1.0 / 40.0, amplitude = 0.2, offset = 0.45) + gaussian(1234.57, 0.002, 0.5, Functions.Domain.ALL)
           }
-          val viewer = SignalViewer(listOf(certifiedSignalChannel("x", signal)), 0.0, 3600.0)
+          val viewer = SignalViewer([certifiedSignalChannel("x", signal)], 0.0, 3600.0)
           displaySignal(
               viewer,
               "main",
@@ -75,7 +75,7 @@ operations:
           val bin = (1234.57 / 3.6).toInt()
           display(
               "numbers",
-              Table(listOf("what", "value"), title = "the certified band, as numbers")
+              Table(["what", "value"], title = "the certified band, as numbers")
                   .row("f(1234.57), the glitch's peak", signal(1234.57))
                   .row("certified max, bin $bin", band.high[bin])
                   .row("certified min, bin $bin", band.low[bin])
@@ -99,7 +99,7 @@ operations:
           display(
               "range",
               Table(
-                      listOf("side", "reached", "at x", "proven bound", "enclosures"),
+                      ["side", "reached", "at x", "proven bound", "enclosures"],
                       title = "certifiedRange(0, 3600): certified = ${range.certified}",
                   )
                   .row("max", max.value, max.witness, max.bound, max.enclosures)
@@ -108,16 +108,18 @@ operations:
           )
 
           // Yes/no questions with the same guarantee. A refutation carries the x that breaks the claim.
-          val claims = listOf(
+          val claims = [
               signal.certifiedNeverExceeds(0.7, 0.0, 3600.0),
               signal.certifiedNeverExceeds(0.8, 0.0, 3600.0),
               signal.certifiedReaches(0.75, 0.0, 3600.0),
-          )
+          ]
           display(
               "claims",
-              Table(listOf("claim", "verdict", "witness x"))
-                  .rows(claims.map { listOf(it.claim, it.kind.name, it.witness) })
-                  .roleBy("verdict") { if (it == "PROVEN") CellRole.OK else CellRole.WARN },
+              Table(["claim", "verdict", "witness x"]).rows(claims.map { [it.claim, it.kind.name, it.witness] }).roleBy(
+                  "verdict",
+              ) {
+                  if (it == "PROVEN") CellRole.OK else CellRole.WARN
+              },
           )
   - create:
       box: limits
@@ -142,16 +144,16 @@ operations:
                   smoothStep(185.0, 285.0, Functions.Domain.ALL) * (one - smoothStep(315.0, 415.0, Functions.Domain.ALL))
               one - (one - background) * (one - envelope)
           }
-          val checks = listOf(
+          val checks = [
               held.certifiedEquals(1.0, 285.0, 315.0),
               held.certifiedEquals(1.0, 284.0, 315.0),
               held.certifiedNeverExceeds(1.0, 0.0, 3600.0, slack = 1e-12),
-          )
+          ]
           display(
               "limits",
-              Table(listOf("question", "answer"), title = "refusals and exact holds")
+              Table(["question", "answer"], title = "refusals and exact holds")
                   .row("enclose the lambda channel", "certified = ${refused.certified}: ${refused.refusal}")
-                  .rows(checks.map { listOf(it.claim, it.kind.name + (it.witness?.let { w -> " at x = $w" } ?: "")) })
+                  .rows(checks.map { [it.claim, it.kind.name + (it.witness?.let { w -> " at x = $w" } ?: "")] })
                   .role("answer", CellRole.ACCENT),
           )
   - create:
@@ -167,14 +169,14 @@ operations:
           a lambda was the piecewise event selection; here it is exact 0/1 `step` indicators, with every
           product and sum in the lambda's order, so the two agree bit for bit.
           */
-          val events = listOf(
+          val events = [
               StudyEvent("e1", 185.0, 100.0, 30.0, 100.0),
               StudyEvent("e2", 785.0, 100.0, 30.0, 100.0),
               StudyEvent("e3", 1425.0, 200.0, 30.0, 100.0),
               StudyEvent("e5", 2585.0, 100.0, 30.0, 100.0),
               StudyEvent("e6", 3185.0, 100.0, 30.0, 100.0),
-          )
-          val names = listOf("x", "y", "z")
+          ]
+          val names = ["x", "y", "z"]
 
           fun smooth01(value: Double): Double {
               val u = value.coerceIn(0.0, 1.0)
@@ -270,19 +272,19 @@ operations:
               val above = f.certifiedNeverExceeds(1.0, 0.0, 3600.0)
               val witness = above.witness!!
               rows +=
-                  listOf(
+                  [
                       name,
                       "${FnIntervals.unsupportedOps(l)} / ${FnIntervals.unsupportedOps(f)}",
                       "$mismatches of ${grid.size}",
                       "$holds of ${events.size} PROVEN",
                       f.certifiedNeverBelow(0.0, 0.0, 3600.0).kind.name,
                       "${above.kind} at $witness: lambda ${l(witness)}",
-                  )
+                  ]
           }
           display(
               "claims",
               Table(
-                      listOf("ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"),
+                      ["ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"],
                       title = "the worked example's claims, on its formula rewrite",
                   )
                   .rows(rows)
@@ -293,7 +295,7 @@ operations:
           val xMax = formula(0, "x").certifiedRange(0.0, 3600.0, tolerance = 9e-10).max!!
           display(
               "max",
-              Table(listOf("what", "value"), title = "channel x, the whole hour")
+              Table(["what", "value"], title = "channel x, the whole hour")
                   .row("max reached", xMax.value.toString())
                   .row("at x", xMax.witness.toString())
                   .row("proven bound", xMax.bound.toString())

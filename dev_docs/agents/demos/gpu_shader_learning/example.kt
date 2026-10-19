@@ -3,7 +3,7 @@ import java.io.File
 import org.lwjgl.vulkan.VK13.*
 
 prop<GpuShaderLearningView>(lab)
-fromContextWithNameOrNull<GpuShaderLearningView>("lab")?.close()
+val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
 check(renderer.device.supportsCooperativeVectorTraining) {
     "GPU learning needs enabled cooperative-vector training. learned_from_module provides offline training."
 }
@@ -22,7 +22,11 @@ val teacher = moduleHere {
 val mesh = fullscreenTriangle(teacher)
 teacher += "fullscreen" to mesh
 source += "teacher" to teacher
-lab = GpuShaderLearningView(renderer, source) { t -> mesh.state = { vec(source.width, source.height, t, 0) } }.install()
+val ownedLab = runScope.own(
+    GpuShaderLearningView(renderer, source) { t -> mesh.state = { vec(source.width, source.height, t, 0) } }
+        .install(),
+)
+lab = ownedLab
 var learn = true
 var view = 2
 var reset = false
@@ -55,14 +59,14 @@ frames {
             println("Teacher changed; restarting the fit.")
         }
         if (reset) {
-            lab.model.reset()
+            ownedLab.model.reset()
             reset = false
         }
-        lab.learning = learn
-        lab.iterationsPerFrame = iterations
-        lab.view = view
+        ownedLab.learning = learn
+        ownedLab.iterationsPerFrame = iterations
+        ownedLab.view = view
         // Train across both endpoints of [-1, 1]; preview moves smoothly through that range.
-        lab.parameter = if (learn) {
+        ownedLab.parameter = if (learn) {
             (phase % trainingSampleCount) / ((trainingSampleCount - 1) / 2f) - 1
         } else {
                 kotlin.math.sin(phase * previewAngularStep)
@@ -71,7 +75,7 @@ frames {
             save = false
             runCatching {
                 val directory = File("build/shader-learning/gpu-${System.currentTimeMillis()}")
-                lab.model.save(
+                ownedLab.model.save(
                     directory,
                     sourceHash,
                     "Fullscreen module; camera, textures and other controls fixed; normalized time varies",
@@ -85,7 +89,7 @@ frames {
     }
 }
     .end {
-        lab.close()
+        ownedLab.close()
         owner.cleanup += Runnable {
             teacher.current.cleanup()
             source.imageViewArray.forEach { it.imageView.cleanup() }

@@ -4,7 +4,7 @@ Cage's performer laid a line from a point inside the grid to one outside it and 
 where it crossed the curves. Here the line is yours: draw one across the sheet (Alt+D, then L)
 and this box reads it. Run the box first; it draws the sheet.
 */
-val colors = listOf("#e03131", "#1971c2", "#2f9e44", "#f08c00", "#9c36b5", "#0c8599")
+val colors = ["#e03131", "#1971c2", "#2f9e44", "#f08c00", "#9c36b5", "#0c8599"]
 notation("sheet") {
     frame("fontana mix", 1200, 100, 900, 520)
     for (i in 0 until 6) {

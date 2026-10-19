@@ -87,4 +87,4 @@ threeLines(
 )
 displayOpen("polytope")
 
-viz("diagnostics", listOf(run.initialDiagnostics, run.finalDiagnostics, orbits))
+viz("diagnostics", [run.initialDiagnostics, run.finalDiagnostics, orbits])

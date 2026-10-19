@@ -5,7 +5,7 @@ import afield.lang.morpho.*
 val free = MorphoProblems.recursiveAdder()
 val guided = MorphoProblems.guidedRecursiveAdder()
 val budget = 6000
-val runs = listOf(
+val runs = [
     MorphoSearch.random(free.spec, free.generator, budget, seed = 1),
     MorphoSearch.hillClimb(free.spec, free.generator, budget, seed = 1),
     MorphoSearch.evolve(free.spec, free.generator, budget, seed = 1),
@@ -16,7 +16,7 @@ val runs = listOf(
         seed = 1,
         label = "evolution, SPLITs given",
     ),
-)
+]
 runs.forEach { println(it.summary()) }
 
 /*
@@ -25,32 +25,32 @@ the ripple skeleton, written by hand in exactly the grammar the generator emits,
 by exactly the evaluator the search used.
 */
 val target = MorphoGenome(
-    listOf(
+    [
         MorphoCellGenome(
             name = MorphoProblems.ROOT,
-            inputs = listOf("a", "b", "c"),
-            statements = listOf(
-                MorphoStatement(listOf("a0", "a1"), "SPLIT", listOf("a")),
-                MorphoStatement(listOf("b0", "b1"), "SPLIT", listOf("b")),
-                MorphoStatement(listOf("s0", "cm"), MorphoProblems.ROOT, listOf("a0", "b0", "c")),
-                MorphoStatement(listOf("s1", "co"), MorphoProblems.ROOT, listOf("a1", "b1", "cm")),
-                MorphoStatement(listOf("sum"), "CAT", listOf("s0", "s1")),
-            ),
-            outputs = listOf("sum", "co"),
+            inputs = ["a", "b", "c"],
+            statements = [
+                MorphoStatement(["a0", "a1"], "SPLIT", ["a"]),
+                MorphoStatement(["b0", "b1"], "SPLIT", ["b"]),
+                MorphoStatement(["s0", "cm"], MorphoProblems.ROOT, ["a0", "b0", "c"]),
+                MorphoStatement(["s1", "co"], MorphoProblems.ROOT, ["a1", "b1", "cm"]),
+                MorphoStatement(["sum"], "CAT", ["s0", "s1"]),
+            ],
+            outputs = ["sum", "co"],
             fallback = "full_adder",
         ),
-    ),
+    ],
     free.generator.preamble,
 )
 println()
 println(target.cells[0].render())
 println("  scored at 2/4/8: " + MorphoEvaluator(free.spec).evaluate(target.render(), target.rootName))
-println("  at 16 bits:      " + MorphoSearch.generalization(target, free.spec, listOf(16)))
-println("  at 32 bits:      " + MorphoSearch.generalization(target, free.spec, listOf(32)))
+println("  at 16 bits:      " + MorphoSearch.generalization(target, free.spec, [16]))
+println("  at 32 bits:      " + MorphoSearch.generalization(target, free.spec, [32]))
 
 // What the humans cost, through the same evaluator rather than quoted from a paper.
 val references =
-    listOf("ripple_adder", "brent_kung_adder").mapNotNull { design ->
+    ["ripple_adder", "brent_kung_adder"].mapNotNull { design ->
         free.reference(design).cost?.let { MorphoCostPoint(design, it.gates, it.depth, reference = true) }
     }
 references.forEach { println("  reference ${it.label}: ${it.gates} gates, depth ${it.depth}") }

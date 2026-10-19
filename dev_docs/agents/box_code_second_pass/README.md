@@ -150,10 +150,18 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Own MuScriptor and speech pipelines and retain usable result handles](../box_code_adoption_batch_75/README.md) | 6 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **387 of 405 findings addressed**; 18 remain open. These counts do not claim
+| [Own exact graphics views and preserve replacements and edited shaders](../box_code_adoption_batch_76/README.md) | 11 findings resolved; see the batch for actual evidence and limits. |
+
+| [Own native interop and splat playback resources across setup and Stop](../box_code_adoption_batch_77/README.md) | 4 findings resolved; see the batch for actual evidence and limits. |
+
+| [Own named tutorial listeners and depth worker threads by their box runs](../box_code_adoption_batch_78/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **405 of 405 findings addressed**; 0 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 
 Every batch includes code smells/idioms, useful comments, Kotlin/GLSL layout, import/ktfmt handling,
 explicit collection-literal audit, fragment/reset preservation, and the smallest meaningful runtime
 checks. Save concrete verification limits when a device or service is unavailable.
+
+Final mechanical closure: [collection literals and guide screenshots](../box_code_adoption_batch_79/README.md). All 405 frozen findings are addressed; final landing outcomes are tracked separately.

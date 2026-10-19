@@ -1,9 +1,10 @@
 prop<ClusterGeometryDemo>(lab)
-fromContextWithNameOrNull<ClusterGeometryDemo>("lab")?.close()
+val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
 check(renderer.device.supportsClusterAccelerationStructure) {
     "This Starting Point needs enabled VK_NV_cluster_acceleration_structure and a ray-tracing pipeline."
 }
-lab = ClusterGeometryDemo(renderer, producerFactory = { computeModuleHere(it) }).install()
+val ownedLab = runScope.own(ClusterGeometryDemo(renderer, producerFactory = { computeModuleHere(it) }).install())
+lab = ownedLab
 var animate = true
 var topology = 0
 var view = 0
@@ -22,10 +23,10 @@ println(
 )
 frames {
     while (true) {
-        lab.animate = animate
-        lab.topology = topology
-        lab.view = view
+        ownedLab.animate = animate
+        ownedLab.topology = topology
+        ownedLab.view = view
         frame()
     }
 }
-    .end { lab.close() }
+    .end { ownedLab.close() }

@@ -1,6 +1,6 @@
 # Remaining sweep priorities
 
-Checkpoint: **387/405 addressed; 18 open**. Groups 1, 4, 5 and 2 are addressed with recorded evidence; group 3 remains. Execution order approved by Marc: **1 → 4 → 5 → 2 → 3**. Group numbers below stay stable. Addressed means reviewed/fixed with recorded evidence; queued means awaiting landing, not landed.
+Checkpoint: **405/405 addressed; 0 open**. All five groups are addressed with recorded evidence. Collection-literal coverage and guide screenshot reconciliation are complete. Final landing outcomes remain. Execution order approved by Marc: **1 → 4 → 5 → 2 → 3**. Group numbers below stay stable. Addressed means reviewed/fixed with recorded evidence; queued means awaiting landing, not landed.
 
 ## Execution budget
 

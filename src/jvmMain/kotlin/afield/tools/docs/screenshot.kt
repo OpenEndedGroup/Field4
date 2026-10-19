@@ -2857,7 +2857,8 @@ class DocsUiRecorder(
     val frameCount: Int get() = frames.size
 
     /** True once the drive's script has filmed its own video ([DocsUiDriver.filmCanvasFlight]): nothing to encode. */
-    @Volatile var discarded: Boolean = false
+    @Volatile
+    var discarded: Boolean = false
         private set
 
     /** Stop the loop and drop its frames: the drive's video is being written another way. */

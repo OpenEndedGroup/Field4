@@ -1,6 +1,6 @@
 // A scalar field pinned at four points: the mean, two whole-field draws on one colour scale,
 // and the standard deviation, dark at the observations. Change the values or the seeds and run again.
-val points = listOf(vec(-0.8, -0.5), vec(0.55, -0.5), vec(-0.3, 0.65), vec(0.65, 0.55))
+val points = [vec(-0.8, -0.5), vec(0.55, -0.5), vec(-0.3, 0.65), vec(0.65, 0.55)]
 val field = gp2D(
     points,
     doubleArrayOf(0.9, -0.7, -0.8, 0.65),

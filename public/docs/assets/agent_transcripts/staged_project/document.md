@@ -90,7 +90,7 @@ A room is [x, y, w, h] in cells. A door is [x, y, side]: an opening from cell (x
 to its neighbour on side "e" (east) or "s" (south). Loot is [x, y, path budget].
 
 ```edn [field-box id="staged_level" role="properties"]
-{"id" "staged_level" "index" 1 "name" "Level" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Level" "_tombstone" false "frame" #afield/rect [40.0 700.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_level_code_.kt" "lines" 199 "characters" 8586 "sha256" "2142282f175a1af726826cc82d82abac9c28ec97613f6f615313ceb46d28c470"}]}
+{"id" "staged_level" "index" 1 "name" "Level" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Level" "_tombstone" false "frame" #afield/rect [40.0 700.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_level_code_.kt" "lines" 200 "characters" 8549 "sha256" "a8e8532b18efa678dd097755c6198360f2a5754e91f161b6b6ea9b1382fb593c"}]}
 ```
 
 ```kotlin [field-property box="staged_level" name="code" path="staged_level_code_.kt"]
@@ -113,7 +113,8 @@ val first =
 """
 Box.ioPersistentProperties.add("level")
 Box.ioSeparateProperties["level"] = "json"
-if (getPropertyRaw("level") == null) setPropertyRaw("level", json.writeValueAsString(json.readTree(first)))
+prop<String?>(level)
+if (level == null) level = json.writeValueAsString(json.readTree(first))
 
 // Every check a level must pass. Edits that break one are refused and change nothing.
 fun problems(level: Map<String, Any?>): List<String> {
@@ -151,7 +152,7 @@ fun problems(level: Map<String, Any?>): List<String> {
 val plan = SourceStudy(
     java.io.File(BoxStudies.directory(thisBox), "level"),
     "json",
-    { getPropertyRaw("level", "").toString() },
+    { level.orEmpty() },
     BoxStudies.replacer(thisBox, "level"),
     admit = { source, _ ->
         val found = problems(json.readValue(source))

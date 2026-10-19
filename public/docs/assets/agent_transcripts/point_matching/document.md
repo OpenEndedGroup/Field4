@@ -129,7 +129,7 @@ to its area. Each pixel gets a target of its own, and is painted with that targe
 place in its disc: hue for the angle, lightness for the distance from the centre.
 
 ```edn [field-box id="million_pixels" role="properties"]
-{"id" "million_pixels" "index" 2 "name" "a million pixels, a million targets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a million pixels, a million targets" "_tombstone" false "frame" #afield/rect [80.0 1440.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "million_pixels_code_.kt" "lines" 47 "characters" 1880 "sha256" "becb2b2114222da73791e41a9c6ffc43434021cbda12151bc0b616092907d101"}]}
+{"id" "million_pixels" "index" 2 "name" "a million pixels, a million targets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a million pixels, a million targets" "_tombstone" false "frame" #afield/rect [80.0 1440.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "million_pixels_code_.kt" "lines" 47 "characters" 1874 "sha256" "f48806fdf02b26b1133ee04360aa8d2d6c023769c3969c5b0503de0911ebb130"}]}
 ```
 
 ```kotlin [field-property box="million_pixels" name="code" path="million_pixels_code_.kt"]
@@ -144,7 +144,7 @@ val n = side * side
 val ax = FloatArray(n) { it % side + 0.5f }
 val ay = FloatArray(n) { it / side + 0.5f }
 
-val discs = listOf(Triple(330.0, 400.0, 250.0), Triple(740.0, 300.0, 160.0), Triple(640.0, 760.0, 200.0))
+val discs = [Triple(330.0, 400.0, 250.0), Triple(740.0, 300.0, 160.0), Triple(640.0, 760.0, 200.0)]
 val area = discs.sumOf { it.third * it.third }
 val rnd = java.util.Random(9)
 val home = IntArray(n)

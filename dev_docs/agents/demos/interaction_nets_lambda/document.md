@@ -183,7 +183,7 @@ parse the text, compile it to an interaction net, reduce the net until nothing f
 back out. Nothing here needs a GPU, a network or any setup.
 
 ```edn [field-box id="lambda-normalise" role="properties"]
-{"id" "lambda-normalise" "index" 3 "name" "Normalise a term, and check it against the oracle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Normalise a term, and check it against the oracle" "frame" #afield/rect [60.0 60.0 700.0 900.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lambda-normalise_code_.kt" "lines" 63 "characters" 3277 "sha256" "1ea293c73a4f1faa54ba6f58ddc989c46b10f8f2b23b359cd20976581f0c9994"}]}
+{"id" "lambda-normalise" "index" 3 "name" "Normalise a term, and check it against the oracle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Normalise a term, and check it against the oracle" "frame" #afield/rect [60.0 60.0 700.0 900.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lambda-normalise_code_.kt" "lines" 65 "characters" 3282 "sha256" "7a8d1f644b14d954e3fef5fb62a029545d8043fbaf7759f24d0b96524e8cb066"}]}
 ```
 
 ```kotlin [field-property box="lambda-normalise" name="code" path="lambda-normalise_code_.kt"]
@@ -207,7 +207,7 @@ order to disagree with the net, and the readback is compared to it with `alphaEq
 
 println()
 println("term                                       normal form                   steps  fans  agents")
-listOf(
+[
         "\\x. x",
         "(\\x y z. x z (y z)) (\\x y. x) (\\x y. x)",
         "(\\n f x. f (n f x)) (\\f x. f (f x))",
@@ -216,7 +216,7 @@ listOf(
         "(\\n f x. n (\\g h. h (g f)) (\\u. x) (\\u. u)) (\\f x. f (f (f x)))",
         "(\\x. x x) (\\y. ((\\x. x) (\\x. x)) y)",
         "(\\x y. x) (\\x. x) ((\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x))))",
-    )
+    ]
     .forEach { source ->
         val each = LambdaTerms.normalise(source)
         val ok = LambdaTerms.alphaEquivalent(each.result, LambdaTerms.referenceNormalOrder(each.term))
@@ -243,12 +243,14 @@ println()
 println("what the compiler builds, for `\\f. \\y. f (f y)`:")
 val compiled = LambdaTerms.compile(LambdaTerms.parse("\\f. \\y. f (f y)"))
 println("  " + compiled.net.nodes.groupingBy { it.type.name }.eachCount().toSortedMap())
-println("  ${compiled.fans} fan(s) for the variable used twice, ${compiled.erasers} eraser(s) for unused binders")
+println(
+    "  ${compiled.fans} fan(s) for the variable used twice, ${compiled.erasers} eraser(s) for unused binders",
+)
 
 /*
-Try it: put a term of your own in the list. `\x. x x` applied to itself diverges, and the net will
-too — `normalise` takes a `maxSteps` and `run.finished` is false when it ran out, which is all
-a reducer can report about a term that has no normal form.
-*/
+ Try it: put a term of your own in the list. `\x. x x` applied to itself diverges, and the net will
+ too — `normalise` takes a `maxSteps` and `run.finished` is false when it ran out, which is all
+ a reducer can report about a term that has no normal form.
+ */
 ```
 

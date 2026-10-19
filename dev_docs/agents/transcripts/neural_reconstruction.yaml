@@ -70,7 +70,7 @@ operations:
         import afield.media.reconstruction.*
 
         prop<ReconstructionDemo>(lab)
-        fromContextWithNameOrNull<ReconstructionDemo>("lab")?.close()
+        val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
         val available = NgxSupport.availability(renderer.device)
         available.onFailure { println("Neural reconstruction unavailable: ${it.message}; showing the source.") }
         val modes = [
@@ -96,7 +96,29 @@ operations:
         var camera = true
         var cut = false
         var reload = false
-        lab = ReconstructionDemo(renderer, modes[active])
+        fun createView(mode: ReconstructionMode?): ReconstructionDemo {
+            val next = ReconstructionDemo(renderer, mode, attach = false)
+            try {
+                // Each mode starts from the edited properties, including after a successful reload.
+                val vertexSource = vertex
+                val fragmentSource = fragment
+                if (vertexSource != null || fragmentSource != null) {
+                    next
+                        .reload(
+                            requireNotNull(vertexSource) { "Missing vertex shader" },
+                            requireNotNull(fragmentSource) { "Missing fragment shader" },
+                        )
+                        .getOrThrow()
+                }
+                return next.attach()
+            } catch (failure: Throwable) {
+                next.close()
+                throw failure
+            }
+        }
+        var ownedLab = createView(modes[active])
+        lab = ownedLab
+        runScope.own { ownedLab.close() }
         controlGroup("reconstruction") {
             if (available.isSuccess) {
                 slider(
@@ -125,38 +147,45 @@ operations:
             while (true) {
                 if (requested != active) {
                     runCatching {
-                        val next = ReconstructionDemo(renderer, modes[requested], attach = false)
-                        next.time = lab.time
-                        lab.close()
-                        lab = next.attach()
+                        val next = createView(modes[requested])
+                        next.time = ownedLab.time
+                        val previous = ownedLab
+                        ownedLab = next
+                        lab = next
+                        previous.close()
                         active = requested
-                        println("${modes[active] ?: "Source"}: ${lab.inputSize.width} × ${lab.inputSize.height} → 1920 × 1080")
+                        println(
+                            "${modes[active] ?: "Source"}: ${ownedLab.inputSize.width} × ${ownedLab.inputSize.height} → 1920 × 1080",
+                        )
                     }
                         .onFailure {
                             println("Keeping current view: ${it.message}")
                             requested = active
                         }
                 }
-                if (previousAbstract != abstractScene || previousCamera != camera) lab.reset("scene controls")
+                if (previousAbstract != abstractScene || previousCamera != camera) ownedLab.reset("scene controls")
                 previousAbstract = abstractScene
                 previousCamera = camera
-                lab.abstractScene = abstractScene
-                lab.animate = animate
-                lab.cameraMotion = camera
+                ownedLab.abstractScene = abstractScene
+                ownedLab.animate = animate
+                ownedLab.cameraMotion = camera
                 if (cut) {
-                    lab.time += 4f
-                    lab.reset("camera cut")
+                    ownedLab.time += 4f
+                    ownedLab.reset("camera cut")
                     cut = false
                 }
                 if (reload) {
                     val vertexSource = requireNotNull(vertex) { "Missing vertex shader on this box or its parents" }
                     val fragmentSource = requireNotNull(fragment) { "Missing fragment shader on this box or its parents" }
-                    lab.reload(vertexSource, fragmentSource).onFailure { println("Keeping working shaders: ${it.message}") }
+                    ownedLab.reload(vertexSource, fragmentSource).onFailure {
+                        println("Keeping working shaders: ${it.message}")
+                    }
                     reload = false
                 }
                 frame()
             }
         }
+            .end { ownedLab.close() }
       vertex: |
         #version 460
         layout(push_constant) uniform Scene {
@@ -296,7 +325,7 @@ operations:
       import afield.media.reconstruction.*
 
       prop<ReconstructionDemo>(lab)
-      fromContextWithNameOrNull<ReconstructionDemo>("lab")?.close()
+      val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
       val available = NgxSupport.availability(renderer.device)
       available.onFailure { println("Neural reconstruction unavailable: ${it.message}; showing the source.") }
       val modes = [
@@ -322,7 +351,29 @@ operations:
       var camera = true
       var cut = false
       var reload = false
-      lab = ReconstructionDemo(renderer, modes[active])
+      fun createView(mode: ReconstructionMode?): ReconstructionDemo {
+          val next = ReconstructionDemo(renderer, mode, attach = false)
+          try {
+              // Each mode starts from the edited properties, including after a successful reload.
+              val vertexSource = vertex
+              val fragmentSource = fragment
+              if (vertexSource != null || fragmentSource != null) {
+                  next
+                      .reload(
+                          requireNotNull(vertexSource) { "Missing vertex shader" },
+                          requireNotNull(fragmentSource) { "Missing fragment shader" },
+                      )
+                      .getOrThrow()
+              }
+              return next.attach()
+          } catch (failure: Throwable) {
+              next.close()
+              throw failure
+          }
+      }
+      var ownedLab = createView(modes[active])
+      lab = ownedLab
+      runScope.own { ownedLab.close() }
       controlGroup("reconstruction") {
           if (available.isSuccess) {
               slider(
@@ -351,37 +402,44 @@ operations:
           while (true) {
               if (requested != active) {
                   runCatching {
-                      val next = ReconstructionDemo(renderer, modes[requested], attach = false)
-                      next.time = lab.time
-                      lab.close()
-                      lab = next.attach()
+                      val next = createView(modes[requested])
+                      next.time = ownedLab.time
+                      val previous = ownedLab
+                      ownedLab = next
+                      lab = next
+                      previous.close()
                       active = requested
-                      println("${modes[active] ?: "Source"}: ${lab.inputSize.width} × ${lab.inputSize.height} → 1920 × 1080")
+                      println(
+                          "${modes[active] ?: "Source"}: ${ownedLab.inputSize.width} × ${ownedLab.inputSize.height} → 1920 × 1080",
+                      )
                   }
                       .onFailure {
                           println("Keeping current view: ${it.message}")
                           requested = active
                       }
               }
-              if (previousAbstract != abstractScene || previousCamera != camera) lab.reset("scene controls")
+              if (previousAbstract != abstractScene || previousCamera != camera) ownedLab.reset("scene controls")
               previousAbstract = abstractScene
               previousCamera = camera
-              lab.abstractScene = abstractScene
-              lab.animate = animate
-              lab.cameraMotion = camera
+              ownedLab.abstractScene = abstractScene
+              ownedLab.animate = animate
+              ownedLab.cameraMotion = camera
               if (cut) {
-                  lab.time += 4f
-                  lab.reset("camera cut")
+                  ownedLab.time += 4f
+                  ownedLab.reset("camera cut")
                   cut = false
               }
               if (reload) {
                   val vertexSource = requireNotNull(vertex) { "Missing vertex shader on this box or its parents" }
                   val fragmentSource = requireNotNull(fragment) { "Missing fragment shader on this box or its parents" }
-                  lab.reload(vertexSource, fragmentSource).onFailure { println("Keeping working shaders: ${it.message}") }
+                  ownedLab.reload(vertexSource, fragmentSource).onFailure {
+                      println("Keeping working shaders: ${it.message}")
+                  }
                   reload = false
               }
               frame()
           }
       }
+          .end { ownedLab.close() }
 - wait:
     frames: 12

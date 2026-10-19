@@ -117,7 +117,7 @@ operations:
           val ax = FloatArray(n) { it % side + 0.5f }
           val ay = FloatArray(n) { it / side + 0.5f }
 
-          val discs = listOf(Triple(330.0, 400.0, 250.0), Triple(740.0, 300.0, 160.0), Triple(640.0, 760.0, 200.0))
+          val discs = [Triple(330.0, 400.0, 250.0), Triple(740.0, 300.0, 160.0), Triple(640.0, 760.0, 200.0)]
           val area = discs.sumOf { it.third * it.third }
           val rnd = java.util.Random(9)
           val home = IntArray(n)

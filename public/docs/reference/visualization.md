@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-51 source file(s), 1461 public symbol(s), 1004 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+52 source file(s), 1474 public symbol(s), 1015 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1863,6 +1863,58 @@ A law together with the range it applies to — everything needed to map travel 
 | <a id="controllaw-kt--controllawspec--validate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">validate</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ui/controls/ControlLaw/#L145) | Rejects a range this law cannot express, naming [`label`](graphics.md#standarddrawing-kt--label) so the message points at the control. |
 | <a id="controllaw-kt--controllawspec--valueat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">valueAt</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/ui/controls/ControlLaw/#L183) | The value at travel `t`, where `t` is a fraction of the track. |
 | <a id="controllaw-kt--controllawspec--normalizedfor"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">normalizedFor</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/ui/controls/ControlLaw/#L205) | The travel that shows `value` — the inverse of [`valueAt`](visualization.md#controllaw-kt--controllawspec--valueat), clamped to `0.0..1.0`. |
+
+## canvasFlight.kt { #canvasflight-kt }
+
+Filming Field: [`canvasFlight`](visualization.md#canvasflight-kt--canvasflight) flies the canvas through a document's bookmarks, live or to an MP4.
+
+The flight opens on the first bookmark and holds, then flies to each next one and holds there. Each
+leg eases in and out, zooming in log space while the point at the centre of the window travels in a
+straight line across the canvas. Every three.js view showing on the canvas turns slowly about its own
+target meanwhile, and gets its camera back afterwards.
+
+Live, the flight runs in every window open on the document, on the browser's own clock. Filmed
+(`record = "flight.mp4"`), it is rendered frame by frame in the capture page and encoded with
+ffmpeg: the clock waits for each frame, so the film is smooth however long a frame takes.
+
+The arithmetic is `afield.app.canvas.CanvasFlightTimeline`; the browser side is
+`CanvasFlightClient`; the recorder is `afield.tools.docs.recordCanvasFlight`. Docs:
+`public/docs/filming_the_canvas.md`.
+
+`src/jvmMain/kotlin/afield/ui/film/canvasFlight.kt` — [read the source](source/jvmMain/afield/ui/film/canvasFlight/)
+
+**Used in:** [Filming the canvas](../filming_the_canvas.md)
+
+### Top-level functions { #canvasflight-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="canvasflight-kt--canvasflight"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">canvasFlight</span><span class="p">(</span><span class="n">bookmarks</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">legSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">6.0</span><span class="p">,</span> <span class="n">holdSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">orbitDegreesPerSecond</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="n">pullBack</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">fps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="mi">1920</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="mi">1080</span><span class="p">,</span> <span class="n">pixelRatio</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">CanvasFlight</span></code>](source/jvmMain/afield/ui/film/canvasFlight/#L92) | Flies the canvas through `bookmarks` — names as the bookmarks panel shows them, or slots as `"1"`..`"9"` — spending `legSeconds` flying to each and `holdSeconds` holding at each, the first included. Every visible three.js view turns `orbitDegreesPerSecond` about its own target meanwhile (0 keeps them still). A leg whose straight path would cross empty canvas zooms out on the way unless `pullBack` is false. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">canvasFlight</span><span class="p">(</span><span class="k">vararg</span> <span class="n">stops</span><span class="p">:</span> <span class="nc">FlightStop</span><span class="p">,</span> <span class="n">legSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">6.0</span><span class="p">,</span> <span class="n">holdSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">orbitDegreesPerSecond</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="n">pullBack</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">fps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="mi">1920</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="mi">1080</span><span class="p">,</span> <span class="n">pixelRatio</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">CanvasFlight</span></code>](source/jvmMain/afield/ui/film/canvasFlight/#L112) | [`canvasFlight`](visualization.md#canvasflight-kt--canvasflight) with a leg and hold per stop: `FlightStop("plan", legSeconds = 4.0, holdSeconds = 3.0)`. A stop that leaves them null takes `legSeconds` and `holdSeconds`. |
+| <a id="canvasflight-kt--stopcanvasflight"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">stopCanvasFlight</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ui/film/canvasFlight/#L129) | Stops a live canvas flight in every window open on this document, leaving the canvas where it is. |
+| <a id="canvasflight-kt--resolvefilmpath"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">resolveFilmPath</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ui/film/canvasFlight/#L135) | A film's path: `~` is the home directory, and a relative path is against the box's working directory. |
+
+### FlightStop { #canvasflight-kt-flightstop }
+
+[<code class="highlight"><span class="k">typealias</span> <span class="nc">FlightStop</span> <span class="o">=</span> <span class="nc">CanvasFlightStop</span></code>](source/jvmMain/afield/ui/film/canvasFlight/#L41)
+
+One stop of a [`canvasFlight`](visualization.md#canvasflight-kt--canvasflight): a bookmark, and optionally its own leg and hold in seconds.
+
+### CanvasFlight { #canvasflight-kt-canvasflight }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">CanvasFlight</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">outcome</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">AgentCanvasFlightResponse</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/film/canvasFlight/#L48)
+
+A canvas flight under way. A live flight is [`done`](visualization.md#canvasflight-kt--canvasflight--done) at once (the windows fly it on their own); a filmed one when its MP4 is written, and [`result`](visualization.md#canvasflight-kt--canvasflight--result) then says how many frames went into it and where each bookmark was reached.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="canvasflight-kt--canvasflight--durationseconds"></a><code class="highlight"><span class="k">val</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Double</span></code> | How long the flight lasts, holds included. |
+| <a id="canvasflight-kt--canvasflight--path"></a><code class="highlight"><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The MP4 being filmed, or null for a live flight. |
+| <a id="canvasflight-kt--canvasflight--done"></a>[<code class="highlight"><span class="k">val</span> <span class="n">done</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ui/film/canvasFlight/#L55) |  |
+| <a id="canvasflight-kt--canvasflight--result"></a>[<code class="highlight"><span class="k">val</span> <span class="n">result</span><span class="p">:</span> <span class="nc">AgentCanvasFlightResponse</span><span class="o">?</span></code>](source/jvmMain/afield/ui/film/canvasFlight/#L58) | The finished film's report, or null while it is still filming. |
+| <a id="canvasflight-kt--canvasflight--frames"></a>[<code class="highlight"><span class="k">val</span> <span class="n">frames</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code>](source/jvmMain/afield/ui/film/canvasFlight/#L61) | Frames in the finished film, or null while it is still filming. |
+| <a id="canvasflight-kt--canvasflight--await"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">await</span><span class="p">(</span><span class="n">timeoutSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3600.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">AgentCanvasFlightResponse</span></code>](source/jvmMain/afield/ui/film/canvasFlight/#L64) | Waits up to `timeoutSeconds` for the film to finish. Do not call it from box code's main thread. |
+| <a id="canvasflight-kt--canvasflight--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ui/film/canvasFlight/#L67) |  |
 
 ## BoxLayout.kt { #boxlayout-kt }
 

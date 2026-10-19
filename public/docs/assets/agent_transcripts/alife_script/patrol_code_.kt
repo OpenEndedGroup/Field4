@@ -50,7 +50,7 @@ fun world(scripted: Boolean) =
         }
     }
 
-val arms = listOf("scripted" to world(true), "one global rule" to world(false))
+val arms = ["scripted" to world(true), "one global rule" to world(false)]
 val breadth = arms.map { mutableListOf<Double>() }
 repeat(steps) {
     arms.forEachIndexed { i, (_, w) ->

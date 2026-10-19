@@ -29,12 +29,11 @@ val dashes = a.byDashing(14f, 8f).map { cyan(it).copy { thickness = 3.0 } }
 val hull = a.byConvexHull2D()
 
 showPlaneGrid(
-    "arrow(startHead, endHead)\n${a.nodes.size} nodes, Closes at $closes" to listOf(cyan(a)),
+    "arrow(startHead, endHead)\n${a.nodes.size} nodes, Closes at $closes" to [cyan(a)],
     "byReversing\n${reversed.nodes.size} nodes, ${reversed.nodes.count { it is FLine.Close }} Closes kept" to
-        listOf(ghost(a), cyan(reversed)),
-    "bySubdividing(1)\n${subdivided.nodes.count { it is FLine.Close }} Closes kept" to
-        listOf(ghost(a), cyan(subdivided)),
-    "byDashing(14, 8)\n${dashes.size} dashes" to (listOf(ghost(a)) + dashes),
+        [ghost(a), cyan(reversed)],
+    "bySubdividing(1)\n${subdivided.nodes.count { it is FLine.Close }} Closes kept" to [ghost(a), cyan(subdivided)],
+    "byDashing(14, 8)\n${dashes.size} dashes" to ([ghost(a)] + dashes),
     columns = 2,
     cellWidth = 420,
     cellHeight = 230,
@@ -59,11 +58,11 @@ val results = ops.map { (name, op) ->
 }
 val bad = results.count { it.contains("THREW") }
 
-(listOf(
+([
         "arrow(startHead = true, endHead = true): ${a.nodes.size} nodes, " +
             "Closes at $closes, of which ${interior.size} interior",
         "convex hull: ${hull.nodes.size} nodes",
         "",
         "$bad of ${ops.size} operations throw on it:",
-    ) + results)
+    ] + results)
     .joinToString("\n")
