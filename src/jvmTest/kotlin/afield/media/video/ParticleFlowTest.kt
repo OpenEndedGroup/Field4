@@ -50,4 +50,17 @@ class ParticleFlowTest {
         assertTrue(still.isEmpty(), "no seed is faster than 1e9 px/frame")
         assertTrue(topology.streamlines(spacing = 4.0).isNotEmpty())
     }
+
+    @Test fun videoFramesDecodesTheClip() {
+        val clip = "public/docs/assets/vector_field_topology/eagle.mp4"
+        assertEquals(480 to 294, videoSize(clip))
+        assertEquals(240 to 146, videoSize(clip, width = 240))
+        val frames = videoFrames(clip, width = 240, gray = true).take(3).toList()
+        assertEquals(3, frames.size)
+        assertTrue(frames.all { it.width == 240 && it.height == 146 && it.channels == 1 })
+        assertTrue(frames[0].data.all { it in 0f..1f } && frames[0].data.any { it > 0.1f })
+        val rgb = videoFrames(clip, start = 2.0, duration = 0.5, fps = 6.0).toList()
+        assertEquals(3, rgb.first().channels)
+        assertTrue(rgb.size in 2..4, "half a second at 6 fps, got ${rgb.size}")
+    }
 }
