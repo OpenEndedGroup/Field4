@@ -94,7 +94,7 @@ println("bundle ready: " + bundle.postStack.names() + ", " + balls.size + " ball
 <!-- field-box id="rp_chain" index="2" -->
 
 ```edn [field-box id="rp_chain" role="properties"]
-{"id" "rp_chain" "index" 2 "name" "reprojected accumulation" "parents" ["root" "rp_bundle"] "children" ["rp_modes"] "properties" {"children" #{#afield/box "rp_modes"} "parents" #{#afield/box "root" #afield/box "rp_bundle"} "name" "reprojected accumulation" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_chain_code_.kt" "lines" 96 "characters" 3522 "sha256" "35224fab41471ffd17ea0273f9b8a49dd196e5c486ff798dd2b79b44b28b36a3"}]}
+{"id" "rp_chain" "index" 2 "name" "reprojected accumulation" "parents" ["root" "rp_bundle"] "children" ["rp_modes"] "properties" {"children" #{#afield/box "rp_modes"} "parents" #{#afield/box "root" #afield/box "rp_bundle"} "name" "reprojected accumulation" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_chain_code_.kt" "lines" 85 "characters" 3306 "sha256" "50eb79057887670681e3812f6cd8fb85e5921aecb26409c068499b28dbe3cd90"}]}
 ```
 
 ```kotlin [field-property box="rp_chain" name="code" path="rp_chain_code_.kt"]
@@ -105,29 +105,19 @@ import afield.graphics.scene.fabricated.addPassChain
 
 prop<FabricateBuiltChain>(chain)
 
-// Change a reset assignment with Alt-Enter; declarations belong to a full launch.
-var historyBlend = 0.92f
-historyBlend = 0.92f // History weight, from 0 (current frame only) to just below 1.
-var motionGain = 20f
-motionGain = 20f // Debug display gain; large gains clip the red/green motion channels.
+// Edit these declarations with Alt-Enter while the scene runs.
+var historyBlend = 0.92f // History weight, from 0 (current frame only) to just below 1.
+var motionGain = 20f // Debug display gain; large gains clip the red/green motion channels.
 
 // Angles are radians, distances are world units, speeds are radians per simulation second.
 var yawAmplitude = 0.10
-yawAmplitude = 0.10
 var yawSpeed = 0.45
-yawSpeed = 0.45
 var dollyAmplitude = 1.7
-dollyAmplitude = 1.7
 var dollySpeed = 0.6
-dollySpeed = 0.6
 var bobAmplitude = 0.45
-bobAmplitude = 0.45
 var bobSpeed = 1.7
-bobSpeed = 1.7
 var driftAmplitude = 0.18
-driftAmplitude = 0.18
 var driftSpeed = 0.8
-driftSpeed = 0.8
 
 // Persistent pixels plus frame history let accumulation follow the moving scene.
 // Resolution must match the bundle's 1024x1024 input. Per-pixel motion includes the balls.
@@ -164,7 +154,6 @@ camera.at.set(initialEye)
 camera.target.set(initialTarget)
 camera.up.set(0f, 1f, 0f)
 var time = 0.0
-time = 0.0
 bundle.invalidateFrameHistory() // Relaunching is an intentional camera/object cut.
 
 frames {

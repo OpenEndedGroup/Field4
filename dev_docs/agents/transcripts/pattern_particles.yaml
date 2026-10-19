@@ -141,8 +141,7 @@ operations:
         code: |
           val N = 24000
           // How hard each band energy pushes its ring (radius, thickness, particle size).
-          var gain = 2.4
-          gain = 2.4 // Edit this assignment and Alt+Enter it to change all four running bands.
+          var gain = 2.4 // Edit this value and Alt+Enter its declaration to change all four running bands.
 
           // One compute dispatch per frame, registered under a name so a rerun replaces it.
           var particles = computeModuleHere {}

@@ -33,7 +33,7 @@ ui.pause(1200)
 1. Select **First steps · a moving drawing** to open its code.
 2. Press **alt/option-Up** to launch it. Open the output disclosure below
    the box if the drawing is collapsed. Fine blue-white curves ripple and twist together.
-3. While it runs, change the 5 in `petals = 5` (the second line) to 8, keep the cursor on that line
+3. While it runs, change the 5 in `var petals = 5` (the second line) to 8, keep the cursor on that line
    and press **alt/option-Enter**. That runs only this line, and the running drawing picks up eight
    petals without restarting. Editing alone runs nothing; running the line does.
 4. Press **alt/option-Up** to launch the whole box again: it starts over, still with eight petals,
@@ -82,9 +82,9 @@ ui.eval("""
     const api = host.__disclosureAPI
     for (const id of api.ids()) { api.open(id); api.setSize(id, 350, 350) }
     const editor = window.globalEditor
-    const match = editor.getModel().findMatches("\npetals = 5 ", false, false, false, null, true)[0]
-    if (!match) throw new Error("the shipped five-petal assignment was not loaded")
-    match.range = {startLineNumber: match.range.endLineNumber, endLineNumber: match.range.endLineNumber, endColumn: "petals = 5".length + 1}
+    const match = editor.getModel().findMatches("\nvar petals = 5 ", false, false, false, null, true)[0]
+    if (!match) throw new Error("the shipped five-petal declaration was not loaded")
+    match.range = {startLineNumber: match.range.endLineNumber, endLineNumber: match.range.endLineNumber, endColumn: "var petals = 5".length + 1}
     editor.setSelection({startLineNumber:match.range.startLineNumber, startColumn:match.range.endColumn-1, endLineNumber:match.range.endLineNumber, endColumn:match.range.endColumn})
     editor.focus()
     return true
@@ -98,7 +98,7 @@ ui.pause(3500)
 ui.press("Alt+ArrowUp")
 ui.pause(3500)
 ui.eval("""
-    if (!window.globalEditor.getModel().getValue().includes("\npetals = 8 ")) throw new Error("the editor did not retain the edit")
+    if (!window.globalEditor.getModel().getValue().includes("\nvar petals = 8 ")) throw new Error("the editor did not retain the edit")
     const outputs = [...document.querySelectorAll('.tick_text, .execution_output .inner_output')]
     if (!outputs.some(e => e.textContent.trim() === '8')) throw new Error("the real inline value eight did not appear")
     return true
