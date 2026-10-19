@@ -524,6 +524,29 @@ class BoxReferenceTests(unittest.TestCase):
             self.assertTrue(args.value_escapes, verb)
             self.assertEqual(args.value, "a\\nb", verb)
 
+    def test_literal_newline_warning_fires_only_outside_strings(self) -> None:
+        from tools.field_backdoor import literal_newline_warning
+
+        self.assertIsNotNone(literal_newline_warning(r"val a = 1\nprintln(a)"))
+        self.assertIsNone(literal_newline_warning(r'println("a\nb")'))
+        self.assertIsNone(literal_newline_warning(r"val c = '\n'"))
+        self.assertIsNone(literal_newline_warning("val a = 1\nprintln(\"x\\ny\")"))
+        self.assertIsNone(literal_newline_warning(None))
+
+    def test_set_without_value_escapes_reports_a_literal_newline(self) -> None:
+        import contextlib
+        import io
+
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            sent = self._set_through_dispatch(r'set box code "val a = 1\nprintln(a)"')
+        self.assertEqual(sent, ["val a = 1\\nprintln(a)"])
+        self.assertIn("--value-escapes", stderr.getvalue())
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            self._set_through_dispatch(r'set box code "val a = 1\nprintln(a)" --value-escapes')
+        self.assertNotIn("warning", stderr.getvalue())
+
     def test_value_escapes_decoding(self) -> None:
         from tools.field_backdoor import decode_value_escapes
 
