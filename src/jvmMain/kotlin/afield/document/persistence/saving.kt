@@ -148,7 +148,7 @@ private fun referencingLargeSidecars(properties: Map<String, Any?>): Map<String,
     else properties.mapValuesTo(LinkedHashMap()) { (name, value) ->
         if (value is FileInline && referencesSidecar(name, value.inline)) FileRef(value.path) else value
     }
-private data class FileInline(val path: String, val inline: String)
+internal data class FileInline(val path: String, val inline: String)
 
 class SavingContext {
 

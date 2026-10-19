@@ -788,13 +788,24 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
         }
         val applied = mutableListOf<String>()
         val notRemoved = mutableListOf<String>()
+        val unchanged = mutableListOf<String>()
         for (transfer in existing) {
             val before = baseline[transfer.id] ?: continue
             val box = sessionInfo.boxes[transfer.id] ?: continue
             for ((name, value) in transfer.properties) {
                 if (name in TOPOLOGY_KEYS || name == "_tombstone") continue
-                if (before.properties[name] == value) continue
-                val resolved = savingContext.resolveStoredValue(value, workspaceDir.absolutePath) ?: continue
+                val previous = before.properties[name]
+                if (previous == value) continue
+                // A sidecar property is stored as `#afield/file-inline {path, inline}`. When the edit
+                // is to the inline copy (same path), the inline text is what the author changed;
+                // resolving it normally would read the untouched sidecar instead and change nothing.
+                val inlineEdit = value is FileInline && previous is FileInline && previous.path == value.path
+                val resolved = savingContext.resolveStoredValue(value, workspaceDir.absolutePath, preferInlineFiles = inlineEdit)
+                    ?: continue
+                if (box.getPropertyRaw(name) == resolved) {
+                    unchanged += "${transfer.id}.$name"
+                    continue
+                }
                 box.setPropertyRaw(name, resolved, doResync = true)
                 applied += "${transfer.id}.$name"
             }
@@ -806,6 +817,9 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             SaveReloadLog.log("metadata-applied-properties", "doc=${sessionInfo.filename} count=${applied.size} [${applied.joinToString(",")}]")
             lprintln("info,file-watch", "applied ${applied.size} external property edit(s) from metadata.edn: $applied")
             notify("Applied ${applied.size} property edit(s) from metadata.edn", "file-watch")
+        }
+        if (unchanged.isNotEmpty()) {
+            lprintln("info,file-watch", "metadata.edn edits to $unchanged already match the session; nothing applied")
         }
         if (notRemoved.isNotEmpty()) {
             lprintln("warning,file-watch", "metadata.edn no longer lists $notRemoved; properties are kept and the next save writes them back")
