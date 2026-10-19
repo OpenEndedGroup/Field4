@@ -1,0 +1,15 @@
+# Own exact graphics views and preserve replacements and edited shaders
+
+Frozen findings: `b2734585c34f-01`, `81ba569c56dd-02`, `a86d30f62c84-01`, `956a69992e2a-02`, `d4ba1b4e01b8-01`, `691b5d822671-02`, `b03fdbe93779-01`, `b03fdbe93779-02`, `d7544ea68a8c-01`, `bdc3d24bed57-01`, `45010413e231-01`.
+
+Eleven view-ownership findings are addressed together across authored demos/transcripts and the matching OpenDLSS asset. Control loops and finalizers retain each run's own instance instead of following the mutable published lab/study property. Resources register with the run before later control setup. Unsafe named-context pre-closes that could target an ancestor are removed. Replacement construction/attachment succeeds before the working instance is retired; failure closes the rejected candidate. Reconstruction factories reload edited shader properties whenever present, including initial creation and mode changes, with bundled-source fallback for standalone demos without shader properties.
+
+ReconstructionDemo now adopts its constructing RunScope immediately. Related same-name teardown defects are fixed in LearnedShader, ShaderLearningView, GpuShaderLearningView, ClusterGeometryDemo, OpenDlssNrImage and OpticalFlowDemo: closing an old instance removes only its own registration/presentation module. Attachment publishes the replacement after the presentation module is prepared where replacement can fail.
+
+Real Vulkan/MoltenVK acceptance exercised source-only shader learning, Source reconstruction and portable optical flow. For each, stopping the old run retained the new instance/module; stopping the new run detached its own registrations. Source reconstruction constructor ownership was exercised directly without a manual owner. The full authored reconstruction box reloaded an edited fragment and recreated its view; the actual active pipeline retained that source. A genuinely invalid replacement shader was rejected while the working view and module remained attached. The native image was inspected. Complete authored bodies were separately typechecked with their real shader properties in unentered hardware branches.
+
+The optional precompiled LearnedShader programs are absent (actual constructor failure retained). NVIDIA DLSS/NR, cluster acceleration and cooperative training execution are unavailable and are not claimed. The initial source assertion inspected Module.fi, an initial reflection snapshot; corrected verification reads the active parameters.fragmentIntrospection after pipeline update. Prior successful native checks are retained across that fixture correction.
+
+Actual import/ktfmt covers authored code; ordinary JVM sources receive ktfmt without box import removal or collection-literal conversion. Parsed source, literals, shaders and fragment-boundary checks pass. Full guards belong to the lander.
+
+Checkpoint: 398/405 addressed, 7 open. Mechanical coverage: Actual import/ktfmt on authored containers; ordinary ktfmt with preserved JVM imports; parsed tokens, literals and execution boundaries verified. Full guards are delegated to the lander.

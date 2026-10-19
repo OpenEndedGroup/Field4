@@ -1,0 +1,75 @@
+{
+  "bodies": [
+    {
+      "paths": [
+        "dev_docs/agents/transcripts/learned_shader.yaml",
+        "dev_docs/agents/demos/learned_shader/example.kt"
+      ],
+      "completeBodyTypechecked": true
+    },
+    {
+      "paths": [
+        "dev_docs/agents/transcripts/neural_reconstruction.yaml",
+        "dev_docs/agents/demos/neural_reconstruction/example.kt"
+      ],
+      "completeBodyTypechecked": true
+    },
+    {
+      "paths": [
+        "dev_docs/agents/transcripts/computed_ray_geometry.yaml",
+        "dev_docs/agents/demos/computed_ray_geometry/example.kt"
+      ],
+      "completeBodyTypechecked": true
+    },
+    {
+      "paths": [
+        "dev_docs/agents/transcripts/gpu_shader_learning.yaml"
+      ],
+      "completeBodyTypechecked": true
+    },
+    {
+      "paths": [
+        "dev_docs/agents/transcripts/learned_from_module.yaml"
+      ],
+      "completeBodyTypechecked": true
+    },
+    {
+      "paths": [
+        "dev_docs/agents/transcripts/optical_flow.yaml"
+      ],
+      "completeBodyTypechecked": true
+    },
+    {
+      "paths": [
+        "dev_docs/agents/transcripts/path_traced_reconstruction.yaml",
+        "dev_docs/agents/demos/path_traced_reconstruction/example.kt"
+      ],
+      "completeBodyTypechecked": true
+    },
+    {
+      "paths": [
+        "dev_docs/agents/demos/opendlssnr/example.kt"
+      ],
+      "completeBodyTypechecked": true
+    },
+    {
+      "paths": [
+        "dev_docs/agents/demos/gpu_shader_learning/example.kt"
+      ],
+      "completeBodyTypechecked": true
+    },
+    {
+      "paths": [
+        "dev_docs/agents/demos/optical_flow/example.kt"
+      ],
+      "completeBodyTypechecked": true
+    },
+    {
+      "paths": [
+        "public/docs/assets/opendlssnr/example.kt"
+      ],
+      "completeBodyTypechecked": true
+    }
+  ],
+  "limits": "Complete authored code is compiled in an unentered branch with its actual shader properties. Actual positive Source/portable backend behavior is recorded separately. No unavailable NVIDIA/cluster/NR/training execution is claimed."
+}

@@ -4,11 +4,12 @@ import java.nio.file.Path
 // Run as a child of the standard renderer box. Edit this path to use your own image.
 val image = Path.of("public/docs/assets/opendlssnr/ink-input.png").toAbsolutePath()
 prop<OpenDlssNrImage>(study)
-fromContextWithNameOrNull<OpenDlssNrImage>("study")?.close()
+val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
 val available = OpenDlssNrSupport.availability(renderer)
 println(available.reason)
 if (available.ready) {
-    study = OpenDlssNrImage(renderer, image.toString()).install()
+    val ownedStudy = runScope.own(OpenDlssNrImage(renderer, image.toString()).install())
+    study = ownedStudy
     var style = 1
     var tone = 0f
     var structure = 10f
@@ -35,7 +36,7 @@ if (available.ready) {
     frames {
         try {
             while (true) {
-                study.controls = OpenDlssNrControls(
+                ownedStudy.controls = OpenDlssNrControls(
                     style = style,
                     tone = tone,
                     structure = structure,
@@ -43,11 +44,11 @@ if (available.ready) {
                     autoMask = autoMask,
                     intensity = intensity,
                 )
-                study.exposure = Vector4f(red, green, blue, 1f)
+                ownedStudy.exposure = Vector4f(red, green, blue, 1f)
                 frame()
             }
         } finally {
-            study.close()
+            ownedStudy.close()
         }
     }
 } else frames { println("Image study unavailable: ${available.reason}") }

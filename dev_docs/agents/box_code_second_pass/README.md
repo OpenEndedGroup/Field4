@@ -150,7 +150,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Own MuScriptor and speech pipelines and retain usable result handles](../box_code_adoption_batch_75/README.md) | 6 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **387 of 405 findings addressed**; 18 remain open. These counts do not claim
+| [Own exact graphics views and preserve replacements and edited shaders](../box_code_adoption_batch_76/README.md) | 11 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **398 of 405 findings addressed**; 7 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 

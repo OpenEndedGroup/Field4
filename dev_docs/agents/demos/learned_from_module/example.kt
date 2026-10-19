@@ -3,7 +3,6 @@ import java.io.File
 import org.lwjgl.vulkan.VK13.*
 
 prop<ShaderLearningView>(lab)
-fromContextWithNameOrNull<ShaderLearningView>("lab")?.close()
 val source = RenderToTexture(renderer) {
     width = 1920
     height = 1080

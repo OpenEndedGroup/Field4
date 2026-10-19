@@ -10,13 +10,47 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableRayTracing = true\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+      code: |-
+        import afield.graphics.vulkan.util.Options
+
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+
+        Options.enableRayTracing = true
+        Options.enableVR = false
+        Options.enableHDR = false
+        Options.profiling = false
+
+        once.renderer {
+            window = Window("Field")
+            Renderer(window)
+        }
+
+        println("agent graphics renderer ready")
+        start(renderer::run)
 - launch:
     box: agent_graphics_context
     property: code
     type: code
     strand: renderer
-    code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableRayTracing = true\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+    code: |-
+      import afield.graphics.vulkan.util.Options
+
+      prop<Window>(window)
+      prop<Renderer>(renderer)
+
+      Options.enableRayTracing = true
+      Options.enableVR = false
+      Options.enableHDR = false
+      Options.profiling = false
+
+      once.renderer {
+          window = Window("Field")
+          Renderer(window)
+      }
+
+      println("agent graphics renderer ready")
+      start(renderer::run)
 - wait:
     frames: 3
 - create:
@@ -28,12 +62,12 @@ operations:
       w: 420.0
       h: 100.0
     properties:
-      code: |-
+      code: |
         import afield.graphics.scene.fabricated.*
         import afield.media.reconstruction.*
 
         prop<PathTracedReconstruction>(lab)
-        fromContextWithNameOrNull<PathTracedReconstruction>("lab")?.close()
+        val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
         NgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()
         val scene = PathTraceScene().apply {
             val floor = material(PathTraceMaterial.diffuse(.45f, .5f, .55f))
@@ -54,7 +88,8 @@ operations:
         }
         // Keep the tracer uninstalled: lab records trace -> raw guides -> NGX in one ordered pass.
         val tracer = PathTracingRenderer(renderer, scene, PathTraceEnvironment.constant(.08f, .1f, .15f), 1920, 1080, camera)
-        lab = PathTracedReconstruction(tracer).install()
+        val ownedLab = runScope.own(PathTracedReconstruction(tracer).install())
+        lab = ownedLab
         var view = 2
         var move = false
         var cut = false
@@ -74,7 +109,7 @@ operations:
         frames {
             var phase = 0.0
             while (true) {
-                lab.view = PathTracedReconstruction.View.entries[view]
+                ownedLab.view = PathTracedReconstruction.View.entries[view]
                 tracer.samplesPerFrame = samples
                 if (move) {
                     phase += .015
@@ -82,13 +117,13 @@ operations:
                 }
                 if (cut) {
                     camera.at.z = if (camera.at.z > 7) 6f else 7.5f
-                    lab.reset("camera cut")
+                    ownedLab.reset("camera cut")
                     cut = false
                 }
                 frame()
             }
         }
-            .end { lab.close() }
+            .end { ownedLab.close() }
 - connect:
     parent: agent_graphics_context
     child: path_traced_reconstruction
@@ -97,12 +132,12 @@ operations:
     property: code
     type: code
     strand: scene
-    code: |-
+    code: |
       import afield.graphics.scene.fabricated.*
       import afield.media.reconstruction.*
 
       prop<PathTracedReconstruction>(lab)
-      fromContextWithNameOrNull<PathTracedReconstruction>("lab")?.close()
+      val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
       NgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()
       val scene = PathTraceScene().apply {
           val floor = material(PathTraceMaterial.diffuse(.45f, .5f, .55f))
@@ -123,7 +158,8 @@ operations:
       }
       // Keep the tracer uninstalled: lab records trace -> raw guides -> NGX in one ordered pass.
       val tracer = PathTracingRenderer(renderer, scene, PathTraceEnvironment.constant(.08f, .1f, .15f), 1920, 1080, camera)
-      lab = PathTracedReconstruction(tracer).install()
+      val ownedLab = runScope.own(PathTracedReconstruction(tracer).install())
+      lab = ownedLab
       var view = 2
       var move = false
       var cut = false
@@ -143,7 +179,7 @@ operations:
       frames {
           var phase = 0.0
           while (true) {
-              lab.view = PathTracedReconstruction.View.entries[view]
+              ownedLab.view = PathTracedReconstruction.View.entries[view]
               tracer.samplesPerFrame = samples
               if (move) {
                   phase += .015
@@ -151,12 +187,12 @@ operations:
               }
               if (cut) {
                   camera.at.z = if (camera.at.z > 7) 6f else 7.5f
-                  lab.reset("camera cut")
+                  ownedLab.reset("camera cut")
                   cut = false
               }
               frame()
           }
       }
-          .end { lab.close() }
+          .end { ownedLab.close() }
 - wait:
     frames: 12
