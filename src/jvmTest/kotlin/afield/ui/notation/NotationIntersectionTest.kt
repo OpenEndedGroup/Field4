@@ -160,4 +160,25 @@ class NotationIntersectionTest {
         assertEquals(listOf("second", "first"), hits.map { it.mark.name })
         assertEquals(0.25, hits[0].value, 1e-9)
     }
+
+    // N0929-4: the region's defining mark was found by matching bounds, so a note with exactly the
+    // frame's bounds, earlier in z order, was dropped and the frame itself read as a note.
+    @Test
+    fun aSpaceExcludesItsDefiningMarkByIdNotByBounds() {
+        n {
+            rect(100, 100, 400, 200, name = "twin")
+            frame("score", 100, 100, 400, 200)
+        }
+        val ids = n.space("score", x = 0.0..8.0, y = 84.0..48.0).marks.map { it.id }
+        assertTrue(ids.any { it.endsWith("~twin") }, "the twin note is in the score: $ids")
+        assertTrue(ids.none { it.endsWith("~score") }, "the frame that defines the score is not: $ids")
+    }
+
+    @Test
+    fun aSpaceCanBeGivenTheMarkThatDefinesIt() {
+        val refs = n { rect(0, 0, 100, 100, name = "area"); rect(10, 10, 20, 20, name = "inner") }
+        val space = n.space(refs[0], x = 0.0..1.0, y = 0.0..1.0)
+        assertEquals(listOf("inner"), space.marks.map { it.label })
+        assertEquals(0.1, space.events.single().start, 1e-9)
+    }
 }
