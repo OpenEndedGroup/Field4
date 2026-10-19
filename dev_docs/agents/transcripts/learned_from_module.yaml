@@ -1,5 +1,8 @@
 name: learned_from_module
 description: Capture actual moduleHere output, train a small network, and replace the source pass with learned inference.
+docs:
+  - page: learned_shader.md
+    why: "Explains training on module output and swapping in learned inference."
 operations:
 - create:
     box: agent_graphics_context

@@ -1,5 +1,8 @@
 # Generated from solidsl_gallery/metadata.edn by afield.examples.DocumentToTranscript.
 name: "solidsl_gallery"
+docs:
+  - page: solid_notation.md
+    why: "Explains the SolidSL notation used across the gallery."
 operations:
   - create:
       box: "refusals"

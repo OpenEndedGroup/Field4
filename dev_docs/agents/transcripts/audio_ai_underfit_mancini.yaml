@@ -2,6 +2,9 @@ name: audio_ai_underfit_mancini
 description: >
   A live Field Audio example that submits the completed Henry Mancini Experiment in Terror
   Underfit LoRA to Stable Audio 3, then renders a 30-second candidate board.
+docs:
+  - page: audio_ai_underfit_mancini.md
+    why: "Explains generating from the LoRA and reading the candidate board."
 operations:
   - create:
       box: underfit_mancini_guide

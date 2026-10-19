@@ -5,6 +5,11 @@ description: >
   with a ruler, dimensions and an explode slider live in the viewer's toolbar. Its code is the
   page's captured fence, character for character; `ThreeInspectorDemoDriftTest` holds the two
   together.
+docs:
+  - page: fline_examples.md
+    why: "Contains the threeInspect section this document accompanies."
+  - page: three_output.md
+    why: "Explains the three.js output area used here."
 operations:
   - create:
       box: three-inspector-wall

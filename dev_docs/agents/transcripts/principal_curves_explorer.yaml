@@ -5,6 +5,9 @@ description: >
   pixels fitted as a branching tree. And live data: points that drift every frame, followed by one
   forest that is refined a few iterations per frame instead of refitted. Needs the optional native
   library: ./gradlew buildPrincipalCurvesNative.
+docs:
+  - page: principal_curves.md
+    why: "Explains fitting principal curves to noisy points."
 operations:
   - create:
       box: pc_strands

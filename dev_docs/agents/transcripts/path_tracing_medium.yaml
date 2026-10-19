@@ -12,6 +12,9 @@ description: |
   
   `dev_docs/PARTICIPATING_MEDIA.md` is the write-up, and the saved document at
   `dev_docs/agents/demos/path_tracing_medium/` is this same scene.
+docs:
+  - page: path_tracing.md#a-participating-medium
+    why: "Explains the participating medium and mediumDensity cycled here."
 operations:
   - create:
       box: pt_renderer

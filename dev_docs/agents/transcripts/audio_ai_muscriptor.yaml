@@ -4,6 +4,9 @@ description: >
   instrument-coloured piano-roll gallery and a live box that resolves an audio asset, submits and
   monitors a revision-pinned transcription job, awaits its durable result, synchronizes notes with
   source playback, and downloads both performance-timed and optional beat-quantized MIDI.
+docs:
+  - page: audio_ai_muscriptor.md
+    why: "Explains the MuScriptor transcription job and its piano-roll gallery."
 operations:
   - create:
       box: muscriptor_guide

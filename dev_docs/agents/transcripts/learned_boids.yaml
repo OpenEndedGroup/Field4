@@ -60,6 +60,9 @@ description: |
 
   `tools/run_field_tests.py --id four.shader-boids.smoke` grades both rules against a CPU brute
   force, and `--id four.neighbour-grid.smoke` grades the search underneath them.
+docs:
+  - page: neural_particles.md
+    why: "Explains training an interaction rule and running it as a flock."
 operations:
   - create:
       box: lb_renderer

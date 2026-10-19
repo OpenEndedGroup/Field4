@@ -23,6 +23,9 @@ description: |
       back, its attenuation compared with the filter's, and both drawn.
     - **a table from Kotlin** (Kotlin) — a wavetable computed in Kotlin, written into an ftable,
       played by `poscil`, read back and drawn.
+docs:
+  - page: csound.md
+    why: "Explains Csound boxes and how Kotlin boxes talk to them."
 operations:
   - create:
       box: cs_root

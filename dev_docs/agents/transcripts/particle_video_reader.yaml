@@ -1,5 +1,8 @@
 name: particle_video_reader
 description: Scrub actual RAFT/C++ trajectories through the Kotlin reader and Field visualizer.
+docs:
+  - page: particle_video.md
+    why: "Explains the trajectories this reader loads and visualizes."
 operations:
   - create:
       box: particle_video_reader_only

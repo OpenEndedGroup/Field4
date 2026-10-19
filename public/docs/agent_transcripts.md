@@ -2046,6 +2046,33 @@ Walkthrough: [Corpus microscope: from recordings to related windows](audio_ai_co
 
 [Open ↗](offline.html?file=assets/agent_transcripts/audio_ai_corpus_microscope/metadata.edn)
 
+### contour_trees_explorer
+
+[Merge trees and contour trees](contour_trees.md). The first box shows a landscape of hills and
+hollows with its contour tree's nodes, the regions its arcs stand for, and the tree drawn as a plot,
+with a slider that prunes branches by persistence. The second divides the brightness of the leaf
+print into contour-tree regions, lightly and strongly simplified. Plain Kotlin, no optional
+libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/contour_trees_explorer/metadata.edn)
+
+### vector_field_explorer
+
+[Vector field topology](vector_field_topology.md). The first box builds a flow from swirls,
+sources and sinks and draws its critical points and separatrices over streamlines, with a slider
+that scales the swirl. The second draws the ridges and valleys of the leaf print's brightness as
+the topology of its gradient, with a blur slider. Plain Kotlin, no optional libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/vector_field_explorer/metadata.edn)
+
+### mapper_explorer
+
+[Mapper graphs of point clouds](mapper.md). The first box draws the Mapper graph of a ring with a
+tail and a separate blob over its points, with sliders for the number of bins, their overlap and
+the lens. The second scatters points along the letters A, H and O and counts the loops in each
+graph. Plain Kotlin, no optional libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/mapper_explorer/metadata.edn)
 
 ## External-service live-coding scenes
 

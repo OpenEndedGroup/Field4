@@ -1701,8 +1701,8 @@ nothing else: no `dev_docs/`, no `config/`, no build output, no path that leaves
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="documentguides-kt--documentguidehandlers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">documentGuideHandlers</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/documentGuides/#L244) |  |
-| <a id="documentguides-kt--installdocumentguideroutes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Route</span><span class="p">.</span><span class="nf">installDocumentGuideRoutes</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/documentGuides/#L305) | Assets are served only from an already-open document, with the same canonical-path boundary as reads. |
+| <a id="documentguides-kt--documentguidehandlers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">documentGuideHandlers</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/documentGuides/#L290) |  |
+| <a id="documentguides-kt--installdocumentguideroutes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Route</span><span class="p">.</span><span class="nf">installDocumentGuideRoutes</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/documentGuides/#L351) | Assets are served only from an already-open document, with the same canonical-path boundary as reads. |
 
 ## dynamicRouting.kt { #dynamicrouting-kt }
 

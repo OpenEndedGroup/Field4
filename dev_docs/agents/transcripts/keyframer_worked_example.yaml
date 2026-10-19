@@ -41,6 +41,9 @@ description: >
   edit the source block and re-run a box to watch the answer change. Each `execute` op omits inline
   code, so it runs the box's stored `code` property. Companion page:
   public/docs/keyframer_examples.md. Companion tests: afield.animation.keyframes.KeyframerTest.
+docs:
+  - page: keyframer_examples.md
+    why: "Explains KeyframeScope snapshots, blends and persistence used here."
 operations:
   - create:
       box: keyframe_targets

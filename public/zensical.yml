@@ -186,6 +186,9 @@ nav:
       - Tetrahedral Meshing (TetGen): tetgen.md
       - Morse–Smale Complexes: morse_smale.md
       - Tracking Features (Time & Scale): topology_tracking.md
+      - Merge Trees & Contour Trees: contour_trees.md
+      - Vector Field Topology: vector_field_topology.md
+      - Mapper Graphs of Point Clouds: mapper.md
       - Principal Curves: principal_curves.md
       - Vectorizing Drawings (Polyvector): polyvector.md
       - Chaining Geometry Extensions: geometry_chains.md

@@ -16,6 +16,9 @@ description: >
   Every box carries its own control arm -- PopulationSearch.random at the SAME budget under the
   SAME seed -- because a generator good enough to stumble onto a decent rule occasionally looks
   exactly like a successful search. None of the four opens a Window or a Renderer.
+docs:
+  - page: alife_examples.md
+    why: "Describes the ALife rule spaces these evolution boxes search over."
 operations:
   - create:
       box: evolve_lenia

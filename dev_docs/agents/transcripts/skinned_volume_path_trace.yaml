@@ -7,6 +7,9 @@ description: >
   and comes back out with creased normals for the GPU path tracer. The two tubes lie side by side
   on a floor, linear blending nearer the camera. Needs a live renderer parent and Manifold
   (`brew install manifold`).
+docs:
+  - page: chain_skinned_volume.md
+    why: "Walks through this skinned-mesh-to-volume chain."
 operations:
   - create:
       box: chain_renderer

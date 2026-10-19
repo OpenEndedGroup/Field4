@@ -41,6 +41,11 @@ description: >
   three, then turn a budget up, swap a driver, change the width family, or point MorphoProblems at
   a different oracle and re-run a box. Each `execute` op omits inline code, so it runs the box's
   stored `code` property. The page is public/docs/morpho_search.md.
+docs:
+  - page: morpho_search.md
+    why: "Explains searching for MorphoHDL circuits with this layer."
+  - page: morpho_examples.md
+    why: "Introduces MorphoHDL itself."
 operations:
   - create:
       box: morpho_search_control

@@ -1,5 +1,8 @@
 # Generated from mesh_repair_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "mesh_repair_demo"
+docs:
+  - page: geometry_from_disk.md
+    why: "Covers loading meshes from disk and repairing them."
 operations:
   - create:
       box: "mesh-repair-fix"

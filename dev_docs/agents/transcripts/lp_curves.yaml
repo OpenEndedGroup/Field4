@@ -18,6 +18,9 @@ description: >
        grid in an editable threeLines viewer. Choose the pencil tool and drag a corner of the
        white outline: when the drag ends, onEditCommitted takes the convex hull of the edited
        outline and redraws the grid for it.
+docs:
+  - page: lp_curves.md
+    why: "The page these LpPolygon boxes accompany."
 operations:
   - create:
       box: lp_routes

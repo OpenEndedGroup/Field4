@@ -6,6 +6,9 @@ description: >
   Orbit the result, hover a face, or click it to inspect its output id, Conway provenance, source
   elements, and resolved non-uniform parameter. This deliberately compact worked example is
   the starting point for exploring the completed polytope vertical slice.
+docs:
+  - page: polytope_examples.md
+    why: "Explains polytope face selection and Conway operators used here."
 operations:
   - create:
       box: polytope_selective_kis

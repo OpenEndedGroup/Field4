@@ -1,8 +1,7 @@
 # Creature evolution (`afield.simulation.creatures`)
 
-A genetic algorithm that evolves 2D creatures. It began as a water-bug search in
-`src/personal/kotlin/organic/gp/` (`Creatures.kt`, `CreatureEvolutionExample.kt`, package `organic.gp`;
-the personal copy is still there and is independent of this one). It now lives in
+A genetic algorithm that evolves 2D creatures. It began as a private water-bug search
+(an independent copy of which still exists outside the published tree). It now lives in
 `src/jvmMain/kotlin/afield/simulation/creatures/Creatures.kt`, and the starting point is the
 `evolving_water_bugs` transcript.
 

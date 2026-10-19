@@ -1,5 +1,8 @@
 name: reconstruction_plumbing
 description: Build moduleHere raster RGB, depth and motion targets, then explicitly schedule DLAA or Super Resolution.
+docs:
+  - page: reconstruction_plumbing.md
+    why: "Walks through building the G-buffer and reconstruction graph."
 operations:
 - create:
     box: agent_graphics_context

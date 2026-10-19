@@ -20,6 +20,9 @@ description: >
   edge with weight driving colour and thickness -- and only the two clips use the dynamicGraphPanel
   raster, because animateEvolution's panels are typed on Img. Reach for dynamicGraphFLines when you
   are writing a new still here.
+docs:
+  - page: dynamic_graph_systems_examples.md
+    why: "The page these six graph boxes come from."
 operations:
   - create:
       box: dgs_six_systems

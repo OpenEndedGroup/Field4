@@ -10,6 +10,9 @@ description: |
   arrive). Needs `./gradlew buildSyphonNative`. Prints `syphon-zero-copy PASS`. Run it on the
   default KosmicKrisp and with `AFIELD_VULKAN_DRIVER=moltenvk`, which take different routes
   (`dev_docs/SYPHON_BRIDGE.md`).
+docs:
+  - page: syphon.md
+    why: "Explains Syphon receive, including zero-copy textures."
 operations:
   - create:
       box: syphon_zero_copy_renderer

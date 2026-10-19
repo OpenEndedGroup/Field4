@@ -5,6 +5,9 @@ description: >
   reuse. A fourth box starts a capture with JVM stacks and opens the profiling timeline. The macro
   waits for real launch startup, warms the workloads, records, checks the resulting samples,
   and stops its workers. Replay it to repeat the demo; no GPU or personal sources required.
+docs:
+  - page: profiling_timeline.md
+    why: "Explains reading the profiling timeline this document records."
 operations:
   - create:
       box: profile_steady

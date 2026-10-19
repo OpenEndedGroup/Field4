@@ -798,7 +798,7 @@ and anything needing a model file.
 
 `src/jvmMain/kotlin/afield/media/image/imaging.kt` — [read the source](source/jvmMain/afield/media/image/imaging/)
 
-**Used in:** [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md), [Driving Lights: Art-Net and sACN](../dmx_lighting.md)
+**Used in:** [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md), [Merge trees and contour trees](../contour_trees.md)
 
 ### Top-level functions { #imaging-kt-functions }
 

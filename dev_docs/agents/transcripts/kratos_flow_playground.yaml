@@ -6,6 +6,9 @@ description: >
   coloured by speed. One persistent worker keeps the same background grid across every edit.
   Requires the optional/kratos environment (or its container image) and Manifold. Stop releases
   the worker. The whole experiment is editable Kotlin.
+docs:
+  - page: reference/simulation.md
+    why: "Reference for the Kratos simulation API these playgrounds use."
 operations:
   - create:
       box: kratos_flow

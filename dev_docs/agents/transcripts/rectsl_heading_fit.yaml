@@ -10,6 +10,9 @@ description: >
   how steep a climb makes the dart point at 45 degrees, and descends the exact gradient from 0.15 to
   1.0000000000000244. Open or replay this into a fresh Field4 and look at box one: bands one and two
   are the same picture, band three is what losing a quadrant looks like.
+docs:
+  - page: rectsl_inverse_animation.md
+    why: "Explains fitting RectSL animations by differentiation."
 operations:
   - create:
       box: rectsl_heading_lowering

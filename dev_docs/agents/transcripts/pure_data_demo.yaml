@@ -18,6 +18,9 @@ description: |
       an arpeggio into it.
     - **offline** — renders a patch with no audio device, measures its frequency and amplitude
       from the samples, reads back an array Pd recorded, and draws the patch.
+docs:
+  - page: pure_data.md
+    why: "Explains running Pure Data patches from Field."
 operations:
   - create:
       box: pd_root

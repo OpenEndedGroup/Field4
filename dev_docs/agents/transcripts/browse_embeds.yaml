@@ -6,6 +6,9 @@ description: >
   running and adds a reading every half second; open "readings" and watch it grow without a re-run.
   Box 4 is logs(...) filtered to one channel, with a block whose id contains parentheses.
   Run each box; box 3 needs Launch (it loops). See dev_docs/INSPECTOR_EMBEDS.md.
+docs:
+  - page: visualizers.md#trees-and-columns
+    why: "Explains tree(...) and column(...) inspector embeds like the ones in these boxes."
 operations:
   - create:
       box: tree_box
