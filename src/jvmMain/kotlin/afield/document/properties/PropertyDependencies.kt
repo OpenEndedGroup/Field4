@@ -471,4 +471,7 @@ object PropertyDependencies {
     fun forget(documentPath: String) {
         stores.remove(documentPath)
     }
+
+    /** Whether an in-memory record for [documentPath] is held (tests of document close). */
+    internal fun holds(documentPath: String): Boolean = stores.containsKey(documentPath)
 }

@@ -448,4 +448,23 @@ class ReactivePropsTest {
         ReactiveRuns.forgetDown(a)
         assertFalse(ReactiveRuns.remembers(a))
     }
+
+    /** Closing a document (its session cleanup) leaves no reactive state or dependency record behind. */
+    @Test
+    fun closingADocumentForgetsItsReactiveState() {
+        val s = session("close")
+        val h = boxIn(s, "h")
+        val r = boxIn(s, "r")
+        PropertyDependencies.recordNamedRead(r, h, "gain")
+        ReactiveRuns.declaredDown(h, "gain")
+        ReactiveRuns.runStarted(r, "run")
+        ReactiveRuns.runFinished(r, ok = true, mode = "run")
+        assertTrue(ReactiveRuns.remembers(r))
+        assertTrue(PropertyDependencies.holds(s.filename))
+        assertTrue(ReactiveRuns.recordCountFor(s.filename) > 0)
+        s.cleanup()
+        assertFalse(ReactiveRuns.remembers(r), "run record survived the close")
+        assertEquals(0, ReactiveRuns.recordCountFor(s.filename))
+        assertFalse(PropertyDependencies.holds(s.filename), "dependency record survived the close")
+    }
 }

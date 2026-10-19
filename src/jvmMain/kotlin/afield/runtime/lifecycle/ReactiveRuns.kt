@@ -528,6 +528,34 @@ object ReactiveRuns {
         rootDownDeclarers.values.forEach { it.remove(box.id) }
     }
 
+    /**
+     * Forgets everything recorded for the document at [filename] — run records, pull stamps, Down
+     * declarations — so a closed document leaves no reactive state (or Box references) behind. Runs
+     * still in flight keep their state, as in [forgetDown]. Called from document cleanup.
+     */
+    fun forgetDocument(filename: String) {
+        val prefix = filename + "\u0000"
+        fun inDocument(box: Box) = box.isInsideInitialized() && box.inside.filename == filename
+        runs.keys.filter(::inDocument).forEach { box ->
+            runs.computeIfPresent(box) { _, st -> if (synchronized(st) { st.depth > 0 || st.waiters.isNotEmpty() }) st else null }
+        }
+        blockedCount.keys.removeIf(::inDocument)
+        lastRunStart.keys.removeIf { it.startsWith(prefix) }
+        pulledOk.keys.removeIf { it.startsWith(prefix) }
+        lastPull.keys.removeIf { it.startsWith(prefix) }
+        downDeclared.removeIf { it.startsWith(prefix) }
+        rootDownDeclarers.keys.removeIf { it.startsWith(prefix) }
+    }
+
+    /** Sizes of the per-document records, for tests that check [forgetDocument] leaves nothing. */
+    internal fun recordCountFor(filename: String): Int {
+        val prefix = filename + "\u0000"
+        return runs.keys.count { it.isInsideInitialized() && it.inside.filename == filename } +
+            lastRunStart.keys.count { it.startsWith(prefix) } + pulledOk.keys.count { it.startsWith(prefix) } +
+            lastPull.keys.count { it.startsWith(prefix) } + downDeclared.count { it.startsWith(prefix) } +
+            rootDownDeclarers.keys.count { it.startsWith(prefix) }
+    }
+
     private fun downMacroPattern(name: String) =
         Regex("""\b(?:propDown|propUpDown|rootPropDown|rootPropUpDown)\s*<[^\n]*>\s*\(\s*""" + Regex.escape(name) + """\s*[,)]""")
 
