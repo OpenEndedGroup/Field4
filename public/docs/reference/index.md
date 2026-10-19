@@ -446,9 +446,11 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
     - [solidcraft](graphics.md#solidcraft-kt)
 - *spatial* — [Graphics](graphics.md#bspot-kt) · [Machine learning](machine-learning.md#stippletransport-kt) · [Math](math.md#linalg-spatial-kt)
 - topology
+    - [mapper](graphics.md#mapper-kt)
     - [morsesmale](graphics.md#morsesmale-kt)
     - [tracking](graphics.md#featuretracking-kt)
     - [trees](graphics.md#contourtrees-kt)
+    - [vectorfield](graphics.md#vectorfieldtopology-kt)
 - vectorize
     - [polyvector](graphics.md#polyvector-kt)
 
@@ -637,7 +639,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**32876 public symbols across 1485 source files**, 16627 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**32923 public symbols across 1487 source files**, 16652 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -650,7 +652,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 13 | 127 | 43 (33%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 41 | 1954 | 1413 (72%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 305 | 7466 | 3814 (51%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 307 | 7513 | 3839 (51%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 42 | 742 | 373 (50%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
@@ -1068,7 +1070,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [FaustPolySmokeTest.kt](audio.md#faustpolysmoketest-kt) | Audio · internal | 3 | 1 | Smoke test for patterns played through a Faust voice bank: checks that onsets land on the notated sample and that a chord really sounds three voices at once. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [FaustPolySoundDocs.kt](audio.md#faustpolysounddocs-kt) | Audio | 20 | 20 | The two published clips that make polyphony audible: one chord progression, eight voices and one. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [FaustSmokeTest.kt](audio.md#faustsmoketest-kt) | Audio · internal | 3 | 0 | The Faust binding, end to end, without audio hardware. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>topology/<wbr>tracking/<wbr></small> [FeatureTracking.kt](graphics.md#featuretracking-kt) | Graphics | 37 | 21 |  | [Tracking features through time and scale](../topology_tracking.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>topology/<wbr>tracking/<wbr></small> [FeatureTracking.kt](graphics.md#featuretracking-kt) | Graphics | 37 | 21 |  | [Tracking features through time and scale](../topology_tracking.md), [Vector field topology](../vector_field_topology.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>device/<wbr></small> [Fence.kt](graphics.md#fence-kt) | Graphics | 6 | 0 | A Vulkan fence the CPU waits on to learn that submitted GPU work has finished. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>optimization/<wbr>ceres/<wbr></small> [FfmCeresBackend.kt](internal.md#ffmceresbackend-kt) | Internal · internal | 6 | 4 | The Ceres solver backend that calls the native `ken_ceres_jvm` wrapper through the Java foreign-function API (`java.lang.foreign`), with no JNI glue. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [FieldAdapters.kt](polytopes.md#fieldadapters-kt) | Polytopes | 31 | 22 | The bridge from a polytope to the things Field can actually draw: `FLine`s and a `TriMesh`. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [A polytope, cut open, and traced](../chain_polytope_render.md), [Agent transcript gallery](../agent_transcripts.md) |
@@ -1410,6 +1412,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>manifold/<wbr></small> [ManifoldNative.kt](internal.md#manifoldnative-kt) | Internal · internal | 22 | 16 | The FFM binding to `libmanifoldc` that `Solid` and `Section` are built on, plus the small public enums they take. | [Solids that cannot fail: Manifold in Field](../manifold.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>manifold/<wbr></small> [ManifoldSmokeTest.kt](graphics.md#manifoldsmoketest-kt) | Graphics · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [MapOfSequences.kt](graphics.md#mapofsequences-kt) | Graphics | 14 | 5 | Keyed collections of running sequences that a host steps once per frame. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>topology/<wbr>mapper/<wbr></small> [Mapper.kt](graphics.md#mapper-kt) | Graphics | 23 | 14 |  | [Mapper graphs of point clouds](../mapper.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Marf.kt](patterns.md#marf-kt) | Patterns | 110 | 67 | Function generation over the pattern language: stored material, a trajectory that reads it, and the timing of that traversal, kept as three separate patterns. | [A pattern as a function generator](../marf.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [MarfGallery.kt](patterns.md#marfgallery-kt) | Patterns | 11 | 8 | Headless **figure gallery** for the function-generation layer in `Marf.kt`, and the check that every figure on `marf.md` is a measurement of the reader it claims to draw. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [MarfSmokeTest.kt](patterns.md#marfsmoketest-kt) | Patterns · internal | 2 | 1 | The worked example for `Marf.kt`, and the check that it holds together: one bank, several readers, and what each reader is doing printed as text. |  |
@@ -2111,6 +2114,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>settings/<wbr></small> [util_settings.kt](workspace.md#util-settings-kt) | Workspace | 20 | 0 | Property delegates that keep a single `String`, `Int` or `Double` value across Field restarts, one small file per property name under `.field/` in the working directory. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [ValueVisualizer.kt](visualization.md#valuevisualizer-kt) | Visualization | 10 | 8 | The default value display for Field output areas: a Kotlin value in, a compact HTML fragment out. | [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md), [DataFrames in a Box](../dataframe.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>buffers/<wbr></small> [VBuffer.kt](graphics.md#vbuffer-kt) | Graphics | 21 | 1 | VertexBuffer is a classic vertex buffer with a host-side staging copy that is transferred to device-local memory before drawing. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>topology/<wbr>vectorfield/<wbr></small> [VectorFieldTopology.kt](graphics.md#vectorfieldtopology-kt) | Graphics | 24 | 11 |  | [Vector field topology](../vector_field_topology.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [VideoDecoder.kt](graphics.md#videodecoder-kt) | Graphics | 26 | 6 | Decodes video frames with FFmpeg into P010 or RGBA8 buffers (`VideoFrame`) for `VideoTexture`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [VideoFrameIndex.kt](graphics.md#videoframeindex-kt) | Graphics | 3 | 3 | Frame-number arithmetic for constant-frame-rate video, shared by the code that asks for a frame and the code that reports which frame a decoder produced. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>video/<wbr></small> [videoFrames.kt](video.md#videoframes-kt) | Video | 2 | 2 |  |  |

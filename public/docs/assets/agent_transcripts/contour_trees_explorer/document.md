@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="contour_tree_landscape" index="0" -->
 
 ```edn [field-box id="contour_tree_landscape" role="properties"]
-{"id" "contour_tree_landscape" "index" 0 "name" "1 - A landscape and its contour tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A landscape and its contour tree" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "contour_tree_landscape_code_.kt" "lines" 24 "characters" 1384 "sha256" "b21bc1f4a5be2c6950c1b5a260a202bd15b3dfefcdbfc89dd12811b0b7b740b2"}]}
+{"id" "contour_tree_landscape" "index" 0 "name" "1 - A landscape and its contour tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A landscape and its contour tree" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "contour_tree_landscape_code_.kt" "lines" 24 "characters" 1378 "sha256" "108b6f10e47105dfeb9afc39b0b166e8cdf477d2760625e0e57f5438fb9fdb8b"}]}
 ```
 
 ```kotlin [field-property box="contour_tree_landscape" name="code" path="contour_tree_landscape_code_.kt"]
@@ -31,7 +31,7 @@ fun show(persistence: Double) {
     val dots = FLine().also { f -> tree.nodes.forEach { f.moveTo(it.x, it.y) }; f.properties["pointed"] = true; f.properties["pointSize"] = 5.0 }
     val plot = Img(200, 150, 3, FloatArray(200 * 150 * 3)).drawFLines(tree.plot(200.0, 150.0, margin = 15.0), scale = 2.0)
     showImgGrid(
-        "field: ${tree.nodes.size} nodes" to field.normalized().colormap("viridis").drawFLines(listOf(dots), scale = 2.0, color = Vec4(1f, 1f, 1f, 1f)),
+        "field: ${tree.nodes.size} nodes" to field.normalized().colormap("viridis").drawFLines([dots], scale = 2.0, color = Vec4(1f, 1f, 1f, 1f)),
         "regions: ${tree.arcs.size} arcs" to tree.segmentationImage().scaleBy(2.0),
         "tree" to plot,
         columns = 3, cellSide = 300,

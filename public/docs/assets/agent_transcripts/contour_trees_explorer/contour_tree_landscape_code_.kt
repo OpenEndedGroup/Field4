@@ -14,7 +14,7 @@ fun show(persistence: Double) {
     val dots = FLine().also { f -> tree.nodes.forEach { f.moveTo(it.x, it.y) }; f.properties["pointed"] = true; f.properties["pointSize"] = 5.0 }
     val plot = Img(200, 150, 3, FloatArray(200 * 150 * 3)).drawFLines(tree.plot(200.0, 150.0, margin = 15.0), scale = 2.0)
     showImgGrid(
-        "field: ${tree.nodes.size} nodes" to field.normalized().colormap("viridis").drawFLines(listOf(dots), scale = 2.0, color = Vec4(1f, 1f, 1f, 1f)),
+        "field: ${tree.nodes.size} nodes" to field.normalized().colormap("viridis").drawFLines([dots], scale = 2.0, color = Vec4(1f, 1f, 1f, 1f)),
         "regions: ${tree.arcs.size} arcs" to tree.segmentationImage().scaleBy(2.0),
         "tree" to plot,
         columns = 3, cellSide = 300,
