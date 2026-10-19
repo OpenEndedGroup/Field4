@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="mapper_ring" index="0" -->
 
 ```edn [field-box id="mapper_ring" role="properties"]
-{"id" "mapper_ring" "index" 0 "name" "1 - A ring, a tail and a blob" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A ring, a tail and a blob" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mapper_ring_code_.kt" "lines" 31 "characters" 1599 "sha256" "fe54a5b9b8998662b9fdeaf81b791c8eb8ceef8f3fce580a035b58cc2da4f0ac"}]}
+{"id" "mapper_ring" "index" 0 "name" "1 - A ring, a tail and a blob" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A ring, a tail and a blob" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mapper_ring_code_.kt" "lines" 34 "characters" 1656 "sha256" "aab45daf96366d1bc7f77db448ce0a11d0d9691fa7f795c8e6a7b921e436d1a8"}]}
 ```
 
 ```kotlin [field-property box="mapper_ring" name="code" path="mapper_ring_code_.kt"]
@@ -42,9 +42,12 @@ fun show() {
     showImgGrid("$lens: ${graph.components().size} pieces, ${graph.loops} loop(s)" to
         black.drawFLines([graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(), scale = 3.0), columns = 1, cellSide = 600)
 }
-slider("intervals", min = 2.0, max = 30.0, step = 1.0, initialValue = 12.0) { intervals = it.toInt(); show() }
-slider("overlap", min = 0.05, max = 0.8, step = 0.05, initialValue = 0.35) { overlap = it; show() }
-slider("lens: x, eccentricity, density", min = 0.0, max = 2.0, step = 1.0, initialValue = 1.0) { lens = lenses.keys.toList()[it.toInt()]; show() }
+// lens: 0 is x, 1 eccentricity, 2 density.
+controlGroup("mapper") {
+    slider("intervals", min = 2.0, max = 30.0, step = 1.0, initialValue = 12.0) { intervals = it.toInt(); show() }
+    slider("overlap", min = 0.05, max = 0.8, step = 0.05, initialValue = 0.35) { overlap = it; show() }
+    slider("lens", min = 0.0, max = 2.0, step = 1.0, initialValue = 1.0) { lens = lenses.keys.toList()[it.toInt()]; show() }
+}
 show()
 ```
 

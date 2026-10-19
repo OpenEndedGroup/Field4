@@ -4,7 +4,7 @@
 
 Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output.
 
-13 source file(s), 127 public symbol(s), 43 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+14 source file(s), 134 public symbol(s), 50 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -223,6 +223,44 @@ GPU RTT -> optional CUDA worker -> ordinary sampled RTT. Construct/close between
 | <a id="streamdiffusionview-kt--streamdiffusionview--render"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">command</span><span class="p">:</span> <span class="nc">CommandBuffer</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/media/video/diffusion/StreamDiffusionView/#L86) |  |
 | <a id="streamdiffusionview-kt--streamdiffusionview--reset"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="n">prompt</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">config</span><span class="p">.</span><span class="n">prompt</span><span class="p">,</span> <span class="n">strength</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">config</span><span class="p">.</span><span class="n">strength</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">config</span><span class="p">.</span><span class="n">seed</span><span class="p">,</span> <span class="n">noiseAdvection</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">config</span><span class="p">.</span><span class="n">noiseAdvection</span><span class="p">)</span></code>](source/jvmMain/afield/media/video/diffusion/StreamDiffusionView/#L189) | Change artistic controls; preserves the last valid image during causal warm-up. |
 | <a id="streamdiffusionview-kt--streamdiffusionview--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/media/video/diffusion/StreamDiffusionView/#L203) |  |
+
+## particleflow.kt { #particleflow-kt }
+
+`src/jvmMain/kotlin/afield/media/video/particleflow.kt` — [read the source](source/jvmMain/afield/media/video/particleflow/)
+
+**Used in:** [Vector field topology](../vector_field_topology.md)
+
+### Top-level functions { #particleflow-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="particleflow-kt--loadparticleflow"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">loadParticleFlow</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">ParticleFlow</span></code>](source/jvmMain/afield/media/video/particleflow/#L98) | Reads a flow written by [`ParticleFlow.save`](video.md#particleflow-kt--particleflow--save). |
+| <a id="particleflow-kt--flow"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">ParticleVideo</span><span class="p">.</span><span class="nf">flow</span><span class="p">(</span><span class="n">cell</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">sigma</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">ParticleFlow</span></code>](source/jvmMain/afield/media/video/particleflow/#L117) | Every frame's particle velocities spread onto a grid of `cell`-pixel cells, with a Gaussian of `sigma` cells, and the camera motion of each frame measured: see [`ParticleFlow`](video.md#particleflow-kt-particleflow). |
+
+### CameraMotion { #particleflow-kt-cameramotion }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">CameraMotion</span></code>](source/jvmMain/afield/media/video/particleflow/#L19)
+
+What to take out of a flow before using it: nothing (`KEEP`), the frame's median velocity (`SHIFT`), or an affine motion fitted to every particle and refitted without the outliers (`AFFINE`), which also removes a camera's slight zoom and rotation, or old film weaving in the gate.
+
+Constants: `KEEP`, `SHIFT`, `AFFINE`.
+
+### FlowFrame { #particleflow-kt-flowframe }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">FlowFrame</span><span class="p">(</span><span class="k">val</span> <span class="n">u</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">v</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">w</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">shift</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">affine</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span></code>](source/jvmMain/afield/media/video/particleflow/#L27)
+
+One frame of a [`ParticleFlow`](video.md#particleflow-kt-particleflow): the particle velocities splatted onto the grid (weighted sums `u`, `v` and total weight `w` per cell), and the camera motion measured from the particles, as a median `shift` (vx, vy) and an `affine` fit (vx = a0 + a1 x + a2 y, vy = b0 + b1 x + b2 y, in processed-image pixels).
+
+### ParticleFlow { #particleflow-kt-particleflow }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">ParticleFlow</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">cell</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">fps</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">frames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FlowFrame</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/media/video/particleflow/#L43)
+
+The tracked particles of a [`ParticleVideo`](video.md#particlevideo-kt-particlevideo) turned into a dense velocity field: each frame's particle velocities spread onto a grid of `cell`-pixel cells with a Gaussian of `sigma` cells.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="particleflow-kt--particleflow--at"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">camera</span><span class="p">:</span> <span class="nc">CameraMotion</span> <span class="o">=</span> <span class="nc">CameraMotion</span><span class="p">.</span><span class="nc">AFFINE</span><span class="p">,</span> <span class="n">prior</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.5f</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code>](source/jvmMain/afield/media/video/particleflow/#L51) | The flow at [`frame`](visualization.md#petrivisual-kt--frame), averaged over `window` frames either side, with `camera` motion removed. Cells with no particles near them fade towards zero (the average is divided by the weight plus `prior`). |
+| <a id="particleflow-kt--particleflow--save"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">save</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/media/video/particleflow/#L78) | Writes the flow, gzipped and quantised: each cell's mean velocity to 1/64 pixel per frame and its weight to 1/256, far finer than the tracking itself, which keeps a few hundred frames to a few megabytes. |
 
 ## particletracker.kt { #particletracker-kt }
 
