@@ -21,7 +21,7 @@ source = RenderToTexture(renderer) {
     height = inputSize.height
     useDepth = true
     colorAttachments = 3
-    colorFormats = listOf(VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R32_SFLOAT, VK_FORMAT_R32G32_SFLOAT)
+    colorFormats = [VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R32_SFLOAT, VK_FORMAT_R32G32_SFLOAT]
 }
 val sceneModule = moduleHere {
     source.apply()

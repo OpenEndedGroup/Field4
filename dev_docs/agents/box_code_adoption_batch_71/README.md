@@ -13,3 +13,7 @@ Five complete interactive-guide states run with direct `thisBox` arguments. Navi
 Actual Kotlin import/ktfmt, GLSL formatting, typed collection conversion and parsed code/literal/fragment checks passed. Full guards belong to the lander; no paid AI requests were made.
 
 Checkpoint: 374/405 addressed, 31 open. Mechanical coverage: Actual import/ktfmt and GLSL formatter; parsed code, raw literals, fragment boundaries and prose verified. Full guards are delegated to the lander.
+
+## Capture reconciliation
+
+Batch 79 recaptured and inspected the changed navigation/annotation screenshots through the normal docs runner. They now show actual lines 11 and 17. The separate video attempt was invalidated by a machine-clock interval; its committed video is unchanged.

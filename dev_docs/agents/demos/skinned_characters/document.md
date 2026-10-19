@@ -479,7 +479,7 @@ showMeshGrid(
 <!-- field-box id="gpu_twist" index="4" -->
 
 ```edn [field-box id="gpu_twist" role="properties"]
-{"id" "gpu_twist" "index" 4 "name" "7 - The candy wrapper on the GPU, linear and dual quaternion in one draw" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "7 - The candy wrapper on the GPU, linear and dual quaternion in one draw" "_tombstone" false "frame" #afield/rect [700.0 540.0 600.0 136.0] "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_twist_code_.kt" "lines" 83 "characters" 3219 "sha256" "e2bbcfdd929d909efd257a29b79876e1047feb2ed3a5b1adf9633fff6a441a27"} {"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "8c95217c5eb296f0b777d1cd1c5a4aac3bd08cee26c0845c51bfbd99a3c29f34"}]}
+{"id" "gpu_twist" "index" 4 "name" "7 - The candy wrapper on the GPU, linear and dual quaternion in one draw" "parents" ["root" "f5e60137-f514-4c01-865c-5af02f1d8eee"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "f5e60137-f514-4c01-865c-5af02f1d8eee"} "name" "7 - The candy wrapper on the GPU, linear and dual quaternion in one draw" "_tombstone" false "frame" #afield/rect [700.0 540.0 600.0 136.0] "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_twist_code_.kt" "lines" 83 "characters" 3207 "sha256" "c73d527a4fd9d0825b0c6c0f0b242a5670fba03c3349293a5be2af164659eba7"} {"name" "preamble" "language" "text" "lines" 6 "characters" 240 "sha256" "8c95217c5eb296f0b777d1cd1c5a4aac3bd08cee26c0845c51bfbd99a3c29f34"}]}
 ```
 
 ```kotlin [field-property box="gpu_twist" name="code" path="gpu_twist_code_.kt"]
@@ -497,7 +497,7 @@ RUN BOX 0 FIRST, and stop box 6 if it is running -- both draw into box 0's windo
 EDIT `methods` AND RE-RUN: make both LINEAR_BLEND and both pinch; make both DUAL_QUATERNION and
 neither does.
 */
-val methods = listOf(SkinningMethod.LINEAR_BLEND, SkinningMethod.DUAL_QUATERNION)
+val methods = [SkinningMethod.LINEAR_BLEND, SkinningMethod.DUAL_QUATERNION]
 
 val model = GltfSupport.loadGltfBasic(
     RiggedFixture.locate(),
@@ -531,7 +531,7 @@ val skinner = GpuSkinner(inst, instances = 2, renderer = renderer, name = "twist
 skinner.bindTo(m, camera, instanceCount = 2, tint = true)
 
 // Seen from this camera +x is on the LEFT, so instance 0 goes to +1.3.
-val places = listOf(Matrix4f().translate(vec(1.3, 0, 0)), Matrix4f().translate(vec(-1.3, 0, 0)))
+val places = [Matrix4f().translate(vec(1.3, 0, 0)), Matrix4f().translate(vec(-1.3, 0, 0))]
 val sk = skinner.skin.skeleton
 val twist = sk.clip("twist")!!
 

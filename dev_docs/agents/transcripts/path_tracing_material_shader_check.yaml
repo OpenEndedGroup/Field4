@@ -77,12 +77,12 @@ operations:
                       material.emission.rgb = vec3(pc.gain + pc.bias, 0, 0);
                       return material;
                   }
-              """
+                  """
                       .trimIndent(),
               )
               check(reloadComputeShader(owner))
               check(tracer.materialModule.current !== original)
-              check(tracer.materialModule.current.ci.pushConstants.single().members.map { it.name } == listOf("gain", "bias"))
+              check(tracer.materialModule.current.ci.pushConstants.single().members.map { it.name } == ["gain", "bias"])
               tracer.materialMesh.push["bias"] = 1f
               tracer.paused = false
               delay(100)

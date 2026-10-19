@@ -24,13 +24,13 @@ operations:
           finds this bug, because it is the one that needs an explicit domain. The outline is
           2 x 3; the window is 0.24 x 0.24 around one of its corners.
           */
-          val outline = listOf(
+          val outline = [
               -1.0 to -1.5,
               1.0 to -1.5,
               1.0 to 1.5,
               -1.0 to 1.5,
               -1.0 to -1.5,
-          )
+          ]
 
           val c =
               Chart(title = "one corner of a 2 x 3 outline", xLabel = "x", yLabel = "y")
@@ -65,13 +65,13 @@ operations:
       properties:
         code: |
           // One word different from box 1, and it is the behaviour that shipped sharp_edge.png.
-          val outline = listOf(
+          val outline = [
               -1.0 to -1.5,
               1.0 to -1.5,
               1.0 to 1.5,
               -1.0 to 1.5,
               -1.0 to -1.5,
-          )
+          ]
 
           val c =
               Chart(title = "the same corner, unclipped", xLabel = "x", yLabel = "y")
@@ -122,7 +122,7 @@ operations:
 
           // Flip the argument to `false` and re-run: the note goes back to one line running off
           // the right edge, and the whole figure shrinks to fit beside it.
-          listOf(true, false).forEach { on ->
+          [true, false].forEach { on ->
               val ps = figure(on).toFLines().flatMap { l -> l.nodes.mapNotNull { it.toOrNull } }
               val w = ps.maxOf { it.x } - ps.minOf { it.x }
               println(
@@ -161,7 +161,7 @@ operations:
           */
           val plot = c.plotRect()
           println("plotRect: $plot")
-          listOf("area", "line", "points").forEach { name ->
+          ["area", "line", "points"].forEach { name ->
               val ns =
                   c.toFLines().filter { it.label?.startsWith(name) == true }.flatMap { l -> l.nodes.mapNotNull { it.toOrNull } }
               val over: Double = ns.maxOf { p ->

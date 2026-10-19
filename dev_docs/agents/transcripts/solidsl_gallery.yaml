@@ -22,7 +22,7 @@ operations:
           val machinable =
               cuboid(3.2, 3.2, 0.5) -
                   unionOf(
-                      listOf(-1.1 to -1.1, 1.1 to -1.1, -1.1 to 1.1, 1.1 to 1.1).map { (x, y) ->
+                      [-1.1 to -1.1, 1.1 to -1.1, -1.1 to 1.1, 1.1 to 1.1].map { (x, y) ->
                           cylinder(2.0, 0.22, segments = 128).at(x, y, 0.0)
                       },
                   )
@@ -138,7 +138,7 @@ operations:
               (cuboid(4.0, 2.6, 0.7) + cylinder(1.4, 0.8, segments = quality)) -
                   cylinder(3.0, 0.42, segments = quality) -
                   unionOf(
-                      listOf(-1.45, 1.45).map { cylinder(3.0, boreRadius, segments = quality).at(it, 0.0, 0.0) },
+                      [-1.45, 1.45].map { cylinder(3.0, boreRadius, segments = quality).at(it, 0.0, 0.0) },
                   ) -
                   Profile.rect(2.9, slotWidth).offset(0.22, segments = quality).extruded(3.0).at(0.0, 1.05, -1.5)
 
@@ -297,7 +297,7 @@ operations:
           // The simplifier, which only exists because the shape is a value.
           println("---- what the simplifier can do ----")
           val wasteful = differenceOf(
-              listOf(scene) + (0 until 40).map { cylinder(3.0, 0.12, segments = 32).at(-8.0 + it * 0.42, 0.0, 0.0) },
+              [scene] + (0 until 40).map { cylinder(3.0, 0.12, segments = 32).at(-8.0 + it * 0.42, 0.0, 0.0) },
           )
           println("40 extra bores, most of them nowhere near the part:")
           println("  ${wasteful.simplificationReport()}")

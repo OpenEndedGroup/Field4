@@ -197,7 +197,7 @@ frames {
         println("  frames  sweeps   max |div| after   reduction")
         var first = 0f
         var last = 0f
-        for (f in listOf(1, 2, 4, 8)) {
+        for (f in [1, 2, 4, 8]) {
             probe.idle()
             probe.fill(pressureA, 0f)
             probe.fill(pressureB, 0f)

@@ -3,13 +3,13 @@ A magnified corner of a body far larger than the window — the shape of figure 
 finds this bug, because it is the one that needs an explicit domain. The outline is
 2 x 3; the window is 0.24 x 0.24 around one of its corners.
 */
-val outline = listOf(
+val outline = [
     -1.0 to -1.5,
     1.0 to -1.5,
     1.0 to 1.5,
     -1.0 to 1.5,
     -1.0 to -1.5,
-)
+]
 
 val c =
     Chart(title = "one corner of a 2 x 3 outline", xLabel = "x", yLabel = "y")

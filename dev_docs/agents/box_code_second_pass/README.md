@@ -163,3 +163,5 @@ without an original finding are described in each batch rather than inflating th
 Every batch includes code smells/idioms, useful comments, Kotlin/GLSL layout, import/ktfmt handling,
 explicit collection-literal audit, fragment/reset preservation, and the smallest meaningful runtime
 checks. Save concrete verification limits when a device or service is unavailable.
+
+Final mechanical closure: [collection literals and guide screenshots](../box_code_adoption_batch_79/README.md). All 405 frozen findings are addressed; final landing outcomes are tracked separately.

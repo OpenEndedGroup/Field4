@@ -14,7 +14,7 @@ operations:
           val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)
           notation("playhead") {
               stroke = "#f08c00"
-              line(listOf(score.toWorld(4.5, 85.0), score.toWorld(4.5, 47.0)))
+              line([score.toWorld(4.5, 85.0), score.toWorld(4.5, 47.0)])
           }
   - wait:
       millis: 500

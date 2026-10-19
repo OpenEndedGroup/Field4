@@ -11,7 +11,7 @@ val pushed = mutableListOf<String>()
 LogStream.addSubscription(
     "logdemo-substring",
     LogStream.Filter(
-        channels = listOf("kotlin"),
+        channels = ["kotlin"],
         sinceEpochMs = System.currentTimeMillis(),
         limit = 50,
         tail = true,
@@ -20,7 +20,7 @@ LogStream.addSubscription(
     pushed += json
 }
 
-val emitted = listOf("info,kotlin", "info,kotlinjs", "info,graphics")
+val emitted = ["info,kotlin", "info,kotlinjs", "info,graphics"]
 try {
     emitted.forEach { lprintln(it, "«logdemo» a line on $it") }
 } finally {
@@ -38,13 +38,13 @@ pairs of a real tag and a real channel in this tree differ the same way.
 display(
     "main",
     Table(
-            listOf("channel emitted", "pushed to the subscriber"),
+            ["channel emitted", "pushed to the subscriber"],
             title = "a LogStream filter of [\"kotlin\"] against three channels",
             note =
                 "${matched.size} of ${emitted.size} matched: kotlin is a tag in the first and only a " +
                     "substring in the second. The pinned console splits on commas, so it would take only the first.",
         )
-        .rows(emitted.map { listOf(it, it in matched) })
+        .rows(emitted.map { [it, it in matched] })
         .role("channel emitted", CellRole.ACCENT)
         .roleBy("pushed to the subscriber") { if (it == true) CellRole.OK else CellRole.DIM },
 )

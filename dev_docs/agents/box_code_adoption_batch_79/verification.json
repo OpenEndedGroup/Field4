@@ -1,0 +1,98 @@
+{
+  "files": 142,
+  "distinctKotlinBodies": 129,
+  "distinctListConversions": 239,
+  "occurrences": 175,
+  "actualImportAndKtfmtPassed": true,
+  "candidateTokensAndRawStringsPreserved": true,
+  "fragmentBoundariesPreserved": true,
+  "codecDocuments": 25,
+  "mirrors": {
+    "files": 9,
+    "retainedDrift": [
+      {
+        "mirror": "dev_docs/agents/demos/interaction_nets_lambda/document.md",
+        "sidecar": "lambda-oracle_code_.kt",
+        "reason": "pre-existing mirror drift"
+      }
+    ]
+  },
+  "retentions": [
+    {
+      "id": "dev_docs/agents/demos/function_conversation/function_source_code_.kt#source",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "dev_docs/agents/demos/skinned_characters/document.md#fence:160",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "dev_docs/agents/demos/skinned_characters/document.md#fence:696",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "dev_docs/agents/demos/skinned_characters/metadata.edn#c82c404d-a15d-4f51-a06f-66dfc2a00364/preamble",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "dev_docs/agents/demos/skinned_characters/metadata.edn#gpu_skin/preamble",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "public/docs/assets/canonical_graphics/metadata.edn#176b09bd-6e1c-4cb4-9c8a-b046d54c6dde/preamble",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "public/docs/assets/canonical_graphics/metadata.edn#262e80f5-d991-453d-9af8-8d181ff0eb0b/preamble",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "public/docs/assets/canonical_graphics/metadata.edn#65bd0587-dbfa-451a-8f6a-e003ff3d1abf/preamble",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "public/docs/assets/canonical_graphics/metadata.edn#8b8d3306-5c31-49aa-ab27-659a992ebd09/preamble",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "public/docs/assets/canonical_graphics/metadata.edn#ad857eaa-362e-45ea-bdc8-472af40f1ed2/preamble",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "public/docs/assets/canonical_graphics/metadata.edn#af0946dd-f25d-4355-984d-f0d24a43ee12/preamble",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "public/docs/assets/canonical_graphics/metadata.edn#e39270ec-8faf-4d26-8f4e-ce4d23ec4af1/preamble",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "public/docs/assets/function_conversation/FunctionStudyTools.kt#source",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "public/docs/assets/function_conversation/final.kt#source",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "public/docs/assets/stackauto_conversation/polytope/final-code.kt#source",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "public/docs/function_conversation.md#fence:53",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "public/docs/function_conversation.md#fence:129",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "public/docs/function_conversation.md#fence:175",
+      "reason": "recorded conversation provenance or compiler preamble"
+    },
+    {
+      "id": "public/docs/function_conversation.md#fence:294",
+      "reason": "recorded conversation provenance or compiler preamble"
+    }
+  ]
+}

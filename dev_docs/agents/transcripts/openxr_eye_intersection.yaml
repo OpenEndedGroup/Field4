@@ -67,7 +67,7 @@ operations:
               if (xr == null) emptyList<Int>()
               else
                   renderer.runOnQueueThread {
-                      listOf(xr.sideBySideRTTParameters().format)
+                      [xr.sideBySideRTTParameters().format]
                   }
 
           // Change this and re-launch this box to exercise a different world origin.
@@ -124,7 +124,7 @@ operations:
                       )
                   }
               val result = mutableListOf<Vec3>()
-              for (i in 0..7) for (bit in listOf(1, 2, 4)) if (i and bit == 0) {
+              for (i in 0..7) for (bit in [1, 2, 4]) if (i and bit == 0) {
                   result.add(corners[i])
                   result.add(corners[i or bit])
               }
@@ -144,14 +144,14 @@ operations:
           }
           lineMesh("world grid", grid, vec(0.25, 0.25, 0.25, 1)) { Matrix4f() }
           for ((name, end, color) in
-              listOf(
+              [
                   Triple("world +X", vec(0.5, 0, 0), vec(1, 0.3, 0.3, 1)),
                   Triple("world +Y", vec(0, 0.5, 0), vec(0.3, 1, 0.3, 1)),
                   Triple("world -Z", vec(0, 0, -0.5), vec(0.3, 0.5, 1, 1)),
-              )) {
-              lineMesh(name, listOf(Vec3(), end), color) { Matrix4f() }
+              ]) {
+              lineMesh(name, [Vec3(), end], color) { Matrix4f() }
           }
-          for (distance in listOf(1f, 2f, 4f)) {
+          for (distance in [1f, 2f, 4f]) {
               lineMesh("reference at $distance m", cubeLines(0.08f), vec(0.45, 0.45, 0.45, 1)) {
                   Matrix4f().translate(0f, 0f, -distance)
               }
@@ -161,12 +161,12 @@ operations:
           val rightModel = Matrix4f()
           val combinedModel = Matrix4f()
           val gapModel = Matrix4f()
-          val unitRay = listOf(Vec3(), Vec3(0f, 0f, -1f))
+          val unitRay = [Vec3(), Vec3(0f, 0f, -1f)]
           val leftRay = lineMesh("HTC left ray", unitRay, vec(0.3, 0.85, 1, 1)) { leftModel }
           val rightRay = lineMesh("HTC right ray", unitRay, vec(1, 0.55, 0.2, 1)) { rightModel }
-          val dashes = (0..19).flatMap { i -> listOf(Vec3(0f, 0f, -i / 20f), Vec3(0f, 0f, -(i + 0.5f) / 20f)) }
+          val dashes = (0..19).flatMap { i -> [Vec3(0f, 0f, -i / 20f), Vec3(0f, 0f, -(i + 0.5f) / 20f)] }
           val combinedRay = lineMesh("EXT combined ray (no depth)", dashes, vec(0.6, 0.6, 0.6, 1)) { combinedModel }
-          val gap = lineMesh("closest-point gap", listOf(Vec3(), Vec3(1f, 1f, 1f)), vec(1, 0.2, 0.5, 1)) { gapModel }
+          val gap = lineMesh("closest-point gap", [Vec3(), Vec3(1f, 1f, 1f)], vec(1, 0.2, 0.5, 1)) { gapModel }
           val marker = lineMesh("binocular world marker", cubeLines(0.025f), vec(1, 1, 1, 1)) {
               Matrix4f().translate(markerWorld)
           }
