@@ -82,6 +82,78 @@ as nodes and the separatrices as curves between them.
 one-channel images `compute(u, v)`. `minStrength` drops weak points (noise makes many), and
 `centerTolerance` sets how much spiral a centre or how little a focus may have.
 
+## Flow from old film
+
+A flow can come from footage too. [Video particles](particle_video.md) tracks thousands of points
+through a movie, and `video.flow()` spreads their velocities onto a grid, one flow per frame. This
+clip is from *Golden Eagles*, a 1930s Kodak Cinegraph nature film: an eagle crossing a field to
+land on a falconer's fist. Its flow is in `assets/vector_field_topology/eagle.flow.gz`, saved with
+`flow.save(...)` from the tracks so the page does not need the tracker.
+
+Taken as it is, the flow describes the camera more than the bird. The film weaves in the gate, so
+the whole frame shifts and turns a little every frame, and the topology of that motion sweeps
+across the sky:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/vector_field_topology/eagle_raw.png" alt="four darkened frames of an old film of a falconer in a field with trees behind, an eagle flying in from the right and landing on his raised fist. Over each, dense pale streamlines run across the whole frame, mostly in parallel sweeps through the sky, bending around the trees and the bird, with a few orange and blue separatrices and coloured critical points where the sweeps meet" wait="5" timeout="300" capture="box" open-outputs="true" padding="20" name="vector-field-eagle-raw" embed=true}
+import afield.geometry.topology.vectorfield.*
+
+// The eagle's flow, one grid per frame (cells of 4 pixels), and the film it came from.
+val flow = loadParticleFlow("public/docs/assets/vector_field_topology/eagle.flow.gz")
+val film = videoFrames("public/docs/assets/vector_field_topology/eagle.mp4", width = 480).toList()
+
+fun panel(frame: Int, camera: CameraMotion, minSpeed: Double): Pair<String, Img> {
+    val topology = VectorFieldTopology.compute(flow.at(frame, window = 1, camera = camera), minStrength = 0.02, maxLength = 300.0)
+    val lines = topology.streamlines(spacing = 1.5, length = 14.0, minSpeed = minSpeed) + topology.toFLines() + topology.criticalPointsFLine(6.0)
+    val picture = film[frame]
+    val dark = Img(picture.width, picture.height, 3, FloatArray(picture.width * picture.height * 3))
+    return "frame $frame" to picture.overlay(dark, 0.55).drawFLines(lines.map { it * flow.cell.toDouble() }, scale = 2.0)
+}
+showImgGrid(*[60, 120, 210, 270].map { panel(it, CameraMotion.KEEP, minSpeed = 0.0) }.toTypedArray(), columns = 2, cellSide = 480)
+```
+
+The whole clip in this look, rendered by the second box of the
+[`eagle_flow_explorer`](agent_transcripts.md#eagle_flow_explorer) starting point:
+
+<video controls muted loop playsinline preload="metadata" width="960" height="588" poster="../assets/vector_field_topology/eagle_raw.png" style="width:100%;height:auto">
+  <source src="assets/vector_field_topology/eagle_flow_raw.mp4" type="video/mp4">
+</video>
+
+The flow's critical points depend on what is taken to be standing still. `CameraMotion.AFFINE`
+fits the camera's motion to all the particles in each frame (a shift, a slight turn and zoom),
+refits it without the particles that disagree, which are mostly the bird's, and subtracts it.
+`CameraMotion.SHIFT` subtracts only the median velocity, which is not enough here: the weave turns
+as well as shifts. With the camera taken out, and streamlines drawn only where the flow is faster
+than a pixel per frame (`minSpeed = 1.0`), the flow is the eagle's:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/vector_field_topology/eagle_bird.png" alt="the same four darkened frames. Now the sky and trees are clear, and short pale streamlines cover only the eagle: a patch on its body as it flies in low, hatching along both spread wings as it banks towards the falconer, and around its wings and body as it lands on his fist, with orange and blue separatrices running from saddles near the bird" wait="5" timeout="300" capture="box" open-outputs="true" padding="20" name="vector-field-eagle-bird" embed=true}
+import afield.geometry.topology.vectorfield.*
+
+:::fold the same loading and drawing as above
+val flow = loadParticleFlow("public/docs/assets/vector_field_topology/eagle.flow.gz")
+val film = videoFrames("public/docs/assets/vector_field_topology/eagle.mp4", width = 480).toList()
+
+fun panel(frame: Int, camera: CameraMotion, minSpeed: Double): Pair<String, Img> {
+    val topology = VectorFieldTopology.compute(flow.at(frame, window = 1, camera = camera), minStrength = 0.02, maxLength = 300.0)
+    val lines = topology.streamlines(spacing = 1.5, length = 14.0, minSpeed = minSpeed) + topology.toFLines() + topology.criticalPointsFLine(6.0)
+    val picture = film[frame]
+    val dark = Img(picture.width, picture.height, 3, FloatArray(picture.width * picture.height * 3))
+    return "frame $frame" to picture.overlay(dark, 0.55).drawFLines(lines.map { it * flow.cell.toDouble() }, scale = 2.0)
+}
+:::
+showImgGrid(*[60, 150, 210, 270].map { panel(it, CameraMotion.AFFINE, minSpeed = 1.0) }.toTypedArray(), columns = 2, cellSide = 480)
+```
+
+The separatrices still run out past the bird, because the flow around it is close to zero rather
+than exactly zero, and a streamline follows direction whatever the speed. Both pictures are the
+same footage read in two frames of reference.
+
+??? aside "Where the footage came from"
+    *Golden Eagles* (Kodak Cinegraph, 1930s), public domain, from the Internet Archive item
+    `55294-golden-eagles` (Periscope Film). The clip starts 5 min 9 s in and runs 17 s; it was
+    cropped of its pillarbox and burned-in timecode and tracked with `particleTracker()` at 480
+    pixels wide, 16,000 particles, on Apple Metal (`device = "mps"`). The 393 MB of tracks were
+    reduced to the 8.6 MB flow with `loadParticleVideo(...).flow(cell = 4, sigma = 1.5).save(...)`.
+
 ## Following a flow through time
 
 `topology.features()` turns the critical points into the `Feature`s that

@@ -87,11 +87,13 @@ class VectorFieldTopology internal constructor(
 
     /**
      * The streamline through ([x], [y]), traced [length] pixels forward and backward (RK4, steps of
-     * [step] pixels, stopping at the frame's edge or where the flow stops).
+     * [step] pixels, stopping at the frame's edge or where the flow is slower than [minSpeed]).
+     * Streamlines follow the flow's direction whatever its speed, so a [minSpeed] keeps them out of
+     * places where the flow is only noise.
      */
-    fun streamline(x: Double, y: Double, length: Double = 200.0, step: Double = 0.5): FLine {
-        val back = field.trace(x, y, -1, length, step, emptyList(), -1).first
-        val fwd = field.trace(x, y, 1, length, step, emptyList(), -1).first
+    fun streamline(x: Double, y: Double, length: Double = 200.0, step: Double = 0.5, minSpeed: Double = 0.0): FLine {
+        val back = field.trace(x, y, -1, length, step, emptyList(), -1, minSpeed).first
+        val fwd = field.trace(x, y, 1, length, step, emptyList(), -1, minSpeed).first
         return FLine().also { f ->
             val n = back.size / 2
             for (i in n - 1 downTo 0) if (i == n - 1) f.moveTo(back[2 * i], back[2 * i + 1]) else f.lineTo(back[2 * i], back[2 * i + 1])
@@ -101,15 +103,18 @@ class VectorFieldTopology internal constructor(
 
     /**
      * Streamlines seeded on a grid every [spacing] pixels, each traced [length] pixels both ways: a
-     * quick picture of the flow to draw the topology over.
+     * quick picture of the flow to draw the topology over. Seeds where the flow is slower than
+     * [minSpeed] are skipped, and lines stop there.
      */
-    fun streamlines(spacing: Double = 12.0, length: Double = 40.0, color: Vec4 = Vec4(0.6f, 0.6f, 0.6f, 0.5f)): List<FLine> {
+    fun streamlines(spacing: Double = 12.0, length: Double = 40.0, color: Vec4 = Vec4(0.6f, 0.6f, 0.6f, 0.5f), minSpeed: Double = 0.0): List<FLine> {
+        val probe = DoubleArray(2)
         val out = ArrayList<FLine>()
         var y = spacing / 2
         while (y < height - 1) {
             var x = spacing / 2
             while (x < width - 1) {
-                out.add(streamline(x, y, length).also { it.properties["color"] = color; it.properties["thickness"] = 1.0 })
+                if (minSpeed > 0 && (!field.at(x, y, probe) || hypot(probe[0], probe[1]) < minSpeed)) { x += spacing; continue }
+                out.add(streamline(x, y, length, minSpeed = minSpeed).also { it.properties["color"] = color; it.properties["thickness"] = 1.0 })
                 x += spacing
             }
             y += spacing
@@ -178,13 +183,13 @@ class VectorFieldTopology internal constructor(
          * [captureRadius] (3 px) of a critical point other than [from]; returns the points and the index
          * of the critical point reached, if any.
          */
-        fun trace(x0: Double, y0: Double, sign: Int, length: Double, step: Double, targets: List<FlowCriticalPoint>, from: Int): Pair<DoubleArray, Int?> {
+        fun trace(x0: Double, y0: Double, sign: Int, length: Double, step: Double, targets: List<FlowCriticalPoint>, from: Int, minSpeed: Double = 0.0): Pair<DoubleArray, Int?> {
             val pts = ArrayList<Double>(); pts.add(x0); pts.add(y0)
             var x = x0; var y = y0; var travelled = 0.0
             val k = DoubleArray(2)
             fun dir(px: Double, py: Double, out: DoubleArray): Boolean {
                 if (!at(px, py, k)) return false
-                val m = hypot(k[0], k[1]); if (m < 1e-12) return false
+                val m = hypot(k[0], k[1]); if (m < 1e-12 || m < minSpeed) return false
                 out[0] = sign * k[0] / m; out[1] = sign * k[1] / m; return true
             }
             val k1 = DoubleArray(2); val k2 = DoubleArray(2); val k3 = DoubleArray(2); val k4 = DoubleArray(2)
