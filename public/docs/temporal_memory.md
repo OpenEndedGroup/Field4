@@ -247,7 +247,7 @@ find somewhere acceptable to go. `outputRepetition()` puts a number on how much 
 And as a figure, stepped at 30 frames a second. The same box runs live in the starting point
 below, and goes on for as long as you let it.
 
-```diffstatic_runner {data-lang=kotlin video="assets/temporal_memory/dance_film.mp4" execution="launch" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" duration="15" fps="15" timeout="300" padding="0" name="tm-dance-film" alt="a stick figure dancing on a square floor, seen from slightly above, its colour changing as the improviser moves between the six recorded takes"}
+```diffstatic_runner {data-lang=kotlin video="assets/temporal_memory/dance_film.mp4" execution="launch" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" duration="15" fps="15" timeout="300" padding="0" embed=true name="tm-dance-film" alt="a stick figure dancing on a square floor, seen from slightly above, its colour changing as the improviser moves between the six recorded takes"}
 :::static
 import afield.io.mocap.*
 import afield.math.oracle.*
