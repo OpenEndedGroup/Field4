@@ -1,0 +1,53 @@
+{
+  "baseline": "48618bfe3",
+  "sources": [
+    {
+      "path": "src/jvmMain/kotlin/afield/runtime/lifecycle/RunOwnedListener.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "src/jvmMain/kotlin/afield/audio/synth/Orca.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "src/jvmMain/kotlin/afield/media/browser/PuppetBrowser.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "src/jvmMain/kotlin/afield/ai/inference/onnx/DepthAnythingWorker.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "src/jvmMain/kotlin/afield/media/stream/FieldRTTStreamer.kt",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/onnx.md",
+      "kotlinBodies": 5,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/orca.md",
+      "kotlinBodies": 8,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/puppet_browser.md",
+      "kotlinBodies": 9,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}
