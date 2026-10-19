@@ -127,7 +127,7 @@ operations:
 
           fun tile(depth: Int, slots: Int, a: Int, b: Int): List<List<PatArc>> {
               val word = kolakoskiWord(4 shl depth, a, b) // more terms than the tree can eat
-              var level = listOf(PatArc(PatQ.ZERO, PatQ.ONE))
+              var level = [PatArc(PatQ.ZERO, PatQ.ONE)]
               var cursor = 0
               val levels = mutableListOf(level)
               repeat(depth) {
@@ -170,7 +170,7 @@ operations:
           a pile. The gain ramp makes it foreground and background instead. Short samples for the same
           reason: sd:2 and click decay before the next level arrives.
           */
-          val voices = listOf("bd" to 1.0, "sd:2" to 0.7, "hh:2" to 0.45, "click" to 0.35)
+          val voices = ["bd" to 1.0, "sd:2" to 0.7, "hh:2" to 0.45, "click" to 0.35]
           val played = t.takeLast(voices.size)
           val music = stack(
               *played

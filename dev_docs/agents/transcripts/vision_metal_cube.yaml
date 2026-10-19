@@ -22,7 +22,7 @@ operations:
           visionMetal(
                   shader = visionMetalExampleShader,
                   script = visionMetalExampleScript,
-                  uniforms = listOf("phase", "amount", "tint"),
+                  uniforms = ["phase", "amount", "tint"],
                   geometry = VisionMetalGeometryOrigin.BUILTIN,
               )
               .onStatus {

@@ -35,7 +35,7 @@ terminal a line inside an lblock is prefixed by a raw 36-character UUID.
 display(
     "main",
     Table(
-            listOf("depth", "boundary", "block", "message"),
+            ["depth", "boundary", "block", "message"],
             title = "two nested lblocks, as the dispatcher saw them",
             note =
                 "the deepest line's raw indent: '" +
@@ -44,12 +44,12 @@ display(
         )
         .rows(
             mine.map { e ->
-                listOf(
+                [
                     e.indent.split("\t").count { it.isNotEmpty() },
                     e.boundary?.name ?: "—",
                     e.blockId?.take(8) ?: "—",
                     e.message.substringBefore(" - '"),
-                )
+                ]
             },
         )
         .role("message", CellRole.ACCENT),

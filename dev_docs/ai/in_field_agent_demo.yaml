@@ -33,11 +33,11 @@ operations:
           */
           askFieldAgent(
               goal = "Make a box named Primes that prints the first 10 prime numbers, and run it.",
-              checks = listOf(
+              checks = [
                   "box-exists:Primes",
                   "last-run-ok:Primes",
                   "output-ints-include:Primes:2,3,5,7,11,13,17,19,23,29",
-              ),
+              ],
               mode = "scripted",
               script = fieldAgentEvalScript("primes"),
           )
@@ -58,12 +58,12 @@ operations:
               goal =
                   "Launch a box named Table that uses display to show an HTML <table> in the output " +
                       "channel \"main\", with one row for each n in 1..5 holding n and n*n.",
-              checks = listOf(
+              checks = [
                   "box-exists:Table",
                   "last-run-ok:Table",
                   "output-contains:Table:<table",
                   "output-ints-include:Table:1,1,2,4,3,9,4,16,5,25",
-              ),
+              ],
               mode = "live",
               maxToolRounds = 16,
           )

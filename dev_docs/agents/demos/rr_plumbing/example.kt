@@ -29,13 +29,13 @@ guides = RenderToTexture(renderer) {
     height = size.height
     useDepth = false
     colorAttachments = 5
-    colorFormats = listOf(
+    colorFormats = [
         VK_FORMAT_R32_SFLOAT,
         VK_FORMAT_R32G32_SFLOAT,
         VK_FORMAT_R16G16B16A16_SFLOAT,
         VK_FORMAT_R16G16B16A16_SFLOAT,
         VK_FORMAT_R16G16B16A16_SFLOAT,
-    )
+    ]
 }
 val sampler = TextureSampler(renderer, 1, false, filter = VK_FILTER_NEAREST)
 val surfaces = scene.lighting.surfaces
@@ -50,7 +50,7 @@ val guideModule = moduleHere {
     depthTest = false
     depthWrite = false
     blend = false
-    textureResolver = { texture -> inputs[texture.name]?.let { fromViews(listOf(it), texture.name, sampler) } }
+    textureResolver = { texture -> inputs[texture.name]?.let { fromViews([it], texture.name, sampler) } }
 }
 val quad = Mesh(renderer, guideModule)
 quad.resize(3, 0, guideModule)
@@ -80,7 +80,7 @@ val pass = object : Target {
         scene.bundle.scene.rasterJitterNdc.set(2 * jitter.x / size.width, -2 * jitter.y / size.height)
         scene.animate(time)
         if (animate) time += 1.0 / 60
-        settings.commitLights(listOf(IdentifiedAreaLight(1, scene.lighting.emitter)))
+        settings.commitLights([IdentifiedAreaLight(1, scene.lighting.emitter)])
 
         scene.bundle.gBuffer.render(command, index) // geometry, unjittered motion
         scene.lighting.render(command, index) // raw RTXDI RGB

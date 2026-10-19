@@ -6,7 +6,7 @@ val travel = requireNotNull(fromContextWithNameOrNull<java.util.concurrent.atomi
     "Missing travel; run Resources first"
 }
 val settings =
-    listOf("force", "grainCell", "strokeTime", "flowWidth").map { parameterName ->
+    ["force", "grainCell", "strokeTime", "flowWidth"].map { parameterName ->
         requireNotNull(fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>(parameterName)) {
                 "Run Resources first: missing parameter $parameterName"
             }

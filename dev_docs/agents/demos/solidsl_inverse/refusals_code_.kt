@@ -55,7 +55,7 @@ fun deadUnder(expr: SolidExpr, path: String): SolidFit {
 }
 
 println("---- a swallowed child, under two kinds of union ----")
-val hard = deadUnder(unionOf(listOf(outer, inner)), "Union/1/Sphere.radius")
+val hard = deadUnder(unionOf([outer, inner]), "Union/1/Sphere.radius")
 val soft = deadUnder(smoothUnion(outer, inner, 0.9), "SmoothUnion/b/Sphere.radius")
 println("  hard Union      dead: ${hard.deadParameters}")
 println("  smoothUnion     dead: ${soft.deadParameters}")

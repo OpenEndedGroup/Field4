@@ -1711,9 +1711,10 @@
     "../box_code_adoption_batch_75/README.md",
     "../box_code_adoption_batch_76/README.md",
     "../box_code_adoption_batch_77/README.md",
-    "../box_code_adoption_batch_78/README.md"
+    "../box_code_adoption_batch_78/README.md",
+    "../box_code_adoption_batch_79/README.md"
   ],
-  "next": "All 405 frozen findings addressed after batch 78. Finish the residual collection-literal audit and guide capture reconciliation, then confirm final landing outcomes.",
+  "next": "Source review and mechanical coverage complete. Await final lander outcomes and repair any concrete bounces; retain documented optional-backend limitations.",
   "preparation": {
     "batch": 43,
     "evidence": "build/box-code-revision/adoption-43/preparation.json",
@@ -1730,11 +1731,11 @@
     "fieldSession": 58980
   },
   "inProgress": {
-    "batch": 78,
-    "branch": "codex/box-code-readability-78",
-    "baseline": "48618bfe3",
-    "state": "405/405 frozen findings addressed; residual collection audit, guide recapture and landing confirmation remain",
-    "evidence": "../box_code_adoption_batch_78/README.md"
+    "batch": 79,
+    "branch": "codex/box-code-readability-79",
+    "baseline": "46818a5a9",
+    "state": "405/405 addressed; final collection and guide screenshot reconciliation complete; awaiting lander",
+    "evidence": "../box_code_adoption_batch_79/README.md"
   },
   "mechanical": {
     "status": "applied_for_valid_kotlin_glsl_with_explicit_retained_cases",
@@ -1758,6 +1759,20 @@
     "initialAttemptEditedFiles": 575,
     "recordedFilesRestored": 13,
     "retainedRecordedGroup": "dev_docs/agents/demos/function_conversation_example",
-    "landingRepair": "../box_code_adoption_batch_57/README.md"
+    "landingRepair": "../box_code_adoption_batch_57/README.md",
+    "finalCollectionAudit": {
+      "evidence": "../box_code_adoption_batch_79/README.md",
+      "distinctConversions": 239,
+      "distinctBodies": 129,
+      "authoredOccurrences": 175,
+      "codecDocuments": 25,
+      "matchingMirrors": 9
+    }
+  },
+  "closure": {
+    "sourceReview": "complete",
+    "mechanicalCoverage": "complete_with_explicit_retentions",
+    "guideScreenshotReconciliation": "complete",
+    "landing": "pending"
   }
 }

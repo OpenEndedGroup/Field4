@@ -73,12 +73,12 @@ operations:
           any kink. A census that did not count those would pass while checking nothing.
           */
           println("---- analytic vs central differences, right now ----")
-          val probes = listOf(
+          val probes = [
               Triple(0.9, 0.0, 0.0),
               Triple(0.0, 0.0, 1.2),
               Triple(0.31, -0.44, 0.62),
               Triple(0.0, 0.0, 0.0), // the ball's own centre
-          )
+          ]
           probes.forEach { (x, y, z) ->
               val c = template.checkGradient(x, y, z)
               println("  dParam (%5.2f, %5.2f, %5.2f)  %s".format(x, y, z, c))
@@ -255,7 +255,7 @@ operations:
           }
 
           println("---- a swallowed child, under two kinds of union ----")
-          val hard = deadUnder(unionOf(listOf(outer, inner)), "Union/1/Sphere.radius")
+          val hard = deadUnder(unionOf([outer, inner]), "Union/1/Sphere.radius")
           val soft = deadUnder(smoothUnion(outer, inner, 0.9), "SmoothUnion/b/Sphere.radius")
           println("  hard Union      dead: ${hard.deadParameters}")
           println("  smoothUnion     dead: ${soft.deadParameters}")
