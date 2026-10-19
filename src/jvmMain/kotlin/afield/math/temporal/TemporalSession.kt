@@ -143,7 +143,9 @@ class RecedingHorizon(
     private val fadeLeft = IntArray(width)
 
     /** Bumped by every takeover, release and reset; replies from older revisions are dropped. */
-    @Volatile var revision = 0L; private set
+    @Volatile
+    var revision = 0L
+        private set
 
     /** Steps on which no planned sample was available. */
     var underruns = 0; private set
