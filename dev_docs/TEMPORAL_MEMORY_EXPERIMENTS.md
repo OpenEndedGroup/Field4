@@ -170,3 +170,30 @@ through rise → hesitation → burst → pause about every 6 s. The phrase fixt
 the same four gestures, so source-position measures (`reuse`, `coverage`) report variety that
 the output does not have. Every phrase-fixture conclusion above about "repetition" is about source
 positions only. Needed: an output-side repetition measure, and takes that genuinely differ.
+
+## Real material: CMU subject 05 (six modern-dance takes, 114 channels)
+
+`afield.io.mocap.Bvh` (new: BVH parser, forward kinematics, body-frame positions, `toTrajectory`,
+`skeleton` FLines; `BvhTest` checks bone lengths are invariant under FK). Six takes are committed gzipped
+under `public/docs/assets/temporal_memory/cmu_05/` with the CMU credit. `DanceExperiments` reruns the dance.
+
+The dance broke the improviser in ways that one- and two-channel fixtures had hidden:
+
+| problem | symptom | fix |
+|---|---|---|
+| correction/cue distances summed over channels | 5122 holds in 5400 steps | RMS per channel |
+| suffix links never cross takes | 3 of 6 takes never entered | `VariableMarkovOracle.bridges` (nearest moments in other takes) as extra candidates |
+| jumps landing near take ends | churn, 2204 jumps | `runway(c) >= minPhrase` for every candidate |
+| takes end alike | loop around endings, coverage 0.34 | at a take's end, begin the least recently played other take within `restartTolerance` (2σ); history fallback needs 3 phrases of runway; holds limited to a phrase (`Reason.Restart`) |
+| CMU T-pose in frame 0 | spike at every take start | `Bvh.restPoseFrames`, skipped by `toTrajectory` |
+| replays coasting | 9 s passage replayed within a minute | `escapeReplays`: consider a jump every step while replaying within `reuseMemory` |
+
+3 min from 61 s, seed 1: the oracle covers 1.00 (every take, every part), output repetition 0.55–0.58,
+no holds. That compares with 0.42 / 0.85 / 31 holds before the fixes, a loop of one take at 0.15 / 0.97,
+and nearest-history at 0.43–0.64 / 0.66–0.77. A replay of 61 s stretched to 180 s must repeat about 2/3
+of its windows.
+
+Timestral-28M judging all 114 channels (2 min, docs box): oracle 0.98 coverage / 0.43 repetition /
+0.75 roughness / 84 jumps; veto 1.00 / 0.48 / 0.78 / 82; prefer 0.98 / 0.45 / 0.70 / 67. Forecast p95
+~400 ms. The judge changes most decisions and moves the result a little. That is not enough to recommend
+it over the oracle alone on this material.

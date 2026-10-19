@@ -1,68 +1,65 @@
 markdown("""
 # Continuing a gesture — lab notebook
 
-October 2026. What this document is for: remember a few seconds of performed behaviour, continue it,
-and stay responsive when someone takes over a channel. No training. Two backends, one player.
+October 2026. Goal: remember a little performed movement, continue it for as long as you like, and stay
+responsive when someone takes over a channel. No training. Two backends behind one player: the Variable
+Markov Oracle (explicit memory) and Mistral's Timestral (a pretrained forecaster).
 
-**Boxes.** 1 records three phrase takes and builds the oracle. 2 recombines them and shows which
-take each moment came from. 3 is live: tick "take over x" and drag. 4 needs Timestral installed
-and draws a forecast as a quantile fan. 5 compares four ways of playing the same memory.
+**Boxes.** 1–3 are a dancer: six CMU mocap takes (subject 05, modern dance), the oracle's continuation as a
+strip of poses, the signal with the take each moment came from, and the dancer live. 4 is two oscillators
+with a slider to take over x. 5 needs Timestral installed (TimestralSession.install()) and draws a forecast
+fan. 6 plays the dance five ways, two of them judged by Timestral.
 
-## What we measured (5-minute performances, 20 Hz, seed 1)
+## Timestral alone
 
-- **Oracle (VMO).** Holds the demo's spread, frequency and speed on every fixture; uses 92–98% of
-  the memory. Every sample comes from the recording, and `segments` says why it jumped.
-- **Timestral alone, fed back on itself.** 28M fades to a tenth of the signal within minutes.
-  209M keeps a smooth figure-eight going for all five minutes, but loses an amplitude-modulated
-  channel and settles into silence on the phrases. Replanning: 28M about 30 ms, 209M 150–250 ms
-  (p95 up to 660 ms).
-- **Known-future covariate.** y = x one second late; giving Timestral x's future halves the error on
-  y (0.20 vs 0.44 mean absolute error). The most useful steering control we found.
+- Fed back on itself, 28M fades to a tenth of the signal within minutes; 209M keeps a smooth figure-eight
+  going for five minutes but loses an amplitude-modulated channel and settles into silence on bursty
+  material. Replans: 28M ~30 ms, 209M 150–250 ms (p95 up to 660 ms); 114 channels: a few hundred ms.
+- Known-future covariates work: y = x one second late, x's future given, error on y halves (0.20 vs 0.44).
+- Quantiles are per step: drawn as a fan, never sampled as performances.
 
-## The hybrid, three tries
+## The hybrid, and how we got it wrong first
 
-| phrases, 5 min | reuse | coverage | join roughness | jumps |
-|---|---|---|---|---|
-| oracle alone | 0.25 | 0.98 | 0.89 | 250 |
-| judge prefers (28M) | 0.45 | 0.87 | 0.69 | 269 |
-| judge vetoes at 1.2× | 0.54 | 0.74 | 0.89 | 258 |
-| oracle, reuseWeight 6 | 0.20 | 0.92 | 0.60 | 360 |
-| judge prefers + reuseWeight 6 | 0.22 | 0.97 | 0.63 | 267 |
+First fixture: three synthetic "phrase" takes built from four gestures. Timestral judging the oracle
+(prefer / veto) changed most decisions; repetition, measured as memory-position reuse, went up. Then Marc asked
+to see the played signal: both the plain and judged oracle were cycling rise → hesitate → burst → pause every
+6 s. The takes were copies of the same four gestures, so memory-position measures saw variety that the output
+did not have. Two lessons: measure the output (outputRepetition, now on Performance), and use real material.
 
-1. *Prefer.* The judge changed 55–70% of decisions. Joins got smoother, but repetition nearly
-   doubled: a pinball-loss judge rewards the predictable continuation, which on phrases is what
-   just played.
-2. *Veto.* Expected it to remove bad joins without the pull. It vetoed most jumps on the phrases and
-   repetition got worse still. On the figure-eight it vetoed almost nothing: Timestral agrees with
-   every candidate on smooth periodic material.
-3. *Prefer + a stronger reuse penalty.* Smooth joins and low reuse together. But the plain oracle
-   with the same penalty gets nearly there on its own, with more, shorter jumps. Honest summary: on
-   these fixtures the judge buys longer phrases at the same smoothness, not a new capability.
+## The dancer
 
-The 209M judge gave the same picture as 28M at five to ten times the cost.
+Real material broke the improviser three ways, each visible only on 114 channels:
 
-**Then box 5, three minutes instead of five, same seed:** prefer + reuseWeight 6 came out at
-reuse 0.50, coverage 0.64, join roughness 0.40, where the 5-minute run said 0.22 / 0.97 / 0.63.
-So the "reuse penalty cancels the pull" result does not hold up across lengths: judged runs
-vary much more than oracle-only ones (0.26 / 0.93 / 0.87 here vs 0.25 / 0.98 / 0.89).
-What does hold every time: the judge makes joins smoother and costs variety on phrase
-material. Next experiment should be several seeds × lengths per setting, not one run.
+1. Thresholds summed over channels. A correction norm over 114 channels never passed maxCorrection = 1, so
+   it froze (5122 holds in 5400 steps). Now every correction and cue distance is RMS per channel.
+2. Suffix links do not cross takes. 3 of 6 takes were never entered. Added bridges: nearest moments in
+   other takes, as extra candidates with no shared context.
+3. Takes end alike. At a take's end the best matches were other endings, a loop around everyone's last
+   seconds (coverage 0.34). Now: no jump with less than a phrase of runway; a take ends by beginning the
+   least recently played other take within restartTolerance; holds last at most a phrase.
 
-**Then Marc asked to see the played signal, not just memory position.** Both the plain and the
-judged oracle play rise → hesitation → burst → pause about every 6 s, near-identically. The
-memory trace looked varied only because the takes are copies of the same four gestures.
-`reuse` counts source positions, so a loop made of copies passes it. Two consequences: we need
-an output-side repetition measure (matrix profile / autocorrelation of the performance), and
-this fixture is too poor to say anything about recombination. Next: takes that really differ.
+Then: trimStill() for still lead-ins, and escapeReplays: while replaying something heard in the last
+reuseMemory seconds, consider a jump every step.
+
+| dance, 3 min from 61 s | coverage | repeats itself | holds |
+|---|---|---|---|
+| loop one take | 0.15 | 0.97 | 0 |
+| nearest history | 0.43–0.64 | 0.66–0.77 | 3–10 |
+| oracle, first try | 0.42 | 0.85 | 31 |
+| oracle now | 1.00 | 0.55–0.58 | 0 |
+
+A three-minute replay of 61 s must repeat about two thirds of its windows, so 0.55 is real recombination.
+
+**Timestral as judge on the dance (box 6, two minutes):** coverage unchanged, repetition 0.45–0.48 vs the
+oracle's 0.43, preferring gives slightly smoother joins and fewer jumps. It changes most decisions and moves
+the result a little. Not a new capability on this material.
 
 ## Open
 
-- A measure of "better dynamics" that is neither the judge's own score nor a statistic the oracle
-  already matches. Blind A/B listening or viewing is probably the honest one.
-- Timestral steering through known covariates inside the hybrid: a performer's channel as a known
-  future, not just as history.
-- Takeover is realigned by matching history; a hard endpoint ("arrive here in 4 s") is not supported.
-- Tempo, offset and amplitude transforms of recalled passages; the oracle plays them as recorded.
+- The judge with known covariates: a performer's channel as Timestral's known future, not just its history.
+- Blind A/B viewing of oracle vs judged dance; the measures disagree at the margins.
+- Hard endpoints ("arrive here in 4 s"); tempo, offset and amplitude transforms of recalled passages.
+- More dancers: the bridges make a memory of several performers possible.
 
-Full report: dev_docs/TEMPORAL_MEMORY_EXPERIMENTS.md. Page: Continuing a Gesture.
+Full report: dev_docs/TEMPORAL_MEMORY_EXPERIMENTS.md. Data: public/docs/assets/temporal_memory/cmu_05/README.md.
 """.trimIndent())

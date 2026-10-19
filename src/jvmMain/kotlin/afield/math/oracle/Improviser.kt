@@ -2,6 +2,7 @@ package afield.math.oracle
 
 import kotlin.math.exp
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -42,8 +43,12 @@ enum class JudgeMode {
     Veto,
 }
 
-/** Why a [Segment] began. */
-enum class Reason { Start, Continue, SuffixLink, EpisodeEnd, Cue, Takeover, Hold }
+/**
+ * Why a [Segment] began. [Hold] repeats the last frame because no acceptable continuation exists;
+ * after holding for a phrase, [Restart] takes the closest match there is, whatever its distance or
+ * correction, rather than hold for ever.
+ */
+enum class Reason { Start, Continue, SuffixLink, EpisodeEnd, Cue, Takeover, Hold, Restart }
 
 /**
  * One stretch of output played from one place in memory. [outputStart] is the output sample it
@@ -61,7 +66,7 @@ class Performance(
     val output: Trajectory,
     /** Memory sample per output sample (`-1` while holding). */
     val source: IntArray,
-    /** Join-correction magnitude per output sample, in scaled units (0 = played as recorded). */
+    /** Join-correction size per output sample: RMS over channels, in channel spreads (0 = played as recorded). */
     val correction: DoubleArray,
     /** `owned[channel][t]`: true where the performer drove that channel. */
     val owned: Array<BooleanArray>,
@@ -82,6 +87,42 @@ class Performance(
 
     /** Fraction of memory samples that appear somewhere in the output. */
     fun coverage(memoryLength: Int): Double = source.filter { it >= 0 }.toSet().size.toDouble() / memoryLength
+
+    /**
+     * How much the output repeats *itself*, whatever memory it came from: the fraction of
+     * [window]-second stretches of output that closely match some earlier stretch, at least one
+     * window back. "Closely" is an RMS difference below [threshold] channel spreads, measured on
+     * [channels] (all by default; pick a few for a wide trajectory), with the output resampled to
+     * [rate] Hz to keep the comparison cheap.
+     *
+     * [reuse] counts memory positions, so a loop made of copies of the same gesture from different
+     * places in memory does not show up there; it shows up here.
+     */
+    fun outputRepetition(window: Double = 2.0, threshold: Double = 0.25, channels: List<Int> = output.channels.indices.toList(), rate: Double = 10.0): Double {
+        val step = max(1, (output.sampleRate / rate).toInt())
+        val n = output.length / step
+        val w = max(2, (window * output.sampleRate / step).toInt())
+        if (n < 3 * w) return Double.NaN
+        val sd = channels.map { c ->
+            val v = output.values[c]; val m = v.average()
+            kotlin.math.sqrt(v.sumOf { (it - m) * (it - m) } / v.size).coerceAtLeast(1e-9)
+        }
+        val x = Array(n) { t -> DoubleArray(channels.size) { k -> output.values[channels[k]][t * step] / sd[k] } }
+        var repeated = 0; var total = 0
+        for (a in 2 * w until n - w + 1) {
+            total++
+            var found = false
+            var b = 0
+            while (!found && b + w <= a - w) {
+                var s = 0.0
+                for (k in 0 until w) for (c in channels.indices) { val d = x[a + k][c] - x[b + k][c]; s += d * d }
+                if (kotlin.math.sqrt(s / (w * channels.size)) < threshold) found = true
+                b++
+            }
+            if (found) repeated++
+        }
+        return repeated.toDouble() / max(1, total)
+    }
 
     private fun accel(t: Trajectory, c: Int): DoubleArray =
         DoubleArray(max(0, t.length - 2)) { i -> kotlin.math.abs(t.values[c][i + 2] - 2 * t.values[c][i + 1] + t.values[c][i]) }
@@ -130,13 +171,23 @@ class Performance(
  * [minPhrase] seconds it may, with probability [jumpProbability] per sample, take an oracle
  * jump: to a state that shares a suffix with the current one. Candidates are scored by shared
  * context length, by the join distance (how far the candidate's preceding sample is from where
- * the output is now, value and velocity), and by how recently their passage was played (scaled by
- * [reuseWeight]; raise it to push away from repetition); one is
+ * the output is now, value and velocity), and by how much of their next phrase was played within
+ * the last [reuseMemory] seconds (scaled by [reuseWeight]; raise either to push towards material
+ * not heard for a while); one is
  * sampled from a seeded softmax with [temperature]. A candidate whose join distance exceeds
  * [maxJoin] (a multiple of the oracle threshold), or whose join would need a correction larger
- * than [maxCorrection] (in channel standard deviations), is rejected rather than smoothed over. At the
+ * than [maxCorrection] (RMS over channels, in channel standard deviations), or that leaves less
+ * than [minPhrase] before the end of its episode, is rejected rather than smoothed over. At the
  * end of an episode a jump is compulsory; if no candidate is acceptable it falls back to
  * matching recent history, and if that is worse than [declineDistance] it holds.
+ *
+ * With several episodes and [bridges] on, the candidates also include [VariableMarkovOracle.bridges]:
+ * the nearest moments in other takes, which carry no shared context, so the oracle prefers its own
+ * links unless [reuseWeight] pushes it towards material it has not played recently.
+ *
+ * With [escapeReplays] (on by default), playing material already played in the last [reuseMemory]
+ * seconds is itself a reason to leave: after a phrase, a jump is considered on every step of a
+ * replay rather than with [jumpProbability], so the improviser does not coast through a repeat.
  *
  * Every jump is joined by a correction that starts at the discontinuity and fades over
  * [joinTime] seconds; its magnitude is recorded in [Performance.correction], not hidden.
@@ -178,6 +229,10 @@ class Improviser(
     val judgeAhead: Double = 2.0,
     val judgeMode: JudgeMode = JudgeMode.Prefer,
     val reuseWeight: Double = 1.0,
+    val reuseMemory: Double = 10.0,
+    val bridges: Boolean = true,
+    val restartTolerance: Double = 2.0,
+    val escapeReplays: Boolean = true,
     val vetoRatio: Double = 1.5,
     start: Int = 0,
 ) {
@@ -200,6 +255,9 @@ class Improviser(
     private val owned = BooleanArray(width)
     private val performed = DoubleArray(width)
     private var sinceCue = 0
+    private var holding = 0
+    private val reuseMemorySteps = max(1, (reuseMemory * rate).roundToInt())
+    private val lastPlayed = IntArray(t.length) { -1 }
     private val recent = ArrayDeque<DoubleArray>()
     private val recentSource = ArrayDeque<Int>()
     private var pendingReason: Reason? = null
@@ -252,7 +310,7 @@ class Improviser(
     /** Restart from memory sample [at] with a fresh random sequence. */
     fun reset(seed: Long, at: Int = 0) {
         rng = java.util.Random(seed); pos = -1; startAt = at; phrase = 0; outputIndex = 0
-        offset.fill(0.0); offsetLeft.fill(0); owned.fill(false); recent.clear(); recentSource.clear(); segments.clear()
+        offset.fill(0.0); offsetLeft.fill(0); owned.fill(false); recent.clear(); recentSource.clear(); segments.clear(); lastPlayed.fill(-1)
     }
 
     /** Advances one sample and returns the output frame. */
@@ -278,7 +336,7 @@ class Improviser(
             } else if (pendingReason == Reason.Cue && recent.size >= 2) {
                 val c = oracle.cue(recent.toList(), cueWindowSteps, count = 1).firstOrNull()
                 if (c != null && !t.endsEpisode(c.position) && c.distance < declineDistance) { next = c.position + 1; reason = Reason.Cue; dist = c.distance; context = c.context }
-            } else if (natural < 0 || (phrase >= minPhraseSteps && rng.nextDouble() < jumpProbability && policy != Policy.Loop)) {
+            } else if (natural < 0 || (phrase >= minPhraseSteps && policy != Policy.Loop && (replaying(natural) || rng.nextDouble() < jumpProbability))) {
                 val j = jump()
                 if (j != null && j.second == Reason.Continue) { /* the judge chose to stay */ }
                 else if (j != null) { next = j.first; reason = j.second; dist = j.third.first; context = j.third.second }
@@ -286,8 +344,15 @@ class Improviser(
                     when (policy) {
                         Policy.Loop -> { next = t.episodeStarts[t.episodeOf(pos)]; reason = Reason.EpisodeEnd }
                         else -> {
-                            val c = if (recent.size >= 2) cueAway() else null
+                            val st = if (policy == Policy.Oracle) freshStart() else -1
+                            val c = if (st >= 0) Cue(st - 1, 0.0, 0) else if (recent.size >= 2) cueAway() else null
                             if (c != null) { next = c.position + 1; reason = Reason.EpisodeEnd; dist = c.distance; context = c.context }
+                            else if (holding >= minPhraseSteps && recent.size >= 2) {
+                                // held a whole phrase: take the closest place there is rather than freeze
+                                val best = oracle.cue(recent.toList(), cueWindowSteps, count = 6, separation = minPhraseSteps).firstOrNull { !t.endsEpisode(it.position) && runway(it.position + 1) >= minPhraseSteps }
+                                if (best != null) { next = best.position + 1; reason = Reason.Restart; dist = best.distance; context = best.context }
+                                else { next = -1; reason = Reason.Hold }
+                            }
                             else { next = -1; reason = Reason.Hold }
                         }
                     }
@@ -318,7 +383,7 @@ class Improviser(
                 out[c] = raw[c] + o
                 val s = o / oracle.features.scale[c]; mag += s * s
             }
-            lastCorrection = sqrt(mag)
+            lastCorrection = sqrt(mag / width)
         }
 
         if (reason != Reason.Continue || segments.isEmpty()) {
@@ -326,6 +391,8 @@ class Improviser(
             if (segments.size > 10_000) segments.removeAt(0)
             phrase = 0
         }
+        holding = if (next < 0) holding + 1 else 0
+        if (next >= 0) lastPlayed[next] = outputIndex
         phrase++; sinceCue++; outputIndex++
         pos = next
         judge?.observe(outputIndex - 1L, out)
@@ -334,19 +401,30 @@ class Improviser(
         return out
     }
 
+    /** True when [next] was already played within the last [reuseMemory] seconds and [escapeReplays] is on. */
+    private fun replaying(next: Int): Boolean =
+        escapeReplays && next >= 0 && lastPlayed[next] >= 0 && outputIndex - lastPlayed[next] <= reuseMemorySteps
+
+    /** Samples left in the episode from sample [next], inclusive. */
+    private fun runway(next: Int): Int {
+        val e = t.episodeOf(next)
+        val end = if (e + 1 < t.episodeStarts.size) t.episodeStarts[e + 1] else t.length
+        return end - next
+    }
+
     /** Size (in channel spreads) of the correction a jump to [next] would start with. */
     private fun correctionFor(next: Int): Double {
         val last = recent.lastOrNull() ?: return 0.0
         val prev = if (recent.size >= 2) recent[recent.size - 2] else last
-        var m = 0.0
-        for (c in 0 until width) if (!owned[c]) { val s = ((2 * last[c] - prev[c]) - t.values[c][next]) / oracle.features.scale[c]; m += s * s }
-        return sqrt(m)
+        var m = 0.0; var n = 0
+        for (c in 0 until width) if (!owned[c]) { val s = ((2 * last[c] - prev[c]) - t.values[c][next]) / oracle.features.scale[c]; m += s * s; n++ }
+        return sqrt(m / max(1, n))
     }
 
     private fun offsetMagnitude(): Double {
-        var m = 0.0
-        for (c in 0 until width) if (!owned[c] && !offset[c].isNaN()) { val s = offset[c] / oracle.features.scale[c]; m += s * s }
-        return sqrt(m)
+        var m = 0.0; var n = 0
+        for (c in 0 until width) if (!owned[c] && !offset[c].isNaN()) { val s = offset[c] / oracle.features.scale[c]; m += s * s; n++ }
+        return sqrt(m / max(1, n))
     }
 
     /** Oracle (or nearest-history) jump: next sample, reason, (join distance, context). */
@@ -363,18 +441,23 @@ class Improviser(
         if (link > 0) cands[link] = oracle.lrs[s]
         for (r in oracle.reverseSuffixes(s)) cands[r] = oracle.lrs[r]
         if (link > 0) for (r in oracle.reverseSuffixes(link)) if (r != s) cands.putIfAbsent(r, oracle.lrs[r])
+        // cross-take bridges: continue from the sample after a near match in another take (no shared context)
+        if (bridges) for (j in oracle.bridges(pos)) cands.putIfAbsent(j + 1, 0)
         val th = oracle.threshold
         val opts = ArrayList<Triple<Int, Double, Int>>()
         for ((c, ctx) in cands) {
             // state c holds sample c-1; continuing from it plays sample c
-            if (c - 1 == pos || c >= t.length || t.endsEpisode(c - 1)) continue
+            if (c - 1 == pos || c >= t.length || t.endsEpisode(c - 1) || runway(c) < minPhraseSteps) continue
             val d = distance(oracle.frames[c - 1], oracle.frames[pos])
             if (d > maxJoin * th || correctionFor(c) > maxCorrection) continue
             opts.add(Triple(c, d, ctx))
         }
         if (opts.isEmpty()) return null
         val base = opts.map { (c, d, ctx) ->
-            val reuse = recentSource.count { it >= 0 && kotlin.math.abs(it - c) < minPhraseSteps }.toDouble() / minPhraseSteps
+            // the share of the next phrase from c that was played within the last reuseMemory seconds
+            var played = 0
+            for (k in c until min(t.length, c + minPhraseSteps)) if (lastPlayed[k] >= 0 && outputIndex - lastPlayed[k] <= reuseMemorySteps) played++
+            val reuse = played.toDouble() / minPhraseSteps
             kotlin.math.ln(1.0 + ctx) - d / th - reuseWeight * reuse
         }.toMutableList()
         val natural = if (!t.endsEpisode(pos)) pos + 1 else -1
@@ -434,9 +517,25 @@ class Improviser(
         return Triple(o.first, Reason.SuffixLink, o.second to o.third)
     }
 
+    /**
+     * At the end of an episode: the start of another episode whose first sample is within
+     * [restartTolerance] of where the output is, the one played least recently; -1 if none.
+     */
+    private fun freshStart(): Int {
+        if (t.episodeStarts.size < 2 || pos < 0) return -1
+        val here = t.episodeOf(pos)
+        return t.episodeStarts.withIndex()
+            .filter { (e, st) -> e != here && runway(st) >= minPhraseSteps && correctionFor(st) <= restartTolerance }
+            .minByOrNull { (_, st) -> lastPlayed[st] }?.value ?: -1
+    }
+
     /** Best history match that is not where we already are. */
-    private fun cueAway(): Cue? = oracle.cue(recent.toList(), cueWindowSteps, count = 6, separation = minPhraseSteps)
-        .firstOrNull { kotlin.math.abs(it.position - pos) >= minPhraseSteps && !t.endsEpisode(it.position) && it.distance < declineDistance && correctionFor(it.position + 1) <= maxCorrection }
+    private fun cueAway(): Cue? {
+        // at an episode end, the best matches are often other endings: insist on room to play
+        val need = if (pos >= 0 && t.endsEpisode(pos)) 3 * minPhraseSteps else minPhraseSteps
+        return oracle.cue(recent.toList(), cueWindowSteps, count = 12, separation = minPhraseSteps)
+            .firstOrNull { kotlin.math.abs(it.position - pos) >= minPhraseSteps && !t.endsEpisode(it.position) && runway(it.position + 1) >= need && it.distance < declineDistance && correctionFor(it.position + 1) <= maxCorrection }
+    }
 
     /**
      * Runs [samples] steps and returns the [Performance]. [script] runs before each step with the

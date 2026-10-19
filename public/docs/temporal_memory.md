@@ -104,74 +104,193 @@ changes the balance; `shapeOnly = true` matches motion wherever it happens.
 
 - It follows the current passage for at least `minPhrase` seconds (default 1), then, with
   probability `jumpProbability` per sample, considers a jump.
-- Candidates are the oracle's suffix links from where it is. Each is scored by how much context it
-  shares, how far its preceding sample is from where the output is now, and how recently its
-  passage was played. One is drawn with a seeded softmax (`temperature`), so a seed replays the
-  same performance.
-- A candidate further than `maxJoin` thresholds from the current position is rejected, not
-  smoothed over. The small correction that is applied fades over `joinTime` seconds, and its size
+- Candidates are the oracle's suffix links from where it is and, when the memory holds several
+  takes, its `bridges`: the nearest moments in other takes. Each candidate is scored by how much
+  context it shares, how far its preceding sample is from where the output is now, and how much of
+  what follows it was played in the last `reuseMemory` seconds (weighted by `reuseWeight`). One is
+  drawn with a seeded softmax (`temperature`), so a seed replays the same performance.
+- While it is playing something it played in the last `reuseMemory` seconds, it considers a jump
+  on every step after a phrase (`escapeReplays`, on by default), so it does not coast through a repeat.
+- A candidate further than `maxJoin` thresholds from the current position, needing a correction
+  larger than `maxCorrection`, or too close to the end of its take to play a phrase, is rejected,
+  not smoothed over. The correction that is applied fades over `joinTime` seconds, and its size
   is recorded per sample in `Performance.correction`.
-- At the end of an episode a jump is compulsory. If no suffix link is acceptable it looks for the
-  best match for the last `cueWindow` seconds anywhere in memory; if nothing is closer than
-  `declineDistance`, it holds rather than pretend.
+- At the end of a take a jump is compulsory. If no candidate is acceptable it begins another take
+  whose first pose is close enough (`restartTolerance`), the one played least recently. Failing that it
+  looks for the best match for the last `cueWindow` seconds anywhere in memory, and if nothing is
+  closer than `declineDistance` it holds, for at most a phrase, then restarts from the closest
+  place it can find.
 
-`Performance.segments` records every jump: where in memory it went, which episode, why
-(`SuffixLink`, `EpisodeEnd`, `Cue`, `Takeover`, `Hold`), the join distance and the shared
-context. `reuse()` and `coverage()` say how much of the output repeats itself and how much of the
-memory gets used.
+`Performance.segments` records every jump: where in memory it went, which take, why (`SuffixLink`,
+`EpisodeEnd`, `Cue`, `Takeover`, `Hold`, `Restart`), the join distance and the shared context.
 
-## Several demonstrations
+Three measures describe a performance without plotting it:
 
-Separate recordings stay separate. The box below gives the oracle three short phrases built from
-the same gestures (a rise, a hesitation, a burst, a pause) in different orders, and colours the
-memory position by episode.
+- `coverage(memory length)` is how much of the memory got used.
+- `outputRepetition()` is how much the output repeats *itself*: the share of two-second stretches
+  that closely match an earlier stretch. Use it rather than `reuse()`, which only counts memory positions.
+  Two copies of the same gesture in different places in memory are different positions but the
+  same output.
+- `joinRoughness(memory)` is how sharp the joins are, compared with the recording's own motion (1
+  is as smooth as the recording on average).
+
+## Several demonstrations: a dancer's memory
+
+Separate recordings stay separate, and the improviser moves between them only where one take
+resembles another. The memory below is six takes of modern dance from the CMU motion capture
+database: one dancer, about a minute in all, with arabesques, pirouettes, jumps and arm phrases in
+different orders. `Bvh.read` loads each take. `toTrajectory` turns it into the positions of all 38
+joints and end points (114 channels) in the dancer's own frame, with travel and turning removed,
+so that a gesture matches wherever she is facing.
+
+Several takes begin and end with the dancer standing still, and `trimStill()` removes that
+before the takes are joined. The improviser gets `reuseWeight = 3.0` and `reuseMemory = 60.0`, so
+it steers away from anything it played in the last minute. The box below plays a minute of new
+dance from that memory and draws a pose every half second, coloured by the take it came from.
 
 <!--
 FIELD_TEST
-id: docs.temporal-memory.episodes
+id: docs.temporal-memory.dance-strip
 runner: backdoor-box
-tags: [docs, oracle]
-timeoutSec: 90
+tags: [docs, oracle, mocap]
+timeoutSec: 240
 expect:
   outputContains:
-    - "episodes"
+    - "every take used"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/temporal_memory/episodes.png" alt="above, a one-channel performance of rises, hesitations, bursts and pauses; below, short coloured runs showing which of the three recorded phrases each part of it was played from" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="tm-episodes"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/temporal_memory/dance_strip.png" alt="two rows of sixteen stick figures, a pose every half second of a dance the improviser made from six recorded takes; the figures arch, reach, turn and lunge, and their colour changes every second or two as the improviser moves between takes" wait-output=true wait-output-kind=display wait-output-channel="main" wait="4" capture="box" open-outputs="true" padding="0" timeout="240" name="tm-dance-strip"}
 :::static
+import afield.io.mocap.*
 import afield.math.oracle.*
 import kotlin.math.*
 
-val rate = 20.0
-val r = java.util.Random(11)
-fun rise() = 30 { it / 29.0 }
-fun hesitate() = 25 { 1.0 + 0.03 * r.nextGaussian() }
-fun burst() = 30 { 1.0 + 0.7 * sin(it * 8 * PI / 29) }
-fun pause() = (20 + r.nextInt(20)) { 0.0 }
+:::fold load six takes and build the memory
+// six takes of modern dance (CMU subject 05): every joint, in the dancer's own frame, at 30 Hz,
+// without the standing still before and after each take
+val dir = "public/docs/assets/temporal_memory/cmu_05"
+val takes = ["05_02", "05_07", "05_09", "05_12", "05_14", "05_18"].map { Bvh.read("$dir/$it.bvh.gz") }
+val dance = Trajectory.join(takes.map { it.toTrajectory(rate = 30.0).trimStill() })
+val memory = VariableMarkovOracle.build(dance)
+val colours = [vec(0.48, 0.85, 1.0, 1.0), vec(1.0, 0.62, 0.29, 1.0), vec(0.56, 1.0, 0.6, 1.0),
+               vec(1.0, 0.88, 0.4, 1.0), vec(0.77, 0.55, 1.0, 1.0), vec(1.0, 0.48, 0.62, 1.0)]
+:::endfold
 
-val phrases = [
-    rise() + hesitate() + burst() + pause() + rise() + burst() + pause(),
-    rise() + burst() + pause() + rise() + hesitate() + hesitate() + burst() + pause(),
-    hesitate() + burst() + pause() + rise() + hesitate() + burst() + pause() + rise(),
-]
-val demo = Trajectory.join(phrases.map { Trajectory.of(rate, "v" to it) })
+// one minute of new dance from 61 seconds of memory
+val played = Improviser(memory, seed = 2, reuseWeight = 3.0, reuseMemory = 60.0).take(60.0)
 
-val played = Improviser(VariableMarkovOracle.build(demo), seed = 4, jumpProbability = 0.3).take(60.0)
-val byEpisode = demo.episodeStarts.indices.map { e ->
-    "from phrase ${e + 1}" to played.source.map { if (it >= 0 && demo.episodeOf(it) == e) it / rate else Double.NaN }
+// a pose every half second for the first sixteen seconds, two rows, coloured by take
+val poses = (0 until 32).flatMap { k ->
+    val t = k * 15
+    val take = dance.episodeOf(max(0, played.source[t]))
+    val at = doubleArrayOf((k % 16) * 14.0, if (k < 16) 0.0 else -42.0, 0.0)
+    takes[0].skeleton(played.output.frame(t), dance.channels, at).onEach { it.color = colours[take]; it.thickness = 2.0 }
 }
-print("${demo.episodeStarts.size} episodes, ${played.segments.size} segments")
-val seconds = List(played.output.length) { it / rate }
-showSignals("performance" to played.output.values[0].toList(), x = seconds,
-    channel = "main", width = 1000, height = 220)
-showSignals(*byEpisode.toTypedArray(), x = seconds, xTitle = "seconds", yTitle = "memory position (s)",
-    channel = "memory", width = 1000, height = 300, floatingLegend = true)
+print("${played.segments.size - 1} jumps; every take used: coverage ${"%.2f".format(played.coverage(dance.length))}")
+// an invisible point above the rows leaves room for the viewer's toolbar
+val headroom = fline { moveTo(0.0, 70.0, 0.0); color = vec(0, 0, 0, 0) }
+three(name = "dance-strip", width = 1000, height = 420) {
+    lines(poses + headroom)
+    helpers(false)
+    camera(yaw = 0.0, pitch = 4.0)
+    title("one minute from six takes, first sixteen seconds, a pose every half second")
+    caption("colour = which take the pose was played from")
+}
 ```
 
-![a performance of rises, bursts and pauses above which phrase each part came from](assets/temporal_memory/episodes.png)
+![two rows of stick figures, a pose every half second of improvised dance, coloured by take](assets/temporal_memory/dance_strip.png)
 
-The performance moves between all three phrases, but only where a gesture in one matches a
-gesture in another. A continuation never runs off the end of one recording into the start of the
-next, and the oracle's shared-context lengths never reach back across a boundary.
+The poses run on without a visible seam. The improviser changes take at moments where the body in
+one take is moving like the body in another.
+
+Pictures of poses can hide a loop, so plot the signal itself. The box below draws the height of
+both hands and the head over the same minute, on bands numbered by take:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/temporal_memory/dance_signal.png" alt="a minute of the heights of the right hand, left hand and head of the improvised dance, over coloured bands numbered by the take each stretch came from" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" timeout="240" name="tm-dance-signal"}
+:::static
+import afield.io.mocap.*
+import afield.math.oracle.*
+import kotlin.math.*
+
+:::fold load six takes and build the memory
+// six takes of modern dance (CMU subject 05): every joint, in the dancer's own frame, at 30 Hz,
+// without the standing still before and after each take
+val dir = "public/docs/assets/temporal_memory/cmu_05"
+val takes = ["05_02", "05_07", "05_09", "05_12", "05_14", "05_18"].map { Bvh.read("$dir/$it.bvh.gz") }
+val dance = Trajectory.join(takes.map { it.toTrajectory(rate = 30.0).trimStill() })
+val memory = VariableMarkovOracle.build(dance)
+val colours = [vec(0.48, 0.85, 1.0, 1.0), vec(1.0, 0.62, 0.29, 1.0), vec(0.56, 1.0, 0.6, 1.0),
+               vec(1.0, 0.88, 0.4, 1.0), vec(0.77, 0.55, 1.0, 1.0), vec(1.0, 0.48, 0.62, 1.0)]
+:::endfold
+
+val played = Improviser(memory, seed = 2, reuseWeight = 3.0, reuseMemory = 60.0).take(60.0)
+val seconds = List(played.output.length) { it / 30.0 }
+fun height(joint: String) = played.output.channel("$joint.y").toList()
+
+// shade each stretch of output by the take it was played from
+val hex = ["#7ad9ff", "#ff9e4a", "#8fff9a", "#ffe066", "#c58cff", "#ff7a9e"]
+val bands = (played.segments + Segment(played.output.length, -1, -1, Reason.Continue, 0.0, 0, 0.0)).zipWithNext().mapNotNull { (a, b) ->
+    if (a.episode < 0) null else SignalRegion("${a.episode + 1}", a.outputStart / 30.0, b.outputStart / 30.0, hex[a.episode])
+}
+showSignals("right hand" to height("RightHand"), "left hand" to height("LeftHand"), "head" to height("Head"),
+    x = seconds, xTitle = "seconds", yTitle = "height", regions = bands,
+    title = "heights of hands and head; bands numbered by take",
+    channel = "main", width = 1000, height = 380)
+```
+
+![a minute of hand and head heights over coloured bands numbered by take](assets/temporal_memory/dance_signal.png)
+
+The arms rise and fall in phrases that come from different takes, joined where the body was doing
+the same thing. A minute of output from about a minute of memory returns to some passages, such as the take-4
+stretch at 10 s and again near 50 s. When it notices a repeat, the improviser leaves after a phrase if it can
+find somewhere acceptable to go. `outputRepetition()` puts a number on how much it returns.
+
+And as a figure, stepped at 30 frames a second. The same box runs live in the starting point
+below, and goes on for as long as you let it.
+
+```diffstatic_runner {data-lang=kotlin video="assets/temporal_memory/dance_film.mp4" execution="launch" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" duration="15" fps="15" timeout="300" padding="0" name="tm-dance-film" alt="a stick figure dancing on a square floor, seen from slightly above, its colour changing as the improviser moves between the six recorded takes"}
+:::static
+import afield.io.mocap.*
+import afield.math.oracle.*
+import kotlin.math.*
+
+:::fold load six takes and build the memory
+// six takes of modern dance (CMU subject 05): every joint, in the dancer's own frame, at 30 Hz,
+// without the standing still before and after each take
+val dir = "public/docs/assets/temporal_memory/cmu_05"
+val takes = ["05_02", "05_07", "05_09", "05_12", "05_14", "05_18"].map { Bvh.read("$dir/$it.bvh.gz") }
+val dance = Trajectory.join(takes.map { it.toTrajectory(rate = 30.0).trimStill() })
+val memory = VariableMarkovOracle.build(dance)
+val colours = [vec(0.48, 0.85, 1.0, 1.0), vec(1.0, 0.62, 0.29, 1.0), vec(0.56, 1.0, 0.6, 1.0),
+               vec(1.0, 0.88, 0.4, 1.0), vec(0.77, 0.55, 1.0, 1.0), vec(1.0, 0.48, 0.62, 1.0)]
+:::endfold
+
+// the continuation as a figure, stepped at 30 Hz; the floor square keeps the framing still
+val player = Improviser(memory, seed = 2, reuseWeight = 3.0, reuseMemory = 60.0)
+val floor = fline { moveTo(-12.0, 0.0, -12.0); lineTo(12.0, 0.0, -12.0); lineTo(12.0, 0.0, 12.0); lineTo(-12.0, 0.0, 12.0); lineTo(-12.0, 0.0, -12.0); color = vec(1, 1, 1, 0.25) }
+frames {
+    val period = (1e9 / 30).toLong()
+    var next = System.nanoTime()
+    while (frame()) {
+        if (System.nanoTime() < next) continue
+        next += period
+        val pose = player.step()
+        val take = dance.episodeOf(max(0, player.position))
+        three(name = "dancer", width = 640, height = 480) {
+            lines(takes[0].skeleton(pose, dance.channels).onEach { it.color = colours[take]; it.thickness = 3.0 } + floor)
+            helpers(false)
+            camera(yaw = 30.0, pitch = 12.0)
+        }
+    }
+}
+```
+
+??? aside "Why the dance needed bridges, a runway and fresh starts"
+    The first version of this example froze. With 114 channels the oracle's suffix links
+    almost never cross from one take to another, so three of the six takes were never entered. The
+    takes also end alike, with the dancer coming to rest, so at the end of a take the best matches
+    were the ends of other takes: a loop around the last seconds of each. Three changes fixed it. Bridges give a
+    way across. Candidates need a phrase of runway before their take ends. A take ends by beginning
+    another, least recently played first. It is all in the lab notebook of the starting point.
 
 ## Taking over a channel
 
@@ -433,83 +552,57 @@ asking the judge: how much of the output repeats a recent passage, how much of t
 used, and how sharp the joins are compared with the recording itself (1 means as smooth as the
 recording on average).
 
-The box below plays the three phrases for three minutes, four ways, from the same seed, and prints
-those measures for each.
+The box below plays two minutes of the dance five ways from the same seed, with Timestral
+forecasting all 114 channels for the judged versions, and prints the measures for each.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/temporal_memory/judged.png" alt="a table of reuse, coverage, join roughness and jump count for four ways of playing the phrases; below it, half a minute of what the plain oracle and the Timestral-judged oracle actually played, one plot each, and a plot of where in memory each was playing from" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="tm-judged"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/temporal_memory/judged.png" alt="a table comparing five ways of playing two minutes from the dance memory, by coverage, how much the output repeats itself, join roughness and number of jumps" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" timeout="900" name="tm-judged"}
 :::static
+import afield.io.mocap.*
 import afield.math.oracle.*
 import afield.math.temporal.*
 import kotlin.math.*
 
-val rate = 20.0
-val r = java.util.Random(11)
-fun rise() = 30 { it / 29.0 }
-fun hesitate() = 25 { 1.0 + 0.03 * r.nextGaussian() }
-fun burst() = 30 { 1.0 + 0.7 * sin(it * 8 * PI / 29) }
-fun pause() = (20 + r.nextInt(20)) { 0.0 }
-val demo = Trajectory.join([
-    rise() + hesitate() + burst() + pause() + rise() + burst() + pause(),
-    rise() + burst() + pause() + rise() + hesitate() + hesitate() + burst() + pause(),
-    hesitate() + burst() + pause() + rise() + hesitate() + burst() + pause() + rise(),
-].map { Trajectory.of(rate, "v" to it) })
-val memory = VariableMarkovOracle.build(demo)
-val seconds = 180.0
+:::fold load six takes and build the memory
+// six takes of modern dance (CMU subject 05): every joint, in the dancer's own frame, at 30 Hz,
+// without the standing still before and after each take
+val dir = "public/docs/assets/temporal_memory/cmu_05"
+val takes = ["05_02", "05_07", "05_09", "05_12", "05_14", "05_18"].map { Bvh.read("$dir/$it.bvh.gz") }
+val dance = Trajectory.join(takes.map { it.toTrajectory(rate = 30.0).trimStill() })
+val memory = VariableMarkovOracle.build(dance)
+val colours = [vec(0.48, 0.85, 1.0, 1.0), vec(1.0, 0.62, 0.29, 1.0), vec(0.56, 1.0, 0.6, 1.0),
+               vec(1.0, 0.88, 0.4, 1.0), vec(0.77, 0.55, 1.0, 1.0), vec(1.0, 0.48, 0.62, 1.0)]
+:::endfold
 
-// Four ways to play the same memory from the same seed: the oracle alone, the oracle told to
-// avoid recent passages harder, and Timestral judging the oracle's proposals two ways.
+// two minutes, five ways, same seed; the judged ones forecast all 114 channels with Timestral-28M
+val seconds = 120.0
+val key = ["LeftHand", "RightHand", "Head", "LeftToeBase", "RightToeBase"].flatMap { j -> ["x", "y", "z"].map { dance.channels.indexOf("$j.$it") } }
 val runs = TimestralSession().use { session ->
-    fun judged(mode: JudgeMode, reuseWeight: Double) = ForecastJudge(session, memory, lockstep = true).use { judge ->
-        Improviser(memory, seed = 1, jumpProbability = 0.15, judge = judge, judgeMode = mode, reuseWeight = reuseWeight).take(seconds)
+    fun judged(mode: JudgeMode) = ForecastJudge(session, memory, lockstep = true).use { judge ->
+        Improviser(memory, seed = 1, jumpProbability = 0.1, judge = judge, judgeMode = mode).take(seconds)
     }
     linkedMapOf(
-        "oracle alone" to Improviser(memory, seed = 1, jumpProbability = 0.15).take(seconds),
-        "oracle, reuseWeight 6" to Improviser(memory, seed = 1, jumpProbability = 0.15, reuseWeight = 6.0).take(seconds),
-        "Timestral vetoes" to judged(JudgeMode.Veto, 1.0),
-        "Timestral prefers, reuseWeight 6" to judged(JudgeMode.Prefer, 6.0),
+        "loop the first take" to Improviser(memory, policy = Policy.Loop).take(seconds),
+        "nearest history" to Improviser(memory, seed = 1, policy = Policy.NearestHistory, jumpProbability = 0.1).take(seconds),
+        "oracle" to Improviser(memory, seed = 1, jumpProbability = 0.1).take(seconds),
+        "oracle, Timestral vetoes" to judged(JudgeMode.Veto),
+        "oracle, Timestral prefers" to judged(JudgeMode.Prefer),
     )
 }
-
-markdown("table", "| three minutes of the phrases | reuse | coverage | join roughness | jumps |\n|---|---|---|---|---|\n" +
+markdown("main", "| two minutes from 61 s of dance | coverage | repeats itself | join roughness | jumps |\n|---|---|---|---|---|\n" +
     runs.entries.joinToString("\n") { (name, p) ->
-        "| $name | %.2f | %.2f | %.2f | %d |".format(p.reuse(), p.coverage(demo.length), p.joinRoughness(demo), p.segments.size - 1)
+        "| $name | %.2f | %.2f | %.2f | %d |".format(p.coverage(dance.length), p.outputRepetition(channels = key), p.joinRoughness(dance), p.segments.size - 1)
     })
-
-// what the plain oracle and the judged one actually played, the first half minute of each
-val shown = (30 * rate).toInt()
-val compared = ["oracle alone", "Timestral prefers, reuseWeight 6"]
-for (name in compared) {
-    showSignals(name to runs.getValue(name).output.values[0].take(shown), x = List(shown) { it / rate },
-        channel = name, width = 1000, height = 180)
-}
-
-// and where in memory each was playing from over the same half minute
-showSignals(*compared.map { name -> name to runs.getValue(name).sourceSeconds().take(shown) }.toTypedArray(),
-    x = List(shown) { it / rate }, xTitle = "seconds", yTitle = "memory position (s)",
-    channel = "main", width = 1000, height = 300)
 ```
 
-![a table comparing four ways of playing the phrases, the two played signals, and their memory positions](assets/temporal_memory/judged.png)
+![a table comparing five ways of playing two minutes of the dance](assets/temporal_memory/judged.png)
 
-Look at the played signals before the numbers. Both settle into the same cycle (rise, hesitation,
-burst, pause) every six seconds or so, though their memory positions jump all over the recording.
-The three takes are made of identical copies of four gestures, so a jump to another take usually
-lands on another copy of the same gesture. `reuse()` and `coverage()` count *where in memory*
-samples come from, so they cannot see a loop made of copies. Check the output itself, by eye or
-with [the matrix profile](matrix_profile.md) of the performance, and record takes that genuinely
-differ: that matters more to the result than any setting below.
-
-The judge makes the joins smoother, and it costs variety. A judge favours whatever the forecaster
-finds most predictable, and in a recording made of phrases that is usually more of what just
-played. In this run both judged versions repeat recent passages about twice as often as the oracle
-alone, and leave about a third of the recording unused. Preferring, the judge gives the smoothest
-joins of the four, well under the recording's own average. Raising `reuseWeight` on the oracle
-alone also smooths the joins, a little less, without the repetition, so try that first. Judged
-performances also vary more from run to run than the oracle's: try several seeds and lengths
-before settling on a setting.
-
-On smooth periodic material the judge rarely disagrees with the oracle: over five minutes of the
-figure-eight, a veto at `vetoRatio = 2` removed one candidate.
+Looping one take repeats itself almost entirely. Matching recent history without the oracle
+makes the smoothest joins, because it always jumps to the closest match, but it uses only a third of
+the memory and repeats itself more. The oracle uses all of it and repeats itself least. Judging it with
+Timestral changes most of its decisions, but the result moves only a little. Neither judged version
+repeats itself less than the oracle alone. Preferring makes fewer, longer jumps with slightly smoother joins.
+With 114 channels each forecast also takes a few hundred milliseconds. Use the oracle alone
+first, and try the judge when you want fewer, longer phrases.
 
 ## Choosing between them
 
