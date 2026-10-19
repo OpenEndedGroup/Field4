@@ -153,7 +153,11 @@ History is read from files in the document's folder:
   keystroke. Document backups are never pruned; the history goes back to the document's first
   save. (Sidecar files such as a box's `.kt` keep their own last ten backups in the same folder;
   history does not need them, since each document backup holds the box text too.)
-- `versions.edn` holds version names and the list of full-restore jumps.
+- `versions.edn` holds version names and the list of full-restore jumps, for example
+  `{"transitions" [{"fromIndex" 4 "toIndex" 0 "timestamp" …}] "names" {1 "radius sixty-four"}}`.
+- `history_metrics.edn` records what happened between saves (how many boxes were edited, moved
+  or run) for the timeline's per-version statistics. Losing it loses those statistics, not any
+  version.
 
 A document that has been saved only once has nothing earlier to show. Deleting backup files
 renumbers every later version, and version names follow the numbers, so leave `backups/` alone if
