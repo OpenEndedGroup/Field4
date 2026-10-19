@@ -24,29 +24,29 @@ operations:
           // read.
           val brief =
               """
-          # A staged level
+              # A staged level
 
-          This document holds one level of a puzzle shooter-looter as rooms and doors on a grid (the **Level** box), and a
-          machine that builds from it (the **Builds** box): a blockout, the paths from the spawn to every loot point, and the
-          loot placement, which follows a rule kept in the **Loot rule** box. The **Corpus** box runs the same machine on
-          seeded variants of the level and shows them side by side.
+              This document holds one level of a puzzle shooter-looter as rooms and doors on a grid (the **Level** box), and a
+              machine that builds from it (the **Builds** box): a blockout, the paths from the spawn to every loot point, and the
+              loot placement, which follows a rule kept in the **Loot rule** box. The **Corpus** box runs the same machine on
+              seeded variants of the level and shows them side by side.
 
-          How to work here:
+              How to work here:
 
-          - The level changes only through `level.inspect` and `level.edit`, which quotes the revision it read. An edit made
-            against an older revision is refused.
-          - Everything else is a build with recorded inputs, so a result is either current or visibly stale. After an edit,
-            rebuild the stages in the Builds box.
-          - Every build reports what it measured in its notes: path lengths against their budgets, how much a relaxed path
-            turns against its rough walk, doors on the way, sightlines.
-          - Placement waits behind a gate until every loot point can be reached within its path budget.
-          - The loot rule changes only through `loot.candidate`, `loot.test` and `loot.apply`, after a replay on its fixtures
-            and a control that must fail. Only the person approves a change to a fixture's recorded outcome.
-          - Run the corpus before you call a rule change done: a change that suits this level can break a variant.
+              - The level changes only through `level.inspect` and `level.edit`, which quotes the revision it read. An edit made
+                against an older revision is refused.
+              - Everything else is a build with recorded inputs, so a result is either current or visibly stale. After an edit,
+                rebuild the stages in the Builds box.
+              - Every build reports what it measured in its notes: path lengths against their budgets, how much a relaxed path
+                turns against its rough walk, doors on the way, sightlines.
+              - Placement waits behind a gate until every loot point can be reached within its path budget.
+              - The loot rule changes only through `loot.candidate`, `loot.test` and `loot.apply`, after a replay on its fixtures
+                and a control that must fail. Only the person approves a change to a fixture's recorded outcome.
+              - Run the corpus before you call a rule change done: a change that suits this level can break a variant.
 
-          Evaluate the results, not only the checks. Look at the paths and the placement, and say what you see. The checks
-          only cover what someone thought to measure.
-          """
+              Evaluate the results, not only the checks. Look at the paths and the placement, and say what you see. The checks
+              only cover what someone thought to measure.
+              """
                   .trimIndent()
 
           val guide = "%document/guides/start-here.md".file
@@ -313,26 +313,27 @@ operations:
               "Blockout",
               "blockout-v1",
               setOf("level"),
-              resultNotes = { r -> listOf(StudyBuildNotice(r.facts["summary"].toString(), StudyBuildNoticeKind.INFO)) },
+              resultNotes = { r -> [StudyBuildNotice(r.facts["summary"].toString(), StudyBuildNoticeKind.INFO)] },
           ) { c ->
                   val g = Grid(c.inputs.getValue("level"))
                   // A floor slab per room, and a wall piece on every cell edge between two rooms, or a room and outside, that is
                   // not a door.
                   val pieces = mutableListOf<List<Double>>()
                   for ((_, r) in g.rooms) pieces +=
-                      listOf(r[0].toDouble(), r[1].toDouble(), -0.1, r[2].toDouble(), r[3].toDouble(), 0.1)
+                      [r[0].toDouble(), r[1].toDouble(), -0.1, r[2].toDouble(), r[3].toDouble(), 0.1]
                   val walls = mutableSetOf<Pair<Cell, Cell>>()
                   for ((a, _) in g.room) for (b in
-                      listOf(
+                      [
                           a.first + 1 to a.second,
                           a.first to a.second + 1,
                           a.first - 1 to a.second,
                           a.first to a.second - 1,
-                      )) if (g.room[b] != g.room[a] && (a to b) !in g.doors)
-                      walls += listOf(a, b).sortedWith(compareBy({ it.first }, { it.second })).let { it[0] to it[1] }
-                  for ((a, b) in walls) pieces +=
-                      if (a.second == b.second) listOf(b.first - 0.05, a.second.toDouble(), 0.0, 0.1, 1.0, 1.5)
-                      else listOf(a.first.toDouble(), b.second - 0.05, 0.0, 1.0, 0.1, 1.5)
+                      ]) if (g.room[b] != g.room[a] && (a to b) !in g.doors)
+                      walls += [a, b].sortedWith(compareBy({ it.first }, { it.second })).let { it[0] to it[1] }
+                  for ((a, b) in walls) pieces.add(
+                      if (a.second == b.second) [b.first - 0.05, a.second.toDouble(), 0.0, 0.1, 1.0, 1.5]
+                      else [a.first.toDouble(), b.second - 0.05, 0.0, 1.0, 0.1, 1.5],
+                  )
                   val mesh =
                       pieces
                           .map { p -> boxMesh(p[3], p[4], p[5]).translated(p[0] + p[3] / 2, p[1] + p[4] / 2, p[2] + p[5] / 2) }
@@ -356,7 +357,7 @@ operations:
                           (solid?.let { ", joined into one solid of volume ${"%.1f".format(it["volume"])} (${it["status"]})" }
                               ?: "; install Manifold to check it as one solid")
                   StudyBuildProduct(
-                      listOf("blockout.obj"),
+                      ["blockout.obj"],
                       mapOf(
                           "rooms" to g.rooms.size,
                           "floorCells" to area,
@@ -370,17 +371,17 @@ operations:
           // The shortest walk on the grid from one cell to another, or null.
           fun rough(g: Grid, from: Cell, to: Cell): List<Cell>? {
               val back = mutableMapOf(from to from)
-              val queue = ArrayDeque(listOf(from))
+              val queue = ArrayDeque([from])
               while (queue.isNotEmpty()) {
                   val a = queue.removeFirst()
                   if (a == to) return generateSequence(to) { if (it == from) null else back.getValue(it) }.toList().reversed()
                   for (b in
-                      listOf(
+                      [
                           a.first + 1 to a.second,
                           a.first to a.second + 1,
                           a.first - 1 to a.second,
                           a.first to a.second - 1,
-                      )) if (b !in back && g.step(a, b)) {
+                      ]) if (b !in back && g.step(a, b)) {
                       back[b] = a
                       queue.add(b)
                   }
@@ -482,8 +483,8 @@ operations:
                           "shape" to shape,
                       )
                       paths[id] = mapOf(
-                          "rough" to walk.map { listOf(it.first, it.second) },
-                          "relaxed" to tight.map { listOf(it.first, it.second) },
+                          "rough" to walk.map { [it.first, it.second] },
+                          "relaxed" to tight.map { [it.first, it.second] },
                       )
                   }
                   val outOfReach =
@@ -494,7 +495,7 @@ operations:
                           }
                   c.file("traversal.json").writeText(json.writeValueAsString(mapOf("loot" to measures, "paths" to paths)))
                   StudyBuildProduct(
-                      listOf("traversal.json"),
+                      ["traversal.json"],
                       mapOf(
                           "loot" to measures,
                           "outOfReach" to outOfReach,
@@ -505,7 +506,7 @@ operations:
 
           // Placement waits until every loot point can be reached within its path budget.
           val reachable =
-              StudyBuildGate("reachable loot", dependencies = listOf("traversal")) { evidence ->
+              StudyBuildGate("reachable loot", dependencies = ["traversal"]) { evidence ->
                   val far = evidence.facts("traversal")["outOfReach"] as List<*>
                   if (far.isEmpty()) null else "Out of reach within its path budget: ${far.joinToString()}."
               }
@@ -518,16 +519,16 @@ operations:
               "Placement",
               "placement-v1",
               setOf("reachable loot", "rule"),
-              listOf("traversal"),
+              ["traversal"],
               inputHelp = StudyBuildInputHelp("Needs the loot rule", "Run the Loot rule box; placement follows its rule."),
               resultNotes = { r ->
-                  listOf(
+                  [
                       StudyBuildNotice(
                           (r.facts["placed"] as Map<*, *>).entries.joinToString { "${it.key} ${it.value}" } +
                               "; ${r.facts["encounters"]} guarded.",
                           StudyBuildNoticeKind.INFO,
                       ),
-                  )
+                  ]
               },
           ) { c ->
                   val measured =
@@ -542,13 +543,13 @@ operations:
                   c.file("rule-input.txt").writeText(input)
                   c.file("placement.json").writeText(json.writeValueAsString(placed))
                   StudyBuildProduct(
-                      listOf("rule-input.txt", "placement.json"),
+                      ["rule-input.txt", "placement.json"],
                       mapOf("placed" to placed, "encounters" to placed.values.count { "guarded" in it }),
                   )
               }
 
-          val stages = listOf(blockout, traversal, placement)
-          val gates = listOf(reachable)
+          val stages = [blockout, traversal, placement]
+          val gates = [reachable]
           thisBox.properties["levelStages"] = stages
           thisBox.properties["levelGates"] = gates
 
@@ -566,7 +567,7 @@ operations:
 
           // Draw the current traversal's relaxed paths over the plan, with the Level box's drawing, whenever it changes.
           // The watcher stops when this runner closes, which happens when the box runs again or is stopped.
-          kotlin.concurrent.thread(isDaemon = true) {
+          go {
               var shown: String? = null
               while (true) {
                   val current = runCatching { builds.stages().first { it.id == "traversal" }.current }.getOrElse { break }
@@ -587,7 +588,7 @@ operations:
                           shown = current.id
                       }
                   }
-                  Thread.sleep(500)
+                  kotlinx.coroutines.delay(500)
               }
           }
   - create:
@@ -631,7 +632,7 @@ operations:
               "loot",
               rule,
               label = "Loot rule",
-              frozen = listOf(FrozenRegion.after("// Checks: everything below this line stays as it is.")),
+              frozen = [FrozenRegion.after("// Checks: everything below this line stays as it is.")],
               control = QualifiedControl("shallow", "L1 4.0 0, L2 6.5 1", "no loot point is epic"),
               fixtures = mapOf(
                   "keep" to
@@ -665,10 +666,12 @@ operations:
       properties:
         autorun: false
         code: |
-          // Seeded variants of the level, built by the same stages and shown side by side.
-          // Nothing here asks a model: it is the machine run many times. Run this box to build them.
           import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
           import com.fasterxml.jackson.module.kotlin.readValue
+          import kotlinx.coroutines.*
+
+          // Seeded variants of the level, built by the same stages and shown side by side.
+          // Nothing here asks a model: it is the machine run many times. Run this box to build them.
 
           val json = jacksonObjectMapper()
           val seeds = 0..5
@@ -712,13 +715,13 @@ operations:
                   val (nx, ny) = if (d[2] == "e") x to y + shift else x + shift to y
                   val na = roomAt(nx, ny)
                   val nb = if (d[2] == "e") roomAt(nx + 1, ny) else roomAt(nx, ny + 1)
-                  if (na == a && nb == b) doors[id] = listOf(nx, ny, d[2])
+                  if (na == a && nb == b) doors[id] = [nx, ny, d[2]]
               }
               if (loot.isEmpty()) return source
               return json.writeValueAsString(level + mapOf("rooms" to rooms, "doors" to doors, "loot" to loot))
           }
 
-          fun runCorpus() {
+          fun runCorpus(checkActive: () -> Unit) {
               val stages = thisBox.named("Builds").properties["levelStages"] as List<StudyBuildStage>
               val gates = thisBox.named("Builds").properties["levelGates"] as List<StudyBuildGate>
               val draw =
@@ -726,6 +729,7 @@ operations:
               val level = thisBox.named("Level").getPropertyRaw("level") as String
               val rule = thisBox.named("Loot rule").getPropertyRaw("lootRule") as String
               val tiles = seeds.map { seed ->
+                  checkActive()
                   BoxStudies.show(
                       thisBox,
                       "gallery",
@@ -735,6 +739,7 @@ operations:
                   val builds =
                       studyBuilds("variant$seed", stages, workers = 1, gates = gates) { mapOf("level" to source, "rule" to rule) }
                   fun build(stage: String): StudyBuildRecord? {
+                      checkActive()
                       val state = builds.stages().first { it.id == stage }
                       return state.current ?: state.fingerprint?.let { builds.await(builds.start(stage, it).id) }
                   }
@@ -754,7 +759,7 @@ operations:
                               (m["relaxed"] as? Number)?.toDouble()?.div((m["steps"] as Number).toDouble().coerceAtLeast(1.0))
                           }
                           .maxOrNull()
-                  val caption = listOf(
+                  val caption = [
                       if (seed == 0) "the level as it is"
                       else "seed $seed · ${(json.readValue<Map<String, Any?>>(source)["rooms"] as Map<*, *>).size} rooms",
                       "within budget ${measures.values.count { it["withinBudget"] == true }} of ${measures.size} · sightlines ${walk?.facts?.get("sightlines") ?: "–"}",
@@ -770,7 +775,7 @@ operations:
                                       "Waiting for reachable loot: ",
                                   )
                       },
-                  )
+                  ]
                   "<div style='width:220px'>" +
                       drawToSVG(draw(source, paths, 12.0), 220.0, 120.0) +
                       caption.joinToString("") {
@@ -778,6 +783,7 @@ operations:
                       } +
                       "</div>"
               }
+              checkActive()
               BoxStudies.show(
                   thisBox,
                   "gallery",
@@ -787,11 +793,18 @@ operations:
               )
           }
 
-          // Running this box builds every variant; the stages run on their own threads, so Field stays responsive.
-          kotlin.concurrent.thread {
+          // Stop interrupts the current wait and prevents later variants from being installed.
+          val ownerRun = RunScope.current()
+          go {
+              val activeContext = currentCoroutineContext()
               try {
-                  runCorpus()
+                  runInterruptible(Dispatchers.IO) {
+                      RunScope.withCurrent(ownerRun) { runCorpus { activeContext.ensureActive() } }
+                  }
+              } catch (cancelled: CancellationException) {
+                  throw cancelled
               } catch (e: Exception) {
+                  ensureActive()
                   BoxStudies.show(
                       thisBox,
                       "gallery",

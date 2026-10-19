@@ -144,7 +144,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Own candidate generation callbacks and verify every motion capture save](../box_code_adoption_batch_72/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **377 of 405 findings addressed**; 28 remain open. These counts do not claim
+| [Cancel qualified-source waits and staged corpus work with the box run](../box_code_adoption_batch_73/README.md) | 3 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **380 of 405 findings addressed**; 25 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 
