@@ -147,3 +147,30 @@ class VariableMarkovOracleTest {
         return Trajectory.of(20.0, "v" to seq, name = "phrases")
     }
 }
+
+class ContinuationJudgeTest {
+    /** Rates a path by how quiet it is: a judge that wants the bursts. */
+    private class Loud : ContinuationJudge {
+        override fun observe(index: Long, frame: DoubleArray) {}
+        override fun loss(index: Long, path: Array<DoubleArray>): Double = 1.0 / (path[0].sumOf { abs(it) } / maxOf(1, path[0].size) + 0.1)
+    }
+
+    @Test
+    fun judgeSteersButEverySampleStillComesFromMemory() {
+        // the same burst recurs four times, each followed by a pause of a different length
+        val burst = List(30) { 1.0 + 0.7 * sin(it * 8 * PI / 29) }
+        val seq = listOf(burst, List(10) { 0.0 }, burst, List(40) { 0.0 }, burst, List(20) { 0.0 }, burst, List(60) { 0.0 }).flatten()
+        val t = Trajectory.of(20.0, "v" to seq)
+        val o = VariableMarkovOracle.build(t)
+        val plain = Improviser(o, seed = 7, jumpProbability = 0.5).take(4000)
+        val judged = Improviser(o, seed = 7, jumpProbability = 0.5, judge = Loud(), judgeWeight = 6.0)
+        val p = judged.take(4000)
+        // flat zeros match each other everywhere, so unjudged playback lingers in the pauses
+        fun loudness(x: DoubleArray) = x.count { abs(it) > 0.05 }.toDouble() / x.size
+        assertTrue(judged.judgedDecisions > 20, "judge should be consulted: ${judged.judgedDecisions}")
+        assertTrue(judged.judgeChanged > 0)
+        assertTrue(loudness(p.output.values[0]) > 2 * loudness(plain.output.values[0]),
+            "a judge preferring the bursts should yield more of them: ${loudness(p.output.values[0])} vs ${loudness(plain.output.values[0])}")
+        for (i in p.source.indices) if (p.source[i] >= 0 && p.correction[i] == 0.0) assertEquals(t.values[0][p.source[i]], p.output.values[0][i], 1e-12)
+    }
+}

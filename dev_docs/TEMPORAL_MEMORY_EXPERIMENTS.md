@@ -101,3 +101,36 @@ per-step marginals, and the page says so plainly, using the same pointwise-versu
   `frames {}` loop with a performer.
 - Progressive memory (adding an episode during playback); the oracle is rebuilt, not appended.
 - The hybrid (VMO phrases scored by Timestral).
+
+## Hybrid: the oracle proposes, Timestral judges (branch `claude/temporal-hybrid`)
+
+`Improviser(judge = ForecastJudge(session, oracle))`. At each jump decision, every suffix-link
+candidate's next 2 s, and staying put, is rated by mean pinball loss against a Timestral forecast
+of the played output. The forecast is refreshed every 1 s, with 20 s of history and a 4 s horizon. The
+loss enters the score as `judgeWeight × loss / mean loss`. Same fixtures, 5 min each, seed 1.
+
+| fixture | run | reuse | coverage | judged / changed / stayed | p95 forecast |
+|---|---|---|---|---|---|
+| oscillators | Oracle | 0.02 | 0.97 | — | — |
+| oscillators | +28M w1 / w3 | 0.09 / 0.10 | 0.98 / 0.96 | 343/229/143, 332/231/129 | 34–66 ms |
+| oscillators | +209M w1 / w3 | 0.06 / 0.02 | 0.97 / 0.95 | 335/218/132, 338/218/137 | 163–201 ms |
+| phrases | Oracle | 0.25 | 0.98 | — | — |
+| phrases | +28M w1 / w3 | 0.45 / 0.45 | 0.87 / 0.81 | 424/227/156, 475/262/146 | 30 ms |
+| phrases | +209M w1 / w3 | 0.44 / 0.46 | 0.87 / 0.77 | 413/203/135, 497/263/145 | 267–311 ms |
+| figure8 | Oracle | 0.21 | 0.92 | — | — |
+| figure8 | +28M / +209M | 0.16–0.19 | 0.92–0.93 | ~387/265/197 | 45–257 ms |
+
+The spread, frequency and speed statistics are unchanged from oracle-only on every fixture (within 0.03 of
+the demo), so nothing collapses. As expected, every sample is still played from memory.
+
+The judge has a real effect: it changes the most likely choice in 55–70% of the decisions it scores,
+and picks "stay" in about 40% of them. But on the phrase material the effect runs the wrong way for
+the stated goal. Reuse rises from 0.25 to 0.45 and coverage falls from 0.98 to 0.77–0.87. A
+pinball-loss judge rewards the continuation the forecaster finds most *predictable*, and on
+phrase material that is what was just played. On the periodic fixtures it is neutral.
+
+Next to try: the judge as a *veto* only (reject candidates whose loss is several times that of staying)
+rather than a preference, so it removes implausible joins without pulling towards repetition. Or
+pair it with a stronger novelty term. Either needs a measure of "better dynamics" that is not the
+judge's own loss; the statistics above cannot show an improvement, because oracle-only already matches
+the demos on them.

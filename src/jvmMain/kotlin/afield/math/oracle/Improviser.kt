@@ -17,6 +17,18 @@ enum class Policy {
     Oracle,
 }
 
+/**
+ * Something that knows how a signal tends to move, asked to rate proposed futures — for an
+ * [Improviser] that recombines memory, a second opinion on which continuation is plausible.
+ * It sees every frame actually played ([observe]) and returns a loss for a proposed path
+ * (`path[channel][t]`, starting at output sample [index]); lower is better, null for no opinion.
+ * `afield.math.temporal.ForecastJudge` rates paths against a Timestral forecast.
+ */
+interface ContinuationJudge {
+    fun observe(index: Long, frame: DoubleArray)
+    fun loss(index: Long, path: Array<DoubleArray>): Double?
+}
+
 /** Why a [Segment] began. */
 enum class Reason { Start, Continue, SuffixLink, EpisodeEnd, Cue, Takeover, Hold }
 
@@ -85,6 +97,12 @@ class Performance(
  * anything in memory leaves the free channels playing on rather than jumping around.
  * [release] gives the channel back with the same fading correction.
  *
+ * With a [judge], every jump decision also rates each candidate's next [judgeAhead] seconds —
+ * and staying on the current passage — by the judge's loss. The loss enters the score relative
+ * to the candidates' mean (`judgeWeight × loss / mean loss`), so the judge can prefer a jump,
+ * choose another, or veto jumping. Every sample still comes from memory. [judgedDecisions],
+ * [judgeChanged] and [judgeStayed] count how often it had a say and how often it changed the outcome.
+ *
  * Stepping is cheap (no allocation beyond the recent-history buffer, a cue every few samples
  * while performing), so [step] can run directly in a frame loop.
  */
@@ -102,6 +120,9 @@ class Improviser(
     val declineDistance: Double = 1.5,
     val maxCorrection: Double = 1.0,
     val takeoverMargin: Double = 0.7,
+    val judge: ContinuationJudge? = null,
+    val judgeWeight: Double = 2.0,
+    val judgeAhead: Double = 2.0,
     start: Int = 0,
 ) {
     private val t = oracle.trajectory
@@ -129,6 +150,15 @@ class Improviser(
 
     /** Segments played so far (the most recent 10 000). */
     val segments = ArrayList<Segment>()
+
+    /** Jump decisions the judge scored. */
+    var judgedDecisions = 0; private set
+
+    /** Judged decisions whose most likely choice differed from the unjudged one. */
+    var judgeChanged = 0; private set
+
+    /** Judged decisions that ended with staying on the current passage. */
+    var judgeStayed = 0; private set
 
     /** Memory sample of the last output (or -1 when holding). */
     val position: Int get() = pos
@@ -188,7 +218,8 @@ class Improviser(
                 if (c != null && !t.endsEpisode(c.position) && c.distance < declineDistance) { next = c.position + 1; reason = Reason.Cue; dist = c.distance; context = c.context }
             } else if (natural < 0 || (phrase >= minPhraseSteps && rng.nextDouble() < jumpProbability && policy != Policy.Loop)) {
                 val j = jump()
-                if (j != null) { next = j.first; reason = j.second; dist = j.third.first; context = j.third.second }
+                if (j != null && j.second == Reason.Continue) { /* the judge chose to stay */ }
+                else if (j != null) { next = j.first; reason = j.second; dist = j.third.first; context = j.third.second }
                 else if (natural < 0) {
                     when (policy) {
                         Policy.Loop -> { next = t.episodeStarts[t.episodeOf(pos)]; reason = Reason.EpisodeEnd }
@@ -235,6 +266,7 @@ class Improviser(
         }
         phrase++; sinceCue++; outputIndex++
         pos = next
+        judge?.observe(outputIndex - 1L, out)
         recent.addLast(out); recentSource.addLast(next)
         if (recent.size > recentCap) { recent.removeFirst(); recentSource.removeFirst() }
         return out
@@ -279,15 +311,48 @@ class Improviser(
             opts.add(Triple(c, d, ctx))
         }
         if (opts.isEmpty()) return null
-        val scores = opts.map { (c, d, ctx) ->
+        val base = opts.map { (c, d, ctx) ->
             val reuse = recentSource.count { it >= 0 && kotlin.math.abs(it - c) < minPhraseSteps }.toDouble() / minPhraseSteps
-            (kotlin.math.ln(1.0 + ctx) - d / th - reuse) / temperature
+            kotlin.math.ln(1.0 + ctx) - d / th - reuse
+        }.toMutableList()
+        val natural = if (!t.endsEpisode(pos)) pos + 1 else -1
+        val scores = ArrayList(base)
+        val j = judge
+        if (j != null) {
+            val ahead = max(1, (judgeAhead * rate).roundToInt())
+            fun path(from: Int): Array<DoubleArray> {
+                var len = 0
+                while (len < ahead && from + len < t.length && (len == 0 || !t.startsEpisode(from + len))) len++
+                return Array(width) { c -> DoubleArray(len) { t.values[c][from + it] } }
+            }
+            // staying is an option the judge can prefer: scored as a zero-join, full-context candidate
+            if (natural >= 0) {
+                opts.add(Triple(natural, 0.0, oracle.lrs[natural]))
+                base.add(kotlin.math.ln(1.0 + oracle.lrs[natural]))
+                scores.add(base.last())
+            }
+            val losses = opts.map { (c, _, _) -> j.loss(outputIndex.toLong(), path(c)) }
+            if (losses.all { it != null }) {
+                val mean = losses.sumOf { it!! } / losses.size
+                if (mean > 0) {
+                    judgedDecisions++
+                    val before = base.indices.filter { natural < 0 || opts[it].first != natural }.maxBy { base[it] }
+                    for (i in scores.indices) scores[i] = base[i] - judgeWeight * losses[i]!! / mean
+                    val after = scores.indices.maxBy { scores[it] }
+                    if (after != before) judgeChanged++
+                }
+            } else if (natural >= 0) {
+                // no opinion yet: decide as without a judge
+                opts.removeAt(opts.size - 1); base.removeAt(base.size - 1); scores.removeAt(scores.size - 1)
+            }
         }
         val m = scores.max()
-        val w = scores.map { exp(it - m) }
+        val w = scores.map { exp((it - m) / temperature) }
         var u = rng.nextDouble() * w.sum()
-        for (i in opts.indices) { u -= w[i]; if (u <= 0) return Triple(opts[i].first, Reason.SuffixLink, opts[i].second to opts[i].third) }
-        val o = opts.last()
+        var pick = opts.size - 1
+        for (i in opts.indices) { u -= w[i]; if (u <= 0) { pick = i; break } }
+        val o = opts[pick]
+        if (o.first == natural && j != null) { judgeStayed++; return Triple(natural, Reason.Continue, 0.0 to o.third) }
         return Triple(o.first, Reason.SuffixLink, o.second to o.third)
     }
 

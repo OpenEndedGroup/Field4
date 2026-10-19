@@ -129,6 +129,15 @@ class TemporalExperiments {
                     // A1b: the receding-horizon loop, generated values fed back
                     val rh = RecedingHorizon(s, history, history = 20.0, horizon = 4.0, commit = 1.0, lockstep = true)
                     val p = rh.take(samples)
+                    // the hybrid: the oracle proposes, the forecaster judges
+                    for (weight in listOf(1.0, 3.0)) {
+                        val judge = ForecastJudge(s, o, lockstep = true)
+                        val imp = Improviser(o, seed = 1, jumpProbability = 0.15, judge = judge, judgeWeight = weight)
+                        val hp = imp.take(samples)
+                        measure(fixture, "Oracle+$short-w$weight", hp.output, "segments %d reuse %.2f coverage %.2f judged %d changed %d stayed %d forecasts %d p95 %.0f ms".format(
+                            hp.segments.size, hp.reuse(), hp.coverage(fixture.length), imp.judgedDecisions, imp.judgeChanged, imp.judgeStayed, judge.forecasts,
+                            judge.latencies.sorted().let { if (it.isEmpty()) Double.NaN else it[(it.size * 0.95).toInt().coerceAtMost(it.size - 1)] * 1000 }))
+                    }
                     measure(fixture, "$short-receding", p.output, "p50 %.0f ms p95 %.0f ms (%d plans) load %.1f s".format(
                         p.latency(50.0) * 1000, p.latency(95.0) * 1000, p.latencies.size, s.info["loadSeconds"].toString().toDouble()))
                 }
