@@ -217,6 +217,11 @@ showSignals(*played.output.series(), x = List(played.output.length) { it / rate 
 
 ![x held flat in the shaded band while y continues, then x fading back in](assets/temporal_memory/takeover.png)
 
+While `x` is held, `y` keeps going. Holding still at 0.8 is something the recording never does, so no
+place in memory matches it well, and the improviser stays on its current passage rather than jumping
+around looking for one. It re-checks once a phrase (`minPhrase`, one second here), and moves only to a match clearly better
+than where it is (`takeoverMargin`). The short peaks in `y` are those moves.
+
 ## Playing live
 
 `Improviser.step()` returns one frame and does no waiting and almost no allocation, so it can run
