@@ -336,13 +336,19 @@ camera moves it. The evolution takes about half a minute before the second video
 
 Nothing above is specific to water except the contact model and the fitness. Seen side-on, under
 gravity, a floor pushes back anything that sinks below `y = 0`. A foot grips only when its program
-says so *and* it is on the floor. `place` lifts the body onto the floor before the run starts, and the
-fitness counts horizontal distance only, since bouncing on the spot goes nowhere.
+says so *and* it is on the floor; a point that is not gripping slides with a little `friction`.
+`place` lifts the body onto the floor before the run starts.
+
+Two things differ from the water. The fitness is `sustainedTravel`, the smaller of the distances
+covered in the first and second halves of the measured run. A body that topples over once and then
+lies still covers nothing in the second half, so it scores nothing, however far it fell. And the
+motors get more strength (`maxActuationBudgetPerCycle`, `maxJointImpulsePerStep`): at the defaults,
+tuned for water, a joint cannot lift a limb against gravity.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/crawler.png" wait="40.0" timeout="120" capture="box" open-outputs="true" w="900" h="420" padding="14"}
 import afield.simulation.creatures.*
 
-class Floor(val stiffness: Float = 900f, val friction: Float = 40f) : ContactModel {
+class Floor(val stiffness: Float = 900f, val damping: Float = 40f, val friction: Float = 1f) : ContactModel {
     override fun place(points: List<Float2>): List<Float2> {
         val lowest = points.minOf { it.y }
         return points.map { Float2(it.x, it.y - lowest) }
@@ -358,7 +364,7 @@ class Floor(val stiffness: Float = 900f, val friction: Float = 40f) : ContactMod
             val p = step.position
             val v = step.velocity
             val onFloor = p.y <= 0.02f
-            val up = if (p.y < 0f) -p.y * stiffness - min(v.y, 0f) * friction else 0f
+            val up = if (p.y < 0f) -p.y * stiffness - min(v.y, 0f) * damping else 0f
             grip = if (onFloor) step.contact else 0f
             if (grip <= 0.02f) {
                 planted = null
@@ -372,18 +378,21 @@ class Floor(val stiffness: Float = 900f, val friction: Float = 40f) : ContactMod
 }
 
 val config = EvolutionConfig(
-    populationSize = 24,
-    generations = 25,
+    populationSize = 40,
+    generations = 60,
     minPoints = 5,
     maxPoints = 8,
     targetEdgeCount = 8,
     alwaysUpFootFraction = 0.5f,
     cyclingFootFraction = 0.5f,
     simulation = CreatureSimulationConfig(
+        warmupCycles = 2,
         measuredCycles = 6,
         gravity = -9.8f,
         contact = Floor(),
-        fitness = { e -> abs(e.displacement.x) - 2f * e.meanStretchError },
+        fitness = { e -> 2f * max(e.sustainedTravel(Float2(1f, 0f)), e.sustainedTravel(Float2(-1f, 0f))) - e.meanStretchError },
+        maxActuationBudgetPerCycle = 40f,
+        maxJointImpulsePerStep = 0.2f,
         maxCenterSpeed = 4f,
     ),
 )
@@ -405,8 +414,91 @@ showPlaneGrid(
 )
 ```
 
-The body is springs between points, and only the joint motors hold its angles. Under gravity that is
-often not enough, so many crawlers evolve to lie flat and inch along on their feet.
+Judged over six cycles, the champion is then watched for twenty-four. Every forty recorded frames
+leave a copy of its body on the floor, fainter the older it is.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/crawler_long_run.png" wait="40.0" timeout="120" capture="box" open-outputs="true" w="900" h="320" padding="14"}
+import afield.simulation.creatures.*
+
+:::fold the Floor contact model and the evolution, as above
+class Floor(val stiffness: Float = 900f, val damping: Float = 40f, val friction: Float = 1f) : ContactModel {
+    override fun place(points: List<Float2>): List<Float2> {
+        val lowest = points.minOf { it.y }
+        return points.map { Float2(it.x, it.y - lowest) }
+    }
+
+    override fun foot(index: Int) = object : ContactModel.Foot {
+        var planted: Float2? = null
+        override var grip = 0f
+        override val anchor get() = planted
+
+        override fun force(step: FootStep): Float2 {
+            val g = step.genome
+            val p = step.position
+            val v = step.velocity
+            val onFloor = p.y <= 0.02f
+            val up = if (p.y < 0f) -p.y * stiffness - min(v.y, 0f) * damping else 0f
+            grip = if (onFloor) step.contact else 0f
+            if (grip <= 0.02f) {
+                planted = null
+                val slide = if (onFloor) friction else g.freeDrag * 0.1f
+                return Float2(-v.x * slide, up - v.y * g.freeDrag * 0.1f)
+            }
+            val at = planted ?: Float2(p.x, 0f).also { planted = it }
+            return Float2((at.x - p.x) * g.footStickiness * grip - v.x * g.footDrag * grip, up)
+        }
+    }
+}
+
+val config = EvolutionConfig(
+    populationSize = 40,
+    generations = 60,
+    minPoints = 5,
+    maxPoints = 8,
+    targetEdgeCount = 8,
+    alwaysUpFootFraction = 0.5f,
+    cyclingFootFraction = 0.5f,
+    simulation = CreatureSimulationConfig(
+        warmupCycles = 2,
+        measuredCycles = 6,
+        gravity = -9.8f,
+        contact = Floor(),
+        fitness = { e -> 2f * max(e.sustainedTravel(Float2(1f, 0f)), e.sustainedTravel(Float2(-1f, 0f))) - e.meanStretchError },
+        maxActuationBudgetPerCycle = 40f,
+        maxJointImpulsePerStep = 0.2f,
+        maxCenterSpeed = 4f,
+    ),
+)
+:::endfold
+
+val champion = CreatureEvolution.evolve(config).best
+val crawler = CreatureEvolution.simulate(champion.genome, config.simulation.copy(measuredCycles = 24))
+val xs = crawler.frames.flatMap { f -> f.points.map { it.x } }
+val floor = fline {
+    moveTo(xs.min() - 1f, 0f)
+    lineTo(xs.max() + 1f, 0f)
+}.apply { color = vec(0.5, 0.45, 0.4, 1.0) }
+
+val copies = (0..crawler.frames.lastIndex step 40).flatMap { i ->
+    val fade = 0.15 + 0.85 * i / crawler.frames.lastIndex
+    crawler.frameLines(i, trailLength = 1, alignNetMotionToPositiveX = false).onEach {
+        it.color = vec(it.color.x, it.color.y, it.color.z, it.color.w * fade)
+    }
+}
+
+showPlane(
+    [floor] + copies + crawler.frameLines(crawler.frames.lastIndex, trailLength = crawler.frames.size, alignNetMotionToPositiveX = false),
+    title = "24 cycles: %.1f along the floor".format(crawler.displacement.x),
+    window = Rect(xs.min() - 1.0, -0.5, xs.max() - xs.min() + 2.0, 3.5),
+    width = 860,
+    height = 260,
+    yUp = true,
+)
+```
+
+The copies are evenly spaced from the first cycle to the last: the crawler keeps going rather than
+falling once. It holds its body up as a triangle and shuffles on two feet (orange while gripping)
+that plant and release in turn. It went left; the fitness counts either direction.
 
 ## What you can change
 

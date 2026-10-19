@@ -90,4 +90,17 @@ class CreatureEvolutionTest {
         }
         assertEquals(1, seen)
     }
+
+    @Test
+    fun halvesOfTheMeasuredRunAddUpToTheDisplacement() {
+        val e = CreatureEvolution.simulate(
+            CreatureEvolution.randomGenome(Random(4), minPoints = 6, maxPoints = 6),
+            CreatureSimulationConfig(measuredCycles = 6, contact = Grip()),
+        )
+        val sum = e.firstHalfDisplacement + e.secondHalfDisplacement
+        assertEquals(e.displacement.x, sum.x, 1e-4f)
+        assertEquals(e.displacement.y, sum.y, 1e-4f)
+        val d = Float2(1f, 0f)
+        assertEquals(minOf(e.firstHalfDisplacement.x, e.secondHalfDisplacement.x), e.sustainedTravel(d), 1e-6f)
+    }
 }

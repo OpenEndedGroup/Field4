@@ -359,8 +359,20 @@ data class CreatureEvaluation(
     val meanTargetSlew: Float,
     val meanSpeed: Float,
     val frames: List<CreatureSnapshot>,
-    val exploded: Boolean
+    val exploded: Boolean,
+    /** How far the centroid moved in the first half of measurement, and in the second. */
+    val firstHalfDisplacement: Float2 = Float2(0f, 0f),
+    val secondHalfDisplacement: Float2 = Float2(0f, 0f)
 ) {
+    /**
+     * The smaller of the two half-run distances along [direction], so a creature that topples once and
+     * then lies still scores about zero, and only one that keeps going scores well.
+     */
+    fun sustainedTravel(direction: Float2 = Float2(1f, 0f)): Float {
+        val d = direction.normalizedOr()
+        return min(firstHalfDisplacement.dot(d), secondHalfDisplacement.dot(d))
+    }
+
     fun summary(): String =
         "fitness=${"%.3f".format(fitness)} net=${"%.3f".format(netCentroidMotion)} forward=${"%.3f".format(forwardTravel)} " +
             "progress=${"%.3f".format(forwardProgress)} lateral=${"%.3f".format(lateralDrift)} " +
@@ -2204,6 +2216,8 @@ private class CreatureRuntime(
         val direction = config.targetDirection.normalizedOr()
 
         var measuredStart = currentCenter()
+        val midStep = warmupSteps + (totalSteps - warmupSteps) / 2
+        var midCenter: Float2? = null
         var previousCenter = measuredStart
         var finalCenter = measuredStart
         var stabilityPreviousCenter = measuredStart
@@ -2261,6 +2275,7 @@ private class CreatureRuntime(
                 measuredSamples++
                 previousCenter = center
                 finalCenter = center
+                if (step == midStep) midCenter = center
 
                 if (config.recordFrames && ((step - warmupSteps) % max(1, config.recordEvery) == 0 || step == totalSteps - 1)) {
                     frames += snapshot(step, phase, center)
@@ -2315,7 +2330,9 @@ private class CreatureRuntime(
             meanTargetSlew = meanTargetSlew,
             meanSpeed = meanSpeed,
             frames = frames,
-            exploded = exploded
+            exploded = exploded,
+            firstHalfDisplacement = (midCenter ?: finalCenter) - measuredStart,
+            secondHalfDisplacement = finalCenter - (midCenter ?: finalCenter)
         )
         val custom = config.fitness
         return if (custom == null || exploded) evaluation
