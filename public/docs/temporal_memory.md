@@ -404,6 +404,98 @@ over the horizon. This only works where the history shows the relationship: a co
 A known value is a hint, not a constraint: the forecast is not forced to pass through it.
 
 
+## Memory proposes, the forecaster judges
+
+The two can work together. The oracle keeps proposing passages from the recording, so nothing
+fades towards the average, and Timestral rates each proposal against its forecast of what has
+been playing. Give the improviser a `ForecastJudge`:
+
+```diffstatic {data-lang=kotlin}
+val judge = ForecastJudge(TimestralSession(), memory)
+val played = Improviser(memory, judge = judge).take(60.0)
+```
+
+At every jump decision the improviser plays each candidate two seconds ahead (`judgeAhead`), and
+the judge scores each path by how well it sits inside the forecast's quantile fan, step by step
+(the mean pinball loss). The forecast is refreshed every second in the background; until one has
+arrived, the improviser decides alone. Every sample is still played from the recording. There are
+two ways to use the score:
+
+- `judgeMode = JudgeMode.Prefer` (the default) adds it to the oracle's own preferences, weighted by
+  `judgeWeight`, and lets the judge keep the improviser on its current passage when that scores
+  best.
+- `judgeMode = JudgeMode.Veto` only removes jumps whose score is more than `vetoRatio` times that of
+  staying, and leaves the choice among the rest to the oracle.
+
+`judgedDecisions`, `judgeChanged`, `judgeVetoed` and `judgeStayed` count what the judge did.
+`Performance.reuse()`, `coverage()` and `joinRoughness(memory)` measure the result without
+asking the judge: how much of the output repeats a recent passage, how much of the recording gets
+used, and how sharp the joins are compared with the recording itself (1 means as smooth as the
+recording on average).
+
+The box below plays the three phrases for three minutes, four ways, from the same seed, and prints
+those measures for each.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/temporal_memory/judged.png" alt="a table of reuse, coverage, join roughness and jump count for four ways of playing the phrases, above a plot of where in memory the first minute was played from by the plain oracle and by the oracle judged by Timestral" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="tm-judged"}
+:::static
+import afield.math.oracle.*
+import afield.math.temporal.*
+import kotlin.math.*
+
+val rate = 20.0
+val r = java.util.Random(11)
+fun rise() = 30 { it / 29.0 }
+fun hesitate() = 25 { 1.0 + 0.03 * r.nextGaussian() }
+fun burst() = 30 { 1.0 + 0.7 * sin(it * 8 * PI / 29) }
+fun pause() = (20 + r.nextInt(20)) { 0.0 }
+val demo = Trajectory.join([
+    rise() + hesitate() + burst() + pause() + rise() + burst() + pause(),
+    rise() + burst() + pause() + rise() + hesitate() + hesitate() + burst() + pause(),
+    hesitate() + burst() + pause() + rise() + hesitate() + burst() + pause() + rise(),
+].map { Trajectory.of(rate, "v" to it) })
+val memory = VariableMarkovOracle.build(demo)
+val seconds = 180.0
+
+// Four ways to play the same memory from the same seed: the oracle alone, the oracle told to
+// avoid recent passages harder, and Timestral judging the oracle's proposals two ways.
+val runs = TimestralSession().use { session ->
+    fun judged(mode: JudgeMode, reuseWeight: Double) = ForecastJudge(session, memory, lockstep = true).use { judge ->
+        Improviser(memory, seed = 1, jumpProbability = 0.15, judge = judge, judgeMode = mode, reuseWeight = reuseWeight).take(seconds)
+    }
+    linkedMapOf(
+        "oracle alone" to Improviser(memory, seed = 1, jumpProbability = 0.15).take(seconds),
+        "oracle, reuseWeight 6" to Improviser(memory, seed = 1, jumpProbability = 0.15, reuseWeight = 6.0).take(seconds),
+        "Timestral vetoes" to judged(JudgeMode.Veto, 1.0),
+        "Timestral prefers, reuseWeight 6" to judged(JudgeMode.Prefer, 6.0),
+    )
+}
+
+markdown("table", "| three minutes of the phrases | reuse | coverage | join roughness | jumps |\n|---|---|---|---|---|\n" +
+    runs.entries.joinToString("\n") { (name, p) ->
+        "| $name | %.2f | %.2f | %.2f | %d |".format(p.reuse(), p.coverage(demo.length), p.joinRoughness(demo), p.segments.size - 1)
+    })
+
+// where in memory the first minute was played from, for the plain oracle and the judged one
+val minute = (60 * rate).toInt()
+showSignals(*["oracle alone", "Timestral prefers, reuseWeight 6"].map { name -> name to runs.getValue(name).sourceSeconds().take(minute) }.toTypedArray(),
+    x = List(minute) { it / rate }, xTitle = "seconds", yTitle = "memory position (s)",
+    channel = "main", width = 1000, height = 360)
+```
+
+![a table comparing four ways of playing the phrases, above two memory-position traces](assets/temporal_memory/judged.png)
+
+The judge makes the joins smoother, and it costs variety. A judge favours whatever the forecaster
+finds most predictable, and in a recording made of phrases that is usually more of what just
+played. In this run both judged versions repeat recent passages about twice as often as the oracle
+alone, and leave about a third of the recording unused. Preferring, the judge gives the smoothest
+joins of the four, well under the recording's own average. Raising `reuseWeight` on the oracle
+alone also smooths the joins, a little less, without the repetition, so try that first. Judged
+performances also vary more from run to run than the oracle's: try several seeds and lengths
+before settling on a setting.
+
+On smooth periodic material the judge rarely disagrees with the oracle: over five minutes of the
+figure-eight, a veto at `vetoRatio = 2` removed one candidate.
+
 ## Choosing between them
 
 | | Oracle | Timestral |
@@ -423,6 +515,9 @@ signal is from its band.
 
 
 ## See also
+
+- [The `temporal_memory` starting point](agent_transcripts.md#temporal_memory): every example on this page as a document to open
+  and change, plus a live box where a slider takes over a channel, and a lab notebook with the measurements behind the design.
 
 - [Motifs, Discords and Contrast](matrix_profile.md): finding what repeats in a signal, rather than continuing it.
 - [Signal Examples](spectral_examples.md): filters and spectra for the signals you record.

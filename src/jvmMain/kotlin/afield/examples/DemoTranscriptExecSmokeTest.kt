@@ -790,6 +790,10 @@ object DemoTranscriptExecSmokeTest {
         "fieldml_mesh_demo",
         // stacksl_examples.md's gallery draws into a native window.
         "stacksl_gallery",
+        // Continuing a gesture (2026-10-19): boxes 4 and 5 start a Timestral worker, which needs a
+        // downloaded checkpoint no CI machine has, and box 3 is a live frames loop. The oracle boxes
+        // run in VariableMarkovOracleTest; TimestralSessionTest runs the worker when opted in.
+        "temporal_memory",
     )
 
     /**

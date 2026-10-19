@@ -2091,6 +2091,19 @@ Nothing else needs to be on the network. See [Network MIDI](rtp_midi.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/rtp_midi_demo/metadata.edn)
 
+### temporal_memory
+
+**Continuing a gesture**, in six boxes. A lab notebook with the measurements behind the design;
+three recorded phrases and the Variable Markov Oracle built from them; a minute recombined from
+memory with the take each moment came from; a live box where a slider takes over one of two
+oscillators while memory carries the other; a Timestral forecast drawn as a quantile fan; and four
+ways of playing the same memory, with Timestral judging the oracle, printing reuse, coverage and
+join roughness for each. The first three run on any machine; the last two start the Timestral
+worker, which needs `TimestralSession.install()` once.
+See [Continuing a Gesture](temporal_memory.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/temporal_memory/metadata.edn)
+
 ### ai_tool_demo
 
 **Giving the AI a tool**, in two boxes. The first is the whole mechanism: a function, the schema a

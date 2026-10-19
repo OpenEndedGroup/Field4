@@ -29,6 +29,19 @@ interface ContinuationJudge {
     fun loss(index: Long, path: Array<DoubleArray>): Double?
 }
 
+/** How an [Improviser] uses its [ContinuationJudge]. */
+enum class JudgeMode {
+    /** The judge's loss joins the score: it can favour one candidate, choose another, or keep the improviser where it is. */
+    Prefer,
+
+    /**
+     * The judge only removes candidates: a jump whose loss is more than `vetoRatio` times that of
+     * staying on the current passage is dropped, and the oracle chooses among the rest exactly as
+     * it would alone. If every jump is vetoed, the improviser stays.
+     */
+    Veto,
+}
+
 /** Why a [Segment] began. */
 enum class Reason { Start, Continue, SuffixLink, EpisodeEnd, Cue, Takeover, Hold }
 
@@ -70,6 +83,43 @@ class Performance(
     /** Fraction of memory samples that appear somewhere in the output. */
     fun coverage(memoryLength: Int): Double = source.filter { it >= 0 }.toSet().size.toDouble() / memoryLength
 
+    private fun accel(t: Trajectory, c: Int): DoubleArray =
+        DoubleArray(max(0, t.length - 2)) { i -> kotlin.math.abs(t.values[c][i + 2] - 2 * t.values[c][i + 1] + t.values[c][i]) }
+
+    /**
+     * How rough the joins are, against the recording: the mean |second difference| within three
+     * samples of every jump, divided by the [memory]'s mean |second difference|, averaged over
+     * channels. 1 means joins are as smooth as the recording is on average; above 1, the seams show.
+     * NaN with no jumps.
+     */
+    fun joinRoughness(memory: Trajectory): Double {
+        val jumps = segments.filter { it.reason != Reason.Start && it.reason != Reason.Continue && it.reason != Reason.Hold }.map { it.outputStart }
+        if (jumps.isEmpty()) return Double.NaN
+        var s = 0.0; var n = 0
+        for (c in 0 until memory.width) {
+            val ref = accel(memory, c).average().coerceAtLeast(1e-12)
+            val a = accel(output, c)
+            for (j in jumps) for (k in j - 3..j + 3) if (k in a.indices) { s += a[k] / ref; n++ }
+        }
+        return s / max(1, n)
+    }
+
+    /**
+     * Kolmogorov–Smirnov distance between the output's and the [memory]'s distributions of
+     * |second difference| (how sharply things change), worst channel: 0 = indistinguishable, 1 = disjoint.
+     */
+    fun accelerationDistance(memory: Trajectory): Double = (0 until memory.width).maxOf { c ->
+        val a = accel(memory, c).sorted(); val b = accel(output, c).sorted()
+        var i = 0; var j = 0; var d = 0.0
+        while (i < a.size && j < b.size) {
+            val v = minOf(a[i], b[j])
+            while (i < a.size && a[i] == v) i++
+            while (j < b.size && b[j] == v) j++
+            d = maxOf(d, kotlin.math.abs(i.toDouble() / a.size - j.toDouble() / b.size))
+        }
+        d
+    }
+
     override fun toString() = "Performance(${output.length} samples, ${segments.size} segments, reuse=${"%.2f".format(reuse())})"
 }
 
@@ -80,7 +130,8 @@ class Performance(
  * [minPhrase] seconds it may, with probability [jumpProbability] per sample, take an oracle
  * jump: to a state that shares a suffix with the current one. Candidates are scored by shared
  * context length, by the join distance (how far the candidate's preceding sample is from where
- * the output is now, value and velocity), and by how recently their passage was played; one is
+ * the output is now, value and velocity), and by how recently their passage was played (scaled by
+ * [reuseWeight]; raise it to push away from repetition); one is
  * sampled from a seeded softmax with [temperature]. A candidate whose join distance exceeds
  * [maxJoin] (a multiple of the oracle threshold), or whose join would need a correction larger
  * than [maxCorrection] (in channel standard deviations), is rejected rather than smoothed over. At the
@@ -100,7 +151,9 @@ class Performance(
  * With a [judge], every jump decision also rates each candidate's next [judgeAhead] seconds —
  * and staying on the current passage — by the judge's loss. The loss enters the score relative
  * to the candidates' mean (`judgeWeight × loss / mean loss`), so the judge can prefer a jump,
- * choose another, or veto jumping. Every sample still comes from memory. [judgedDecisions],
+ * choose another, or veto jumping. With [judgeMode] = [JudgeMode.Veto] it only removes jumps
+ * whose loss exceeds [vetoRatio] times that of staying, leaving the choice among the rest to the
+ * oracle. Every sample still comes from memory. [judgedDecisions],
  * [judgeChanged] and [judgeStayed] count how often it had a say and how often it changed the outcome.
  *
  * Stepping is cheap (no allocation beyond the recent-history buffer, a cue every few samples
@@ -123,6 +176,9 @@ class Improviser(
     val judge: ContinuationJudge? = null,
     val judgeWeight: Double = 2.0,
     val judgeAhead: Double = 2.0,
+    val judgeMode: JudgeMode = JudgeMode.Prefer,
+    val reuseWeight: Double = 1.0,
+    val vetoRatio: Double = 1.5,
     start: Int = 0,
 ) {
     private val t = oracle.trajectory
@@ -154,8 +210,14 @@ class Improviser(
     /** Jump decisions the judge scored. */
     var judgedDecisions = 0; private set
 
-    /** Judged decisions whose most likely choice differed from the unjudged one. */
+    /**
+     * Judged decisions the judge altered: in [JudgeMode.Prefer], its most likely choice differed
+     * from the unjudged one; in [JudgeMode.Veto], it removed at least one candidate.
+     */
     var judgeChanged = 0; private set
+
+    /** Candidate jumps the judge vetoed ([JudgeMode.Veto]). */
+    var judgeVetoed = 0; private set
 
     /** Judged decisions that ended with staying on the current passage. */
     var judgeStayed = 0; private set
@@ -313,7 +375,7 @@ class Improviser(
         if (opts.isEmpty()) return null
         val base = opts.map { (c, d, ctx) ->
             val reuse = recentSource.count { it >= 0 && kotlin.math.abs(it - c) < minPhraseSteps }.toDouble() / minPhraseSteps
-            kotlin.math.ln(1.0 + ctx) - d / th - reuse
+            kotlin.math.ln(1.0 + ctx) - d / th - reuseWeight * reuse
         }.toMutableList()
         val natural = if (!t.endsEpisode(pos)) pos + 1 else -1
         val scores = ArrayList(base)
@@ -332,7 +394,23 @@ class Improviser(
                 scores.add(base.last())
             }
             val losses = opts.map { (c, _, _) -> j.loss(outputIndex.toLong(), path(c)) }
-            if (losses.all { it != null }) {
+            if (judgeMode == JudgeMode.Veto) {
+                // staying is the reference, not a candidate: drop it, and any jump much worse than it
+                val stay = if (natural >= 0) losses.last() else null
+                if (natural >= 0) { opts.removeAt(opts.size - 1); base.removeAt(base.size - 1); scores.removeAt(scores.size - 1) }
+                if (stay != null && losses.all { it != null }) {
+                    judgedDecisions++
+                    val keep = opts.indices.filter { losses[it]!! <= vetoRatio * stay }
+                    val vetoed = opts.size - keep.size
+                    judgeVetoed += vetoed
+                    if (keep.isEmpty()) { judgeStayed++; judgeChanged++; return Triple(natural, Reason.Continue, 0.0 to oracle.lrs[natural]) }
+                    if (vetoed > 0) {
+                        judgeChanged++
+                        val ko = keep.map { opts[it] }; val kb = keep.map { base[it] }
+                        opts.clear(); opts.addAll(ko); base.clear(); base.addAll(kb); scores.clear(); scores.addAll(kb)
+                    }
+                }
+            } else if (losses.all { it != null }) {
                 val mean = losses.sumOf { it!! } / losses.size
                 if (mean > 0) {
                     judgedDecisions++

@@ -134,3 +134,31 @@ rather than a preference, so it removes implausible joins without pulling toward
 pair it with a stronger novelty term. Either needs a measure of "better dynamics" that is not the
 judge's own loss; the statistics above cannot show an improvement, because oracle-only already matches
 the demos on them.
+
+## Veto, reuse weight and a measure that is not the judge's own
+
+These runs added `JudgeMode.Veto` (drop jumps whose loss is above `vetoRatio` × staying's) and
+`reuseWeight`. They also added two measures, now on `Performance`: `joinRoughness` (|Δ²| within ±3 samples
+of each jump, over the recording's mean |Δ²|) and `accelerationDistance` (KS distance between the
+|Δ²| distributions, with ties handled; the first version saturated at 0.360 on the zero runs of
+the pauses).
+
+Phrases, 5 min, 28M:
+
+| run | reuse | coverage | join roughness | jumps |
+|---|---|---|---|---|
+| oracle | 0.25 | 0.98 | 0.89 | 250 |
+| oracle, reuseWeight 3 / 6 | 0.18 / 0.20 | 0.97 / 0.92 | 0.78 / 0.60 | 271 / 360 |
+| prefer | 0.45 | 0.87 | 0.69 | 269 |
+| veto ×1.2 / ×2 | 0.54 / 0.55 | 0.74 / 0.65 | 0.89 / 0.82 | 258 / 263 |
+| prefer + reuseWeight 3 / 6 | 0.37 / 0.22 | 0.91 / 0.97 | 0.65 / 0.63 | 280 / 267 |
+
+On the figure-eight, veto removed 12 candidates (×1.2) or 1 (×2) in 5 minutes. 209M matched 28M.
+
+The same setup run for 3 minutes (the docs box) gave prefer + reuseWeight 6 a reuse of 0.50 and a coverage of 0.64.
+Judged runs vary far more with length than oracle-only runs (0.26 / 0.93 there). What holds in every run is
+that the judge makes joins smoother and costs variety on phrase material, and that a tuned
+`reuseWeight` without a judge gets most of the smoothing. Veto does not reduce repetition.
+
+The next step should be a grid of seeds × lengths per setting, reporting means and spreads, before
+any recommendation stronger than "try reuseWeight first".

@@ -173,4 +173,17 @@ class ContinuationJudgeTest {
             "a judge preferring the bursts should yield more of them: ${loudness(p.output.values[0])} vs ${loudness(plain.output.values[0])}")
         for (i in p.source.indices) if (p.source[i] >= 0 && p.correction[i] == 0.0) assertEquals(t.values[0][p.source[i]], p.output.values[0][i], 1e-12)
     }
+
+    @Test
+    fun vetoOnlyRemovesCandidates() {
+        val burst = List(30) { 1.0 + 0.7 * sin(it * 8 * PI / 29) }
+        val seq = listOf(burst, List(10) { 0.0 }, burst, List(40) { 0.0 }, burst, List(20) { 0.0 }, burst, List(60) { 0.0 }).flatten()
+        val o = VariableMarkovOracle.build(Trajectory.of(20.0, "v" to seq))
+        fun loudness(x: DoubleArray) = x.count { abs(it) > 0.05 }.toDouble() / x.size
+        val plain = Improviser(o, seed = 7, jumpProbability = 0.5).take(4000)
+        val imp = Improviser(o, seed = 7, jumpProbability = 0.5, judge = Loud(), judgeMode = JudgeMode.Veto, vetoRatio = 1.0)
+        val p = imp.take(4000)
+        assertTrue(imp.judgeVetoed > 0, "veto should remove some jumps into quieter passages")
+        assertTrue(loudness(p.output.values[0]) >= loudness(plain.output.values[0]), "vetoing quieter jumps must not make it quieter")
+    }
 }
