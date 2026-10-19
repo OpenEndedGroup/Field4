@@ -157,6 +157,9 @@ nav:
       - Signal Examples: spectral_examples.md
       # After the signal toolkit: the matrix profile asks what in a signal repeats and what is unique.
       - "Motifs & Discords: the Matrix Profile": matrix_profile.md
+      # After finding what repeats: continuing a recording, by recombining it (oracle) or by
+      # forecasting it (Timestral).
+      - "Continuing a Gesture": temporal_memory.md
     # Two pages whose input is an unordered set of points rather than a series or a function, and
     # which were each a one-page group of their own ("Distances & Projections", "Clouds &
     # Deformations") until they were put together here. Not under "Time & Signals": the input to a
