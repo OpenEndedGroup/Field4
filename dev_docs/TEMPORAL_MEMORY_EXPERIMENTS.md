@@ -162,3 +162,11 @@ that the judge makes joins smoother and costs variety on phrase material, and th
 
 The next step should be a grid of seeds × lengths per setting, reporting means and spreads, before
 any recommendation stronger than "try reuseWeight first".
+
+## Correction: the phrase performances loop at the gesture level
+
+Plotting the played signal (prompted by Marc) shows both the oracle and the judged oracle cycling
+through rise → hesitation → burst → pause about every 6 s. The phrase fixture's takes are copies of
+the same four gestures, so source-position measures (`reuse`, `coverage`) report variety that
+the output does not have. Every phrase-fixture conclusion above about "repetition" is about source
+positions only. Needed: an output-side repetition measure, and takes that genuinely differ.

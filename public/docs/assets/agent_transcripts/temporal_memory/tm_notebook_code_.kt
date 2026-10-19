@@ -48,6 +48,13 @@ vary much more than oracle-only ones (0.26 / 0.93 / 0.87 here vs 0.25 / 0.98 / 0
 What does hold every time: the judge makes joins smoother and costs variety on phrase
 material. Next experiment should be several seeds × lengths per setting, not one run.
 
+**Then Marc asked to see the played signal, not just memory position.** Both the plain and the
+judged oracle play rise → hesitation → burst → pause about every 6 s, near-identically. The
+memory trace looked varied only because the takes are copies of the same four gestures.
+`reuse` counts source positions, so a loop made of copies passes it. Two consequences: we need
+an output-side repetition measure (matrix profile / autocorrelation of the performance), and
+this fixture is too poor to say anything about recombination. Next: takes that really differ.
+
 ## Open
 
 - A measure of "better dynamics" that is neither the judge's own score nor a statistic the oracle

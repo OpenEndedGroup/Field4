@@ -436,7 +436,7 @@ recording on average).
 The box below plays the three phrases for three minutes, four ways, from the same seed, and prints
 those measures for each.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/temporal_memory/judged.png" alt="a table of reuse, coverage, join roughness and jump count for four ways of playing the phrases, above a plot of where in memory the first minute was played from by the plain oracle and by the oracle judged by Timestral" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="tm-judged"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/temporal_memory/judged.png" alt="a table of reuse, coverage, join roughness and jump count for four ways of playing the phrases; below it, half a minute of what the plain oracle and the Timestral-judged oracle actually played, one plot each, and a plot of where in memory each was playing from" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="tm-judged"}
 :::static
 import afield.math.oracle.*
 import afield.math.temporal.*
@@ -475,14 +475,29 @@ markdown("table", "| three minutes of the phrases | reuse | coverage | join roug
         "| $name | %.2f | %.2f | %.2f | %d |".format(p.reuse(), p.coverage(demo.length), p.joinRoughness(demo), p.segments.size - 1)
     })
 
-// where in memory the first minute was played from, for the plain oracle and the judged one
-val minute = (60 * rate).toInt()
-showSignals(*["oracle alone", "Timestral prefers, reuseWeight 6"].map { name -> name to runs.getValue(name).sourceSeconds().take(minute) }.toTypedArray(),
-    x = List(minute) { it / rate }, xTitle = "seconds", yTitle = "memory position (s)",
-    channel = "main", width = 1000, height = 360)
+// what the plain oracle and the judged one actually played, the first half minute of each
+val shown = (30 * rate).toInt()
+val compared = ["oracle alone", "Timestral prefers, reuseWeight 6"]
+for (name in compared) {
+    showSignals(name to runs.getValue(name).output.values[0].take(shown), x = List(shown) { it / rate },
+        channel = name, width = 1000, height = 180)
+}
+
+// and where in memory each was playing from over the same half minute
+showSignals(*compared.map { name -> name to runs.getValue(name).sourceSeconds().take(shown) }.toTypedArray(),
+    x = List(shown) { it / rate }, xTitle = "seconds", yTitle = "memory position (s)",
+    channel = "main", width = 1000, height = 300)
 ```
 
-![a table comparing four ways of playing the phrases, above two memory-position traces](assets/temporal_memory/judged.png)
+![a table comparing four ways of playing the phrases, the two played signals, and their memory positions](assets/temporal_memory/judged.png)
+
+Look at the played signals before the numbers. Both settle into the same cycle (rise, hesitation,
+burst, pause) every six seconds or so, though their memory positions jump all over the recording.
+The three takes are made of identical copies of four gestures, so a jump to another take usually
+lands on another copy of the same gesture. `reuse()` and `coverage()` count *where in memory*
+samples come from, so they cannot see a loop made of copies. Check the output itself, by eye or
+with [the matrix profile](matrix_profile.md) of the performance, and record takes that genuinely
+differ: that matters more to the result than any setting below.
 
 The judge makes the joins smoother, and it costs variety. A judge favours whatever the forecaster
 finds most predictable, and in a recording made of phrases that is usually more of what just

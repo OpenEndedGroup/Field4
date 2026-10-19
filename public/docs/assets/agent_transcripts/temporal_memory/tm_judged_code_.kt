@@ -35,8 +35,15 @@ markdown("table", "| three minutes of the phrases | reuse | coverage | join roug
         "| $name | %.2f | %.2f | %.2f | %d |".format(p.reuse(), p.coverage(demo.length), p.joinRoughness(demo), p.segments.size - 1)
     })
 
-// where in memory the first minute was played from, for the plain oracle and the judged one
-val minute = (60 * rate).toInt()
-showSignals(*["oracle alone", "Timestral prefers, reuseWeight 6"].map { name -> name to runs.getValue(name).sourceSeconds().take(minute) }.toTypedArray(),
-    x = List(minute) { it / rate }, xTitle = "seconds", yTitle = "memory position (s)",
-    channel = "main", width = 1000, height = 360)
+// what the plain oracle and the judged one actually played, the first half minute of each
+val shown = (30 * rate).toInt()
+val compared = ["oracle alone", "Timestral prefers, reuseWeight 6"]
+for (name in compared) {
+    showSignals(name to runs.getValue(name).output.values[0].take(shown), x = List(shown) { it / rate },
+        channel = name, width = 1000, height = 180)
+}
+
+// and where in memory each was playing from over the same half minute
+showSignals(*compared.map { name -> name to runs.getValue(name).sourceSeconds().take(shown) }.toTypedArray(),
+    x = List(shown) { it / rate }, xTitle = "seconds", yTitle = "memory position (s)",
+    channel = "main", width = 1000, height = 300)

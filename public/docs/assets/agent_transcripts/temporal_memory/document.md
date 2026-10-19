@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="tm_judged" index="0" -->
 
 ```edn [field-box id="tm_judged" role="properties"]
-{"id" "tm_judged" "index" 0 "name" "5 - memory proposes, Timestral judges" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - memory proposes, Timestral judges" "_tombstone" false "frame" #afield/rect [60.0 3160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_judged_code_.kt" "lines" 42 "characters" 2294 "sha256" "760642c6d2c41736797ea5ebbb8654f915a46fa132e1ee2a08692f2f519928c9"}]}
+{"id" "tm_judged" "index" 0 "name" "5 - memory proposes, Timestral judges" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - memory proposes, Timestral judges" "_tombstone" false "frame" #afield/rect [60.0 3160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_judged_code_.kt" "lines" 49 "characters" 2569 "sha256" "5ca41d0e51e0986fb544bfd65b5a964f25b0f63f9d66ef87fe850782c40f8530"}]}
 ```
 
 ```kotlin [field-property box="tm_judged" name="code" path="tm_judged_code_.kt"]
@@ -52,11 +52,18 @@ markdown("table", "| three minutes of the phrases | reuse | coverage | join roug
         "| $name | %.2f | %.2f | %.2f | %d |".format(p.reuse(), p.coverage(demo.length), p.joinRoughness(demo), p.segments.size - 1)
     })
 
-// where in memory the first minute was played from, for the plain oracle and the judged one
-val minute = (60 * rate).toInt()
-showSignals(*["oracle alone", "Timestral prefers, reuseWeight 6"].map { name -> name to runs.getValue(name).sourceSeconds().take(minute) }.toTypedArray(),
-    x = List(minute) { it / rate }, xTitle = "seconds", yTitle = "memory position (s)",
-    channel = "main", width = 1000, height = 360)
+// what the plain oracle and the judged one actually played, the first half minute of each
+val shown = (30 * rate).toInt()
+val compared = ["oracle alone", "Timestral prefers, reuseWeight 6"]
+for (name in compared) {
+    showSignals(name to runs.getValue(name).output.values[0].take(shown), x = List(shown) { it / rate },
+        channel = name, width = 1000, height = 180)
+}
+
+// and where in memory each was playing from over the same half minute
+showSignals(*compared.map { name -> name to runs.getValue(name).sourceSeconds().take(shown) }.toTypedArray(),
+    x = List(shown) { it / rate }, xTitle = "seconds", yTitle = "memory position (s)",
+    channel = "main", width = 1000, height = 300)
 ```
 
 ## 2. 3 - take over a channel, live
@@ -223,7 +230,7 @@ showSignals(*byTake.toTypedArray(), x = seconds, xTitle = "seconds", yTitle = "m
 <!-- field-box id="tm_notebook" index="5" -->
 
 ```edn [field-box id="tm_notebook" role="properties"]
-{"id" "tm_notebook" "index" 5 "name" "0 - lab notebook" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "0 - lab notebook" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_notebook_code_.kt" "lines" 61 "characters" 3623 "sha256" "c559868062912c3e9697037c4d526d42094024715846b109126b877adab8dece"}]}
+{"id" "tm_notebook" "index" 5 "name" "0 - lab notebook" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "0 - lab notebook" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_notebook_code_.kt" "lines" 68 "characters" 4181 "sha256" "8fb867a52519c88c8a33fce2b021e33fe901599995ad3b0333d6975e39840231"}]}
 ```
 
 ```kotlin [field-property box="tm_notebook" name="code" path="tm_notebook_code_.kt"]
@@ -276,6 +283,13 @@ So the "reuse penalty cancels the pull" result does not hold up across lengths: 
 vary much more than oracle-only ones (0.26 / 0.93 / 0.87 here vs 0.25 / 0.98 / 0.89).
 What does hold every time: the judge makes joins smoother and costs variety on phrase
 material. Next experiment should be several seeds × lengths per setting, not one run.
+
+**Then Marc asked to see the played signal, not just memory position.** Both the plain and the
+judged oracle play rise → hesitation → burst → pause about every 6 s, near-identically. The
+memory trace looked varied only because the takes are copies of the same four gestures.
+`reuse` counts source positions, so a loop made of copies passes it. Two consequences: we need
+an output-side repetition measure (matrix profile / autocorrelation of the performance), and
+this fixture is too poor to say anything about recombination. Next: takes that really differ.
 
 ## Open
 
