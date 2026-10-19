@@ -5552,11 +5552,57 @@ function fitCameraToBounds(cam, bounds, target, margin, points) {
  * @param fit when true, [fitCameraToBounds] then pulls the distance in or out so the geometry fills
  * the frame the viewer was actually given. The spec's `distance` becomes the padding factor.
  */
+// `camera(follow = true)`: carry the camera along with the centre of the bounds, and step the grid
+// by whole cells under it so the floor stays put while the subject moves across it.
+//
+// The camera chases a smoothed centre, not the raw one: a walking subject's bounds jump with every
+// step. Per update it closes FOLLOW_EASE of the gap along each axis — gently along x, much more
+// gently across (y), and not at all in height, which only bobs. A jump of more than FOLLOW_CUT in
+// one update (an animation starting over) is a cut: the camera goes straight there.
+const GRID_CELL = 10 / 20;
+const FOLLOW_EASE = [0.08, 0.015, 0];
+const FOLLOW_CUT = 2;
+let followCenter = null;
+function followUp() { return payloadState?.camera?.upAxis === 'Z' ? 'Z' : 'Y'; }
+function followBounds(payload) {
+    const b = payload.bounds;
+    if (!payload.camera?.follow || !b?.min || !b?.max || panelState.cameras.length > 1) {
+        followCenter = null;
+        grid.position.set(0, 0, 0);
+        return;
+    }
+    const raw = new THREE.Vector3().fromArray(b.min).add(new THREE.Vector3().fromArray(b.max)).multiplyScalar(0.5);
+    const cut = followCenter && raw.distanceTo(followCenter) > FOLLOW_CUT;
+    const c = followCenter && !cut ? followCenter.clone() : raw;
+    if (cut) {
+        const d = raw.clone().sub(followCenter);
+        camera.position.add(d);
+        controls.target.add(d);
+        controls.update();
+    } else if (followCenter) {
+        const k = followUp() === 'Z' ? FOLLOW_EASE : [FOLLOW_EASE[0], FOLLOW_EASE[2], FOLLOW_EASE[1]];
+        c.x += (raw.x - c.x) * k[0];
+        c.y += (raw.y - c.y) * k[1];
+        c.z += (raw.z - c.z) * k[2];
+        const d = c.clone().sub(followCenter);
+        camera.position.add(d);
+        controls.target.add(d);
+        controls.update();
+    }
+    followCenter = c;
+    grid.position.set(Math.round(c.x / GRID_CELL) * GRID_CELL, Math.round(c.y / GRID_CELL) * GRID_CELL, 0);
+    requestRender();
+}
 function applyCameraSpec(cam, spec, bounds, fit, points) {
     if (!spec || !bounds || !bounds.min || !bounds.max) return null;
     const derived = cameraPresetEye(spec, bounds);
+    if (spec.upAxis === 'Z') {
+        // The y-up preset, turned rigidly so its up becomes +z: an eye offset (x, y, z) becomes (x, -z, y).
+        const t = derived.target, e = derived.eye;
+        derived.eye = [e[0], t[1] - (e[2] - t[2]), t[2] + (e[1] - t[1])];
+    }
     cam.position.set(derived.eye[0], derived.eye[1], derived.eye[2]);
-    cam.up.set(0, 1, 0);
+    cam.up.set(0, spec.upAxis === 'Z' ? 0 : 1, spec.upAxis === 'Z' ? 1 : 0);
     cam.lookAt(derived.target[0], derived.target[1], derived.target[2]);
     cam.fov = spec.fieldOfViewDegrees === undefined ? 40 : spec.fieldOfViewDegrees;
     cam.near = derived.near;
@@ -6014,13 +6060,16 @@ function applyGeometry(payload) {
         applyCameraSpec(camera, payload.camera, payload.bounds, true,
             sweptFitPoints(fitPointsForPanel(-1), payload.bounds, !!payload.turntable));
         const derived = cameraPresetEye(payload.camera, payload.bounds);
+        cameraUp(payload.camera.upAxis === 'Z' ? [0, 0, 1] : [0, 1, 0]);
         controls.target.set(derived.target[0], derived.target[1], derived.target[2]);
         controls.update();
         hasFramedInitialGeometry = true;
         appliedCameraSpec = cameraKey;
         cameraWasMoved = false; cameraTurned = false;
         cameraViewport = [container.clientWidth, container.clientHeight];
+        followCenter = null;
     }
+    followBounds(payload);
     // Last, because it reads the geometry the steps above created and because framing the camera first
     // means the first dimension is offset across the view the user is actually going to see.
     inspectorCapture(payload);

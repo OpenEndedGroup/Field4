@@ -264,6 +264,8 @@ A bounded, world-aligned rectangle of tiles, stored in reusable toroidal slots. 
 
 `src/jvmMain/kotlin/afield/simulation/creatures/Creatures.kt` — [read the source](source/jvmMain/afield/simulation/creatures/Creatures/)
 
+**Used in:** [Evolving Creatures](../evolving_creatures.md)
+
 ### Float2 { #creatures-kt-float2 }
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Float2</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/creatures/Creatures/#L51)
