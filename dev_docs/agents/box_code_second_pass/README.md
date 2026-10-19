@@ -152,7 +152,9 @@ remain open. Progress comes from reviewed diffs and evidence, not elapsed time o
 
 | [Own exact graphics views and preserve replacements and edited shaders](../box_code_adoption_batch_76/README.md) | 11 findings resolved; see the batch for actual evidence and limits. |
 
-[Machine checkpoint](checkpoint.json): **398 of 405 findings addressed**; 7 remain open. These counts do not claim
+| [Own native interop and splat playback resources across setup and Stop](../box_code_adoption_batch_77/README.md) | 4 findings resolved; see the batch for actual evidence and limits. |
+
+[Machine checkpoint](checkpoint.json): **402 of 405 findings addressed**; 3 remain open. These counts do not claim
 that every body in the corpus has been edited or run. Mechanical-only bodies and helper adoption
 without an original finding are described in each batch rather than inflating this count.
 
