@@ -213,7 +213,7 @@ inference on its own thread. The renderer never waits; it draws the most recent 
 is a few frames old. The sketch below sets one up and feeds it webcam frames:
 
 ```diffstatic {data-lang=kotlin}
-// once
+// Construct once per box run; Stop or rerun closes its worker thread.
 val depth = DepthAnythingWorker(width = 266, height = 266)
 val tex = StreamingTexture(
     depth.depthFp16,
