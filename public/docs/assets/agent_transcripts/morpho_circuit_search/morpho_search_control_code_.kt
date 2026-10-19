@@ -16,11 +16,11 @@ println(
 
 // Same generator, same seed, same budget. One unit of budget is one invocation of
 // morpho's compiler, which is the only resource all three spend at comparable rates.
-val runs = listOf(
+val runs = [
     MorphoSearch.random(problem.spec, problem.generator, budget, seed = 2),
     MorphoSearch.hillClimb(problem.spec, problem.generator, budget, seed = 2),
     MorphoSearch.evolve(problem.spec, problem.generator, budget, seed = 2),
-)
+]
 runs.forEach { println(it.summary()) }
 
 // What was actually found, in MorphoHDL. This is paste-into-a-morpho-box text.

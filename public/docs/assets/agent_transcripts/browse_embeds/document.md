@@ -17,7 +17,7 @@ From `code`
 The same kind of value as Finder-style columns: choosing a row opens it in the next column.
 
 ```edn [field-box id="column_box" role="properties"]
-{"id" "column_box" "index" 0 "name" "2 - column(): Finder columns" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - column(): Finder columns" "_tombstone" false "frame" #afield/rect [620.0 60.0 440.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "column_box_code_.kt" "lines" 9 "characters" 445 "sha256" "502b65fd072a6e4599ce2ba91dd5fb2fcbc1b7926b2606ec80ab6e2a8a046c6b"}]}
+{"id" "column_box" "index" 0 "name" "2 - column(): Finder columns" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - column(): Finder columns" "_tombstone" false "frame" #afield/rect [620.0 60.0 440.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "column_box_code_.kt" "lines" 9 "characters" 439 "sha256" "ed64119db421dc6b553ab059ae4fa793f15e2f6e2fd13364de00859f799b5de5"}]}
 ```
 
 ```kotlin [field-property box="column_box" name="code" path="column_box_code_.kt"]
@@ -25,7 +25,7 @@ The same kind of value as Finder-style columns: choosing a row opens it in the n
 data class Layer(val name: String, val visible: Boolean, val points: IntArray)
 
 val document = linkedMapOf(
-    "layers" to listOf(Layer("dots", true, intArrayOf(2, 4, 8, 16)), Layer("lines", false, intArrayOf())),
+    "layers" to [Layer("dots", true, intArrayOf(2, 4, 8, 16)), Layer("lines", false, intArrayOf())],
     "camera" to mapOf("x" to 10, "y" to 20, "zoom" to 1.5),
     "title" to "a document\nwith two lines",
 )

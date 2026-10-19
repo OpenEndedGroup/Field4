@@ -1,5 +1,5 @@
 // Three disjoint discs of known radius, then noise on top of them.
-val discs = listOf(Triple(550.0, 600.0, 280.0), Triple(1500.0, 550.0, 200.0), Triple(1100.0, 1350.0, 140.0))
+val discs = [Triple(550.0, 600.0, 280.0), Triple(1500.0, 550.0, 200.0), Triple(1100.0, 1350.0, 140.0)]
 val clean =
     Img.generate(2200, 1800) { x, y ->
         if (discs.any { (cx, cy, r) -> hypot(x - cx, y - cy) <= r }) 0.85f else 0.15f

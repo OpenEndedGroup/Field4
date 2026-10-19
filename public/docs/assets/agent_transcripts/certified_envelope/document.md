@@ -18,7 +18,7 @@ Branch-and-bound over the hour: the true maximum is at least the value reached a
 witness, and at most the proven bound. The same for the minimum.
 
 ```edn [field-box id="range" role="properties"]
-{"id" "range" "index" 0 "name" "3 - certifiedRange, with witnesses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - certifiedRange, with witnesses" "_tombstone" false "frame" #afield/rect [60.0 1480.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "range_code_.kt" "lines" 31 "characters" 1291 "sha256" "5ebd45e309afa84ec4e710a03b6ffd8c82261848fb9db50fecf8b35cc6e60ba5"}]}
+{"id" "range" "index" 0 "name" "3 - certifiedRange, with witnesses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - certifiedRange, with witnesses" "_tombstone" false "frame" #afield/rect [60.0 1480.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "range_code_.kt" "lines" 33 "characters" 1276 "sha256" "a17ed87488669cebe11491fc7d6c2ebd355a081728f0b7e3c51cb6e9f974f251"}]}
 ```
 
 ```kotlin [field-property box="range" name="code" path="range_code_.kt"]
@@ -33,7 +33,7 @@ val min = range.min!!
 display(
     "range",
     Table(
-            listOf("side", "reached", "at x", "proven bound", "enclosures"),
+            ["side", "reached", "at x", "proven bound", "enclosures"],
             title = "certifiedRange(0, 3600): certified = ${range.certified}",
         )
         .row("max", max.value, max.witness, max.bound, max.enclosures)
@@ -42,16 +42,18 @@ display(
 )
 
 // Yes/no questions with the same guarantee. A refutation carries the x that breaks the claim.
-val claims = listOf(
+val claims = [
     signal.certifiedNeverExceeds(0.7, 0.0, 3600.0),
     signal.certifiedNeverExceeds(0.8, 0.0, 3600.0),
     signal.certifiedReaches(0.75, 0.0, 3600.0),
-)
+]
 display(
     "claims",
-    Table(listOf("claim", "verdict", "witness x"))
-        .rows(claims.map { listOf(it.claim, it.kind.name, it.witness) })
-        .roleBy("verdict") { if (it == "PROVEN") CellRole.OK else CellRole.WARN },
+    Table(["claim", "verdict", "witness x"]).rows(claims.map { [it.claim, it.kind.name, it.witness] }).roleBy(
+        "verdict",
+    ) {
+        if (it == "PROVEN") CellRole.OK else CellRole.WARN
+    },
 )
 ```
 
@@ -68,7 +70,7 @@ behind it in amber, a certified bound per bin: every value the function takes in
 lies inside, whether or not a sample landed on it. Nothing here is sampled more finely.
 
 ```edn [field-box id="certified" role="properties"]
-{"id" "certified" "index" 1 "name" "2 - The certified band catches it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - The certified band catches it" "_tombstone" false "frame" #afield/rect [60.0 760.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "certified_code_.kt" "lines" 27 "characters" 1201 "sha256" "56c538056580504e6c0bfe14336047930c0ed60be81a139ad0f53333cb048d5f"}]}
+{"id" "certified" "index" 1 "name" "2 - The certified band catches it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - The certified band catches it" "_tombstone" false "frame" #afield/rect [60.0 760.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "certified_code_.kt" "lines" 27 "characters" 1189 "sha256" "0f1057b748c8765e13dbdac3fd7ebc90e658625b4b16ab12e6ba83b116ec2888"}]}
 ```
 
 ```kotlin [field-property box="certified" name="code" path="certified_code_.kt"]
@@ -80,7 +82,7 @@ lies inside, whether or not a sample landed on it. Nothing here is sampled more 
 val signal = with(Functions) {
     sin(1.0 / 40.0, amplitude = 0.2, offset = 0.45) + gaussian(1234.57, 0.002, 0.5, Functions.Domain.ALL)
 }
-val viewer = SignalViewer(listOf(certifiedSignalChannel("x", signal)), 0.0, 3600.0)
+val viewer = SignalViewer([certifiedSignalChannel("x", signal)], 0.0, 3600.0)
 displaySignal(
     viewer,
     "main",
@@ -92,7 +94,7 @@ val band = signal.certifiedEnvelope(0.0, 3600.0, 1000)
 val bin = (1234.57 / 3.6).toInt()
 display(
     "numbers",
-    Table(listOf("what", "value"), title = "the certified band, as numbers")
+    Table(["what", "value"], title = "the certified band, as numbers")
         .row("f(1234.57), the glitch's peak", signal(1234.57))
         .row("certified max, bin $bin", band.high[bin])
         .row("certified min, bin $bin", band.low[bin])
@@ -116,7 +118,7 @@ a lambda was the piecewise event selection; here it is exact 0/1 `step` indicato
 product and sum in the lambda's order, so the two agree bit for bit.
 
 ```edn [field-box id="workbench" role="properties"]
-{"id" "workbench" "index" 2 "name" "5 - The worked example, certified" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - The worked example, certified" "_tombstone" false "frame" #afield/rect [60.0 2120.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "workbench_code_.kt" "lines" 140 "characters" 6203 "sha256" "4aee47d6e182dde1a4fe2db49feb892b0403b04fe33cb0d04c965f0ea3a65c2d"}]}
+{"id" "workbench" "index" 2 "name" "5 - The worked example, certified" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - The worked example, certified" "_tombstone" false "frame" #afield/rect [60.0 2120.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "workbench_code_.kt" "lines" 140 "characters" 6173 "sha256" "5ddcbd9fbe17544576485cca94838ccc9181fc278d86b8c73b83f66de1b497a2"}]}
 ```
 
 ```kotlin [field-property box="workbench" name="code" path="workbench_code_.kt"]
@@ -127,14 +129,14 @@ refuses. `formula` is the same function from formula-bearing ops. The only const
 a lambda was the piecewise event selection; here it is exact 0/1 `step` indicators, with every
 product and sum in the lambda's order, so the two agree bit for bit.
 */
-val events = listOf(
+val events = [
     StudyEvent("e1", 185.0, 100.0, 30.0, 100.0),
     StudyEvent("e2", 785.0, 100.0, 30.0, 100.0),
     StudyEvent("e3", 1425.0, 200.0, 30.0, 100.0),
     StudyEvent("e5", 2585.0, 100.0, 30.0, 100.0),
     StudyEvent("e6", 3185.0, 100.0, 30.0, 100.0),
-)
-val names = listOf("x", "y", "z")
+]
+val names = ["x", "y", "z"]
 
 fun smooth01(value: Double): Double {
     val u = value.coerceIn(0.0, 1.0)
@@ -230,19 +232,19 @@ for ((i, name) in names.withIndex()) {
     val above = f.certifiedNeverExceeds(1.0, 0.0, 3600.0)
     val witness = above.witness!!
     rows +=
-        listOf(
+        [
             name,
             "${FnIntervals.unsupportedOps(l)} / ${FnIntervals.unsupportedOps(f)}",
             "$mismatches of ${grid.size}",
             "$holds of ${events.size} PROVEN",
             f.certifiedNeverBelow(0.0, 0.0, 3600.0).kind.name,
             "${above.kind} at $witness: lambda ${l(witness)}",
-        )
+        ]
 }
 display(
     "claims",
     Table(
-            listOf("ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"),
+            ["ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"],
             title = "the worked example's claims, on its formula rewrite",
         )
         .rows(rows)
@@ -253,7 +255,7 @@ display(
 val xMax = formula(0, "x").certifiedRange(0.0, 3600.0, tolerance = 9e-10).max!!
 display(
     "max",
-    Table(listOf("what", "value"), title = "channel x, the whole hour")
+    Table(["what", "value"], title = "channel x, the whole hour")
         .row("max reached", xMax.value.toString())
         .row("at x", xMax.witness.toString())
         .row("proven bound", xMax.bound.toString())
@@ -275,7 +277,7 @@ between two of the viewer's 0.02 s samples. Built from Functions ops rather than
 fn { } lambda, so every node has a formula. Box 2 needs that.
 
 ```edn [field-box id="sampled" role="properties"]
-{"id" "sampled" "index" 3 "name" "1 - An hour, and a glitch the plot never sees" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - An hour, and a glitch the plot never sees" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sampled_code_.kt" "lines" 29 "characters" 1249 "sha256" "6e6e0a5e41238e727448db6de9ef18dd057d5cb1924d6d60a331d7e4ad089a1a"}]}
+{"id" "sampled" "index" 3 "name" "1 - An hour, and a glitch the plot never sees" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - An hour, and a glitch the plot never sees" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sampled_code_.kt" "lines" 29 "characters" 1237 "sha256" "14031a7ea0c55d604db955653e53509cf893144b5df7741901bc7f5d14f5ceee"}]}
 ```
 
 ```kotlin [field-property box="sampled" name="code" path="sampled_code_.kt"]
@@ -289,7 +291,7 @@ val signal = with(Functions) {
 }
 
 // The sampled envelope, drawn the way the function workbench draws it: min and max per bin.
-val viewer = SignalViewer(listOf(SignalChannel("x", signal::eval)), 0.0, 3600.0)
+val viewer = SignalViewer([SignalChannel("x", signal::eval)], 0.0, 3600.0)
 displaySignal(
     viewer,
     "main",
@@ -301,7 +303,7 @@ val bins = viewer.window(0.0, 3600.0, 1000).lanes[0].current
 val bin = (1234.57 / 3.6).toInt()
 display(
     "numbers",
-    Table(listOf("what", "value"), title = "what the sampled plot can see")
+    Table(["what", "value"], title = "what the sampled plot can see")
         .row("f(1234.57), the glitch's peak", signal(1234.57))
         .row("sampled max, bin $bin", bins.high[bin])
         .row("sampled max, whole hour", bins.high.max())
@@ -323,7 +325,7 @@ lambdas: one opaque node each, so there is nothing for an interval walk to read.
 name rather than guess.
 
 ```edn [field-box id="limits" role="properties"]
-{"id" "limits" "index" 4 "name" "4 - What refuses, and an exact hold" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - What refuses, and an exact hold" "_tombstone" false "frame" #afield/rect [60.0 1800.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "limits_code_.kt" "lines" 29 "characters" 1390 "sha256" "e41ff817e4531ef3d241c03665ecb30f345f1010215898a9f2e6144aebe7fd4a"}]}
+{"id" "limits" "index" 4 "name" "4 - What refuses, and an exact hold" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - What refuses, and an exact hold" "_tombstone" false "frame" #afield/rect [60.0 1800.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "limits_code_.kt" "lines" 29 "characters" 1372 "sha256" "62c451f7bb14c56a7624143be40c3d3fd0f3a3fa93bf117f33528dede38d878c"}]}
 ```
 
 ```kotlin [field-property box="limits" name="code" path="limits_code_.kt"]
@@ -344,16 +346,16 @@ val held = with(Functions) {
         smoothStep(185.0, 285.0, Functions.Domain.ALL) * (one - smoothStep(315.0, 415.0, Functions.Domain.ALL))
     one - (one - background) * (one - envelope)
 }
-val checks = listOf(
+val checks = [
     held.certifiedEquals(1.0, 285.0, 315.0),
     held.certifiedEquals(1.0, 284.0, 315.0),
     held.certifiedNeverExceeds(1.0, 0.0, 3600.0, slack = 1e-12),
-)
+]
 display(
     "limits",
-    Table(listOf("question", "answer"), title = "refusals and exact holds")
+    Table(["question", "answer"], title = "refusals and exact holds")
         .row("enclose the lambda channel", "certified = ${refused.certified}: ${refused.refusal}")
-        .rows(checks.map { listOf(it.claim, it.kind.name + (it.witness?.let { w -> " at x = $w" } ?: "")) })
+        .rows(checks.map { [it.claim, it.kind.name + (it.witness?.let { w -> " at x = $w" } ?: "")] })
         .role("answer", CellRole.ACCENT),
 )
 ```

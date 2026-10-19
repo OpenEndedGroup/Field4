@@ -6,7 +6,7 @@ as events: when each starts, how long it lasts, which register it sits in.
 notation("grid") {
     stroke = "#868e96"
     frame("projection", 100, 700, 960, 270)
-    for (row in 1..2) line(listOf(vec(100, 700 + row * 90), vec(1060, 700 + row * 90)))
+    for (row in 1..2) line([vec(100, 700 + row * 90), vec(1060, 700 + row * 90)])
     rect(160, 715, 120, 60, fill = "#1971c2") // one to start with
 }
 val score = notation.space("projection", x = 0.0..16.0, y = 3.0..0.0) // 16 beats; 3 rows

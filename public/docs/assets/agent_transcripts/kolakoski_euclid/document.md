@@ -26,7 +26,7 @@ POKE THIS: `slots` is where the Euclid lives - on 3 slots two children split the
 hit. `depth` is how far down the tree the music goes.
 
 ```edn [field-box id="kolakoski_tree" role="properties"]
-{"id" "kolakoski_tree" "index" 0 "name" "2 - the branching tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - the branching tree" "_tombstone" false "frame" #afield/rect [60.0 226.0 381.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kolakoski_tree_code_.kt" "lines" 102 "characters" 3940 "sha256" "1dffee4cb5cbd1e95c7eb35972e409bf7dfe3387185661d708d45ea744fa5e6f"}]}
+{"id" "kolakoski_tree" "index" 0 "name" "2 - the branching tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - the branching tree" "_tombstone" false "frame" #afield/rect [60.0 226.0 381.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kolakoski_tree_code_.kt" "lines" 102 "characters" 3928 "sha256" "53a738ae4a91e7cbbdeb5a29fd54ba9310f66d0257936feb94fbecafe4e286a1"}]}
 ```
 
 ```kotlin [field-property box="kolakoski_tree" name="code" path="kolakoski_tree_code_.kt"]
@@ -49,7 +49,7 @@ val b = 2
 
 fun tile(depth: Int, slots: Int, a: Int, b: Int): List<List<PatArc>> {
     val word = kolakoskiWord(4 shl depth, a, b) // more terms than the tree can eat
-    var level = listOf(PatArc(PatQ.ZERO, PatQ.ONE))
+    var level = [PatArc(PatQ.ZERO, PatQ.ONE)]
     var cursor = 0
     val levels = mutableListOf(level)
     repeat(depth) {
@@ -92,7 +92,7 @@ so at equal gain all four voices land together on the strong hits and the hierar
 a pile. The gain ramp makes it foreground and background instead. Short samples for the same
 reason: sd:2 and click decay before the next level arrives.
 */
-val voices = listOf("bd" to 1.0, "sd:2" to 0.7, "hh:2" to 0.45, "click" to 0.35)
+val voices = ["bd" to 1.0, "sd:2" to 0.7, "hh:2" to 0.45, "click" to 0.35]
 val played = t.takeLast(voices.size)
 val music = stack(
     *played

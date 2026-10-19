@@ -30,7 +30,7 @@ The gradient flows through the emitted GLSL itself, interpreted node by node on
 `afield.math.autodiff`'s reverse-mode AD tape, one tape per pixel. No second evaluator.
 
 ```edn [field-box id="stacksl-fit" role="properties"]
-{"id" "stacksl-fit" "index" 0 "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-fit_code_.kt" "lines" 127 "characters" 4598 "sha256" "b372d956a2887553e3419e29df22b718ddc30f947817005806b40595884f71af"}]}
+{"id" "stacksl-fit" "index" 0 "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Differentiable StackSL — gradient descent on the shader's own numbers" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-fit_code_.kt" "lines" 127 "characters" 4600 "sha256" "0977f8fcc1ee29b4c12941b4db0de1b3b27ba69fee86add57b339dfb9ca9b615"}]}
 ```
 
 ```kotlin [field-property box="stacksl-fit" name="code" path="stacksl-fit_code_.kt"]
@@ -65,7 +65,7 @@ run {
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
         palette
-    """
+        """
             .trimIndent()
 
     val targetProgram =
@@ -76,7 +76,7 @@ run {
         1.0 1.0 1.0 1 vec4
         0.12 0.55 0.88 1 vec4
         palette
-    """
+        """
             .trimIndent()
 
     val template = StackSLCpu.stillTemplate()
@@ -141,7 +141,7 @@ run {
     val gutter = 6
     val width = 4 * panel + 3 * gutter
     val strip = IntArray(width * panel) { 0xFF14161A.toInt() }
-    listOf(target, seed, fitted, residual).forEachIndexed { index, raster ->
+    [target, seed, fitted, residual].forEachIndexed { index, raster ->
         val argb = raster.toArgb()
         val x0 = index * (panel + gutter)
         for (y in 0 until panel) for (x in 0 until panel) {
@@ -184,7 +184,7 @@ program's render and the fitted wire vector's render. If the literal rewriting w
 column off by one, a token mismatched — it would not be small, it would be a different picture.
 
 ```edn [field-box id="stacksl-roundtrip" role="properties"]
-{"id" "stacksl-roundtrip" "index" 1 "name" "The round trip — the fit's output is a program you can paste back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The round trip — the fit's output is a program you can paste back" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-roundtrip_code_.kt" "lines" 96 "characters" 3909 "sha256" "1f739a8ccd823187e6403cd33cb51dcb696d1dcc325bb124e941ae923452f693"}]}
+{"id" "stacksl-roundtrip" "index" 1 "name" "The round trip — the fit's output is a program you can paste back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The round trip — the fit's output is a program you can paste back" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-roundtrip_code_.kt" "lines" 96 "characters" 3911 "sha256" "84a65037771392aa1fd29dd54a965b3adb792d18b5f25a6f24b0a9429230ac7e"}]}
 ```
 
 ```kotlin [field-property box="stacksl-roundtrip" name="code" path="stacksl-roundtrip_code_.kt"]
@@ -215,7 +215,7 @@ run {
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
         palette
-    """
+        """
             .trimIndent()
 
     val targetProgram =
@@ -226,7 +226,7 @@ run {
         1.0 1.0 1.0 1 vec4
         0.12 0.55 0.88 1 vec4
         palette
-    """
+        """
             .trimIndent()
 
     val template = StackSLCpu.stillTemplate()
@@ -267,7 +267,7 @@ run {
     val gutter = 6
     val width = 2 * panel + gutter
     val strip = IntArray(width * panel) { 0xFF14161A.toInt() }
-    listOf(viaWires, viaSource).forEachIndexed { index, raster ->
+    [viaWires, viaSource].forEachIndexed { index, raster ->
         val argb = raster.toArgb()
         val x0 = index * (panel + gutter)
         for (y in 0 until panel) for (x in 0 until panel) {

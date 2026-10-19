@@ -20,7 +20,7 @@ MoveTo LineTo | MoveTo LineTo LineTo Close | MoveTo LineTo LineTo Close
 and the first Close has a whole arrowhead after it.
 
 ```edn [field-box id="close_node_arrow" role="properties"]
-{"id" "close_node_arrow" "index" 0 "name" "the shipped primitive that has an interior Close in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the shipped primitive that has an interior Close in it" "_tombstone" false "frame" #afield/rect [80.0 700.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_arrow_code_.kt" "lines" 69 "characters" 2751 "sha256" "e6a669769935fe31bf8e60325312ebf003c4ed7be4d3080b89ee4cd8891318d3"}]}
+{"id" "close_node_arrow" "index" 0 "name" "the shipped primitive that has an interior Close in it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the shipped primitive that has an interior Close in it" "_tombstone" false "frame" #afield/rect [80.0 700.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_arrow_code_.kt" "lines" 68 "characters" 2713 "sha256" "2c7ca7d68dae085be88d666fe30909b4d7a77d41f8fdfa42517d07940d912ab9"}]}
 ```
 
 ```kotlin [field-property box="close_node_arrow" name="code" path="close_node_arrow_code_.kt"]
@@ -55,12 +55,11 @@ val dashes = a.byDashing(14f, 8f).map { cyan(it).copy { thickness = 3.0 } }
 val hull = a.byConvexHull2D()
 
 showPlaneGrid(
-    "arrow(startHead, endHead)\n${a.nodes.size} nodes, Closes at $closes" to listOf(cyan(a)),
+    "arrow(startHead, endHead)\n${a.nodes.size} nodes, Closes at $closes" to [cyan(a)],
     "byReversing\n${reversed.nodes.size} nodes, ${reversed.nodes.count { it is FLine.Close }} Closes kept" to
-        listOf(ghost(a), cyan(reversed)),
-    "bySubdividing(1)\n${subdivided.nodes.count { it is FLine.Close }} Closes kept" to
-        listOf(ghost(a), cyan(subdivided)),
-    "byDashing(14, 8)\n${dashes.size} dashes" to (listOf(ghost(a)) + dashes),
+        [ghost(a), cyan(reversed)],
+    "bySubdividing(1)\n${subdivided.nodes.count { it is FLine.Close }} Closes kept" to [ghost(a), cyan(subdivided)],
+    "byDashing(14, 8)\n${dashes.size} dashes" to ([ghost(a)] + dashes),
     columns = 2,
     cellWidth = 420,
     cellHeight = 230,
@@ -85,13 +84,13 @@ val results = ops.map { (name, op) ->
 }
 val bad = results.count { it.contains("THREW") }
 
-(listOf(
+([
         "arrow(startHead = true, endHead = true): ${a.nodes.size} nodes, " +
             "Closes at $closes, of which ${interior.size} interior",
         "convex hull: ${hull.nodes.size} nodes",
         "",
         "$bad of ${ops.size} operations throw on it:",
-    ) + results)
+    ] + results)
     .joinToString("\n")
 ```
 
@@ -109,7 +108,7 @@ the start and the reversal below comes out right — the defect only shows on a 
 where the Close is carrying a segment nothing else draws.
 
 ```edn [field-box id="close_node_reversal" role="properties"]
-{"id" "close_node_reversal" "index" 1 "name" "reversing a closed contour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "reversing a closed contour" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_reversal_code_.kt" "lines" 101 "characters" 3724 "sha256" "ce32a4a530db8cb53b8e12fe7c3ee5aacbde64d96445a5dc78b784a6815289a2"}]}
+{"id" "close_node_reversal" "index" 1 "name" "reversing a closed contour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "reversing a closed contour" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_reversal_code_.kt" "lines" 101 "characters" 3694 "sha256" "24fdbb77da905e0b988a2a769638bef65ed1412fcaf4825dd4162c8ca925120e"}]}
 ```
 
 ```kotlin [field-property box="close_node_reversal" name="code" path="close_node_reversal_code_.kt"]
@@ -191,10 +190,10 @@ val glyphOld = oldByReversing(glyph)
 val glyphNew = glyph.byReversing()
 
 showPlaneGrid(
-    "closed square, old reversal\n${coverage(square, squareOld)}" to listOf(ghost(square), cyan(squareOld)),
-    "closed square, byReversing today\n${coverage(square, squareNew)}" to listOf(ghost(square), cyan(squareNew)),
-    "two contours, old reversal\n${coverage(glyph, glyphOld)}" to listOf(ghost(glyph), cyan(glyphOld)),
-    "two contours, byReversing today\n${coverage(glyph, glyphNew)}" to listOf(ghost(glyph), cyan(glyphNew)),
+    "closed square, old reversal\n${coverage(square, squareOld)}" to [ghost(square), cyan(squareOld)],
+    "closed square, byReversing today\n${coverage(square, squareNew)}" to [ghost(square), cyan(squareNew)],
+    "two contours, old reversal\n${coverage(glyph, glyphOld)}" to [ghost(glyph), cyan(glyphOld)],
+    "two contours, byReversing today\n${coverage(glyph, glyphNew)}" to [ghost(glyph), cyan(glyphNew)],
     columns = 2,
     cellWidth = 420,
     cellHeight = 230,
@@ -208,11 +207,11 @@ val roundTrip = { l: FLine ->
     if (same) "identical" else "DIFFERENT: ${back.nodes.map { it::class.simpleName }}"
 }
 
-listOf(
+[
         "grey = the original, cyan = its reversal",
         "square   reverse-twice: ${roundTrip(square)}",
         "glyph    reverse-twice: ${roundTrip(glyph)}",
-    )
+    ]
     .joinToString("\n")
 ```
 
