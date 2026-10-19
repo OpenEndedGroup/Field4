@@ -190,6 +190,9 @@ class Mark internal constructor(
     /** The Excalidraw groups this mark is in, innermost first (Excalidraw's own order). */
     val groups: List<String> get() = (json["groupIds"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content } ?: emptyList()
 
+    /** Makes this mark follow [box] when it moves; the same as `notation.anchor(this, box)`. */
+    fun anchorTo(box: Box) = view.anchor(this, box)
+
     fun contains(p: Vec2): Boolean = bounds.let { p.x >= it.x && p.x <= it.x + it.w && p.y >= it.y && p.y <= it.y + it.h }
 
     /** The mark's geometry in world coordinates, rotation included: a stroke's polyline, or a shape's outline. */
