@@ -3913,6 +3913,47 @@ def decode_value_escapes(text: str) -> str:
     return "".join(out)
 
 
+def literal_newline_warning(text: str | None) -> str | None:
+    """A warning when [text] holds a literal backslash-n outside any quoted string and no real newline.
+
+    That shape is almost always a multi-line value typed on one command line without
+    `--value-escapes`, which sends one line of code with `\\n` in it. A `\\n` inside "..." or
+    '...' is a string's own escape and stays silent, as does any value that already has a newline.
+    """
+    if not text or "\n" in text:
+        return None
+    quote: str | None = None
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "\\":
+            if quote is None and i + 1 < len(text) and text[i + 1] == "n":
+                return (
+                    "--value contains a literal \\n outside a string and was sent as written; "
+                    "pass --value-escapes to decode it into a newline, or use --file"
+                )
+            i += 2
+            continue
+        if quote is None and ch in "\"'":
+            quote = ch
+        elif ch == quote:
+            quote = None
+        i += 1
+    return None
+
+
+def warn_literal_newline(data: Any, value: str | None, escapes: bool) -> Any:
+    """Attach `valueWarnings` to [data] (and print it) when [literal_newline_warning] fires."""
+    warning = None if escapes else literal_newline_warning(value)
+    if warning is None:
+        return data
+    print(f"field_backdoor.py: warning: {warning}", file=sys.stderr, flush=True)
+    if isinstance(data, dict):
+        data = dict(data)
+        data["valueWarnings"] = [warning]
+    return data
+
+
 def parse_command(command_line: str) -> argparse.Namespace:
     parser = build_command_parser()
     try:
@@ -4582,6 +4623,8 @@ async def dispatch_command(
             value=value,
             timeout=timeout,
         )
+        if not args.file:
+            data = warn_literal_newline(data, args.value, args.value_escapes)
         result = command_result(command_line, True, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
@@ -4634,6 +4677,10 @@ async def dispatch_command(
         if args.value_escapes and args.value is None:
             raise BackdoorError(f"{args.command}: --value-escapes decodes --value; a --file is sent as written")
         value = args.value
+        if value is not None and not args.value_escapes:
+            literal_newline_warning_text = literal_newline_warning(value)
+            if literal_newline_warning_text:
+                print(f"field_backdoor.py: warning: {literal_newline_warning_text}", file=sys.stderr, flush=True)
         if value is not None and args.value_escapes:
             value = decode_value_escapes(value)
         if args.file:

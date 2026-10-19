@@ -733,6 +733,11 @@ class SessionInformation(
         _fileWatchManager?.stop()
         _fileWatchManager = null
         retireBoxes(boxes.values.toList(), "session-cleanup")
+        // A closed document leaves no reactive bookkeeping behind: write its dependency record
+        // (so the next open still remembers it), then drop the in-memory copies.
+        runCatching { PropertyDependencies.flush(this, force = true) }
+        PropertyDependencies.forget(filename)
+        afield.runtime.lifecycle.ReactiveRuns.forgetDocument(filename)
     }
 }
 
