@@ -26,7 +26,7 @@ shows, or slot numbers such as `"3"`. This flies through three of them, taking 4
 each and holding 1.5 seconds at each:
 
 ```diffstatic {data-lang=kotlin}
-canvasFlight(listOf("overview", "plan", "close-ups"), legSeconds = 4.0, holdSeconds = 1.5)
+canvasFlight(["overview", "plan", "close-ups"], legSeconds = 4.0, holdSeconds = 1.5)
 ```
 
 The flight plays in every window open on the document. A misspelt bookmark is an error in the box,
@@ -58,7 +58,7 @@ Give `record` a path, and the flight is filmed rather than played:
 
 ```diffstatic {data-lang=kotlin}
 canvasFlight(
-    listOf("overview", "plan", "close-ups"),
+    ["overview", "plan", "close-ups"],
     legSeconds = 4.0, holdSeconds = 1.5,
     record = "~/Movies/field-flight.mp4",
 )
@@ -102,7 +102,7 @@ ui.eval("""
   return 'saved';
 """)
 ui.pause(1500)
-ui.filmCanvasFlight(vid, listOf("overview", "plan", "close-ups"), legSeconds = 4.0, holdSeconds = 1.5,
+ui.filmCanvasFlight(vid, ["overview", "plan", "close-ups"], legSeconds = 4.0, holdSeconds = 1.5,
     width = 1280, height = 720, pixelRatio = 1.0)
 ```
 
