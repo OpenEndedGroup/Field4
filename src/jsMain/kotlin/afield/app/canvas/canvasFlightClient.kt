@@ -77,9 +77,12 @@ object CanvasFlightClient {
         return Prepared(spec, timeline, bookmarks, views, threeViewers(), emptyLegs(views, r.w, r.h))
     }
 
+    /** Boxes and open panels covering less of the window than this leave it empty. */
+    private const val EMPTY_WINDOW_FRACTION = 0.1
+
     /**
-     * The legs that, flown straight at log-space zoom, show a window with no box and no open output
-     * panel in it somewhere along the way: at a fifth, two fifths, three fifths or four fifths.
+     * The legs that, flown straight at log-space zoom, show a window that boxes and open output panels
+     * barely cover ([EMPTY_WINDOW_FRACTION]) somewhere along the way, sampled at each tenth of the leg.
      */
     private fun emptyLegs(views: List<CanvasFlightView>, paneW: Double, paneH: Double): Set<Int> {
         val pane = CanvasCamera.main
@@ -92,13 +95,20 @@ object CanvasFlightClient {
         return (1 until views.size).filter { to ->
             val a = views[to - 1]
             val b = views[to]
-            listOf(0.2, 0.4, 0.6, 0.8).any { e ->
+            (1..9).any { k ->
+                val e = k / 10.0
                 val x = a.x + (b.x - a.x) * e
                 val y = a.y + (b.y - a.y) * e
                 val z = a.zoom * (b.zoom / a.zoom).pow(e)
                 val hw = paneW / (2 * z)
                 val hh = paneH / (2 * z)
-                things.none { t -> t.x < x + hw && t.x + t.width > x - hw && t.y < y + hh && t.y + t.height > y - hh }
+                // A sliver of a panel at the edge of the window is not something to look at.
+                val covered = things.sumOf { t ->
+                    val w = minOf(t.x + t.width, x + hw) - maxOf(t.x, x - hw)
+                    val h = minOf(t.y + t.height, y + hh) - maxOf(t.y, y - hh)
+                    if (w > 0.0 && h > 0.0) w * h else 0.0
+                }
+                covered < EMPTY_WINDOW_FRACTION * (4 * hw * hh)
             }
         }.toSet()
     }
@@ -191,6 +201,8 @@ object CanvasFlightClient {
             reply.ok = true
             reply.duration = p.timeline.duration
             reply.viewers = p.viewers.size
+            // The legs, by the stop they fly to, that pull back because their straight path crosses empty canvas.
+            reply.pullBackLegs = p.emptyLegs.sorted().toTypedArray()
             reply.pane = obj { it.x = r.x; it.y = r.y; it.w = r.w; it.h = r.h }
             reply.stops = p.bookmarks.mapIndexed { i, b ->
                 val (tx, ty) = p.views[i].translation(r.x, r.y, r.w, r.h)
