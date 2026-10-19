@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 16781 of 33157 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 16792 of 33169 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2238 undocumented entry points** (types, top-level functions and values) and 13443 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2238 undocumented entry points** (types, top-level functions and values) and 13444 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -103,7 +103,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ThreeJsInspector.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeJsInspector.kt) | Graphics | fline_examples, three_output, geometry_review | 0 | 62 | 31% |
 | [StackSLEvolution.kt](../src/jvmMain/kotlin/afield/lang/stacksl/evolution/StackSLEvolution.kt) | Search | stacksl_evolve | 0 | 54 | 54% |
 | [GraphQuery.kt](../src/jvmMain/kotlin/afield/data/query/graph/GraphQuery.kt) | Data | graph_query, visualizers | 0 | 53 | 39% |
-| [Notation.kt](../src/jvmMain/kotlin/afield/ui/notation/Notation.kt) | Visualization | chain_drawn_paint, drawing_and_notation, chain_drawn_score | 0 | 50 | 54% |
+| [Notation.kt](../src/jvmMain/kotlin/afield/ui/notation/Notation.kt) | Visualization | chain_drawn_paint, drawing_and_notation, chain_drawn_score | 0 | 51 | 57% |
 | [FnInterval.kt](../src/jvmMain/kotlin/afield/math/functions/FnInterval.kt) | Function | fn_intervals | 0 | 46 | 51% |
 | [PetriNets.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriNets.kt) | Visualization | petri_nets, chain_petri_sparks, petri_cheatsheet | 0 | 46 | 58% |
 | [FLineInterpolation.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineInterpolation.kt) | Graphics | fline_examples | 0 | 44 | 29% |
@@ -707,7 +707,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [GlslValue.kt](../src/jvmMain/kotlin/afield/lang/stacksl/cpu/GlslValue.kt) | Languages | — | 0 | 9 | 52% |
 | [StreamDiffusionSession.kt](../src/jvmMain/kotlin/afield/media/video/diffusion/StreamDiffusionSession.kt) | Video | — | 0 | 9 | 25% |
 | [HardwareOpticalFlow.kt](../src/jvmMain/kotlin/afield/media/vision/HardwareOpticalFlow.kt) | Imaging | — | 0 | 9 | 30% |
-| [ReactiveRuns.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/ReactiveRuns.kt) | Workspace | — | 0 | 9 | 65% |
+| [ReactiveRuns.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/ReactiveRuns.kt) | Workspace | — | 0 | 9 | 67% |
 | [decorations.kt](../src/jvmMain/kotlin/afield/ui/output/decorations.kt) | Visualization | — | 0 | 9 | 71% |
 | [AiBoxConversation.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiBoxConversation.kt) | Machine learning | — | 0 | 8 | 33% |
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/data/graph/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
