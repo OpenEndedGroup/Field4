@@ -111,6 +111,13 @@ fun panel(frame: Int, camera: CameraMotion, minSpeed: Double): Pair<String, Img>
 showImgGrid(*[60, 120, 210, 270].map { panel(it, CameraMotion.KEEP, minSpeed = 0.0) }.toTypedArray(), columns = 2, cellSide = 480)
 ```
 
+The whole clip in this look, rendered by the second box of the
+[`eagle_flow_explorer`](agent_transcripts.md#eagle_flow_explorer) starting point:
+
+<video controls muted loop playsinline preload="metadata" width="960" height="588" poster="../assets/vector_field_topology/eagle_raw.png" style="width:100%;height:auto">
+  <source src="assets/vector_field_topology/eagle_flow_raw.mp4" type="video/mp4">
+</video>
+
 The flow's critical points depend on what is taken to be standing still. `CameraMotion.AFFINE`
 fits the camera's motion to all the particles in each frame (a shift, a slight turn and zoom),
 refits it without the particles that disagree, which are mostly the bird's, and subtracts it.

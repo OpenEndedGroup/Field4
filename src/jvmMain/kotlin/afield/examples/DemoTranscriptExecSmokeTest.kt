@@ -552,6 +552,8 @@ object DemoTranscriptExecSmokeTest {
         "morse_smale_explorer",
         // Optional native field_morse_smale; the live box loops forever.
         "tracking_explorer",
+        // vector_field_topology.md's footage starting point: decodes its clip with FFmpeg, and the movie box renders 306 frames.
+        "eagle_flow_explorer",
         // Optional native field_principal_curves (./gradlew buildPrincipalCurvesNative); the live box loops forever.
         "principal_curves_explorer",
         // Optional native field_polyvector (OpenCV, Boost, Eigen; ./gradlew buildPolyvectorNative).

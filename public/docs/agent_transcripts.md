@@ -2476,6 +2476,21 @@ largest blur it survives. Needs the optional Morse–Smale library: `./gradlew b
 
 [Open ↗](offline.html?file=assets/agent_transcripts/tracking_explorer/metadata.edn)
 
+### eagle_flow_explorer
+
+**An eagle's flight, read in two frames of reference.** A 1930s film of a golden eagle landing on a
+falconer's fist, turned into a flow by tracked particles. Taken as it is, the flow's streamlines,
+separatrices and critical points describe the film weaving in the gate, and sweep across the sky
+around the bird. A slider removes the camera's motion, leaving only the eagle, and another scrubs
+the 306 frames; the second box renders the whole clip as a movie. From
+[Vector field topology](vector_field_topology.md#flow-from-old-film). Needs FFmpeg.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/eagle_flow_raw.png" capture="box" open-outputs="true" wait="8.0" embed=true hidden=true timeout="240" padding="12" name="gallery-eagle-flow" alt="A darkened frame of old film in which an eagle, wings spread, lands on a falconer's fist, covered edge to edge in pale streamlines that sweep across the sky in long curves, wrap around the bird in a tight spiral and fan out over the field below, with orange and blue separatrices running from two white saddles" macro-file="../../dev_docs/agents/transcripts/eagle_flow_explorer.yaml" capture-box="eagle_flow_live"}
+// The transcript builds and runs the first box; this is frame 270 with the camera's motion kept.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/eagle_flow_explorer/metadata.edn)
+
 ## FieldML scenes
 
 <!-- transcript-index: verified-by = compile -->
