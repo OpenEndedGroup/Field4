@@ -159,6 +159,30 @@ class FileWatchMetadataReconcileTest {
     }
 
     /**
+     * A sidecar edited on disk while the same property has an unsaved edit in Field used to be
+     * dropped without a word, and the next autosave wrote Field's text over it. Field's edit still
+     * wins, but the disk text is kept in `backups/` first.
+     */
+    @Test
+    fun anExternalEditOverriddenByAnUnsavedFieldEditIsKept() {
+        val directory = tempDocument("overridden")
+        val info = session(directory, "a")
+        val a = info.boxes.getValue("a")
+        val watcher = info.fileWatchManager
+        a.setPropertyRaw("code", "val inField = 1")
+        info.markSidecarPending("a", "code")
+        val sidecar = File(directory, "a_code_.kt")
+        sidecar.writeText("val onDisk = 2")
+
+        runBlocking { watcher.handleFileChange(sidecar) }
+
+        kotlin.test.assertEquals("val inField = 1", a.getPropertyRaw("code"), "the unsaved Field edit must still win")
+        val kept = File(directory, "backups").listFiles { f -> f.name.startsWith("a_code_.kt.external-") }.orEmpty()
+        kotlin.test.assertEquals(1, kept.size, "the overridden disk edit was not kept in backups/")
+        kotlin.test.assertEquals("val onDisk = 2", kept.single().readText())
+    }
+
+    /**
      * Editing the inline copy of a sidecar property (`#afield/file-inline {path, inline}`) in
      * `metadata.edn` used to be logged as applied while changing nothing: the value was resolved
      * through the untouched sidecar file. The inline text is applied now.

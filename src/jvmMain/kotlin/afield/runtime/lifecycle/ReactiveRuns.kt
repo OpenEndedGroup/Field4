@@ -344,6 +344,18 @@ object ReactiveRuns {
         }
     }
 
+    /**
+     * Relaunches [box]'s `code` on the strand it is running on (else `default`), recorded under
+     * [entrypoint]; for callers outside a cascade, such as the file watcher's `onExternalEdit`.
+     */
+    fun relaunch(box: Box, entrypoint: String) {
+        val source = box.getPropertyRaw("code") as? String ?: ""
+        val strand = box.currentRunningStates.keys.firstOrNull { !it.startsWith("__") } ?: "default"
+        val execute = Execute(box.id, "launch", 1, source, false, strand = strand)
+        FlightRecorder.recordLaunchEntrypoint(entrypoint, box, execute, strand = strand)
+        box.ke.launchAll(box, execute, source, strand, documentReply(box))
+    }
+
     private fun documentReply(box: Box): (Message) -> Unit = { m ->
         if (box.isInsideInitialized()) box.inside.sessions.forEach { _send(it, m) }
     }

@@ -27,6 +27,7 @@ import afield.ui.output.column
 import afield.ui.output.history
 import afield.ui.output.update
 
+import afield.app.commands.actions
 import afield.app.notifications.notify
 import afield.app.protocol.Rect
 import afield.app.server.SessionInformation
@@ -134,6 +135,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
 
     private companion object {
         const val ROOT_BOX_ID = "root"
+        /** Box property naming what follows a reloaded sidecar: `run`, `reload-shader`, or nothing. */
+        const val ON_EXTERNAL_EDIT = "onExternalEdit"
         val TOPOLOGY_KEYS = setOf("children", "parents", "nested", "nestedIn")
     }
 
@@ -439,7 +442,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
         }
     }
 
-    private suspend fun handleFileChange(file: File) {
+    internal suspend fun handleFileChange(file: File) {
         val absolutePath = file.absolutePath
 
         // Small delay to ensure file write is complete
@@ -467,6 +470,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
 
         if (sidecarPath != null && pendingIsLocalEdit(sidecarPath.boxId, sidecarPath.propertyName)) {
             fileTimestamps[absolutePath] = currentTime
+            preserveOverriddenEdit(file, sidecarPath)
             SaveReloadLog.log(
                 "watch-skip-pending-local",
                 "doc=${sessionInfo.filename} path=$absolutePath box=${sidecarPath.boxId} property=${sidecarPath.propertyName} mtime=$currentTime size=${file.length()}"
@@ -500,6 +504,55 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
         if (!sessionInfo.hasPendingSidecarSave(boxId, propertyName)) return false
         val loaded = watcherLoadedValues[boxId to propertyName] ?: return true
         return sessionInfo.boxes[boxId]?.getPropertyRaw(propertyName) != loaded
+    }
+
+    /**
+     * An external edit to a sidecar that Field is about to overwrite with an unsaved in-Field edit
+     * (the 5 s autosave window). The in-Field edit still wins, but the disk text is copied to
+     * `backups/<sidecar>.external-<millis>` first and a notice names that copy, so the edit is
+     * neither lost nor overwritten silently. Returns the copy, or null if it could not be written.
+     */
+    internal fun preserveOverriddenEdit(file: File, sidecarPath: SidecarPath): File? {
+        val box = sessionInfo.boxes[sidecarPath.boxId]
+        val text = runCatching { file.readText() }.getOrNull() ?: return null
+        if (box != null && box.getPropertyRaw(sidecarPath.propertyName) == text) return null
+        return try {
+            val backups = File(file.parentFile, "backups").apply { mkdirs() }
+            val copy = File(backups, "${file.name}.external-${System.currentTimeMillis()}")
+            copy.writeText(text)
+            val who = box?.name?.ifBlank { null } ?: sidecarPath.boxId
+            lprintln("warning,file-watch", "external edit to ${file.name} overridden by an unsaved edit in Field; disk text kept in ${copy.path}")
+            notify("${file.name} was edited on disk while $who had an unsaved edit in Field; Field's edit wins, the disk version is in backups/${copy.name}", "file-watch")
+            SaveReloadLog.log("watch-preserve-overridden", "doc=${sessionInfo.filename} path=${file.absolutePath} copy=${copy.path}")
+            copy
+        } catch (e: Exception) {
+            lprintln("error,file-watch", "could not keep the overridden external edit to ${file.name}: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * The opt-in follow-up to a reloaded sidecar: a box whose `onExternalEdit` property is `"run"`
+     * relaunches its code, one with `"reload-shader"` runs its Reload Shader action. Anything else
+     * (the default, unset) only reloads the text.
+     */
+    private fun afterExternalReload(box: Box, propertyName: String) {
+        when (val mode = (box.getPropertyRaw(ON_EXTERNAL_EDIT) as? String)?.trim()?.lowercase()) {
+            null, "", "none" -> return
+            "run" -> runCatching { afield.runtime.lifecycle.ReactiveRuns.relaunch(box, "file-watch.onExternalEdit") }
+                .onFailure { lprintln("warning,file-watch", "onExternalEdit run of ${box.name} failed: ${it.message}") }
+            "reload-shader" -> {
+                val action = box.actions["moduleHere_reload"]
+                if (action == null) {
+                    lprintln("warning,file-watch", "onExternalEdit=reload-shader, but ${box.name} has no Reload Shader action")
+                } else {
+                    runCatching { action.target(listOf(box)) }
+                        .onFailure { lprintln("warning,file-watch", "onExternalEdit reload of ${box.name} failed: ${it.message}") }
+                }
+            }
+            else -> lprintln("warning,file-watch", "${box.name}: unknown onExternalEdit '$mode' (use run or reload-shader)")
+        }
+        SaveReloadLog.log("watch-on-external-edit", "doc=${sessionInfo.filename} box=${box.id} property=$propertyName")
     }
 
     internal fun recordWatcherLoad(boxId: String, propertyName: String, content: String) {
@@ -560,6 +613,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
                         "reload-sidecar",
                         "doc=${sessionInfo.filename} path=${file.absolutePath} box=${box.id} property=$propertyName"
                     )
+                    afterExternalReload(box, propertyName)
                 }
             }
 
