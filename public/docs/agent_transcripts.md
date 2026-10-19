@@ -208,6 +208,18 @@ headless, since the drawing is data on the server and needs no window. See
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn)
 
+### notation_elements
+
+The `notation` API end to end, in five boxes. `elements` draws one of every kind of mark from code
+(shapes, lines, strokes, text, an arrow between boxes, a frame, a group) in each fill and stroke
+style; `score` turns a frame into a score and reads the notes in it; `audit` calls every read, write
+and cut and prints one line per call; `listen` reacts to strokes, arrows and text drawn by hand; and
+`hand` sends a stroke, an arrow and a text from the page the way the drawing layer does. Run them in
+that order, then press `alt/option-d` to see the drawing. See
+[Drawing and Notation](drawing_and_notation.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/notation_elements/metadata.edn)
+
 ### slideshow_guide
 
 A four-step guide over two small boxes. Run `tour` and follow the links in its note: the first step

@@ -115,6 +115,9 @@ object DemoTranscriptExecSmokeTest {
         // code, read it back, register a stroke reaction, and read two graphic scores by cutting
         // them. No client is needed — the scene is server-side data — so every box executes headless.
         "drawing_notation",
+        // drawing_and_notation.md's full tour: every mark kind, a score, the API audit, stroke/arrow/text
+        // reactions. CPU only; headless, `hand`'s page script goes to no browser but the box completes.
+        "notation_elements",
         // interactive_guides.md's starting point: a four-step slideshow over two CPU boxes. Headless the
         // notes and selections go to no browser, but every box (the guide included) runs to completion.
         "slideshow_guide",

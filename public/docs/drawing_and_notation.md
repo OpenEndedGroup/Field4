@@ -34,6 +34,22 @@ markdown("marks", "${notation.mine.size} marks drawn")
 
 A stroke can carry pen pressure, as one drawn with a tablet pen does: `stroke(line, pressure = { t -> 0.2 + 0.8 * t })` gives the pressure, 0 to 1, as a function of how far along the stroke the pen is. `mark.pressures` reads it back, from code-drawn and hand-drawn strokes alike, and [Drawn Strokes Become Paint](chain_drawn_paint.md) paints with it.
 
+Marks made inside a `frame { }` block belong to that frame, so Excalidraw clips them to it and drags them with it, and `notation.inside(frame)` finds them. Marks made inside `group { }` are grouped the way Ctrl+G groups them: select one and you have them all. Shapes take a `fillStyle` (`"solid"`, `"hachure"`, `"cross-hatch"`, `"zigzag"`) and an `opacity`, and the block's `roughness` and `dashed` set how the lines after them are drawn:
+
+```diffstatic {data-lang=kotlin}
+notation {
+    roughness = 0.0
+    frame("score", 560, 180, 480, 240) {
+        rect(620, 220, 120, 30, name = "C5", fill = "#1971c2")
+        rect(740, 300, 180, 30, name = "E4", fill = "#2f9e44", fillStyle = "cross-hatch")
+    }
+    group {
+        ellipse(80, 500, 60, 40, fill = "#ffc9c9", opacity = 60)
+        diamond(150, 495, 60, 50, fill = "#ffc9c9", opacity = 60)
+    }
+}
+```
+
 Any mark, hand-drawn or not, can be changed or removed:
 
 ```diffstatic {data-lang=kotlin}
@@ -190,6 +206,8 @@ Draw two hairpins, or a diminuendo after the crescendo, and the same reading cod
 
 Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome screen's starting points. It has the ideas on this page as six boxes you run and then draw against: `draw`, `read`, `listen`, `projection 1`, `fontana mix` and `crescendo`. Or [browse it in the offline viewer](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn).
 
+[notation_elements](agent_transcripts.md#notation_elements) draws every kind of mark from code, reads a score, and calls each part of the API once in a box called `audit`, which prints one line per call.
+
 ## Reference
 
 | | |
@@ -199,11 +217,12 @@ Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome 
 | `notation.over(box)`, `.arrowsFrom(box)`, `.arrowsTo(box)` | marks in relation to a box |
 | `notation.near(point, r)`, `.inside(rect)` | marks by position |
 | `notation { … }`, `notation("key") { … }` | draw marks this box owns |
-| `notation.edit(m) { … }`, `.delete(m)`, `.anchor(m, box)`, `.clear()` | change marks |
+| `frame(name, x, y, w, h) { … }`, `group { … }` | marks that belong to a frame, marks grouped together; `mark.frame`, `mark.groups`, `notation.inside(frame)`, `notation.grouped(m)` read them |
+| `notation.edit(m) { … }`, `.delete(m)`, `.anchor(m, box)` (or `m.anchorTo(box)`), `.clear()` | change marks; the editor sets `stroke`, `fill`, `fillStyle`, `strokeStyle`, `dashed`, `roughness`, `opacity`, `text`, position and size |
 | `mark.points`, `mark.pressures`, `mark.pressuresAlong(n)` | a stroke's points and its pen pressure, per point or evenly spaced; [painted](chain_drawn_paint.md) |
 | `notation.onStroke`, `.onArrow`, `.onText`, `.onChange` | react to what people draw |
 | `notation.vertical(x)`, `.horizontal(y)`, `.intersect(a, b)` | cut the canvas |
-| `notation.space(region, x = …, y = …)` | a region with its own axes |
+| `notation.space(region, x = …, y = …)` | a region with its own axes; the region is a name, a mark, a box or a rect, and the mark that defines it is not read as a note |
 | `space.vertical(t)`, `.horizontal(v)`, `.events`, `.between(t0, t1)`, `.sounding(t)` | read it |
 | `mark.kind`, `.bounds`, `.points`, `.label`, `.box`, `.fromBox`, `.toBox`, `.toFLine()`, `.yAt(x)`, `.xAt(y)` | one mark |
 
