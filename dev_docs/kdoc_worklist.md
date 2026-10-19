@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 16652 of 32953 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 16656 of 32957 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **2238 undocumented entry points** (types, top-level functions and values) and 13373 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -30,7 +30,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Oscillators.kt](../src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt) | Synthesis | csound | 13 | 42 | 41% |
 | [StackSLStudyTools.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLStudyTools.kt) | Languages | stacksl_conversation | 13 | 16 | 21% |
 | [GeometryReviewTools.kt](../src/jvmMain/kotlin/afield/ai/agent/GeometryReviewTools.kt) | Machine learning | geometry_review | 12 | 26 | 0% |
-| [PuppetBrowser.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowser.kt) | Imaging | puppet_browser | 11 | 70 | 8% |
+| [PuppetBrowser.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowser.kt) | Imaging | puppet_browser | 11 | 70 | 10% |
 | [ThreeJsViewer.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeJsViewer.kt) | Graphics | three_output, fline_examples | 11 | 64 | 32% |
 | [Protocol.kt](../src/jvmMain/kotlin/afield/audio/ai/Protocol.kt) | Audio AI | field_audio_service_reference, audio_ai_corpus_microscope, visualizers | 11 | 61 | 73% |
 | [StackSL.kt](../src/jvmMain/kotlin/afield/lang/stacksl/StackSL.kt) | Languages | stacksl_examples | 11 | 47 | 15% |
@@ -141,7 +141,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [particlevideo.kt](../src/jvmMain/kotlin/afield/media/video/particlevideo.kt) | Video | particle_video | 0 | 20 | 45% |
 | [alife_lsystem.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_lsystem.kt) | ALife | alife_examples | 0 | 20 | 59% |
 | [PopulationSearch.kt](../src/jvmMain/kotlin/afield/study/search/PopulationSearch.kt) | Search | alife_examples | 0 | 20 | 50% |
-| [Orca.kt](../src/jvmMain/kotlin/afield/audio/synth/Orca.kt) | Patterns | orca | 0 | 19 | 65% |
+| [Orca.kt](../src/jvmMain/kotlin/afield/audio/synth/Orca.kt) | Patterns | orca | 0 | 19 | 67% |
 | [Transforms.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Transforms.kt) | Polytopes | polytope_examples | 0 | 19 | 76% |
 | [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/math/functions/FunctionEvolve.kt) | Function | functions_examples, alife_examples | 0 | 19 | 50% |
 | [alife_ca.kt](../src/jvmMain/kotlin/afield/simulation/automata/alife_ca.kt) | ALife | alife_examples, chain_life3d_render | 0 | 19 | 71% |

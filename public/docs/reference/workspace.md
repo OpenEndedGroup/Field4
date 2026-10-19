@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-212 source file(s), 2989 public symbol(s), 1067 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+213 source file(s), 2989 public symbol(s), 1067 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -6487,6 +6487,10 @@ The runs that `propUp` and `propDown` cause: pulling a missing value from upstre
 | <a id="reactiveruns-kt--reactiveruns--forgetdown"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">forgetDown</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/lifecycle/ReactiveRuns/#L520) | Forgets every Down declaration of [`box`](workspace.md#boxes-kt--box), and its run records (which otherwise held the deleted Box for the life of the JVM); for box deletion. A run still in flight keeps its state so its end is still seen. |
 | <a id="reactiveruns-kt--reactiveruns--notechange"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">noteChange</span><span class="p">(</span><span class="n">holder</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/lifecycle/ReactiveRuns/#L577) | A `propDown` value changed: hold it to the end of the writer's run, or send it on now. |
 | <a id="reactiveruns-kt--reactiveruns--ordernext"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">orderNext</span><span class="p">(</span><span class="n">waiting</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">adjacency</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/runtime/lifecycle/ReactiveRuns/#L724) | Of `waiting` (in priority order), the first that no *other* waiting id reaches through `adjacency`; the first of all when every one is reachable from another (a cycle). |
+
+## RunOwnedListener.kt { #runownedlistener-kt }
+
+`src/jvmMain/kotlin/afield/runtime/lifecycle/RunOwnedListener.kt` — [read the source](source/jvmMain/afield/runtime/lifecycle/RunOwnedListener/)
 
 ## RunScope.kt { #runscope-kt }
 
