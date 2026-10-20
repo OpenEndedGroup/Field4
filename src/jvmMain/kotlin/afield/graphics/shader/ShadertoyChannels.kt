@@ -312,8 +312,7 @@ private val noCamera = WeakHashMap<Renderer, LoadedTexture>()
  * at [width]×[height] (if the camera offers it) and kept open across re-runs, and uploaded every frame
  * as a renderer pre-target.
  *
- * With no camera, or no permission to use one, this box shows an error saying so and the channel is
- * black, which is what ShaderTrinket's Camera Input Demo shows with its camera off. The next run tries
+ * With no camera, or no permission to use one, this box prints why and the channel is black, which is what ShaderTrinket's Camera Input Demo shows with its camera off. The next run tries
  * again.
  */
 fun Box.webcam(device: Int = 0, width: Int = 1280, height: Int = 720, renderer: Renderer = fromContext()): HasImageView {
@@ -326,7 +325,7 @@ fun Box.webcam(device: Int = 0, width: Int = 1280, height: Int = 720, renderer: 
             camera
         } catch (t: Throwable) {
             val reason = generateSequence(t) { it.cause }.last().message ?: t.toString()
-            error("webcam(): no camera $device ($reason); iChannel samples black. On macOS, allow Field (or the Terminal that ran it) in System Settings > Privacy > Camera.", "code")
+            println("webcam(): no camera $device ($reason), so its channel is black. On macOS, allow Field (or the Terminal that started it) in System Settings > Privacy & Security > Camera, then run this box again.")
             noCamera.getOrPut(renderer) {
                 val data = MemoryUtil.memAlloc(4)
                 data.put(byteArrayOf(0, 0, 0, 255.toByte()))
