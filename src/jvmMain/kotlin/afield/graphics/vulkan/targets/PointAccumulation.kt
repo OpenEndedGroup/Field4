@@ -178,7 +178,7 @@ class PointAccumulation(
         require(width > 0 && height > 0) { "a PointAccumulation needs a positive size, got ${width}x$height" }
         fadeModule = Module(
             parameters(renderer) {
-                target.apply()
+                +target
                 name = "${settings.name}-fade"
                 depthTest = false
                 blend = false
@@ -229,7 +229,7 @@ class PointAccumulation(
      * `moduleHere(...)`, then add the module with [add].
      */
     fun pointParameters(name: String, configure: Parameters.() -> Unit = {}): Parameters = parameters(renderer) {
-        target.apply()
+        +target
         this.name = name
         depthTest = false
         depthWrite = false
