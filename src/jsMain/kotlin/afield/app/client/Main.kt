@@ -6672,6 +6672,10 @@ suspend fun main() {
                     handleCustomizationRequest(found, set)
                 }
 
+                "tint" -> {
+                    applyBoxTint(found, set.value)
+                }
+
                 "layers" -> {
                     layerDebugLog(
                         "recv set-string layers",
@@ -8014,4 +8018,18 @@ private fun setGoJobsBadge(uid: String, count: Int, strands: List<String>) {
             box.appendChild(badge)
         }
     }, GO_JOBS_BADGE_DELAY_MS)
+}
+
+/**
+ * Show a box's `tint` (Box.tint on the JVM): a CSS colour washed over the box with a bright edge, or
+ * none for a blank value. The look is `.box.tinted` in field.css.
+ */
+fun applyBoxTint(box: HTMLElement, value: String?) {
+    if (value.isNullOrBlank()) {
+        box.classList.remove("tinted")
+        box.style.removeProperty("--box-tint")
+    } else {
+        box.style.setProperty("--box-tint", value)
+        box.classList.add("tinted")
+    }
 }

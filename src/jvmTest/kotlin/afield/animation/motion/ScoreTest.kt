@@ -70,6 +70,27 @@ class ScoreTest {
     }
 
     @Test
+    fun aBoxIsTintedOnlyWhileThePlayheadIsOverIt() {
+        val a = box("a", Rect(95.0, 100.0, 110.0, 100.0))
+        val seen = mutableListOf<String>()
+        a.score { seen += a.tint }
+        val transport = transport()
+        transport.run(8) // x 0 .. 87.5: not there yet
+        assertEquals("", a.tint)
+        transport.run(1) // x 100: in
+        assertEquals(playingTint(a), a.tint)
+        assertTrue(a.tint.startsWith("hsla("), a.tint)
+        transport.run(12) // x 250: out again
+        assertEquals("", a.tint)
+        assertTrue(seen.dropLast(1).all { it == playingTint(a) }, "lit for every call but the exit: $seen")
+        transport.run(80 - 21) // round to the next loop and into the box
+        transport.run(9)
+        assertEquals(playingTint(a), a.tint)
+        transport.clearTints() // the score stopping
+        assertEquals("", a.tint)
+    }
+
+    @Test
     fun localTIsSecondsIntoTheBoxAndTheLoopComesRound() {
         val a = box("a", Rect(0.0, 0.0, 250.0, 100.0)) // a quarter of the span: one second of a 4 s loop
         val entries = mutableListOf<Long>()
