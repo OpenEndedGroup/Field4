@@ -90,6 +90,59 @@ candidates); the sink needs the Field Electron app (a plain browser shows "needs
 Electron app"); the source needs Electron installed for the puppet producer; Linux sources use
 the CPU-bitmap fallback; no native libwebrtc in the JVM.
 
-## Measurements
+## Verified (2026-10-20, M-series Mac, KosmicKrisp, Electron 44.5.1)
 
-See "Measured round trip" below, filled in from real runs.
+All in the Field Electron app on port 9820, against a local `worldbuild_server` on 8790
+(`AAAFRAME_LOCAL_AUTH=1`) and a second one on 8791 in GitHub-login mode.
+
+- **Field → Field, local relay.** `webrtc_shader_jam` as written: the sink publishes
+  `fieldbox/field-shader`, the receiving box's list shows it, and the renderer window draws the
+  stream (`public/docs/assets/webrtc/received-in-window.png`).
+- **Field → browser ShaderTrinket, aaaframe.** A headed Playwright Chromium on
+  `http://127.0.0.1:8790/shadertrinket` (`dev_docs/webrtc_latency/shadertrinket_driver.py`)
+  received `@student/field-shader` into `iChannel0`: 640×360, 21–29 fps decoded.
+- **Browser ShaderTrinket → Field, aaaframe.** The same page published `@student/browser`; clicking
+  it in the Field publisher list switched the source, and the window drew it.
+- **OAuth-mode aaaframe.** With a `session` cookie for `alice` the sink published as `alice/field`
+  and the list read `[alice/field]`; with no cookie the list's `error` was
+  "aaaframe refused the login (4401): the session cookie is missing or expired".
+- `WebRTCSignalingTest`: the local relay's message shapes, the WebSocket route, and the bridge
+  forwarding verbatim with the cookie (and the 4401 path), against a stand-in aaaframe.
+
+## Measured round trip
+
+`dev_docs/webrtc_latency/`: a sink draws its wall clock (ms mod 2^24) as 24 bars across the middle
+of the frame; a source with `measure = true` decodes each frame in `requestVideoFrameCallback` and
+subtracts from the same clock. So the number is Field render (CPU record time) → encode → network
+→ decode → presented in the receiving page. It excludes the last hop into the Field texture (the
+browser-texture paint and import), which is a frame or less.
+
+| path | load average | frames | p50 | p90 | p99 | max |
+| --- | --- | --- | --- | --- | --- | --- |
+| local relay | ~85 (just after a reboot) | 600 | 58.8 | 106.0 | 215.1 | 344.0 ms |
+| local aaaframe | ~30 | 600 | 46.5 | 62.7 | 71.2 | 86.5 ms |
+
+`captureStream(30)` alone accounts for up to 33 ms: a frame waits for the next capture tick.
+Chromium gave no `receiveTime`, so the network/decode split is not available. An idle machine has
+not been measured.
+
+## Bugs found on the way
+
+- **IOSurface import size.** `IOSurfaceHostBuffer` required the surface size to be a multiple of
+  the 16 KiB host-pointer alignment. Chromium sizes surfaces exactly, so only sizes like 1280×720
+  imported; 640×360 failed every frame on KosmicKrisp. It now imports up to the page boundary.
+- **A static canvas publishes nothing.** `captureStream` emits a frame only when the canvas
+  changes, so ShaderTrinket's default (time-independent) shader publishes an empty stream. Field's
+  views redraw every frame; the docs say so for the browser end.
+- **Watch before load.** A `watch()` sent before the hidden page loaded was lost; the page now
+  queues it, and the source re-sends when the page reports a different target.
+
+## Gaps
+
+- No TURN: peers on two NAT-blocked networks cannot connect.
+- The session cookie is copied by hand. A Field-side login window (Electron, aaaframe's GitHub
+  flow, then read the cookie from that session) would make the classroom case zero-config.
+- Browser ShaderTrinkets can join Field's local relay only if Field serves ShaderTrinket itself
+  (its signalling URL is its own host): that is the wave-2 port.
+- Linux sources use the CPU-bitmap fallback; Windows is untested; no audio.
+- The local relay has no login: anything that can reach this Field's server publishes as its user.

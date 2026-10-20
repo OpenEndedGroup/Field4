@@ -94,7 +94,7 @@ The [verification record](assets/four_in_output_areas/linux-verification.json) h
 canvas pixel counts, the exact switches, and the checks after re-running and deleting the box.
 
 See also: [Field 4 Graphics](afield_four_graphics.md) for meshes, modules and
-render-to-texture.
+render-to-texture, and [WebRTC Streams](webrtc.md) to publish a view as a live stream.
 
 ??? aside "Agents: how the figure is captured"
     The docs runner's capture browser is a plain Chromium, which cannot show these frames, so this
