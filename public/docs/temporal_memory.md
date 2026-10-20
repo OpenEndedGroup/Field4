@@ -199,7 +199,7 @@ three(name = "dance-strip", width = 1000, height = 420) {
 
 ![two rows of stick figures, a pose every half second of improvised dance, coloured by take](assets/temporal_memory/dance_strip.png)
 
-The poses run on without a visible seam. The improviser changes take at moments where the body in
+The poses run on without a visible join. The improviser changes take at moments where the body in
 one take is moving like the body in another.
 
 Pictures of poses can hide a loop, so plot the signal itself. The box below draws the height of
@@ -552,7 +552,7 @@ two ways to use the score:
 
 `judgedDecisions`, `judgeChanged`, `judgeVetoed` and `judgeStayed` count what the judge did.
 `Performance.reuse()`, `coverage()` and `joinRoughness(memory)` measure the result without
-asking the judge: how much of the output repeats a recent passage, how much of the recording gets
+asking the judge: how much of the output replays a recently played passage of the memory, how much of the recording gets
 used, and how sharp the joins are compared with the recording itself (1 means as smooth as the
 recording on average).
 
