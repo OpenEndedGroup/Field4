@@ -5,6 +5,9 @@ description: >
   decoded frame and measured speed against playback time, MIDI Time Code (a full-frame locate
   then running quarter frames) into a `TimecodeClock`, and a clock following LTC fed in
   audio-sized blocks. Pure CPU, no audio device, no MIDI port. Docs page: public/docs/smpte_timecode.md.
+docs:
+  - page: smpte_timecode.md
+    why: "Explains reading and generating SMPTE timecode."
 operations:
   - create:
       box: tc_arithmetic

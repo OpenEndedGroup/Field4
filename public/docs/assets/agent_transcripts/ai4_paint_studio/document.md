@@ -11,11 +11,14 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="ai4_paint_scribbler" index="0" -->
 
 ```edn [field-box id="ai4_paint_scribbler" role="properties"]
-{"id" "ai4_paint_scribbler" "index" 0 "name" "Scribbler" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Scribbler" "_tombstone" false "frame" #afield/rect [820.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_scribbler_code_.kt" "lines" 69 "characters" 3097 "sha256" "e6a64bc62388fd78693e658844a1389c5f123e084d6cd13f6d6843ffe7d8174d"}]}
+{"id" "ai4_paint_scribbler" "index" 0 "name" "Scribbler" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Scribbler" "_tombstone" false "frame" #afield/rect [820.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_scribbler_code_.kt" "lines" 72 "characters" 3109 "sha256" "d48034a70a13c221daf856beb5465ae4596ade51c7d05467f66244ece1e1477a"}]}
 ```
 
 ```kotlin [field-property box="ai4_paint_scribbler" name="code" path="ai4_paint_scribbler_code_.kt"]
 import kotlin.random.Random
+
+prop<() -> PaintCanvas>(studioCanvas)
+prop<() -> Unit>(refreshStudio)
 
 // A brush the painter does not have yet: a scribble, painted on the Studio's easel.
 val studio = thisBox.inside.boxes.values.single { it.name == "Studio" }
@@ -47,7 +50,7 @@ aiTool("scribble") {
         require(rowsPer100.isFinite() && rowsPer100 in 1.0..8.0) {
             "density must be between 1 and 8 rows of loops per 100 units"
         }
-        val canvas = studio.properties["studio.canvas"] as PaintCanvas
+        val canvas = studio.studioCanvas()
         val ring = outline().chunked(2)
         val rnd = Random(color().hashCode() + outline().hashCode())
         val loop = 50.0 / rowsPer100
@@ -80,7 +83,7 @@ aiTool("scribble") {
             row += loop * 1.1
             dir = -dir
         }
-        (studio.properties["studio.refresh"] as () -> Unit)()
+        studio.refreshStudio()
         "scribbled ${color()} over the region at density ${density()}"
     }
 }
@@ -103,7 +106,7 @@ the easel, the tube paints, the kept tools and the hung paintings.
 Needs the paint library: ./gradlew buildPaintNative.
 
 ```edn [field-box id="ai4_paint_studio" role="properties"]
-{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 964 "characters" 52716 "sha256" "6c8f169546b5375d6ea6a49487e0f4e4d6f40c33a878d69726c4101140f03e54"}]}
+{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 967 "characters" 52791 "sha256" "bfaa7443fe4ce8baa3d6e242d2773b23b848b8824f9327cea57ce24b9c48a0d5"}]}
 ```
 
 ```kotlin [field-property box="ai4_paint_studio" name="code" path="ai4_paint_studio_code_.kt"]
@@ -134,7 +137,10 @@ fun tools(): PaintToolbox = thisBox.properties.getOrPut("studio.tools") { PaintT
 fun pngUrl(bytes: ByteArray) = "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes)
 fun show() = display("main", canvas().png())
 // Another box's tool can paint on this easel: it finds the canvas here and calls this to show the result.
-thisBox.properties["studio.refresh"] = { show() }
+prop<() -> PaintCanvas>(studioCanvas)
+prop<() -> Unit>(refreshStudio)
+studioCanvas = { canvas() }
+refreshStudio = { show() }
 
 // "#rrggbb", one tube ("ultramarine blue"), or a pile of tubes by parts ("lead white:3, yellow ochre:1").
 class Paint(val color: Vec4, val tubes: Map<String, Double>?)

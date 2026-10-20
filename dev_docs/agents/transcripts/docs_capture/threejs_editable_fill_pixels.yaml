@@ -46,10 +46,10 @@ operations:
               vz: Double,
           ) {
               fun at(a: Double, b: Double) = Triple(ox + ux * a + vx * b, oy + uy * a + vy * b, oz + uz * a + vz * b)
-              listOf(
-                      listOf(at(0.0, 0.0), at(1.0, 0.0), at(1.0, 1.0), at(0.0, 1.0)),
-                      listOf(at(0.3, 0.3), at(0.3, 0.7), at(0.7, 0.7), at(0.7, 0.3)),
-                  )
+              [
+                      [at(0.0, 0.0), at(1.0, 0.0), at(1.0, 1.0), at(0.0, 1.0)],
+                      [at(0.3, 0.3), at(0.3, 0.7), at(0.7, 0.7), at(0.7, 0.3)],
+                  ]
                   .forEach { ring ->
                       cornerOfACube.moveTo(ring[0].first, ring[0].second, ring[0].third)
                       ring.drop(1).forEach { cornerOfACube.lineTo(it.first, it.second, it.third) }
@@ -100,10 +100,10 @@ operations:
           See PlanarTessellationParentCycleTest and dev_docs/fline_fill_orientation.md.
           */
           val overlapping = FLine()
-          listOf(
-                  listOf(0.0 to 0.0, 1.0 to 0.0, 1.0 to 1.0, 0.0 to 1.0),
-                  listOf(0.5 to 0.5, -0.5 to 0.5, -0.5 to -0.5, 0.5 to -0.5),
-              )
+          [
+                  [0.0 to 0.0, 1.0 to 0.0, 1.0 to 1.0, 0.0 to 1.0],
+                  [0.5 to 0.5, -0.5 to 0.5, -0.5 to -0.5, 0.5 to -0.5],
+              ]
               .forEach { ring ->
                   overlapping.moveTo(ring[0].first, ring[0].second, 0.0)
                   ring.drop(1).forEach { overlapping.lineTo(it.first, it.second, 0.0) }
@@ -153,10 +153,10 @@ operations:
               vz: Double,
           ) {
               fun at(a: Double, b: Double) = Triple(ox + ux * a + vx * b, oy + uy * a + vy * b, oz + uz * a + vz * b)
-              listOf(
-                      listOf(at(0.0, 0.0), at(1.0, 0.0), at(1.0, 1.0), at(0.0, 1.0)),
-                      listOf(at(0.3, 0.3), at(0.3, 0.7), at(0.7, 0.7), at(0.7, 0.3)),
-                  )
+              [
+                      [at(0.0, 0.0), at(1.0, 0.0), at(1.0, 1.0), at(0.0, 1.0)],
+                      [at(0.3, 0.3), at(0.3, 0.7), at(0.7, 0.7), at(0.7, 0.3)],
+                  ]
                   .forEach { ring ->
                       cornerOfACube.moveTo(ring[0].first, ring[0].second, ring[0].third)
                       ring.drop(1).forEach { cornerOfACube.lineTo(it.first, it.second, it.third) }
@@ -204,7 +204,7 @@ operations:
           server's samplesPerCubic = 48, which is the one place the two deliberately differ.
           */
           val petals = FLine()
-          listOf(0.0, 1.0).forEach { turn ->
+          [0.0, 1.0].forEach { turn ->
               val s = if (turn == 0.0) 1.0 else -1.0
               petals.moveTo(0.0, 0.0, 0.0)
               petals.cubicTo(0.9, s * 1.5, 0.0, 2.1, s * 1.5, 0.0, 3.0, 0.0, 0.0)

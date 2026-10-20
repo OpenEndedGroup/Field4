@@ -12,7 +12,7 @@ val fillet = 0.28
 val machinable =
     cuboid(3.2, 3.2, 0.5) -
         unionOf(
-            listOf(-1.1 to -1.1, 1.1 to -1.1, -1.1 to 1.1, 1.1 to 1.1).map { (x, y) ->
+            [-1.1 to -1.1, 1.1 to -1.1, -1.1 to 1.1, 1.1 to 1.1].map { (x, y) ->
                 cylinder(2.0, 0.22, segments = 128).at(x, y, 0.0)
             },
         )

@@ -1,5 +1,6 @@
 package afield.media.stream
 
+import afield.graphics.vulkan.targets.HasRenderToTexture
 import afield.app.protocol.Handled
 import afield.app.protocol.Message
 import afield.runtime.lifecycle.ReleasePolicy
@@ -56,9 +57,9 @@ import java.util.concurrent.atomic.AtomicInteger
  *
  * ```
  * val view = ElectronRTTView(640, 360)
- * val module = moduleHere { view.rtt.apply() }
+ * val module = moduleHere { +view }
  * module += "mesh" to m
- * view.rtt += "content" to module
+ * view += "content" to module
  * display("main", view.html())
  * ```
  *
@@ -80,7 +81,7 @@ class ElectronRTTView(
     format: Int = VK_FORMAT_B8G8R8A8_SRGB,
     private val renderer: Renderer = fromContext(),
     val name: String = "electron-rtt-${counter.incrementAndGet()}",
-) : Target, AutoCloseable {
+) : Target, HasRenderToTexture, AutoCloseable {
 
     // Validate before allocating render targets or native transports.
     init {
@@ -98,8 +99,8 @@ class ElectronRTTView(
         }
     }
 
-    /** Render your content into this; it is drawn to the canvas as is. */
-    val rtt = RenderToTexture(renderer) {
+    /** Render your content into this; it is drawn to the canvas as is. `+view` and `view +=` reach it too. */
+    override val rtt = RenderToTexture(renderer) {
         this.width = this@ElectronRTTView.width
         this.height = this@ElectronRTTView.height
         this.format = format

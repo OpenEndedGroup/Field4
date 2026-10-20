@@ -4,6 +4,9 @@ description: >
   and a live box that finds or imports near_drowning.wav, submits and monitors one cached librosa
   spectral job, decodes its MessagePack artifact once, fits mel-Wasserstein, log-mel cosine, and
   MFCC Euclidean t-SNE views in Field with Smile, and auditions all views with one shared cursor.
+docs:
+  - page: audio_ai_spectral_embeddings.md
+    why: "Explains the short-time spectral projections and how to submit one."
 operations:
   - create:
       box: spectral_embedding_guide

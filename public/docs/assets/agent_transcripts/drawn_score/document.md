@@ -109,7 +109,7 @@ From `code`
 Play both readings again, then take the sound apart: an onset per strike, a pitch per note.
 
 ```edn [field-box id="ds_listen" role="properties"]
-{"id" "ds_listen" "index" 3 "name" "listen back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "listen back" "_tombstone" false "frame" #afield/rect [860.0 500.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ds_listen_code_.kt" "lines" 17 "characters" 752 "sha256" "6f64ad1fe25b565cb279f8766ca4688be3fb79035c97030b6d7eaf8c6f398b69"}]}
+{"id" "ds_listen" "index" 3 "name" "listen back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "listen back" "_tombstone" false "frame" #afield/rect [860.0 500.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ds_listen_code_.kt" "lines" 17 "characters" 746 "sha256" "94f69ba501e5781c5fb5f9c20a953e66241fb9ecf5ef6830e5a53d8d90eead95"}]}
 ```
 
 ```kotlin [field-property box="ds_listen" name="code" path="ds_listen_code_.kt"]
@@ -117,7 +117,7 @@ Play both readings again, then take the sound apart: an onset per strike, a pitc
 val notes = DrawnScoreDocs.interpret(notation.space("score", x = 0.0..8.0, y = 84.0..48.0))
 val tuned = DrawnScoreDocs.pentatonic(notes)
 val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.4)
-val heard = listOf(notes, tuned).map {
+val heard = [notes, tuned].map {
     DrawnScoreDocs.listen(patRenderStereo(patTimed(it, beats = 8.0), cycles = 2, cps = 0.25, voice = voice), it)
 }
 val trace = heard[0].trace()

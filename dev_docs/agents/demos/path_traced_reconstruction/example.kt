@@ -2,7 +2,7 @@ import afield.graphics.scene.fabricated.*
 import afield.media.reconstruction.*
 
 prop<PathTracedReconstruction>(lab)
-fromContextWithNameOrNull<PathTracedReconstruction>("lab")?.close()
+val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
 NgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()
 val scene = PathTraceScene().apply {
     val floor = material(PathTraceMaterial.diffuse(.45f, .5f, .55f))
@@ -23,7 +23,8 @@ val camera = Camera(renderer).also {
 }
 // Keep the tracer uninstalled: lab records trace -> raw guides -> NGX in one ordered pass.
 val tracer = PathTracingRenderer(renderer, scene, PathTraceEnvironment.constant(.08f, .1f, .15f), 1920, 1080, camera)
-lab = PathTracedReconstruction(tracer).install()
+val ownedLab = runScope.own(PathTracedReconstruction(tracer).install())
+lab = ownedLab
 var view = 2
 var move = false
 var cut = false
@@ -43,7 +44,7 @@ println(
 frames {
     var phase = 0.0
     while (true) {
-        lab.view = PathTracedReconstruction.View.entries[view]
+        ownedLab.view = PathTracedReconstruction.View.entries[view]
         tracer.samplesPerFrame = samples
         if (move) {
             phase += .015
@@ -51,10 +52,10 @@ frames {
         }
         if (cut) {
             camera.at.z = if (camera.at.z > 7) 6f else 7.5f
-            lab.reset("camera cut")
+            ownedLab.reset("camera cut")
             cut = false
         }
         frame()
     }
 }
-    .end { lab.close() }
+    .end { ownedLab.close() }

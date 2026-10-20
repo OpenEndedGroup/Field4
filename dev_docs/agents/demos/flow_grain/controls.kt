@@ -14,4 +14,4 @@ strokeTime.requested = .15 // Integrated path length in seconds, clamped to .01â
 travel.set(false) // Scroll across the fixed tile pool and vary zoom.
 flowWidth.requested = 8.0 // Visible vertical half-width in world units.
 flowLook.w = 0f // 0 grain; 1 fluid velocity; 2 camera UV; 3 object+camera UV; 4 displacement.
-listOf(force.snapshot(), grainCell.snapshot(), strokeTime.snapshot(), flowWidth.snapshot())
+[force.snapshot(), grainCell.snapshot(), strokeTime.snapshot(), flowWidth.snapshot()]

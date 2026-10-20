@@ -19,6 +19,7 @@ import afield.ui.notation.with
 import afield.ui.output.md
 
 import afield.app.server.documents
+import afield.app.server.SessionInformation
 import afield.audio.synth.*
 import afield.document.properties.PropertyDependencies
 import afield.graphics.vulkan.*
@@ -75,23 +76,34 @@ object DocumentShutdownFlush {
         var saved = 0
         documents.forEach { (_, info) ->
             runCatching { PropertyDependencies.flush(info, force = true) }
-            if (!info.writesToDisk || info.loading || info.pendingSidecarSaves.isEmpty()) return@forEach
-            val started = System.nanoTime()
-            try {
-                val allBoxes = info.boxes.values.toMutableSet()
-                allBoxes.add(info.root)
-                val pendingSnapshot = info.pendingSidecarSnapshot()
-                SavingContext().save(info.filename, allBoxes, inline = true, onComplete = {
-                    info.clearSavedSidecars(pendingSnapshot)
-                })
-                saved++
-                System.err.println(
-                    "afield: saved ${info.filename} on shutdown (${TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)} ms)"
-                )
-            } catch (t: Throwable) {
-                System.err.println("afield: could not save ${info.filename} on shutdown: $t")
-            }
+            if (saveIfPending(info, inline = true, reason = "shutdown")) saved++
         }
         return saved
+    }
+
+    /**
+     * The autosave loop's save of [info], if it has anything pending: the same predicate
+     * (`writesToDisk`, not `loading`, something pending) and the same box set. [inline] runs the
+     * write on this thread; otherwise it goes to the misc pool as the loop's does. Returns whether
+     * a save was made.
+     */
+    fun saveIfPending(info: SessionInformation, inline: Boolean, reason: String): Boolean {
+        if (!info.writesToDisk || info.loading || info.pendingSidecarSaves.isEmpty()) return false
+        val started = System.nanoTime()
+        return try {
+            val allBoxes = info.boxes.values.toMutableSet()
+            allBoxes.add(info.root)
+            val pendingSnapshot = info.pendingSidecarSnapshot()
+            SavingContext().save(info.filename, allBoxes, inline = inline, onComplete = {
+                info.clearSavedSidecars(pendingSnapshot)
+            })
+            System.err.println(
+                "afield: saved ${info.filename} on $reason (${TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)} ms)"
+            )
+            true
+        } catch (t: Throwable) {
+            System.err.println("afield: could not save ${info.filename} on $reason: $t")
+            false
+        }
     }
 }

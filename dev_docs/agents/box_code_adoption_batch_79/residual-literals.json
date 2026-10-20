@@ -1,0 +1,329 @@
+{
+  "remainingUntypedCalls": [
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/metadata.edn",
+      "locator": "c82c404d-a15d-4f51-a06f-66dfc2a00364/preamble",
+      "line": 38,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/metadata.edn",
+      "locator": "c82c404d-a15d-4f51-a06f-66dfc2a00364/preamble",
+      "line": 59,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/metadata.edn",
+      "locator": "gpu_skin/preamble",
+      "line": 34,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/metadata.edn",
+      "locator": "gpu_skin/preamble",
+      "line": 55,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/metadata.edn",
+      "locator": "ad857eaa-362e-45ea-bdc8-472af40f1ed2/preamble",
+      "line": 26,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/metadata.edn",
+      "locator": "ad857eaa-362e-45ea-bdc8-472af40f1ed2/preamble",
+      "line": 47,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/metadata.edn",
+      "locator": "ad857eaa-362e-45ea-bdc8-472af40f1ed2/preamble",
+      "line": 88,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/metadata.edn",
+      "locator": "262e80f5-d991-453d-9af8-8d181ff0eb0b/preamble",
+      "line": 40,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/metadata.edn",
+      "locator": "8b8d3306-5c31-49aa-ab27-659a992ebd09/preamble",
+      "line": 19,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/metadata.edn",
+      "locator": "8b8d3306-5c31-49aa-ab27-659a992ebd09/preamble",
+      "line": 40,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/metadata.edn",
+      "locator": "e39270ec-8faf-4d26-8f4e-ce4d23ec4af1/preamble",
+      "line": 40,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/metadata.edn",
+      "locator": "e39270ec-8faf-4d26-8f4e-ce4d23ec4af1/preamble",
+      "line": 67,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/metadata.edn",
+      "locator": "af0946dd-f25d-4355-984d-f0d24a43ee12/preamble",
+      "line": 33,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/metadata.edn",
+      "locator": "65bd0587-dbfa-451a-8f6a-e003ff3d1abf/preamble",
+      "line": 37,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "public/docs/assets/canonical_graphics/metadata.edn",
+      "locator": "176b09bd-6e1c-4cb4-9c8a-b046d54c6dde/preamble",
+      "line": 60,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation/function_source_code_.kt",
+      "locator": "source",
+      "line": 5,
+      "symbol": "listOf",
+      "following": "listOf(\"x\", \"y\", \"z\").map { name ->",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "dev_docs/agents/demos/function_conversation/function_source_code_.kt",
+      "locator": "source",
+      "line": 8,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/document.md",
+      "locator": "fence:160",
+      "line": 198,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/document.md",
+      "locator": "fence:160",
+      "line": 219,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/document.md",
+      "locator": "fence:696",
+      "line": 730,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "dev_docs/agents/demos/skinned_characters/document.md",
+      "locator": "fence:696",
+      "line": 751,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "compiler preamble or its saved mirror"
+    },
+    {
+      "path": "public/docs/assets/function_conversation/FunctionStudyTools.kt",
+      "locator": "source",
+      "line": 190,
+      "symbol": "listOf",
+      "following": "listOf(\"signal\", \"detail\", \"comparison\").forEach { box.displayClear(it) }",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "public/docs/assets/function_conversation/FunctionStudyTools.kt",
+      "locator": "source",
+      "line": 318,
+      "symbol": "listOf",
+      "following": "listOf(it.start, it.plateauStart, it.plateauEnd, it.end) }",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "public/docs/assets/function_conversation/FunctionStudyTools.kt",
+      "locator": "source",
+      "line": 357,
+      "symbol": "listOf",
+      "following": "listOf(request.changedStartSeconds, request.changedEndSeconds),",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "public/docs/assets/function_conversation/final.kt",
+      "locator": "source",
+      "line": 27,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "public/docs/assets/function_conversation/final.kt",
+      "locator": "source",
+      "line": 72,
+      "symbol": "listOf",
+      "following": "listOf(\"x\", \"y\", \"z\").mapIndexed { index, name ->",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "public/docs/assets/function_conversation/final.kt",
+      "locator": "source",
+      "line": 105,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "public/docs/assets/stackauto_conversation/polytope/final-code.kt",
+      "locator": "source",
+      "line": 26,
+      "symbol": "listOf",
+      "following": "listOf(c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f)) {",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "public/docs/function_conversation.md",
+      "locator": "fence:53",
+      "line": 58,
+      "symbol": "listOf",
+      "following": "listOf(\"x\", \"y\", \"z\").map { name ->",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "public/docs/function_conversation.md",
+      "locator": "fence:53",
+      "line": 61,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "public/docs/function_conversation.md",
+      "locator": "fence:129",
+      "line": 134,
+      "symbol": "listOf",
+      "following": "listOf(\"x\", \"y\", \"z\").map { name -> fn(0.0..3600.0, name) { 0.5 } },",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "public/docs/function_conversation.md",
+      "locator": "fence:129",
+      "line": 135,
+      "symbol": "listOf",
+      "following": "listOf(StudyChoice(\"Initial constant background is a disposable starting point\", \"agent assumption\")),",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "public/docs/function_conversation.md",
+      "locator": "fence:175",
+      "line": 177,
+      "symbol": "listOf",
+      "following": "listOf(\"x\", \"y\", \"z\").mapIndexed { index, name ->",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "public/docs/function_conversation.md",
+      "locator": "fence:294",
+      "line": 321,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "public/docs/function_conversation.md",
+      "locator": "fence:294",
+      "line": 366,
+      "symbol": "listOf",
+      "following": "listOf(\"x\", \"y\", \"z\").mapIndexed { index, name ->",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    },
+    {
+      "path": "public/docs/function_conversation.md",
+      "locator": "fence:294",
+      "line": 399,
+      "symbol": "listOf",
+      "following": "listOf(",
+      "literalCandidate": true,
+      "reason": "recorded conversation provenance"
+    }
+  ],
+  "typedEmptyOrSpreadCallsRetained": true
+}

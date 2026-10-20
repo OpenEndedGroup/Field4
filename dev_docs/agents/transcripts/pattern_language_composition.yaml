@@ -30,6 +30,9 @@ description: >
   document; then change any pattern string and re-run that box. Each `execute` op omits inline code,
   so it runs the box's stored `code` property. See dev_docs/PATTERN_LANGUAGE.md and
   dev_docs/PAT_GALLERY.md.
+docs:
+  - page: pattern_language.md
+    why: "Teaches the pat(...) language, signals and parameter algebra used here."
 operations:
   # 1 ── the continuous family, and what segment() does to it.
   - create:
@@ -121,7 +124,7 @@ operations:
           displayOpen("main")
 
           val curve = sine().rangex(300, 6000)
-          for (n in listOf(4, 8, 16)) {
+          for (n in [4, 8, 16]) {
               val notes =
                   (pat("45*$n") with cutoff(curve)).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
               println(
@@ -365,11 +368,11 @@ operations:
           showPatRoll("mini-notation")
           displayOpen("main")
 
-          val pairs = listOf(
+          val pairs = [
               "bd sd . hh hh hh" to "[bd sd] [hh hh hh]", // `.` groups
               "bd _ _ sd" to "bd@3 sd", // `_` extends
               "bd ! ! sd" to "bd!3 sd", // bare `!` repeats
-          )
+          ]
           for ((shorthand, bracketed) in pairs) {
               val a = pat(shorthand).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
               val b = pat(bracketed).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }

@@ -1,0 +1,27 @@
+{
+  "completeFlowsTypechecked": [
+    "external_browser_surface_macos_smoke",
+    "iosurface_ring_roundtrip_smoke",
+    "syphon_zero_copy_receive_smoke",
+    "splat_sequence_streaming"
+  ],
+  "actualDriver": "MoltenVK",
+  "actualIosurfaceCopyPassed": true,
+  "actualAcquiredSurfaceClosedOnInjectedSetupFailure": true,
+  "limits": "Actual MoltenVK IOSurface copy, real installed field-encode ring helper and real installed Syphon probe/client. All advertised pixel, release, resize/import and zero-CPU-copy assertions ran. Splat acceptance is separate. No outputs or public captures were substituted.",
+  "realInteropSmokes": [
+    {
+      "path": "iosurface_ring_roundtrip_smoke",
+      "realPass": true
+    },
+    {
+      "path": "syphon_zero_copy_receive_smoke",
+      "realPass": true
+    }
+  ],
+  "splat": {
+    "productionWrittenInputFrames": 2,
+    "actualPlaybackDecoded": true,
+    "stopRemovedCloudAndBothCallbacks": true
+  }
+}

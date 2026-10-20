@@ -31,6 +31,9 @@ description: >
   Replay into a fresh Field with the agent backdoor (field_run_transcript) or open the materialized
   document; then change any net and re-run that box. Each `execute` op omits inline code, so it runs
   the box's stored `code` property. See public/docs/petri_nets.md and public/docs/petri_cheatsheet.md.
+docs:
+  - page: petri_nets.md#checking-every-possible-order
+    why: "Explains exhaustive state-space analysis and its counterexamples."
 operations:
   # 1 ── the classical question, on the net everybody already knows the answer to.
   - create:

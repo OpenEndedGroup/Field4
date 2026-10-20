@@ -105,7 +105,7 @@ class DirectLighting(val renderer: Renderer, val surfaces: DirectLightSurfaces, 
         output = RenderToTexture(renderer) { this.width=this@DirectLighting.width; this.height=this@DirectLighting.height
             format=VK_FORMAT_R32G32B32A32_SFLOAT; useDepth=false; debugName="$name-output" }
         resolve = Module(parameters(renderer) {
-            this.name="${this@DirectLighting.name}-resolve"; output.apply()
+            this.name="${this@DirectLighting.name}-resolve"; +output
             vertex=VERTEX; fragment=RESOLVE; depthTest=false; depthWrite=false; blend=false
         })
         check(resolve.valid) { "Direct-light resolve shader failed" }

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kratos_flow" index="0" -->
 
 ```edn [field-box id="kratos_flow" role="properties"]
-{"id" "kratos_flow" "index" 0 "name" "Kratos flow playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos flow playground" "_tombstone" false "frame" #afield/rect [60.0 140.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_flow_code_.kt" "lines" 202 "characters" 10107 "sha256" "5bcd880b9d55159a77b474e49a5a029a5ba66ea3f1c16a36ff44ef9fafdbc7f9"}]}
+{"id" "kratos_flow" "index" 0 "name" "Kratos flow playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos flow playground" "_tombstone" false "frame" #afield/rect [60.0 140.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_flow_code_.kt" "lines" 209 "characters" 10463 "sha256" "f14979616fa7de9c5c97c7ad746ac189535fd4b5fde216a106565b765a591db1"}]}
 ```
 
 ```kotlin [field-property box="kratos_flow" name="code" path="kratos_flow_code_.kt"]
@@ -28,7 +28,7 @@ Install once: uv sync --project optional/kratos --frozen
 SI units: metres, m/s, kg/m³, Pa·s.
 */
 
-val settings = AtomicReference(listOf(0.30, 1.0, 0.05, 3.0))
+val settings = AtomicReference([0.30, 1.0, 0.05, 3.0])
 // Solve once on launch, so the box shows a picture without a click.
 val action = AtomicReference("solve")
 fun change(index: Int, value: Double) {
@@ -61,10 +61,10 @@ fun reynoldsOf(v: List<Double>): Double =
 fun body(radius: Double): SimulationGeometry = SimulationGroup(
     "body",
     SimulationBoolean.UNION,
-    listOf(
+    [
         SimulationSphere("ball", 0.0, 0.0, 0.0, radius, segments = 48),
         SimulationCylinder("pin", 0.0, 0.0, -0.55, 0.0, 0.0, 0.55, radius * 0.28, segments = 24),
-    ),
+    ],
 )
 
 status("Starting the optional worker…")
@@ -95,6 +95,7 @@ frames {
         session = worker
         var shown = emptyList<Double>()
         var pending: java.util.concurrent.CompletableFuture<SimulationResult?>? = null
+        var submitted: List<Double>? = null
         var resultText = "No solve yet. Press <b>Solve</b>."
         var previous = ""
 
@@ -119,12 +120,14 @@ frames {
                 pending = null
                 resultText = "Cancelled. Press <b>Solve</b> to run again."
             } else if (command == "solve" && pending == null) {
+                val requested = values.toList()
+                submitted = requested
                 val parameters = FlowParameters(
-                    velocity = values[1],
-                    viscosity = values[2],
-                    steps = values[3].toInt(),
+                    velocity = requested[1],
+                    viscosity = requested[2],
+                    steps = requested[3].toInt(),
                 )
-                pending = worker.solveAsync(body(values[0]), parameters)
+                pending = worker.solveAsync(body(requested[0]), parameters)
                 resultText =
                     "Solving ${values[3].toInt()} steps at Re " +
                         "${"%.0f".format(parameters.reynolds(2*values[0]))} on the obstacle…"
@@ -133,10 +136,12 @@ frames {
             val ready = pending
             if (ready != null && ready.isDone) {
                 pending = null
+                val solvedSettings = requireNotNull(submitted)
+                submitted = null
                 try {
                     ready.get()?.let { result ->
                         worker.withLatest {
-                            val skin = body(shown[0]).surface()
+                            val skin = body(solvedSettings[0]).surface()
                             // Colour the body by pressure, then add one tube per
                             // streamline coloured by speed, into a single scene.
                             var scene: TriMesh = result.surfaceMesh(skin, "pressure")
@@ -181,9 +186,9 @@ frames {
                                 "<span id='kratos-flow-result' " +
                                     "data-background='${result.domain.id}' " +
                                     "data-revision='${result.revision.simulation}' " +
-                                    "data-radius='${shown[0]}' data-speedmax='${safe(d["speedMax"])}'>" +
-                                    "radius ${num(shown[0], 2)} m · ${safe(d["steps"])} steps of " +
-                                    "${num(d["timeStep"], 2)} s · Re ${num(reynoldsOf(shown), 0)}<br>" +
+                                    "data-radius='${solvedSettings[0]}' data-speedmax='${safe(d["speedMax"])}'>" +
+                                    "radius ${num(solvedSettings[0], 2)} m · ${safe(d["steps"])} steps of " +
+                                    "${num(d["timeStep"], 2)} s · Re ${num(reynoldsOf(solvedSettings), 0)}<br>" +
                                     "Speed ${num(slowest)}–${num(fastest)} m/s · " +
                                     "pressure ${num(d["pressureMin"], 2)} to ${num(d["pressureMax"], 2)} Pa<br>" +
                                     "${safe(d["status"])} · Newton iterations ${safe(d["newtonIterations"])}<br>" +
@@ -211,6 +216,8 @@ frames {
             }
             frame()
         }
+    } catch (cancelled: java.util.concurrent.CancellationException) {
+        throw cancelled
     } catch (failure: Exception) {
         status("Worker unavailable: ${safe(failure.cause?.message ?: failure.message)}")
     } finally {

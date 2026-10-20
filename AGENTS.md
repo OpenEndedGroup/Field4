@@ -409,8 +409,8 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
 
 Floating panels over the canvas are built on `FieldPanel` (`src/jsMain/kotlin/afield/fieldPanel.kt`,
 `.field-panel` in `field.css`): title, status line, close, Escape, and keys/mouse-downs kept off the
-canvas. The bookmarks panel (`alt+b`, `bookmarks.kt`) and the layers panel (`alt+l`,
-`layersPanel.kt`) use it; build the next one on it rather than copying the macro recorder's CSS.
+canvas. The bookmarks panel (`alt+b`, `bookmarks.kt`), the layers panel (`alt+l`, `layersPanel.kt`) and
+the Macro Recorder (`commands.kt`) use it; build the next one on it.
 
 ### FLine
 

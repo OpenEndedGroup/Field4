@@ -214,6 +214,8 @@ class NotationSpace internal constructor(
     private val region: () -> Rect?,
     val x: ClosedFloatingPointRange<Double>,
     val y: ClosedFloatingPointRange<Double>,
+    /** The id of the mark that defines the region, if one does: it is the score, not a note in it. */
+    private val defining: () -> String? = { null },
 ) {
     /** The region in world coordinates, as it is now (null if it has gone). */
     val bounds: Rect? get() = region()
@@ -232,14 +234,15 @@ class NotationSpace internal constructor(
     private fun spaceY(wy: Double, r: Rect) = y.start + (wy - r.y) / r.h * (y.endInclusive - y.start)
 
     /**
-     * Marks that overlap the region, excluding the frame (or shape) that defines it. A stroke that
+     * Marks that overlap the region, excluding the frame (or shape) that defines it — found by its
+     * id, so a note that happens to share the frame's bounds still counts. A stroke that
      * runs out of the region still counts; what lies outside is clipped away by the cuts and [events].
      */
     val marks: List<Mark> get() {
         val r = region() ?: return emptyList()
-        val defining = notation.marks.firstOrNull { !it.kind.isLinear && it.bounds == r }?.id
+        val definingId = defining()
         return notation.marks.filter { m ->
-            m.id != defining && m.bounds.let { b -> b.x <= r.x + r.w && b.x + b.w >= r.x && b.y <= r.y + r.h && b.y + b.h >= r.y }
+            m.id != definingId && m.bounds.let { b -> b.x <= r.x + r.w && b.x + b.w >= r.x && b.y <= r.y + r.h && b.y + b.h >= r.y }
         }
     }
 

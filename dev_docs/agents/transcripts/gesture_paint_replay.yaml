@@ -18,6 +18,11 @@ description: >
   Demo for afield/paint/gestureReplay.kt (dev_docs/paint/GESTURE_PAINT_REPLAY.md). Pure CPU; no
   Window, no Renderer. The paint library is optional (`./gradlew buildPaintNative`); without it both
   boxes say so and stop.
+docs:
+  - page: keyframe_editor.md#from-a-performed-gesture
+    why: "Explains baking a recorded gesture into keyframe lanes."
+  - page: paint_canvas.md
+    why: "Explains the paint canvas the gesture replays onto."
 operations:
   - create:
       box: gpr_pad

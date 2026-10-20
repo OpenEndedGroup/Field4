@@ -129,7 +129,7 @@ class GpuShaderTraining(val renderer: Renderer,val width: Int,val height: Int,va
         check(gather.valid);val g=gather.pointer();gatherTask=ComputeMesh(renderer,g);g+="samples" to gatherTask
         gatherTask.x=(batchSize+63)/64;gatherTask.push.setMembers(gather.ci.pushConstants.single().members)
         gatherTask.push["samples"]=samples;gatherTask.push["count"]=batchSize
-        resolve=Module(parameters(renderer){name="learning-resolve";output.apply();vertex=VERTEX;fragment=FRAGMENT;depthTest=false;depthWrite=false;blend=false})
+        resolve=Module(parameters(renderer){name="learning-resolve";+output;vertex=VERTEX;fragment=FRAGMENT;depthTest=false;depthWrite=false;blend=false})
         check(resolve.valid);val p=resolve.pointer();val quad=Mesh(renderer,p);quad.resize(3,0,p);quad.push.setMembers(resolve.fi.pushConstants.single().members)
         quad.push["pixels"]=pixels;quad.push["width"]=width;resolve.meshes["quad"]=quad;output.modules["resolve"]=p
     }

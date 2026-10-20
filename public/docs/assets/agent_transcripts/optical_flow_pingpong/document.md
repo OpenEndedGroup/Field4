@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="optical_flow_pingpong" index="1" -->
 
 ```edn [field-box id="optical_flow_pingpong" role="properties"]
-{"id" "optical_flow_pingpong" "index" 1 "name" "optical_flow_pingpong" "parents" ["root" "agent_graphics_context"] "children" ["flow_texture"] "properties" {"children" #{#afield/box "flow_texture"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical_flow_pingpong" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_pingpong_code_.kt" "lines" 120 "characters" 4515 "sha256" "d200de5180b9a0d0dc4b60f5f0602b376c4a6a13139ff5d05946fcde64ea9d68"} {"name" "vertex" "language" "glsl" "path" "optical_flow_pingpong_vertex_.glsl" "lines" 6 "characters" 148 "sha256" "15ab8178d1aef2acf5d8bd95e36711503c7d8eb87f1698920f9a4e6c99275242"} {"name" "fragment" "language" "glsl" "path" "optical_flow_pingpong_fragment_.glsl" "lines" 32 "characters" 1320 "sha256" "609aec65ad7272e96f1a46cff071236778e9c84f858a16c0b02470b593e2ceba"}]}
+{"id" "optical_flow_pingpong" "index" 1 "name" "optical_flow_pingpong" "parents" ["root" "agent_graphics_context"] "children" ["flow_texture"] "properties" {"children" #{#afield/box "flow_texture"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical_flow_pingpong" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_pingpong_code_.kt" "lines" 120 "characters" 4508 "sha256" "941eeba00b9d338f889c109da541654ad482c03c042e3c892e8e72c2256eeac5"} {"name" "vertex" "language" "glsl" "path" "optical_flow_pingpong_vertex_.glsl" "lines" 6 "characters" 148 "sha256" "15ab8178d1aef2acf5d8bd95e36711503c7d8eb87f1698920f9a4e6c99275242"} {"name" "fragment" "language" "glsl" "path" "optical_flow_pingpong_fragment_.glsl" "lines" 32 "characters" 1320 "sha256" "609aec65ad7272e96f1a46cff071236778e9c84f858a16c0b02470b593e2ceba"}]}
 ```
 
 ```kotlin [field-property box="optical_flow_pingpong" name="code" path="optical_flow_pingpong_code_.kt"]
@@ -59,7 +59,7 @@ propDown<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer) {
     format = VK_FORMAT_R16G16B16A16_SFLOAT
 }
 val scene = moduleHere {
-    history.apply()
+    +history
     depthTest = false
     depthWrite = false
     blend = false

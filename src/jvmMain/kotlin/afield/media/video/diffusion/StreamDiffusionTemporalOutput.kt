@@ -31,7 +31,7 @@ internal class StreamDiffusionTemporalOutput(
     private var motionImage = invalid
     private fun pass(target: RenderToTexture, name: String): Pair<Module, Mesh> {
         val module = Module(parameters(renderer) {
-            target.apply(); vertex = VERTEX; fragment = FRAGMENT
+            +target; vertex = VERTEX; fragment = FRAGMENT
             depthTest = false; depthWrite = false; blend = false
             textureResolver = { t ->
                 val select = when (t.name) {

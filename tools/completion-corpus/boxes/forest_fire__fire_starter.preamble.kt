@@ -17,8 +17,8 @@ import afield.graphics.vulkan.buffers.*
 /*graphics-pc-binding:green*/ var Mesh.green by Mesh.BoundFromStructure<afield.math.linalg.Vector2f>()
 /*graphics-pc-binding-group:green*/ var MeshGroup.green by MeshGroup.BoundFromStructure<afield.math.linalg.Vector2f>()
 /*graphics-pc-structure:radius*/ var Structure.radius by Structure.FromStructure<Any>()
-/*graphics-pc-binding:radius*/ var Mesh.radius by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:radius*/ var MeshGroup.radius by MeshGroup.BoundFromStructure<Float>()
+/*graphics-pc-binding:radius*/ var Mesh.radius by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:radius*/ var MeshGroup.radius by MeshGroup.BoundFromStructure<Number>()
 var Box.fire by Inheritance<ShaderForestFireSystem>() /*from:fire_forest*/ /**/
 val Once.fire by Onceing<ShaderForestFireSystem>() /*from:fire_forest*/ /**/
 val Why.fire by Whying() /*from:fire_forest*/ /**/

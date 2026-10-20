@@ -484,6 +484,9 @@ data class ThreeGeometryPayload(
     /** A looping dolly, explode and x-ray move. See [ThreeSceneBuilder.shot]. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val shot: ThreeShotSpec? = null,
+    /** Tone mapping, soft shadows and a ground. See [ThreeSceneBuilder.studio]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val studio: ThreeStudioSpec? = null,
     /**
      * The view's stored part styles, by [ThreeDrawable.id], for the viewer to apply.
      *

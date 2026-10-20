@@ -1,5 +1,8 @@
 name: polytope_layer_stack_path_trace
 description: Real NVIDIA path-traced documentation figure.
+docs:
+  - page: chain_ceres_manifold_contours.md
+    why: "Walks through the contour-stack chain this render belongs to."
 operations:
 - create:
     box: chain_renderer

@@ -1,5 +1,8 @@
 # Generated from fieldml_afield_four_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "fieldml_afield_four_demo"
+docs:
+  - page: fieldml_host_bridge.md#reaching-field-4
+    why: "Explains how FieldML reaches Field 4 graphics through the JVM bridge."
 operations:
   - create:
       box: "fieldml-four-renderer"

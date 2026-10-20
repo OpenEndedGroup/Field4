@@ -24,14 +24,14 @@ operations:
           afield.app.settings.UserKeybindingsManager.watchFile(null)
 
           val live = afield.app.settings.UserKeybindingsManager.resolved
-          val ids = listOf("new-box", "open-command-palette", "show-cheatsheet", "execute-fragment", "connect")
+          val ids = ["new-box", "open-command-palette", "show-cheatsheet", "execute-fragment", "connect"]
           // A command with no binding yet is the interesting row, so it says so in a role rather than
           // looking like any other cell.
           val bound =
-              Table(listOf("command", "bound to"))
+              Table(["command", "bound to"])
                   .rows(
                       ids.map { id ->
-                          listOf(id, (live.effective[id] ?: live.bindings[id])?.joinToString(" or ") ?: "not registered yet")
+                          [id, (live.effective[id] ?: live.bindings[id])?.joinToString(" or ") ?: "not registered yet"]
                       },
                   )
                   .roleBy("bound to") { if (it == "not registered yet") CellRole.WARN else null }

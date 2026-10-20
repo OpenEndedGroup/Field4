@@ -20,7 +20,7 @@ where it crossed the curves. Here the line is yours: draw one across the sheet (
 and this box reads it. Run the box first; it draws the sheet.
 
 ```edn [field-box id="dn_fontana" role="properties"]
-{"id" "dn_fontana" "index" 0 "name" "fontana mix" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fontana mix" "_tombstone" false "frame" #afield/rect [2160.0 120.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dn_fontana_code_.kt" "lines" 27 "characters" 1311 "sha256" "690649f3850d8f5ea77251e3cdc9ec3e547a43e85011164f32cd135f44453260"}]}
+{"id" "dn_fontana" "index" 0 "name" "fontana mix" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fontana mix" "_tombstone" false "frame" #afield/rect [2160.0 120.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dn_fontana_code_.kt" "lines" 27 "characters" 1305 "sha256" "3002ba646bb2271f9c3bf1c48fde4f88cc0ce8ba08a92ab6b87c31f661764aad"}]}
 ```
 
 ```kotlin [field-property box="dn_fontana" name="code" path="dn_fontana_code_.kt"]
@@ -30,7 +30,7 @@ Cage's performer laid a line from a point inside the grid to one outside it and 
 where it crossed the curves. Here the line is yours: draw one across the sheet (Alt+D, then L)
 and this box reads it. Run the box first; it draws the sheet.
 */
-val colors = listOf("#e03131", "#1971c2", "#2f9e44", "#f08c00", "#9c36b5", "#0c8599")
+val colors = ["#e03131", "#1971c2", "#2f9e44", "#f08c00", "#9c36b5", "#0c8599"]
 notation("sheet") {
     frame("fontana mix", 1200, 100, 900, 520)
     for (i in 0 until 6) {
@@ -66,7 +66,7 @@ are high, middle and low. Draw boxes (Alt+D, then R) in the grid, and this box r
 as events: when each starts, how long it lasts, which register it sits in.
 
 ```edn [field-box id="dn_projection" role="properties"]
-{"id" "dn_projection" "index" 1 "name" "projection 1" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "projection 1" "_tombstone" false "frame" #afield/rect [1120.0 700.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dn_projection_code_.kt" "lines" 25 "characters" 952 "sha256" "4f79140d25dcdf6bbba468aa46e5526e8ecec005806c504b420094d4eee71679"}]}
+{"id" "dn_projection" "index" 1 "name" "projection 1" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "projection 1" "_tombstone" false "frame" #afield/rect [1120.0 700.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dn_projection_code_.kt" "lines" 25 "characters" 946 "sha256" "cd3cf2b676caecbebb0e39c674967a6770d57c6e04013ec44479b698ba282cfe"}]}
 ```
 
 ```kotlin [field-property box="dn_projection" name="code" path="dn_projection_code_.kt"]
@@ -78,7 +78,7 @@ as events: when each starts, how long it lasts, which register it sits in.
 notation("grid") {
     stroke = "#868e96"
     frame("projection", 100, 700, 960, 270)
-    for (row in 1..2) line(listOf(vec(100, 700 + row * 90), vec(1060, 700 + row * 90)))
+    for (row in 1..2) line([vec(100, 700 + row * 90), vec(1060, 700 + row * 90)])
     rect(160, 715, 120, 60, fill = "#1971c2") // one to start with
 }
 val score = notation.space("projection", x = 0.0..16.0, y = 3.0..0.0) // 16 beats; 3 rows
@@ -161,7 +161,7 @@ Run this to draw one; then draw your own in the frame with the pen (Alt+D, then 
 box reads everything in the frame again. Two hairpins, or a diminuendo, read the same way.
 
 ```edn [field-box id="dn_crescendo" role="properties"]
-{"id" "dn_crescendo" "index" 4 "name" "crescendo" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "crescendo" "_tombstone" false "frame" #afield/rect [960.0 1060.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dn_crescendo_code_.kt" "lines" 27 "characters" 1353 "sha256" "01a6ddab7599db1a5a8408a66d8886e704f0a40a5b5abe074120d83f391f6806"}]}
+{"id" "dn_crescendo" "index" 4 "name" "crescendo" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "crescendo" "_tombstone" false "frame" #afield/rect [960.0 1060.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dn_crescendo_code_.kt" "lines" 27 "characters" 1347 "sha256" "e46399773dcc89005e9398d1e6246d3672df2c80adf771a96d26b8f376f47e2b"}]}
 ```
 
 ```kotlin [field-property box="dn_crescendo" name="code" path="dn_crescendo_code_.kt"]
@@ -183,7 +183,7 @@ notation("hairpin") {
     stroke(hairpin, name = "hairpin", stroke = "#e03131")
 }
 val dynamics = notation.space("dynamics", x = 0.0..8.0, y = 0.0..1.0)
-val markings = listOf("niente", "pp", "p", "mp", "mf", "f", "ff")
+val markings = ["niente", "pp", "p", "mp", "mf", "f", "ff"]
 fun read() =
     (0..7).forEach { beat ->
         val ys = dynamics.vertical(beat.toDouble()).filter { !it.isSpan }.map { it.value }

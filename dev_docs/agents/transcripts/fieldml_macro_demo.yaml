@@ -1,5 +1,8 @@
 # Generated from fieldml_macro_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "fieldml_macro_demo"
+docs:
+  - page: fieldml_host_bridge.md#source-macros
+    why: "Explains FieldML source macros."
 operations:
   - create:
       box: "fieldml-macro-root"

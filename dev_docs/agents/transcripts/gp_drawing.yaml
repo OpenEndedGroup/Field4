@@ -7,6 +7,9 @@ description: |
   four points: its mean, two whole-field draws and its standard deviation.
   The saved document at `dev_docs/agents/demos/gp_drawing/` is this same scene. See
   `public/docs/gaussian_processes.md`.
+docs:
+  - page: gaussian_processes.md
+    why: "Explains drawing with Gaussian processes, kernels and pins."
 operations:
   - create:
       box: gp_loop

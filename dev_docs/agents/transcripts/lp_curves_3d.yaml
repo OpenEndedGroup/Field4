@@ -10,6 +10,9 @@ description: >
        the hull's edges and a PDHG spiral. Change `c` or the seed and re-run; orbit the view.
     2. lp3_fan — the same hull with a fan of central paths, one per direction spread over the
        sphere, turning on a turntable. Change `directions` or the cloud and re-run.
+docs:
+  - page: lp_curves.md#in-three-dimensions
+    why: "The section these LpPolytope boxes accompany."
 operations:
   - create:
       box: lp3_routes
@@ -41,9 +44,11 @@ operations:
               )
               camera(yaw = 20.0, pitch = 20.0)
               title("${polytope.vertices.size} hull vertices, ${polytope.constraintCount} faces")
-              caption("orange: central path · green: primal-dual, ${pd.samples.size - 1} steps · blue: simplex, ${walk.samples.size - 1} pivots · pink: PDHG")
+              caption(
+                  "orange: central path · green: primal-dual, ${pd.samples.size - 1} steps · blue: simplex, ${walk.samples.size - 1} pivots · pink: PDHG",
+              )
           }
-          "every route ends at %s".format(polytope.optimalVertex(c))
+          "every route ends at ${polytope.optimalVertex(c)}"
   - create:
       box: lp3_fan
       name: a fan of central paths, turning

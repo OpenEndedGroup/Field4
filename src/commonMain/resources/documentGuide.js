@@ -1,6 +1,6 @@
 import { sendWithReply, clearReplyHandler } from './afield.mjs';
 import { renderFieldMarkdown } from './markdownView.js';
-import { boxGuideLink, guideAssetUrl, noteFilePath, noteUid } from './documentGuideModel.js';
+import { boxGuideLink, docsPageUrl, guideAssetUrl, noteFilePath, noteUid, stripFrontMatter } from './documentGuideModel.js';
 
 let serial = 0;
 function rpc(payload) {
@@ -14,7 +14,7 @@ function rpc(payload) {
 }
 const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 const button = (text, id, action) => { const b = el('button', '', text); b.type = 'button'; if (id) b.id = id; b.addEventListener('click', action); return b; };
-let panel, reader, source, editor, fileList, noteList, noteHeading, outline, status, title, conflict, controls, launcher;
+let panel, reader, source, editor, docsList, docsHeading, fileList, noteList, noteHeading, outline, status, title, conflict, controls, launcher;
 let entries = [], current = null, documentKey = '', readOnly = false, visible = false, sourceMode = false;
 let epoch = 0, refreshTimer, refreshPending = false, navigation = [], headings = [], suppressEdit = false;
 const drafts = new Map();
@@ -66,10 +66,12 @@ function build() {
     const body = el('div', 'guide-body');
     const nav = el('nav', 'guide-nav'); nav.setAttribute('aria-label', 'Guides and headings');
     fileList = el('div', 'guide-files'); fileList.id = 'guide-files';
+    docsList = el('div', 'guide-files guide-docs'); docsList.id = 'guide-docs';
+    docsHeading = el('h2', '', 'Documentation');
     noteList = el('div', 'guide-files guide-notes'); noteList.id = 'guide-notes';
     noteHeading = el('h2', '', 'Box notes');
     outline = el('div', 'guide-outline'); outline.id = 'guide-outline';
-    nav.append(el('h2', '', 'Guides'), fileList, noteHeading, noteList, el('h2', '', 'On this page'), outline);
+    nav.append(docsHeading, docsList, el('h2', '', 'Guides'), fileList, noteHeading, noteList, el('h2', '', 'On this page'), outline);
     const content = el('div', 'guide-content');
     conflict = el('div', 'guide-conflict'); conflict.id = 'guide-conflict'; conflict.hidden = true;
     conflict.append(el('span', '', 'Changed on disk. Your draft is kept.'),
@@ -104,6 +106,13 @@ function updateControls() {
 }
 function renderEntries() {
     const label = entry => entry.kind === 'note' ? `${entry.title} · box notes` : entry.path;
+    docsList.replaceChildren();
+    for (const entry of entries.filter(e => e.kind === 'docs')) {
+        const b = button(entry.title, null, () => openDocs(entry.docs)); b.dataset.path = entry.path; b.dataset.docs = entry.docs;
+        b.title = (entry.summary ? entry.summary + '\n' : '') + `Opens ${entry.docs} in the docs pane · ${entry.path}`;
+        docsList.append(b);
+    }
+    docsHeading.hidden = docsList.hidden = !docsList.childElementCount;
     for (const [list, kind] of [[fileList, 'guide'], [noteList, 'note']]) {
         list.replaceChildren();
         for (const entry of entries.filter(e => (e.kind || 'guide') === kind)) {
@@ -132,7 +141,7 @@ function renderReader(hash = null) {
     // A note lives on a box, not in a directory, so its relative links and images resolve from the
     // document root — the same base `classifyGuideLink` assumes when no path is given.
     const base = isNote() ? 'README.md' : current.path;
-    headings = renderFieldMarkdown(reader, current.draft, {documentKey, path:base, onLink:follow});
+    headings = renderFieldMarkdown(reader, stripFrontMatter(current.draft), {documentKey, path:base, onLink:follow});
     outline.replaceChildren();
     for (const h of headings) {
         const b = button(h.title, null, () => { setMode(false); jump(h.id); });
@@ -202,8 +211,14 @@ async function back() {
     saved.positions[previous.path] = previous.top;
     await navigate(previous.path, '', false); updateControls();
 }
+/** The docs pane takes the editor's place; the guide stays open beside it. */
+function openDocs(page) {
+    if (typeof window.switchToDocsIframe !== 'function') { message('The docs pane is not available on this page'); return; }
+    window.switchToDocsIframe(docsPageUrl(page)); message(`Opened ${page} in the docs pane`);
+}
 function follow(link) {
-    if (link.kind === 'guide') navigate(link.path, link.hash);
+    if (link.kind === 'docs') openDocs(link.page);
+    else if (link.kind === 'guide') navigate(link.path, link.hash);
     else if (link.kind === 'box') {
         if (!window.navigateToBoxFromLink?.(link.uid, link.property, link.line, link.line)) message(`Box “${link.uid}” is not in this document`);
         else message(`Opened ${link.property}${link.line ? ` · line ${link.line}` : ''}`);
@@ -321,9 +336,16 @@ async function show(path = '') {
             if (saved.rect) setRect(saved.rect);
         }
         readOnly = response.readOnly; entries = response.entries || []; renderEntries();
-        const target = path || current?.path || (entries.some(e=>e.path===saved.path) ? saved.path : entries[0]?.path);
+        // A docs redirect asked for by path (Open Anything, ?guide=) opens its page; the panel shows the rest.
+        const redirect = entries.find(e => e.kind === 'docs' && e.path === path);
+        if (redirect) { openDocs(redirect.docs); path = ''; }
+        const readable = entries.filter(e => e.kind !== 'docs');
+        const target = path || current?.path || (readable.some(e=>e.path===saved.path) ? saved.path : readable[0]?.path);
         if (target) { if (target !== current?.path) await navigate(target); else { renderReader(); updateControls(); } }
-        else {
+        else if (entries.length) {
+            reader.textContent = 'Choose a documentation page on the left; it opens in the docs pane.';
+            message(`${entries.length} documentation page${entries.length === 1 ? '' : 's'}`);
+        } else {
             reader.textContent = 'This document has no guides or notes yet. Use Add note, put a Markdown file beside '
                 + 'metadata.edn or inside docs/ or guides/, or write notes on a box.';
             message('No guides or notes found');
@@ -394,11 +416,15 @@ setInterval(async () => {
         if (!launcher) { launcher=button('Guides', 'document-guide-launcher',()=>show()); launcher.title='Open this document’s guides and notes'; document.body.append(launcher); }
         const found = response.entries || [];
         const noteCount = found.filter(e => e.kind === 'note').length;
+        const docsCount = found.filter(e => e.kind === 'docs').length;
         launcher.hidden = !found.length;
         // Name what is actually there: a document can carry notes and no Markdown files, or the reverse.
+        const guideCount = found.length - noteCount;
         launcher.textContent = noteCount === found.length ? `Notes · ${noteCount}`
-            : noteCount ? `Guides · ${found.length - noteCount} · Notes · ${noteCount}`
-            : `Guides · ${found.length}`;
+            : noteCount ? `Guides · ${guideCount} · Notes · ${noteCount}`
+            : `Guides · ${guideCount}`;
+        launcher.title = docsCount ? `Open this document’s guides and notes · ${docsCount} documentation page${docsCount === 1 ? '' : 's'}`
+            : 'Open this document’s guides and notes';
         const initial = new URL(location.href).searchParams.get('guide');
         if (initial && !deepLinkOpened) { deepLinkOpened = true; await show(initial); }
     } catch (_) { discovered=''; }

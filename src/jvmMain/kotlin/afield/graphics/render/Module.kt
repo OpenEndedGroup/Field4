@@ -16,6 +16,7 @@
 
 package afield.graphics.render
 
+import afield.graphics.vulkan.targets.HasRenderToTexture
 import afield.graphics.scene.main
 
 import afield.document.context.fromContext
@@ -204,7 +205,12 @@ data class Parameters(
     val depth_always = VK_COMPARE_OP_ALWAYS
 
 
-    fun RenderToTexture.apply() {
+    /**
+     * Inside `moduleHere { }`: this module draws into this target. `+target` gives the module the
+     * target's colour formats, depth and viewports, which it needs before it can be attached with
+     * `target += module`.
+     */
+    operator fun RenderToTexture.unaryPlus() {
         this@Parameters.color = colorFormats.size
         this@Parameters.colorFormats = colorFormats
         this@Parameters.depth = if (parameters.useDepth) 1 else 0
@@ -213,7 +219,11 @@ data class Parameters(
         this@Parameters.viewMask = parameters.multiviewViewMask
     }
 
-    fun MultiPingPongRenderToTexture.apply() {
+    /** Inside `moduleHere { }`: this module draws into the target this object owns, e.g. `+view` for an `ElectronRTTView`. */
+    operator fun HasRenderToTexture.unaryPlus() = +rtt
+
+    /** Inside `moduleHere { }`: this module draws into this ping-pong target, as `+target` does for a [RenderToTexture]. */
+    operator fun MultiPingPongRenderToTexture.unaryPlus() {
         val resolvedColorFormat = if (this.parameters.colorFormats.isNotEmpty()) this.parameters.colorFormats.first() else this.parameters.format
         this@Parameters.color = 1
         this@Parameters.colorFormats = listOf(resolvedColorFormat)

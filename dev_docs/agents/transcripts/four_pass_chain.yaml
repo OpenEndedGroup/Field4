@@ -40,6 +40,9 @@ description: |
   `dev_docs/FOUR_PASS_CHAIN.md` is the write-up, and
   `tools/run_field_tests.py --id four.pass-chain.smoke` is the same layer driven headlessly with
   assertions on the pixels it produces.
+docs:
+  - page: reference/renderers.md
+    why: "Reference for the GPU pass-chain API this document declares."
 operations:
   # 1. the renderer: owns the Window and pumps the loop. Run this one first.
   - create:

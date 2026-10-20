@@ -61,6 +61,9 @@ description: |
   `tools/run_field_tests.py --id four.simulation-chain.smoke` is the same two chains driven headlessly
   with assertions on the pixels — including the jump flood checked against *exact* ground truth, and
   the one assertion a plan cannot make: with the input switched off, the picture must keep changing.
+docs:
+  - page: reference/renderers.md
+    why: "Reference for pass chains, including fluid and jump flood passes."
 operations:
   # 1. the renderer: owns the Window and pumps the loop. Run this one first.
   - create:

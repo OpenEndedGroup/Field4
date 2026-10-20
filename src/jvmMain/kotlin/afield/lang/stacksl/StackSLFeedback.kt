@@ -220,7 +220,7 @@ class StackSLFeedback internal constructor(
         }
         var error: String? = null
         val fresh = Module(parameters(renderer) {
-            target.apply()
+            +target
             name = "${settings.name}-program"
             vertex = StackSLFeedbackShader.VERTEX
             fragment = StackSLFeedbackShader.fragment(compiled.glsl)

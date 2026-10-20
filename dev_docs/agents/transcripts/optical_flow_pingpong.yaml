@@ -1,6 +1,9 @@
 name: optical_flow_pingpong
 description: An editable moduleHere source, two ping-pong frames, hardware optical flow, and a shader sampling its
   motion texture.
+docs:
+  - page: optical_flow.md
+    why: "Explains hardware optical flow and sampling its motion texture in a shader."
 operations:
 - create:
     box: agent_graphics_context
@@ -47,7 +50,7 @@ operations:
             format = VK_FORMAT_R16G16B16A16_SFLOAT
         }
         val scene = moduleHere {
-            history.apply()
+            +history
             depthTest = false
             depthWrite = false
             blend = false
@@ -211,7 +214,7 @@ operations:
           format = VK_FORMAT_R16G16B16A16_SFLOAT
       }
       val scene = moduleHere {
-          history.apply()
+          +history
           depthTest = false
           depthWrite = false
           blend = false

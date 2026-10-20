@@ -607,7 +607,7 @@ than an FFM `Arena`. A confined `Arena` can only be used from the thread that ma
 built in a box is routinely read from the runloop thread; a shared one costs a thread handshake to
 close. `malloc` has neither problem, and the `Cleaner` sits behind it.
 
-??? aside "If you are writing FFM descriptors yourself"
+??? aside "Agents: writing FFM descriptors by hand"
     Nothing checks them. A `size_t` declared as an `int`, a struct return declared as a pointer, an
     argument in the wrong position — all of them compile, link, and return *something*. The failure
     mode is a plausible wrong number, not an error.

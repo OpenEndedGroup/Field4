@@ -9,7 +9,7 @@ val min = range.min!!
 display(
     "range",
     Table(
-            listOf("side", "reached", "at x", "proven bound", "enclosures"),
+            ["side", "reached", "at x", "proven bound", "enclosures"],
             title = "certifiedRange(0, 3600): certified = ${range.certified}",
         )
         .row("max", max.value, max.witness, max.bound, max.enclosures)
@@ -18,14 +18,16 @@ display(
 )
 
 // Yes/no questions with the same guarantee. A refutation carries the x that breaks the claim.
-val claims = listOf(
+val claims = [
     signal.certifiedNeverExceeds(0.7, 0.0, 3600.0),
     signal.certifiedNeverExceeds(0.8, 0.0, 3600.0),
     signal.certifiedReaches(0.75, 0.0, 3600.0),
-)
+]
 display(
     "claims",
-    Table(listOf("claim", "verdict", "witness x"))
-        .rows(claims.map { listOf(it.claim, it.kind.name, it.witness) })
-        .roleBy("verdict") { if (it == "PROVEN") CellRole.OK else CellRole.WARN },
+    Table(["claim", "verdict", "witness x"]).rows(claims.map { [it.claim, it.kind.name, it.witness] }).roleBy(
+        "verdict",
+    ) {
+        if (it == "PROVEN") CellRole.OK else CellRole.WARN
+    },
 )

@@ -33,7 +33,6 @@ class ImGuiStereoQuadExample(
             parameters = {
                 width = 1024*2
                 height = 1024*2
-                clearFirst = true
                 format = VK_FORMAT_B8G8R8A8_SRGB
                 mipLevels = 4
             }, displayScale = 1f, fontSupersample = 1f

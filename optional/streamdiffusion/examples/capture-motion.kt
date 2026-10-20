@@ -84,6 +84,7 @@ if (!support.available) {
     }
     displayOpen("diffusion")
     print("Left: current source. Right: delayed diffusion output. GPU pixel transport. ${demo.view.session.logFile}")
+    val captures = mutableListOf<java.util.concurrent.CompletableFuture<String>>()
     frames {
         var proofPhase = 0
         var proofFrame = 0
@@ -91,7 +92,6 @@ if (!support.available) {
         var proofStartPresented = 0L
         var proofRestartAt = 0L
         var proofDone = false
-        var lastSave: java.util.concurrent.CompletableFuture<String>? = null
         var count = 0
         var angle = 0.0
         var previous = System.nanoTime()
@@ -116,8 +116,8 @@ if (!support.available) {
                             "/" +
                             (if (proofPhase == 0) "motion" else "baseline") +
                             "-%03d".format(proofFrame)
-                    demo.source.saveJpgAsync(stem + "-source.jpg", quality = 95)
-                    lastSave = demo.view.output.saveJpgAsync(stem + "-output.jpg", quality = 95)
+                    captures += demo.source.saveJpgAsync(stem + "-source.jpg", quality = 95)
+                    captures += demo.view.output.saveJpgAsync(stem + "-output.jpg", quality = 95)
                     proofDue = now + 100_000_000L
                     proofFrame++
                     if (proofFrame == 80) {
@@ -130,7 +130,9 @@ if (!support.available) {
                         proofStartPresented = demo.view.presentedFrames
                         if (enabled) proofRestartAt = now
                     }
-                } else if (now > proofRestartAt + 3_000_000_000L && lastSave?.isDone == true) {
+                } else if (now > proofRestartAt + 3_000_000_000L && captures.all { it.isDone }) {
+                    // isDone also covers failure; join every source/output pair before claiming success.
+                    captures.forEach { it.join() }
                     proofDone = true
                     print("Motion comparison complete; " + demo.view.session.capabilities)
                 }
@@ -144,5 +146,8 @@ if (!support.available) {
             frame()
         }
     }
-        .end { demo.close() }
+        .end {
+            captures.forEach { it.cancel(false) }
+            demo.close()
+        }
 }
