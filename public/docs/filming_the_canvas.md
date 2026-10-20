@@ -117,8 +117,10 @@ These arguments control the film:
 The film is shot in Field's capture browser, sized for the film, not in your own window, so your
 window stays free while it records. A bookmark saved in a window of another size or shape still
 frames the same part of the canvas. The flight zooms so that everything the bookmark showed fits.
-To film Field's Electron app itself, open the capture page there first with the backdoor's
-`playwright-open --electron`.
+
+??? aside "Agents: filming the Electron app"
+    To film Field's Electron app itself, open the capture page there first with the backdoor's
+    `playwright-open --electron`.
 
 `canvasFlight` returns a `CanvasFlight`. `durationSeconds` is the flight's length, `done` says
 whether the film is written, and `result` then reports the frame count, the size and, for each
@@ -149,7 +151,7 @@ mouse.
 - A live flight runs on the window's own clock, so a busy machine can stutter. A filmed flight
   cannot.
 
-??? aside "How the film on this page is made"
+??? aside "Agents: how the film on this page is made"
     The docs runner builds it. The setup transcript (`canvas_flight.yaml`) creates the three boxes.
     The drive script saves the three bookmarks through the bookmark code, as `ctrl/command-shift-F1`
     to `F3` would. `ui.filmCanvasFlight` then films the flight with the recorder `canvasFlight(record = …)`
