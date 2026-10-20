@@ -61,7 +61,7 @@ val source = RenderToTexture(renderer) {
     useDepth = false
     format = VK_FORMAT_R32G32B32A32_SFLOAT
 }
-val teacher = moduleHere { source.apply() }
+val teacher = moduleHere { +source }
 source += "teacher" to teacher
 
 // Add your existing meshes and bind their uniforms as usual.

@@ -41,7 +41,7 @@ import org.lwjgl.vulkan.VK10.VK_FORMAT_B8G8R8A8_UNORM
  * ```
  * val streamer = FieldRTTStreamer(renderer, dest = "127.0.0.1:9001", width = 1280, height = 720, ringSize = 3)
  * val surfaces = streamer.start()
- * val module = moduleHere { surfaces.first().apply() }; module += "mesh" to m
+ * val module = moduleHere { +surfaces.first() }; module += "mesh" to m
  * surfaces.forEach { it += "content" to module }
  * // stop later: streamer.stop()
  * ```

@@ -93,7 +93,7 @@ class PyramidOpticalFlow(override val renderer: Renderer,override val first: Has
     private val modules=mutableListOf<Module>()
     private fun pass(label: String,into: RenderToTexture,fragment: String,textures: Map<String,HasImageView>): Mesh {
         val m=Module(parameters(renderer) {
-            name=label;into.apply();vertex=VERTEX;this.fragment=fragment;depthTest=false;depthWrite=false;blend=false
+            name=label;+into;vertex=VERTEX;this.fragment=fragment;depthTest=false;depthWrite=false;blend=false
             textureResolver={ t -> fromViews(listOf(textures[t.name] ?: error("$label: no texture ${t.name}")),t.name,sampler) }
         })
         check(m.valid) { "$label failed to build" }

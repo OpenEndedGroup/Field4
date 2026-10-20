@@ -50,7 +50,7 @@ class OpenDlssNrStudy(
         Module(
             parameters(renderer) {
                 this.name = "$name-source"
-                source.apply()
+                +source
                 depthTest = geometry
                 depthWrite = geometry
                 blend = false
@@ -89,7 +89,7 @@ class OpenDlssNrStudy(
     private val compareModule = Module(
         parameters(renderer) {
             this.name = "$name-comparison"
-            output.apply()
+            +output
             depthTest = false
             depthWrite = false
             blend = false

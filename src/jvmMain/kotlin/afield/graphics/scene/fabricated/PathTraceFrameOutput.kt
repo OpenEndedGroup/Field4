@@ -46,7 +46,7 @@ class PathTraceFrameOutput internal constructor(val tracer: PathTracingRenderer)
     fun guides()=RayReconstructionGuides(diffuseAlbedo,specularAlbedo,normalRoughness,tracer.camera.modelView(),
         Matrix4f().setPerspective(tracer.camera.p.fov.toFloat(),tracer.width.toFloat()/tracer.height,near,far,true),specularHitDistance)
     private val convert=Module(parameters(renderer) {
-        name="${tracer.name}-frame-convert";images.apply();depthTest=false;depthWrite=false;blend=false
+        name="${tracer.name}-frame-convert";+images;depthTest=false;depthWrite=false;blend=false
         vertex=VERTEX;fragment=FRAGMENT
     })
     private var closed=false

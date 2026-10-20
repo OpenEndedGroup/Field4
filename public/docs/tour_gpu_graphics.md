@@ -51,7 +51,7 @@ renderer += moduleHere {
             tri.add(0, 2, 3)
         }
         // read once per frame, and handed to the shader as `pc.time`
-        time = { (AnimationClock.nowSeconds() - started).toFloat() }
+        time = { AnimationClock.nowSeconds() - started }
     }
 }
 ```
@@ -76,9 +76,9 @@ void main()
 ```
 
 `time` comes from the fragment shader the same way. It is a member of the shader's push constants,
-so the mesh gets a `time` property, and the function assigned to it is called every frame. The
-shader declares a `float`, so the function returns a `Float`: seconds since the box ran. The
-clock is the `AnimationClock` from [Frames and the Animation Loop](animation_time_model.md), so the rings drift
+so the mesh gets a `time` property, and the function assigned to it is called every frame: here,
+seconds since the box ran. The shader declares a `float`, and Field narrows the `Double` to it as it
+writes the value. The clock is the `AnimationClock` from [Frames and the Animation Loop](animation_time_model.md), so the rings drift
 outward at the same rate live and in a recording.
 
 ```diffstatic {data-lang=glsl}
@@ -109,11 +109,11 @@ property and add the angle around the centre to the line that makes the rings:
     float rings = 0.5 + 0.5 * sin(24.0 * r - 3.0 * pc.time + 5.0 * atan(p.y, p.x));
 ```
 
-Run the box again and the rings become a five-armed spiral, still turning. The window stays open
-and the renderer keeps its frame loop. Field recompiles the shader, reads its interface again, and
-the mesh named `"square"` replaces the old one, so nothing piles up.
+Press Alt-Enter in the GLSL editor and the rings become a five-armed spiral, still turning. You do
+not need to run the box again: Field recompiles the shader in place, the window stays open, and
+the renderer keeps its frame loop.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/tour_gpu_graphics/spiral.png" alt="the same full-window blue and gold pattern, now a five-armed spiral winding out from the centre instead of concentric rings" wait="1" timeout="90" capture="native-window" native-wait-frames="8" trim-native=true graphics-context=true embed=true name="tour-gpu-spiral" source-box="assets/tour_gpu_graphics/spiral" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tour_gpu_graphics/spiral.png" alt="the same full-window blue and gold pattern, now a five-armed spiral winding out from the centre instead of concentric rings" wait="1" timeout="90" capture="native-window" native-wait-frames="8" trim-native=true graphics-context=true embed=true hidden=true name="tour-gpu-spiral" source-box="assets/tour_gpu_graphics/spiral" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 val started = AnimationClock.nowSeconds()
 
 renderer += moduleHere {
@@ -124,7 +124,7 @@ renderer += moduleHere {
             tri.add(0, 1, 2)
             tri.add(0, 2, 3)
         }
-        time = { (AnimationClock.nowSeconds() - started).toFloat() }
+        time = { AnimationClock.nowSeconds() - started }
     }
 }
 ```
@@ -204,8 +204,8 @@ import afield.media.stream.ElectronRTTView
 val view = ElectronRTTView(640, 360)
 val started = AnimationClock.nowSeconds()
 
-view.rtt += "content" to moduleHere {
-    view.rtt.apply()
+view += "content" to moduleHere {
+    +view
     +Mesh("square") {
         set(4, 2) {
             pos.add(-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0)
@@ -213,16 +213,15 @@ view.rtt += "content" to moduleHere {
             tri.add(0, 1, 2)
             tri.add(0, 2, 3)
         }
-        time = { (AnimationClock.nowSeconds() - started).toFloat() }
+        time = { AnimationClock.nowSeconds() - started }
     }
 }
-view.rtt.parameters.clearFirst = true
 
 display("main", view.html())
 ```
 
-`moduleHere { view.rtt.apply() }` sends the module's drawing into the view instead of the window,
-and `display` puts the view in the box's `main` output. A web browser, including Field's HTTP
+`+view` inside `moduleHere { }` sends the module's drawing into the view instead of the window,
+`view += ...` attaches the module to it, and `display` puts the view in the box's `main` output. A web browser, including Field's HTTP
 mirror, shows a message in place of the frames.
 
 ## Where to go from here

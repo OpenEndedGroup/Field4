@@ -33,7 +33,7 @@ internal class SpinningDiffusionMotion(
     private val modules = mutableListOf<Module>()
     private fun geometry(target: RenderToTexture, fragment: String, name: String): Mesh {
         val module = Module(parameters(renderer) {
-            target.apply(); vertex = VERTEX; this.fragment = fragment
+            +target; vertex = VERTEX; this.fragment = fragment
             depthTest = false; depthWrite = false; blend = false
             textureResolver = { t -> if (t.name == "referenceIds") fromViews(referenceIds, t.name, referenceIds.defaultSampler!!) else null }
         })
@@ -56,7 +56,7 @@ internal class SpinningDiffusionMotion(
         try {
             referenceMesh = geometry(referenceIds, IDS, "reference-ids")
             background = Module(parameters(renderer) {
-                mapping.apply(); vertex = FULLSCREEN; fragment = BACKGROUND
+                +mapping; vertex = FULLSCREEN; fragment = BACKGROUND
                 depthTest = false; depthWrite = false; blend = false
                 textureResolver = { t -> if (t.name == "referenceIds") fromViews(referenceIds, t.name, referenceIds.defaultSampler!!) else null }
             }).also { module ->
@@ -67,7 +67,7 @@ internal class SpinningDiffusionMotion(
             }
             mappingMesh = geometry(mapping, MOTION, "curve-correspondence")
             paperFill = Module(parameters(renderer) {
-                filledPaper.apply(); vertex = FULLSCREEN; fragment = PAPER_FILL
+                +filledPaper; vertex = FULLSCREEN; fragment = PAPER_FILL
                 depthTest = false; depthWrite = false; blend = false
                 textureResolver = { t ->
                     when (t.name) {

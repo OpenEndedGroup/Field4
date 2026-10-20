@@ -112,7 +112,7 @@ operations:
             "velocity" to surfaces.motion,
         )
         val guideModule = moduleHere {
-            guides.apply()
+            +guides
             depthTest = false
             depthWrite = false
             blend = false
@@ -318,7 +318,7 @@ operations:
           "velocity" to surfaces.motion,
       )
       val guideModule = moduleHere {
-          guides.apply()
+          +guides
           depthTest = false
           depthWrite = false
           blend = false
