@@ -104,7 +104,9 @@ Above, an earlier save of the box `sketch` is selected in the timeline, and the 
 The restore is itself saved, so the state you restored *from* becomes the newest backup and
 stays in the timeline: a restore can always be undone by restoring again. Edits made since the
 last autosave (5 s) are not in any backup, so let the document save before you restore over work
-you care about.
+you care about. Every edit that changes what is saved counts: a new box, a move, a rename, a
+deletion or a connection as well as code. Closing the document and stopping Field both save what the
+autosave has not reached yet.
 
 ### Restore just a few boxes
 
@@ -153,6 +155,10 @@ History is read from files in the document's folder:
   keystroke. Document backups are never pruned; the history goes back to the document's first
   save. (Sidecar files such as a box's `.kt` keep their own last ten backups in the same folder;
   history does not need them, since each document backup holds the box text too.)
+- `backups/<sidecar>.external-<time>` files are disk edits Field overrode. When a sidecar is
+  edited outside Field while the same box has an unsaved edit in Field, Field's edit wins and the
+  disk text is kept here, with a notice naming the file. They are not versions and do not appear
+  in the timeline; the newest ten per sidecar are kept.
 - `versions.edn` holds version names and the list of full-restore jumps, for example
   `{"transitions" [{"fromIndex" 4 "toIndex" 0 "timestamp" …}] "names" {1 "radius sixty-four"}}`.
 - `history_metrics.edn` records what happened between saves (how many boxes were edited, moved
