@@ -90,5 +90,5 @@ space, nodes carrying their `type` and `value`, so it chains into the other geom
 ??? aside "How the trees are checked"
     `ContourTreesTest` checks, over six random landscapes, that the contour tree is a tree (one
     fewer arc than nodes), that every pixel belongs to an arc, and that it has exactly the join
-    tree's minima and the split tree's maxima. The first draft had the leaf-peeling directions
-    backwards and reported about ninety maxima on a field with two peaks; that test is what caught it.
+    tree's minima and the split tree's maxima. Peeling leaves in the wrong direction reports dozens
+    of spurious maxima on a two-peak field, and that check fails on it.
