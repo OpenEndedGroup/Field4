@@ -2,7 +2,7 @@
 
 `FLine` is Field’s core geometry container type: it’s basically an ordered list of drawing instructions (`moveTo`, `lineTo`, `cubicTo`, `close`) plus style properties (`color`, `thickness`, `filled`, `stroked`, `pointed`, and so on). This isn’t a new idea — it’s essentially a “path” like you’ll find in [SVG](https://en.wikipedia.org/wiki/Scalable_Vector_Graphics), [PDF](https://en.wikipedia.org/wiki/PDF), and [PostScript](https://en.wikipedia.org/wiki/PostScript). Unlike those formats, Field stores points in 3D when that makes sense.
 
-All of the code below are meant to run inside a Box inside Field. Each snippet ends with a `lines(...)` so you can actually see what you've drawn.
+All of the code below runs inside a box in Field. Each snippet ends with a `lines(...)` so you can actually see what you've drawn.
 
 If you want to run these examples, this embedded viewer's "Open in Field4" button will do just that, if you have Field already running.
 

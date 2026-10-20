@@ -807,4 +807,4 @@ In three dimensions:
     by intersecting every triple of planes, so construction is `O(m⁴)` in the face count. The
     animated starting point is `dev_docs/agents/transcripts/lp_curves_3d.yaml`.
 
-Source: `src/jvmMain/kotlin/afield/geometry/spatial/lp_trajectories.kt` and `src/jvmMain/kotlin/afield/geometry/spatial/lp_polytope.kt`.
+Source: `src/jvmMain/kotlin/afield/geometry/spatial/lp_trajectories.kt`, `src/jvmMain/kotlin/afield/geometry/spatial/lp_fan_map.kt` and `src/jvmMain/kotlin/afield/geometry/spatial/lp_polytope.kt`.

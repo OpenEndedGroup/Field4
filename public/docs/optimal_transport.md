@@ -46,8 +46,9 @@ displayOpen("lines")
 ```
 
 The exact matching's mean squared travel is the smallest possible, 15948 here, and BSP-OT's is
-16083, under one percent above it; the crossing chords on the right are where the difference is. `assignment(cost)` takes a
-cost matrix instead of points, for any cost you can compute: `cost[i][j]` is the price of sending
+16083, under one percent above it; the crossing chords on the right are where the difference is.
+
+`assignment(cost)` takes a cost matrix instead of points, for any cost you can compute: `cost[i][j]` is the price of sending
 source `i` to target `j`, and the matrix must be square.
 
 ## Moving mass: Sinkhorn
@@ -101,7 +102,8 @@ displayOpen("lines")
 ```
 
 The plan's `toString` reports its cost, how many iterations it took and how far its marginals are
-from the weights. Smaller `epsilon` takes more iterations: here 20 at `5000` and 5200 at `50`. As `epsilon` shrinks the cost falls toward the exact `assignment` cost, and with equal sizes
+from the weights. Smaller `epsilon` takes more iterations: here 20 at `5000` and 5200 at `50`.
+As `epsilon` shrinks the cost falls toward the exact `assignment` cost, and with equal sizes
 and weights each source's `strongest()` target becomes its assigned one.
 
 Two things to do with a plan:

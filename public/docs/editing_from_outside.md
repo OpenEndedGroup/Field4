@@ -101,7 +101,7 @@ counts and an inline edit is lost on the next open, so editing the file is the s
 
 ## Edit `metadata.edn` itself
 
-Everything else about a box — its name, frame, connections and other properties — lives in
+Everything else about a box (its name, frame, connections and other properties) lives in
 `metadata.edn`, and Field applies hand edits to it while the document is open. In a test, changing
 a box's `"name"` and `"frame"` renamed and moved it on the canvas, and adding a new
 `{"id" ... "properties" {...}}` entry to the `"boxes"` list created the box. Field does not rewire
@@ -112,7 +112,7 @@ gives the exact rules.
 Field also writes a `document.md` beside `metadata.edn`: a readable copy of the boxes and their
 code, meant for tools that read documents. Field never reads it, so editing it changes nothing.
 
-??? aside "How this page was checked, and why it has no figures"
+??? aside "Agents: how this page was checked, and why it has no figures"
     Every behaviour above was run on 2026-10-18 against a live Field on a scratch document,
     editing files from a shell while the backdoor held the document open, and checking the box
     with the backdoor's `boxes`, `run`, `wait-output` and `native-screenshot` commands and
@@ -120,14 +120,8 @@ code, meant for tools that read documents. Field never reads it, so editing it c
     several seconds, which a docs-runner capture fence cannot stage, so no figure was made rather
     than one that only appears to show it.
 
-    The same runs found two bugs, both fixed alongside the page. A second edit to a file made
-    before the autosave that followed the first was skipped as an unsaved Field edit, and that
-    autosave then wrote the first edit back over the file (`examples.file-watch.sidecar-reedit`).
-    And a box created from a dropped file was named after its property (`Code`) rather than its id.
-
-    On 2026-10-19 three more were closed: an edit to the inline code in `metadata.edn` was logged
-    as applied and changed nothing (it was resolved through the untouched `.kt` file; now the
-    inline text is applied, `FileWatchMetadataReconcileTest.anEditToAnInlineSidecarCopyIsApplied`);
-    a disk edit lost to an unsaved Field edit was dropped silently (now the notice and the
-    `.external-` copy, `anExternalEditOverriddenByAnUnsavedFieldEditIsKept`, reproduced live with a
-    box writing its neighbour's file right after editing it); and `onExternalEdit` was added.
+    Three of them are pinned by tests: a second edit to a file before Field's autosave
+    (`examples.file-watch.sidecar-reedit`), an edit to the inline code in `metadata.edn`
+    (`FileWatchMetadataReconcileTest.anEditToAnInlineSidecarCopyIsApplied`), and a disk edit
+    overridden by an unsaved Field edit (`anExternalEditOverriddenByAnUnsavedFieldEditIsKept`).
+    Those last two, and `onExternalEdit`, were checked on 2026-10-19.
