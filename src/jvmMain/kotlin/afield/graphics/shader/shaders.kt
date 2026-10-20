@@ -2308,6 +2308,9 @@ private fun builtInShaderInclude(inside: Box, includePath: String): String? {
         else if (includePath.startsWith("points/") && !shaderIncludeRoots.containsKey("points") &&
             afield.graphics.vulkan.targets.PointShaders.has(includePath.removePrefix("points/")))
             afield.graphics.vulkan.targets.PointShaders.source(includePath.removePrefix("points/"))
+        else if (includePath.startsWith("particles/") && !shaderIncludeRoots.containsKey("particles") &&
+            afield.simulation.particles.ParticleShaders.has(includePath.removePrefix("particles/")))
+            afield.simulation.particles.ParticleShaders.source(includePath.removePrefix("particles/"))
         else null
     }
 }
