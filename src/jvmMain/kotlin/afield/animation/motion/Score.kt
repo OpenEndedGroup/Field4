@@ -7,7 +7,6 @@ import afield.audio.synth.sound
 import afield.audio.synth.thisRMS
 import afield.document.graph.Box
 import afield.document.graph.registerStopHook
-import afield.math.linalg.Vector2f
 import afield.runtime.execution.begin
 import afield.runtime.lifecycle.AnimationClock
 import afield.runtime.lifecycle.Frames
@@ -96,13 +95,12 @@ class ScoreTransport internal constructor(
     val x: ClosedFloatingPointRange<Double>,
     /** The canvas y span the output panel shows, and the height the playhead box covers. */
     val y: ClosedFloatingPointRange<Double>,
-    /** Output canvas width in pixels; the height follows the span's aspect ratio. */
+    /** Output canvas width in pixels. */
     val width: Int,
+    /** Output canvas height in pixels. x and y scale separately, as in a score whose time axis is long. */
+    val height: Int,
     private val playheadName: String?,
 ) {
-    /** Output canvas height in pixels. */
-    val height: Int = max(1, (width * (y.endInclusive - y.start) / (x.endInclusive - x.start)).toInt())
-
     /** Hold the clock. */
     var paused = false
 
@@ -185,27 +183,29 @@ class ScoreTransport internal constructor(
  * ```
  *
  * Make it the box's last expression: it returns the animation, and stopping the box stops the score.
- * The output is a dark canvas [width] pixels wide showing the canvas region [x] by [y], so
- * [ScoreFrame.boxPoint] lands a box's drawing where the box sits in the score. Any box connected under
- * this one that is not armed yet is run once at the start, so a score's instruments can be wired to
- * it rather than each run by hand. The playhead box, if there is one, is styled as an orange line and
- * moved every frame; without one the score still plays.
+ * The output is a dark [width] by [height] canvas showing the canvas region [x] by [y], so
+ * [ScoreFrame.boxPoint] lands a box's drawing where the box sits in the score. Every box whose frame
+ * lies in the score and that has not been run yet is run once at the start, the way Field's time
+ * slider runs the boxes it crosses, so running this one box plays the whole score. The playhead box,
+ * if there is one, is styled as an orange line and moved every frame; without one the score still
+ * plays.
  */
 fun Box.playScore(
     loop: Double = 4.0,
     x: ClosedFloatingPointRange<Double> = 0.0..1600.0,
     y: ClosedFloatingPointRange<Double> = 0.0..600.0,
     width: Int = 520,
+    height: Int = 360,
     playhead: String? = "playhead",
     channel: String = "score",
 ): Frames {
     require(x.endInclusive > x.start && y.endInclusive > y.start) { "playScore needs a non-empty x and y span" }
-    val transport = ScoreTransport(this, loop, x, y, width, playhead)
+    val transport = ScoreTransport(this, loop, x, y, width, height, playhead)
     val binding = outputRequests("score-$channel") { JsonPrimitive(transport.lastFrameJson) }
     display(
         channel,
         """<iframe src="/score_view.html?binding=${binding.id}" """ +
-            """style="border:0;display:block;background:#0a0a0a;width:${width}px;height:${transport.height}px"></iframe>""",
+            """style="border:0;display:block;background:#0a0a0a;width:${width}px;height:${height}px"></iframe>""",
     )
     displayOpen(channel)
 
@@ -215,7 +215,12 @@ fun Box.playScore(
             p.frame = Rect(x.start, y.start, 12.0, y.endInclusive - y.start)
         }
     }
-    val waiting = synchronized(armed) { children.filter { armed[it] == null } }
+    // Like the time slider, which runs whatever it crosses: every box in the score that has not been
+    // run yet is run once now, so opening a score and running this box plays all of it.
+    val span = Rect(x.start, y.start, x.endInclusive - x.start, y.endInclusive - y.start)
+    val waiting = synchronized(armed) {
+        root.children.filter { it !== this && it.name != playhead && armed[it] == null && it.frame.intersects(span) }
+    }
     waiting.forEach { it.begin() }
 
     return loop { transport.step() }
@@ -302,10 +307,13 @@ class ScoreFrame internal constructor(
     val cy: Double get() = bounds.y + bounds.h / 2
 
     /** The output-canvas point for canvas coordinates ([x], [y]). */
-    fun fromScore(x: Double, y: Double) = Vector2f(((x - scoreLeft) * scaleX).toFloat(), ((y - scoreTop) * scaleY).toFloat())
+    fun fromScore(x: Double, y: Double) = ScorePoint((x - scoreLeft) * scaleX, (y - scoreTop) * scaleY)
 
     /** The output-canvas point at ([u], [v]) across this box, 0..1 each way, (0, 0) its top left. */
     fun boxPoint(u: Double, v: Double) = fromScore(bounds.x + bounds.w * u, bounds.y + bounds.h * v)
+
+    /** An output-canvas point, for [ScoreDraw.polyline]. */
+    fun pt(x: Double, y: Double) = ScorePoint(x, y)
 
     /** This box's measured dough level: [afield.audio.synth.thisRMS]. */
     val thisRMS: Double get() = owner.thisRMS
@@ -351,6 +359,9 @@ class ScoreFrame internal constructor(
     /** A uniformly random int in lo..hi. */
     fun randInt(lo: Int, hi: Int) = lo + (Math.random() * (hi - lo + 1)).toInt()
 }
+
+/** A point on the output canvas, in pixels: what [ScoreFrame.boxPoint] and [ScoreFrame.fromScore] return. */
+data class ScorePoint(val x: Double, val y: Double)
 
 /** A box's canvas frame, as `score { }` sees it: read it, set it, move it, resize it. */
 class ScoreBox internal constructor(private val box: Box) {
@@ -403,31 +414,31 @@ class ScoreDraw internal constructor() {
         style(null, stroke ?: color ?: "rgba(255,255,255,0.88)", width, alpha)
     }
 
-    fun line(a: Vector2f, b: Vector2f, stroke: String? = null, color: String? = null, width: Double = 1.0, alpha: Double = 1.0) =
-        line(a.x.toDouble(), a.y.toDouble(), b.x.toDouble(), b.y.toDouble(), stroke, color, width, alpha)
+    fun line(a: ScorePoint, b: ScorePoint, stroke: String? = null, color: String? = null, width: Double = 1.0, alpha: Double = 1.0) =
+        line(a.x, a.y, b.x, b.y, stroke, color, width, alpha)
 
     fun circle(x: Double, y: Double, r: Double, fill: String? = null, stroke: String? = null, color: String? = null, width: Double = 1.0, alpha: Double = 1.0) {
         begin("c"); n(x); n(y); n(max(0.0, r))
         style(fill ?: color, stroke, width, alpha)
     }
 
-    fun circle(p: Vector2f, r: Double, fill: String? = null, stroke: String? = null, color: String? = null, width: Double = 1.0, alpha: Double = 1.0) =
-        circle(p.x.toDouble(), p.y.toDouble(), r, fill, stroke, color, width, alpha)
+    fun circle(p: ScorePoint, r: Double, fill: String? = null, stroke: String? = null, color: String? = null, width: Double = 1.0, alpha: Double = 1.0) =
+        circle(p.x, p.y, r, fill, stroke, color, width, alpha)
 
     fun ring(x: Double, y: Double, r: Double, stroke: String? = null, color: String? = null, width: Double = 1.0, alpha: Double = 1.0) {
         begin("c"); n(x); n(y); n(max(0.0, r))
         style(null, stroke ?: color ?: "rgba(255,255,255,0.88)", width, alpha)
     }
 
-    fun ring(p: Vector2f, r: Double, stroke: String? = null, color: String? = null, width: Double = 1.0, alpha: Double = 1.0) =
-        ring(p.x.toDouble(), p.y.toDouble(), r, stroke, color, width, alpha)
+    fun ring(p: ScorePoint, r: Double, stroke: String? = null, color: String? = null, width: Double = 1.0, alpha: Double = 1.0) =
+        ring(p.x, p.y, r, stroke, color, width, alpha)
 
     fun rect(x: Double, y: Double, w: Double, h: Double, fill: String? = null, stroke: String? = null, color: String? = null, width: Double = 1.0, alpha: Double = 1.0) {
         begin("r"); n(x); n(y); n(w); n(h)
         style(fill ?: color, stroke, width, alpha)
     }
 
-    fun polyline(points: List<Vector2f>, fill: String? = null, stroke: String? = null, color: String? = null, width: Double = 1.0, alpha: Double = 1.0, closed: Boolean = false) {
+    fun polyline(points: List<ScorePoint>, fill: String? = null, stroke: String? = null, color: String? = null, width: Double = 1.0, alpha: Double = 1.0, closed: Boolean = false) {
         begin("p")
         calls.append(",[")
         points.forEachIndexed { i, p ->

@@ -74,13 +74,20 @@
       status.textContent = "score · " + frame.t.toFixed(1) + "s / " + frame.loop + "s · " + frame.calls.length + " shapes";
     }
 
+    // A dropped connection is retried; a binding the box has closed (it was stopped or run again,
+    // which renders a new iframe) fails every retry, and then the panel says so.
+    let failures = 0;
     async function pump() {
       try {
         draw(JSON.parse(await requests.request({})));
+        failures = 0;
+        status.style.color = "";
         requestAnimationFrame(pump);
       } catch (e) {
-        status.textContent = "score stopped — run the score box again";
+        failures++;
+        status.textContent = (failures > 5 ? "score stopped — run the score box again · " : "reconnecting · ") + (e && e.message || e);
         status.style.color = "#7a4a2a";
+        setTimeout(pump, Math.min(4000, 250 * failures));
       }
     }
     pump();

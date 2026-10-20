@@ -43,7 +43,7 @@ class ScoreTest {
     fun tearDown() = AnimationClock.endFrameIndexed(token)
 
     /** Loop 4 s over x 0..1000: the playhead moves 12.5 canvas units a frame. */
-    private fun transport(playhead: String? = null) = ScoreTransport(lead, 4.0, 0.0..1000.0, 0.0..500.0, 500, playhead)
+    private fun transport(playhead: String? = null) = ScoreTransport(lead, 4.0, 0.0..1000.0, 0.0..500.0, 500, 250, playhead)
 
     private fun ScoreTransport.run(frames: Int) = repeat(frames) {
         step()
