@@ -689,6 +689,9 @@ class _Style:
             "push": "\uf062" if nerd else "^", "pull": "\uf063" if nerd else "v",
             "fix": "\uf0ad" if nerd else "%",
         }
+        if nerd:
+            # Nerd Font icons draw wider than the one cell the terminal gives them; pad so they don't touch the text.
+            self.g = {k: v + " " for k, v in self.g.items()}
 
     def c(self, code: str, text: str) -> str:
         return f"\033[{code}m{text}\033[0m" if self.color else text
