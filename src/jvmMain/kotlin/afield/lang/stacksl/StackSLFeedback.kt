@@ -334,7 +334,8 @@ object StackSLFeedbackShader {
  * What one compile of a feedback program came to, as StackTrinket's lowering panel shows it: whether
  * it is drawing, the stack depth with the leftover values under the returned top, the helpers it
  * pulled in, how many dangling wires (tunable numbers) it has, each diagnostic at its line and
- * column, and the lowered GLSL line by line. It is a [ToHTML], so `display("lowering", it)` draws it.
+ * column; [glslHtml] is the lowered GLSL line by line. It is a [ToHTML], so `display("lowering", it)`
+ * draws the summary.
  */
 class StackSLLowering(
     val source: String,
@@ -370,7 +371,8 @@ class StackSLLowering(
             running -> "<span style='color:#e96'>not compiled — the last good program is still drawing</span>"
             else -> "<span style='color:#e96'>not compiled</span>"
         }
-        append("<div style='font-family:var(--field-mono, monospace);font-size:11px;line-height:1.45;color:#ccc'>")
+        // Fixed width: an output panel sizes itself to its content.
+        append("<div style='width:500px;max-width:500px;overflow:hidden;font-family:var(--field-mono, monospace);font-size:11px;line-height:1.45;color:#ccc'>")
         append("<div>$status · ${esc(guidance)}</div>")
         append("<div style='color:#888'>helpers ${esc(result.analysis.requiredHelpers.sorted().joinToString(", ").ifEmpty { "none" })}")
         append(" · wires ${result.analysis.danglingWires.size} · stack $depth/${(depth - 1).coerceAtLeast(0)}</div>")
@@ -381,16 +383,26 @@ class StackSLLowering(
             append("<div style='color:$colour'>${d.severity.name.lowercase()} $where${esc(d.message)}$near</div>")
         }
         glslError?.let { append("<div style='color:#e96'>GPU: ${esc(it)}</div>") }
-        append("<details><summary style='color:#888;cursor:pointer'>lowered GLSL, ${result.glsl.trimEnd().lines().size} lines</summary>")
-        append("<pre style='margin:4px 0 0;max-height:420px;overflow:auto;color:#aaa'>${esc(numberedGlsl)}</pre></details>")
+        append("<div style='color:#888'>lowered GLSL: ${result.glsl.trimEnd().lines().size} lines, in the <i>glsl</i> panel</div>")
         append("</div>")
     }
+
+    /**
+     * The numbered GLSL as HTML, scrolling inside a fixed 500 by 300 box. It is a panel of its own
+     * ([STACKSL_GLSL_CHANNEL]): a panel is sized to all of its content, folded or not, so inside the
+     * summary it held the summary open at full height.
+     */
+    val glslHtml: String
+        get() = "<pre style='margin:0;width:500px;height:300px;overflow:auto;white-space:pre;font-size:11px;line-height:1.4;color:#aaa'>${esc(numberedGlsl)}</pre>"
 
     private fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;")
 }
 
 /** The output channel [Box.stackFeedback] shows its [StackSLLowering] in. */
 const val STACKSL_LOWERING_CHANNEL = "lowering"
+
+/** The output channel [Box.stackFeedback] shows the lowered GLSL in; it starts closed. */
+const val STACKSL_GLSL_CHANNEL = "glsl"
 
 private val feedbackHosts = WeakHashMap<Box, StackSLFeedback>()
 
@@ -404,8 +416,9 @@ private val feedbackHosts = WeakHashMap<Box, StackSLFeedback>()
  * ```
  *
  * The program is followed while it runs: edit `stackSL` and the new program takes over on the next
- * frame that it compiles, without clearing the picture. The box's `lowering` output shows the
- * lowered GLSL, stack depth, wires and diagnostics after every compile.
+ * frame that it compiles, without clearing the picture. After every compile the box's `lowering`
+ * output shows the stack depth, helpers, wires and diagnostics, and its `glsl` output (closed until
+ * opened) the lowered GLSL.
  *
  * Calling this again — re-running the box — reuses the same images (nothing frees a render target,
  * so a fresh pair every run would leak) and, with [reset], clears them, so a run starts from black.
@@ -424,6 +437,7 @@ fun Box.stackFeedback(
         if (settings.showLowering) {
             box.display(STACKSL_LOWERING_CHANNEL, l)
             box.displayOpen(STACKSL_LOWERING_CHANNEL)
+            box.display(STACKSL_GLSL_CHANNEL, l.glslHtml)
         }
     }
     val host = synchronized(feedbackHosts) {

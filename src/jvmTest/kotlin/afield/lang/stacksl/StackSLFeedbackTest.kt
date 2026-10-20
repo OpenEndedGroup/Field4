@@ -73,6 +73,7 @@ class StackSLFeedbackTest {
         assertTrue("drawing" in html && "pulse" in html && "wires 2" in html, html)
         assertTrue(l.numberedGlsl.lines().first().startsWith("  1 | "))
         assertTrue("lowered GLSL" in html)
+        assertTrue("vec4 ${StackSLFeedbackShader.PREFIX}(" in l.glslHtml && "  1 | " in l.glslHtml)
     }
 
     @Test
