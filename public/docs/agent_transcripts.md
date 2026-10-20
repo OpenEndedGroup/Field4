@@ -2910,6 +2910,22 @@ trains meet they interleave. Red recovers faster, so its rings come more often. 
 
 [Open ↗](offline.html?file=assets/agent_transcripts/forest_fire/metadata.edn)
 
+### fern_iterated_systems
+
+**Fern**, the classroom demo of iterated systems, on the GPU. Each system is tens or hundreds of
+thousands of particles, each stepped by one rule every frame and plotted after every step into a
+picture that fades a little each frame, so their visits pile up into fine glowing dust. A renderer
+box, then four systems beneath it: the **Barnsley fern** (four affine maps chosen at random, the
+chaos game, launched when the scene opens), the **Lorenz attractor** (a continuous chaotic flow,
+projected from 3D and coloured by height), a **flame-style IFS** (each map followed by a swirl,
+handkerchief or spherical variation, shown as log density), and the **Sierpinski triangle** (the
+smallest chaos game). Each system box's `compute` tab holds the rule as six GLSL functions,
+`initParticle`, `step`, `project`, `shouldDraw`, `color` and `pointSize`; its code sets the
+viewport, the background, the particle count and the fade, and shows sliders for fps, steps,
+fade and exposure. Launch another system box to switch to it.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fern_iterated_systems/metadata.edn)
+
 ### recstl_playground
 
 A one-stop [RectSL](rectsl_examples.md) playground: a Window + Renderer, a
