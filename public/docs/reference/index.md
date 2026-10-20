@@ -643,7 +643,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**33460 public symbols across 1506 source files**, 16989 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**33462 public symbols across 1506 source files**, 16991 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -660,7 +660,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 42 | 742 | 373 (50%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 44 | 1225 | 591 (48%) | Making a shape behave. |
+| [Simulation](simulation.md) | 44 | 1226 | 592 (48%) | Making a shape behave. |
 | [Imaging](imaging.md) | 47 | 753 | 340 (45%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 14 | 774 | 571 (73%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -671,7 +671,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 584 | 397 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 121 | 3082 | 1397 (45%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 216 | 3007 | 1084 (36%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 216 | 3008 | 1085 (36%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 93 | 2203 | 687 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 | [IO](io.md) | 1 | 22 | 15 (68%) |  |
@@ -809,7 +809,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>execution/<wbr></small> [BoxBodyRun.kt](workspace.md#boxbodyrun-kt) | Workspace | 3 | 3 | Which boxes are executing their body right now, as distinct from a frame loop or callback the body started: `BoxBodyRun` counts each box's nested body runs, and a source-backed block reads it to refuse re-entering its own box. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BoxCodeCompileGuard.kt](examples.md#boxcodecompileguard-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BoxCodeFormat.kt](examples.md#boxcodeformat-kt) | Examples | 3 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>graph/<wbr></small> [Boxes.kt](workspace.md#boxes-kt) | Workspace | 79 | 20 | The `Box` model: a box's properties, its `children`/`parents` graph, and the property sets that decide what is saved and what is sent to the browser. | [Keyboard shortcuts](../keybindings.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>graph/<wbr></small> [Boxes.kt](workspace.md#boxes-kt) | Workspace | 80 | 21 | The `Box` model: a box's properties, its `children`/`parents` graph, and the property sets that decide what is saved and what is sent to the browser. | [Keyboard shortcuts](../keybindings.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BoxImportCensus.kt](examples.md#boximportcensus-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [boxImports.kt](workspace.md#boximports-kt) | Workspace · internal | 14 | 10 | Which of a box's imports it needs. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>layout/<wbr></small> [BoxLayout.kt](visualization.md#boxlayout-kt) | Visualization | 3 | 3 | "Lay out selection" — arranging boxes on the canvas the way a diagram tool would, using the layout engines in `native/field-d2-layout`. |  |
@@ -1839,7 +1839,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>persistence/<wbr></small> [saving.kt](workspace.md#saving-kt) | Workspace · internal | 32 | 10 | Reads and writes a document as `metadata.edn` plus sidecar files, and keeps backups of what it replaces. | [What a document is on disk](../document_on_disk.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Scene.kt](audio.md#scene-kt) | Audio | 26 | 19 | Acoustic geometry: the scene that sound is simulated against, and the meshes in it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>dmx/<wbr></small> [SceneOnARig.kt](lighting.md#sceneonarig-kt) | Lighting | 16 | 13 | A RectSL scene driven onto a light rig over sACN, and measured end to end. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>motion/<wbr></small> [Score.kt](simulation.md#score-kt) | Simulation | 80 | 48 | The canvas as a score: boxes are the events, a playhead box sweeps across them, and each box's `score { }` runs every frame the playhead is over it. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>motion/<wbr></small> [Score.kt](simulation.md#score-kt) | Simulation | 81 | 49 | The canvas as a score: boxes are the events, a playhead box sweeps across them, and each box's `score { }` runs every frame the playhead is over it. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [scratch.kt](internal.md#scratch-kt) | Internal · internal | 4 | 2 |  | [Running code in a box](../running_code.md), [Why does this value resolve here?](../why.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [screenshot.kt](workspace.md#screenshot-kt) | Workspace · internal | 54 | 26 | Screenshot and video capture of Field's browser UI, used by the backdoor and the docs runner. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>models/<wbr></small> [ScriptedLlmBridge.kt](machine-learning.md#scriptedllmbridge-kt) | Machine learning | 8 | 3 | An `LlmBridge` that replays a fixed script of tool calls instead of asking a model. |  |
