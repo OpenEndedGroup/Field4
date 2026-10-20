@@ -152,15 +152,59 @@ class GpuNeighbourGrid(
         offsetFloats: Int = 0,
     ) {
         require(count in 1..capacity) { "count $count is outside 1..$capacity" }
-        require(strideFloats >= 2) { "a 2D position needs a stride of at least 2, got $strideFloats" }
+        install(into, { positions }, { count }, strideFloats, offsetFloats)
+    }
 
+    /**
+     * As [install], with the positions and the particle count read **every frame**, for a system
+     * whose count changes while it runs (particles painted in) or whose positions alternate
+     * between two buffers. A count of zero skips the frame; one above [capacity] is clamped to it.
+     */
+    fun install(
+        into: MutableMap<String, Target>,
+        positions: () -> FrameBufferGroup,
+        count: () -> Int,
+        strideFloats: Int,
+        offsetFloats: Int = 0,
+    ) {
+        require(strideFloats >= 2) { "a 2D position needs a stride of at least 2, got $strideFloats" }
+        into[name] = buildTarget(positions, count, strideFloats, offsetFloats)
+    }
+
+    /**
+     * The four stages as one [Target], for a caller that sequences its own frame and wants the
+     * grid rebuilt at a particular point in it rather than as an entry in an `others` map.
+     * [positions] and [count] are read every frame, as in the live-count [install].
+     */
+    fun target(
+        positions: () -> FrameBufferGroup,
+        count: () -> Int,
+        strideFloats: Int,
+        offsetFloats: Int = 0,
+    ): Target {
+        require(strideFloats >= 2) { "a 2D position needs a stride of at least 2, got $strideFloats" }
+        return buildTarget(positions, count, strideFloats, offsetFloats)
+    }
+
+    private fun buildTarget(
+        positions: () -> FrameBufferGroup,
+        count: () -> Int,
+        strideFloats: Int,
+        offsetFloats: Int,
+    ): Target {
         val hash = hashModule ?: buildModule("$name-hash", HASH_SHADER).also { hashModule = it }
         val clear = clearModule ?: buildModule("$name-clear", CLEAR_SHADER).also { clearModule = it }
         val ranges = rangeModule ?: buildModule("$name-ranges", RANGE_SHADER).also { rangeModule = it }
 
-        ComputeMesh(renderer, hash).apply {
-            x = groups(count); y = 1; z = 1
-            push.bind("positions") { positions }
+        // The count is fixed for the whole frame once read, so the dispatches, the sort and the
+        // push constants all agree on it.
+        var frameCount = 0
+        // A growing count must not make the sort reallocate its scratch on every frame it grows.
+        sorter.reserve(capacity, withValues = true)
+
+        val hashMesh = ComputeMesh(renderer, hash).apply {
+            x = 1; y = 1; z = 1
+            push.bind("positions") { positions() }
             push.bind("keys") { this@GpuNeighbourGrid.keys }
             push.bind("values") { this@GpuNeighbourGrid.values }
             push.bind("domainMin") { domainMin }
@@ -168,7 +212,7 @@ class GpuNeighbourGrid(
             push.bind("cells") { cellsPerSide }
             push.bind("stride") { strideFloats }
             push.bind("offset") { offsetFloats }
-            push.bind("count") { count }
+            push.bind("count") { frameCount }
             hash.current.meshes["$name-hash"] = this
         }
         ComputeMesh(renderer, clear).apply {
@@ -178,22 +222,26 @@ class GpuNeighbourGrid(
             push.bind("count") { cellCount }
             clear.current.meshes["$name-clear"] = this
         }
-        ComputeMesh(renderer, ranges).apply {
-            x = groups(count); y = 1; z = 1
+        val rangeMesh = ComputeMesh(renderer, ranges).apply {
+            x = 1; y = 1; z = 1
             push.bind("keys") { this@GpuNeighbourGrid.keys }
             push.bind("cellStart") { this@GpuNeighbourGrid.cellStart }
             push.bind("cellEnd") { this@GpuNeighbourGrid.cellEnd }
-            push.bind("count") { count }
+            push.bind("count") { frameCount }
             ranges.current.meshes["$name-ranges"] = this
         }
 
         val bounds = Rectanglef(0f, 0f, 0f, 0f)
-        into[name] = Target { command: CommandBuffer, _: Int ->
+        return Target { command: CommandBuffer, _: Int ->
+            frameCount = count().coerceIn(0, capacity)
+            if (frameCount == 0) return@Target
+            hashMesh.x = groups(frameCount)
+            rangeMesh.x = groups(frameCount)
             hash.render(command, bounds)
             clear.render(command, bounds)
             barrier(command)
             // The sort puts its own barrier in front of the keys and values it is about to read.
-            sorter.sort(command, keys, count, values)
+            sorter.sort(command, keys, frameCount, values)
             barrier(command)
             ranges.render(command, bounds)
             barrier(command)
