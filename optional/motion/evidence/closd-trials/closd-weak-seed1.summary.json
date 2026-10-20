@@ -1,0 +1,19 @@
+{
+  "mode": "weak",
+  "frames": 180,
+  "duration": 6.000000312924385,
+  "coldSeconds": 9.8482080695685,
+  "advanceP50Ms": 42.04676405061036,
+  "advanceP95Ms": 44.85073802061379,
+  "events": {
+    "applied": 3,
+    "planner": 2,
+    "tetherPhysics": 120
+  },
+  "maxPrefixResidualM": 0.0,
+  "meanTrackingErrorM": 0.047327909546162554,
+  "maxTetherForceN": 6.995450542576738,
+  "totalTetherWorkJ": -0.3974624155723868,
+  "commandToVisibleMeasured": false,
+  "visualInspection": false
+}

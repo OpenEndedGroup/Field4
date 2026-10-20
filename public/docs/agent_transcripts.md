@@ -3527,3 +3527,45 @@ Requires cooperative-vector training and the optional Slang shader build.
 See [Learn from a shader on the GPU](gpu_shader_learning.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/gpu_shader_learning/metadata.edn)
+
+### motion_recording_probe
+
+Scrub a one-metre coordinate probe, play its recorded poses and inspect the reset at two seconds.
+This diagnostic two-joint clip uses the portable motion API; it does not run ARDY or CLoSD.
+See [motion recordings](motion_recordings.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/motion_recording_probe/metadata.edn)
+
+### motion_closd_recording
+
+Replay a real CLoSD foot-tether/release performance, scrub its recorded time and orbit the executed
+body beside the planner's reference. This starting point needs neither CLoSD nor Isaac Gym.
+See [motion recordings](motion_recordings.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/motion_closd_recording/metadata.edn)
+
+### motion_closd_live
+
+Give CLoSD an intention, attach a named rigid body to a point tether, apply a torso impulse and
+release or reset it. Sessions record automatically in the document's files. Requires the optional
+CLoSD environment and `FIELD_MOTION_HOME`; see [motion recordings](motion_recordings.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/motion_closd_live/metadata.edn)
+
+### motion_ardy_path
+
+Timed ARDY routes. Live Core27 motion, timed FLine routes and sparse model conditioning. Requires the optional ARDY environment and cached prompts or the CPU encoder service. No physical attachment is implied.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/motion_ardy_path/metadata.edn)
+
+### motion_ardy_intentions
+
+Changing ARDY intentions. Live Core27 motion, timed FLine routes and sparse model conditioning. Requires the optional ARDY environment and cached prompts or the CPU encoder service. No physical attachment is implied.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/motion_ardy_intentions/metadata.edn)
+
+### motion_ardy_foot
+
+ARDY kinematic foot restriction. Live Core27 motion, timed FLine routes and sparse model conditioning. Requires the optional ARDY environment and cached prompts or the CPU encoder service. No physical attachment is implied.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/motion_ardy_foot/metadata.edn)

@@ -332,6 +332,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - [gesture](graphics.md#gesturekeyframes-kt)
 - *interpolation* — [Graphics](graphics.md#keyframeinterpolants-kt) · [Math](math.md#interpolants-kt)
 - *keyframes* — [Graphics](graphics.md#keyframecodeblend-kt) · [Visualization](visualization.md#keyframebrowser-kt)
+- *mocap* — [Animation](animation.md#motion-kt) · [Graphics](graphics.md#ardysmoke-kt)
 - [motion](simulation.md#movement-kt)
 
 </div>
@@ -627,7 +628,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**32238 public symbols across 1464 source files**, 16240 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**32377 public symbols across 1475 source files**, 16265 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -640,7 +641,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 12 | 125 | 41 (32%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 41 | 1954 | 1413 (72%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 290 | 7003 | 3502 (50%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 293 | 7009 | 3505 (50%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 42 | 742 | 373 (50%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
@@ -657,6 +658,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Languages](languages.md) | 121 | 3075 | 1390 (45%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 212 | 2984 | 1043 (34%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 92 | 2203 | 674 (30%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Animation](animation.md) | 8 | 133 | 22 (16%) |  |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 
 ## Every file
@@ -744,6 +746,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>models/<wbr></small> [AnthropicBridge.kt](machine-learning.md#anthropicbridge-kt) | Machine learning | 5 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>models/<wbr></small> [AnthropicCredentials.kt](machine-learning.md#anthropiccredentials-kt) | Machine learning | 23 | 7 | Credential + client construction for the Anthropic (Claude) provider. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>optimization/<wbr>ceres/<wbr></small> [ArchitecturalGeometry.kt](solvers.md#architecturalgeometry-kt) | Solvers | 186 | 94 | A named, typed DSL over the raw constraint vocabulary in `CeresGeometry.kt`, plus the interactive machinery for solving it while a user drags. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [ArdySmoke.kt](graphics.md#ardysmoke-kt) | Graphics | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>linalg/<wbr>arena/<wbr></small> [ArenaGeometry.kt](math.md#arenageometry-kt) | Math | 4 | 2 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [arguments.kt](workspace.md#arguments-kt) | Workspace · internal | 3 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>dmx/<wbr></small> [ArtNet.kt](lighting.md#artnet-kt) | Lighting | 33 | 28 | Art-Net 4 packet encoding and decoding — the wire format only, no sockets. |  |
@@ -846,6 +849,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [Clip.kt](machine-learning.md#clip-kt) | Machine learning | 33 | 28 |  | [Depth and CLIP: neural vision in a box](../onnx.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>inference/<wbr>onnx/<wbr></small> [ClipSmokeTest.kt](machine-learning.md#clipsmoketest-kt) | Machine learning · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>clojure/<wbr></small> [ClojureInterface.kt](languages.md#clojureinterface-kt) | Languages | 46 | 20 | Clojure as a Field main language: a box whose source is Clojure, evaluated by the real Clojure runtime on this JVM. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [CLoSDSmoke.kt](graphics.md#closdsmoke-kt) | Graphics | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>physics/<wbr></small> [Cloth.kt](simulation.md#cloth-kt) | Simulation | 34 | 34 | A rectangular cloth patch on a `SimdVerlet` simulation. | [Frames and the animation loop](../animation_time_model.md), [Physics: particles, constraints and cloth](../physics.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ClothSimulationExample.kt](examples.md#clothsimulationexample-kt) | Examples | 10 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [ClusterGeometry.kt](graphics.md#clustergeometry-kt) | Graphics | 12 | 5 |  | [Compute your ray-traced geometry](../computed_ray_geometry.md) |
@@ -1455,7 +1459,16 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>morpho/<wbr></small> [MorphoSearchFLines.kt](languages.md#morphosearchflines-kt) | Languages | 11 | 8 | Drawing what a search did, as vector `FLine`s for `afield.geometry.spatial.showPlaneGrid`. | [Searching for MorphoHDL Circuits](../morpho_search.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>morpho/<wbr></small> [MorphoSim.kt](languages.md#morphosim-kt) | Languages | 9 | 7 | What a compiled MorphoHDL circuit computes, and how deep it is: a bit-parallel logic simulator, plus the per-cell arrival times morpho's own compiler already hands over. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>morpho/<wbr></small> [MorphoSpec.kt](languages.md#morphospec-kt) | Languages | 48 | 22 | What a MorphoHDL design is *supposed* to do, and how much it is allowed to cost — the half of a search that morpho itself has no opinion about. | [Searching for MorphoHDL Circuits](../morpho_search.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [MotionItems.kt](graphics.md#motionitems-kt) | Graphics | 9 | 3 |  | [Flow grain and motion](../flow_grain.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [Motion.kt](animation.md#motion-kt) | Animation | 48 | 6 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionCommands.kt](animation.md#motioncommands-kt) | Animation | 14 | 3 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionExamples.kt](animation.md#motionexamples-kt) | Animation | 3 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionInteropSmoke.kt](graphics.md#motioninteropsmoke-kt) | Graphics | 2 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [MotionItems.kt](graphics.md#motionitems-kt) | Graphics | 9 | 3 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionPlayback.kt](animation.md#motionplayback-kt) | Animation | 10 | 2 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionProcess.kt](animation.md#motionprocess-kt) | Animation | 18 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionRecording.kt](animation.md#motionrecording-kt) | Animation | 11 | 2 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionSession.kt](animation.md#motionsession-kt) | Animation | 28 | 6 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionView.kt](animation.md#motionview-kt) | Animation | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [MouseEvents.kt](graphics.md#mouseevents-kt) | Graphics | 23 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>motion/<wbr></small> [movement.kt](simulation.md#movement-kt) | Simulation | 41 | 31 | Springs, dampers, and a steerable character built out of four of them. | [Springs, dampers, and a character with mass](../movement_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>mqtt/<wbr></small> [MqttBox.kt](networking.md#mqttbox-kt) | Networking | 29 | 25 |  | [MQTT: sensors, devices and brokers](../mqtt.md) |

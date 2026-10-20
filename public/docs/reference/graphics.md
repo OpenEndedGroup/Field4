@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-290 source file(s), 7003 public symbol(s), 3502 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+293 source file(s), 7009 public symbol(s), 3505 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -936,6 +936,48 @@ KeyframeEvaluator - Evaluates animation curves defined by keyframes
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+## ArdySmoke.kt { #ardysmoke-kt }
+
+`src/jvmMain/kotlin/afield/animation/mocap/ArdySmoke.kt` — [read the source](source/jvmMain/afield/animation/mocap/ArdySmoke/)
+
+### ArdySmoke { #ardysmoke-kt-ardysmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">ArdySmoke</span></code>](source/jvmMain/afield/animation/mocap/ArdySmoke/#L21)
+
+Actual model run, never substituted with a fixture. Cached prompt embeddings can run without the encoder service.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/animation/mocap/ArdySmoke/#L22) |  |
+
+## CLoSDSmoke.kt { #closdsmoke-kt }
+
+`src/jvmMain/kotlin/afield/animation/mocap/CLoSDSmoke.kt` — [read the source](source/jvmMain/afield/animation/mocap/CLoSDSmoke/)
+
+### CLoSDSmoke { #closdsmoke-kt-closdsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">CLoSDSmoke</span></code>](source/jvmMain/afield/animation/mocap/CLoSDSmoke/#L21)
+
+Real Kotlin process/skeleton/reference/executed/intervention check, explicitly skipped without its opt-in home.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/animation/mocap/CLoSDSmoke/#L22) |  |
+
+## MotionInteropSmoke.kt { #motioninteropsmoke-kt }
+
+`src/jvmMain/kotlin/afield/animation/mocap/MotionInteropSmoke.kt` — [read the source](source/jvmMain/afield/animation/mocap/MotionInteropSmoke/)
+
+### MotionInteropSmoke { #motioninteropsmoke-kt-motioninteropsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">MotionInteropSmoke</span></code>](source/jvmMain/afield/animation/mocap/MotionInteropSmoke/#L21)
+
+Real Kotlin -> Python -> Kotlin binary round trip; no network inference is claimed.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/animation/mocap/MotionInteropSmoke/#L22) |  |
 
 ## PatchyWeb.kt { #patchyweb-kt }
 
@@ -12634,8 +12676,6 @@ One render target's **frame history**: where the camera was last frame, and whet
 ## MotionItems.kt { #motionitems-kt }
 
 `src/jvmMain/kotlin/afield/graphics/vulkan/targets/MotionItems.kt` — [read the source](source/jvmMain/afield/graphics/vulkan/targets/MotionItems/)
-
-**Used in:** [Flow grain and motion](../flow_grain.md)
 
 ### MotionPose { #motionitems-kt-motionpose }
 

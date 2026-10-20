@@ -93,7 +93,7 @@ class FirstRunTest {
         }
     }
     @Test fun largeModelAndInterpreterSetupsRemainExplicitSeparateRecipes() {
-        assertTrue(preparationCommands(setOf("cv", "voice", "diffusion", "audio-ai", "kratos", "tracker", "transport", "opendlssnr"), "linux").isEmpty())
+        assertTrue(preparationCommands(setOf("cv", "voice", "diffusion", "audio-ai", "kratos", "tracker", "transport", "opendlssnr", "ardy", "closd"), "linux").isEmpty())
         assertFalse(extraTools(setOf("syphon"), "windows").contains("xcrun"))
     }
     @Test fun nativeArtifactChecksHonorOverridesAndWindowsOutputLayouts() {
