@@ -5,6 +5,9 @@ description: >
   termination idiom, a variadic hole, procedural unquote, and an inherited
   (ambient) rule that a child box picks up from its parent. Pure compute, no
   Window — safe to run to completion headless.
+docs:
+  - page: pattern_rewrite.md
+    why: "Explains authoring rewrite rules like the ones in each box."
 operations:
   # 1. Negation: neg(x) -> -x. The simplest possible rule.
   - create:

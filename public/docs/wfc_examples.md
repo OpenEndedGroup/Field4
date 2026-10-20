@@ -874,28 +874,36 @@ rules.weights[tileOfBand[2]] *= 10.0
 :::endfold
 
 val solver = WfcSolver(44, 30, rules, seed = 3L)
+val displayFps = 20
+val stepsPerDisplay = 12
 println("wfc collapse animation ready")
 
 /*
-A few step()s per displayed frame, then push the wave to the box's output channel.
+Take stepsPerDisplay solver steps per output update, at no more than displayFps updates per second.
 
-One display() per frame, with the label drawn INTO the raster by montage(). showImg(caption = …)
+One display() per update, with the label drawn INTO the raster by montage(). showImg(caption = …)
 would also be a single payload, but it is an HTML figure the browser re-parses every frame; baked
 pixels keep a 20fps recording cheap, and the label cannot lag the picture it describes.
 */
-loop {
-    if (solver.status == WfcStatus.Running) solver.step() // one WFC iteration per displayed frame
-    val label = "${(solver.resolvedFraction() * 100).toInt()}% decided — ${solver.status}"
-    display(
-        "main",
-        montage(
-                [label to tiles.waveToImg(solver).upscaleNearest(8)],
-                columns = 1,
-                cellSide = 460,
-            )
-            .toPngBytes(),
-    )
-    frame()
+frames {
+    while (true) {
+        repeat(stepsPerDisplay) {
+            if (solver.status == WfcStatus.Running) solver.step()
+        }
+        val label = "${(solver.resolvedFraction() * 100).toInt()}% decided — ${solver.status}"
+        display(
+            "main",
+            montage(
+                    [label to tiles.waveToImg(solver).upscaleNearest(8)],
+                    columns = 1,
+                    cellSide = 460,
+                )
+                .toPngBytes(),
+        )
+        // Leave the final solved (or contradicted) wave visible without rebuilding it.
+        if (solver.status != WfcStatus.Running) break
+        delay(1000 / displayFps)
+    }
 }
 ```
 
@@ -1572,8 +1580,8 @@ filter, and whose first casualty is the pixel-scale structure the whole exercise
 of room, and `possibilityCountImg` shows you which cells were over-constrained from the start.
 Magenta in a wave frame is a cell whose possibility set has been emptied.
 
-**Names and shapes that bite inside a Field box.** Every snippet on this page runs in one, and none
-of these two is WFC-specific:
+**Names and shapes that bite inside a Field box.** Every snippet on this page runs in one, and neither
+of these is WFC-specific:
 
 - **A box's scope is crowded.** `h`, `sky` and `error` all resolve to something Field already defines
   ahead of a script-local `val` of the same name once you are inside a lambda with its own receiver.

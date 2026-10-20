@@ -532,6 +532,7 @@ const viewerTools = createViewerTools({
 let captureState = {ready:false, error:null, revision:null};
 window.FieldViewer = Object.freeze({renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
     turntable: () => turntable.status(), cameraLink: () => cameraLink.status(), shot: () => shot.status(),
+    film: Object.freeze({begin: filmBegin, at: filmAt, end: filmEnd, status: filmStatus}),
     captureStatus: () => {
         const tools = viewerTools.status(), render = renderScheduler.stats();
         return {...captureState, ready:captureState.ready && !tools.pending.length && !tools.error &&
@@ -623,7 +624,7 @@ const turntable = createTurntable({key: `${urlParams.get('uid') || ''} ${Math.ra
 // A box can ask for a looping presentation move (`shot(…)`): the camera dollies while the model explodes
 // and goes see-through, on the wall clock, held by the same interactions as the turntable. `shotDistance`
 // is this frame's dolly, read by the panel cameras; `shotAppliedDistance` is what the single camera has.
-const shot = createShot({wake: ms => setTimeout(requestRender, ms)});
+const shot = createShot({now: () => filmClockMs ?? Date.now(), wake: ms => setTimeout(requestRender, ms)});
 let shotDistance = 1, shotAppliedDistance = 1;
 // About the target and the view's up axis. Positive turns the model anticlockwise seen from above.
 // `cameraTurned` lets a resize refit an untouched view without undoing the turn.
@@ -633,6 +634,54 @@ function turnCamera(angle) {
     camera.position.sub(controls.target).applyAxisAngle(camera.up, -angle).add(controls.target);
     cameraTurned = true;
 }
+// [viewer-region film] BEGIN
+// A canvas flight films this view (CanvasFlightClient in the main page): `film.begin` notes the camera,
+// `film.at(seconds)` puts it back there and turns it `degreesPerSecond * seconds` about its target and
+// up axis with turnCamera, plays a shot() on the flight's clock rather than the wall clock, and draws at
+// once; `film.end` restores the camera as it was. While it films, the turntable stands aside, damping is
+// off (no inertia between frames) and the camera link neither sends nor takes poses, so every frame
+// depends on the flight's clock alone.
+let film = null, filmClockMs = null;
+function filmBegin({degreesPerSecond = 8} = {}) {
+    if (film) filmEnd();
+    const damping = controls.enableDamping;
+    controls.enableDamping = false; controls.update();
+    const rate = Number(degreesPerSecond);
+    film = {rate: Number.isFinite(rate) ? rate * Math.PI / 180 : 0, damping, wall: Date.now(),
+        eye: camera.position.clone(), target: controls.target.clone(), up: camera.up.toArray(),
+        zoom: camera.zoom, fov: camera.fov, turned: cameraTurned, moved: cameraWasMoved, shotApplied: shotAppliedDistance};
+    filmClockMs = film.wall;
+    return filmStatus();
+}
+function filmAt(seconds) {
+    if (!film) return false;
+    const t = Math.max(0, Number(seconds) || 0);
+    filmClockMs = film.wall + t * 1000;
+    camera.position.copy(film.eye); controls.target.copy(film.target); cameraUp(film.up);
+    shotAppliedDistance = film.shotApplied;
+    turnCamera(film.rate * t);
+    controls.update();
+    render();
+    return true;
+}
+function filmEnd() {
+    if (!film) return false;
+    const f = film;
+    film = null; filmClockMs = null;
+    camera.position.copy(f.eye); controls.target.copy(f.target); cameraUp(f.up);
+    camera.zoom = f.zoom; camera.fov = f.fov; camera.updateProjectionMatrix();
+    shotAppliedDistance = f.shotApplied;
+    controls.update(); controls.enableDamping = f.damping;
+    cameraTurned = f.turned; cameraWasMoved = f.moved;
+    requestRender();
+    return true;
+}
+function filmStatus() {
+    return {filming: !!film, degreesPerSecond: film ? film.rate * 180 / Math.PI : null,
+        panels: Math.max(1, panelState.cameras.length), eye: camera.position.toArray(), target: controls.target.toArray(),
+        up: camera.up.toArray()};
+}
+// [viewer-region film] END
 const cameraLinkButton = document.getElementById('camera-link');
 let cameraLinkOn = false;
 const cameraLink = createCameraLink({
@@ -641,6 +690,7 @@ const cameraLink = createCameraLink({
     read: () => ({eye:camera.position.toArray(),target:controls.target.toArray(),up:camera.up.toArray(),
         fov:camera.fov,zoom:camera.zoom,near:camera.near,far:camera.far}),
     write: pose => {
+        if (film) return;
         // Drain local inertial motion before applying a remote pose, preventing echo/drift.
         const damping = controls.enableDamping;
         controls.enableDamping = false; controls.update();
@@ -674,7 +724,7 @@ function applyCameraLinkRequest(request) {
     else if (!request && on && linkFromRequest) { cameraLink.setEnabled(false); linkFromRequest = false; }
 }
 cameraLinkButton.addEventListener('click',()=>{linkFromRequest=false;cameraLink.setEnabled(!cameraLink.status().enabled);});
-controls.addEventListener('change',()=>cameraLink.localChanged());
+controls.addEventListener('change',()=>{if(!film)cameraLink.localChanged();});
 controls.addEventListener('start',()=>{cameraLink.dragging(true);turntable.hold(true);shot.hold(true);});
 controls.addEventListener('end',()=>{cameraLink.dragging(false);turntable.hold(false);shot.hold(false);cameraLink.localChanged();});
 for (const type of ['pointerdown', 'wheel', 'keydown'])
@@ -5628,11 +5678,57 @@ function fitCameraToBounds(cam, bounds, target, margin, points) {
  * @param fit when true, [fitCameraToBounds] then pulls the distance in or out so the geometry fills
  * the frame the viewer was actually given. The spec's `distance` becomes the padding factor.
  */
+// `camera(follow = true)`: carry the camera along with the centre of the bounds, and step the grid
+// by whole cells under it so the floor stays put while the subject moves across it.
+//
+// The camera chases a smoothed centre, not the raw one: a walking subject's bounds jump with every
+// step. Per update it closes FOLLOW_EASE of the gap along each axis — gently along x, much more
+// gently across (y), and not at all in height, which only bobs. A jump of more than FOLLOW_CUT in
+// one update (an animation starting over) is a cut: the camera goes straight there.
+const GRID_CELL = 10 / 20;
+const FOLLOW_EASE = [0.08, 0.015, 0];
+const FOLLOW_CUT = 2;
+let followCenter = null;
+function followUp() { return payloadState?.camera?.upAxis === 'Z' ? 'Z' : 'Y'; }
+function followBounds(payload) {
+    const b = payload.bounds;
+    if (!payload.camera?.follow || !b?.min || !b?.max || panelState.cameras.length > 1) {
+        followCenter = null;
+        grid.position.set(0, 0, 0);
+        return;
+    }
+    const raw = new THREE.Vector3().fromArray(b.min).add(new THREE.Vector3().fromArray(b.max)).multiplyScalar(0.5);
+    const cut = followCenter && raw.distanceTo(followCenter) > FOLLOW_CUT;
+    const c = followCenter && !cut ? followCenter.clone() : raw;
+    if (cut) {
+        const d = raw.clone().sub(followCenter);
+        camera.position.add(d);
+        controls.target.add(d);
+        controls.update();
+    } else if (followCenter) {
+        const k = followUp() === 'Z' ? FOLLOW_EASE : [FOLLOW_EASE[0], FOLLOW_EASE[2], FOLLOW_EASE[1]];
+        c.x += (raw.x - c.x) * k[0];
+        c.y += (raw.y - c.y) * k[1];
+        c.z += (raw.z - c.z) * k[2];
+        const d = c.clone().sub(followCenter);
+        camera.position.add(d);
+        controls.target.add(d);
+        controls.update();
+    }
+    followCenter = c;
+    grid.position.set(Math.round(c.x / GRID_CELL) * GRID_CELL, Math.round(c.y / GRID_CELL) * GRID_CELL, 0);
+    requestRender();
+}
 function applyCameraSpec(cam, spec, bounds, fit, points) {
     if (!spec || !bounds || !bounds.min || !bounds.max) return null;
     const derived = cameraPresetEye(spec, bounds);
+    if (spec.upAxis === 'Z') {
+        // The y-up preset, turned rigidly so its up becomes +z: an eye offset (x, y, z) becomes (x, -z, y).
+        const t = derived.target, e = derived.eye;
+        derived.eye = [e[0], t[1] - (e[2] - t[2]), t[2] + (e[1] - t[1])];
+    }
     cam.position.set(derived.eye[0], derived.eye[1], derived.eye[2]);
-    cam.up.set(0, 1, 0);
+    cam.up.set(0, spec.upAxis === 'Z' ? 0 : 1, spec.upAxis === 'Z' ? 1 : 0);
     cam.lookAt(derived.target[0], derived.target[1], derived.target[2]);
     cam.fov = spec.fieldOfViewDegrees === undefined ? 40 : spec.fieldOfViewDegrees;
     cam.near = derived.near;
@@ -6091,13 +6187,16 @@ function applyGeometry(payload) {
         applyCameraSpec(camera, payload.camera, payload.bounds, true,
             sweptFitPoints(fitPointsForPanel(-1), payload.bounds, !!payload.turntable));
         const derived = cameraPresetEye(payload.camera, payload.bounds);
+        cameraUp(payload.camera.upAxis === 'Z' ? [0, 0, 1] : [0, 1, 0]);
         controls.target.set(derived.target[0], derived.target[1], derived.target[2]);
         controls.update();
         hasFramedInitialGeometry = true;
         appliedCameraSpec = cameraKey;
         cameraWasMoved = false; cameraTurned = false;
         cameraViewport = [container.clientWidth, container.clientHeight];
+        followCenter = null;
     }
+    followBounds(payload);
     // Last, because it reads the geometry the steps above created and because framing the camera first
     // means the first dimension is offset across the view the user is actually going to see.
     inspectorCapture(payload);
@@ -6892,7 +6991,7 @@ function applyShotLook(look) {
 }
 
 function render() {
-    const turn = turntable.step();
+    const turn = film ? null : turntable.step();
     if (turn !== null) { turnCamera(turn); requestRender(); }
     // A shot draws continuously, but only while the view is on screen and the page is showing.
     if (shot.active() && onScreen && document.visibilityState !== 'hidden') {

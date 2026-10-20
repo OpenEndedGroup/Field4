@@ -34,18 +34,18 @@ val naive = table(reverseLast = false, fairly = false)
 showPetriNet(naive, w = 760.0, h = 460.0)
 
 for ((label, net) in
-    listOf(
+    [
         "all left-handed" to naive,
         "one reaches right first" to table(reverseLast = true, fairly = false),
         "…and round-robin conflict" to table(reverseLast = true, fairly = true),
-    )) {
+    ]) {
     val stuck = net.deadTransitions()
     println(
         "%-26s deadlocks=%-5s never fires: %s"
             .format(
                 label,
                 net.willDeadlock(),
-                stuck.ifEmpty { listOf("—") }.joinToString(", "),
+                stuck.ifEmpty { ["—"] }.joinToString(", "),
             ),
     )
 }

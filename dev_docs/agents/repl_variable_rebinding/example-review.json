@@ -1,0 +1,81 @@
+{
+  "applied": true,
+  "pairs": 39,
+  "files": [
+    {
+      "path": "dev_docs/agents/demos/frame_history_reprojection/build.yaml",
+      "variables": [
+        "historyBlend",
+        "motionGain",
+        "yawAmplitude",
+        "yawSpeed",
+        "dollyAmplitude",
+        "dollySpeed",
+        "bobAmplitude",
+        "bobSpeed",
+        "driftAmplitude",
+        "driftSpeed",
+        "time"
+      ]
+    },
+    {
+      "path": "dev_docs/agents/demos/frame_history_reprojection/rp_chain_code_.kt",
+      "variables": [
+        "historyBlend",
+        "motionGain",
+        "yawAmplitude",
+        "yawSpeed",
+        "dollyAmplitude",
+        "dollySpeed",
+        "bobAmplitude",
+        "bobSpeed",
+        "driftAmplitude",
+        "driftSpeed",
+        "time"
+      ]
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/first_steps.yaml",
+      "variables": [
+        "petals",
+        "phaseStep"
+      ]
+    },
+    {
+      "path": "dev_docs/agents/transcripts/frame_history_reprojection.yaml",
+      "variables": [
+        "historyBlend",
+        "motionGain",
+        "yawAmplitude",
+        "yawSpeed",
+        "dollyAmplitude",
+        "dollySpeed",
+        "bobAmplitude",
+        "bobSpeed",
+        "driftAmplitude",
+        "driftSpeed",
+        "time"
+      ]
+    },
+    {
+      "path": "dev_docs/agents/transcripts/pattern_particles.yaml",
+      "variables": [
+        "gain"
+      ]
+    },
+    {
+      "path": "public/docs/chain_pattern_particles.md",
+      "variables": [
+        "gain"
+      ]
+    },
+    {
+      "path": "templates/first-steps/first_steps_drawing_code_.kt",
+      "variables": [
+        "petals",
+        "phaseStep"
+      ]
+    }
+  ],
+  "firstStepsDriverTargetsDeclaration": true
+}

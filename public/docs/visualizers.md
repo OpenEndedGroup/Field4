@@ -1595,7 +1595,7 @@ results and synchronizes zoom, pan, hover, seeking and playback time. `analysisP
 progress can replace a named output with `fieldAudioJobStatusHtml(accepted, event)`, while
 `fieldAudioJobMonitor()` embeds the complete durable queue.
 
-The public [beat and pitch analysis walkthrough](audio_ai_analysis.md) and loadable
+The [beat and pitch analysis walkthrough](audio_ai_analysis.md) and loadable
 `audio_ai_analysis` operation transcript contain the full source → submit → monitor → await →
 visualize path.
 

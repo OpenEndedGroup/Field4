@@ -20,8 +20,8 @@ val Once.history by Onceing<PingPongRenderToTexture>() /**/
 val Why.history by Whying() /**/
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*graphics-pc-structure:time*/ var Structure.time by Structure.FromStructure<Any>()
-/*graphics-pc-binding:time*/ var Mesh.time by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:time*/ var MeshGroup.time by MeshGroup.BoundFromStructure<Float>()
+/*graphics-pc-binding:time*/ var Mesh.time by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:time*/ var MeshGroup.time by MeshGroup.BoundFromStructure<Number>()
 var Box.previousImage by ReactiveInheritance<HasImageView>(Reactive.DOWN) /**/
 val Once.previousImage by Onceing<HasImageView>() /**/
 val Why.previousImage by Whying() /**/

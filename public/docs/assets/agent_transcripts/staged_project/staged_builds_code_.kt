@@ -35,26 +35,27 @@ val blockout = StudyBuildStage(
     "Blockout",
     "blockout-v1",
     setOf("level"),
-    resultNotes = { r -> listOf(StudyBuildNotice(r.facts["summary"].toString(), StudyBuildNoticeKind.INFO)) },
+    resultNotes = { r -> [StudyBuildNotice(r.facts["summary"].toString(), StudyBuildNoticeKind.INFO)] },
 ) { c ->
         val g = Grid(c.inputs.getValue("level"))
         // A floor slab per room, and a wall piece on every cell edge between two rooms, or a room and outside, that is
         // not a door.
         val pieces = mutableListOf<List<Double>>()
         for ((_, r) in g.rooms) pieces +=
-            listOf(r[0].toDouble(), r[1].toDouble(), -0.1, r[2].toDouble(), r[3].toDouble(), 0.1)
+            [r[0].toDouble(), r[1].toDouble(), -0.1, r[2].toDouble(), r[3].toDouble(), 0.1]
         val walls = mutableSetOf<Pair<Cell, Cell>>()
         for ((a, _) in g.room) for (b in
-            listOf(
+            [
                 a.first + 1 to a.second,
                 a.first to a.second + 1,
                 a.first - 1 to a.second,
                 a.first to a.second - 1,
-            )) if (g.room[b] != g.room[a] && (a to b) !in g.doors)
-            walls += listOf(a, b).sortedWith(compareBy({ it.first }, { it.second })).let { it[0] to it[1] }
-        for ((a, b) in walls) pieces +=
-            if (a.second == b.second) listOf(b.first - 0.05, a.second.toDouble(), 0.0, 0.1, 1.0, 1.5)
-            else listOf(a.first.toDouble(), b.second - 0.05, 0.0, 1.0, 0.1, 1.5)
+            ]) if (g.room[b] != g.room[a] && (a to b) !in g.doors)
+            walls += [a, b].sortedWith(compareBy({ it.first }, { it.second })).let { it[0] to it[1] }
+        for ((a, b) in walls) pieces.add(
+            if (a.second == b.second) [b.first - 0.05, a.second.toDouble(), 0.0, 0.1, 1.0, 1.5]
+            else [a.first.toDouble(), b.second - 0.05, 0.0, 1.0, 0.1, 1.5],
+        )
         val mesh =
             pieces
                 .map { p -> boxMesh(p[3], p[4], p[5]).translated(p[0] + p[3] / 2, p[1] + p[4] / 2, p[2] + p[5] / 2) }
@@ -78,7 +79,7 @@ val blockout = StudyBuildStage(
                 (solid?.let { ", joined into one solid of volume ${"%.1f".format(it["volume"])} (${it["status"]})" }
                     ?: "; install Manifold to check it as one solid")
         StudyBuildProduct(
-            listOf("blockout.obj"),
+            ["blockout.obj"],
             mapOf(
                 "rooms" to g.rooms.size,
                 "floorCells" to area,
@@ -92,17 +93,17 @@ val blockout = StudyBuildStage(
 // The shortest walk on the grid from one cell to another, or null.
 fun rough(g: Grid, from: Cell, to: Cell): List<Cell>? {
     val back = mutableMapOf(from to from)
-    val queue = ArrayDeque(listOf(from))
+    val queue = ArrayDeque([from])
     while (queue.isNotEmpty()) {
         val a = queue.removeFirst()
         if (a == to) return generateSequence(to) { if (it == from) null else back.getValue(it) }.toList().reversed()
         for (b in
-            listOf(
+            [
                 a.first + 1 to a.second,
                 a.first to a.second + 1,
                 a.first - 1 to a.second,
                 a.first to a.second - 1,
-            )) if (b !in back && g.step(a, b)) {
+            ]) if (b !in back && g.step(a, b)) {
             back[b] = a
             queue.add(b)
         }
@@ -204,8 +205,8 @@ val traversal = StudyBuildStage(
                 "shape" to shape,
             )
             paths[id] = mapOf(
-                "rough" to walk.map { listOf(it.first, it.second) },
-                "relaxed" to tight.map { listOf(it.first, it.second) },
+                "rough" to walk.map { [it.first, it.second] },
+                "relaxed" to tight.map { [it.first, it.second] },
             )
         }
         val outOfReach =
@@ -216,7 +217,7 @@ val traversal = StudyBuildStage(
                 }
         c.file("traversal.json").writeText(json.writeValueAsString(mapOf("loot" to measures, "paths" to paths)))
         StudyBuildProduct(
-            listOf("traversal.json"),
+            ["traversal.json"],
             mapOf(
                 "loot" to measures,
                 "outOfReach" to outOfReach,
@@ -227,7 +228,7 @@ val traversal = StudyBuildStage(
 
 // Placement waits until every loot point can be reached within its path budget.
 val reachable =
-    StudyBuildGate("reachable loot", dependencies = listOf("traversal")) { evidence ->
+    StudyBuildGate("reachable loot", dependencies = ["traversal"]) { evidence ->
         val far = evidence.facts("traversal")["outOfReach"] as List<*>
         if (far.isEmpty()) null else "Out of reach within its path budget: ${far.joinToString()}."
     }
@@ -240,16 +241,16 @@ val placement = StudyBuildStage(
     "Placement",
     "placement-v1",
     setOf("reachable loot", "rule"),
-    listOf("traversal"),
+    ["traversal"],
     inputHelp = StudyBuildInputHelp("Needs the loot rule", "Run the Loot rule box; placement follows its rule."),
     resultNotes = { r ->
-        listOf(
+        [
             StudyBuildNotice(
                 (r.facts["placed"] as Map<*, *>).entries.joinToString { "${it.key} ${it.value}" } +
                     "; ${r.facts["encounters"]} guarded.",
                 StudyBuildNoticeKind.INFO,
             ),
-        )
+        ]
     },
 ) { c ->
         val measured =
@@ -264,13 +265,13 @@ val placement = StudyBuildStage(
         c.file("rule-input.txt").writeText(input)
         c.file("placement.json").writeText(json.writeValueAsString(placed))
         StudyBuildProduct(
-            listOf("rule-input.txt", "placement.json"),
+            ["rule-input.txt", "placement.json"],
             mapOf("placed" to placed, "encounters" to placed.values.count { "guarded" in it }),
         )
     }
 
-val stages = listOf(blockout, traversal, placement)
-val gates = listOf(reachable)
+val stages = [blockout, traversal, placement]
+val gates = [reachable]
 thisBox.properties["levelStages"] = stages
 thisBox.properties["levelGates"] = gates
 
@@ -288,7 +289,7 @@ showStudyBuilds("stages")
 
 // Draw the current traversal's relaxed paths over the plan, with the Level box's drawing, whenever it changes.
 // The watcher stops when this runner closes, which happens when the box runs again or is stopped.
-kotlin.concurrent.thread(isDaemon = true) {
+go {
     var shown: String? = null
     while (true) {
         val current = runCatching { builds.stages().first { it.id == "traversal" }.current }.getOrElse { break }
@@ -309,6 +310,6 @@ kotlin.concurrent.thread(isDaemon = true) {
                 shown = current.id
             }
         }
-        Thread.sleep(500)
+        kotlinx.coroutines.delay(500)
     }
 }

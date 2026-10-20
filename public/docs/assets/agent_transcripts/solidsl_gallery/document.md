@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="refusals" index="0" -->
 
 ```edn [field-box id="refusals" role="properties"]
-{"id" "refusals" "index" 0 "name" "Solid notation — refusals, and the hybrid build" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — refusals, and the hybrid build" "_tombstone" false "frame" #afield/rect [80.0 280.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 104 "characters" 4599 "sha256" "ab7f1a35c3ef8be51db2d7450ec18e42dde06dd5e8c5021358d17e95a8dd3ffe"}]}
+{"id" "refusals" "index" 0 "name" "Solid notation — refusals, and the hybrid build" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — refusals, and the hybrid build" "_tombstone" false "frame" #afield/rect [80.0 280.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 104 "characters" 4593 "sha256" "bc467454f232beab41bda0418a502b3f6d2a0a8fa98408f3334fdd15cb9ba0e8"}]}
 ```
 
 ```kotlin [field-property box="refusals" name="code" path="refusals_code_.kt"]
@@ -29,7 +29,7 @@ val fillet = 0.28
 val machinable =
     cuboid(3.2, 3.2, 0.5) -
         unionOf(
-            listOf(-1.1 to -1.1, 1.1 to -1.1, -1.1 to 1.1, 1.1 to 1.1).map { (x, y) ->
+            [-1.1 to -1.1, 1.1 to -1.1, -1.1 to 1.1, 1.1 to 1.1].map { (x, y) ->
                 cylinder(2.0, 0.22, segments = 128).at(x, y, 0.0)
             },
         )
@@ -126,7 +126,7 @@ run {
 <!-- field-box id="cross_check" index="1" -->
 
 ```edn [field-box id="cross_check" role="properties"]
-{"id" "cross_check" "index" 1 "name" "Solid notation — one shape, two evaluations" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — one shape, two evaluations" "_tombstone" false "frame" #afield/rect [80.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cross_check_code_.kt" "lines" 128 "characters" 6538 "sha256" "2585b37dc74a7b65b0bf58c3e97df401b9f5dde4ef04cd6381e240682ef22125"}]}
+{"id" "cross_check" "index" 1 "name" "Solid notation — one shape, two evaluations" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — one shape, two evaluations" "_tombstone" false "frame" #afield/rect [80.0 80.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cross_check_code_.kt" "lines" 128 "characters" 6532 "sha256" "fdc228528ed9adb06237312d6e7b2b26d8f8596e268202f558518c1d8b58150d"}]}
 ```
 
 ```kotlin [field-property box="cross_check" name="code" path="cross_check_code_.kt"]
@@ -149,7 +149,7 @@ val part =
     (cuboid(4.0, 2.6, 0.7) + cylinder(1.4, 0.8, segments = quality)) -
         cylinder(3.0, 0.42, segments = quality) -
         unionOf(
-            listOf(-1.45, 1.45).map { cylinder(3.0, boreRadius, segments = quality).at(it, 0.0, 0.0) },
+            [-1.45, 1.45].map { cylinder(3.0, boreRadius, segments = quality).at(it, 0.0, 0.0) },
         ) -
         Profile.rect(2.9, slotWidth).offset(0.22, segments = quality).extruded(3.0).at(0.0, 1.05, -1.5)
 
@@ -265,7 +265,7 @@ run {
 <!-- field-box id="glsl_backend" index="2" -->
 
 ```edn [field-box id="glsl_backend" role="properties"]
-{"id" "glsl_backend" "index" 2 "name" "Solid notation — the same source as a GLSL raymarcher" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — the same source as a GLSL raymarcher" "_tombstone" false "frame" #afield/rect [80.0 180.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "glsl_backend_code_.kt" "lines" 62 "characters" 2707 "sha256" "2ad7079b2ad2e092033f6062853b3580567fba525b337a8dc3d141e180d73870"}]}
+{"id" "glsl_backend" "index" 2 "name" "Solid notation — the same source as a GLSL raymarcher" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — the same source as a GLSL raymarcher" "_tombstone" false "frame" #afield/rect [80.0 180.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "glsl_backend_code_.kt" "lines" 62 "characters" 2701 "sha256" "55fbd4d0850acfd4710ce4bdae0501b31cb2648f74cbb37c3f8390a0cecd3e4a"}]}
 ```
 
 ```kotlin [field-property box="glsl_backend" name="code" path="glsl_backend_code_.kt"]
@@ -312,7 +312,7 @@ println()
 // The simplifier, which only exists because the shape is a value.
 println("---- what the simplifier can do ----")
 val wasteful = differenceOf(
-    listOf(scene) + (0 until 40).map { cylinder(3.0, 0.12, segments = 32).at(-8.0 + it * 0.42, 0.0, 0.0) },
+    [scene] + (0 until 40).map { cylinder(3.0, 0.12, segments = 32).at(-8.0 + it * 0.42, 0.0, 0.0) },
 )
 println("40 extra bores, most of them nowhere near the part:")
 println("  ${wasteful.simplificationReport()}")

@@ -7,6 +7,9 @@ description: >
   through `booleanExact`; (2) a star and an open S-curve offset by `byOffsetting` (sampled
   polyline) and by `byOffsettingExact` (cubics with round joins). Run each box; each draws into
   `lines`.
+docs:
+  - page: fline_examples.md#exact-booleans-and-offsets
+    why: "The section these curve-preserving booleans and offsets accompany."
 operations:
   - create:
       box: fline-exact-booleans

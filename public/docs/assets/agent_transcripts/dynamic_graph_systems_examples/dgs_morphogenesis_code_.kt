@@ -78,7 +78,7 @@ animateEvolution(
     // seven eighths of the clip on the aftermath. ramp = 25 puts the mid-point at step 93.
     ramp = 25.0,
     step = { (grown, flat) ->
-        for (m in listOf(grown, flat)) {
+        for (m in [grown, flat]) {
             stepDynamicGraphWithExponentialDecay(
                 1f / 60f,
                 m.state,
@@ -92,7 +92,7 @@ animateEvolution(
         grown to flat
     },
     panels = { (grown, flat), step ->
-        listOf(
+        [
             "grow ON  s%d  %dpts %de"
                 .format(
                     step,
@@ -105,6 +105,6 @@ animateEvolution(
                     flat.state.pointCount,
                     flat.edges.values().size,
                 ) to dynamicGraphPanel(flat.state.points, flat.edges.values(), window, 490, 490, ceiling, "magma"),
-        )
+        ]
     },
 )

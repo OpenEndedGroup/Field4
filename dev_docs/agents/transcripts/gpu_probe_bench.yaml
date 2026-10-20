@@ -14,6 +14,9 @@ description: |
   can diverge from `jvmMain` and that no Gradle gate could otherwise see. The GPU numbers are
   asserted separately by the `four.gpu-probe.pressure-chain` and `four.gpu-probe.self-check`
   FIELD_TESTs.
+docs:
+  - page: field_probes.md
+    why: "Explains instrumenting shaders with probes, which this bench exercises."
 operations:
   - create:
       box: probe_renderer
@@ -309,7 +312,7 @@ operations:
                   println("  frames  sweeps   max |div| after   reduction")
                   var first = 0f
                   var last = 0f
-                  for (f in listOf(1, 2, 4, 8)) {
+                  for (f in [1, 2, 4, 8]) {
                       probe.idle()
                       probe.fill(pressureA, 0f)
                       probe.fill(pressureB, 0f)

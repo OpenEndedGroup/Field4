@@ -1,5 +1,8 @@
 name: rr_plumbing
 description: Wire Fabricate raw RTXDI and five editable moduleHere guide attachments into Ray Reconstruction.
+docs:
+  - page: reconstruction_plumbing.md#extend-the-graph-to-ray-reconstruction
+    why: "Explains wiring guide inputs into Ray Reconstruction."
 operations:
 - create:
     box: agent_graphics_context
@@ -109,7 +112,7 @@ operations:
             "velocity" to surfaces.motion,
         )
         val guideModule = moduleHere {
-            guides.apply()
+            +guides
             depthTest = false
             depthWrite = false
             blend = false
@@ -315,7 +318,7 @@ operations:
           "velocity" to surfaces.motion,
       )
       val guideModule = moduleHere {
-          guides.apply()
+          +guides
           depthTest = false
           depthWrite = false
           blend = false

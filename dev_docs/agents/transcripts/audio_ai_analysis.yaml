@@ -4,6 +4,11 @@ description: >
   an embedded durable-job monitor, and a live box that resolves a source by filename, submits
   librosa beat and pYIN jobs plus a Basic Pitch job, follows progress, awaits all three durable
   results, and renders them on one shared timeline.
+docs:
+  - page: audio_ai_analysis.md
+    why: "Explains the beat and pitch analysis jobs and previews in this document."
+  - page: field_audio_ai.md
+    why: "Overview of Field Audio services, jobs and the monitor."
 operations:
   - create:
       box: analysis_guide

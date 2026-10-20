@@ -1,64 +1,62 @@
 @file:afield.runtime.completion.CompletionCategory("Patterns")
+
 package afield.audio.synth
 
+import afield.ai.tools.BoxTool
+import afield.ai.tools.BranchConflict
+import afield.ai.tools.ToolEffect
+import afield.ai.tools.agentExtension
+import afield.ai.tools.exposeOutputIframeTools
 import afield.document.graph.Box
 import afield.ui.output.LiveOutputIframe
-import afield.ai.tools.BoxTool
-import afield.ai.tools.ToolEffect
-import afield.ai.tools.BranchConflict
-import afield.ai.tools.agentExtension
-import afield.ai.tools.aiTool
 import afield.ui.output.displayOpen
-import afield.ai.tools.exposeOutputIframeTools
 import afield.ui.output.outputIframe
 import afield.ui.output.outputRequests
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.math.pow
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.*
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.UUID
-import java.util.concurrent.CopyOnWriteArrayList
-import kotlin.math.pow
 
 /**
- * ORCA, the two-dimensional livecoding sequencer, running in a box output with its notes, control
- * changes, UDP and OSC messages delivered to Kotlin callbacks; start it with [orca].
+ * ORCA, the two-dimensional livecoding sequencer, running in a box output with its notes, control changes, UDP and OSC
+ * messages delivered to Kotlin callbacks; start it with [orca].
  */
 
 /**
- * [ORCA](https://github.com/hundredrabbits/Orca), Hundred Rabbits' two-dimensional livecoding
- * sequencer, running in one of this box's outputs, with everything it plays coming back to Kotlin.
+ * [ORCA](https://github.com/hundredrabbits/Orca), Hundred Rabbits' two-dimensional livecoding sequencer, running in one
+ * of this box's outputs, with everything it plays coming back to Kotlin.
  *
  * ```kotlin
  * orca()
  * ```
  *
- * is a working ORCA: click into it and type. Its operators that would talk to the outside world —
- * `:` and `%` (MIDI notes), `!` (control change), `?` (pitch bend), `;` (UDP) and `=` (OSC) — arrive
- * here, one frame at a time, as [onNote], [onCC], [onBend], [onUdp] and [onOsc]. To hear the notes:
- *
+ * is a working ORCA: click into it and type. Its operators that would talk to the outside world — `:` and `%` (MIDI
+ * notes), `!` (control change), `?` (pitch bend), `;` (UDP) and `=` (OSC) — arrive here, one frame at a time, as
+ * [onNote], [onCC], [onBend], [onUdp] and [onOsc]. To hear the notes:
  * ```kotlin
  * val synth = PatSynthBank()
  * orca().onNote { synth.play(it) }
  * synth
  * ```
  *
- * Input goes the other way: `o[x, y]` reads a cell and `o[x, y] = 'C'` sets one, [bang] fires the
- * operators beside a cell, [variable] holds an ORCA variable, [write] puts text on the grid, [grid]
- * replaces all of it, [command] runs anything ORCA's commander takes (`"bpm:140"`, `"play"`, ...),
- * and [onChange] / [onCell] report the cells ORCA changes, so a box can play a part in the grid as
- * one more operator. [eval] and [js] run JavaScript in ORCA's page, for patching ORCA itself. A [grid] passed here is
- * loaded when ORCA starts; without one, the box reopens the grid it had when last edited, which is
- * saved with the document. [exposeTools] lets AI4 read and write the grid.
+ * Input goes the other way: `o[x, y]` reads a cell and `o[x, y] = 'C'` sets one, [bang] fires the operators beside a
+ * cell, [variable] holds an ORCA variable, [write] puts text on the grid, [grid] replaces all of it, [command] runs
+ * anything ORCA's commander takes (`"bpm:140"`, `"play"`, ...), and [onChange] / [onCell] report the cells ORCA
+ * changes, so a box can play a part in the grid as one more operator. [eval] and [js] run JavaScript in ORCA's page,
+ * for patching ORCA itself. A [grid] passed here is loaded when ORCA starts; without one, the box reopens the grid it
+ * had when last edited, which is saved with the document. [exposeTools] lets AI4 read and write the grid.
  *
- * ORCA itself is upstream's code, unmodified, in `vendor/orca/`; `orca_field.js` wraps its IO
- * objects and talks to this class through [afield.ui.output.outputRequests]. Callbacks run on the Runloop with
- * this box in context, so they can `display`, `print` and touch box state.
+ * ORCA itself is upstream's code, unmodified, in `vendor/orca/`; `orca_field.js` wraps its IO objects and talks to this
+ * class through [afield.ui.output.outputRequests]. Callbacks run on the Runloop with this box in context, so they can
+ * `display`, `print` and touch box state.
  *
- * @param cols the output's width when it opens, in ORCA cells. ORCA fits its grid to the output,
- *   and keeps doing so when the output is resized.
+ * @param cols the output's width when it opens, in ORCA cells. ORCA fits its grid to the output, and keeps doing so
+ *   when the output is resized.
  * @param rows the output's height when it opens, in ORCA cells; at least ten, so ORCA's status lines fit.
  * @param guide show ORCA's operator guide when it starts (Escape hides it).
  */
@@ -77,8 +75,11 @@ fun Box.orca(
     // ORCA draws its two status lines inside a canvas a fifth taller than the grid, which only has
     // room for them from ten rows up; any shorter and the output crops them.
     val height = maxOf(rows, 10) * 15 + 90
-    display(channel, """<iframe src="/orca.html?binding=${binding.id}" allow="midi" """ +
-        """style="border:0;display:block;background:#000;width:${width}px;height:${height}px"></iframe>""")
+    display(
+        channel,
+        """<iframe src="/orca.html?binding=${binding.id}" allow="midi" """ +
+            """style="border:0;display:block;background:#000;width:${width}px;height:${height}px"></iframe>""",
+    )
     displayOpen(channel)
     return orca
 }
@@ -100,7 +101,8 @@ data class OrcaNote(
     /** The [System.nanoTime] it should sound at: when ORCA played it, plus [Orca.latency]. */
     val time: Long,
 ) {
-    val hz: Double get() = 440.0 * 2.0.pow((midi - 69) / 12.0)
+    val hz: Double
+        get() = 440.0 * 2.0.pow((midi - 69) / 12.0)
 }
 
 /** One `!` control change; [value] is already scaled to 0..127, [knob] already offset as ORCA sends it. */
@@ -116,10 +118,11 @@ data class OrcaCell(val x: Int, val y: Int, val before: Char, val after: Char)
 data class OrcaOsc(val path: String, val args: List<Int>, val text: String, val frame: Int)
 
 /**
- * An ORCA: what it is doing, what it plays, and how to change it. [Box.orca] makes one in a box's
- * output; [OrcaHeadless] makes one in the JVM with no page, for rendering and tests.
+ * An ORCA: what it is doing, what it plays, and how to change it. [Box.orca] makes one in a box's output;
+ * [OrcaHeadless] makes one in the JVM with no page, for rendering and tests.
  */
-class Orca internal constructor(
+class Orca
+internal constructor(
     /** The box whose output holds it; null for an [OrcaHeadless]. */
     private val box: Box?,
     val channel: String,
@@ -132,7 +135,8 @@ class Orca internal constructor(
         private const val SAVED = "orcaGrids"
 
         // Redraw ORCA's canvas (a page in the background skips drawing) and return it, scaled down.
-        private val PICTURE = """
+        private val PICTURE =
+            """
             (() => {
               client.clear(); client.ports = client.findPorts(); client.drawProgram(); client.drawInterface(); client.drawGuide()
               const source = client.el, scale = Math.min(1, 1400 / source.width)
@@ -143,21 +147,24 @@ class Orca internal constructor(
               g.drawImage(source, 0, 0, out.width, out.height)
               return out.toDataURL('image/png')
             })()
-        """.trimIndent()
+            """
+                .trimIndent()
 
         init {
-            // Registered on first use, as syncToProperty does, rather than in Box's own list, which
-            // every saved document copies into its header. A document saved after this lists it,
-            // and loading that document merges it back before any orca() runs.
+            /*
+            Registered on first use, as syncToProperty does, rather than in Box's own list, which
+            every saved document copies into its header. A document saved after this lists it,
+            and loading that document merges it back before any orca() runs.
+            */
             Box.ioPersistentProperties.add(SAVED)
         }
 
         internal fun savedGrid(box: Box, channel: String): String? =
             savedGrids(box)[channel]?.jsonPrimitive?.contentOrNull
 
-        private fun savedGrids(box: Box): JsonObject =
-            (box.getPropertyRaw(SAVED) as? String)?.let { runCatching { Json.parseToJsonElement(it).jsonObject }.getOrNull() }
-                ?: JsonObject(emptyMap())
+        private fun savedGrids(box: Box): JsonObject = (box.getPropertyRaw(SAVED) as? String)?.let {
+            runCatching { Json.parseToJsonElement(it).jsonObject }.getOrNull()
+        } ?: JsonObject(emptyMap())
     }
 
     private val outgoing = ConcurrentLinkedQueue<JsonObject>()
@@ -174,9 +181,11 @@ class Orca internal constructor(
     private var rows: List<String> = emptyList()
     private var lastSaved: String? = null
 
-    // More than one page can show this output: a second tab, or the browser AI4 takes pictures in.
-    // The first to report is the one that plays and takes commands; the others are stopped mirrors
-    // of its grid, so a picture of any of them shows the board. A silent player is replaced.
+    /*
+    More than one page can show this output: a second tab, or the browser AI4 takes pictures in.
+    The first to report is the one that plays and takes commands; the others are stopped mirrors
+    of its grid, so a picture of any of them shows the board. A silent player is replaced.
+    */
     private var player: String? = null
     private var playerSeen = 0L
     internal var playerTimeoutNanos = 2_000_000_000L
@@ -192,54 +201,69 @@ class Orca internal constructor(
     private var reportedBpm = initialBpm ?: 120
 
     /**
-     * The grid as ORCA last reported it, rows separated by newlines. Setting it replaces the whole
-     * grid; short rows are padded with empty cells, and common indentation is removed.
+     * The grid as ORCA last reported it, rows separated by newlines. Setting it replaces the whole grid; short rows are
+     * padded with empty cells, and common indentation is removed.
      */
     var grid: String
         get() = reportedGrid
-        set(value) { send("load", "grid" to JsonPrimitive(value.trimIndent())) }
+        set(value) {
+            send("load", "grid" to JsonPrimitive(value.trimIndent()))
+        }
 
-    var width: Int = 0; private set
-    var height: Int = 0; private set
-    var frame: Int = 0; private set
-    var playing: Boolean = false; private set
+    var width: Int = 0
+        private set
+
+    var height: Int = 0
+        private set
+
+    var frame: Int = 0
+        private set
+
+    var playing: Boolean = false
+        private set
 
     /** ORCA's tempo; setting it is the commander's `bpm:`, clamped by ORCA to 60..300. */
     var bpm: Int
         get() = reportedBpm
-        set(value) { send("bpm", "value" to JsonPrimitive(value)) }
+        set(value) {
+            send("bpm", "value" to JsonPrimitive(value))
+        }
 
     /** This frame's `V` variables. */
-    var variables: Map<String, String> = emptyMap(); private set
+    var variables: Map<String, String> = emptyMap()
+        private set
 
     /** Where ORCA's cursor is. */
-    var cursor: Pair<Int, Int> = 0 to 0; private set
+    var cursor: Pair<Int, Int> = 0 to 0
+        private set
 
     /** Reports received from the page; zero until ORCA has started. */
-    var reports: Long = 0; private set
+    var reports: Long = 0
+        private set
 
     /** ORCA's own operator reference, as its page generated it. */
-    var operators: String = ""; private set
+    var operators: String = ""
+        private set
 
     private val recentEvents = ArrayDeque<String>()
 
     /** The last 64 messages ORCA sent, one line each, newest last. */
-    val recent: List<String> get() = recentEvents.toList()
+    val recent: List<String>
+        get() = recentEvents.toList()
 
     /** Put [text] on the grid with its top-left at ([x], [y]); newlines start a new row at [x]. */
     fun write(x: Int, y: Int, text: String) =
         send("write", "x" to JsonPrimitive(x), "y" to JsonPrimitive(y), "text" to JsonPrimitive(text))
 
     /**
-     * The glyph at ([x], [y]), `'.'` for an empty cell or one off the grid. It is the grid ORCA last
-     * reported, with any cell this box has [set] since then showing the value it was set to.
+     * The glyph at ([x], [y]), `'.'` for an empty cell or one off the grid. It is the grid ORCA last reported, with any
+     * cell this box has [set] since then showing the value it was set to.
      */
-    operator fun get(x: Int, y: Int): Char =
-        pendingCells[x to y]?.first ?: rows.getOrNull(y)?.getOrNull(x) ?: '.'
+    operator fun get(x: Int, y: Int): Char = pendingCells[x to y]?.first ?: rows.getOrNull(y)?.getOrNull(x) ?: '.'
 
     /**
-     * Put one [glyph] at ([x], [y]) at ORCA's next frame. Unlike [write] it stays out of ORCA's undo
-     * history and is not saved as an edit, so a box can set cells every frame: `o[4, 2] = 'C'`.
+     * Put one [glyph] at ([x], [y]) at ORCA's next frame. Unlike [write] it stays out of ORCA's undo history and is not
+     * saved as an edit, so a box can set cells every frame: `o[4, 2] = 'C'`.
      */
     operator fun set(x: Int, y: Int, glyph: Char) {
         pendingCells[x to y] = glyph to reports + 2
@@ -247,10 +271,10 @@ class Orca internal constructor(
     }
 
     /**
-     * Run [javascript] in ORCA's page, at global scope beside ORCA's `client` and `library`, and
-     * suspend until its value comes back as JSON with the next report; a promise is awaited first.
-     * Anything goes: read ORCA's state, restyle it, replace an operator in `library`, wrap
-     * `client.run`. A JavaScript error comes back as an [IllegalStateException] carrying its stack.
+     * Run [javascript] in ORCA's page, at global scope beside ORCA's `client` and `library`, and suspend until its
+     * value comes back as JSON with the next report; a promise is awaited first. Anything goes: read ORCA's state,
+     * restyle it, replace an operator in `library`, wrap `client.run`. A JavaScript error comes back as an
+     * [IllegalStateException] carrying its stack.
      *
      * ```kotlin
      * go { println(o.eval("client.orca.w + ' x ' + client.orca.h")) }
@@ -275,39 +299,80 @@ class Orca internal constructor(
     fun bang(x: Int, y: Int) = set(x, y, '*')
 
     /**
-     * Hold ORCA variable [name] at [value] every frame, as if a `V` on the grid wrote it, so `V`
-     * reads it there; null lets it go. A `V` on the grid that writes the same name wins that frame.
+     * Hold ORCA variable [name] at [value] every frame, as if a `V` on the grid wrote it, so `V` reads it there; null
+     * lets it go. A `V` on the grid that writes the same name wins that frame.
      */
-    fun variable(name: Char, value: Char?) =
-        send("variable", "name" to JsonPrimitive(name.toString()), "value" to (value?.let { JsonPrimitive(it.toString()) } ?: JsonNull))
+    fun variable(name: Char, value: Char?) = send(
+        "variable",
+        "name" to JsonPrimitive(name.toString()),
+        "value" to (value?.let { JsonPrimitive(it.toString()) } ?: JsonNull),
+    )
 
     /** Run a commander string, as if typed after `Cmd-K`: `"bpm:140"`, `"write:D8;4;2"`, `"find:aa"`, ... */
     fun command(text: String) = send("command", "text" to JsonPrimitive(text))
 
     fun play() = send("play")
+
     fun stop() = send("stop")
 
     fun onNote(callback: (OrcaNote) -> Unit) = apply { notes.add(callback) }
+
+    /** Replace this named note callback; Stop or rerun of its registering box removes it. */
+    fun onNote(name: String, callback: (OrcaNote) -> Unit) = apply {
+        afield.runtime.lifecycle.runOwnedListener(
+            this,
+            "note:$name",
+            { listener: (OrcaNote) -> Unit ->
+                notes.add(listener)
+                val remove: () -> Unit = { notes.remove(listener) }
+                remove
+            },
+            callback,
+        )
+    }
+
     fun onCC(callback: (OrcaCC) -> Unit) = apply { ccs.add(callback) }
+
     fun onBend(callback: (OrcaBend) -> Unit) = apply { bends.add(callback) }
+
     fun onUdp(callback: (String) -> Unit) = apply { udps.add(callback) }
+
     fun onOsc(callback: (OrcaOsc) -> Unit) = apply { oscs.add(callback) }
+
     /** After every report: once a frame while ORCA plays, a few times a second while it is paused. */
     fun onFrame(callback: (Orca) -> Unit) = apply { frames.add(callback) }
 
     /**
-     * Every cell that changed since the last report, whoever changed it: an operator, the keyboard,
-     * this box. Called row by row, before [onFrame]. A report can cover more than one frame when the
-     * page is busy, so a cell that changed and changed back in between is not seen.
+     * Every cell that changed since the last report, whoever changed it: an operator, the keyboard, this box. Called
+     * row by row, before [onFrame]. A report can cover more than one frame when the page is busy, so a cell that
+     * changed and changed back in between is not seen.
      */
     fun onChange(callback: (OrcaCell) -> Unit) = apply { changes.add(callback) }
+
+    /** Replace this named change callback; owned by the registering box run. */
+    fun onChange(name: String, callback: (OrcaCell) -> Unit) = apply {
+        afield.runtime.lifecycle.runOwnedListener(
+            this,
+            "change:$name",
+            { listener: (OrcaCell) -> Unit ->
+                changes.add(listener)
+                val remove: () -> Unit = { changes.remove(listener) }
+                remove
+            },
+            callback,
+        )
+    }
 
     /** [onChange], for one cell: [callback] gets the glyph it changed to. */
     fun onCell(x: Int, y: Int, callback: (Char) -> Unit) = onChange { if (it.x == x && it.y == y) callback(it.after) }
 
+    /** A named, run-owned cell callback; replacing it does not accumulate listeners. */
+    fun onCell(x: Int, y: Int, name: String, callback: (Char) -> Unit) =
+        onChange("cell:$x:$y:$name") { if (it.x == x && it.y == y) callback(it.after) }
+
     /**
-     * Suspend until ORCA has applied everything sent so far and reported the result, or [timeoutMillis]
-     * passes. Commands travel in the reply to one report, so their effect shows in the one after.
+     * Suspend until ORCA has applied everything sent so far and reported the result, or [timeoutMillis] passes.
+     * Commands travel in the reply to one report, so their effect shows in the one after.
      */
     suspend fun sync(timeoutMillis: Long = 3_000): Boolean {
         val done = CompletableDeferred<Unit>()
@@ -316,37 +381,45 @@ class Orca internal constructor(
     }
 
     /** The output's iframe, for the live-iframe bridge's `evaluate`, `screenshot`, ... in the Electron app. */
-    val page: LiveOutputIframe get() = owner.outputIframe(channel)
+    val page: LiveOutputIframe
+        get() = owner.outputIframe(channel)
 
-    private val owner: Box get() = box ?: throw IllegalStateException("A headless ORCA has no box output")
+    private val owner: Box
+        get() = box ?: throw IllegalStateException("A headless ORCA has no box output")
 
     /**
-     * ORCA as the page playing it has drawn it, as a PNG data URL at most 1400 pixels wide. It comes
-     * from ORCA's own canvas, through ORCA's connection, so it works in any browser and shows exactly
-     * what is on the screen; it is drawn fresh first, in case the page is in the background.
+     * ORCA as the page playing it has drawn it, as a PNG data URL at most 1400 pixels wide. It comes from ORCA's own
+     * canvas, through ORCA's connection, so it works in any browser and shows exactly what is on the screen; it is
+     * drawn fresh first, in case the page is in the background.
      */
     suspend fun picture(timeoutMillis: Long = 5_000): String =
         (eval(PICTURE, timeoutMillis) as? JsonPrimitive)?.contentOrNull
             ?: throw IllegalStateException("ORCA's page returned no picture")
 
     /**
-     * The grid with each row prefixed by its y, as AI4's tools show it. Empty cells at the ends of rows,
-     * and empty rows at the bottom, are left off: they move nothing, and a window-wide grid is mostly them.
+     * The grid with each row prefixed by its y, as AI4's tools show it. Empty cells at the ends of rows, and empty rows
+     * at the bottom, are left off: they move nothing, and a window-wide grid is mostly them.
      */
-    val numberedGrid: String get() = grid.lines().map { it.trimEnd('.') }.dropLastWhile { it.isEmpty() }
-        .mapIndexed { y, row -> "%3d %s".format(y, row).trimEnd() }.joinToString("\n")
+    val numberedGrid: String
+        get() =
+            grid
+                .lines()
+                .map { it.trimEnd('.') }
+                .dropLastWhile { it.isEmpty() }
+                .mapIndexed { y, row -> "%3d %s".format(y, row).trimEnd() }
+                .joinToString("\n")
 
     /**
-     * Let the document's AI4 play this ORCA, the way the paint studio lets it paint. AI4 gets tools
-     * to look at the board (`<name>_look`: the picture ORCA drew, and the grid as text), read it, write
-     * cells while it plays, replace it, command it and run JavaScript in its page; the board, the
-     * tempo and how to play are in its context every turn; and `/orca` shows the board in the chat.
+     * Let the document's AI4 play this ORCA, the way the paint studio lets it paint. AI4 gets tools to look at the
+     * board (`<name>_look`: the picture ORCA drew, and the grid as text), read it, write cells while it plays, replace
+     * it, command it and run JavaScript in its page; the board, the tempo and how to play are in its context every
+     * turn; and `/orca` shows the board in the chat.
      *
-     * The board belongs to the conversation: it and the tempo are saved with every AI4 turn, so
-     * rewinding the chat puts the board back as it was before that request, switching branch puts back that branch's,
-     * and each saved board is a node in the chat's States tree. [about] tells AI4 anything the grid
-     * cannot, such as which channel is which instrument. [iframeTools] adds the live-iframe tools
-     * (Electron only). Re-running the box replaces all of it; not calling this removes it.
+     * The board belongs to the conversation: it and the tempo are saved with every AI4 turn, so rewinding the chat puts
+     * the board back as it was before that request, switching branch puts back that branch's, and each saved board is a
+     * node in the chat's States tree. [about] tells AI4 anything the grid cannot, such as which channel is which
+     * instrument. [iframeTools] adds the live-iframe tools (Electron only). Re-running the box replaces all of it; not
+     * calling this removes it.
      */
     fun exposeTools(name: String = "orca", about: String = "", iframeTools: Boolean = false): List<BoxTool> {
         // The tool DSL's scopes have their own `box`, `name` and `frame()`; say which ORCA is meant.
@@ -355,76 +428,121 @@ class Orca internal constructor(
         val where = "output '$channel' of box '${box.name.ifBlank { box.id }}'"
         val tools = mutableListOf<BoxTool>()
         box.agentExtension(name) {
-            tools += tool("${name}_look") {
-                namespace("orca")
-                effects(ToolEffect.CAPTURE_IMAGE, ToolEffect.READ_DOCUMENT)
-                describe("Look at the ORCA in $where as it plays: the picture ORCA has drawn in the page that is " +
-                    "playing it, and the grid as text with each row prefixed by its y.")
-                action {
-                    image(orca.picture(), "Frame ${orca.frame} at ${orca.bpm} bpm, " +
-                        (if (orca.playing) "playing" else "paused") + ". The grid:\n" + orca.numberedGrid)
-                }
-            }
-            tools += tool("${name}_read") {
-                namespace("orca")
-                effects(ToolEffect.READ_DOCUMENT)
-                describe("Read the ORCA grid in $where as text: rows prefixed with their y (x counts from 0 at the " +
-                    "first glyph), size, frame, bpm, whether it plays, the last messages it sent (notes, cc, udp, osc), " +
-                    "and ORCA's operator reference.")
-                action {
-                    mapOf(
-                        "grid" to orca.numberedGrid, "width" to orca.width, "height" to orca.height,
-                        "frame" to orca.frame, "bpm" to orca.bpm, "playing" to orca.playing,
-                        "cursor" to listOf(orca.cursor.first, orca.cursor.second),
-                        "recent" to orca.recent.takeLast(32), "operators" to orca.operators,
+            tools +=
+                tool("${name}_look") {
+                    namespace("orca")
+                    effects(ToolEffect.CAPTURE_IMAGE, ToolEffect.READ_DOCUMENT)
+                    describe(
+                        "Look at the ORCA in $where as it plays: the picture ORCA has drawn in the page that is " +
+                            "playing it, and the grid as text with each row prefixed by its y.",
                     )
+                    action {
+                        image(
+                            orca.picture(),
+                            "Frame ${orca.frame} at ${orca.bpm} bpm, " +
+                                (if (orca.playing) "playing" else "paused") +
+                                ". The grid:\n" +
+                                orca.numberedGrid,
+                        )
+                    }
                 }
-            }
-            tools += tool("${name}_write") {
-                namespace("orca")
-                effects(ToolEffect.CONTROL_RUNTIME)
-                describe("Write glyphs onto the ORCA grid in $where while it plays, top-left at (x, y); it lands at " +
-                    "ORCA's next frame, with no need to edit or re-run the box. Newlines in text start the next row " +
-                    "at the same x; '.' is an empty cell. Returns the grid afterwards.")
-                val x by param<Int>("Column, from 0.")
-                val y by param<Int>("Row, from 0.")
-                val text by param<String>("Glyphs to write, possibly several rows.")
-                action { orca.write(x(), y(), text()); orca.sync(); mapOf("grid" to orca.numberedGrid) }
-            }
-            tools += tool("${name}_load") {
-                namespace("orca")
-                effects(ToolEffect.CONTROL_RUNTIME)
-                describe("Replace the whole ORCA grid in $where with these rows ('.' for empty) while it plays. " +
-                    "Returns the grid afterwards.")
-                val rows by param<String>("The new grid, one row per line.")
-                action { orca.grid = rows(); orca.sync(); mapOf("grid" to orca.numberedGrid) }
-            }
-            tools += tool("${name}_command") {
-                namespace("orca")
-                effects(ToolEffect.CONTROL_RUNTIME)
-                describe("Run an ORCA commander string in $where: play, stop, run, bpm:140, frame:0, " +
-                    "write:TEXT;x;y, find:TEXT, select:x;y;w;h, erase, copy, paste. Returns the grid afterwards.")
-                val text by param<String>("The command.")
-                action {
-                    orca.command(text()); orca.sync()
-                    mapOf("bpm" to orca.bpm, "playing" to orca.playing, "frame" to orca.frame, "grid" to orca.numberedGrid)
+            tools +=
+                tool("${name}_read") {
+                    namespace("orca")
+                    effects(ToolEffect.READ_DOCUMENT)
+                    describe(
+                        "Read the ORCA grid in $where as text: rows prefixed with their y (x counts from 0 at the " +
+                            "first glyph), size, frame, bpm, whether it plays, the last messages it sent (notes, cc, udp, osc), " +
+                            "and ORCA's operator reference.",
+                    )
+                    action {
+                        mapOf(
+                            "grid" to orca.numberedGrid,
+                            "width" to orca.width,
+                            "height" to orca.height,
+                            "frame" to orca.frame,
+                            "bpm" to orca.bpm,
+                            "playing" to orca.playing,
+                            "cursor" to listOf(orca.cursor.first, orca.cursor.second),
+                            "recent" to orca.recent.takeLast(32),
+                            "operators" to orca.operators,
+                        )
+                    }
                 }
-            }
-            tools += tool("${name}_js") {
-                namespace("orca")
-                effects(ToolEffect.EXECUTE_CODE, ToolEffect.CONTROL_RUNTIME)
-                describe("Run JavaScript in the page of the ORCA in $where, at global scope where ORCA's `client` " +
-                    "(client.orca: the grid, client.clock, client.theme, client.io) and `library` (the operators, by " +
-                    "lowercase glyph) live, and return its JSON value. Use it to inspect or patch ORCA itself: " +
-                    "restyle it, redefine an operator, wrap client.run. Works in any browser, not only Electron.")
-                val code by param<String>("JavaScript expression, or statements whose last value is returned.")
-                action { mapOf("json" to orca.eval(code()).toString()) }
-            }
+            tools +=
+                tool("${name}_write") {
+                    namespace("orca")
+                    effects(ToolEffect.CONTROL_RUNTIME)
+                    describe(
+                        "Write glyphs onto the ORCA grid in $where while it plays, top-left at (x, y); it lands at " +
+                            "ORCA's next frame, with no need to edit or re-run the box. Newlines in text start the next row " +
+                            "at the same x; '.' is an empty cell. Returns the grid afterwards.",
+                    )
+                    val x by param<Int>("Column, from 0.")
+                    val y by param<Int>("Row, from 0.")
+                    val text by param<String>("Glyphs to write, possibly several rows.")
+                    action {
+                        orca.write(x(), y(), text())
+                        orca.sync()
+                        mapOf("grid" to orca.numberedGrid)
+                    }
+                }
+            tools +=
+                tool("${name}_load") {
+                    namespace("orca")
+                    effects(ToolEffect.CONTROL_RUNTIME)
+                    describe(
+                        "Replace the whole ORCA grid in $where with these rows ('.' for empty) while it plays. " +
+                            "Returns the grid afterwards.",
+                    )
+                    val rows by param<String>("The new grid, one row per line.")
+                    action {
+                        orca.grid = rows()
+                        orca.sync()
+                        mapOf("grid" to orca.numberedGrid)
+                    }
+                }
+            tools +=
+                tool("${name}_command") {
+                    namespace("orca")
+                    effects(ToolEffect.CONTROL_RUNTIME)
+                    describe(
+                        "Run an ORCA commander string in $where: play, stop, run, bpm:140, frame:0, " +
+                            "write:TEXT;x;y, find:TEXT, select:x;y;w;h, erase, copy, paste. Returns the grid afterwards.",
+                    )
+                    val text by param<String>("The command.")
+                    action {
+                        orca.command(text())
+                        orca.sync()
+                        mapOf(
+                            "bpm" to orca.bpm,
+                            "playing" to orca.playing,
+                            "frame" to orca.frame,
+                            "grid" to orca.numberedGrid,
+                        )
+                    }
+                }
+            tools +=
+                tool("${name}_js") {
+                    namespace("orca")
+                    effects(ToolEffect.EXECUTE_CODE, ToolEffect.CONTROL_RUNTIME)
+                    describe(
+                        "Run JavaScript in the page of the ORCA in $where, at global scope where ORCA's `client` " +
+                            "(client.orca: the grid, client.clock, client.theme, client.io) and `library` (the operators, by " +
+                            "lowercase glyph) live, and return its JSON value. Use it to inspect or patch ORCA itself: " +
+                            "restyle it, redefine an operator, wrap client.run. Works in any browser, not only Electron.",
+                    )
+                    val code by param<String>("JavaScript expression, or statements whose last value is returned.")
+                    action { mapOf("json" to orca.eval(code()).toString()) }
+                }
 
             context("$name-board") {
-                "The ORCA in $where is " + (if (orca.playing) "playing" else "paused") + " at ${orca.bpm} bpm, " +
+                "The ORCA in $where is " +
+                    (if (orca.playing) "playing" else "paused") +
+                    " at ${orca.bpm} bpm, " +
                     "frame ${orca.frame}, ${orca.width}x${orca.height}. Its grid, rows prefixed with y:\n" +
-                    orca.numberedGrid + (if (about.isBlank()) "" else "\n\nAbout it, from the box: $about")
+                    orca.numberedGrid +
+                    (if (about.isBlank()) "" else "\n\nAbout it, from the box: $about")
             }
             context("$name-craft", changesOften = false) {
                 """
@@ -436,19 +554,32 @@ class Orca internal constructor(
                 |the grid is the instrument. Rewinding the chat brings the board back as it was, so be bold.
                 |ORCA's operators:
                 |${orca.operators}
-                """.trimMargin()
+                """
+                    .trimMargin()
             }
-            command(name, "show the ORCA board") { "```\n${orca.numberedGrid}\n```\n\nFrame ${orca.frame}, ${orca.bpm} bpm" }
+            command(name, "show the ORCA board") {
+                "```\n${orca.numberedGrid}\n```\n\nFrame ${orca.frame}, ${orca.bpm} bpm"
+            }
             // The board belongs to the conversation. ORCA's operators rewrite cells every frame, so it never
             // matches the board the conversation last saw: restore anyway (the replaced board is saved first).
-            branchState("board",
-                save = { it.writeText(buildJsonObject { put("grid", orca.grid); put("bpm", orca.bpm) }.toString()) },
+            branchState(
+                "board",
+                save = {
+                    it.writeText(
+                        buildJsonObject {
+                            put("grid", orca.grid)
+                            put("bpm", orca.bpm)
+                        }
+                            .toString(),
+                    )
+                },
                 restore = { f ->
                     val saved = f?.readText()?.let { Json.parseToJsonElement(it).jsonObject }
                     saved?.get("grid")?.jsonPrimitive?.contentOrNull?.let { orca.grid = it }
                     saved?.get("bpm")?.jsonPrimitive?.intOrNull?.let { orca.bpm = it }
                 },
-                onConflict = BranchConflict.RESTORE)
+                onConflict = BranchConflict.RESTORE,
+            )
         }
         return tools + (if (iframeTools) box.exposeOutputIframeTools(channel, name) else emptyList())
     }
@@ -482,7 +613,10 @@ class Orca internal constructor(
         reportedBpm = report.int("bpm") ?: reportedBpm
         playing = report["paused"]?.jsonPrimitive?.booleanOrNull?.not() ?: playing
         val before = rows
-        report["grid"]?.jsonPrimitive?.contentOrNull?.let { reportedGrid = it; rows = it.lines() }
+        report["grid"]?.jsonPrimitive?.contentOrNull?.let {
+            reportedGrid = it
+            rows = it.lines()
+        }
         width = report.int("w") ?: width
         height = report.int("h") ?: height
         report["cursor"]?.jsonObject?.let { cursor = (it.int("x") ?: 0) to (it.int("y") ?: 0) }
@@ -492,7 +626,8 @@ class Orca internal constructor(
             val result = element.jsonObject
             val waiting = evals.remove(result["id"]?.jsonPrimitive?.contentOrNull ?: continue) ?: continue
             val error = result["error"]?.jsonPrimitive?.contentOrNull
-            if (error != null) waiting.completeExceptionally(IllegalStateException("JavaScript in ORCA's page failed: $error"))
+            if (error != null)
+                waiting.completeExceptionally(IllegalStateException("JavaScript in ORCA's page failed: $error"))
             else waiting.complete(result["value"] ?: JsonNull)
         }
 
@@ -508,52 +643,73 @@ class Orca internal constructor(
             val at = ((e["at"]?.jsonPrimitive?.doubleOrNull ?: sentMillis) * 1e6).toLong() + offsetNanos!!
             val f = e.int("frame") ?: frame
             when (val kind = e["kind"]?.jsonPrimitive?.contentOrNull) {
-                "note", "mono" -> {
+                "note",
+                "mono" -> {
                     val length = e.int("length") ?: 1
                     val note = OrcaNote(
-                        channel = e.int("channel") ?: 0, octave = e.int("octave") ?: 3,
-                        note = e["note"]?.jsonPrimitive?.contentOrNull ?: "", midi = e.int("midi") ?: -1,
+                        channel = e.int("channel") ?: 0,
+                        octave = e.int("octave") ?: 3,
+                        note = e["note"]?.jsonPrimitive?.contentOrNull ?: "",
+                        midi = e.int("midi") ?: -1,
                         velocity = ((e.int("velocity") ?: 15) / 16.0).coerceIn(0.0, 1.0),
-                        frames = length, seconds = length * frameSeconds, mono = kind == "mono", frame = f,
+                        frames = length,
+                        seconds = length * frameSeconds,
+                        mono = kind == "mono",
+                        frame = f,
                         time = at + (latency * 1e9).toLong(),
                     )
-                    remember("$f ${if (note.mono) "%" else ":"} ch${note.channel} ${note.note}${note.octave} midi ${note.midi} vel ${e.int("velocity")} len $length")
+                    remember(
+                        "$f ${if (note.mono) "%" else ":"} ch${note.channel} ${note.note}${note.octave} midi ${note.midi} vel ${e.int("velocity")} len $length",
+                    )
                     if (note.midi >= 0) notes.forEach { call { it(note) } }
                 }
-                "cc" -> OrcaCC(e.int("channel") ?: 0, e.int("knob") ?: 0, e.int("value") ?: 0, f).let { cc ->
-                    remember("$f ! ch${cc.channel} knob ${cc.knob} value ${cc.value}")
-                    ccs.forEach { call { it(cc) } }
-                }
-                "pb" -> OrcaBend(e.int("channel") ?: 0, e.int("lsb") ?: 0, e.int("msb") ?: 0, f).let { pb ->
-                    remember("$f ? ch${pb.channel} lsb ${pb.lsb} msb ${pb.msb}")
-                    bends.forEach { call { it(pb) } }
-                }
-                "udp" -> (e["message"]?.jsonPrimitive?.contentOrNull ?: "").let { message ->
-                    remember("$f ; $message")
-                    udps.forEach { call { it(message) } }
-                }
-                "osc" -> OrcaOsc(
-                    e["path"]?.jsonPrimitive?.contentOrNull ?: "/",
-                    e["args"]?.jsonArray?.map { it.jsonPrimitive.intOrNull ?: 0 }.orEmpty(),
-                    e["message"]?.jsonPrimitive?.contentOrNull ?: "", f,
-                ).let { osc ->
-                    remember("$f = ${osc.path} ${osc.args}")
-                    oscs.forEach { call { it(osc) } }
-                }
+                "cc" ->
+                    OrcaCC(e.int("channel") ?: 0, e.int("knob") ?: 0, e.int("value") ?: 0, f).let { cc ->
+                        remember("$f ! ch${cc.channel} knob ${cc.knob} value ${cc.value}")
+                        ccs.forEach { call { it(cc) } }
+                    }
+                "pb" ->
+                    OrcaBend(e.int("channel") ?: 0, e.int("lsb") ?: 0, e.int("msb") ?: 0, f).let { pb ->
+                        remember("$f ? ch${pb.channel} lsb ${pb.lsb} msb ${pb.msb}")
+                        bends.forEach { call { it(pb) } }
+                    }
+                "udp" ->
+                    (e["message"]?.jsonPrimitive?.contentOrNull ?: "").let { message ->
+                        remember("$f ; $message")
+                        udps.forEach { call { it(message) } }
+                    }
+                "osc" ->
+                    OrcaOsc(
+                            e["path"]?.jsonPrimitive?.contentOrNull ?: "/",
+                            e["args"]?.jsonArray?.map { it.jsonPrimitive.intOrNull ?: 0 }.orEmpty(),
+                            e["message"]?.jsonPrimitive?.contentOrNull ?: "",
+                            f,
+                        )
+                        .let { osc ->
+                            remember("$f = ${osc.path} ${osc.args}")
+                            oscs.forEach { call { it(osc) } }
+                        }
             }
         }
         reports++
         pendingCells.entries.removeIf { it.value.second <= reports }
         if (rows !== before && changes.isNotEmpty() && before.isNotEmpty()) {
             for (y in 0 until minOf(before.size, rows.size)) {
-                val old = before[y]; val new = rows[y]
+                val old = before[y]
+                val new = rows[y]
                 for (x in 0 until minOf(old.length, new.length)) {
-                    if (old[x] != new[x]) OrcaCell(x, y, old[x], new[x]).let { cell -> changes.forEach { call { it(cell) } } }
+                    if (old[x] != new[x])
+                        OrcaCell(x, y, old[x], new[x]).let { cell -> changes.forEach { call { it(cell) } } }
                 }
             }
         }
         frames.forEach { call { it(this) } }
-        waiting.filter { it.first <= reports }.forEach { waiting.remove(it); it.second.complete(Unit) }
+        waiting
+            .filter { it.first <= reports }
+            .forEach {
+                waiting.remove(it)
+                it.second.complete(Unit)
+            }
         // Drained last, so what the callbacks above asked for goes out in this reply.
         while (true) commands += outgoing.poll() ?: break
         return buildJsonObject { put("commands", JsonArray(commands)) }
@@ -589,11 +745,16 @@ class Orca internal constructor(
     }
 
     private inline fun call(block: () -> Unit) {
-        try { block() } catch (e: Exception) {
+        try {
+            block()
+        } catch (e: Exception) {
             // With no box to paint the error on, a headless render fails rather than carry on wrong.
             val box = box ?: throw e
             val message = "orca: ${e.message ?: e.javaClass.simpleName}"
-            if (message != lastError) { lastError = message; box.error(message) }
+            if (message != lastError) {
+                lastError = message
+                box.error(message)
+            }
         }
     }
 
@@ -601,22 +762,34 @@ class Orca internal constructor(
         JsonObject(mapOf("op" to JsonPrimitive(op)) + fields)
 
     private fun JsonObject.int(key: String) = this[key]?.jsonPrimitive?.intOrNull
+
     private fun JsonObject.bool(key: String) = this[key]?.jsonPrimitive?.booleanOrNull == true
 }
 
 /**
- * Play [note] on this bank at [OrcaNote.time]: held for ORCA's length, at its velocity.
- * The bank has to be playing — returned from the box — for the note to be heard.
+ * Play [note] on this bank at [OrcaNote.time]: held for ORCA's length, at its velocity. The bank has to be playing —
+ * returned from the box — for the note to be heard.
  */
-fun PatSynthBank.play(note: OrcaNote, pan: Double = 0.5, wave: PatWave = voice.wave, gain: Double = 1.0,
-                      cutoffHz: Double? = null) {
+fun PatSynthBank.play(
+    note: OrcaNote,
+    pan: Double = 0.5,
+    wave: PatWave = voice.wave,
+    gain: Double = 1.0,
+    cutoffHz: Double? = null,
+) {
     val delay = ((note.time - System.nanoTime()) * sampleRate / 1e9).toLong().coerceAtLeast(0)
     schedule(orcaSynthNote(note, frame + delay, pan, wave, gain, cutoffHz))
 }
 
 /** [note] as a [PatSynthNote] on this bank, starting at [startFrame] on its clock. */
-internal fun PatSynthBank.orcaSynthNote(note: OrcaNote, startFrame: Long, pan: Double, wave: PatWave,
-                                        gain: Double, cutoffHz: Double?) = PatSynthNote(
+internal fun PatSynthBank.orcaSynthNote(
+    note: OrcaNote,
+    startFrame: Long,
+    pan: Double,
+    wave: PatWave,
+    gain: Double,
+    cutoffHz: Double?,
+) = PatSynthNote(
     startFrame = startFrame,
     holdFrames = (note.seconds * sampleRate).toInt(),
     tailFrames = (voice.decay * 4.0 * sampleRate).toInt().coerceAtLeast(1),

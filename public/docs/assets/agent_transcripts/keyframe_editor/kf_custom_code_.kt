@@ -14,10 +14,10 @@ interpolant("chaos") {
 
 val custom = keyframes(
     name = "custom",
-    keys = listOf(
+    keys = [
         Keyframe(0.0, 0.1, "overshoot"),
         Keyframe(1.5, 0.8, "wobble"),
         Keyframe(3.0, 0.3, "chaos"),
         Keyframe(4.5, 0.6, "linear"),
-    ),
+    ],
 )

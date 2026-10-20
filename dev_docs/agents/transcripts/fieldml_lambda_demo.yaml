@@ -1,5 +1,8 @@
 # Generated from fieldml_lambda_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "fieldml_lambda_demo"
+docs:
+  - page: fieldml_host_bridge.md#passing-a-function
+    why: "Explains passing FieldML functions to JVM code."
 operations:
   - create:
       box: "fieldml-lambda-root"

@@ -102,6 +102,26 @@ class DoughEngine(
          * defining it.
          */
         const val MEMORY_PAGES = 3200
+
+        /**
+         * Bytes from one voice to the next in the module's voice array, which starts at the `vs`
+         * pointer `js_init` reports.
+         *
+         * Not exported by the module: measured from this `dough.wasm` (the `voice` struct in
+         * `dough.c`, compiled for wasm32), and pinned by `DoughVoiceLayoutTest`, which fails if a new
+         * build of the module moves it. [VOICE_CHANNELS_OFFSET] and [VOICE_GROUP_OFFSET] likewise.
+         */
+        const val VOICE_STRIDE = 11_592
+
+        /**
+         * Offset within a voice of `ch[0]`, followed by `ch[1]`: the voice's most recent output frame,
+         * after its own gain, filters and pan and before the shared delay, reverb and the module's
+         * final halving.
+         */
+        const val VOICE_CHANNELS_OFFSET = 11_120
+
+        /** Offset within a voice of its event's `group`, which is -1 for an event that set none. */
+        const val VOICE_GROUP_OFFSET = 11_136
     }
 
     private val host = JsHost()
@@ -129,6 +149,7 @@ class DoughEngine(
     private var framePointer = -1
     private var pcmPointer = -1
     private var activeVoicesPointer = -1
+    private var voicesPointer = -1
 
     init {
         host.engine = this
@@ -174,6 +195,16 @@ class DoughEngine(
      */
     fun evaluatePath(path: String) {
         evaluate(parsePath(path))
+    }
+
+    /**
+     * Send one event written as a dough path, with [extra] keys added to it or overriding it.
+     *
+     * The way to tag a path someone else wrote, as `DoughLive` adds a `group` to every box's sound
+     * without touching the string that box passed.
+     */
+    fun evaluatePath(path: String, extra: Map<String, Any?>) {
+        evaluate(parsePath(path) + extra)
     }
 
     /**
@@ -287,6 +318,55 @@ class DoughEngine(
         return out
     }
 
+    /**
+     * Every sounding voice's `group` and its last output frame, as the module left them after the
+     * last [renderBlock].
+     *
+     * Writes `group, left, right` triples into [out] and returns how many voices it wrote: at most
+     * [activeVoices], and at most `out.size / 3`. The frame is one sample per voice per block, not a
+     * block's worth, so a level built from it is a running statistic over many blocks; `DoughLive`
+     * keeps one per group. Returns 0 for a module that did not report where its voices are.
+     */
+    fun voiceFrames(out: FloatArray): Int {
+        if (voicesPointer < 0 || activeVoicesPointer < 0) return 0
+        context.enter()
+        return try {
+            val active = bindings.getMember("doughGetInt32").execute(activeVoicesPointer).asInt()
+            val count = minOf(active, MAX_VOICES, out.size / 3).coerceAtLeast(0)
+            if (count > 0) {
+                bindings.getMember("doughReadVoices").execute(
+                    out, voicesPointer, count, VOICE_STRIDE, VOICE_CHANNELS_OFFSET, VOICE_GROUP_OFFSET
+                )
+            }
+            count
+        } finally {
+            context.leave()
+        }
+    }
+
+    /** Where the module's voice array starts in wasm memory, or -1 if `js_init` did not say. */
+    internal val voicesAddress: Int get() = voicesPointer
+
+    /** One little-endian int32 of wasm memory. For layout probes; the address is not checked. */
+    internal fun peekInt32(address: Int): Int {
+        context.enter()
+        return try {
+            bindings.getMember("doughGetInt32").execute(address).asInt()
+        } finally {
+            context.leave()
+        }
+    }
+
+    /** One little-endian float32 of wasm memory. For layout probes; the address is not checked. */
+    internal fun peekFloat32(address: Int): Float {
+        context.enter()
+        return try {
+            bindings.getMember("doughGetFloat32").execute(address).asFloat()
+        } finally {
+            context.leave()
+        }
+    }
+
     private fun parseMirror(msg: String) {
         println("js_init mirror: $msg")
 
@@ -310,29 +390,10 @@ class DoughEngine(
         framePointer = map["frame"] ?: -1
         pcmPointer = map["pcm"] ?: -1
         activeVoicesPointer = map["active_voices"] ?: -1
+        voicesPointer = map["vs"] ?: -1
     }
 
-    private fun parsePath(path: String): Map<String, String> {
-        val chunks = path
-            .trim()
-            .lines()
-            .map { it.substringBefore("//") }
-            .joinToString("")
-            .split("/")
-            .filter { it.isNotBlank() }
-
-        require(chunks.size % 2 == 0) {
-            "Expected key/value pairs in path: $path"
-        }
-
-        val out = linkedMapOf<String, String>()
-        var i = 0
-        while (i < chunks.size) {
-            out[chunks[i].trim()] = chunks[i + 1].trim()
-            i += 2
-        }
-        return out
-    }
+    private fun parsePath(path: String): Map<String, String> = doughPathEvent(path)
 
     private fun encodeEvent(event: Map<String, Any?>): ByteArray {
         val s = buildString {
@@ -502,6 +563,16 @@ private const val JS_SHIM = """
       const base = outputPtr + i * channels * 4;
       outLeft[i] = view.getFloat32(base, true);
       outRight[i] = view.getFloat32(base + 4, true);
+    }
+  };
+
+  globalThis.doughReadVoices = function (out, vs, count, stride, chOffset, groupOffset) {
+    const view = new DataView(globalThis.__dough.memory.buffer);
+    for (let v = 0; v < count; v++) {
+      const base = vs + v * stride;
+      out[v * 3] = view.getInt32(base + groupOffset, true);
+      out[v * 3 + 1] = view.getFloat32(base + chOffset, true);
+      out[v * 3 + 2] = view.getFloat32(base + chOffset + 4, true);
     }
   };
 

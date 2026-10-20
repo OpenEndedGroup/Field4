@@ -2,6 +2,9 @@ name: flow_grain
 description: Bounded scrolling fluid tiles, world-space grain, velocity strokes and
   motion correspondence. Normal launch/stop; frame-boundary reset; existing profiling
   timeline.
+docs:
+  - page: flow_grain.md
+    why: "Explains fluid tiles, grain, velocity strokes and motion correspondence."
 operations:
 - create:
     box: flow_renderer
@@ -117,7 +120,6 @@ operations:
             colorFormats =
                 [org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT, org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT]
             useDepth = false
-            clearFirst = true
             clearColor = vec(0, 0, 0, 0)
             debugName = "flow-correspondence"
         }
@@ -598,7 +600,7 @@ operations:
         // Dependencies are explicit graph exports; resources stay in their parent box.
 
         var module = moduleHere {
-            flowSurface.apply()
+            +flowSurface
             primitiveType = triangles
             blend = false // Correspondence is a coordinate, never alpha-blended.
             depthTest = false

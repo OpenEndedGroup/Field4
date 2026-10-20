@@ -91,11 +91,16 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   Flip the vector box's `reuse` flag and
   relaunch the workloads to compare allocation with Field's in-place linalg operations.
 
+- `macro_recorder_stamp.yaml`: the Macro Recorder's replay options from box code: `stamp` saves a
+  macro (two `create`s and a `connect`, as the recorder writes them), `copies` replays it with
+  `MacroReplayOptions(asCopy = true, offsetY = ...)` three times, `steps` replays it one operation
+  at a time. Open the Macro Recorder afterwards to run, rename or delete it from the panel.
 - `hello_display.yaml`: smallest useful blank-canvas transcript; creates one box, displays HTML, and can be undone.
 - `ai4_iframe_hello.yaml`: one Field-served webpage in an output iframe, with a textbox and opt-in AI4 tools for inspecting and driving that live page. Run the host box after opening its starting point.
 - `orca_hello.yaml`: ORCA in a box output (`orca()`), playing through a returned `PatSynthBank`, with `exposeTools()` so AI4 can read and write the grid. Compiled only: running it opens an audio device, and ORCA plays only in a browser; `run_ui_regressions.py --id orca-io` is its live check.
 - `orca_jam.yaml`: one ORCA with four voiced channels and `exposeTools(about = ...)`: AI4 plays it with `orca_write`/`orca_look` while it runs, and its board and tempo follow the chat (`branchState`). Compiled only, like `orca_hello`.
 - `orca_duet.yaml`: two ORCAs in one box, `lead` and `echo`, with a `frames { }` loop that copies lead's notes into echo's track and nudges lead's tune from echo's; ends with `synth + frames { }`, so launch it. Compiled only, like `orca_hello`; `OrcaHeadlessTest` runs the same exchange headless and fails if the transcript drifts from `OrcaSoundDocs`.
+- `madp_score.yaml`: the canvas as a score (`playScore` / `score { }` in `afield/animation/motion/Score.kt`): a playhead box sweeps the canvas, each box it crosses draws into the lead box's canvas panel and plays dough through `Box.sound`, with `thisRMS` measured per box (`DoughLive.kt`). Ported from the madp score demo (`dev_docs/madp/score.md`). Compiled only: the lead returns a loop that runs until stopped and opens the audio device; `ScoreTest` and `DoughLiveTest` are its headless checks.
 - `hello_display_capture.yaml`: same as `hello_display.yaml` but paired with the backdoor capture-command chain (`wait-output` / `output` / `screenshot-box`) documented under "Capturing output and screenshots" — the worked example of capturing a macro's output and a cropped screenshot.
 - `polytope_conway_demo.yaml`: one deliberately compact **polytope review box**. It marks two opposite cube faces with different height attributes, selects and applies `kis` only to those faces, converts the authoritative polygon faces to separate `FLine`s, and ends in the on-canvas `threeLines(...)` viewer. Orbit and hover the result; clicking a face reports its output id, transform role, source elements, and resolved height. Its inspection output also exercises the registered data-class visualizers for the transform and its polygon-to-triangle provenance.
 - `polytope_conway_gallery.yaml`: the same algebra as **four small boxes, one question each** — the demo set `dev_docs/POLYTOPE_ALGEBRA.md` §6 asks for, and the loadable companion to `public/docs/polytope_examples.md`. (1) an editable Conway-expression contact sheet whose captions are read off the topology, so retyping the expression list rebuilds everything; (2) a topology-only dual whose missing coordinates are shown by two *real* caught exceptions before a realization policy is applied; (3) a selective **and** non-uniform `kis` whose deployed scalar is painted onto pickable output faces; (4) a realization before/after leaving the solver's own diagnostics as the box's final value. Each box names the one line to change. Pure CPU.
@@ -131,11 +136,15 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `Img` into 6000 evenly spaced dots in two statements; `stipple_relaxing` is a launched `loop { }`
   that shows the weighted random start beside one Lloyd step a frame, with `showSignals` plotting how
   far the dots moved.
+- `evolving_water_bugs.yaml`: the creature genetic algorithm (`afield.simulation.creatures`) as two launched
+  boxes. `water_bug` writes the water-surface `ContactModel` and the fitness in the box and draws the
+  champion with its foot score; `ground_crawler` is the same evolution with a floor and gravity.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
 - `staged_project.yaml` — the staged-project starting place (`public/docs/staged_projects.md`): a level on a
   grid behind `level.inspect`/`level.edit`, blockout, traversal and placement stages with a "reachable loot"
   gate, the loot rule as a qualified source, and a corpus box that builds seeded variants with the same stages.
 - `matrix_profile.yaml` — the matrix profile page's four boxes (`public/docs/matrix_profile.md`): motifs in a random walk, a malformed beat as a discord, `multiMatrixProfile` finding a gesture and its two channels out of four, and `contrastProfile` finding the shape only the positive examples share.
+- `temporal_memory.yaml` — continuing a gesture (`public/docs/temporal_memory.md`): a lab notebook box, CMU modern dance remembered by the oracle (pose strip, signals by take, a live dancing figure), a slider takeover of two oscillators, a Timestral quantile fan, and the dance played five ways with Timestral judging. Boxes 5–6 need the Timestral worker installed.
 - `keyframe_editor.yaml` — the keyframe editor page's four boxes: a curve played into a meter, one key of each type, an `onChange` overlay, and key types of its own written with `interpolant(...)`.
 - `gesture_to_keyframes.yaml` — a gesture pad's take baked into linked x/y keyframe lanes with `bakeGesture`, and edited lanes sent back to the pad with `setTake`.
 - `gesture_paint_replay.yaml` — a pen gesture pad's take (pressure and tilt kept) baked into x/y/pressure lanes and painted from them with `PaintCanvas.gesture(x, y, pressureLane = ...)`; a second box paints one take four ways to show what the recording drops.
@@ -237,7 +246,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   under transport-time, movie-time and step sliders. Pure CPU.
 - `lp_curves.yaml`: **linear programs as curves** — the companion to `lp_curves.md`. Every LP route
   over one pentagon (central path, fan, primal-dual, PDHG, ellipsoid, simplex, cutting planes), and a
-  launched box that turns the objective while the polygon breathes. Pure CPU.
+  launched box that turns the objective while the polygon breathes, and `lp_fan_map`, the fan as a map
+  `x(θ, log μ)` drawn as a grid in an editable `threeLines` viewer: drag a corner and the grid is
+  recomputed when the drag ends. Pure CPU.
 - `lp_curves_3d.yaml`: **linear programs in three dimensions** — the companion to the "In three dimensions" section of `lp_curves.md`.
   A point cloud's hull as an `LpPolytope` with four routes to one vertex (central path, primal-dual,
   simplex along edges, PDHG), and a turning fan of central paths, both in `three { }`. Pure CPU.
@@ -395,6 +406,24 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 The FIELD_TEST `examples.agent-transcripts.materialize` re-materializes to a temp dir and **fails if
 the committed bundle is out of date** — or absent entirely — so a transcript edit without a regenerate
 is caught in CI. `./gradlew checkAgentTranscripts` is the same guard inside `check`.
+
+### Documentation pages for a starting point
+
+A top-level `docs:` list names the one or two documentation pages someone with the document open
+should read next. Each item is a page relative to `public/docs/`, optionally with a heading anchor,
+plus an optional one-sentence `why`:
+
+```yaml
+docs:
+  - page: drawing_and_notation.md#reading-a-region
+    why: "How box code reads the marks inside a region."
+```
+
+The materializer writes each item as a docs-redirect guide, `guides/<page>.md`, titled by the page's
+H1 (and the section's heading when there is an anchor). The document's Guides panel lists it under
+**Documentation** and opens it in the docs pane (`dev_docs/frontend/DOCUMENT_GUIDES.md`). A page or
+anchor that does not exist fails materialization, so renaming a page means updating the transcripts
+that point at it. Leave `docs:` out rather than listing a page that only mentions the topic.
 
 A transcript that is *not* a self-contained scene makes a broken starting point, so it is listed in
 `AgentTranscriptMaterializer.EXCLUDE` and no document is generated for it. Its index entry then must

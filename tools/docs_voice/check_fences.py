@@ -41,13 +41,39 @@ def run(*args: str) -> str:
     return subprocess.run(args, capture_output=True, text=True, check=True).stdout
 
 
+_PAGES: dict[str, dict[str, str]] = {}
+
+
+def pages(rev: str) -> dict[str, str]:
+    """Every `public/docs/**.md` at `rev`, read through one `git cat-file --batch`.
+
+    It used to be one `git show` per page, ~1000 pages per revision: 45 s on an idle machine,
+    and past the 300 s budget of `test_docs_voice_detectors` on a loaded lander, where it
+    failed the landing guard on 2026-10-19 without any fence having changed.
+    """
+    if rev not in _PAGES:
+        blobs = []
+        for row in run("git", "ls-tree", "-r", rev, "public/docs/").splitlines():
+            meta, _, path = row.partition("\t")
+            if path.endswith(".md") and meta.split()[1] == "blob":
+                blobs.append((path, meta.split()[2]))
+        done = subprocess.run(["git", "cat-file", "--batch"], input="".join(f"{sha}\n" for _, sha in blobs).encode(),
+                              capture_output=True, check=True).stdout
+        texts, pos = {}, 0
+        for path, _ in blobs:
+            header_end = done.index(b"\n", pos)
+            size = int(done[pos:header_end].split()[2])
+            texts[path] = done[header_end + 1 : header_end + 1 + size].decode("utf8", errors="replace")
+            pos = header_end + 1 + size + 1  # the blob is followed by a newline
+        _PAGES[rev] = texts
+    return _PAGES[rev]
+
+
 def kotlin_fences(rev: str) -> dict[str, list[str]]:
     """Every page's Kotlin fence bodies, in page order."""
     out: dict[str, list[str]] = {}
-    for path in run("git", "ls-tree", "-r", "--name-only", rev, "public/docs/").split("\n"):
-        if not path.endswith(".md"):
-            continue
-        lines = run("git", "show", f"{rev}:{path}").splitlines()
+    for path, text in pages(rev).items():
+        lines = text.splitlines()
         bodies, i = [], 0
         while i < len(lines):
             if FENCE.match(lines[i]):
@@ -115,7 +141,7 @@ def fence_text(rev: str, path: str) -> str:
     a plain substring search without having to reproduce the scraper's fence numbering —
     which does not match this file's ordinals on every page, and does not need to.
     """
-    lines = run("git", "show", f"{rev}:{path}").splitlines()
+    lines = pages(rev).get(path, "").splitlines()
     out, i = [], 0
     while i < len(lines):
         if FENCE.match(lines[i]):

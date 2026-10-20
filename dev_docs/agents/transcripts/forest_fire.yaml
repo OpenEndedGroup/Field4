@@ -7,6 +7,9 @@ description: >
   recover, so each point sends out a train of rings, and where the trains meet one kind takes
   over. The same two boxes are lessons 11 and 11b of canonical_graphics. Requires a GPU/Vulkan
   window; capture it with a follow-on `native-screenshot <path>` backdoor command.
+docs:
+  - page: afield_four_graphics.md
+    why: "Includes the GPU forest fire walkthrough this document builds."
 operations:
   - create:
       box: fire_renderer

@@ -52,13 +52,19 @@ next time you run it. A box that is running carries on with the code it started 
 printing `tick v1` kept printing `tick v1` after its file was changed to print `tick v2`.
 Stop the box and launch it again to run the new version.
 
+To have the box run each new version as soon as it is reloaded, set its `onExternalEdit`
+property to `run` (the backdoor: `set <box> onExternalEdit run`). With it set, saving a file
+that printed `version 2 from disk` reloaded the box and ran it, and `version 2 from disk` was
+printed without touching Field. Leave the property unset to keep reloading without running.
+
 ## Edit a shader
 
 A `.glsl` file works the same way: the box's `fragment` (or `vertex`, ...) property is replaced,
 and the shader on screen does not change. The renderer recompiles a shader only when you ask it
 to, so after saving the file, select the box and use **Reload Shader** (`alt r`). In a test with
 the *hello triangle* lesson, the triangles kept their colours after the fragment file was changed
-to solid red, and turned red after **Reload Shader**.
+to solid red, and turned red after **Reload Shader**. Setting the box's `onExternalEdit` property
+to `reload-shader` runs **Reload Shader** for you after each reloaded file.
 
 ## Add a box by writing a file
 
@@ -75,8 +81,11 @@ Field and your editor can disagree about a box. These cases decide which version
 **You edited the same box in Field and on disk.** If you change a box in Field and then change
 its file before Field has autosaved, the autosave writes Field's version over your file. The file
 you wrote is not lost: Field backs up the previous contents of a file before overwriting it, so
-your version is the newest `<id>_code__backup_*.kt` in `backups/`. To avoid this, edit a box in
-one place at a time, or wait a few seconds after typing in Field before editing the file.
+your version is the newest `<id>_code__backup_*.kt` in `backups/`. Field also says so when it
+happens: a notification names the file and a copy of your disk version,
+`backups/<id>_code_.kt.external-<time>`, written the moment Field decided to keep its own edit.
+To avoid this, edit a box in one place at a time, or wait a few seconds after typing in Field
+before editing the file.
 
 **The document was not open.** Field watches a document only while a Field window (or another
 client) has it open. A file you change while the document is closed is not lost: it is read
@@ -86,12 +95,13 @@ when the document next opens, and that file wins over the copy in `metadata.edn`
 it had, and the next save writes the file back. To delete a box, delete it in Field.
 
 **You edited the code inside `metadata.edn`.** `metadata.edn` keeps a copy of each box's code
-as `"inline"`, but while the box's own file exists, that file is what counts. Changing the inline
-copy has no effect, and the next save puts it back. Edit the file instead.
+as `"inline"`. Changing that inline text while the document is open applies it to the box, and the
+next save writes it to the box's own file. When the document is closed, the box's file is what
+counts and an inline edit is lost on the next open, so editing the file is the safer habit.
 
 ## Edit `metadata.edn` itself
 
-Everything else about a box — its name, frame, connections and other properties — lives in
+Everything else about a box (its name, frame, connections and other properties) lives in
 `metadata.edn`, and Field applies hand edits to it while the document is open. In a test, changing
 a box's `"name"` and `"frame"` renamed and moved it on the canvas, and adding a new
 `{"id" ... "properties" {...}}` entry to the `"boxes"` list created the box. Field does not rewire
@@ -102,7 +112,7 @@ gives the exact rules.
 Field also writes a `document.md` beside `metadata.edn`: a readable copy of the boxes and their
 code, meant for tools that read documents. Field never reads it, so editing it changes nothing.
 
-??? aside "How this page was checked, and why it has no figures"
+??? aside "Agents: how this page was checked, and why it has no figures"
     Every behaviour above was run on 2026-10-18 against a live Field on a scratch document,
     editing files from a shell while the backdoor held the document open, and checking the box
     with the backdoor's `boxes`, `run`, `wait-output` and `native-screenshot` commands and
@@ -110,7 +120,8 @@ code, meant for tools that read documents. Field never reads it, so editing it c
     several seconds, which a docs-runner capture fence cannot stage, so no figure was made rather
     than one that only appears to show it.
 
-    The same runs found two bugs, both fixed alongside the page. A second edit to a file made
-    before the autosave that followed the first was skipped as an unsaved Field edit, and that
-    autosave then wrote the first edit back over the file (`examples.file-watch.sidecar-reedit`).
-    And a box created from a dropped file was named after its property (`Code`) rather than its id.
+    Three of them are pinned by tests: a second edit to a file before Field's autosave
+    (`examples.file-watch.sidecar-reedit`), an edit to the inline code in `metadata.edn`
+    (`FileWatchMetadataReconcileTest.anEditToAnInlineSidecarCopyIsApplied`), and a disk edit
+    overridden by an unsaved Field edit (`anExternalEditOverriddenByAnUnsavedFieldEditIsKept`).
+    Those last two, and `onExternalEdit`, were checked on 2026-10-19.

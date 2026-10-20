@@ -1,0 +1,7 @@
+{
+  "realCodecPreservesOtherProperties": true,
+  "actualDocumentLoader": true,
+  "successRestoresIncomingEdge": true,
+  "injectedGatherFailureRestoresIncomingEdge": true,
+  "noRawPropertyBackdoor": true
+}

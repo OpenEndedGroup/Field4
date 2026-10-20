@@ -379,7 +379,7 @@ class PathTracingRenderer(
                 "emitterTable" to emitterTable, "emitterLookup" to emitterLookup))
             val display = own(Module(parameters(renderer) {
                 name = "${this@PathTracingRenderer.name}-resolve"
-                output.apply()
+                +output
                 vertex = DISPLAY_VERTEX; fragment = RESOLVE_FRAGMENT
                 depthTest = false; depthWrite = false; blend = false
                 errorHandler = { message, _ -> errors += message }

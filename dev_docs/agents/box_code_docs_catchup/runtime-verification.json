@@ -1,0 +1,48 @@
+{
+  "checks": [
+    "Actual evolution publishes champions, stops its running jobs, freezes old publication, and relaunches into a distinct holder",
+    "Actual worker validation failure reaches the box error output",
+    "contour_trees.md: before/after native geometry and raster proof match",
+    "geometry_chains.md: before/after native geometry and raster proof match",
+    "morse_smale.md: before/after native geometry and raster proof match",
+    "water_bug: Actual evolution publishes champions, stops its running jobs, freezes old publication, and relaunches into a distinct holder",
+    "water_bug: Actual worker validation failure reaches the box error output",
+    "ground_crawler: Actual evolution publishes champions, stops its running jobs, freezes old publication, and relaunches into a distinct holder",
+    "ground_crawler: Actual worker validation failure reaches the box error output",
+    "Actual notation elements/score/audit bodies execute; all mark, frame, grouping, edit and intersection checks report works"
+  ],
+  "sourceHashes": {
+    "public/docs/contour_trees.md": "b458f6fe5b62907876e02b24a37b560b42512b47ae0df2d21fd55ede31a6cc94",
+    "public/docs/editing_from_outside.md": "626ec594226df862b9075a8504c35afe15a30bbf647783e553c7d548117b2b25",
+    "public/docs/evolving_creatures.md": "8c45bfb7cb666bdec03261ad2f1ed5fab6e02b3ecbae0260f63d9bd5b51e0305",
+    "public/docs/geometry_chains.md": "4c21319228a24d4fe5ec67e92492a7338c9f30e16a71dffb977e43efe155492f",
+    "public/docs/lp_curves.md": "a6c9889bc25ada69c667033ccf2d04b1c0a27ca20acc6cbb20306777a312e6fc",
+    "public/docs/mapper.md": "b7b147ccbe5c7c0d78707da2eb0582f7f1375ad389a2fd037a27f0934d5c416e",
+    "public/docs/matrix_profile.md": "6c9debbe47452fca0c8eee47487939b03779a497e74c11b174af89cb17392b74",
+    "public/docs/morse_smale.md": "8a642e38d9a82dccafb4604c9e6ae75767328c2471153ad80c9ebac45be39e98",
+    "public/docs/optimal_transport.md": "dd5cda067bcad07353c45aa8cd991bb3ffd1f11accfb8c5a3974a923acb41973",
+    "public/docs/polyvector.md": "162d18980475136544f451b4a7a73b24970ae09c18ac08acda14a1ab47ab211c",
+    "public/docs/principal_curves.md": "13777bf88ae3414d601b7c3d48e167b57676a328b824028437deb632c79e188d",
+    "public/docs/topology_tracking.md": "e484823a88d4eb5f8c20556bf119c37e1b6bd98450972e56e8676be937539381",
+    "public/docs/vector_field_topology.md": "f9b443542a4c9ce49168e5b8a02ce7a208c288f68653cbdcc0c9a5b367bcb8c1",
+    "public/docs/temporal_memory.md": "64a169c646c9d0cd6c8ade528afc2d38b1a363ad8149b893c8a541f8c2fbc892",
+    "public/docs/filming_the_canvas.md": "38ac46c5af3bbcc7e621f8b323ebac6b8909ea1d1d01447218ec53c9e4c00541",
+    "dev_docs/agents/transcripts/mapper_explorer.yaml": "a1d8888dd6cd93aadc8de32fbe5adb0a1b6cac06278c754c3910769b45524f24",
+    "dev_docs/agents/transcripts/principal_curves_explorer.yaml": "487ef09e6a7d02d5e0054c20b17e68178823ad1d2fc2aef666436f92b297c310",
+    "dev_docs/agents/transcripts/contour_trees_explorer.yaml": "adfdbd31026868d1c1fa432b8e50ec0d8f38501b94265bbbbf84598dbaefd7b9",
+    "dev_docs/agents/transcripts/polyvector_explorer.yaml": "ac8906c909ef5c48d119577a96af57d48bf4af9165b351b40a7544237d0e5576",
+    "dev_docs/agents/transcripts/morse_smale_explorer.yaml": "05a2bcab769e987df3c360c84e3d3d321c0a26c8b869a0358ee3b4592ee9f725",
+    "dev_docs/agents/transcripts/matrix_profile.yaml": "337871cb79b9d5c608c2305594aba5f932c77db104fd5613036fd0b54e6a0b7e",
+    "dev_docs/agents/transcripts/lp_curves.yaml": "f7ba968b44d5e65b7f4d30b97c0733820840f2312d49bf197ea8a39ef9d6c151",
+    "dev_docs/agents/transcripts/lp_curves_3d.yaml": "254082e7a035a08265d934539e0914856be0db8ee74f253a49e91e2b6ecb7fea",
+    "dev_docs/agents/transcripts/docs_capture/canvas_flight.yaml": "e45c7bf16d3736e1da4222fd8173742be8d3e0043febe2d0889da15aad9f8310",
+    "dev_docs/agents/transcripts/evolving_water_bugs.yaml": "71138de0af15f207e47fade6f106da29f1c8edc69c3426a810c7396fe3540835",
+    "public/docs/drawing_and_notation.md": "84eb33e4f1c62cab2e9c196e657aec92a87ffa1bc890001c98ff5f2ecd877543",
+    "dev_docs/agents/transcripts/notation_elements.yaml": "72f3d03c7fa896fd454e8b1d042fbd0293dd8eb31a4151b4e148168ffdaa06c3"
+  },
+  "fixtureOverrides": {
+    "generations": 100000,
+    "measuredCycles": 1
+  },
+  "serverPort": 9742
+}

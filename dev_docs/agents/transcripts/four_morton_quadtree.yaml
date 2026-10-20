@@ -73,6 +73,9 @@ description: |
   `tools/run_field_tests.py --id four.quadtree-chain.smoke` is this chain driven headlessly: the
   sort checked as a permutation, the keys checked as ordered, the root node's range checked to be
   the whole array, and the summaries checked against the raster producer's to the last code.
+docs:
+  - page: reference/renderers.md
+    why: "Reference for the GPU pass-chain and sorting APIs this quadtree declares."
 operations:
   # 1. the renderer: owns the Window and pumps the loop. Run this one first.
   - create:
@@ -217,7 +220,7 @@ operations:
           // Declared every run, like its companion: `addPassChain` replaces by name, and nothing in
           // this chain is persistent, so the whole tree simply rebuilds on the next frame.
           tree = bundle.addPassChain(
-              listOf(
+              [
                   FabricatePassSpec(
                       name = "points",
                       fragment = pointsFragment,
@@ -238,7 +241,7 @@ operations:
                       format = VK_FORMAT_R32G32B32A32_SFLOAT,
                       source = "points",
                   ),
-              ) +
+              ] +
                   FabricatePassLibrary.mortonPointQuadtree(
                       prefix = "quadtree",
                       points = "points",

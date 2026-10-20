@@ -27,6 +27,9 @@ description: >
   live server, so the server keeps its own workspace and `macro write` lands somewhere else. Put the yaml at
   `<that server's workspace>/<document>/macros/faust_polyphony.yaml` before `macro run`, or replay against a
   server you start yourself.
+docs:
+  - page: faust.md
+    why: "Explains Faust polyphony, voice allocation and playing it from a pattern."
 operations:
   - create:
       box: faust_polyphony_play

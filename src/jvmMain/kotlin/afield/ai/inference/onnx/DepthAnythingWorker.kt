@@ -9,12 +9,11 @@ import java.nio.ByteOrder
 /**
  * [DepthAnything] on its own thread, so a 100–400ms inference cannot stall the renderer.
  *
- * Depth Anything Small costs ≈101ms
- * at 266x266 and ≈388ms at 518x518 on a CPU execution provider; calling [DepthAnything.infer] from a
- * render loop turns 60fps into 2.6fps. So the renderer gets *staleness* instead of latency: the most
- * recent depth map that happens to be finished, which at 266x266 is six frames old at 60fps and looks
- * fine for displacement, parallax and depth-keyed compositing, and looks like lag for anything a hand
- * is steering directly.
+ * Depth Anything Small costs ≈101ms at 266x266 and ≈388ms at 518x518 on a CPU execution provider; calling
+ * [DepthAnything.infer] from a render loop turns 60fps into 2.6fps. So the renderer gets *staleness* instead of
+ * latency: the most recent depth map that happens to be finished, which at 266x266 is six frames old at 60fps and looks
+ * fine for displacement, parallax and depth-keyed compositing, and looks like lag for anything a hand is steering
+ * directly.
  *
  * ```kotlin
  * // once
@@ -29,16 +28,16 @@ import java.nio.ByteOrder
  * ## Frames are dropped, not queued
  *
  * [DepthAnythingWorker.submit] overwrites any frame that has not been picked up yet. A queue would be wrong here: it
- * would grow without bound whenever inference is slower than capture, which is always, and every
- * frame it held would be more stale than the one behind it. Dropping means the model is always
- * working on the newest frame available when it became free.
+ * would grow without bound whenever inference is slower than capture, which is always, and every frame it held would be
+ * more stale than the one behind it. Dropping means the model is always working on the newest frame available when it
+ * became free.
  *
  * ## Why consume copies
  *
  * [DepthAnythingWorker.depthFp16] has a fixed identity because `StreamingTexture` captures its source buffer once, at
- * construction. The worker therefore cannot write into it directly — the renderer could be reading it
- * mid-write and would show a torn map with a visible seam. Instead the worker publishes into an
- * internal buffer, and [DepthAnythingWorker.consume] copies that into [DepthAnythingWorker.depthFp16] under the lock, on the calling thread.
+ * construction. The worker therefore cannot write into it directly — the renderer could be reading it mid-write and
+ * would show a torn map with a visible seam. Instead the worker publishes into an internal buffer, and
+ * [DepthAnythingWorker.consume] copies that into [DepthAnythingWorker.depthFp16] under the lock, on the calling thread.
  * The copy is ~537KB at 518x518, tens of microseconds, and it is the only work the render thread does.
  */
 
@@ -58,27 +57,26 @@ class DepthAnythingWorker(
     model: OnnxModel = DepthAnything.FP32,
     provider: OnnxRuntime.OnnxProvider = OnnxRuntime.OnnxProvider.AUTO,
     invert: Boolean = false,
-    adaptation: Float = 0.1f
+    adaptation: Float = 0.1f,
 ) : AutoCloseable {
 
     private val estimator = DepthAnything(width, height, model, provider, adaptation, invert)
 
     /** The provider actually in force. */
-    val activeProvider: String get() = estimator.activeProvider
+    val activeProvider: String
+        get() = estimator.activeProvider
 
     /**
      * The most recently consumed depth map, fp16 in `[0,1]`, `width*height*2` bytes.
      *
-     * Only mutated by [consume], so it is stable for the whole of a frame's rendering. Zero-filled
-     * until the first [consume] returns true.
+     * Only mutated by [consume], so it is stable for the whole of a frame's rendering. Zero-filled until the first
+     * [consume] returns true.
      */
-    val depthFp16: ByteBuffer =
-        ByteBuffer.allocateDirect(width * height * 2).order(ByteOrder.LITTLE_ENDIAN)
+    val depthFp16: ByteBuffer = ByteBuffer.allocateDirect(width * height * 2).order(ByteOrder.LITTLE_ENDIAN)
 
     // Deliberately java.lang.Object rather than the Any() the compiler suggests: this lock is waited
     // on and notified, and wait/notifyAll are Java monitor methods that kotlin.Any does not expose.
-    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
-    private val lock = Object()
+    @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN") private val lock = Object()
 
     // Input staging. Sized on first submit; the webcam does not change size mid-stream.
     private var pendingInput: ByteBuffer? = null
@@ -91,8 +89,7 @@ class DepthAnythingWorker(
         ByteBuffer.allocateDirect(width * height * 2).order(ByteOrder.LITTLE_ENDIAN)
     private var outputReady = false
 
-    @Volatile
-    private var running = true
+    @Volatile private var running = true
 
     /** Frames handed to [submit], including ones later dropped. */
     @Volatile
@@ -132,11 +129,16 @@ class DepthAnythingWorker(
         start()
     }
 
+    init {
+        // A worker made by live box code belongs to that run, including setup failures and Stop.
+        afield.runtime.lifecycle.RunScope.current()?.own(this)
+    }
+
     /**
      * Offer a frame. Returns immediately.
      *
-     * @param rgba tightly packed RGBA8, `srcW*srcH*4` bytes readable from index 0. Copied before this
-     *   returns, so the caller may overwrite it — which is what a webcam capture thread will do.
+     * @param rgba tightly packed RGBA8, `srcW*srcH*4` bytes readable from index 0. Copied before this returns, so the
+     *   caller may overwrite it — which is what a webcam capture thread will do.
      */
     fun submit(rgba: ByteBuffer, srcW: Int, srcH: Int) {
         require(srcW > 0 && srcH > 0) { "source must be non-empty, got ${srcW}x$srcH" }
@@ -167,8 +169,8 @@ class DepthAnythingWorker(
     /**
      * Publish a finished depth map into [depthFp16], if one is waiting.
      *
-     * Call once per rendered frame, and upload only when it returns true — re-uploading an unchanged
-     * texture is pure cost.
+     * Call once per rendered frame, and upload only when it returns true — re-uploading an unchanged texture is pure
+     * cost.
      *
      * @return true if [depthFp16] changed
      */

@@ -1,0 +1,17 @@
+{
+  "changedImages": [
+    {
+      "path": "public/docs/assets/interactive_guides/navigation.png",
+      "sha256": "e28b14383deb8e2b84ca3c8b0f905fc3e144aff8ba4193d2342003365b8aa211"
+    },
+    {
+      "path": "public/docs/assets/interactive_guides/annotations.png",
+      "sha256": "f95432b9c8a9379593ca794ac0eeedd4f24cd756d7483febaba32ea1777dc17e"
+    }
+  ],
+  "actualDocsRunner": true,
+  "visuallyInspected": true,
+  "navigationHighlightsActualLine": 11,
+  "annotationsTargetActualLine": 17,
+  "videoAttempt": "invalidated by unobserved clock interval; existing committed video unchanged; no full docs build claimed"
+}

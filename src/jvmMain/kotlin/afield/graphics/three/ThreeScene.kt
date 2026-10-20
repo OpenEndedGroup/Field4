@@ -342,6 +342,18 @@ data class ThreeCameraSpec(
      * default `1.06` leaves a little air. The rasterizer ignores it.
      */
     val padding: Double = 1.06,
+    /**
+     * Which world axis is up. [ThreeUpAxis.Z] keeps the viewer's grid, which lies in the x–y plane, as the
+     * floor: yaw turns about `+z`, pitch lifts toward `+z`, and yaw 0 looks along `+y`. The yaw/pitch
+     * mapping is the y-up one, rotated rigidly, so [ThreeCameraPresetParityTest] still covers it.
+     */
+    val upAxis: ThreeUpAxis = ThreeUpAxis.Y,
+    /**
+     * Track the geometry: on every update the camera moves by however far the centre of the bounds
+     * moved, keeping whatever orbit and zoom the viewer has, and the grid shifts by whole cells so the
+     * floor reads as fixed while the subject crosses it.
+     */
+    val follow: Boolean = false,
 )
 
 /**

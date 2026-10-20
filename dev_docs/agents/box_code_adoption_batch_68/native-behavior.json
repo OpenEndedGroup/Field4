@@ -1,0 +1,7 @@
+{
+  "authoredArrayTextureLessonRendersBundledImages": true,
+  "authoredProbeTextureLessonRendersBundledImage": true,
+  "productionGltfFragmentSamplesRealTexture": true,
+  "sampledTextureDiffersFromOverwrittenUvDiagnostic": true,
+  "limits": "Actual authored array/probe bodies and shader properties. The glTF fragment is exercised with controlled fullscreen UV geometry and a real six-element texture binding; the original full glTF lesson still requires its documented external Sample Models asset. No public capture replaced."
+}

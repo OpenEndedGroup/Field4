@@ -689,6 +689,9 @@ class _Style:
             "push": "\uf062" if nerd else "^", "pull": "\uf063" if nerd else "v",
             "fix": "\uf0ad" if nerd else "%",
         }
+        if nerd:
+            # Nerd Font icons draw wider than the one cell the terminal gives them; pad so they don't touch the text.
+            self.g = {k: v + " " for k, v in self.g.items()}
 
     def c(self, code: str, text: str) -> str:
         return f"\033[{code}m{text}\033[0m" if self.color else text
@@ -1325,9 +1328,11 @@ def _is_pull(item: dict) -> bool:
 def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
     """Gradle prints a failing test as "AssertionError at Foo.kt:769"; the message itself is only in
     the JUnit XML inside the lander's worktree, which the next round overwrites. Copy every failure
-    written during this round next to the log, and return a one-line summary of the first."""
+    written during this round next to the log, and return a one-line summary of the first.
+    `checkPythonTools` writes the same XML (build/test-results/pythonTools), message = exception
+    line, body = traceback; both are kept."""
     import xml.etree.ElementTree as ET
-    found: list[tuple[str, str]] = []
+    found: list[tuple[str, str, str]] = []
     for xml in sorted((wt / "build" / "test-results").glob("*/TEST-*.xml")):
         if xml.stat().st_mtime < since:
             continue
@@ -1338,12 +1343,15 @@ def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
         for case in root.iter("testcase"):
             for failure in list(case.findall("failure")) + list(case.findall("error")):
                 name = f"{case.get('classname', '').rsplit('.', 1)[-1]}.{case.get('name')}"
-                found.append((name, (failure.get("message") or failure.text or "").strip()))
+                message = (failure.get("message") or "").strip()
+                body = (failure.text or "").strip()
+                found.append((name, message or body, body if body != message else ""))
     if not found:
         return None
     path = log.with_suffix(".failures.txt")
-    path.write_text("".join(f"## {name}\n{message}\n\n" for name, message in found))
-    first_name, first_message = found[0]
+    path.write_text("".join(f"## {name}\n{message}\n" + (f"{body}\n" if body else "") + "\n"
+                            for name, message, body in found))
+    first_name, first_message, _ = found[0]
     first_line = next((line.strip() for line in first_message.splitlines() if line.strip()), "")
     more = f" (+{len(found) - 1} more)" if len(found) > 1 else ""
     return f"{first_name}: {first_line[:220]}{more}; full messages: {path}"

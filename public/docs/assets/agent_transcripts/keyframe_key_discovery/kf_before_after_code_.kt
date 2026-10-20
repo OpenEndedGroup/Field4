@@ -23,8 +23,8 @@ kfs.target("glow@intensity", glow)
 
 // Six keys, saved the ordinary way — through the real writer, so each gets a real `.versions`
 // history beside it.
-listOf(1f, 3f, 6f, 10f, 15f, 21f).forEachIndexed { i, r ->
-    val name = listOf("a", "b", "c", "d", "d2", "d3")[i]
+[1f, 3f, 6f, 10f, 15f, 21f].forEachIndexed { i, r ->
+    val name = ["a", "b", "c", "d", "d2", "d3"][i]
     glow.bind("radius") { r }
     glow.bind("intensity") { 0.1f + i * 0.15f }
     kfs.capture().save(dir.resolve(name), "look $name")

@@ -41,7 +41,7 @@ println()
 // The simplifier, which only exists because the shape is a value.
 println("---- what the simplifier can do ----")
 val wasteful = differenceOf(
-    listOf(scene) + (0 until 40).map { cylinder(3.0, 0.12, segments = 32).at(-8.0 + it * 0.42, 0.0, 0.0) },
+    [scene] + (0 until 40).map { cylinder(3.0, 0.12, segments = 32).at(-8.0 + it * 0.42, 0.0, 0.0) },
 )
 println("40 extra bores, most of them nowhere near the part:")
 println("  ${wasteful.simplificationReport()}")

@@ -1,0 +1,22 @@
+name: tour_connecting_setup
+description: >
+  Setup for the "Connecting boxes" Tour video: two small boxes, Palette above Swatch, not yet
+  connected, near the top-left of a small window. The capture=ui drive selects Palette, adds
+  Swatch to the selection and presses g.
+operations:
+  - create:
+      box: tour_palette
+      name: Palette
+      frame: { x: 60, y: 60, w: 150, h: 56 }
+      properties:
+        code: |
+          prop<Int>(petals) = 5
+  - create:
+      box: tour_swatch
+      name: Swatch
+      frame: { x: 60, y: 220, w: 150, h: 56 }
+      properties:
+        code: |
+          markdown("A flower with $petals petals: " + "✿".repeat(petals))
+  - await: {}
+  - wait: { frames: 10 }

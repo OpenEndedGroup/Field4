@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="reconstruction_plumbing" index="1" -->
 
 ```edn [field-box id="reconstruction_plumbing" role="properties"]
-{"id" "reconstruction_plumbing" "index" 1 "name" "reconstruction plumbing" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "reconstruction plumbing" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "reconstruction_plumbing_code_.kt" "lines" 127 "characters" 4803 "sha256" "13c85ea20625f70d944a4a143372575bed0864ddb382b5c7a92e777544461d49"} {"name" "vertex" "language" "glsl" "path" "reconstruction_plumbing_vertex_.glsl" "lines" 74 "characters" 3104 "sha256" "f8a0170eee872ff2345d1a7b997aca7e64e59ec99b10417924f8c539d938fb15"} {"name" "fragment" "language" "glsl" "path" "reconstruction_plumbing_fragment_.glsl" "lines" 51 "characters" 2264 "sha256" "68b3587e130c556bd773908cf0e4efaefc4e3738b7fda72d8afc5007ecc2dbc4"}]}
+{"id" "reconstruction_plumbing" "index" 1 "name" "reconstruction plumbing" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "reconstruction plumbing" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "reconstruction_plumbing_code_.kt" "lines" 127 "characters" 4796 "sha256" "4cf83f720f6824a14e9bd18369f98c2e43a397d78c79a31ee1af3fafb946b133"} {"name" "vertex" "language" "glsl" "path" "reconstruction_plumbing_vertex_.glsl" "lines" 74 "characters" 3104 "sha256" "f8a0170eee872ff2345d1a7b997aca7e64e59ec99b10417924f8c539d938fb15"} {"name" "fragment" "language" "glsl" "path" "reconstruction_plumbing_fragment_.glsl" "lines" 51 "characters" 2264 "sha256" "68b3587e130c556bd773908cf0e4efaefc4e3738b7fda72d8afc5007ecc2dbc4"}]}
 ```
 
 ```kotlin [field-property box="reconstruction_plumbing" name="code" path="reconstruction_plumbing_code_.kt"]
@@ -68,7 +68,7 @@ source = RenderToTexture(renderer) {
     colorFormats = [VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R32_SFLOAT, VK_FORMAT_R32G32_SFLOAT]
 }
 val sceneModule = moduleHere {
-    source.apply()
+    +source
     depthTest = true
     depthWrite = true
     blend = false

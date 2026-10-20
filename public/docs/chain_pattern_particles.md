@@ -142,8 +142,7 @@ and the Kotlin binds each one to a lambda. The renderer evaluates them once per 
 sees this frame's analysis and nothing is copied by hand:
 
 ```diffstatic {data-lang=kotlin}
-var gain = 2.4
-gain = 2.4 // Edit and Alt+Enter this assignment to change the running response.
+var gain = 2.4 // Edit and Alt+Enter this declaration to change the running response.
 
 step.band0 = { (bandEnergy.getOrElse(0) { 0.0 } * gain).f }
 step.band1 = { (bandEnergy.getOrElse(1) { 0.0 } * gain).f }

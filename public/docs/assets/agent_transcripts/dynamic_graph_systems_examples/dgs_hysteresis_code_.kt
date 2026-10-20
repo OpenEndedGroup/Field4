@@ -86,7 +86,7 @@ fun walk(rExit: Double): Pair<Boolean, Boolean> {
     return formedWhileClose to (edges.get(0, 1) != null)
 }
 
-for (rExit in listOf(0.16, 0.10)) {
+for (rExit in [0.16, 0.10]) {
     val (formed, survives) = walk(rExit)
     println("rExit $rExit: formed at d=0.05 = $formed, survives d=0.13 = $survives")
 }

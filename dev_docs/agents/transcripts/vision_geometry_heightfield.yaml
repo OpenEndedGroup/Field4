@@ -4,6 +4,9 @@ description: >
   field built vertex by vertex. Shows `vertex()` returning an index, `quad()` stitching a lattice from
   those indices, normals computed by finite difference from the same height function, and per-vertex
   colour carrying data into the shader. This is the shape any procedural mesh takes.
+docs:
+  - page: vision_geometry.md
+    why: "Explains sending geometry, including heightfields, to Vision Pro."
 operations:
   - create:
       box: agent_vision_geometry_heightfield_root

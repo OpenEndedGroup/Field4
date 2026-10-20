@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="path_trace_material_check" index="1" -->
 
 ```edn [field-box id="path_trace_material_check" role="properties"]
-{"id" "path_trace_material_check" "index" 1 "name" "editable-material-check" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "editable-material-check" "_tombstone" false "frame" #afield/rect [320.0 180.0 360.0 120.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "path_trace_material_check_compute_.glsl" "lines" 3 "characters" 112 "sha256" "f84237973383a2b88ee8701b1b0aa3f83cdad1cc9729d6e3bc29e03819860561"} {"name" "code" "language" "kotlin" "path" "path_trace_material_check_code_.kt" "lines" 63 "characters" 2363 "sha256" "de237370334ac766cdfdb80ee84df1ee9e8a6fe816c13adbb05d0d72bb13cf8a"}]}
+{"id" "path_trace_material_check" "index" 1 "name" "editable-material-check" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "editable-material-check" "_tombstone" false "frame" #afield/rect [320.0 180.0 360.0 120.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "path_trace_material_check_compute_.glsl" "lines" 3 "characters" 112 "sha256" "f84237973383a2b88ee8701b1b0aa3f83cdad1cc9729d6e3bc29e03819860561"} {"name" "code" "language" "kotlin" "path" "path_trace_material_check_code_.kt" "lines" 63 "characters" 2361 "sha256" "7c570daa29a3a625619f236e6e9a325c0182a369f39f485d8cea2e4cb852ac21"}]}
 ```
 
 ```glsl [field-property box="path_trace_material_check" name="compute" path="path_trace_material_check_compute_.glsl"]
@@ -85,12 +85,12 @@ val verify: suspend () -> Unit = {
             material.emission.rgb = vec3(pc.gain + pc.bias, 0, 0);
             return material;
         }
-    """
+        """
             .trimIndent(),
     )
     check(reloadComputeShader(owner))
     check(tracer.materialModule.current !== original)
-    check(tracer.materialModule.current.ci.pushConstants.single().members.map { it.name } == listOf("gain", "bias"))
+    check(tracer.materialModule.current.ci.pushConstants.single().members.map { it.name } == ["gain", "bias"])
     tracer.materialMesh.push["bias"] = 1f
     tracer.paused = false
     delay(100)

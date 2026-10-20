@@ -7,7 +7,7 @@ patRenderStereo CANNOT produce this. It adds one voice per event and gives each 
 rise per note — and an energy detector handles it fine. That was measured, and it is why
 this box uses Dough instead.
 */
-val steps = listOf(60.0, 62.0, 64.0, 65.0, 67.0, 69.0, 71.0, 72.0)
+val steps = [60.0, 62.0, 64.0, 65.0, 67.0, 69.0, 71.0, 72.0]
 val stepSeconds = 0.25
 val sr = 48_000
 val audio = doughRenderMono(

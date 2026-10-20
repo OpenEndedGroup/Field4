@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rectsl_inverse_fit" index="0" -->
 
 ```edn [field-box id="rectsl_inverse_fit" role="properties"]
-{"id" "rectsl_inverse_fit" "index" 0 "name" "RectSL inverse animation" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "RectSL inverse animation" "_tombstone" false "frame" #afield/rect [80.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_inverse_fit_code_.kt" "lines" 80 "characters" 2680 "sha256" "f250b151a3e3510a43a9fe8aea7439ee091951b7d957b8c783a68be9cefca1f9"}]}
+{"id" "rectsl_inverse_fit" "index" 0 "name" "RectSL inverse animation" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "RectSL inverse animation" "_tombstone" false "frame" #afield/rect [80.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_inverse_fit_code_.kt" "lines" 80 "characters" 2662 "sha256" "2ef9150279c6b15729fbf1d9784f55f95afc28f5310867702cb0d7cc13cfa4ac"}]}
 ```
 
 ```kotlin [field-property box="rectsl_inverse_fit" name="code" path="rectsl_inverse_fit_code_.kt"]
@@ -20,7 +20,7 @@ import afield.lang.rectsl.*
 val duration = 4.0
 
 // A clamped identity in time: RectSL's way of saying "follow the clock".
-fun clock(d: Double): Track<Double> = LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(d, d)))
+fun clock(d: Double): Track<Double> = LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(d, d)])
 
 fun channel(axis: String, rate: Double, op: TrackOp1): Track<Double> = BinaryDoubleTrack(
     BinaryDoubleTrack(
@@ -43,11 +43,11 @@ val seedX = channel("x", 1.1, TrackOp1.COS)
 val seedY = channel("y", 1.1, TrackOp1.SIN)
 
 // Where the rect must be, and when.
-val waypoints = listOf(
+val waypoints = [
     RectSLFitFigure.Marker(0.4, -6.5, 2.6),
     RectSLFitFigure.Marker(1.8, 0.5, -2.4),
     RectSLFitFigure.Marker(3.4, 6.2, 1.8),
-)
+]
 val window = Functions.Domain(0.0, duration)
 val fitX = seedX.fitParameters(waypoints.map { TrackFitTarget(it.time, it.x) }, window, iterations = 1500)
 val fitY = seedY.fitParameters(waypoints.map { TrackFitTarget(it.time, it.y) }, window, iterations = 1500)
@@ -59,7 +59,7 @@ fun miss(x: Track<Double>, y: Track<Double>): Double = waypoints.maxOf {
 display(
     "figure",
     RectSLFitFigure.render(
-        bands = listOf(
+        bands = [
             RectSLFitFigure.Band(
                 "target",
                 constantTrack(0.0),
@@ -82,7 +82,7 @@ display(
                 Color4(0.29, 0.83, 0.7),
                 note = "worst miss %.1em".format(miss(fitX.fitted, fitY.fitted)),
             ),
-        ),
+        ],
         markers = waypoints,
         wall = WallSpec(18.0, 8.0, UnitKind.Meters),
         rectSize = Vec2d(1.5, 1.5),
@@ -102,7 +102,7 @@ display(
 <!-- field-box id="rectsl_free_param_word" index="1" -->
 
 ```edn [field-box id="rectsl_free_param_word" role="properties"]
-{"id" "rectsl_free_param_word" "index" 1 "name" "the free-param word" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the free-param word" "_tombstone" false "frame" #afield/rect [80.0 960.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_free_param_word_code_.kt" "lines" 75 "characters" 2221 "sha256" "cbf374943a92f063a7bba40c0d218ad8ba84508f9d77fd203c8e93102acce658"}]}
+{"id" "rectsl_free_param_word" "index" 1 "name" "the free-param word" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the free-param word" "_tombstone" false "frame" #afield/rect [80.0 960.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_free_param_word_code_.kt" "lines" 75 "characters" 2305 "sha256" "d089c38d6619e39e3f029c8194fb6b57cf7686dddd17dc0a3cb54200157bf0e0"}]}
 ```
 
 ```kotlin [field-property box="rectsl_free_param_word" name="code" path="rectsl_free_param_word_code_.kt"]
@@ -113,20 +113,20 @@ import afield.lang.rectsl.*
 val program =
     RectAnimationOracle.compile(
             """
-    #rectsl
-    ->wall 18 8 meters
-    ->duration 4
-    ->fps 30
+            #rectsl
+            ->wall 18 8 meters
+            ->duration 4
+            ->fps 30
 
-    linear-track "sweep" '( 0=0   4=4 )
+            linear-track "sweep" '( 0=0   4=4 )
 
-    "marker" rect
-      0 0 ->xy
-      1.4 1.4 ->wh
-      "sweep" track-ref 1.0 free-param gain * 0.0 free-param bias + ->x
-      0x44d4b4 solid ->fill
-    ;
-    """
+            "marker" rect
+              0 0 ->xy
+              1.4 1.4 ->wh
+              "sweep" track-ref 1.0 free-param gain * 0.0 free-param bias + ->x
+              0x44d4b4 solid ->fill
+            ;
+            """
                 .trimIndent(),
         )
         .program
@@ -136,7 +136,7 @@ val x = node.x
 
 // Two waypoints and two unknowns. The sweep follows the clock, so -4 at t=1 and +4 at t=3 means
 // gain = 4 and bias = -8.
-val targets = listOf(TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0))
+val targets = [TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0)]
 val fit = x.fitParameters(targets, Functions.Domain(0.0, 4.0), iterations = 2000)
 
 fun missOf(track: Track<Double>): Double = targets.maxOf { abs(track.sample(it.time) - it.value) }
@@ -144,7 +144,7 @@ fun missOf(track: Track<Double>): Double = targets.maxOf { abs(track.sample(it.t
 display(
     "before / after",
     RectSLFitFigure.render(
-        bands = listOf(
+        bands = [
             RectSLFitFigure.Band(
                 "authored",
                 x,
@@ -159,7 +159,7 @@ display(
                 Color4(0.29, 0.83, 0.7),
                 note = "${fit.parameters} — worst miss %.1em".format(missOf(fit.fitted)),
             ),
-        ),
+        ],
         markers = targets.map { RectSLFitFigure.Marker(it.time, it.value, 0.0) },
         wall = WallSpec(18.0, 8.0, UnitKind.Meters),
         rectSize = Vec2d(1.4, 1.4),

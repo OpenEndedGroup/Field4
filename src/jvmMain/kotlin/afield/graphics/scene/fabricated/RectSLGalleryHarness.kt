@@ -801,7 +801,7 @@ object RectSLGalleryHarness {
                 blend = false
                 depthTest = false
                 primitiveType = triangles
-                rtt.apply()
+                +rtt
             }).pointer()
             val mesh = Mesh(renderer, module)
             mesh.resize(3, 0, module) // fullscreen triangle, no vertex attributes
@@ -1031,7 +1031,7 @@ object RectSLGalleryHarness {
                 blend = true
                 depthTest = false
                 primitiveType = triangles
-                rtt.apply()
+                +rtt
             }).pointer()
             val mesh = Mesh(renderer, module)
             mesh.push["worldToClip"] = program.wall.worldToClip()
