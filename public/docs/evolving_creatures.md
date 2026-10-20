@@ -23,7 +23,7 @@ remember where it planted, and `force` returns the force for this physics step.
 `FootStep.contact` is how firmly the foot's program wants to be down right now, from 0 to 1. The
 genome carries the evolved gains: `freeDrag`, `footDrag` and `footStickiness`.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/one_bug.png" wait="4.0" capture="box" open-outputs="true" w="900" h="460" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/one_bug.png" wait="4.0" capture="box" open-outputs="true" w="900" h="460" padding="14" embed=true alt="a random creature of points and springs on the water, before any evolution"}
 import afield.simulation.creatures.*
 import kotlin.random.Random
 
@@ -72,7 +72,7 @@ of the bodies; `alwaysUpFootFraction` and `cyclingFootFraction` say how many poi
 many must actually step. The fitness here rewards distance, and charges for stretching the springs
 and for motor effort.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/evolved_bug.png" wait="40.0" timeout="120" capture="box" open-outputs="true" w="1000" h="520" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/evolved_bug.png" wait="40.0" timeout="120" capture="box" open-outputs="true" w="1000" h="520" padding="14" embed=true alt="fitness by generation, and the champion water bug after twenty-five generations"}
 import afield.simulation.creatures.*
 
 :::fold the WaterSurface contact model, as above
@@ -345,7 +345,7 @@ lies still covers nothing in the second half, so it scores nothing, however far 
 motors get more strength (`maxActuationBudgetPerCycle`, `maxJointImpulsePerStep`): at the defaults,
 tuned for water, a joint cannot lift a limb against gravity.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/crawler.png" wait="40.0" timeout="120" capture="box" open-outputs="true" w="900" h="420" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/crawler.png" wait="40.0" timeout="120" capture="box" open-outputs="true" w="900" h="420" padding="14" embed=true alt="the evolved crawler at the start of its run and at the end, with the trail of its centre along the floor"}
 import afield.simulation.creatures.*
 
 class Floor(val stiffness: Float = 900f, val damping: Float = 40f, val friction: Float = 1f) : ContactModel {
@@ -417,7 +417,7 @@ showPlaneGrid(
 Judged over six cycles, the champion is then watched for twenty-four. Every forty recorded frames
 leave a copy of its body on the floor, fainter the older it is.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/crawler_long_run.png" wait="40.0" timeout="120" capture="box" open-outputs="true" w="900" h="320" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/crawler_long_run.png" wait="40.0" timeout="120" capture="box" open-outputs="true" w="900" h="320" padding="14" embed=true alt="the evolved crawler over twenty-four cycles: faded copies of its body spaced evenly along the floor, fainter the older they are"}
 import afield.simulation.creatures.*
 
 :::fold the Floor contact model and the evolution, as above
