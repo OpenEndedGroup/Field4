@@ -115,7 +115,7 @@ object ModuleDestinations {
      *
      * This covers what [of] cannot find or [capture] cannot read: a ping-pong or stereo target, one drawn
      * by some other path, a module that is drawn nowhere yet. The target matches the module's pipeline
-     * (its colour formats and depth, as `target.apply()` sets them) at [width] × [height], is readable,
+     * (its colour formats and depth, as `+target` sets them) at [width] × [height], is readable,
      * and is kept for the next capture of that shape rather than freed while the GPU may still use it;
      * it is drawn only for the frame of the capture. A module with several viewports or a multiview mask
      * is refused. Anything the module writes besides its colour — a storage buffer, say — it writes once

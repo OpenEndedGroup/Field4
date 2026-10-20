@@ -195,7 +195,7 @@ class LearnedShader(
         resolve = Module(
             parameters(renderer) {
                 this.name = "$name-resolve"
-                output.apply()
+                +output
                 vertex = VERTEX
                 fragment = FRAGMENT
                 depthTest = false

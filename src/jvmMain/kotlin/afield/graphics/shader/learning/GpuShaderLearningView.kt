@@ -59,7 +59,7 @@ class GpuShaderLearningView(
         Module(
             parameters(renderer) {
                 this.name = "$name-comparison"
-                output.apply()
+                +output
                 depthTest = false
                 depthWrite = false
                 blend = false

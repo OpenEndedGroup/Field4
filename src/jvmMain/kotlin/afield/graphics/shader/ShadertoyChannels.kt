@@ -9,7 +9,7 @@
  * ```
  * val canvas = shadertoyCanvas()
  * canvas += shadertoyHere {
- *     canvas.rtt.apply()
+ *     +canvas.rtt
  *     textures("iChannel0" to webcam())
  * }
  * ```
@@ -110,7 +110,7 @@ class ShadertoyChannel private constructor(
         blend = false
         depthTest = false
         depthWrite = false
-        target.apply()
+        +target
         textureResolver = { if (it.name == "source") source else null }
         errorHandler = { message, _ -> lprintln("error,graphics", "shadertoy channel: $message") }
     }).pointer()
@@ -176,7 +176,7 @@ void main() {
  * another shader's `iChannel` (it is [rtt]).
  *
  * `canvas += module` draws a `shadertoyHere` module into it (build the module with
- * `canvas.rtt.apply()` in its block) and makes the module's `iResolution` the canvas size and its
+ * `+canvas.rtt` in its block) and makes the module's `iResolution` the canvas size and its
  * `iMouse` the window cursor mapped into canvas pixels. Every box adds under the same name, so the
  * last one launched is the one showing, the way picking a preset in ShaderTrinket replaces the
  * program.
@@ -258,7 +258,7 @@ class ShadertoyCanvas internal constructor(
         get() = composite.current.enabled
         set(value) { composite.current.enabled = value }
 
-    /** Draw [module] (a `shadertoyHere` module built with `canvas.rtt.apply()`) as this canvas's picture. */
+    /** Draw [module] (a `shadertoyHere` module built with `+canvas.rtt`) as this canvas's picture. */
     operator fun plusAssign(module: ModulePointer) {
         val channels = synchronized(shadertoyChannelsByModule) { shadertoyChannelsByModule[module] } ?: arrayOfNulls(4)
         bindShadertoyUniforms(module, surface, channels)

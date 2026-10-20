@@ -41,7 +41,7 @@ operations:
           // Every shader box below draws into the same canvas, so launching one replaces the picture, the
           // way choosing a preset does. Launch this box again to come back to Flat Rings.
           val canvas = shadertoyCanvas()
-          canvas += shadertoyHere { canvas.rtt.apply() }
+          canvas += shadertoyHere { +canvas.rtt }
         fragment: |
           {{ shadertoy.image }}
 
@@ -79,7 +79,7 @@ operations:
           // Classic Plasma: launch to show it in the window. mainImage is in this box's `fragment`.
           val canvas = shadertoyCanvas()
           canvas += shadertoyHere {
-              canvas.rtt.apply()
+              +canvas.rtt
           }
         fragment: |
           {{ shadertoy.image }}
@@ -108,7 +108,7 @@ operations:
           // Star Tunnel: launch to show it in the window. mainImage is in this box's `fragment`.
           val canvas = shadertoyCanvas()
           canvas += shadertoyHere {
-              canvas.rtt.apply()
+              +canvas.rtt
           }
         fragment: |
           {{ shadertoy.image }}
@@ -153,7 +153,7 @@ operations:
           // Mandelbrot Glow: launch to show it in the window. mainImage is in this box's `fragment`.
           val canvas = shadertoyCanvas()
           canvas += shadertoyHere {
-              canvas.rtt.apply()
+              +canvas.rtt
           }
         fragment: |
           {{ shadertoy.image }}
@@ -191,7 +191,7 @@ operations:
           // SDF Sphere Trace: launch to show it in the window. mainImage is in this box's `fragment`.
           val canvas = shadertoyCanvas()
           canvas += shadertoyHere {
-              canvas.rtt.apply()
+              +canvas.rtt
           }
         fragment: |
           {{ shadertoy.image }}
@@ -256,7 +256,7 @@ operations:
           // Camera Input Demo: launch to show it in the window. mainImage is in this box's `fragment`.
           val canvas = shadertoyCanvas()
           canvas += shadertoyHere {
-              canvas.rtt.apply()
+              +canvas.rtt
               textures("iChannel0" to webcam())
           }
         fragment: |

@@ -1015,7 +1015,7 @@ other, and swaps them every frame; `blitToScreen` puts the newest in the window.
 [[property stackSL]]
 
 ```edn [field-box id="diffusion-feedback" role="properties"]
-{"id" "diffusion-feedback" "index" 13 "name" "diffusion-feedback" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "diffusion-feedback" "_tombstone" false "frame" #afield/rect [1120.0 1080.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion-feedback_code_.kt" "lines" 39 "characters" 1688 "sha256" "c7354c5f3fabd93e50beb794c26bfea621c8cc4351cef77c798e580b3ec43d8c"} {"name" "fragment" "language" "glsl" "path" "diffusion-feedback_fragment_.glsl" "lines" 25 "characters" 700 "sha256" "e43cfb61fe9d5bf8b931da43c8bb979760cb015dbeffb18949bf59d5141ccaed"} {"name" "stackSL" "language" "stacksl" "path" "diffusion-feedback_stackSL_.stacksl" "lines" 5 "characters" 71 "sha256" "e18e980bfc936cea82a4cb965734f8ef26df1c511987a5b6cb8ff21e6c5de88b"} {"name" "vertex" "language" "glsl" "path" "diffusion-feedback_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "diffusion-feedback" "index" 13 "name" "diffusion-feedback" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "diffusion-feedback" "_tombstone" false "frame" #afield/rect [1120.0 1080.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion-feedback_code_.kt" "lines" 39 "characters" 1681 "sha256" "4b4ec725a6f47933b7baae1b9ecc1120c31d6d50007003f5eeeebba06e42690c"} {"name" "fragment" "language" "glsl" "path" "diffusion-feedback_fragment_.glsl" "lines" 25 "characters" 700 "sha256" "e43cfb61fe9d5bf8b931da43c8bb979760cb015dbeffb18949bf59d5141ccaed"} {"name" "stackSL" "language" "stacksl" "path" "diffusion-feedback_stackSL_.stacksl" "lines" 5 "characters" 71 "sha256" "e18e980bfc936cea82a4cb965734f8ef26df1c511987a5b6cb8ff21e6c5de88b"} {"name" "vertex" "language" "glsl" "path" "diffusion-feedback_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="diffusion-feedback" name="code" path="diffusion-feedback_code_.kt"]
@@ -1040,7 +1040,7 @@ once.target {
 }
 source = target.otherImageView
 
-val module = moduleHere { target.apply() }
+val module = moduleHere { +target }
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
@@ -1955,7 +1955,7 @@ other, and swaps them every frame; `blitToScreen` puts the newest in the window.
 [[property stackSL]]
 
 ```edn [field-box id="feedback-trails" role="properties"]
-{"id" "feedback-trails" "index" 24 "name" "feedback-trails" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "feedback-trails" "_tombstone" false "frame" #afield/rect [1120.0 560.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "feedback-trails_code_.kt" "lines" 39 "characters" 1690 "sha256" "cb245b3c782e89a76caaf96c51a21888e0dc70dc47922372abd3fdcf626678ae"} {"name" "fragment" "language" "glsl" "path" "feedback-trails_fragment_.glsl" "lines" 25 "characters" 700 "sha256" "e43cfb61fe9d5bf8b931da43c8bb979760cb015dbeffb18949bf59d5141ccaed"} {"name" "stackSL" "language" "stacksl" "path" "feedback-trails_stackSL_.stacksl" "lines" 5 "characters" 95 "sha256" "fc9d5528c51ed054d52c4b83e6c1c459e479f2c27d310105dea5c25bc3eba6e4"} {"name" "vertex" "language" "glsl" "path" "feedback-trails_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
+{"id" "feedback-trails" "index" 24 "name" "feedback-trails" "parents" ["root" "renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "renderer"} "name" "feedback-trails" "_tombstone" false "frame" #afield/rect [1120.0 560.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "feedback-trails_code_.kt" "lines" 39 "characters" 1683 "sha256" "49e2be2defb882bc4960dead4638efe4c7fa71fd0a58e7eb78f263fa40cc5341"} {"name" "fragment" "language" "glsl" "path" "feedback-trails_fragment_.glsl" "lines" 25 "characters" 700 "sha256" "e43cfb61fe9d5bf8b931da43c8bb979760cb015dbeffb18949bf59d5141ccaed"} {"name" "stackSL" "language" "stacksl" "path" "feedback-trails_stackSL_.stacksl" "lines" 5 "characters" 95 "sha256" "fc9d5528c51ed054d52c4b83e6c1c459e479f2c27d310105dea5c25bc3eba6e4"} {"name" "vertex" "language" "glsl" "path" "feedback-trails_vertex_.glsl" "lines" 9 "characters" 271 "sha256" "6f8ea62eb2f0225f87b4294947183d5993e9c7b5a31ce7896a5252da9012bd88"}]}
 ```
 
 ```kotlin [field-property box="feedback-trails" name="code" path="feedback-trails_code_.kt"]
@@ -1980,7 +1980,7 @@ once.target {
 }
 source = target.otherImageView
 
-val module = moduleHere { target.apply() }
+val module = moduleHere { +target }
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle

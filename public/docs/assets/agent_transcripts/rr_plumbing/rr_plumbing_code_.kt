@@ -46,7 +46,7 @@ val inputs = mapOf(
     "velocity" to surfaces.motion,
 )
 val guideModule = moduleHere {
-    guides.apply()
+    +guides
     depthTest = false
     depthWrite = false
     blend = false

@@ -65,7 +65,7 @@ class ReconstructionDemo(
     private val module = Module(
         parameters(renderer) {
             this.name = "$name-raster"
-            scene.apply()
+            +scene
             depthTest = true
             depthWrite = true
             blend = false

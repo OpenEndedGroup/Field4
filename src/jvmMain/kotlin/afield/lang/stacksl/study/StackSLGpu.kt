@@ -173,7 +173,7 @@ class StackSLGpuRasterizer(
                     this.fragment = fragment
                     blend = false
                     depthTest = false
-                    t.apply()
+                    +t
                     errorHandler = { message, _ -> error = message }
                 }).pointer()
                 if (!built.current.valid) throw Unavailable("the GPU shader did not build: ${error ?: "unknown error"}")

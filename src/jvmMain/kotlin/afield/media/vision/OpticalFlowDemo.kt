@@ -44,7 +44,7 @@ class OpticalFlowDemo(
     private val source = Module(
         parameters(renderer) {
             this.name = "$name-inputs"
-            pair.apply()
+            +pair
             vertex = VERTEX
             fragment = SOURCE
             depthTest = false
@@ -75,7 +75,7 @@ class OpticalFlowDemo(
             Module(
                 parameters(renderer) {
                     this.name = "$name-advection-$i"
-                    feedback[i].apply()
+                    +feedback[i]
                     vertex = VERTEX
                     fragment = ADVECT
                     depthTest = false
@@ -103,7 +103,7 @@ class OpticalFlowDemo(
             Module(
                 parameters(renderer) {
                     this.name = "$name-display-$i"
-                    output.apply()
+                    +output
                     vertex = VERTEX
                     fragment = DISPLAY
                     depthTest = false

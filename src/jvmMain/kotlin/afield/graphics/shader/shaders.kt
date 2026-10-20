@@ -3990,9 +3990,14 @@ private fun kotlinBindingTypeName(member: Introspected.Member): String =
 
 // Kotlin has no Int | UInt type. Only scalar uint push suppliers use Any; Structure validates
 // their evaluated values. Uniform/attribute types keep their existing UInt declarations.
-private fun kotlinPushBindingTypeName(member: Introspected.Member): String =
-    if (!member.physicalPointer && member.type.fold({ it == PrimitiveType.uint }, { false })) "Any"
-    else kotlinBindingTypeName(member)
+// A scalar float supplier is `() -> Number`, so `time = { now - started }` binds a Double as it
+// stands: Structure's write narrows it to the member's precision (`StructureTypeCheck.coerce`).
+private fun kotlinPushBindingTypeName(member: Introspected.Member): String = when {
+    member.physicalPointer -> kotlinBindingTypeName(member)
+    member.type.fold({ it == PrimitiveType.uint }, { false }) -> "Any"
+    member.arrayStride == 0 && member.type.fold({ it == PrimitiveType.float || it == PrimitiveType.float16_t }, { false }) -> "Number"
+    else -> kotlinBindingTypeName(member)
+}
 
 /**
  * The `// …` note the shader source carried at the end of a member's declaration line, formatted to

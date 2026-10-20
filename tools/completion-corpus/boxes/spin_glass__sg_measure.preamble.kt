@@ -124,8 +124,8 @@ fun BufferParameters.asFieldProbeBuffer(): FieldProbeBuffer =
 /*compute-pc-binding:L*/ var ComputeMesh.L by ComputeMesh.BoundFromStructure<Any>()
 /*compute-pc-binding-group:L*/ var ComputeMeshGroup.L by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:field*/ var Structure.field by Structure.FromStructure<Any>()
-/*compute-pc-binding:field*/ var ComputeMesh.field by ComputeMesh.BoundFromStructure<Float>()
-/*compute-pc-binding-group:field*/ var ComputeMeshGroup.field by ComputeMeshGroup.BoundFromStructure<Float>()
+/*compute-pc-binding:field*/ var ComputeMesh.field by ComputeMesh.BoundFromStructure<Number>()
+/*compute-pc-binding-group:field*/ var ComputeMeshGroup.field by ComputeMeshGroup.BoundFromStructure<Number>()
 /*compute-ssbo:FieldProbeBuffer*/ val ComputeModulePointer.FieldProbeBuffer by ComputeMesh.FromUniform()
 var Box.sgL by Inheritance<Int>() /*from:sg_update*/ /**/
 val Once.sgL by Onceing<Int>() /*from:sg_update*/ /**/

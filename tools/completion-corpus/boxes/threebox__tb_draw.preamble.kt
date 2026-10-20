@@ -35,8 +35,8 @@ fun BufferParameters.asInData(): InData =
 /*graphics-pc-binding:inData*/ var Mesh.inData by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-binding-group:inData*/ var MeshGroup.inData by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-structure:aspectRatio*/ var Structure.aspectRatio by Structure.FromStructure<Any>()
-/*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Float>()
+/*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Number>()
 var Box.outputPositions by Inheritance<FrameBufferGroup>() /*from:tb_compute*/ /**/
 val Once.outputPositions by Onceing<FrameBufferGroup>() /*from:tb_compute*/ /**/
 val Why.outputPositions by Whying() /*from:tb_compute*/ /**/

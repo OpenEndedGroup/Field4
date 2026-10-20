@@ -14,7 +14,7 @@ val source = RenderToTexture(renderer) {
     format = VK_FORMAT_R32G32B32A32_SFLOAT
 }
 val teacher = moduleHere {
-    source.apply()
+    +source
     depthTest = false
     depthWrite = false
     blend = false

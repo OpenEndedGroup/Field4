@@ -804,6 +804,10 @@ object DemoTranscriptExecSmokeTest {
         "fieldml_mesh_demo",
         // stacksl_examples.md's gallery draws into a native window.
         "stacksl_gallery",
+        // ShaderTrinket: shadertoyHere boxes drawing into a shadertoyCanvas the renderer window shows,
+        // one of them reading the camera. ShadertoyChannelsTest compiles the image preamble and the
+        // channel passes; the orientation and colour were checked by native capture.
+        "shadertrinket",
         // Continuing a gesture (2026-10-19): boxes 5 and 6 start a Timestral worker, which needs a
         // downloaded checkpoint no CI machine has, and boxes 3 and 4 are live frames loops. The oracle
         // and mocap code runs in VariableMarkovOracleTest, SeveralTakesTest and BvhTest, and the dance
