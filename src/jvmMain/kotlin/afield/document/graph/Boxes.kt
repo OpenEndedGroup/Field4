@@ -867,7 +867,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             Regex(""".*_editorState""")
         )
 
-        private val persistentPatternCache = ConcurrentHashMap<String, Regex>()
+        /** The pattern entries of [ioPersistentProperties], rebuilt when that set changes size. */
+        @Volatile
+        private var persistentPatterns: Pair<Int, List<Regex>> = -1 to emptyList()
 
         /**
          * True when [name] is written to `metadata.edn` by every document: listed in
@@ -879,10 +881,12 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             if (isNeverPersisted(name)) return false
             val names = ioPersistentProperties
             if (name in names) return true
-            return names.any { pattern ->
-                pattern.any { it == '*' || it == '.' || it == '[' || it == '(' } &&
-                    persistentPatternCache.getOrPut(pattern) { pattern.toRegex() }.matches(name)
+            var cached = persistentPatterns
+            if (cached.first != names.size) {
+                cached = names.size to names.filter { p -> p.any { it in ".*[(+?|" } }.map { it.toRegex() }
+                persistentPatterns = cached
             }
+            return cached.second.any { it.matches(name) }
         }
 
         /** True when [name] must not be serialised to disk. See [ioNeverPersistedProperties]. */
