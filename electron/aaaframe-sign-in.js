@@ -73,8 +73,9 @@ function signIn(parent, base, { force }) {
     win.webContents.on("did-navigate", check);
     win.on("closed", () => finish({ ok: false, base, error: "the sign-in window was closed before signing in" }));
     const timeout = setTimeout(() => finish({ ok: false, base, error: "sign-in timed out after 10 minutes" }), 10 * 60 * 1000);
-    win.loadURL(base + "/login?next=" + encodeURIComponent("/api/shadertrinket-config"))
-      .catch((error) => finish({ ok: false, base, error: "could not load " + base + "/login: " + error.message }));
+    // Straight to GitHub: aaaframe's /login page would only add a "Sign in with GitHub" click.
+    win.loadURL(base + "/login/github?next=" + encodeURIComponent("/api/shadertrinket-config"))
+      .catch((error) => finish({ ok: false, base, error: "could not load " + base + "/login/github: " + error.message }));
   });
 }
 

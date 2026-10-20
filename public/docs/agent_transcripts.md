@@ -3077,8 +3077,9 @@ shows the same side-by-side scene and its mouse supplies the controller ray.
 
 The classroom shader jam from Field. One box publishes a fragment shader as a WebRTC stream
 named `login/field-shader`, and another lists who is publishing and draws the stream it picks on a
-quad in the renderer's window. On aaaframe's network a browser ShaderTrinket receives the Field
-box like any classmate, and Field can show any student's Publish; with no server the receiving box
+quad in the renderer's window. After `WebRTCNetwork.join(url)` once, Field signs in to that
+aaaframe class in its own window and remembers it; a browser ShaderTrinket then receives the Field
+box like any classmate, and Field can show any student's Publish. Before joining, the receiving box
 shows its neighbour's stream through Field's own relay. Needs the Field Electron app.
 
 ![Field's renderer window showing a stream from a browser ShaderTrinket: pink and yellow petals in a tall frame centred on black](assets/webrtc/field-receives-shadertrinket.png)

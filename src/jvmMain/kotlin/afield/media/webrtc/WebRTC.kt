@@ -44,7 +44,9 @@ import java.util.concurrent.atomic.AtomicInteger
  * How and why: `dev_docs/WEBRTC_SOURCES_SINKS.md`.
  */
 
-private fun boxKey(name: String): String? = RunScope.executingBox()?.let { "${it.id}:$name" }
+// The same uid recurs across documents opened from one transcript, so key by the Box object itself,
+// which a re-run keeps and another document does not share.
+private fun boxKey(name: String): String? = RunScope.executingBox()?.let { "${System.identityHashCode(it)}:${it.id}:$name" }
 
 private fun String.urlEncoded(): String = URLEncoder.encode(this, StandardCharsets.UTF_8)
 
@@ -239,7 +241,8 @@ class WebRTCSource internal constructor(
                 "webrtc-status" -> (value as? JsonObject)?.let { report ->
                     val pageTarget = report["target"]?.jsonPrimitive?.contentOrNull
                     // A watch sent before the page had loaded is lost; the page's first report says so.
-                    if (pageTarget != null && normalizePublishName(pageTarget) != target) watch(target)
+                    // (`this.`: in init, a bare `target` is the constructor's original argument.)
+                    if (pageTarget != null && normalizePublishName(pageTarget) != this.target) watch(this.target)
                     else report["status"]?.jsonPrimitive?.contentOrNull?.let { status = it }
                 }
                 "webrtc-latency" -> (value as? JsonArray)?.forEach { sample ->
@@ -273,8 +276,8 @@ class WebRTCSource internal constructor(
         browser.close()
     }
 
-    internal fun matches(width: Int, height: Int, network: WebRTCNetwork, fit: String) =
-        width == this.width && height == this.height && network === this.network && fit == this.fit
+    internal fun matches(renderer: Renderer, width: Int, height: Int, network: WebRTCNetwork, fit: String) =
+        renderer === this.renderer && width == this.width && height == this.height && network === this.network && fit == this.fit
 
     /** Percentiles of decoded time codes: sender's render to this page presenting the frame. */
     class LatencyStats {
@@ -332,7 +335,7 @@ fun webrtcSource(
     val boxKey = boxKey(key)
     if (boxKey != null) {
         val existing = WebRTCSource.sources[boxKey]
-        if (existing != null && existing.matches(width, height, network, fit) && !measure) {
+        if (existing != null && existing.matches(renderer, width, height, network, fit) && !measure) {
             if (existing.target != normalizePublishName(target)) existing.watch(target)
             return existing
         }

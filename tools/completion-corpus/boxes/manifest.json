@@ -740,7 +740,7 @@
   {"doc": "viz_showheatmap", "box": "heatmap_gaussian", "codeSha256": "4877ebebcc93cfe5", "codeLines": 11, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "viz_showheatmap", "box": "heatmap_image", "codeSha256": "2181bb51fa1cabe4", "codeLines": 11, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "viz_showheatmap", "box": "heatmap_spectrogram", "codeSha256": "f706a3096103fe00", "codeLines": 16, "receivers": ["afield.document.graph.Box"], "preamble": ""},
-  {"doc": "webrtc_shader_jam", "box": "webrtc_publish_shader", "codeSha256": "d421340c56bcb29b", "codeLines": 22, "receivers": ["afield.document.graph.Box"], "preamble": "webrtc_shader_jam__webrtc_publish_shader.preamble.kt"},
+  {"doc": "webrtc_shader_jam", "box": "webrtc_publish_shader", "codeSha256": "70d0024ea6559313", "codeLines": 23, "receivers": ["afield.document.graph.Box"], "preamble": "webrtc_shader_jam__webrtc_publish_shader.preamble.kt"},
   {"doc": "webrtc_shader_jam", "box": "webrtc_receive_stream", "codeSha256": "d0f5adf7384a4fef", "codeLines": 34, "receivers": ["afield.document.graph.Box"], "preamble": "webrtc_shader_jam__webrtc_receive_stream.preamble.kt"},
   {"doc": "webrtc_shader_jam", "box": "webrtc_renderer", "codeSha256": "1c6e88faac70cbcb", "codeLines": 15, "receivers": ["afield.document.graph.Box"], "preamble": "webrtc_shader_jam__webrtc_renderer.preamble.kt"},
   {"doc": "wfc_worked_example", "box": "wfc_by_hand", "codeSha256": "e6f8045458f579e8", "codeLines": 73, "receivers": ["afield.document.graph.Box"], "preamble": ""},

@@ -37,14 +37,15 @@ start(renderer::run)
 <!-- field-box id="webrtc_publish_shader" index="1" -->
 
 ```edn [field-box id="webrtc_publish_shader" role="properties"]
-{"id" "webrtc_publish_shader" "index" 1 "name" "publish a shader" "parents" ["root" "webrtc_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "webrtc_renderer"} "name" "publish a shader" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "webrtc_publish_shader_code_.kt" "lines" 22 "characters" 620 "sha256" "209e27b4c3b1d26e46cdd048f0c28e61d2d9cc89e6421826dabddaa3e058c2fc"} {"name" "vertex" "language" "glsl" "path" "webrtc_publish_shader_vertex_.glsl" "lines" 6 "characters" 106 "sha256" "7270a97f3cbaae098ffd43be2431591d87417f94d449cd9a01207a1c60fc2eb6"} {"name" "fragment" "language" "glsl" "path" "webrtc_publish_shader_fragment_.glsl" "lines" 16 "characters" 489 "sha256" "74159cc699e630c09c9c75ba30480e36684adb01e78c9034d655d3cc0c640d7b"}]}
+{"id" "webrtc_publish_shader" "index" 1 "name" "publish a shader" "parents" ["root" "webrtc_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "webrtc_renderer"} "name" "publish a shader" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "webrtc_publish_shader_code_.kt" "lines" 23 "characters" 723 "sha256" "16f5eb42f75c0ccfaae8fa5ae301cc19d5b0d3de47d86e9c206a3ee362253862"} {"name" "vertex" "language" "glsl" "path" "webrtc_publish_shader_vertex_.glsl" "lines" 6 "characters" 106 "sha256" "7270a97f3cbaae098ffd43be2431591d87417f94d449cd9a01207a1c60fc2eb6"} {"name" "fragment" "language" "glsl" "path" "webrtc_publish_shader_fragment_.glsl" "lines" 16 "characters" 489 "sha256" "74159cc699e630c09c9c75ba30480e36684adb01e78c9034d655d3cc0c640d7b"}]}
 ```
 
 ```kotlin [field-property box="webrtc_publish_shader" name="code" path="webrtc_publish_shader_code_.kt"]
 import afield.media.webrtc.webrtcSink
 
 // Published as login/field-shader: your aaaframe login, or this computer's user name on
-// Field's own relay. A browser ShaderTrinket receives it by that name.
+// Field's own relay. A browser ShaderTrinket receives it by that name. To join a class,
+// run WebRTCNetwork.join("https://<your aaaframe>") once; Field asks you to sign in.
 @exported val sink = webrtcSink("field-shader", 640, 360)
 
 val module = moduleHere { sink.rtt.apply() }

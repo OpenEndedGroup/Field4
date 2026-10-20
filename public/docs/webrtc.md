@@ -96,22 +96,37 @@ can edit the shader that uses it without reconnecting.
 
 ## In a class with aaaframe
 
-Point Field at the class's aaaframe server once, in a box or with the `AFIELD_WEBRTC_SERVER`
-environment variable, and every `webrtcSink`, `webrtcSource` and `webrtcPublishers` uses it:
+Join the class once, by running this in any box with your class's aaaframe address:
 
 ```diffstatic {data-lang=kotlin}
 import afield.media.webrtc.WebRTCNetwork
 
-WebRTCNetwork.default = WebRTCNetwork.aaaframe("https://aaaframe.example.edu", session = "…")
+WebRTCNetwork.join("https://aaaframe.example.edu")
 ```
 
-`session` is your aaaframe login. Sign in to aaaframe in a browser, open its developer tools,
-and copy the value of the cookie named `session` (Application → Cookies in Chrome). Field cannot
-read it from the browser itself, because the cookie is hidden from pages. You can also put it in
-`AFIELD_AAAFRAME_SESSION`. A server run in aaaframe's local mode (`AAAFRAME_LOCAL_AUTH=1`) needs
-no session at all; everyone on it shares one login, and the names after the slash tell the
-streams apart. If the cookie is missing or has expired, the publisher list says so in place of
-the names.
+From then on every `webrtcSink`, `webrtcSource` and `webrtcPublishers` uses that class, in this
+run of Field and the next ones. The first box that needs it opens a small Field window on
+aaaframe's GitHub sign-in. Sign in as you would in the browser; the window closes by itself, and
+the panels connect as `@you`. If you have already authorised aaaframe on GitHub, the window opens
+and closes without asking anything.
+
+Field remembers the class and your aaaframe login in `~/.afield/webrtc/aaaframe-sign-ins.json`,
+a file only your user account can read. It belongs to you, not to a document, so a document you
+share does not carry your login. When the login expires or the class server is restarted with a
+new key, aaaframe refuses it, and Field opens the sign-in window again. The publisher list and the
+line under a publishing view also have a **Sign in to aaaframe** button, which starts a fresh
+sign-in.
+
+Signing in needs the Field desktop app; a web browser shows "signing in to aaaframe needs the
+Field Electron app" instead. A server run in aaaframe's local mode (`AAAFRAME_LOCAL_AUTH=1`) needs
+no sign-in at all: everyone on it shares one login, and the names after the slash tell the streams
+apart.
+
+!!! note "Choosing the class without remembering it"
+    `AFIELD_WEBRTC_SERVER` names the class for one launch of Field, and
+    `WebRTCNetwork.default = WebRTCNetwork.aaaframe(url)` for one run. To use a login you already
+    have instead of signing in, set `AFIELD_AAAFRAME_SESSION` to the value of aaaframe's `session`
+    cookie, or pass `session = "…"` to `aaaframe`; either wins over the remembered one.
 
 Here a browser ShaderTrinket on a local aaaframe received `@student/field-shader` into
 `iChannel0` and published its own canvas, and the Field box above picked `@student/browser` from
@@ -154,7 +169,8 @@ a frame can wait up to 33 ms for its turn before it is encoded at all.
     output-area canvas `ElectronRTTView` draws into; the source is a hidden puppet Electron page
     (`webrtc-source.html`) playing the remote track in a `<video>`, whose paints become the texture
     through `FieldUiBrowserTexture`. Pages talk only to Field's `/ws/webrtc-signaling`, which relays
-    itself or copies frames to aaaframe's `/ws/shadertrinket-signaling` with the session cookie; the
+    itself or copies frames to aaaframe's `/ws/shadertrinket-signaling` with the session cookie,
+    which `electron/aaaframe-sign-in.js` reads from its sign-in window's cookie jar; the
     reasons (Lax cookie, separate Electron profile) are in `dev_docs/WEBRTC_SOURCES_SINKS.md`.
     The latency figure comes from `dev_docs/webrtc_latency/`: a sink draws its wall clock as a
     24-bit bar code, and a source with `measure = true` decodes every presented frame with

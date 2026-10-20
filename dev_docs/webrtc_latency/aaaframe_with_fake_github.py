@@ -12,7 +12,8 @@ Set-Cookie that Field captures. Only GitHub is replaced:
 
 - the redirect to https://github.com/login/oauth/authorize is rewritten to this server's
   /fake-github/authorize, which shows a one-button "Authorize" page that redirects to the callback
-  with a code and the original state, as GitHub does after the user approves;
+  with a code and the original state, as GitHub does after the user approves (FAKE_GITHUB_AUTO=1
+  redirects at once, as GitHub does for an app the user has already authorized);
 - the callback's httpx calls to github.com and api.github.com are answered by a MockTransport
   with a token, FAKE_GITHUB_LOGIN's user record, and a verified primary email.
 """
@@ -71,6 +72,9 @@ async def _fake_authorize():
     query = parse_qs(request.query_string.decode())
     redirect_uri = query.get("redirect_uri", ["/auth/github/callback"])[0]
     back = redirect_uri + "?" + urlencode({"code": "fake-code", "state": query.get("state", [""])[0]})
+    if os.environ.get("FAKE_GITHUB_AUTO"):
+        # GitHub skips its consent page for an app the user has already authorized.
+        return Response("", status=302, headers={"Location": back})
     return Response(
         f"""<!doctype html><title>Fake GitHub</title>
         <body style="font:16px system-ui;margin:3em">

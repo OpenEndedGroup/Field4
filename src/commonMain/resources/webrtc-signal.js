@@ -24,10 +24,10 @@ export class FieldSignal {
     this.connectionId = "";
     this.username = "";
     this.closed = false;
-    this.ready = new Promise((resolve, reject) => {
-      this.resolveReady = resolve;
-      this.rejectReady = reject;
-    });
+    // Resolves at the first hello. A refused or dropped socket retries rather than failing, so a
+    // page opened before its student signs in to aaaframe simply connects afterwards.
+    this.greeted = false;
+    this.ready = new Promise((resolve) => { this.resolveReady = resolve; });
     this.open();
   }
 
@@ -47,6 +47,8 @@ export class FieldSignal {
         this.connectionId = String(message.connectionId || "");
         this.username = String(message.username || "");
         this.publishers = new Set(message.publishers || []);
+        if (this.greeted) for (const fn of this.listeners.get("reconnected") || []) fn();
+        this.greeted = true;
         this.resolveReady(this);
       } else if (type === "publisher-online") {
         this.publishers.add(String(message.username || ""));
@@ -60,15 +62,9 @@ export class FieldSignal {
     });
     socket.addEventListener("close", (event) => {
       if (this.closed) return;
-      this.rejectReady(new Error("signalling closed " + event.code + " " + event.reason));
       this.onStatus("signalling closed" + (event.reason ? ": " + event.reason : "") + "; retrying");
-      // Reconnect: a fresh hello, a fresh connection id; the owner re-publishes or re-watches.
-      setTimeout(() => {
-        if (this.closed) return;
-        this.ready = new Promise((resolve, reject) => { this.resolveReady = resolve; this.rejectReady = reject; });
-        this.ready.then(() => { for (const fn of this.listeners.get("reconnected") || []) fn(); }).catch(() => {});
-        this.open();
-      }, 2000);
+      // Reconnect: a fresh hello and connection id; "reconnected" tells the owner to re-publish or re-watch.
+      setTimeout(() => { if (!this.closed) this.open(); }, 2000);
     });
   }
 

@@ -1,11 +1,12 @@
 name: webrtc_shader_jam
 description: |
   The classroom shader jam from Field: one box publishes a fragment shader as a WebRTC stream, and
-  another samples a published stream as a texture in the renderer window. Both join aaaframe's
-  ShaderTrinket network when WebRTCNetwork.default (or AFIELD_WEBRTC_SERVER) names an aaaframe
-  server, so a browser ShaderTrinket can Receive "@you/field-shader" and Field can show any
-  student's Publish; with no server named they use Field's own relay, and the receiving box shows
-  this box's own stream until you pick another publisher from its list.
+  another samples a published stream as a texture in the renderer window. After
+  WebRTCNetwork.join("https://<your aaaframe>") once, in any box, both use that class's
+  ShaderTrinket network: Field opens aaaframe's GitHub sign-in in a window the first time, remembers
+  the class and login for this user, and a browser ShaderTrinket can Receive "@you/field-shader"
+  while Field shows any student's Publish. Before joining they use Field's own relay, and the
+  receiving box shows its neighbour's stream until you pick another publisher from its list.
 
   The sink is an ElectronRTTView, so it needs the Field Electron app; the source is a hidden
   Electron page whose paints are the texture. Chromium does all of the WebRTC. See
@@ -41,7 +42,8 @@ operations:
           import afield.media.webrtc.webrtcSink
 
           // Published as login/field-shader: your aaaframe login, or this computer's user name on
-          // Field's own relay. A browser ShaderTrinket receives it by that name.
+          // Field's own relay. A browser ShaderTrinket receives it by that name. To join a class,
+          // run WebRTCNetwork.join("https://<your aaaframe>") once; Field asks you to sign in.
           @exported val sink = webrtcSink("field-shader", 640, 360)
 
           val module = moduleHere { sink.rtt.apply() }
