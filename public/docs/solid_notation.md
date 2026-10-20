@@ -332,7 +332,7 @@ does not always come back out as three angles), reassociating `SmoothUnion`, reo
 A tree you can read is also a tree you can differentiate, and that is the third thing you can do with
 one source. Declare which numbers in a shape are free, hand over some samples of the shape you
 actually want, and a gradient finds them — the 3D version of what
-[`afield.lang.rectsl.RectSLFn`](rectsl_inverse_animation.md) does for 2D tracks.
+[RectSL's inverse animation](rectsl_inverse_animation.md) (`RectSLFn.kt` in `afield.lang.rectsl`) does for 2D tracks.
 
 The machinery is `afield.math.autodiff.AD`, reverse-mode automatic differentiation over `Double`:
 `SolidGradient.kt` is `SolidField.kt`'s `toField3` transposed line for line into `AD` arithmetic.
