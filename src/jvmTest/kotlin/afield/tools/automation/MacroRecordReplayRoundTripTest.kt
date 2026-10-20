@@ -191,6 +191,31 @@ class MacroRecordReplayRoundTripTest {
         assertFalse(past.success)
     }
 
+    /**
+     * The canvas sends a new box's name, frame and code at once and the server handles them
+     * concurrently, so the frame or the code can be recorded before the create (seen live,
+     * 2026-10-20: three `create`s of one box). Whatever order they land in, a box is one create.
+     */
+    @Test
+    fun aNewBoxIsOneCreateWhateverOrderItsFirstMessagesLandIn() {
+        val session = document("racing")
+        thisSessionInfo.set(session)
+        OperationTranscript.markStart("race")
+        val made = box("box-r", createIfMissing = true, initIfCreated = false, root = session)
+        made.setPropertyRaw("code", "println(\"r\")", doResync = false)
+        OperationTranscript.recordEdit(made, "code", "", "println(\"r\")") // code handler, first
+        made.frame = Rect(10.0, 20.0, 100.0, 50.0)
+        OperationTranscript.recordMove(made, Rect(0.0, 0.0, 0.0, 0.0), made.frame) // frame handler
+        OperationTranscript.recordCreate(made) // the handler that made it records last
+        made.name = "Racer"
+        OperationTranscript.recordEdit(made, "name", "", "Racer") // name handler
+        val saved = OperationTranscript.markEndAndSave("race")
+        val yaml = File(saved.path).readText()
+        val verbs = Regex("""^  - ([a-z-]+):""", RegexOption.MULTILINE).findAll(yaml).map { it.groupValues[1] }.filter { it != "wait" }.toList()
+        assertEquals(listOf("create"), verbs, yaml)
+        assertTrue(yaml.contains("Racer") && yaml.contains("x: 10.0") && yaml.contains("println(\"r\")"), yaml)
+    }
+
     @Test
     fun renameAndDeleteKeepTheListAndTheYamlInStep() {
         val (source, _) = recordSession()

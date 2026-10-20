@@ -293,7 +293,7 @@ object OperationTranscript {
                 .subList(startIndex + 1, endIndex)
                 .filterNot { it.containsKey("marker") }
                 .map { deepLinkedMap(it) }
-            coalesceOperationRuns(slice) to startSelection
+            withoutIdleWaits(coalesceOperationRuns(slice)) to startSelection
         } ?: run {
             checkpoint(documentPath)
             return MacroResult(false, "No macro start marker found.")
@@ -1123,12 +1123,39 @@ object OperationTranscript {
         val state = stateFor(documentPath)
         synchronized(state.lock) {
             ensureLoaded(state)
-            flushPendingEdit(state)
+            // The handlers for one new box run concurrently, so its frame or code can be recorded
+            // a moment before its create. A pending edit of this box stays pending and folds into
+            // the create once it is flushed. Entries of this box just recorded are taken back: a
+            // move is dropped (the create captures the frame it moved to), and a first value — an
+            // edit from nothing, or of the name — moves into the create.
+            if (state.pendingEdit?.box != box.id) flushPendingEdit(state)
+            val earlier = mutableListOf<Map<*, *>>()
+            var index = state.entries.lastIndex
+            while (index >= 0) {
+                val entry = state.entries[index]
+                val move = entry["move"] as? Map<*, *>
+                val edit = entry["edit"] as? Map<*, *>
+                when {
+                    entry.containsKey("wait") -> index--
+                    move != null && move["box"]?.toString() == box.id -> { state.entries.removeAt(index); index-- }
+                    edit != null && edit["box"]?.toString() == box.id && edit["origin"] == null &&
+                        (edit["from"]?.toString().isNullOrEmpty() || edit["property"] == "name") -> {
+                        earlier.add(0, edit)
+                        state.entries.removeAt(index)
+                        index--
+                    }
+                    else -> index = -1
+                }
+            }
             appendWaitIfNeeded(state, frame)
             val payload = linkedMapOf<String, Any?>("box" to box.id, "name" to box.name)
             val rect = runCatching { box.frame }.getOrNull()
             if (rect != null && !(rect.w == 0.0 && rect.h == 0.0)) payload["frame"] = rectMap(rect)
             state.entries += linkedMapOf<String, Any?>("create" to payload)
+            // The name is the box's own, read just above; the earlier edits only add properties.
+            earlier.filter { it["property"] != "name" }.forEach { edit ->
+                foldIntoPreviousCreate(state.entries, box.id, edit["property"]?.toString().orEmpty(), edit["to"])
+            }
             state.lastRecordedFrame = frame
             state.dirty = true
         }
@@ -1387,6 +1414,20 @@ object OperationTranscript {
         }
         return out
     }
+
+    /**
+     * A recording's waits, less the ones that are only the person's pauses. A wait right after an
+     * execute or launch is kept — what the code started may need the time — and every other wait
+     * goes, so a macro replays at once instead of at the speed it was performed (the 2026-10-20
+     * audit recording opened with 784 frames, thirteen seconds, of nothing).
+     */
+    internal fun withoutIdleWaits(entries: List<LinkedHashMap<String, Any?>>): List<LinkedHashMap<String, Any?>> =
+        entries.filterIndexed { index, entry ->
+            if (!entry.containsKey("wait")) return@filterIndexed true
+            val previous = entries.getOrNull(index - 1)?.keys?.firstOrNull()?.lowercase()
+            val next = entries.getOrNull(index + 1)
+            next != null && previous != null && (previous in launchVerbs || previous in setOf("execute", "execute-fragment"))
+        }
 
     private fun appendWaitIfNeeded(state: DocumentState, frame: Long) {
         val previous = state.lastRecordedFrame ?: return

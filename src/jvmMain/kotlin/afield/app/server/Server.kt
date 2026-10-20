@@ -490,14 +490,6 @@ private object GcPauseMonitor {
 
 private val gcPauseMonitor = GcPauseMonitor
 
-/**
- * True when [uid] names no box of the current session yet: the property message about to touch it
- * is the canvas creating it (the macro recorder's `create`). Root and the metaroot always exist.
- */
-private fun isNewCanvasBox(uid: String): Boolean =
-    uid != "root" && uid != afield.document.graph.METAROOT_ID &&
-        runCatching { !thisSessionInfo.get().boxes.containsKey(uid) }.getOrDefault(false)
-
 private fun systemProperty(name: String): String = System.getProperty(name).orEmpty()
 
 private fun booleanSystemProperty(name: String): Boolean =
@@ -2842,8 +2834,8 @@ class Server {
                 val isEditorStateProperty = set.property.endsWith("_editorState")
                 // A uid the server has never seen is a box the canvas just made (`createBox` sends
                 // its name first): record it as a `create`, not as an edit from nothing.
-                val createdHere = isNewCanvasBox(set.uid)
-                val targetBox = box(set.uid)
+                var createdHere = false
+                val targetBox = box(set.uid, onCreated = { createdHere = true })
                 thisSessionInfo.get().recordPropertySyncOrigin(
                     set.uid,
                     set.property,
@@ -2966,8 +2958,8 @@ class Server {
 
                 // Updates box frame or property; resyncs on main thread
                 if (set.property == "frame") {
-                    val createdHere = isNewCanvasBox(set.uid)
-                    val b = box(set.uid)
+                    var createdHere = false
+                    val b = box(set.uid, onCreated = { createdHere = true })
                     val oldFrame = b.frame
                     b.frame = set.value
                     if (createdHere) OperationTranscript.recordCreate(b)
@@ -3003,8 +2995,8 @@ class Server {
 
                 set.values.forEach { update ->
                     if (update.property == "frame") {
-                        val createdHere = isNewCanvasBox(update.uid)
-                        val b = box(update.uid)
+                        var createdHere = false
+                        val b = box(update.uid, onCreated = { createdHere = true })
                         val oldFrame = b.frame
                         b.frame = update.value
                         if (createdHere) OperationTranscript.recordCreate(b)

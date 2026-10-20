@@ -1740,7 +1740,13 @@ fun box(
     u: String,
     createIfMissing: Boolean = true,
     initIfCreated: Boolean = true,
-    root: SessionInformation = thisSessionInfo.get()
+    root: SessionInformation = thisSessionInfo.get(),
+    /**
+     * Called with the box when this call is the one that made it. Message handlers run
+     * concurrently, so "was it there before I looked?" is only answered race-free here: the canvas
+     * sends a new box's name, frame and code at once, and the macro recorder must see one create.
+     */
+    onCreated: ((Box) -> Unit)? = null,
 ): Box {
     if (u == METAROOT_ID) return metaroot
     if (u == "root") return root.root
@@ -1762,6 +1768,7 @@ fun box(
         // ran its bootstrap. Visible, the box is retired, and [Box.disposeKi] disposes the engine
         // the build returns.
         if (initIfCreated && created === b) b.ki
+        if (created === b) onCreated?.invoke(b)
         return b
     } else return root.boxes[u]!!
 }
