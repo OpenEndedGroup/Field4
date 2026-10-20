@@ -462,7 +462,7 @@ import { mountReviewInbox } from '/geometry_review_inbox.js';
 import { mountReviewControls } from '/geometry_review_controls.js';
 const reviewControls = mountReviewControls(document.getElementById('feature-tools'), document.getElementById('feature-review'));
 import { createViewerTools } from '/threejs_tools.js';
-import { createCameraLink, createTurntable } from '/threejs_camera_link.js';
+import { createCameraLink, createTurntable, createCameraFollow } from '/threejs_camera_link.js';
 import { createShot, explodePositions, xrayOpacity as shotOpacity } from '/threejs_shot.js';
 
 const container = document.getElementById('canvas-wrap');
@@ -530,7 +530,9 @@ const viewerTools = createViewerTools({
     }
 });
 let captureState = {ready:false, error:null, revision:null};
-window.FieldViewer = Object.freeze({renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
+window.FieldViewer = Object.freeze({followStatus: () => cameraFollow.status(),
+    cameraPose: () => ({eye:camera.position.toArray(), target:controls.target.toArray(), zoom:camera.zoom}),
+    renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
     turntable: () => turntable.status(), cameraLink: () => cameraLink.status(), shot: () => shot.status(),
     captureStatus: () => {
         const tools = viewerTools.status(), render = renderScheduler.stats();
@@ -624,6 +626,10 @@ const turntable = createTurntable({key: `${urlParams.get('uid') || ''} ${Math.ra
 // and goes see-through, on the wall clock, held by the same interactions as the turntable. `shotDistance`
 // is this frame's dolly, read by the panel cameras; `shotAppliedDistance` is what the single camera has.
 const shot = createShot({wake: ms => setTimeout(requestRender, ms)});
+const cameraFollow = createCameraFollow({
+    readTarget: () => controls.target.toArray(), visible: () => onScreen && document.visibilityState !== 'hidden', up: () => camera.up.toArray(),
+    translate: delta => { const d = new THREE.Vector3(...delta); camera.position.add(d); controls.target.add(d); }
+});
 let shotDistance = 1, shotAppliedDistance = 1;
 // About the target and the view's up axis. Positive turns the model anticlockwise seen from above.
 // `cameraTurned` lets a resize refit an untouched view without undoing the turn.
@@ -6021,6 +6027,7 @@ function applyGeometry(payload) {
         cameraWasMoved = false; cameraTurned = false;
         cameraViewport = [container.clientWidth, container.clientHeight];
     }
+    cameraFollow.configure(payload.cameraFollow || null);
     // Last, because it reads the geometry the steps above created and because framing the camera first
     // means the first dimension is offset across the view the user is actually going to see.
     inspectorCapture(payload);
@@ -6815,6 +6822,7 @@ function applyShotLook(look) {
 }
 
 function render() {
+    if (cameraFollow.step()) requestRender();
     const turn = turntable.step();
     if (turn !== null) { turnCamera(turn); requestRender(); }
     // A shot draws continuously, but only while the view is on screen and the page is showing.

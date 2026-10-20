@@ -3544,6 +3544,20 @@ See [motion recordings](motion_recordings.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/motion_closd_recording/metadata.edn)
 
+### motion_resistance_replay
+
+Watch genuine stronger-tether CLoSD motion with reference/executed poses, force and stretch, and a
+smoothed follow camera. This replay needs no models. See [Generative Mocap — ARDY and CLoSD](motion_recordings.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/motion_resistance_replay/metadata.edn)
+
+### motion_tether_score
+
+A short Kotlin movement score: walk, attach a named foot, continue walking, release. Requires
+optional CLoSD setup. See [writing a score](motion_recordings.md#write-a-movement-score).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/motion_tether_score/metadata.edn)
+
 ### motion_closd_live
 
 Give CLoSD an intention, attach a named rigid body to a point tether, apply a torso impulse and
@@ -3569,3 +3583,15 @@ Changing ARDY intentions. Live Core27 motion, timed FLine routes and sparse mode
 ARDY kinematic foot restriction. Live Core27 motion, timed FLine routes and sparse model conditioning. Requires the optional ARDY environment and cached prompts or the CPU encoder service. No physical attachment is implied.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/motion_ardy_foot/metadata.edn)
+
+### motion_recorded_results
+
+Compare recorded ARDY movement, CLoSD tether trials and ARDY route failures in an editable Field 3D renderer. No model installation. Change `experiment` in the box to select a comparison.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/motion_recorded_results/metadata.edn)
+
+### motion_ardy_demo_replay
+
+Play the interactive ARDY skipping take in Field, with editable Kotlin code and a following camera. No model installation.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/motion_ardy_demo_replay/metadata.edn)

@@ -349,6 +349,20 @@ data class ThreeCameraSpec(
     val padding: Double = 1.06,
 )
 
+/** Follow a world point by translating eye and orbit target together; the human keeps orbit and zoom. */
+@Serializable
+data class ThreeCameraFollowSpec(
+    val target: List<Double>,
+    val halfLifeSeconds: Double = .4,
+    val epoch: String = "default",
+    val horizontalOnly: Boolean = true,
+) {
+    init {
+        require(target.size == 3 && target.all(Double::isFinite))
+        require(halfLifeSeconds.isFinite() && halfLifeSeconds in .01..30.0)
+    }
+}
+
 /**
  * A view that opens with **Link camera** already on. Written by [ThreeSceneBuilder.linkCamera].
  *

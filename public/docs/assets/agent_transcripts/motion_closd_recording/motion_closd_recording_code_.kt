@@ -7,9 +7,13 @@ val recording = MotionRecording("%docs/assets/motion_recordings/closd-foot-tethe
 val clip = recording.clip()
 val events = recording.events().toList()
 val play = AtomicBoolean(false)
+val follow = AtomicBoolean(true)
+val followHalfLife = AtomicReference(.4)
 val scrub = AtomicReference(3.4)
 val showReference = AtomicBoolean(true)
 controlGroup {
+    checkbox("Follow body", initialValue=true) { follow.set(it) }
+    slider("Follow half-life seconds", .05, 2.0, initialValue=.4) { followHalfLife.set(it) }
     slider("Recorded seconds", clip.startTime, clip.endTime, initialValue=3.4) { scrub.set(it) }
     checkbox("Play", initialValue=false) { play.set(it) }
     checkbox("Reference pose", initialValue=true) { showReference.set(it) }
@@ -28,7 +32,7 @@ loop {
         color = vec(1.0, 0.3, 0.4, 1.0)
         thickness = 3.0
     }) else emptyList()
-    showMotion(snapshot.frame, clip.skeleton, reference=showReference.get(), overlays=overlays)
+    showMotion(snapshot.frame, clip.skeleton, reference=showReference.get(), overlays=overlays, follow=follow.get(), followHalfLife=followHalfLife.get())
     markdown("status", "**CLoSD · recorded GPU motion**\n\n" +
         "White: executed body. Cyan: planner reference positions. Red: physical foot tether, attached at 2 s and released at 4 s. " +
         "Time ${"%.2f".format(seconds)} s · episode ${snapshot.frame.episode}. Orbit the view with the mouse.")

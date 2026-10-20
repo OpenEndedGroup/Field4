@@ -1,15 +1,15 @@
-# Optional motion backends
+# ARDY and CLoSD setup
 
-Field's portable motion API is in `afield.animation.mocap`. Recording, replay, skeleton inspection,
-FLine drawing and route sampling run without Torch, ARDY, Isaac Gym or CLoSD. Open the
-[motion recording starting point](../../public/docs/agent_transcripts.md#motion_recording_probe)
-for an interactive coordinate probe.
+Install either backend to generate movement locally from Field. ARDY and CLoSD use separate
+Python environments and worker processes. Neither is needed to open Field or replay a recording.
 
-**ARDY and CLoSD have working local process adapters**, verified with real GPU inference and Kotlin. The probe fixture
-is a two-joint measurement instrument, not a generated human performance. See
-[VERIFICATION.md](VERIFICATION.md) for the actual results and outstanding experiments.
+For the controls, Kotlin examples and movies, start with
+[Generative Mocap — ARDY and CLoSD](../../public/docs/motion_recordings.md).
+The [recorded ARDY demo](../../public/docs/agent_transcripts.md#motion_ardy_demo_replay) and
+[CLoSD resistance/release](../../public/docs/agent_transcripts.md#motion_resistance_replay)
+run without installing a model. Use this guide when you are ready to run a live backend.
 
-## Prepare upstream reproduction
+## Install ARDY
 
 Choose a development directory outside Field. Each network gets its own source checkout and
 environment. From Field's root, fetch and inspect the pinned ARDY revision:
@@ -192,3 +192,32 @@ The interop smoke writes a Kotlin recording, reads/rechunks it in Python, and co
 returned pose in Kotlin. Consequential unit checks cover coordinates/reflections, skeleton
 topology/hash, normalized quaternions, reset interpolation, bounded buffers/queues, event order,
 corrupt recordings, body mapping and point-force torque/velocity.
+
+## Compose a performance
+
+The authoring extensions stay on the existing `MotionSession`: `prompt`, `route`, named `body`
+and `joint` handles, and `playMotion` from a Field `frames` coroutine. `awaitMotion()` suspends
+without blocking the runloop. See [the Kotlin score](examples/tether_score.kt) and
+[the live instrument](examples/live_closd.kt). A body tether returns a handle with `tune`, `moveTo`,
+`release`, a scheduling acknowledgement and actual `observation` telemetry. Runtime body-local
+points use Field's existing quaternion hierarchy. Reset/break events retire the observed connection;
+a retired handle's release is harmless. Reattach before tuning it again.
+
+`MotionSession.replay(recording)` replays stored interventions and reset events as well as poses;
+no model is run. `playMotion` rounds a requested duration to complete model/control steps and clamps
+recorded playback at its end. The existing `Three` viewer can follow a point with a browser-side
+exponential filter: `followCamera(point, halfLifeSeconds=.4, epoch=episode.toString())`.
+`showMotion(..., follow=true)` supplies the executed root and episode automatically. Eye and orbit
+target translate together, preserving orbit/pan/zoom; horizontal tracking suppresses jump bob.
+
+The live instrument exposes Drag (150/15/150) and Resist (8000/120/2500) presets in stiffness N/m,
+damping N s/m and maximum force N. These are compliant capped springs, not fixed joints. The
+stronger seed-0 two-second trial has 4 cm mean / 13 cm maximum raw anchor error. A longer trial
+attached from 0.1 s has 4.2 cm mean error while active, then the controller terminates and resets;
+this is a useful failure, not recovery. `trial.py --attach-time .1 --release-time 8 --duration 9`
+reproduces that timing; stiffness, damping and cap remain explicit options. Its summary includes
+raw mean/max/final tether residuals. The interactive scene uses a 60-second episode limit with
+stock early termination still enabled; every reset releases attachments and is visible in telemetry.
+
+Playable Field movies and the new replay/score starting points are on the
+[public motion page](../../public/docs/motion_recordings.md).

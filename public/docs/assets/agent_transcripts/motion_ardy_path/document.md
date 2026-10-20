@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_ardy_path" index="0" -->
 
 ```edn [field-box id="motion_ardy_path" role="properties"]
-{"id" "motion_ardy_path" "index" 0 "name" "ARDY — timed Field routes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ARDY — timed Field routes" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_ardy_path_code_.kt" "lines" 159 "characters" 10334 "sha256" "7a1a34abb61fe020068ed0ea57b6424e9093e335c216883ff0812c57bf53122e"}]}
+{"id" "motion_ardy_path" "index" 0 "name" "ARDY — timed Field routes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ARDY — timed Field routes" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_ardy_path_code_.kt" "lines" 165 "characters" 10806 "sha256" "6fac329ab3f8ef447b40f34b681b8429e4e3dbcbb6b2a3eb2e66a404120f31c7"}]}
 ```
 
 ```kotlin [field-property box="motion_ardy_path" name="code" path="motion_ardy_path_code_.kt"]
@@ -26,7 +26,7 @@ import kotlin.math.*
 
 val experiment = "path" // Starting-point presets: path, intentions, foot.
 val actions = ArrayBlockingQueue<String>(8)
-val prompt = AtomicReference("A person walks forward.")
+val prompt = AtomicReference(if (experiment == "intentions") "A person skips forward." else "A person walks forward.")
 val routeName = AtomicReference("line")
 val routeDuration = AtomicReference(6.0)
 val easeSpeed = AtomicBoolean(false)
@@ -35,12 +35,17 @@ val orientation = AtomicBoolean(false)
 val jointName = AtomicReference("LeftFoot")
 val pinDuration = AtomicReference(2.0)
 val playing = AtomicBoolean(true)
+val follow = AtomicBoolean(true)
+val followHalfLife = AtomicReference(.4)
 val notice = AtomicReference("Opening ARDY…")
 fun action(value: String, down: Boolean) { if (down && !actions.offer(value)) notice.set("Controls queue full") }
 
 controlGroup(columns=2) {
+    checkbox("Follow body", initialValue=true) { follow.set(it) }
+    slider("Follow half-life seconds", .05, 2.0, initialValue=.4) { followHalfLife.set(it) }
     stringInput("Intention", initialValue=prompt.get()) { prompt.set(it) }
     button("Apply intention") { action("prompt", it) }
+    button("Skip") { action("skip", it) }
     button("Run") { action("run", it) }
     button("Sneak") { action("sneak", it) }
     button("Recoil") { action("recoil", it) }
@@ -93,8 +98,9 @@ frames {
             while (command != null) {
                 try {
                     when (command) {
-                        "prompt", "run", "sneak", "recoil", "stop" -> {
+                        "prompt", "skip", "run", "sneak", "recoil", "stop" -> {
                             val text = when (command) {
+                                "skip" -> "A person skips forward."
                                 "run" -> "A person runs forward."
                                 "sneak" -> "A person walks stealthily and crouches."
                                 "recoil" -> "A person recoils and steps backwards with raised hands."
@@ -159,7 +165,7 @@ frames {
                     val p = sample.frame.executed.position(worker.skeleton.joint(pinnedJoint))
                     moveTo(p); lineTo(target[0], target[1], target[2]); color = vec(1.0, .3, .4, 1.0); thickness = 3.0
                 } else pathOverlay
-                showMotion(sample.frame, worker.skeleton, reference=false, overlays=lines)
+                showMotion(sample.frame, worker.skeleton, reference=false, overlays=lines, follow=follow.get(), followHalfLife=followHalfLife.get())
                 val residual = if (target == null || sample.frame.time >= pinUntil) "" else {
                     val p = sample.frame.executed.position(worker.skeleton.joint(pinnedJoint))
                     val error = sqrt((p.x - target[0]).pow(2) + (p.y - target[1]).pow(2) + (p.z - target[2]).pow(2))

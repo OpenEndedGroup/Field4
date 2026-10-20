@@ -11,154 +11,148 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_closd_live" index="0" -->
 
 ```edn [field-box id="motion_closd_live" role="properties"]
-{"id" "motion_closd_live" "index" 0 "name" "CLoSD — intention and interference" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — intention and interference" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_closd_live_code_.kt" "lines" 146 "characters" 8170 "sha256" "068cbd2af730cbd58ffb29eca6de7e18dc980d5279244b0e8f4f42352b3d6913"}]}
+{"id" "motion_closd_live" "index" 0 "name" "CLoSD — intention and interference" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — intention and interference" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_closd_live_code_.kt" "lines" 140 "characters" 8241 "sha256" "e1e9928f191e836a2ccc35adf968c5acd934b1e2f8d8b8ba5366d9ffee2ccd11"}]}
 ```
 
 ```kotlin [field-property box="motion_closd_live" name="code" path="motion_closd_live_code_.kt"]
-import afield.animation.mocap.CLoSD
-import afield.animation.mocap.MotionAttachment
-import afield.animation.mocap.MotionProcessConfig
-import afield.animation.mocap.MotionSession
-import afield.animation.mocap.MotionUpdate
-import afield.animation.mocap.showMotion
+import afield.animation.mocap.*
+import afield.math.linalg.vec
+import afield.ui.output.ControlValueHandle
 import java.nio.file.Files
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.time.Duration.Companion.milliseconds
 import org.json.JSONObject
 
 val actions = ArrayBlockingQueue<String>(8)
 val prompt = AtomicReference("A person walks forward.")
 val bodyName = AtomicReference("L_Ankle")
-val stiffness = AtomicReference(150.0)
-val damping = AtomicReference(15.0)
+val stiffnessValue = AtomicReference(150.0)
+val dampingValue = AtomicReference(15.0)
 val cap = AtomicReference(150.0)
 val breakable = AtomicBoolean(false)
-val running = AtomicBoolean(true)
+val playing = AtomicBoolean(true)
+val follow = AtomicBoolean(true)
+val halfLife = AtomicReference(.4)
 val anchorSpeed = AtomicReference(0.0)
 val notice = AtomicReference("Opening CLoSD…")
-fun action(name: String, pressed: Boolean) { if (pressed && !actions.offer(name)) notice.set("Controls queue full; retry the action.") }
+lateinit var stiffnessControl: ControlValueHandle<Double>
+lateinit var dampingControl: ControlValueHandle<Double>
+lateinit var forceControl: ControlValueHandle<Double>
+fun action(name: String, down: Boolean) { if (down && !actions.offer(name)) notice.set("Controls queue full") }
 
 controlGroup(columns=2) {
     stringInput("Intention", initialValue=prompt.get()) { prompt.set(it) }
     button("Apply intention") { action("prompt", it) }
-    stringInput("Rigid body", initialValue=bodyName.get()) { bodyName.set(it) }
-    slider("Stiffness N/m", 0.0, 3000.0, initialValue=150.0) { stiffness.set(it) }
-    slider("Damping N s/m", 0.0, 150.0, initialValue=15.0) { damping.set(it) }
-    slider("Force cap N", 1.0, 800.0, initialValue=150.0) { cap.set(it) }
-    checkbox("Break after demanded 30 N persists for 0.1 s", initialValue=false) { breakable.set(it) }
+    stringInput("Rigid body", initialValue="L_Ankle") { bodyName.set(it) }
     button("Attach at current body position") { action("attach", it) }
-    slider("Moving anchor +X m/s", -0.5, 0.5, initialValue=0.0) { anchorSpeed.set(it) }
-    button("Move anchor +X 0.1 m") { action("move", it) }
+    stiffnessControl = slider("Stiffness N/m", 0.0, 16000.0, initialValue=150.0) { stiffnessValue.set(it) }
+    dampingControl = slider("Damping N s/m", 0.0, 300.0, initialValue=15.0) { dampingValue.set(it) }
+    forceControl = slider("Force cap N", 1.0, 4000.0, initialValue=150.0) { cap.set(it) }
     button("Update tether parameters") { action("update", it) }
+    button("Drag — gentle tether") { action("drag", it) }
+    button("Resist — strong tether") { action("resist", it) }
+    checkbox("Break after demanded 1200 N persists for 0.1 s", initialValue=false) { breakable.set(it) }
     button("Release") { action("detach", it) }
+    slider("Moving anchor +X m/s", -.5, .5, initialValue=0.0) { anchorSpeed.set(it) }
+    button("Move anchor +X 0.1 m") { action("move", it) }
     button("Torso impulse +X, 10 N s") { action("impulse", it) }
     button("Reset character") { action("reset", it) }
-    checkbox("Advance simulation", initialValue=true) { running.set(it) }
+    checkbox("Follow body", initialValue=true) { follow.set(it) }
+    slider("Follow half-life seconds", .05, 2.0, initialValue=.4) { halfLife.set(it) }
+    checkbox("Advance simulation", initialValue=true) { playing.set(it) }
 }
 
 frames {
-    val opening = CLoSD.openAsync(MotionProcessConfig()) // Set FIELD_MOTION_HOME before launching Field.
-    var session: MotionSession? = null
-    try {
-        while (!opening.isDone) {
-            markdown("status", "Starting the optional CLoSD worker…")
-            delay(16)
-        }
-        val worker = opening.get()
-        session = worker
+    // Longer observation window; stock fall/termination logic and executed feedback remain enabled.
+    val worker = CLoSD.openAsync(MotionProcessConfig(overrides=listOf("env.episode_length=1800"))).awaitMotion()
+    worker.use { dancer ->
         val root = "motion-recordings".path
         Files.createDirectories(root)
         val recording = root.resolve("closd-${System.currentTimeMillis()}.f4motion")
-        worker.record(recording, JSONObject().put("backend", "closd").put("seed", 0)
-            .put("capabilities", worker.capabilities.details))
-        worker.setPrompt(prompt.get(), 0.0)
+        dancer.record(recording, JSONObject().put("backend", "closd").put("capabilities", dancer.capabilities.details))
+        dancer.prompt(prompt.get())
+        dancer.advance(.1).awaitMotion()
+        var tether: MotionTether? = null
         var pending: CompletableFuture<MotionUpdate>? = null
-        var attachment: MotionAttachment? = null
-        var attachmentTime = 0.0
-        fun currentAnchor(time: Double, target: MotionAttachment) = (0..2).map { target.anchor[it] + target.anchorVelocity[it] * (time - attachmentTime).coerceAtLeast(0.0) }
-        var displayTime = 0.0
+        var displayTime = dancer.latest!!.time
         var lastWall = AnimationClock.nowSeconds()
-        notice.set("Ready. Recording to $recording")
+        var lastEvent = dancer.telemetry.lastEvent
+        notice.set("Ready · Drag attaches a gentle spring; Resist attaches a strong capped spring. Neither is an exact pin.")
         while (true) {
             val now = AnimationClock.nowSeconds()
-            if (running.get()) displayTime += (now - lastWall).coerceAtMost(.1)
+            if (playing.get()) displayTime += (now-lastWall).coerceAtMost(.1)
             lastWall = now
-            val ready = pending
-            if (ready != null && ready.isDone) {
-                val update = ready.get()
-                if (update.events.any { it.optString("type") in setOf("reset", "tetherBreak") }) attachment = null
-                pending = null
+            if (pending?.isDone == true) { pending.get(); pending = null }
+            if (dancer.telemetry.lastEvent != lastEvent) {
+                lastEvent = dancer.telemetry.lastEvent; notice.set(lastEvent)
             }
-            val latest = worker.latest
             var command = actions.poll()
             while (command != null) {
-                val time = latest?.time ?: 0.0
                 try {
                     when (command) {
-                        "prompt" -> worker.setPrompt(prompt.get(), time)
-                        "attach" -> {
-                            val pose = latest ?: kotlin.error("Wait for the first pose")
-                            val mapping = worker.skeleton.body(bodyName.get())
-                            val index = worker.skeleton.joint(mapping.joint)
-                            val anchor = pose.executed.worldPositions.subList(index * 3, index * 3 + 3)
-                            val next = MotionAttachment("tether", mapping.name, listOf(0.0, 0.0, 0.0), anchor,
-                                stiffness=stiffness.get(), damping=damping.get(), maximumForce=cap.get(), anchorVelocity=listOf(anchorSpeed.get(), 0.0, 0.0),
-                                breakForce=if (breakable.get()) 30.0 else null)
-                            if (attachment != null) worker.detach("tether", time)
-                            worker.attach(next, time)
-                            attachment = next
-                            attachmentTime = time
-                        }
-                        "move" -> {
-                            val old = attachment ?: kotlin.error("Attach a body first")
-                            val a = currentAnchor(time, old)
-                            val next = old.copy(anchor=listOf(a[0] + .1, a[1], a[2]))
-                            worker.updateAttachment(next, time)
-                            attachment = next
-                            attachmentTime = time
+                        "prompt" -> dancer.prompt(prompt.get())
+                        "drag", "resist", "attach" -> {
+                            if (command != "attach") {
+                                val strong = command == "resist"
+                                stiffnessValue.set(if (strong) 8000.0 else 150.0)
+                                dampingValue.set(if (strong) 120.0 else 15.0)
+                                cap.set(if (strong) 2500.0 else 150.0)
+                                stiffnessControl.set(stiffnessValue.get()); dampingControl.set(dampingValue.get()); forceControl.set(cap.get())
+                            }
+                            tether?.release()
+                            tether = dancer.body(bodyName.get()).tether("tether") {
+                                this.stiffness = stiffnessValue.get(); this.damping = dampingValue.get(); maxForce = cap.get()
+                                ramp = 200.milliseconds; velocity = vec(anchorSpeed.get(), 0, 0)
+                                if (breakable.get()) breakAbove(1200.0)
+                            }
                         }
                         "update" -> {
-                            val old = attachment ?: kotlin.error("Attach a body first")
-                            val next = old.copy(anchor=currentAnchor(time, old), stiffness=stiffness.get(), damping=damping.get(), maximumForce=cap.get(), anchorVelocity=listOf(anchorSpeed.get(), 0.0, 0.0),
-                                breakForce=if (breakable.get()) 30.0 else null)
-                            worker.updateAttachment(next, time)
-                            attachment = next
-                            attachmentTime = time
+                            val t = tether ?: kotlin.error("Attach a body first")
+                            check(t.observation?.active != false) { "${t.observation?.reason}: attach again" }
+                            t.tune {
+                                this.stiffness=stiffnessValue.get(); this.damping=dampingValue.get(); maxForce=cap.get()
+                                velocity=vec(anchorSpeed.get(),0,0)
+                                if (breakable.get()) breakAbove(1200.0) else unbreakable()
+                            }
                         }
-                        "detach" -> { check(attachment != null) { "No active tether" }; worker.detach("tether", time); attachment = null }
-                        "impulse" -> worker.applyImpulse("Torso", listOf(0.0, 0.0, 0.0), listOf(10.0, 0.0, 0.0), time)
-                        "reset" -> { worker.reset(time); attachment = null }
+                        "move" -> {
+                            val t=tether ?: kotlin.error("Attach a body first")
+                            val a=t.observation?.anchor ?: t.parameters.anchor
+                            t.moveTo(vec(a[0]+.1,a[1],a[2]), vec(anchorSpeed.get(),0,0))
+                        }
+                        "detach" -> tether?.release()
+                        "impulse" -> dancer.body("Torso").impulse(vec(10,0,0))
+                        "reset" -> dancer.reset(dancer.editableTime)
                     }
-                    notice.set("$command at session ${"%.2f".format(time)} s · recording $recording")
+                    notice.set("$command · next editable time ${"%.2f".format(dancer.editableTime)} s")
                 } catch (e: Exception) { notice.set(e.message ?: e.toString()) }
-                command = actions.poll()
+                command=actions.poll()
             }
-            if (running.get() && pending == null && (latest == null || latest.time < displayTime + .1)) pending = worker.advance(.1)
-            worker.buffer.sample(displayTime)?.let { snapshot ->
-                val target = attachment
-                val overlays = if (target != null) listOf(fline {
-                    val joint = worker.skeleton.joint(worker.skeleton.body(target.body).joint)
-                    val p = snapshot.frame.executed.position(joint)
-                    moveTo(p)
-                    val a = currentAnchor(snapshot.frame.time, target)
-                    lineTo(a[0], a[1], a[2])
-                    color = vec(1.0, 0.3, 0.4, 1.0); thickness = 3.0
-                }) else emptyList()
-                showMotion(snapshot.frame, worker.skeleton, overlays=overlays)
-                markdown("status", "${notice.get()}\n\nSession ${"%.2f".format(snapshot.frame.time)} s · episode ${snapshot.frame.episode} · " +
-                    "lag ${"%.3f".format(snapshot.lagSeconds)} s · held ${snapshot.held} · dropped ${worker.buffer.dropped}. " +
-                    "White: executed. Cyan: reference. Red: point tether. Contact marks: measured force > 1 N.")
+            if (playing.get() && pending==null && dancer.editableTime < displayTime+.1) pending=dancer.advance(.1)
+            dancer.buffer.sample(displayTime)?.let { sample ->
+                val observed=tether?.observation
+                showMotion(sample.frame,dancer.skeleton,overlays=observed?.overlays() ?: emptyList(),
+                    follow=follow.get(),followHalfLife=halfLife.get())
+                val connection = when {
+                    tether==null -> "Detached"
+                    observed==null -> "Waiting for physics — enable Advance simulation"
+                    !observed.active -> "${observed.reason} — attach again to resume the tether"
+                    else -> "${observed.body}: ${"%.1f".format(observed.stretchMetres*100)} cm stretch · " +
+                        "${"%.0f".format(observed.forceN)} / ${"%.0f".format(observed.maxForce)} N" +
+                        if(observed.saturated) " · FORCE CAPPED" else ""
+                }
+                markdown("status", "${notice.get()}\n\n**$connection**\n\n"+
+                    "White: executed body · cyan: reference · red: anchor/spring · amber: submitted force (scaled). " +
+                    "${"%.2f".format(sample.frame.time)} s · episode ${sample.frame.episode} · lag ${"%.3f".format(sample.lagSeconds)} s. " +
+                    "Resets release attachments. Force and power are mechanical quantities, not muscular effort. Recording $recording")
             }
-            worker.failure?.let { throw it }
-            displayOpen("motion")
-            displayOpen("status")
+            dancer.failure?.let { throw it }
+            displayOpen("motion"); displayOpen("status")
             delay(16)
         }
-    } finally {
-        session?.close()
-        if (!opening.isDone) opening.cancel(false)
     }
 }
 ```

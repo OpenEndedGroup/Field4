@@ -1,0 +1,49 @@
+{
+  "mode": "path",
+  "frames": 120,
+  "fps": 20.0,
+  "coldSeconds": 5.072948967921548,
+  "rootDisplacementM": [
+    -0.00439055822789669,
+    0.009731173515319824,
+    3.550578861963004
+  ],
+  "advanceP50Ms": 1.1938229436054826,
+  "advanceP95Ms": 96.74173104576766,
+  "generationEvents": [
+    {
+      "type": "generation",
+      "time": 0.0,
+      "revision": 2,
+      "generationMs": 302.055298932828,
+      "encodingMs": 0.3584700170904398,
+      "historyFrames": 0,
+      "horizonFrames": 40,
+      "postprocess": false
+    },
+    {
+      "type": "generation",
+      "time": 2.0,
+      "revision": 2,
+      "generationMs": 133.81760905031115,
+      "encodingMs": 0.16117095947265625,
+      "historyFrames": 40,
+      "horizonFrames": 40,
+      "postprocess": false
+    },
+    {
+      "type": "generation",
+      "time": 4.0,
+      "revision": 2,
+      "generationMs": 93.16470904741436,
+      "encodingMs": 0.22335804533213377,
+      "historyFrames": 80,
+      "horizonFrames": 40,
+      "postprocess": false
+    }
+  ],
+  "targetResidualMeanM": null,
+  "targetResidualMaxM": null,
+  "commandToVisibleMeasured": false,
+  "visualInspection": false
+}

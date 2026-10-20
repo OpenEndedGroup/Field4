@@ -1,0 +1,4 @@
+{"operation":"PROMPT","revision":1,"requestedTime":0.0,"payload":{"text":"A person walks forward."},"type":"requested"}
+{"type":"applied","operation":"PROMPT","revision":1,"requestedTime":0.0,"appliedTime":0.0,"frameIndex":0,"episode":0,"payload":{"text":"A person walks forward."}}
+{"type":"planner","time":2.0000001043081284,"revision":1,"physicsTick":122,"prefixSource":"executed","prefixResidualM":0.00624413788318634}
+{"type":"planner","time":4.000000208616257,"revision":1,"physicsTick":242,"prefixSource":"executed","prefixResidualM":0.05085092782974243}

@@ -25,11 +25,15 @@ def main():
     parser.add_argument('--mode', choices=['baseline', 'impulse', 'weak', 'trap', 'break', 'informed', 'hand', 'moving', 'strong'], default='baseline')
     parser.add_argument('--duration', type=float, default=6.)
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--attach-time', type=float, default=2.)
+    parser.add_argument('--release-time', type=float, default=4.)
     parser.add_argument('--override', action='append', default=[], help='Explicit upstream Hydra override')
     parser.add_argument('--stiffness', type=float)
     parser.add_argument('--damping', type=float)
     parser.add_argument('--maximum-force', type=float)
     args = parser.parse_args()
+    if not 0 <= args.attach_time < args.release_time <= args.duration:
+        parser.error('Require 0 <= attach-time < release-time <= duration')
     home = args.home.resolve()
     python = home / 'environments/closd/bin/python'
     source = home / 'upstream/CLoSD'
@@ -70,6 +74,7 @@ def main():
                 timestamp=datetime.now(timezone.utc).isoformat(), capabilities=hello['capabilities'],
                 assetRevision='de7106b947b6f70700b5320d1cd61fef4a9ebc9b', upstreamOverrides=args.override,
                 tetherOverrides=dict(stiffness=args.stiffness, damping=args.damping, maximumForce=args.maximum_force))
+            config.update(attachTime=args.attach_time, releaseTime=args.release_time)
             with RecordingWriter(args.output, hello['skeleton'], config) as recorder:
                 revision = 0
                 def command(operation, requested, payload):
@@ -83,7 +88,7 @@ def main():
                 attached = released = False
                 while not all_frames or all_frames[-1]['time'] < args.duration - 1e-6:
                     clock = all_frames[-1]['time'] if all_frames else 0.
-                    if clock >= 2. - 1e-6 and not attached:
+                    if clock >= args.attach_time - 1e-6 and not attached:
                         attached = True
                         if args.mode == 'impulse':
                             command('IMPULSE', clock, dict(body='Torso', localPoint=[0., 0., 0.], impulse=[10., 0., 0.]))
@@ -100,9 +105,9 @@ def main():
                             for option, key in [(args.stiffness, 'stiffness'), (args.damping, 'damping'), (args.maximum_force, 'maximumForce')]:
                                 if option is not None: payload[key] = option
                             command('ATTACH', clock, payload)
-                    if clock >= 4. - 1e-6 and attached and not released:
+                    if clock >= args.release_time - 1e-6 and attached and not released:
                         released = True
-                        active = not any(e['type'] in ('tetherBreak', 'reset') and e.get('time', 0) >= 2 for e in all_events)
+                        active = not any(e['type'] in ('tetherBreak', 'reset') and e.get('time', 0) >= args.attach_time for e in all_events)
                         if args.mode not in ('baseline', 'impulse') and active:
                             command('DETACH', clock, dict(id='tether'))
                     tick = time.perf_counter()
@@ -114,6 +119,7 @@ def main():
                         recorder.append(frame); all_frames.append(frame)
                 call('close')
             ordered = sorted(durations)
+            tether_events = [e for e in all_events if e['type'] == 'tetherPhysics']
             summary = dict(mode=args.mode, frames=len(all_frames), duration=all_frames[-1]['time'],
                 coldSeconds=time.perf_counter() - start - sum(durations),
                 advanceP50Ms=ordered[len(ordered)//2]*1000, advanceP95Ms=ordered[int((len(ordered)-1)*.95)]*1000,
@@ -121,6 +127,10 @@ def main():
                 maxPrefixResidualM=max(f['diagnostics']['prefixResidualM'] for f in all_frames),
                 meanTrackingErrorM=sum(f['diagnostics']['trackingErrorM'] for f in all_frames)/len(all_frames),
                 maxTetherForceN=max([e['forceN'] for e in all_events if e['type']=='tetherPhysics'] or [0]),
+                attachTime=args.attach_time, releaseTime=args.release_time,
+                meanTetherErrorM=sum(e['errorM'] for e in tether_events) / len(tether_events) if tether_events else None,
+                maxTetherErrorM=max([e['errorM'] for e in tether_events] or [0]),
+                finalTetherErrorM=tether_events[-1]['errorM'] if tether_events else None,
                 totalTetherWorkJ=sum(e['workJ'] for e in all_events if e['type']=='tetherPhysics'),
                 commandToVisibleMeasured=False, visualInspection=False)
             args.output.with_suffix('.summary.json').write_text(json.dumps(summary, indent=2) + '\n')

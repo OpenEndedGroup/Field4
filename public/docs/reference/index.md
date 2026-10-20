@@ -628,7 +628,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**32377 public symbols across 1475 source files**, 16265 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**32429 public symbols across 1477 source files**, 16287 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -641,7 +641,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 12 | 125 | 41 (32%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 41 | 1954 | 1413 (72%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 293 | 7009 | 3505 (50%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 293 | 7016 | 3508 (50%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 42 | 742 | 373 (50%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
@@ -658,7 +658,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Languages](languages.md) | 121 | 3075 | 1390 (45%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 212 | 2984 | 1043 (34%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 92 | 2203 | 674 (30%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
-| [Animation](animation.md) | 8 | 133 | 22 (16%) |  |
+| [Animation](animation.md) | 10 | 178 | 41 (23%) |  |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 
 ## Every file
@@ -1460,15 +1460,17 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>morpho/<wbr></small> [MorphoSim.kt](languages.md#morphosim-kt) | Languages | 9 | 7 | What a compiled MorphoHDL circuit computes, and how deep it is: a bit-parallel logic simulator, plus the per-cell arrival times morpho's own compiler already hands over. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>morpho/<wbr></small> [MorphoSpec.kt](languages.md#morphospec-kt) | Languages | 48 | 22 | What a MorphoHDL design is *supposed* to do, and how much it is allowed to cost — the half of a search that morpho itself has no opinion about. | [Searching for MorphoHDL Circuits](../morpho_search.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [Motion.kt](animation.md#motion-kt) | Animation | 48 | 6 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionAuthoring.kt](animation.md#motionauthoring-kt) | Animation | 41 | 17 |  | [Intention and resistance](../motion_recordings.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionCommands.kt](animation.md#motioncommands-kt) | Animation | 14 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionExamples.kt](animation.md#motionexamples-kt) | Animation | 3 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionInteropSmoke.kt](graphics.md#motioninteropsmoke-kt) | Graphics | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [MotionItems.kt](graphics.md#motionitems-kt) | Graphics | 9 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionPlayback.kt](animation.md#motionplayback-kt) | Animation | 10 | 2 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionProcess.kt](animation.md#motionprocess-kt) | Animation | 18 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionProcess.kt](animation.md#motionprocess-kt) | Animation | 18 | 1 |  | [Intention and resistance](../motion_recordings.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionRecording.kt](animation.md#motionrecording-kt) | Animation | 11 | 2 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionSession.kt](animation.md#motionsession-kt) | Animation | 28 | 6 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionView.kt](animation.md#motionview-kt) | Animation | 1 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionScoreSmoke.kt](animation.md#motionscoresmoke-kt) | Animation | 2 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionSession.kt](animation.md#motionsession-kt) | Animation | 29 | 6 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionView.kt](animation.md#motionview-kt) | Animation | 2 | 2 |  | [Intention and resistance](../motion_recordings.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [MouseEvents.kt](graphics.md#mouseevents-kt) | Graphics | 23 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>motion/<wbr></small> [movement.kt](simulation.md#movement-kt) | Simulation | 41 | 31 | Springs, dampers, and a steerable character built out of four of them. | [Springs, dampers, and a character with mass](../movement_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>mqtt/<wbr></small> [MqttBox.kt](networking.md#mqttbox-kt) | Networking | 29 | 25 |  | [MQTT: sensors, devices and brokers](../mqtt.md) |
@@ -2035,14 +2037,14 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr>tetgen/<wbr></small> [TetMeshViews.kt](simulation.md#tetmeshviews-kt) | Simulation | 6 | 6 | Ways of looking at a `TetMesh`: its element quality, a slice of it, and the triangles that draw it. | [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr></small> [textures.kt](graphics.md#textures-kt) | Graphics | 34 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr></small> [TextureSampler.kt](graphics.md#texturesampler-kt) | Graphics | 4 | 0 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [Three.kt](graphics.md#three-kt) | Graphics | 31 | 28 |  | [Three.js scenes with `three { … }`](../three_output.md), [Geometry from disk](../geometry_from_disk.md), [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [Three.kt](graphics.md#three-kt) | Graphics | 32 | 29 |  | [Three.js scenes with `three { … }`](../three_output.md), [Geometry from disk](../geometry_from_disk.md), [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ThreeFeatureReviewWorkout.kt](examples.md#threefeaturereviewworkout-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeJsInspector.kt](graphics.md#threejsinspector-kt) | Graphics | 96 | 30 |  | [FLine examples (Field graphics)](../fline_examples.md), [Three.js scenes with `three { … }`](../three_output.md), [Point to geometry, keep the context](../geometry_review.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeJsViewer.kt](graphics.md#threejsviewer-kt) | Graphics | 123 | 40 |  | [Three.js scenes with `three { … }`](../three_output.md), [FLine examples (Field graphics)](../fline_examples.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeJsViewer.kt](graphics.md#threejsviewer-kt) | Graphics | 124 | 41 |  | [Three.js scenes with `three { … }`](../three_output.md), [FLine examples (Field graphics)](../fline_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreePartAppearance.kt](graphics.md#threepartappearance-kt) | Graphics | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeReview.kt](graphics.md#threereview-kt) | Graphics | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeReviewEvidence.kt](graphics.md#threereviewevidence-kt) | Graphics | 0 | 0 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeScene.kt](graphics.md#threescene-kt) | Graphics | 72 | 62 |  | [Three.js scenes with `three { … }`](../three_output.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeScene.kt](graphics.md#threescene-kt) | Graphics | 77 | 63 |  | [Three.js scenes with `three { … }`](../three_output.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>three/<wbr></small> [ThreeWire.kt](graphics.md#threewire-kt) | Graphics | 7 | 5 | What a Three.js view puts on the wire, and what it refuses to. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [TidalPatterns.kt](patterns.md#tidalpatterns-kt) | Patterns | 171 | 37 | Field's pattern language: a compact text notation for musical structure, an exact algebra over cycles, and a scheduler that turns the result into events in seconds. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [A pattern as a function generator](../marf.md), [Petri nets](../petri_nets.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>flow/<wbr></small> [TileAtlasLayout.kt](simulation.md#tileatlaslayout-kt) | Simulation | 8 | 1 |  |  |

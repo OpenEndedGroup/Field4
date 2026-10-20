@@ -38,6 +38,7 @@ interface MotionBackend : AutoCloseable {
  */
 class MotionSession(private val backend: MotionBackend, val queueCapacity: Int = 32,
     val buffer: MotionBuffer = MotionBuffer()) : AutoCloseable {
+    val telemetry = MotionTelemetry()
     val skeleton get() = backend.skeleton
     val capabilities get() = backend.capabilities
     @Volatile var latest: MotionFrame? = null; private set
@@ -56,10 +57,11 @@ class MotionSession(private val backend: MotionBackend, val queueCapacity: Int =
     private val backendClosed = AtomicBoolean()
     private var active: CompletableFuture<Any?>? = null
     private val worker: Thread
+    private val ownerScope = RunScope.current()
     init {
         require(queueCapacity in 1..1024)
         worker = Thread({ work() }, "field-motion-${capabilities.backend}").apply { isDaemon = true; start() }
-        RunScope.current()?.own(this, ReleasePolicy.RUNNING)
+        ownerScope?.own(this, ReleasePolicy.RUNNING)
     }
     fun subscribe(listener: (MotionFrame) -> Unit): AutoCloseable = synchronized(lock) {
         check(!closed)
@@ -182,6 +184,7 @@ class MotionSession(private val backend: MotionBackend, val queueCapacity: Int =
                         pending.future.complete(applied)
                     } else {
                         val update = backend.advance(pending.seconds!!)
+                        telemetry.accept(update)
                         require(update.frames.size <= 10000) { "Backend returned an unbounded batch" }
                         synchronized(lock) { update.events.forEach { recorder?.event(it) } }
                         for (frame in update.frames) {
@@ -214,10 +217,12 @@ class MotionSession(private val backend: MotionBackend, val queueCapacity: Int =
                 runCatching { recorder?.close() }.onFailure { if (failure == null) failure = it }
             }
             closeBackend()
+            ownerScope?.disown(this)
         }
     }
     /** Nonblocking on Field's runloop; the backend must make its close unblock pending I/O. */
     override fun close() {
+        ownerScope?.disown(this)
         synchronized(lock) {
             if (closed) return
             closed = true; subscribers.clear(); lock.notifyAll()
@@ -233,13 +238,18 @@ class MotionSession(private val backend: MotionBackend, val queueCapacity: Int =
     }
     companion object {
         fun replay(clip: MotionClip) = MotionSession(ReplayBackend(clip))
+        /** Replay poses and actual intervention/reset events from a portable recording. */
+        fun replay(recording: MotionRecording) = MotionSession(ReplayBackend(recording.clip(), recording.events().toList()))
     }
 }
 
-private class ReplayBackend(private val clip: MotionClip) : MotionBackend {
+private class ReplayBackend(private val clip: MotionClip, events: List<JSONObject> = emptyList()) : MotionBackend {
+    private fun eventTime(e: JSONObject) = e.optDouble("physicsTime", e.optDouble("time", e.optDouble("appliedTime", e.optDouble("requestedTime", clip.startTime))))
+    private val events = events.sortedBy(::eventTime)
+    private var nextEvent = 0
     override val skeleton = clip.skeleton
     override val capabilities = MotionCapabilities("recording.replay", setOf(MotionOperation.ADVANCE),
-        JSONObject().put("resimulation", false))
+        JSONObject().put("resimulation", false).put("startTime", clip.startTime).put("endTime", clip.endTime))
     private var next = 0
     private var time = clip.startTime
     override fun command(command: MotionCommand): MotionApplied = error("Recording playback does not change intentions or re-simulate")
@@ -247,7 +257,9 @@ private class ReplayBackend(private val clip: MotionClip) : MotionBackend {
         time += seconds
         val frames = ArrayList<MotionFrame>()
         while (next < clip.frames.size && clip.frames[next].time <= time) frames.add(clip.frames[next++])
-        return MotionUpdate(frames)
+        val emitted = ArrayList<JSONObject>()
+        while (nextEvent < events.size && eventTime(events[nextEvent]) <= time) emitted.add(events[nextEvent++])
+        return MotionUpdate(frames, emitted)
     }
     override fun close() = Unit
 }

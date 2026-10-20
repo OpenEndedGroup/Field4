@@ -125,7 +125,7 @@ class CLoSDBridge:
             raise ValueError('Executed feedback requires context_switch_prob=0 and planning_horizon_multiplyer=1')
         self.capabilities = dict(backend='closd', operations=['PROMPT', 'ATTACH', 'UPDATE_ATTACHMENT', 'DETACH', 'IMPULSE', 'RESET', 'ADVANCE'],
             schema=1, fixedControlStep=task.dt, fixedPhysicsStep=task.dt / task.control_freq_inv,
-            referenceRotationsAvailable=False, physicsSubsteps=task.gym.get_sim_params(task.sim).substeps, sourceCommit='d8950bdb78312fcd2844f336b3fc079e7368c87f',
+            referenceRotationsAvailable=False, episodeLengthFrames=int(task.max_episode_length), physicsSubsteps=task.gym.get_sim_params(task.sim).substeps, sourceCommit='d8950bdb78312fcd2844f336b3fc079e7368c87f',
             checkpoint='guytevet/CLoSD', checkpointRevision='de7106b947b6f70700b5320d1cd61fef4a9ebc9b', seed=int(torch.initial_seed()),
             termination=dict(earlyEnabled=bool(task._enable_early_termination),
                 distanceM=task._termination_distances.detach().cpu().tolist(),

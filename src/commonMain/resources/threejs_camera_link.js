@@ -170,3 +170,39 @@ export function createTurntable({key, now = () => performance.now(), wake = () =
         }
     });
 }
+
+/** Exponential low-pass translation. It never changes eye-to-target offset, orbit or zoom. */
+export function createCameraFollow({translate, readTarget=null, up=()=>[0,1,0], now=()=>performance.now(), visible=()=>true}={}) {
+    let spec=null, goal=null, current=null, last=null;
+    const valid=p=>Array.isArray(p)&&p.length===3&&p.every(Number.isFinite);
+    const project=d=>{
+        if (!spec.horizontalOnly) return d;
+        const u=up(), norm=Math.hypot(...u)||1, axis=u.map(v=>v/norm);
+        const vertical=d.reduce((sum,v,i)=>sum+v*axis[i],0);
+        return d.map((v,i)=>v-vertical*axis[i]);
+    };
+    return {
+        configure(next) {
+            if (!next) {spec=goal=current=last=null;return;}
+            if (!valid(next.target)||!Number.isFinite(next.halfLifeSeconds)||next.halfLifeSeconds<.01||next.halfLifeSeconds>30)
+                throw new Error('Invalid camera follow target/half-life');
+            const reset=spec&&next.epoch!==spec.epoch;
+            spec={...next,horizontalOnly:next.horizontalOnly!==false}; goal=[...next.target];
+            if (reset&&current) translate(project(goal.map((v,i)=>v-current[i])));
+            if (!current||reset) {current=reset ? [...goal] : [...(readTarget ? readTarget() : goal)];last=now();}
+        },
+        step() {
+            const t=now();
+            if (!spec||!current) return false;
+            const dt=Math.max(0,Math.min((t-last)/1000,.25));last=t;
+            if (!visible()) return false;
+            const alpha=-Math.expm1(-Math.LN2*dt/spec.halfLifeSeconds);
+            const delta=goal.map((v,i)=>(v-current[i])*alpha);
+            current=current.map((v,i)=>v+delta[i]);
+            const move=project(delta);
+            if (Math.hypot(...move)<1e-7) return false;
+            translate(move);return true;
+        },
+        status:()=>({enabled:!!spec,epoch:spec?.epoch??null,current:current?[...current]:null,target:goal?[...goal]:null})
+    };
+}

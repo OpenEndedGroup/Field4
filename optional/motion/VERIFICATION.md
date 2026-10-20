@@ -154,7 +154,109 @@ references resolve; the single pre-existing theme-generated 404 skip-link except
 accepted by the docs checker. The six motion starting points and generated Kotlin API reference
 are included. This verifies the local package; it is not a claim of website deployment.
 
-## Unresolved experiments
+## Kotlin authoring, following and movies
+
+The authoring extensions use the existing session: suspending `awaitMotion`, `prompt`, timed
+`route`, named physical `body` handles, kinematic `joint` handles and wall-paced `playMotion`.
+Tether handles support tuning, moving anchors, sustained breaks and release. Observations come
+from actual applied/physics/reset events; a retired connection is not reported as still attached.
+Replay can now include those events as well as poses. End-of-recording playback clamps instead
+of waiting forever, and closed replay sessions disown themselves from their Field RunScope.
+
+The new opted-in `motion.score.gpu` check passed in 20.137 s: actual CLoSD tether/tune/move/release,
+reset, reuse of an attachment ID with an immediate queued release, and one-shot impulse. The
+first invocation hit the tool's 20-second default deadline; the explicit 240-second invocation
+completed. `evidence/kotlin-score-gpu.json` retains the passing result. The original eleven motion
+tests plus four authoring tests pass; eight existing Three camera/document-scope tests also pass.
+Seven Python recording tests and the Node camera-link/turntable/follow tests pass.
+
+The browser test edited the viewer camera using the existing inspector and observed continued
+following while eye-minus-orbit-target stayed equal to floating-point precision. It saw 109
+rendered frames, enabled follow and a translated target. The live instrument test clicked Resist
+and Release, observed physical tether telemetry and the released state, and paused afterward.
+The screenshot visibly confirms preset values 8000 N/m, 120 N s/m and a 2500 N cap. The browser
+probes are reproducible in `tests/browser_follow.js` and `tests/browser_instrument.js`; raw results
+are in `evidence/polish-browser.json`.
+
+The stronger two-second tether trial has 0.040 m mean / 0.130 m maximum raw anchor error and
+1079 N peak submitted force. A longer early-attachment trial has 0.042 m mean / 0.266 m maximum
+error while active, reaches 2214 N, then terminates and resets. Both outcomes are retained;
+the latter is not recovery. See `evidence/closd-resistance*.summary.json`.
+
+The initial ARDY route movie was withdrawn as a positive demonstration: its nearly static body
+slides along the root path. A fresh ten-step trial travels 3.551 m in six seconds, with more
+root-relative articulation than the four-step run, but still slides. Both raw recordings are
+retained and labelled as failures in the public guide; no pose correction was applied. The new
+trial metrics are in `evidence/ardy-path-10steps.summary.json`.
+
+The interactive ARDY session tells a different story from the failing walking-route takes.
+A read-only audit of its closed chunks found sustained skipping. Three contiguous six-second
+excerpts retain their original timestamps, frame indices and episode IDs, with source-chunk
+SHA256 provenance and command context; the source worker/session was not stopped or edited.
+The public skipping replay uses session seconds 102–108, with no reset inside the excerpt.
+A fresh seed-0, four-step trial of “A person skips forward.” also sustains articulation for all
+six seconds and travels 4.654 m. Its late two-second mean root-relative joint speed is 0.974 m/s,
+versus 0.112 m/s in the four-step walking-route trial. These are measurements of movement, not
+recognizability scores. See `evidence/ardy-skip-fresh.summary.json`. Prompt/history-dependent
+failures must not be presented as a general ARDY failure.
+
+The user-facing guide now uses an editable Kotlin/Field renderer for ARDY vocabulary, CLoSD
+baseline/weak/strong tether and four/ten-step route comparisons. The strong comparison lane uses
+the actual 8000 N/m, 120 N s/m, 2500 N capped recording, replacing the weaker old “trap” trial.
+The two-joint coordinate probe remains a contract test and starting point, outside the main guide.
+The Field renderer was launched and visually inspected through the real browser; its three
+complete bodies and session clock are present. No external Pillow renderer supplies the new movies.
+
+A first live-score capture failed when the host's global OOM killer terminated Chromium; the
+kernel log identifies the task's headless browser as the victim. Spare task-owned Playwright
+browsers/drivers and idle task Gradle daemons were closed. Later captures also hit the host’s
+full-zram OOM condition, including a serial capture with no other verification running. The
+resource repair removed 1.1 GiB of owned regenerable old docs staging and moved one 5 GB
+encoder shard from tmpfs to disk, with matching original/copy SHA256 and a transparent cache
+symlink. Swap headroom rose to 9.8 GiB; no global VM settings or unrelated jobs were changed. Neither original
+interactive Field nor its workers were stopped. Captures use 15 fps; the resistance/release movie is 20 fps. A subsequent attempt to capture a
+warmed live score was rejected by the movie motion guard (only 3 of 119 adjacent frame pairs
+changed materially). It is not published. The final score movie instead replays an actual Kotlin
+execution from its recording; all public movie fences now work without either optional backend.
+
+The published score was executed in Field with recording attached to the exact example source.
+Its manifest stores the example's SHA256; the check matches `examples/tether_score.kt`. It has
+210 frames at 30 Hz, attaches at 2.0000001 s, releases at 4.0000002 s, reaches 1079.45 N and has
+0.039995 m mean raw tether stretch. It has no termination or reset. The longer 2/3/3-second
+variant did terminate/reset at 5.667 s after release; it remains in the workspace as
+`kotlin-movement-score.f4motion`, with `evidence/score-three-second-hold.summary.json`. The starter
+score uses the two-second hold. `evidence/kotlin-movement-score.summary.json` audits the published
+source and command timings. Movie generation replays these recorded poses and events in Field;
+it does not ask a simulator to reproduce the take.
+
+Browser follow uses an exponential half-life, preserves orbit/pan/zoom, supports Y/Z up, and
+treats changed epochs as discontinuities. Its mathematical tests cover cadence, visibility,
+disable and reset behavior. Frame-synchronous documentation captures are demonstrations, not
+measurements of real-time camera response; the browser filter uses browser time. Native Vulkan
+following is not claimed.
+
+All seven published movies were captured from real Kotlin/Field scenes and visually inspected.
+`field-movies.provenance.json` records dimensions, frame counts, FPS, hashes and source recordings:
+resistance/release (9 s at 20 fps), Kotlin score (7 s at 15 fps), follow-camera demonstration
+(9 s at 15 fps), live-session ARDY skipping (6 s at 15 fps), and the ARDY vocabulary, CLoSD
+baseline/weak/strong and four/ten-step route comparisons (6 s each at 15 fps). The two single-body
+close-ups use explicit viewer padding so raised hands and heads remain visible. The final two
+captures passed with zero failures after the cache/storage repair. The pose-review code is in
+`examples/recorded_results.kt`, `examples/recorded_score.kt` and `examples/ardy_demo_replay.kt`.
+
+Final Tailscale browser verification loaded all seven MP4s with HTTP 200 and decoded video
+metadata (`readyState=4`), played the score, and found no raw fold markers or Kotlin fences.
+The recorded ARDY Field URL advanced from 1 to 98 rendered frames over 2.5 seconds, with Follow
+enabled and capture readiness true. Raw results are in `evidence/final-docs-browser.json` and
+`evidence/final-viewer-browser.json`. The final full HTML/asset/link build passes: 3326 local
+references and 39739 fragments resolve; only the repository's known 404 theme anchor is excluded.
+
+The CPU text encoder was restored after the heavy checks, with its existing cache and offline
+model loading. A new uncached prompt returned a finite 1×4096 embedding in 3.26 seconds; the
+result is in `evidence/encoder-restored-check.json`. The original and polished live demos both
+use its loopback service at port 9550. No StreamDiffusion run was added.
+
+## Remaining experiments
 
 StreamDiffusion coexistence is deferred at the user's request. Its initial worker attempt was
 killed by the host's global OOM killer before producing output; no coexistence success is claimed.
