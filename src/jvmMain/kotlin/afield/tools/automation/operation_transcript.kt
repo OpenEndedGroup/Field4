@@ -631,18 +631,29 @@ object OperationTranscript {
             initializeCreatedBoxes = initializeCreatedBoxes,
             replay = replay,
         )
-        return activeMacroRuns.run(key) {
-            runMacroOnce(
-                documentPath = documentPath,
-                name = cleanName,
-                targetBoxes = normalizedTargets,
-                direction = normalizedDirection,
-                strict = strict,
-                scope = scope,
-                projectName = projectName,
-                initializeCreatedBoxes = initializeCreatedBoxes,
-                replay = replay,
-            )
+        // Box code calling this (a box that replays a macro) runs on a thread with no session
+        // bound; the document's own session is the one the macro's operations act on.
+        val bound = runCatching { thisSessionInfo.get() }.getOrNull()
+        val session = if (bound != null) null else documents.values.firstOrNull {
+            normalizeDocumentPath(it.filename) == normalizeDocumentPath(documentPath)
+        }
+        if (session != null) thisSessionInfo.set(session)
+        try {
+            return activeMacroRuns.run(key) {
+                runMacroOnce(
+                    documentPath = documentPath,
+                    name = cleanName,
+                    targetBoxes = normalizedTargets,
+                    direction = normalizedDirection,
+                    strict = strict,
+                    scope = scope,
+                    projectName = projectName,
+                    initializeCreatedBoxes = initializeCreatedBoxes,
+                    replay = replay,
+                )
+            }
+        } finally {
+            if (session != null) thisSessionInfo.remove()
         }
     }
 
@@ -1123,42 +1134,61 @@ object OperationTranscript {
         val state = stateFor(documentPath)
         synchronized(state.lock) {
             ensureLoaded(state)
-            // The handlers for one new box run concurrently, so its frame or code can be recorded
-            // a moment before its create. A pending edit of this box stays pending and folds into
-            // the create once it is flushed. Entries of this box just recorded are taken back: a
-            // move is dropped (the create captures the frame it moved to), and a first value — an
-            // edit from nothing, or of the name — moves into the create.
+            // The handlers for one new box run concurrently, so its frame, code or even a
+            // connection can be recorded a moment before its create. The create goes where the box
+            // is first named in this recording (it existed by then), and the moves and first
+            // values of it that follow fold into it. A pending edit of this box stays pending and
+            // folds once flushed.
             if (state.pendingEdit?.box != box.id) flushPendingEdit(state)
-            val earlier = mutableListOf<Map<*, *>>()
-            var index = state.entries.lastIndex
-            while (index >= 0) {
-                val entry = state.entries[index]
-                val move = entry["move"] as? Map<*, *>
-                val edit = entry["edit"] as? Map<*, *>
-                when {
-                    entry.containsKey("wait") -> index--
-                    move != null && move["box"]?.toString() == box.id -> { state.entries.removeAt(index); index-- }
-                    edit != null && edit["box"]?.toString() == box.id && edit["origin"] == null &&
-                        (edit["from"]?.toString().isNullOrEmpty() || edit["property"] == "name") -> {
-                        earlier.add(0, edit)
-                        state.entries.removeAt(index)
-                        index--
-                    }
-                    else -> index = -1
-                }
-            }
-            appendWaitIfNeeded(state, frame)
             val payload = linkedMapOf<String, Any?>("box" to box.id, "name" to box.name)
             val rect = runCatching { box.frame }.getOrNull()
             if (rect != null && !(rect.w == 0.0 && rect.h == 0.0)) payload["frame"] = rectMap(rect)
-            state.entries += linkedMapOf<String, Any?>("create" to payload)
-            // The name is the box's own, read just above; the earlier edits only add properties.
-            earlier.filter { it["property"] != "name" }.forEach { edit ->
-                foldIntoPreviousCreate(state.entries, box.id, edit["property"]?.toString().orEmpty(), edit["to"])
+            val createEntry = linkedMapOf<String, Any?>("create" to payload)
+            val since = state.entries.indexOfLast { it.containsKey("marker") } + 1
+            val firstMention = (since until state.entries.size).firstOrNull { entryNames(state.entries[it], box.id) }
+            if (firstMention == null) {
+                appendWaitIfNeeded(state, frame)
+                state.entries += createEntry
+            } else {
+                state.entries.add(firstMention, createEntry)
+                var index = firstMention + 1
+                while (index < state.entries.size) {
+                    val entry = state.entries[index]
+                    val verb = entry.keys.firstOrNull()?.lowercase().orEmpty()
+                    if (verb in launchVerbs || verb == "execute" || verb == "execute-fragment") break
+                    if (!entryNames(entry, box.id)) { index++; continue }
+                    val move = entry["move"] as? Map<*, *>
+                    val edit = entry["edit"] as? Map<*, *>
+                    when {
+                        move != null -> { payload["frame"] = move["to"]; state.entries.removeAt(index) }
+                        edit != null && edit["origin"] == null &&
+                            (edit["from"]?.toString().isNullOrEmpty() || edit["property"] == "name") -> {
+                            val property = edit["property"]?.toString().orEmpty()
+                            if (property == "name") payload["name"] = edit["to"]
+                            else {
+                                @Suppress("UNCHECKED_CAST")
+                                val properties = (payload["properties"] as? MutableMap<String, Any?>)
+                                    ?: linkedMapOf<String, Any?>().also { payload["properties"] = it }
+                                properties[property] = edit["to"]
+                            }
+                            state.entries.removeAt(index)
+                        }
+                        else -> index++
+                    }
+                }
+                // The box's current name and frame are the latest of all of these.
+                payload["name"] = box.name
+                if (rect != null && !(rect.w == 0.0 && rect.h == 0.0)) payload["frame"] = rectMap(rect)
             }
             state.lastRecordedFrame = frame
             state.dirty = true
         }
+    }
+
+    /** Whether [entry] names box [uid] (as its subject, or as either end of a connection). */
+    private fun entryNames(entry: Map<String, Any?>, uid: String): Boolean {
+        val payload = entry.values.firstOrNull() as? Map<*, *> ?: return false
+        return listOf("box", "uid", "id", "target", "parent", "child").any { payload[it]?.toString() == uid }
     }
 
     /** A box the person deleted (the `-delete-box` action). Replays as a tombstone; undoes as a restore. */
@@ -1178,10 +1208,12 @@ object OperationTranscript {
     }
 
     /**
-     * Fold a value into the `create` entry of [box] when that is the latest entry (waits aside):
-     * `frame` sets the create's frame, `name` its name, anything else lands in its `properties`.
-     * True when folded. Only the box's own creation burst is folded, so an edit made later, after
-     * anything else happened, stays an edit of its own.
+     * Fold a value into the `create` entry of [box]: `frame` sets the create's frame, `name` its
+     * name, anything else lands in its `properties`. True when folded. The search walks back over
+     * waits and over entries that do not name [box] (another box made in the same burst — the
+     * canvas makes boxes faster than their messages arrive), and stops at the first entry that
+     * names it (connections aside), which must be its create, or at any execute / launch, whose code might read the
+     * box as it was. So an edit made after anything else happened to the box stays an edit.
      */
     private fun foldIntoPreviousCreate(
         entries: MutableList<LinkedHashMap<String, Any?>>,
@@ -1190,11 +1222,21 @@ object OperationTranscript {
         value: Any?
     ): Boolean {
         var index = entries.lastIndex
-        while (index >= 0 && entries[index].containsKey("wait")) index--
+        while (index >= 0) {
+            val entry = entries[index]
+            val verb = entry.keys.firstOrNull()?.lowercase().orEmpty()
+            if (verb == "wait") { index--; continue }
+            if (verb in launchVerbs || verb == "execute" || verb == "execute-fragment" || verb == "marker") return false
+            val payload = entry.values.firstOrNull() as? Map<*, *> ?: return false
+            val names = listOf("box", "uid", "id", "target", "parent", "child").mapNotNull { payload[it]?.toString() }
+            // A connection does not read a box's name, frame or code, so a value can fold past it.
+            if (box !in names || verb == "connect" || verb == "disconnect") { index--; continue }
+            if (verb != "create") return false
+            break
+        }
         if (index < 0) return false
         @Suppress("UNCHECKED_CAST")
         val payload = entries[index]["create"] as? MutableMap<String, Any?> ?: return false
-        if (payload["box"]?.toString() != box) return false
         when (property) {
             "frame", "name" -> payload[property] = value
             else -> {
@@ -1458,8 +1500,9 @@ object OperationTranscript {
             (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"])?.toString().orEmpty()
         }
         val property = (payload["property"] ?: payload["prop"])?.toString().orEmpty()
-        val from = payload["from"]?.toString().orEmpty()
-        val to = payload["to"]?.toString().orEmpty()
+        // A connection's two ends travel as from/to, so the panel can name both boxes.
+        val from = (payload["from"] ?: payload["parent"])?.toString().orEmpty()
+        val to = (payload["to"] ?: payload["child"])?.toString().orEmpty()
         val frame = when {
             verb == "wait" -> payload["frames"]?.toString().orEmpty()
             verb == "marker" -> payload["runloopFrame"]?.toString().orEmpty()

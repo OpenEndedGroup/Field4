@@ -2834,8 +2834,10 @@ class Server {
                 val isEditorStateProperty = set.property.endsWith("_editorState")
                 // A uid the server has never seen is a box the canvas just made (`createBox` sends
                 // its name first): record it as a `create`, not as an edit from nothing.
-                var createdHere = false
-                val targetBox = box(set.uid, onCreated = { createdHere = true })
+                // A uid the server has never seen is a box the canvas just made (`createBox` sends its
+                // name, frame and code at once): the macro recorder records its `create` the moment
+                // it exists, and the values that follow fold into it.
+                val targetBox = box(set.uid, onCreated = { OperationTranscript.recordCreate(it) })
                 thisSessionInfo.get().recordPropertySyncOrigin(
                     set.uid,
                     set.property,
@@ -2853,8 +2855,7 @@ class Server {
                 if (set.property == "name") {
                     lprintln("debug,server", "got set-string for name ${set.value}")
                     targetBox.name = set.value
-                    if (createdHere) OperationTranscript.recordCreate(targetBox)
-                    else OperationTranscript.recordEdit(targetBox, set.property, oldValue, targetBox.name)
+                    OperationTranscript.recordEdit(targetBox, set.property, oldValue, targetBox.name)
                     if (targetBox.getPropertyRaw(AI4_AUTO_NAME_PROPERTY).isTrue()) {
                         targetBox.setPropertyRaw(AI4_AUTO_NAME_PROPERTY, false)
                     }
@@ -2881,7 +2882,6 @@ class Server {
                     // makes multiple clients on the same box fight over their local editor position.
                     // `textPropertyValue`: text spelling a Boolean, for a Boolean property, is stored as one.
                     targetBox.setPropertyRaw(set.property, textPropertyValue(targetBox, set.property, set.value), doResync = !isEditorStateProperty)
-                    if (createdHere && !isEditorStateProperty) OperationTranscript.recordCreate(targetBox)
                     OperationTranscript.recordEdit(
                         targetBox,
                         set.property,
@@ -2958,12 +2958,10 @@ class Server {
 
                 // Updates box frame or property; resyncs on main thread
                 if (set.property == "frame") {
-                    var createdHere = false
-                    val b = box(set.uid, onCreated = { createdHere = true })
+                    val b = box(set.uid, onCreated = { OperationTranscript.recordCreate(it) })
                     val oldFrame = b.frame
                     b.frame = set.value
-                    if (createdHere) OperationTranscript.recordCreate(b)
-                    else OperationTranscript.recordMove(b, oldFrame, b.frame)
+                    OperationTranscript.recordMove(b, oldFrame, b.frame)
                     inMain {
                         doResync() // subsequent calls do nothing, so this effectively combines multiple moves to the same update
                     }
@@ -2995,12 +2993,10 @@ class Server {
 
                 set.values.forEach { update ->
                     if (update.property == "frame") {
-                        var createdHere = false
-                        val b = box(update.uid, onCreated = { createdHere = true })
+                        val b = box(update.uid, onCreated = { OperationTranscript.recordCreate(it) })
                         val oldFrame = b.frame
                         b.frame = update.value
-                        if (createdHere) OperationTranscript.recordCreate(b)
-                        else OperationTranscript.recordMove(b, oldFrame, b.frame)
+                        OperationTranscript.recordMove(b, oldFrame, b.frame)
                         needsResync.remove(b to "frame")
                         frameUpdates += Set_rect(uid = update.uid, property = "frame", value = b.frame)
                     } else {

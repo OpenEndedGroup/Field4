@@ -1767,8 +1767,9 @@ fun box(
         // cleaned up with no boxes to retire, and the new box's engine outlived its document and
         // ran its bootstrap. Visible, the box is retired, and [Box.disposeKi] disposes the engine
         // the build returns.
-        if (initIfCreated && created === b) b.ki
+        // Before the engine: building it can take a second, and other handlers already see the box.
         if (created === b) onCreated?.invoke(b)
+        if (initIfCreated && created === b) b.ki
         return b
     } else return root.boxes[u]!!
 }

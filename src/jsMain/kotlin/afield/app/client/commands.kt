@@ -359,8 +359,11 @@ private fun macroTranscriptSummaryHtml(entry: TranscriptEntry): String {
             if (box.isNotBlank()) append(" ").append(macroTemplateHtml("of")).append(" ").append(box)
         }
         "stop", "stop-all", "stop-box" -> if (box.isBlank()) macroTemplateHtml("stop") else "${macroTemplateHtml("stop")} $box"
-        "connect" -> if (box.isBlank()) macroTemplateHtml("connect") else "${macroTemplateHtml("connect")} $box"
-        "disconnect" -> if (box.isBlank()) macroTemplateHtml("disconnect") else "${macroTemplateHtml("disconnect")} $box"
+        "connect", "disconnect" ->
+            if (entry.from.isBlank() || entry.to.isBlank()) macroTemplateHtml(entry.verb.lowercase())
+            else "${macroTemplateHtml(entry.verb.lowercase())} ${macroBoxLinkHtml(entry.from)} ${macroNotationHtml("->")} ${macroBoxLinkHtml(entry.to)}"
+        "create", "new-box", "box" -> if (box.isBlank()) macroTemplateHtml("create") else "${macroTemplateHtml("create")} $box"
+        "delete", "tombstone" -> if (box.isBlank()) macroTemplateHtml("delete") else "${macroTemplateHtml("delete")} $box"
         "wait" -> {
             val frames = entry.frame.ifBlank { entry.summary.substringAfter("wait", "").substringBefore("frame").trim() }.ifBlank { "?" }
             "${macroTemplateHtml("wait")} ${macroNumberHtml(frames)} ${macroTemplateHtml(macroPlural(frames, "frame"))}"
@@ -486,9 +489,9 @@ private fun renderMacroPreview(content: String) {
                 "delete" -> setOf("name")
                 else -> emptySet()
             }
-        val detailKeys = (priority + op.fields.keys.filterNot { it in priority || it in hiddenKeys })
+        val detailKeys = (priority + op.fields.keys.filterNot { it in priority })
             .distinct()
-            .filter { op.fields.containsKey(it) }
+            .filter { op.fields.containsKey(it) && it !in hiddenKeys }
         val details = detailKeys.joinToString("") { key ->
             macroDetailsHtml(key, op.fields[key].orEmpty(), open = key == "to")
         }

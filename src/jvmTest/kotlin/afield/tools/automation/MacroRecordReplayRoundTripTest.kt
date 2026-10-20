@@ -134,7 +134,9 @@ class MacroRecordReplayRoundTripTest {
     fun aRecordingReadsAsSemanticOperations() {
         val (_, yaml) = recordSession()
         val verbs = Regex("""^  - ([a-z-]+):""", RegexOption.MULTILINE).findAll(yaml).map { it.groupValues[1] }.toList()
-        assertEquals(listOf("create", "create", "create", "move", "edit", "edit", "connect", "delete"), verbs.filter { it != "wait" }, yaml)
+        // The later move, code and rename of boxes made in this burst fold into their creates:
+        // nothing between read those boxes, so the recording is just what the document gained.
+        assertEquals(listOf("create", "create", "create", "connect", "delete"), verbs.filter { it != "wait" }, yaml)
         // A new box's frame and first code are part of its create, not a move / edit from nothing.
         val firstCreate = yaml.substringAfter("  - create:").substringBefore("  - create:")
         assertTrue(firstCreate.contains("frame:") && firstCreate.contains("properties:") && firstCreate.contains("println(\"a\")"), firstCreate)
@@ -214,6 +216,28 @@ class MacroRecordReplayRoundTripTest {
         val verbs = Regex("""^  - ([a-z-]+):""", RegexOption.MULTILINE).findAll(yaml).map { it.groupValues[1] }.filter { it != "wait" }.toList()
         assertEquals(listOf("create"), verbs, yaml)
         assertTrue(yaml.contains("Racer") && yaml.contains("x: 10.0") && yaml.contains("println(\"r\")"), yaml)
+    }
+
+    /** Two boxes made in quick succession: each one's frame, name and code still land in its own create. */
+    @Test
+    fun interleavedFirstMessagesOfTwoNewBoxesFoldIntoTheirOwnCreates() {
+        val session = document("interleaved")
+        thisSessionInfo.set(session)
+        OperationTranscript.markStart("burst")
+        val first = box("box-1", createIfMissing = true, initIfCreated = false, root = session, onCreated = { OperationTranscript.recordCreate(it) })
+        val second = box("box-2", createIfMissing = true, initIfCreated = false, root = session, onCreated = { OperationTranscript.recordCreate(it) })
+        canvasMove(first, Rect(1.0, 2.0, 30.0, 40.0))
+        canvasEdit(second, "code", "two")
+        first.name = "One"
+        OperationTranscript.recordEdit(first, "name", "", "One")
+        canvasMove(second, Rect(5.0, 6.0, 70.0, 80.0))
+        val yaml = File(OperationTranscript.markEndAndSave("burst").path).readText()
+        val verbs = Regex("""^  - ([a-z-]+):""", RegexOption.MULTILINE).findAll(yaml).map { it.groupValues[1] }.toList()
+        assertEquals(listOf("create", "create"), verbs, yaml)
+        val one = yaml.substringAfter("box: \"box-1\"").substringBefore("  - create:")
+        assertTrue(one.contains("One") && one.contains("x: 1.0"), yaml)
+        val two = yaml.substringAfter("box: \"box-2\"")
+        assertTrue(two.contains("two") && two.contains("x: 5.0"), yaml)
     }
 
     @Test
