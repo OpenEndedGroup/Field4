@@ -925,7 +925,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 val a = boxes[0]
                 var names = ""
                 boxes.drop(1).forEach {
+                    val already = it in a.children
                     a.connect(it)
+                    if (!already) afield.tools.automation.OperationTranscript.recordConnect(a, it, connected = true)
                     names += it.name + ", "
                 }
                 notify("Connected ${a.name} -> ${names.trim(' ', ',')}")
@@ -944,7 +946,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 val a = boxes[0]
                 var names = ""
                 boxes.drop(1).forEach {
+                    val was = it in a.children
                     a.disconnect(it)
+                    if (was) afield.tools.automation.OperationTranscript.recordConnect(a, it, connected = false)
                     names += it.name + ", "
                 }
                 notify("Disconnected ${a.name} from ${names.trim(' ', ',')}")
@@ -1032,6 +1036,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                     notify("Deleted 0 boxes")
                 } else {
                     val root = thisSessionInfo.get().root
+                    targets.forEach { target -> afield.tools.automation.OperationTranscript.recordDelete(target) }
                     targets.forEach { target ->
                         // Ensure live parents don't retain stale nested links to deleted boxes.
                         if (target.nestedIn != null) {
@@ -1785,7 +1790,11 @@ fun box(
     u: String,
     createIfMissing: Boolean = true,
     initIfCreated: Boolean = true,
-    root: SessionInformation = thisSessionInfo.get()
+    root: SessionInformation = thisSessionInfo.get(),
+    // Called with the box when this call is the one that made it. Message handlers run
+    // concurrently, so "was it there before I looked?" is only answered race-free here: the canvas
+    // sends a new box's name, frame and code at once, and the macro recorder must see one create.
+    onCreated: ((Box) -> Unit)? = null,
 ): Box {
     if (u == METAROOT_ID) return metaroot
     if (u == "root") return root.root
@@ -1806,6 +1815,8 @@ fun box(
         // cleaned up with no boxes to retire, and the new box's engine outlived its document and
         // ran its bootstrap. Visible, the box is retired, and [Box.disposeKi] disposes the engine
         // the build returns.
+        // Before the engine: building it can take a second, and other handlers already see the box.
+        if (created === b) onCreated?.invoke(b)
         if (initIfCreated && created === b) b.ki
         return b
     } else return root.boxes[u]!!

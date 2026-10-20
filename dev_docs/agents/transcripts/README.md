@@ -91,6 +91,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   Flip the vector box's `reuse` flag and
   relaunch the workloads to compare allocation with Field's in-place linalg operations.
 
+- `macro_recorder_stamp.yaml`: the Macro Recorder's replay options from box code: `stamp` saves a
+  macro (two `create`s and a `connect`, as the recorder writes them), `copies` replays it with
+  `MacroReplayOptions(asCopy = true, offsetY = ...)` three times, `steps` replays it one operation
+  at a time. Open the Macro Recorder afterwards to run, rename or delete it from the panel.
 - `hello_display.yaml`: smallest useful blank-canvas transcript; creates one box, displays HTML, and can be undone.
 - `ai4_iframe_hello.yaml`: one Field-served webpage in an output iframe, with a textbox and opt-in AI4 tools for inspecting and driving that live page. Run the host box after opening its starting point.
 - `orca_hello.yaml`: ORCA in a box output (`orca()`), playing through a returned `PatSynthBank`, with `exposeTools()` so AI4 can read and write the grid. Compiled only: running it opens an audio device, and ORCA plays only in a browser; `run_ui_regressions.py --id orca-io` is its live check.

@@ -1979,6 +1979,17 @@ you can paste into a shader.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/stacksl_fit_demo/metadata.edn)
 
+### macro_recorder_stamp
+
+**A macro used as a stamp.** The first box saves a macro the way the
+[Macro Recorder](automating_field.md) writes one: a box with code, another box, and a connection
+between them. The second replays it as a copy three times, each lower down the canvas, so every run
+makes a new connected pair; the third replays it one operation at a time, as the panel's Step
+button does. Open the Macro Recorder afterwards to find the macro listed with its own Run, Rename
+and Delete.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/macro_recorder_stamp/metadata.edn)
+
 ## Service-backed composition scenes
 
 <!-- transcript-index: verified-by = execute -->

@@ -685,7 +685,16 @@ data class MacroTranscriptCommandRequest(
     val offset: Int = 0,
     val limit: Int = 80,
     val indices: List<Int> = emptyList(),
-    val mode: String = ""
+    val mode: String = "",
+    /** `rename`: the macro's new name. */
+    val newName: String = "",
+    /** `run`/`step`: give the boxes the macro creates fresh uids, so each run makes a new set. */
+    val asCopy: Boolean = false,
+    /** `run`/`step`: shift the frames of the boxes the macro creates. */
+    val offsetX: Double = 0.0,
+    val offsetY: Double = 0.0,
+    /** `step`: the 0-based operation to replay alone. */
+    val step: Int = -1
 )
 
 @Serializable
