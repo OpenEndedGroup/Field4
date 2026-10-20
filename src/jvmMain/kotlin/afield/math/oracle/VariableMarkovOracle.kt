@@ -149,7 +149,8 @@ class VariableMarkovOracle internal constructor(
      *
      * Only channels whose [mask] entry is true are compared, so a cue can be made from the
      * channels a performer is driving while the rest are free. Candidates whose window would
-     * cross an episode boundary are skipped. Each [Cue]'s `position` is the sample to continue
+     * cross an episode boundary are skipped. Distances are RMS per compared feature (scaled value or
+     * velocity), so they do not grow with the number of channels. Each [Cue]'s `position` is the sample to continue
      * *from*: the memory's next sample after the match is `position + 1`.
      */
     fun cue(history: List<DoubleArray>, window: Int = min(history.size, (trajectory.sampleRate).toInt()), mask: BooleanArray = BooleanArray(features.width) { true }, count: Int = 5, separation: Int = window / 2): List<Cue> {
@@ -170,6 +171,35 @@ class VariableMarkovOracle internal constructor(
         return picked
     }
 
+    private val bridgeTable: Array<IntArray> by lazy {
+        val starts = trajectory.episodeStarts
+        if (starts.size < 2) return@lazy Array(n) { IntArray(0) }
+        val k = 3
+        Array(n) { i ->
+            val ep = trajectory.episodeOf(i)
+            val best = IntArray(k) { -1 }; val bd = DoubleArray(k) { Double.POSITIVE_INFINITY }
+            for (j in 0 until n) {
+                if (trajectory.episodeOf(j) == ep || trajectory.endsEpisode(j)) continue
+                val d = distance(frames[i], frames[j])
+                if (d < bd[k - 1]) {
+                    var at = k - 1
+                    while (at > 0 && d < bd[at - 1]) { bd[at] = bd[at - 1]; best[at] = best[at - 1]; at-- }
+                    bd[at] = d; best[at] = j
+                }
+            }
+            best.filter { it >= 0 }.toIntArray()
+        }
+    }
+
+    /**
+     * Cross-episode transitions from sample [sample]: up to three samples in *other* episodes whose
+     * feature frames (value and velocity) are nearest to it, nearest first. The oracle's own suffix
+     * links rarely cross between separately recorded takes; these give an improviser a way across.
+     * Computed for every sample on first use (all pairs of samples, so a few seconds for a few
+     * thousand samples). Empty for a single episode.
+     */
+    fun bridges(sample: Int): IntArray = bridgeTable[sample]
+
     /**
      * How well [history] matches the [window] samples of memory ending at [position] (the same
      * distance [cue] ranks by), or `+∞` if that window crosses an episode boundary.
@@ -186,13 +216,14 @@ class VariableMarkovOracle internal constructor(
         fun at(end: Int): Double {
             val start = end - w + 1
             if (start < 0 || trajectory.episodeOf(start) != trajectory.episodeOf(end)) return Double.POSITIVE_INFINITY
-            var s = 0.0
+            var s = 0.0; var count = 0
             for (k in 0 until w) {
                 val a = hf[k]; val b = frames[start + k]
                 // the first history sample has no velocity: compare its values only
-                for (d in a.indices) if (dims[d] && (k > 0 || d < firstVelocity)) { val e = a[d] - b[d]; s += e * e }
+                for (d in a.indices) if (dims[d] && (k > 0 || d < firstVelocity)) { val e = a[d] - b[d]; s += e * e; count++ }
             }
-            return kotlin.math.sqrt(s / w)
+            // RMS per compared feature, so distances mean the same for two channels or a hundred
+            return kotlin.math.sqrt(s / kotlin.math.max(1, count))
         }
     }
 

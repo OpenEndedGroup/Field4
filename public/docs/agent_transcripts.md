@@ -2103,6 +2103,19 @@ Nothing else needs to be on the network. See [Network MIDI](rtp_midi.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/rtp_midi_demo/metadata.edn)
 
+### temporal_memory
+
+**Continuing a gesture**, in seven boxes. A lab notebook with the measurements and wrong turns behind
+the design; six takes of modern dance from the CMU motion capture database, remembered by the
+Variable Markov Oracle and continued as a strip of poses, as hand and head heights labelled by take,
+and as a dancing figure you launch and leave running; two oscillators with a slider to take over a
+channel; a Timestral forecast drawn as a quantile fan; and the dance played five ways, two judged
+by Timestral, with coverage, repetition and join roughness for each. Boxes 5 and 6 start the
+Timestral worker, which needs `TimestralSession.install()` once.
+See [Continuing a Gesture](temporal_memory.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/temporal_memory/metadata.edn)
+
 ### ai_tool_demo
 
 **Giving the AI a tool**, in two boxes. The first is the whole mechanism: a function, the schema a

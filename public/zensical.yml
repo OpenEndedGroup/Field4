@@ -425,6 +425,7 @@ nav:
       - Execution: reference/execution.md
       - Machine learning: reference/machine-learning.md
       - Networking: reference/networking.md
+      - IO: reference/io.md
       - Video: reference/video.md
       - Lighting: reference/lighting.md
       - Examples: reference/examples.md

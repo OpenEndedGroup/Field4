@@ -103,6 +103,37 @@ class Trajectory(
         return join(parts.map { Trajectory(rate, channels, it) }, name)
     }
 
+    /**
+     * Each episode with its still lead-in and tail removed: samples at the start and end where the
+     * speed (RMS over channels of the step, each channel in units of its own typical step) stays
+     * below [threshold] times the episode's median speed. [pad] seconds of the stillness are kept
+     * at each end, so a take still begins and ends at rest. An episode that is still throughout is
+     * kept whole.
+     */
+    fun trimStill(threshold: Double = 0.25, pad: Double = 0.3): Trajectory {
+        val stepSd = DoubleArray(width) { c ->
+            var s = 0.0; var n = 0
+            for (i in 1 until length) if (!startsEpisode(i)) { val d = values[c][i] - values[c][i - 1]; s += d * d; n++ }
+            sqrt(s / max(1, n)).coerceAtLeast(1e-12)
+        }
+        val keep = (pad * sampleRate).toInt()
+        val parts = episodeStarts.indices.map { e ->
+            val ep = episode(e)
+            val speed = DoubleArray(ep.length) { i ->
+                if (i == 0) 0.0 else sqrt((0 until width).sumOf { c -> ((ep.values[c][i] - ep.values[c][i - 1]) / stepSd[c]).let { it * it } } / width)
+            }
+            val median = speed.sorted()[speed.size / 2]
+            val moving = speed.indices.filter { speed[it] >= threshold * median }
+            if (moving.isEmpty()) ep
+            else {
+                val from = (moving.first() - keep).coerceAtLeast(0)
+                val to = (moving.last() + keep).coerceAtMost(ep.length - 1)
+                Trajectory(sampleRate, channels, Array(width) { c -> ep.values[c].copyOfRange(from, to + 1) }, name = ep.name)
+            }
+        }
+        return join(parts, name)
+    }
+
     override fun toString() = "Trajectory($name: $width ch $channels, $length samples @ ${sampleRate}Hz, ${episodeStarts.size} episode(s))"
 
     companion object {
