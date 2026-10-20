@@ -10,6 +10,7 @@ import afield.document.graph.registerStopHook
 import afield.runtime.execution.begin
 import afield.runtime.lifecycle.AnimationClock
 import afield.runtime.lifecycle.Frames
+import afield.runtime.lifecycle.end
 import afield.runtime.lifecycle.loop
 import afield.ui.output.displayOpen
 import afield.ui.output.outputRequests
@@ -73,7 +74,10 @@ class ScoreBehaviour internal constructor(val box: Box, internal val body: Score
 fun Box.score(body: ScoreFrame.() -> Unit): ScoreBehaviour {
     val behaviour = ScoreBehaviour(this, body)
     synchronized(armed) { armed[this] = behaviour }
-    registerStopHook(Runnable { synchronized(armed) { if (armed[this] === behaviour) armed.remove(this) } })
+    registerStopHook(Runnable {
+        synchronized(armed) { if (armed[this] === behaviour) armed.remove(this) }
+        if (behaviour.wasActive) tint = ""
+    })
     return behaviour
 }
 
@@ -100,6 +104,8 @@ class ScoreTransport internal constructor(
     /** Output canvas height in pixels. x and y scale separately, as in a score whose time axis is long. */
     val height: Int,
     private val playheadName: String?,
+    /** Whether a box is tinted ([Box.tint]) while the playhead is over it. */
+    val tintActive: Boolean = true,
 ) {
     /** Hold the clock. */
     var paused = false
@@ -140,6 +146,8 @@ class ScoreTransport internal constructor(
             val entered = active && !b.wasActive
             val exited = !active && b.wasActive
             b.wasActive = active
+            if (tintActive && entered) b.box.tint = playingTint(b.box)
+            if (tintActive && exited) b.box.tint = ""
             if (!active && !exited) continue
             val localProgress = ((playheadX - bounds.x) / max(1.0, bounds.w)).coerceIn(0.0, 1.0)
             val f = ScoreFrame(
@@ -161,6 +169,14 @@ class ScoreTransport internal constructor(
             if (exited) b.subdivisions.clear()
         }
         lastFrameJson = draw.toJson(width, height, t, loop)
+    }
+
+    /** Untint every box this score lit, as it stops. */
+    internal fun clearTints() {
+        for (b in armedIn(owner)) if (b.wasActive) {
+            b.box.tint = ""
+            b.wasActive = false
+        }
     }
 
     private fun movePlayhead() {
@@ -188,7 +204,8 @@ class ScoreTransport internal constructor(
  * lies in the score and that has not been run yet is run once at the start, the way Field's time
  * slider runs the boxes it crosses, so running this one box plays the whole score. The playhead box,
  * if there is one, is styled as an orange line and moved every frame; without one the score still
- * plays.
+ * plays. While the playhead is over a box the box is tinted ([Box.tint]) in a hue of its own, as the
+ * demo lights its active boxes; pass `tint = false` to leave boxes as they are.
  */
 fun Box.playScore(
     loop: Double = 4.0,
@@ -198,9 +215,10 @@ fun Box.playScore(
     height: Int = 360,
     playhead: String? = "playhead",
     channel: String = "score",
+    tint: Boolean = true,
 ): Frames {
     require(x.endInclusive > x.start && y.endInclusive > y.start) { "playScore needs a non-empty x and y span" }
-    val transport = ScoreTransport(this, loop, x, y, width, height, playhead)
+    val transport = ScoreTransport(this, loop, x, y, width, height, playhead, tint)
     val binding = outputRequests("score-$channel") { JsonPrimitive(transport.lastFrameJson) }
     display(
         channel,
@@ -223,8 +241,11 @@ fun Box.playScore(
     }
     waiting.forEach { it.begin() }
 
-    return loop { transport.step() }
+    return loop { transport.step() }.end { transport.clearTints() }
 }
+
+/** A box's playing tint: a hue fixed by its id, as the madp score demo gives each box its own. */
+internal fun playingTint(box: Box): String = "hsla(${Math.floorMod(box.id.hashCode() * 57, 360)}, 80%, 56%, 0.22)"
 
 private val PLAYHEAD_CUSTOMIZATION = """
 this.style.border = "0px solid transparent"
