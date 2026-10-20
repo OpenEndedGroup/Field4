@@ -724,9 +724,9 @@ showPlaneGrid(
 
 The top row is the picture you would naturally draw. The caption shows the two sheets more than a
 grid spacing apart at their furthest particle, yet the bug is invisible in that drawing, because
-`cloth.lines()` walks rows and columns *by index* and the grid it draws is still the grid you asked for. The bottom row is the same two sheets
-with the constraint set drawn instead, and the bug is the long diagonal running up across the
-right-hand panel.
+`cloth.lines()` walks rows and columns *by index*, so the grid it draws is still the grid you asked
+for. The bottom row is the same two sheets with the constraint set drawn instead, and the bug is the
+long diagonal running up across the right-hand panel.
 
 The dedup rule keeps that bug visible. A **symmetric** pair (`i → j` *and* `j → i`, as a `Cloth`
 grid wires it) is drawn once; a **one-way** constraint is drawn by its owner. Deduplicating on
