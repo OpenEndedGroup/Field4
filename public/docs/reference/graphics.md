@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-307 source file(s), 7534 public symbol(s), 3841 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+306 source file(s), 7530 public symbol(s), 3837 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -6704,30 +6704,6 @@ A stream of [`PointerState`](graphics.md#pointing-pointer-kt-pointerstate)s turn
 | <a id="pointing-pointer-kt--pointerinteraction--dragdistance"></a>[<code class="highlight"><span class="k">val</span> <span class="n">dragDistance</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/graphics/interaction/pointing_pointer/#L463) | Straight-line length of [`dragOffset`](graphics.md#pointing-pointer-kt--pointerinteraction--dragoffset), or 0. |
 | <a id="pointing-pointer-kt--pointerinteraction--update"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">update</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nc">PointerState</span><span class="p">,</span> <span class="n">moveEpsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointerPhase</span></code>](source/jvmMain/afield/graphics/interaction/pointing_pointer/#L473) | Feed one sample. Returns the new [`phase`](graphics.md#pointing-pointer-kt--pointerinteraction--phase). |
 | <a id="pointing-pointer-kt--pointerinteraction--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/graphics/interaction/pointing_pointer/#L593) |  |
-
-## Klecks.kt { #klecks-kt }
-
-An editable Klecks painting app inside a box's output panel, saved into the document when you
-press Submit: [`klecks`](graphics.md#klecks-kt--klecks) returns a [`KlecksPainting`](graphics.md#klecks-kt-kleckspainting).
-
-`src/jvmMain/kotlin/afield/graphics/paint/Klecks.kt` — [read the source](source/jvmMain/afield/graphics/paint/Klecks/)
-
-### Top-level functions { #klecks-kt-functions }
-
-| Declaration | Summary |
-| --- | --- |
-| <a id="klecks-kt--klecks"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">klecks</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;klecks&quot;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">800</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">600</span><span class="p">)</span><span class="p">:</span> <span class="nc">KlecksPainting</span></code>](source/jvmMain/afield/graphics/paint/Klecks/#L40) | An editable Klecks painting in this box's output. Press Klecks' Submit button to save it into the document. Strokes not yet submitted are kept as a draft in the browser, so re-running the box or reloading the page brings them back until the next Submit. |
-
-### KlecksPainting { #klecks-kt-kleckspainting }
-
-[<code class="highlight"><span class="k">class</span> <span class="nc">KlecksPainting</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="k">val</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/paint/Klecks/#L52)
-
-The last submitted image. PSD retains layers; PNG is convenient for Kotlin image consumers.
-
-| Declaration | Summary |
-| --- | --- |
-| <a id="klecks-kt--kleckspainting--psdbytes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">psdBytes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="o">?</span></code>](source/jvmMain/afield/graphics/paint/Klecks/#L79) | Last saved layered Photoshop document, or null until the user submits the painting. |
-| <a id="klecks-kt--kleckspainting--pngbytes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">pngBytes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="o">?</span></code>](source/jvmMain/afield/graphics/paint/Klecks/#L82) | Last saved flattened image, or null until the user submits the painting. |
 
 ## PaintCanvas.kt { #paintcanvas-kt }
 

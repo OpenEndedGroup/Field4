@@ -462,7 +462,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 - [color](graphics.md#colormaps-kt)
 - [interaction](graphics.md#pointing-kt)
-- *paint* — [Graphics](graphics.md#klecks-kt) · [Internal](internal.md#gesturereplaymain-kt)
+- *paint* — [Graphics](graphics.md#paintcanvas-kt) · [Internal](internal.md#gesturereplaymain-kt)
 - *render* — [Graphics](graphics.md#accelerationstructure-kt) · [Internal](internal.md#opendlssnrdiagnostics-kt) · [Simulation](simulation.md#tileresidency-kt)
     - [lighting](graphics.md#directlighting-kt)
     - *neural* — [Graphics](graphics.md#opendlssnrgpusmoke-kt) · [Internal](internal.md#opendlssnrdiagnostics-kt)
@@ -643,7 +643,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**33235 public symbols across 1500 source files**, 16829 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**33231 public symbols across 1499 source files**, 16825 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -656,7 +656,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 134 | 50 (37%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2156 | 1522 (70%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 307 | 7534 | 3841 (50%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 306 | 7530 | 3837 (50%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 42 | 742 | 373 (50%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
@@ -1321,7 +1321,6 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [KitFirstOpen.kt](workspace.md#kitfirstopen-kt) | Workspace | 3 | 3 | A document copied from a kit's starting point runs its roles, in the kit's launch order, the first time it opens, so it does something without `field_kit.py activate`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [Kits.kt](workspace.md#kits-kt) | Workspace | 24 | 20 | Kits package the shared parts of one kind of document so many documents can be installed from, and migrated to, the same source. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [KitTools.kt](machine-learning.md#kittools-kt) | Machine learning | 4 | 0 | The AI4 tool that reports which kit a document runs and which of its kit-provided properties and assets have drifted from the kit. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>paint/<wbr></small> [Klecks.kt](graphics.md#klecks-kt) | Graphics | 4 | 4 | An editable Klecks painting app inside a box's output panel, saved into the document when you press Submit: `klecks` returns a `KlecksPainting`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>ui/<wbr></small> [KnobNames.kt](workspace.md#knobnames-kt) | Workspace | 0 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [Kotlin24SyntaxSmokeTest.kt](workspace.md#kotlin24syntaxsmoketest-kt) | Workspace · internal | 3 | 1 | Smoke test that a box compiles Kotlin 2.4 syntax: collection literals, positional destructuring with square brackets, and name-based destructuring with renamed entries. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>completion/<wbr></small> [KotlinCompletionSupport.kt](workspace.md#kotlincompletionsupport-kt) | Workspace · internal | 0 | 0 |  |  |
