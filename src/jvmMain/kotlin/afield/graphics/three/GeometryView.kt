@@ -41,7 +41,7 @@ fun ThreeSceneBuilder.geometry(scene: GeometryScene) {
     val v = scene.view
     studio(ground = v.ground, grid = v.grid, groundY = v.groundY)
     background(v.background)
-    camera(yaw = 43.0, pitch = 22.5, fieldOfView = 42.0, padding = 1.04)
+    camera(yaw = 43.0, pitch = 22.5, fieldOfView = 42.0, padding = 1.4)
 }
 
 /**

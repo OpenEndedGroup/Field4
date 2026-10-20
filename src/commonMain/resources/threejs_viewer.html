@@ -758,6 +758,8 @@ function applyStudio(spec, bounds) {
     const sc = studioKey.shadow.camera;
     sc.near = 0.5 * k; sc.far = 24 * k; sc.left = sc.bottom = -8 * k; sc.right = sc.top = 8 * k;
     sc.updateProjectionMatrix();
+    // A small normal offset keeps a faceted surface from shadowing itself in stripes (acne).
+    studioKey.shadow.normalBias = 0.02 * k;
     studioRim.position.set(cx - 5 * k, cy + 3 * k, cz - 4 * k);
     studioRim.target.position.set(cx, cy, cz);
     studioGround.visible = spec.ground !== false;
