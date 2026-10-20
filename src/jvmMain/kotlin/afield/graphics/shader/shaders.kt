@@ -4643,7 +4643,7 @@ private val shadertoyVertexPreamble = """
     #version 450
 """.trimIndent()
 
-private val shadertoyFragmentPreamble = """
+internal val shadertoyFragmentPreamble = """
     #version 450
 
     layout(location = 0) out vec4 uFragColor;
@@ -4692,7 +4692,7 @@ private val shadertoyFragmentPreamble = """
  * from sRGB before it reaches Field's sRGB (or linear HDR) target, which would otherwise encode it a
  * second time and wash it out. Alpha is written as 1, as ShaderToy's canvas ignores it.
  */
-private val shadertoyImagePreamble = shadertoyFragmentPreamble + "\n" + """
+internal val shadertoyImagePreamble = shadertoyFragmentPreamble + "\n" + """
 
     void mainImage(out vec4 fragColor, in vec2 fragCoord);
 

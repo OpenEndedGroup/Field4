@@ -182,13 +182,14 @@ void main() {
  * program.
  *
  * Get one with [shadertoyCanvas]; it is kept per renderer and name, so every box (and every re-run)
- * shares it.
+ * shares it. A canvas that is only an input for another shader passes `inWindow = false`.
  */
 class ShadertoyCanvas internal constructor(
     val renderer: Renderer,
     val name: String,
     val width: Int,
-    val height: Int
+    val height: Int,
+    inWindow: Boolean
 ) {
     /** The canvas itself: `_SRGB`, so the display values a ShaderToy program writes are what it stores. */
     val rtt = RenderToTexture(renderer) {
@@ -248,8 +249,14 @@ class ShadertoyCanvas internal constructor(
         mesh.push.bind("window") { Vector4f(renderer.window.width.toFloat(), renderer.window.height.toFloat(), 0f, 0f) }
         composite.current.meshes["fullscreen"] = mesh
         renderer.renderList.preTargets[rtt.parameters.debugName] = rtt
+        composite.current.enabled = inWindow
         renderer.renderList.modules[composite.current.parameters.name] = composite
     }
+
+    /** Whether the window shows this canvas. Turn it off for a canvas that is only another shader's channel. */
+    var inWindow: Boolean
+        get() = composite.current.enabled
+        set(value) { composite.current.enabled = value }
 
     /** Draw [module] (a `shadertoyHere` module built with `canvas.rtt.apply()`) as this canvas's picture. */
     operator fun plusAssign(module: ModulePointer) {
@@ -284,15 +291,17 @@ fun shadertoyCanvas(
     width: Int = 960,
     height: Int = 540,
     name: String = "shadertrinket",
+    inWindow: Boolean = true,
     renderer: Renderer = fromContext()
 ): ShadertoyCanvas = synchronized(canvases) {
     val perRenderer = canvases.getOrPut(renderer) { mutableMapOf() }
     perRenderer[name]?.let {
         if (it.width != width || it.height != height)
             lprintln("warning,graphics", "shadertoy canvas '$name' is already ${it.width}x${it.height}; keeping it")
+        it.inWindow = inWindow
         return it
     }
-    ShadertoyCanvas(renderer, name, width, height).also { perRenderer[name] = it }
+    ShadertoyCanvas(renderer, name, width, height, inWindow).also { perRenderer[name] = it }
 }
 
 private val webcams = WeakHashMap<Renderer, MutableMap<Int, WebcamTexture>>()
