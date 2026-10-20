@@ -31,6 +31,13 @@ nav:
       - What Field Is: funFeatures.md
       - The Documentation Browser: completion_doc_browser.md
       - Drawing with FLines: fline_examples.md
+      # Straight after FLines, because a stroke read from the drawing is an FLine: the box that
+      # listens turns each pen stroke into one and draws an answer back. The drawing layer (Alt+D)
+      # and the notation API are Field's own, and before this stop the Tour gave them one paragraph.
+      # Moved rather than written: the page already led with toggling, drawing and reading, and
+      # its intersection examples and reference come after that. Its filename stays, so the chain
+      # pages and the starting point that link to it keep working.
+      - Drawing and Notation: drawing_and_notation.md
       - Frames and the Animation Loop: animation_time_model.md
       # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
       - "Sound: the Pattern → Audio Path": sound.md
@@ -76,7 +83,6 @@ nav:
     # Spatial Navigation page (spatial_navigation.md), which was judged not worth a page of its own.
     - Moving Around the Canvas: moving_around_the_canvas.md
     - Snapping: snapping.md
-    - Drawing and Notation: drawing_and_notation.md
     - File Management: files_and_paths.md
     # Beside files_and_paths.md: both are about the document folder on disk, this one from the
     # side of an editor or script writing into it while Field has it open.

@@ -3519,3 +3519,4 @@ lines(circle, diag, hitPts, w = 420.0, h = 320.0, fitToSize = true)
 
 Every public declaration used on this page is listed, with its KDoc, in the codebase reference under [`StandardDrawing.kt`](reference/graphics.md#standarddrawing-kt). The rest of the standard library is in [what's already in the box](reference/index.md).
 
+Next on the Tour, [Drawing and Notation](drawing_and_notation.md) draws by hand on the canvas and has a box read each stroke back as an `FLine`.
