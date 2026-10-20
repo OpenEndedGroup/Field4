@@ -1580,8 +1580,8 @@ filter, and whose first casualty is the pixel-scale structure the whole exercise
 of room, and `possibilityCountImg` shows you which cells were over-constrained from the start.
 Magenta in a wave frame is a cell whose possibility set has been emptied.
 
-**Names and shapes that bite inside a Field box.** Every snippet on this page runs in one, and none
-of these two is WFC-specific:
+**Names and shapes that bite inside a Field box.** Every snippet on this page runs in one, and neither
+of these is WFC-specific:
 
 - **A box's scope is crowded.** `h`, `sky` and `error` all resolve to something Field already defines
   ahead of a script-local `val` of the same name once you are inside a lambda with its own receiver.
