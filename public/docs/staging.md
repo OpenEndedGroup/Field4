@@ -28,7 +28,7 @@ What happens when a box ends on a value, which is most of what working in Field 
 
 - [Visualizers & Controls](visualizers.md) is the one to read first: `.h`, the output panel, sliders and the value visualizer that draws anything you hand it.
 - [Interactive Guides](interactive_guides.md) shows how boxes can walk a reader through a document with slide notes, selections, callbacks, templated values, per-slide chat and callout lines.
-- [Charts as FLines](chart.md) and [DataFrames in a Box](dataframe.md) cover the two shapes tabular data usually arrives in.
+- [Charts as FLines](chart.md) and [DataFrames in a Box](dataframe.md) cover the two shapes tabular data usually arrives in, and take over where the Tour's [Looking at Data](tour_data.md) stops.
 
 ## Drawing from data
 

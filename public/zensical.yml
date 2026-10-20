@@ -51,6 +51,13 @@ nav:
       # four_in_output_areas.md needs the Electron app, so both stay under the graphics section
       # and this page hands off to them.
       - Graphics on the GPU: tour_gpu_graphics.md
+      # After the GPU stop and before Sound, because Field calls itself an environment for
+      # graphics and exploratory data visualization and until this stop no Tour page showed data.
+      # A new page rather than chart.md or dataframe.md moved here: each of those covers one half
+      # (the plot, the frame) in reference depth, and this stop is the short path through both —
+      # a real dataset in a frame, a summary, a Chart, and a control that refilters it live —
+      # ending in links to them and to "Drawing From Data".
+      - Looking at Data: tour_data.md
       # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
       - "Sound: the Pattern → Audio Path": sound.md
       # Before automating_field and after sound, because by this point in the arc there is a living
