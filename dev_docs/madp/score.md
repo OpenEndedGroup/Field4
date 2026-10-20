@@ -75,6 +75,13 @@ the score (x 64–584) so it covers no box.
 Verified from a live capture (Playwright, `record-window`, 14 s at 6 fps): every box draws in the
 panel at its place in the score, both Glass boxes sound and draw together around 7 s, and the jump
 box moves on the canvas.
+## Lit boxes
+
+The demo fills the box under the playhead with its hue. Field does it with a general box property,
+`Box.tint` (a CSS colour; `""` clears it; synced to the canvas, never saved, styled as `.box.tinted`
+in `field.css`), which `playScore` sets on entry and clears on exit or stop. Any box code can use it to
+show state on the canvas.
+
 ## Dropped, and why
 
 - `?room=` Yjs collaboration: out of scope (PLAN.md); recorded as a gap.
@@ -86,7 +93,6 @@ box moves on the canvas.
 ## Gaps
 
 - `?room=` collaboration (Yjs) is not ported.
-- Active boxes are not tinted on the canvas as the demo's are (Field shows only the lead as running).
 
 - `thisRMS` excludes reverb/delay tails (they are mixed after the voices in one shared orbit).
 - The level is sampled once per block (2.7 ms at 48 kHz) and smoothed over ~40 ms, so it is a
