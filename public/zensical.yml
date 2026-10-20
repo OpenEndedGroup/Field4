@@ -32,6 +32,13 @@ nav:
       - The Documentation Browser: completion_doc_browser.md
       - Drawing with FLines: fline_examples.md
       - Frames and the Animation Loop: animation_time_model.md
+      # Straight after the animation loop, because the GPU stop leans on it: the shader's clock is
+      # the same AnimationClock, and a re-run replacing what it drew is the same rule. Vulkan is
+      # what the "4" in Field·4 names, and before this stop the Tour only mentioned it in passing.
+      # A new short page rather than a move: afield_four_graphics.md is the whole curriculum and
+      # four_in_output_areas.md needs the Electron app, so both stay under the graphics section
+      # and this page hands off to them.
+      - Graphics on the GPU: tour_gpu_graphics.md
       # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
       - "Sound: the Pattern → Audio Path": sound.md
       # Before automating_field and after sound, because by this point in the arc there is a living
