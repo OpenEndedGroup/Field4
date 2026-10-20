@@ -326,6 +326,7 @@ class ParticleSketch(
         private var module: ComputeModulePointer? = null
         private var mesh: ComputeMesh? = null
         private val bounds = Rectanglef(0f, 0f, 0f, 0f)
+        private val sampler = TextureSampler(renderer, 1, false)
 
         init {
             buildDrawing()
@@ -441,8 +442,6 @@ class ParticleSketch(
             return mesh
         }
 
-        private val sampler = TextureSampler(renderer, 1, false)
-
         private fun display(): ModulePointer {
             val name = "${shape.name}-display"
             val m = Module(
@@ -489,7 +488,15 @@ class ParticleSketch(
             if (stepping) time += dt
             frame++
 
-            val batch = drainQueue()
+            var batch = drainQueue()
+            // More paint in one frame than there is room for: only the newest capacity's worth can
+            // survive, and two spawns writing one slot in the same dispatch would race, so the
+            // older ones are skipped (they still count, so ids and the ring stay as if painted).
+            val overflow = batch.size / 2 - shape.capacity
+            if (overflow > 0) {
+                spawned += overflow
+                batch = batch.copyOfRange(overflow * 2, batch.size)
+            }
             val spawnCount = batch.size / 2
             val spawnBase = (spawned % shape.capacity).toInt()
             val spawnId = spawned + 1
