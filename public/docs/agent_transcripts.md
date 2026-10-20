@@ -3556,6 +3556,18 @@ shader. Launch the renderer, then launch any example; each one replaces the last
 
 [Open ↗](offline.html?file=assets/agent_transcripts/stacksl_gallery/metadata.edn)
 
+### stacktrinket_feedback
+
+StackTrinket, the classroom StackSL editor, in Field: StackSL programs that read their own previous
+frame. A renderer box, then seven programs beneath it: the pulse ring, feedback fog, persistent
+bloom, store channels, subroutine cse, four memory bands and long memory ecology. Each box keeps its
+program in the `stackSL` tab and calls `stackFeedback()`, which draws it every frame with the last
+frame bound as `state` and follows edits live. The box's lowering panel shows the GLSL the program
+becomes, how deep its stack ends, and any error at its line and column. Launching a box replaces
+the program in the window.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stacktrinket_feedback/metadata.edn)
+
 ## Graphics building blocks
 
 <!-- transcript-index: verified-by = compile -->

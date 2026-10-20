@@ -776,6 +776,10 @@ object DemoTranscriptExecSmokeTest {
         "fieldml_mesh_demo",
         // stacksl_examples.md's gallery draws into a native window.
         "stacksl_gallery",
+        // The madp StackTrinket port: StackSL feedback programs on a native Window + Renderer, so
+        // compile-only here. StackSLFeedbackTest compiles every preset and its fragment shader to
+        // SPIR-V without a GPU.
+        "stacktrinket_feedback",
     )
 
     /**
