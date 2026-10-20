@@ -6,7 +6,7 @@ import subprocess
 
 ROOT=Path(__file__).resolve().parents[3]
 parser=argparse.ArgumentParser();parser.add_argument('--port',type=int,default=9743);args=parser.parse_args()
-env=dict(os.environ,FIELD_DOCS_RUNNER_MODE='incremental',FIELD_DOCS_RUNNER_PORT=str(args.port))
+env=dict(os.environ,FIELD_DOCS_RUNNER_MODE='always',FIELD_DOCS_RUNNER_PORT=str(args.port))
 paint=ROOT/'build/field-paint/release/libfield_paint_jvm.dylib'
 if paint.is_file():env.setdefault('AFIELD_PAINT_LIBRARY',str(paint))
 # Prefer the caller's configured Node; on Marc's host the bundled runtime is independent of Homebrew.

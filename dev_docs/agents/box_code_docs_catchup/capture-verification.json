@@ -1,61 +1,141 @@
 {
-  "status": "not-run",
-  "reason": "Normal docs runner refused capture admission on battery below 80%; AC power required to finish",
-  "observedEnvironment": {
-    "supported": true,
-    "platform": "darwin",
-    "onAC": false,
-    "batteryPercent": 53,
-    "displayAvailable": true,
-    "disk": {
+  "status": "passed",
+  "page": "public/docs/evolving_creatures.md",
+  "sourceSha256": "8c45bfb7cb666bdec03261ad2f1ed5fab6e02b3ecbae0260f63d9bd5b51e0305",
+  "mode": "always",
+  "command": "uv run python dev_docs/agents/box_code_docs_catchup/capture.py",
+  "log": "build/box-code-revision/docs-catchup/capture-forced.log",
+  "summary": {
+    "regenerated": 7,
+    "screenshots": 5,
+    "videos": 2,
+    "failures": 0,
+    "elapsedSeconds": 388.4
+  },
+  "environment": {
+    "startedAtEpochSec": 1792487277.0425642,
+    "reportedAtEpochSec": 1792487665.563753,
+    "sampleCount": 30,
+    "latest": {
+      "supported": true,
+      "platform": "darwin",
+      "onAC": true,
+      "batteryPercent": 29,
+      "displayAvailable": true,
+      "disk": {
+        "path": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4",
+        "freeBytes": 18445246464,
+        "protectedBytes": 8589934592
+      }
+    },
+    "diskBudget": {
       "path": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4",
-      "freeBytes": 20789456896,
-      "protectedBytes": 8589934592
+      "floorBytes": 8589934592,
+      "reserveBytes": 0,
+      "plannedBytes": 0,
+      "admitted": true,
+      "initialFreeBytes": 22552231936,
+      "minimumFreeBytes": 18445246464,
+      "maxObservedVolumeLossBytes": 4106985472,
+      "attribution": "whole volume, including other writers; not checkout consumption"
     }
   },
-  "outcomes": [
+  "assets": [
     {
-      "page": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/public/docs/evolving_creatures.md",
-      "block": 1,
-      "status": "not-run",
-      "reason": "power: battery 53%; long verification requires AC or at least 80%"
+      "path": "public/docs/assets/evolving_creatures/one_bug.png",
+      "sha256": "6d2f1f2c3044b6e0e3bf8812411d021d9c92ac4342e7aa32edbe9777b2eda075",
+      "bytes": 175789,
+      "inspected": true
     },
     {
-      "page": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/public/docs/evolving_creatures.md",
-      "block": 2,
-      "status": "not-run",
-      "reason": "power: battery 53%; long verification requires AC or at least 80%"
+      "path": "public/docs/assets/evolving_creatures/evolved_bug.png",
+      "sha256": "43c1f5e4efbe2e21fdab6b4f550959d3f8638416b81b8bffd088e4fb81a52c44",
+      "bytes": 330897,
+      "inspected": true
     },
     {
-      "page": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/public/docs/evolving_creatures.md",
-      "block": 3,
-      "status": "not-run",
-      "reason": "power: battery 53%; long verification requires AC or at least 80%"
+      "path": "public/docs/assets/evolving_creatures/watching.png",
+      "sha256": "b02f92182b5f9c8880165d577ab67dd4880f9349281a79fc90c5279a1beb7c85",
+      "bytes": 78499,
+      "inspected": true
     },
     {
-      "page": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/public/docs/evolving_creatures.md",
-      "block": 4,
-      "status": "not-run",
-      "reason": "power: battery 53%; long verification requires AC or at least 80%"
+      "path": "public/docs/assets/evolving_creatures/random_3d.mp4",
+      "sha256": "b32992f1c2dac4b4cde6dba77686edced15d09e71b6ff782ffa01710e236474f",
+      "bytes": 1012319,
+      "inspected": true,
+      "video": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "width": 1160,
+            "height": 1000,
+            "nb_frames": "280",
+            "side_data_list": [
+              {}
+            ]
+          }
+        ],
+        "format": {
+          "duration": "14.000000"
+        }
+      },
+      "inspectedFrameSeconds": [
+        4,
+        10
+      ]
     },
     {
-      "page": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/public/docs/evolving_creatures.md",
-      "block": 5,
-      "status": "not-run",
-      "reason": "power: battery 53%; long verification requires AC or at least 80%"
+      "path": "public/docs/assets/evolving_creatures/champion_3d.mp4",
+      "sha256": "1f089e3675765789453f6f15d1f5528f8c0e2e293768e569bfcb5aaab8eca051",
+      "bytes": 1687846,
+      "inspected": true,
+      "video": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "width": 1160,
+            "height": 1000,
+            "nb_frames": "320",
+            "side_data_list": [
+              {}
+            ]
+          }
+        ],
+        "format": {
+          "duration": "16.000000"
+        }
+      },
+      "inspectedFrameSeconds": [
+        4,
+        12
+      ]
     },
     {
-      "page": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/public/docs/evolving_creatures.md",
-      "block": 6,
-      "status": "not-run",
-      "reason": "power: battery 53%; long verification requires AC or at least 80%"
+      "path": "public/docs/assets/evolving_creatures/crawler.png",
+      "sha256": "025daf2d8533b992c0a70c4e453ae3a8b95e5303f6d98f31b461abfe330ec20d",
+      "bytes": 120553,
+      "inspected": true
     },
     {
-      "page": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/public/docs/evolving_creatures.md",
-      "block": 7,
-      "status": "not-run",
-      "reason": "power: battery 53%; long verification requires AC or at least 80%"
+      "path": "public/docs/assets/evolving_creatures/crawler_long_run.png",
+      "sha256": "ff313695bf6b95a56cec2c2d8658df3c23216629423d8463aa391846096a7e95",
+      "bytes": 217754,
+      "inspected": true
     }
   ],
-  "assetsModified": false
+  "inspection": "All five screenshots show the actual simulation output without error markers. Video frames at two times show visible gait and position changes in the real 3D viewer.",
+  "priorAttempts": [
+    {
+      "log": "build/box-code-revision/docs-catchup/capture.log",
+      "result": "not run: power admission declined on battery"
+    },
+    {
+      "log": "build/box-code-revision/docs-catchup/capture-ac.log",
+      "result": "incremental mode reused checked-in assets lacking cache entries; changed harness to always for the successful fresh run"
+    }
+  ],
+  "environmentReport": "build/docs-environment.json"
 }

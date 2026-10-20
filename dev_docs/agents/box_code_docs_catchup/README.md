@@ -41,6 +41,13 @@ The detailed command receipts and failed harness diagnostics remain under
 `build/box-code-revision/docs-catchup/`. Harness repairs addressed fragment history, CLI syntax,
 HTML escaping and unchanged-macro handling; they did not waive failures in the examples.
 
+## Fresh captures
+
+`capture-verification.json` records seven successful forced recaptures of the evolving-creatures
+page: five images and two recordings, all inspected. The normal runner reported zero failures.
+The capture harness uses `always` because incremental mode can reuse checked-in assets without
+a cache entry. Five assets reproduced exactly; the evolved-champion and live-worker images changed.
+
 ## Delivery
 
 Generated starting points must be refreshed from the authored transcripts. The final capture and
