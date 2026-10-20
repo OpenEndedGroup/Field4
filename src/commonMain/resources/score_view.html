@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>score</title>
+  <!-- The output view of a Field score (afield.animation.motion.playScore): it asks the score box for
+       the latest frame's draw list and paints it. Nothing a student writes runs here. -->
+  <style>
+    html, body { margin: 0; padding: 0; background: #0a0a0a; overflow: hidden; }
+    canvas { display: block; }
+    #status { position: fixed; left: 10px; bottom: 7px; font: 11px "Iosevka Web", Iosevka, monospace;
+      color: #4a4a4a; letter-spacing: 1px; text-transform: uppercase; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <canvas id="out"></canvas>
+  <div id="status">score</div>
+  <script type="module">
+    import { outputRequests } from "/output_requests.js";
+    const binding = new URLSearchParams(location.search).get("binding");
+    const requests = outputRequests(binding);
+    const canvas = document.getElementById("out");
+    const ctx = canvas.getContext("2d");
+    const status = document.getElementById("status");
+    let size = [0, 0];
+
+    function resize(w, h) {
+      if (size[0] === w && size[1] === h) return;
+      size = [w, h];
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function paint(fill, stroke, width, alpha, round) {
+      ctx.globalAlpha = alpha;
+      if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = width;
+        if (round) { ctx.lineCap = "round"; ctx.lineJoin = "round"; }
+        ctx.stroke();
+      }
+    }
+
+    function draw(frame) {
+      resize(frame.w, frame.h);
+      ctx.globalAlpha = 1;
+      ctx.clearRect(0, 0, frame.w, frame.h);
+      for (const c of frame.calls) {
+        const k = c[0];
+        if (k === "l") {
+          ctx.beginPath(); ctx.moveTo(c[1], c[2]); ctx.lineTo(c[3], c[4]);
+          paint(null, c[6], c[7], c[8], true);
+        } else if (k === "c") {
+          ctx.beginPath(); ctx.arc(c[1], c[2], c[3], 0, Math.PI * 2);
+          paint(c[4], c[5], c[6], c[7], false);
+        } else if (k === "r") {
+          ctx.beginPath(); ctx.rect(c[1], c[2], c[3], c[4]);
+          paint(c[5], c[6], c[7], c[8], false);
+        } else if (k === "p") {
+          const pts = c[1];
+          if (pts.length < 4) continue;
+          ctx.beginPath(); ctx.moveTo(pts[0], pts[1]);
+          for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+          if (c[2]) ctx.closePath();
+          paint(c[3], c[4], c[5], c[6], true);
+        }
+      }
+      ctx.globalAlpha = 1;
+      status.textContent = "score · " + frame.t.toFixed(1) + "s / " + frame.loop + "s · " + frame.calls.length + " shapes";
+    }
+
+    async function pump() {
+      try {
+        draw(JSON.parse(await requests.request({})));
+        requestAnimationFrame(pump);
+      } catch (e) {
+        status.textContent = "score stopped — run the score box again";
+        status.style.color = "#7a4a2a";
+      }
+    }
+    pump();
+  </script>
+</body>
+</html>
