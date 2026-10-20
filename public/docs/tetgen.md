@@ -135,7 +135,7 @@ changes nothing, and `tetrahedralize` logs a warning saying so.
 
 Finer requests work as expected. Cost grows roughly in proportion to the element count, about
 11–14 µs per element, so a 36,000-element mesh takes about half a second: fast enough to re-mesh on
-every geometry edit. The package has no way to update a mesh in place, so re-meshing is how you
+every geometry edit. The `afield.geometry.mesh.tetgen` package has no way to update a mesh in place, so re-meshing is how you
 follow an edit. The measured sweep is under [Measurements](#measurements).
 
 ## Into Kratos
