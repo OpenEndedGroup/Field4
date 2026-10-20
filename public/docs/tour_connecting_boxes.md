@@ -104,7 +104,7 @@ Palette that never reads `petals` is left alone.
 ## Why it matters
 
 The value a parent publishes can be anything Kotlin can hold: a number, a list, a function, a
-loaded dataset. The graphics stop later in the Tour depends on it: the box that opens a window
+loaded dataset. The next stop depends on it: the box that opens a window
 publishes `renderer`, and every box connected beneath it draws with that renderer without looking
 for it.
 
@@ -116,3 +116,5 @@ See also:
   `propUpDown` in full, and the layer that draws who reads what.
 - [Property inheritance](running_code.md#property-inheritance-how-children-see-a-parents-values),
   for the mechanism underneath `prop`.
+
+Next on the Tour, [Graphics on the GPU](tour_gpu_graphics.md) puts a box beneath a renderer, and the box draws into a native window.
