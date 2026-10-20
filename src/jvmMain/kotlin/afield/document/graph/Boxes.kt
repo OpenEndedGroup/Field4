@@ -1741,11 +1741,9 @@ fun box(
     createIfMissing: Boolean = true,
     initIfCreated: Boolean = true,
     root: SessionInformation = thisSessionInfo.get(),
-    /**
-     * Called with the box when this call is the one that made it. Message handlers run
-     * concurrently, so "was it there before I looked?" is only answered race-free here: the canvas
-     * sends a new box's name, frame and code at once, and the macro recorder must see one create.
-     */
+    // Called with the box when this call is the one that made it. Message handlers run
+    // concurrently, so "was it there before I looked?" is only answered race-free here: the canvas
+    // sends a new box's name, frame and code at once, and the macro recorder must see one create.
     onCreated: ((Box) -> Unit)? = null,
 ): Box {
     if (u == METAROOT_ID) return metaroot
