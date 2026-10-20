@@ -16,22 +16,40 @@ saddles in white, the separatrices leaving saddles in orange and those arriving 
 import afield.geometry.topology.vectorfield.*
 
 // Each entry is (x, y, outflow, swirl): positive outflow is a source, negative a sink, swirl turns it.
-val features = [[50.0, 45.0, 1.0, 0.6], [150.0, 40.0, -1.0, -0.8], [100.0, 100.0, 0.2, 1.2],
-    [40.0, 115.0, -0.8, 0.0], [165.0, 115.0, 0.9, -0.3]]
-val flow = Img.generateRGB(200, 150) { x, y ->
-    var u = 0.0; var v = 0.0
-    for ((cx, cy, out, swirl) in features) {
-        val dx = x - cx; val dy = y - cy; val k = exp(-(dx * dx + dy * dy) / 900.0)
-        u += k * (out * dx - swirl * dy); v += k * (out * dy + swirl * dx)
+val features = [
+    [50.0, 45.0, 1.0, 0.6],
+    [150.0, 40.0, -1.0, -0.8],
+    [100.0, 100.0, 0.2, 1.2],
+    [40.0, 115.0, -0.8, 0.0],
+    [165.0, 115.0, 0.9, -0.3],
+]
+val flow =
+    Img.generateRGB(200, 150) { x, y ->
+        var u = 0.0
+        var v = 0.0
+        for ((cx, cy, out, swirl) in features) {
+            val dx = x - cx
+            val dy = y - cy
+            val k = exp(-(dx * dx + dy * dy) / 900.0)
+            u += k * (out * dx - swirl * dy)
+            v += k * (out * dy + swirl * dx)
+        }
+        Triple(u.toFloat(), v.toFloat(), 0f)
     }
-    Triple(u.toFloat(), v.toFloat(), 0f)
-}
 
 val topology = VectorFieldTopology.compute(flow, minStrength = 0.01)
 val black = Img(200, 150, 3, FloatArray(200 * 150 * 3))
-showImgGrid("${topology.criticalPoints.size} critical points, ${topology.separatrices.size} separatrices" to
-    black.drawFLines(topology.streamlines(spacing = 9.0, length = 14.0) + topology.toFLines() + topology.criticalPointsFLine(8.0), scale = 3.0),
-    columns = 1, cellSide = 600)
+showImgGrid(
+    "${topology.criticalPoints.size} critical points, ${topology.separatrices.size} separatrices" to
+        black.drawFLines(
+            topology.streamlines(spacing = 9.0, length = 14.0) +
+                topology.toFLines() +
+                topology.criticalPointsFLine(8.0),
+            scale = 3.0,
+        ),
+    columns = 1,
+    cellSide = 600,
+)
 ```
 
 The flow is treated as linear across each small triangle of the grid, so every critical point is
@@ -60,8 +78,10 @@ val topology = VectorFieldTopology.compute(VectorFieldTopology.gradientOf(bright
 val dark = Img(print.width, print.height, 3, FloatArray(print.width * print.height * 3))
 showImgGrid(
     "photograph" to print.scaleBy(2.0),
-    "${topology.criticalPoints.size} points" to print.overlay(dark, 0.6).drawFLines(topology.toFLines() + topology.criticalPointsFLine(7.0), scale = 2.0),
-    columns = 2, cellSide = 300,
+    "${topology.criticalPoints.size} points" to
+        print.overlay(dark, 0.6).drawFLines(topology.toFLines() + topology.criticalPointsFLine(7.0), scale = 2.0),
+    columns = 2,
+    cellSide = 300,
 )
 ```
 
@@ -102,13 +122,22 @@ val flow = loadParticleFlow("public/docs/assets/vector_field_topology/eagle.flow
 val film = videoFrames("public/docs/assets/vector_field_topology/eagle.mp4", width = 480).toList()
 
 fun panel(frame: Int, camera: CameraMotion, minSpeed: Double): Pair<String, Img> {
-    val topology = VectorFieldTopology.compute(flow.at(frame, window = 1, camera = camera), minStrength = 0.02, maxLength = 300.0)
-    val lines = topology.streamlines(spacing = 1.5, length = 14.0, minSpeed = minSpeed) + topology.toFLines() + topology.criticalPointsFLine(6.0)
+    val topology =
+        VectorFieldTopology.compute(flow.at(frame, window = 1, camera = camera), minStrength = 0.02, maxLength = 300.0)
+    val lines =
+        topology.streamlines(spacing = 1.5, length = 14.0, minSpeed = minSpeed) +
+            topology.toFLines() +
+            topology.criticalPointsFLine(6.0)
     val picture = film[frame]
     val dark = Img(picture.width, picture.height, 3, FloatArray(picture.width * picture.height * 3))
-    return "frame $frame" to picture.overlay(dark, 0.55).drawFLines(lines.map { it * flow.cell.toDouble() }, scale = 2.0)
+    return "frame $frame" to
+        picture.overlay(dark, 0.55).drawFLines(lines.map { it * flow.cell.toDouble() }, scale = 2.0)
 }
-showImgGrid(*[60, 120, 210, 270].map { panel(it, CameraMotion.KEEP, minSpeed = 0.0) }.toTypedArray(), columns = 2, cellSide = 480)
+showImgGrid(
+    *[60, 120, 210, 270].map { panel(it, CameraMotion.KEEP, minSpeed = 0.0) }.toTypedArray(),
+    columns = 2,
+    cellSide = 480,
+)
 ```
 
 The whole clip in this look, rendered by the second box of the
@@ -133,14 +162,23 @@ val flow = loadParticleFlow("public/docs/assets/vector_field_topology/eagle.flow
 val film = videoFrames("public/docs/assets/vector_field_topology/eagle.mp4", width = 480).toList()
 
 fun panel(frame: Int, camera: CameraMotion, minSpeed: Double): Pair<String, Img> {
-    val topology = VectorFieldTopology.compute(flow.at(frame, window = 1, camera = camera), minStrength = 0.02, maxLength = 300.0)
-    val lines = topology.streamlines(spacing = 1.5, length = 14.0, minSpeed = minSpeed) + topology.toFLines() + topology.criticalPointsFLine(6.0)
+    val topology =
+        VectorFieldTopology.compute(flow.at(frame, window = 1, camera = camera), minStrength = 0.02, maxLength = 300.0)
+    val lines =
+        topology.streamlines(spacing = 1.5, length = 14.0, minSpeed = minSpeed) +
+            topology.toFLines() +
+            topology.criticalPointsFLine(6.0)
     val picture = film[frame]
     val dark = Img(picture.width, picture.height, 3, FloatArray(picture.width * picture.height * 3))
-    return "frame $frame" to picture.overlay(dark, 0.55).drawFLines(lines.map { it * flow.cell.toDouble() }, scale = 2.0)
+    return "frame $frame" to
+        picture.overlay(dark, 0.55).drawFLines(lines.map { it * flow.cell.toDouble() }, scale = 2.0)
 }
 :::
-showImgGrid(*[60, 150, 210, 270].map { panel(it, CameraMotion.AFFINE, minSpeed = 1.0) }.toTypedArray(), columns = 2, cellSide = 480)
+showImgGrid(
+    *[60, 150, 210, 270].map { panel(it, CameraMotion.AFFINE, minSpeed = 1.0) }.toTypedArray(),
+    columns = 2,
+    cellSide = 480,
+)
 ```
 
 The separatrices still run out past the bird, because the flow around it is close to zero rather
@@ -166,6 +204,5 @@ import afield.geometry.topology.tracking.*
 import afield.geometry.topology.vectorfield.*
 
 val tracker = FeatureTracker(MatchingWeights(birthDistance = 10.0, maxDistance = 20.0))
-for ((time, flow) in frames)
-    tracker.add(time, VectorFieldTopology.compute(flow, minStrength = 0.01).features())
+for ((time, flow) in frames) tracker.add(time, VectorFieldTopology.compute(flow, minStrength = 0.01).features())
 ```

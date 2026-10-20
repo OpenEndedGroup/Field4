@@ -31,7 +31,8 @@ class WaterSurface : ContactModel {
     override fun foot(index: Int) = object : ContactModel.Foot {
         var planted: Float2? = null
         override var grip = 0f
-        override val anchor get() = planted
+        override val anchor
+            get() = planted
 
         override fun force(step: FootStep): Float2 {
             val g = step.genome
@@ -53,7 +54,7 @@ val run = CreatureEvolution.simulate(bug, CreatureSimulationConfig(measuredCycle
 showPlaneGrid(
     "start" to run.frameLines(0),
     "half way" to run.frameLines(run.frames.size / 2),
-    "end\nmoved %.2f".format(run.netCentroidMotion) to run.frameLines(run.frames.lastIndex),
+    "end\nmoved ${run.netCentroidMotion.f2}" to run.frameLines(run.frames.lastIndex),
     columns = 3,
     cellWidth = 280,
     cellHeight = 300,
@@ -80,7 +81,8 @@ class WaterSurface : ContactModel {
     override fun foot(index: Int) = object : ContactModel.Foot {
         var planted: Float2? = null
         override var grip = 0f
-        override val anchor get() = planted
+        override val anchor
+            get() = planted
 
         override fun force(step: FootStep): Float2 {
             val g = step.genome
@@ -95,6 +97,7 @@ class WaterSurface : ContactModel {
         }
     }
 }
+
 :::endfold
 
 val config = EvolutionConfig(
@@ -114,10 +117,11 @@ val config = EvolutionConfig(
 
 val best = mutableListOf<Double>()
 val mean = mutableListOf<Double>()
-val result = CreatureEvolution.evolve(config) { update ->
-    best += update.champion.fitness.toDouble()
-    mean += update.generation.meanFitness.coerceAtLeast(-2f).toDouble()
-}
+val result =
+    CreatureEvolution.evolve(config) { update ->
+        best += update.champion.fitness.toDouble()
+        mean += update.generation.meanFitness.coerceAtLeast(-2f).toDouble()
+    }
 
 val bug = result.best
 showSignals("champion" to best, "population mean" to mean, title = "fitness by generation", xTitle = "generation")
@@ -125,7 +129,7 @@ showPlane(
     bug.frameLines(bug.frames.lastIndex, trailLength = bug.frames.size),
     channel = "swimmer",
     title = "the champion after ${config.generations} generations",
-    caption = "moved %.2f over %d cycles".format(bug.netCentroidMotion, config.simulation.measuredCycles),
+    caption = "moved ${bug.netCentroidMotion.f2} over ${config.simulation.measuredCycles} cycles",
     width = 480,
     height = 360,
     yUp = true,
@@ -142,18 +146,23 @@ to get a different lineage; the same seed always gives the same champion.
 `frameLines(i)` draws frame `i`, and `notationLines(i)` draws the creature's score: one row per point,
 with a bar wherever that foot's program has it down, a playhead at the current phase, and bows
 between rows for the joints that are pushing. To animate either, draw a frame per pass of a `loop`.
-Evolution takes seconds, so run it on a thread and have the loop draw whatever the latest champion is.
-An `EvolutionController` lets the box stop the search when you stop the box.
+Evolution takes seconds, so `go` runs the search in a cancellable worker coroutine. An atomic
+reference publishes the latest completed champion to the drawing loop. Stopping or relaunching the
+box cancels its search; worker failures appear in the editor.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/watching.png" execution="launch" wait="30.0" timeout="120" capture="box" open-outputs="true" w="480" h="520" padding="14"}
 import afield.simulation.creatures.*
+import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 :::fold the WaterSurface contact model, as above
 class WaterSurface : ContactModel {
     override fun foot(index: Int) = object : ContactModel.Foot {
         var planted: Float2? = null
         override var grip = 0f
-        override val anchor get() = planted
+        override val anchor
+            get() = planted
 
         override fun force(step: FootStep): Float2 {
             val g = step.genome
@@ -168,6 +177,7 @@ class WaterSurface : ContactModel {
         }
     }
 }
+
 :::endfold
 
 :::fold the config from "Evolving one"
@@ -187,15 +197,17 @@ val config = EvolutionConfig(
 )
 :::endfold
 
-val controller = EvolutionController()
-var champion: CreatureEvaluation? = null
-kotlin.concurrent.thread(isDaemon = true) {
-    CreatureEvolution.evolve(config, controller) { champion = it.champion }
+// The worker publishes complete evaluations; the drawing loop reads one snapshot per frame.
+val champion = AtomicReference<CreatureEvaluation?>(null)
+go {
+    withContext(Dispatchers.Default) {
+        CreatureEvolution.evolveSuspend(config) { champion.set(it.champion) }
+    }
 }
 
 var i = 0
 loop {
-    val bug = champion ?: return@loop
+    val bug = champion.get() ?: return@loop
     val c = bug.frames[i % bug.frames.size].center
     showPlane(
         bug.frameLines(i) + bug.notationLines(i, origin = Float2(c.x - 3f, c.y + 6f)),
@@ -205,7 +217,7 @@ loop {
         yUp = true,
     )
     i++
-}.end { controller.requestStop() }
+}
 ```
 
 ## In 3D
@@ -221,7 +233,6 @@ First, before any evolution: the random bug from the top of the page, watched fo
 
 ```diffstatic_runner {data-lang=kotlin video="assets/evolving_creatures/random_3d.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="14" fps="20" timeout="300" w="900" embed=true name="creature-3d-before" alt="a random water bug in a low 3D view, its feet planting and lifting while it stays more or less where it started"}
 import afield.simulation.creatures.*
-import afield.graphics.three.ThreeUpAxis
 import kotlin.random.Random
 
 :::fold the WaterSurface contact model, as above
@@ -229,7 +240,8 @@ class WaterSurface : ContactModel {
     override fun foot(index: Int) = object : ContactModel.Foot {
         var planted: Float2? = null
         override var grip = 0f
-        override val anchor get() = planted
+        override val anchor
+            get() = planted
 
         override fun force(step: FootStep): Float2 {
             val g = step.genome
@@ -244,6 +256,7 @@ class WaterSurface : ContactModel {
         }
     }
 }
+
 :::endfold
 
 val genome = CreatureEvolution.randomGenome(Random(4), minPoints = 6, maxPoints = 6)
@@ -270,14 +283,14 @@ as long as it was judged, so that it has room to go somewhere.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/evolving_creatures/champion_3d.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="16" fps="20" timeout="300" w="900" embed=true name="creature-3d-after" alt="the evolved water bug in a low tracking shot, scooting along the water as the grid slides past beneath it"}
 import afield.simulation.creatures.*
-import afield.graphics.three.ThreeUpAxis
 
 :::fold the WaterSurface contact model, as above
 class WaterSurface : ContactModel {
     override fun foot(index: Int) = object : ContactModel.Foot {
         var planted: Float2? = null
         override var grip = 0f
-        override val anchor get() = planted
+        override val anchor
+            get() = planted
 
         override fun force(step: FootStep): Float2 {
             val g = step.genome
@@ -292,6 +305,7 @@ class WaterSurface : ContactModel {
         }
     }
 }
+
 :::endfold
 
 val config = EvolutionConfig(
@@ -357,7 +371,8 @@ class Floor(val stiffness: Float = 900f, val damping: Float = 40f, val friction:
     override fun foot(index: Int) = object : ContactModel.Foot {
         var planted: Float2? = null
         override var grip = 0f
-        override val anchor get() = planted
+        override val anchor
+            get() = planted
 
         override fun force(step: FootStep): Float2 {
             val g = step.genome
@@ -390,7 +405,9 @@ val config = EvolutionConfig(
         measuredCycles = 6,
         gravity = -9.8f,
         contact = Floor(),
-        fitness = { e -> 2f * max(e.sustainedTravel(Float2(1f, 0f)), e.sustainedTravel(Float2(-1f, 0f))) - e.meanStretchError },
+        fitness = { e ->
+            2f * max(e.sustainedTravel(Float2(1f, 0f)), e.sustainedTravel(Float2(-1f, 0f))) - e.meanStretchError
+        },
         maxActuationBudgetPerCycle = 40f,
         maxJointImpulsePerStep = 0.2f,
         maxCenterSpeed = 4f,
@@ -401,12 +418,18 @@ val crawler = CreatureEvolution.evolve(config).best
 val floor = fline {
     moveTo(-6f, 0f)
     lineTo(6f, 0f)
-}.apply { color = vec(0.5, 0.45, 0.4, 1.0) }
+}
+    .apply { color = vec(0.5, 0.45, 0.4, 1.0) }
 
 showPlaneGrid(
     "start" to [floor] + crawler.frameLines(0, alignNetMotionToPositiveX = false),
-    "end\nmoved %.2f along the floor".format(crawler.displacement.x) to
-        [floor] + crawler.frameLines(crawler.frames.lastIndex, trailLength = crawler.frames.size, alignNetMotionToPositiveX = false),
+    "end\nmoved ${crawler.displacement.x.f2} along the floor" to
+        [floor] +
+            crawler.frameLines(
+                crawler.frames.lastIndex,
+                trailLength = crawler.frames.size,
+                alignNetMotionToPositiveX = false,
+            ),
     columns = 2,
     cellWidth = 400,
     cellHeight = 280,
@@ -430,7 +453,8 @@ class Floor(val stiffness: Float = 900f, val damping: Float = 40f, val friction:
     override fun foot(index: Int) = object : ContactModel.Foot {
         var planted: Float2? = null
         override var grip = 0f
-        override val anchor get() = planted
+        override val anchor
+            get() = planted
 
         override fun force(step: FootStep): Float2 {
             val g = step.genome
@@ -463,7 +487,9 @@ val config = EvolutionConfig(
         measuredCycles = 6,
         gravity = -9.8f,
         contact = Floor(),
-        fitness = { e -> 2f * max(e.sustainedTravel(Float2(1f, 0f)), e.sustainedTravel(Float2(-1f, 0f))) - e.meanStretchError },
+        fitness = { e ->
+            2f * max(e.sustainedTravel(Float2(1f, 0f)), e.sustainedTravel(Float2(-1f, 0f))) - e.meanStretchError
+        },
         maxActuationBudgetPerCycle = 40f,
         maxJointImpulsePerStep = 0.2f,
         maxCenterSpeed = 4f,
@@ -477,18 +503,26 @@ val xs = crawler.frames.flatMap { f -> f.points.map { it.x } }
 val floor = fline {
     moveTo(xs.min() - 1f, 0f)
     lineTo(xs.max() + 1f, 0f)
-}.apply { color = vec(0.5, 0.45, 0.4, 1.0) }
-
-val copies = (0..crawler.frames.lastIndex step 40).flatMap { i ->
-    val fade = 0.15 + 0.85 * i / crawler.frames.lastIndex
-    crawler.frameLines(i, trailLength = 1, alignNetMotionToPositiveX = false).onEach {
-        it.color = vec(it.color.x, it.color.y, it.color.z, it.color.w * fade)
-    }
 }
+    .apply { color = vec(0.5, 0.45, 0.4, 1.0) }
+
+val copies =
+    (0..crawler.frames.lastIndex step 40).flatMap { i ->
+        val fade = 0.15 + 0.85 * i / crawler.frames.lastIndex
+        crawler.frameLines(i, trailLength = 1, alignNetMotionToPositiveX = false).onEach {
+            it.color = vec(it.color.x, it.color.y, it.color.z, it.color.w * fade)
+        }
+    }
 
 showPlane(
-    [floor] + copies + crawler.frameLines(crawler.frames.lastIndex, trailLength = crawler.frames.size, alignNetMotionToPositiveX = false),
-    title = "24 cycles: %.1f along the floor".format(crawler.displacement.x),
+    [floor] +
+        copies +
+        crawler.frameLines(
+            crawler.frames.lastIndex,
+            trailLength = crawler.frames.size,
+            alignNetMotionToPositiveX = false,
+        ),
+    title = "24 cycles: ${crawler.displacement.x.f1} along the floor",
     window = Rect(xs.min() - 1.0, -0.5, xs.max() - xs.min() + 2.0, 3.5),
     width = 860,
     height = 260,

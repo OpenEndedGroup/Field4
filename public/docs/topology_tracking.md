@@ -17,13 +17,18 @@ import afield.geometry.topology.tracking.*
 // Six hills circling at different speeds, sampled for 90 frames. Each frame's maxima are matched to
 // the last frame's, so each hill keeps one track for as long as it stays distinct.
 val hills = (0 until 6).map { i -> Triple(0.4 + 0.25 * i, 30.0 + 9.0 * i, 1.0 - 0.1 * i) }
-fun field(t: Double) = Img.generate(200, 150) { x, y ->
-    hills.withIndex().sumOf { (i, h) ->
-        val (speed, radius, amplitude) = h
-        val cx = 100 + radius * cos(speed * t + i); val cy = 75 + radius * 0.7 * sin(speed * t * 1.3 + i)
-        amplitude * exp(-((x - cx).pow(2) + (y - cy).pow(2)) / 120.0)
-    }.toFloat()
-}
+fun field(t: Double) =
+    Img.generate(200, 150) { x, y ->
+        hills
+            .withIndex()
+            .sumOf { (i, h) ->
+                val (speed, radius, amplitude) = h
+                val cx = 100 + radius * cos(speed * t + i)
+                val cy = 75 + radius * 0.7 * sin(speed * t * 1.3 + i)
+                amplitude * exp(-((x - cx).pow(2) + (y - cy).pow(2)) / 120.0)
+            }
+            .toFloat()
+    }
 
 val tracker = FeatureTracker(MatchingWeights(birthDistance = 10.0, maxDistance = 20.0))
 for (frame in 0 until 90) {
@@ -32,8 +37,12 @@ for (frame in 0 until 90) {
 }
 
 val last = field(89 / 40.0).normalized().colormap("viridis")
-showImgGrid("${tracker.tracks.size} tracks over 90 frames" to last.drawFLines(tracker.toFLines(thickness = 2.0) + tracker.aliveFLine(9.0), scale = 3.0),
-    columns = 1, cellSide = 600)
+showImgGrid(
+    "${tracker.tracks.size} tracks over 90 frames" to
+        last.drawFLines(tracker.toFLines(thickness = 2.0) + tracker.aliveFLine(9.0), scale = 3.0),
+    columns = 1,
+    cellSide = 600,
+)
 ```
 
 Six hills give seven tracks: one hill's track ended when it passed close to another, and a new
@@ -86,20 +95,37 @@ import afield.geometry.topology.tracking.*
 // more. A feature that survives a large blur is large; one that dies at the first is fine detail.
 val print = imgFromFile("public/docs/assets/vision/fline-viewer.jpg", 3).crop(78, 262, 128, 236).scaleBy(2.0)
 val sigmas = [1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 11.0, 16.0]
-val space = ScaleSpace.track(print.luma(), sigmas, persistence = 0.02, maxDistance = 14.0, types = setOf(CriticalType.MINIMUM))
+val space =
+    ScaleSpace.track(print.luma(), sigmas, persistence = 0.02, maxDistance = 14.0, types = setOf(CriticalType.MINIMUM))
 
 // Each feature that survives to σ 3 or more, as a circle where it starts with radius twice the largest
-// σ it reached (a blob of scale σ is about 2σ across), and its path through scale.
+// σ it reached (the displayed diameter is four times σ), and its path through scale.
 val lasting = space.tracker.tracks.filter { space.scaleOf(it) >= 3.0 }
 val circles = lasting.map { t ->
     val (x, y) = t.samples.first().second.let { it.x to it.y }
-    FLine().circle(x, y, 2 * space.scaleOf(t)).also { it.properties["color"] = FeatureTracker.colourOf(t.id); it.properties["thickness"] = 1.5 }
+    FLine().circle(x, y, 2 * space.scaleOf(t)).also {
+        it.color = FeatureTracker.colourOf(t.id)
+        it.thickness = 1.5
+    }
+}
+val tracks = lasting.map { track ->
+    track.toFLine().apply {
+        color = FeatureTracker.colourOf(track.id)
+        thickness = 1.5
+    }
+}
+val tracks = lasting.map { track ->
+    track.toFLine().apply {
+        color = FeatureTracker.colourOf(track.id)
+        thickness = 1.5
+    }
 }
 val dark = Img(print.width, print.height, 3, FloatArray(print.width * print.height * 3))
 showImgGrid(
     "photograph" to print,
-    "by scale" to print.overlay(dark, 0.55).drawFLines(circles + lasting.map { t -> t.toFLine().also { it.properties["color"] = FeatureTracker.colourOf(t.id); it.properties["thickness"] = 1.5 } }),
-    columns = 2, cellSide = 320,
+    "by scale" to print.overlay(dark, 0.55).drawFLines(circles + tracks),
+    columns = 2,
+    cellSide = 320,
 )
 ```
 
@@ -118,8 +144,8 @@ import afield.geometry.topology.tracking.*
 
 val a = MorseSmale.compute(frameA, persistence = 0.02).persistenceDiagram(dimension = 1)
 val b = MorseSmale.compute(frameB, persistence = 0.02).persistenceDiagram(dimension = 1)
-persistenceDiagramDistance(a, b)                  // exact
-persistenceDiagramDistance(a, b, epsilon = 1e-4)  // entropic, for large diagrams
+persistenceDiagramDistance(a, b) // exact
+persistenceDiagramDistance(a, b, epsilon = 1e-4) // entropic, for large diagrams
 ```
 
 ## Real footage

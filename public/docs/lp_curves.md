@@ -37,8 +37,8 @@ val answer = pointCloudFLine([polygon.optimalVertex(c)], vec(1.0, 0.4, 0.4, 1.0)
 val dots = { t: LpTrajectory -> pointCloudFLine(t.positions, vec(1.0, 1.0, 1.0, 0.9), 1.0) }
 
 showPlaneGrid(
-    "centralPath\n${central.samples.size} samples, μ from %.0e to %.0e".format(central.samples.first().scale, central.last.scale) to
-        [outline, central.toFLine(), answer],
+    "centralPath\n${central.samples.size} samples, μ from %.0e to %.0e"
+        .format(central.samples.first().scale, central.last.scale) to [outline, central.toFLine(), answer],
     "primalDual\n${pd.samples.size - 1} Newton steps to μ = %.1e".format(pd.last.scale) to
         [outline, pd.toFLine(vec(0.55, 0.9, 0.6, 0.95)), dots(pd), answer],
     "simplexWalk\n${walk.samples.size - 1} pivots from vertex 4" to
@@ -77,7 +77,8 @@ val leaning = polygon.centralFan(angles = 72, samples = 90, weights = doubleArra
 
 showPlaneGrid(
     "centralFan, equal weights\n${fan.size} directions, one curve each" to [polygon.toFLine()] + fan.toFLines(),
-    "centralFan, edge 0 weighted 6\nsame vertices at the ends, different curves" to [polygon.toFLine()] + leaning.toFLines(),
+    "centralFan, edge 0 weighted 6\nsame vertices at the ends, different curves" to
+        [polygon.toFLine()] + leaning.toFLines(),
     columns = 2,
     yUp = true,
     cellWidth = 420,
@@ -105,10 +106,11 @@ val heavyBottom = polygon.centralPath(c, weights = doubleArrayOf(8.0, 8.0, 1.0, 
 val heavyRight = polygon.centralPath(c, weights = doubleArrayOf(1.0, 1.0, 8.0, 1.0, 1.0))
 
 // The weighted analytic centre as edge 2's weight grows: the first sample of each path.
-val centres = (0..60).map { k ->
-    val w = 1.0 + 39.0 * k / 60
-    polygon.centralPath(c, weights = doubleArrayOf(1.0, 1.0, w, 1.0, 1.0), samples = 2).samples.first().position
-}
+val centres =
+    (0..60).map { k ->
+        val w = 1.0 + 39.0 * k / 60
+        polygon.centralPath(c, weights = doubleArrayOf(1.0, 1.0, w, 1.0, 1.0), samples = 2).samples.first().position
+    }
 :::fold draw the two panels
 showPlaneGrid(
     "three weightings, one direction\nwhite: equal, orange: edges 0 and 1 ×8, blue: edge 2 ×8" to
@@ -119,7 +121,14 @@ showPlaneGrid(
             heavyRight.toFLine(vec(0.5, 0.75, 1.0, 0.95)),
         ],
     "the start moves with the weight\nedge 2 weighted 1 → 40, 61 analytic centres" to
-        [polygon.toFLine(), polylineFrom(centres).also { it.color = vec(1.0, 0.8, 0.4, 0.9); it.thickness = 1.6 }, pointCloudFLine(centres, pointSize = 0.8)],
+        [
+            polygon.toFLine(),
+            polylineFrom(centres).also {
+                it.color = vec(1.0, 0.8, 0.4, 0.9)
+                it.thickness = 1.6
+            },
+            pointCloudFLine(centres, pointSize = 0.8),
+        ],
     columns = 2,
     yUp = true,
     cellWidth = 420,
@@ -146,13 +155,14 @@ val polygon = LpPolygon([vec(-2.0, -1.0), vec(1.5, -1.5), vec(3.0, 1.0), vec(0.5
 val c = vec(1.0, 0.4)
 val answer = polygon.optimalVertex(c)
 
-val panels = [0.08, 0.3, 0.62].map { step ->
-    val trace = polygon.pdhg(c, iterations = 700, tau = step, sigma = step)
-    val end = trace.trajectory.last
-    val outside = trace.trajectory.samples.count { it.violation > 0.0 }
-    "tau = sigma = $step\n$outside of 701 iterates outside; ends %.3f from the vertex".format(end.position.distance(answer)) to
-        [polygon.toFLine(), trace.trajectory.toFLine(vec(1.0, 0.55, 0.85, 0.85), 1.0)]
-}
+val panels =
+    [0.08, 0.3, 0.62].map { step ->
+        val trace = polygon.pdhg(c, iterations = 700, tau = step, sigma = step)
+        val end = trace.trajectory.last
+        val outside = trace.trajectory.samples.count { it.violation > 0.0 }
+        "tau = sigma = $step\n$outside of 701 iterates outside; ends ${end.position.distance(answer).f3} from the vertex" to
+            [polygon.toFLine(), trace.trajectory.toFLine(vec(1.0, 0.55, 0.85, 0.85), 1.0)]
+    }
 
 showPlaneGrid(*panels.toTypedArray(), columns = 3, cellWidth = 310, cellHeight = 280, yUp = true)
 ```
@@ -180,13 +190,21 @@ val optimum = polygon.simplexWalk(c).last.objective // c·x at the optimal verte
 val shrink = kotlin.math.sqrt(trace.ellipses[1].determinant / trace.ellipses[0].determinant)
 :::fold draw the two panels
 val ellipses = trace.ellipses.take(24).map { it.toFLine(color = vec(0.55, 0.8, 1.0, 0.35)) }
-val centres = { tag: String, color: Vec4 -> pointCloudFLine(samples.filter { it.tag == tag }.map { it.position }, color, 1.3) }
+val centres = { tag: String, color: Vec4 ->
+    pointCloudFLine(samples.filter { it.tag == tag }.map { it.position }, color, 1.3)
+}
 
 showPlaneGrid(
-    "the first 24 ellipses\narea shrinks by %.3f per step".format(shrink) to
+    "the first 24 ellipses\narea shrinks by ${shrink.f3} per step" to
         [polygon.toFLine()] + ellipses + trace.trajectory.toFLine(vec(1.0, 1.0, 1.0, 0.6), 0.8),
-    "centres: red cut an edge, green cut the objective\n$feasibilityCuts feasibility cuts; best feasible c·x within %.1e".format(optimum - best) to
-        [polygon.toFLine(), trace.trajectory.toFLine(vec(1.0, 1.0, 1.0, 0.35), 0.8), centres("feasibility-cut", vec(1.0, 0.4, 0.4, 1.0)), centres("objective-cut", vec(0.4, 1.0, 0.55, 1.0))],
+    "centres: red cut an edge, green cut the objective\n$feasibilityCuts feasibility cuts; best feasible c·x within %.1e"
+        .format(optimum - best) to
+        [
+            polygon.toFLine(),
+            trace.trajectory.toFLine(vec(1.0, 1.0, 1.0, 0.35), 0.8),
+            centres("feasibility-cut", vec(1.0, 0.4, 0.4, 1.0)),
+            centres("objective-cut", vec(0.4, 1.0, 0.55, 1.0)),
+        ],
     columns = 2,
     yUp = true,
     cellWidth = 420,
@@ -219,12 +237,23 @@ it: three end near its middle, while the Chebyshev centres slide down to the low
 val polygon = LpPolygon([vec(-2.0, -1.0), vec(1.5, -1.5), vec(3.0, 1.0), vec(0.5, 2.5), vec(-2.5, 1.5)])
 val c = vec(-1.0, -0.2)
 
-val panels = LpCenter.entries.map { kind ->
-    val trace = polygon.cuttingPlanes(c, iterations = 14, center = kind)
-    val regions = trace.regions.map { r -> polylineFrom(r, closed = true).also { it.color = vec(0.6, 0.8, 1.0, 0.4); it.thickness = 0.9 } }
-    "$kind centres\narea %.2f → %.1e in ${trace.regions.size - 1} cuts".format(trace.trajectory.samples.first().scale, trace.trajectory.last.scale) to
-        [polygon.toFLine()] + regions + trace.trajectory.toFLine(vec(1.0, 0.72, 0.32, 0.95)) + pointCloudFLine(trace.trajectory.positions, pointSize = 1.0)
-}
+val panels =
+    LpCenter.entries.map { kind ->
+        val trace = polygon.cuttingPlanes(c, iterations = 14, center = kind)
+        val regions =
+            trace.regions.map { r ->
+                polylineFrom(r, closed = true).also {
+                    it.color = vec(0.6, 0.8, 1.0, 0.4)
+                    it.thickness = 0.9
+                }
+            }
+        "$kind centres\narea %.2f → %.1e in ${trace.regions.size - 1} cuts"
+            .format(trace.trajectory.samples.first().scale, trace.trajectory.last.scale) to
+            [polygon.toFLine()] +
+                regions +
+                trace.trajectory.toFLine(vec(1.0, 0.72, 0.32, 0.95)) +
+                pointCloudFLine(trace.trajectory.positions, pointSize = 1.0)
+    }
 
 showPlaneGrid(*panels.toTypedArray(), columns = 2, cellWidth = 420, cellHeight = 340, yUp = true)
 ```
@@ -247,18 +276,18 @@ the path from the centre.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/lp_curves/turning.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="620" embed=true name="lp-curves-turning" alt="a breathing hexagon with an arrow turning from its centre; an orange central path, a pink PDHG spiral and a blue simplex walk swing together from vertex to vertex as the arrow turns"}
 :::static
-import kotlin.math.*
-
 val period = 8.0 // seconds per turn of the objective
 val weights = doubleArrayOf(1.0, 1.0, 3.0, 1.0, 1.0, 1.0)
 val window = Rect(-3.6, -3.4, 7.2, 6.8)
 
 // Each vertex's radius wanders between 1.9 and 2.9, which keeps the hexagon convex.
-fun shape(t: Double) = LpPolygon((0 until 6).map { k ->
-    val a = 2.0 * PI * k / 6 + 0.25
-    val r = 2.4 + 0.5 * sin(t * 0.9 + k * 1.7)
-    vec(r * cos(a), r * sin(a))
-})
+fun shape(t: Double) = LpPolygon(
+    (0 until 6).map { k ->
+        val a = 2.0 * PI * k / 6 + 0.25
+        val r = 2.4 + 0.5 * sin(t * 0.9 + k * 1.7)
+        vec(r * cos(a), r * sin(a))
+    },
+)
 
 val continuation = LpContinuation()
 val started = AnimationClock.nowSeconds()
@@ -288,7 +317,8 @@ loop {
             central.toFLine(vec(1.0, 0.72, 0.32, 1.0), 2.0),
         ],
         title = "θ = %3.0f°".format(Math.toDegrees(theta) % 360.0),
-        caption = "orange: central path, ${central.solverSteps} Newton steps warm, $coldSteps cold · pink: PDHG · blue: simplex walk",
+        caption =
+            "orange: central path, ${central.solverSteps} Newton steps warm, $coldSteps cold · pink: PDHG · blue: simplex walk",
         width = 560,
         height = 520,
         window = window,
@@ -315,8 +345,6 @@ the strict constructor would refuse as reflex. A fan of central paths runs insid
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/lp_curves/hulls.png" wait="3.0" capture="box" open-outputs="true" w="900" h="420" padding="14"}
 :::static
-import kotlin.math.*
-
 val random = kotlin.random.Random(5)
 val points = List(40) { vec(random.nextDouble(-3.0, 3.0), random.nextDouble(-2.0, 2.0) * random.nextDouble()) }
 val scattered = LpPolygon.hull(points)
@@ -334,7 +362,9 @@ val tips = LpPolygon.hullOf(star)
 :::fold draw the two panels
 showPlaneGrid(
     "LpPolygon.hull(points)\n${points.size} points, ${scattered.edgeCount} on the hull" to
-        [scattered.toFLine()] + scattered.centralFan(angles = 48, samples = 80).toFLines() + pointCloudFLine(points, pointSize = 1.0),
+        [scattered.toFLine()] +
+            scattered.centralFan(angles = 48, samples = 80).toFLines() +
+            pointCloudFLine(points, pointSize = 1.0),
     "LpPolygon.hullOf(star)\n${star.nodes.size} nodes, ${tips.edgeCount} hull vertices" to
         [star, tips.toFLine()] + tips.centralFan(angles = 48, samples = 80).toFLines(),
     columns = 2,
@@ -381,8 +411,6 @@ yellow (largest).
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/lp_curves/fan_map.png" wait="3.0" capture="box" open-outputs="true" w="1100" h="420" padding="14"}
 :::static
-import kotlin.math.*
-
 val polygon = LpPolygon([vec(-2.0, -1.0), vec(1.5, -1.5), vec(3.0, 1.0), vec(0.5, 2.5), vec(-2.5, 1.5)])
 val map = polygon.fanMap()
 val high = ln(100.0) // log μ at the centre end
@@ -391,41 +419,57 @@ val low = ln(1e-3) // log μ at the vertex end
 val grid = map.grid(thetas = 96, logMus = 48, logMuHigh = high, logMuLow = low)
 
 // Waves and spirals, drawn in the (θ, log μ) rectangle and carried into the polygon.
-val waves = (0 until 9).map { k ->
-    val level = high + (low - high) * (k + 0.5) / 9
-    map.warp(fline {
-        moveTo(0.0, level)
-        for (s in 1..240) lineTo(2 * PI * s / 240, level + 0.35 * sin(10 * PI * s / 240))
-        color = vec(0.55, 0.85, 1.0, 0.8)
-    })
-}
-val spirals = (0 until 12).map { k ->
-    map.warp(fline {
-        moveTo(2 * PI * k / 12, high)
-        lineTo(2 * PI * k / 12 + PI, low)
-        color = vec(1.0, 0.7, 0.35, 0.8)
-    }, stepsPerSegment = 160)
-}
+val waves =
+    (0 until 9).map { k ->
+        val level = high + (low - high) * (k + 0.5) / 9
+        map.warp(
+            fline {
+                moveTo(0.0, level)
+                for (s in 1..240) lineTo(2 * PI * s / 240, level + 0.35 * sin(10 * PI * s / 240))
+                color = vec(0.55, 0.85, 1.0, 0.8)
+            },
+        )
+    }
+val spirals =
+    (0 until 12).map { k ->
+        map.warp(
+            fline {
+                moveTo(2 * PI * k / 12, high)
+                lineTo(2 * PI * k / 12 + PI, low)
+                color = vec(1.0, 0.7, 0.35, 0.8)
+            },
+            stepsPerSegment = 160,
+        )
+    }
 
 // A lattice of dots in (θ, log μ), mapped; brighter where the map stretches area more.
-val dots = (0 until 120).flatMap { i -> (0 until 40).map { j -> map.at(2 * PI * i / 120, high + (low - high) * (j + 0.5) / 40) } }
+val dots =
+    (0 until 120).flatMap { i ->
+        (0 until 40).map { j -> map.at(2 * PI * i / 120, high + (low - high) * (j + 0.5) / 40) }
+    }
 val logDet = dots.map { ln(it.jacobianDeterminant) }
 val lo = logDet.min()
 val hi = logDet.max()
 :::fold draw the three panels
 // Six bands by rank, so each colour holds a sixth of the dots.
 val rank = logDet.indices.sortedBy { logDet[it] }.withIndex().associate { (r, k) -> k to r }
-val shades = (0 until 6).map { b ->
-    val picked = dots.filterIndexed { k, _ -> rank.getValue(k) * 6 / dots.size == b }
-    val t = b / 5.0
-    pointCloudFLine(picked.map { it.position }, vec(0.3 + 0.7 * t, 0.35 + 0.5 * t, 1.0 - 0.6 * t, 0.9), pointSize = 0.5)
-}
+val shades =
+    (0 until 6).map { b ->
+        val picked = dots.filterIndexed { k, _ -> rank.getValue(k) * 6 / dots.size == b }
+        val t = b / 5.0
+        pointCloudFLine(
+            picked.map { it.position },
+            vec(0.3 + 0.7 * t, 0.35 + 0.5 * t, 1.0 - 0.6 * t, 0.9),
+            pointSize = 0.5,
+        )
+    }
 
 showPlaneGrid(
     "fanMap().grid(96, 48)\nθ lines are central paths, μ lines are rings" to
         [polygon.toFLine()] + grid.thetaLines(every = 3, alpha = 0.7) + grid.muLines(every = 3),
     "warp(line)\n9 waves and 12 straight lines from (θ, log μ)" to [polygon.toFLine()] + waves + spirals,
-    "map.at(θ, log μ), coloured by det J\ndet from %.0e to %.0e".format(exp(lo), exp(hi)) to [polygon.toFLine()] + shades,
+    "map.at(θ, log μ), coloured by det J\ndet from %.0e to %.0e".format(exp(lo), exp(hi)) to
+        [polygon.toFLine()] + shades,
     columns = 3,
     yUp = true,
     cellWidth = 340,
@@ -452,8 +496,6 @@ Newton from where it was in the last frame.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/lp_curves/fan_flow.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="620" embed=true name="lp-curves-fan-flow" alt="white dots stream out of a point inside the pentagon along faint rainbow central paths, spread across the middle and gather into the five corners, where they slow and bunch before reappearing at the centre"}
 :::static
-import kotlin.math.*
-
 val polygon = LpPolygon([vec(-2.0, -1.0), vec(1.5, -1.5), vec(3.0, 1.0), vec(0.5, 2.5), vec(-2.5, 1.5)])
 val map = polygon.fanMap()
 val high = ln(30.0)
@@ -650,13 +692,17 @@ three(name = "routes", width = 760, height = 470) {
     lines(polytope.toFLine(vec(0.62, 0.70, 0.80, 0.5)))
     lines(
         central.toFLine(vec(1.0, 0.72, 0.32, 1.0), 2.4),
-        pd.toFLine(vec(0.55, 0.9, 0.6, 1.0), 1.6), dots(pd, vec(0.55, 0.9, 0.6, 1.0)),
-        walk.toFLine(vec(0.6, 0.75, 1.0, 1.0), 3.0), dots(walk, vec(0.6, 0.75, 1.0, 1.0)),
+        pd.toFLine(vec(0.55, 0.9, 0.6, 1.0), 1.6),
+        dots(pd, vec(0.55, 0.9, 0.6, 1.0)),
+        walk.toFLine(vec(0.6, 0.75, 1.0, 1.0), 3.0),
+        dots(walk, vec(0.6, 0.75, 1.0, 1.0)),
         spiral.trajectory.toFLine(vec(1.0, 0.55, 0.85, 0.8), 1.0),
     )
     camera(yaw = 20.0, pitch = 20.0)
-    title("c = (1, 0.5, 0.3): four routes to the vertex at (%.2f, %.2f, %.2f)".format(answer.x, answer.y, answer.z))
-    caption("orange: central path · green: primal-dual, ${pd.samples.size - 1} steps · blue: simplex, ${walk.samples.size - 1} pivots along edges · pink: PDHG")
+    title("c = (1, 0.5, 0.3): four routes to the vertex at (${answer.x.f2}, ${answer.y.f2}, ${answer.z.f2})")
+    caption(
+        "orange: central path · green: primal-dual, ${pd.samples.size - 1} steps · blue: simplex, ${walk.samples.size - 1} pivots along edges · pink: PDHG",
+    )
 }
 :::endfold
 ```
@@ -692,8 +738,10 @@ three(name = "ellipsoids", width = 760, height = 470) {
     lines(trace.trajectory.toFLine(vec(1.0, 0.72, 0.32, 0.9), 1.4))
     camera(yaw = 28.0, pitch = 22.0)
     helpers(false)
-    title("ellipsoids 0, 8, 16 and 24; each step keeps %.3f of the volume".format(shrink))
-    caption("orange: the ${trace.trajectory.samples.size} centres; best feasible centre (%.3f, %.3f, %.3f), optimum (1, 1, 1)".format(best.x, best.y, best.z))
+    title("ellipsoids 0, 8, 16 and 24; each step keeps ${shrink.f3} of the volume")
+    caption(
+        "orange: the ${trace.trajectory.samples.size} centres; best feasible centre (${best.x.f3}, ${best.y.f3}, ${best.z.f3}), optimum (1, 1, 1)",
+    )
 }
 :::endfold
 ```
@@ -725,7 +773,9 @@ three(name = "cuts", width = 760, height = 470) {
     lines(trace.trajectory.toFLine(vec(1.0, 1.0, 1.0, 0.9), 2.0))
     camera(yaw = 28.0, pitch = 22.0)
     helpers(false)
-    title("centroid cuts toward (1, 1, 1): volume %.1f → %.4f in ${volumes.size - 1} cuts".format(volumes.first(), volumes.last()))
+    title(
+        "centroid cuts toward (1, 1, 1): volume ${volumes.first().f1} → ${volumes.last().f4} in ${volumes.size - 1} cuts",
+    )
     caption("each region is drawn as its edges, blue first and orange last; white: the path of centroids")
 }
 :::endfold

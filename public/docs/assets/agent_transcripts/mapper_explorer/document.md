@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="mapper_ring" index="0" -->
 
 ```edn [field-box id="mapper_ring" role="properties"]
-{"id" "mapper_ring" "index" 0 "name" "1 - A ring, a tail and a blob" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A ring, a tail and a blob" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mapper_ring_code_.kt" "lines" 34 "characters" 1656 "sha256" "aab45daf96366d1bc7f77db448ce0a11d0d9691fa7f795c8e6a7b921e436d1a8"}]}
+{"id" "mapper_ring" "index" 0 "name" "1 - A ring, a tail and a blob" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A ring, a tail and a blob" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mapper_ring_code_.kt" "lines" 55 "characters" 1808 "sha256" "4d0fb65ba6e53a7595735c151a3c3a3f31667c8339bd9ee848852f1c7f390520"}]}
 ```
 
 ```kotlin [field-property box="mapper_ring" name="code" path="mapper_ring_code_.kt"]
@@ -22,8 +22,14 @@ val random = java.util.Random(4)
 val points = DoubleArray(1500 * 2)
 for (i in 0 until 1500) {
     val (x, y) = when {
-        i < 800 -> { val t = random.nextDouble() * 2 * PI; 80 + 45 * cos(t) to 85 + 45 * sin(t) }
-        i < 1150 -> { val s = random.nextDouble(); 112 + 70 * s to 117 + 40 * s }
+        i < 800 -> {
+            val t = random.nextDouble() * 2 * PI
+            80 + 45 * cos(t) to 85 + 45 * sin(t)
+        }
+        i < 1150 -> {
+            val s = random.nextDouble()
+            112 + 70 * s to 117 + 40 * s
+        }
         else -> 160 + 12 * random.nextGaussian() to 35 + 12 * random.nextGaussian()
     }
     points[2 * i] = x + 2.5 * random.nextGaussian()
@@ -35,18 +41,33 @@ val lenses = mapOf(
     "density" to Mapper.density(points, k = 10),
 )
 val black = Img(200, 170, 3, FloatArray(200 * 170 * 3))
-var lens = "eccentricity"; var intervals = 12; var overlap = 0.35
+var lens = "eccentricity"
+var intervals = 12
+var overlap = 0.35
 
 fun show() {
     val graph = Mapper.compute(points, lens = lenses.getValue(lens), intervals = intervals, overlap = overlap)
-    showImgGrid("$lens: ${graph.components().size} pieces, ${graph.loops} loop(s)" to
-        black.drawFLines([graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(), scale = 3.0), columns = 1, cellSide = 600)
+    showImgGrid(
+        "$lens: ${graph.components().size} pieces, ${graph.loops} loop(s)" to
+            black.drawFLines([graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(), scale = 3.0),
+        columns = 1,
+        cellSide = 600,
+    )
 }
 // lens: 0 is x, 1 eccentricity, 2 density.
 controlGroup("mapper") {
-    slider("intervals", min = 2.0, max = 30.0, step = 1.0, initialValue = 12.0) { intervals = it.toInt(); show() }
-    slider("overlap", min = 0.05, max = 0.8, step = 0.05, initialValue = 0.35) { overlap = it; show() }
-    slider("lens", min = 0.0, max = 2.0, step = 1.0, initialValue = 1.0) { lens = lenses.keys.toList()[it.toInt()]; show() }
+    slider("intervals", min = 2.0, max = 30.0, step = 1.0, initialValue = 12.0) {
+        intervals = it.toInt()
+        show()
+    }
+    slider("overlap", min = 0.05, max = 0.8, step = 0.05, initialValue = 0.35) {
+        overlap = it
+        show()
+    }
+    slider("lens", min = 0.0, max = 2.0, step = 1.0, initialValue = 1.0) {
+        lens = lenses.keys.toList()[it.toInt()]
+        show()
+    }
 }
 show()
 ```
@@ -56,7 +77,7 @@ show()
 <!-- field-box id="mapper_letters" index="1" -->
 
 ```edn [field-box id="mapper_letters" role="properties"]
-{"id" "mapper_letters" "index" 1 "name" "2 - Loops in letters" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Loops in letters" "_tombstone" false "frame" #afield/rect [560.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mapper_letters_code_.kt" "lines" 25 "characters" 1318 "sha256" "09a9c150f07aaf3e39d2431ac2c476675b4e1c7b13f43bed83233281d485c5c9"}]}
+{"id" "mapper_letters" "index" 1 "name" "2 - Loops in letters" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Loops in letters" "_tombstone" false "frame" #afield/rect [560.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mapper_letters_code_.kt" "lines" 39 "characters" 1500 "sha256" "83efb4d1094ecad9cd4586fcbd2eb79a7040ca7be8b41bd625e1f51ba322c39e"}]}
 ```
 
 ```kotlin [field-property box="mapper_letters" name="code" path="mapper_letters_code_.kt"]
@@ -72,18 +93,32 @@ fun letter(name: String): DoubleArray {
     val out = DoubleArray(900 * 2)
     for (i in 0 until 900) {
         val s = random.nextDouble()
-        val (x, y) = if (name == "O") { val t = s * 2 * PI; 50 + 38 * cos(t) to 70 + 58 * sin(t) }
-            else strokes.getValue(name)[i % 3].let { (x0, y0, x1, y1) -> x0 + s * (x1 - x0) to y0 + s * (y1 - y0) }
-        out[2 * i] = x + 2.0 * random.nextGaussian(); out[2 * i + 1] = y + 2.0 * random.nextGaussian()
+        val (x, y) = if (name == "O") {
+            val t = s * 2 * PI
+            50 + 38 * cos(t) to 70 + 58 * sin(t)
+        } else strokes.getValue(name)[i % 3].let { (x0, y0, x1, y1) -> x0 + s * (x1 - x0) to y0 + s * (y1 - y0) }
+        out[2 * i] = x + 2.0 * random.nextGaussian()
+        out[2 * i + 1] = y + 2.0 * random.nextGaussian()
     }
     return out
 }
 
 val black = Img(100, 140, 3, FloatArray(100 * 140 * 3))
-showImgGrid(*["A", "H", "O"].map { name ->
-    val points = letter(name)
-    val graph = Mapper.compute(points, lens = Mapper.coordinate(points, axis = 1), intervals = 10, overlap = 0.35)
-    "$name: ${graph.loops} loop(s)" to black.drawFLines([graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(minSize = 3.0, maxSize = 9.0), scale = 2.0)
-}.toTypedArray(), columns = 3, cellSide = 220)
+showImgGrid(
+    *["A", "H", "O"]
+        .map { name ->
+            val points = letter(name)
+            val graph =
+                Mapper.compute(points, lens = Mapper.coordinate(points, axis = 1), intervals = 10, overlap = 0.35)
+            "$name: ${graph.loops} loop(s)" to
+                black.drawFLines(
+                    [graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(minSize = 3.0, maxSize = 9.0),
+                    scale = 2.0,
+                )
+        }
+        .toTypedArray(),
+    columns = 3,
+    cellSide = 220,
+)
 ```
 

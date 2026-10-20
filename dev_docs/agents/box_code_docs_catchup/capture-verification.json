@@ -1,0 +1,61 @@
+{
+  "status": "not-run",
+  "reason": "Normal docs runner refused capture admission on battery below 80%; AC power required to finish",
+  "observedEnvironment": {
+    "supported": true,
+    "platform": "darwin",
+    "onAC": false,
+    "batteryPercent": 53,
+    "displayAvailable": true,
+    "disk": {
+      "path": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4",
+      "freeBytes": 20789456896,
+      "protectedBytes": 8589934592
+    }
+  },
+  "outcomes": [
+    {
+      "page": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/public/docs/evolving_creatures.md",
+      "block": 1,
+      "status": "not-run",
+      "reason": "power: battery 53%; long verification requires AC or at least 80%"
+    },
+    {
+      "page": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/public/docs/evolving_creatures.md",
+      "block": 2,
+      "status": "not-run",
+      "reason": "power: battery 53%; long verification requires AC or at least 80%"
+    },
+    {
+      "page": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/public/docs/evolving_creatures.md",
+      "block": 3,
+      "status": "not-run",
+      "reason": "power: battery 53%; long verification requires AC or at least 80%"
+    },
+    {
+      "page": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/public/docs/evolving_creatures.md",
+      "block": 4,
+      "status": "not-run",
+      "reason": "power: battery 53%; long verification requires AC or at least 80%"
+    },
+    {
+      "page": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/public/docs/evolving_creatures.md",
+      "block": 5,
+      "status": "not-run",
+      "reason": "power: battery 53%; long verification requires AC or at least 80%"
+    },
+    {
+      "page": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/public/docs/evolving_creatures.md",
+      "block": 6,
+      "status": "not-run",
+      "reason": "power: battery 53%; long verification requires AC or at least 80%"
+    },
+    {
+      "page": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4/public/docs/evolving_creatures.md",
+      "block": 7,
+      "status": "not-run",
+      "reason": "power: battery 53%; long verification requires AC or at least 80%"
+    }
+  ],
+  "assetsModified": false
+}

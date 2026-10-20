@@ -40,7 +40,8 @@ canvasFlight(
     FlightStop("overview", holdSeconds = 3.0),
     FlightStop("plan", legSeconds = 20.0, holdSeconds = 0.5),
     FlightStop("close-ups"),
-    legSeconds = 6.0, holdSeconds = 2.0,
+    legSeconds = 6.0,
+    holdSeconds = 2.0,
 )
 ```
 
@@ -59,7 +60,8 @@ Give `record` a path, and the flight is filmed rather than played:
 ```diffstatic {data-lang=kotlin}
 canvasFlight(
     ["overview", "plan", "close-ups"],
-    legSeconds = 4.0, holdSeconds = 1.5,
+    legSeconds = 4.0,
+    holdSeconds = 1.5,
     record = "~/Movies/field-flight.mp4",
 )
 ```
@@ -76,7 +78,8 @@ This is the flight above, filmed:
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1280x720" hide-toasts=true video="assets/filming_the_canvas/flight.mp4" fps="30" transcript="../../dev_docs/agents/transcripts/docs_capture/canvas_flight.yaml" padding="0" wait="0" timeout="300" embed=true hidden=true name="canvas-flight-film" alt="A canvas flight filmed to MP4. It opens on the whole document: a title card, a spiral drawn over a grid, and a two-panel three.js sheet of a ring and a tower. It flies in to the spiral, then down and across to the three.js sheet, where the ring and the tower turn slowly about their own centres."}
 // Save the three bookmarks, each framing a box and its open output panel, then film the flight
 // through them with the recorder canvasFlight(record = ...) uses.
-ui.eval("""
+ui.eval(
+    """
   const frame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
   const field = await import('./afield.mjs');
   const names = ['FlightTitle', 'FlightPlan', 'FlightModel'];
@@ -100,10 +103,18 @@ ui.eval("""
   await save(2, 'plan', extent(box('FlightPlan')), .8);
   await save(3, 'close-ups', extent(box('FlightModel')), .9);
   return 'saved';
-""")
+""",
+)
 ui.pause(1500)
-ui.filmCanvasFlight(vid, ["overview", "plan", "close-ups"], legSeconds = 4.0, holdSeconds = 1.5,
-    width = 1280, height = 720, pixelRatio = 1.0)
+ui.filmCanvasFlight(
+    vid,
+    ["overview", "plan", "close-ups"],
+    legSeconds = 4.0,
+    holdSeconds = 1.5,
+    width = 1280,
+    height = 720,
+    pixelRatio = 1.0,
+)
 ```
 
 These arguments control the film:

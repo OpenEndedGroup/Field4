@@ -19,8 +19,14 @@ val random = java.util.Random(4)
 val points = DoubleArray(1500 * 2)
 for (i in 0 until 1500) {
     val (x, y) = when {
-        i < 800 -> { val t = random.nextDouble() * 2 * PI; 80 + 45 * cos(t) to 85 + 45 * sin(t) }
-        i < 1150 -> { val s = random.nextDouble(); 112 + 70 * s to 117 + 40 * s }
+        i < 800 -> {
+            val t = random.nextDouble() * 2 * PI
+            80 + 45 * cos(t) to 85 + 45 * sin(t)
+        }
+        i < 1150 -> {
+            val s = random.nextDouble()
+            112 + 70 * s to 117 + 40 * s
+        }
         else -> 160 + 12 * random.nextGaussian() to 35 + 12 * random.nextGaussian()
     }
     points[2 * i] = x + 2.5 * random.nextGaussian()
@@ -29,8 +35,12 @@ for (i in 0 until 1500) {
 
 val graph = Mapper.compute(points, lens = Mapper.eccentricity(points), intervals = 12, overlap = 0.35)
 val black = Img(200, 170, 3, FloatArray(200 * 170 * 3))
-showImgGrid("${graph.components().size} pieces, ${graph.loops} loop(s)" to black.drawFLines([graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(), scale = 3.0),
-    columns = 1, cellSide = 600)
+showImgGrid(
+    "${graph.components().size} pieces, ${graph.loops} loop(s)" to
+        black.drawFLines([graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(), scale = 3.0),
+    columns = 1,
+    cellSide = 600,
+)
 ```
 
 The caption counts what the graph found: the components (pieces) and the loops. The ring is one
@@ -62,8 +72,14 @@ val random = java.util.Random(4)
 val points = DoubleArray(1500 * 2)
 for (i in 0 until 1500) {
     val (x, y) = when {
-        i < 800 -> { val t = random.nextDouble() * 2 * PI; 80 + 45 * cos(t) to 85 + 45 * sin(t) }
-        i < 1150 -> { val s = random.nextDouble(); 112 + 70 * s to 117 + 40 * s }
+        i < 800 -> {
+            val t = random.nextDouble() * 2 * PI
+            80 + 45 * cos(t) to 85 + 45 * sin(t)
+        }
+        i < 1150 -> {
+            val s = random.nextDouble()
+            112 + 70 * s to 117 + 40 * s
+        }
         else -> 160 + 12 * random.nextGaussian() to 35 + 12 * random.nextGaussian()
     }
     points[2 * i] = x + 2.5 * random.nextGaussian()
@@ -73,13 +89,15 @@ for (i in 0 until 1500) {
 val black = Img(200, 170, 3, FloatArray(200 * 170 * 3))
 fun panel(name: String, lens: DoubleArray): Pair<String, Img> {
     val graph = Mapper.compute(points, lens = lens, intervals = 12, overlap = 0.35)
-    return "$name: ${graph.loops} loop(s)" to black.drawFLines([graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(), scale = 2.0)
+    return "$name: ${graph.loops} loop(s)" to
+        black.drawFLines([graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(), scale = 2.0)
 }
 showImgGrid(
     panel("x", Mapper.coordinate(points, axis = 0)),
     panel("eccentricity", Mapper.eccentricity(points)),
     panel("density", Mapper.density(points, k = 10)),
-    columns = 3, cellSide = 300,
+    columns = 3,
+    cellSide = 300,
 )
 ```
 
@@ -113,19 +131,33 @@ fun letter(name: String): DoubleArray {
     val out = DoubleArray(900 * 2)
     for (i in 0 until 900) {
         val s = random.nextDouble()
-        val (x, y) = if (name == "O") { val t = s * 2 * PI; 50 + 38 * cos(t) to 70 + 58 * sin(t) }
-            else strokes.getValue(name)[i % 3].let { (x0, y0, x1, y1) -> x0 + s * (x1 - x0) to y0 + s * (y1 - y0) }
-        out[2 * i] = x + 2.0 * random.nextGaussian(); out[2 * i + 1] = y + 2.0 * random.nextGaussian()
+        val (x, y) = if (name == "O") {
+            val t = s * 2 * PI
+            50 + 38 * cos(t) to 70 + 58 * sin(t)
+        } else strokes.getValue(name)[i % 3].let { (x0, y0, x1, y1) -> x0 + s * (x1 - x0) to y0 + s * (y1 - y0) }
+        out[2 * i] = x + 2.0 * random.nextGaussian()
+        out[2 * i + 1] = y + 2.0 * random.nextGaussian()
     }
     return out
 }
 
 val black = Img(100, 140, 3, FloatArray(100 * 140 * 3))
-showImgGrid(*["A", "H", "O"].map { name ->
-    val points = letter(name)
-    val graph = Mapper.compute(points, lens = Mapper.coordinate(points, axis = 1), intervals = 10, overlap = 0.35)
-    "$name: ${graph.loops} loop(s)" to black.drawFLines([graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(minSize = 3.0, maxSize = 9.0), scale = 2.0)
-}.toTypedArray(), columns = 3, cellSide = 220)
+showImgGrid(
+    *["A", "H", "O"]
+        .map { name ->
+            val points = letter(name)
+            val graph =
+                Mapper.compute(points, lens = Mapper.coordinate(points, axis = 1), intervals = 10, overlap = 0.35)
+            "$name: ${graph.loops} loop(s)" to
+                black.drawFLines(
+                    [graph.pointsFLine(pointSize = 1.5)] + graph.toFLines(minSize = 3.0, maxSize = 9.0),
+                    scale = 2.0,
+                )
+        }
+        .toTypedArray(),
+    columns = 3,
+    cellSide = 220,
+)
 ```
 
 Mapper and principal curves answer the same question in different ways. Mapper is quick, works in

@@ -26,22 +26,30 @@ square onto 300 on a circle around it:
 // and approximately, by BSP-OT
 val rnd = java.util.Random(2)
 val square = List(300) { vec(rnd.nextDouble() * 260 - 130, rnd.nextDouble() * 260 - 130) }
-val circle = List(300) { val a = 2 * PI * it / 300; vec(220 * cos(a), 220 * sin(a)) }
+val circle = List(300) {
+    val a = 2 * PI * it / 300
+    vec(220 * cos(a), 220 * sin(a))
+}
 
 val exact = assignment(square, circle).map { circle[it] }
 val approx = matchPoints(square, circle).reorder(circle)
 
-fun meanTravel(partner: List<Vec2>) = square.indices.sumOf { square[it].distanceSquared(partner[it]).toDouble() } / square.size
-println("mean squared travel, exact: " + "%.0f".format(meanTravel(exact)))
-println("mean squared travel, BSP-OT: " + "%.0f".format(meanTravel(approx)))
+fun meanTravel(partner: List<Vec2>) =
+    square.indices.sumOf { square[it].distanceSquared(partner[it]).toDouble() } / square.size
+println("mean squared travel, exact: ${meanTravel(exact).f0}")
+println("mean squared travel, BSP-OT: ${meanTravel(approx).f0}")
 
 fun chord(from: Vec2, to: Vec2, dx: Double) = FLine().moveTo(from.x + dx, from.y).lineTo(to.x + dx, to.y).also {
     it.thickness = 0.8
     it.color = okhsl(atan2(to.y.toDouble(), to.x.toDouble()) * 180 / PI + 360, 0.85, 0.65, 0.8)
 }
-lines(square.indices.map { chord(square[it], exact[it], -250.0) } +
-      square.indices.map { chord(square[it], approx[it], 250.0) },
-      w = 1000.0, h = 500.0, fitToSize = true)
+lines(
+    square.indices.map { chord(square[it], exact[it], -250.0) } +
+        square.indices.map { chord(square[it], approx[it], 250.0) },
+    w = 1000.0,
+    h = 500.0,
+    fitToSize = true,
+)
 displayOpen("lines")
 ```
 
@@ -70,7 +78,10 @@ moves along it, and each blob point's size is its weight:
 // Sinkhorn moves the mass of one onto the other; a line's brightness is how much moves along it.
 val rnd = java.util.Random(5)
 val blob = List(40) { vec(rnd.nextGaussian() * 25 - 110, rnd.nextGaussian() * 40) }
-val ring = List(25) { val a = 2 * PI * it / 25; vec(90 + 60 * cos(a), 60 * sin(a)) }
+val ring = List(25) {
+    val a = 2 * PI * it / 25
+    vec(90 + 60 * cos(a), 60 * sin(a))
+}
 // the drawing's y runs down, so this makes the top of the blob heavier
 val weights = DoubleArray(blob.size) { (1.0 - blob[it].y / 40.0).coerceAtLeast(0.1) }
 
@@ -84,15 +95,20 @@ fun panel(epsilon: Double, dx: Double): List<FLine> {
     val plan = sinkhorn(blob, ring, epsilon, sourceWeights = weights)
     println("ε = " + epsilon + ": " + plan)
     val most = plan.plan.maxOf { it.max() }
-    val moves = blob.indices.flatMap { i ->
-        ring.indices.filter { j -> plan.plan[i][j] > most * 0.02 }.map { j ->
-            FLine().moveTo(blob[i].x + dx, blob[i].y).lineTo(ring[j].x + dx, ring[j].y).also {
-                it.thickness = 1.2
-                it.color = vec(0.95, 0.72, 0.25, plan.plan[i][j] / most)
-            }
+    val moves =
+        blob.indices.flatMap { i ->
+            ring.indices
+                .filter { j -> plan.plan[i][j] > most * 0.02 }
+                .map { j ->
+                    FLine().moveTo(blob[i].x + dx, blob[i].y).lineTo(ring[j].x + dx, ring[j].y).also {
+                        it.thickness = 1.2
+                        it.color = vec(0.95, 0.72, 0.25, plan.plan[i][j] / most)
+                    }
+                }
         }
-    }
-    return moves + blob.indices.map { dot(blob[it], dx, 1.5 + 2.5 * weights[it] / weights.max()) } + ring.map { dot(it, dx, 2.5) }
+    return moves +
+        blob.indices.map { dot(blob[it], dx, 1.5 + 2.5 * weights[it] / weights.max()) } +
+        ring.map { dot(it, dx, 2.5) }
 }
 
 // ε is an area in the points' units: 5000 blurs over about √5000 ≈ 70, 50 over about 7
@@ -131,10 +147,12 @@ costs `t²` to move back:
 // the cost of moving it, and is zero at t = 0
 val rnd = java.util.Random(7)
 val cloud = List(60) { vec(rnd.nextGaussian() * 30, rnd.nextGaussian() * 30) }
-val rows = [0.0, 5.0, 10.0, 20.0].map { t ->
-    val shifted = cloud.map { vec(it.x + t, it.y) }
-    "shift " + t + ": divergence " + "%.2f".format(sinkhornDivergence(cloud, shifted, epsilon = 25.0)) + ", t² = " + t * t
-}
+val rows =
+    [0.0, 5.0, 10.0, 20.0].map { t ->
+        val shifted = cloud.map { vec(it.x + t, it.y) }
+        val divergence = sinkhornDivergence(cloud, shifted, epsilon = 25.0)
+        "shift $t: divergence ${divergence.f2}, t² = ${t * t}"
+    }
 display("divergence", rows.joinToString("<br>"))
 displayOpen("divergence")
 ```

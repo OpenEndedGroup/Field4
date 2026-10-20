@@ -1,7 +1,10 @@
 import afield.simulation.creatures.*
+import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /*
-Launch it (Alt-R). Seen from above: a creature of points and springs on a water surface.
+Launch it (Alt+Up). Seen from above: a creature of points and springs on a water surface.
 Each point is a foot with a cyclic program saying when it touches down. A foot that is down
 grips the surface film where it landed; a foot that is up drags through the water. Joints
 bend the body to a cyclic target curve. The genetic algorithm evolves the shape, the foot
@@ -16,7 +19,8 @@ class WaterSurface : ContactModel {
     override fun foot(index: Int) = object : ContactModel.Foot {
         var planted: Float2? = null
         override var grip = 0f
-        override val anchor get() = planted
+        override val anchor
+            get() = planted
 
         override fun force(step: FootStep): Float2 {
             val g = step.genome
@@ -45,11 +49,11 @@ val config = EvolutionConfig(
     maxPoints = 8,
     targetEdgeCount = 8,
     targetJointActivations = 10,
-    alwaysUpFootFraction = 0.5f,   // half the points are body, not feet
-    cyclingFootFraction = 0.5f,    // the rest must actually step
+    alwaysUpFootFraction = 0.5f, // half the points are body, not feet
+    cyclingFootFraction = 0.5f, // the rest must actually step
     simulation = CreatureSimulationConfig(
         measuredCycles = 10,
-        gravity = 0f,              // seen from above
+        gravity = 0f, // seen from above
         contact = WaterSurface(),
         fitness = ::swimScore,
         jointTargetAngleScale = 1.55f,
@@ -63,21 +67,20 @@ val config = EvolutionConfig(
     ),
 )
 
-// Evolution takes seconds per generation, so it runs on its own thread and hands its
-// champion over; the loop below only draws.
-val controller = EvolutionController()
-var champion: CreatureEvaluation? = null
-var status = "generation 0"
-kotlin.concurrent.thread(isDaemon = true, name = "water_bug evolution") {
-    CreatureEvolution.evolve(config, controller) { update ->
-        champion = update.champion
-        status = "generation ${update.generation.generation}: best ${"%.2f".format(update.champion.fitness)}"
+// Evolution runs in a cancellable worker; the loop below only draws its latest snapshot.
+// Publish one complete update, so the caption and drawing use the same generation.
+val latest = AtomicReference<EvolutionUpdate?>(null)
+go {
+    withContext(Dispatchers.Default) {
+        CreatureEvolution.evolveSuspend(config) { latest.set(it) }
     }
 }
 
 var i = 0
 loop {
-    val bug = champion ?: return@loop
+    val update = latest.get() ?: return@loop
+    val bug = update.champion
+    val status = "generation ${update.generation.generation}: best ${bug.fitness.f2}"
     val c = bug.frames[i % bug.frames.size].center
     showPlane(
         bug.frameLines(i) + bug.notationLines(i, origin = Float2(c.x - 3f, c.y + 6f)),
@@ -89,4 +92,4 @@ loop {
         yUp = true,
     )
     i++
-}.end { controller.requestStop() }
+}

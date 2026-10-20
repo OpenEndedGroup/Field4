@@ -1,0 +1,167 @@
+{
+  "baseline": "86007a0f85e117ed20fcd647d66d54898c4fbd06",
+  "paths": [
+    {
+      "path": "public/docs/contour_trees.md",
+      "baselineSha256": "2153f63f68ec91f057a07eac0393d4e1b04007ec2cb20af3ff3f29e512dcab71",
+      "currentSha256": "b458f6fe5b62907876e02b24a37b560b42512b47ae0df2d21fd55ede31a6cc94",
+      "changed": true
+    },
+    {
+      "path": "public/docs/editing_from_outside.md",
+      "baselineSha256": "626ec594226df862b9075a8504c35afe15a30bbf647783e553c7d548117b2b25",
+      "currentSha256": "626ec594226df862b9075a8504c35afe15a30bbf647783e553c7d548117b2b25",
+      "changed": false
+    },
+    {
+      "path": "public/docs/evolving_creatures.md",
+      "baselineSha256": "1daebce2a006283b5ea9dc55f729b24b490560bb773ac3c95a427bcfe5f7ab5e",
+      "currentSha256": "8c45bfb7cb666bdec03261ad2f1ed5fab6e02b3ecbae0260f63d9bd5b51e0305",
+      "changed": true
+    },
+    {
+      "path": "public/docs/geometry_chains.md",
+      "baselineSha256": "3b38265a8bde2f09aca4f2e2f72c7359025ec1948b0a4a14ff1f5d7f5fbd453e",
+      "currentSha256": "4c21319228a24d4fe5ec67e92492a7338c9f30e16a71dffb977e43efe155492f",
+      "changed": true
+    },
+    {
+      "path": "public/docs/lp_curves.md",
+      "baselineSha256": "fdd72832b6d133d37cc0f217904b1545b7d41089477b8bba4b1f9a62dd308fb6",
+      "currentSha256": "a6c9889bc25ada69c667033ccf2d04b1c0a27ca20acc6cbb20306777a312e6fc",
+      "changed": true
+    },
+    {
+      "path": "public/docs/mapper.md",
+      "baselineSha256": "d2057ce63f8fd0d6366cbeb3ada61a53aeec225d4638d2ec14fd1685fd0b1c46",
+      "currentSha256": "b7b147ccbe5c7c0d78707da2eb0582f7f1375ad389a2fd037a27f0934d5c416e",
+      "changed": true
+    },
+    {
+      "path": "public/docs/matrix_profile.md",
+      "baselineSha256": "8c7b7c9fe2f1df6fce64c704dc0b9677fe6a58006bb560771418b1190dc8968b",
+      "currentSha256": "6c9debbe47452fca0c8eee47487939b03779a497e74c11b174af89cb17392b74",
+      "changed": true
+    },
+    {
+      "path": "public/docs/morse_smale.md",
+      "baselineSha256": "9cb487c1ca334efc9b7cccabd6d0b1cff94df9c1803cd02e7b2150fa30de8a0f",
+      "currentSha256": "8a642e38d9a82dccafb4604c9e6ae75767328c2471153ad80c9ebac45be39e98",
+      "changed": true
+    },
+    {
+      "path": "public/docs/optimal_transport.md",
+      "baselineSha256": "e7a2404834d30ce918af4fca9d2d555d2f1c9003296ac14bd8b61a4bd09ce387",
+      "currentSha256": "dd5cda067bcad07353c45aa8cd991bb3ffd1f11accfb8c5a3974a923acb41973",
+      "changed": true
+    },
+    {
+      "path": "public/docs/polyvector.md",
+      "baselineSha256": "fecfda0189c413ad43c05cae66828c0dbae11f70171f4da83827c00e52e34360",
+      "currentSha256": "162d18980475136544f451b4a7a73b24970ae09c18ac08acda14a1ab47ab211c",
+      "changed": true
+    },
+    {
+      "path": "public/docs/principal_curves.md",
+      "baselineSha256": "807d0cb28a0e8fa4ea7091037cf9fd82902c0ffbb800fd7cea7ea0c7e844c439",
+      "currentSha256": "13777bf88ae3414d601b7c3d48e167b57676a328b824028437deb632c79e188d",
+      "changed": true
+    },
+    {
+      "path": "public/docs/topology_tracking.md",
+      "baselineSha256": "95036bd66f4eda94f17b15d0a7e19fab4a5df65d82ab142174e73b2b435444af",
+      "currentSha256": "e484823a88d4eb5f8c20556bf119c37e1b6bd98450972e56e8676be937539381",
+      "changed": true
+    },
+    {
+      "path": "public/docs/vector_field_topology.md",
+      "baselineSha256": "2a0ee3fdceda4a949f04c40d8b371ae1a28cfc95956dda2871a4263bc3f8d58e",
+      "currentSha256": "f9b443542a4c9ce49168e5b8a02ce7a208c288f68653cbdcc0c9a5b367bcb8c1",
+      "changed": true
+    },
+    {
+      "path": "public/docs/temporal_memory.md",
+      "baselineSha256": "e173ec3e3785bfe583782d908285711fda973e96da361bbd1ea465ca3ea27139",
+      "currentSha256": "64a169c646c9d0cd6c8ade528afc2d38b1a363ad8149b893c8a541f8c2fbc892",
+      "changed": true
+    },
+    {
+      "path": "public/docs/filming_the_canvas.md",
+      "baselineSha256": "a790ff138cf8e736e9ebcb13feb9a8b32cdff885c1eb502479ded4f1eb08d736",
+      "currentSha256": "38ac46c5af3bbcc7e621f8b323ebac6b8909ea1d1d01447218ec53c9e4c00541",
+      "changed": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/mapper_explorer.yaml",
+      "baselineSha256": "60550dbaf042a90fa577b0d7b25011a371235aaef00bce186c3f7842988e1aaa",
+      "currentSha256": "a1d8888dd6cd93aadc8de32fbe5adb0a1b6cac06278c754c3910769b45524f24",
+      "changed": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/principal_curves_explorer.yaml",
+      "baselineSha256": "74f227bd773ba6cf711d5f04bcb1e4c4a0e1e77567d4a1835852d9c26ef45c01",
+      "currentSha256": "487ef09e6a7d02d5e0054c20b17e68178823ad1d2fc2aef666436f92b297c310",
+      "changed": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/contour_trees_explorer.yaml",
+      "baselineSha256": "93b30a992758ef5479a9b3fbdd16e7ffd7535a5d14ce3fcc44adf2a5d533486d",
+      "currentSha256": "adfdbd31026868d1c1fa432b8e50ec0d8f38501b94265bbbbf84598dbaefd7b9",
+      "changed": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/polyvector_explorer.yaml",
+      "baselineSha256": "7d39852ffcd84c7ae49ab963c59b53ceeb25e3c9170a876bd140337cd2cae916",
+      "currentSha256": "ac8906c909ef5c48d119577a96af57d48bf4af9165b351b40a7544237d0e5576",
+      "changed": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/morse_smale_explorer.yaml",
+      "baselineSha256": "a713fa766fb659e3fc6a3b842889868aa2a0b1238306ff1c869f22da430d8fbc",
+      "currentSha256": "05a2bcab769e987df3c360c84e3d3d321c0a26c8b869a0358ee3b4592ee9f725",
+      "changed": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/matrix_profile.yaml",
+      "baselineSha256": "543b43ea4a43ad88ad1cc9512c5392c71dda384021c7a7074d93e782a9bfd7d7",
+      "currentSha256": "337871cb79b9d5c608c2305594aba5f932c77db104fd5613036fd0b54e6a0b7e",
+      "changed": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/lp_curves.yaml",
+      "baselineSha256": "910d76d4e3d8a8dc413ed320302bc7eb76c3cc4a142f24f1f346e2c30b236f41",
+      "currentSha256": "f7ba968b44d5e65b7f4d30b97c0733820840f2312d49bf197ea8a39ef9d6c151",
+      "changed": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/lp_curves_3d.yaml",
+      "baselineSha256": "4b49b082b8e763823ba6d249783b7074b98c39d4b4fd3e115a3cbd5bd3b53165",
+      "currentSha256": "254082e7a035a08265d934539e0914856be0db8ee74f253a49e91e2b6ecb7fea",
+      "changed": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/canvas_flight.yaml",
+      "baselineSha256": "34362572119ec61ed83fd581fe44689112b2f05d379a5c3a6bd26bee8461e9c0",
+      "currentSha256": "e45c7bf16d3736e1da4222fd8173742be8d3e0043febe2d0889da15aad9f8310",
+      "changed": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/evolving_water_bugs.yaml",
+      "baselineSha256": "826afac9102b87665607a24cf75b1d470339cceff83d7953f701f30c07c8a281",
+      "currentSha256": "71138de0af15f207e47fade6f106da29f1c8edc69c3426a810c7396fe3540835",
+      "changed": true
+    },
+    {
+      "path": "public/docs/drawing_and_notation.md",
+      "baselineSha256": "84eb33e4f1c62cab2e9c196e657aec92a87ffa1bc890001c98ff5f2ecd877543",
+      "currentSha256": "84eb33e4f1c62cab2e9c196e657aec92a87ffa1bc890001c98ff5f2ecd877543",
+      "changed": false
+    },
+    {
+      "path": "dev_docs/agents/transcripts/notation_elements.yaml",
+      "baselineSha256": "52a3532023124fe5532ac3143ff0b9897d8c6a979002227204202da93b7f4cfc",
+      "currentSha256": "72f3d03c7fa896fd454e8b1d042fbd0293dd8eb31a4151b4e148168ffdaa06c3",
+      "changed": true
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "rounds": [
+    {
+      "spans": 95,
+      "distinctKotlinBodies": 91,
+      "formattedBodies": 84,
+      "editedFiles": 22,
+      "executableTokensAndRawLiteralsPreserved": true,
+      "layoutPunctuation": "Ktfmt may change commas and semicolons; all other executable tokens match",
+      "fragmentAndFoldMarkersPreserved": true,
+      "actualFormatter": "Field editor import analysis and ktfmt; no GLSL bodies in scoped sources"
+    },
+    {
+      "spans": 5,
+      "distinctKotlinBodies": 5,
+      "formattedBodies": 5,
+      "editedFiles": 2,
+      "executableTokensAndRawLiteralsPreserved": true,
+      "layoutPunctuation": "Ktfmt may change commas and semicolons; all other executable tokens match",
+      "fragmentAndFoldMarkersPreserved": true,
+      "actualFormatter": "Field editor import analysis and ktfmt; no GLSL bodies in scoped sources"
+    },
+    {
+      "spans": 14,
+      "distinctKotlinBodies": 14,
+      "formattedBodies": 4,
+      "editedFiles": 1,
+      "executableTokensAndRawLiteralsPreserved": true,
+      "layoutPunctuation": "Ktfmt may change commas and semicolons; all other executable tokens match",
+      "fragmentAndFoldMarkersPreserved": true,
+      "actualFormatter": "Field editor import analysis and ktfmt; no GLSL bodies in scoped sources"
+    }
+  ],
+  "sourceSpans": 114,
+  "distinctBodyInvocations": 110,
+  "formattedBodies": 93,
+  "executableTokensAndRawLiteralsPreserved": true,
+  "fragmentAndFoldMarkersPreserved": true
+}

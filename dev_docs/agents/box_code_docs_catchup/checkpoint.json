@@ -1,0 +1,20 @@
+{
+  "branch": "codex/box-code-docs-catchup",
+  "baseline": "86007a0f85e117ed20fcd647d66d54898c4fbd06",
+  "state": "Source cleanup, actual import/ktfmt, ten behavioral checks and generated starting-point refresh complete. Final docs captures blocked by the normal runner power-admission check.",
+  "sourceScope": "scope.json",
+  "formatting": "format-verification.json",
+  "runtime": "runtime-verification.json",
+  "privatePort": null,
+  "server": "Private Field session 9742 shut down; listener confirmed absent.",
+  "next": "Connect AC power; run uv run python dev_docs/agents/box_code_docs_catchup/capture.py, inspect the resulting captures, update capture-verification.json, then enqueue via tools/land.py. Full integration guards run in the lander.",
+  "scope": {
+    "paths": 27,
+    "newPages": 15,
+    "additionalExistingPage": "drawing_and_notation.md",
+    "authoredFilesChanged": 25,
+    "sourceSpans": 114,
+    "generatedSidecarsVerified": 29
+  },
+  "captures": "capture-verification.json"
+}

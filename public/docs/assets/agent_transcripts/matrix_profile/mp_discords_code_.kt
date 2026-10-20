@@ -1,5 +1,4 @@
 import afield.math.matrixprofile.*
-import kotlin.math.*
 
 // 40 beats of 80 samples. Beat 21 has a doubled, late pulse.
 val rnd = java.util.Random(15)
@@ -14,8 +13,13 @@ val mp = matrixProfile(beats, m = 80)
 val discord = mp.discords(1).first()
 
 showSignals(
-    "beats" to beats, "matrix profile" to mp.profile,
+    "beats" to beats,
+    "matrix profile" to mp.profile,
     regions = [SignalRegion("discord", discord.index, discord.index + mp.m, "#ff7a9e")],
-    title = "discord at ${discord.index} (beat ${discord.index / 80}), distance ${"%.2f".format(discord.distance)}",
-    channel = "main", normalize = true, width = 1000, height = 420, floatingLegend = true,
+    title = "discord at ${discord.index} (beat ${discord.index / 80}), distance ${discord.distance.f2}",
+    channel = "main",
+    normalize = true,
+    width = 1000,
+    height = 420,
+    floatingLegend = true,
 )
