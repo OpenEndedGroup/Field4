@@ -38,8 +38,8 @@ expect:
  *
  * 1. **The vertex-shader seam** (what editing `gaussianSplatModuleHere`'s vertex shader gives): a
  *    plain [GaussianSplatRenderer.Cloud] over the splats, with the insert `pos.z = -pos.z` applied
- *    only where it is drawn. The sort sees the unmirrored splats, so about half of all pairs are
- *    out of order — the order is reversed relative to what is drawn.
+ *    only where it is drawn. The sort sees the unmirrored splats; measured, half of all adjacent
+ *    pairs come out in the wrong order (2 051 of 4 095).
  * 2. **The [SplatShader] seam**, same insert: the sort reads the inserted splats. None out of order.
  * 3. **Moving splats outside the uploaded bounds** (`pos *= 3.0`), with the old bounds-normalised
  *    keys and then with [GaussianSplatRenderer.DepthKey.ViewDepth]. Bounds keys clamp everything
@@ -117,7 +117,7 @@ object SplatShaderSortSmoke {
 
     /**
      * Adjacent pairs in draw order where the later one is farther than the earlier one by more
-     * than [epsilon], given each splat's centre (after [transformZ] for the vertex-seam case).
+     * than [epsilon], among splats in front of the camera, given each splat's centre (after [transformZ] for the vertex-seam case).
      */
     private fun outOfOrder(
         order: IntArray, splats: FloatArray, modelView: Matrix4f, epsilon: Float = 1e-5f,
@@ -128,7 +128,9 @@ object SplatShaderSortSmoke {
             -modelView.transform(Vector4f(splats[o], splats[o + 1], transformZ(splats[o + 2]), 1f)).z
         }
         var wrong = 0
-        for (slot in 0 until order.size - 1) if (depth[slot + 1] > depth[slot] + epsilon) wrong++
+        // a splat behind the camera is never drawn, so its place in the order does not matter
+        for (slot in 0 until order.size - 1)
+            if (depth[slot] > 0f && depth[slot + 1] > depth[slot] + epsilon) wrong++
         return wrong
     }
 
@@ -174,7 +176,7 @@ object SplatShaderSortSmoke {
         pump(renderer, window, 6)
         val vertexSeam = outOfOrder(readInts(plain, COUNT), packed, camera.modelView()) { -it }
         plain.remove()
-        // reversed against what is drawn: nearly every pair is wrong
+        // sorted for the unmirrored cloud: about half the pairs are wrong for the mirrored one
         claim("vertex-shader seam, insert pos.z = -pos.z", vertexSeam, vertexSeam > COUNT / 3)
         claim("SplatShader seam, insert pos.z = -pos.z", newSeam, newSeam == 0)
 

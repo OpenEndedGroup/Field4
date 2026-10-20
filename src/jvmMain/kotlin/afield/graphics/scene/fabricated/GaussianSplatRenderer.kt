@@ -29,6 +29,7 @@ import org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR
 import org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ZERO
 import org.lwjgl.vulkan.VK10.VK_BLEND_OP_ADD
 import org.lwjgl.vulkan.VK10.VK_BLEND_OP_MAX
+import org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_TRANSFER_DST_BIT
 import java.io.File
 import java.nio.FloatBuffer
 import kotlin.math.abs
@@ -1365,11 +1366,13 @@ object GaussianSplatRenderer {
         private val bucketCount = 1 shl bucketBits
         private val bucketShift = 32 - bucketBits
 
+        // zeroed at the start of every sort
         private val bucketCounts = storageBuffer(
             renderer = renderer,
             name = "${sourceName}_DepthBucketCounts",
             sizeBytes = bucketCount.toLong() * UInt.SIZE_BYTES,
-            perFrame = false
+            perFrame = false,
+            clearable = true
         )
 
         private val bucketOffsets = storageBuffer(
@@ -1598,17 +1601,23 @@ void main() {
 """.trimIndent()
     }
 
+    /**
+     * @param clearable add `TRANSFER_DST` usage, which `VulkanBuffer.zero` needs: it clears with
+     *   `vkCmdFillBuffer`, and the validation layer rejects that on a buffer made without it.
+     */
     private fun storageBuffer(
         renderer: Renderer,
         name: String,
         sizeBytes: Long,
-        perFrame: Boolean = false
+        perFrame: Boolean = false,
+        clearable: Boolean = false
     ): BufferParameters =
         buffer(name = name) {
             size = max(4L, sizeBytes)
             storage()
             addressable()
             hosted()
+            if (clearable) usage = usage or VK_BUFFER_USAGE_TRANSFER_DST_BIT
             this.perFrame = perFrame
         }.also { it.toBuffer(renderer) }
 

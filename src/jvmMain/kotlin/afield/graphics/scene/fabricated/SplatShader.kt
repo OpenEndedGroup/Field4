@@ -3,6 +3,7 @@
 package afield.graphics.scene.fabricated
 
 import afield.document.context.fromContext
+import afield.document.graph.Box
 import afield.graphics.render.ComputeMesh
 import afield.graphics.render.ComputeModulePointer
 import afield.graphics.vulkan.Renderer
@@ -12,6 +13,8 @@ import afield.graphics.vulkan.buffers.defaultBuffer
 import afield.math.linalg.Matrix4f
 import afield.math.linalg.Rectanglef
 import afield.math.linalg.Vector3f
+import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
 
 /**
  * A Gaussian-splat cloud whose splats are rewritten every frame by a few lines of GLSL in a box:
@@ -249,4 +252,21 @@ class SplatShaderSettings {
 
     /** [GaussianSplatRenderer.SortMode.ExactRadix] by default: the keys are view-depth float bits. */
     var sortMode: GaussianSplatRenderer.SortMode = GaussianSplatRenderer.SortMode.ExactRadix
+}
+
+/**
+ * The demo's viewer toolbar for [shader], in this box's `controls` output: the auto-rotate
+ * speed, the size, a splat-size multiplier, play/pause for `t` and the turn, and a button that
+ * starts `t` again from zero. The panel opens, as the demo's toolbar is always in view.
+ */
+fun Box.showControls(shader: SplatShader, channel: String = "controls") {
+    val s = shader.settings
+    controlGroup(channel) {
+        slider("turn", min = 0.0, max = 1.5, step = 0.01, initialValue = s.autoRotate) { s.autoRotate = it }
+        slider("size", min = 0.35, max = 2.5, step = 0.01, initialValue = s.size) { s.size = it }
+        slider("splat size", min = 0.25, max = 4.0, step = 0.01, initialValue = s.splatSize.toDouble()) { s.splatSize = it.toFloat() }
+        checkbox("play", initialValue = shader.playing) { shader.playing = it }
+        button("t = 0") { down -> if (down) shader.t = 0.0 }
+    }
+    displayOpen(channel)
 }
