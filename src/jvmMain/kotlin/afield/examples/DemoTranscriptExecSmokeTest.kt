@@ -534,6 +534,10 @@ object DemoTranscriptExecSmokeTest {
         "orca_duet",
         // ORCA with AI4 on the board: the same reasons as orca_hello. Its tools run in the orca-io regression.
         "orca_jam",
+        // The canvas as a score: the lead box returns a loop that runs until stopped and its boxes play
+        // dough through the audio device. ScoreTest steps the runner frame by frame and DoughLiveTest
+        // measures the sound helper's levels, both headless.
+        "madp_score",
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
         "chain_scene_to_light",

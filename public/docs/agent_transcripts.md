@@ -2390,6 +2390,20 @@ under the grids shows what Kotlin heard and changed. Launch the box, then type i
 
 [Open ↗](offline.html?file=assets/agent_transcripts/orca_duet/metadata.edn)
 
+### madp_score
+
+**The canvas as a score.** Run the first box and an orange playhead sweeps the canvas from left to
+right every eleven seconds. Every box it crosses runs its `score { }` block each frame while the
+playhead is over it, drawing into the dark panel under the first box and playing dough sounds:
+McLaren's twitching scratches, a Fischinger orbit, two Glass phase boxes that run the same code at
+different widths and drift apart, a box that jump-cuts itself to somewhere else in the score, and a
+duck. `thisRMS` is how loud a box's own sounds are right now, measured from its voices, so the
+shapes swell with the notes. Drag a box to move it in time, stretch it to make it last longer, and
+run it again after an edit. A port of the madp score demo; the design notes are in
+`dev_docs/madp/score.md`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_score/metadata.edn)
+
 ### mqtt_demo
 
 The demo for [MQTT](mqtt.md), on Field's own broker: one box plays three pretend sensors, one
