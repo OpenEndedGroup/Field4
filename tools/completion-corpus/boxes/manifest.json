@@ -722,7 +722,7 @@
   {"doc": "syphon_zero_copy_receive_smoke", "box": "syphon_zero_copy_smoke", "codeSha256": "99d0090509906865", "codeLines": 115, "receivers": ["afield.document.graph.Box"], "preamble": "syphon_zero_copy_receive_smoke__syphon_zero_copy_smoke.preamble.kt"},
   {"doc": "temporal_memory", "box": "tm_dance", "codeSha256": "e945e58e2d62f22d", "codeLines": 33, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "temporal_memory", "box": "tm_dance_signal", "codeSha256": "b06197ae512b33ce", "codeLines": 26, "receivers": ["afield.document.graph.Box"], "preamble": ""},
-  {"doc": "temporal_memory", "box": "tm_dancer_live", "codeSha256": "841bae840cd5da77", "codeLines": 31, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "temporal_memory", "box": "tm_dancer_live", "codeSha256": "09faf021fe469f92", "codeLines": 35, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "temporal_memory", "box": "tm_fan", "codeSha256": "134a77e78d5d9695", "codeLines": 21, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "temporal_memory", "box": "tm_judged", "codeSha256": "4466040c9d92d738", "codeLines": 33, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "temporal_memory", "box": "tm_live", "codeSha256": "6a0862883e24e54f", "codeLines": 43, "receivers": ["afield.document.graph.Box"], "preamble": ""},

@@ -11,7 +11,8 @@ val memory = VariableMarkovOracle.build(dance)
 val colours = [vec(0.48, 0.85, 1.0, 1.0), vec(1.0, 0.62, 0.29, 1.0), vec(0.56, 1.0, 0.6, 1.0),
                vec(1.0, 0.88, 0.4, 1.0), vec(0.77, 0.55, 1.0, 1.0), vec(1.0, 0.48, 0.62, 1.0)]
 
-// the continuation as a figure, stepped at 30 Hz; the floor square keeps the framing still
+// the continuation as a figure, stepped at 30 Hz; the floor square and an invisible point
+// above head height keep the framing still, with room for raised arms
 val player = Improviser(memory, seed = 2, reuseWeight = 3.0, reuseMemory = 60.0)
 val floor = fline { moveTo(-12.0, 0.0, -12.0); lineTo(12.0, 0.0, -12.0); lineTo(12.0, 0.0, 12.0); lineTo(-12.0, 0.0, 12.0); lineTo(-12.0, 0.0, -12.0); color = vec(1, 1, 1, 0.25) }
 frames {
@@ -22,8 +23,11 @@ frames {
         next += period
         val pose = player.step()
         val take = dance.episodeOf(max(0, player.position))
+        val c = colours[take]
         three(name = "dancer", width = 640, height = 480) {
-            lines(takes[0].skeleton(pose, dance.channels).onEach { it.color = colours[take]; it.thickness = 3.0 } + floor)
+            // solid tubes rather than lines, so the figure stays visible at any size
+            mesh(takes[0].skeletonMesh(pose, dance.channels, radius = 0.6, color = doubleArrayOf(c.x.toDouble(), c.y.toDouble(), c.z.toDouble())), wireframe = false)
+            lines(floor, fline { moveTo(0.0, 48.0, 0.0); color = vec(0, 0, 0, 0) })
             helpers(false)
             camera(yaw = 30.0, pitch = 12.0)
         }

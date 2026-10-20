@@ -60,4 +60,13 @@ class BvhTest {
         val lines = b.skeleton(t.frame(10), t.channels)
         assertEquals(b.bones.size, lines.size)
     }
+
+    @Test
+    fun skeletonMeshIsColouredTubes() {
+        val b = Bvh.read(File(dir, "05_14.bvh.gz"))
+        val t = b.toTrajectory(rate = 30.0)
+        val m = b.skeletonMesh(t.frame(10), t.channels, radius = 0.5, color = doubleArrayOf(1.0, 0.5, 0.0))
+        assertTrue(m.hasColors)
+        assertTrue(m.triangleCount > b.bones.size * 8, "one tube per bone: ${m.triangleCount} triangles")
+    }
 }

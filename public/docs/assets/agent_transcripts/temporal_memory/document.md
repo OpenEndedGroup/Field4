@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="tm_dancer_live" index="0" -->
 
 ```edn [field-box id="tm_dancer_live" role="properties"]
-{"id" "tm_dancer_live" "index" 0 "name" "3 - the dancer, live (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - the dancer, live (launch)" "_tombstone" false "frame" #afield/rect [60.0 2160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_dancer_live_code_.kt" "lines" 31 "characters" 1598 "sha256" "1ff0c8ac1fd0396373e70d0507fca303a6b5e18a52e514b0591b8de1af2ffb8d"}]}
+{"id" "tm_dancer_live" "index" 0 "name" "3 - the dancer, live (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - the dancer, live (launch)" "_tombstone" false "frame" #afield/rect [60.0 2160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_dancer_live_code_.kt" "lines" 35 "characters" 1911 "sha256" "b296fbd40fafc3f0ceae92b36c6726ba2e0d296da0ee90db91bac8a19cf0454e"}]}
 ```
 
 ```kotlin [field-property box="tm_dancer_live" name="code" path="tm_dancer_live_code_.kt"]
@@ -28,7 +28,8 @@ val memory = VariableMarkovOracle.build(dance)
 val colours = [vec(0.48, 0.85, 1.0, 1.0), vec(1.0, 0.62, 0.29, 1.0), vec(0.56, 1.0, 0.6, 1.0),
                vec(1.0, 0.88, 0.4, 1.0), vec(0.77, 0.55, 1.0, 1.0), vec(1.0, 0.48, 0.62, 1.0)]
 
-// the continuation as a figure, stepped at 30 Hz; the floor square keeps the framing still
+// the continuation as a figure, stepped at 30 Hz; the floor square and an invisible point
+// above head height keep the framing still, with room for raised arms
 val player = Improviser(memory, seed = 2, reuseWeight = 3.0, reuseMemory = 60.0)
 val floor = fline { moveTo(-12.0, 0.0, -12.0); lineTo(12.0, 0.0, -12.0); lineTo(12.0, 0.0, 12.0); lineTo(-12.0, 0.0, 12.0); lineTo(-12.0, 0.0, -12.0); color = vec(1, 1, 1, 0.25) }
 frames {
@@ -39,8 +40,11 @@ frames {
         next += period
         val pose = player.step()
         val take = dance.episodeOf(max(0, player.position))
+        val c = colours[take]
         three(name = "dancer", width = 640, height = 480) {
-            lines(takes[0].skeleton(pose, dance.channels).onEach { it.color = colours[take]; it.thickness = 3.0 } + floor)
+            // solid tubes rather than lines, so the figure stays visible at any size
+            mesh(takes[0].skeletonMesh(pose, dance.channels, radius = 0.6, color = doubleArrayOf(c.x.toDouble(), c.y.toDouble(), c.z.toDouble())), wireframe = false)
+            lines(floor, fline { moveTo(0.0, 48.0, 0.0); color = vec(0, 0, 0, 0) })
             helpers(false)
             camera(yaw = 30.0, pitch = 12.0)
         }

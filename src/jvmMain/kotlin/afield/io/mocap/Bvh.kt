@@ -2,7 +2,10 @@
 
 package afield.io.mocap
 
+import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.tubeMesh
 import afield.geometry.path.FLine
+import afield.math.linalg.Vec3
 import afield.math.oracle.Trajectory
 import java.io.File
 import kotlin.math.PI
@@ -155,6 +158,26 @@ class Bvh internal constructor(
             val pb = p(b) ?: return@mapNotNull null
             FLine().moveTo(pa[0], pa[1], pa[2]).lineTo(pb[0], pb[1], pb[2])
         }
+    }
+
+    /**
+     * A pose as one solid mesh: a round tube of [radius] along every bone, painted [color] (linear
+     * rgb), for `three { mesh(...) }`. Unlike [skeleton]'s lines, which the viewer draws one pixel wide,
+     * tubes keep their thickness when a figure is scaled down, as in a recorded film. [frame],
+     * [channels] and [at] as for [skeleton].
+     */
+    fun skeletonMesh(frame: DoubleArray, channels: List<String>, radius: Double = 0.5, color: DoubleArray = doubleArrayOf(0.5, 0.85, 1.0), at: DoubleArray = DoubleArray(3)): TriMesh {
+        val index = HashMap<String, Int>()
+        for ((i, c) in channels.withIndex()) if (c.endsWith(".x")) index[c.removeSuffix(".x")] = i
+        fun p(j: Int): Vec3? = index[joints[j].name]?.let { Vec3((frame[it] + at[0]).toFloat(), (frame[it + 1] + at[1]).toFloat(), (frame[it + 2] + at[2]).toFloat()) }
+        val tubes = bones.mapNotNull { (a, b) ->
+            val pa = p(a) ?: return@mapNotNull null
+            val pb = p(b) ?: return@mapNotNull null
+            if (pa.distance(pb) < 1e-6f) null else tubeMesh(listOf(pa, pb), radius, sides = 8)
+        }
+        require(tubes.isNotEmpty()) { "no bones found in the given channels" }
+        val c = Vec3(color[0].toFloat(), color[1].toFloat(), color[2].toFloat())
+        return tubes.reduce { m, t -> m + t }.coloredBy { c }
     }
 
     override fun toString() = "Bvh($name: ${joints.count { !it.isEndSite }} joints, $frameCount frames @ ${"%.0f".format(sampleRate)} Hz, ${"%.1f".format(duration)} s)"
