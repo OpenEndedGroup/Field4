@@ -1,7 +1,7 @@
 # Graphics on the GPU
 
 The "4" in Field·4 is its renderer: Vulkan, driven from boxes. Boxes on the GPU work the
-way the ones on the previous pages do. You write a few lines of Kotlin, run the box, and the
+way the ones on the earlier pages do. You write a few lines of Kotlin, run the box, and the
 picture changes while it runs. The difference is that some of a box's properties are now shaders,
 and the box draws into a native window instead of its output panel.
 
@@ -78,7 +78,7 @@ void main()
 `time` comes from the fragment shader the same way. It is a member of the shader's push constants,
 so the mesh gets a `time` property, and the function assigned to it is called every frame. The
 shader declares a `float`, so the function returns a `Float`: seconds since the box ran. The
-clock is the `AnimationClock` from the [previous page](animation_time_model.md), so the rings drift
+clock is the `AnimationClock` from [Frames and the Animation Loop](animation_time_model.md), so the rings drift
 outward at the same rate live and in a recording.
 
 ```diffstatic {data-lang=glsl}

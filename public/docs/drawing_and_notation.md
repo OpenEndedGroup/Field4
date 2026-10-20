@@ -306,4 +306,4 @@ Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome 
 
 The drawing is one scene per document, kept in the document's root box. When code and a hand change it at the same moment, both changes are kept.
 
-Next on the Tour, [Frames and the Animation Loop](animation_time_model.md) makes a box run every frame, the way a playhead crossing a drawn score would.
+Next on the Tour, [The Documentation Browser](completion_doc_browser.md) shows how to find out what calls like these do without leaving the editor.

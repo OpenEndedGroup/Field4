@@ -99,3 +99,5 @@ The panel resolves symbols; it doesn't list them, so it can't help with a
 question you can't yet name. [What's already in the box](reference/index.md) is
 the index for that: the same declarations, laid out to browse. Anything listed
 there links here too.
+
+Next on the Tour, [Connecting Boxes](tour_connecting_boxes.md) puts one box beneath another so the child can read what its parent publishes.

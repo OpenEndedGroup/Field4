@@ -20,21 +20,16 @@ nav:
     # that nobody reads in sequence, which makes it the cheapest thing to pass on the way in.
     - Keyboard Shortcuts: keybindings.md
     # A read-in-order arc, not a category: one faculty per page, and the order is the point.
-    # Autocomplete is the editor you meet while typing your first code, so it comes straight after
-    # "What Field Is" rather than being filed as an advanced topic (running_code.md used to sit
-    # between them, and moved to Working in a Document as mechanism rather than a faculty); and
-    # the last two hand the whole running document to something that is not you — a
-    # phone first, then an agent. Every entry also stands alone. A page appears once in this nav
-    # (Zensical resolves prev/next from position), so these are moved here rather than aliased, and
-    # their former sections were rebalanced to suit.
+    # Things that move and draw come first (the loop, then FLines, then drawing by hand), because
+    # they are what a first-time reader came for; the editor's documentation browser and
+    # connecting boxes follow, once there is code worth browsing and boxes worth connecting, and
+    # just before the GPU stop that needs a parent renderer. The last two hand the whole running
+    # document to something that is not you — a phone first, then an agent. Every entry also
+    # stands alone. A page appears once in this nav (Zensical resolves prev/next from position), so
+    # these are moved here rather than aliased, and their former sections were rebalanced to suit.
     - A Tour:
       - What Field Is: funFeatures.md
-      - The Documentation Browser: completion_doc_browser.md
-      # Early, before any drawing: every later stop leans on parent and child boxes (the GPU stop
-      # most of all, where a box beneath the renderer simply has `renderer`), and nothing else in
-      # the arc teaches it. A short first-contact page written for the Tour; why.md and
-      # reactive_properties.md stay in Working in a Document as the mechanism it hands off to.
-      - Connecting Boxes: tour_connecting_boxes.md
+      - Frames and the Animation Loop: animation_time_model.md
       - Drawing with FLines: fline_examples.md
       # Straight after FLines, because a stroke read from the drawing is an FLine: the box that
       # listens turns each pen stroke into one and draws an answer back. The drawing layer (Alt+D)
@@ -43,9 +38,15 @@ nav:
       # its intersection examples and reference come after that. Its filename stays, so the chain
       # pages and the starting point that link to it keep working.
       - Drawing and Notation: drawing_and_notation.md
-      - Frames and the Animation Loop: animation_time_model.md
-      # Straight after the animation loop, because the GPU stop leans on it: the shader's clock is
-      # the same AnimationClock, and a re-run replacing what it drew is the same rule. Vulkan is
+      - The Documentation Browser: completion_doc_browser.md
+      # Straight before the GPU stop, which leans on it most: a box beneath the renderer simply has
+      # `renderer`. Nothing else in the arc teaches parent and child boxes. A short first-contact
+      # page written for the Tour; why.md and reactive_properties.md stay in Working in a Document
+      # as the mechanism it hands off to.
+      - Connecting Boxes: tour_connecting_boxes.md
+      # After connecting boxes, and after the animation loop, because the GPU stop leans on both:
+      # the renderer is a parent box, the shader's clock is the same AnimationClock, and a re-run
+      # replacing what it drew is the same rule. Vulkan is
       # what the "4" in Field·4 names, and before this stop the Tour only mentioned it in passing.
       # A new short page rather than a move: afield_four_graphics.md is the whole curriculum and
       # four_in_output_areas.md needs the Electron app, so both stay under the graphics section
