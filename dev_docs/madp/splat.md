@@ -66,7 +66,7 @@ the one showing (the demo's dropdown).
 
 - **Sort keys from CPU bounds.** The depth key is the view depth normalised into the range of the
   cloud's CPU-side bounding box, clamped to 0..1. Splats an insert moves outside those bounds all
-  collapse onto key 0 or 1. Add a `DepthKeys.ViewDepth` mode keyed on the float bits of the view
+  collapse onto key 0 or 1. Add a `DepthKey.ViewDepth` mode keyed on the float bits of the view
   depth itself (monotone for non-negative floats), which needs no range at all.
 - **Sorting only when the view moves.** `sortOnlyWhenViewChanges` defaults to true, so an animated
   insert under a still camera is never re-sorted. The insert path turns it off.
@@ -103,7 +103,7 @@ the one showing (the demo's dropdown).
    (Spark's `constructSpherePoints` included, since the icosphere is built with it).
 3. `afield.graphics.scene.fabricated.SplatShader` — the insert host; the two includes as packaged
    resources under `afield/four/splat/`, resolved like `flow/` and `points/`.
-4. `GaussianSplatRenderer`: `DepthKeys.ViewDepth`, `Cloud.beforeSort`.
+4. `GaussianSplatRenderer`: `DepthKey.ViewDepth`, `Cloud.beforeSort`.
 
 Tests: a JVM test for the builders (counts, determinism, finite values) and the fit; the include
 pair compiling with a sample of the presets; and the GPU smoke for the sort.

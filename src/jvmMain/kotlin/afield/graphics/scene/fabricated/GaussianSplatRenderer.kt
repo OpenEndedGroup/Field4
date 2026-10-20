@@ -94,6 +94,8 @@ object GaussianSplatRenderer {
         val maxScreenRadius: Float = 128f,
         val alphaCutoff: Float = 1f / 255f,
         val sortMode: SortMode = SortMode.DepthBuckets,
+        /** What the sort orders by; see [DepthKey]. */
+        val depthKey: DepthKey = DepthKey.Bounds,
         val depthBucketBits: Int = 16,
         val sortEveryNFrames: Int = 1,
         val sortOnlyWhenViewChanges: Boolean = true,
@@ -170,6 +172,28 @@ object GaussianSplatRenderer {
         val boundsMin: Vector3f,
         val boundsMax: Vector3f
     )
+
+    /**
+     * How the depth-key pass turns a splat's view depth into the 32-bit key the sort orders by.
+     */
+    enum class DepthKey {
+        /**
+         * The depth normalised into the range the cloud's CPU-side bounds span in view space. The
+         * full 32 bits cover only where the splats can be, which is what [SortMode.DepthBuckets]
+         * needs to spend its 16 bits well; but a splat moved outside [Cloud.boundsMin] ..
+         * [Cloud.boundsMax] after upload (by a [Cloud.beforeSort] pass, say) clamps to the near or
+         * far end and loses its place.
+         */
+        Bounds,
+
+        /**
+         * The float bits of the view depth itself, which order the same way as the depth for any
+         * non-negative float. Needs no range, so it stays right however far the splats move from
+         * where they were uploaded; use it with [SortMode.ExactRadix], because the top 16 bits
+         * [SortMode.DepthBuckets] keeps are only 7 bits of mantissa per octave of depth.
+         */
+        ViewDepth
+    }
 
     enum class SortMode {
         DepthBuckets,
@@ -268,6 +292,7 @@ object GaussianSplatRenderer {
         var colorGamma: Float = config.colorGamma
         var viewport: Rect? = config.viewport
         var sortMode: SortMode = config.sortMode
+        var depthKey: DepthKey = config.depthKey
         var sortEveryNFrames: Int = config.sortEveryNFrames.coerceAtLeast(1)
         var sortOnlyWhenViewChanges: Boolean = config.sortOnlyWhenViewChanges
         var sortViewEpsilon: Float = config.sortViewEpsilon
@@ -309,6 +334,15 @@ object GaussianSplatRenderer {
             outputIndices = sortedIndices
         )
 
+        /**
+         * Work recorded each frame before the depth sort, on the same command buffer, in insertion
+         * order. When any is present, a compute-to-compute and compute-to-graphics barrier on
+         * [splatData] follows it, so a compute pass may rewrite the splats here and both the sort
+         * and the draw see what it wrote. That is how `SplatShader` runs a box's per-splat insert.
+         * It runs under every [SortMode], [SortMode.None] included, but not while [enabled] is false.
+         */
+        val beforeSort = linkedMapOf<String, Target>()
+
         private var modelProvider: () -> Matrix4f = { Matrix4f() }
         private var stereoCamera: StereoCamera? = null
         private var sortedOnce: Boolean = false
@@ -348,6 +382,7 @@ object GaussianSplatRenderer {
                 push.bind("sortedIndices") { requireNotNull(sortedIndices.result).get() }
                 push.bind("depthMin") { currentDepthMin }
                 push.bind("invDepthRange") { currentInvDepthRange }
+                push.bind("viewDepthKeys") { if (depthKey == DepthKey.ViewDepth) 1 else 0 }
                 count = this@Cloud.count
                 push.bind("resetIndices") {
                     if (!sortedOnce || sortMode == SortMode.ExactRadix) 1 else 0
@@ -391,9 +426,17 @@ object GaussianSplatRenderer {
                 count = this@Cloud.count
             }
             renderModule += "splats" to renderMesh
-            renderModule.current.before["depth-sort"] = Target { command, _ ->
+            renderModule.current.before["depth-sort"] = Target { command, frame ->
                 renderModule.current.parameters.viewport = viewport
-                if (!sortsOnGpu || !enabled || count <= 0) return@Target
+                if (!enabled || count <= 0) return@Target
+                if (beforeSort.isNotEmpty()) {
+                    beforeSort.values.forEach { it.render(command, frame) }
+                    requireNotNull(splatData.result).get().let {
+                        computeMemoryBarrier(command, it)
+                        graphicsMemoryBarrier(command, it)
+                    }
+                }
+                if (!sortsOnGpu) return@Target
 
                 currentSortModelView = modelViewMatrix()
                 if (shouldSortThisFrame(requireNotNull(currentSortModelView))) {
@@ -861,6 +904,34 @@ object GaussianSplatRenderer {
         }
 
         return PackedSplats(out, count, boundsMin, boundsMax)
+    }
+
+    /**
+     * [table] decoded as [pack] decodes it, but kept in parametric form — scales and a rotation
+     * rather than a covariance — as a [SplatSet], for a [SplatShader] insert to edit. The rotation
+     * is stored `(x, y, z, w)`; a PLY's `rot_0` is its `w`.
+     */
+    fun parametric(table: PlyFloatTable, config: Config = Config()): SplatSet {
+        table.requireColumns("x", "y", "z")
+        val columns = PackColumns(table)
+        val buffer = table.buffer
+        val set = SplatSet(table.rowCount)
+        for (row in 0 until table.rowCount) {
+            val rowBase = row * table.stride
+            val color = decodeColor(buffer, rowBase, columns)
+            val scales = decodeScales(buffer, rowBase, columns, config)
+            val rotation = decodeRotation(buffer, rowBase, columns)
+            set.push(
+                buffer.get(rowBase + columns.x).toDouble(),
+                buffer.get(rowBase + columns.y).toDouble(),
+                buffer.get(rowBase + columns.z).toDouble(),
+                scales[0].toDouble(), scales[1].toDouble(), scales[2].toDouble(),
+                rotation[1].toDouble(), rotation[2].toDouble(), rotation[3].toDouble(), rotation[0].toDouble(),
+                decodeOpacity(buffer, rowBase, columns, config).toDouble(),
+                color[0].toDouble(), color[1].toDouble(), color[2].toDouble()
+            )
+        }
+        return set
     }
 
     // ------------------------------------------------------------------------
@@ -1700,6 +1771,7 @@ layout(push_constant) uniform PushConstants {
     float invDepthRange;
     int count;
     int resetIndices;
+    int viewDepthKeys;
 } pc;
 
 void main() {
@@ -1709,8 +1781,14 @@ void main() {
     vec3 center = pc.splatData.splats[index * 4u + 0u].xyz;
     vec4 view = pc.modelView * vec4(center, 1.0);
     float depth = max(-view.z, 0.0);
-    float normalizedDepth = clamp((depth - pc.depthMin) * pc.invDepthRange, 0.0, 1.0);
-    uint quantizedDepth = uint(normalizedDepth * 4294967040.0);
+    uint quantizedDepth;
+    if (pc.viewDepthKeys != 0) {
+        // Non-negative floats order the same way as their bits; NaN goes to the far end.
+        quantizedDepth = isnan(depth) ? 0x7f800000u : floatBitsToUint(depth);
+    } else {
+        float normalizedDepth = clamp((depth - pc.depthMin) * pc.invDepthRange, 0.0, 1.0);
+        quantizedDepth = uint(normalizedDepth * 4294967040.0);
+    }
 
     pc.depthKeys.depthKeys[index] = 0xffffffffu - quantizedDepth;
     if (pc.resetIndices != 0) {

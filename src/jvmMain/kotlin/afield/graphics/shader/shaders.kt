@@ -2305,6 +2305,9 @@ private fun builtInShaderInclude(inside: Box, includePath: String): String? {
         // a resources box has executed. An explicit include-root registration still wins.
         else -> if (includePath.startsWith("flow/") && !shaderIncludeRoots.containsKey("flow"))
             afield.simulation.flow.FlowShaders.source(includePath.removePrefix("flow/"))
+        else if (includePath.startsWith("splat/") && !shaderIncludeRoots.containsKey("splat") &&
+            afield.graphics.scene.fabricated.SplatShader.hasInclude(includePath.removePrefix("splat/")))
+            afield.graphics.scene.fabricated.SplatShader.include(includePath.removePrefix("splat/"))
         else null
     }
 }
