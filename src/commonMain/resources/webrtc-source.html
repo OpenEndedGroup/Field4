@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Field WebRTC source</title>
+<!--
+  The page behind WebRTCSource (src/jvmMain/kotlin/afield/media/webrtc/WebRTC.kt): a hidden puppet
+  Electron window loads it, it watches one publisher, and its paints are the Field texture.
+  Query: network, target, fit (contain|cover|fill), status (0 hides the status line), measure (1
+  decodes WebRTCSink's time-code band and reports latency to Field).
+-->
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+  #status { position: absolute; left: 12px; bottom: 10px; font: 600 15px/1.3 ui-monospace, Menlo, monospace;
+            color: #9fe6c6; text-shadow: 0 1px 2px #000; }
+  body.live #status { opacity: 0; }
+</style>
+</head>
+<body>
+<video id="video" autoplay muted playsinline></video>
+<div id="status">connecting</div>
+<script type="module">
+  import { watch } from "/webrtc-signal.js";
+
+  const params = new URLSearchParams(location.search);
+  const video = document.getElementById("video");
+  const statusEl = document.getElementById("status");
+  video.style.objectFit = params.get("fit") || "contain";
+  if (params.get("status") === "0") statusEl.style.display = "none";
+  const puppet = window.fieldPuppet;
+  const emit = (name, value) => { try { puppet && puppet.emit(name, value); } catch (_) {} };
+
+  let lastStatus = "";
+  const status = (text) => {
+    lastStatus = text;
+    statusEl.textContent = text;
+    document.body.classList.toggle("live", text.startsWith("receiving"));
+    emit("webrtc-status", { status: text, target: viewer ? viewer.target : params.get("target") });
+  };
+
+  let viewer = null;
+  const onStream = (stream) => {
+    video.srcObject = stream;
+    video.play().catch(() => {});
+  };
+  watch({ network: params.get("network"), target: params.get("target"), onStream, onStatus: status })
+    .then((v) => { viewer = v; })
+    .catch((error) => status("error: " + error.message));
+
+  // Field drives the page through these (WebRTCSource.watch, .state).
+  window.fieldWebrtc = {
+    watch(name) { if (viewer) viewer.retarget(name); return true; },
+    state() {
+      return {
+        status: lastStatus,
+        target: viewer ? viewer.target : null,
+        publishers: viewer ? viewer.publishers : [],
+        videoWidth: video.videoWidth, videoHeight: video.videoHeight,
+        currentTime: video.currentTime,
+      };
+    },
+  };
+
+  // Latency: WebRTCSink.timecode() draws the sender's wall clock (ms mod 2^24) as 24 bars across
+  // the middle band of the frame, between a white and a black guard bar. Decode each frame as it is
+  // presented and compare with this page's clock (same machine, same clock).
+  if (params.get("measure") === "1" && "requestVideoFrameCallback" in HTMLVideoElement.prototype) {
+    const probe = document.createElement("canvas");
+    const ctx = probe.getContext("2d", { willReadFrequently: true });
+    let batch = [];
+    const onFrame = (now, meta) => {
+      const w = video.videoWidth, h = video.videoHeight;
+      if (w && h) {
+        probe.width = 26; probe.height = 1;
+        // One row through the middle of the band, squeezed so each bar is one pixel.
+        ctx.drawImage(video, 0, Math.floor(h * 0.5), w, 1, 0, 0, 26, 1);
+        const px = ctx.getImageData(0, 0, 26, 1).data;
+        const lum = (i) => px[i * 4] + px[i * 4 + 1] + px[i * 4 + 2];
+        const white = lum(0), black = lum(25), mid = (white + black) / 2;
+        if (white - black > 200) {
+          let stamp = 0;
+          for (let i = 1; i <= 24; i++) stamp = stamp * 2 + (lum(i) > mid ? 1 : 0);
+          const wrap = 1 << 24;
+          const age = (t) => (((performance.timeOrigin + t) % wrap) - stamp + wrap) % wrap;
+          const latency = age(performance.now());
+          if (latency < 10000) {
+            batch.push({
+              latency,
+              presented: age(meta.presentationTime),
+              received: meta.receiveTime ? age(meta.receiveTime) : null,
+              width: w, height: h,
+            });
+          }
+        }
+        if (batch.length >= 30) { emit("webrtc-latency", batch); batch = []; }
+      }
+      video.requestVideoFrameCallback(onFrame);
+    };
+    video.requestVideoFrameCallback(onFrame);
+  }
+</script>
+</body>
+</html>
