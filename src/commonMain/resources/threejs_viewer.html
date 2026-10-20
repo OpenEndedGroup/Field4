@@ -796,6 +796,8 @@ function applyStudio(spec, bounds) {
         // Shadow support is compiled into each program, so a switch has to recompile them.
         scene.traverse(o => { if (o.material && !Array.isArray(o.material)) o.material.needsUpdate = true; });
     }
+    studioAo.wanted = on && spec.ambientOcclusion !== false;
+    if (studioAo.wanted) loadStudioAo();
     if (!on) return;
     const min = bounds?.min || [-1, -1, -1], max = bounds?.max || [1, 1, 1];
     const cx = (min[0] + max[0]) / 2, cz = (min[2] + max[2]) / 2;
@@ -822,6 +824,44 @@ function applyStudio(spec, bounds) {
     baseGeometryRoot.traverse(o => {
         if (o.isMesh && o.material?.isMeshStandardMaterial) { o.castShadow = shadows; o.receiveShadow = shadows; }
     });
+}
+// Ambient occlusion, as the toolbox has it: RenderPass → SSAOPass → OutputPass (tone mapping and sRGB),
+// loaded from the vendored add-ons the first time a studio asks for it, so other views never fetch them.
+// One view only: a contact sheet's panels and X-ray draw directly, as before.
+const studioAo = {wanted: false, composer: null, pass: null, loading: null};
+function loadStudioAo() {
+    if (studioAo.loading) return studioAo.loading;
+    studioAo.loading = Promise.all([
+        import('three/addons/postprocessing/EffectComposer.js'),
+        import('three/addons/postprocessing/RenderPass.js'),
+        import('three/addons/postprocessing/SSAOPass.js'),
+        import('three/addons/postprocessing/OutputPass.js'),
+    ]).then(([{EffectComposer}, {RenderPass}, {SSAOPass}, {OutputPass}]) => {
+        const w = Math.max(1, container.clientWidth), h = Math.max(1, container.clientHeight);
+        const composer = new EffectComposer(renderer);
+        composer.setPixelRatio(getDpr());
+        composer.setSize(w, h);
+        const pass = new SSAOPass(scene, camera, w, h);
+        pass.kernelRadius = 12;
+        composer.addPass(new RenderPass(scene, camera));
+        composer.addPass(pass);
+        composer.addPass(new OutputPass());
+        studioAo.composer = composer; studioAo.pass = pass;
+        requestRender();
+    }).catch(error => console.warn('three viewer: ambient occlusion is unavailable', error));
+    return studioAo.loading;
+}
+function studioAoActive() {
+    return studioAo.wanted && !!studioAo.composer && studioRoot.visible && panelState.cameras.length <= 1 && !xrayState.enabled;
+}
+function renderStudioAo() {
+    // SSAO compares depths as fractions of far - near. The toolbox's thresholds (0.001, 0.075) were set
+    // for its camera, near = d / 100 and far = d * 100 at distance d, so they are rescaled to this one.
+    const d = camera.position.distanceTo(controls.target);
+    const scale = (d * 100 - d / 100) / Math.max(1e-9, camera.far - camera.near);
+    studioAo.pass.minDistance = 0.001 * scale;
+    studioAo.pass.maxDistance = Math.min(1, 0.075 * scale);
+    studioAo.composer.render();
 }
 // [viewer-region studio] END
 
@@ -6212,6 +6252,8 @@ function applyGeometry(payload) {
         shot.configure(payload.shot); shotDistance = 1; shotAppliedDistance = 1;
         applyCameraLinkRequest(payload.cameraLink);
         inspectorRefresh();
+        // A capture waits for the occlusion pass a studio asked for, so it is never taken without it.
+        if (studioAo.wanted) await loadStudioAo();
         requestRender();
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         if (payloadState === payload || (settleKey !== null && captureState.settleKey === settleKey)) captureState.ready = true;
@@ -6902,6 +6944,7 @@ function onResize() {
     const height = container.clientHeight;
     renderer.setPixelRatio(getDpr());
     renderer.setSize(width, height);
+    if (studioAo.composer) { studioAo.composer.setPixelRatio(getDpr()); studioAo.composer.setSize(width, height); }
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     // A genuine viewport resize may refit an untouched initial view. Geometry refreshes and
@@ -7003,6 +7046,7 @@ function render() {
     if (editorState.mode === 'camera') renderer.domElement.style.cursor = interactivePointer ? 'pointer' : '';
 
     if (panelState.cameras.length > 1) renderPanels();
+    else if (studioAoActive()) renderStudioAo();
     else {
         renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
         renderGeometry(camera);

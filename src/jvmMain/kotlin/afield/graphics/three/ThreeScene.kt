@@ -425,6 +425,8 @@ data class ThreeStudioSpec(
     val shadows: Boolean = true,
     /** ACES filmic tone mapping exposure. */
     val exposure: Double = 1.0,
+    /** Screen-space ambient occlusion: contact shadows in creases and under overhangs. Single views only. */
+    val ambientOcclusion: Boolean = true,
 )
 
 /**

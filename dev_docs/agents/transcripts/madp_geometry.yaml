@@ -10,8 +10,14 @@ description: >
     3. lathe_vessel — a revolved profile, with a second material for a metallic rim.
     4. knot_tube — a tube swept along a parametric knot.
     5. breathing_sheet — `animateGeometry { }`: the recipe runs every frame with `t` moving. Launch it.
-    6. fungal_tree — recursive tubes with revolved caps, through push/pop transforms.
-    7. menger_lesson — a recursive sponge made only of boxes.
+    6. signal_tear — a second animation: a grid torn along random rows. Launch it.
+    7. fungal_tree — recursive tubes with revolved caps, through push/pop transforms.
+    8. spiral_fronds — phyllotaxis leaves, one quad each.
+    9. menger_lesson — a recursive sponge made only of boxes.
+   10. city_blocks — boxes, with the material changing by district.
+   11. triangle_lesson — winding, colour interpolation and normals, one triangle at a time.
+
+  All eleven of the toolbox's presets.
 operations:
   - create:
       box: ripple_terrain
@@ -154,7 +160,7 @@ operations:
   - create:
       box: fungal_tree
       name: fungal tree
-      frame: { x: 900.0, y: 1360.0, w: 300.0, h: 100.0 }
+      frame: { x: 80.0, y: 2000.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           geometry {
@@ -212,7 +218,7 @@ operations:
   - create:
       box: menger_lesson
       name: menger lesson
-      frame: { x: 80.0, y: 2000.0, w: 300.0, h: 100.0 }
+      frame: { x: 80.0, y: 2640.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           geometry {
@@ -235,6 +241,134 @@ operations:
 
               sponge(vec(0, 0, 0), 3.1, 2)
           }
+  - create:
+      box: signal_tear
+      name: signal tear — launch me
+      frame: { x: 900.0, y: 1360.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // Another animation: the same grid every frame, torn along random rows as t moves. Launch it.
+          animateGeometry {
+              view(background = "#050608", ground = true, grid = false)
+
+              mesh("signal tear")
+              mat(color = "#ffffff", roughness = 0.52, metalness = 0.18, emissive = "#07121c", emissiveIntensity = 0.55, flat = true)
+
+              surface(72, 36) { u, v ->
+                  val row = floor(v * 36)
+                  val torn = sin(row * 12.989 + t * 4.0) * 0.5 + 0.5
+                  val tear = torn.pow(8) * (if (sin(t * 1.7 + row) > -0.35) 1.0 else 0.0)
+
+                  val x = (u - 0.5) * 6.6 + tear * sin(row * 3.1) * 0.72
+                  val z = (v - 0.5) * 3.6
+                  val band = sin((u * 28 + v * 7) + t * 5)
+                  val y = band * 0.1 + tear * 0.55 + noise(u * 9 + t, v * 9) * 0.12
+                  vertex(x, y, z, hsl(190 + band * 45 + tear * 120, 0.95, 0.5 + tear * 0.12))
+              }
+          }
+  - create:
+      box: spiral_fronds
+      name: spiral fronds
+      frame: { x: 900.0, y: 2000.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          geometry {
+              seed(91)
+              view(background = "#050807", ground = true, grid = false)
+
+              mesh("spiral fronds")
+              mat(color = "#ffffff", roughness = 0.82, metalness = 0.02, flat = true, side = GeometrySide.DOUBLE)
+
+              // Phyllotaxis: each leaf turns the golden angle from the last.
+              val golden = PI * (3 - sqrt(5.0))
+              for (i in 0 until 190) {
+                  val f = i / 189.0
+                  val angle = i * golden + f * 0.12
+                  val radius = 0.18 + sqrt(f) * 2.4
+                  val lift = -0.95 + f * 2.0 + sin(f * 1.4 + i * 0.11) * 0.035
+                  val cx = cos(angle) * radius
+                  val cz = sin(angle) * radius
+                  val tangent = angle + PI * 0.5
+                  val width = 0.07 + (1 - f) * 0.18
+                  val length = 0.28 + (1 - f) * 0.42
+                  val curl = sin(f + i * 0.17) * 0.12
+
+                  val root = vec(cx - cos(angle) * length * 0.35, lift, cz - sin(angle) * length * 0.35)
+                  val left = vec(cx + cos(tangent) * width, lift + curl, cz + sin(tangent) * width)
+                  val tip = vec(cx + cos(angle) * length, lift + 0.08 + curl, cz + sin(angle) * length)
+                  val right = vec(cx - cos(tangent) * width, lift - curl * 0.5, cz - sin(tangent) * width)
+
+                  val hue = 112 + f * 84 + sin(i.toDouble()) * 8
+                  quad(
+                      vertex(root, hsl(hue - 12, 0.66, 0.24 + f * 0.12)),
+                      vertex(left, hsl(hue, 0.72, 0.34 + f * 0.18)),
+                      vertex(tip, hsl(hue + 20, 0.78, 0.48 + f * 0.18)),
+                      vertex(right, hsl(hue + 8, 0.72, 0.32 + f * 0.16)),
+                  )
+              }
+          }
+  - create:
+      box: city_blocks
+      name: city blocks
+      frame: { x: 900.0, y: 2640.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          geometry {
+              seed(7)
+              view(background = "#060708", ground = true, grid = true)
+
+              // Boxes are triangle recipes too; the material state changes by district.
+              mat(color = "#ffffff", roughness = 0.8, metalness = 0.04, flat = true)
+              for (x in -5..5) for (z in -5..5) {
+                  if (noise(x * 0.7, z * 0.7) > 0.38) continue
+                  val height = 0.18 + rand(0.05, 1.0).pow(1.8) * 2.8
+                  val warm = (x + z + 10) / 20.0
+                  color(hsl(178 + warm * 46 + height * 10, 0.5, 0.28 + height * 0.08))
+                  box(vec(x * 0.42, height * 0.5 - 1.05, z * 0.42), vec(0.31, height, 0.31))
+              }
+
+              mesh("copper towers")
+              mat(color = "#e2a75a", roughness = 0.5, metalness = 0.32, flat = true)
+              for (i in 0 until 18) {
+                  val angle = i / 18.0 * TAU
+                  val r = 2.75 + noise(i.toDouble(), 0.0) * 0.28
+                  color(hsl(35 + i * 4, 0.7, 0.46))
+                  box(vec(cos(angle) * r, 0.25, sin(angle) * r), vec(0.16, 2.2 + rand(0.0, 0.85), 0.16))
+              }
+          }
+  - create:
+      box: triangle_lesson
+      name: triangle lesson
+      frame: { x: 80.0, y: 3280.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // A grammar of triangles: winding (flip swaps two corners), colour interpolated across each face,
+          // and a small box standing on each one.
+          geometry {
+              view(background = "#070809", ground = true, grid = true)
+              mat(color = "#ffffff", roughness = 0.78, metalness = 0.02, flat = true, side = GeometrySide.DOUBLE)
+
+              for (y in 0 until 6) for (x in 0 until 10) {
+                  val cx = (x - 4.5) * 0.48
+                  val cz = (y - 2.5) * 0.5
+                  val tilt = sin(x * 0.7 + y * 1.3) * 0.24
+                  val flip = (x + y) % 2 == 0
+                  val a = vec(cx - 0.22, -0.65 + tilt, cz - 0.18)
+                  val b = vec(cx + 0.24, -0.65 - tilt * 0.5, cz - 0.15)
+                  val c = vec(cx - 0.02, -0.18 + tilt * 0.8, cz + 0.25)
+                  val h = 170 + x * 11 + y * 18
+
+                  tri(
+                      vertex(if (flip) a else b, hsl(h, 0.86, 0.42)),
+                      vertex(if (flip) b else a, hsl(h + 34, 0.86, 0.58)),
+                      vertex(c, hsl(h + 74, 0.9, 0.67)),
+                  )
+
+                  val m = mix(mix(a, b, 0.5), c, 0.33)
+                  color(hsl(h + 18, 0.7, 0.36))
+                  box(vec(m.x, m.y + 0.08, m.z), vec(0.035, 0.28 + abs(tilt), 0.035))
+              }
+          }
   - execute:
       box: ripple_terrain
   - execute:
@@ -249,3 +383,11 @@ operations:
       box: fungal_tree
   - execute:
       box: menger_lesson
+  - execute:
+      box: signal_tear
+  - execute:
+      box: spiral_fronds
+  - execute:
+      box: city_blocks
+  - execute:
+      box: triangle_lesson
