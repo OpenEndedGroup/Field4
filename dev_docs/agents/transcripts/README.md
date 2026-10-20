@@ -252,6 +252,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `lp_curves_3d.yaml`: **linear programs in three dimensions** — the companion to the "In three dimensions" section of `lp_curves.md`.
   A point cloud's hull as an `LpPolytope` with four routes to one vertex (central path, primal-dual,
   simplex along edges, PDHG), and a turning fan of central paths, both in `three { }`. Pure CPU.
+- `madp_geometry.yaml`: **the madp geometry toolbox** — `3d.html` as a starting point. Models as
+  recipes of triangles in `geometry { }` (`GeometryBuilder`), drawn in a studio-lit `three { }` view:
+  ripple terrain, crystal bloom, lathe vessel, knot tube, an animated breathing sheet
+  (`animateGeometry`), a fungal tree and a Menger sponge. Pure CPU.
 - `frames_lifecycle.yaml`: **a frame loop, from start to cleanup** — the companion to
   `animation_time_model.md`. Runs until stopped, stops itself with `end()`, re-run replaces, and a
   fourth box the reader drives to see which of `.end { }` and `finally` each way of stopping reaches.
