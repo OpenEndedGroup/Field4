@@ -545,6 +545,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                     needsResync.add(to to counterName)
 
                 (if (::inside.isInitialized) inside else thisSessionInfo.get()).topologyGeneration++
+                // The edge sets are mutated in place, so setPropertyRaw never sees this change.
+                notePersistentChange(property)
+                if (counterName != null) to.notePersistentChange(counterName)
 
                 if (property == "children") {
                     onTopologyChange(this, true, to)
@@ -574,6 +577,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 needsResync.add(to to counterName)
 
             (if (::inside.isInitialized) inside else thisSessionInfo.get()).topologyGeneration++
+            notePersistentChange(property)
+            if (counterName != null) to.notePersistentChange(counterName)
             if (property == "children") {
                 onTopologyChange(this, false, to)
             }
@@ -862,6 +867,24 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             Regex(""".*_editorState""")
         )
 
+        private val persistentPatternCache = ConcurrentHashMap<String, Regex>()
+
+        /**
+         * True when [name] is written to `metadata.edn` by every document: listed in
+         * [ioPersistentProperties] (names or patterns) and not [isNeverPersisted]. A document's own
+         * header additions are not consulted; this is the cheap check [Box.notePersistentChange]
+         * makes on every property write.
+         */
+        fun isPersistentName(name: String): Boolean {
+            if (isNeverPersisted(name)) return false
+            val names = ioPersistentProperties
+            if (name in names) return true
+            return names.any { pattern ->
+                pattern.any { it == '*' || it == '.' || it == '[' || it == '(' } &&
+                    persistentPatternCache.getOrPut(pattern) { pattern.toRegex() }.matches(name)
+            }
+        }
+
         /** True when [name] must not be serialised to disk. See [ioNeverPersistedProperties]. */
         fun isNeverPersisted(name: String): Boolean =
             ioNeverPersistedProperties.any { it.matches(name) }
@@ -1067,6 +1090,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             properties[name] = incoming
         }
 
+        if (oldValue != incoming) notePersistentChange(name)
         FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, incoming)
         // A raw write to a property declared `propDown` reruns its readers, exactly as assigning it does.
         afield.runtime.lifecycle.ReactiveRuns.noteRawWrite(this, name, oldValue, incoming)
@@ -1084,7 +1108,29 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         if (doResync && uiResyncProperties.any { it.matches(name) }) {
             if (oldValue != null) needsResync.add(this to name)
         }
+        if (oldValue != null) notePersistentChange(name)
         FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, null)
+    }
+
+    /**
+     * Tells this box's document that [name], a property written to `metadata.edn`, changed, so the
+     * autosave loop and the shutdown flush save it.
+     *
+     * Both used to save only when a *sidecar* property (`code`, shaders, ...) was pending, through
+     * explicit `markSidecarPending` calls at a handful of handlers. Every other persistent change —
+     * a new box with no code, a move, a rename, a delete (`_tombstone`), a connection, `autorun` —
+     * marked nothing, so it reached disk only if some sidecar edit happened to follow it, and was
+     * lost if Field stopped first. Measured 2026-10-20 (`dev_docs/SIGINT_SHUTDOWN.md`, "Which edits
+     * reached disk"). This is the one place all of those pass through. Nothing is marked while the
+     * document loads, for a scratch or read-only document, or for a property that is never written.
+     */
+    internal fun notePersistentChange(name: String) {
+        if (!::inside.isInitialized) return
+        val info = inside
+        if (info.loading || !info.writesToDisk) return
+        if (info.boxes[id] !== this && info.root !== this) return
+        if (!isPersistentName(name)) return
+        info.markSidecarPending(id, name)
     }
 
     override fun toString(): String {
