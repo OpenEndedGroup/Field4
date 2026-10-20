@@ -120,7 +120,7 @@ class WebRTCSink(
             let publisher = null;
             publish({ network: ${jsString(network.id)}, stream, suffix: ${jsString(name)},
                       onStatus: (s, n) => report(s, n, publisher ? publisher.viewers : 0) })
-              .then((p) => { publisher = p; })
+              .then((p) => { publisher = p; (window.fieldWebrtcSinks ||= {})[viewId] = p; })
               .catch((e) => report("error: " + e.message));
             const observer = new MutationObserver(() => {
               if (!canvas.isConnected) {

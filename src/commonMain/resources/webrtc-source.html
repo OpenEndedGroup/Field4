@@ -51,6 +51,7 @@
   // Field drives the page through these (WebRTCSource.watch, .state).
   window.fieldWebrtc = {
     watch(name) { if (viewer) viewer.retarget(name); return true; },
+    async stats() { return viewer ? viewer.stats() : null; },
     state() {
       return {
         status: lastStatus,

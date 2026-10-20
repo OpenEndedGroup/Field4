@@ -88,6 +88,20 @@ export class FieldSignal {
   }
 }
 
+// The video RTP counters of a peer connection, for status lines and debugging.
+export async function videoStats(pc) {
+  if (!pc) return null;
+  const out = { connection: pc.connectionState };
+  (await pc.getStats()).forEach((r) => {
+    if (r.kind !== "video") return;
+    if (r.type === "inbound-rtp") Object.assign(out, { bytesReceived: r.bytesReceived, framesDecoded: r.framesDecoded,
+      framesDropped: r.framesDropped, width: r.frameWidth, height: r.frameHeight, fps: r.framesPerSecond });
+    if (r.type === "outbound-rtp") Object.assign(out, { bytesSent: r.bytesSent, framesEncoded: r.framesEncoded,
+      width: r.frameWidth, height: r.frameHeight, fps: r.framesPerSecond, limitation: r.qualityLimitationReason });
+  });
+  return out;
+}
+
 const peerKey = (connectionId, requestId) => connectionId + ":" + requestId;
 
 function makePeer(signal, iceServers, toConnectionId, requestId) {
@@ -146,6 +160,7 @@ export async function publish({ network, stream, suffix, onStatus = () => {} }) 
     signal,
     get name() { return name; },
     get viewers() { return [...peers.values()].filter((p) => p.connectionState === "connected").length; },
+    stats() { return Promise.all([...peers.values()].map(videoStats)); },
     stop() {
       signal.send({ type: "publish-stop" });
       for (const pc of peers.values()) pc.close();
@@ -217,6 +232,7 @@ export async function watch({ network, target, onStream, onStatus = () => {} }) 
     get target() { return current; },
     get publishers() { return [...signal.publishers].sort(); },
     retarget(name) { current = normalizeName(name); request(); },
+    stats() { return videoStats(pc); },
     stop() { hangup(); signal.close(); },
   };
 }
