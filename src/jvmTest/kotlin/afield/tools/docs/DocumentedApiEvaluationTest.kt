@@ -288,6 +288,19 @@ class DocumentedApiEvaluationTest {
             "openxr_eye_intersection.md; this is the scene-local matrix callback parameter of " +
                 "lineMesh, not a global Field API. The lexical census includes its invocation; " +
                 "the containing OpenXR transcript is COMPILE_ONLY and needs a live headset.",
+        // The madp Fern port (2026-10-20): GLSL functions a student writes in an IteratedSystem's
+        // compute tab, called by the points/system harness's main(), never by Kotlin, so no
+        // Kotlin evaluator can count them. IteratedSystemShaderTest compiles every system in
+        // fern_iterated_systems against the harness; running them needs a Vulkan device.
+        "initParticle" to
+            "agent_transcripts.md (fern_iterated_systems); a GLSL function in a system's compute " +
+                "tab, called by the points/system harness. Compiled by IteratedSystemShaderTest.",
+        "shouldDraw" to
+            "agent_transcripts.md (fern_iterated_systems); a GLSL function in a system's compute " +
+                "tab, called by the points/system harness. Compiled by IteratedSystemShaderTest.",
+        "pointSize" to
+            "agent_transcripts.md (fern_iterated_systems); a GLSL function in a system's compute " +
+                "tab, called by the points/system harness. Compiled by IteratedSystemShaderTest.",
         "flowMask" to
             "flow_grain.md; this is an editable GLSL obstacle callback. The native flow_grain " +
                 "capture evaluates it on a GPU; headless CI compiles the document's Kotlin only.",
