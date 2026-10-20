@@ -31,6 +31,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
+private val JsonObject.type get() = this["type"]!!.jsonPrimitive.content
+private fun JsonObject.str(name: String) = this[name]!!.jsonPrimitive.content
+
 /**
  * The signalling under WebRTC sources and sinks: Field's local relay speaks aaaframe's ShaderTrinket
  * messages, and the aaaframe bridge copies them verbatim with the student's session cookie.
@@ -47,8 +50,6 @@ class WebRTCSignalingTest {
         }
     }
 
-    private val JsonObject.type get() = this["type"]!!.jsonPrimitive.content
-    private fun JsonObject.str(name: String) = this[name]!!.jsonPrimitive.content
 
     @Test
     fun aViewerWatchesAPublisherThroughTheLocalRelay() {
@@ -145,7 +146,7 @@ class WebRTCSignalingTest {
         // missing login with 4401 exactly as websocket_login_required does.
         val upstreamRelay = LocalSignalingRelay { "student" }
         val cookies = LinkedBlockingQueue<String>()
-        val upstream = embeddedServer(Netty, port = 0, host = "127.0.0.1") {
+        val upstream = embeddedServer(Netty, port = 0, host = "0.0.0.0") {
             install(ServerWebSockets)
             routing {
                 webSocket("/ws/shadertrinket-signaling") {
@@ -163,7 +164,7 @@ class WebRTCSignalingTest {
         try {
             val port = kotlinx.coroutines.runBlocking { upstream.engine.resolvedConnectors().single().port }
             val good = WebRTCNetwork.aaaframe("http://127.0.0.1:$port", session = "s3cret")
-            val bad = WebRTCNetwork.aaaframe("http://127.0.0.1:$port/", session = null)
+            val bad = WebRTCNetwork.aaaframe("http://localhost:$port", session = null)
             testApplication {
                 application {
                     install(ServerWebSockets)
