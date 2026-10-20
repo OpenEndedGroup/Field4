@@ -40,7 +40,7 @@ class IteratedSystemSettings : PointAccumulationSettings() {
     /** Steps per particle per frame. Every step is plotted. */
     var steps: Int = 1
 
-    /** The most [steps] can be raised to while running; 0 means [steps] as built. */
+    /** The most [steps] can be raised to while running; 0 means four, or [steps] if that is more. */
     var maxSteps: Int = 0
 
     /** Frames stepped per second; 0 steps every frame the renderer draws. Lower shows the build-up. */
@@ -88,7 +88,7 @@ class IteratedSystem(
     val particles: Int = settings.particles
 
     /** The room per particle in [points], fixed for the life of the system. */
-    val maxSteps: Int = (settings.maxSteps.takeIf { it > 0 } ?: settings.steps).coerceAtLeast(1)
+    val maxSteps: Int = (settings.maxSteps.takeIf { it > 0 } ?: maxOf(settings.steps, 4)).coerceAtLeast(settings.steps)
 
     /** Two vec4s per particle: `(pos, age)` and `data`. */
     val state: FrameBufferGroup
@@ -202,8 +202,9 @@ class IteratedSystem(
 fun Box.showControls(system: IteratedSystem, channel: String = "controls") {
     val s = system.settings
     controlGroup(channel) {
-        slider("fps (0: every frame)", min = 0.0, max = 120.0, step = 1.0, initialValue = s.fps) { s.fps = it }
-        slider("steps per frame", min = 1.0, max = system.maxSteps.toDouble().coerceAtLeast(2.0), step = 1.0,
+        // 0 fps steps on every frame the renderer draws
+        slider("fps", min = 0.0, max = 120.0, step = 1.0, initialValue = s.fps) { s.fps = it }
+        slider("steps per frame", min = 1.0, max = system.maxSteps.toDouble(), step = 1.0,
             initialValue = s.steps.toDouble()) { s.steps = it.toInt() }
         slider("fade", min = 0.0, max = 1.0, step = 0.005, initialValue = s.fade) { s.fade = it }
         slider("exposure", min = 0.05, max = 20.0, initialValue = s.exposure, law = ControlLaw.LOGARITHMIC) { s.exposure = it }

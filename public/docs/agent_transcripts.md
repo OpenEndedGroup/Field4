@@ -2912,8 +2912,8 @@ trains meet they interleave. Red recovers faster, so its rings come more often. 
 
 ### fern_iterated_systems
 
-**Fern**, the classroom demo of iterated systems, on the GPU. Each system is a few hundred
-thousand particles, each stepped by one rule every frame and plotted after every step into a
+**Fern**, the classroom demo of iterated systems, on the GPU. Each system is tens or hundreds of
+thousands of particles, each stepped by one rule every frame and plotted after every step into a
 picture that fades a little each frame, so their visits pile up into fine glowing dust. A renderer
 box, then four systems beneath it: the **Barnsley fern** (four affine maps chosen at random, the
 chaos game, launched when the scene opens), the **Lorenz attractor** (a continuous chaotic flow,

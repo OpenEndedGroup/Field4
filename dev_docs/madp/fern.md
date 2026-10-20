@@ -64,5 +64,23 @@ tab hot-reloads the shader as Ctrl+Enter recompiles the JS.
   (the canvas version stretches to the pane).
 - **Dropped**: the Monaco editor, AI ghost completion, local saves, fullscreen button, the metrics
   card (Field's box output shows the counts instead).
-- **Added preset**: a fourth IFS if it earns its place (candidate: the Sierpiński triangle or a
-  Heighway dragon — the smallest chaos game, two lines of `step`).
+- **Added preset**: the Sierpinski triangle, the smallest chaos game (one line of `step`),
+  coloured by the corner of the last step so each third reads as a half-size copy of the whole.
+
+## As built (2026-10-20)
+
+- Particle counts: fern 200 000, flame 250 000, Sierpinski 150 000, but Lorenz **12 000**. At
+  60 000 its trajectories put hundreds of hits on every pixel and the picture became a smooth
+  pastel sheet that no exposure could recover. The original's look comes from the spirals of
+  individual trajectories, and 12 000 keeps them visible. "More particles" is still the slider's
+  lesson, but the demo's 1 600 were closer to right than the GPU's millions.
+- Tone maps: `EXPONENTIAL` for the fern, Lorenz and Sierpinski; `LOG` for the flame, as fractal
+  flames are drawn.
+- `IteratedSystem` takes back the buffers and accumulation target of an earlier run of the same
+  shape (name, particles, maxSteps, size, format, blend). Nothing in Field frees a
+  `RenderToTexture` or a `FrameBufferGroup`, so without that every re-run left ~50 MB of GPU
+  memory behind. The general fix (GPU resources as lifecycle claims) is still open.
+- Capturing: `native-screenshot --wait-frames N` counts Runloop frames, which run well ahead of
+  rendered frames on a loaded machine, and a system plots nothing until its particles are past
+  `shouldDraw`'s age. A capture taken 60 frames after a launch was black and looked like a bug.
+  Wait wall-clock time (`sleep 45`) before capturing.

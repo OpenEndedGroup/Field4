@@ -172,7 +172,7 @@ operations:
   - create:
       box: fern_flame
       name: flame-style IFS
-      frame: { x: 40.0, y: 560.0, w: 300.0, h: 100.0 }
+      frame: { x: 40.0, y: 660.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           /*
@@ -249,7 +249,7 @@ operations:
   - create:
       box: fern_sierpinski
       name: Sierpinski triangle
-      frame: { x: 640.0, y: 560.0, w: 300.0, h: 100.0 }
+      frame: { x: 640.0, y: 660.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           /*
