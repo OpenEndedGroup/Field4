@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="learned_from_module" index="1" -->
 
 ```edn [field-box id="learned_from_module" role="properties"]
-{"id" "learned_from_module" "index" 1 "name" "learn from this module" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "learn from this module" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_from_module_code_.kt" "lines" 86 "characters" 3413 "sha256" "93a569055a311af31ddb09d4034b17604a77b39cd5ab9439e073af5bdec4076f"} {"name" "vertex" "language" "glsl" "path" "learned_from_module_vertex_.glsl" "lines" 5 "characters" 118 "sha256" "2c4898fc058df3cf38956a49514876c2d2a6f58ae15647ab35962039df25c828"} {"name" "fragment" "language" "glsl" "path" "learned_from_module_fragment_.glsl" "lines" 18 "characters" 690 "sha256" "cb2424db2082218243876ffaa2f8d764aceb600141e527320ee3fbb1afefba4d"}]}
+{"id" "learned_from_module" "index" 1 "name" "learn from this module" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "learn from this module" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_from_module_code_.kt" "lines" 86 "characters" 3406 "sha256" "7662a1dd1452201b02ea79b00750c33c8f248db5cdf2b67b2013437682cbbf4b"} {"name" "vertex" "language" "glsl" "path" "learned_from_module_vertex_.glsl" "lines" 5 "characters" 118 "sha256" "2c4898fc058df3cf38956a49514876c2d2a6f58ae15647ab35962039df25c828"} {"name" "fragment" "language" "glsl" "path" "learned_from_module_fragment_.glsl" "lines" 18 "characters" 690 "sha256" "cb2424db2082218243876ffaa2f8d764aceb600141e527320ee3fbb1afefba4d"}]}
 ```
 
 ```kotlin [field-property box="learned_from_module" name="code" path="learned_from_module_code_.kt"]
@@ -55,7 +55,7 @@ val source = RenderToTexture(renderer) {
     format = VK_FORMAT_R32G32B32A32_SFLOAT
 }
 val teacher = moduleHere {
-    source.apply()
+    +source
     depthTest = false
     depthWrite = false
     blend = false

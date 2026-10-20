@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 16968 of 33434 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 16975 of 33439 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2238 undocumented entry points** (types, top-level functions and values) and 13524 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2238 undocumented entry points** (types, top-level functions and values) and 13522 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -40,7 +40,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RayTracingModule.kt](../src/jvmMain/kotlin/afield/graphics/render/RayTracingModule.kt) | Graphics | ray_tracing_examples | 10 | 46 | 4% |
 | [FieldStats.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/FieldStats.kt) | Graphics | field_probes | 10 | 45 | 1% |
 | [StackAutoStudyTools.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackAutoStudyTools.kt) | Languages | stackauto_conversation, stacksl_examples | 10 | 13 | 23% |
-| [Module.kt](../src/jvmMain/kotlin/afield/graphics/render/Module.kt) | Graphics | fabricate_renderer, fieldml_host_bridge | 9 | 137 | 6% |
+| [Module.kt](../src/jvmMain/kotlin/afield/graphics/render/Module.kt) | Graphics | fabricate_renderer, fieldml_host_bridge | 9 | 135 | 7% |
 | [FieldProbe.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/FieldProbe.kt) | Graphics | field_probes | 9 | 44 | 5% |
 | [Sequencing.kt](../src/jvmMain/kotlin/afield/audio/synth/Sequencing.kt) | Patterns | boolean_network_music_examples, visualizers | 9 | 38 | 7% |
 | [Logging.kt](../src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt) | Machine learning | logging, visualizers, agent_transcripts | 9 | 23 | 11% |
@@ -1221,6 +1221,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ListGeometryFilesResult` | class | `src/jvmMain/kotlin/afield/graphics/render/GeometryAgentTools.kt:329` |
 | `FromInput` | class | `src/jvmMain/kotlin/afield/graphics/render/Mesh.kt:35` |
 | `Mesh` | class | `src/jvmMain/kotlin/afield/graphics/render/Mesh.kt:45` |
-| `Renderable` | interface | `src/jvmMain/kotlin/afield/graphics/render/Module.kt:297` |
+| `Renderable` | interface | `src/jvmMain/kotlin/afield/graphics/render/Module.kt:307` |
 
 …and **2118 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
