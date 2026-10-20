@@ -131,9 +131,15 @@ open class PointAccumulationSettings {
 class PointAccumulation(
     /** The renderer to build on. */
     val renderer: Renderer,
-    /** The settings, and the handle for changing them live. */
-    val settings: PointAccumulationSettings
+    settings: PointAccumulationSettings
 ) : Target, HasImageView {
+
+    /**
+     * The settings, and the handle for changing them live. Every pass reads them each frame, so
+     * swapping in a new object (as a re-run does) takes effect on the next frame; the size and
+     * [PointAccumulationSettings.format] stay as built.
+     */
+    var settings: PointAccumulationSettings = settings
 
     /** Build one on the renderer this box is running in, configured by [configure]. */
     constructor(renderer: Renderer = fromContext(), configure: PointAccumulationSettings.() -> Unit = {}) :
@@ -167,7 +173,6 @@ class PointAccumulation(
 
     private val sampler = TextureSampler(renderer, 1, false)
     private var clearRequested = true
-    private var plots = 0
 
     init {
         require(width > 0 && height > 0) { "a PointAccumulation needs a positive size, got ${width}x$height" }
@@ -240,7 +245,8 @@ class PointAccumulation(
     /**
      * Plot `count` `AccumulatedPoint` records from [points] every frame, mapped from world
      * coordinates through the viewport. [points] is read when each frame is drawn, so it may hand
-     * back a different buffer each time. Returns the module, already added.
+     * back a different buffer each time. A plot under a name already in use replaces it. Returns the
+     * module, already added.
      */
     fun plot(points: () -> HasBuffer, count: Int, name: String = "${settings.name}-plot"): ModulePointer {
         require(count >= 0) { "count must not be negative" }
@@ -256,7 +262,7 @@ class PointAccumulation(
         mesh.push.bind("targetSize") { vec(width.toFloat(), height.toFloat()) }
         mesh.push.bind("intensity") { settings.intensity.toFloat() }
         module += "$name-points" to mesh
-        add(name + (if (plots++ == 0) "" else "-$plots"), module)
+        add(name, module)
         return module
     }
 

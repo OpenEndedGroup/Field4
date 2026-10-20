@@ -12,9 +12,11 @@ import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.buffers.FrameBufferGroup
 import afield.graphics.vulkan.buffers.defaultBuffer
 import afield.graphics.vulkan.targets.PointAccumulation
+import afield.graphics.vulkan.targets.PointBlend
 import afield.graphics.vulkan.targets.PointAccumulationSettings
 import afield.ui.controls.ControlLaw
 import afield.ui.output.controlGroup
+import afield.ui.output.displayOpen
 
 /**
  * Iterated systems: many particles, each stepped by the same rule every frame and plotted after
@@ -112,18 +114,30 @@ class IteratedSystem(
     init {
         require(particles > 0) { "particles must be positive, got $particles" }
         require(settings.steps >= 1) { "steps must be at least 1, got ${settings.steps}" }
-        state = defaultBuffer(name = "${settings.name}-state") {
-            size = (particles * 2).vec4s
-            zeroInit()
-        }.toBuffer(renderer)
-        points = defaultBuffer(name = "${settings.name}-points") {
-            size = (particles.toLong() * maxSteps * 2 * 16)
-            zeroInit()
-        }.toBuffer(renderer)
-
-        accumulation = PointAccumulation(renderer, settings)
+        // Nothing frees a GPU buffer or target once made, so a re-run of the same shape takes the
+        // last one's back instead of allocating its own; resetPending starts the particles afresh.
+        val shape = Shape(settings.name, particles, maxSteps, settings.width, settings.height, settings.format, settings.blend)
+        val previous = synchronized(kept) { kept.getOrPut(renderer) { HashMap() }[shape] }
+        if (previous != null) {
+            state = previous.state
+            points = previous.points
+            accumulation = previous.accumulation
+            accumulation.settings = settings
+            accumulation.clear()
+        } else {
+            state = defaultBuffer(name = "${settings.name}-state") {
+                size = (particles * 2).vec4s
+                zeroInit()
+            }.toBuffer(renderer)
+            points = defaultBuffer(name = "${settings.name}-points") {
+                size = (particles.toLong() * maxSteps * 2 * 16)
+                zeroInit()
+            }.toBuffer(renderer)
+            accumulation = PointAccumulation(renderer, settings)
+            accumulation.plot(points, particles * maxSteps)
+            synchronized(kept) { kept.getOrPut(renderer) { HashMap() }[shape] = Resources(state, points, accumulation) }
+        }
         accumulation.advance = { stepping }
-        accumulation.plot(points, particles * maxSteps)
 
         mesh = ComputeMesh(renderer, module)
         mesh.push.bind("particles") { state }
@@ -149,6 +163,18 @@ class IteratedSystem(
         accumulation.installInto()
     }
 
+    private data class Shape(
+        val name: String, val particles: Int, val maxSteps: Int,
+        val width: Int, val height: Int, val format: Int, val blend: PointBlend
+    )
+
+    private class Resources(val state: FrameBufferGroup, val points: FrameBufferGroup, val accumulation: PointAccumulation)
+
+    private companion object {
+        /** The resources each shape of system was last built with, per renderer. */
+        val kept = java.util.WeakHashMap<Renderer, HashMap<Shape, Resources>>()
+    }
+
     /** Start every particle again with `initParticle`, and clear the picture. */
     fun reset() {
         resetPending = true
@@ -170,7 +196,8 @@ class IteratedSystem(
 
 /**
  * The fern demo's toolbar for [system], in this box's `controls` output: frames per second, steps
- * per frame, fade and exposure, each steering the running system, and a reset button.
+ * per frame, fade and exposure, each steering the running system, and a reset button. The panel
+ * opens, as the demo's toolbar is always in view.
  */
 fun Box.showControls(system: IteratedSystem, channel: String = "controls") {
     val s = system.settings
@@ -182,4 +209,5 @@ fun Box.showControls(system: IteratedSystem, channel: String = "controls") {
         slider("exposure", min = 0.05, max = 20.0, initialValue = s.exposure, law = ControlLaw.LOGARITHMIC) { s.exposure = it }
         button("reset") { down -> if (down) system.reset() }
     }
+    displayOpen(channel)
 }
