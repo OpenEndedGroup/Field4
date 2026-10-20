@@ -898,7 +898,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 val a = boxes[0]
                 var names = ""
                 boxes.drop(1).forEach {
+                    val already = it in a.children
                     a.connect(it)
+                    if (!already) afield.tools.automation.OperationTranscript.recordConnect(a, it, connected = true)
                     names += it.name + ", "
                 }
                 notify("Connected ${a.name} -> ${names.trim(' ', ',')}")
@@ -917,7 +919,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 val a = boxes[0]
                 var names = ""
                 boxes.drop(1).forEach {
+                    val was = it in a.children
                     a.disconnect(it)
+                    if (was) afield.tools.automation.OperationTranscript.recordConnect(a, it, connected = false)
                     names += it.name + ", "
                 }
                 notify("Disconnected ${a.name} from ${names.trim(' ', ',')}")
@@ -1005,6 +1009,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                     notify("Deleted 0 boxes")
                 } else {
                     val root = thisSessionInfo.get().root
+                    targets.forEach { target -> afield.tools.automation.OperationTranscript.recordDelete(target) }
                     targets.forEach { target ->
                         // Ensure live parents don't retain stale nested links to deleted boxes.
                         if (target.nestedIn != null) {

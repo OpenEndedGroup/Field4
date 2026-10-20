@@ -490,6 +490,14 @@ private object GcPauseMonitor {
 
 private val gcPauseMonitor = GcPauseMonitor
 
+/**
+ * True when [uid] names no box of the current session yet: the property message about to touch it
+ * is the canvas creating it (the macro recorder's `create`). Root and the metaroot always exist.
+ */
+private fun isNewCanvasBox(uid: String): Boolean =
+    uid != "root" && uid != afield.document.graph.METAROOT_ID &&
+        runCatching { !thisSessionInfo.get().boxes.containsKey(uid) }.getOrDefault(false)
+
 private fun systemProperty(name: String): String = System.getProperty(name).orEmpty()
 
 private fun booleanSystemProperty(name: String): Boolean =
@@ -2655,14 +2663,33 @@ class Server {
                             scope = request.scope,
                             projectName = request.projectName
                         )
-                    "run" -> {
+                    "rename" -> OperationTranscript.renameMacro(
+                        documentPath,
+                        request.name,
+                        request.newName,
+                        request.scope,
+                        request.projectName
+                    )
+                    "delete", "remove" -> OperationTranscript.deleteMacro(
+                        documentPath,
+                        request.name,
+                        request.scope,
+                        request.projectName
+                    )
+                    "run", "step" -> {
                         val run = OperationTranscript.runMacro(
                             documentPath = documentPath,
                             name = request.name,
                             targetBoxes = request.selection,
                             direction = "do",
                             scope = request.scope,
-                            projectName = request.projectName
+                            projectName = request.projectName,
+                            replay = OperationTranscript.MacroReplayOptions(
+                                asCopy = request.asCopy,
+                                offsetX = request.offsetX,
+                                offsetY = request.offsetY,
+                                step = if (command == "step") request.step.coerceAtLeast(0) else -1
+                            )
                         )
                         OperationTranscript.MacroResult(
                             success = run.success,
@@ -2813,6 +2840,9 @@ class Server {
 
                 val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
                 val isEditorStateProperty = set.property.endsWith("_editorState")
+                // A uid the server has never seen is a box the canvas just made (`createBox` sends
+                // its name first): record it as a `create`, not as an edit from nothing.
+                val createdHere = isNewCanvasBox(set.uid)
                 val targetBox = box(set.uid)
                 thisSessionInfo.get().recordPropertySyncOrigin(
                     set.uid,
@@ -2831,7 +2861,8 @@ class Server {
                 if (set.property == "name") {
                     lprintln("debug,server", "got set-string for name ${set.value}")
                     targetBox.name = set.value
-                    OperationTranscript.recordEdit(targetBox, set.property, oldValue, targetBox.name)
+                    if (createdHere) OperationTranscript.recordCreate(targetBox)
+                    else OperationTranscript.recordEdit(targetBox, set.property, oldValue, targetBox.name)
                     if (targetBox.getPropertyRaw(AI4_AUTO_NAME_PROPERTY).isTrue()) {
                         targetBox.setPropertyRaw(AI4_AUTO_NAME_PROPERTY, false)
                     }
@@ -2858,6 +2889,7 @@ class Server {
                     // makes multiple clients on the same box fight over their local editor position.
                     // `textPropertyValue`: text spelling a Boolean, for a Boolean property, is stored as one.
                     targetBox.setPropertyRaw(set.property, textPropertyValue(targetBox, set.property, set.value), doResync = !isEditorStateProperty)
+                    if (createdHere && !isEditorStateProperty) OperationTranscript.recordCreate(targetBox)
                     OperationTranscript.recordEdit(
                         targetBox,
                         set.property,
@@ -2934,10 +2966,12 @@ class Server {
 
                 // Updates box frame or property; resyncs on main thread
                 if (set.property == "frame") {
+                    val createdHere = isNewCanvasBox(set.uid)
                     val b = box(set.uid)
                     val oldFrame = b.frame
                     b.frame = set.value
-                    OperationTranscript.recordMove(b, oldFrame, b.frame)
+                    if (createdHere) OperationTranscript.recordCreate(b)
+                    else OperationTranscript.recordMove(b, oldFrame, b.frame)
                     inMain {
                         doResync() // subsequent calls do nothing, so this effectively combines multiple moves to the same update
                     }
@@ -2969,10 +3003,12 @@ class Server {
 
                 set.values.forEach { update ->
                     if (update.property == "frame") {
+                        val createdHere = isNewCanvasBox(update.uid)
                         val b = box(update.uid)
                         val oldFrame = b.frame
                         b.frame = update.value
-                        OperationTranscript.recordMove(b, oldFrame, b.frame)
+                        if (createdHere) OperationTranscript.recordCreate(b)
+                        else OperationTranscript.recordMove(b, oldFrame, b.frame)
                         needsResync.remove(b to "frame")
                         frameUpdates += Set_rect(uid = update.uid, property = "frame", value = b.frame)
                     } else {

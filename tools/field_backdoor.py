@@ -2414,6 +2414,11 @@ class FieldBackdoor:
         limit: int = 80,
         indices: list[int] | None = None,
         mode: str = "",
+        new_name: str = "",
+        as_copy: bool = False,
+        offset_x: float = 0.0,
+        offset_y: float = 0.0,
+        step: int = -1,
         fail_on_error: bool = True,
         timeout: float,
     ) -> dict[str, Any]:
@@ -2431,6 +2436,11 @@ class FieldBackdoor:
                 "limit": limit,
                 "indices": indices or [],
                 "mode": mode,
+                "newName": new_name,
+                "asCopy": as_copy,
+                "offsetX": offset_x,
+                "offsetY": offset_y,
+                "step": step,
             },
             timeout=timeout,
         )
@@ -2442,9 +2452,9 @@ class FieldBackdoor:
         # local box index. Refresh from source of truth before the next command resolves a uid;
         # otherwise a successful create followed immediately by `set <new-box> ...` races and
         # reports "Unknown box uid" even though the box appears milliseconds later.
-        if command.strip().lower() in {"run", "undo"} and payload.get("success") is True:
+        if command.strip().lower() in {"run", "step", "undo"} and payload.get("success") is True:
             await self.refresh_snapshot(timeout=timeout)
-        if command.strip().lower() in {"run", "undo"}:
+        if command.strip().lower() in {"run", "step", "undo"}:
             # The server's success counts applied operations. A launch operation can apply
             # successfully while its box fails; MacroOutputLine carries that diagnostic.
             output = payload.get("output") or []
@@ -3740,6 +3750,12 @@ def build_command_parser() -> argparse.ArgumentParser:
         macro_parser.add_argument("--index", dest="index_values", action="append", default=[])
         macro_parser.add_argument("--indices", dest="index_values", action="append", default=[])
         macro_parser.add_argument("--mode", default="")
+        # rename / run / step (see OPERATION_TRANSCRIPT.md, "Replaying a recording")
+        macro_parser.add_argument("--new-name", default="")
+        macro_parser.add_argument("--as-copy", action="store_true")
+        macro_parser.add_argument("--offset-x", type=float, default=0.0)
+        macro_parser.add_argument("--offset-y", type=float, default=0.0)
+        macro_parser.add_argument("--step", type=int, default=-1)
         macro_parser.add_argument("--timeout", type=float)
         macro_parser.add_argument("--no-fail-on-error", action="store_true")
 
@@ -4650,6 +4666,11 @@ async def dispatch_command(
             limit=args.limit,
             indices=parse_repeated_int_values(args.index_values),
             mode=args.mode,
+            new_name=args.new_name,
+            as_copy=args.as_copy,
+            offset_x=args.offset_x,
+            offset_y=args.offset_y,
+            step=args.step,
             fail_on_error=not args.no_fail_on_error,
             timeout=timeout,
         )

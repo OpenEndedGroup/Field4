@@ -226,6 +226,19 @@ object OperationTranscript {
         val direction: String,
         val strict: Boolean,
         val initializeCreatedBoxes: Boolean,
+        val replay: MacroReplayOptions = MacroReplayOptions(),
+    )
+
+    /**
+     * How a run places what it replays. [asCopy] gives the boxes the macro creates fresh uids, so a
+     * second run makes a second set; [offsetX]/[offsetY] shift their frames; [step] replays one
+     * operation (0-based) of the macro and nothing else, which is how the panel steps through one.
+     */
+    data class MacroReplayOptions(
+        val asCopy: Boolean = false,
+        val offsetX: Double = 0.0,
+        val offsetY: Double = 0.0,
+        val step: Int = -1,
     )
 
     private val activeMacroRuns = InFlightOperationCoalescer<MacroRunKey, MacroRunResult>()
@@ -443,6 +456,87 @@ object OperationTranscript {
         )
     }
 
+    /**
+     * Rename a saved macro within its scope. The YAML's own `name:` line follows the file name, so
+     * the panel and the palette never disagree about what the macro is called. Refuses to replace
+     * an existing macro of the new name.
+     */
+    fun renameMacro(
+        documentPath: String,
+        name: String,
+        newName: String,
+        scope: String = "document",
+        projectName: String = ""
+    ): MacroResult {
+        val cleanName = sanitizeMacroName(name)
+        val cleanNew = sanitizeMacroName(newName)
+        if (cleanName.isBlank() || cleanNew.isBlank()) return MacroResult(false, "Macro names cannot be empty.")
+        val location = macroLocation(documentPath, scope, projectName)
+            ?: return MacroResult(false, "No $scope macro scope is available for this document.", name = cleanName)
+        val source = macroFile(location, cleanName)
+        if (!source.exists()) return MacroResult(false, "No macro named '$cleanName'.", name = cleanName, scope = location.scope)
+        if (cleanNew == cleanName) return MacroResult(true, "Macro '$cleanName' already has that name.", name = cleanName, scope = location.scope)
+        val target = macroFile(location, cleanNew)
+        if (target.exists()) return MacroResult(false, "A macro named '$cleanNew' already exists.", name = cleanName, scope = location.scope)
+        val text = renameMacroYaml(source.readText(), cleanNew)
+        val wrote = target.safeSave(text, createBackup = false, atomic = true)
+        if (!wrote && !target.exists()) return MacroResult(false, "Could not write '$cleanNew'.", name = cleanName, scope = location.scope)
+        source.delete()
+        return MacroResult(
+            true,
+            "Renamed macro '$cleanName' to '$cleanNew'.",
+            name = cleanNew,
+            path = target.absolutePath,
+            content = target.readText(),
+            operationCount = runCatching { loadMacroOperations(target).size }.getOrDefault(0),
+            scope = location.scope,
+            projectName = location.projectName
+        )
+    }
+
+    /** The YAML of a macro with its top-level `name:` set to [name] (added when it has none). */
+    internal fun renameMacroYaml(text: String, name: String): String {
+        val lines = text.lines().toMutableList()
+        val index = lines.indexOfFirst { it.startsWith("name:") }
+        val line = "name: ${formatScalar(name)}"
+        if (index >= 0) lines[index] = line else lines.add(0, line)
+        return lines.joinToString("\n").trimEnd() + "\n"
+    }
+
+    /**
+     * Delete a saved macro. The file is moved to the scope's `.deleted/` folder with a timestamp,
+     * not erased, so a deletion from the panel can be recovered by hand; the macro lists only read
+     * the scope folder itself.
+     */
+    fun deleteMacro(
+        documentPath: String,
+        name: String,
+        scope: String = "document",
+        projectName: String = ""
+    ): MacroResult {
+        val cleanName = sanitizeMacroName(name)
+        if (cleanName.isBlank()) return MacroResult(false, "Choose a macro to delete.")
+        val location = macroLocation(documentPath, scope, projectName)
+            ?: return MacroResult(false, "No $scope macro scope is available for this document.", name = cleanName)
+        val source = macroFile(location, cleanName)
+        if (!source.exists()) return MacroResult(false, "No macro named '$cleanName'.", name = cleanName, scope = location.scope)
+        val trash = File(location.dir, ".deleted").also { it.mkdirs() }
+        val stamp = Instant.now().toString().replace(":", "-")
+        val target = File(trash, "$cleanName-$stamp.yaml")
+        val moved = source.renameTo(target) || run {
+            target.writeText(source.readText())
+            source.delete()
+        }
+        return MacroResult(
+            moved,
+            if (moved) "Deleted macro '$cleanName' (kept in ${trash.name}/${target.name})." else "Could not delete '$cleanName'.",
+            name = cleanName,
+            path = target.absolutePath,
+            scope = location.scope,
+            projectName = location.projectName
+        )
+    }
+
     fun saveTranscriptSelectionAsMacro(
         documentPath: String,
         name: String,
@@ -516,6 +610,7 @@ object OperationTranscript {
         scope: String = "document",
         projectName: String = "",
         initializeCreatedBoxes: Boolean = true,
+        replay: MacroReplayOptions = MacroReplayOptions(),
     ): MacroRunResult {
         val cleanName = sanitizeMacroName(name)
         val location = macroLocation(documentPath, scope, projectName)
@@ -534,6 +629,7 @@ object OperationTranscript {
             direction = normalizedDirection,
             strict = strict,
             initializeCreatedBoxes = initializeCreatedBoxes,
+            replay = replay,
         )
         return activeMacroRuns.run(key) {
             runMacroOnce(
@@ -545,6 +641,7 @@ object OperationTranscript {
                 scope = scope,
                 projectName = projectName,
                 initializeCreatedBoxes = initializeCreatedBoxes,
+                replay = replay,
             )
         }
     }
@@ -558,6 +655,7 @@ object OperationTranscript {
         scope: String,
         projectName: String,
         initializeCreatedBoxes: Boolean,
+        replay: MacroReplayOptions = MacroReplayOptions(),
     ): MacroRunResult {
         val cleanName = sanitizeMacroName(name)
         val location = macroLocation(documentPath, scope, projectName)
@@ -568,7 +666,19 @@ object OperationTranscript {
         if (!file.exists()) {
             return MacroRunResult(false, "No macro named '$cleanName'.", cleanName, direction, targetBoxes, 0, 0)
         }
-        val operations = loadMacroOperations(file)
+        val loaded = loadMacroOperations(file)
+        val relocated = if (replay.asCopy || replay.offsetX != 0.0 || replay.offsetY != 0.0) {
+            relocateOperations(loaded, replay.asCopy, replay.offsetX, replay.offsetY)
+        } else loaded
+        val operations = if (replay.step >= 0) {
+            val one = relocated.getOrNull(replay.step)
+                ?: return MacroRunResult(
+                    false,
+                    "Macro '$cleanName' has no step ${replay.step + 1} (it has ${relocated.size}).",
+                    cleanName, direction, targetBoxes, 0, 0
+                )
+            listOf(one)
+        } else relocated
         val normalizedDirection = if (direction.equals("undo", ignoreCase = true)) "undo" else "do"
         val ordered = if (normalizedDirection == "undo") operations.asReversed() else operations
         val targets = targetBoxes.filter { it.isNotBlank() }.ifEmpty { listOf("") }
@@ -602,7 +712,7 @@ object OperationTranscript {
                 skipped += ordered.size
                 return@forEach
             }
-            val primarySource = firstOperationBox(operations)
+            val primarySource = firstOperationBox(relocated)
             val boxMap = if (target.isNotBlank() && primarySource != null) mapOf(primarySource to target) else emptyMap()
             var launchIndex = 0
             var index = 0
@@ -934,6 +1044,11 @@ object OperationTranscript {
         synchronized(state.lock) {
             ensureLoaded(state)
             flushPendingEdit(state)
+            if (foldIntoPreviousCreate(state.entries, box.id, "frame", rectMap(to))) {
+                state.lastRecordedFrame = frame
+                state.dirty = true
+                return
+            }
             if (mergeMoveIntoPrevious(state, box.id, to)) {
                 state.lastRecordedFrame = frame
                 state.dirty = true
@@ -992,6 +1107,80 @@ object OperationTranscript {
         )
     }
 
+    /**
+     * A box the person just made on the canvas. The frontend creates a box by sending its name and
+     * then its frame (`createBox` in Main.kt), so the box's first property message is where the
+     * server learns of it; the handlers call this once the value is applied. The entry carries the
+     * box's name and frame, and the frame / first-value edits that follow are folded into it (see
+     * [foldIntoPreviousCreate]), so a recording reads `create {box, name, frame, properties}` rather
+     * than an edit from nothing. Without it a recording replayed into a fresh document edited boxes
+     * that did not exist (audit, 2026-10-20: `applied=2 skipped=5`, no boxes).
+     */
+    fun recordCreate(box: Box) {
+        if (box.id == "root" || box.id == METAROOT_ID) return
+        val documentPath = documentPathFor(box) ?: return
+        val frame = Runloop.runLoop.frame
+        val state = stateFor(documentPath)
+        synchronized(state.lock) {
+            ensureLoaded(state)
+            flushPendingEdit(state)
+            appendWaitIfNeeded(state, frame)
+            val payload = linkedMapOf<String, Any?>("box" to box.id, "name" to box.name)
+            val rect = runCatching { box.frame }.getOrNull()
+            if (rect != null && !(rect.w == 0.0 && rect.h == 0.0)) payload["frame"] = rectMap(rect)
+            state.entries += linkedMapOf<String, Any?>("create" to payload)
+            state.lastRecordedFrame = frame
+            state.dirty = true
+        }
+    }
+
+    /** A box the person deleted (the `-delete-box` action). Replays as a tombstone; undoes as a restore. */
+    fun recordDelete(box: Box) {
+        if (box.id == "root" || box.id == METAROOT_ID) return
+        recordExecutionEvent(box, "delete", linkedMapOf("box" to box.id, "name" to box.name))
+    }
+
+    /** A connection the person made or removed (the `-connect` / `-disconnect` actions, the `g` key). */
+    fun recordConnect(parent: Box, child: Box, connected: Boolean) {
+        if (child.id == "root" || child.id == METAROOT_ID) return
+        recordExecutionEvent(
+            child,
+            if (connected) "connect" else "disconnect",
+            linkedMapOf("parent" to parent.id, "child" to child.id)
+        )
+    }
+
+    /**
+     * Fold a value into the `create` entry of [box] when that is the latest entry (waits aside):
+     * `frame` sets the create's frame, `name` its name, anything else lands in its `properties`.
+     * True when folded. Only the box's own creation burst is folded, so an edit made later, after
+     * anything else happened, stays an edit of its own.
+     */
+    private fun foldIntoPreviousCreate(
+        entries: MutableList<LinkedHashMap<String, Any?>>,
+        box: String,
+        property: String,
+        value: Any?
+    ): Boolean {
+        var index = entries.lastIndex
+        while (index >= 0 && entries[index].containsKey("wait")) index--
+        if (index < 0) return false
+        @Suppress("UNCHECKED_CAST")
+        val payload = entries[index]["create"] as? MutableMap<String, Any?> ?: return false
+        if (payload["box"]?.toString() != box) return false
+        when (property) {
+            "frame", "name" -> payload[property] = value
+            else -> {
+                @Suppress("UNCHECKED_CAST")
+                val properties = (payload["properties"] as? MutableMap<String, Any?>)
+                    ?: linkedMapOf<String, Any?>().also { payload["properties"] = it }
+                properties[property] = value
+            }
+        }
+        removeTrailingWaitsAfter(entries, index)
+        return true
+    }
+
     fun checkpoint(documentPath: String): Boolean {
         val state = states[normalizeDocumentPath(documentPath)] ?: return false
         val snapshot = synchronized(state.lock) {
@@ -1033,6 +1222,13 @@ object OperationTranscript {
         val pending = state.pendingEdit ?: return
         state.pendingEdit = null
         if (pending.from == pending.to) return
+        if (pending.origin.isBlank() && (pending.from.isEmpty() || pending.property == "name") &&
+            foldIntoPreviousCreate(state.entries, pending.box, pending.property, pending.to)
+        ) {
+            state.lastRecordedFrame = pending.lastFrame
+            state.dirty = true
+            return
+        }
         if (mergePendingEditIntoPrevious(state, pending)) {
             state.lastRecordedFrame = pending.lastFrame
             state.dirty = true
@@ -1520,13 +1716,79 @@ object OperationTranscript {
         return rawOps.mapNotNull { mapOfStringAny(it) }
     }
 
-    private fun firstOperationBox(operations: List<Map<String, Any?>>): String? =
-        operations.asSequence()
+    /**
+     * The box a macro "is about", which a run on a selection maps to the selected box. A box the
+     * macro creates itself is never that box: mapping a `create` onto the selection would rename
+     * and move the selected box instead of making a new one.
+     */
+    private fun firstOperationBox(operations: List<Map<String, Any?>>): String? {
+        val created = createdBoxes(operations)
+        return operations.asSequence()
+            .filter { operationVerb(it) !in createVerbs }
             .mapNotNull { op ->
                 val payload = op.values.firstOrNull() as? Map<*, *> ?: return@mapNotNull null
                 (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"])?.toString()
             }
-            .firstOrNull()
+            .firstOrNull { it !in created }
+    }
+
+    private val createVerbs = setOf("create", "new-box", "box")
+
+    /** The uids a macro's own `create` operations make. */
+    internal fun createdBoxes(operations: List<Map<String, Any?>>): Set<String> =
+        operations.asSequence()
+            .filter { operationVerb(it) in createVerbs }
+            .mapNotNull { op ->
+                val payload = op.values.firstOrNull() as? Map<*, *> ?: return@mapNotNull null
+                (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"])?.toString()
+            }
+            .toSet()
+
+    /**
+     * The operations of a macro rewritten for a replay "as a copy": every box the macro creates
+     * gets a fresh uid (consistently, wherever the macro names it), and every frame those boxes
+     * are given — at creation or by a later move — is shifted by ([dx], [dy]). Boxes the macro
+     * did not create keep their uids and frames. Replaying the result twice makes two copies side
+     * by side instead of re-editing one; replaying it with `fresh = false` and no offset is the
+     * macro as recorded.
+     */
+    internal fun relocateOperations(
+        operations: List<Map<String, Any?>>,
+        fresh: Boolean,
+        dx: Double,
+        dy: Double,
+        newUid: () -> String = { UUID.randomUUID().toString() },
+    ): List<LinkedHashMap<String, Any?>> {
+        val created = createdBoxes(operations)
+        val renames = if (fresh) created.associateWith { newUid() } else emptyMap()
+        fun shifted(rect: Any?): Any? {
+            val map = rect as? Map<*, *> ?: return rect
+            if (dx == 0.0 && dy == 0.0) return deepLinkedMap(map)
+            return deepLinkedMap(map).also {
+                it["x"] = (it["x"].asDoubleOrNull() ?: 0.0) + dx
+                it["y"] = (it["y"].asDoubleOrNull() ?: 0.0) + dy
+            }
+        }
+        val boxKeys = setOf("box", "uid", "id", "target", "parent", "child", "from", "to", "source")
+        return operations.map { op ->
+            val verb = op.keys.firstOrNull() ?: return@map deepLinkedMap(op)
+            val payload = deepLinkedMap(op.values.firstOrNull())
+            val subject = (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"])?.toString()
+            val lowered = verb.lowercase()
+            if (lowered in createVerbs) {
+                payload["frame"]?.let { payload["frame"] = shifted(it) }
+                payload["rect"]?.let { payload["rect"] = shifted(it) }
+            } else if (lowered in setOf("move", "frame", "set-rect") && subject in created) {
+                listOf("from", "to", "frame", "value").forEach { key -> payload[key]?.let { payload[key] = shifted(it) } }
+            }
+            val keys = if (lowered == "connect" || lowered == "disconnect") boxKeys else boxKeys - setOf("from", "to")
+            keys.forEach { key ->
+                val value = payload[key]
+                if (value is String) renames[value]?.let { payload[key] = it }
+            }
+            linkedMapOf<String, Any?>(verb to payload)
+        }
+    }
 
     private val launchVerbs = setOf("launch", "launch-all", "launch-fragment")
 
