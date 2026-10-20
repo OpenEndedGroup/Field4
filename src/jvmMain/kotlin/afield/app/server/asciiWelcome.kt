@@ -1,19 +1,6 @@
 package afield.app.server
 
-import afield.data.table.div
-import afield.data.table.get
-import afield.data.table.minus
-import afield.data.table.plus
-import afield.data.table.rem
-import afield.data.table.times
-import afield.runtime.execution.plus
-import afield.runtime.lifecycle.plus
-import afield.runtime.lifecycle.rem
-
-import afield.audio.synth.*
-import afield.graphics.vulkan.*
-import afield.media.stream.*
-import afield.media.video.*
+// No imports: tools/first-run compiles this file on its own, with nothing of Field's on its classpath.
 var asciiWelcome = """  
           _____                    _____                    _____                    _____            _____          
          /\    \                  /\    \                  /\    \                  /\    \          /\    \         
