@@ -30,6 +30,11 @@ nav:
     - A Tour:
       - What Field Is: funFeatures.md
       - The Documentation Browser: completion_doc_browser.md
+      # Early, before any drawing: every later stop leans on parent and child boxes (the GPU stop
+      # most of all, where a box beneath the renderer simply has `renderer`), and nothing else in
+      # the arc teaches it. A short first-contact page written for the Tour; why.md and
+      # reactive_properties.md stay in Working in a Document as the mechanism it hands off to.
+      - Connecting Boxes: tour_connecting_boxes.md
       - Drawing with FLines: fline_examples.md
       - Frames and the Animation Loop: animation_time_model.md
       # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
