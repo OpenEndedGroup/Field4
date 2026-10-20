@@ -111,7 +111,7 @@ pair compiling with a sample of the presets; and the GPU smoke for the sort.
 ## Starting point
 
 `madp_splat_shader`: a renderer box, a lead box (passthrough on the icosphere shell), and preset
-boxes across the clouds — pulse rings, dissolve, gravity well, fern veins, mycelial web, xray shell
+boxes across the clouds — pulse rings, dissolve, gravity well, fern veins, lichen tangle, xray shell
 — each launching into the same window.
 
 ## Dropped, and why

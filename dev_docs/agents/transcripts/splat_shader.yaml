@@ -6,7 +6,7 @@ description: >
   passthrough on the icosphere shell (the lead box, which lists what the lines can touch), and six
   of the demo's example inserts, one on each of its six procedural clouds — pulse rings on the
   phyllotaxis bloom, dissolve on the icosphere shell, gravity well on the torus braid, fern veins
-  on the fern plume, mycelial web on the coral branches, xray shell on the nautilus shell. Each
+  on the fern plume, lichen tangle on the coral branches, xray shell on the nautilus shell. Each
   box's compute tab is the insert between `#include "splat/insert"` and `#include "splat/end"`;
   its code hands that module and a cloud to `SplatShader`, with the demo's turn, size and splat
   size sliders. Launching a box replaces the cloud showing. Requires a GPU/Vulkan window; capture
@@ -37,6 +37,11 @@ operations:
       frame: { x: 40.0, y: 200.0, w: 300.0, h: 100.0 }
       properties:
         code: |
+          import afield.graphics.scene.fabricated.ProceduralSplats
+          import afield.graphics.scene.fabricated.SplatSet
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
           /*
           A splat shader. Every frame, the lines in this box's compute tab run once for each of
           the cloud's splats, on the GPU, and may change it: move it, recolour it, stretch it,
@@ -82,6 +87,10 @@ operations:
       frame: { x: 40.0, y: 660.0, w: 300.0, h: 100.0 }
       properties:
         code: |
+          import afield.graphics.scene.fabricated.ProceduralSplats
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
           /*
           Pulse rings. A wave travels out from the cloud's axis: each splat rides up and down on
           it, swings round a little, and lights up from cyan to ember as a crest passes.
@@ -114,6 +123,10 @@ operations:
       frame: { x: 640.0, y: 660.0, w: 300.0, h: 100.0 }
       properties:
         code: |
+          import afield.graphics.scene.fabricated.ProceduralSplats
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
           /*
           Dissolve. A threshold sweeps through a noise field. Where the noise falls below it,
           splats let go: they drift outward, shrink, burn orange and fade. Every few seconds the
@@ -145,6 +158,10 @@ operations:
       frame: { x: 1240.0, y: 660.0, w: 300.0, h: 100.0 }
       properties:
         code: |
+          import afield.graphics.scene.fabricated.ProceduralSplats
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
           /*
           Gravity well. Splats near the vertical axis are pulled harder: they spin faster round
           it, bob, swell and glow violet, while those far out stay faint.
@@ -174,6 +191,10 @@ operations:
       frame: { x: 40.0, y: 1120.0, w: 300.0, h: 100.0 }
       properties:
         code: |
+          import afield.graphics.scene.fabricated.ProceduralSplats
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
           /*
           Fern veins. The splats along the frond's midrib glow green and sway; away from it they
           darken and thin, so the frond reads as veins in the dark.
@@ -198,14 +219,19 @@ operations:
 
           #include "splat/end"
   - create:
-      box: splat_mycelial_web
-      name: mycelial web
+      box: splat_lichen_tangle
+      name: lichen tangle
       frame: { x: 640.0, y: 1120.0, w: 300.0, h: 100.0 }
       properties:
         code: |
+          import afield.graphics.scene.fabricated.ProceduralSplats
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
           /*
-          Mycelial web. Two layers of slowly moving noise pick out tendrils through the coral;
-          splats on a tendril swell, pale and jitter, the rest all but vanish.
+          Lichen tangle. Five octaves of folded noise grow a canopy over the coral: splats under
+          it swell and turn pale green and are pushed a little outward, the rest sink into the
+          dark.
           */
           var module = computeModuleHere {}
 
@@ -215,15 +241,21 @@ operations:
           #version 450
           #include "splat/insert"
 
-          float n1 = noise31(pos * 4.6 + vec3(0.0, t * 0.08, 0.0));
-          float n2 = noise31(pos.yzx * 7.1 - vec3(t * 0.05, 0.0, t * 0.03));
-          float tendril = smoothstep(0.6, 0.84, n1 * 0.64 + n2 * 0.36);
-          vec3 drift = hash31(floor(pos * 7.0) + vec3(index * 0.001)) - 0.5;
+          vec3 p = pos;
+          float branch = 0.0;
+          float amp = 0.58;
+          for (int i = 0; i < 5; i++) {
+            branch += amp * abs(noise31(p * 4.2) - 0.5);
+            p = p.yzx * 1.73 + vec3(0.19, -0.07, 0.11);
+            amp *= 0.6;
+          }
 
-          pos += drift * tendril * 0.11;
-          rgba.rgb = mix(vec3(0.05, 0.04, 0.03), vec3(0.96, 0.86, 0.68), tendril);
-          rgba.a *= 0.06 + 0.94 * tendril;
-          scales *= mix(0.18, 2.0, tendril);
+          float canopy = sat(1.0 - branch * 1.7);
+          vec3 dir = normalize(hash31(floor(pos * 9.0)) - 0.5 + vec3(0.0, 0.35, 0.0));
+          pos += dir * canopy * 0.12;
+          rgba.rgb = mix(vec3(0.04, 0.03, 0.02), vec3(0.78, 0.96, 0.52), canopy);
+          rgba.a *= 0.08 + 0.92 * canopy;
+          scales *= mix(0.16, 1.85, canopy);
 
           #include "splat/end"
   - create:
@@ -232,6 +264,10 @@ operations:
       frame: { x: 1240.0, y: 1120.0, w: 300.0, h: 100.0 }
       properties:
         code: |
+          import afield.graphics.scene.fabricated.ProceduralSplats
+          import afield.graphics.scene.fabricated.SplatShader
+          import afield.graphics.scene.fabricated.showControls
+
           /*
           Xray shell. Colour by distance from the centre: the core goes dark, the outer shell
           pale blue, and a shimmer runs outward through it, nudging the splats as it passes.
@@ -259,7 +295,7 @@ operations:
   - connect: { parent: splat_renderer, child: splat_dissolve }
   - connect: { parent: splat_renderer, child: splat_gravity_well }
   - connect: { parent: splat_renderer, child: splat_fern_veins }
-  - connect: { parent: splat_renderer, child: splat_mycelial_web }
+  - connect: { parent: splat_renderer, child: splat_lichen_tangle }
   - connect: { parent: splat_renderer, child: splat_xray_shell }
   - launch: { box: splat_renderer, property: code, strand: renderer }  # renderer first — it owns the loop
   - await: {}

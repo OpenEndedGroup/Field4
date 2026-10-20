@@ -235,8 +235,15 @@ class SplatShaderSettings {
     /** Frame the cloud by its median and 90th-percentile radius; false draws it as it is. */
     var fit: Boolean = true
 
-    /** Multiplies every splat's screen size. */
-    var splatSize: Float = 1f
+    /**
+     * Multiplies every splat's screen size. The default, 1/√2.2, is what makes a splat look the
+     * size it does in the demo. Spark blends in display space, so a Gaussian's faint tails stay
+     * dark; Field blends in linear light and the window encodes the result to sRGB, which lifts
+     * those tails, and at the same radius the visible dot comes out about twice as wide. For a
+     * splat over black, `encode(c · a') = c · a` wants `a' ≈ a^2.2`, which is the same Gaussian
+     * narrowed by √2.2. Set 1 for the splats' true size.
+     */
+    var splatSize: Float = (1.0 / kotlin.math.sqrt(2.2)).toFloat()
 
     /** Multiplies every splat's opacity. */
     var alphaScale: Float = 1f
