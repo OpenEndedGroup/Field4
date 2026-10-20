@@ -120,6 +120,8 @@ code, meant for tools that read documents. Field never reads it, so editing it c
     several seconds, which a docs-runner capture fence cannot stage, so no figure was made rather
     than one that only appears to show it.
 
-    The behaviours are pinned by `examples.file-watch.sidecar-reedit`,
-    `FileWatchMetadataReconcileTest.anEditToAnInlineSidecarCopyIsApplied` and
-    `anExternalEditOverriddenByAnUnsavedFieldEditIsKept`.
+    Three of them are pinned by tests: a second edit to a file before Field's autosave
+    (`examples.file-watch.sidecar-reedit`), an edit to the inline code in `metadata.edn`
+    (`FileWatchMetadataReconcileTest.anEditToAnInlineSidecarCopyIsApplied`), and a disk edit
+    overridden by an unsaved Field edit (`anExternalEditOverriddenByAnUnsavedFieldEditIsKept`).
+    Those last two, and `onExternalEdit`, were checked on 2026-10-19.
