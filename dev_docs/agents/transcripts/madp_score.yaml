@@ -40,11 +40,11 @@ operations:
               if (justEntered) sound("/dough/play/note/48/duration/0.18/s/sine/gain/0.45/lpf/900/release/0.14/verb/0.25")
           }
 
-          playScore(loop = 11.0, x = 40.0..1800.0, y = 40.0..600.0, width = 460, height = 300)
+          playScore(loop = 11.0, x = 40.0..1880.0, y = 40.0..600.0, width = 520, height = 320)
   - create:
       box: madp_score_scratches
       name: McLaren scratches
-      frame: { x: 560.0, y: 330.0, w: 180.0, h: 160.0 }
+      frame: { x: 620.0, y: 330.0, w: 180.0, h: 160.0 }
       properties:
         code: |
           // Norman McLaren scratched straight onto film: nine lines that twitch every frame, a grain of
@@ -65,7 +65,7 @@ operations:
   - create:
       box: madp_score_orbits
       name: Fischinger orbits
-      frame: { x: 780.0, y: 70.0, w: 200.0, h: 150.0 }
+      frame: { x: 840.0, y: 70.0, w: 200.0, h: 150.0 }
       properties:
         code: |
           // Oskar Fischinger's geometry: a planet on a ring, and a bell three times a pass.
@@ -81,7 +81,7 @@ operations:
   - create:
       box: madp_score_glass_a
       name: Glass phase · 60
-      frame: { x: 1010.0, y: 300.0, w: 320.0, h: 110.0 }
+      frame: { x: 1070.0, y: 300.0, w: 320.0, h: 110.0 }
       properties:
         code: |
           // Philip Glass's phasing, done with box widths: this box and the one below run the same code,
@@ -98,7 +98,7 @@ operations:
   - create:
       box: madp_score_glass_b
       name: Glass phase · 67
-      frame: { x: 1080.0, y: 450.0, w: 260.0, h: 110.0 }
+      frame: { x: 1140.0, y: 450.0, w: 260.0, h: 110.0 }
       properties:
         code: |
           // The same as the box above, a fifth higher and a little narrower.
@@ -113,7 +113,7 @@ operations:
   - create:
       box: madp_score_jump
       name: jump cut
-      frame: { x: 1370.0, y: 110.0, w: 160.0, h: 120.0 }
+      frame: { x: 1430.0, y: 110.0, w: 160.0, h: 120.0 }
       properties:
         code: |
           // A box that cuts itself to somewhere else in the score: on the way in, and five times on the
@@ -168,7 +168,7 @@ operations:
   - create:
       box: madp_score_duck
       name: duck
-      frame: { x: 1580.0, y: 300.0, w: 200.0, h: 150.0 }
+      frame: { x: 1640.0, y: 300.0, w: 200.0, h: 150.0 }
       properties:
         code: |
           // A silly one, done rigorously: a duck that bobs, drifts a little across the score each pass

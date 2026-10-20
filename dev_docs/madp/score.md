@@ -63,11 +63,18 @@ video of it plays at the right speed.
 
 ## Starting point
 
-`dev_docs/agents/transcripts/madp_score.yaml`: the lead box (transport + the demo's starter ring as
-its own `score { }`), the `playhead` box, and five preset boxes laid along the timeline, each the
-most characteristic box of a preset: simple canon, McLaren scratches, Fischinger orbits, Glass
-phase, and a jump-cut box (the instrument moving itself).
+`dev_docs/agents/transcripts/madp_score.yaml`: the lead box (`score · run me`: the demo's
+starter ring as its own `score { }`, then `playScore(loop = 11.0, …)`), the `playhead` box, and six
+preset boxes along an 11-second score: McLaren scratches, Fischinger orbits, two Glass phase boxes
+(the same code at two widths, so their six-a-pass pulses drift apart: the canon/phase idea carried
+by box geometry), a jump-cut box that `box.set`s itself near the playhead, and the duck that
+`box.move`s. Running the lead runs every unarmed box inside the score's span, the way the time
+slider runs what it crosses, so one run plays the whole document. The lead's panel sits in a gap of
+the score (x 64–584) so it covers no box.
 
+Verified from a live capture (Playwright, `record-window`, 14 s at 6 fps): every box draws in the
+panel at its place in the score, both Glass boxes sound and draw together around 7 s, and the jump
+box moves on the canvas.
 ## Dropped, and why
 
 - `?room=` Yjs collaboration: out of scope (PLAN.md); recorded as a gap.
@@ -77,6 +84,9 @@ phase, and a jump-cut box (the instrument moving itself).
 - The preset dropdown: a preset is a set of boxes; here the best box of each is on the canvas.
 
 ## Gaps
+
+- `?room=` collaboration (Yjs) is not ported.
+- Active boxes are not tinted on the canvas as the demo's are (Field shows only the lead as running).
 
 - `thisRMS` excludes reverb/delay tails (they are mixed after the voices in one shared orbit).
 - The level is sampled once per block (2.7 ms at 48 kHz) and smoothed over ~40 ms, so it is a
