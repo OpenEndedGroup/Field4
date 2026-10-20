@@ -250,6 +250,14 @@ class TargetVoice(unittest.TestCase):
                     total, 0,
                     f"score_voice no longer fires on a fault Marc named: {quote!r}")
 
+    def test_todo_as_a_noun_or_a_call_is_not_a_plan(self):
+        for text in ("Tag every note that has a TODO in it.", "An unwritten body is `= TODO()`."):
+            with self.subTest(text=text):
+                _t, _w, _e, hits, *_ = self.sv.score(text + "\n")
+                self.assertNotIn("plan-in-docs", hits)
+        _t, _w, _e, hits, *_ = self.sv.score("TODO: wire this up.\n")
+        self.assertIn("plan-in-docs", hits)
+
     def test_plain_documentation_is_silent(self):
         total, _words, _em, hits, _detail, _meas = self.sv.score(CLEAN)
         self.assertEqual(total, 0, f"fired on plain documentation prose: {dict(hits)}")
