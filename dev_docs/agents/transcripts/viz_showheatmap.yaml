@@ -16,6 +16,9 @@ description: >
   screen, then swap a colormap ("viridis"/"magma"/"inferno"/"plasma"/"turbo"/"coolwarm"/"grayscale")
   or toggle logScale / smooth / flipY and re-run a box to change it live. Each `execute` op omits
   inline code, so it runs the box's stored `code` property.
+docs:
+  - page: reference/visualization.md
+    why: "Reference for showHeatmap and showImage."
 operations:
   - create:
       box: heatmap_gaussian

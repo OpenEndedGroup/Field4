@@ -1,6 +1,9 @@
 name: path_tracing_camera
 description: Keyboard camera, pixel jitter and thin-lens depth of field with automatic
   target focus.
+docs:
+  - page: path_tracing.md#camera-jitter-and-depth-of-field
+    why: "Explains the camera, jitter and depth-of-field settings used here."
 operations:
 - create:
     box: path_trace_renderer

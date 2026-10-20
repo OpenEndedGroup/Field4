@@ -15,6 +15,79 @@ When the drawing is off it is still visible, but it lets clicks through to the b
  * An arrow you draw from one box to another sticks to both. Drag either box and the arrow follows.
  * **Anchor Drawing to Boxes** in the command palette makes the selected marks (or, with nothing selected, every mark sitting on a box) follow the box underneath.
 
+## A box that listens
+
+This box waits for you to draw. Each time you finish a pen stroke, it reads the stroke as an [`FLine`](fline_examples.md), draws a green copy of it offset to one side, and reports how long the stroke was:
+
+```diffstatic {data-lang=kotlin}
+notation.onStroke { s ->
+    val line = s.toFLine()
+    notation("echo") {
+        stroke = "#2f9e44"
+        stroke(line.byOffsetting(36f))
+    }
+    markdown("heard", "a stroke of ${s.points.size} points, ${s.length.toInt()} long")
+}
+```
+
+A second box, `tell`, draws an arrow from itself to the first. Its ends sit on the two boxes' edges, so dragging either box takes the arrow with it:
+
+```diffstatic {data-lang=kotlin}
+val listen = thisBox.named("listen")
+notation {
+    stroke = "#1971c2"
+    arrow(from = thisBox, to = listen, label = "tells")
+}
+```
+
+Run both, press `alt/option-D`, pick the pen and draw. Below, the stroke was drawn with the mouse, and the green copy is the box's answer:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1400x560" clip="0,0,1400,380" hide-toasts=true screenshot="assets/drawing_and_notation/listen.png" transcript="assets/transcripts/notation_listen_setup.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="notation-listen" alt="The drawing layer switched on over two boxes, 'listen' and 'tell', joined by a blue arrow labelled 'tells'. A pale wave drawn with the pen runs across the canvas below them, a green copy of it runs alongside, and the listen box's output reports the stroke's point count and length."}
+// The boxes come from the setup transcript. Switch the drawing layer on, as Alt-D does, take
+// the pen, and draw a wave with the mouse: a real stroke, which the listen box hears once it is
+// finished.
+ui.eval("window.toggleDrawingLayer(); return window.drawingLayerState()")
+ui.waitForSelector("#field-drawing-layer .excalidraw", 15000.0)
+var ready = ""
+for (i in 0 until 60) {
+    ui.pause(250)
+    ready = ui.eval("""
+        const s = window.drawingLayerState()
+        const tools = document.querySelector("#field-drawing-layer .App-toolbar")
+        const shown = !!tools && tools.getBoundingClientRect().width > 0
+        return (s && s.active && shown) ? "ready" : "waiting"
+    """.trimIndent()).toString()
+    if (ready.contains("ready")) break
+}
+check(ready.contains("ready")) { "the drawing layer's toolbar never showed" }
+ui.eval("window.drawingLayerSetTool('freedraw'); return 'ok'")
+ui.pause(300)
+fun x(k: Int) = 380 + k * 9.0
+fun y(k: Int) = 270 + 70 * sin(k / 9.0)
+ui.moveMouse(x(0), y(0))
+ui.mouseDown()
+for (k in 1..70) {
+    ui.moveMouse(x(k), y(k))
+    ui.pause(12)
+}
+ui.mouseUp()
+var echoed = ""
+for (i in 0 until 80) {
+    ui.pause(250)
+    echoed = ui.eval("""
+        const els = window.drawingLayerScene()
+        return els.some(e => !e.isDeleted && e.customData && e.customData.fieldKey === "echo") ? "echoed" : "waiting"
+    """.trimIndent()).toString()
+    if (echoed.contains("echoed")) break
+}
+check(echoed.contains("echoed")) { "the listen box never answered the stroke" }
+ui.eval("window.drawingLayerSetTool('selection'); return 'ok'")
+ui.pause(1200)
+```
+
+
+Everything else on this page builds on those two moves: code that draws, and code that reads what you drew.
+
 ## Drawing from code
 
 `notation { }` draws. Everything a block makes belongs to the box that ran it, so running the box again replaces those marks rather than adding to them. Marks you drew by hand are never touched.
@@ -33,6 +106,22 @@ markdown("marks", "${notation.mine.size} marks drawn")
 `rect`, `ellipse`, `diamond`, `text`, `line`, `arrow`, `stroke` (a freehand stroke, from points or an `FLine`) and `frame` are all there. `arrow(from = thisBox, to = otherBox)` puts the ends on the two boxes' edges, and they stay there when either box moves. Give a block a key, `notation("overlay") { … }`, to keep a second set of marks that is replaced on its own.
 
 A stroke can carry pen pressure, as one drawn with a tablet pen does: `stroke(line, pressure = { t -> 0.2 + 0.8 * t })` gives the pressure, 0 to 1, as a function of how far along the stroke the pen is. `mark.pressures` reads it back, from code-drawn and hand-drawn strokes alike, and [Drawn Strokes Become Paint](chain_drawn_paint.md) paints with it.
+
+Marks made inside a `frame { }` block belong to that frame, so Excalidraw clips them to it and drags them with it, and `notation.inside(frame)` finds them. Marks made inside `group { }` are grouped the way Ctrl+G groups them: select one and you have them all. Shapes take a `fillStyle` (`"solid"`, `"hachure"`, `"cross-hatch"`, `"zigzag"`) and an `opacity`, and the block's `roughness` and `dashed` set how the lines after them are drawn:
+
+```diffstatic {data-lang=kotlin}
+notation {
+    roughness = 0.0
+    frame("score", 560, 180, 480, 240) {
+        rect(620, 220, 120, 30, name = "C5", fill = "#1971c2")
+        rect(740, 300, 180, 30, name = "E4", fill = "#2f9e44", fillStyle = "cross-hatch")
+    }
+    group {
+        ellipse(80, 500, 60, 40, fill = "#ffc9c9", opacity = 60)
+        diamond(150, 495, 60, 50, fill = "#ffc9c9", opacity = 60)
+    }
+}
+```
 
 Any mark, hand-drawn or not, can be changed or removed:
 
@@ -63,7 +152,7 @@ Each mark knows its `kind`, `bounds`, `points` (in canvas coordinates, the same 
 
 ## Listening to the drawing
 
-A box can react to what you draw:
+Strokes are one of the things a box can listen for. It can hear arrows, texts and any change at all:
 
 ```diffstatic {data-lang=kotlin}
 notation.onStroke { s ->
@@ -190,6 +279,8 @@ Draw two hairpins, or a diminuendo after the crescendo, and the same reading cod
 
 Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome screen's starting points. It has the ideas on this page as six boxes you run and then draw against: `draw`, `read`, `listen`, `projection 1`, `fontana mix` and `crescendo`. Or [browse it in the offline viewer](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn).
 
+[notation_elements](agent_transcripts.md#notation_elements) draws every kind of mark from code, reads a score, and calls each part of the API once in a box called `audit`, which prints one line per call.
+
 ## Reference
 
 | | |
@@ -199,11 +290,12 @@ Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome 
 | `notation.over(box)`, `.arrowsFrom(box)`, `.arrowsTo(box)` | marks in relation to a box |
 | `notation.near(point, r)`, `.inside(rect)` | marks by position |
 | `notation { … }`, `notation("key") { … }` | draw marks this box owns |
-| `notation.edit(m) { … }`, `.delete(m)`, `.anchor(m, box)`, `.clear()` | change marks |
+| `frame(name, x, y, w, h) { … }`, `group { … }` | marks that belong to a frame, marks grouped together; `mark.frame`, `mark.groups`, `notation.inside(frame)`, `notation.grouped(m)` read them |
+| `notation.edit(m) { … }`, `.delete(m)`, `.anchor(m, box)` (or `m.anchorTo(box)`), `.clear()` | change marks; the editor sets `stroke`, `fill`, `fillStyle`, `strokeStyle`, `dashed`, `roughness`, `opacity`, `text`, position and size |
 | `mark.points`, `mark.pressures`, `mark.pressuresAlong(n)` | a stroke's points and its pen pressure, per point or evenly spaced; [painted](chain_drawn_paint.md) |
 | `notation.onStroke`, `.onArrow`, `.onText`, `.onChange` | react to what people draw |
 | `notation.vertical(x)`, `.horizontal(y)`, `.intersect(a, b)` | cut the canvas |
-| `notation.space(region, x = …, y = …)` | a region with its own axes |
+| `notation.space(region, x = …, y = …)` | a region with its own axes; the region is a name, a mark, a box or a rect, and the mark that defines it is not read as a note |
 | `space.vertical(t)`, `.horizontal(v)`, `.events`, `.between(t0, t1)`, `.sounding(t)` | read it |
 | `mark.kind`, `.bounds`, `.points`, `.label`, `.box`, `.fromBox`, `.toBox`, `.toFLine()`, `.yAt(x)`, `.xAt(y)` | one mark |
 
@@ -211,3 +303,5 @@ Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome 
     Field shows the drawing in Excalidraw's dark theme, which draws every colour through an inversion. A colour given from code is stored adjusted for it, so greys, greens and blues appear as asked, and `stroke` and `fill` read back the colour you gave. The default ink, `#1e1e1e`, still follows the theme, so it shows light on dark. Warm and pale colours (`#e03131`, `#ffec99`) lie outside what the inversion can show and appear duller or shifted.
 
 The drawing is one scene per document, kept in the document's root box. When code and a hand change it at the same moment, both changes are kept.
+
+Next on the Tour, [Frames and the Animation Loop](animation_time_model.md) makes a box run every frame, the way a playhead crossing a drawn score would.

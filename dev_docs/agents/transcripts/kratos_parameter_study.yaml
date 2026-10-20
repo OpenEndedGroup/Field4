@@ -8,6 +8,9 @@ description: >
   worker and one background grid serve every solve: a change of arm length is a reclassification,
   never a remesh. Requires the optional/kratos environment (uv venv or container image) and
   Manifold. A 7x7 grid is 49 solves and about a minute and a half on the container worker.
+docs:
+  - page: reference/simulation.md
+    why: "Reference for the Kratos simulation API this study uses."
 operations:
   - create:
       box: kratos_study
@@ -72,6 +75,7 @@ operations:
           class StudyOutcome(
               val landscape: StudyLandscape?,
               val optimisation: StudyOptimisation<KratosStudyDemo.Design>?,
+              val winningField: SimulationResult?,
           )
 
           status("Starting the optional worker…")
@@ -101,7 +105,7 @@ operations:
                       done.incrementAndGet()
                       // Throwing from the progress callback aborts the sweep — that is what
                       // Cancel does, rather than poisoning one point with a null result.
-                      if (cancelling.get()) error("cancelled")
+                      if (cancelling.get()) throw java.util.concurrent.CancellationException("cancelled")
                   }
                   var running: CompletableFuture<StudyOutcome>? = null
                   var expected = 0
@@ -118,7 +122,7 @@ operations:
                           target = values[1]
                           study = KratosStudyDemo.study(worker, target) {
                               done.incrementAndGet()
-                              if (cancelling.get()) error("cancelled")
+                              if (cancelling.get()) throw java.util.concurrent.CancellationException("cancelled")
                           }
                       }
 
@@ -135,8 +139,15 @@ operations:
                           progress?.update(0L, expected.toLong())
                           val active = study
                           running = CompletableFuture.supplyAsync<StudyOutcome> {
-                              if (command == "grid") StudyOutcome(active.grid(n, n), null)
-                              else StudyOutcome(null, active.optimise((n * n / 2).coerceAtLeast(4), seed = 7L))
+                              val landscape = if (command == "grid") active.grid(n, n) else null
+                              val optimisation =
+                                  if (command == "search") active.optimise((n * n / 2).coerceAtLeast(4), seed = 7L) else null
+                              if (cancelling.get()) throw java.util.concurrent.CancellationException("cancelled")
+                              val winner = landscape?.best ?: optimisation?.best
+                              // Re-solving the winner also belongs on this worker, never on the Runloop.
+                              val field = winner?.let { active.resultAt(it.coordinates) }
+                              if (cancelling.get()) throw java.util.concurrent.CancellationException("cancelled")
+                              StudyOutcome(landscape, optimisation, field)
                           }
                           resultText = "Solving $expected designs on one background grid…"
                       }
@@ -169,7 +180,7 @@ operations:
                                   val design = study.designAt(winner.coordinates)
                                   // The other half of what a study owes: not only "this design is
                                   // best" but here it is, and here is what it does.
-                                  val field = study.resultAt(winner.coordinates)
+                                  val field = requireNotNull(outcome.winningField)
                                   showMeshGrid(
                                       "Winning body · drag to orbit" to KratosDemo.body(design.armEnd).surface(),
                                       channel = "geometry",
@@ -212,6 +223,9 @@ operations:
                                       "Cancelled after ${done.get()} solves. Nothing solved was lost — " +
                                           "press Sweep again and the cache serves it."
                                   else "Sweep failed: ${mdEscape(why)}"
+                          } finally {
+                              progress?.finish()
+                              progress = null
                           }
                           cancelling.set(false)
                       }
@@ -234,6 +248,8 @@ operations:
                       }
                       frame()
                   }
+              } catch (cancelled: java.util.concurrent.CancellationException) {
+                  throw cancelled
               } catch (failure: Exception) {
                   status(
                       """
@@ -244,6 +260,7 @@ operations:
                   """,
                   )
               } finally {
+                  cancelling.set(true)
                   progress?.finish()
                   if (session != null) session!!.close() else opening.thenAccept { it.close() }
               }

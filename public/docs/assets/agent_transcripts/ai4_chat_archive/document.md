@@ -63,7 +63,7 @@ display("night", "<pre style='margin:8px'>" + page.text.replace("<", "&lt;") + "
 <!-- field-box id="chat-archive-lens-stats" index="3" -->
 
 ```edn [field-box id="chat-archive-lens-stats" role="properties"]
-{"id" "chat-archive-lens-stats" "index" 3 "name" "chat-archive-lens-stats" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-archive-lens-stats" "_tombstone" false "frame" #afield/rect [40.0 240.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-archive-lens-stats_code_.kt" "lines" 9 "characters" 546 "sha256" "bc8171b862d356f702397c62891eaa7491684fe59d540a255b3b26073d8ad772"}]}
+{"id" "chat-archive-lens-stats" "index" 3 "name" "chat-archive-lens-stats" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "chat-archive-lens-stats" "_tombstone" false "frame" #afield/rect [40.0 240.0 420.0 60.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chat-archive-lens-stats_code_.kt" "lines" 9 "characters" 540 "sha256" "9e3c788268234a4be8c05639265675c9be9b8d91587116ff6ce230d259cae7c4"}]}
 ```
 
 ```kotlin [field-property box="chat-archive-lens-stats" name="code" path="chat-archive-lens-stats_code_.kt"]
@@ -73,7 +73,7 @@ import java.io.File
 val assets = File("public/docs/assets/ai4_chat_archive")
 val tree = ChatArchive.tree(ChatArchive.chats(File(assets, "chats/harbour")).single())
 val lens = File(assets, "lenses/harbour/storyline.md").readText()
-val problems = ChatLogViews.lensProblems(tree, lens).ifEmpty { listOf("none") }
+val problems = ChatLogViews.lensProblems(tree, lens).ifEmpty { ["none"] }
 val stats = ChatLogViews.lensStats(tree, lens).entries.joinToString("\n") { (k, v) -> "$k: $v" }
 display("lens", "<pre style='margin:8px'>problems: ${problems.joinToString("; ")}\n$stats</pre>")
 ```

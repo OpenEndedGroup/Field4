@@ -1,6 +1,9 @@
 name: streaming_diffusion
 description: 'Optional GPU streaming diffusion: editable spinning curves, ink, charcoal and wire. Linux/NVIDIA backend;
   friendly availability report elsewhere.'
+docs:
+  - page: streaming_diffusion.md
+    why: "Explains the streaming diffusion pipeline this document runs."
 operations:
 - create:
     box: diffusion_guide

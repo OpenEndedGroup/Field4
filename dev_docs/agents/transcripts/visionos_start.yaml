@@ -5,6 +5,11 @@ description: >
   program's three parts: `geometry { }` builds the mesh in the headset, and Kotlin drives the named
   uniforms on the compositor clock. The third is the `msl` property — the editable Metal shader,
   which reloads on its own with alt-r.
+docs:
+  - page: vision.md
+    why: "Explains setting up and using Field on Vision Pro."
+  - page: vision_geometry.md
+    why: "Explains sending geometry to the headset."
 operations:
   - create:
       box: agent_visionos_start_root

@@ -7,9 +7,9 @@ import org.w3c.dom.HTMLElement
 
 /**
  * A floating panel over the canvas: a black shell with a title, a status line, a close button and
- * a scrolling body. The look follows the macro recorder's shell and the history viewer's cards;
- * the CSS is `.field-panel` in field.css. The bookmarks panel is the first user, and other
- * canvas-level panels (layers) are meant to be built on it rather than on a copy.
+ * a scrolling body. The look follows the history viewer's cards; the CSS is `.field-panel` in
+ * field.css. The bookmarks, layers and macro recorder panels are built on it, and other
+ * canvas-level panels are meant to be too, rather than on a copy.
  *
  * Keys and mouse-downs are kept inside the panel, so typing in one of its fields never reaches a
  * canvas shortcut and a click never deselects boxes. Capture-phase listeners (the bookmark F-keys)

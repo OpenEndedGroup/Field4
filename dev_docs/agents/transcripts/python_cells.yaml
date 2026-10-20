@@ -17,6 +17,9 @@ description: |
   `FIELD_PYTHON_VENV` pointing at a venv with `jep==4.3.1` matching `libs/jep-4.3.1.jar`, plus `numpy`
   for cell 1, `plotly` for cell 4 and `jedi` for completion. `public/docs/python.md` has the recipe,
   and the saved document at `dev_docs/agents/demos/python_cells/` is this same scene.
+docs:
+  - page: python.md#a-python-box-is-a-child-of-a-python-root
+    why: "Explains Python cells under a language root, as set up here."
 operations:
   - create:
       box: python_root

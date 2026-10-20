@@ -11,6 +11,9 @@ description: >
   shader that draws fill, outline, and glow from one distance. Replay this file
   into a fresh Field with the agent backdoor (field_run_transcript) to get both
   boxes with no other setup.
+docs:
+  - page: rectsl_cheatsheet.md
+    why: "Lists RectSL forms, including lowering a scene to GLSL."
 operations:
   # 1. the lowering box — this is the one to hack on.
   - create:

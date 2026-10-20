@@ -22,7 +22,7 @@ the operating system wrote without asking, in a directory where nothing is wrong
 like a corrupt key. A permanent false alarm teaches you to stop reading the alarm.
 
 ```edn [field-box id="kf_junk_vs_damage" role="properties"]
-{"id" "kf_junk_vs_damage" "index" 0 "name" "2 - Junk is not damage" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Junk is not damage" "_tombstone" false "frame" #afield/rect [840.0 40.0 760.0 520.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_junk_vs_damage_code_.kt" "lines" 49 "characters" 2180 "sha256" "219f593e0560fcf6f71b432561d2df971ab3cd7a2682900e6f7902d10e4727b8"}]}
+{"id" "kf_junk_vs_damage" "index" 0 "name" "2 - Junk is not damage" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Junk is not damage" "_tombstone" false "frame" #afield/rect [840.0 40.0 760.0 520.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_junk_vs_damage_code_.kt" "lines" 49 "characters" 2174 "sha256" "63d54af3595e5bf71459a0db3f831263c1bc4395ce78488a56fb80087cea2977"}]}
 ```
 
 ```kotlin [field-property box="kf_junk_vs_damage" name="code" path="kf_junk_vs_damage_code_.kt"]
@@ -41,7 +41,7 @@ val dir = Files.createTempDirectory("keyframe-junk-vs-damage")
 val kfs = KeyframeScope()
 
 // Four keys, saved properly.
-listOf("a" to 1f, "b" to 2f, "c" to 3f, "d" to 4f).forEach { (n, r) ->
+["a" to 1f, "b" to 2f, "c" to 3f, "d" to 4f].forEach { (n, r) ->
     kfs.saveKey(dir.resolve(n), kfs.Key(mutableMapOf("glow@radius" to r)), "look $n")
 }
 
@@ -96,7 +96,7 @@ the scope loads fine — the extra names simply have nowhere to go on apply."
 So a rename half-done looks exactly like a working slot, and Apply quietly drops it.
 
 ```edn [field-box id="kf_orphaned_slots" role="properties"]
-{"id" "kf_orphaned_slots" "index" 1 "name" "3 - A saved slot that applies to nowhere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A saved slot that applies to nowhere" "_tombstone" false "frame" #afield/rect [40.0 600.0 760.0 540.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_orphaned_slots_code_.kt" "lines" 64 "characters" 2777 "sha256" "949e36fd4c6fb142368508749988a1cd1adbbb1bf2f0a277a869065aa08c1396"}]}
+{"id" "kf_orphaned_slots" "index" 1 "name" "3 - A saved slot that applies to nowhere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A saved slot that applies to nowhere" "_tombstone" false "frame" #afield/rect [40.0 600.0 760.0 540.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_orphaned_slots_code_.kt" "lines" 64 "characters" 2765 "sha256" "e7965aa2397180bacb32e2ab562b3f969dc19bfc09109ab7f7f857d1a4de49da"}]}
 ```
 
 ```kotlin [field-property box="kf_orphaned_slots" name="code" path="kf_orphaned_slots_code_.kt"]
@@ -122,10 +122,10 @@ run {
     val past = KeyframeScope()
     past.target("glow@radius", old)
     past.target("glow@blur", old)
-    listOf(1f to 4f, 6f to 5f, 11f to 6f).forEachIndexed { i, (r, b) ->
+    [1f to 4f, 6f to 5f, 11f to 6f].forEachIndexed { i, (r, b) ->
         old.bind("radius") { r }
         old.bind("blur") { b }
-        past.capture().save(dir.resolve(listOf("a", "b", "c")[i]), "look ${listOf("a", "b", "c")[i]}")
+        past.capture().save(dir.resolve(["a", "b", "c"][i]), "look ${listOf("a", "b", "c")[i]}")
     }
 }
 
@@ -183,7 +183,7 @@ because `saveKey` writes the path it is handed and appends nothing.
 Run this box. Two browsers appear. The top one is what you used to get.
 
 ```edn [field-box id="kf_before_after" role="properties"]
-{"id" "kf_before_after" "index" 2 "name" "1 - Six keys, and the pattern that showed two" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Six keys, and the pattern that showed two" "_tombstone" false "frame" #afield/rect [40.0 40.0 760.0 520.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_before_after_code_.kt" "lines" 74 "characters" 3336 "sha256" "da38d3d073f504bdbd98473ce0b16ea7b0754cc623779fe3f020f29d869e6ec8"}]}
+{"id" "kf_before_after" "index" 2 "name" "1 - Six keys, and the pattern that showed two" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Six keys, and the pattern that showed two" "_tombstone" false "frame" #afield/rect [40.0 40.0 760.0 520.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_before_after_code_.kt" "lines" 74 "characters" 3324 "sha256" "20d5a8d98ac8f3045120b476dd8a1fc75eaf718cac2154bb3ce368916296d1de"}]}
 ```
 
 ```kotlin [field-property box="kf_before_after" name="code" path="kf_before_after_code_.kt"]
@@ -212,8 +212,8 @@ kfs.target("glow@intensity", glow)
 
 // Six keys, saved the ordinary way — through the real writer, so each gets a real `.versions`
 // history beside it.
-listOf(1f, 3f, 6f, 10f, 15f, 21f).forEachIndexed { i, r ->
-    val name = listOf("a", "b", "c", "d", "d2", "d3")[i]
+[1f, 3f, 6f, 10f, 15f, 21f].forEachIndexed { i, r ->
+    val name = ["a", "b", "c", "d", "d2", "d3"][i]
     glow.bind("radius") { r }
     glow.bind("intensity") { 0.1f + i * 0.15f }
     kfs.capture().save(dir.resolve(name), "look $name")

@@ -25,9 +25,20 @@ fun documentGuideNotePath(uid: String) = documentGuideNotePrefix + uid
 fun documentGuideNoteUid(path: String): String? =
     if (path.startsWith(documentGuideNotePrefix)) path.removePrefix(documentGuideNotePrefix).ifBlank { null } else null
 
-/** [kind] is `guide` for a Markdown file on disk, `note` for a box's `notes` property. */
+/**
+ * [kind] is `guide` for a Markdown file on disk, `note` for a box's `notes` property, and `docs` for a
+ * file whose front matter names a page of the Field documentation; [docs] is then that page, relative
+ * to the docs root (`drawing_and_notation/#reading-a-region`), and [summary] the file's first paragraph.
+ */
 @Serializable
-data class DocumentGuideEntry(val path: String, val title: String, val kind: String = "guide", val uid: String = "")
+data class DocumentGuideEntry(
+    val path: String,
+    val title: String,
+    val kind: String = "guide",
+    val uid: String = "",
+    val docs: String = "",
+    val summary: String = ""
+)
 
 @Serializable
 data class DocumentGuideFile(

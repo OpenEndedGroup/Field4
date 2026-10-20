@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-211 source file(s), 677 public symbol(s), 297 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+212 source file(s), 679 public symbol(s), 298 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -321,7 +321,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L806) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L832) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -1704,6 +1704,20 @@ The three lifetimes behind the live-frame crash in `dev_docs/renderer_teardown_o
 | Declaration | Summary |
 | --- | --- |
 | <a id="liveprofilingswitchsmoke-kt--liveprofilingswitchsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/LiveProfilingSwitchSmoke/#L31) |  |
+
+## NanoOutputBoundsSmokeTest.kt { #nanooutputboundssmoketest-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/NanoOutputBoundsSmokeTest.kt` — [read the source](source/jvmMain/afield/examples/four/NanoOutputBoundsSmokeTest/)
+
+### NanoOutputBoundsSmokeTest { #nanooutputboundssmoketest-kt-nanooutputboundssmoketest }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">NanoOutputBoundsSmokeTest</span></code>](source/jvmMain/afield/examples/four/NanoOutputBoundsSmokeTest/#L27)
+
+Runs the production shader on adjacent byte slices, including shared packed words.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="nanooutputboundssmoketest-kt--nanooutputboundssmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NanoOutputBoundsSmokeTest/#L29) |  |
 
 ## NeuralFieldParitySmoke.kt { #neuralfieldparitysmoke-kt }
 

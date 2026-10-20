@@ -20,7 +20,7 @@ range (`0.2_0.5`). No mix expression can be written at either position, so a run
 blend cannot reach them and says so rather than pretending.
 
 ```edn [field-box id="kfb_static" role="properties"]
-{"id" "kfb_static" "index" 0 "name" "Where a runtime blend cannot reach" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Where a runtime blend cannot reach" "_tombstone" false "frame" #afield/rect [80.0 720.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_static_code_.kt" "lines" 26 "characters" 1076 "sha256" "7762d2e8c054ac132cb86587e1322931fded11a387b2c453eb8573f3fa968210"}]}
+{"id" "kfb_static" "index" 0 "name" "Where a runtime blend cannot reach" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Where a runtime blend cannot reach" "_tombstone" false "frame" #afield/rect [80.0 720.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_static_code_.kt" "lines" 26 "characters" 1070 "sha256" "9cbdf2c69aab6c9aaec87624a7e1e9b568f1b61bfc68b846f32b26bd4beeec8a"}]}
 ```
 
 ```kotlin [field-property box="kfb_static" name="code" path="kfb_static_code_.kt"]
@@ -45,7 +45,7 @@ frame loop. Note the modifier's frequency: unchanged between the two, so it come
 as `3` rather than `3.0`. A site is atomic — one moving component rewrites the whole
 token — and keeping an untouched number's spelling is what stops that showing.
 */
-listOf(0.0, 0.5, 1.0).forEach { t ->
+[0.0, 0.5, 1.0].forEach { t ->
     println("t=" + t + "   " + plan.bake(t))
 }
 
@@ -65,7 +65,7 @@ nothing else. Then the blended expression is handed to a SourceBackedBlock whose
 kfb_kotlin, so it compiles and runs *there* while this box is the one evaluating.
 
 ```edn [field-box id="kfb_kotlin_run" role="properties"]
-{"id" "kfb_kotlin_run" "index" 1 "name" "The generated Kotlin, evaluated" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The generated Kotlin, evaluated" "_tombstone" false "frame" #afield/rect [80.0 1360.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_run_code_.kt" "lines" 24 "characters" 941 "sha256" "ab2bbd9168768f381d910357bcdaed9e96b88c230d0354413d90f68d124d607c"}]}
+{"id" "kfb_kotlin_run" "index" 1 "name" "The generated Kotlin, evaluated" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The generated Kotlin, evaluated" "_tombstone" false "frame" #afield/rect [80.0 1360.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_run_code_.kt" "lines" 24 "characters" 935 "sha256" "87789dc4fdf68d30f3e2f6fbf7e1adcee909f44523b6376f89f80b81d8eaec80"}]}
 ```
 
 ```kotlin [field-property box="kfb_kotlin_run" name="code" path="kfb_kotlin_run_code_.kt"]
@@ -85,7 +85,7 @@ println()
 
 // One block, five values of t. The first invocation compiles the generated text through
 // K2; the rest reuse the lambda, and only the registry slot changes.
-listOf(0.0, 0.25, 0.5, 0.75, 1.0).forEach { t ->
+[0.0, 0.25, 0.5, 0.75, 1.0].forEach { t ->
     plan.drive(t)
     val got = block() as Float
     val want = (2.0f + 6.0f * t.toFloat()) * 3.0f + (1.0f + 4.0f * t.toFloat())
@@ -218,7 +218,7 @@ is checkable, and this box checks it: one program, five draws, and the two ends
 compared pixel for pixel against the programs they are supposed to be.
 
 ```edn [field-box id="kfb_runtime" role="properties"]
-{"id" "kfb_runtime" "index" 4 "name" "The push-constant convention, rendered" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The push-constant convention, rendered" "_tombstone" false "frame" #afield/rect [80.0 400.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_runtime_code_.kt" "lines" 89 "characters" 3283 "sha256" "3462c017144f23eff5e110e001a9f605523f573a768b8e264d75301efffafc54"}]}
+{"id" "kfb_runtime" "index" 4 "name" "The push-constant convention, rendered" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The push-constant convention, rendered" "_tombstone" false "frame" #afield/rect [80.0 400.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_runtime_code_.kt" "lines" 89 "characters" 3275 "sha256" "5728e66705249b8e5d034c47f8e8a1f03567b7c77594df387912a922408eb1d2"}]}
 ```
 
 ```kotlin [field-property box="kfb_runtime" name="code" path="kfb_runtime_code_.kt"]
@@ -252,7 +252,7 @@ val template =
         vec4 stackInput = vec4(fragUV, 0.0, 0.0);
         outColor = vec4(clamp(program(stackInput).rgb, 0.0, 1.0), 1.0);
     }
-"""
+    """
         .trimIndent()
 
 val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
@@ -265,7 +265,7 @@ val expanded = StackSLCpu.expandStackAuto(template, blended)
 
 val strip = StringBuilder("<div style='display:flex;gap:8px;align-items:flex-start'>")
 val rasters = mutableMapOf<Double, FloatArray>()
-for (t in listOf(0.0, 0.25, 0.5, 0.75, 1.0)) {
+for (t in [0.0, 0.25, 0.5, 0.75, 1.0]) {
     val v = keyframeBlendVector(t)
     val raster = StackSLCpu.renderFragment(
         expanded,
@@ -292,7 +292,7 @@ display("blend-strip", strip.toString())
 
 // The endpoints, drawn from the endpoint programs themselves.
 val ends =
-    listOf(0.0 to warm, 1.0 to cool).map { (t, program) ->
+    [0.0 to warm, 1.0 to cool].map { (t, program) ->
         val v = keyframeBlendVector(t)
         val raster = StackSLCpu.renderFragment(
             StackSLCpu.expandStackAuto(template, program),

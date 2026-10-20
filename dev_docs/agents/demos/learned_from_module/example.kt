@@ -3,7 +3,6 @@ import java.io.File
 import org.lwjgl.vulkan.VK13.*
 
 prop<ShaderLearningView>(lab)
-fromContextWithNameOrNull<ShaderLearningView>("lab")?.close()
 val source = RenderToTexture(renderer) {
     width = 1920
     height = 1080
@@ -16,12 +15,10 @@ val teacher = moduleHere {
     depthWrite = false
     blend = false
 }
-val mesh = Mesh(renderer, teacher)
-mesh.resize(3, 0, teacher)
-mesh.push.setMembers(teacher.current.fi.pushConstants.single().members)
+val mesh = fullscreenTriangle(teacher)
 teacher += "fullscreen" to mesh
 source += "teacher" to teacher
-val setTime: (Float) -> Unit = { t -> mesh.push["state"] = vec(source.width, source.height, t, 0) }
+val setTime: (Float) -> Unit = { t -> mesh.state = { vec(source.width, source.height, t, 0) } }
 // Publish for inspection; this run retains the exact view it must retire.
 val ownedLab = ShaderLearningView(renderer, source, setSourceParameter = setTime)
 lab = ownedLab

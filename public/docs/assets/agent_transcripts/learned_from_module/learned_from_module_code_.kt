@@ -3,7 +3,7 @@ import java.io.File
 import org.lwjgl.vulkan.VK13.*
 
 prop<ShaderLearningView>(lab)
-fromContextWithNameOrNull<ShaderLearningView>("lab")?.close()
+val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
 val source = RenderToTexture(renderer) {
     width = 1920
     height = 1080
@@ -16,13 +16,12 @@ val teacher = moduleHere {
     depthWrite = false
     blend = false
 }
-val mesh = Mesh(renderer, teacher)
-mesh.resize(3, 0, teacher)
-mesh.push.setMembers(teacher.current.fi.pushConstants.single().members)
+val mesh = fullscreenTriangle(teacher)
 teacher += "fullscreen" to mesh
 source += "teacher" to teacher
-val setTime: (Float) -> Unit = { t -> mesh.push["state"] = vec(source.width, source.height, t, 0) }
-lab = ShaderLearningView(renderer, source, setSourceParameter = setTime)
+val setTime: (Float) -> Unit = { t -> mesh.state = { vec(source.width, source.height, t, 0) } }
+val ownedLab = runScope.own(ShaderLearningView(renderer, source, setSourceParameter = setTime))
+lab = ownedLab
 var capture = false
 var requestedView = 0
 var animate = true
@@ -63,21 +62,21 @@ frames {
             reported = true
             runCatching {
                 val model = activeJob.result.join()
-                lab.load(model)
+                ownedLab.load(model)
                 println("LEARNED MODULE READY: $model — choose view 1 or 2; weights.json records held-out error.")
                 File("build/shader-learning/latest-model.txt").writeText(model.absolutePath)
             }
                 .onFailure { println("Keeping the working view: ${it.message}") }
         }
-        lab.view = requestedView
+        ownedLab.view = requestedView
         if (animate) phase += .01
-        lab.parameter = kotlin.math.sin(phase).toFloat()
+        ownedLab.parameter = kotlin.math.sin(phase).toFloat()
         frame()
     }
 }
     .end {
         trainingJob?.close()
-        lab.close()
+        ownedLab.close()
         owner.cleanup += Runnable {
             teacher.current.cleanup()
             source.imageViewArray.forEach { it.imageView.cleanup() }

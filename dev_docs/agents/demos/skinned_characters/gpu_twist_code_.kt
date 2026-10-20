@@ -12,7 +12,7 @@ RUN BOX 0 FIRST, and stop box 6 if it is running -- both draw into box 0's windo
 EDIT `methods` AND RE-RUN: make both LINEAR_BLEND and both pinch; make both DUAL_QUATERNION and
 neither does.
 */
-val methods = listOf(SkinningMethod.LINEAR_BLEND, SkinningMethod.DUAL_QUATERNION)
+val methods = [SkinningMethod.LINEAR_BLEND, SkinningMethod.DUAL_QUATERNION]
 
 val model = GltfSupport.loadGltfBasic(
     RiggedFixture.locate(),
@@ -46,7 +46,7 @@ val skinner = GpuSkinner(inst, instances = 2, renderer = renderer, name = "twist
 skinner.bindTo(m, camera, instanceCount = 2, tint = true)
 
 // Seen from this camera +x is on the LEFT, so instance 0 goes to +1.3.
-val places = listOf(Matrix4f().translate(vec(1.3, 0, 0)), Matrix4f().translate(vec(-1.3, 0, 0)))
+val places = [Matrix4f().translate(vec(1.3, 0, 0)), Matrix4f().translate(vec(-1.3, 0, 0))]
 val sk = skinner.skin.skeleton
 val twist = sk.clip("twist")!!
 

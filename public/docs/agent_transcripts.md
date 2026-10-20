@@ -208,6 +208,18 @@ headless, since the drawing is data on the server and needs no window. See
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn)
 
+### notation_elements
+
+The `notation` API end to end, in five boxes. `elements` draws one of every kind of mark from code
+(shapes, lines, strokes, text, an arrow between boxes, a frame, a group) in each fill and stroke
+style; `score` turns a frame into a score and reads the notes in it; `audit` calls every read, write
+and cut and prints one line per call; `listen` reacts to strokes, arrows and text drawn by hand; and
+`hand` sends a stroke, an arrow and a text from the page the way the drawing layer does. Run them in
+that order, then press `alt/option-d` to see the drawing. See
+[Drawing and Notation](drawing_and_notation.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/notation_elements/metadata.edn)
+
 ### slideshow_guide
 
 A four-step guide over two small boxes. Run `tour` and follow the links in its note: the first step
@@ -339,6 +351,20 @@ sphere and the floor, and both ends of that sentence are asserted by
 `launch`es rather than executes.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/simdverlet_world/metadata.edn)
+
+### evolving_water_bugs
+
+A genetic algorithm that evolves little 2D creatures of points, springs and motorised joints, with
+every point a foot that steps on its own cycle. The library evolves the body, the foot timing and
+the joint curves together; the box says what world they live in. In `water_bug` that is a water
+surface seen from above: a foot that touches down grips the surface film where it landed, and one
+that is up drags through the water. That rule is a dozen lines of `ContactModel` in the box, next
+to the fitness that rewards distance and charges for stretching and effort. `ground_crawler` swaps
+in a floor and gravity and scores only horizontal distance, and nothing else changes. Evolution runs
+on its own thread and both loops draw the current champion; CI launches them, advances 90 frames,
+and stops them.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/evolving_water_bugs/metadata.edn)
 
 ### inertial_movement
 
@@ -1053,6 +1079,9 @@ spiral, the ellipsoid method with its ellipses, the simplex walk and cutting pla
 with its own numbers. *A turning objective* is launched: the direction turns once every twelve
 seconds while the hexagon's vertices breathe, and the central path, the PDHG spiral and the simplex
 walk are recomputed twenty times a second. Change the weights or the PDHG step size and run it again.
+*Drag the polygon* draws the [fan as a map](lp_curves.md#the-fan-as-a-map) in an editable viewer:
+choose the pencil tool and drag a corner, and the grid is redrawn for the new polygon when the drag
+ends.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/lp_curves/metadata.edn)
 
@@ -1950,6 +1979,17 @@ you can paste into a shader.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/stacksl_fit_demo/metadata.edn)
 
+### macro_recorder_stamp
+
+**A macro used as a stamp.** The first box saves a macro the way the
+[Macro Recorder](automating_field.md) writes one: a box with code, another box, and a connection
+between them. The second replays it as a copy three times, each lower down the canvas, so every run
+makes a new connected pair; the third replays it one operation at a time, as the panel's Step
+button does. Open the Macro Recorder afterwards to find the macro listed with its own Run, Rename
+and Delete.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/macro_recorder_stamp/metadata.edn)
+
 ## Service-backed composition scenes
 
 <!-- transcript-index: verified-by = execute -->
@@ -2029,6 +2069,33 @@ Walkthrough: [Corpus microscope: from recordings to related windows](audio_ai_co
 
 [Open ↗](offline.html?file=assets/agent_transcripts/audio_ai_corpus_microscope/metadata.edn)
 
+### contour_trees_explorer
+
+[Merge trees and contour trees](contour_trees.md). The first box shows a landscape of hills and
+hollows with its contour tree's nodes, the regions its arcs stand for, and the tree drawn as a plot,
+with a slider that prunes branches by persistence. The second divides the brightness of the leaf
+print into contour-tree regions, lightly and strongly simplified. Plain Kotlin, no optional
+libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/contour_trees_explorer/metadata.edn)
+
+### vector_field_explorer
+
+[Vector field topology](vector_field_topology.md). The first box builds a flow from swirls,
+sources and sinks and draws its critical points and separatrices over streamlines, with a slider
+that scales the swirl. The second draws the ridges and valleys of the leaf print's brightness as
+the topology of its gradient, with a blur slider. Plain Kotlin, no optional libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/vector_field_explorer/metadata.edn)
+
+### mapper_explorer
+
+[Mapper graphs of point clouds](mapper.md). The first box draws the Mapper graph of a ring with a
+tail and a separate blob over its points, with sliders for the number of bins, their overlap and
+the lens. The second scatters points along the letters A, H and O and counts the loops in each
+graph. Plain Kotlin, no optional libraries.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/mapper_explorer/metadata.edn)
 
 ## External-service live-coding scenes
 
@@ -2046,6 +2113,19 @@ and the third plays four notes and a controller from that peer, which the first 
 Nothing else needs to be on the network. See [Network MIDI](rtp_midi.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/rtp_midi_demo/metadata.edn)
+
+### temporal_memory
+
+**Continuing a gesture**, in seven boxes. A lab notebook with the measurements and wrong turns behind
+the design; six takes of modern dance from the CMU motion capture database, remembered by the
+Variable Markov Oracle and continued as a strip of poses, as hand and head heights labelled by take,
+and as a dancing figure you launch and leave running; two oscillators with a slider to take over a
+channel; a Timestral forecast drawn as a quantile fan; and the dance played five ways, two judged
+by Timestral, with coverage, repetition and join roughness for each. Boxes 5 and 6 start the
+Timestral worker, which needs `TimestralSession.install()` once.
+See [Continuing a Gesture](temporal_memory.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/temporal_memory/metadata.edn)
 
 ### ai_tool_demo
 
@@ -2421,6 +2501,31 @@ library and its OpenCV, Boost and Eigen packages: the welcome page's **Geometry 
 says how, or run `./gradlew buildPolyvectorNative`.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/polyvector_explorer/metadata.edn)
+
+### tracking_explorer
+
+[Tracking features through time and scale](topology_tracking.md). The first box, launched, moves six
+hills in a computed field and follows their peaks frame by frame, each with its own colour and
+trail, reporting how many peaks there are and how many tracks have existed. The second follows the
+dark places in a photograph across increasing blur and draws each as a circle the size of the
+largest blur it survives. Needs the optional Morse–Smale library: `./gradlew buildMorseSmaleNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/tracking_explorer/metadata.edn)
+
+### eagle_flow_explorer
+
+**An eagle's flight, read in two frames of reference.** A 1930s film of a golden eagle landing on a
+falconer's fist, turned into a flow by tracked particles. Taken as it is, the flow's streamlines,
+separatrices and critical points describe the film weaving in the gate, and sweep across the sky
+around the bird. A slider removes the camera's motion, leaving only the eagle, and another scrubs
+the 306 frames; the second box renders the whole clip as a movie. From
+[Vector field topology](vector_field_topology.md#flow-from-old-film). Needs FFmpeg.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/eagle_flow_raw.png" capture="box" open-outputs="true" wait="8.0" embed=true hidden=true timeout="240" padding="12" name="gallery-eagle-flow" alt="A darkened frame of old film in which an eagle, wings spread, lands on a falconer's fist, covered edge to edge in pale streamlines that sweep across the sky in long curves, wrap around the bird in a tight spiral and fan out over the field below, with orange and blue separatrices running from two white saddles" macro-file="../../dev_docs/agents/transcripts/eagle_flow_explorer.yaml" capture-box="eagle_flow_live"}
+// The transcript builds and runs the first box; this is frame 270 with the camera's motion kept.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/eagle_flow_explorer/metadata.edn)
 
 ## FieldML scenes
 

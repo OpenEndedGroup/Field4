@@ -50,6 +50,9 @@ description: |
   stroke width. That is the map's own difficulty rather than a shortage of training — the
   purpose-built `mixtureSource` scores 0.187 against this shared circle's 0.195 on the same
   letter. The letters read, but they are soft.
+docs:
+  - page: neural_particles.md
+    why: "Explains weight-space interpolation between trained velocity fields."
 operations:
   - create:
       box: li_renderer

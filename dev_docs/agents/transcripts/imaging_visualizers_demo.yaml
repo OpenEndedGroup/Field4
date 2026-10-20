@@ -31,6 +31,9 @@ description: >
   each box's output area, then click a disclosure triangle open. Each `execute` op omits inline
   code, so it runs the box's stored `code` property. Executed end-to-end by
   examples.demo-transcript.exec.
+docs:
+  - page: visualizers.md#images-edges-corners-and-flow
+    why: "Explains the inline visualizers drawn for imaging values."
 operations:
   - create:
       box: viz_scene

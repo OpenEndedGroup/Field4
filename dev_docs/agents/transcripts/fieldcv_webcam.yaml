@@ -2,6 +2,9 @@ name: fieldcv_webcam
 description: "A rich fieldcv starting point: webcam with tracks, pose, hands, face, flow and background subtraction in Python,\
   \ drawn by three Kotlin graphics boxes from shared memory. Creates the boxes; run 0 \xB7 window, then 1 \xB7 webcam, then\
   \ the three Kotlin boxes."
+docs:
+  - page: python_cv.md
+    why: "Explains the fieldcv detectors and shared-memory drawing in this document."
 operations:
 - create:
     box: cv_renderer

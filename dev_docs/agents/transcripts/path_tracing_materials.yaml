@@ -1,5 +1,8 @@
 name: path_tracing_materials
 description: Progressive compute path tracer with an OpenEXR environment, three PBR materials, and optional KHR ray queries.
+docs:
+  - page: path_tracing.md#start-with-the-material-study
+    why: "Walks through the material study this document reproduces."
 operations:
   - create:
       box: path_trace_renderer

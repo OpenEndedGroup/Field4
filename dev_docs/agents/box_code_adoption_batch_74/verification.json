@@ -1,0 +1,11 @@
+{
+  "baseline": "6da129f4fb4fe52d21d5fbc480f29490f680cbd1",
+  "sources": [
+    {
+      "path": "public/docs/loris.md",
+      "kotlinBodies": 11,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

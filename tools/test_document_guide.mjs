@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyGuideLink as link, boxGuideLink, macroGuideLink, headingSlug, guideAssetUrl, notePath, noteUid, noteFilePath } from '../src/commonMain/resources/documentGuideModel.js';
+import { classifyGuideLink as link, boxGuideLink, macroGuideLink, headingSlug, guideAssetUrl, notePath, noteUid, noteFilePath, docsPageUrl, stripFrontMatter } from '../src/commonMain/resources/documentGuideModel.js';
 test('relative files and fragments retain the originating guide directory', () => {
     assert.deepEqual(link('../Camera.md#moving-camera','docs/Enemy.md'),{kind:'guide',path:'Camera.md',hash:'moving-camera'});
     assert.deepEqual(link('#moving-camera','docs/Enemy.md'),{kind:'guide',path:'docs/Enemy.md',hash:'moving-camera'});
@@ -51,4 +51,14 @@ test('headings and asset queries are deterministic and escaped', () => {
     const url = new URL(guideAssetUrl('/tmp/My document','docs/my image.png'),'https://localhost');
     assert.equal(url.searchParams.get('document'),'/tmp/My document');
     assert.equal(url.searchParams.get('path'),'docs/my image.png');
+});
+test('field-docs links and docs redirects open a page of the Field documentation', () => {
+    assert.deepEqual(link('field-docs:drawing_and_notation/#reading-a-region'),{kind:'docs',page:'drawing_and_notation/#reading-a-region'});
+    for (const href of ['field-docs:','field-docs:../secret','field-docs:a/../../b','field-docs:a b']) assert.equal(link(href).kind,'invalid',href);
+    assert.equal(docsPageUrl('drawing_and_notation/#x'),'/field-docs/drawing_and_notation/#x');
+    assert.equal(docsPageUrl('first_steps.md'),'/field-docs/first_steps/');
+    assert.equal(docsPageUrl('first_steps'),'/field-docs/first_steps/');
+    assert.equal(docsPageUrl(''),'/field-docs/');
+    assert.equal(stripFrontMatter('---\ndocs: x/\n---\n# Title\n'),'# Title\n');
+    assert.equal(stripFrontMatter('# No front matter\n---\n'),'# No front matter\n---\n');
 });

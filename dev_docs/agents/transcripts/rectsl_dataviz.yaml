@@ -8,6 +8,11 @@ description: >
   `rectsl` string and re-run the box to change it live. Replay this file into a
   fresh Field with the agent backdoor (field_run_transcript) to see the whole
   family on screen with no other setup.
+docs:
+  - page: rectsl_examples.md
+    why: "Shows RectSL programs, including figures like this one."
+  - page: rectsl_cheatsheet.md
+    why: "Lists the RectSL vocabulary used in the program."
 operations:
   # 1. renderer box — owns the on-screen Window + Renderer and pumps the loop.
   - create:

@@ -1,5 +1,8 @@
 name: two_box_context
 description: Create a parent/child pair and verify inherited graph context from the child.
+docs:
+  - page: running_code.md#property-inheritance-how-children-see-a-parents-values
+    why: "How a child box sees the values and context its parents publish."
 operations:
   - create:
       box: agent_context_parent

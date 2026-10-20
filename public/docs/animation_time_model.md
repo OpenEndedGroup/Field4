@@ -1090,3 +1090,5 @@ The [codebase reference](reference/index.md) lists every declaration in `Phased.
 
 To see it running, open the [`frames_lifecycle`](agent_transcripts.md#frames_lifecycle) starting
 point from the welcome screen. Its four boxes start, stop, re-run and clean up a frame loop.
+
+Next on the Tour, [Graphics on the GPU](tour_gpu_graphics.md) hands the same clock to a shader.

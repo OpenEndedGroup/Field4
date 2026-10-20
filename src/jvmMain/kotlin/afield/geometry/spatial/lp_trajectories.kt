@@ -338,7 +338,7 @@ Damped Newton on  f(x) = c·x + mu Σ wᵢ ln(bᵢ − nᵢ·x)  over half-plane
 Hessian is 2×2 and negative definite inside, so the step is solved in closed form. Returns the
 maximiser, starting from a strictly feasible (x0, y0), as (x, y, Newton steps taken).
 */
-private fun barrierNewton(
+internal fun barrierNewton(
     nx: DoubleArray, ny: DoubleArray, b: DoubleArray, w: DoubleArray,
     cx: Double, cy: Double, mu: Double, x0: Double, y0: Double, maxIterations: Int = 100,
 ): DoubleArray {
@@ -400,7 +400,7 @@ private fun barrierNewton(
 The Newton decrement gᵀH⁻¹g of the barrier objective at (x, y): how far, in Newton's own measure,
 the point is from the maximiser for this μ. Infinite outside. Used to pick the better of two starts.
 */
-private fun barrierDecrement(
+internal fun barrierDecrement(
     nx: DoubleArray, ny: DoubleArray, b: DoubleArray, w: DoubleArray,
     cx: Double, cy: Double, mu: Double, x: Double, y: Double,
 ): Double {
@@ -425,7 +425,7 @@ private fun barrierDecrement(
     return (gx * (hyy * gx - hxy * gy) + gy * (hxx * gy - hxy * gx)) / det
 }
 
-private fun LpPolygon.checkedWeights(weights: DoubleArray?): DoubleArray {
+internal fun LpPolygon.checkedWeights(weights: DoubleArray?): DoubleArray {
     val w = weights ?: DoubleArray(edgeCount) { 1.0 }
     require(w.size == edgeCount) { "need one weight per edge: ${w.size} weights for $edgeCount edges" }
     require(w.all { it.isFinite() && it > 0.0 }) { "edge weights must be positive and finite: ${w.toList()}" }

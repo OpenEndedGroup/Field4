@@ -1,5 +1,8 @@
 name: orca_duet
 description: Two ORCAs and a Kotlin go-between. A frames loop hands every note Lead plays to Echo, which plays them back in threes against Lead's twos, and every eighth echo nudges one note of Lead's tune up the scale.
+docs:
+  - page: orca.md
+    why: "Explains ORCA grids in Field and how they play sound."
 operations:
   - create:
       box: orca_duet

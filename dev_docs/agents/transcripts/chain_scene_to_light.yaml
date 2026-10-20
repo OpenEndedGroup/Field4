@@ -10,6 +10,11 @@ description: >
 
   Companion to public/docs/chain_scene_to_light.md. CI compiles the boxes but does not launch them:
   they open UDP sockets and run until stopped.
+docs:
+  - page: chain_scene_to_light.md
+    why: "Walks through the RectSL scene, the rig and the sACN round trip."
+  - page: dmx_lighting.md
+    why: "Reference for sending Art-Net and sACN to real lights."
 operations:
   - create:
       box: scene_sender

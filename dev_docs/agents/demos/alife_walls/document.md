@@ -157,7 +157,7 @@ first moment of contact along the step, not for where the step happened to land.
 Three agents, one wall, three answers to "what now".
 
 ```edn [field-box id="hit_a_wall" role="properties"]
-{"id" "hit_a_wall" "index" 2 "name" "1 - A wall, and three answers to hitting it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A wall, and three answers to hitting it" "_tombstone" false "frame" #afield/rect [60.0 60.0 500.0 100.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "hit_a_wall_code_.kt" "lines" 65 "characters" 2203 "sha256" "20c65f3737d780b53f82ac0e959a4277ae5ed5318c0f15bcfd265d4091184733"}]}
+{"id" "hit_a_wall" "index" 2 "name" "1 - A wall, and three answers to hitting it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A wall, and three answers to hitting it" "_tombstone" false "frame" #afield/rect [60.0 60.0 500.0 100.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "hit_a_wall_code_.kt" "lines" 65 "characters" 2201 "sha256" "5a6b08b3c7f28a9ea18f515f592498a5b75bf5f7155de8ec7d6d8a94957a2d28"}]}
 ```
 
 ```kotlin [field-property box="hit_a_wall" name="code" path="hit_a_wall_code_.kt"]
@@ -179,7 +179,7 @@ parks in a corner and the trail says nothing.
 w.addPolygon(12.0, 12.0, 188.0, 12.0, 188.0, 188.0, 12.0, 188.0, name = "room")
 w.addWall(120.0, 30.0, 120.0, 170.0, name = "barrier")
 
-listOf(WallResponse.SLIDE, WallResponse.BOUNCE, WallResponse.STOP).forEachIndexed { i, r ->
+[WallResponse.SLIDE, WallResponse.BOUNCE, WallResponse.STOP].forEachIndexed { i, r ->
     w.spawn(
         25.0,
         60.0 + i * 25.0,
@@ -222,10 +222,10 @@ lines(
 )
 
 /*
-Try this: set `restitution = 0.3` on the BOUNCE agent and it loses most of its speed at the
-wall. Set it to 1.0 and the trail is a billiard. SLIDE is the default because it is the only
-one of the three that lets an agent still get somewhere while touching something.
-*/
+ Try this: set `restitution = 0.3` on the BOUNCE agent and it loses most of its speed at the
+ wall. Set it to 1.0 and the trail is a billiard. SLIDE is the default because it is the only
+ one of the three that lets an agent still get somewhere while touching something.
+ */
 ```
 
 ## 4. 2 - Routed seek against direct seek, on a maze
@@ -247,7 +247,7 @@ no fixed "always turn left" solves it. Both arms run avoidWalls at the same weig
 routing against the best local steering available, not routing against nothing.
 
 ```edn [field-box id="route_vs_seek" role="properties"]
-{"id" "route_vs_seek" "index" 3 "name" "2 - Routed seek against direct seek, on a maze" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Routed seek against direct seek, on a maze" "_tombstone" false "frame" #afield/rect [60.0 500.0 500.0 100.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "route_vs_seek_code_.kt" "lines" 92 "characters" 3687 "sha256" "4e669c0d99235ce729f5733f3907c7a0706d80e570014f089a0f57dfb25bfdc1"}]}
+{"id" "route_vs_seek" "index" 3 "name" "2 - Routed seek against direct seek, on a maze" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Routed seek against direct seek, on a maze" "_tombstone" false "frame" #afield/rect [60.0 500.0 500.0 100.0] "preamble" "" "nested" #{} "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "route_vs_seek_code_.kt" "lines" 92 "characters" 3680 "sha256" "fc6f0078fbc6d240c62275835a06d3cd3f279a12e872495d1cfef917418a53d3"}]}
 ```
 
 ```kotlin [field-property box="route_vs_seek" name="code" path="route_vs_seek_code_.kt"]
@@ -266,7 +266,7 @@ routing against the best local steering available, not routing against nothing.
 val GOAL_X = 175.0
 val GOAL_Y = 100.0
 val STEPS = 1800 // 30 s at 60 Hz
-val SEEDS = listOf(1L, 2L, 3L, 4L)
+val SEEDS = [1L, 2L, 3L, 4L]
 val PER_SEED = 8
 
 fun maze(seed: Long, routed: Boolean): ScriptWorld {
@@ -297,7 +297,7 @@ fun maze(seed: Long, routed: Boolean): ScriptWorld {
 
 val curves = LinkedHashMap<String, List<Double>>()
 val shown = LinkedHashMap<String, ScriptWorld>()
-for (routed in listOf(true, false)) {
+for (routed in [true, false]) {
     val name = if (routed) "routed" else "direct"
     val cumulative = MutableList(STEPS) { 0.0 }
     var population = 0
@@ -338,10 +338,10 @@ showSignals(
 )
 
 /*
-Try this: change `route(goal, clearance = 3.5)` to `clearance = 0.5`. The route still gets
-there, but it plans 1.7 units from every corner — inside the reach of the avoidWalls term the
-same agent is running — and the two terms then disagree all the way round each corner. The
-arrival curve sags. Plan outside your own avoidance range.
-*/
+ Try this: change `route(goal, clearance = 3.5)` to `clearance = 0.5`. The route still gets
+ there, but it plans 1.7 units from every corner — inside the reach of the avoidWalls term the
+ same agent is running — and the two terms then disagree all the way round each corner. The
+ arrival curve sags. Plan outside your own avoidance range.
+ */
 ```
 

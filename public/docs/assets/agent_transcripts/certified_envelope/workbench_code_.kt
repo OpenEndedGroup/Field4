@@ -5,14 +5,14 @@ refuses. `formula` is the same function from formula-bearing ops. The only const
 a lambda was the piecewise event selection; here it is exact 0/1 `step` indicators, with every
 product and sum in the lambda's order, so the two agree bit for bit.
 */
-val events = listOf(
+val events = [
     StudyEvent("e1", 185.0, 100.0, 30.0, 100.0),
     StudyEvent("e2", 785.0, 100.0, 30.0, 100.0),
     StudyEvent("e3", 1425.0, 200.0, 30.0, 100.0),
     StudyEvent("e5", 2585.0, 100.0, 30.0, 100.0),
     StudyEvent("e6", 3185.0, 100.0, 30.0, 100.0),
-)
-val names = listOf("x", "y", "z")
+]
+val names = ["x", "y", "z"]
 
 fun smooth01(value: Double): Double {
     val u = value.coerceIn(0.0, 1.0)
@@ -108,19 +108,19 @@ for ((i, name) in names.withIndex()) {
     val above = f.certifiedNeverExceeds(1.0, 0.0, 3600.0)
     val witness = above.witness!!
     rows +=
-        listOf(
+        [
             name,
             "${FnIntervals.unsupportedOps(l)} / ${FnIntervals.unsupportedOps(f)}",
             "$mismatches of ${grid.size}",
             "$holds of ${events.size} PROVEN",
             f.certifiedNeverBelow(0.0, 0.0, 3600.0).kind.name,
             "${above.kind} at $witness: lambda ${l(witness)}",
-        )
+        ]
 }
 display(
     "claims",
     Table(
-            listOf("ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"),
+            ["ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"],
             title = "the worked example's claims, on its formula rewrite",
         )
         .rows(rows)
@@ -131,7 +131,7 @@ display(
 val xMax = formula(0, "x").certifiedRange(0.0, 3600.0, tolerance = 9e-10).max!!
 display(
     "max",
-    Table(listOf("what", "value"), title = "channel x, the whole hour")
+    Table(["what", "value"], title = "channel x, the whole hour")
         .row("max reached", xMax.value.toString())
         .row("at x", xMax.witness.toString())
         .row("proven bound", xMax.bound.toString())

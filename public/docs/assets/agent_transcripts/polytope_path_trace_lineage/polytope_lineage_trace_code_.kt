@@ -8,6 +8,14 @@ import java.io.File
 
 prop<PathTracingRenderer>(tracer)
 
+// Start here when changing render cost, lighting or convergence.
+val samplesPerFrame = 2
+val maxBounces = 8
+val exposure = 1.35f
+val environmentRotation = 2.1f
+val indirectClamp = 10f // Optional biased suppression of indirect fireflies.
+val targetSamples = 900
+
 /*
 ---- the topology ---------------------------------------------------------------
 Bevel the dodecahedron, then canonicalize so the faces come out edge-tangent and the
@@ -86,15 +94,15 @@ val camera = Camera(renderer).also {
 }
 // 1000 x 614 is the window's own aspect, so the blit fills it rather than letterboxing.
 tracer = PathTracingRenderer(renderer, scene, environment, 1000, 614, camera).install()
-tracer.samplesPerFrame = 2
-tracer.maxBounces = 8
-tracer.exposure = 1.35f
-tracer.environmentRotation = 2.1f
-tracer.indirectClamp = 10f // Optional biased suppression of indirect fireflies.
+tracer.samplesPerFrame = samplesPerFrame
+tracer.maxBounces = maxBounces
+tracer.exposure = exposure
+tracer.environmentRotation = environmentRotation
+tracer.indirectClamp = indirectClamp
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
 frames {
-    while (tracer.samples < 900) {
+    while (tracer.samples < targetSamples) {
         frame()
     }
     println("lineage study converged: ${tracer.samples} samples")

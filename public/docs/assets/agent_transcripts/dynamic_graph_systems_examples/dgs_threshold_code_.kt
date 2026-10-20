@@ -16,8 +16,8 @@ val perCluster = 22
 val n = nBg + 3 * perCluster
 val background = disc(nBg, 0.50)
 val blobs = List(3) { disc(perCluster, 0.070) }
-val starts = listOf(Vec3(-0.44f, -0.20f, 0f), Vec3(-0.30f, 0.40f, 0f), Vec3(0.34f, -0.44f, 0f))
-val velocities = listOf(Vec3(0.20f, 0.07f, 0f), Vec3(0.16f, -0.19f, 0f), Vec3(-0.12f, 0.20f, 0f))
+val starts = [Vec3(-0.44f, -0.20f, 0f), Vec3(-0.30f, 0.40f, 0f), Vec3(0.34f, -0.44f, 0f)]
+val velocities = [Vec3(0.20f, 0.07f, 0f), Vec3(0.16f, -0.19f, 0f), Vec3(-0.12f, 0.20f, 0f)]
 // Used ONLY to check the answer, never to build the graph.
 val group = IntArray(n) { if (it < nBg) -1 else (it - nBg) / perCluster }
 
@@ -72,7 +72,7 @@ fun componentSizes(graph: PointGraph): List<Int> {
 val window = doubleArrayOf(-0.60, -0.60, 0.60, 0.60)
 println("points outside that window: ${dynamicGraphOutsideWindow(state.points, window)}")
 val panels =
-    listOf(0.0, 0.5, 1.2, 2.0).map { cut ->
+    [0.0, 0.5, 1.2, 2.0].map { cut ->
         val graph = edges.toPointGraph(minWeight = cut)
         val groups = componentSizes(graph).filter { it > 1 }
         val cross = graph.edges.count { group[it.i] != group[it.j] }

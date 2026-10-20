@@ -6,6 +6,9 @@ description: >
   osculating circles; trim and splitAt; crossings, selfCrossings and tight bounds; and
   contains2D under the non-zero and even-odd fill rules; and the 3D frame (tangent, normal,
   binormal, curvature) along a helix. Run each box; each draws into `lines`.
+docs:
+  - page: fline_examples.md#measuring-along-a-line
+    why: "The measuring, trimming and crossings sections these boxes accompany."
 operations:
   - create:
       box: fline-measure-locate

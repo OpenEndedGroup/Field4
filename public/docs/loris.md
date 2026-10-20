@@ -9,16 +9,24 @@ Build the worker once with `./gradlew buildLorisNative` (setup below). In a Kotl
 the committed film-dialogue sample, or replace the path with your own WAV:
 
 ```diffstatic {data-lang=kotlin}
-val client = LorisClient()
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
+
+val client = cached { LorisClient() }
 val source = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
 display("status", "Starting Loris…")
-client
-    .analyzeWavAsync(
-        source,
-        options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0),
-        onProgress = { stage -> display("status", stage) },
-    )
-    .thenAccept { result ->
+prop<LorisResult>(analyzed)
+go {
+    try {
+        val result =
+            client
+                .analyzeWavAsync(
+                    source,
+                    options = LorisOptions(resolutionHz = 35.0, windowWidthHz = 80.0),
+                    onProgress = { stage -> if (isActive) display("status", stage) },
+                )
+                .await()
+        analyzed = result
         display(
             "partials and sound",
             result.visualizationHtml(
@@ -26,15 +34,19 @@ client
             ),
         )
         display("provenance", result.provenance)
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Throwable) {
+        markdown("error", "Loris failed: ${(failure.message ?: failure.toString()).md}")
     }
-    .exceptionally { error ->
-        display("error", error.cause?.message ?: error.message ?: error.toString())
-        null
-    }
+}
 ```
 
 `%docs` is the folder of documentation files that ships with Field. For your own recording, use `"~/Downloads/recording.wav".path`, or `"recording.wav".path` for
 the document's `files/` directory. See [Files and paths](files_and_paths.md).
+
+The box owns the coroutine: Stop or rerun cancels its current native future, and progress from
+an ended run is ignored. The shared client and durable native cache are retained.
 
 The returned `LorisModel` retains the native, irregular breakpoint times. Each partial has an ID,
 a label, and points with time in seconds, frequency in Hz, linear amplitude, phase in radians,
@@ -98,21 +110,27 @@ model with a player for its sound. Each breakpoint keeps its stored phase, so ex
 of attacks. The frequency cap in the code keeps every partial below half the sample rate.
 
 ```diffstatic {data-lang=kotlin}
-val client = LorisClient()
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
+
+val client = cached { LorisClient() }
 val chunkStart = 6.0
 val chunkDuration = 3.0
-client
-    .analyzeWavAsync(
-        "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
-        options = LorisOptions(
-            resolutionHz = 35.0,
-            windowWidthHz = 80.0,
-            frequencyDriftHz = 50.0,
-            amplitudeFloorDb = -55.0,
-        ),
-        onProgress = { display("status", it) },
-    )
-    .thenCompose { analyzed ->
+go {
+    try {
+        val analyzed =
+            client
+                .analyzeWavAsync(
+                    "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+                    options = LorisOptions(
+                        resolutionHz = 35.0,
+                        windowWidthHz = 80.0,
+                        frequencyDriftHz = 50.0,
+                        amplitudeFloorDb = -55.0,
+                    ),
+                    onProgress = { if (isActive) display("status", it) },
+                )
+                .await()
         val model = analyzed.model
         val changed = model.copy(
             partials =
@@ -139,20 +157,19 @@ client
                 },
         )
         display("status", "Resynthesizing the whirlpool…")
-        client.synthesizeAsync(changed)
-    }
-    .thenAccept { edited ->
+        val edited = client.synthesizeAsync(changed).await()
         display(
             "edited tracks and sound",
             edited.visualizationHtml(
                 LorisViewOptions(height = 400, syncGroup = "my-whirlpool"),
             ),
         )
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Throwable) {
+        markdown("error", "Loris failed: ${(failure.message ?: failure.toString()).md}")
     }
-    .exceptionally { error ->
-        display("error", error.cause?.message ?: error.message ?: error.toString())
-        null
-    }
+}
 ```
 
 Here is the gesture on the film excerpt. Compare seconds 6–9 with the reconstruction above: the
@@ -176,29 +193,36 @@ noise bandwidth, then renders and displays the changed model. The breakpoints ke
 phases, so attacks change character more than a dedicated pitch shifter would make them.
 
 ```diffstatic {data-lang=kotlin}
-val client = LorisClient()
-client
-    .analyzeWavAsync(
-        "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
-        options = LorisOptions(
-            resolutionHz = 35.0,
-            windowWidthHz = 80.0,
-            frequencyDriftHz = 50.0,
-            amplitudeFloorDb = -55.0,
-        ),
-        onProgress = { display("status", it) },
-    )
-    .thenCompose { analyzed ->
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
+
+val client = cached { LorisClient() }
+go {
+    try {
+        val analyzed =
+            client
+                .analyzeWavAsync(
+                    "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+                    options = LorisOptions(
+                        resolutionHz = 35.0,
+                        windowWidthHz = 80.0,
+                        frequencyDriftHz = 50.0,
+                        amplitudeFloorDb = -55.0,
+                    ),
+                    onProgress = { if (isActive) display("status", it) },
+                )
+                .await()
         display("status", "Resynthesizing changed envelopes…")
-        client.synthesizeAsync(
-            analyzed.model.transformed(
-                frequencyScale = 0.75,
-                bandwidthScale = 0.0,
-                gain = 0.8,
-            ),
-        )
-    }
-    .thenAccept { edited ->
+        val edited =
+            client
+                .synthesizeAsync(
+                    analyzed.model.transformed(
+                        frequencyScale = 0.75,
+                        bandwidthScale = 0.0,
+                        gain = 0.8,
+                    ),
+                )
+                .await()
         display(
             "changed sound",
             edited.visualizationHtml(
@@ -208,11 +232,12 @@ client
                 ),
             ),
         )
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Throwable) {
+        markdown("error", "Loris failed: ${(failure.message ?: failure.toString()).md}")
     }
-    .exceptionally { error ->
-        display("error", error.cause?.message ?: error.message ?: error.toString())
-        null
-    }
+}
 ```
 
 Here is that edit. Every segment is blue, because the edit set every bandwidth to zero:
@@ -230,13 +255,25 @@ resynthesis. For example, after analyzing a source, this keeps only tracks whose
 is below 900 Hz:
 
 ```diffstatic {data-lang=kotlin}
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
+
 val bassModel = analyzed.model.copy(
     partials =
         analyzed.model.partials.filter { partial ->
             partial.points.map { it.frequencyHz }.average() < 900.0
         },
 )
-client.synthesizeAsync(bassModel).thenAccept { display("low partials", it.visualizationHtml()) }
+go {
+    try {
+        val it = client.synthesizeAsync(bassModel).await()
+        display("low partials", it.visualizationHtml())
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Throwable) {
+        markdown("error", "Loris failed: ${(failure.message ?: failure.toString()).md}")
+    }
+}
 ```
 
 `transformed(timeScale = 2.0)` stretches envelope times and doubles the frame extent;
@@ -286,40 +323,49 @@ fundamental, moves the loudest moment of the second onto the loudest moment of t
 morphs from the first to the second between 0.4 and 1.6 seconds:
 
 ```diffstatic {data-lang=kotlin}
-val client = LorisClient()
-client
-    .analyzeWavAsync(
-        "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
-        options = LorisOptions(
-            resolutionHz = 35.0,
-            windowWidthHz = 80.0,
-            frequencyDriftHz = 50.0,
-            amplitudeFloorDb = -55.0,
-        ),
-        onProgress = { display("status", it) },
-    )
-    .thenAccept { analyzed ->
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
+
+val client = cached { LorisClient() }
+go {
+    try {
+        val analyzed =
+            client
+                .analyzeWavAsync(
+                    "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+                    options = LorisOptions(
+                        resolutionHz = 35.0,
+                        windowWidthHz = 80.0,
+                        frequencyDriftHz = 50.0,
+                        amplitudeFloorDb = -55.0,
+                    ),
+                    onProgress = { if (isActive) display("status", it) },
+                )
+                .await()
         val film = analyzed.model
-        val a = client.distill(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0)).model
-        val b = client.distill(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0)).model
+        val a = client.distillAsync(film.crop(1.6, 3.6), LorisReference.Estimated(150.0, 450.0)).await().model
+        val b = client.distillAsync(film.crop(11.5, 13.5), LorisReference.Estimated(60.0, 200.0)).await().model
         display("labels", "A ${a.labelCounts()}  B ${b.labelCounts()}")
         val end = a.durationSeconds
         val aligned =
-            client
-                .dilate(
-                    b,
-                    [0.0, b.loudestTimeSeconds(), end],
-                    [0.0, a.loudestTimeSeconds(), end],
-                    durationSeconds = end,
-                )
+            runInterruptible(Dispatchers.IO) {
+                    client.dilate(
+                        b,
+                        [0.0, b.loudestTimeSeconds(), end],
+                        [0.0, a.loudestTimeSeconds(), end],
+                        durationSeconds = end,
+                    )
+                }
                 .model
-        val morphed = client.morph(a.dropUnlabeled(), aligned.dropUnlabeled(), LorisEnvelope.ramp(0.4, 1.6))
+        val morphed =
+            client.morphAsync(a.dropUnlabeled(), aligned.dropUnlabeled(), LorisEnvelope.ramp(0.4, 1.6)).await()
         display("morph", morphed.visualizationHtml(LorisViewOptions(maximumHz = 5000.0, syncGroup = "my-morph")))
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Throwable) {
+        markdown("error", "Loris failed: ${(failure.message ?: failure.toString()).md}")
     }
-    .exceptionally { error ->
-        display("error", error.cause?.message ?: error.message ?: error.toString())
-        null
-    }
+}
 ```
 
 The three plots below are that pipeline on the film. The long straight segments are where the distiller joined
