@@ -72,7 +72,7 @@ class ShaderLearningView(
     private val display = Module(
         parameters(renderer) {
             this.name = "$name-display"
-            output.apply()
+            +output
             vertex = VERTEX
             fragment = FRAGMENT
             depthTest = false

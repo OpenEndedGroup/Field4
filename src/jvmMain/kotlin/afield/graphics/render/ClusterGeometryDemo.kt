@@ -74,7 +74,7 @@ class ClusterGeometryDemo(
         Module(
             parameters(renderer) {
                 this.name = "$name-resolve"
-                output.apply()
+                +output
                 depthTest = false
                 depthWrite = false
                 blend = false
