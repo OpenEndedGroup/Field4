@@ -1,4 +1,4 @@
-@file:afield.runtime.completion.CompletionCategory("Animation")
+@file:afield.runtime.completion.CompletionCategory("Simulation")
 
 package afield.animation.motion
 
