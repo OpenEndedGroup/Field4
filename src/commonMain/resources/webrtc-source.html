@@ -40,17 +40,18 @@
   };
 
   let viewer = null;
+  let pending = null;
   const onStream = (stream) => {
     video.srcObject = stream;
     video.play().catch(() => {});
   };
   watch({ network: params.get("network"), target: params.get("target"), onStream, onStatus: status })
-    .then((v) => { viewer = v; })
+    .then((v) => { viewer = v; if (pending) v.retarget(pending); })
     .catch((error) => status("error: " + error.message));
 
   // Field drives the page through these (WebRTCSource.watch, .state).
   window.fieldWebrtc = {
-    watch(name) { if (viewer) viewer.retarget(name); return true; },
+    watch(name) { if (viewer) viewer.retarget(name); else pending = name; return true; },
     async stats() { return viewer ? viewer.stats() : null; },
     state() {
       return {

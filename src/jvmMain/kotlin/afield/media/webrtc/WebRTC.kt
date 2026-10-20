@@ -228,7 +228,12 @@ class WebRTCSource internal constructor(
             val name = event.payload["name"]?.jsonPrimitive?.contentOrNull
             val value = event.payload["value"]
             when (name) {
-                "webrtc-status" -> (value as? JsonObject)?.get("status")?.jsonPrimitive?.contentOrNull?.let { status = it }
+                "webrtc-status" -> (value as? JsonObject)?.let { report ->
+                    val pageTarget = report["target"]?.jsonPrimitive?.contentOrNull
+                    // A watch sent before the page had loaded is lost; the page's first report says so.
+                    if (pageTarget != null && normalizePublishName(pageTarget) != target) watch(target)
+                    else report["status"]?.jsonPrimitive?.contentOrNull?.let { status = it }
+                }
                 "webrtc-latency" -> (value as? JsonArray)?.forEach { sample ->
                     val o = sample.jsonObject
                     latency.add(
@@ -394,25 +399,32 @@ class WebRTCPublishers internal constructor(val network: WebRTCNetwork) {
         """.trimIndent()
     }
 
+    private val replies = CopyOnWriteArrayList<(Message) -> Unit>()
+
+    private fun send(reply: (Message) -> Unit, names: List<String>) {
+        reply(Message(id).payload(buildJsonObject {
+            put("names", JsonArray(names.map(::JsonPrimitive)))
+            lobby.error?.let { put("error", it) }
+            highlights[id]?.invoke()?.let { put("highlight", it) }
+        }))
+    }
+
     internal fun push(reply: (Message) -> Unit) {
-        val remove = lobby.onChange { names ->
-            reply(Message(id).payload(buildJsonObject {
-                put("names", JsonArray(names.map(::JsonPrimitive)))
-                lobby.error?.let { put("error", it) }
-                highlights[id]?.invoke()?.let { put("highlight", it) }
-            }))
-        }
-        removers += remove
+        replies += reply
+        removers += lobby.onChange { names -> send(reply, names) }
     }
 
     internal fun picked(name: String) {
         picks.forEach { runCatching { it(name) } }
+        // The pick usually changes what is highlighted.
+        replies.forEach { runCatching { send(it, lobby.names) } }
     }
 
     /** Stops listening; the panel stops updating. */
     fun close() {
         removers.forEach { it() }
         removers.clear()
+        replies.clear()
         lists.remove(id)
         highlights.remove(id)
     }
