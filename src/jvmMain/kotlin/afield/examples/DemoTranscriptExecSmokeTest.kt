@@ -314,6 +314,9 @@ object DemoTranscriptExecSmokeTest {
         // lp_curves.md's 3-D section companion: the same methods over LpPolytope, drawn through `three { }`
         // (a Three.js payload sent to display), so no Window and no Renderer. Both boxes execute.
         "lp_curves_3d",
+        // The madp geometry toolbox: GeometryBuilder recipes drawn through `three { }`, so no Window and
+        // no Renderer. breathing_sheet ends in animateGeometry, a Frames, so executing it draws t = 0.
+        "madp_geometry",
         // Six independent pure-CPU dynamic-graph boxes. Four print and draw through showPlaneGrid /
         // showSignals; the other two build a Frames through animateEvolution, so executing them is a
         // compile check and the animation only runs when the box is launched. No Window, no Renderer.
