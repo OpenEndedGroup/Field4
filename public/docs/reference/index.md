@@ -493,6 +493,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 - [dmx](lighting.md#artnet-kt)
 - midi
     - [rtp](networking.md#rtpmidibox-kt)
+- [mocap](io.md#bvh-kt)
 - [mqtt](networking.md#mqttbox-kt)
 - *osc* — [Audio](audio.md#osc-kt) · [Data](data.md#tuio-kt) · [Networking](networking.md#mdns-kt)
     - [query](networking.md#mdns-kt)
@@ -548,7 +549,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
     - *ceres* — [Internal](internal.md#ffmceresbackend-kt) · [Solvers](solvers.md#architecturalgeometry-kt)
 - [oracle](math.md#improviser-kt)
 - *statistics* — [Data](data.md#clustering-kt) · [Graphics](graphics.md#quantilewarp-kt) · [Math](math.md#correlations-kt)
-- [temporal](math.md#temporalsession-kt)
+- [temporal](math.md#forecastjudge-kt)
 - [units](math.md#units-kt)
 
 </div>
@@ -642,7 +643,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**33169 public symbols across 1498 source files**, 16792 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**33228 public symbols across 1500 source files**, 16822 of them (50%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -653,7 +654,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Lighting](lighting.md) | 8 | 203 | 156 (76%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 134 | 50 (37%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
-| [Math](math.md) | 46 | 2119 | 1507 (71%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
+| [Math](math.md) | 47 | 2156 | 1522 (70%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 23 | 976 | 417 (42%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 307 | 7534 | 3841 (50%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 42 | 742 | 373 (50%) | Turning a scene into pixels on a Vulkan device. |
@@ -673,6 +674,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Workspace](workspace.md) | 216 | 3000 | 1077 (35%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 93 | 2203 | 687 (31%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
+| [IO](io.md) | 1 | 22 | 15 (68%) |  |
 
 ## Every file
 
@@ -824,6 +826,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [bspot.kt](graphics.md#bspot-kt) | Graphics | 10 | 10 | One-to-one matching between two equally sized 2D point clouds, at a million points a side, using BSP-OT: every source point gets exactly one target and every target is used exactly once, with the total squared travel distance kept small. | [A Drawn Morph, Heard](../chain_drawn_morph.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Buf.kt](synthesis.md#buf-kt) | Synthesis | 22 | 22 | Bulk float-array arithmetic for the synthesis graph, written against the Java Vector API. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [ButtonControlHandler.kt](workspace.md#buttoncontrolhandler-kt) | Workspace · internal | 0 | 0 | The server side of `button(...)`: the `button-update` websocket command, which carries one press or release from the browser and runs the box's callback with it. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>mocap/<wbr></small> [Bvh.kt](io.md#bvh-kt) | IO | 22 | 15 | Motion capture in BVH format: a joint hierarchy and one line of channel values per frame. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [cached.kt](workspace.md#cached-kt) | Workspace | 3 | 3 | `cached`, which hands a box back the value it made on its last run for the same keys, and closes the old value when the keys change. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Callbacks.kt](audio.md#callbacks-kt) | Audio | 17 | 15 | Callback interfaces for Steam Audio: `PathingVisualizationCallback` and `ProgressCallback` for watching pathing and baking, and `CustomSceneCallbacks` with `HitResult` for supplying your own ray tracer in place of Steam Audio's scene. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [callbacks.kt](visualization.md#callbacks-kt) | Visualization | 8 | 0 | Per-box callback tables that run when a box's frame, viewport, name or children change. |  |
@@ -1141,6 +1144,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>functions/<wbr></small> [FnShapedFormulas.kt](function.md#fnshapedformulas-kt) | Function | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [FnSignal.kt](synthesis.md#fnsignal-kt) | Synthesis | 3 | 2 | Plays a `Functions.Fn` of time as audio, evaluating it at every sample rather than once per block. | [A function, played and read back](../chain_fn_sound_roundtrip.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [FnSoundDocs.kt](synthesis.md#fnsounddocs-kt) | Synthesis | 29 | 17 | One `Functions.Fn` taken through sound and back, and the distance between what went in and what came out — the harness behind `public/docs/chain_fn_sound_roundtrip.md`. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>temporal/<wbr></small> [ForecastJudge.kt](math.md#forecastjudge-kt) | Math | 14 | 4 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [formatter.kt](workspace.md#formatter-kt) | Workspace · internal | 8 | 3 | Reformats a box's Kotlin or GLSL code. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [ForthDocsSupport.kt](workspace.md#forthdocssupport-kt) | Workspace · internal | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>forth/<wbr></small> [ForthInterface.kt](languages.md#forthinterface-kt) | Languages | 14 | 14 | Makes ForthField a language a box can be written in. |  |
@@ -1272,7 +1276,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [ImGuiVrPanelSmokeTest.kt](examples.md#imguivrpanelsmoketest-kt) | Examples · internal | 1 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [importHelp.kt](workspace.md#importhelp-kt) | Workspace · internal | 14 | 8 | Finds which classes a bare name could mean, so Field can write the `import` line for it. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [importing.kt](workspace.md#importing-kt) | Workspace · internal | 4 | 4 | Server handlers that import boxes from a dropped `metadata.edn` or Jupyter notebook, and export Python cells back to `.ipynb`. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>oracle/<wbr></small> [Improviser.kt](math.md#improviser-kt) | Math | 38 | 22 |  | [Continuing a Gesture: Sequence Memory and Forecasting](../temporal_memory.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>oracle/<wbr></small> [Improviser.kt](math.md#improviser-kt) | Math | 59 | 31 |  | [Continuing a Gesture: Sequence Memory and Forecasting](../temporal_memory.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>fieldml/<wbr>type/<wbr></small> [Inferencer.kt](languages.md#inferencer-kt) | Languages | 5 | 5 | FieldML's type checker: a Hindley-Milner inference pass over the surface tree, producing the typed tree the lowerer consumes. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [InFieldAgentEvals.kt](machine-learning.md#infieldagentevals-kt) | Machine learning | 90 | 29 | A small eval suite for Field's own agent: seventeen tasks (five graded by pixels, three made of many similar calls that a tool program does in one, two that are several turns of one conversation), each a goal, the setup it starts from, checks that decide it, and a scripted solution. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [inspecting.kt](workspace.md#inspecting-kt) | Workspace · internal | 29 | 0 | A two-way debug inspector for a box: `Box.inspect` shows a set of objects in an iframe at `/inspect` and lets the page edit their fields. |  |
@@ -2102,7 +2106,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [TrackedPhaseSignal.kt](synthesis.md#trackedphasesignal-kt) | Synthesis | 3 | 2 | Shares one phase-tracking analysis of a signal between several tracked-phase banks in a graph. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>engine/<wbr></small> [TrackingResonatorAnalysis.kt](audio.md#trackingresonatoranalysis-kt) | Audio | 55 | 1 | Stores the output of a `TrackingResonatorBank` run as a `TrackingResonatorAnalysis`, with per-frame frequencies and powers, and reads and writes it in a small binary format. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>audio/<wbr></small> [TrackingResonatorResynthesisExample.kt](examples.md#trackingresonatorresynthesisexample-kt) | Examples | 1 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>oracle/<wbr></small> [Trajectory.kt](math.md#trajectory-kt) | Math | 29 | 22 | Sequence memory for low-dimensional continuous time series: remember one or a few demonstrations, cue the memory with a recent trajectory, and let it continue in a related style while a performer takes over channels. | [Continuing a Gesture: Sequence Memory and Forecasting](../temporal_memory.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>oracle/<wbr></small> [Trajectory.kt](math.md#trajectory-kt) | Math | 30 | 23 | Sequence memory for low-dimensional continuous time series: remember one or a few demonstrations, cue the memory with a recent trajectory, and let it continue in a related style while a performer takes over channels. | [Continuing a Gesture: Sequence Memory and Forecasting](../temporal_memory.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>automation/<wbr></small> [transcript.kt](workspace.md#transcript-kt) | Workspace · internal | 18 | 0 | Keeps a per-document log of what ran in each box, for activity summaries and the transcript view. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Transforms.kt](polytopes.md#transforms-kt) | Polytopes | 82 | 63 | The Conway operator algebra: thirteen named operations that rewrite a polyhedron's combinatorics, each paired with a policy for giving the result coordinates. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [transport.kt](graphics.md#transport-kt) | Graphics | 29 | 28 | Optimal transport between point sets: which source goes to which target, or how much of each source goes to each target, at the least total cost. | [Optimal Transport](../optimal_transport.md) |
@@ -2126,7 +2130,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [util_lifecycle.kt](workspace.md#util-lifecycle-kt) | Workspace | 8 | 7 | `LazyVar`, a lazy value that can also be assigned, and its `lazyVar` factory. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>settings/<wbr></small> [util_settings.kt](workspace.md#util-settings-kt) | Workspace | 20 | 0 | Property delegates that keep a single `String`, `Int` or `Double` value across Field restarts, one small file per property name under `.field/` in the working directory. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [ValueVisualizer.kt](visualization.md#valuevisualizer-kt) | Visualization | 10 | 8 | The default value display for Field output areas: a Kotlin value in, a compact HTML fragment out. | [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md), [DataFrames in a Box](../dataframe.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>oracle/<wbr></small> [VariableMarkovOracle.kt](math.md#variablemarkovoracle-kt) | Math | 18 | 17 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>oracle/<wbr></small> [VariableMarkovOracle.kt](math.md#variablemarkovoracle-kt) | Math | 19 | 18 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>buffers/<wbr></small> [VBuffer.kt](graphics.md#vbuffer-kt) | Graphics | 21 | 1 | VertexBuffer is a classic vertex buffer with a host-side staging copy that is transferred to device-local memory before drawing. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>topology/<wbr>vectorfield/<wbr></small> [VectorFieldTopology.kt](graphics.md#vectorfieldtopology-kt) | Graphics | 24 | 11 |  | [Vector field topology](../vector_field_topology.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [VideoDecoder.kt](graphics.md#videodecoder-kt) | Graphics | 26 | 6 | Decodes video frames with FFmpeg into P010 or RGBA8 buffers (`VideoFrame`) for `VideoTexture`. |  |
