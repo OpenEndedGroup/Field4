@@ -5,7 +5,8 @@ description: >
   in a studio-lit `three { }` view (shadows, a dark ground, ACES tone mapping). Run a box to rebuild
   its model; orbit the view; edit the recipe and run it again.
 
-    1. ripple_terrain — the starter: a sampled height field with per-vertex colour.
+    1. ripple_terrain — the starter: a sampled height field with per-vertex colour. It also calls
+       geometryAgent(), which gives the document's AI4 chat the language and a geometry.look tool.
     2. crystal_bloom — single triangles grown on seeded polar rings.
     3. lathe_vessel — a revolved profile, with a second material for a metallic rim.
     4. knot_tube — a tube swept along a parametric knot.
@@ -34,6 +35,11 @@ operations:
           //   surface(...)         a grid of triangles
           //   revolve, tube, box   more triangles
           //   push() / pop() with translate, rotateX/Y/Z, scale
+          //
+          // geometryAgent() teaches this document's AI4 chat the language and lets it look at every view here:
+          // open the AI panel and ask for "a coral reef of tubes", or "make the terrain stormier".
+          geometryAgent()
+
           geometry {
               view(background = "#05080a", ground = true, grid = true)
 
