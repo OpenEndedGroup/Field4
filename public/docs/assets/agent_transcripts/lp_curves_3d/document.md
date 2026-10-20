@@ -39,7 +39,7 @@ three(name = "fan", width = 700, height = 470) {
 <!-- field-box id="lp3_routes" index="1" -->
 
 ```edn [field-box id="lp3_routes" role="properties"]
-{"id" "lp3_routes" "index" 1 "name" "every route to one vertex, in 3-D" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "every route to one vertex, in 3-D" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp3_routes_code_.kt" "lines" 27 "characters" 1282 "sha256" "01d583e73fa172374e6ecf882259e243c2528daf59a999ccbc402862d57bb48e"}]}
+{"id" "lp3_routes" "index" 1 "name" "every route to one vertex, in 3-D" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "every route to one vertex, in 3-D" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp3_routes_code_.kt" "lines" 29 "characters" 1289 "sha256" "4f7c26ee93f921d2311d185e838220b5ac2fa550755579761292b71c544f1641"}]}
 ```
 
 ```kotlin [field-property box="lp3_routes" name="code" path="lp3_routes_code_.kt"]
@@ -67,8 +67,10 @@ three(name = "routes", width = 760, height = 470) {
     )
     camera(yaw = 20.0, pitch = 20.0)
     title("${polytope.vertices.size} hull vertices, ${polytope.constraintCount} faces")
-    caption("orange: central path · green: primal-dual, ${pd.samples.size - 1} steps · blue: simplex, ${walk.samples.size - 1} pivots · pink: PDHG")
+    caption(
+        "orange: central path · green: primal-dual, ${pd.samples.size - 1} steps · blue: simplex, ${walk.samples.size - 1} pivots · pink: PDHG",
+    )
 }
-"every route ends at %s".format(polytope.optimalVertex(c))
+"every route ends at ${polytope.optimalVertex(c)}"
 ```
 

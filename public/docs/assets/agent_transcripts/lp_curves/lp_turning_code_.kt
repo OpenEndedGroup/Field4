@@ -1,5 +1,3 @@
-import kotlin.math.*
-
 // The objective turns once every `period` seconds while the hexagon breathes. Every route is
 // recomputed for each picture; they are cheap.
 val period = 12.0
@@ -9,11 +7,13 @@ val window = Rect(-3.6, -3.4, 7.2, 6.8)
 
 // Each vertex's radius wanders between 1.9 and 2.9, which keeps the hexagon convex.
 val shape = { t: Double ->
-    LpPolygon((0 until 6).map { k ->
-        val a = 2.0 * PI * k / 6 + 0.25
-        val r = 2.4 + 0.5 * sin(t * 0.9 + k * 1.7)
-        vec(r * cos(a), r * sin(a))
-    })
+    LpPolygon(
+        (0 until 6).map { k ->
+            val a = 2.0 * PI * k / 6 + 0.25
+            val r = 2.4 + 0.5 * sin(t * 0.9 + k * 1.7)
+            vec(r * cos(a), r * sin(a))
+        },
+    )
 }
 
 // Each frame's central path starts Newton from the previous frame's: same path, fewer steps.

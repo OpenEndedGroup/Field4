@@ -11,11 +11,14 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="ground_crawler" index="0" -->
 
 ```edn [field-box id="ground_crawler" role="properties"]
-{"id" "ground_crawler" "index" 0 "name" "the same evolution, on the ground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the same evolution, on the ground" "_tombstone" false "frame" #afield/rect [1500.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ground_crawler_code_.kt" "lines" 88 "characters" 3214 "sha256" "e01846d736bf8b469e41aef3461d6c4847d544755ed3852b2836031d3af5597b"}]}
+{"id" "ground_crawler" "index" 0 "name" "the same evolution, on the ground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the same evolution, on the ground" "_tombstone" false "frame" #afield/rect [1500.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ground_crawler_code_.kt" "lines" 93 "characters" 3305 "sha256" "29aafb8e7e930f8979ebcfb5f545ef16381963796e8c478d19bf7222758d0a5f"}]}
 ```
 
 ```kotlin [field-property box="ground_crawler" name="code" path="ground_crawler_code_.kt"]
 import afield.simulation.creatures.*
+import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /*
 The same genetic algorithm with a different world: side-on, under gravity, on a floor at
@@ -32,7 +35,8 @@ class Floor(val stiffness: Float = 900f, val friction: Float = 40f) : ContactMod
     override fun foot(index: Int) = object : ContactModel.Foot {
         var planted: Float2? = null
         override var grip = 0f
-        override val anchor get() = planted
+        override val anchor
+            get() = planted
 
         override fun force(step: FootStep): Float2 {
             val g = step.genome
@@ -75,26 +79,27 @@ val config = EvolutionConfig(
     ),
 )
 
-val controller = EvolutionController()
-var champion: CreatureEvaluation? = null
-var status = "generation 0"
-kotlin.concurrent.thread(isDaemon = true, name = "ground_crawler evolution") {
-    CreatureEvolution.evolve(config, controller) { update ->
-        champion = update.champion
-        status = "generation ${update.generation.generation}: best ${"%.2f".format(update.champion.fitness)}"
+// Publish one complete update, so the caption and drawing use the same generation.
+val latest = AtomicReference<EvolutionUpdate?>(null)
+go {
+    withContext(Dispatchers.Default) {
+        CreatureEvolution.evolveSuspend(config) { latest.set(it) }
     }
 }
 
 var i = 0
 loop {
-    val crawler = champion ?: return@loop
+    val update = latest.get() ?: return@loop
+    val crawler = update.champion
+    val status = "generation ${update.generation.generation}: best ${crawler.fitness.f2}"
     val c = crawler.frames[i % crawler.frames.size].center
     val floor = fline {
         moveTo(c.x - 5f, 0f)
         lineTo(c.x + 5f, 0f)
-    }.apply { color = vec(0.5, 0.45, 0.4, 1.0) }
+    }
+        .apply { color = vec(0.5, 0.45, 0.4, 1.0) }
     showPlane(
-        listOf(floor) + crawler.frameLines(i, alignNetMotionToPositiveX = false),
+        [floor] + crawler.frameLines(i, alignNetMotionToPositiveX = false),
         title = "crawler — $status",
         window = Rect(c.x - 4.0, -1.0, 8.0, 6.0),
         width = 500,
@@ -102,7 +107,7 @@ loop {
         yUp = true,
     )
     i++
-}.end { controller.requestStop() }
+}
 ```
 
 ## 2. evolving a water bug
@@ -110,14 +115,17 @@ loop {
 <!-- field-box id="water_bug" index="1" -->
 
 ```edn [field-box id="water_bug" role="properties"]
-{"id" "water_bug" "index" 1 "name" "evolving a water bug" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "evolving a water bug" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "water_bug_code_.kt" "lines" 92 "characters" 3616 "sha256" "2cc72de266f9c44c2ccf63814f68ba50162bbc53ddd45eae1c27fc97d5f4f7af"}]}
+{"id" "water_bug" "index" 1 "name" "evolving a water bug" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "evolving a water bug" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "water_bug_code_.kt" "lines" 95 "characters" 3647 "sha256" "a0922b2cab974892b5e975d4b173e76614b425bd6e9d4bc7f91123b08d303f56"}]}
 ```
 
 ```kotlin [field-property box="water_bug" name="code" path="water_bug_code_.kt"]
 import afield.simulation.creatures.*
+import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /*
-Launch it (Alt-R). Seen from above: a creature of points and springs on a water surface.
+Launch it (Alt+Up). Seen from above: a creature of points and springs on a water surface.
 Each point is a foot with a cyclic program saying when it touches down. A foot that is down
 grips the surface film where it landed; a foot that is up drags through the water. Joints
 bend the body to a cyclic target curve. The genetic algorithm evolves the shape, the foot
@@ -132,7 +140,8 @@ class WaterSurface : ContactModel {
     override fun foot(index: Int) = object : ContactModel.Foot {
         var planted: Float2? = null
         override var grip = 0f
-        override val anchor get() = planted
+        override val anchor
+            get() = planted
 
         override fun force(step: FootStep): Float2 {
             val g = step.genome
@@ -161,11 +170,11 @@ val config = EvolutionConfig(
     maxPoints = 8,
     targetEdgeCount = 8,
     targetJointActivations = 10,
-    alwaysUpFootFraction = 0.5f,   // half the points are body, not feet
-    cyclingFootFraction = 0.5f,    // the rest must actually step
+    alwaysUpFootFraction = 0.5f, // half the points are body, not feet
+    cyclingFootFraction = 0.5f, // the rest must actually step
     simulation = CreatureSimulationConfig(
         measuredCycles = 10,
-        gravity = 0f,              // seen from above
+        gravity = 0f, // seen from above
         contact = WaterSurface(),
         fitness = ::swimScore,
         jointTargetAngleScale = 1.55f,
@@ -179,21 +188,20 @@ val config = EvolutionConfig(
     ),
 )
 
-// Evolution takes seconds per generation, so it runs on its own thread and hands its
-// champion over; the loop below only draws.
-val controller = EvolutionController()
-var champion: CreatureEvaluation? = null
-var status = "generation 0"
-kotlin.concurrent.thread(isDaemon = true, name = "water_bug evolution") {
-    CreatureEvolution.evolve(config, controller) { update ->
-        champion = update.champion
-        status = "generation ${update.generation.generation}: best ${"%.2f".format(update.champion.fitness)}"
+// Evolution runs in a cancellable worker; the loop below only draws its latest snapshot.
+// Publish one complete update, so the caption and drawing use the same generation.
+val latest = AtomicReference<EvolutionUpdate?>(null)
+go {
+    withContext(Dispatchers.Default) {
+        CreatureEvolution.evolveSuspend(config) { latest.set(it) }
     }
 }
 
 var i = 0
 loop {
-    val bug = champion ?: return@loop
+    val update = latest.get() ?: return@loop
+    val bug = update.champion
+    val status = "generation ${update.generation.generation}: best ${bug.fitness.f2}"
     val c = bug.frames[i % bug.frames.size].center
     showPlane(
         bug.frameLines(i) + bug.notationLines(i, origin = Float2(c.x - 3f, c.y + 6f)),
@@ -205,6 +213,6 @@ loop {
         yUp = true,
     )
     i++
-}.end { controller.requestStop() }
+}
 ```
 

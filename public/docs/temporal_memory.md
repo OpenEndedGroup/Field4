@@ -15,8 +15,8 @@ Both sit behind the same player, so a box that drives one can drive the other. E
 two packages:
 
 ```diffstatic {data-lang=kotlin}
-import afield.math.oracle.*     // Trajectory, VariableMarkovOracle, Improviser
-import afield.math.temporal.*   // RecedingHorizon, OracleSession, TimestralSession
+import afield.math.oracle.* // Trajectory, VariableMarkovOracle, Improviser
+import afield.math.temporal.* // RecedingHorizon, OracleSession, TimestralSession
 ```
 
 ## Recordings
@@ -27,7 +27,7 @@ from named lists, and `Trajectory.join` puts several episodes end to end without
 the last sample of one as leading into the first sample of the next.
 
 Choose the sample rate for the gesture, not for the screen: 10–30 Hz resolves most hand
-movements, and keeps a minute of history to a few hundred samples. `resample(rate)` converts a
+movements, giving 600–1,800 samples per minute at those rates. `resample(rate)` converts a
 recording made at frame rate.
 
 ## Remembering and recombining
@@ -48,23 +48,45 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/temporal_memory/improvise.png" alt="two plots over two minutes: above, x and y keep oscillating with their recorded shapes; below, the memory position climbs in straight runs and jumps between places in the recording" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="tm-improvise"}
 :::static
 import afield.math.oracle.*
-import kotlin.math.*
 
 val rate = 20.0
 val n = (45 * rate).toInt()
-val demo = Trajectory.of(rate,
-    "x" to n { val t = it / rate; sin(2 * PI * 0.5 * t) * (1 + 0.3 * sin(2 * PI * 0.05 * t)) },
-    "y" to n { val t = it / rate; 0.7 * sin(2 * PI * 0.75 * t + 0.6) })
+val demo = Trajectory.of(
+    rate,
+    "x" to
+        n {
+            val t = it / rate
+            sin(2 * PI * 0.5 * t) * (1 + 0.3 * sin(2 * PI * 0.05 * t))
+        },
+    "y" to
+        n {
+            val t = it / rate
+            0.7 * sin(2 * PI * 0.75 * t + 0.6)
+        },
+)
 
 val memory = VariableMarkovOracle.build(demo)
 val played = Improviser(memory, seed = 1).take(120.0)
 
 print("$memory\n$played: ${played.segments.size} segments")
 val seconds = List(played.output.length) { it / rate }
-showSignals(*played.output.series(), x = seconds, title = "two minutes from 45 seconds of memory",
-    channel = "main", width = 1000, height = 260, floatingLegend = true)
-showSignals("memory position (s)" to played.sourceSeconds(), x = seconds, xTitle = "seconds",
-    channel = "memory", width = 1000, height = 260)
+showSignals(
+    *played.output.series(),
+    x = seconds,
+    title = "two minutes from 45 seconds of memory",
+    channel = "main",
+    width = 1000,
+    height = 260,
+    floatingLegend = true,
+)
+showSignals(
+    "memory position (s)" to played.sourceSeconds(),
+    x = seconds,
+    xTitle = "seconds",
+    channel = "memory",
+    width = 1000,
+    height = 260,
+)
 ```
 
 ![x and y keep oscillating, and the memory position climbs in straight runs with jumps](assets/temporal_memory/improvise.png)
@@ -162,7 +184,6 @@ expect:
 :::static
 import afield.io.mocap.*
 import afield.math.oracle.*
-import kotlin.math.*
 
 :::fold load six takes and build the memory
 // six takes of modern dance (CMU subject 05): every joint, in the dancer's own frame, at 30 Hz,
@@ -171,23 +192,36 @@ val dir = "public/docs/assets/temporal_memory/cmu_05"
 val takes = ["05_02", "05_07", "05_09", "05_12", "05_14", "05_18"].map { Bvh.read("$dir/$it.bvh.gz") }
 val dance = Trajectory.join(takes.map { it.toTrajectory(rate = 30.0).trimStill() })
 val memory = VariableMarkovOracle.build(dance)
-val colours = [vec(0.48, 0.85, 1.0, 1.0), vec(1.0, 0.62, 0.29, 1.0), vec(0.56, 1.0, 0.6, 1.0),
-               vec(1.0, 0.88, 0.4, 1.0), vec(0.77, 0.55, 1.0, 1.0), vec(1.0, 0.48, 0.62, 1.0)]
+val colours = [
+    vec(0.48, 0.85, 1.0, 1.0),
+    vec(1.0, 0.62, 0.29, 1.0),
+    vec(0.56, 1.0, 0.6, 1.0),
+    vec(1.0, 0.88, 0.4, 1.0),
+    vec(0.77, 0.55, 1.0, 1.0),
+    vec(1.0, 0.48, 0.62, 1.0),
+]
 :::endfold
 
 // one minute of new dance from 61 seconds of memory
 val played = Improviser(memory, seed = 2, reuseWeight = 3.0, reuseMemory = 60.0).take(60.0)
 
 // a pose every half second for the first sixteen seconds, two rows, coloured by take
-val poses = (0 until 32).flatMap { k ->
-    val t = k * 15
-    val take = dance.episodeOf(max(0, played.source[t]))
-    val at = doubleArrayOf((k % 16) * 14.0, if (k < 16) 0.0 else -42.0, 0.0)
-    takes[0].skeleton(played.output.frame(t), dance.channels, at).onEach { it.color = colours[take]; it.thickness = 2.0 }
-}
-print("${played.segments.size - 1} jumps; every take used: coverage ${"%.2f".format(played.coverage(dance.length))}")
+val poses =
+    (0 until 32).flatMap { k ->
+        val t = k * 15
+        val take = dance.episodeOf(max(0, played.source[t]))
+        val at = doubleArrayOf((k % 16) * 14.0, if (k < 16) 0.0 else -42.0, 0.0)
+        takes[0].skeleton(played.output.frame(t), dance.channels, at).onEach {
+            it.color = colours[take]
+            it.thickness = 2.0
+        }
+    }
+print("${played.segments.size - 1} jumps; every take used: coverage ${played.coverage(dance.length).f2}")
 // an invisible point above the rows leaves room for the viewer's toolbar
-val headroom = fline { moveTo(0.0, 70.0, 0.0); color = vec(0, 0, 0, 0) }
+val headroom = fline {
+    moveTo(0.0, 70.0, 0.0)
+    color = vec(0, 0, 0, 0)
+}
 three(name = "dance-strip", width = 1000, height = 420) {
     lines(poses + headroom)
     helpers(false)
@@ -209,7 +243,6 @@ both hands and the head over the same minute, on bands numbered by take:
 :::static
 import afield.io.mocap.*
 import afield.math.oracle.*
-import kotlin.math.*
 
 :::fold load six takes and build the memory
 // six takes of modern dance (CMU subject 05): every joint, in the dancer's own frame, at 30 Hz,
@@ -218,8 +251,14 @@ val dir = "public/docs/assets/temporal_memory/cmu_05"
 val takes = ["05_02", "05_07", "05_09", "05_12", "05_14", "05_18"].map { Bvh.read("$dir/$it.bvh.gz") }
 val dance = Trajectory.join(takes.map { it.toTrajectory(rate = 30.0).trimStill() })
 val memory = VariableMarkovOracle.build(dance)
-val colours = [vec(0.48, 0.85, 1.0, 1.0), vec(1.0, 0.62, 0.29, 1.0), vec(0.56, 1.0, 0.6, 1.0),
-               vec(1.0, 0.88, 0.4, 1.0), vec(0.77, 0.55, 1.0, 1.0), vec(1.0, 0.48, 0.62, 1.0)]
+val colours = [
+    vec(0.48, 0.85, 1.0, 1.0),
+    vec(1.0, 0.62, 0.29, 1.0),
+    vec(0.56, 1.0, 0.6, 1.0),
+    vec(1.0, 0.88, 0.4, 1.0),
+    vec(0.77, 0.55, 1.0, 1.0),
+    vec(1.0, 0.48, 0.62, 1.0),
+]
 :::endfold
 
 val played = Improviser(memory, seed = 2, reuseWeight = 3.0, reuseMemory = 60.0).take(60.0)
@@ -228,13 +267,24 @@ fun height(joint: String) = played.output.channel("$joint.y").toList()
 
 // shade each stretch of output by the take it was played from
 val hex = ["#7ad9ff", "#ff9e4a", "#8fff9a", "#ffe066", "#c58cff", "#ff7a9e"]
-val bands = (played.segments + Segment(played.output.length, -1, -1, Reason.Continue, 0.0, 0, 0.0)).zipWithNext().mapNotNull { (a, b) ->
-    if (a.episode < 0) null else SignalRegion("${a.episode + 1}", a.outputStart / 30.0, b.outputStart / 30.0, hex[a.episode])
+val bands = (played.segments + Segment(played.output.length, -1, -1, Reason.Continue, 0.0, 0, 0.0)).zipWithNext().mapNotNull {
+    (a, b) ->
+    if (a.episode < 0) null
+    else SignalRegion("${a.episode + 1}", a.outputStart / 30.0, b.outputStart / 30.0, hex[a.episode])
 }
-showSignals("right hand" to height("RightHand"), "left hand" to height("LeftHand"), "head" to height("Head"),
-    x = seconds, xTitle = "seconds", yTitle = "height", regions = bands,
+showSignals(
+    "right hand" to height("RightHand"),
+    "left hand" to height("LeftHand"),
+    "head" to height("Head"),
+    x = seconds,
+    xTitle = "seconds",
+    yTitle = "height",
+    regions = bands,
     title = "heights of hands and head; bands numbered by take",
-    channel = "main", width = 1000, height = 380)
+    channel = "main",
+    width = 1000,
+    height = 380,
+)
 ```
 
 ![a minute of hand and head heights over coloured bands numbered by take](assets/temporal_memory/dance_signal.png)
@@ -251,7 +301,6 @@ below, and goes on for as long as you let it.
 :::static
 import afield.io.mocap.*
 import afield.math.oracle.*
-import kotlin.math.*
 
 :::fold load six takes and build the memory
 // six takes of modern dance (CMU subject 05): every joint, in the dancer's own frame, at 30 Hz,
@@ -260,14 +309,27 @@ val dir = "public/docs/assets/temporal_memory/cmu_05"
 val takes = ["05_02", "05_07", "05_09", "05_12", "05_14", "05_18"].map { Bvh.read("$dir/$it.bvh.gz") }
 val dance = Trajectory.join(takes.map { it.toTrajectory(rate = 30.0).trimStill() })
 val memory = VariableMarkovOracle.build(dance)
-val colours = [vec(0.48, 0.85, 1.0, 1.0), vec(1.0, 0.62, 0.29, 1.0), vec(0.56, 1.0, 0.6, 1.0),
-               vec(1.0, 0.88, 0.4, 1.0), vec(0.77, 0.55, 1.0, 1.0), vec(1.0, 0.48, 0.62, 1.0)]
+val colours = [
+    vec(0.48, 0.85, 1.0, 1.0),
+    vec(1.0, 0.62, 0.29, 1.0),
+    vec(0.56, 1.0, 0.6, 1.0),
+    vec(1.0, 0.88, 0.4, 1.0),
+    vec(0.77, 0.55, 1.0, 1.0),
+    vec(1.0, 0.48, 0.62, 1.0),
+]
 :::endfold
 
 // the continuation as a figure, stepped at 30 Hz; the floor square and an invisible point
 // above head height keep the framing still, with room for raised arms
 val player = Improviser(memory, seed = 2, reuseWeight = 3.0, reuseMemory = 60.0)
-val floor = fline { moveTo(-12.0, 0.0, -12.0); lineTo(12.0, 0.0, -12.0); lineTo(12.0, 0.0, 12.0); lineTo(-12.0, 0.0, 12.0); lineTo(-12.0, 0.0, -12.0); color = vec(1, 1, 1, 0.25) }
+val floor = fline {
+    moveTo(-12.0, 0.0, -12.0)
+    lineTo(12.0, 0.0, -12.0)
+    lineTo(12.0, 0.0, 12.0)
+    lineTo(-12.0, 0.0, 12.0)
+    lineTo(-12.0, 0.0, -12.0)
+    color = vec(1, 1, 1, 0.25)
+}
 frames {
     val period = (1e9 / 30).toLong()
     var next = System.nanoTime()
@@ -279,8 +341,22 @@ frames {
         val c = colours[take]
         three(name = "dancer", width = 640, height = 480) {
             // solid tubes rather than lines, so the figure stays visible at any size
-            mesh(takes[0].skeletonMesh(pose, dance.channels, radius = 0.6, color = doubleArrayOf(c.x.toDouble(), c.y.toDouble(), c.z.toDouble())), wireframe = false)
-            lines(floor, fline { moveTo(0.0, 48.0, 0.0); color = vec(0, 0, 0, 0) })
+            mesh(
+                takes[0].skeletonMesh(
+                    pose,
+                    dance.channels,
+                    radius = 0.6,
+                    color = doubleArrayOf(c.x.toDouble(), c.y.toDouble(), c.z.toDouble()),
+                ),
+                wireframe = false,
+            )
+            lines(
+                floor,
+                fline {
+                    moveTo(0.0, 48.0, 0.0)
+                    color = vec(0, 0, 0, 0)
+                },
+            )
             helpers(false)
             camera(yaw = 30.0, pitch = 12.0)
         }
@@ -317,25 +393,42 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/temporal_memory/takeover.png" alt="x and y oscillating; inside a shaded five-second band x is held flat by the performer while y carries on, and after the band x fades back into the oscillation" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" open-outputs="true" padding="0" name="tm-takeover"}
 :::static
 import afield.math.oracle.*
-import kotlin.math.*
 
 val rate = 20.0
 val n = (45 * rate).toInt()
-val demo = Trajectory.of(rate,
-    "x" to n { val t = it / rate; sin(2 * PI * 0.5 * t) * (1 + 0.3 * sin(2 * PI * 0.05 * t)) },
-    "y" to n { val t = it / rate; 0.7 * sin(2 * PI * 0.75 * t + 0.6) })
+val demo = Trajectory.of(
+    rate,
+    "x" to
+        n {
+            val t = it / rate
+            sin(2 * PI * 0.5 * t) * (1 + 0.3 * sin(2 * PI * 0.05 * t))
+        },
+    "y" to
+        n {
+            val t = it / rate
+            0.7 * sin(2 * PI * 0.75 * t + 0.6)
+        },
+)
 
 val from = (10 * rate).toInt()
 val to = (15 * rate).toInt()
-val played = Improviser(VariableMarkovOracle.build(demo), seed = 2).take(25.0) { i ->
-    if (i in from until to) perform("x", 0.8)
-    if (i == to) release("x")
-}
+val played =
+    Improviser(VariableMarkovOracle.build(demo), seed = 2).take(25.0) { i ->
+        if (i in from until to) perform("x", 0.8)
+        if (i == to) release("x")
+    }
 val reasons = played.segments.groupingBy { it.reason }.eachCount()
-print("takeover: $reasons, largest join correction ${"%.2f".format(played.correction.max())}")
-showSignals(*played.output.series(), x = List(played.output.length) { it / rate }, xTitle = "seconds",
+print("takeover: $reasons, largest join correction ${played.correction.max().f2}")
+showSignals(
+    *played.output.series(),
+    x = List(played.output.length) { it / rate },
+    xTitle = "seconds",
     regions = [SignalRegion("x performed", from / rate, to / rate)],
-    channel = "main", width = 1000, height = 380, floatingLegend = true)
+    channel = "main",
+    width = 1000,
+    height = 380,
+    floatingLegend = true,
+)
 ```
 
 ![x held flat in the shaded band while y continues, then x fading back in](assets/temporal_memory/takeover.png)
@@ -400,25 +493,48 @@ around the median.
 :::static
 import afield.math.oracle.*
 import afield.math.temporal.*
-import kotlin.math.*
 
 val rate = 20.0
 val n = (20 * rate).toInt()
-val history = Trajectory.of(rate, "x" to n { val t = it / rate; sin(2 * PI * 0.5 * t) * (1 + 0.3 * sin(2 * PI * 0.05 * t)) })
+val history = Trajectory.of(
+    rate,
+    "x" to
+        n {
+            val t = it / rate
+            sin(2 * PI * 0.5 * t) * (1 + 0.3 * sin(2 * PI * 0.05 * t))
+        },
+)
 val forecast = TimestralSession().use { it.propose(ContinuationRequest(0, history, horizon = 200)).get() }
 
 // seconds across, values up; the SVG is y-down, so flip and scale into pixels
 fun plot(line: FLine) = line.transform { vec(it.x * 30, -it.y * 120, 0) }
 val ahead = DoubleArray(forecast.horizon) { (n + it) / rate }
 
-val past = plot(FLine().apply { for (t in 0 until n) if (t == 0) moveTo(0.0, history.values[0][0]) else lineTo(t / rate, history.values[0][t]) })
-    .apply { color = vec(1, 1, 1, 0.9); thickness = 1.5 }
-val fan = [0.01 to 0.99, 0.1 to 0.9, 0.25 to 0.75].map { (lo, hi) ->
-    plot(forecast.bandFLine(0, lo, hi, ahead)).apply { filled = true; stroked = false; color = vec(1, 0.5, 0.2, 0.18) }
+val past =
+    plot(
+            FLine().apply {
+                for (t in 0 until n) if (t == 0) moveTo(0.0, history.values[0][0])
+                else lineTo(t / rate, history.values[0][t])
+            },
+        )
+        .apply {
+            color = vec(1, 1, 1, 0.9)
+            thickness = 1.5
+        }
+val fan =
+    [0.01 to 0.99, 0.1 to 0.9, 0.25 to 0.75].map { (lo, hi) ->
+        plot(forecast.bandFLine(0, lo, hi, ahead)).apply {
+            filled = true
+            stroked = false
+            color = vec(1, 0.5, 0.2, 0.18)
+        }
+    }
+val median = plot(forecast.medianFLine(0, ahead)).apply {
+    color = vec(1, 0.5, 0.2, 1)
+    thickness = 3.0
 }
-val median = plot(forecast.medianFLine(0, ahead)).apply { color = vec(1, 0.5, 0.2, 1); thickness = 3.0 }
 
-print("forecast in ${"%.0f".format(forecast.diagnostics["roundTripSeconds"] as Double * 1000)} ms")
+print("forecast in ${(forecast.diagnostics["roundTripSeconds"] as Double * 1000).f0} ms")
 lines(fan + past + median, w = 900.0, h = 320.0, fitToSize = true)
 ```
 
@@ -450,19 +566,34 @@ and the 209M model.
 :::static
 import afield.math.oracle.*
 import afield.math.temporal.*
-import kotlin.math.*
 
 val rate = 20.0
 val demo = Trajectory.of(rate, "x" to 800 { sin(4 * PI * it / 120.0) }, "y" to 800 { sin(2 * PI * it / 120.0) })
 
-val runs = ["28M", "209M"].map { size ->
-    RecedingHorizon(TimestralSession("mistralai/Timestral-$size"), demo, history = 20.0, horizon = 4.0, commit = 1.0, lockstep = true)
-        .use { size to it.take(120.0) }
-}
-for ((size, p) in runs) print("$size: replanning p50 ${"%.0f".format(p.latency(50.0) * 1000)} ms, p95 ${"%.0f".format(p.latency(95.0) * 1000)} ms\n")
-showSignals(*runs.map { (size, p) -> "x, $size" to p.output.values[0].toList() }.toTypedArray(),
-    x = List(2400) { it / rate }, xTitle = "seconds",
-    channel = "main", width = 1000, height = 380, floatingLegend = true)
+val runs =
+    ["28M", "209M"].map { size ->
+        RecedingHorizon(
+                TimestralSession("mistralai/Timestral-$size"),
+                demo,
+                history = 20.0,
+                horizon = 4.0,
+                commit = 1.0,
+                lockstep = true,
+            )
+            .use { size to it.take(120.0) }
+    }
+for ((size, p) in runs) print(
+    "$size: replanning p50 ${(p.latency(50.0) * 1000).f0} ms, p95 ${(p.latency(95.0) * 1000).f0} ms\n",
+)
+showSignals(
+    *runs.map { (size, p) -> "x, $size" to p.output.values[0].toList() }.toTypedArray(),
+    x = List(2400) { it / rate },
+    xTitle = "seconds",
+    channel = "main",
+    width = 1000,
+    height = 380,
+    floatingLegend = true,
+)
 ```
 
 ![the 28M continuation shrinks towards zero while the 209M continuation keeps its amplitude](assets/temporal_memory/receding.png)
@@ -491,31 +622,42 @@ forecast from `y`'s own history alone.
 :::static
 import afield.math.oracle.*
 import afield.math.temporal.*
-import kotlin.math.*
 
 // an irregular control signal x, and y following it one second (20 samples) late
 val r = java.util.Random(3)
 var level = 0.0
-val x = 720 { level = 0.9 * level + 0.1 * r.nextGaussian(); 3 * level }
-val lead = x.drop(20)          // x, known over history and future
-val y = x.take(700)            // y[t] = x[t - 20]
+val x = 720 {
+    level = 0.9 * level + 0.1 * r.nextGaussian()
+    3 * level
+}
+val lead = x.drop(20) // x, known over history and future
+val y = x.take(700) // y[t] = x[t - 20]
 val n = 600
 val h = 100
 
 val history = Trajectory.of(20.0, "y" to y.take(n))
-val (steered, alone) = TimestralSession().use { s ->
-    s.propose(ContinuationRequest(0, history, h, known = arrayOf(lead.toDoubleArray()))).get().proposal[0] to
-        s.propose(ContinuationRequest(0, history, h)).get().proposal[0]
-}
+val (steered, alone) =
+    TimestralSession().use { s ->
+        s.propose(ContinuationRequest(0, history, h, known = arrayOf(lead.toDoubleArray()))).get().proposal[0] to
+            s.propose(ContinuationRequest(0, history, h)).get().proposal[0]
+    }
 fun error(p: DoubleArray) = (0 until h).sumOf { abs(p[it] - y[n + it]) } / h
-print("mean error with x known ${"%.2f".format(error(steered))}, without ${"%.2f".format(error(alone))}")
+print("mean error with x known ${error(steered).f2}, without ${error(alone).f2}")
 
 // the last five seconds of history and the five-second horizon
 val from = n - 100
 val gap = 100 { Double.NaN }
-showSignals("y" to y.drop(from), "forecast, x known" to gap + steered.toList(), "forecast, y alone" to gap + alone.toList(),
-    x = List(200) { (from + it) / 20.0 }, xTitle = "seconds", marks = ["now" to n / 20.0],
-    channel = "main", width = 1000, height = 380)
+showSignals(
+    "y" to y.drop(from),
+    "forecast, x known" to gap + steered.toList(),
+    "forecast, y alone" to gap + alone.toList(),
+    x = List(200) { (from + it) / 20.0 },
+    xTitle = "seconds",
+    marks = ["now" to n / 20.0],
+    channel = "main",
+    width = 1000,
+    height = 380,
+)
 ```
 
 ![with the leading signal known, the forecast follows the true future; without it, it flattens](assets/temporal_memory/covariate.png)
@@ -564,7 +706,6 @@ forecasting all 114 channels for the judged versions, and prints the measures fo
 import afield.io.mocap.*
 import afield.math.oracle.*
 import afield.math.temporal.*
-import kotlin.math.*
 
 :::fold load six takes and build the memory
 // six takes of modern dance (CMU subject 05): every joint, in the dancer's own frame, at 30 Hz,
@@ -573,29 +714,50 @@ val dir = "public/docs/assets/temporal_memory/cmu_05"
 val takes = ["05_02", "05_07", "05_09", "05_12", "05_14", "05_18"].map { Bvh.read("$dir/$it.bvh.gz") }
 val dance = Trajectory.join(takes.map { it.toTrajectory(rate = 30.0).trimStill() })
 val memory = VariableMarkovOracle.build(dance)
-val colours = [vec(0.48, 0.85, 1.0, 1.0), vec(1.0, 0.62, 0.29, 1.0), vec(0.56, 1.0, 0.6, 1.0),
-               vec(1.0, 0.88, 0.4, 1.0), vec(0.77, 0.55, 1.0, 1.0), vec(1.0, 0.48, 0.62, 1.0)]
+val colours = [
+    vec(0.48, 0.85, 1.0, 1.0),
+    vec(1.0, 0.62, 0.29, 1.0),
+    vec(0.56, 1.0, 0.6, 1.0),
+    vec(1.0, 0.88, 0.4, 1.0),
+    vec(0.77, 0.55, 1.0, 1.0),
+    vec(1.0, 0.48, 0.62, 1.0),
+]
 :::endfold
 
 // two minutes, five ways, same seed; the judged ones forecast all 114 channels with Timestral-28M
 val seconds = 120.0
-val key = ["LeftHand", "RightHand", "Head", "LeftToeBase", "RightToeBase"].flatMap { j -> ["x", "y", "z"].map { dance.channels.indexOf("$j.$it") } }
-val runs = TimestralSession().use { session ->
-    fun judged(mode: JudgeMode) = ForecastJudge(session, memory, lockstep = true).use { judge ->
-        Improviser(memory, seed = 1, jumpProbability = 0.1, judge = judge, judgeMode = mode).take(seconds)
+val key =
+    ["LeftHand", "RightHand", "Head", "LeftToeBase", "RightToeBase"].flatMap { j ->
+        ["x", "y", "z"].map { dance.channels.indexOf("$j.$it") }
     }
-    linkedMapOf(
-        "loop the first take" to Improviser(memory, policy = Policy.Loop).take(seconds),
-        "nearest history" to Improviser(memory, seed = 1, policy = Policy.NearestHistory, jumpProbability = 0.1).take(seconds),
-        "oracle" to Improviser(memory, seed = 1, jumpProbability = 0.1).take(seconds),
-        "oracle, Timestral vetoes" to judged(JudgeMode.Veto),
-        "oracle, Timestral prefers" to judged(JudgeMode.Prefer),
-    )
-}
-markdown("main", "| two minutes from 61 s of dance | coverage | repeats itself | join roughness | jumps |\n|---|---|---|---|---|\n" +
-    runs.entries.joinToString("\n") { (name, p) ->
-        "| $name | %.2f | %.2f | %.2f | %d |".format(p.coverage(dance.length), p.outputRepetition(channels = key), p.joinRoughness(dance), p.segments.size - 1)
-    })
+val runs =
+    TimestralSession().use { session ->
+        fun judged(mode: JudgeMode) =
+            ForecastJudge(session, memory, lockstep = true).use { judge ->
+                Improviser(memory, seed = 1, jumpProbability = 0.1, judge = judge, judgeMode = mode).take(seconds)
+            }
+        linkedMapOf(
+            "loop the first take" to Improviser(memory, policy = Policy.Loop).take(seconds),
+            "nearest history" to
+                Improviser(memory, seed = 1, policy = Policy.NearestHistory, jumpProbability = 0.1).take(seconds),
+            "oracle" to Improviser(memory, seed = 1, jumpProbability = 0.1).take(seconds),
+            "oracle, Timestral vetoes" to judged(JudgeMode.Veto),
+            "oracle, Timestral prefers" to judged(JudgeMode.Prefer),
+        )
+    }
+markdown(
+    "main",
+    "| two minutes from 61 s of dance | coverage | repeats itself | join roughness | jumps |\n|---|---|---|---|---|\n" +
+        runs.entries.joinToString("\n") { (name, p) ->
+            "| $name | %.2f | %.2f | %.2f | %d |"
+                .format(
+                    p.coverage(dance.length),
+                    p.outputRepetition(channels = key),
+                    p.joinRoughness(dance),
+                    p.segments.size - 1,
+                )
+        },
+)
 ```
 
 ![a table comparing five ways of playing two minutes of the dance](assets/temporal_memory/judged.png)

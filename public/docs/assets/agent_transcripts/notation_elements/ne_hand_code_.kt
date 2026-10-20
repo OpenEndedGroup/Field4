@@ -3,7 +3,9 @@
 val listen = inside.boxes.values.first { it.name == "listen" }
 val f = listen.frame
 val t = System.currentTimeMillis()
-display("hand", """
+display(
+    "hand",
+    """
 <script type="module">
 import { send } from "./afield.mjs";
 const base = (id, type, x, y, w, h) => ({ id, type, x, y, width: w, height: h, angle: 0,
@@ -18,4 +20,6 @@ const arrow = { ...base("hand-arrow-$t", "arrow", 1100, 670, ${f.x + f.w + 4 - 1
 const text = { ...base("hand-text-$t", "text", 1100, 830, 120, 25), text: "by hand", originalText: "by hand",
     fontSize: 20, fontFamily: 5, textAlign: "left", verticalAlign: "top", containerId: null, lineHeight: 1.25 };
 send("notation-scene", { scene: JSON.stringify({ type: "excalidraw", version: 2, elements: [stroke, arrow, text] }) });
-</script>sent""".trimIndent())
+</script>sent"""
+        .trimIndent(),
+)

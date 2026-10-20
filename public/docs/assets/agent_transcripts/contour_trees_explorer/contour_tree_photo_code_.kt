@@ -9,5 +9,6 @@ showImgGrid(
     "photograph" to print.scaleBy(2.0),
     "${light.arcs.size} arcs" to light.segmentationImage().scaleBy(2.0),
     "${strong.arcs.size} arcs" to strong.segmentationImage().scaleBy(2.0),
-    columns = 3, cellSide = 260,
+    columns = 3,
+    cellSide = 260,
 )

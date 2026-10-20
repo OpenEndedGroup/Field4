@@ -1,0 +1,37 @@
+{
+  "main": "0dbbd2669c59f4df783c42bbb42bbe7424ad4688",
+  "conflicts": [
+    "public/docs/temporal_memory.md",
+    "public/docs/assets/evolving_creatures/watching.png"
+  ],
+  "resolution": "Kept main CMU dance poses, signal, inline film and skeletonMesh renderer; reapplied readability changes with actual formatter. Regenerated watching.png through normal forced docs captures.",
+  "formatting": [
+    "format-verification-merge.json",
+    "format-verification-creatures-merge.json"
+  ],
+  "captures": "capture-verification.json",
+  "runtimeEvidence": "The ten original checks remain historical exact-source receipts. Existing worker code unchanged; newly integrated creature film exercised in fresh normal capture.",
+  "integration": {
+    "status": "passed",
+    "mergeCommit": "c90fc7d991413f4152a32e664f9b2ca3dab3a6e6",
+    "log": "build/box-code-revision/docs-catchup/merge-resumed-staging.log",
+    "guardBuild": "BUILD SUCCESSFUL in 11m 22s",
+    "guards": [
+      "checkCodebaseReference",
+      "checkKDocAttachment",
+      "checkAgentTranscripts",
+      "checkAgentTranscriptIndex",
+      "checkPythonTools",
+      "checkCompletionCorpusFixtures",
+      "checkBoxIdioms",
+      "checkBoxCodeCompiles",
+      "citationGates"
+    ]
+  },
+  "mergeability": {
+    "main": "9064ca8638e77cef0e976701844dd9083cef01de",
+    "exitCode": 0,
+    "tree": "7f789c62b907f0aa3c64be81c9f1b83fd35a90c4"
+  },
+  "stagingRecovery": "Two successful generation builds stopped on an ownerless index.lock. Both locks retained under build diagnostics. Staged actual generated outputs and resumed merge_regen.main with only the completed regeneration group omitted; all integration guards ran and passed."
+}

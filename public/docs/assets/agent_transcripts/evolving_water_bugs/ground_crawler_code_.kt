@@ -1,4 +1,7 @@
 import afield.simulation.creatures.*
+import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /*
 The same genetic algorithm with a different world: side-on, under gravity, on a floor at
@@ -15,7 +18,8 @@ class Floor(val stiffness: Float = 900f, val friction: Float = 40f) : ContactMod
     override fun foot(index: Int) = object : ContactModel.Foot {
         var planted: Float2? = null
         override var grip = 0f
-        override val anchor get() = planted
+        override val anchor
+            get() = planted
 
         override fun force(step: FootStep): Float2 {
             val g = step.genome
@@ -58,26 +62,27 @@ val config = EvolutionConfig(
     ),
 )
 
-val controller = EvolutionController()
-var champion: CreatureEvaluation? = null
-var status = "generation 0"
-kotlin.concurrent.thread(isDaemon = true, name = "ground_crawler evolution") {
-    CreatureEvolution.evolve(config, controller) { update ->
-        champion = update.champion
-        status = "generation ${update.generation.generation}: best ${"%.2f".format(update.champion.fitness)}"
+// Publish one complete update, so the caption and drawing use the same generation.
+val latest = AtomicReference<EvolutionUpdate?>(null)
+go {
+    withContext(Dispatchers.Default) {
+        CreatureEvolution.evolveSuspend(config) { latest.set(it) }
     }
 }
 
 var i = 0
 loop {
-    val crawler = champion ?: return@loop
+    val update = latest.get() ?: return@loop
+    val crawler = update.champion
+    val status = "generation ${update.generation.generation}: best ${crawler.fitness.f2}"
     val c = crawler.frames[i % crawler.frames.size].center
     val floor = fline {
         moveTo(c.x - 5f, 0f)
         lineTo(c.x + 5f, 0f)
-    }.apply { color = vec(0.5, 0.45, 0.4, 1.0) }
+    }
+        .apply { color = vec(0.5, 0.45, 0.4, 1.0) }
     showPlane(
-        listOf(floor) + crawler.frameLines(i, alignNetMotionToPositiveX = false),
+        [floor] + crawler.frameLines(i, alignNetMotionToPositiveX = false),
         title = "crawler — $status",
         window = Rect(c.x - 4.0, -1.0, 8.0, 6.0),
         width = 500,
@@ -85,4 +90,4 @@ loop {
         yUp = true,
     )
     i++
-}.end { controller.requestStop() }
+}
