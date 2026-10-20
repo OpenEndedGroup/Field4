@@ -46,6 +46,14 @@ class StackSLFeedbackSettings {
     var width: Int = 0
     var height: Int = 0
 
+    /**
+     * How many times a second the program steps. A feedback program's decays are per step
+     * (`prev 0.965 *` keeps 96.5% *each frame*), so its look depends on this rate, and the window may
+     * draw far faster than a browser does; 60 is what StackTrinket gets in a browser at 60 Hz. 0
+     * steps on every frame the window draws.
+     */
+    var fps: Double = 60.0
+
     /** Seconds of program time per second of wall time — what `time` and `0.1t` count in. */
     var timeScale: Double = 1.0
 
@@ -134,9 +142,12 @@ class StackSLFeedback internal constructor(
     // Two frames of black before frame 0, one into each image, so frame 0 reads a cleared state.
     private var blackFrames = 2
     private var lastNanos = 0L
+    private var sinceStep = 0.0
     private var module: ModulePointer? = null
     private var tried: String? = null
     private var building = false
+
+    override fun toString(): String = "stackFeedback '${settings.name}', ${width}×$height, frame $frame"
 
     /** Clear both images to black and start time and the frame count again from zero. */
     fun reset() {
@@ -144,12 +155,15 @@ class StackSLFeedback internal constructor(
         frame = 0
         seconds = 0.0
         lastNanos = 0L
+        sinceStep = 0.0
     }
 
     /** Put the picture in the window, replacing whatever was shown under the same name. */
     fun show(): ModulePointer {
         val gamma = settings.displayGamma.toFloat()
-        val blit = target.blitToScreen(name = settings.name, viewport = settings.viewport) {
+        // The state is stored with uv.y = 0 in row 0 (see StackSLFeedbackShader.VERTEX); the blit
+        // reads rows from the top, so read it bottom-up to put y up in the window.
+        val blit = target.blitToScreen(name = settings.name, viewport = settings.viewport, sourceRect = Rect(0.0, 1.0, 1.0, -1.0)) {
             this.gamma = vec(gamma, gamma, gamma, 1f)
         }
         // blitToScreen installs the ping-pong itself as the source; this host is what must run, so
@@ -164,13 +178,19 @@ class StackSLFeedback internal constructor(
         lastNanos = now
         follow()
         if (settings.paused || module == null) return
+        // Step at most settings.fps times a second; frames in between keep showing the last step.
+        sinceStep += dt
+        val interval = if (settings.fps > 0) 1.0 / settings.fps else 0.0
+        if (blackFrames == 0 && sinceStep < interval) return
+        val stepDt = if (interval > 0) interval else dt
+        sinceStep = if (interval > 0) (sinceStep - interval).coerceIn(0.0, interval) else 0.0
         pushedFrame = if (blackFrames > 0) -1 else frame
         target.render(command, index)
         if (blackFrames > 0) {
             blackFrames--
         } else {
             frame++
-            seconds += dt * settings.timeScale
+            seconds += stepDt * settings.timeScale
         }
     }
 
@@ -265,14 +285,20 @@ object StackSLFeedbackShader {
         externalizeConstants = true,
     )
 
-    /** The fullscreen-triangle vertex shader: `fragUV` runs 0..1 with y up. */
+    /**
+     * The fullscreen-triangle vertex shader: `fragUV` runs 0..1 with y up, and the image is written
+     * so that image row 0 holds `uv.y = 0`. That is the row `texture(state, vec2(u, 0))` reads, so
+     * `prev` reads back this pixel. Field's render targets put clip `y = +1` in row 0, so the usual
+     * `gl_Position = pos * 2 - 1` would store the picture upside down relative to its own sampling
+     * and every feedback step would flip it; [StackSLFeedback.show] flips it back for the window.
+     */
     val VERTEX: String = """
         #version 450
         layout(location = 0) out vec2 fragUV;
 
         void main() {
             vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
-            gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+            gl_Position = vec4(pos.x * 2.0 - 1.0, 1.0 - pos.y * 2.0, 0.0, 1.0);
             fragUV = pos;
         }
     """.trimIndent()
@@ -408,6 +434,7 @@ fun Box.stackFeedback(
             existing.settings.name == settings.name
         if (reusable) {
             existing!!.apply {
+                this.settings.fps = settings.fps
                 this.settings.timeScale = settings.timeScale
                 this.settings.paused = settings.paused
                 this.settings.displayGamma = settings.displayGamma
