@@ -16,7 +16,8 @@
 // way a 2D canvas blends them: hsla(200.0, 90.0, 70.0, 0.9), rgba(120.0, 255.0, 210.0, 0.12).
 //
 // The frame, in madp's order:
-//   spawn   queued paint positions become particles; the stroke list is cleared; draw() runs
+//   spawn   queued paint positions become particles; the stroke list is cleared and draw()
+//           runs (unless paused)
 //   hash    the neighbour grid is rebuilt from every particle's position (72-pixel cells)
 //   step    for each particle: acc = world.gravity, eachPair with every neighbour within
 //           world.pairRadius, update(), then vel += acc*dt, vel *= damping, limit to maxSpeed,
@@ -513,7 +514,9 @@ void fieldGlobals() {
 }
 
 void fieldSpawnPhase(uint index) {
-    if (index == 0u) {
+    // Paused (dt is 0), the stroke list is left as the last step made it, so links and overlays
+    // keep drawing over particles that are holding still, as madp's do.
+    if (index == 0u && world.dt > 0.0) {
         sketch.strokes.count = 0u;
         p = Particle(vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), world.particleColor, world.particleRadius,
                      1.0, 0.0, 0.0, 0, 0u, 0.0, 0.0, vec4(0.0));
