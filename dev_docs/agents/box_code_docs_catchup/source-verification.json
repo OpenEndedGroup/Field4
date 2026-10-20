@@ -16,8 +16,9 @@
     {
       "path": "public/docs/evolving_creatures.md",
       "baselineSha256": "1daebce2a006283b5ea9dc55f729b24b490560bb773ac3c95a427bcfe5f7ab5e",
-      "currentSha256": "8c45bfb7cb666bdec03261ad2f1ed5fab6e02b3ecbae0260f63d9bd5b51e0305",
-      "changed": true
+      "currentSha256": "784433fae7febafc92c6e2eb33306ff9fead8f3f5b4c01497918cfa921833486",
+      "changed": true,
+      "preMergeSha256": "8c45bfb7cb666bdec03261ad2f1ed5fab6e02b3ecbae0260f63d9bd5b51e0305"
     },
     {
       "path": "public/docs/geometry_chains.md",
@@ -82,8 +83,9 @@
     {
       "path": "public/docs/temporal_memory.md",
       "baselineSha256": "e173ec3e3785bfe583782d908285711fda973e96da361bbd1ea465ca3ea27139",
-      "currentSha256": "64a169c646c9d0cd6c8ade528afc2d38b1a363ad8149b893c8a541f8c2fbc892",
-      "changed": true
+      "currentSha256": "781aed9efa6aca9546b38c3957a0092331e81aad8c7ccc3b55ea80d8ed9d19ac",
+      "changed": true,
+      "preMergeSha256": "64a169c646c9d0cd6c8ade528afc2d38b1a363ad8149b893c8a541f8c2fbc892"
     },
     {
       "path": "public/docs/filming_the_canvas.md",
@@ -163,5 +165,6 @@
       "currentSha256": "72f3d03c7fa896fd454e8b1d042fbd0293dd8eb31a4151b4e148168ffdaa06c3",
       "changed": true
     }
-  ]
+  ],
+  "reconciledMain": "0dbbd2669c59f4df783c42bbb42bbe7424ad4688"
 }

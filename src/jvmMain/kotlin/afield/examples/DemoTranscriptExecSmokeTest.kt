@@ -118,6 +118,8 @@ object DemoTranscriptExecSmokeTest {
         // drawing_and_notation.md's full tour: every mark kind, a score, the API audit, stroke/arrow/text
         // reactions. CPU only; headless, `hand`'s page script goes to no browser but the box completes.
         "notation_elements",
+        // automating_field.md's Macro Recorder starting point: saves a macro, replays it as offset copies and by steps.
+        "macro_recorder_stamp",
         // interactive_guides.md's starting point: a four-step slideshow over two CPU boxes. Headless the
         // notes and selections go to no browser, but every box (the guide included) runs to completion.
         "slideshow_guide",
@@ -795,6 +797,11 @@ object DemoTranscriptExecSmokeTest {
         "fieldml_mesh_demo",
         // stacksl_examples.md's gallery draws into a native window.
         "stacksl_gallery",
+        // Continuing a gesture (2026-10-19): boxes 5 and 6 start a Timestral worker, which needs a
+        // downloaded checkpoint no CI machine has, and boxes 3 and 4 are live frames loops. The oracle
+        // and mocap code runs in VariableMarkovOracleTest, SeveralTakesTest and BvhTest, and the dance
+        // boxes run as docs captures; TimestralSessionTest runs the worker when opted in.
+        "temporal_memory",
     )
 
     /**

@@ -101,3 +101,99 @@ per-step marginals, and the page says so plainly, using the same pointwise-versu
   `frames {}` loop with a performer.
 - Progressive memory (adding an episode during playback); the oracle is rebuilt, not appended.
 - The hybrid (VMO phrases scored by Timestral).
+
+## Hybrid: the oracle proposes, Timestral judges (branch `claude/temporal-hybrid`)
+
+`Improviser(judge = ForecastJudge(session, oracle))`. At each jump decision, every suffix-link
+candidate's next 2 s, and staying put, is rated by mean pinball loss against a Timestral forecast
+of the played output. The forecast is refreshed every 1 s, with 20 s of history and a 4 s horizon. The
+loss enters the score as `judgeWeight × loss / mean loss`. Same fixtures, 5 min each, seed 1.
+
+| fixture | run | reuse | coverage | judged / changed / stayed | p95 forecast |
+|---|---|---|---|---|---|
+| oscillators | Oracle | 0.02 | 0.97 | — | — |
+| oscillators | +28M w1 / w3 | 0.09 / 0.10 | 0.98 / 0.96 | 343/229/143, 332/231/129 | 34–66 ms |
+| oscillators | +209M w1 / w3 | 0.06 / 0.02 | 0.97 / 0.95 | 335/218/132, 338/218/137 | 163–201 ms |
+| phrases | Oracle | 0.25 | 0.98 | — | — |
+| phrases | +28M w1 / w3 | 0.45 / 0.45 | 0.87 / 0.81 | 424/227/156, 475/262/146 | 30 ms |
+| phrases | +209M w1 / w3 | 0.44 / 0.46 | 0.87 / 0.77 | 413/203/135, 497/263/145 | 267–311 ms |
+| figure8 | Oracle | 0.21 | 0.92 | — | — |
+| figure8 | +28M / +209M | 0.16–0.19 | 0.92–0.93 | ~387/265/197 | 45–257 ms |
+
+The spread, frequency and speed statistics are unchanged from oracle-only on every fixture (within 0.03 of
+the demo), so nothing collapses. As expected, every sample is still played from memory.
+
+The judge has a real effect: it changes the most likely choice in 55–70% of the decisions it scores,
+and picks "stay" in about 40% of them. But on the phrase material the effect runs the wrong way for
+the stated goal. Reuse rises from 0.25 to 0.45 and coverage falls from 0.98 to 0.77–0.87. A
+pinball-loss judge rewards the continuation the forecaster finds most *predictable*, and on
+phrase material that is what was just played. On the periodic fixtures it is neutral.
+
+Next to try: the judge as a *veto* only (reject candidates whose loss is several times that of staying)
+rather than a preference, so it removes implausible joins without pulling towards repetition. Or
+pair it with a stronger novelty term. Either needs a measure of "better dynamics" that is not the
+judge's own loss; the statistics above cannot show an improvement, because oracle-only already matches
+the demos on them.
+
+## Veto, reuse weight and a measure that is not the judge's own
+
+These runs added `JudgeMode.Veto` (drop jumps whose loss is above `vetoRatio` × staying's) and
+`reuseWeight`. They also added two measures, now on `Performance`: `joinRoughness` (|Δ²| within ±3 samples
+of each jump, over the recording's mean |Δ²|) and `accelerationDistance` (KS distance between the
+|Δ²| distributions, with ties handled; the first version saturated at 0.360 on the zero runs of
+the pauses).
+
+Phrases, 5 min, 28M:
+
+| run | reuse | coverage | join roughness | jumps |
+|---|---|---|---|---|
+| oracle | 0.25 | 0.98 | 0.89 | 250 |
+| oracle, reuseWeight 3 / 6 | 0.18 / 0.20 | 0.97 / 0.92 | 0.78 / 0.60 | 271 / 360 |
+| prefer | 0.45 | 0.87 | 0.69 | 269 |
+| veto ×1.2 / ×2 | 0.54 / 0.55 | 0.74 / 0.65 | 0.89 / 0.82 | 258 / 263 |
+| prefer + reuseWeight 3 / 6 | 0.37 / 0.22 | 0.91 / 0.97 | 0.65 / 0.63 | 280 / 267 |
+
+On the figure-eight, veto removed 12 candidates (×1.2) or 1 (×2) in 5 minutes. 209M matched 28M.
+
+The same setup run for 3 minutes (the docs box) gave prefer + reuseWeight 6 a reuse of 0.50 and a coverage of 0.64.
+Judged runs vary far more with length than oracle-only runs (0.26 / 0.93 there). What holds in every run is
+that the judge makes joins smoother and costs variety on phrase material, and that a tuned
+`reuseWeight` without a judge gets most of the smoothing. Veto does not reduce repetition.
+
+The next step should be a grid of seeds × lengths per setting, reporting means and spreads, before
+any recommendation stronger than "try reuseWeight first".
+
+## Correction: the phrase performances loop at the gesture level
+
+Plotting the played signal (prompted by Marc) shows both the oracle and the judged oracle cycling
+through rise → hesitation → burst → pause about every 6 s. The phrase fixture's takes are copies of
+the same four gestures, so source-position measures (`reuse`, `coverage`) report variety that
+the output does not have. Every phrase-fixture conclusion above about "repetition" is about source
+positions only. Needed: an output-side repetition measure, and takes that genuinely differ.
+
+## Real material: CMU subject 05 (six modern-dance takes, 114 channels)
+
+`afield.io.mocap.Bvh` (new: BVH parser, forward kinematics, body-frame positions, `toTrajectory`,
+`skeleton` FLines; `BvhTest` checks bone lengths are invariant under FK). Six takes are committed gzipped
+under `public/docs/assets/temporal_memory/cmu_05/` with the CMU credit. `DanceExperiments` reruns the dance.
+
+The dance broke the improviser in ways that one- and two-channel fixtures had hidden:
+
+| problem | symptom | fix |
+|---|---|---|
+| correction/cue distances summed over channels | 5122 holds in 5400 steps | RMS per channel |
+| suffix links never cross takes | 3 of 6 takes never entered | `VariableMarkovOracle.bridges` (nearest moments in other takes) as extra candidates |
+| jumps landing near take ends | churn, 2204 jumps | `runway(c) >= minPhrase` for every candidate |
+| takes end alike | loop around endings, coverage 0.34 | at a take's end, begin the least recently played other take within `restartTolerance` (2σ); history fallback needs 3 phrases of runway; holds limited to a phrase (`Reason.Restart`) |
+| CMU T-pose in frame 0 | spike at every take start | `Bvh.restPoseFrames`, skipped by `toTrajectory` |
+| replays coasting | 9 s passage replayed within a minute | `escapeReplays`: consider a jump every step while replaying within `reuseMemory` |
+
+3 min from 61 s, seed 1: the oracle covers 1.00 (every take, every part), output repetition 0.55–0.58,
+no holds. That compares with 0.42 / 0.85 / 31 holds before the fixes, a loop of one take at 0.15 / 0.97,
+and nearest-history at 0.43–0.64 / 0.66–0.77. A replay of 61 s stretched to 180 s must repeat about 2/3
+of its windows.
+
+Timestral-28M judging all 114 channels (2 min, docs box): oracle 0.98 coverage / 0.43 repetition /
+0.75 roughness / 84 jumps; veto 1.00 / 0.48 / 0.78 / 82; prefer 0.98 / 0.45 / 0.70 / 67. Forecast p95
+~400 ms. The judge changes most decisions and moves the result a little. That is not enough to recommend
+it over the oracle alone on this material.

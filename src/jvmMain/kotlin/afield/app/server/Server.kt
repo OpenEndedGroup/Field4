@@ -2655,14 +2655,33 @@ class Server {
                             scope = request.scope,
                             projectName = request.projectName
                         )
-                    "run" -> {
+                    "rename" -> OperationTranscript.renameMacro(
+                        documentPath,
+                        request.name,
+                        request.newName,
+                        request.scope,
+                        request.projectName
+                    )
+                    "delete", "remove" -> OperationTranscript.deleteMacro(
+                        documentPath,
+                        request.name,
+                        request.scope,
+                        request.projectName
+                    )
+                    "run", "step" -> {
                         val run = OperationTranscript.runMacro(
                             documentPath = documentPath,
                             name = request.name,
                             targetBoxes = request.selection,
                             direction = "do",
                             scope = request.scope,
-                            projectName = request.projectName
+                            projectName = request.projectName,
+                            replay = OperationTranscript.MacroReplayOptions(
+                                asCopy = request.asCopy,
+                                offsetX = request.offsetX,
+                                offsetY = request.offsetY,
+                                step = if (command == "step") request.step.coerceAtLeast(0) else -1
+                            )
                         )
                         OperationTranscript.MacroResult(
                             success = run.success,
@@ -2813,7 +2832,12 @@ class Server {
 
                 val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
                 val isEditorStateProperty = set.property.endsWith("_editorState")
-                val targetBox = box(set.uid)
+                // A uid the server has never seen is a box the canvas just made (`createBox` sends
+                // its name first): record it as a `create`, not as an edit from nothing.
+                // A uid the server has never seen is a box the canvas just made (`createBox` sends its
+                // name, frame and code at once): the macro recorder records its `create` the moment
+                // it exists, and the values that follow fold into it.
+                val targetBox = box(set.uid, onCreated = { OperationTranscript.recordCreate(it) })
                 thisSessionInfo.get().recordPropertySyncOrigin(
                     set.uid,
                     set.property,
@@ -2934,7 +2958,7 @@ class Server {
 
                 // Updates box frame or property; resyncs on main thread
                 if (set.property == "frame") {
-                    val b = box(set.uid)
+                    val b = box(set.uid, onCreated = { OperationTranscript.recordCreate(it) })
                     val oldFrame = b.frame
                     b.frame = set.value
                     OperationTranscript.recordMove(b, oldFrame, b.frame)
@@ -2969,7 +2993,7 @@ class Server {
 
                 set.values.forEach { update ->
                     if (update.property == "frame") {
-                        val b = box(update.uid)
+                        val b = box(update.uid, onCreated = { OperationTranscript.recordCreate(it) })
                         val oldFrame = b.frame
                         b.frame = update.value
                         OperationTranscript.recordMove(b, oldFrame, b.frame)

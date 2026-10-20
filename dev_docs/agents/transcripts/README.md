@@ -91,6 +91,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   Flip the vector box's `reuse` flag and
   relaunch the workloads to compare allocation with Field's in-place linalg operations.
 
+- `macro_recorder_stamp.yaml`: the Macro Recorder's replay options from box code: `stamp` saves a
+  macro (two `create`s and a `connect`, as the recorder writes them), `copies` replays it with
+  `MacroReplayOptions(asCopy = true, offsetY = ...)` three times, `steps` replays it one operation
+  at a time. Open the Macro Recorder afterwards to run, rename or delete it from the panel.
 - `hello_display.yaml`: smallest useful blank-canvas transcript; creates one box, displays HTML, and can be undone.
 - `ai4_iframe_hello.yaml`: one Field-served webpage in an output iframe, with a textbox and opt-in AI4 tools for inspecting and driving that live page. Run the host box after opening its starting point.
 - `orca_hello.yaml`: ORCA in a box output (`orca()`), playing through a returned `PatSynthBank`, with `exposeTools()` so AI4 can read and write the grid. Compiled only: running it opens an audio device, and ORCA plays only in a browser; `run_ui_regressions.py --id orca-io` is its live check.
@@ -139,6 +143,7 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   grid behind `level.inspect`/`level.edit`, blockout, traversal and placement stages with a "reachable loot"
   gate, the loot rule as a qualified source, and a corpus box that builds seeded variants with the same stages.
 - `matrix_profile.yaml` — the matrix profile page's four boxes (`public/docs/matrix_profile.md`): motifs in a random walk, a malformed beat as a discord, `multiMatrixProfile` finding a gesture and its two channels out of four, and `contrastProfile` finding the shape only the positive examples share.
+- `temporal_memory.yaml` — continuing a gesture (`public/docs/temporal_memory.md`): a lab notebook box, CMU modern dance remembered by the oracle (pose strip, signals by take, a live dancing figure), a slider takeover of two oscillators, a Timestral quantile fan, and the dance played five ways with Timestral judging. Boxes 5–6 need the Timestral worker installed.
 - `keyframe_editor.yaml` — the keyframe editor page's four boxes: a curve played into a meter, one key of each type, an `onChange` overlay, and key types of its own written with `interpolant(...)`.
 - `gesture_to_keyframes.yaml` — a gesture pad's take baked into linked x/y keyframe lanes with `bakeGesture`, and edited lanes sent back to the pad with `setTake`.
 - `gesture_paint_replay.yaml` — a pen gesture pad's take (pressure and tilt kept) baked into x/y/pressure lanes and painted from them with `PaintCanvas.gesture(x, y, pressureLane = ...)`; a second box paints one take four ways to show what the recording drops.

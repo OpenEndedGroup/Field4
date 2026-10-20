@@ -50,10 +50,23 @@ work, so you can turn a sequence you just performed into a macro and replay it e
 The [Agent transcript gallery](agent_transcripts.md) is a whole corpus of them: documents agents
 built from a blank canvas this way, each one a transcript you can open, run and change.
 
-The **Macro Recorder** panel is where that recording happens: press **Start** and work as
-normal while each operation you perform is appended to the transcript, then **Save** the
-sequence as a named macro at document, project, or workspace scope. Saved macros are
-listed along the bottom and **Run** replays them; **Promote** moves one to a wider scope.
+The **Macro Recorder** panel (in the command palette) is where that recording happens. Name
+the macro, press **Record**, and work as normal: making a box, typing its code, dragging it,
+connecting it to another with `g`, deleting one, running one. Press **Save** and what you did
+is saved as a named macro at document, project or workspace scope, written as the same
+operations you would write by hand: a new box is one `create` with its name, frame and code,
+not a stream of keystrokes.
+
+Saved macros are listed by scope, each with its own **Run**, **Rename** and **Delete** (a
+deleted macro is kept in the scope's `.deleted` folder). Click a macro's name to open its YAML
+beside a readable list of its steps; edit the YAML there and **Save** to keep your version.
+**Promote** copies a macro to a wider scope.
+
+Replaying a recording in a fresh document rebuilds the same document. To use a recording as a
+stamp instead, tick **as a copy**: the boxes it creates get new identities, so every run makes
+another set, shifted by the **offset** you give. **Step** replays one operation at a time and
+marks where you are in the list, which is the easiest way to see what a macro does before you
+trust it with a document.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".macro-recorder-panel" screenshot="assets/automating_field/macro-panel.png" transcript="assets/transcripts/greeter_macro.yaml" alt="Field's Macro Recorder panel listing recorded operations" padding="8" wait="0" timeout="90" embed=true hidden=true name="macro-panel"}
 ui.eval("window.macroTranscriptPanel()")

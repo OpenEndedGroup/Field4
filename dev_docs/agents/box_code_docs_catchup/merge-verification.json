@@ -1,0 +1,15 @@
+{
+  "main": "0dbbd2669c59f4df783c42bbb42bbe7424ad4688",
+  "conflicts": [
+    "public/docs/temporal_memory.md",
+    "public/docs/assets/evolving_creatures/watching.png"
+  ],
+  "resolution": "Kept main CMU dance poses, signal, inline film and skeletonMesh renderer; reapplied readability changes with actual formatter. Regenerated watching.png through normal forced docs captures.",
+  "formatting": [
+    "format-verification-merge.json",
+    "format-verification-creatures-merge.json"
+  ],
+  "captures": "capture-verification.json",
+  "runtimeEvidence": "The ten original checks remain historical exact-source receipts. Existing worker code unchanged; newly integrated creature film exercised in fresh normal capture.",
+  "integration": "merge_regen --continue pending"
+}

@@ -35,5 +35,9 @@
   "distinctBodyInvocations": 110,
   "formattedBodies": 93,
   "executableTokensAndRawLiteralsPreserved": true,
-  "fragmentAndFoldMarkersPreserved": true
+  "fragmentAndFoldMarkersPreserved": true,
+  "mergeReconciliation": [
+    "format-verification-merge.json",
+    "format-verification-creatures-merge.json"
+  ]
 }

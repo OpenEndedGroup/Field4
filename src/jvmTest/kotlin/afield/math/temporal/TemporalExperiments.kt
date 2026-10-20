@@ -1,12 +1,16 @@
 package afield.math.temporal
 
 import afield.math.oracle.Improviser
+import afield.math.oracle.JudgeMode
+import afield.math.oracle.Performance
 import afield.math.oracle.Policy
+import afield.math.oracle.Reason
 import afield.math.oracle.Trajectory
 import afield.math.oracle.VariableMarkovOracle
 import java.io.File
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.test.Test
@@ -76,6 +80,9 @@ class TemporalExperiments {
         return ms(o) / ms(d)
     }
 
+    private fun joinRoughness(demo: Trajectory, p: Performance) = p.joinRoughness(demo)
+    private fun accelKs(demo: Trajectory, out: Trajectory) = Performance(out, IntArray(0), DoubleArray(0), emptyArray(), emptyList()).accelerationDistance(demo)
+
     private fun save(name: String, t: Trajectory, extra: Map<String, DoubleArray> = emptyMap()) {
         File(out, "$name.csv").printWriter().use { w ->
             w.println((t.channels + extra.keys).joinToString(","))
@@ -104,14 +111,20 @@ class TemporalExperiments {
         val samples = (minutes * 60 * rate).toInt()
         val models = System.getenv("AFIELD_TEMPORAL_MODELS")?.split(",")?.filter { it.isNotBlank() }.orEmpty()
         val skipOracle = System.getenv("AFIELD_TEMPORAL_SKIP_ORACLE") == "1"
-        for (fixture in listOf(oscillators(), phrases(), figureEight())) {
+        val only = System.getenv("AFIELD_TEMPORAL_FIXTURES")?.split(",")?.toSet()
+        for (fixture in listOf(oscillators(), phrases(), figureEight()).filter { only == null || it.name in only }) {
             save("${fixture.name}-demo", fixture)
             val o = VariableMarkovOracle.build(fixture)
             rows.add("${fixture.name}\toracle\t$o")
+            for (rw in listOf(3.0, 6.0)) if (!skipOracle) {
+                val p = Improviser(o, seed = 1, jumpProbability = 0.15, reuseWeight = rw).take(samples)
+                measure(fixture, "Oracle-reuse${rw.toInt()}", p.output, "segments %d reuse %.2f coverage %.2f joinRough %.2f accelKS %.3f".format(
+                    p.segments.size, p.reuse(), p.coverage(fixture.length), joinRoughness(fixture, p), accelKs(fixture, p.output)))
+            }
             for (policy in if (skipOracle) emptyList() else Policy.entries) {
                 val p = Improviser(o, seed = 1, policy = policy, jumpProbability = 0.15).take(samples)
-                measure(fixture, policy.name, p.output, "segments %d reuse %.2f coverage %.2f maxCorr %.2f holds %d".format(
-                    p.segments.size, p.reuse(), p.coverage(fixture.length), p.correction.max(), p.segments.count { it.reason == afield.math.oracle.Reason.Hold }))
+                measure(fixture, policy.name, p.output, "segments %d reuse %.2f coverage %.2f joinRough %.2f accelKS %.3f maxCorr %.2f holds %d".format(
+                    p.segments.size, p.reuse(), p.coverage(fixture.length), joinRoughness(fixture, p), accelKs(fixture, p.output), p.correction.max(), p.segments.count { it.reason == Reason.Hold }))
                 val big = p.segments.filter { it.correction > 0.5 }.groupingBy { it.reason }.eachCount()
                 if (big.isNotEmpty()) rows.add("${fixture.name}\t${policy.name}\tcorrections > 0.5 by reason: $big")
                 save("${fixture.name}-${policy.name}-source", Trajectory.of(rate, "source" to p.source.toList()))
@@ -129,6 +142,18 @@ class TemporalExperiments {
                     // A1b: the receding-horizon loop, generated values fed back
                     val rh = RecedingHorizon(s, history, history = 20.0, horizon = 4.0, commit = 1.0, lockstep = true)
                     val p = rh.take(samples)
+                    // the hybrid: the oracle proposes, the forecaster judges
+                    val modes = listOf(Triple("prefer-w1", JudgeMode.Prefer, 1.0), Triple("veto-1.2", JudgeMode.Veto, 1.2), Triple("veto-2", JudgeMode.Veto, 2.0), Triple("prefer-w1-reuse3", JudgeMode.Prefer, 1.0), Triple("prefer-w1-reuse6", JudgeMode.Prefer, 1.0))
+                    for ((label, mode, k) in modes) {
+                        val judge = ForecastJudge(s, o, lockstep = true)
+                        val reuseWeight = label.substringAfter("reuse", "1").toDouble()
+                        val imp = Improviser(o, seed = 1, jumpProbability = 0.15, judge = judge, judgeMode = mode, judgeWeight = k, vetoRatio = k, reuseWeight = reuseWeight)
+                        val hp = imp.take(samples)
+                        measure(fixture, "Oracle+$short-$label", hp.output, "segments %d reuse %.2f coverage %.2f joinRough %.2f accelKS %.3f judged %d changed %d vetoed %d stayed %d".format(
+                            hp.segments.size, hp.reuse(), hp.coverage(fixture.length), joinRoughness(fixture, hp), accelKs(fixture, hp.output),
+                            imp.judgedDecisions, imp.judgeChanged, imp.judgeVetoed, imp.judgeStayed))
+                        save("${fixture.name}-Oracle+$short-$label-source", Trajectory.of(rate, "source" to hp.source.toList()))
+                    }
                     measure(fixture, "$short-receding", p.output, "p50 %.0f ms p95 %.0f ms (%d plans) load %.1f s".format(
                         p.latency(50.0) * 1000, p.latency(95.0) * 1000, p.latencies.size, s.info["loadSeconds"].toString().toDouble()))
                 }

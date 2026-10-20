@@ -219,6 +219,9 @@ private fun cleanupDetachedSession(info: SessionInformation) {
     if (info.sessions.isNotEmpty()) return
     // An automation client asked for this named document to keep running between its invocations.
     if (info.keepRunningWhenDetached && !info.ephemeral) return
+    // The document stays in `documents`, so the autosave loop would still reach these edits, but
+    // only if Field outlives the next tick; closing a document is the moment to write them.
+    afield.document.persistence.DocumentShutdownFlush.saveIfPending(info, inline = false, reason = "detach")
     detachRootFromMetaroot(info.root)
     info.cleanup()
     if (info.ephemeral) {

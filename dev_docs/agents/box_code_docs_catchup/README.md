@@ -52,3 +52,11 @@ a cache entry. Five assets reproduced exactly; the evolved-champion and live-wor
 
 Generated starting points must be refreshed from the authored transcripts. The final capture and
 landing state is in `checkpoint.json`. Full integration guards belong to the lander.
+
+## Merge reconciliation
+
+`merge-verification.json` records the landing-bounce repair. Main’s new CMU dance examples,
+inline film and solid-tube renderer are preserved and formatted. The creature page now includes
+a walking film: all eight captures (five images and three recordings) regenerated successfully.
+The binary conflict was resolved by fresh capture. Original behavioral receipts retain their
+original source hashes; the current source inventory records both pre-merge and reconciled hashes.

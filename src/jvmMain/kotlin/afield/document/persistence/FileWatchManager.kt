@@ -62,6 +62,9 @@ import kotlin.uuid.Uuid
  * in the running session.
  */
 
+/** How many `backups/<sidecar>.external-<millis>` copies [FileWatchManager.pruneExternalCopies] keeps per sidecar. */
+internal const val EXTERNAL_COPIES_KEPT = 10
+
 /**
  * Keeps one open document synchronized with external edits to its workspace directory.
  *
@@ -507,6 +510,21 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     }
 
     /**
+     * Keeps the newest [EXTERNAL_COPIES_KEPT] `backups/<sidecar>.external-<millis>` copies of
+     * [sidecarName] and deletes the rest — the cap `saving.kt` gives a sidecar's own backups
+     * (`maxBackups = 10`). Each copy is announced by a notice when it is made, so the copies are a
+     * recovery shelf, not history; without a cap a sidecar edited on disk while Field kept winning
+     * the race grew one file per collision, forever (backlog N1019-3).
+     */
+    internal fun pruneExternalCopies(backups: File, sidecarName: String) {
+        val prefix = "$sidecarName.external-"
+        val copies = backups.listFiles { f -> f.isFile && f.name.startsWith(prefix) }.orEmpty()
+            .mapNotNull { f -> f.name.removePrefix(prefix).toLongOrNull()?.let { it to f } }
+            .sortedByDescending { it.first }
+        copies.drop(EXTERNAL_COPIES_KEPT).forEach { (_, f) -> runCatching { f.delete() } }
+    }
+
+    /**
      * An external edit to a sidecar that Field is about to overwrite with an unsaved in-Field edit
      * (the 5 s autosave window). The in-Field edit still wins, but the disk text is copied to
      * `backups/<sidecar>.external-<millis>` first and a notice names that copy, so the edit is
@@ -520,6 +538,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             val backups = File(file.parentFile, "backups").apply { mkdirs() }
             val copy = File(backups, "${file.name}.external-${System.currentTimeMillis()}")
             copy.writeText(text)
+            pruneExternalCopies(backups, file.name)
             val who = box?.name?.ifBlank { null } ?: sidecarPath.boxId
             lprintln("warning,file-watch", "external edit to ${file.name} overridden by an unsaved edit in Field; disk text kept in ${copy.path}")
             notify("${file.name} was edited on disk while $who had an unsaved edit in Field; Field's edit wins, the disk version is in backups/${copy.name}", "file-watch")

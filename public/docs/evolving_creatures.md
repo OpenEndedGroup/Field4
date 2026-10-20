@@ -23,7 +23,7 @@ remember where it planted, and `force` returns the force for this physics step.
 `FootStep.contact` is how firmly the foot's program wants to be down right now, from 0 to 1. The
 genome carries the evolved gains: `freeDrag`, `footDrag` and `footStickiness`.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/one_bug.png" wait="4.0" capture="box" open-outputs="true" w="900" h="460" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/one_bug.png" wait="4.0" capture="box" open-outputs="true" w="900" h="460" padding="14" embed=true alt="a random creature of points and springs on the water, before any evolution"}
 import afield.simulation.creatures.*
 import kotlin.random.Random
 
@@ -73,7 +73,7 @@ of the bodies; `alwaysUpFootFraction` and `cyclingFootFraction` say how many poi
 many must actually step. The fitness here rewards distance, and charges for stretching the springs
 and for motor effort.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/evolved_bug.png" wait="40.0" timeout="120" capture="box" open-outputs="true" w="1000" h="520" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/evolved_bug.png" wait="40.0" timeout="120" capture="box" open-outputs="true" w="1000" h="520" padding="14" embed=true alt="fitness by generation, and the champion water bug after twenty-five generations"}
 import afield.simulation.creatures.*
 
 :::fold the WaterSurface contact model, as above
@@ -359,7 +359,7 @@ lies still covers nothing in the second half, so it scores nothing, however far 
 motors get more strength (`maxActuationBudgetPerCycle`, `maxJointImpulsePerStep`): at the defaults,
 tuned for water, a joint cannot lift a limb against gravity.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/crawler.png" wait="40.0" timeout="120" capture="box" open-outputs="true" w="900" h="420" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/crawler.png" wait="40.0" timeout="120" capture="box" open-outputs="true" w="900" h="420" padding="14" embed=true alt="the evolved crawler at the start of its run and at the end, with the trail of its centre along the floor"}
 import afield.simulation.creatures.*
 
 class Floor(val stiffness: Float = 900f, val damping: Float = 40f, val friction: Float = 1f) : ContactModel {
@@ -440,7 +440,7 @@ showPlaneGrid(
 Judged over six cycles, the champion is then watched for twenty-four. Every forty recorded frames
 leave a copy of its body on the floor, fainter the older it is.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/crawler_long_run.png" wait="40.0" timeout="120" capture="box" open-outputs="true" w="900" h="320" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/evolving_creatures/crawler_long_run.png" wait="40.0" timeout="120" capture="box" open-outputs="true" w="900" h="320" padding="14" embed=true alt="the evolved crawler over twenty-four cycles: faded copies of its body spaced evenly along the floor, fainter the older they are"}
 import afield.simulation.creatures.*
 
 :::fold the Floor contact model and the evolution, as above
@@ -533,6 +533,100 @@ showPlane(
 The copies are evenly spaced from the first cycle to the last: the crawler keeps going rather than
 falling once. It holds its body up as a triangle and shuffles on two feet (orange while gripping)
 that plant and release in turn. It went left; the fitness counts either direction.
+
+And moving, a cycle a second for all twenty-four cycles, with the view following it; the ticks on the floor are a unit apart:
+
+```diffstatic_runner {data-lang=kotlin video="assets/evolving_creatures/crawler_walk.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="24" fps="20" timeout="300" w="900" embed=true name="crawler-walk" alt="the evolved crawler shuffling along the floor in side view, two feet planting and releasing in turn while the view follows it"}
+import afield.simulation.creatures.*
+
+:::fold the Floor contact model and the evolution, as above
+class Floor(val stiffness: Float = 900f, val damping: Float = 40f, val friction: Float = 1f) : ContactModel {
+    override fun place(points: List<Float2>): List<Float2> {
+        val lowest = points.minOf { it.y }
+        return points.map { Float2(it.x, it.y - lowest) }
+    }
+
+    override fun foot(index: Int) = object : ContactModel.Foot {
+        var planted: Float2? = null
+        override var grip = 0f
+        override val anchor
+            get() = planted
+
+        override fun force(step: FootStep): Float2 {
+            val g = step.genome
+            val p = step.position
+            val v = step.velocity
+            val onFloor = p.y <= 0.02f
+            val up = if (p.y < 0f) -p.y * stiffness - min(v.y, 0f) * damping else 0f
+            grip = if (onFloor) step.contact else 0f
+            if (grip <= 0.02f) {
+                planted = null
+                val slide = if (onFloor) friction else g.freeDrag * 0.1f
+                return Float2(-v.x * slide, up - v.y * g.freeDrag * 0.1f)
+            }
+            val at = planted ?: Float2(p.x, 0f).also { planted = it }
+            return Float2((at.x - p.x) * g.footStickiness * grip - v.x * g.footDrag * grip, up)
+        }
+    }
+}
+
+val config = EvolutionConfig(
+    populationSize = 40,
+    generations = 60,
+    minPoints = 5,
+    maxPoints = 8,
+    targetEdgeCount = 8,
+    alwaysUpFootFraction = 0.5f,
+    cyclingFootFraction = 0.5f,
+    simulation = CreatureSimulationConfig(
+        warmupCycles = 2,
+        measuredCycles = 6,
+        gravity = -9.8f,
+        contact = Floor(),
+        fitness = { e ->
+            2f * max(e.sustainedTravel(Float2(1f, 0f)), e.sustainedTravel(Float2(-1f, 0f))) - e.meanStretchError
+        },
+        maxActuationBudgetPerCycle = 40f,
+        maxJointImpulsePerStep = 0.2f,
+        maxCenterSpeed = 4f,
+    ),
+)
+:::endfold
+
+val champion = CreatureEvolution.evolve(config).best
+val crawler = CreatureEvolution.simulate(champion.genome, config.simulation.copy(measuredCycles = 24))
+val started = AnimationClock.nowSeconds()
+var shown = -1
+
+loop {
+    // A frame is recorded every 4 of the 120 steps in a cycle, so 30 a second is a cycle a second.
+    val i = (((AnimationClock.nowSeconds() - started) * 30).toInt()).coerceAtMost(crawler.frames.lastIndex)
+    if (i != shown) {
+        val c = crawler.frames[i].center
+        // A tick every unit, so the floor slides past as the view follows.
+        val floor = fline {
+            moveTo(c.x - 5f, 0f)
+            lineTo(c.x + 5f, 0f)
+            for (x in floor(c.x - 5f).toInt()..ceil(c.x + 5f).toInt()) {
+                moveTo(x.toFloat(), 0f)
+                lineTo(x.toFloat(), -0.15f)
+            }
+        }
+            .apply { color = vec(0.5, 0.45, 0.4, 1.0) }
+        showPlane(
+            [floor] + crawler.frameLines(i, trailLength = crawler.frames.size, alignNetMotionToPositiveX = false),
+            title =
+                "cycle %d of 24: %.1f along the floor"
+                    .format(i * 24 / crawler.frames.size + 1, c.x - crawler.frames[0].center.x),
+            window = Rect(c.x - 4.0, -0.5, 8.0, 3.5),
+            width = 860,
+            height = 380,
+            yUp = true,
+        )
+        shown = i
+    }
+}
+```
 
 ## What you can change
 

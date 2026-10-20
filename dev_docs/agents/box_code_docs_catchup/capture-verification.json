@@ -1,21 +1,23 @@
 {
   "status": "passed",
   "page": "public/docs/evolving_creatures.md",
-  "sourceSha256": "8c45bfb7cb666bdec03261ad2f1ed5fab6e02b3ecbae0260f63d9bd5b51e0305",
+  "sourceSha256": "784433fae7febafc92c6e2eb33306ff9fead8f3f5b4c01497918cfa921833486",
+  "capturedSourceSha256": "b3c07c6e98ffa7424f53dea4ca6e63ee6ffdcd34a37afe86e81f2c5bf6833df6",
+  "postCaptureChange": "Actual import/ktfmt formatting of the newly added crawler-walking example; executable tokens, raw literals and fold markers verified unchanged.",
   "mode": "always",
   "command": "uv run python dev_docs/agents/box_code_docs_catchup/capture.py",
-  "log": "build/box-code-revision/docs-catchup/capture-forced.log",
+  "log": "build/box-code-revision/docs-catchup/capture-merge.log",
   "summary": {
-    "regenerated": 7,
+    "regenerated": 8,
     "screenshots": 5,
-    "videos": 2,
+    "videos": 3,
     "failures": 0,
-    "elapsedSeconds": 388.4
+    "elapsedSeconds": 454.3
   },
   "environment": {
-    "startedAtEpochSec": 1792487277.0425642,
-    "reportedAtEpochSec": 1792487665.563753,
-    "sampleCount": 30,
+    "startedAtEpochSec": 1792492456.219527,
+    "reportedAtEpochSec": 1792492910.701014,
+    "sampleCount": 37,
     "latest": {
       "supported": true,
       "platform": "darwin",
@@ -24,7 +26,7 @@
       "displayAvailable": true,
       "disk": {
         "path": "/Users/marc/.codex/worktrees/box-code-revision-pilot/field4",
-        "freeBytes": 18445246464,
+        "freeBytes": 16645038080,
         "protectedBytes": 8589934592
       }
     },
@@ -34,9 +36,9 @@
       "reserveBytes": 0,
       "plannedBytes": 0,
       "admitted": true,
-      "initialFreeBytes": 22552231936,
-      "minimumFreeBytes": 18445246464,
-      "maxObservedVolumeLossBytes": 4106985472,
+      "initialFreeBytes": 22901161984,
+      "minimumFreeBytes": 15491960832,
+      "maxObservedVolumeLossBytes": 7409201152,
       "attribution": "whole volume, including other writers; not checkout consumption"
     }
   },
@@ -45,25 +47,25 @@
       "path": "public/docs/assets/evolving_creatures/one_bug.png",
       "sha256": "6d2f1f2c3044b6e0e3bf8812411d021d9c92ac4342e7aa32edbe9777b2eda075",
       "bytes": 175789,
-      "inspected": true
+      "inspection": "identical to previously inspected capture"
     },
     {
       "path": "public/docs/assets/evolving_creatures/evolved_bug.png",
-      "sha256": "43c1f5e4efbe2e21fdab6b4f550959d3f8638416b81b8bffd088e4fb81a52c44",
-      "bytes": 330897,
-      "inspected": true
+      "sha256": "4525c187ee9c773e4d27179f095db8b351dcef96d5b384cb8adc6a2086aa120b",
+      "bytes": 333101,
+      "inspection": "fresh image or extracted video frames inspected"
     },
     {
       "path": "public/docs/assets/evolving_creatures/watching.png",
-      "sha256": "b02f92182b5f9c8880165d577ab67dd4880f9349281a79fc90c5279a1beb7c85",
-      "bytes": 78499,
-      "inspected": true
+      "sha256": "52ef3a8b76d42d6bb436ba34d8e171787bd5461cc23d085bcb525f1f56771435",
+      "bytes": 78471,
+      "inspection": "fresh image or extracted video frames inspected"
     },
     {
       "path": "public/docs/assets/evolving_creatures/random_3d.mp4",
-      "sha256": "b32992f1c2dac4b4cde6dba77686edced15d09e71b6ff782ffa01710e236474f",
-      "bytes": 1012319,
-      "inspected": true,
+      "sha256": "287e22752232a2cb46e321771bb237233363cca5d104306d89d9828ce91e27f9",
+      "bytes": 1004854,
+      "inspection": "fresh image or extracted video frames inspected",
       "video": {
         "programs": [],
         "stream_groups": [],
@@ -80,17 +82,13 @@
         "format": {
           "duration": "14.000000"
         }
-      },
-      "inspectedFrameSeconds": [
-        4,
-        10
-      ]
+      }
     },
     {
       "path": "public/docs/assets/evolving_creatures/champion_3d.mp4",
       "sha256": "1f089e3675765789453f6f15d1f5528f8c0e2e293768e569bfcb5aaab8eca051",
       "bytes": 1687846,
-      "inspected": true,
+      "inspection": "identical to previously inspected capture",
       "video": {
         "programs": [],
         "stream_groups": [],
@@ -107,26 +105,44 @@
         "format": {
           "duration": "16.000000"
         }
-      },
-      "inspectedFrameSeconds": [
-        4,
-        12
-      ]
+      }
     },
     {
       "path": "public/docs/assets/evolving_creatures/crawler.png",
       "sha256": "025daf2d8533b992c0a70c4e453ae3a8b95e5303f6d98f31b461abfe330ec20d",
       "bytes": 120553,
-      "inspected": true
+      "inspection": "identical to previously inspected capture"
     },
     {
       "path": "public/docs/assets/evolving_creatures/crawler_long_run.png",
       "sha256": "ff313695bf6b95a56cec2c2d8658df3c23216629423d8463aa391846096a7e95",
       "bytes": 217754,
-      "inspected": true
+      "inspection": "identical to previously inspected capture"
+    },
+    {
+      "path": "public/docs/assets/evolving_creatures/crawler_walk.mp4",
+      "sha256": "63833c87189f44dd8456bb9099012656ebef42fdac24ca91edac6222f501ab3c",
+      "bytes": 1472326,
+      "inspection": "fresh image or extracted video frames inspected",
+      "video": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "width": 1822,
+            "height": 950,
+            "nb_frames": "480",
+            "side_data_list": [
+              {}
+            ]
+          }
+        ],
+        "format": {
+          "duration": "24.000000"
+        }
+      }
     }
   ],
-  "inspection": "All five screenshots show the actual simulation output without error markers. Video frames at two times show visible gait and position changes in the real 3D viewer.",
   "priorAttempts": [
     {
       "log": "build/box-code-revision/docs-catchup/capture.log",
@@ -137,5 +153,5 @@
       "result": "incremental mode reused checked-in assets lacking cache entries; changed harness to always for the successful fresh run"
     }
   ],
-  "environmentReport": "build/docs-environment.json"
+  "reconciliation": "Fresh capture resolves watching.png conflict; no binary side selected by hand."
 }
