@@ -53,10 +53,12 @@ nav:
       - Graphics on the GPU: tour_gpu_graphics.md
       # After the GPU stop and before Sound, because Field calls itself an environment for
       # graphics and exploratory data visualization and until this stop no Tour page showed data.
-      # A new page rather than chart.md or dataframe.md moved here: each of those covers one half
-      # (the plot, the frame) in reference depth, and this stop is the short path through both —
-      # a real dataset in a frame, a summary, a Chart, and a control that refilters it live —
-      # ending in links to them and to "Drawing From Data".
+      # A new page rather than a move: the tools it shows are spread over visualizers.md (.h, .h2,
+      # the inline histogram and stats markers), the Plotly helpers and field_probes.md, each in
+      # reference depth. This stop takes one real dataset (java.time's zones) through them in the
+      # order you reach for them, ends on a live fieldProbe card, and hands off to those pages,
+      # chart.md and dataframe.md. Rebuilt after Marc found the first cut, a DataFrame-and-Chart
+      # page, too narrow to stand for Field's data tools.
       - Looking at Data: tour_data.md
       # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
       - "Sound: the Pattern → Audio Path": sound.md
