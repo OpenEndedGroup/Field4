@@ -171,6 +171,19 @@ class GeometryBuilderTest {
         assertTrue("frame 1" in e.message!!, e.message)
     }
 
+    @Test
+    fun `gltfpack, when installed, makes a smaller GLB that is still a GLB`() {
+        if (!Gltfpack.available) {
+            println("gltfpack is not installed (./gradlew prepareGltfpack); compression not exercised")
+            return
+        }
+        val plain = geometryScene { surface(40, 40) { u, v -> vertex(u * 4, sin(u * 9) * 0.3, v * 4, hsl(u * 300, 0.8, 0.5)) } }.toGlb()
+        val packed = Gltfpack.compress(plain)
+        assertTrue(packed.size < plain.size, "gltfpack ${packed.size} >= plain ${plain.size}")
+        val json = glbJson(packed)
+        assertTrue("EXT_meshopt_compression" in json["extensionsUsed"]!!.jsonArray.map { it.jsonPrimitive.content })
+    }
+
     private fun glbJson(glb: ByteArray) = run {
         val b = ByteBuffer.wrap(glb).order(ByteOrder.LITTLE_ENDIAN)
         assertEquals(0x46546C67, b.getInt(0))
