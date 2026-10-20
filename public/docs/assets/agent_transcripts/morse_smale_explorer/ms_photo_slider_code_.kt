@@ -9,8 +9,13 @@ fun show(p: Double) {
     val r = complex.simplify(p)
     showImgGrid(
         "${r.criticalPoints.size} points, ${r.separatrixCount} curves" to
-            print.drawFLines(r.toFLines(traceDescending = false, thickness = 2.0) + r.criticalPointsFLine(5.0), scale = 2.0),
-        channel = "ridges", columns = 1, cellSide = 520,
+            print.drawFLines(
+                r.toFLines(traceDescending = false, thickness = 2.0) + r.criticalPointsFLine(5.0),
+                scale = 2.0,
+            ),
+        channel = "ridges",
+        columns = 1,
+        cellSide = 520,
     )
 }
 

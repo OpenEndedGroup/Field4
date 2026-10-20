@@ -1,0 +1,194 @@
+name: madp_score
+description: >-
+  The canvas as a score: an orange playhead sweeps the canvas every eleven seconds, and each box it
+  crosses runs its score { } block every frame, drawing into one dark output canvas and playing
+  dough sounds; one box jumps about the score and another drifts. After McLaren, Fischinger and
+  Glass, ported from the madp score demo.
+operations:
+  - create:
+      box: madp_score_playhead
+      name: playhead
+      frame: { x: 40.0, y: 40.0, w: 12.0, h: 560.0 }
+      properties:
+        code: |
+          // The score box moves this line across the canvas; nothing to run here. Its look is the
+          // `customization` the score box gives it, the same trick as Field's time slider.
+  - create:
+      box: madp_score_lead
+      name: score · run me
+      frame: { x: 64.0, y: 60.0, w: 200.0, h: 140.0 }
+      properties:
+        code: |
+          /*
+          The canvas is the score. Run this box: the orange playhead sweeps from here to the right once
+          every eleven seconds, and every box it crosses runs its score { } block each frame, drawing into the
+          dark panel below and playing dough sounds. Every box in the score is armed when this one starts.
+
+          Edit a box and run it again to change what it does; stop a box to silence it; drag a box to move
+          it in time, or stretch it to make it last longer. Inside score { }: localProgress (0 to 1 across
+          the box), localT (seconds into it), justEntered, onSubdivision(n), boxPoint(u, v), draw.*,
+          sound(path), thisRMS (how loud this box's own sound is right now) and box.move/set.
+          */
+          score {
+              val center = boxPoint(0.5, 0.5)
+              val size = min(bounds.w * scaleX, bounds.h * scaleY)
+              val radius = size * (0.12 + thisRMS * 0.42 + tri01(localT * 2) * 0.14)
+
+              draw.ring(center, radius, color = "rgba(255, 238, 205, 0.96)", width = 2.5)
+              draw.circle(center, radius * 0.18, fill = "rgba(255, 238, 205, 0.18)")
+
+              if (justEntered) sound("/dough/play/note/48/duration/0.18/s/sine/gain/0.45/lpf/900/release/0.14/verb/0.25")
+          }
+
+          playScore(loop = 11.0, x = 40.0..1880.0, y = 40.0..600.0, width = 520, height = 320)
+  - create:
+      box: madp_score_scratches
+      name: McLaren scratches
+      frame: { x: 620.0, y: 330.0, w: 180.0, h: 160.0 }
+      properties:
+        code: |
+          // Norman McLaren scratched straight onto film: nine lines that twitch every frame, a grain of
+          // noise seven times on the way across, and a click on the way in.
+          score {
+              for (i in 0 until 9) {
+                  val u = i / 8.0
+                  val a = boxPoint(0.0, u)
+                  val b = boxPoint(1.0, 1 - u)
+                  val kick = sin(localT * 26 + 0.1 + i * 0.75) * (10 + thisRMS * 24)
+                  draw.line(a.x, a.y + kick, b.x, b.y - kick, stroke = "rgba(255,255,255,${0.12 + u * 0.62})", width = 1 + u * 1.2)
+              }
+              draw.circle(boxPoint(0.5 + sin(localT * 18 + 0.1) * 0.2, 0.5), 4 + thisRMS * 11, fill = "rgba(255, 107, 107, 0.88)")
+
+              if (onSubdivision(7, "grain")) sound("/dough/play/s/white/duration/0.03/gain/0.11/lpf/5200/release/0.02/pan/0.45", minInterval = 0.035)
+              if (justEntered) sound("/dough/play/note/72/duration/0.04/s/pulse/gain/0.12/lpf/1800/release/0.03")
+          }
+  - create:
+      box: madp_score_orbits
+      name: Fischinger orbits
+      frame: { x: 840.0, y: 70.0, w: 200.0, h: 150.0 }
+      properties:
+        code: |
+          // Oskar Fischinger's geometry: a planet on a ring, and a bell three times a pass.
+          score {
+              val c = boxPoint(0.5, 0.5)
+              val q = boxPoint(0.5 + cos(localT * 2.1) * 0.34, 0.5 + sin(localT * 2.1) * 0.34)
+              draw.ring(c, min(bounds.w * scaleX, bounds.h * scaleY) * 0.32, color = "rgba(245, 202, 92, 0.9)", width = 2.0)
+              draw.line(c, q, stroke = "rgba(245, 202, 92, 0.45)", width = 1.6)
+              draw.circle(q, 7 + thisRMS * 14, fill = "rgba(245, 202, 92, 0.92)")
+
+              if (onSubdivision(3, "bell")) sound("/dough/play/note/72/duration/0.12/s/sine/gain/0.15/lpf/2600/release/0.1/verb/0.42", minInterval = 0.08)
+          }
+  - create:
+      box: madp_score_glass_a
+      name: Glass phase · 60
+      frame: { x: 1070.0, y: 300.0, w: 320.0, h: 110.0 }
+      properties:
+        code: |
+          // Philip Glass's phasing, done with box widths: this box and the one below run the same code,
+          // six pulses a pass each, but a wider box takes longer to cross, so the two pulses drift apart.
+          // Stretch either box and listen to the phase move.
+          score {
+              for (i in 0 until 8) {
+                  val u = i / 7.0
+                  val p = boxPoint(u, 0.5 + sin(localT * 2 + i * 0.4) * 0.06)
+                  draw.line(p.x, boxPoint(u, 0.2).y, p.x, boxPoint(u, 0.8).y, stroke = "rgba(255, 186, 129, 0.8)", width = 1.2 + thisRMS * 2)
+              }
+              if (onSubdivision(6, "phase")) sound("/dough/play/note/60/duration/0.1/s/tri/gain/0.15/lpf/1200/release/0.08/verb/0.26/pan/0.22", minInterval = 0.05)
+          }
+  - create:
+      box: madp_score_glass_b
+      name: Glass phase · 67
+      frame: { x: 1140.0, y: 450.0, w: 260.0, h: 110.0 }
+      properties:
+        code: |
+          // The same as the box above, a fifth higher and a little narrower.
+          score {
+              for (i in 0 until 8) {
+                  val u = i / 7.0
+                  val p = boxPoint(u, 0.5 + sin(localT * 2 + i * 0.4) * 0.06)
+                  draw.line(p.x, boxPoint(u, 0.2).y, p.x, boxPoint(u, 0.8).y, stroke = "rgba(174, 246, 255, 0.8)", width = 1.2 + thisRMS * 2)
+              }
+              if (onSubdivision(6, "phase")) sound("/dough/play/note/67/duration/0.1/s/tri/gain/0.15/lpf/1200/release/0.08/verb/0.26/pan/0.62", minInterval = 0.05)
+          }
+  - create:
+      box: madp_score_jump
+      name: jump cut
+      frame: { x: 1430.0, y: 110.0, w: 160.0, h: 120.0 }
+      properties:
+        code: |
+          // A box that cuts itself to somewhere else in the score: on the way in, and five times on the
+          // way across, it jumps near the playhead and leaves a fading ghost of where it was. The box
+          // really moves on the canvas; its frame is part of the instrument.
+          class Ghost(val x: Double, val y: Double, val w: Double, val h: Double, var life: Double = 1.0)
+
+          val ghosts = mutableListOf<Ghost>()
+          var jumps = 0
+          var flash = 0.0
+
+          score {
+              fun jump() {
+                  val was = box.get()
+                  ghosts += Ghost(was.x + was.w / 2, was.y + was.h / 2, was.w, was.h)
+                  if (ghosts.size > 8) ghosts.removeAt(0)
+
+                  val w = 120 + rand(0.0, scoreWidth * 0.08)
+                  val h = 90 + rand(0.0, scoreHeight * 0.12)
+                  val anchor = playheadX + rand(-scoreWidth * 0.12, scoreWidth * 0.12)
+                  box.set(
+                      x = clamp(anchor - w * (0.2 + rand(0.0, 0.5)), scoreLeft, scoreRight - w),
+                      y = clamp(rand(scoreTop + 10, scoreBottom - h - 10), scoreTop, scoreBottom - h),
+                      w = w,
+                      h = h,
+                  )
+                  flash = 1.0
+                  jumps++
+                  sound("/dough/play/note/${55 + (jumps % 5) * 2}/duration/0.06/s/pulse/pw/0.22/gain/0.13/lpf/${700 + (jumps % 7) * 220}/release/0.04/pan/0.18", key = "jump", minInterval = 0.03)
+              }
+
+              if (justEntered) jump()
+              if (onSubdivision(5, "jump-grid")) jump()
+
+              ghosts.forEach { it.life *= 0.84 }
+              ghosts.removeAll { it.life < 0.06 }
+              for (g in ghosts) {
+                  val p = fromScore(g.x, g.y)
+                  draw.rect(p.x - g.w * scaleX / 2, p.y - g.h * scaleY / 2, g.w * scaleX, g.h * scaleY, stroke = "rgba(255,255,255,${g.life * 0.28})")
+              }
+
+              flash *= 0.82
+              val live = box.get()
+              val c = fromScore(live.x + live.w / 2, live.y + live.h / 2)
+              val ww = live.w * scaleX
+              val hh = live.h * scaleY
+              draw.rect(c.x - ww / 2, c.y - hh / 2, ww, hh, stroke = "rgba(255, 171, 125, 0.92)", width = 2 + thisRMS * 2.5)
+              draw.line(c.x - ww / 2, c.y - hh / 2, c.x + ww / 2, c.y + hh / 2, stroke = "rgba(255, 171, 125, 0.48)", width = 1.2)
+              draw.line(c.x + ww / 2, c.y - hh / 2, c.x - ww / 2, c.y + hh / 2, stroke = "rgba(255, 171, 125, 0.48)", width = 1.2)
+              draw.circle(c, 8 + flash * 28 + thisRMS * 18, fill = "rgba(255,255,255,${0.05 + flash * 0.14})")
+          }
+  - create:
+      box: madp_score_duck
+      name: duck
+      frame: { x: 1640.0, y: 300.0, w: 200.0, h: 150.0 }
+      properties:
+        code: |
+          // A silly one, done rigorously: a duck that bobs, drifts a little across the score each pass
+          // (box.move), and quacks twice.
+          score {
+              box.move(sin(transportT * 1.4) * 9 * dt, sin(transportT * 3.1) * 6 * dt)
+
+              val body = boxPoint(0.45, 0.62)
+              val head = boxPoint(0.68, 0.34 + sin(localT * 4) * 0.06)
+              draw.circle(body, 26 + thisRMS * 12, fill = "rgba(255, 224, 96, 0.94)")
+              draw.circle(head, 14 + thisRMS * 8, fill = "rgba(255, 224, 96, 0.94)")
+              draw.circle(head.x + 5, head.y - 4, 3.0, fill = "rgba(18,18,18,0.95)")
+              draw.polyline(
+                  listOf(pt(head.x + 10, head.y - 6), pt(head.x + 30 + thisRMS * 10, head.y), pt(head.x + 10, head.y + 6)),
+                  closed = true,
+                  fill = "rgba(255, 128, 52, 0.96)",
+                  stroke = "rgba(255, 153, 74, 0.96)",
+                  width = 1.4,
+              )
+
+              if (justEntered) sound("/dough/play/note/64/duration/0.08/s/pulse/pw/0.42/gain/0.16/lpf/1500/release/0.05")
+              if (onSubdivision(2, "quack")) sound("/dough/play/note/69/duration/0.06/s/pulse/pw/0.28/gain/0.16/lpf/1300/release/0.05", minInterval = 0.08)
+          }

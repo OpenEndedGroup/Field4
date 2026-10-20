@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "sourceHashes": {
+    "src/jvmMain/kotlin/afield/runtime/kotlin/RerunCompileCache.kt": "4233b9ff1c1f6ec47b5c95a0bf0fc82b22fb015385522f4bf315d07cd83ce962",
+    "src/jvmMain/kotlin/afield/runtime/kotlin/KotlinInterface2.kt": "74413204dd7afcb23ccb0d46340694d2e6404521a9a7de831b9063c7f77b6045",
+    "src/jvmMain/kotlin/afield/runtime/kotlin/ReplVariableRebindingSmokeTest.kt": "a1c1d14d56c3fabef88d4dafadf4e56134cb0af1d491afaab42cac83c2c78d4f"
+  },
+  "realK2RebindingAndCacheTestsPassed": [
+    "afield.runtime.kotlin.ReplVariableRebindingSmokeTest",
+    "afield.runtime.kotlin.ReplRerunCompileCacheSmokeTest"
+  ]
+}

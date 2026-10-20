@@ -187,6 +187,12 @@ class Mark internal constructor(
     /** The Excalidraw frame this mark is in, if any. */
     val frame: Mark? get() = json.string("frameId")?.let { view[it] }
 
+    /** The Excalidraw groups this mark is in, innermost first (Excalidraw's own order). */
+    val groups: List<String> get() = (json["groupIds"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content } ?: emptyList()
+
+    /** Makes this mark follow [box] when it moves; the same as `notation.anchor(this, box)`. */
+    fun anchorTo(box: Box) = view.anchor(this, box)
+
     fun contains(p: Vec2): Boolean = bounds.let { p.x >= it.x && p.x <= it.x + it.w && p.y >= it.y && p.y <= it.y + it.h }
 
     /** The mark's geometry in world coordinates, rotation included: a stroke's polyline, or a shape's outline. */
@@ -263,7 +269,16 @@ class Notation internal constructor(private val box: Box) {
     }
 
     /** The marks in an Excalidraw frame. */
-    fun inside(frame: Mark): List<Mark> = marks.filter { it.json.string("frameId") == frame.id }
+    fun inside(frame: MarkHandle): List<Mark> = marks.filter { it.json.string("frameId") == frame.id }
+
+    /**
+     * The marks that move with [mark] when it is selected and dragged: everything sharing its
+     * outermost group (itself included), or just [mark] when it is in no group.
+     */
+    fun grouped(mark: MarkHandle): List<Mark> {
+        val outer = this[mark.id]?.groups?.lastOrNull() ?: return listOfNotNull(this[mark.id])
+        return marks.filter { outer in it.groups }
+    }
 
     /** Marks whose bounds come within [radius] of [p], nearest first. */
     fun near(p: Vec2, radius: Double): List<Mark> = marks
@@ -314,7 +329,11 @@ class Notation internal constructor(private val box: Box) {
 
     /** A region that is the frame (or any mark) labelled [name], wherever it is now. */
     fun space(name: String, x: ClosedFloatingPointRange<Double>, y: ClosedFloatingPointRange<Double>): NotationSpace =
-        NotationSpace(this, { named(name)?.bounds }, x, y)
+        NotationSpace(this, { named(name)?.bounds }, x, y, defining = { named(name)?.id })
+
+    /** A region that is [mark] — a frame or shape drawn by hand or returned by `notation { }` — wherever it is now. */
+    fun space(mark: MarkHandle, x: ClosedFloatingPointRange<Double>, y: ClosedFloatingPointRange<Double>): NotationSpace =
+        NotationSpace(this, { this[mark.id]?.bounds }, x, y, defining = { mark.id })
 
     internal fun cut(among: List<Mark>, axis: ProbeAxis, at: Double, map: (Double) -> Double): List<Hit> {
         val out = ArrayList<Hit>()
@@ -530,6 +549,21 @@ class MarkEditor internal constructor(private val original: JsonObject) {
     var opacity: Double
         get() = (changes["opacity"] as? JsonPrimitive)?.doubleOrNull ?: original.double("opacity") ?: 100.0
         set(v) { changes["opacity"] = JsonPrimitive(v) }
+    /** How hand-drawn the line looks: 0 architect, 1 artist (the default), 2 cartoonist. */
+    var roughness: Double
+        get() = (changes["roughness"] as? JsonPrimitive)?.doubleOrNull ?: original.double("roughness") ?: 1.0
+        set(v) { changes["roughness"] = JsonPrimitive(v) }
+    /** `"solid"`, `"dashed"` or `"dotted"`. */
+    var strokeStyle: String
+        get() = (changes["strokeStyle"] as? JsonPrimitive)?.content ?: original.string("strokeStyle") ?: "solid"
+        set(v) { changes["strokeStyle"] = JsonPrimitive(v) }
+    var dashed: Boolean
+        get() = strokeStyle == "dashed"
+        set(v) { strokeStyle = if (v) "dashed" else "solid" }
+    /** How a [fill] is painted: `"solid"`, `"hachure"`, `"cross-hatch"` or `"zigzag"`. */
+    var fillStyle: String
+        get() = (changes["fillStyle"] as? JsonPrimitive)?.content ?: original.string("fillStyle") ?: "hachure"
+        set(v) { changes["fillStyle"] = JsonPrimitive(v) }
     var text: String?
         get() = (changes["text"] as? JsonPrimitive)?.content ?: original.string("text")
         set(v) { if (v != null) { changes["text"] = JsonPrimitive(v); changes["originalText"] = JsonPrimitive(v) } }
@@ -561,17 +595,38 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
     /** When set, the marks made after it follow this box when it moves. */
     var anchorTo: Box? = null
 
+    /** How a non-transparent fill is painted; null means solid. See [MarkEditor.fillStyle]. */
+    var fillStyle: String? = null
+
+    private var inFrame: String? = null
+    private val groupStack = ArrayList<String>()
+    private var groupCounter = 0
+
+    /**
+     * Groups the marks made in [contents] the way Excalidraw's Ctrl+G does: selecting one selects
+     * them all, and they drag together. Groups nest. Returns the group's id.
+     */
+    fun group(contents: NotationBuilder.() -> Unit): String {
+        val gid = "${owner.id}~$key~group${groupCounter++}"
+        groupStack.add(gid)
+        try { contents() } finally { groupStack.removeAt(groupStack.size - 1) }
+        return gid
+    }
+
     fun rect(x: Number, y: Number, w: Number, h: Number, name: String? = null, label: String? = null,
-             stroke: String = this.stroke, fill: String = this.fill): MarkRef =
-        shape("rectangle", x, y, w, h, name, label, stroke, fill)
+             stroke: String = this.stroke, fill: String = this.fill,
+             fillStyle: String? = this.fillStyle, opacity: Number = this.opacity): MarkRef =
+        shape("rectangle", x, y, w, h, name, label, stroke, fill, fillStyle, opacity.toDouble())
 
     fun ellipse(x: Number, y: Number, w: Number, h: Number, name: String? = null, label: String? = null,
-                stroke: String = this.stroke, fill: String = this.fill): MarkRef =
-        shape("ellipse", x, y, w, h, name, label, stroke, fill)
+                stroke: String = this.stroke, fill: String = this.fill,
+                fillStyle: String? = this.fillStyle, opacity: Number = this.opacity): MarkRef =
+        shape("ellipse", x, y, w, h, name, label, stroke, fill, fillStyle, opacity.toDouble())
 
     fun diamond(x: Number, y: Number, w: Number, h: Number, name: String? = null, label: String? = null,
-                stroke: String = this.stroke, fill: String = this.fill): MarkRef =
-        shape("diamond", x, y, w, h, name, label, stroke, fill)
+                stroke: String = this.stroke, fill: String = this.fill,
+                fillStyle: String? = this.fillStyle, opacity: Number = this.opacity): MarkRef =
+        shape("diamond", x, y, w, h, name, label, stroke, fill, fillStyle, opacity.toDouble())
 
     fun text(text: String, x: Number, y: Number, size: Number = fontSize, name: String? = null,
              color: String = stroke): MarkRef {
@@ -646,19 +701,31 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
         return ref
     }
 
-    /** An Excalidraw frame: a named region that groups the marks drawn inside it. */
-    fun frame(name: String, x: Number, y: Number, w: Number, h: Number): MarkRef {
+    /**
+     * An Excalidraw frame: a named region that groups the marks drawn inside it. Marks made in
+     * [contents] belong to the frame — Excalidraw clips them to it and drags them with it, and
+     * [Notation.inside] finds them.
+     */
+    fun frame(name: String, x: Number, y: Number, w: Number, h: Number, contents: (NotationBuilder.() -> Unit)? = null): MarkRef {
         val id = nextId(name)
-        return add(base(id, "frame", x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble(), name, "#bbb", "transparent")
-            .with("name" to JsonPrimitive(name)))
+        val ref = add(base(id, "frame", x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble(), name, "#bbb", "transparent")
+            .with("name" to JsonPrimitive(name), "frameId" to JsonNull, "groupIds" to JsonArray(emptyList())))
+        if (contents != null) {
+            val outer = inFrame
+            inFrame = id
+            try { contents() } finally { inFrame = outer }
+        }
+        return ref
     }
 
     // ── element construction ───────────────────────────────────────────────────────────────────
 
     private fun shape(type: String, x: Number, y: Number, w: Number, h: Number, name: String?, label: String?,
-                      stroke: String, fill: String): MarkRef {
+                      stroke: String, fill: String, fillStyle: String? = null, opacity: Double = this.opacity): MarkRef {
         val id = nextId(name)
         var e = base(id, type, x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble(), name, stroke, fill)
+            .with("opacity" to JsonPrimitive(opacity))
+        if (fillStyle != null && fill != "transparent") e = e.with("fillStyle" to JsonPrimitive(fillStyle))
         if (type == "rectangle") e = e.with("roundness" to buildJsonObject { put("type", JsonPrimitive(3)) })
         val ref = add(e)
         if (label != null) addLabel(ref.id, label, e.worldBounds())
@@ -728,8 +795,8 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
             put("strokeStyle", JsonPrimitive(if (dashed) "dashed" else "solid"))
             put("roughness", JsonPrimitive(roughness))
             put("opacity", JsonPrimitive(opacity))
-            put("groupIds", JsonArray(emptyList()))
-            put("frameId", JsonNull)
+            put("groupIds", JsonArray(groupStack.asReversed().map { JsonPrimitive(it) }))
+            put("frameId", jsonString(inFrame))
             put("roundness", JsonNull)
             put("seed", JsonPrimitive(abs(id.hashCode()) + 1))
             put("isDeleted", JsonPrimitive(false))

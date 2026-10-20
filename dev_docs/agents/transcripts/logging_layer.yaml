@@ -3,6 +3,9 @@ description: |
   The log layer — channels, sinks, and the three different rules that select on a channel. Six boxes, one per thing on `public/docs/logging.md`, and every one of them reads the real objects a running Field is using rather than a description of them: `LogDispatcher`'s live sink list, `ConsoleMute`'s actual mute set, and `LogStream`'s actual subscription filter.
   The point of running these rather than reading them is box 3. `ConsoleMute.isMuted` compares the whole channel string, the pinned console splits on commas and compares a tag, and `LogStream`'s filter takes any case-insensitive substring — so one word selects three different sets of lines, and box 3 makes a real subscriber prove it.
   The saved document at `dev_docs/agents/demos/logging_layer/` is this same scene.
+docs:
+  - page: logging.md
+    why: "The page these six boxes accompany: channels, sinks and selection rules."
 operations:
   - create:
       box: log_channels

@@ -10,6 +10,9 @@ description: >
   how steep a climb makes the dart point at 45 degrees, and descends the exact gradient from 0.15 to
   1.0000000000000244. Open or replay this into a fresh Field4 and look at box one: bands one and two
   are the same picture, band three is what losing a quadrant looks like.
+docs:
+  - page: rectsl_inverse_animation.md
+    why: "Explains fitting RectSL animations by differentiation."
 operations:
   - create:
       box: rectsl_heading_lowering
@@ -21,7 +24,7 @@ operations:
           import java.util.Base64
 
           val duration = 4.0
-          fun clock(): Track<Double> = LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(duration, duration)))
+          fun clock(): Track<Double> = LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(duration, duration)])
           fun wave(rate: Double, amplitude: Double): Track<Double> = BinaryDoubleTrack(
               MappedDoubleTrack(
                   BinaryDoubleTrack(clock(), constantTrack(rate), TrackOp2.MUL),
@@ -52,7 +55,7 @@ operations:
           }
 
           val png = RectSLFitFigure.render(
-              bands = listOf(
+              bands = [
                   RectSLFitFigure.Band(
                       "sampler",
                       x,
@@ -77,7 +80,7 @@ operations:
                       note = "$halfTurns half turns",
                       rotation = quadrantLess,
                   ),
-              ),
+              ],
               markers = emptyList(),
               wall = WallSpec(19.0, 7.0, UnitKind.Meters),
               rectSize = Vec2d(1.35, 0.4),
@@ -103,7 +106,7 @@ operations:
         import java.util.Base64
 
         val duration = 4.0
-        fun clock(): Track<Double> = LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(duration, duration)))
+        fun clock(): Track<Double> = LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(duration, duration)])
         fun wave(rate: Double, amplitude: Double): Track<Double> = BinaryDoubleTrack(
             MappedDoubleTrack(
                 BinaryDoubleTrack(clock(), constantTrack(rate), TrackOp2.MUL),
@@ -131,7 +134,7 @@ operations:
         }
 
         val png = RectSLFitFigure.render(
-            bands = listOf(
+            bands = [
                 RectSLFitFigure.Band(
                     "sampler",
                     x,
@@ -156,7 +159,7 @@ operations:
                     note = "$halfTurns half turns",
                     rotation = quadrantLess,
                 ),
-            ),
+            ],
             markers = emptyList(),
             wall = WallSpec(19.0, 7.0, UnitKind.Meters),
             rectSize = Vec2d(1.35, 0.4),
@@ -193,7 +196,7 @@ operations:
           check by hand, which is the point of choosing it.
           */
           val duration = 4.0
-          fun clock(): Track<Double> = LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(duration, duration)))
+          fun clock(): Track<Double> = LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(duration, duration)])
 
           val rise = FreeParamTrack("rise", 0.15)
           val heading = HeadingTrack(clock(), BinaryDoubleTrack(clock(), rise, TrackOp2.MUL))
@@ -204,7 +207,7 @@ operations:
           val slots = freeParameterSlots(graph)
 
           val fit = heading.fitParameters(
-              listOf(TrackFitTarget(1.0, PI / 4.0), TrackFitTarget(3.0, PI / 4.0)),
+              [TrackFitTarget(1.0, PI / 4.0), TrackFitTarget(3.0, PI / 4.0)],
               over = Functions.Domain(0.0, duration),
               iterations = 600,
           )
@@ -230,7 +233,7 @@ operations:
         import afield.lang.rectsl.*
 
         val duration = 4.0
-        fun clock(): Track<Double> = LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(duration, duration)))
+        fun clock(): Track<Double> = LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(duration, duration)])
 
         val rise = FreeParamTrack("rise", 0.15)
         val heading = HeadingTrack(clock(), BinaryDoubleTrack(clock(), rise, TrackOp2.MUL))
@@ -239,7 +242,7 @@ operations:
         val slots = freeParameterSlots(graph)
 
         val fit = heading.fitParameters(
-            listOf(TrackFitTarget(1.0, PI / 4.0), TrackFitTarget(3.0, PI / 4.0)),
+            [TrackFitTarget(1.0, PI / 4.0), TrackFitTarget(3.0, PI / 4.0)],
             over = Functions.Domain(0.0, duration),
             iterations = 600,
         )

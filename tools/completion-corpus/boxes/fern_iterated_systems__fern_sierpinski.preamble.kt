@@ -32,8 +32,8 @@ import afield.graphics.vulkan.buffers.*
 /*compute-pc-binding:reset*/ var ComputeMesh.reset by ComputeMesh.BoundFromStructure<Any>()
 /*compute-pc-binding-group:reset*/ var ComputeMeshGroup.reset by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:dt*/ var Structure.dt by Structure.FromStructure<Any>()
-/*compute-pc-binding:dt*/ var ComputeMesh.dt by ComputeMesh.BoundFromStructure<Float>()
-/*compute-pc-binding-group:dt*/ var ComputeMeshGroup.dt by ComputeMeshGroup.BoundFromStructure<Float>()
+/*compute-pc-binding:dt*/ var ComputeMesh.dt by ComputeMesh.BoundFromStructure<Number>()
+/*compute-pc-binding-group:dt*/ var ComputeMeshGroup.dt by ComputeMeshGroup.BoundFromStructure<Number>()
 var Box.window by Inheritance<Window>() /*from:fern_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:fern_renderer*/ /**/
 val Why.window by Whying() /*from:fern_renderer*/ /**/

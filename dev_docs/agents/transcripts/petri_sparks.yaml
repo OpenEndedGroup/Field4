@@ -16,6 +16,9 @@ description: |
   The clock is the frame count at sixty a second, so the picture is the same on every machine and
   needs no audio device. To hear the net in step with it, play `sparkNet.emits()` through a Dirt
   player and read the cycle from the same clock.
+docs:
+  - page: chain_petri_sparks.md
+    why: "Walks through this Petri-to-sparks chain."
 operations:
   - create:
       box: ps_renderer

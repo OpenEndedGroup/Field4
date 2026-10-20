@@ -1,0 +1,17 @@
+{
+  "baseline": "8a391f550",
+  "sources": [
+    {
+      "path": "public/docs/wfc_examples.md",
+      "kotlinBodies": 13,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/typography_worked_example.yaml",
+      "kotlinBodies": 8,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

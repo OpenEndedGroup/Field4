@@ -12,6 +12,9 @@ description: >
 
   `dev_docs/chart_clip_and_note.md` is the write-up, and the saved document at
   `dev_docs/agents/demos/chart_clip/` is this same scene.
+docs:
+  - page: chart.md#keeping-a-figure-inside-its-frame
+    why: "Explains chart clipping and what clip = false changes."
 operations:
   - create:
       box: clip_on

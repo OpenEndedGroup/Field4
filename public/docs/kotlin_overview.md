@@ -40,6 +40,18 @@ In Python, names are always re-bindable; there’s no `val`/`var` distinction. I
 
 If you’ve used Swift: Kotlin’s `val`/`var` are very close to Swift’s `let`/`var`. If you’ve used C#: Kotlin’s `val` feels like “don’t reassign this local name”, while C# has `const` (compile-time constants) and `readonly` (fields) rather than a direct local-variable keyword.
 
+### Editing a running box
+
+In Field, you can edit a plain `var` declaration and press **Alt/Option-Enter** on that line.
+After the line succeeds, older mutable bindings with the same name and Kotlin type in that box
+receive the new value. A loop you already launched can therefore pick up the edit without restarting.
+There is no need to repeat the initializer as a separate assignment.
+
+This reset happens when the declaration runs. Older and newer declarations still have separate
+storage, so subsequent changes in one snippet do not continuously synchronize the others.
+Captured `val` bindings remain fixed: use them when a cleanup callback must retain the exact resource
+it owns. Delegated properties and declarations of a different type keep their usual behavior.
+
 ### Types and type inference
 
 Types describe what kind of value something is (number, text, true/false, etc.). In Kotlin you can write a type after a name using `: Type`, but most of the time Kotlin figures it out for you.

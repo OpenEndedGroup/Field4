@@ -175,12 +175,16 @@ class StudyBuildView(val box: String, val caption: String = "",
  * fast, pure presentation of a completed record's retained facts;
  * it must not inspect mutable design state or change acceptance. It is shared by UI and agent tools
  * and does not change build identity. Qualification gates belong in the build and input contracts.
+ * [failureNotes] is the same presentation for a FAILED record, usually over its [StudyBuildRecord.problem]
+ * details, under the same rules; it is opt-in, and its notes, views included, appear wherever result notes
+ * would. A failed record is never current: its notes appear beside the failure, never as the current result's.
  * [build] runs on a worker and must use its captured context, not mutable live input.
  */
 class StudyBuildStage(val id: String, val label: String, val recipeVersion: String,
     val inputKeys: Set<String> = emptySet(), val dependencies: List<String> = emptyList(),
     val inputHelp: StudyBuildInputHelp? = null,
     val resultNotes: (StudyBuildRecord) -> List<StudyBuildNotice> = { emptyList() },
+    val failureNotes: (StudyBuildRecord) -> List<StudyBuildNotice> = { emptyList() },
     val build: (StudyBuildContext) -> StudyBuildProduct)
 
 /**
@@ -220,10 +224,15 @@ class StudyBuildGateEvidence internal constructor(val inputs: Map<String, String
     }
 }
 
-/** A stage's current availability, its latest attempt, and its last published result when still valid. */
+/**
+ * A stage's current availability, its latest attempt, and its last published result when still valid. [resultNotes]
+ * are the [current] result's notes; [failureNotes] are [latest]'s [StudyBuildStage.failureNotes] when it failed against
+ * the current inputs, the failure the card shows.
+ */
 data class StudyStageState(val id: String, val label: String, val fingerprint: String?,
     val current: StudyBuildRecord?, val latest: StudyBuildRecord?, val reason: String?, val blockedBy: List<String> = emptyList(),
-    val inputHelp: StudyBuildInputHelp? = null, val resultNotes: List<StudyBuildNotice> = emptyList())
+    val inputHelp: StudyBuildInputHelp? = null, val resultNotes: List<StudyBuildNotice> = emptyList(),
+    val failureNotes: List<StudyBuildNotice> = emptyList())
 
 /**
  * The frozen inputs a worker can read and its own output directory. [checkCancelled] cooperatively
@@ -394,12 +403,20 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
     /** A retained attempt, including obsolete, failed and interrupted attempts. */
     fun job(id: String): StudyBuildRecord = synchronized(monitor) { ensureOpen(); records[id] ?: error("Unknown build '$id'") }
 
-    /** Explain a retained result using its stage's presentation adapter, without changing its verdict. */
+    /**
+     * Explain a retained result using its stage's presentation adapter, without changing its verdict: [StudyBuildStage.resultNotes]
+     * for a succeeded or obsolete attempt, [StudyBuildStage.failureNotes] for a failed one, nothing for any other.
+     */
     fun resultNotes(id: String): List<StudyBuildNotice> = notesFor(job(id))
 
     private fun notesFor(record: StudyBuildRecord): List<StudyBuildNotice> {
-        if (record.status !in setOf(StudyBuildStatus.SUCCEEDED, StudyBuildStatus.OBSOLETE)) return emptyList()
-        return try { specs[record.stage]?.resultNotes?.invoke(record)?.toList().orEmpty() }
+        val spec = specs[record.stage] ?: return emptyList()
+        val notes = when (record.status) {
+            StudyBuildStatus.SUCCEEDED, StudyBuildStatus.OBSOLETE -> spec.resultNotes
+            StudyBuildStatus.FAILED -> spec.failureNotes
+            else -> return emptyList()
+        }
+        return try { notes(record).toList() }
         catch (e: Exception) { listOf(StudyBuildNotice("Result feedback is unavailable. Inspect the retained report. ${e.message.orEmpty()}")) }
     }
 
@@ -707,8 +724,9 @@ class StudyBuilds(val directory: File, definitions: List<StudyBuildStage>,
                     StudyBuildInputHelp("Waiting for ${closedGates.joinToString()}", closedGates.joinToString("\n") { checkNotNull(gate(it).problem) })
                 else -> null
             }
+            val failed = latest?.takeIf { it.status == StudyBuildStatus.FAILED && it.ranAgainst(fingerprint) }
             return StudyStageState(id, spec.label, fingerprint, current, latest, reason, blocked,
-                help, current?.let(::notesFor).orEmpty()).also { stageStates[id] = it }
+                help, current?.let(::notesFor).orEmpty(), failed?.let(::notesFor).orEmpty()).also { stageStates[id] = it }
         }
     }
 

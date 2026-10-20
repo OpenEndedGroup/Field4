@@ -5,14 +5,13 @@ propDown<RenderToTexture>(paintBroad) = RenderToTexture {
     height = (paintSource.height / 4).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
-    clearFirst = true
     clearColor = vec(0, 0, 0, 0)
     debugName = "paintBroad"
 }
 paintBroad.setDefaultSampler(anisotropyEnable = false)
 var module = moduleHere {
     textures("paintQuarter" to paintQuarter)
-    paintBroad.apply()
+    +paintBroad
     blend = false
     depthTest = false
     depthWrite = false

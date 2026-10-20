@@ -32,6 +32,9 @@ description: >
   Companion page: public/docs/keyframe_autosweep.md. The same layer driven headlessly, with
   assertions on the pixels, is `tools/run_field_tests.py --id keyframe.sweep.smoke`; the CPU half is
   `afield.animation.keyframes.KeyframeSweepTest`.
+docs:
+  - page: keyframe_autosweep.md
+    why: "Explains the overnight sweep and reading its archive."
 operations:
   - create:
       box: ks_renderer

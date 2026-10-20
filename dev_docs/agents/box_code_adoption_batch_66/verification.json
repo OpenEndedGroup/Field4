@@ -1,0 +1,29 @@
+{
+  "baseline": "9cf7f2542",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/kratos_parameter_study.yaml",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/kratos_flow_playground.yaml",
+      "kotlinBodies": 1,
+      "collectionConversions": 2,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/kratos_thermal_playground.yaml",
+      "kotlinBodies": 1,
+      "collectionConversions": 1,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/nesting_edge_demo/metadata.edn",
+      "kotlinBodies": 0,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

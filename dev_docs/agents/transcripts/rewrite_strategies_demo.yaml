@@ -5,6 +5,9 @@ description: >
   own code is rewritten before it compiles. Every box prints its result and `check()`s the expected
   value, so replaying this transcript through the real engine proves each combinator fires and
   changes the output relative to the default global fixpoint. Pure compute — no Window is opened.
+docs:
+  - page: pattern_rewrite.md
+    why: "Explains rewrite rules and the strategy combinators used here."
 operations:
   # ---- baseline: NO strategy block ⇒ the historical global fixpoint (fires everywhere) ----
   - create:

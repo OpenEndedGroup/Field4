@@ -19,7 +19,7 @@ neither ships vertices nor builds them in Kotlin/JS would draw nothing. This one
 for the built-in cube by name.
 
 ```edn [field-box id="agent_vision_metal_cube" role="properties"]
-{"id" "agent_vision_metal_cube" "index" 0 "name" "Vision Metal Cube" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision Metal Cube" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_metal_cube_code_.kt" "lines" 15 "characters" 539 "sha256" "4129f4c4c434453cc86c7339b26a4c9579f21e73b868ce692056c4e7804e262c"}]}
+{"id" "agent_vision_metal_cube" "index" 0 "name" "Vision Metal Cube" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision Metal Cube" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_metal_cube_code_.kt" "lines" 15 "characters" 533 "sha256" "8080376de2270496feba3ab3ba70b4faaeba55bb9d017f891e52aafef9b29a96"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_metal_cube" name="code" path="agent_vision_metal_cube_code_.kt"]
@@ -31,7 +31,7 @@ for the built-in cube by name.
 visionMetal(
         shader = visionMetalExampleShader,
         script = visionMetalExampleScript,
-        uniforms = listOf("phase", "amount", "tint"),
+        uniforms = ["phase", "amount", "tint"],
         geometry = VisionMetalGeometryOrigin.BUILTIN,
     )
     .onStatus {

@@ -1,6 +1,4 @@
-val client = FieldAudioClient()
-val source = client.assetByFilename("*Nancy*").get()
-val region = AssetRegion(source.id, startSeconds = 18.0, durationSeconds = 4.5)
+val client = cached { FieldAudioClient() }
 val sketch = gestureBoard(18.0, "uneasy nocturnal orchestra, old optical-film texture") {
     prompt(0.0, 5.0, "almost motionless low strings")
     prompt(5.0, 8.0, "woodwind fragments begin to circle")
@@ -23,8 +21,25 @@ val sketch = gestureBoard(18.0, "uneasy nocturnal orchestra, old optical-film te
 }
 
 display("gesture", gestureBoardHtml(sketch))
-client.submit(gestureCandidates(region, sketch, seeds = 0L until 8L)).thenCompose(client::awaitCandidates).thenAccept {
-    result ->
-    display("ranked gesture", gestureBoardHtml(sketch, candidates = result))
-    display("audition", candidateBoardHtml(result))
+runAsync(
+    onResult = { result: CandidateSet ->
+        display("ranked gesture", gestureBoardHtml(sketch, candidates = result))
+        display("audition", candidateBoardHtml(result))
+    },
+    onError = { failure ->
+        markdown("generation error", "Generation failed: ${(failure.message ?: failure.toString()).md}")
+    },
+) {
+    val lookup = client.assetByFilename("*Nancy*")
+    onCancel { lookup.cancel(false) }
+    lookup.thenCompose { source ->
+        if (future.isDone) throw java.util.concurrent.CancellationException("run ended")
+        val region = AssetRegion(source.id, startSeconds = 18.0, durationSeconds = 4.5)
+        val submitted = client.submit(gestureCandidates(region, sketch, seeds = 0L until 8L))
+        onCancel { submitted.cancel(false) }
+        submitted.thenCompose { accepted ->
+            if (future.isDone) throw java.util.concurrent.CancellationException("run ended")
+            client.awaitCandidates(accepted).also { polling -> onCancel { polling.cancel(false) } }
+        }
+    }
 }

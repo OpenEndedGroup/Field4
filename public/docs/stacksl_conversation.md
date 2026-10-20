@@ -517,7 +517,7 @@ It measured the mean frame-to-frame change over the first two seconds: 1.2076 be
 after for the first second (50.2%), 1.2107 and 0.6040 for the second (49.9%). The model said that
 this measures image change, not distance travelled, and that the slowed program at 4 seconds
 reaches the original's state at 2. Every use of `time` in the program is multiplied by one of those
-rates, so that is exact, and the replay test below checks it.
+rates, so that is exact.
 
 ![The half-speed program against C at 0, 1, 2 and 4 seconds: identical at 0 s, the difference growing with time](assets/stacksl_conversation/aurora/images/79296ea727c07fc1ba77.png)
 

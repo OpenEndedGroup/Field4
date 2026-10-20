@@ -47,6 +47,9 @@ description: >
       extensions, and K2 cannot currently codegen a named function that captures a script's
       implicit `Box` receiver. Named helpers that only build an `FLine` are fine.
 
+docs:
+  - page: animation_time_model.md
+    why: "The page this document accompanies: how frames and the loop run."
 operations:
   - create:
       box: frames_lifecycle_forever

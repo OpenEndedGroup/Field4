@@ -332,4 +332,54 @@ class NotationTest {
         val mid = pts[pts.size / 2]
         assertTrue(abs(mid.x - 50f) < 1e-3 && abs(mid.y - 75f) < 1e-3, "$mid")
     }
+
+    @Test
+    fun marksDrawnInAFrameBlockBelongToTheFrame() {
+        a.notation {
+            frame("score", 0, 0, 400, 200) {
+                rect(10, 10, 50, 20, name = "n1")
+                ellipse(100, 50, 30, 30, name = "n2")
+            }
+            rect(500, 0, 10, 10, name = "outside")
+        }
+        val frame = a.notation.named("score")!!
+        assertEquals(setOf("n1", "n2"), a.notation.inside(frame).map { it.label }.toSet())
+        assertNull(a.notation.named("outside")!!.json.string("frameId"))
+    }
+
+    @Test
+    fun aGroupBlockGroupsItsMarksAndNestedGroupsStack() {
+        a.notation {
+            group {
+                rect(0, 0, 10, 10, name = "g1")
+                group { text("inner", 0, 20, name = "g2") }
+            }
+            rect(50, 0, 10, 10, name = "loose")
+        }
+        val g1 = a.notation.named("g1")!!.groups
+        val g2 = a.notation.named("g2")!!.groups
+        assertEquals(1, g1.size)
+        assertEquals(2, g2.size)
+        assertEquals(g1.last(), g2.last(), "the outer group is shared, outermost last as Excalidraw orders it")
+        assertTrue(a.notation.named("loose")!!.groups.isEmpty())
+        assertEquals(setOf("g1", "g2"), a.notation.grouped(a.notation.named("g1")!!).map { it.label }.toSet())
+    }
+
+    @Test
+    fun styleReachesTheElementFromBuilderAndEditor() {
+        a.notation {
+            roughness = 0.0; dashed = true
+            rect(0, 0, 10, 10, name = "r", fill = "#a5d8ff", fillStyle = "cross-hatch", opacity = 50)
+        }
+        val r = a.notation.named("r")!!
+        assertEquals("cross-hatch", (r.json["fillStyle"] as JsonPrimitive).content)
+        assertEquals(50.0, (r.json["opacity"] as JsonPrimitive).content.toDouble())
+        assertEquals("dashed", (r.json["strokeStyle"] as JsonPrimitive).content)
+        assertEquals(0.0, (r.json["roughness"] as JsonPrimitive).content.toDouble())
+        a.notation.edit(r) { roughness = 2.0; dashed = false; strokeStyle = "dotted"; fillStyle = "zigzag" }
+        val e = a.notation.named("r")!!
+        assertEquals("dotted", (e.json["strokeStyle"] as JsonPrimitive).content)
+        assertEquals("zigzag", (e.json["fillStyle"] as JsonPrimitive).content)
+        assertEquals(2.0, (e.json["roughness"] as JsonPrimitive).content.toDouble())
+    }
 }

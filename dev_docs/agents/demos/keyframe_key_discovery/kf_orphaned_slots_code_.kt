@@ -20,10 +20,10 @@ run {
     val past = KeyframeScope()
     past.target("glow@radius", old)
     past.target("glow@blur", old)
-    listOf(1f to 4f, 6f to 5f, 11f to 6f).forEachIndexed { i, (r, b) ->
+    [1f to 4f, 6f to 5f, 11f to 6f].forEachIndexed { i, (r, b) ->
         old.bind("radius") { r }
         old.bind("blur") { b }
-        past.capture().save(dir.resolve(listOf("a", "b", "c")[i]), "look ${listOf("a", "b", "c")[i]}")
+        past.capture().save(dir.resolve(["a", "b", "c"][i]), "look ${listOf("a", "b", "c")[i]}")
     }
 }
 

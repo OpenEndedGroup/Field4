@@ -1,5 +1,8 @@
 name: computed_ray_geometry
 description: Compute editable triangle clusters in Field and trace them with Vulkan Mega Geometry.
+docs:
+  - page: computed_ray_geometry.md
+    why: "Walks through computing triangle clusters and tracing them."
 operations:
 - create:
     box: agent_graphics_context
@@ -62,13 +65,14 @@ operations:
       w: 420.0
       h: 100.0
     properties:
-      code: |-
+      code: |
         prop<ClusterGeometryDemo>(lab)
-        fromContextWithNameOrNull<ClusterGeometryDemo>("lab")?.close()
+        val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
         check(renderer.device.supportsClusterAccelerationStructure) {
             "This Starting Point needs enabled VK_NV_cluster_acceleration_structure and a ray-tracing pipeline."
         }
-        lab = ClusterGeometryDemo(renderer, producerFactory = { computeModuleHere(it) }).install()
+        val ownedLab = runScope.own(ClusterGeometryDemo(renderer, producerFactory = { computeModuleHere(it) }).install())
+        lab = ownedLab
         var animate = true
         var topology = 0
         var view = 0
@@ -87,13 +91,13 @@ operations:
         )
         frames {
             while (true) {
-                lab.animate = animate
-                lab.topology = topology
-                lab.view = view
+                ownedLab.animate = animate
+                ownedLab.topology = topology
+                ownedLab.view = view
                 frame()
             }
         }
-            .end { lab.close() }
+            .end { ownedLab.close() }
       compute: |
         #version 460
         #extension GL_EXT_buffer_reference : require
@@ -161,13 +165,14 @@ operations:
     property: code
     type: code
     strand: scene
-    code: |-
+    code: |
       prop<ClusterGeometryDemo>(lab)
-      fromContextWithNameOrNull<ClusterGeometryDemo>("lab")?.close()
+      val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
       check(renderer.device.supportsClusterAccelerationStructure) {
           "This Starting Point needs enabled VK_NV_cluster_acceleration_structure and a ray-tracing pipeline."
       }
-      lab = ClusterGeometryDemo(renderer, producerFactory = { computeModuleHere(it) }).install()
+      val ownedLab = runScope.own(ClusterGeometryDemo(renderer, producerFactory = { computeModuleHere(it) }).install())
+      lab = ownedLab
       var animate = true
       var topology = 0
       var view = 0
@@ -186,12 +191,12 @@ operations:
       )
       frames {
           while (true) {
-              lab.animate = animate
-              lab.topology = topology
-              lab.view = view
+              ownedLab.animate = animate
+              ownedLab.topology = topology
+              ownedLab.view = view
               frame()
           }
       }
-          .end { lab.close() }
+          .end { ownedLab.close() }
 - wait:
     frames: 12

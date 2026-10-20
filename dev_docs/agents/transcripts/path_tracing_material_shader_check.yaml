@@ -1,5 +1,8 @@
 name: path_tracing_material_shader_check
 description: Live Field regression for templated material shaders, includes, reflected push constants, failed and successful reloads, and accumulation reset. An intentional shader error is followed by a successful reload and PASS marker.
+docs:
+  - page: path_tracing.md#material-shaders-in-a-field-box
+    why: "Explains templated material shaders and their reloads."
 operations:
   - create:
       box: path_trace_renderer
@@ -77,12 +80,12 @@ operations:
                       material.emission.rgb = vec3(pc.gain + pc.bias, 0, 0);
                       return material;
                   }
-              """
+                  """
                       .trimIndent(),
               )
               check(reloadComputeShader(owner))
               check(tracer.materialModule.current !== original)
-              check(tracer.materialModule.current.ci.pushConstants.single().members.map { it.name } == listOf("gain", "bias"))
+              check(tracer.materialModule.current.ci.pushConstants.single().members.map { it.name } == ["gain", "bias"])
               tracer.materialMesh.push["bias"] = 1f
               tracer.paused = false
               delay(100)

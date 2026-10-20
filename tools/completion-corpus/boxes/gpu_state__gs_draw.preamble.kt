@@ -59,8 +59,8 @@ fun BufferParameters.asHeat(): Heat =
 /*graphics-pc-binding:heat*/ var Mesh.heat by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-binding-group:heat*/ var MeshGroup.heat by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-structure:aspectRatio*/ var Structure.aspectRatio by Structure.FromStructure<Any>()
-/*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Float>()
+/*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Number>()
 var Box.gsStateA by Inheritance<FrameBufferGroup>() /*from:gs_sim*/ /**/
 val Once.gsStateA by Onceing<FrameBufferGroup>() /*from:gs_sim*/ /**/
 val Why.gsStateA by Whying() /*from:gs_sim*/ /**/

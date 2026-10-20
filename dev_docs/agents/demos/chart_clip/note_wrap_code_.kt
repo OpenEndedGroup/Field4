@@ -20,7 +20,7 @@ showChart(figure(clip = true))
 
 // Flip the argument to `false` and re-run: the note goes back to one line running off
 // the right edge, and the whole figure shrinks to fit beside it.
-listOf(true, false).forEach { on ->
+[true, false].forEach { on ->
     val ps = figure(on).toFLines().flatMap { l -> l.nodes.mapNotNull { it.toOrNull } }
     val w = ps.maxOf { it.x } - ps.minOf { it.x }
     println(

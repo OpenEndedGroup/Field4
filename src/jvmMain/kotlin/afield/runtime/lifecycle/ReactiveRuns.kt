@@ -344,6 +344,18 @@ object ReactiveRuns {
         }
     }
 
+    /**
+     * Relaunches [box]'s `code` on the strand it is running on (else `default`), recorded under
+     * [entrypoint]; for callers outside a cascade, such as the file watcher's `onExternalEdit`.
+     */
+    fun relaunch(box: Box, entrypoint: String) {
+        val source = box.getPropertyRaw("code") as? String ?: ""
+        val strand = box.currentRunningStates.keys.firstOrNull { !it.startsWith("__") } ?: "default"
+        val execute = Execute(box.id, "launch", 1, source, false, strand = strand)
+        FlightRecorder.recordLaunchEntrypoint(entrypoint, box, execute, strand = strand)
+        box.ke.launchAll(box, execute, source, strand, documentReply(box))
+    }
+
     private fun documentReply(box: Box): (Message) -> Unit = { m ->
         if (box.isInsideInitialized()) box.inside.sessions.forEach { _send(it, m) }
     }
@@ -528,6 +540,34 @@ object ReactiveRuns {
         rootDownDeclarers.values.forEach { it.remove(box.id) }
     }
 
+    /**
+     * Forgets everything recorded for the document at [filename] — run records, pull stamps, Down
+     * declarations — so a closed document leaves no reactive state (or Box references) behind. Runs
+     * still in flight keep their state, as in [forgetDown]. Called from document cleanup.
+     */
+    fun forgetDocument(filename: String) {
+        val prefix = filename + "\u0000"
+        fun inDocument(box: Box) = box.isInsideInitialized() && box.inside.filename == filename
+        runs.keys.filter(::inDocument).forEach { box ->
+            runs.computeIfPresent(box) { _, st -> if (synchronized(st) { st.depth > 0 || st.waiters.isNotEmpty() }) st else null }
+        }
+        blockedCount.keys.removeIf(::inDocument)
+        lastRunStart.keys.removeIf { it.startsWith(prefix) }
+        pulledOk.keys.removeIf { it.startsWith(prefix) }
+        lastPull.keys.removeIf { it.startsWith(prefix) }
+        downDeclared.removeIf { it.startsWith(prefix) }
+        rootDownDeclarers.keys.removeIf { it.startsWith(prefix) }
+    }
+
+    /** Sizes of the per-document records, for tests that check [forgetDocument] leaves nothing. */
+    internal fun recordCountFor(filename: String): Int {
+        val prefix = filename + "\u0000"
+        return runs.keys.count { it.isInsideInitialized() && it.inside.filename == filename } +
+            lastRunStart.keys.count { it.startsWith(prefix) } + pulledOk.keys.count { it.startsWith(prefix) } +
+            lastPull.keys.count { it.startsWith(prefix) } + downDeclared.count { it.startsWith(prefix) } +
+            rootDownDeclarers.keys.count { it.startsWith(prefix) }
+    }
+
     private fun downMacroPattern(name: String) =
         Regex("""\b(?:propDown|propUpDown|rootPropDown|rootPropUpDown)\s*<[^\n]*>\s*\(\s*""" + Regex.escape(name) + """\s*[,)]""")
 
@@ -537,19 +577,30 @@ object ReactiveRuns {
 
     /**
      * [code] with its `//` and (nesting) `/* */` comments blanked, so a declaration commented out
-     * is not one; a `//` inside a string literal is left alone. Both Kotlin and FieldML comment with
-     * `//`, which is the case that matters (commenting out a line).
+     * is not one; a comment marker inside a string literal, a raw `"""` string (which may span lines)
+     * or a char literal such as `'"'` is left alone. Both Kotlin and FieldML comment with `//`,
+     * which is the case that matters (commenting out a line).
      */
     internal fun withoutComments(code: String): String {
         if ("//" !in code && "/*" !in code) return code
         val out = StringBuilder(code.length)
         var i = 0
         var inString = false
+        var inRaw = false
         var depth = 0
         while (i < code.length) {
             val c = code[i]
             val next = if (i + 1 < code.length) code[i + 1] else '\u0000'
             when {
+                // A raw string spans lines, has no escapes, and may hold quotes and comment markers.
+                inRaw -> {
+                    if (code.startsWith("\"\"\"", i)) {
+                        var end = i + 3
+                        while (end < code.length && code[end] == '"') end++ // `""""` closes on the last three
+                        out.append(code, i, end); i = end; inRaw = false; continue
+                    }
+                    out.append(c)
+                }
                 depth > 0 -> {
                     if (c == '*' && next == '/') { depth--; i += 2; out.append("  "); continue }
                     if (c == '/' && next == '*') { depth++; i += 2; out.append("  "); continue }
@@ -560,7 +611,13 @@ object ReactiveRuns {
                     if (c == '\\' && i + 1 < code.length) { out.append(next); i += 2; continue }
                     if (c == '"' || c == '\n') inString = false
                 }
+                c == '"' && code.startsWith("\"\"\"", i) -> { inRaw = true; out.append("\"\"\""); i += 3; continue }
                 c == '"' -> { inString = true; out.append(c) }
+                // A char literal: `'"'` must not open a string, `'\''` must not end early.
+                c == '\'' && i + 2 < code.length && (code[i + 2] == '\'' || (next == '\\' && i + 3 < code.length && code[i + 3] == '\'')) -> {
+                    val len = if (next == '\\') 4 else 3
+                    out.append(code, i, i + len); i += len; continue
+                }
                 c == '/' && next == '/' -> {
                     while (i < code.length && code[i] != '\n') { out.append(' '); i++ }
                     continue

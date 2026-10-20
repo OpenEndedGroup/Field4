@@ -159,6 +159,58 @@ class FileWatchMetadataReconcileTest {
     }
 
     /**
+     * A sidecar edited on disk while the same property has an unsaved edit in Field used to be
+     * dropped without a word, and the next autosave wrote Field's text over it. Field's edit still
+     * wins, but the disk text is kept in `backups/` first.
+     */
+    @Test
+    fun anExternalEditOverriddenByAnUnsavedFieldEditIsKept() {
+        val directory = tempDocument("overridden")
+        val info = session(directory, "a")
+        val a = info.boxes.getValue("a")
+        val watcher = info.fileWatchManager
+        a.setPropertyRaw("code", "val inField = 1")
+        info.markSidecarPending("a", "code")
+        val sidecar = File(directory, "a_code_.kt")
+        sidecar.writeText("val onDisk = 2")
+
+        runBlocking { watcher.handleFileChange(sidecar) }
+
+        kotlin.test.assertEquals("val inField = 1", a.getPropertyRaw("code"), "the unsaved Field edit must still win")
+        val kept = File(directory, "backups").listFiles { f -> f.name.startsWith("a_code_.kt.external-") }.orEmpty()
+        kotlin.test.assertEquals(1, kept.size, "the overridden disk edit was not kept in backups/")
+        kotlin.test.assertEquals("val onDisk = 2", kept.single().readText())
+    }
+
+    /**
+     * Editing the inline copy of a sidecar property (`#afield/file-inline {path, inline}`) in
+     * `metadata.edn` used to be logged as applied while changing nothing: the value was resolved
+     * through the untouched sidecar file. The inline text is applied now.
+     */
+    @Test
+    fun anEditToAnInlineSidecarCopyIsApplied() {
+        val directory = tempDocument("inline-code")
+        File(directory, "a_code_.kt").writeText("val x = 1")
+        val metadata = File(directory, SavingContext.METADATA_EDN)
+        fun withCode(code: String) =
+            "{\"version\" 2 \"boxes\" [{\"id\" \"root\" \"properties\" {\"name\" \"root\"}} " +
+                "{\"id\" \"a\" \"properties\" {\"name\" \"a\" \"code\" #afield/file-inline {\"path\" \"a_code_.kt\" \"inline\" \"$code\"}}}]}\n"
+        metadata.writeText(withCode("val x = 1"))
+        val loadedAt = metadata.lastModified()
+        val info = session(directory, "a")
+        val a = info.boxes.getValue("a")
+        a.setPropertyRaw("code", "val x = 1")
+        val watcher = info.fileWatchManager
+
+        metadata.writeText(withCode("val x = 2"))
+        metadata.setLastModified(loadedAt + 2_000L)
+        runBlocking { watcher.handleMetadataChange(metadata) }
+
+        assertTrue(pumpMainUntil { a.getPropertyRaw("code") == "val x = 2" },
+            "the inline code edit was not applied (code=${a.getPropertyRaw("code")})")
+    }
+
+    /**
      * The watcher used to call any event "Field's own save" when the file had the size Field wrote and
      * an mtime inside a 15 s grace window, so a same-length edit just after a save was invisible. It
      * compares the content now.

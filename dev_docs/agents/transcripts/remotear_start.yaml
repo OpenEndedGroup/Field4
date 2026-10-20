@@ -3,6 +3,11 @@ description: >
   Minimal Kotlin/JS starting place for Field's browser/WebXR RemoteAR head. Open
   /extensions/remote_ar/index.html?debug=1 on the target, then run or drop in this transcript.
   The first line selects the RemoteAR profile; Launch activates the lifecycle callbacks.
+docs:
+  - page: kotlin_in_the_head.md
+    why: "Explains Kotlin/JS boxes and choosing the RemoteAR head."
+  - page: ar_reference.md
+    why: "Reference for the RemoteAR API."
 operations:
   - create:
       box: agent_remotear_start_root

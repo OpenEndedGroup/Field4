@@ -12,6 +12,9 @@ description: >
   Hover a face to highlight it; click it to read its solved plane and how flat that face actually is.
   Both boxes need the native wrapper, which is not committed — ./gradlew buildCeresRedistributable
   builds one. Without it they say so and draw the unsolved input instead.
+docs:
+  - page: reference/solvers.md
+    why: "Reference for the Ceres solver API, including residual free variables."
 operations:
   - create:
       box: ceres_free_variables_planes

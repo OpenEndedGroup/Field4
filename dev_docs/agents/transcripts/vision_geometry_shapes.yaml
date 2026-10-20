@@ -4,6 +4,9 @@ description: >
   sphere, plane and tube, side by side in one mesh. Shows how the current colour applies to whatever
   is built next, how `tube` sweeps a polyline into real thickness, and how a shader reads the uv the
   shapes write. Open Live Metal in Field4Vision, then Launch.
+docs:
+  - page: vision_geometry.md
+    why: "Explains sending shapes to Vision Pro."
 operations:
   - create:
       box: agent_vision_geometry_shapes_root

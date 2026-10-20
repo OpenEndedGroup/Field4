@@ -30,7 +30,7 @@ class SpinningDiffusionDemo(val renderer: Renderer, config: StreamDiffusionConfi
         clearColor = vec(linear(background[0]), linear(background[1]), linear(background[2]), 1)
     }.also { it.setDefaultSampler(anisotropyEnable = false) }
     private val lines = Module(parameters(renderer) {
-        source.apply(); vertex = VERTEX; fragment = FRAGMENT
+        +source; vertex = VERTEX; fragment = FRAGMENT
         depthTest = false; depthWrite = false; blend = false
     })
     private val linePointer = lines.pointer()

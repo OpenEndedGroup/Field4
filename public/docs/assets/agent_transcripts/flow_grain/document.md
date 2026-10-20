@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="flow_resources" index="1" -->
 
 ```edn [field-box id="flow_resources" role="properties"]
-{"id" "flow_resources" "index" 1 "name" "2. Resident tiles and resources" "parents" ["root" "flow_renderer"] "children" ["flow_inputs" "flow_helpers" "flow_advect" "flow_divergence" "flow_pressure" "flow_project" "flow_particles" "flow_grain" "flow_resolve" "flow_strokes" "flow_controls" "flow_reset" "flow_profile"] "properties" {"children" #{#afield/box "flow_inputs" #afield/box "flow_helpers" #afield/box "flow_advect" #afield/box "flow_divergence" #afield/box "flow_pressure" #afield/box "flow_project" #afield/box "flow_particles" #afield/box "flow_grain" #afield/box "flow_resolve" #afield/box "flow_strokes" #afield/box "flow_controls" #afield/box "flow_reset" #afield/box "flow_profile"} "parents" #{#afield/box "root" #afield/box "flow_renderer"} "name" "2. Resident tiles and resources" "_tombstone" false "frame" #afield/rect [80.0 230.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_resources_code_.kt" "lines" 97 "characters" 3363 "sha256" "2b0d5cee5405b22a5c7cdddab25fc6ac98373160ed2b2f3000b575da01688cd5"}]}
+{"id" "flow_resources" "index" 1 "name" "2. Resident tiles and resources" "parents" ["root" "flow_renderer"] "children" ["flow_inputs" "flow_helpers" "flow_advect" "flow_divergence" "flow_pressure" "flow_project" "flow_particles" "flow_grain" "flow_resolve" "flow_strokes" "flow_controls" "flow_reset" "flow_profile"] "properties" {"children" #{#afield/box "flow_inputs" #afield/box "flow_helpers" #afield/box "flow_advect" #afield/box "flow_divergence" #afield/box "flow_pressure" #afield/box "flow_project" #afield/box "flow_particles" #afield/box "flow_grain" #afield/box "flow_resolve" #afield/box "flow_strokes" #afield/box "flow_controls" #afield/box "flow_reset" #afield/box "flow_profile"} "parents" #{#afield/box "root" #afield/box "flow_renderer"} "name" "2. Resident tiles and resources" "_tombstone" false "frame" #afield/rect [80.0 230.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_resources_code_.kt" "lines" 96 "characters" 3341 "sha256" "9cdbee28bfa2d3a3989e6572a0cd93323ae242f947c19bb6e40b743032eb7766"}]}
 ```
 
 ```kotlin [field-property box="flow_resources" name="code" path="flow_resources_code_.kt"]
@@ -120,7 +120,6 @@ flowSurface = RenderToTexture {
     colorFormats =
         [org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT, org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT]
     useDepth = false
-    clearFirst = true
     clearColor = vec(0, 0, 0, 0)
     debugName = "flow-correspondence"
 }
@@ -423,14 +422,14 @@ From `code`
 Dependencies are explicit graph exports; resources stay in their parent box.
 
 ```edn [field-box id="flow_grain" role="properties"]
-{"id" "flow_grain" "index" 7 "name" "9. Grain and correspondence RTT" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "9. Grain and correspondence RTT" "_tombstone" false "frame" #afield/rect [510.0 530.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_grain_code_.kt" "lines" 20 "characters" 710 "sha256" "054f91f5eb896a4b590d387b22d6798544c23a222268f62b5a93ffef10df07a1"} {"name" "vertex" "language" "glsl" "path" "flow_grain_vertex_.glsl" "lines" 7 "characters" 202 "sha256" "093ff9c35c7d0656fa9929963897d03e432d20bb26c591aafde0c25275d29caa"} {"name" "fragment" "language" "glsl" "path" "flow_grain_fragment_.glsl" "lines" 85 "characters" 3650 "sha256" "cb2b0663e2e4aac4903cbd18808c21a2a2196c4b4b9b67515c361da81a293550"}]}
+{"id" "flow_grain" "index" 7 "name" "9. Grain and correspondence RTT" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "9. Grain and correspondence RTT" "_tombstone" false "frame" #afield/rect [510.0 530.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_grain_code_.kt" "lines" 20 "characters" 703 "sha256" "7d4fd3cc3b6074608c6fbb8a66582eb7e903aeeb4d2b82fc946af4f4000e7c56"} {"name" "vertex" "language" "glsl" "path" "flow_grain_vertex_.glsl" "lines" 7 "characters" 202 "sha256" "093ff9c35c7d0656fa9929963897d03e432d20bb26c591aafde0c25275d29caa"} {"name" "fragment" "language" "glsl" "path" "flow_grain_fragment_.glsl" "lines" 85 "characters" 3650 "sha256" "cb2b0663e2e4aac4903cbd18808c21a2a2196c4b4b9b67515c361da81a293550"}]}
 ```
 
 ```kotlin [field-property box="flow_grain" name="code" path="flow_grain_code_.kt"]
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
 var module = moduleHere {
-    flowSurface.apply()
+    +flowSurface
     primitiveType = triangles
     blend = false // Correspondence is a coordinate, never alpha-blended.
     depthTest = false

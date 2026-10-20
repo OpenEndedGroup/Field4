@@ -40,6 +40,9 @@ description: >
   five on screen, then move an IK target, turn the smoothness up, change a packing seed or swap
   L-BFGS for Adam and re-run a box. Each `execute` op omits inline code, so it runs the box's
   stored `code` property. Executed end-to-end by examples.demo-transcript.exec.
+docs:
+  - page: autodiff_examples.md
+    why: "Covers reverse and forward mode differentiation and the optimizers used here."
 operations:
   - create:
       box: autodiff_basics

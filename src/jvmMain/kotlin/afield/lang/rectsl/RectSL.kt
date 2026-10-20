@@ -5142,7 +5142,7 @@ object RectSLRenderRunner {
             blend = true
             depthTest = false
             primitiveType = triangles
-            rtt.apply()
+            +rtt
         }).pointer()
         val mesh = Mesh(renderer, module)
         mesh.push["worldToClip"] = worldToClip

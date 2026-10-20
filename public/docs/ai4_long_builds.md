@@ -82,7 +82,7 @@ next turn with it. The chat labels it **Field**, since you did not write it. For
 - a failure's message and suggestions;
 - the facts the stage returned in its `StudyBuildProduct`;
 - the stage's [result notes](studies.md#build-derived-results-without-blocking-edits), when it has a
-  `resultNotes` adapter;
+  `resultNotes` adapter, or for a failure, a `failureNotes` adapter;
 - a picture of each view a note names, at most three: Field draws the view, captures the box that
   shows it and attaches the picture to the message, so the agent looks at the result as well as
   reading about it.

@@ -13,7 +13,7 @@ val dir = Files.createTempDirectory("keyframe-junk-vs-damage")
 val kfs = KeyframeScope()
 
 // Four keys, saved properly.
-listOf("a" to 1f, "b" to 2f, "c" to 3f, "d" to 4f).forEach { (n, r) ->
+["a" to 1f, "b" to 2f, "c" to 3f, "d" to 4f].forEach { (n, r) ->
     kfs.saveKey(dir.resolve(n), kfs.Key(mutableMapOf("glow@radius" to r)), "look $n")
 }
 

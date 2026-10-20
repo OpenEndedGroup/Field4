@@ -434,7 +434,7 @@ class RectSLGpuRasterizer(
                     blend = true
                     depthTest = false
                     primitiveType = triangles
-                    t.apply()
+                    +t
                     errorHandler = { message, _ -> error = message }
                 }).pointer()
                 if (!built.current.valid) throw Unavailable("the GPU shader did not build: ${error ?: "unknown error"}")

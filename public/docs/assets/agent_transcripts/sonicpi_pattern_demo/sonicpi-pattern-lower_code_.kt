@@ -27,6 +27,6 @@ println(groove.sonicPiSource(cps = 0.5, cycles = 1, name = "groove"))
 println()
 println(SonicPiVocabulary)
 val kit = SonicPiInstruments()
-listOf("bd", "hh", "bd_tek", "tb303", "c4", "60", "nonesuch").forEach {
+["bd", "hh", "bd_tek", "tb303", "c4", "60", "nonesuch"].forEach {
     println("  %-10s -> %s".format(it, kit.resolve(it) ?: "NOTHING — this atom would be silent"))
 }
