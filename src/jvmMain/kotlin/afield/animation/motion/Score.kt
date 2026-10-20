@@ -125,7 +125,7 @@ class ScoreTransport internal constructor(
 
     internal fun step() {
         val now = AnimationClock.nowSeconds()
-        val dt = if (lastNow.isNaN()) 1.0 / 60.0 else min(0.05, max(0.0, now - lastNow))
+        val dt = if (lastNow.isNaN()) 0.0 else min(0.05, max(0.0, now - lastNow))
         lastNow = now
         frame++
         if (!paused) transportT += dt
