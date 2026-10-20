@@ -1,4 +1,4 @@
-@file:afield.runtime.completion.CompletionCategory("Geometry")
+@file:afield.runtime.completion.CompletionCategory("Graphics")
 
 package afield.geometry.mesh
 
