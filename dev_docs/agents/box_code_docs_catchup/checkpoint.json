@@ -1,13 +1,13 @@
 {
   "branch": "codex/box-code-docs-catchup",
   "baseline": "86007a0f85e117ed20fcd647d66d54898c4fbd06",
-  "state": "Content conflicts resolved; main dance examples preserved and formatted; eight fresh creature captures passed. Completing merge_regen integration checks before re-enqueue.",
+  "state": "Landing-bounce repair complete. Main dance content preserved and formatted; eight fresh creature captures passed; full merge guards passed; merge-tree against current main has no conflicts.",
   "sourceScope": "scope.json",
   "formatting": "format-verification.json",
   "runtime": "runtime-verification.json",
   "privatePort": null,
   "server": "Capture runner stopped its private Field server and completion sidecar.",
-  "next": "Complete merge_regen --continue, then enqueue codex/box-code-docs-catchup.",
+  "next": "Re-enqueue codex/box-code-docs-catchup through tools/land.py.",
   "scope": {
     "paths": 27,
     "newPages": 15,
