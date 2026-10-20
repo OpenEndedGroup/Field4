@@ -62,10 +62,19 @@ class WebRTCNetwork private constructor(
     val id: String,
     /** The aaaframe base URL (`https://host` or `http://host:port`), or null for the local relay. */
     val baseUrl: String?,
-    /** The value of aaaframe's `session` cookie, for a server that is not in local-auth mode. */
-    private val session: String?,
+    session: String?,
 ) {
     val isLocal: Boolean get() = baseUrl == null
+
+    /** The value of aaaframe's `session` cookie; null for the local relay or before signing in. */
+    @Volatile internal var session: String? = session
+        set(value) {
+            field = value
+            WebRTCConfig.forget(this)
+        }
+
+    /** True when there is a session to present: from [aaaframe]'s argument, the environment, or a sign-in. */
+    val hasSession: Boolean get() = !session.isNullOrBlank()
 
     internal fun cookieHeader(): String? = session?.takeIf { it.isNotBlank() }?.let { "session=$it" }
 
@@ -73,6 +82,12 @@ class WebRTCNetwork private constructor(
         val base = URI(baseUrl!!.trimEnd('/'))
         val scheme = if (base.scheme == "https") "wss" else "ws"
         return URI(scheme, base.userInfo, base.host, base.port, "${base.path.orEmpty()}/ws/shadertrinket-signaling", null, null)
+    }
+
+    /** Takes a sign-in from Field's aaaframe window (`electron/aaaframe-sign-in.js`) and remembers it for this user. */
+    internal fun signedIn(newSession: String, login: String) {
+        AaaframeSignIns.save(baseUrl ?: return, newSession, login)
+        session = newSession
     }
 
     override fun toString(): String = if (isLocal) "WebRTCNetwork(local)" else "WebRTCNetwork($baseUrl)"
@@ -84,30 +99,99 @@ class WebRTCNetwork private constructor(
         val local: WebRTCNetwork = WebRTCNetwork("local", null, null).also { registry[it.id] = it }
 
         /**
-         * aaaframe's classroom network at [baseUrl]. [session] is the student's `session` cookie
-         * value (from the browser's devtools, since it is `HttpOnly`); a server in local-auth mode
-         * (`AAAFRAME_LOCAL_AUTH=1`) needs none. Defaults to `AFIELD_AAAFRAME_SESSION`.
+         * aaaframe's classroom network at [baseUrl].
+         *
+         * The login is, in order: [session] if you pass one, `AFIELD_AAAFRAME_SESSION`, and then the
+         * sign-in Field remembers for this server. With none, the publisher list and the sink's status
+         * line open aaaframe's own sign-in page in a Field window (the Electron app only), and Field
+         * keeps the result in `~/.afield/webrtc/aaaframe-sign-ins.json`. A server in local-auth mode
+         * (`AAAFRAME_LOCAL_AUTH=1`) needs no login at all.
          */
-        fun aaaframe(baseUrl: String, session: String? = System.getenv("AFIELD_AAAFRAME_SESSION")): WebRTCNetwork {
+        fun aaaframe(baseUrl: String, session: String? = null): WebRTCNetwork {
             val trimmed = baseUrl.trim().trimEnd('/')
             require(trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
                 "aaaframe's base URL starts with http:// or https://, not '$baseUrl'"
             }
-            val network = WebRTCNetwork(trimmed, trimmed, session)
-            registry[network.id] = network
+            val chosen = session ?: System.getenv("AFIELD_AAAFRAME_SESSION")?.takeIf { it.isNotBlank() }
+            // One object per server, so a sign-in reaches every box and socket that uses it.
+            val network = registry.computeIfAbsent(trimmed) {
+                WebRTCNetwork(trimmed, trimmed, chosen ?: AaaframeSignIns.session(trimmed))
+            }
+            if (chosen != null && chosen != network.session) network.session = chosen
+            return network
+        }
+
+        /**
+         * Joins the class at [baseUrl]: makes it the [default] for every box, now and in later runs of
+         * Field (remembered in `~/.afield/webrtc/aaaframe-sign-ins.json`), and returns it. The first
+         * publisher list or sink to use it asks you to sign in.
+         */
+        fun join(baseUrl: String): WebRTCNetwork {
+            val network = aaaframe(baseUrl)
+            AaaframeSignIns.classUrl = network.baseUrl
+            default = network
             return network
         }
 
         /**
          * The network boxes use when they name none: `AFIELD_WEBRTC_SERVER` (an aaaframe base URL,
-         * or `local`), else [local]. Assign it to change the default for this Field.
+         * or `local`), else the class you last [join]ed, else [local]. Assign it to change the default
+         * for this run of Field only.
          */
         @Volatile
-        var default: WebRTCNetwork = System.getenv("AFIELD_WEBRTC_SERVER")?.trim()
-            ?.takeIf { it.isNotEmpty() && it != "local" }?.let { aaaframe(it) } ?: local
+        var default: WebRTCNetwork = (System.getenv("AFIELD_WEBRTC_SERVER")?.trim()?.takeIf { it.isNotEmpty() }
+            ?: AaaframeSignIns.classUrl)?.takeIf { it != "local" }?.let { aaaframe(it) } ?: local
 
         internal fun lookup(id: String?): WebRTCNetwork? = if (id.isNullOrBlank()) default else registry[id]
     }
+}
+
+/**
+ * The aaaframe logins Field remembers for this user, and the class it last joined:
+ * `~/.afield/webrtc/aaaframe-sign-ins.json`, readable only by the user (directory 0700, file 0600).
+ * Never per document and never in a checkout. `afield.webrtc.signIns` points tests elsewhere.
+ */
+internal object AaaframeSignIns {
+    private val file: java.io.File get() = java.io.File(
+        System.getProperty("afield.webrtc.signIns")
+            ?: "${System.getProperty("user.home")}/.afield/webrtc/aaaframe-sign-ins.json"
+    )
+
+    private fun read(): JsonObject = runCatching { Json.parseToJsonElement(file.readText()).jsonObject }.getOrDefault(JsonObject(emptyMap()))
+
+    @Synchronized private fun write(content: JsonObject) {
+        val target = file
+        val dir = target.parentFile.toPath()
+        java.nio.file.Files.createDirectories(dir)
+        runCatching { java.nio.file.Files.setPosixFilePermissions(dir, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------")) }
+        val temp = java.nio.file.Files.createTempFile(dir, "sign-ins", ".json")
+        runCatching { java.nio.file.Files.setPosixFilePermissions(temp, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------")) }
+        java.nio.file.Files.writeString(temp, content.toString())
+        java.nio.file.Files.move(temp, target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+    }
+
+    private fun servers(content: JsonObject): JsonObject = content["servers"] as? JsonObject ?: JsonObject(emptyMap())
+
+    fun session(baseUrl: String): String? = (servers(read())[baseUrl] as? JsonObject)?.string("session")?.ifEmpty { null }
+
+    fun login(baseUrl: String): String? = (servers(read())[baseUrl] as? JsonObject)?.string("login")?.ifEmpty { null }
+
+    @Synchronized fun save(baseUrl: String, session: String, login: String) {
+        val content = read()
+        val entry = buildJsonObject {
+            put("session", session)
+            put("login", login)
+            put("savedAt", java.time.Instant.now().toString())
+        }
+        write(JsonObject(content + ("servers" to JsonObject(servers(content) + (baseUrl to entry)))))
+    }
+
+    var classUrl: String?
+        get() = (read()["class"] as? JsonPrimitive)?.contentOrNull?.ifEmpty { null }
+        @Synchronized set(value) {
+            val content = read()
+            write(JsonObject(if (value == null) content - "class" else content + ("class" to JsonPrimitive(value))))
+        }
 }
 
 /** The STUN servers aaaframe advertises; the local relay offers the same. Offline LANs still connect on host candidates. */
@@ -273,6 +357,9 @@ internal fun localWebRTCLogin(): String =
 
 private val httpClient: HttpClient by lazy { HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build() }
 
+/** What a page and the publisher list are told when aaaframe closes a socket with 4401. */
+internal const val LOGIN_REFUSED = "aaaframe refused the login (4401): sign in to aaaframe"
+
 /**
  * One upstream aaaframe signalling socket. Text arrives in fragments; [onText] sees whole messages.
  * Closing either side closes the other.
@@ -304,7 +391,7 @@ internal class UpstreamSignaling(
 
             override fun onClose(webSocket: WebSocket, statusCode: Int, reason: String): CompletionStage<*>? {
                 // aaaframe closes with 4401 when the login is missing or has expired.
-                onClose(if (statusCode == 4401) "aaaframe refused the login (4401): the session cookie is missing or expired" else "closed $statusCode $reason")
+                onClose(if (statusCode == 4401) LOGIN_REFUSED else "closed $statusCode $reason")
                 return null
             }
 
@@ -334,6 +421,8 @@ internal class UpstreamSignaling(
  */
 internal object WebRTCConfig {
     private val cache = ConcurrentHashMap<String, JsonObject>()
+
+    fun forget(network: WebRTCNetwork) { cache.remove(network.id) }
 
     fun forNetwork(network: WebRTCNetwork): JsonObject {
         if (network.isLocal) return buildJsonObject {
@@ -400,7 +489,13 @@ internal class PublisherLobby private constructor(val network: WebRTCNetwork) {
         connectUpstream()
     }
 
-    private fun connectUpstream() {
+    private var generation = 0
+
+    /** Opens a fresh upstream socket, unless one newer than [after] already replaced the old one. */
+    @Synchronized private fun connectUpstream(after: Int = generation) {
+        if (after != generation) return
+        val mine = ++generation
+        upstream?.close()
         val current = sortedSetOf<String>()
         upstream = UpstreamSignaling(network, onText = { text ->
             val message = runCatching { Json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return@UpstreamSignaling
@@ -415,17 +510,29 @@ internal class PublisherLobby private constructor(val network: WebRTCNetwork) {
                 update(current.toList())
             }
         }, onClose = { reason ->
-            error = reason
-            update(emptyList())
-            // Reconnect while anyone is listening; aaaframe restarts in class happen.
-            Thread({ Thread.sleep(3000); if (listeners.isNotEmpty()) connectUpstream() }, "webrtc-lobby-retry").apply { isDaemon = true }.start()
+            if (mine == generation) {
+                error = reason
+                update(emptyList())
+                // Reconnect while anyone is listening; aaaframe restarts in class happen. A refused
+                // login waits longer, and a sign-in reconnects at once (signedIn).
+                val delay = if (reason == LOGIN_REFUSED) 15_000L else 3_000L
+                Thread({ Thread.sleep(delay); if (listeners.isNotEmpty()) connectUpstream(after = mine) }, "webrtc-lobby-retry")
+                    .apply { isDaemon = true }.start()
+            }
         })
+    }
+
+    /** A sign-in arrived: replace the refused socket with one carrying the new cookie, now. */
+    fun signedIn() {
+        if (!network.isLocal) synchronized(this) { connectUpstream(after = generation) }
     }
 
     companion object {
         private val lobbies = ConcurrentHashMap<String, PublisherLobby>()
         fun of(network: WebRTCNetwork): PublisherLobby =
             lobbies.computeIfAbsent(network.id) { PublisherLobby(network).also(PublisherLobby::start) }
+
+        fun existing(network: WebRTCNetwork): PublisherLobby? = lobbies[network.id]
     }
 }
 

@@ -39,6 +39,46 @@ private fun JsonObject.str(name: String) = this[name]!!.jsonPrimitive.content
  * messages, and the aaaframe bridge copies them verbatim with the student's session cookie.
  */
 class WebRTCSignalingTest {
+    init {
+        // Never read or write the real ~/.afield sign-ins from a test.
+        System.setProperty(
+            "afield.webrtc.signIns",
+            java.nio.file.Files.createTempDirectory("webrtc-sign-ins").resolve("webrtc/aaaframe-sign-ins.json").toString(),
+        )
+    }
+
+    @Test
+    fun aSignInIsKeptPrivatelyAndUsedForThatServer() {
+        val base = "http://127.0.0.1:1/sign-in-test"
+        val network = WebRTCNetwork.aaaframe(base)
+        assertEquals(false, network.hasSession)
+        network.signedIn("cookie-value", "alice")
+        assertEquals("session=cookie-value", network.cookieHeader())
+
+        val file = java.io.File(System.getProperty("afield.webrtc.signIns"))
+        assertEquals("rw-------", java.nio.file.attribute.PosixFilePermissions.toString(java.nio.file.Files.getPosixFilePermissions(file.toPath())))
+        assertEquals("rwx------", java.nio.file.attribute.PosixFilePermissions.toString(java.nio.file.Files.getPosixFilePermissions(file.parentFile.toPath())))
+        assertEquals("cookie-value", AaaframeSignIns.session(base))
+        assertEquals("alice", AaaframeSignIns.login(base))
+
+        // A session passed explicitly wins over the remembered one.
+        assertEquals("session=explicit", WebRTCNetwork.aaaframe(base, session = "explicit").cookieHeader())
+        // The same server is one object, so every box sees a sign-in.
+        assertTrue(WebRTCNetwork.aaaframe("$base/") === network)
+    }
+
+    @Test
+    fun joiningAClassRemembersItAsTheDefault() {
+        val previous = WebRTCNetwork.default
+        try {
+            val network = WebRTCNetwork.join("http://127.0.0.1:2/class")
+            assertTrue(WebRTCNetwork.default === network)
+            assertEquals("http://127.0.0.1:2/class", AaaframeSignIns.classUrl)
+        } finally {
+            WebRTCNetwork.default = previous
+            AaaframeSignIns.classUrl = null
+        }
+    }
     private class Peer : SignalingPeer {
         val inbox = LinkedBlockingQueue<JsonObject>()
         override fun deliver(text: String) { inbox += Json.parseToJsonElement(text).jsonObject }
@@ -183,7 +223,7 @@ class WebRTCSignalingTest {
                 // Without the cookie aaaframe closes the socket, and the page is told why.
                 val refused = client.webSocketSession("/ws/webrtc-signaling?network=${java.net.URLEncoder.encode(bad.id, "UTF-8")}")
                 val error = refused.nextJson("field-error").str("error")
-                assertTrue("4401" in error, "was: $error")
+                assertEquals(LOGIN_REFUSED, error)
                 refused.close()
             }
         } finally {

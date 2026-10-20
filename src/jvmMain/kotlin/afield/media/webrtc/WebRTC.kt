@@ -4,6 +4,7 @@ import afield.app.protocol.Handled
 import afield.app.protocol.Message
 import afield.app.protocol.handlers
 import afield.app.protocol.payload
+import afield.app.diagnostics.logging.lprintln
 import afield.app.server.globalServerPort
 import afield.document.context.fromContext
 import afield.graphics.texture.HasImageView
@@ -92,6 +93,8 @@ class WebRTCSink(
 
     init {
         installHandlers()
+        // The sign-in handler lives with the publisher list; a sink alone can need it too.
+        WebRTCPublishers.installHandlers()
         sinks[view.viewId] = this
     }
 
@@ -104,11 +107,16 @@ class WebRTCSink(
         <script type="module">
           import { send } from "/afield.mjs";
           import { publish } from "/webrtc-signal.js";
+          import { signInControl } from "/webrtc-sign-in.js";
           const viewId = ${jsString(view.viewId)};
           const label = document.querySelector(`[data-field-webrtc-sink="${'$'}{viewId}"]`);
+          const signIn = document.createElement("span");
+          label.after(signIn);
           const canvas = document.querySelector(`canvas[data-field-rtt-view="${'$'}{viewId}"]`);
           const report = (status, name, viewers) => {
             label.textContent = "WebRTC: " + status;
+            if (status.includes("(4401)") && ${jsString(network.baseUrl.orEmpty())}) signInControl(signIn, ${jsString(network.baseUrl.orEmpty())});
+            else if (status.startsWith("publishing")) signIn.replaceChildren();
             send("webrtc-sink-status", { viewId, status, name: name || null, viewers: viewers || 0 });
           };
           if (!(window.fieldElectron && window.fieldElectron.rttView)) {
@@ -378,12 +386,14 @@ class WebRTCPublishers internal constructor(val network: WebRTCNetwork) {
             </div>
             <script type="module">
               import { send, sendWithReply } from "/afield.mjs";
+              import { signInControl } from "/webrtc-sign-in.js";
               const id = ${jsString(id)};
               const root = document.querySelector(`[data-field-webrtc-publishers="${'$'}{id}"]`);
               const list = root.querySelector(".list");
               const draw = (p) => {
                 list.replaceChildren();
-                if (p.error) { const e = document.createElement("span"); e.textContent = p.error; e.style.color = "#e88"; list.append(e); }
+                if (p.signIn) { const e = document.createElement("span"); list.append(e); signInControl(e, p.signIn); }
+                else if (p.error) { const e = document.createElement("span"); e.textContent = p.error; e.style.color = "#e88"; list.append(e); }
                 else if (!p.names.length) { const e = document.createElement("span"); e.textContent = "nobody yet"; e.style.opacity = ".5"; list.append(e); }
                 for (const name of p.names) {
                   const b = document.createElement("button");
@@ -405,6 +415,7 @@ class WebRTCPublishers internal constructor(val network: WebRTCNetwork) {
         reply(Message(id).payload(buildJsonObject {
             put("names", JsonArray(names.map(::JsonPrimitive)))
             lobby.error?.let { put("error", it) }
+            if (lobby.error == LOGIN_REFUSED) network.baseUrl?.let { put("signIn", it) }
             highlights[id]?.invoke()?.let { put("highlight", it) }
         }))
     }
@@ -440,6 +451,19 @@ class WebRTCPublishers internal constructor(val network: WebRTCNetwork) {
             installed = true
             handlers["webrtc-publishers-subscribe"] = mutableSetOf({ message, reply ->
                 lists[message.payload!!.jsonObject["id"]?.jsonPrimitive?.contentOrNull]?.push(reply)
+                Handled.yes
+            })
+            handlers["webrtc-aaaframe-signed-in"] = mutableSetOf({ message, _ ->
+                val p = message.payload!!.jsonObject
+                val base = p["network"]?.jsonPrimitive?.contentOrNull
+                val session = p["session"]?.jsonPrimitive?.contentOrNull
+                val login = p["login"]?.jsonPrimitive?.contentOrNull
+                if (base != null && !session.isNullOrBlank() && login != null) {
+                    val network = WebRTCNetwork.aaaframe(base)
+                    network.signedIn(session, login)
+                    PublisherLobby.existing(network)?.signedIn()
+                    lprintln("info,webrtc", "signed in to $base as @$login")
+                }
                 Handled.yes
             })
             handlers["webrtc-publishers-pick"] = mutableSetOf({ message, _ ->
