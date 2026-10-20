@@ -73,6 +73,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal var cameraLink: ThreeCameraLinkSpec? = null
     internal var turntable: ThreeTurntableSpec? = null
     internal var shot: ThreeShotSpec? = null
+    internal var studio: ThreeStudioSpec? = null
     private var helpersExplicit: Boolean? = null
 
     /**
@@ -125,6 +126,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * diagonals that triangulate a flat face ([outlineEdges]). They are what keeps a solid, flat-shaded model
      * legible, and they move with [explode]. Unlike [wireframe], which draws every triangle edge.
      * @param edgeColor the outline's colour (its alpha is not used); `null` is a near-black.
+     * @param material base colour, roughness, metalness and emission ([ThreeSurfaceMaterial]); `null` is the
+     * viewer's usual plain white.
      */
     fun mesh(
         mesh: TriMesh,
@@ -145,6 +148,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         solidOpacity: Double? = null,
         edges: Boolean = false,
         edgeColor: Vec4? = null,
+        material: ThreeSurfaceMaterial? = null,
     ) {
         require(solidOpacity == null || (solidOpacity.isFinite() && solidOpacity in 0.0..1.0)) {
             "solidOpacity must be between 0 and 1, got $solidOpacity"
@@ -158,7 +162,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
                 flatShading = flatShading,
                 opacity = opacity.toFloat(),
                 unlit = unlit,
-            ).copy(depthWrite = depthWrite, solidOpacity = solidOpacity?.toFloat()),
+            ).copy(depthWrite = depthWrite, solidOpacity = solidOpacity?.toFloat(), material = material),
             explode = explode,
             label = label,
             panel = panel,
@@ -212,6 +216,33 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     fun camera(view: MeshView, padding: Double = 1.06) {
         camera = view.toThreeCameraSpec(padding)
         autoFrame = false
+    }
+
+    /**
+     * Light the scene like a studio: ACES tone mapping, a shadow-casting key light with a hemisphere
+     * fill and a cool rim, and a dark ground plane (with a faint grid) that catches the shadows.
+     *
+     * For a model looked at as an object — the look of [afield.geometry.mesh.GeometryBuilder]'s scenes —
+     * rather than a technical figure, so it is off unless asked for. The reference grid and axis tripod
+     * ([helpers]) are left off under it; the studio grid lies on the ground instead.
+     *
+     * ```kotlin
+     * three { mesh(vase, wireframe = false); studio(groundY = -1.25); background("#060807") }
+     * ```
+     *
+     * @param groundY the height of the ground; `null` puts it a little below the scene's lowest point.
+     */
+    fun studio(
+        ground: Boolean = true,
+        grid: Boolean = true,
+        groundY: Double? = null,
+        groundColor: String = "#08090a",
+        shadows: Boolean = true,
+        exposure: Double = 1.0,
+    ) {
+        require(exposure.isFinite() && exposure > 0) { "exposure must be positive, got $exposure" }
+        studio = ThreeStudioSpec(ground, grid, groundY, groundColor, shadows, exposure)
+        if (helpersExplicit == null) helpersExplicit = false
     }
 
     /** Scene background as a CSS colour. */
@@ -431,6 +462,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             cameraLink = cameraLink,
             turntable = turntable,
             shot = shot,
+            studio = studio,
         )
     }
 }

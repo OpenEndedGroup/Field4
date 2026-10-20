@@ -41,24 +41,24 @@ export it as animation).
 | `tri`, `quad` | `tri(a, b, c)`, `quad(a, b, c, d)` over `Vertex` or `Vec3` | `GeometryBuilder` |
 | `surface(cols, rows, (u,v)=>{pos,color})` | `surface(cols, rows) { u, v -> vertex(...) }` | `GeometryBuilder` |
 | `revolve(profile, segs)` | `revolve(profile: List<ProfilePoint>, segments)`; `profile(r, y, color)` | `GeometryBuilder` |
-| `tube(segs, sides, t => {pos, radius, color})` | `tube(segments, sides, closed) { t -> ring(pos, radius, color) }` | `GeometryBuilder` |
+| `tube(segs, sides, t => {pos, radius, color})` | `tube(segments, sides, closed) { t -> section(pos, radius, color) }` | `GeometryBuilder` |
 | `box(center, size)` | `box(center, size)` | `GeometryBuilder` |
 | `v/mix/polar/spherical` | `vec(x,y,z)`, `mix`, `polar`, `spherical` | `GeometryBuilder` |
-| `hsl/rgb` | `hsl(h, s, l)` **member** with CSS/three.js semantics; `rgb` from Field's colours | see below |
+| `hsl/rgb` | Field's `hsl`, `rgb`, or a CSS hex string | see below |
 | `seed/rand/noise` | `seed`, `rand`, `noise` — the same LCG and the same permutation table, so `seed(18)` grows the same crystal bloom | `GeometryBuilder` |
 | `view({background, ground, grid})` | `view(background=, ground=, grid=)` | `GeometryBuilder`, carried to the viewer as a studio spec |
 | `t, time, frame, dt` | `t`, `frame`, `dt` | `GeometryBuilder` |
-| Export GLB | `GeometryScene.writeGlb(file)`; animated: `exportGeometryAnimation(file, frames, fps) { … }` writes morph targets | shared |
+| Export GLB | the viewer's own Export GLB button; `GeometryScene.writeGlb(file)`; animated: `writeGlbAnimation(file, frames, fps) { … }` writes morph targets | shared |
 | gltfpack | dropped: the GLB is written uncompressed (gltfpack is an external binary) | gap |
 
 ### Colour
 
-Field's top-level `hsl()` treats the HSL cube as *linear* light and encodes it, which is
-deliberately not CSS `hsl()` (its KDoc says so). three.js `Color.setHSL` is CSS `hsl()` in sRGB,
-decoded to linear for the vertex attribute. The demo's palettes are tuned to the latter, so the
-builder's `hsl` is a member that follows the demo (and is documented as such), and a top-level
-`cssHsl()` joins Field's colour functions for anyone outside the block. Vertex colours are stored
-**linear** in the `TriMesh`, which is what three.js and glTF's `COLOR_0` both expect.
+three.js `Color.setHSL` reads its arguments in the *linear* working space (r152+, the vendored
+`three.core.js` says `colorSpace = ColorManagement.workingColorSpace`), and Field's top-level
+`hsl()` reads the HSL cube as linear light and encodes it to sRGB. So the two agree, and the
+presets use Field's own `hsl` unchanged. Strings and `rgb()` are sRGB in both. The builder decodes
+every colour to **linear** for the `TriMesh` vertex colours, which is what three.js and glTF's
+`COLOR_0` both expect.
 
 ## Shared code (with KDoc and tests)
 
@@ -71,8 +71,9 @@ builder's `hsl` is a member that follows the demo (and is documented as such), a
    existing figure keeps its look.
 3. Per-drawable **PBR material** fields on `ThreeDrawStyle` (`roughness`, `metalness`, `emissive`,
    `emissiveIntensity`, `color`), omitted from the wire when unset.
-4. `ThreeSceneBuilder.geometry(scene)` and `Box.geometry { }` / `Box.animateGeometry { }`.
-5. GLB writer for a `GeometryScene` (static, and morph-target animation over a fixed topology).
+4. `ThreeSceneBuilder.geometry(scene)` and `Box.geometry { }` / `Box.animateGeometry { }`
+   (`afield/graphics/three/GeometryView.kt`).
+5. `afield/geometry/mesh/GeometryGlb.kt`: GLB writer for a `GeometryScene` (static, and morph-target animation over a fixed topology).
 
 ## Dropped or changed
 
