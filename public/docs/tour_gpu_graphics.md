@@ -3,7 +3,7 @@
 The "4" in Field·4 is its renderer: Vulkan, driven from boxes. Boxes on the GPU work the
 way the ones on the previous pages do. You write a few lines of Kotlin, run the box, and the
 picture changes while it runs. The difference is that some of a box's properties are now shaders,
-and the box draws into a native window instead of its output panel.
+and what the box draws usually appears in a native window rather than in its output panel.
 
 ## A renderer, and a box beneath it
 
@@ -43,7 +43,7 @@ val started = AnimationClock.nowSeconds()
 
 renderer += moduleHere {
     +Mesh("square") {
-        // four corners in clip space, where the window runs from -1 to 1
+        // four corners in clip space, where the window runs from -1 to 1, and two triangles spanning the corners
         set(4, 2) {
             pos.add(-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0)
             tc.add(0, 0, 1, 0, 1, 1, 0, 1)
@@ -129,6 +129,102 @@ renderer += moduleHere {
 }
 ```
 
+## Geometry and a camera
+
+The square was drawn straight into the window's own coordinates. Geometry you want to look at from
+somewhere goes through a `Camera` instead. This box builds a 60 × 60 grid of vertices, lifts each
+one by a wave, colours it by its height, and joins neighbours into triangles:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tour_gpu_graphics/surface.png" alt="a rippling surface seen from above and in front in a native render window, a grid of hills and hollows shaded from blue in the hollows through lavender to orange on the crests, receding in perspective against black" wait="1" timeout="90" capture="native-window" native-wait-frames="8" trim-native=true graphics-context=true embed=true name="tour-gpu-surface" source-box="assets/tour_gpu_graphics/surface" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+val camera = Camera()
+camera.at = vec(0, 5, 9)
+
+val n = 60
+
+renderer += moduleHere {
+    +Mesh("surface") {
+        // the projection and view matrices, read by the vertex shader as `pc.p` and `pc.m`
+        p = camera.p
+        m = camera.m
+
+        set(n * n, 2 * (n - 1) * (n - 1)) {
+            for (j in 0 until n) for (i in 0 until n) {
+                val x = (i / (n - 1.0) - 0.5) * 8
+                val z = (j / (n - 1.0) - 0.5) * 8
+                val y = 0.8 * Math.sin(1.3 * x) * Math.cos(1.1 * z)
+                val h = 0.5 + 0.6 * y
+                pos.add(x, y, z)
+                col.add(h, 0.35, 1 - h, 1)
+            }
+            // two triangles for each square of the grid
+            for (j in 0 until n - 1) for (i in 0 until n - 1) {
+                val a = j * n + i
+                tri.add(a, a + 1, a + n)
+                tri.add(a + 1, a + n + 1, a + n)
+            }
+        }
+    }
+}
+```
+
+It is the same pattern as the square, with more of it. The vertex shader now declares a colour
+input as well as a position, so the mesh has `col` beside `pos`. It also takes the camera's two
+matrices as push constants, so the mesh has `p` and `m`:
+
+```diffstatic {data-lang=glsl}
+#version 450
+layout (location = 0) in vec3 pos;
+layout (location = 1) in vec4 col;
+layout (location = 0) out vec4 fcol;
+
+layout(push_constant) uniform matrices {
+    mat4 p;
+    mat4 m;
+} pc;
+
+void main()
+{
+    gl_Position = pc.p * pc.m * vec4(pos, 1);
+    fcol = col;
+}
+```
+
+Move `camera.at` and run the box again to look from somewhere else. Change the wave, or `n`, and the
+surface is rebuilt.
+
+## Drawing into the box itself
+
+In Field's desktop app a renderer can also draw into a box's output panel, next to its code. An
+`ElectronRTTView` is a render target that shows up in the panel. Give it the module from before, and
+the spiral turns inside the box:
+
+```diffstatic_runner {data-lang=kotlin video="assets/tour_gpu_graphics/spiral-panel.mp4" alt="a box's output panel holding a 640 by 360 view of the blue and gold five-armed spiral, turning steadily, with a line of small grey frame timings under it" capture="box" capture-profile="macos-electron" graphics-context=true open-outputs="true" wait-output="true" wait-output-kind="display" duration="6" fps="20" wait="3" w="760" h="60" timeout="300" embed=true name="tour-gpu-panel" source-box="assets/tour_gpu_graphics/spiral" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+import afield.media.stream.ElectronRTTView
+
+val view = ElectronRTTView(640, 360)
+val started = AnimationClock.nowSeconds()
+
+view.rtt += "content" to moduleHere {
+    view.rtt.apply()
+    +Mesh("square") {
+        set(4, 2) {
+            pos.add(-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0)
+            tc.add(0, 0, 1, 0, 1, 1, 0, 1)
+            tri.add(0, 1, 2)
+            tri.add(0, 2, 3)
+        }
+        time = { (AnimationClock.nowSeconds() - started).toFloat() }
+    }
+}
+view.rtt.parameters.clearFirst = true
+
+display("main", view.html())
+```
+
+`moduleHere { view.rtt.apply() }` sends the module's drawing into the view instead of the window,
+and `display` puts the view in the box's `main` output. A web browser, including Field's HTTP
+mirror, shows a message in place of the frames.
+
 ## Where to go from here
 
 - [Field 4 Graphics](afield_four_graphics.md) is the full walkthrough: buffers, cameras, compute
@@ -137,5 +233,5 @@ renderer += moduleHere {
   lists every lesson in the canonical_graphics starting point, with the parent each one runs
   under, and which lesson uses which call (`RenderToTexture`, `computeModuleHere`,
   `LoadedTexture`, ...).
-- [Graphics in an Output Area](four_in_output_areas.md) draws into a box's output panel instead of
-  a window, in Field's desktop app.
+- [Graphics in an Output Area](four_in_output_areas.md) has more on the view in the panel: sizes,
+  re-running, sharing it between boxes, and Linux.
