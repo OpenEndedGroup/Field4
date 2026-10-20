@@ -4,12 +4,12 @@ The [Tour](funFeatures.md) this page ends is an arc under *Start Here*, meant to
 
 ## Chains across subsystems
 
-Each of these follows one object through several parts of Field. They are the quickest way to see how the sections below fit together before you pick one to learn.
+The [Long Way Round](chains.md) pages each follow one object through several parts of Field. They are the quickest way to see how the sections below fit together before you pick one to learn.
 
 - [A Polytope, Cut Open and Traced](chain_polytope_render.md) is the one to read first: a polytope built with Conway operators, cut with an exact Boolean, then path-traced.
 - [A Cellular Automaton You Can Hear](chain_ca_sound.md) goes the other way, from a Wolfram rule to the shortest pattern notation that plays it, rendered to a `.wav`.
 
-The rest of the section crosses physics, patterns, RectSL, photographs, λ-terms and lighting; open it for the full set.
+The rest cross physics, patterns, RectSL, photographs, λ-terms and lighting; [the overview](chains.md) lists the full set.
 
 ## Working in a document
 
