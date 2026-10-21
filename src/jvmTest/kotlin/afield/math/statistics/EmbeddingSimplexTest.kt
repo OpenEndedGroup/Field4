@@ -77,8 +77,8 @@ class EmbeddingSimplexTest {
         assertEquals(listOf(0, 2, 3), s.edgesFrom(1).map { it.a + it.b - 1 })
         assertEquals(listOf(1, 0, 3), s.edgesFrom(2).map { it.a + it.b - 2 })
         assertEquals(listOf(2, 1, 0), s.edgesFrom(3).map { it.a + it.b - 3 })
-        assertEquals(0, s.edge(1, 2).rankFromA)
-        assertEquals(1, s.edge(1, 2).rankFromB)
+        assertEquals(1, s.edge(1, 2).rankFromA)
+        assertEquals(0, s.edge(1, 2).rankFromB)
         for (e in s.edges) assertEquals(e.distance, drawn(s, e.a, e.b), 2e-6)
         assertTrue(s.exact)
     }
