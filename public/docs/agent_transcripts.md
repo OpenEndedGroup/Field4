@@ -3749,6 +3749,10 @@ frame bound as `state` and follows edits live. The box's lowering panel shows ho
 ends and any error at its line and column, and its glsl panel the GLSL the program becomes.
 Launching a box replaces the program in the window.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-stacktrinket-feedback" alt="The pulse ring in the native window: a soft white ring on black, centred, its radius half the window's width, fading smoothly to black on both sides" macro-file="../../dev_docs/agents/transcripts/stacktrinket_feedback.yaml" capture-box="stacktrinket_renderer"}
+// The transcript builds every box and launches the renderer and the pulse ring.
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/stacktrinket_feedback/metadata.edn)
 
 ## Graphics building blocks
