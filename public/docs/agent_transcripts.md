@@ -3252,6 +3252,12 @@ aaaframe class in its own window and remembers it; a browser ShaderTrinket then 
 box like any classmate, and Field can show any student's Publish. Before joining, the receiving box
 shows its neighbour's stream through Field's own relay. Needs the Field Electron app.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/webrtc_shader_jam.png" capture="native-window" capture-profile="macos-electron" native-wait-frames="90" trim-native=true wait="25.0" embed=true hidden=true timeout="400" name="gallery-webrtc-shader-jam" alt="Field's renderer window showing the stream the publishing box sends over Field's own relay: a three-lobed flower of blue-violet petals ringed by teal and green bands with dark outlines, filling a 16 by 9 frame on black" macro-file="../../dev_docs/agents/transcripts/webrtc_shader_jam.yaml" capture-box="webrtc_renderer"}
+// The transcript builds and launches all three boxes; on Field's own relay the receiving box shows the publishing box's stream.
+```
+
+The same box receiving a browser ShaderTrinket's stream through aaaframe:
+
 ![Field's renderer window showing a stream from a browser ShaderTrinket: pink and yellow petals in a tall frame centred on black](assets/webrtc/field-receives-shadertrinket.png)
 
 Walkthrough: [WebRTC Streams](webrtc.md).
