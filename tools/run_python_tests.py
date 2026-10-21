@@ -227,7 +227,28 @@ class ModuleWatchdog:
         self.exit(1)
 
 
+def clear_repository_env(environ=os.environ) -> list[str]:
+    """Drop the variables that tell git which repository it is in. Returns the names it dropped.
+
+    This runner is started from inside merges (`merge_regen.py`, the lander), and git exports
+    `GIT_DIR` and friends to what a merge runs. Several suites build throwaway repositories with
+    plain `git init` / `git -C <tmp> ...`, which honour those variables over `-C`. On 2026-10-21 one
+    run with `GIT_DIR` set re-initialised the real repository as bare (`core.bare = true` in the
+    shared .git/config), and every worktree and the lander stopped working until it was put back.
+    The list is git's own (`git rev-parse --local-env-vars`, what it clears for a submodule).
+    """
+    listed = subprocess.run(["git", "rev-parse", "--local-env-vars"], stdout=subprocess.PIPE,
+                            stderr=subprocess.DEVNULL, text=True, check=False).stdout.split()
+    names = listed or ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
+                       "GIT_COMMON_DIR", "GIT_PREFIX", "GIT_CONFIG", "GIT_CONFIG_PARAMETERS"]
+    return [name for name in names if environ.pop(name, None) is not None]
+
+
 def main() -> int:
+    dropped = clear_repository_env()
+    if dropped:
+        print(f"run_python_tests: cleared {', '.join(dropped)} so no suite's scratch repository resolves "
+              "to this one", flush=True)
     complaint = check_interpreter()
     if complaint is not None:
         print(complaint)

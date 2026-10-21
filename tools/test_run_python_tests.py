@@ -8,6 +8,7 @@ failure collector reads only JUnit XML, which these suites did not write.
 from __future__ import annotations
 
 import io
+import os
 import subprocess
 import sys
 import tempfile
@@ -111,6 +112,40 @@ class AHungModuleNamesItself(unittest.TestCase):
             pass
         self.assertFalse(watchdog.timed_out)
 
+
+
+class SuitesCannotReachTheOuterRepository(unittest.TestCase):
+    def test_a_merge_hooks_git_dir_is_cleared(self):
+        env = {"GIT_DIR": "/repo/.git", "GIT_INDEX_FILE": "/repo/.git/index", "GIT_REFLOG_ACTION": "merge",
+               "PATH": "/usr/bin"}
+        dropped = run_python_tests.clear_repository_env(env)
+        self.assertEqual(sorted(dropped), ["GIT_DIR", "GIT_INDEX_FILE"])
+        self.assertEqual(env, {"GIT_REFLOG_ACTION": "merge", "PATH": "/usr/bin"})
+
+    def test_with_it_cleared_git_init_cannot_make_the_outer_repository_bare(self):
+        # The 2026-10-21 shape: GIT_DIR names a *linked worktree's* git dir, as git sets it for a hook
+        # in one, and `git init <path>` then writes `core.bare = true` into the shared config.
+        def outer_repository(tmp: str) -> tuple[Path, dict[str, str]]:
+            outer = Path(tmp, "outer")
+            git = lambda *a: subprocess.run(["git", *a], check=True, capture_output=True)  # noqa: E731
+            git("init", "-q", str(outer))
+            git("-C", str(outer), "-c", "user.name=t", "-c", "user.email=t@e", "commit", "-q", "--allow-empty", "-m", "x")
+            git("-C", str(outer), "config", "extensions.worktreeConfig", "true")
+            git("-C", str(outer), "worktree", "add", "-q", str(Path(tmp, "wt")))
+            env = {"GIT_DIR": str(outer / ".git" / "worktrees" / "wt"), "PATH": os.environ["PATH"], "HOME": tmp}
+            return outer / ".git" / "config", env
+
+        def bare_after_init(clear: bool) -> str:
+            with tempfile.TemporaryDirectory() as tmp:
+                config, env = outer_repository(tmp)
+                if clear:
+                    run_python_tests.clear_repository_env(env)
+                subprocess.run(["git", "init", "-q", str(Path(tmp, "scratch", "repo"))], env=env, check=True)
+                return subprocess.run(["git", "config", "--file", str(config), "core.bare"],
+                                      capture_output=True, text=True).stdout.strip()
+
+        self.assertEqual(bare_after_init(clear=False), "true", "the hazard no longer reproduces; re-read this test")
+        self.assertEqual(bare_after_init(clear=True), "false")
 
 if __name__ == "__main__":
     unittest.main()
