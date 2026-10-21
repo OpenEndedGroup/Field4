@@ -76,7 +76,7 @@ operations:
 
           Run this once, in any box, with your class's aaaframe address:
 
-          ```kotlin
+          ```diffstatic {data-lang=kotlin}
           WebRTCNetwork.join("https://aaaframe.example.edu")
           ```
 

@@ -9,7 +9,7 @@ one you pick, as a texture, in the renderer's window.
 
 Run this once, in any box, with your class's aaaframe address:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 WebRTCNetwork.join("https://aaaframe.example.edu")
 ```
 
