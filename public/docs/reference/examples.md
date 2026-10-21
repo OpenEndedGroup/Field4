@@ -1845,7 +1845,7 @@ That a [`ParticleSketch`](simulation.md#particlesketch-kt-particlesketch) step o
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="particlesketchsmoke-kt--particlesketchsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ParticleSketchSmoke/#L127) |  |
+| <a id="particlesketchsmoke-kt--particlesketchsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ParticleSketchSmoke/#L145) |  |
 
 ## PlyLoaderTest.kt { #plyloadertest-kt }
 
