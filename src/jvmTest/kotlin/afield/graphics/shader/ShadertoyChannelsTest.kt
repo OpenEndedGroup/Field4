@@ -3,6 +3,9 @@ package afield.graphics.shader
 import org.lwjgl.vulkan.VK10.VK_FORMAT_B8G8R8A8_SRGB
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_UNORM
+import afield.tools.docs.CitationGuard
+import org.yaml.snakeyaml.Yaml
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -39,6 +42,24 @@ class ShadertoyChannelsTest {
             }
         """.trimIndent()
         compiles("flat-rings", shadertoyImagePreamble + "\n" + flatRings)
+    }
+
+    @Test
+    fun `every program the shadertrinket starting point ships compiles`() {
+        // The presets are ShaderTrinket's own text, verbatim under the one template line, so this is
+        // also the check that the preamble declares everything a ShaderToy Image pass expects.
+        val yaml = File(CitationGuard.repoRoot(), "dev_docs/agents/transcripts/shadertrinket.yaml")
+        @Suppress("UNCHECKED_CAST")
+        val ops = (Yaml().load<Map<String, Any?>>(yaml.readText())["operations"] as List<Map<String, Any?>>)
+        val fragments = ops.mapNotNull { it["create"] as? Map<String, Any?> }.mapNotNull { create ->
+            ((create["properties"] as? Map<*, *>)?.get("fragment") as? String)?.let { create["box"] as String to it }
+        }
+        assertTrue(fragments.size >= 6, "expected the lead and its presets, found ${fragments.map { it.first }}")
+        for ((box, fragment) in fragments) {
+            val line = "{{ shadertoy.image }}"
+            assertTrue(fragment.startsWith(line), "$box: fragment should start with $line")
+            compiles(box, fragment.replace(line, shadertoyImagePreamble))
+        }
     }
 
     @Test
