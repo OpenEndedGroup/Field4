@@ -36,6 +36,92 @@ operations:
       name: boids ribbon
       frame: { x: 40.0, y: 200.0, w: 300.0, h: 100.0 }
       properties:
+        notes: |
+          # Particles
+
+          A sketchbook for particle systems. The window starts empty: **drag in the renderer window to
+          paint particles**, and the four hooks in this box's compute tab decide what they do. Every
+          particle runs the same GLSL on the GPU, once a frame, so ten thousand of them cost about what ten
+          do.
+
+          Launch a preset box below to switch to it; launch this one to come back. Re-running a box keeps
+          the particles you have painted and lets the new code take them over, so edit, re-run, and watch
+          the same crowd change its mind. **reset** in the controls empties the window, **trail** sets how
+          long the motion blur lasts, and **pause** holds everything still while you paint.
+
+          ## The four hooks
+
+          ```glsl
+          void spawn(vec2 at)                       // a particle is painted at `at`: set up p
+          void eachPair(Particle other, Pair pair)  // p and one neighbour within pairRadius
+          void update()                             // p's own behaviour, once a frame
+          void draw()                               // overlays, once a frame
+          ```
+
+          `p` is the particle being worked on. The verbs act on it: `force(vec2(0.0, 40.0))` pushes `p`
+          down, `flock(...)` steers it with its neighbours, `wrap(16.0)` brings it back in at the other
+          edge. Coordinates are the window's, in pixels, with the origin at the top left and y pointing
+          down; `width` and `height` are the window's size, `t` is the time in seconds, `mouse` is the
+          pointer.
+
+          ## Local, pairwise and shared
+
+          The hooks are three kinds of agent:
+
+          - **Local** behaviour lives in `update()`: forces, drag, the speed limit, the walls, the colour.
+            It only reads `p` (and, through `flock` and `clump`, its neighbours).
+          - **Pairwise** behaviour lives in `eachPair()`: a spring, a collision, a thread drawn between two
+            particles. `pairRadius` in this box's code sets how far apart two particles can be and still
+            meet. Every pair is met twice, once from each side, and `spring` and `collide` apply only `p`'s
+            half, so the two halves add up to the whole spring.
+          - **Shared** agents belong to no particle: a hunter, a vortex centre, the pointer. Write them as a
+            function of `t` (see `hunterAt()` in **predator wake**) that every `update()` asks, and show
+            them in `draw()`.
+
+          ## The order of a frame
+
+          Every frame runs in the same order, and most surprises are about the order:
+
+          1. new paint becomes particles (`spawn`);
+          2. every particle starts with `world.gravity` as its acceleration;
+          3. the neighbour grid is rebuilt;
+          4. `eachPair`, then `update`, for every particle;
+          5. `vel += acc * dt`, `vel *= damping`, the speed limit, `pos += vel * dt`;
+          6. the picture fades by `1 - trail`, then links, dots and overlays are drawn.
+
+          While `eachPair` and `update` run, every *other* particle is read as it was at the top of the
+          frame. Only `p` changes. So the order in which particles are visited never matters.
+
+          ## The verbs
+
+          | | |
+          | --- | --- |
+          | forces | `force(f)`, `impulse(i)`, `drag(amount)`, `limitSpeed(max)`, `bounce(restitution)`, `wrap(pad)` |
+          | steering | `attract(target, strength)`, `springTo(target, rest, stiffness, damping)`, `oscillate(axis, amplitude, frequency, phase)` |
+          | neighbours | `flock(radius, separation, alignment, cohesion, maxForce)`, `clump(radius, strength, repelRadius, repelStrength)`, `neighbors(radius)`, `nearest(radius)`, `particle(i)` |
+          | pairs | `spring(other, pair, rest, stiffness, damping)`, `collide(other, pair, restitution)`, `link(other, color, width)` |
+          | overlays | `line(a, b, color, width)`, `ring(centre, radius, color, width)`, `circle(centre, radius, color)`, `cross(centre, size, color, width)` |
+          | numbers | `rand(lo, hi)`, `randInt(lo, hi)`, `noise2D(x, y)`, `triWave(x)`, `tri01(x)`, `lerp(a, b, x)` |
+          | colour | `hsla(h, s, l, a)` and `rgba(r, g, b, a)`, in CSS units |
+
+          A particle has `pos`, `vel`, `acc`, `home` (where it was painted), `color`, `radius`, `mass`,
+          `seed` (0 to 1000), `age`, `id`, a free `int group` and a free `vec4 data`. The world settings
+          (`background`, `damping`, `maxSpeed`, `gravity`, `pairRadius`, `trail`, ...) are in this box's
+          code.
+
+          ## This one: boids ribbon
+
+          Three schools (`p.group`) flock along a slowly turning noise field, with a gentle swirl about the
+          centre and a speed floor that keeps them cruising. Threads join neighbours of the same school.
+          Try painting one long stroke across the window and watching it break into schools, or change the
+          `flock` weights: separation pushes apart, alignment matches heading, cohesion pulls together.
+
+          ??? aside "How this differs from the madp demo"
+              The hooks, the verbs and their constants are madp's, run on the GPU. GLSL has no option
+              objects, so the verbs take their options in order. The world steps 60 times a second, as
+              madp's browser does, because `drag`, `damping` and the trail are per-frame amounts. A
+              collision's push lands after the last pair rather than during the loop, so a pile settles the
+              same way whichever side it is visited from.
         code: |
           /*
           Particles: paint them into the renderer window by dragging, and four hooks in this box's
@@ -136,6 +222,13 @@ operations:
       name: spring mesh
       frame: { x: 640.0, y: 200.0, w: 300.0, h: 100.0 }
       properties:
+        notes: |
+          # Spring mesh
+
+          Neighbours closer than 60 pixels are joined by springs that want to be 30 long, and `clump` pulls
+          each particle toward the middle of its crowd. The web knits for a few seconds, then clumping wins
+          and it draws itself into balls. Drag a long stroke through the window to watch it knit again, or
+          lower the clump strength in `update()` and the web lasts.
         code: |
           /*
           Spring mesh: nearby particles knit themselves into a spring web and local clumps. The
@@ -198,6 +291,13 @@ operations:
       name: predator wake
       frame: { x: 1240.0, y: 200.0, w: 300.0, h: 100.0 }
       properties:
+        notes: |
+          # Predator wake
+
+          A hunter that no particle owns: `hunterAt()` is a function of `t`, every `update()` asks it where
+          it is and flees, and `draw()` shows it. The schools shear around it and close up behind. Paint a
+          few separate groups and let it stir them up; make the hunter follow `mouse` to chase them
+          yourself.
         code: |
           /*
           Predator wake: an invisible hunter cuts through the flock and the school shears around
@@ -293,6 +393,12 @@ operations:
       name: bounce house
       frame: { x: 40.0, y: 660.0, w: 300.0, h: 100.0 }
       properties:
+        notes: |
+          # Bounce house
+
+          Gravity is a world setting, added to every particle before anything else runs. Collisions are
+          pairwise, in `eachPair`; the walls are each particle's own business, in `update()`. Drag to pour
+          in more balls. Mass grows with the radius, so the big ones push the small ones aside.
         code: |
           /*
           Bounce house: gravity, wall bounces and soft ball collisions. Drag to pour in more mass.
@@ -349,6 +455,12 @@ operations:
       name: sine garden
       frame: { x: 640.0, y: 660.0, w: 300.0, h: 100.0 }
       properties:
+        notes: |
+          # Sine garden
+
+          No pairs here: `pairRadius` stays 0 and `eachPair` never runs. Each particle is held on a soft
+          spring to a ring about the centre whose radius drifts with noise, pushed along its own axis by
+          `oscillate`, and drawn toward its neighbours by `clump`. A sinusoid is just another force.
         code: |
           /*
           Sine garden: soft orbits, neighbour clumping and sinusoidal forcing layered together.
@@ -414,6 +526,13 @@ operations:
       name: pendulum bloom
       frame: { x: 1240.0, y: 660.0, w: 300.0, h: 100.0 }
       properties:
+        notes: |
+          # Pendulum bloom
+
+          Every particle remembers where it was painted (`p.home`). Springs join particles that were
+          painted close together, at the distance they were painted apart, so the painted shape becomes a
+          fabric; one particle in thirty is also tied back to its home, and those tethers are drawn as
+          overlays. Paint loose curtains from the top of the window and let gravity take them.
         code: |
           /*
           Pendulum bloom: home tethers and neighbour springs turn the painted field into a
@@ -493,6 +612,12 @@ operations:
       name: vortex brush
       frame: { x: 40.0, y: 1120.0, w: 300.0, h: 100.0 }
       properties:
+        notes: |
+          # Vortex brush
+
+          Particles settle into rings about a centre: their band (`p.group`) sets the radius, and a
+          tangential force spins them round. The centre drifts on its own, and follows the pointer while it
+          is over the window. Move slowly through the window to drag the vortex around.
         code: |
           /*
           Vortex brush: a drifting vortex field that tightens into rings and loosens back out.
