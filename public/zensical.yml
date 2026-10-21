@@ -290,20 +290,24 @@ nav:
     # a pattern cannot answer, because they follow a relation rather than a path.
     - Querying Object Graphs: graph_query.md
     - Datalog in a Box: datalog.md
-    - FieldML Cheatsheet: fieldml_cheatsheet.md
-    - FieldML Examples: fieldml_examples.md
-    - FieldML JVM Bridge: fieldml_host_bridge.md
-    - FieldML Stage by Stage: fieldml_stages.md
-    - StackSL Cheatsheet: stacksl_cheatsheet.md
-    - StackSL Examples: stacksl_examples.md
-    - Proving What a Shader Draws: stacksl_intervals.md
-    - Evolving a Shader: stacksl_evolve.md
-    - RectSL Cheatsheet: rectsl_cheatsheet.md
-    - RectSL Examples: rectsl_examples.md
-    - RectSL Inverse Animation: rectsl_inverse_animation.md
+    - FieldML:
+      - FieldML Cheatsheet: fieldml_cheatsheet.md
+      - FieldML Examples: fieldml_examples.md
+      - FieldML JVM Bridge: fieldml_host_bridge.md
+      - FieldML Stage by Stage: fieldml_stages.md
+    - StackSL:
+      - StackSL Cheatsheet: stacksl_cheatsheet.md
+      - StackSL Examples: stacksl_examples.md
+      - Proving What a Shader Draws: stacksl_intervals.md
+      - Evolving a Shader: stacksl_evolve.md
+    - RectSL:
+      - RectSL Cheatsheet: rectsl_cheatsheet.md
+      - RectSL Examples: rectsl_examples.md
+      - RectSL Inverse Animation: rectsl_inverse_animation.md
     - ForthField Examples: forth_examples.md
-    - Python in a Box: python.md
-    - Computer Vision in Python: python_cv.md
+    - Python:
+      - Python in a Box: python.md
+      - Computer Vision in Python: python_cv.md
     # Beside python.md rather than further down: the two pages answer the same question about two
     # guest languages that are hosted the same way — in Field's own process, sharing one namespace,
     # with the host's objects reachable directly — and a reader who has read one wants the contrast.
@@ -314,8 +318,9 @@ nav:
     # page is a user page since 2026-10-11; the circuit-search study that used to fill its second
     # half is the page after it, and the how-to for hosting a foreign runtime moved to
     # dev_docs/MORPHO_LANGUAGE_BRIDGE.md.
-    - MorphoHDL in Field: morpho_examples.md
-    - Searching for MorphoHDL Circuits: morpho_search.md
+    - MorphoHDL:
+      - MorphoHDL in Field: morpho_examples.md
+      - Searching for MorphoHDL Circuits: morpho_search.md
     # The tail of this section is the two "make your own" pages, in ascending order of how much
     # machinery they ask for, after the gallery that already uses them: `rewrite { … }` is a
     # syntax of your own with no language at all behind it — a preprocessor in a box — and
