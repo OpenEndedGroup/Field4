@@ -6,16 +6,16 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * [PaintBrush] is what a drag in the renderer window becomes, and the window itself cannot be
+ * [SpawnBrush] is what a drag in the renderer window becomes, and the window itself cannot be
  * dragged in a test: posting mouse events needs an Accessibility grant the build does not have.
  * So the pointer-to-paint rule, which is all of the painting that is not a GLFW read, is checked
  * here frame by frame against madp's mousedown / mousemove / mouseup handlers.
  */
-class PaintBrushTest {
+class SpawnBrushTest {
 
     private fun run(vararg frames: Triple<Pair<Double, Double>, Boolean, Boolean>): List<Pair<Double, Double>> {
         val painted = mutableListOf<Pair<Double, Double>>()
-        val brush = PaintBrush(spacing = 8.0)
+        val brush = SpawnBrush(spacing = 8.0)
         frames.forEach { (at, down, inside) -> brush.step(at.first, at.second, down, inside) { x, y -> painted += x to y } }
         return painted
     }

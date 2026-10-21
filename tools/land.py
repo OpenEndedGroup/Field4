@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """The landing queue: agents enqueue a branch and stop; one lander puts it on `main`.
 
+    uv run python tools/land.py precheck [--plan]                 # first: the guards this diff can trip
     uv run python tools/land.py enqueue [branch] [--note "..."]   # agents: this, then stop
     uv run python tools/land.py status [id] [--watch]             # what is queued, landed, bounced
     uv run python tools/land.py wait <id>                         # block until it lands or bounces
@@ -1853,9 +1854,22 @@ def cmd_run(args: argparse.Namespace) -> int:
         lock_file.close()
 
 
+def cmd_precheck(argv: list[str]) -> int:
+    # Imported here: it pulls in the guard selection, which the queue commands never need (and which a
+    # copy of this script used on its own, as tools/test_docs_notes.py makes, does not have).
+    import land_precheck  # noqa: PLC0415
+
+    return land_precheck.main(argv)
+
+
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["precheck"]:
+        return cmd_precheck(argv[1:])
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
+    # Dispatched above, before parsing; listed here so `land.py --help` names it.
+    sub.add_parser("precheck", help="before enqueue: merge main, run only the guards this diff can trip (minutes)")
     p = sub.add_parser("enqueue", help="queue a branch for landing, then stop")
     p.add_argument("branch", nargs="?", help="default: the current branch")
     p.add_argument("--note", help="one line for the landing commit, e.g. what to look at if it bounces")

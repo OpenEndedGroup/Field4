@@ -222,7 +222,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
 
     /**
      * Light the scene like a studio: ACES tone mapping, a shadow-casting key light with a hemisphere
-     * fill and a cool rim, and a dark ground plane (with a faint grid) that catches the shadows.
+     * fill and a cool rim, ambient occlusion, and a dark ground plane (with a faint grid) that catches
+     * the shadows.
      *
      * For a model looked at as an object — the look of [afield.geometry.mesh.GeometryBuilder]'s scenes —
      * rather than a technical figure, so it is off unless asked for. The reference grid and axis tripod
@@ -233,6 +234,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * ```
      *
      * @param groundY the height of the ground; `null` puts it a little below the scene's lowest point.
+     * @param ambientOcclusion darken creases and contact points (screen-space ambient occlusion, three.js's
+     * `SSAOPass`). Drawn in a single view; a contact sheet ([columns]) and X-ray draw without it.
      */
     fun studio(
         ground: Boolean = true,
@@ -241,9 +244,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         groundColor: String = "#08090a",
         shadows: Boolean = true,
         exposure: Double = 1.0,
+        ambientOcclusion: Boolean = true,
     ) {
         require(exposure.isFinite() && exposure > 0) { "exposure must be positive, got $exposure" }
-        studio = ThreeStudioSpec(ground, grid, groundY, groundColor, shadows, exposure)
+        studio = ThreeStudioSpec(ground, grid, groundY, groundColor, shadows, exposure, ambientOcclusion)
         if (helpersExplicit == null) helpersExplicit = false
     }
 

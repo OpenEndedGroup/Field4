@@ -3627,6 +3627,20 @@ tasks.register<Exec>("prepareSlangCompiler") {
     if (gradle.startParameter.isOffline) environment("UV_OFFLINE", "1")
 }
 
+// gltfpack (meshoptimizer), for compressed GLB export: a pinned, checksummed release binary recorded in
+// build/gltfpack.path. First-run setup offers it as the "gltfpack" extra; without it GLBs are written plain.
+tasks.register<Exec>("prepareGltfpack") {
+    group = "build"
+    description = "Fetches the pinned gltfpack and records it in build/gltfpack.path for compressed GLB export."
+    inputs.file("tools/prepare_gltfpack.py")
+    inputs.file("tools/native_download_cache.py")
+    inputs.file("optional/gltfpack/pin.json")
+    outputs.file(layout.buildDirectory.file("gltfpack.path"))
+    outputs.upToDateWhen { false }
+    commandLine(rootPythonCommand + listOf("tools/prepare_gltfpack.py") +
+        if (gradle.startParameter.isOffline) listOf("--offline") else emptyList())
+}
+
 // Native preparation scripts use the platform Python command, like the source launcher.
 val nativeBuildPython = if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3"
 

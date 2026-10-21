@@ -545,6 +545,10 @@ object DemoTranscriptExecSmokeTest {
         // until cleared, which needs a page to draw on and strokes drawn by hand. StrokeVerbsTest pins
         // the verbs and the frame the page draws, DoughLiveTest the pattern player.
         "madp_line",
+        // charGrid: both builders return animations that run until stopped, and their glyphs play dough
+        // through the audio device. CharGridTest checks the cells, the panel's diffs and the sound
+        // grouping headless.
+        "madp_chargrid",
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
         "chain_scene_to_light",
@@ -826,6 +830,10 @@ object DemoTranscriptExecSmokeTest {
         // one of them reading the camera. ShadertoyChannelsTest compiles the image preamble and the
         // channel passes; the orientation and colour were checked by native capture.
         "shadertrinket",
+        // The madp StackTrinket port: StackSL feedback programs on a native Window + Renderer, so
+        // compile-only here. StackSLFeedbackTest compiles every preset and its fragment shader to
+        // SPIR-V without a GPU.
+        "stacktrinket_feedback",
         // Continuing a gesture (2026-10-19): boxes 5 and 6 start a Timestral worker, which needs a
         // downloaded checkpoint no CI machine has, and boxes 3 and 4 are live frames loops. The oracle
         // and mocap code runs in VariableMarkovOracleTest, SeveralTakesTest and BvhTest, and the dance

@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17228 of 33715 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 17346 of 33841 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2238 undocumented entry points** (types, top-level functions and values) and 13541 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2238 undocumented entry points** (types, top-level functions and values) and 13548 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -32,7 +32,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StackSLStudyTools.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLStudyTools.kt) | Languages | stacksl_conversation | 13 | 16 | 21% |
 | [GeometryReviewTools.kt](../src/jvmMain/kotlin/afield/ai/agent/GeometryReviewTools.kt) | Machine learning | geometry_review | 12 | 26 | 0% |
 | [PuppetBrowser.kt](../src/jvmMain/kotlin/afield/media/browser/PuppetBrowser.kt) | Imaging | puppet_browser | 11 | 70 | 10% |
-| [ThreeJsViewer.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeJsViewer.kt) | Graphics | three_output, fline_examples | 11 | 64 | 33% |
+| [ThreeJsViewer.kt](../src/jvmMain/kotlin/afield/graphics/three/ThreeJsViewer.kt) | Graphics | three_output, fline_examples | 11 | 64 | 34% |
 | [Protocol.kt](../src/jvmMain/kotlin/afield/audio/ai/Protocol.kt) | Audio AI | field_audio_service_reference, audio_ai_corpus_microscope, visualizers | 11 | 61 | 73% |
 | [StackSL.kt](../src/jvmMain/kotlin/afield/lang/stacksl/StackSL.kt) | Languages | stacksl_examples | 11 | 47 | 15% |
 | [Filters.kt](../src/jvmMain/kotlin/afield/audio/synth/Filters.kt) | Synthesis | subharmonic_sound, agent_transcripts | 11 | 28 | 15% |
@@ -738,6 +738,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [GpuShaderTraining.kt](../src/jvmMain/kotlin/afield/graphics/shader/learning/GpuShaderTraining.kt) | Graphics | — | 0 | 7 | 41% |
 | [Queue.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/device/Queue.kt) | Graphics | — | 0 | 7 | 12% |
 | [Sacn.kt](../src/jvmMain/kotlin/afield/io/dmx/Sacn.kt) | Lighting | — | 0 | 7 | 80% |
+| [StackSLFeedback.kt](../src/jvmMain/kotlin/afield/lang/stacksl/StackSLFeedback.kt) | Graphics | — | 0 | 7 | 82% |
 | [GpPreference.kt](../src/jvmMain/kotlin/afield/math/gp/GpPreference.kt) | Math | — | 0 | 7 | 61% |
 | [CopiedExternalBrowserSurface.kt](../src/jvmMain/kotlin/afield/media/browser/CopiedExternalBrowserSurface.kt) | Imaging | — | 0 | 7 | 12% |
 | [TileAtlasLayout.kt](../src/jvmMain/kotlin/afield/simulation/flow/TileAtlasLayout.kt) | Simulation | — | 0 | 7 | 12% |

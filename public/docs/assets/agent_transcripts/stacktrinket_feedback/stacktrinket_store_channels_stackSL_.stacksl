@@ -1,0 +1,9 @@
+# 0-> reads the red memory for this pixel; ->0 explicitly keeps it.
+0-> 0.985 *
+p length 0.5 0.08 |sh10 pulse
+0.08 *
++
+dup ->0
+dup 0.65 * ->1
+dup 0.35 * ->2
+saturate
