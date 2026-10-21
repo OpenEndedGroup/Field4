@@ -174,8 +174,10 @@ CHECKS: tuple[Check, ...] = (
         "reference-nav",
         "LanguagesCategoryTest (Score, Geometry: a new reference page with no public/zensical.yml entry)",
         _reference_nav,
+        # Not LanguagesCategoryTest itself: it reads the *committed* pages, which the lander rewrites
+        # before it guards, so on an unregenerated branch it is red for drift no landing would see.
+        # `missing_nav_entries` makes its nav comparison against the pages the lander will commit.
         gradle=("generateCodebaseReference",),
-        citation_test="afield.tools.docs.LanguagesCategoryTest",
     ),
     Check(
         "box-code",
@@ -230,7 +232,8 @@ def missing_nav_entries(reference_dir: Path, nav_text: str) -> list[str]:
     The same comparison LanguagesCategoryTest makes against the committed pages; made here against
     the pages the lander will commit, because it regenerates them before it guards.
     """
-    pages = sorted(p.name for p in reference_dir.glob("*.md"))
+    # With -Pout the generator writes its KDoc worklist beside the pages; committed, it lives in dev_docs.
+    pages = sorted(p.name for p in reference_dir.glob("*.md") if p.name != "kdoc_worklist.md")
     return [page for page in pages if f"reference/{page}" not in nav_text]
 
 

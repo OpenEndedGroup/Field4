@@ -75,9 +75,7 @@ class SelectionTest(unittest.TestCase):
         self.assertEqual(args[:3], ["--continue", "compileKotlinJvm", "generateCodebaseReference"])
         self.assertIn("-Pout=/tmp/ref", args)
         tail = args[args.index("citationGates"):]
-        self.assertEqual(tail, ["citationGates", "--rerun",
-                                "--tests", "afield.app.server.ServerSurfaceLedgerTest",
-                                "--tests", "afield.tools.docs.LanguagesCategoryTest"])
+        self.assertEqual(tail, ["citationGates", "--rerun", "--tests", "afield.app.server.ServerSurfaceLedgerTest"])
 
     def test_no_drift_check_is_ever_run(self) -> None:
         # The lander regenerates these before it guards, so they cannot bounce a branch.
@@ -86,7 +84,7 @@ class SelectionTest(unittest.TestCase):
 
     def test_missing_nav_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            for name in ("geometry.md", "animation.md", "math.md"):
+            for name in ("geometry.md", "animation.md", "math.md", "kdoc_worklist.md"):
                 (Path(tmp) / name).write_text("x")
             nav = "  - Reference:\n    - reference/math.md\n    - reference/geometry.md\n"
             self.assertEqual(precheck.missing_nav_entries(Path(tmp), nav), ["animation.md"])
