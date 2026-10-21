@@ -49,6 +49,7 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.sqrt
 
 /**
@@ -92,8 +93,9 @@ class ParticleSketchSettings {
     var particleRadius: Double = 3.0
 
     /**
-     * madp's Trail: how much of the previous frame stays on screen, 0..1. 0 clears every frame;
-     * 0.3 leaves short motion-blurred tails.
+     * madp's Trail: how much of the previous frame stays on screen, 0..1, per 60th of a second
+     * (madp's frame), whatever the renderer's frame rate. 0 clears every frame; 0.3 leaves short
+     * motion-blurred tails.
      */
     var trail: Double = 0.0
 
@@ -482,7 +484,8 @@ class ParticleSketch(
             }
 
             val now = System.nanoTime()
-            val dt = if (lastNanos == 0L) 1.0 / 60.0 else ((now - lastNanos) / 1e9).coerceIn(0.0, MAX_DT)
+            val frameSeconds = if (lastNanos == 0L) 1.0 / 60.0 else ((now - lastNanos) / 1e9).coerceIn(0.0, 1.0)
+            val dt = frameSeconds.coerceAtMost(MAX_DT)
             lastNanos = now
             val stepping = !s.paused
             if (stepping) time += dt
@@ -553,7 +556,12 @@ class ParticleSketch(
             graphicsMemoryBarrier(command)
 
             // 4. draw: fade, links, dots, overlays
-            accumulation.settings.fade = (1.0 - s.trail).coerceIn(0.0, 1.0)
+            // madp fades by 1 - trail once per frame at 60 frames a second; scaled to this frame's
+            // length so the trail is as long in seconds at any frame rate (a window the display does
+            // not throttle can run at thousands of frames a second). Wall-clock time, so a paused
+            // picture fades as madp's does.
+            val keep = s.trail.coerceIn(0.0, 1.0).pow(frameSeconds * 60.0)
+            accumulation.settings.fade = (1.0 - keep).coerceIn(0.0, 1.0)
             accumulation.render(command, index)
         }
 
