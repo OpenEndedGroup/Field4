@@ -42,7 +42,19 @@ ipcRenderer.on("field4-rtt-error", (_, meta) => {
   if (label) label.textContent = "RTT view: " + meta.error;
 });
 
+ipcRenderer.on("field4-presentation-sources", (_, paths) => {
+  if (!Array.isArray(paths) || paths.length > 64 || !paths.every(path => typeof path === "string")) return;
+  window.dispatchEvent(new CustomEvent("field-presentation-sources", { detail: paths }));
+});
+ipcRenderer.on("field4-presentation-project", (_, paths) => {
+  if (!Array.isArray(paths) || paths.length > 64 || !paths.every(path => typeof path === "string")) return;
+  window.dispatchEvent(new CustomEvent("field-presentation-project", { detail: paths }));
+});
+
 contextBridge.exposeInMainWorld("fieldElectron", {
+  presentationTypeScript(request) {
+    return ipcRenderer.invoke("field-presentation-tsx", request);
+  },
   identity() {
     return ipcRenderer.invoke("field4-tab-identity");
   },

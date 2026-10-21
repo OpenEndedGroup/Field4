@@ -312,6 +312,21 @@ internal fun createProxyTarget(request: CreateFileProxyBox): CreatedProxy {
 internal fun createFileProxyBox(request: CreateFileProxyBox): CreateFileProxyBoxResponse {
     val createdProxy = createProxyTarget(request)
     val info = thisSessionInfo.get()
+    val existing = info.boxes.values.firstOrNull { box ->
+        box.getPropertyRaw("file_proxy_mode") == createdProxy.mode &&
+            box.getPropertyRaw("file_proxy_path") == createdProxy.storedPath &&
+            box.getPropertyRaw("_tombstone") != true
+    }
+    if (existing != null) {
+        refreshFileProxyBox(existing, notifyMissing = true)
+        return CreateFileProxyBoxResponse(
+            ok = true,
+            uid = existing.id,
+            message = "Reused file proxy for ${createdProxy.target.path}",
+            mode = createdProxy.mode,
+            path = createdProxy.storedPath
+        )
+    }
     val uid = UUID.randomUUID().toString()
     val created = box(uid, createIfMissing = true, initIfCreated = true, root = info)
 
