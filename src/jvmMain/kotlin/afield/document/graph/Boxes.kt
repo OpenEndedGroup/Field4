@@ -1907,6 +1907,7 @@ import afield.lang.python.*
 import afield.lang.rectsl.registerRectslStudioTools
 import afield.lang.rectsl.renderRectslToImages
 import afield.lang.remotejs.*
+import afield.lang.rpn.*
 import afield.lang.stacksl.*
 import afield.lang.stacksl.evolution.*
 import afield.math.autodiff.*
