@@ -88,9 +88,15 @@ class SimplexView internal constructor(
 
     private fun ThreeSceneBuilder.simplexScene(shown: Shown, dimmed: Boolean, note: String) {
         val s = shown.simplex
+        // Drawn about the middle of their bounding box rather than their centroid, so the view frames
+        // the shape tightly while it turns; the shape and its distances are the same either way.
+        val lo = (0 until 3).map { k -> s.points.minOf { it[k] } }
+        val hi = (0 until 3).map { k -> s.points.maxOf { it[k] } }
+        val points = s.points.map { vec(it.x - (lo[0] + hi[0]) / 2, it.y - (lo[1] + hi[1]) / 2, it.z - (lo[2] + hi[2]) / 2) }
         background("#050607")
         helpers(false)
-        camera(yaw = 39.4, pitch = 23.8, fieldOfView = 42.0, padding = 1.18)
+        hud(false)
+        camera(yaw = 39.4, pitch = 23.8, fieldOfView = 42.0, padding = 1.0)
         turntable(degreesPerSecond = 2.75)
         dimmed(dimmed)
         note(note)
@@ -98,20 +104,20 @@ class SimplexView internal constructor(
         for (e in s.edges) {
             val alpha = if (shown.known) 0.74 else 0.28
             lines(FLine().apply {
-                moveTo(s.points[e.a]); lineTo(s.points[e.b])
+                moveTo(points[e.a]); lineTo(points[e.b])
                 color = vec(0.85, 0.85, 0.85, alpha)
             })
             if (shown.known) {
-                label(mid(s.points[e.a], s.points[e.b], 0.5), "%.3f".format(e.distance), style = "tag")
+                label(mid(points[e.a], points[e.b], 0.5), "%.3f".format(e.distance), style = "tag")
                 if (shown.flags) {
-                    label(mid(s.points[e.a], s.points[e.b], 0.14), style = "diamond",
+                    label(mid(points[e.a], points[e.b], 0.14), style = "diamond",
                         color = rankColor(e.rankFromA, s.size - 1), title = "${rankName(e.rankFromA, s.size - 1)} from point ${e.a + 1}")
-                    label(mid(s.points[e.b], s.points[e.a], 0.14), style = "diamond",
+                    label(mid(points[e.b], points[e.a], 0.14), style = "diamond",
                         color = rankColor(e.rankFromB, s.size - 1), title = "${rankName(e.rankFromB, s.size - 1)} from point ${e.b + 1}")
                 }
             }
         }
-        s.points.forEachIndexed { i, p ->
+        points.forEachIndexed { i, p ->
             mesh(sphereAt(p), wireframe = false, material = ThreeSurfaceMaterial(
                 color = linearRgb(shown.colors[i]), roughness = 0.46f, metalness = 0.05f,
             ))
@@ -136,14 +142,16 @@ class SimplexView internal constructor(
             doubleArrayOf(-1.0, 1.0, -1.0), doubleArrayOf(1.0, -1.0, -1.0),
         )
 
-        private val SPHERE = uvSphereMesh(32, 16, 0.16)
+        private val SPHERE = uvSphereMesh(32, 16, 0.2)
 
         private fun sphereAt(p: Vec3): TriMesh {
             val moved = SPHERE.positions.copyOf()
             for (i in moved.indices step 3) {
                 moved[i] += p.x; moved[i + 1] += p.y; moved[i + 2] += p.z
             }
-            return TriMesh(moved, SPHERE.indices, SPHERE.normals, SPHERE.uvs, SPHERE.colors)
+            // White vertex colours, so the material's colour is the colour: with none, the viewer
+            // multiplies it by its default surface grey.
+            return TriMesh(moved, SPHERE.indices, SPHERE.normals, SPHERE.uvs, FloatArray(moved.size) { 1f })
         }
 
         private fun mid(a: Vec3, b: Vec3, t: Double): Vec3 =
@@ -176,8 +184,8 @@ class SimplexView internal constructor(
         }
 
         private fun pairTable(s: EmbeddingSimplex, known: Boolean): String = buildString {
-            append("<div style='width:min(300px,calc(100vw - 24px));border:1px solid rgba(255,255,255,.08);")
-            append("background:rgba(8,8,8,.72);backdrop-filter:blur(4px);padding:8px;color:#777;font-size:11px'>")
+            append("<div style='width:min(250px,calc(100vw - 24px));border:1px solid rgba(255,255,255,.08);")
+            append("background:rgba(8,8,8,.58);backdrop-filter:blur(2px);padding:8px;color:#777;font-size:11px'>")
             if (!known) {
                 append(row("--", "<span>no current distances</span>", "--"))
             } else {
@@ -193,7 +201,7 @@ class SimplexView internal constructor(
         }
 
         private fun row(pair: String, middle: String, value: String) =
-            "<div style='display:grid;grid-template-columns:42px 1fr 64px;gap:8px;padding:3px 0;" +
+            "<div style='display:grid;grid-template-columns:42px 1fr 64px;gap:8px;padding:2px 0;" +
                 "border-bottom:1px solid rgba(255,255,255,.04)'><span style='color:#bcbcbc'>$pair</span>$middle" +
                 "<span style='text-align:right;color:#969696'>$value</span></div>"
     }
@@ -214,8 +222,8 @@ class SimplexView internal constructor(
 fun Box.simplexView(
     channel: String = "simplex",
     name: String = "simplex",
-    height: Int = 460,
-    width: Int? = 680,
+    height: Int = 520,
+    width: Int? = 820,
     note: String = "waiting for current embeddings",
 ): SimplexView {
     val uid = threeViewerUid(this, name)

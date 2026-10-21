@@ -827,7 +827,7 @@ function applyStudio(spec, bounds) {
 
 // [viewer-region labels] BEGIN
 // Text anchored to points in the scene (`payload.labels`), an HTML block in a corner (`payload.overlays`),
-// and a greyed-out "stale" state (`payload.dimmed`, `payload.note`). Labels are DOM elements re-projected
+// a greyed-out "stale" state (`payload.dimmed`, `payload.note`), and no HUD (`payload.hud === false`). Labels are DOM elements re-projected
 // every frame rather than sprites, so they stay crisp at any DPR and take ordinary CSS; they are drawn for
 // a single view only (a contact sheet hides them). None of it is pickable: the layer ignores the pointer.
 const labelLayer = document.createElement('div');
@@ -849,6 +849,7 @@ labelStyleSheet.textContent = `
   .scene-overlay { max-width:calc(100% - 24px); font-size:11px; }
   .scene-overlay.top-right { top:12px; right:12px; } .scene-overlay.top-left { top:12px; left:12px; }
   .scene-overlay.bottom-right { bottom:12px; right:12px; } .scene-overlay.bottom-left { bottom:12px; left:12px; }
+  body.hud-off #hud { display:none; }
   .scene-note { left:16px; bottom:14px; color:rgba(255,255,255,.35); font-size:11px; letter-spacing:.05em; text-transform:uppercase; }
 `;
 document.head.appendChild(labelStyleSheet);
@@ -883,6 +884,8 @@ function applyLabels(payload) {
         return el;
     });
     container.classList.toggle('scene-dimmed', !!payload.dimmed);
+    // A picture to look at rather than a model to inspect: no tool buttons, no counts.
+    document.body.classList.toggle('hud-off', payload.hud === false);
     sceneNote.textContent = payload.note || '';
 }
 

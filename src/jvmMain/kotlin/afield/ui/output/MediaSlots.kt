@@ -329,7 +329,7 @@ private fun renderMediaSlots(actionId: String, slots: List<MediaSlot>, tray: Lis
     }
     return buildString {
         append("<div id='$root' class='media-slots' style='font-family:\"Iosevka Web\",ui-monospace,monospace;font-size:12px;color:#b0b0b0;")
-        append("background:#0b0b0b;padding:10px;display:flex;flex-direction:column;gap:8px;max-width:680px'>")
+        append("background:#0b0b0b;padding:10px;display:flex;flex-direction:column;gap:8px;max-width:820px'>")
         append("<div style='display:grid;grid-template-columns:repeat(${slots.size.coerceAtMost(6)},minmax(0,1fr));gap:8px'>")
         for (s in slots) {
             append("<div class='ms-slot' data-slot='${s.index}' data-kind='${s.kind.name.lowercase()}' style='border:1px dashed #2d2d2d;background:#101010;")

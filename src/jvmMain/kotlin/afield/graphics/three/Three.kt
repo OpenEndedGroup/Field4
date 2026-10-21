@@ -79,6 +79,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal val overlays = ArrayList<ThreeOverlay>()
     internal var dimmed: Boolean = false
     internal var note: String? = null
+    internal var hud: Boolean = true
     private var helpersExplicit: Boolean? = null
 
     /**
@@ -308,6 +309,15 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         note = text
     }
 
+    /**
+     * Show or hide the viewer's own controls — X-ray, Export GLB, Pick, the parts list, the triangle
+     * count. Off for a view that is a picture to look at, whose corners are its own ([overlay], [note]).
+     * Orbiting, zooming and the [turntable] work either way.
+     */
+    fun hud(on: Boolean) {
+        hud = on
+    }
+
     /** Scene background as a CSS colour. */
     fun background(css: String) {
         background = css
@@ -530,6 +540,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             overlays = overlays.toList(),
             dimmed = dimmed,
             note = note,
+            hud = hud,
         )
     }
 

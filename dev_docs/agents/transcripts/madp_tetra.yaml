@@ -45,7 +45,7 @@ operations:
   - create:
       box: tetra2
       name: tetra2 — three pictures and a sentence
-      frame: { x: 900.0, y: 80.0, w: 300.0, h: 100.0 }
+      frame: { x: 1100.0, y: 80.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // Three pictures and a sentence, in the one space CLIP puts both in.
@@ -72,14 +72,15 @@ operations:
   - create:
       box: swap_one_picture
       name: swap one picture
-      frame: { x: 80.0, y: 1000.0, w: 300.0, h: 100.0 }
+      frame: { x: 80.0, y: 1250.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // tetra with one picture swapped: the car is now a wolf.
           //
-          // Compare the shape with tetra's. Four animals make a flatter, more even tetrahedron
-          // than three animals and a car, whose fourth point stood off on its own. Drag the
-          // bicycle from the tray onto slot 4 to send it back out.
+          // Compare the shape with tetra's. There, the car's three edges were the three longest:
+          // its point stood off on its own. Four animals make a nearly even tetrahedron, every
+          // edge within a fifth of the others. Drag the bicycle from the tray onto slot 4 and see
+          // where it lands.
           val inputs = mediaSlots {
               image("public/docs/assets/madp_tetra/tabby_cat.jpg")
               image("public/docs/assets/madp_tetra/labrador.jpg")
@@ -97,7 +98,7 @@ operations:
   - create:
       box: five_points
       name: five points do not fit
-      frame: { x: 900.0, y: 1000.0, w: 300.0, h: 100.0 }
+      frame: { x: 1100.0, y: 1250.0, w: 300.0, h: 100.0 }
       properties:
         code: |
           // Five points do not fit in three dimensions.

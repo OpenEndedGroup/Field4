@@ -508,6 +508,9 @@ data class ThreeGeometryPayload(
     /** A short line in the bottom-left corner. See [ThreeSceneBuilder.note]. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val note: String? = null,
+    /** Show the viewer's tool buttons and counts; `false` for a picture. See [ThreeSceneBuilder.hud]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val hud: Boolean = true,
     /** Wire only: where a description's arrays are. See `ThreeWire.kt`. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     internal val buffers: ThreeWireBuffers? = null,
