@@ -7,7 +7,7 @@ description: >
   hawks (predators that chase and eat), fireflies (two swarms seeking moving points, additive
   light), ink (a noise flow field that keeps every stroke), bait ball (an orbiting mill with
   sharks), two tribes (segregation by kind) and conga (a hand-written rule). Each flock box is the
-  page's flock({...}) spec as BoidFlock settings in its code, and its look as GLSL on
+  page's flock({...}) spec as BoidSketch settings in its code, and its look as GLSL on
   `#include "boids/flock"` in its compute tab, with the page's fps, steps, trail and fade controls,
   an inspector and a metrics card. Launching a flock box replaces the one showing. Requires a
   GPU/Vulkan window; capture it with `native-screenshot <path> --uid boids_renderer`.
@@ -48,7 +48,7 @@ operations:
           */
           var module = computeModuleHere {}
 
-          val sim = BoidFlock(module) {
+          val sim = BoidSketch(module) {
               background = hexColor("#06080b")
               edges = BoidEdges.WRAP
               trail = 14
@@ -92,7 +92,7 @@ operations:
           */
           var module = computeModuleHere {}
 
-          val sim = BoidFlock(module) {
+          val sim = BoidSketch(module) {
               background = hexColor("#07070a")
               trail = 12
               kind("starling") {
@@ -146,7 +146,7 @@ operations:
           */
           var module = computeModuleHere {}
 
-          val sim = BoidFlock(module) {
+          val sim = BoidSketch(module) {
               background = hexColor("#040306")
               blend = BoidBlend.LIGHTER
               trail = 48
@@ -200,7 +200,7 @@ operations:
           */
           var module = computeModuleHere {}
 
-          val sim = BoidFlock(module) {
+          val sim = BoidSketch(module) {
               background = hexColor("#efe9dc")
               trail = 6
               fade = 0.01
@@ -243,7 +243,7 @@ operations:
           */
           var module = computeModuleHere {}
 
-          val sim = BoidFlock(module) {
+          val sim = BoidSketch(module) {
               background = hexColor("#02101a")
               blend = BoidBlend.LIGHTER
               trail = 20
@@ -298,7 +298,7 @@ operations:
           */
           var module = computeModuleHere {}
 
-          val sim = BoidFlock(module) {
+          val sim = BoidSketch(module) {
               background = hexColor("#0a0808")
               steps = 2
               trail = 16
@@ -350,11 +350,11 @@ operations:
           /*
           Conga: no alignment, no cohesion. One hand-written rule: find the closest boid ahead of you and
           aim just behind it. Chains form, merge and chase their own tails. The rule's body is the three
-          custom hooks in the compute tab; rule(46, 1.6) says how far it looks and how much it counts.
+          custom hooks in the compute tab; custom(46, 1.6) says how far it looks and how much it counts.
           */
           var module = computeModuleHere {}
 
-          val sim = BoidFlock(module) {
+          val sim = BoidSketch(module) {
               background = hexColor("#0b0710")
               steps = 2
               trail = 24
@@ -362,7 +362,7 @@ operations:
                   count = 360
                   maxSpeed = 2.6; minSpeed = 1.2; maxForce = 0.08; fov = 200.0
                   rules(
-                      rule(46, 1.6),
+                      custom(46, 1.6),
                       separate(7, 2.0),
                       wander(0.35),
                   )

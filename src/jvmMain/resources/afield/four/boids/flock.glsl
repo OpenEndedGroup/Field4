@@ -1,4 +1,4 @@
-// boids/flock -- the harness behind a BoidFlock's compute shader.
+// boids/flock -- the harness behind a BoidSketch's compute shader.
 //
 // Include it on the line after #version and define how boids look:
 //

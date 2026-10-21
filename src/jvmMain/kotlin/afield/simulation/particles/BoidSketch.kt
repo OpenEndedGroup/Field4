@@ -109,7 +109,7 @@ class BoidRule internal constructor(
 /**
  * A kind of boid: how many, how fast, what they see and how they look, and their [rules]. The
  * rule functions here (`separate`, `align`, `cohere`, `flee`, `chase`, `eat`, `wander`, `seek`,
- * `orbit`, `flow`, `avoidRocks`, `avoidEdges`, `mouse`, `cruise`, `rule`) are the page's, with its
+ * `orbit`, `flow`, `avoidRocks`, `avoidEdges`, `mouse`, `cruise`, and `custom` for its `rule`) are the page's, with its
  * defaults; units are pixels and steps.
  */
 class BoidKind(val name: String) {
@@ -126,7 +126,7 @@ class BoidKind(val name: String) {
     var shape: BoidShape = BoidShape.ARROW
     /** Body size in pixels. */
     var size: Double = 3.0
-    /** This kind's trail, as a multiple of the flock's [BoidFlockSettings.trail]. */
+    /** This kind's trail, as a multiple of the flock's [BoidSketchSettings.trail]. */
     var trail: Double = 1.0
     var trailAlpha: Double = 0.5
     var trailWidth: Double = 1.0
@@ -203,12 +203,13 @@ class BoidKind(val name: String) {
         BoidRule("cruise", 13, 0.0, d(weight), "all", false, doubleArrayOf(d(speed), 0.0, 0.0, 0.0))
 
     /**
-     * A hand-written rule over the neighbours within [radius]: the compute tab's `customStart`,
-     * `customNeighbour` and `customForce` (declare `CUSTOM_RULE`). Its force is used as returned,
-     * times [weight].
+     * A hand-written rule over the neighbours within [radius], the page's `rule(r, fn)`: the
+     * compute tab's `customStart`, `customNeighbour` and `customForce` (declare `CUSTOM_RULE`). Its
+     * force is used as returned, times [weight]. (Box code reserves the name `rule` for rewrite
+     * macros, hence `custom`.)
      */
-    fun rule(radius: Number, weight: Number = 1, among: Any = "all", fov: Boolean = true) =
-        BoidRule("rule", 14, d(radius), d(weight), among, fov)
+    fun custom(radius: Number, weight: Number = 1, among: Any = "all", fov: Boolean = true) =
+        BoidRule("custom", 14, d(radius), d(weight), among, fov)
 }
 
 /** A round obstacle at ([x], [y]) as fractions of the window, [r] pixels across from its centre. */
@@ -218,7 +219,7 @@ data class BoidRock(val x: Double, val y: Double, val r: Double)
  * A flock: the page's `flock({...})` spec. Everything but the kinds' counts can change while it
  * runs; the flock reads it every frame.
  */
-class BoidFlockSettings {
+class BoidSketchSettings {
     /** Names the buffers and passes; a second flock under the same name replaces the first. */
     var name: String = "boids"
     var background: Vec4 = rgba(5, 6, 7, 1.0)
@@ -255,7 +256,7 @@ class BoidFlockSettings {
  * radius) and its reach to every kind (the largest radius of its rules that see that kind), and
  * the grid's cell size (the most populous kind's query radius, at least 16).
  */
-class BoidTables(settings: BoidFlockSettings) {
+class BoidTables(settings: BoidSketchSettings) {
     val kinds: List<BoidKind> = settings.kinds.values.toList()
     val names: List<String> = kinds.map { it.name }
 
@@ -319,13 +320,13 @@ class BoidTables(settings: BoidFlockSettings) {
  * Hosts a flock whose look is a compute shader built on `#include "boids/flock"`: the shader
  * defines `vec4 color(Boid b)` (and `flowAngle` or the custom-rule hooks when the spec uses them),
  * and this class does everything else: it writes the spec into the rule and kind tables, places
- * the boids, steps them [BoidFlockSettings.steps] times a frame at [BoidFlockSettings.fps] over a
+ * the boids, steps them [BoidSketchSettings.steps] times a frame at [BoidSketchSettings.fps] over a
  * [GpuNeighbourGrid], keeps a 121-step history of each, and draws rocks, trails, bodies and the
- * inspector into a [PointAccumulation] faded by [BoidFlockSettings.fade] each frame.
+ * inspector into a [PointAccumulation] faded by [BoidSketchSettings.fade] each frame.
  *
  * ```
  * var module = computeModuleHere {}
- * val sim = BoidFlock(module) {
+ * val sim = BoidSketch(module) {
  *     background = hexColor("#06080b")
  *     kind("starling") {
  *         count = 800
@@ -339,14 +340,14 @@ class BoidTables(settings: BoidFlockSettings) {
  * Coordinates are the renderer window's, in points, origin top left, y down; speeds are pixels
  * per step. Building a flock (running its box) starts it afresh, as the page does on compile.
  */
-class BoidFlock(
+class BoidSketch(
     /** The compute module holding the flock's shader, usually `computeModuleHere {}`. */
     val module: ComputeModulePointer,
     val renderer: Renderer = fromContext(),
-    configure: BoidFlockSettings.() -> Unit = {}
+    configure: BoidSketchSettings.() -> Unit = {}
 ) {
     /** The spec, after `configure` ran; change it to steer the running flock. */
-    val settings = BoidFlockSettings().apply(configure)
+    val settings = BoidSketchSettings().apply(configure)
 
     /** The spec worked out into tables, as built. */
     val tables = BoidTables(settings)
@@ -431,7 +432,7 @@ class BoidFlock(
     }
 
     private class Resources(val renderer: Renderer, val shape: Shape) : Target {
-        lateinit var flock: BoidFlock
+        lateinit var flock: BoidSketch
         val capacity = shape.capacity
         val settings get() = flock.settings
 
@@ -743,7 +744,7 @@ data class BoidMetrics(
 }
 
 /**
- * The packaged GLSL behind [BoidFlock]. `#include "boids/flock"` in a compute shader reaches
+ * The packaged GLSL behind [BoidSketch]. `#include "boids/flock"` in a compute shader reaches
  * `flock.glsl`, the harness with the boid struct, the tables, every rule and the step.
  */
 object BoidShaders {
@@ -769,7 +770,7 @@ object BoidShaders {
  * fps, steps per frame, trail, fade, pause, inspect and reset. Return it from the box (make it the
  * last line) and the metrics card refreshes twice a second.
  */
-fun Box.showControls(flock: BoidFlock, channel: String = "controls"): Frames {
+fun Box.showControls(flock: BoidSketch, channel: String = "controls"): Frames {
     val s = flock.settings
     controlGroup(channel) {
         slider("fps", min = 1.0, max = 120.0, step = 1.0, initialValue = s.fps) { s.fps = it }

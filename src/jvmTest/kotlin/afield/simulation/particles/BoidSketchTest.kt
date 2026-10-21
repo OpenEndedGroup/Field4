@@ -11,18 +11,18 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The seams of [BoidFlock] that can be checked without a GPU.
+ * The seams of [BoidSketch] that can be checked without a GPU.
  *
  * The Kotlin writes the kind and rule tables by word offset and binds push constants by GLSL name,
  * and three shaders declare the same structs, so a field added on one side compiles everywhere
  * and shows up only on a GPU, as boids that steer by the wrong numbers. So the shaders are
  * compiled with shaderc, their push constants compared with what the Kotlin binds, the structs
- * compared across files, and their std430 layout with the offsets [BoidFlock] writes at. The
+ * compared across files, and their std430 layout with the offsets [BoidSketch] writes at. The
  * tables are checked against the page's `flock()`: `among` masks, the reach each kind has to
  * every other, and the grid's cell size. Every preset in the `madp_boids` starting point is
  * compiled against the harness.
  */
-class BoidFlockTest {
+class BoidSketchTest {
 
     private val include = ShaderIncludeResolver { request ->
         val path = request.requestedPath.trim()
@@ -94,10 +94,10 @@ class BoidFlockTest {
         }
         val structs = listOf("Boid", "KindRecord", "RuleRecord", "WorldRecord").associateWith { struct(harness, it) }
         val layout = Std430(structs)
-        assertEquals(16 * 4, layout.size("Boid"), "BoidFlock allocates 16 floats per boid")
-        assertEquals(24 * 4, layout.size("KindRecord"), "BoidFlock writes a kind every 24 words")
-        assertEquals(12 * 4, layout.size("RuleRecord"), "BoidFlock writes a rule every 12 words")
-        assertEquals(1012 * 4, layout.size("WorldRecord"), "BoidFlock writes 1012 words of world")
+        assertEquals(16 * 4, layout.size("Boid"), "BoidSketch allocates 16 floats per boid")
+        assertEquals(24 * 4, layout.size("KindRecord"), "BoidSketch writes a kind every 24 words")
+        assertEquals(12 * 4, layout.size("RuleRecord"), "BoidSketch writes a rule every 12 words")
+        assertEquals(1012 * 4, layout.size("WorldRecord"), "BoidSketch writes 1012 words of world")
         assertEquals(20 * 4, layout.offset("WorldRecord", "rocks"))
         assertEquals(52 * 4, layout.offset("WorldRecord", "kinds"))
         assertEquals(244 * 4, layout.offset("WorldRecord", "rules"))
@@ -107,7 +107,7 @@ class BoidFlockTest {
 
     @Test
     fun theTablesResolveAsThePagesFlockDoes() {
-        val settings = BoidFlockSettings().apply {
+        val settings = BoidSketchSettings().apply {
             kind("starling") {
                 count = 700
                 rules(separate(11, 1.8), align(30, 1.0), cohere(42, 0.9), flee("hawk", 90, 4.5), wander(0.1))

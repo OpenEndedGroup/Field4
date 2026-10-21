@@ -733,6 +733,12 @@ object DemoTranscriptExecSmokeTest {
         // particles/sketch harness without a GPU, and four.particle-sketch.smoke grades the verbs
         // against a transcription of madp's JavaScript on one.
         "particles_sketchbook",
+        // The boids page: a declarative flock spec stepped on the GPU over a neighbour grid and drawn
+        // into a PointAccumulation on a native Window + Renderer, so compile-only here.
+        // BoidSketchTest compiles every flock's compute tab against the boids/flock harness and
+        // checks its tables without a GPU; four.boid-sketch.smoke grades a step against the page's
+        // JavaScript on one.
+        "madp_boids",
         "imgui_vr_panel",
         // A hidden Electron window renders Field itself into Chromium shared textures; the live
         // macOS replay crosses IOSurface Mach rights and samples them in Vulkan. CI compiles the

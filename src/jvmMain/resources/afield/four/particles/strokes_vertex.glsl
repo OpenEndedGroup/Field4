@@ -1,7 +1,7 @@
 #version 450
 #extension GL_EXT_buffer_reference : require
 
-// Draws one layer of a ParticleSketch's (or a BoidFlock's) stroke list as quads; shape_fragment.glsl
+// Draws one layer of a ParticleSketch's (or a BoidSketch's) stroke list as quads; shape_fragment.glsl
 // turns each into an antialiased shape. kind: 0 line a.xy -> a.zw, 1 ring, 2 disc, 3 sector (a.z the
 // centre angle, a.w the half angle), 4 dashed ring (a.z dash, a.w gap, in pixels), 5 shaded rock;
 // all but the line are centred on a.xy. Records past the list's count,

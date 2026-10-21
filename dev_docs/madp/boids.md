@@ -12,10 +12,10 @@ The port runs every boid on the GPU in Field's Vulkan renderer and keeps the spe
 
 The JS spec is an object literal; the Kotlin one is a builder with the same names, in the same
 places. The rule constructors are members of the kind builder, not top-level functions, so
-`align`, `seek`, `mouse` and `rule` cannot collide with anything else box code imports.
+`align`, `seek` and `mouse` cannot collide with anything else box code imports.
 
 ```kotlin
-val sim = BoidFlock(module) {
+val sim = BoidSketch(module) {
     background = hexColor("#06080b")
     edges = BoidEdges.WRAP
     trail = 14; fade = 1.0
@@ -36,7 +36,7 @@ val sim = BoidFlock(module) {
 | `wander(w, jitter)`, `cruise(speed, w)`, `avoidEdges(margin, w)`, `avoidRocks(w, margin)`, `mouse(w, r)` | the same |
 | `seek(p \| t => p, w)`, `orbit(p, r, w, dir)` | the same; a moving point is a Kotlin lambda of `t` (steps), evaluated once a frame |
 | `flow((x, y, t) => radians, w)` | `flow(w)`; the angle is the GLSL hook `float flowAngle(vec2 uv, float t)` |
-| `rule(r, (b, near, world) => vec, opts)` | `rule(r, weight, among, fov)`; the body is three GLSL hooks, `customStart` / `customNeighbour` / `customForce` |
+| `rule(r, (b, near, world) => vec, opts)` | `custom(r, weight, among, fov)` (box code reserves `rule` for its rewrite macros); the body is three GLSL hooks, `customStart` / `customNeighbour` / `customForce` |
 | `color: b => hsl(...)` | the GLSL hook `vec4 color(Boid b)` (`b.heading`, `b.speed`, `b.n`, `b.r`, `b.cool`, `b.kind`) |
 | `shape: arrow / kite / dot / line / none`, `size`, `trail`, `trailAlpha`, `trailWidth`, `spawn` | the same |
 | `rocks: [rock(x, y, r)]`, `edges`, `blend: 'lighter'`, `background` | the same |
@@ -109,7 +109,7 @@ output.
 
 ## Shared vs local
 
-Shared, with KDoc and tests: `afield.simulation.particles.BoidFlock` (spec builder, tables,
+Shared, with KDoc and tests: `afield.simulation.particles.BoidSketch` (spec builder, tables,
 buffers, step, draw, inspector, metrics), the `boids/flock` GLSL harness, the drawing shaders, and
 a `WindowPointer` the flock and `ParticleSketch` both use for the pointer and the window's size in
 points. Tests: the shaders compile and declare what the Kotlin binds, every preset compiles, the
