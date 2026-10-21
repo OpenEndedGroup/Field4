@@ -367,12 +367,12 @@ class ParticleSketch(
         }
 
         fun paintAlong(x0: Double, y0: Double, x1: Double, y1: Double) =
-            PaintBrush.along(x0, y0, x1, y1, settings.paintSpacing, ::enqueue)
+            SpawnBrush.along(x0, y0, x1, y1, settings.paintSpacing, ::enqueue)
 
         /** Reads the pointer and the window's size in points where GLFW allows it: on the poll. */
         private fun installPointer() {
             val window = renderer.window
-            val brush = PaintBrush()
+            val brush = SpawnBrush()
             window.onPoll["${shape.name}-pointer"] = sequence {
                 while (true) {
                     val size = window.size()
@@ -584,7 +584,7 @@ class ParticleSketch(
  * [spacing] pixels along the way (at least one per move). A drag that starts inside keeps painting
  * when it leaves the window; one that starts outside paints nothing.
  */
-class PaintBrush(var spacing: Double = 8.0) {
+class SpawnBrush(var spacing: Double = 8.0) {
     private var painting = false
     private var wasDown = false
     private var lastX = 0.0

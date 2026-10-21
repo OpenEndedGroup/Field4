@@ -1104,13 +1104,19 @@ turntable. Change the direction or the seed and run it again.
 
 The madp geometry toolbox as a starting point. A model is a recipe of triangles: `geometry { }`
 runs the block, which emits triangles through a transform stack with a current colour and a current
-material (`mat`, `color`, `tri`, `quad`, `surface`, `revolve`, `tube`, `box`, `push`/`pop`), and
-draws the result in a `three { }` view lit like a studio, with soft shadows on a dark ground. The
-first box is the starter, a rippled terrain; the others are the toolbox's presets: a crystal bloom
-of single triangles, a lathe-turned vessel with a metal rim, a tube along a knot, a fungal tree of
-recursive tubes, a Menger sponge of boxes, and a breathing sheet that `animateGeometry { }` rebuilds
-thirty times a second. Launch that one to play it. Edit any recipe and run it again; the view keeps
-your orbit. The viewer's **Export GLB** saves the model.
+material (`mat`, `color`, `tri`, `quad`, `surface`, `revolve`, `tube`, `box`, `push`/`pop`). It
+draws the result in a `three { }` view lit like a studio, with soft shadows and ambient occlusion on
+a dark ground. The first box is the starter, a rippled terrain. The other ten are the toolbox's
+presets: a crystal bloom of single triangles, a lathe-turned vessel with a metal rim, a tube along a
+knot, a fungal tree of recursive tubes, phyllotaxis fronds, a Menger sponge and a city of boxes, a
+lesson in triangle winding, and two animations, a breathing sheet and a torn signal, that
+`animateGeometry { }` rebuilds thirty times a second. Launch those two to play them. Edit any recipe
+and run it again; the view keeps your orbit.
+
+The starter also calls `geometryAgent()`, which gives the document's AI4 chat the language and a
+`geometry.look` tool. The tool returns a picture of any view here as it is on screen, so you can ask
+the chat for a model and it can check its own work. The viewer's **Export GLB** saves a model, and
+compresses it when gltfpack is installed.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_geometry_terrain.png" capture="box" open-outputs="true" wait="4.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-geometry-terrain" alt="A rippled blue-green terrain of flat-shaded triangles floating over a dark ground, casting a soft shadow onto it" macro-file="../../dev_docs/agents/transcripts/madp_geometry.yaml" capture-box="ripple_terrain"}
 // The transcript builds and runs every box; this is the starter, ripple_terrain.

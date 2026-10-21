@@ -26,8 +26,12 @@ import java.nio.ByteOrder
  */
 fun GeometryScene.toGlb(): ByteArray = encodeGlb(listOf(this), fps = 30.0)
 
-/** Write [toGlb] to [file], returning it. */
-fun GeometryScene.writeGlb(file: File): File = file.also { it.writeBytes(toGlb()) }
+/**
+ * Write [toGlb] to [file], returning it. With [compress], the GLB goes through [Gltfpack] when it is
+ * installed and makes the file smaller, as the toolbox's export does; otherwise it is written as it is.
+ */
+fun GeometryScene.writeGlb(file: File, compress: Boolean = true): File =
+    file.also { it.writeBytes(if (compress) Gltfpack.compressIfSmaller(toGlb()) else toGlb()) }
 
 /**
  * Record a [GeometryBuilder] recipe as an animated glTF: [frames] frames at [fps], from `t = 0`, stored
@@ -56,9 +60,13 @@ fun geometryAnimationGlb(frames: Int = 90, fps: Double = 30.0, block: GeometryBu
     return encodeGlb(scenes, fps)
 }
 
-/** Write [geometryAnimationGlb] to [file], returning it. */
-fun writeGlbAnimation(file: File, frames: Int = 90, fps: Double = 30.0, block: GeometryBuilder.() -> Unit): File =
-    file.also { it.writeBytes(geometryAnimationGlb(frames, fps, block)) }
+/** Write [geometryAnimationGlb] to [file], returning it; [compress] as in [writeGlb]. */
+fun writeGlbAnimation(
+    file: File, frames: Int = 90, fps: Double = 30.0, compress: Boolean = true, block: GeometryBuilder.() -> Unit,
+): File = file.also {
+    val glb = geometryAnimationGlb(frames, fps, block)
+    it.writeBytes(if (compress) Gltfpack.compressIfSmaller(glb) else glb)
+}
 
 private class GlbBin {
     val bytes = ByteArrayOutputStream()
