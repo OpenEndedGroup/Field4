@@ -13,7 +13,7 @@ val player = Improviser(VariableMarkovOracle.build(demo), seed = 3)
 
 var hold = false
 var value = 0.0
-checkbox("take over x") { hold = it }
+checkbox("take over x", channel = "take over") { hold = it }
 slider("x", min = -1.5, max = 1.5, initialValue = 0.0) { value = it }
 
 val trail = ArrayDeque<DoubleArray>()
