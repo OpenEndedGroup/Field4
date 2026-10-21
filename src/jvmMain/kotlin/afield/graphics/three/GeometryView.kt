@@ -83,6 +83,7 @@ fun Box.geometry(
  * result in the same studio-lit `three` view: the toolbox's **Animate** button.
  *
  * Return it from the box (it is a [Frames]) and launch the box; stopping the box stops the animation.
+ * Running the box instead draws the first frame and stops there.
  * The view keeps its camera from frame to frame, so you can orbit while it moves. Nothing requires the
  * topology to stay fixed while it plays, though [afield.geometry.mesh.writeGlbAnimation] needs it to.
  *

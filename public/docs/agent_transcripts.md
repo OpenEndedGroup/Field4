@@ -2014,6 +2014,22 @@ and Delete.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/macro_recorder_stamp/metadata.edn)
 
+### madp_ga
+
+**Interactive evolution, after Karl Sims**, ported from the madp GA demo. Each tile is a short
+reverse-Polish colour program (`x 9 * sin 0.18 + y 0.55 + 0.62 hsl`) run once per pixel, and you
+are the fitness function: each box shows two parents and seven children in a 3×3 grid, and
+clicking two tiles makes them the parents of the next generation. The lead box starts from the
+demo's two starters, two more from its example programs, and the last changes the breeding rules
+so that only numbers mutate. The language is `ColorRpn` and the grid is `evolveByEye`, which takes
+any genome with a picture; design notes in `dev_docs/madp/ga.md`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_ga_lead.png" capture="box" open-outputs="true" wait="2.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-ga-lead" alt="The GA grid on a near-black ground: a toolbar with Reroll, Fresh Parents and Start over and the mut, len and res settings, then nine tiles in three rows, the two parents (rainbow vertical stripes and rainbow spokes) outlined in blue and seven mutated children below them, each with its program written under it" macro-file="../../dev_docs/agents/transcripts/madp_ga.yaml" capture-box="madp_ga_lead"}
+// The transcript builds and runs every box; this is the lead box, starting from the demo's starters.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_ga/metadata.edn)
+
 ## Service-backed composition scenes
 
 <!-- transcript-index: verified-by = execute -->
@@ -2426,6 +2442,10 @@ once. The lead box is the demo's plasma; the others are 10 PRINT, Life, matrix r
 (one `CSSVAR` spins the whole field) and a C64 typewriter. A port of the madp charGrid demo; the
 design notes are in `dev_docs/madp/chargrid.md`.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_chargrid_plasma.png" capture="box" open-outputs="true" wait="4.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-chargrid-plasma" alt="A 40 by 25 grid of block and box-drawing glyphs in rotating rainbow hues, a plasma of two sine waves, on a near-black panel" macro-file="../../dev_docs/agents/transcripts/madp_chargrid.yaml" capture-box="madp_chargrid_plasma"}
+// The transcript builds and runs every box; this is the lead, the plasma.
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/madp_chargrid/metadata.edn)
 
 ### madp_score
@@ -2462,6 +2482,32 @@ are in `dev_docs/madp/line.md`.
 ```
 
 [Open ↗](offline.html?file=assets/agent_transcripts/madp_line/metadata.edn)
+
+### madp_tetra
+
+**Four pictures as a tetrahedron.** Run the first box and CLIP turns each of four photographs (a
+cat, a dog, a tiger, a car) into a point in its 512-dimensional space. The six distances between
+them become the six edges of a tetrahedron that turns slowly in the view below the pictures, with
+each edge's length written on it and listed in the corner. Any four points of such a space sit
+exactly in three dimensions, so the picture loses nothing: here the car's three edges are the three
+longest. Drop your own pictures on the slots, or drag one up from the tray. The second box puts a
+sentence in the fourth slot. Its point sits far from all three pictures, even the one it describes,
+and the coloured diamonds rank each point's three edges, so you can still see which picture the
+sentence is nearest. The third box swaps the car for a wolf. The fourth adds a fifth picture, and
+the note under its picture gives the stress, how far the best 3D fit is from the real distances.
+A port of the madp tetra demo; the design notes are in `dev_docs/madp/tetra.md`.
+
+??? aside "Not the madp page's model"
+    The madp page embeds with jina-clip-v2 on a Python server. Field runs OpenAI's CLIP ViT-B/32
+    through ONNX in the JVM, so the distances differ from the page's. The geometry does not depend
+    on the model: four unit vectors in any dimension embed exactly in 3D. The page's `tetra2` server
+    also squared its distances twice before MDS, which this port does not repeat.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_tetra.png" capture="box" open-outputs="true" wait="10.0" embed=true hidden=true timeout="240" padding="12" name="gallery-madp-tetra" alt="Four photographs (a cat, a dog, a tiger and a red car) in coloured slots above a dark view of a tetrahedron with coloured spheres at its corners, each edge labelled with its CLIP distance, and a table of the six distances in the corner" macro-file="../../dev_docs/agents/transcripts/madp_tetra.yaml" capture-box="tetra"}
+// The transcript builds and runs every box; this is the starter, tetra.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/madp_tetra/metadata.edn)
 
 ### mqtt_demo
 
@@ -3123,6 +3169,10 @@ smallest chaos game). Each system box's `compute` tab holds the rule as six GLSL
 viewport, the background, the particle count and the fade, and shows sliders for fps, steps,
 fade and exposure. Launch another system box to switch to it.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/fern_iterated_systems_barnsley.png" capture="native-window" native-wait-frames="120" trim-native=true wait="30.0" embed=true hidden=true timeout="400" name="gallery-fern-iterated-systems" alt="The Barnsley fern in the native window: a tall green frond of fine glowing dust on black, its leaflets built of smaller leaflets, the lowest left one turning yellow-green" macro-file="../../dev_docs/agents/transcripts/fern_iterated_systems.yaml" capture-box="fern_renderer"}
+// The transcript builds every box and launches the renderer and the Barnsley fern.
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/fern_iterated_systems/metadata.edn)
 
 ### particles_sketchbook
@@ -3308,6 +3358,27 @@ shows the same side-by-side scene and its mouse supplies the controller ray.
 ![A full YouTube browser panel rendered for the left and right eyes in a side-by-side stereo Field window](assets/puppet_browser/youtube-stereo.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/youtube_vr_browser/metadata.edn)
+
+### webrtc_shader_jam
+
+The classroom shader jam from Field. One box publishes a fragment shader as a WebRTC stream
+named `login/field-shader`, and another lists who is publishing and draws the stream it picks on a
+quad in the renderer's window. After `WebRTCNetwork.join(url)` once, Field signs in to that
+aaaframe class in its own window and remembers it; a browser ShaderTrinket then receives the Field
+box like any classmate, and Field can show any student's Publish. Before joining, the receiving box
+shows its neighbour's stream through Field's own relay. Needs the Field Electron app.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/webrtc_shader_jam.png" capture="native-window" capture-profile="macos-electron" native-wait-frames="90" trim-native=true wait="25.0" embed=true hidden=true timeout="400" name="gallery-webrtc-shader-jam" alt="Field's renderer window showing the stream the publishing box sends over Field's own relay: a three-lobed flower of blue-violet petals ringed by teal and green bands with dark outlines, filling a 16 by 9 frame on black" macro-file="../../dev_docs/agents/transcripts/webrtc_shader_jam.yaml" capture-box="webrtc_renderer"}
+// The transcript builds and launches all three boxes; on Field's own relay the receiving box shows the publishing box's stream.
+```
+
+The same box receiving a browser ShaderTrinket's stream through aaaframe:
+
+![Field's renderer window showing a stream from a browser ShaderTrinket: pink and yellow petals in a tall frame centred on black](assets/webrtc/field-receives-shadertrinket.png)
+
+Walkthrough: [WebRTC Streams](webrtc.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/webrtc_shader_jam/metadata.edn)
 
 ### direct_lighting
 

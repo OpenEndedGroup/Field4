@@ -524,6 +524,10 @@ object DemoTranscriptExecSmokeTest {
         // window — so running it here is also the cheapest check that the two entry points
         // public/docs/completion_ranking.md names still exist with the signatures it claims.
         "popup_prior_inspect",
+        // The madp GA demo: four boxes that each render nine ColorRpn programs on the CPU into an
+        // EyeEvolution grid. No window, no GPU; ColorRpnTest pins the language to the demo's own
+        // interpreter and EyeEvolutionTest drives the click path.
+        "madp_ga",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
@@ -747,6 +751,10 @@ object DemoTranscriptExecSmokeTest {
         // Product-facing puppet-browser scene: a YouTube watch page on an aspect-correct world quad.
         // It opens Electron and a native Vulkan stereo window, so CI compiles without launching it.
         "youtube_vr_browser",
+        // Publishes a shader over WebRTC from an Electron output-area view and samples a stream
+        // through a hidden Electron page; both need the Field Electron app and a peer, so CI
+        // compiles the graph. The live checks are in dev_docs/WEBRTC_SOURCES_SINKS.md.
+        "webrtc_shader_jam",
         // Exercises IOSurface/Mach-port import, a Vulkan copy, and a graphics-fence callback on
         // macOS. CI still compiles both boxes everywhere; the tracked backdoor replay runs it live.
         "external_browser_surface_macos_smoke",
@@ -764,6 +772,10 @@ object DemoTranscriptExecSmokeTest {
         // hermetic: the box's `clipEncode(…)` calls and its Depth Anything session are behind lazy
         // initialisation, so nothing here fetches the ~600MB of encoders that running it would.
         "onnx_webcam_live",
+        // The madp tetra port: running a box loads both CLIP towers (~600 MB fetched on first use),
+        // which a hermetic build must not do. `onnx.clip.smoke` encodes the same photographs and checks
+        // their simplex is exact and repeatable; EmbeddingSimplexTest holds the geometry.
+        "madp_tetra",
         // Both open a native Vulkan renderer and dispatch compute. Their numbers are checked
         // elsewhere and far more sharply than a replay could: `four.neural-particles.smoke` grades
         // the GPU's trajectories against the CPU integrator per particle, and

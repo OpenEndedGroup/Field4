@@ -1,0 +1,1 @@
+**breathing sheet** (animated): the same 64 × 28 grid every frame, with `t` moving the waves. Launch the box (alt+up) to play it and stop it with alt+down; running it draws the first frame. Because the topology never changes, `writeGlbAnimation` can save it as a vertex-animated GLB.

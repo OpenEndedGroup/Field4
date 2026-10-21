@@ -81,6 +81,7 @@ object ClipSmokeTest {
         testSemanticAxis(texts)
         testImageEmbeddingAndModalityGap(texts)
         testClassifyIsSoftmaxOverCandidates(texts)
+        testFileEmbeddingsAreDeterministic()
 
         if (failures > 0) {
             System.err.println("CLIP smoke: $failures check(s) failed")
@@ -237,6 +238,45 @@ object ClipSmokeTest {
         }
         println("  image: ${encoder.lastInferenceMs}ms on ${encoder.activeProvider}, " +
             "best text cosine ${"%.6f".format(imageTextMax)}")
+    }
+
+    /**
+     * The tetra starting point's path: photographs from files, through [clipEncodeImage], into an
+     * [afield.math.statistics.EmbeddingSimplex]. Its distances must not move between encodes, or the
+     * tetrahedron a student is looking at would shiver every time a slot changed.
+     */
+    private fun testFileEmbeddingsAreDeterministic() {
+        val dir = java.io.File("public/docs/assets/madp_tetra")
+        val names = listOf("tabby_cat", "labrador", "tiger", "toyota_sports_800")
+        val files = names.map { dir.resolve("$it.jpg") }
+        check("the tetra sample photographs are present", files.all { it.isFile }) { "missing under ${dir.absolutePath}" }
+        if (!files.all { it.isFile }) return
+
+        val first = files.map { clipEncodeImage(it) }
+        val second = files.map { clipEncodeImage(it) }
+        check("encoding the same file twice gives the same vector, bit for bit",
+            first.zip(second).all { (a, b) -> a.values.contentEquals(b.values) }) { "a re-encode differed" }
+        first.forEachIndexed { i, v -> near("${names[i]} is unit length", v.norm, 1f) }
+
+        // The BufferedImage route and the RGBA-buffer route are one preprocessing, not two.
+        val image = javax.imageio.ImageIO.read(files[0])
+        val rgba = ByteBuffer.allocateDirect(image.width * image.height * 4)
+        for (y in 0 until image.height) for (x in 0 until image.width) {
+            val p = image.getRGB(x, y)
+            rgba.put((p shr 16 and 0xff).toByte()).put((p shr 8 and 0xff).toByte()).put((p and 0xff).toByte()).put(-1)
+        }
+        rgba.rewind()
+        val direct = ClipImage().encode(rgba, image.width, image.height)
+        check("clipEncodeImage matches ClipImage.encode on the same pixels", direct.values.contentEquals(first[0].values)) {
+            "cosine between the two routes ${direct.cosine(first[0])}"
+        }
+
+        val simplex = afield.math.statistics.embeddingSimplex(first, names)
+        val again = afield.math.statistics.embeddingSimplex(second, names)
+        check("the six distances are the same on a second encode",
+            simplex.edges.zip(again.edges).all { (a, b) -> a.distance == b.distance }) { "$simplex\nvs\n$again" }
+        check("four photographs make an exact tetrahedron", simplex.exact) { "stress ${simplex.stress1}" }
+        println("  tetra photographs:\n" + simplex.toString().prependIndent("    "))
     }
 
     private fun testClassifyIsSoftmaxOverCandidates(texts: Map<String, ClipVector>) {
