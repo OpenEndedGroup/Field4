@@ -2,6 +2,7 @@ package afield.geometry.mesh
 
 import afield.graphics.color.hsl
 import afield.graphics.three.ThreeSceneBuilder
+import afield.graphics.three.ThreeSurfaceMaterial
 import afield.graphics.three.geometry
 import afield.math.linalg.vec
 import kotlinx.serialization.json.Json
@@ -130,6 +131,21 @@ class GeometryBuilderTest {
         assertEquals(-1.25, payload.studio!!.groundY)
         assertEquals("#060807", payload.background)
         assertEquals(false, payload.helpers)
+    }
+
+    @Test
+    fun `studio and a surface material reach the payload, and studio hides the helpers`() {
+        val vase = geometryScene { revolve(listOf(profile(1.0, 0.0), profile(0.6, 1.0)), 24) }.toTriMesh()
+        val payload = ThreeSceneBuilder(48).apply {
+            mesh(vase, wireframe = false, material = ThreeSurfaceMaterial(roughness = 0.4f, metalness = 0.6f))
+            studio(groundY = -1.25, ambientOcclusion = false)
+        }.payload("studio")
+        assertEquals(0.6f, payload.drawables.single().style.material!!.metalness)
+        assertEquals(false, payload.studio!!.ambientOcclusion)
+        assertEquals(false, payload.helpers)
+        val plain = ThreeSceneBuilder(48).apply { mesh(vase) }.payload("plain")
+        assertEquals(null, plain.studio)
+        assertEquals(null, plain.drawables.single().style.material)
     }
 
     @Test
