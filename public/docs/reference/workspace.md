@@ -1129,7 +1129,7 @@ options such as `--workspace` and `--document` are read here as [`home`](workspa
 | <a id="server-kt--parselayerslist"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">parseLayersList</span><span class="p">(</span><span class="n">layersString</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/app/server/Server/#L796) |  |
 | <a id="server-kt--scheduleautorunboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SessionInformation</span><span class="p">.</span><span class="nf">scheduleAutorunBoxes</span><span class="p">(</span><span class="n">delayMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">500L</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L806) |  |
 | <a id="server-kt--autorunboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SessionInformation</span><span class="p">.</span><span class="nf">autorunBoxes</span><span class="p">(</span><span class="n">targetBoxes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">delayMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">500L</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L815) |  |
-| <a id="server-kt--languagenameforproperty"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">languageNameForProperty</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/Server/#L6052) |  |
+| <a id="server-kt--languagenameforproperty"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">languageNameForProperty</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/Server/#L6068) |  |
 
 ### Top-level values { #server-kt-values }
 
@@ -1298,7 +1298,7 @@ Command-line option parsing for the server: [`option`](workspace.md#arguments-kt
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="asciiwelcome-kt--asciiwelcome"></a>[<code class="highlight"><span class="k">var</span> <span class="n">asciiWelcome</span></code>](source/jvmMain/afield/app/server/asciiWelcome/#L17) |  |
+| <a id="asciiwelcome-kt--asciiwelcome"></a>[<code class="highlight"><span class="k">var</span> <span class="n">asciiWelcome</span></code>](source/jvmMain/afield/app/server/asciiWelcome/#L4) |  |
 
 ## assimpBrowsing.kt { #assimpbrowsing-kt }
 

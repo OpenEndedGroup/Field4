@@ -1104,13 +1104,19 @@ turntable. Change the direction or the seed and run it again.
 
 The madp geometry toolbox as a starting point. A model is a recipe of triangles: `geometry { }`
 runs the block, which emits triangles through a transform stack with a current colour and a current
-material (`mat`, `color`, `tri`, `quad`, `surface`, `revolve`, `tube`, `box`, `push`/`pop`), and
-draws the result in a `three { }` view lit like a studio, with soft shadows on a dark ground. The
-first box is the starter, a rippled terrain; the others are the toolbox's presets: a crystal bloom
-of single triangles, a lathe-turned vessel with a metal rim, a tube along a knot, a fungal tree of
-recursive tubes, a Menger sponge of boxes, and a breathing sheet that `animateGeometry { }` rebuilds
-thirty times a second. Launch that one to play it. Edit any recipe and run it again; the view keeps
-your orbit. The viewer's **Export GLB** saves the model.
+material (`mat`, `color`, `tri`, `quad`, `surface`, `revolve`, `tube`, `box`, `push`/`pop`). It
+draws the result in a `three { }` view lit like a studio, with soft shadows and ambient occlusion on
+a dark ground. The first box is the starter, a rippled terrain. The other ten are the toolbox's
+presets: a crystal bloom of single triangles, a lathe-turned vessel with a metal rim, a tube along a
+knot, a fungal tree of recursive tubes, phyllotaxis fronds, a Menger sponge and a city of boxes, a
+lesson in triangle winding, and two animations, a breathing sheet and a torn signal, that
+`animateGeometry { }` rebuilds thirty times a second. Launch those two to play them. Edit any recipe
+and run it again; the view keeps your orbit.
+
+The starter also calls `geometryAgent()`, which gives the document's AI4 chat the language and a
+`geometry.look` tool. The tool returns a picture of any view here as it is on screen, so you can ask
+the chat for a model and it can check its own work. The viewer's **Export GLB** saves a model, and
+compresses it when gltfpack is installed.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/madp_geometry_terrain.png" capture="box" open-outputs="true" wait="4.0" embed=true hidden=true timeout="180" padding="12" name="gallery-madp-geometry-terrain" alt="A rippled blue-green terrain of flat-shaded triangles floating over a dark ground, casting a soft shadow onto it" macro-file="../../dev_docs/agents/transcripts/madp_geometry.yaml" capture-box="ripple_terrain"}
 // The transcript builds and runs every box; this is the starter, ripple_terrain.
@@ -2809,11 +2815,17 @@ rewrite its centre, radii, colour and rotation (`pos`, `scales`, `rgba`, `quat`,
 `t` to read). Each box's compute tab is just those lines between `#include "splat/insert"` and
 `#include "splat/end"`, and its code hands the module and a cloud to `SplatShader`. A passthrough on
 the icosphere shell leads; six of the demo's inserts follow, one on each of its procedural clouds
-(pulse rings, dissolve, gravity well, fern veins, lichen tangle, xray shell), each launching into
-the same window with the demo's turn and size sliders. The insert runs in a compute pass ahead of
-the depth sort, so a dissolve that throws splats outward is sorted where they went: measured on the
-GPU, editing the splat vertex shader instead draws half of all neighbouring pairs in the wrong order.
-`SplatSet.fromPly` and `SplatSet.fromGltf` load your own splats, or a mesh as one disc per vertex.
+(pulse rings, dissolve, gravity well, fern veins, lichen tangle, xray shell), and a last box runs
+scanlines over the ToyCar model, read with `SplatSet.fromGltf` as one disc per vertex. Each launches
+into the same window with the demo's turn, size and trail controls; the gravity well starts with
+its trail on, each frame laid over a fading copy of the last. The insert runs in a compute pass
+ahead of the depth sort, so a dissolve that throws splats outward is sorted where they went:
+measured on the GPU, editing the splat vertex shader instead draws half of all neighbouring pairs
+in the wrong order.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/splat_shader_passthrough.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-splat-shader" alt="The icosphere shell in the native window: a sphere of about a thousand small glowing splats on black, coloured by longitude from cyan on the left through chartreuse at the front to red and orange on the right, with the far side's violet splats showing between the near ones" macro-file="../../dev_docs/agents/transcripts/splat_shader.yaml" capture-box="splat_renderer"}
+// The transcript builds every box and launches the renderer and the passthrough.
+```
 
 [Open ↗](offline.html?file=assets/agent_transcripts/splat_shader/metadata.edn)
 

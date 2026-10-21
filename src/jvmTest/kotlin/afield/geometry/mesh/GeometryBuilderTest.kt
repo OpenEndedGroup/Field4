@@ -2,6 +2,7 @@ package afield.geometry.mesh
 
 import afield.graphics.color.hsl
 import afield.graphics.three.ThreeSceneBuilder
+import afield.graphics.three.ThreeSurfaceMaterial
 import afield.graphics.three.geometry
 import afield.math.linalg.vec
 import kotlinx.serialization.json.Json
@@ -133,6 +134,21 @@ class GeometryBuilderTest {
     }
 
     @Test
+    fun `studio and a surface material reach the payload, and studio hides the helpers`() {
+        val vase = geometryScene { revolve(listOf(profile(1.0, 0.0), profile(0.6, 1.0)), 24) }.toTriMesh()
+        val payload = ThreeSceneBuilder(48).apply {
+            mesh(vase, wireframe = false, material = ThreeSurfaceMaterial(roughness = 0.4f, metalness = 0.6f))
+            studio(groundY = -1.25, ambientOcclusion = false)
+        }.payload("studio")
+        assertEquals(0.6f, payload.drawables.single().style.material!!.metalness)
+        assertEquals(false, payload.studio!!.ambientOcclusion)
+        assertEquals(false, payload.helpers)
+        val plain = ThreeSceneBuilder(48).apply { mesh(vase) }.payload("plain")
+        assertEquals(null, plain.studio)
+        assertEquals(null, plain.drawables.single().style.material)
+    }
+
+    @Test
     fun `a glb has a node, a material and the right accessors per part`() {
         val glb = geometryScene {
             mesh("a"); box(vec(0, 0, 0), 1.0)
@@ -169,6 +185,19 @@ class GeometryBuilderTest {
             geometryAnimationGlb(frames = 4) { surface(3 + frame, 3) { u, v -> vertex(u, 0.0, v) } }
         }
         assertTrue("frame 1" in e.message!!, e.message)
+    }
+
+    @Test
+    fun `gltfpack, when installed, makes a smaller GLB that is still a GLB`() {
+        if (!Gltfpack.available) {
+            println("gltfpack is not installed (./gradlew prepareGltfpack); compression not exercised")
+            return
+        }
+        val plain = geometryScene { surface(40, 40) { u, v -> vertex(u * 4, sin(u * 9) * 0.3, v * 4, hsl(u * 300, 0.8, 0.5)) } }.toGlb()
+        val packed = Gltfpack.compress(plain)
+        assertTrue(packed.size < plain.size, "gltfpack ${packed.size} >= plain ${plain.size}")
+        val json = glbJson(packed)
+        assertTrue("EXT_meshopt_compression" in json["extensionsUsed"]!!.jsonArray.map { it.jsonPrimitive.content })
     }
 
     private fun glbJson(glb: ByteArray) = run {
