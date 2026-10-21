@@ -31,7 +31,9 @@ An agent's tools can read more code, files or local code-use history while answe
 tool results then become model context. A selected line is not a guarantee that only that line leaves
 this machine. Review the tools and provider you enable for confidential work.
 
-Providers and model/account settings appear in **Welcome → AI**. Requests use your own API key or
+Providers and model/account settings appear in **Welcome → AI**. With [Local AI](local_ai.md),
+requests go to the model endpoint you choose, which can run on this computer or another machine
+you own. Hosted-provider requests use your own API key or
 configured agent account and can incur that provider's charges. Provider retention and data handling
 are governed by that provider's settings and terms. Field does not supply a shared API subscription.
 Background documentation or tool-review tasks also use the configured agent when you start them.

@@ -498,7 +498,7 @@ class FieldApiCorsExposureTest {
          */
         const val ALL_METHODS = "ANY"
 
-        /** Seven route-specific guards; the application-wide switch is off by default. */
+        /** Route-specific guards; the application-wide policy is tested separately. */
         val EXPECTED_MUTATING_SURFACE = sortedMapOf(
             // Thirteen verbless routes, every one of them a page-serving `handle { }` that
             // also accepts POST, PUT and DELETE. `/lazy-value-fragment` is the one with real
@@ -529,6 +529,7 @@ class FieldApiCorsExposureTest {
             "POST /api/agent-worktrees/delete" to "none",
             "POST /api/agent-worktrees/merge" to "none",
             "POST /api/agent-worktrees/restart" to "none",
+            "POST /api/ai-local-connection" to "same-site",
             "POST /api/ai-settings" to "none",
             "POST /api/ai-tool-use-improvement" to "none",
             "POST /api/ai-tool-use-improvement/clear-reviewed" to "none",

@@ -142,8 +142,8 @@ class OpenAiIdeCodexBridge(
         val t0 = System.nanoTime()
 
         val localThreadId = UUID.randomUUID().toString()
-        if (runtimeConfig.isOpenRouter) {
-            val conversationId = "openrouter:$localThreadId"
+        if (runtimeConfig.usesStatelessResponses) {
+            val conversationId = "${runtimeConfig.provider}:$localThreadId"
             val ms = (System.nanoTime() - t0) / 1_000_000
             info("startThread(): stateless conversationId=$conversationId localThreadId=$localThreadId (${ms}ms)")
             return ThreadState(
@@ -206,7 +206,7 @@ class OpenAiIdeCodexBridge(
 
         // OpenRouter's stateless Responses path keeps its own history and its support for a per-request
         // `instructions` is unverified, so it stays on the one-string prompt.
-        val tc = turnContext?.takeIf { !runtimeConfig.isOpenRouter }
+        val tc = turnContext?.takeIf { !runtimeConfig.usesStatelessResponses }
         // Stable instructions go into the conversation once, as a developer message, and again only when
         // they change. Measured 2026-10-02: sent instead as every request's `instructions`, they never
         // formed a prompt-cache prefix shared between conversations — each task's first request paid ~8k
@@ -274,7 +274,7 @@ class OpenAiIdeCodexBridge(
                 mapOf(
                     "model" to chatModel.toString(),
                     "provider" to runtimeConfig.provider,
-                    "reasoningEffort" to if (runtimeConfig.isOpenRouter) "provider-default" else reasoningEffort.toString(),
+                    "reasoningEffort" to if (runtimeConfig.usesStatelessResponses) "provider-default" else reasoningEffort.toString(),
                     "conversationId" to state.conversationId,
                     "localThreadId" to state.localThreadId,
                     "previousResponseId" to (state.previousResponseId ?: ""),
@@ -392,14 +392,14 @@ class OpenAiIdeCodexBridge(
             .maxOutputTokens(maxOutputTokens)
             .toolChoice(ToolChoiceOptions.AUTO)
 
-        if (runtimeConfig.isOpenRouter) {
+        if (runtimeConfig.usesStatelessResponses) {
             paramsBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + promptItems))
         } else if (imageDataUrls.isEmpty() && stableItem == null && continuationItems.isEmpty()) {
             paramsBuilder.input(inputText)
         } else {
             paramsBuilder.input(ResponseCreateParams.Input.ofResponse(promptItems))
         }
-        if (runtimeConfig.isOpenRouter) {
+        if (runtimeConfig.usesStatelessResponses) {
             // OpenRouter's Responses API is stateless; local history is sent in input instead.
         } else if (state.previousResponseId == null) {
             paramsBuilder.conversation(state.conversationId)
@@ -668,7 +668,7 @@ class OpenAiIdeCodexBridge(
             // An image a co-scheduled call returned is not carried over; its JSON output is.
             TurnSuspension.of(roundResults)?.let { awaited ->
                 suspension = awaited
-                if (runtimeConfig.isOpenRouter) appendStatelessHistory(state, roundOutputs.map { functionOutput(it.callId, it.outputJson) })
+                if (runtimeConfig.usesStatelessResponses) appendStatelessHistory(state, roundOutputs.map { functionOutput(it.callId, it.outputJson) })
                 else state.suspendedRound = SuspendedRound(roundOutputs.toList())
                 openCalls = emptyList()
                 rounds++
@@ -691,7 +691,7 @@ class OpenAiIdeCodexBridge(
                 .model(chatModel)
                 .maxOutputTokens(maxOutputTokens)
                 .toolChoice(ToolChoiceOptions.AUTO)
-            if (runtimeConfig.isOpenRouter) {
+            if (runtimeConfig.usesStatelessResponses) {
                 followupBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + toolOutputs))
             } else {
                 followupBuilder.previousResponseId(response.id())
@@ -1160,7 +1160,7 @@ class OpenAiIdeCodexBridge(
         val builder = ResponseCreateParams.builder()
             .model(chatModel)
             .maxOutputTokens(maxOutputTokens)
-        if (runtimeConfig.isOpenRouter) {
+        if (runtimeConfig.usesStatelessResponses) {
             builder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + inputItems))
         } else {
             builder.previousResponseId(previousResponse.id())
@@ -1188,7 +1188,7 @@ class OpenAiIdeCodexBridge(
     private fun answerOpenCalls(state: ThreadState, calls: List<PendingToolCall>, outputs: List<PendingToolOutput>, failure: Throwable) {
         val byId = outputs.associateBy { it.callId }
         val answered = calls.map { byId[it.callId] ?: aiToolNotRunOutput(it.callId, it.name, failure) }
-        if (runtimeConfig.isOpenRouter) appendStatelessHistory(state, answered.map { functionOutput(it.callId, it.outputJson) })
+        if (runtimeConfig.usesStatelessResponses) appendStatelessHistory(state, answered.map { functionOutput(it.callId, it.outputJson) })
         else state.suspendedRound = SuspendedRound(answered)
         warn("turn failed with ${calls.size} call(s) unanswered by the provider; the next turn opens with their outputs")
     }
@@ -1302,10 +1302,10 @@ class OpenAiIdeCodexBridge(
         }
 
     private fun appendStatelessHistory(state: ThreadState, items: List<ResponseInputItem>) {
-        if (!runtimeConfig.isOpenRouter || items.isEmpty()) return
+        if (!runtimeConfig.usesStatelessResponses || items.isEmpty()) return
         val history = statelessHistory.computeIfAbsent(state.localThreadId) { seedHistory(state).toMutableList() }
         history += items
-        val maxItems = System.getenv("AFIELD_OPENROUTER_HISTORY_ITEMS")?.toIntOrNull()?.coerceAtLeast(8) ?: 80
+        val maxItems = System.getenv(if (runtimeConfig.provider == "local") "AFIELD_LOCAL_AI_HISTORY_ITEMS" else "AFIELD_OPENROUTER_HISTORY_ITEMS")?.toIntOrNull()?.coerceAtLeast(8) ?: 80
         if (history.size > maxItems) {
             val seedCount = seedHistory(state).size
             val removeCount = (history.size - maxItems).coerceAtMost((history.size - seedCount).coerceAtLeast(0))
@@ -1316,7 +1316,7 @@ class OpenAiIdeCodexBridge(
     }
 
     private fun addReasoningIfSupported(builder: ResponseCreateParams.Builder) {
-        if (!runtimeConfig.isOpenRouter) builder.reasoning(reasoningConfig)
+        if (!runtimeConfig.usesStatelessResponses) builder.reasoning(reasoningConfig)
     }
 
     private fun extractOutputTextWithNewlines(response: Response): String {
@@ -1500,7 +1500,7 @@ class OpenAiIdeCodexBridge(
         else -> "type=${toolResult::class.java.simpleName}"
     }
 
-    private fun supportsFileSearch(): Boolean = !runtimeConfig.isOpenRouter && chatModel != ChatModel.GPT_5_1_CODEX
+    private fun supportsFileSearch(): Boolean = !runtimeConfig.usesStatelessResponses && chatModel != ChatModel.GPT_5_1_CODEX
 
     /* ------------------------------ Tools ---------------------------------- */
 

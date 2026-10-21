@@ -3955,6 +3955,14 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
     timeout_text = str(timeout)
     return [
         UiRegression(
+            id="welcome-local-ai",
+            description="Local AI settings retain drafts through refresh and provider switches, validate the model, and report an unreachable server.",
+            commands=[
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/welcome-local-ai.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="three-idle-rendering",
             description="Static geometry sleeps and redraws for visibility, lighting, section, insertion, camera and resize.",
             commands=[

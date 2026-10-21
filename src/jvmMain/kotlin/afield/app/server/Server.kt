@@ -157,6 +157,7 @@ import afield.document.properties.PropertyDependencies
 import afield.document.workspace.AgentWorktreeActionRequest
 import afield.document.workspace.AgentWorktreeActionResponse
 import afield.document.workspace.AiProviderModelSettings
+import afield.document.workspace.LocalAiConnectionRequest
 import afield.document.workspace.AiSettingsStatus
 import afield.document.workspace.AiSettingsUpdateRequest
 import afield.document.workspace.AiSettingsUpdateResponse
@@ -269,6 +270,9 @@ import afield.ai.completion.AI4_AUTO_NAME_PROPERTY
 import afield.ai.completion.AI4_AUTO_NAME_SIGNATURE_PROPERTY
 import afield.ai.models.AiSettingsSaveRequest
 import afield.ai.models.aiProviderStatus
+import afield.ai.models.checkLocalAiConnection
+import afield.ai.models.aiSettingsEnvironmentOverrides
+import afield.ai.models.readLocalAiCredential
 import afield.ai.models.configuredAiBaseUrl
 import afield.ai.models.configuredAiModelSettings
 import afield.ai.models.saveAiSettings
@@ -1151,13 +1155,17 @@ private fun currentAiSettingsStatus(): AiSettingsStatus {
         openRouterConfigPath = status.openRouterConfigPath,
         baseUrl = status.baseUrl,
         openRouterBaseUrl = configuredAiBaseUrl("openrouter"),
+        localBaseUrl = configuredAiBaseUrl("local"),
+        hasLocalApiKey = readLocalAiCredential() != null,
+        environmentOverrides = aiSettingsEnvironmentOverrides(),
         flagshipModel = status.modelSettings.flagshipModel,
         fastModel = status.modelSettings.fastModel,
         fallbackModel = status.modelSettings.fallbackModel,
         modelsByProvider = mapOf(
             "openai" to models("openai"),
             "openrouter" to models("openrouter"),
-            "anthropic" to models("anthropic")
+            "anthropic" to models("anthropic"),
+            "local" to models("local")
         )
     )
 }
@@ -4668,6 +4676,23 @@ class Server {
                             }
                         }
 
+                        post("/api/ai-local-connection") {
+                            if (!isSameSiteRequest(call.request.header("Sec-Fetch-Site"),
+                                    call.request.header("Origin"), call.request.header("Host"))) {
+                                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Open local AI settings from Field's welcome page."))
+                                return@post
+                            }
+                            try {
+                                val request = call.receive<LocalAiConnectionRequest>()
+                                call.respond(withContext(Dispatchers.IO) { checkLocalAiConnection(request) })
+                            } catch (e: Exception) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to when (e) {
+                                    is IllegalArgumentException -> (e.message ?: "Invalid local endpoint.")
+                                    else -> "Could not reach the model server from Field. Check its address, port, firewall and whether it is running."
+                                }))
+                            }
+                        }
+
                         post("/api/ai-settings") {
                             try {
                                 val request = call.receive<AiSettingsUpdateRequest>()
@@ -4679,7 +4704,9 @@ class Server {
                                         openRouterBaseUrl = request.openRouterBaseUrl,
                                         flagshipModel = request.flagshipModel,
                                         fastModel = request.fastModel,
-                                        fallbackModel = request.fallbackModel
+                                        fallbackModel = request.fallbackModel,
+                                        localBaseUrl = request.localBaseUrl,
+                                        localApiKey = request.localApiKey
                                     )
                                 )
                                 call.respond(
@@ -4694,7 +4721,11 @@ class Server {
                                         flagshipModel = status.modelSettings.flagshipModel,
                                         fastModel = status.modelSettings.fastModel,
                                         fallbackModel = status.modelSettings.fallbackModel,
-                                        message = "AI settings saved; the next AI request will use ${status.provider}."
+                                        message = if (aiSettingsEnvironmentOverrides().isEmpty()) "AI settings saved; the next AI request will use ${status.provider}."
+                                            else "Saved. Environment overrides are active; remove them and restart Field to use these settings.",
+                                        localBaseUrl = configuredAiBaseUrl("local"),
+                                        hasLocalApiKey = readLocalAiCredential() != null,
+                                        environmentOverrides = aiSettingsEnvironmentOverrides()
                                     )
                                 )
                             } catch (e: IllegalArgumentException) {
