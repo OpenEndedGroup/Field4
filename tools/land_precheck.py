@@ -180,7 +180,7 @@ CHECKS: tuple[Check, ...] = (
     Check(
         "box-code",
         "checkBoxCodeCompiles and checkBoxIdioms (WebRTC: a transcript box that did not compile)",
-        lambda c: _paths(c, _compiled_transcript) + _paths(c, _box_code_input),
+        lambda c: sorted(set(_paths(c, _compiled_transcript) + _paths(c, _box_code_input))),
         gradle=("checkBoxCodeCompiles", "checkBoxIdioms"),
     ),
     Check(
